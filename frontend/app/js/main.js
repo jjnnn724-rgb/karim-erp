@@ -17,6 +17,7 @@ import { toast, showLoad, hideLoad } from './ui/toast.js';
 import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js';
 import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js';
 import { CONFIG } from './core/config.js';
+import * as smartCard from './features/smart-card.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -72,3 +73,6 @@ window.serverErrorInfo = serverErrorInfo;
 
 // BRIDGE-007: config — extracted from app.js (2026-09-27)
 window.CONFIG = CONFIG;
+
+// BRIDGE-008: smart-card + attendance-print cluster — extracted from app.js (2026-09-27)
+Object.assign(window, smartCard);
