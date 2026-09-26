@@ -95,5 +95,8 @@ Object.assign(window, bulkImport);  // BRIDGE-009
 const zkteco = await import('./features/zkteco.js?v=4.7.131');
 Object.assign(window, zkteco);      // BRIDGE-010
 
-const employees = await import('./features/employees.js?v=4.7.131');
+const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
+
+const warehouse = await import('./features/warehouse.js?v=4.7.133');
+Object.assign(window, warehouse);   // BRIDGE-012
