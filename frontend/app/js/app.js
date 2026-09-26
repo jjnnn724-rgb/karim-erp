@@ -11698,33 +11698,7 @@ generateReport();
 },100);
 }
 }
-// ============================================
-// PWA — تثبيت + شريط عدم الاتصال
-// ============================================
-let _pwaPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  _pwaPrompt = e;
-  const b = document.getElementById('pwaInstallBtn');
-  if (b) {b.style.display = '';}
-});
-async function pwaInstall(){
-  if (_pwaPrompt) {
-    _pwaPrompt.prompt();
-    try { await _pwaPrompt.userChoice; } catch (_) {}
-    _pwaPrompt = null;
-    const b = document.getElementById('pwaInstallBtn');
-    if (b) {b.style.display = 'none';}
-  } else {
-    toast('من متصفح الجوال: مشاركة ← إضافة إلى الشاشة الرئيسية', 'info');
-  }
-}
-function pwaUpdateOfflineBar(){
-  const b = document.getElementById('offlineBar');
-  if (b) {b.style.display = navigator.onLine ? 'none' : '';}
-}
-window.addEventListener('online', () => { pwaUpdateOfflineBar(); toast('عاد الاتصال بالشبكة', 'success'); });
-window.addEventListener('offline', () => { pwaUpdateOfflineBar(); toast('انقطع الاتصال — وضع عدم الاتصال', 'error'); });
+// PWA — تثبيت + شريط عدم الاتصال: نُقل إلى js/core/pwa.js (يجسر عبر js/main.js — BRIDGE-001)
 
 // ============================================
 // CRITICAL GLOBAL FUNCTIONS (Login Screen)
@@ -11755,9 +11729,7 @@ window.addEventListener('offline', () => { pwaUpdateOfflineBar(); toast('انق�
   w.toggleTheme = toggleTheme;
   w.toggleSidebar = typeof toggleSidebar !== 'undefined' ? toggleSidebar : null;
   w.toggleFabMenu = typeof toggleFabMenu !== 'undefined' ? toggleFabMenu : null;
-  // PWA
-  w.pwaInstall = pwaInstall;
-  w.pwaUpdateOfflineBar = pwaUpdateOfflineBar;
+  // PWA — extracted to js/core/pwa.js (bridged by js/main.js — BRIDGE-001)
   // Navigation (used by FAB menu even before login)
   w.go = typeof go !== 'undefined' ? go : function(){};
   // Modals & toasts

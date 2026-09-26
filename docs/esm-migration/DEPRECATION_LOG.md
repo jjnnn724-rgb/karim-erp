@@ -1,0 +1,13 @@
+# DEPRECATION_LOG — سجل الجسور المؤقتة (Compatibility Bridges)
+
+القاعدة: كل جسر `window.*` مؤقت. لا يُحذف إلا بعد انتقال جميع مستهلكاته وتوثيق ذلك.
+إزالة الجسر = commit مستقل بعدد مستهلكين صفر مُتحقق منه آليًا.
+
+| ID | الجسر (window.*) | الموديول | المستهلكون المعروفون (مُتحقق آليًا) | معيار الإزالة | الموعد المستهدف |
+|---|---|---|---|---|---|
+| BRIDGE-001 | `pwaInstall` | `js/core/pwa.js` | index.html:148 `onclick="pwaInstall()"` | انتقال index.html للتحميل عبر module entry (نهاية P3.6) | P3.6 |
+| BRIDGE-001 | `pwaUpdateOfflineBar` | `js/core/pwa.js` | app.js boot (نداء واحد bare — يُحل من window)؛ IIFE سابقًا | إعادة توجيه نداء app.js:11821 لاستيراد مباشر عند تفكيك boot | P3.6 |
+| BRIDGE-002+ | (كل جسر استخراج لاحق يُسجل هنا بنفس البنية) | | | | |
+| — | جسور 415 دالة auto-global المستهلكة من onclick strings | سيُولَّد `bridges/window-exports.js` آليًا من `audits/inline-handlers.json` عند P3.3+ | 417 اسم مستهلك داخل templates + 12 في index.html | استبدال onclick strings بـ addEventListener بعد بناء طبقة events | P3.7 |
+| — | عقد realtime.js الخمس (`STATE`, `toast`, `renderPage`, `zkPortalPunchHandler`, `_jwt`) | يبقى كجسر دائم إلى أن يُحوَّل realtime.js نفسه ESM | realtime.js (17/11/10/4/2 مرجع) | تحويل realtime.js لاستيراد مباشر | مرحلة لاحقة اختيارية |
+| — | ملفات ميتة `pos.js`, `bilingual.js`, `pos-orders.js` | غير محمّلة إطلاقًا | لا شيء (لكن sw.js يعمل لها precache) | حذف من sw.js + الأرشيف بعد تأكيد المالك | P3.7 |
