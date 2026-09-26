@@ -12,6 +12,7 @@
 
 import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js';
 import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js';
+import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -28,3 +29,21 @@ window.MENU_STRINGS = MENU_STRINGS;
 window.applyI18nMaps = applyI18nMaps;
 window.applyLangAttrs = applyLangAttrs;
 window.applyLoginI18n = applyLoginI18n;
+
+// BRIDGE-003: utils + Hijri — extracted from app.js (2026-09-27)
+window.uid = uid;
+window.esc = esc;
+window.today = today;
+window.nowTime = nowTime;
+window.fN = fN;
+window.fC = fC;
+window.fD = fD;
+window.fHijri = fHijri;
+window.HIJRI_MONTHS = HIJRI_MONTHS;
+window.gregToHijriParts = gregToHijriParts;
+window.hijriToGregorian = hijriToGregorian;
+window.hijriDateField = hijriDateField;
+window.toggleDateMode = toggleDateMode;
+window.syncGregToHijri = syncGregToHijri;
+window.syncHijriToGreg = syncHijriToGreg;
+window.fDT = fDT;

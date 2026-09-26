@@ -42,4 +42,22 @@
 
 ---
 
-## EXTRACTION-003 — (التالي المخطط: core/utils — esc/today/nowTime/fN/fC/fD/fDT/metricCard + الهجري — لم يُنفذ بعد)
+## EXTRACTION-003 — core/utils (المنسقات + الهجري)
+
+| الحقل | القيمة |
+|---|---|
+| **التاريخ** | 2026-09-27 |
+| **Commit** | `refactor(utils): extract formatters and Hijri system from app.js (EXTRACTION-003, BRIDGE-003)` |
+| **الأصل** | `frontend/app/js/app.js` (سطرا `uid` + `esc..fDT` بعد استخراج i18n) — 138 سطرًا |
+| **الوجهة** | `frontend/app/js/core/utils.js` (new, ESM) + جسر في `js/main.js` |
+| **المحرَّك** | `uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT` — **byte-identical مُتحقق (7,251 حرفًا)** |
+| **الجسر** | BRIDGE-003: 16 binding على window |
+| **تحليل ساكن قبل النقل** | فحص المعرفات الحرة للكتلة: صفر مراجع غير مضمونة (كلها خصائص/نصوص قوالب + `Intl` builtin + `STATE` من window) |
+| **إصلاح أثناء التنفيذ** | سطر `uid` تكرر مؤقتًا (بقي في app.js أثناء النقل) — أُزيل فورًا؛ لا ازدواجية مصدر |
+| **index.html / sw.js** | `?v=4.7.120` + `CACHE_VERSION 4.7.15` + `core/utils.js` في precache |
+| **تبقى في قسم UTILS (عمدًا)** | `toast`, `cleanNotificationText`, `showLoad/hideLoad`, `destroyCharts`, `metricCard`, عنقود الإشعارات — لوحدات UI/notifications لاحقة |
+| **التحقق** | `node --check` ✓ · فحص حي: `fN(1234567.891)='1,234,567.89'`، `fC(250)='250 SAR'`، `esc` يهرّب صحيحًا، `fD` بالعربية `٢٧ سبتمبر ٢٠٢٦`، **الهجري: `gregToHijriParts('2026-09-27')={1448,4,16}` (أم القرى عبر Intl)** ✓ · `today()` يُرجع تاريخ UTC — السلوك الأصلي حرفيًا ✓ · boot=dashboard ✓ |
+
+---
+
+## EXTRACTION-004 — (التالي المخطط: ui/toast + ui/load — toast/showLoad/hideLoad مع معالجة سطري IIFE — لم يُنفذ بعد)
