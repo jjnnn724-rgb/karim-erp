@@ -17,9 +17,6 @@ import { toast, showLoad, hideLoad } from './ui/toast.js';
 import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js';
 import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js';
 import { CONFIG, ROLES } from './core/config.js';
-import * as smartCard from './features/smart-card.js';
-import * as bulkImport from './features/bulk-import.js';
-import * as zkteco from './features/zkteco.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -77,12 +74,17 @@ window.serverErrorInfo = serverErrorInfo;
 window.CONFIG = CONFIG;
 window.ROLES = ROLES;
 
-// BRIDGE-008: smart-card + attendance-print cluster — extracted from app.js (2026-09-27)
-Object.assign(window, smartCard);
+// BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
+// Feature modules are imported DYNAMICALLY after the spine bridges above are mounted:
+// several of them execute statements at module-evaluation time that read window.STATE /
+// window.ROLES (in app.js those statements ran after those globals existed). Static
+// imports would evaluate them BEFORE the bridges — breaking the graph. Top-level await
+// keeps the deferred-script ordering: app.js (next defer) waits until this resolves.
+const smartCard = await import('./features/smart-card.js');
+Object.assign(window, smartCard);   // BRIDGE-008
 
-// BRIDGE-009: bulk-import wizard — extracted from app.js (2026-09-27)
-Object.assign(window, bulkImport);
+const bulkImport = await import('./features/bulk-import.js');
+Object.assign(window, bulkImport);  // BRIDGE-009
 
-// BRIDGE-010: ZKTECO biometric page — extracted from app.js (2026-09-27)
-// includes the frozen realtime contract functions (zkPortalPunchHandler glue stays in app.js)
-Object.assign(window, zkteco);
+const zkteco = await import('./features/zkteco.js');
+Object.assign(window, zkteco);      // BRIDGE-010
