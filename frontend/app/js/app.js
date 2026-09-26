@@ -1,7 +1,7 @@
 // ============================================
 // CONFIG & STATE
 // ============================================
-const CONFIG = { VERSION: '4.6.20', APP_NAME: 'مطاعم الشرفه العالمي', LOGO_PATH: '/app/assets/karim-logo.ico' };
+// CONFIG: نُقل إلى js/core/config.js (يجسر عبر js/main.js — BRIDGE-007)
 const DB_NAME = 'RestaurantDB';
 const DB_VERSION = 2;
 // API_BASE: نُقل إلى js/core/api.js (BRIDGE-006)
