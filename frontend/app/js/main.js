@@ -19,6 +19,7 @@ import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.
 import { CONFIG, ROLES } from './core/config.js';
 import * as smartCard from './features/smart-card.js';
 import * as bulkImport from './features/bulk-import.js';
+import * as zkteco from './features/zkteco.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -81,3 +82,7 @@ Object.assign(window, smartCard);
 
 // BRIDGE-009: bulk-import wizard — extracted from app.js (2026-09-27)
 Object.assign(window, bulkImport);
+
+// BRIDGE-010: ZKTECO biometric page — extracted from app.js (2026-09-27)
+// includes the frozen realtime contract functions (zkPortalPunchHandler glue stays in app.js)
+Object.assign(window, zkteco);
