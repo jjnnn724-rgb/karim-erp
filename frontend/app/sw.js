@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = '4.7.17';
+const CACHE_VERSION = '4.7.18';
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -21,13 +21,14 @@ const STATIC_ASSETS = [
     '/app/index.html',
     '/app/pos.html',
     '/app/manifest.json',
-    '/app/js/main.js?v=4.7.122',
+    '/app/js/main.js?v=4.7.123',
     '/app/js/core/pwa.js',
     '/app/js/core/i18n.js',
     '/app/js/core/utils.js',
     '/app/js/ui/toast.js',
     '/app/js/core/state.js',
-    '/app/js/app.js?v=4.7.122',
+    '/app/js/core/api.js',
+    '/app/js/app.js?v=4.7.123',
     '/app/js/icons.js',
     '/app/js/scanner.js',
     '/app/js/realtime.js',

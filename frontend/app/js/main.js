@@ -15,6 +15,7 @@ import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, app
 import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js';
 import { toast, showLoad, hideLoad } from './ui/toast.js';
 import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js';
+import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -60,3 +61,10 @@ window.hideLoad = hideLoad;
 window.STATE = STATE;
 window.PERSISTED_ENTITIES = PERSISTED_ENTITIES;
 window.ROLE_ENTITY_EXCLUSIONS = ROLE_ENTITY_EXCLUSIONS;
+
+// BRIDGE-006: unified API client — extracted from app.js (2026-09-27)
+// realtime.js reads window.API_BASE as an optional fallback (same value it computes itself).
+window.API_BASE = API_BASE;
+window.apiFetch = apiFetch;
+window.SERVER_CODE_AR = SERVER_CODE_AR;
+window.serverErrorInfo = serverErrorInfo;
