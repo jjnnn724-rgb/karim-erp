@@ -1,0 +1,1283 @@
+{
+ "apiFetch": [
+  {
+   "line": 149,
+   "path": "/${entity}?page=${page}&limit=${pageSize}&sort=id&order=asc",
+   "method": "GET (default)",
+   "section": "CONFIG & STATE"
+  },
+  {
+   "line": 161,
+   "path": "/${entity}",
+   "method": "POST",
+   "section": "CONFIG & STATE"
+  },
+  {
+   "line": 162,
+   "path": "/${entity}/${id}",
+   "method": "PUT",
+   "section": "CONFIG & STATE"
+  },
+  {
+   "line": 163,
+   "path": "/${entity}/${id}",
+   "method": "DELETE",
+   "section": "CONFIG & STATE"
+  },
+  {
+   "line": 712,
+   "path": "/notifications",
+   "method": "POST",
+   "section": "I18N"
+  },
+  {
+   "line": 729,
+   "path": "/notifications",
+   "method": "GET (default)",
+   "section": "I18N"
+  },
+  {
+   "line": 776,
+   "path": "/notifications/read-all",
+   "method": "POST",
+   "section": "I18N"
+  },
+  {
+   "line": 778,
+   "path": "/notifications/read",
+   "method": "POST",
+   "section": "I18N"
+  },
+  {
+   "line": 779,
+   "path": "/notifications",
+   "method": "DELETE",
+   "section": "I18N"
+  },
+  {
+   "line": 849,
+   "path": "/chat/users",
+   "method": "GET (default)",
+   "section": "I18N"
+  },
+  {
+   "line": 864,
+   "path": "/chat/history?with=",
+   "method": "GET (default)",
+   "section": "I18N"
+  },
+  {
+   "line": 909,
+   "path": "/chat/send",
+   "method": "POST",
+   "section": "I18N"
+  },
+  {
+   "line": 1045,
+   "path": "/settings/main_settings",
+   "method": "GET (default)",
+   "section": "STORAGE"
+  },
+  {
+   "line": 1080,
+   "path": "/attendance/range?from=${attFrom}&to=${attTo}&limit=30000",
+   "method": "GET (default)",
+   "section": "STORAGE"
+  },
+  {
+   "line": 1088,
+   "path": "/pos/recipes/catalog",
+   "method": "GET (default)",
+   "section": "STORAGE"
+  },
+  {
+   "line": 1093,
+   "path": "/kitchen/overview",
+   "method": "GET (default)",
+   "section": "STORAGE"
+  },
+  {
+   "line": 1127,
+   "path": "/hr/employees/${emp.id}/card",
+   "method": "GET (default)",
+   "section": "SMART CARD UTILS"
+  },
+  {
+   "line": 1441,
+   "path": "/hr/attendance/report?employee_id=${encodeURIComponent(empId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}",
+   "method": "GET (default)",
+   "section": "SMART CARD RENDER"
+  },
+  {
+   "line": 1524,
+   "path": "/hr/strict-audit?month=${encodeURIComponent(month)}",
+   "method": "GET (default)",
+   "section": "SMART CARD RENDER"
+  },
+  {
+   "line": 1550,
+   "path": "/hr/attendance/monthly?month=${encodeURIComponent(month)}",
+   "method": "GET (default)",
+   "section": "SMART CARD RENDER"
+  },
+  {
+   "line": 1648,
+   "path": "/hr/employees/${empId}/qr/regenerate",
+   "method": "POST",
+   "section": "SMART CARD RENDER"
+  },
+  {
+   "line": 2763,
+   "path": "/zkteco/status",
+   "method": "GET (default)",
+   "section": "DASHBOARD"
+  },
+  {
+   "line": 2900,
+   "path": "/manager/briefing",
+   "method": "GET (default)",
+   "section": "DASHBOARD"
+  },
+  {
+   "line": 3134,
+   "path": "/zkteco/my-punches",
+   "method": "GET (default)",
+   "section": "EMPLOYEE PORTAL"
+  },
+  {
+   "line": 3235,
+   "path": "/zkteco/status",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3236,
+   "path": "/zkteco/devices",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3335,
+   "path": "/zkteco/devices",
+   "method": "POST",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3371,
+   "path": "/zkteco/devices/${id}",
+   "method": "PUT",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3377,
+   "path": "/zkteco/devices/${id}/test",
+   "method": "POST",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3385,
+   "path": "/zkteco/devices/${id}/sync",
+   "method": "POST",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3392,
+   "path": "/zkteco/devices/${id}",
+   "method": "PUT",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3399,
+   "path": "/zkteco/devices/${id}",
+   "method": "DELETE",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3405,
+   "path": "/zkteco/mappings",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3475,
+   "path": "/zkteco/mappings/${employeeId}",
+   "method": "PUT",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3484,
+   "path": "/zkteco/mappings/auto",
+   "method": "POST",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3525,
+   "path": "/zkteco/devices/${deviceId}/stored-users",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3529,
+   "path": "/zkteco/devices/${deviceId}/users",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3576,
+   "path": "/zkteco/devices/${ZKSTATE.deviceUsersFor}/import-users",
+   "method": "POST",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3595,
+   "path": "/zkteco/mappings/${employeeId}",
+   "method": "PUT",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3604,
+   "path": "/zkteco/logs?limit=200",
+   "method": "GET (default)",
+   "section": "ZKTECO"
+  },
+  {
+   "line": 3685,
+   "path": "/yarasoft/status",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3686,
+   "path": "/yarasoft/log?limit=150",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3702,
+   "path": "/yarasoft/oracle/status",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3716,
+   "path": "/yarasoft/oracle/import-items/preview",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3722,
+   "path": "/yarasoft/oracle/import-items",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3732,
+   "path": "/yarasoft/oracle/poll-now",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3745,
+   "path": "/yarasoft/oracle/reconcile?days=14",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3760,
+   "path": "/yarasoft/oracle/catch-up",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3769,
+   "path": "/yarasoft/oracle/catch-up/status",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3780,
+   "path": "/yarasoft/oracle/test",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3893,
+   "path": "/yarasoft/run-now",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3901,
+   "path": "/yarasoft/reprocess/${id}",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3916,
+   "path": "/yarasoft/log/${id}/detail",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3947,
+   "path": "/yarasoft/review?open=1",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 3996,
+   "path": "/yarasoft/review/${id}/resolve",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4004,
+   "path": "/yarasoft/mappings",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4052,
+   "path": "/yarasoft/mappings",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4059,
+   "path": "/yarasoft/mappings/${id}",
+   "method": "DELETE",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4067,
+   "path": "/yarasoft/sections/map",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4068,
+   "path": "/yarasoft/sections/unmapped",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4160,
+   "path": "/yarasoft/sections/invoices?",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4204,
+   "path": "/yarasoft/sections/reclassify",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4215,
+   "path": "/yarasoft/sections/invoice-detail?ref=",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4270,
+   "path": "/yarasoft/sections/unmapped/${id}/approve",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4295,
+   "path": "/yarasoft/sections/map/${id}/rename",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4320,
+   "path": "/yarasoft/sections/manual",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4331,
+   "path": "/yarasoft/oracle/catalog-status",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4332,
+   "path": "/yarasoft/quality/quarantine",
+   "method": "GET (default)",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4378,
+   "path": "/yarasoft/oracle/organize",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4389,
+   "path": "/yarasoft/oracle/sync-balances",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4421,
+   "path": "/yarasoft/dry-run-preview",
+   "method": "POST",
+   "section": "YARASOFT"
+  },
+  {
+   "line": 4452,
+   "path": "/whatsapp/status",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4460,
+   "path": "/whatsapp/status",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4532,
+   "path": "/whatsapp/",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4541,
+   "path": "/whatsapp/qr",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4565,
+   "path": "/whatsapp/qr/refresh",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4582,
+   "path": "/whatsapp/pairing",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4595,
+   "path": "/whatsapp/logout",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4602,
+   "path": "/whatsapp/automation",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4621,
+   "path": "/whatsapp/automation",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4627,
+   "path": "/whatsapp/automation/test",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4633,
+   "path": "/whatsapp/messages?limit=50",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4647,
+   "path": "/whatsapp/campaigns",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4657,
+   "path": "/whatsapp/campaigns",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4661,
+   "path": "/whatsapp/campaigns/${id}/${action}",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4668,
+   "path": "/whatsapp/chats/",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4674,
+   "path": "/whatsapp/outbox",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4689,
+   "path": "/whatsapp/send",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4695,
+   "path": "/whatsapp/rules",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4717,
+   "path": "/whatsapp/rules",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4723,
+   "path": "/whatsapp/rules/",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4730,
+   "path": "/whatsapp/managers",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4744,
+   "path": "/whatsapp/managers",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4750,
+   "path": "/whatsapp/managers/",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4755,
+   "path": "/whatsapp/query/categories",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4777,
+   "path": "/whatsapp/query",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4788,
+   "path": "/whatsapp/logs",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4820,
+   "path": "/yara-reports/daily-locks?date=${date}",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4855,
+   "path": "/oracle-data/tables",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4866,
+   "path": "/oracle-data/refresh",
+   "method": "POST",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 4905,
+   "path": "/oracle-data/${encodeURIComponent(pgName.replace(",
+   "method": "GET (default)",
+   "section": "WHATSAPP"
+  },
+  {
+   "line": 5066,
+   "path": "/hr/attendance/revert-inferred",
+   "method": "POST",
+   "section": "EMPLOYEES"
+  },
+  {
+   "line": 5581,
+   "path": "/warehouse/inventory/${encodeURIComponent(b.id)}/force",
+   "method": "DELETE",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5623,
+   "path": "/procurement/suppliers",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5624,
+   "path": "/procurement/payments",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5790,
+   "path": "/procurement/suppliers/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5791,
+   "path": "/procurement/suppliers",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5796,
+   "path": "/procurement/suppliers/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5803,
+   "path": "/procurement/suppliers/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5848,
+   "path": "/procurement/payments",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5863,
+   "path": "/procurement/invoices/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5875,
+   "path": "/procurement/payments/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 5905,
+   "path": "/procurement/suppliers/",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6015,
+   "path": "/warehouse/inventory/locations/${locId}/preview?${params}",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6035,
+   "path": "/warehouse/inventory/locations",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6046,
+   "path": "/warehouse/inventory/audits",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6098,
+   "path": "/warehouse/inventory/audits",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6106,
+   "path": "/warehouse/fiscal-years",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6115,
+   "path": "/warehouse/fiscal-years/${id}/close",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6119,
+   "path": "/warehouse/fiscal-years/${id}/create-next",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6125,
+   "path": "/warehouse/inventory/audits/${id}",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6135,
+   "path": "/warehouse/inventory/audits/${STOCK.detail.audit.id}",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6176,
+   "path": "/warehouse/inventory/audits",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6255,
+   "path": "/warehouse/inventory/audits/${STOCK.detail.audit.id}/counts/${itemId}",
+   "method": "PUT",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6284,
+   "path": "/warehouse/inventory/audits/${STOCK.detail.audit.id}/counts/${itemId}",
+   "method": "DELETE",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6306,
+   "path": "/warehouse/inventory/audits/${d.audit.id}/submit",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6322,
+   "path": "/warehouse/inventory/audits/${d.audit.id}/submit",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6323,
+   "path": "/warehouse/inventory/audits/${d.audit.id}/approve",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6343,
+   "path": "/warehouse/inventory/audits/${id}/cancel",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6368,
+   "path": "/warehouse/inventory/audits",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6449,
+   "path": "/warehouse/inventory/${encodeURIComponent(item.id)}/receipt",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6522,
+   "path": "/warehouse/inventory/${encodeURIComponent(id)}/force",
+   "method": "DELETE",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6666,
+   "path": "/warehouse/purchase-invoices",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6822,
+   "path": "/warehouse/purchase-invoices",
+   "method": "GET (default)",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 6880,
+   "path": "/warehouse/purchase-invoices/${encodeURIComponent(id)}/void",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 7085,
+   "path": "/warehouse/inventory/bulk-receipt",
+   "method": "POST",
+   "section": "WAREHOUSE"
+  },
+  {
+   "line": 7345,
+   "path": "/kitchen/overview",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7358,
+   "path": "/pos/products",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7403,
+   "path": "/kitchen/production",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7407,
+   "path": "/kitchen/audits",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7409,
+   "path": "/kitchen/audits",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7419,
+   "path": "/kitchen/audits/${id}/count",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7420,
+   "path": "/kitchen/audits/${id}/count",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7422,
+   "path": "/kitchen/audits/${id}/approve",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7429,
+   "path": "/kitchen/stock",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7450,
+   "path": "/kitchen/transfers/receive",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7531,
+   "path": "/warehouse/dept-panel",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7562,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}",
+   "method": "DELETE",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7581,
+   "path": "/warehouse/purchase-requests",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7596,
+   "path": "/warehouse/purchase-requests/shortages",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7626,
+   "path": "/warehouse/purchase-requests",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7643,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}/chef-approve",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7660,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}/chef-reject",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7675,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}/gm-approve",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7693,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}/gm-reject",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7733,
+   "path": "/warehouse/purchase-requests/",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7745,
+   "path": "/warehouse/purchase-requests/${encodeURIComponent(id)}/cancel",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7807,
+   "path": "/warehouse/returns/",
+   "method": "GET (default)",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7954,
+   "path": "/warehouse/dispatches/${encodeURIComponent(id)}/chef-approve",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 7972,
+   "path": "/warehouse/dispatches/${encodeURIComponent(id)}/chef-reject",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8158,
+   "path": "/warehouse/dispatches/${encodeURIComponent(id)}/approve",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8184,
+   "path": "/warehouse/dispatches/${encodeURIComponent(id)}/reject",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8206,
+   "path": "/warehouse/dispatches/${encodeURIComponent(id)}/receive",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8339,
+   "path": "/warehouse/returns",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8364,
+   "path": "/warehouse/returns",
+   "method": "POST",
+   "section": "KITCHEN & DISPATCH"
+  },
+  {
+   "line": 8379,
+   "path": "/pos/recipes/sync-legacy",
+   "method": "POST",
+   "section": "RECIPES"
+  },
+  {
+   "line": 8412,
+   "path": "/pos/recipes/sync-legacy",
+   "method": "POST",
+   "section": "RECIPES"
+  },
+  {
+   "line": 8413,
+   "path": "/pos/products/${recipeManagerState.productId}/ingredients",
+   "method": "PUT",
+   "section": "RECIPES"
+  },
+  {
+   "line": 8482,
+   "path": "/warehouse/purchase-requests/shortages",
+   "method": "GET (default)",
+   "section": "REVENUES & EXPENSES"
+  },
+  {
+   "line": 8733,
+   "path": "/finance/pnl?",
+   "method": "GET (default)",
+   "section": "P&L"
+  },
+  {
+   "line": 8991,
+   "path": "/yara-reports/cashiers-live",
+   "method": "GET (default)",
+   "section": "DEPARTMENTS"
+  },
+  {
+   "line": 8992,
+   "path": "/yara-reports/cashiers-today",
+   "method": "GET (default)",
+   "section": "DEPARTMENTS"
+  },
+  {
+   "line": 9087,
+   "path": "/yara-reports/cashier-items?from=${day}&to=${day}&cashier=${encodeURIComponent(no)}&view=items",
+   "method": "GET (default)",
+   "section": "DEPARTMENTS"
+  },
+  {
+   "line": 9088,
+   "path": "/yara-reports/cashier-items?from=${day}&to=${day}&cashier=${encodeURIComponent(no)}&view=invoices&limit=10",
+   "method": "GET (default)",
+   "section": "DEPARTMENTS"
+  },
+  {
+   "line": 9371,
+   "path": "/attendance/range?from=${STATE.attFrom}&to=${STATE.attTo}&limit=30000",
+   "method": "GET (default)",
+   "section": "ATTENDANCE"
+  },
+  {
+   "line": 9380,
+   "path": "/attendance/range?from=${STATE.attFrom}&to=${STATE.attTo}&limit=30000",
+   "method": "GET (default)",
+   "section": "ATTENDANCE"
+  },
+  {
+   "line": 9646,
+   "path": "/hr/attendance/scan",
+   "method": "POST",
+   "section": "ATTENDANCE"
+  },
+  {
+   "line": 9734,
+   "path": "/hr/leave-workflow",
+   "method": "GET (default)",
+   "section": "LEAVES"
+  },
+  {
+   "line": 9774,
+   "path": "/hr/leave-requests",
+   "method": "POST",
+   "section": "LEAVES"
+  },
+  {
+   "line": 9779,
+   "path": "/hr/leave-workflow/${id}/action",
+   "method": "POST",
+   "section": "LEAVES"
+  },
+  {
+   "line": 9967,
+   "path": "/hr/payroll-runs/generate",
+   "method": "POST",
+   "section": "PAYROLL"
+  },
+  {
+   "line": 10217,
+   "path": "/pos/reports/sales?",
+   "method": "GET (default)",
+   "section": "REPORTS"
+  },
+  {
+   "line": 10564,
+   "path": "/yara-reports/departments?",
+   "method": "GET (default)",
+   "section": "REPORTS"
+  },
+  {
+   "line": 10620,
+   "path": "/yara-reports/cashier-items?",
+   "method": "GET (default)",
+   "section": "REPORTS"
+  },
+  {
+   "line": 10730,
+   "path": "/yarasoft/sections/invoice-detail?ref=",
+   "method": "GET (default)",
+   "section": "REPORTS"
+  },
+  {
+   "line": 10828,
+   "path": "/hr/card-settings",
+   "method": "GET (default)",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 10841,
+   "path": "/hr/card-settings",
+   "method": "PUT",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 10867,
+   "path": "/warehouse/system/reset-all",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 10982,
+   "path": "/zatca/settings",
+   "method": "GET (default)",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11007,
+   "path": "/zatca/settings",
+   "method": "PUT",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11016,
+   "path": "/zatca/toggle",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11027,
+   "path": "/zatca/test",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11042,
+   "path": "/zatca/csr",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11072,
+   "path": "/zatca/csid",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11086,
+   "path": "/zatca/queue?limit=20",
+   "method": "GET (default)",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11109,
+   "path": "/zatca/queue/retry",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11129,
+   "path": "/zatca/csid/manual",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11139,
+   "path": "/zatca/csid/manual",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11151,
+   "path": "/zatca/apply-vat",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11203,
+   "path": "/pos/kot/settings",
+   "method": "GET (default)",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11218,
+   "path": "/pos/kot/settings",
+   "method": "PUT",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11247,
+   "path": "/system/backups",
+   "method": "GET (default)",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11264,
+   "path": "/system/backup",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11299,
+   "path": "/system/restore",
+   "method": "POST",
+   "section": "SETTINGS"
+  },
+  {
+   "line": 11323,
+   "path": "/users/${encodeURIComponent(userId)}/employee",
+   "method": "PUT",
+   "section": "USERS"
+  },
+  {
+   "line": 11439,
+   "path": "/accounting/cfo-summary?from=${CFO_STATE.from}&to=${CFO_STATE.to}",
+   "method": "GET (default)",
+   "section": "CFO"
+  },
+  {
+   "line": 11440,
+   "path": "/accounting/trial-balance?from=${CFO_STATE.from}&to=${CFO_STATE.to}",
+   "method": "GET (default)",
+   "section": "CFO"
+  },
+  {
+   "line": 11441,
+   "path": "/accounting/journal?limit=30",
+   "method": "GET (default)",
+   "section": "CFO"
+  },
+  {
+   "line": 11442,
+   "path": "/accounting/chart",
+   "method": "GET (default)",
+   "section": "CFO"
+  },
+  {
+   "line": 11503,
+   "path": "/accounting/journal",
+   "method": "POST",
+   "section": "CFO"
+  },
+  {
+   "line": 11518,
+   "path": "/accounting/post-payroll",
+   "method": "POST",
+   "section": "CFO"
+  },
+  {
+   "line": 11527,
+   "path": "/accounting/journal/${id}/void",
+   "method": "POST",
+   "section": "CFO"
+  }
+ ],
+ "rawFetch": [
+  {
+   "line": 8411,
+   "path": "${API_BASE}/pos/products/${recipeManagerState.productId}/image",
+   "section": "RECIPES"
+  }
+ ]
+}

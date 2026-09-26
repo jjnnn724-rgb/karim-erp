@@ -1,0 +1,60 @@
+# ════════════════════════════════════════════════════════════════
+# .dockerignore — Karim ERP
+# ════════════════════════════════════════════════════════════════
+
+# ─── Node ────────────────────────────────────────────────────────
+node_modules
+npm-debug.log
+.npm
+
+# ─── Git ─────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ─── Docker ─────────────────────────────────────────────────────
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+
+# ─── IDE ─────────────────────────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+
+# ─── Build artifacts ────────────────────────────────────────────
+dist
+release
+build/outputs
+*.exe
+*.msi
+*.appx
+
+# ─── Database data/backups ──────────────────────────────────────
+database/data
+database/backups
+database/bin
+
+# ─── Logs ────────────────────────────────────────────────────────
+logs
+*.log
+
+# ─── Electron / Desktop ────────────────────────────────────────
+electron/
+windows-service/
+build/
+
+# ─── Tests ───────────────────────────────────────────────────────
+tests/
+coverage/
+.nyc_output
+
+# ─── Misc ───────────────────────────────────────────────────────
+.env.local
+.env.example
+*.md
+!README*.md
+LICENSE
+.DS_Store
+Thumbs.db

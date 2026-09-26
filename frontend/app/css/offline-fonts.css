@@ -1,0 +1,7 @@
+/* Offline font fallback. Optional local webfonts can be added under assets/fonts. */
+:root {
+  --font-ui: "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-display: "Segoe UI", Tahoma, Arial, sans-serif;
+}
+body { font-family: var(--font-ui); }
+.login-title, h1, h2, h3, .page-title { font-family: var(--font-display); }

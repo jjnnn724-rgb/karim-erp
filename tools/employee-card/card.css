@@ -1,0 +1,88 @@
+/* employee-card/card.css — shared print styles (ID-1 85.6×54mm, 300DPI-ready) */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --navy: #0A2540;
+  --gold: #C9A961;
+  --gold-light: #E8D5A3;
+  --paper: #FAFAFA;
+  --ink: #1a1a1a;
+}
+.idcard {
+  width: 85.6mm; height: 54mm;
+  border-radius: 3.2mm;
+  position: relative; overflow: hidden;
+  font-family: 'Cairo', 'Inter', Arial, sans-serif;
+  direction: rtl;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 24px rgba(10, 37, 64, .25);
+}
+/* طولية 54 × 85.6 */
+.idcard.portrait { width: 54mm; height: 85.6mm; }
+.idcard.portrait .topband.p-band { height: 13mm; }
+.idcard.portrait .topband.p-band .co { font-size: 3.6mm; }
+.idcard.portrait .topband.p-band .co small { font-size: 2.2mm; }
+.idcard.portrait .photo { width: 24mm; height: 29mm; }
+.idcard.portrait .qrbox { width: 16mm; height: 16mm; }
+.idcard.portrait .chip { width: 12mm; height: 9mm; }
+.idcard.portrait .micro span { right: 5mm; left: 5mm; }
+.idcard .guilloche {
+  position: absolute; inset: 0; opacity: .10; pointer-events: none;
+}
+.idcard .topband {
+  position: absolute; top: 0; right: 0; left: 0; height: 10mm;
+  background: linear-gradient(135deg, #071c31 0%, #0A2540 60%, #071c31 100%);
+  color: #fff; display: flex; align-items: center; gap: 2mm; padding: 0 3mm;
+  text-shadow: 0 .3mm .8mm rgba(0,0,0,.6);
+}
+.idcard .topband img.logo { width: 8.5mm; height: 8.5mm; object-fit: contain; background: #fff; border-radius: 50%; padding: .6mm; align-self: center; flex: none; }
+.idcard .topband img.waqf { margin-inline-start: auto; border-color: #fff; width: 9mm; height: 9mm; }
+.idcard .topband .co { font-weight: 800; font-size: 3.4mm; color: #fff; }
+.idcard .topband .co small { display: block; font-family: Inter, sans-serif; font-weight: 700; font-size: 2.1mm; color: #F3DFA8; letter-spacing: .3mm; }
+.idcard .holo {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 4.5mm;
+  background: linear-gradient(180deg, #ff9a9e, #fecfef, #a8edea, #fed6e3, #d299c2, #fef9d7, #ff9a9e);
+  background-size: 100% 300%;
+  opacity: .85;
+}
+.idcard .waqfwm {
+  position: absolute; inset: 0; background-size: cover; background-position: center;
+  opacity: .16; pointer-events: none;
+}
+.idcard .edge {
+  position: absolute; inset: 1.8mm; border: .3mm solid rgba(201,169,97,.65);
+  border-radius: 2mm; pointer-events: none;
+}
+.idcard .micro {
+  position: absolute; inset: 1.2mm; border: .15mm solid rgba(10,37,64,.25);
+  border-radius: 2.4mm; pointer-events: none;
+}
+.idcard .micro span {
+  position: absolute; bottom: .4mm; right: 6mm; left: 6mm; text-align: center;
+  font-size: 1.3mm; letter-spacing: .35mm; color: rgba(10,37,64,.8); white-space: nowrap;
+  font-family: Inter, sans-serif; font-weight: 600;
+}
+.photo {
+  width: 25mm; height: 30mm; object-fit: cover; border-radius: 2mm;
+  border: .4mm solid var(--gold); background: #e8e8e8;
+}
+.field-label { font-size: 2.2mm; color: #374151; font-weight: 700; }
+.field-val-ar { font-family: Cairo, sans-serif; font-weight: 800; font-size: 3.7mm; color: var(--navy); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* الاسم الكامل يلتف على سطرين في البطاقة الطولية */
+.field-val-ar.full { white-space: normal; overflow: visible; font-size: 4mm; line-height: 1.4; }
+.field-val-en { font-family: Inter, sans-serif; font-weight: 600; font-size: 2.5mm; color: #334155; letter-spacing: .15mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emp-no { font-family: 'OCR-B', 'Courier New', monospace; font-size: 3.4mm; font-weight: 700; letter-spacing: .6mm; color: var(--navy); direction: ltr; }
+.qrbox { width: 15mm; height: 15mm; background: #fff; border: .3mm solid var(--gold); border-radius: 1.2mm; padding: .8mm; }
+.qrbox img { width: 100%; height: 100%; }
+.mrz { font-family: 'Courier New', monospace; font-size: 2.3mm; letter-spacing: .4mm; direction: ltr; text-align: left; background: rgba(255,255,255,.92); border: .3mm solid #cbd5e1; border-radius: 1mm; padding: 1mm 2mm; line-height: 1.6; }
+.terms { font-size: 1.9mm; color: #475569; line-height: 1.7; }
+.barcode { height: 8mm; background: rgba(255,255,255,.92); border: .3mm solid #cbd5e1; border-radius: 1mm; display: flex; align-items: stretch; justify-content: center; gap: .45mm; padding: 1mm 2mm; direction: ltr; }
+.emg { display: inline-block; margin-top: 1mm; font-size: 2.4mm; font-weight: 800; color: var(--navy); border: .35mm solid var(--gold); border-radius: 1.2mm; padding: .6mm 2mm; direction: ltr; }
+.sigstrip { height: 7mm; background: repeating-linear-gradient(45deg, #f4f1e8, #f4f1e8 2mm, #e9e2cf 2mm, #e9e2cf 2.6mm); border: .3mm solid #cbd5e1; border-radius: 1mm; display: flex; align-items: center; padding: 0 2mm; font-size: 2mm; color: #64748b; }
+@media print {
+  @page { size: 54mm 85.6mm; margin: 0; }
+  body { margin: 0; background: #fff; }
+  .no-print { display: none !important; }
+  .idcard { box-shadow: none; border-radius: 0; break-inside: avoid; }
+}

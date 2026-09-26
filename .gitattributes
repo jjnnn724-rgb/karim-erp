@@ -1,0 +1,4 @@
+windows-service/*.exe filter=lfs diff=lfs merge=lfs -text
+tools/mkcert/*.exe filter=lfs diff=lfs merge=lfs -text
+frontend/app/vendor/face-models/*.bin filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text

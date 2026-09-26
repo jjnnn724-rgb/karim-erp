@@ -1,0 +1,3653 @@
+[
+ {
+  "name": "STATE",
+  "assignments": [
+   {
+    "line": 251,
+    "section": "CONFIG & STATE"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "js/realtime.js": 17,
+   "index.html": 0
+  },
+  "totalExternal": 17
+ },
+ {
+  "name": "renderPage",
+  "assignments": [
+   {
+    "line": 12287,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 1,
+  "externalConsumers": {
+   "js/realtime.js": 10,
+   "index.html": 0
+  },
+  "totalExternal": 10
+ },
+ {
+  "name": "zkPortalPunchHandler",
+  "assignments": [
+   {
+    "line": 3163,
+    "section": "EMPLOYEE PORTAL"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "js/realtime.js": 4,
+   "index.html": 0
+  },
+  "totalExternal": 4
+ },
+ {
+  "name": "_jwt",
+  "assignments": [
+   {
+    "line": 133,
+    "section": "CONFIG & STATE"
+   },
+   {
+    "line": 2502,
+    "section": "AUTH & NAVIGATION"
+   },
+   {
+    "line": 2553,
+    "section": "AUTH & NAVIGATION"
+   }
+  ],
+  "appReads": 13,
+  "externalConsumers": {
+   "js/realtime.js": 2,
+   "index.html": 0
+  },
+  "totalExternal": 2
+ },
+ {
+  "name": "refreshProcurementData",
+  "assignments": [
+   {
+    "line": 5631,
+    "section": "WAREHOUSE"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "js/realtime.js": 2,
+   "index.html": 0
+  },
+  "totalExternal": 2
+ },
+ {
+  "name": "__QR_URLS__",
+  "assignments": [
+   {
+    "line": 1242,
+    "section": "SMART CARD RENDER"
+   }
+  ],
+  "appReads": 6,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "__zkPunchRefreshTimer",
+  "assignments": [
+   {
+    "line": 3171,
+    "section": "EMPLOYEE PORTAL"
+   }
+  ],
+  "appReads": 1,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_appKey",
+  "assignments": [
+   {
+    "line": 134,
+    "section": "CONFIG & STATE"
+   },
+   {
+    "line": 2503,
+    "section": "AUTH & NAVIGATION"
+   },
+   {
+    "line": 2554,
+    "section": "AUTH & NAVIGATION"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_cashLiveAgoTimer",
+  "assignments": [
+   {
+    "line": 8936,
+    "section": "DEPARTMENTS"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_cashLiveAt",
+  "assignments": [
+   {
+    "line": 8994,
+    "section": "DEPARTMENTS"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_cashLiveSig",
+  "assignments": [
+   {
+    "line": 8999,
+    "section": "DEPARTMENTS"
+   }
+  ],
+  "appReads": 1,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_cashLiveTimer",
+  "assignments": [
+   {
+    "line": 8935,
+    "section": "DEPARTMENTS"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_cashPrevTot",
+  "assignments": [
+   {
+    "line": 9070,
+    "section": "DEPARTMENTS"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_empSheetRows",
+  "assignments": [
+   {
+    "line": 5417,
+    "section": "EMPLOYEES"
+   }
+  ],
+  "appReads": 1,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "_prRecvItems",
+  "assignments": [
+   {
+    "line": 7708,
+    "section": "KITCHEN & DISPATCH"
+   }
+  ],
+  "appReads": 2,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addDepartment",
+  "assignments": [
+   {
+    "line": 11872,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addDirectReturnItemField",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addDispatchItemField",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addEmployee",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addExpense",
+  "assignments": [
+   {
+    "line": 11871,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addHRDept",
+  "assignments": [
+   {
+    "line": 11898,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addInventoryItem",
+  "assignments": [
+   {
+    "line": 11873,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addInvoiceItemRow",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addKitchenProductionDistributionRow",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addKitchenProductionMaterialRow",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addLeaveRequest",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addRecipe",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addRecipeManagerIngredient",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addReturnItemField",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addRevenue",
+  "assignments": [
+   {
+    "line": 11870,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addShelf",
+  "assignments": [
+   {
+    "line": 11900,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "addUser",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "adjustWeight",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "advanceLeaveWorkflow",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "animateCounter",
+  "assignments": [
+   {
+    "line": 12339,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "approveLeave",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "backToChatUsers",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkClearAll",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkConfirmImport",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkCopyAllPasswords",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkDeleteRow",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkExportCSV",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkExportExcel",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkExportJSON",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkNextStep",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkPrint",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkReadFile",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "bulkSelectFormat",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "celebrate",
+  "assignments": [
+   {
+    "line": 12337,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "checkIn",
+  "assignments": [
+   {
+    "line": 11891,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "checkOut",
+  "assignments": [
+   {
+    "line": 11891,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "clearAllNotifications",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "clearSignaturePad",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "closeCommandPalette",
+  "assignments": [
+   {
+    "line": 12335,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "closeFiscalYear",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "closeModal",
+  "assignments": [
+   {
+    "line": 11881,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "confirmApprove",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "confirmPRReceive",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "confirmReceive",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "confirmRecordWeightToItem",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "confirmReject",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "createNextFiscalYear",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteDepartment",
+  "assignments": [
+   {
+    "line": 11872,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteDispatch",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteEmployee",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteExpense",
+  "assignments": [
+   {
+    "line": 11871,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteHRDept",
+  "assignments": [
+   {
+    "line": 11898,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteItem",
+  "assignments": [
+   {
+    "line": 11873,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteRecipe",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteRevenue",
+  "assignments": [
+   {
+    "line": 11870,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteShelf",
+  "assignments": [
+   {
+    "line": 11900,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "deleteUser",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "dispFilterItems",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "dispHideList",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "dispPickItem",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "doLogin",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "doLogout",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "downloadInventoryTemplate",
+  "assignments": [
+   {
+    "line": 11888,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "downloadItemsCatalogTemplate",
+  "assignments": [
+   {
+    "line": 11885,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "downloadQRImage",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "downloadSmartCard",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editDepartment",
+  "assignments": [
+   {
+    "line": 11872,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editEmployee",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editExpense",
+  "assignments": [
+   {
+    "line": 11871,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editHRDept",
+  "assignments": [
+   {
+    "line": 11898,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editItem",
+  "assignments": [
+   {
+    "line": 11873,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editRecipe",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editRevenue",
+  "assignments": [
+   {
+    "line": 11870,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editShelf",
+  "assignments": [
+   {
+    "line": 11900,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "editUser",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "enhancedToast",
+  "assignments": [
+   {
+    "line": 12266,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "exportAllData",
+  "assignments": [
+   {
+    "line": 11883,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "exportAttendanceExcel",
+  "assignments": [
+   {
+    "line": 11891,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "exportEmployeesExcel",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "exportPayrollExcel",
+  "assignments": [
+   {
+    "line": 11899,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "filterEmployees",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "generateReport",
+  "assignments": [
+   {
+    "line": 11882,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "go",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "handleLogoUpload",
+  "assignments": [
+   {
+    "line": 11880,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "handlePhotoUpload",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "importBulkInventory",
+  "assignments": [
+   {
+    "line": 11888,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "importItemsCatalog",
+  "assignments": [
+   {
+    "line": 11885,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "loadDeptPanel",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "loadKotSettings",
+  "assignments": [
+   {
+    "line": 11224,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "loadZatcaQueue",
+  "assignments": [
+   {
+    "line": 11161,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "markNotificationRead",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "onload",
+  "assignments": [
+   {
+    "line": 1515,
+    "section": "SMART CARD RENDER"
+   },
+   {
+    "line": 1612,
+    "section": "SMART CARD RENDER"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openApproveModal",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openCommandPalette",
+  "assignments": [
+   {
+    "line": 12334,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openPRReceiveModal",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openReceiveModal",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openRecipeManager",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "openRejectModal",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "pickChatPeer",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "pnlApplyPreset",
+  "assignments": [
+   {
+    "line": 8920,
+    "section": "P&L"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "pnlExportExcel",
+  "assignments": [
+   {
+    "line": 8920,
+    "section": "P&L"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "pnlPrint",
+  "assignments": [
+   {
+    "line": 8920,
+    "section": "P&L"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "pnlRefresh",
+  "assignments": [
+   {
+    "line": 8920,
+    "section": "P&L"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "prDeliverModeSync",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "previewCatalogFile",
+  "assignments": [
+   {
+    "line": 11885,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "previewInventoryFile",
+  "assignments": [
+   {
+    "line": 11888,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "prFreshSuggest",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printDispatchNote",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printEmployeeAttendanceDay",
+  "assignments": [
+   {
+    "line": 11891,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printEmployeeAttendanceMonth",
+  "assignments": [
+   {
+    "line": 11891,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printPurchaseInvoice",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printReportOnly",
+  "assignments": [
+   {
+    "line": 11882,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "printSmartCard",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "recordWeight",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "recordWeightToItem",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "refreshKitchenOverview",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "refreshLeaveWorkflow",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "refreshReturnItems",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "regenerateFingerprint",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "rejectLeave",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "removeDispatchItem",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "removeInvoiceItemRow",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "removeKitchenProductionDistributionRow",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "removeKitchenProductionMaterialRow",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "removeRecipeManagerIngredient",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "renderZktecoPage",
+  "assignments": [
+   {
+    "line": 11893,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "resetAllData",
+  "assignments": [
+   {
+    "line": 11883,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "resetLogo",
+  "assignments": [
+   {
+    "line": 11880,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "resetWeight",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "returnLeaveToEmployee",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "saveKotSettings",
+  "assignments": [
+   {
+    "line": 11224,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "savePurchaseInvoice",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "saveRecipeManager",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "saveSettings",
+  "assignments": [
+   {
+    "line": 11880,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "sendChatMsg",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "setKitchenProductionCustomName",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "setKitchenProductionDistributionQty",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "setKitchenProductionMaterialField",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "setWeightUnit",
+  "assignments": [
+   {
+    "line": 11901,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddDepartmentModal",
+  "assignments": [
+   {
+    "line": 11872,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddEmployeeModal",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddExpenseModal",
+  "assignments": [
+   {
+    "line": 11871,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddHRDeptModal",
+  "assignments": [
+   {
+    "line": 11898,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddItemModal",
+  "assignments": [
+   {
+    "line": 11873,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddLeaveModal",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddPurchaseInvoiceModal",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddRecipeModal",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddRevenueModal",
+  "assignments": [
+   {
+    "line": 11870,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddShelfModal",
+  "assignments": [
+   {
+    "line": 11900,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showAddUserModal",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showBulkImportModal",
+  "assignments": [
+   {
+    "line": 11903,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showBulkInventoryImportModal",
+  "assignments": [
+   {
+    "line": 11888,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showCreateEmployeeAccountModal",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showDispatchRequestModal",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showFiscalYearModal",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showFullQRModal",
+  "assignments": [
+   {
+    "line": 11890,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showImportItemsCatalogModal",
+  "assignments": [
+   {
+    "line": 11885,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showInventoryAuditModal",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showKitchenProductionModal",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showKitchenReturnModal",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showNotifications",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showShortcutsHelp",
+  "assignments": [
+   {
+    "line": 12338,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "showSmartCardModal",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakApproveSession",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakCancelById",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakCancelSession",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakClearCount",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakCountChanged",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakOnSearch",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakOpenSession",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakPrint",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakPrintById",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakRefreshDetail",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakSaveCount",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakScanCount",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakSetScope",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakSetTab",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakStartSession",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakSubmitSession",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "stocktakToggleDiffs",
+  "assignments": [
+   {
+    "line": 11875,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "submitDirectReturn",
+  "assignments": [
+   {
+    "line": 11886,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "submitDispatchRequest",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "submitKitchenProduction",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "submitKitchenReturn",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "switchPortalEmployee",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "syncKitchenProductionDestination",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleChatPanel",
+  "assignments": [
+   {
+    "line": 11884,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleEmployeeAccountFields",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleFabMenu",
+  "assignments": [
+   {
+    "line": 12336,
+    "section": "ENHANCEMENT PACK"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleLang",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleSidebar",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "toggleTheme",
+  "assignments": [
+   {
+    "line": 11869,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateApproveTotal",
+  "assignments": [
+   {
+    "line": 8095,
+    "section": "KITCHEN & DISPATCH"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateDateInputs",
+  "assignments": [
+   {
+    "line": 11882,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateDepartment",
+  "assignments": [
+   {
+    "line": 11872,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateDispSummary",
+  "assignments": [
+   {
+    "line": 11876,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateEmployee",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateExpense",
+  "assignments": [
+   {
+    "line": 11871,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateHRDept",
+  "assignments": [
+   {
+    "line": 11898,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateInventoryItem",
+  "assignments": [
+   {
+    "line": 11873,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateInvoiceItem",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateKitchenProductionTotal",
+  "assignments": [
+   {
+    "line": 11887,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRecipe",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRecipeManagerPortion",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRecipeManagerQty",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRecipeManagerUnit",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRecipeManagerWaste",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateRevenue",
+  "assignments": [
+   {
+    "line": 11870,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateShelf",
+  "assignments": [
+   {
+    "line": 11900,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "updateUser",
+  "assignments": [
+   {
+    "line": 11879,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "uploadRecipeManagerImage",
+  "assignments": [
+   {
+    "line": 11878,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "viewDispatchDetails",
+  "assignments": [
+   {
+    "line": 11877,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "viewEmployeeDetails",
+  "assignments": [
+   {
+    "line": 11889,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "viewLeaveDetails",
+  "assignments": [
+   {
+    "line": 11897,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "viewPurchaseInvoice",
+  "assignments": [
+   {
+    "line": 11874,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaApplyVat",
+  "assignments": [
+   {
+    "line": 11160,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaCopyCsr",
+  "assignments": [
+   {
+    "line": 11161,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaCsidClear",
+  "assignments": [
+   {
+    "line": 11160,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaCsidManualModal",
+  "assignments": [
+   {
+    "line": 11159,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaCsidManualSubmit",
+  "assignments": [
+   {
+    "line": 11159,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaCsidModal",
+  "assignments": [
+   {
+    "line": 11158,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaEnvChanged",
+  "assignments": [
+   {
+    "line": 11157,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaGenerateCsr",
+  "assignments": [
+   {
+    "line": 11158,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaRequestCsid",
+  "assignments": [
+   {
+    "line": 11158,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaRetry",
+  "assignments": [
+   {
+    "line": 11161,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaSave",
+  "assignments": [
+   {
+    "line": 11157,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaTest",
+  "assignments": [
+   {
+    "line": 11157,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zatcaToggle",
+  "assignments": [
+   {
+    "line": 11157,
+    "section": "SETTINGS"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkAddDevice",
+  "assignments": [
+   {
+    "line": 11894,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkAddDeviceModal",
+  "assignments": [
+   {
+    "line": 11894,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkAutoLink",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkConfirmImport",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkConfirmMapDeviceUser",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkDeleteDevice",
+  "assignments": [
+   {
+    "line": 11895,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkEditDeviceModal",
+  "assignments": [
+   {
+    "line": 11894,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkImportPreview",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkMapDeviceUser",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkRefresh",
+  "assignments": [
+   {
+    "line": 11893,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkSaveMapping",
+  "assignments": [
+   {
+    "line": 11896,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkSetTab",
+  "assignments": [
+   {
+    "line": 11893,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkSyncNow",
+  "assignments": [
+   {
+    "line": 11895,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkTestDevice",
+  "assignments": [
+   {
+    "line": 11895,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkToggleEnabled",
+  "assignments": [
+   {
+    "line": 11895,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ },
+ {
+  "name": "zkUpdateDevice",
+  "assignments": [
+   {
+    "line": 11894,
+    "section": "INITIALIZATION"
+   }
+  ],
+  "appReads": 0,
+  "externalConsumers": {
+   "index.html": 0
+  },
+  "totalExternal": 0
+ }
+]

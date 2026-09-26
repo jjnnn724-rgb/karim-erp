@@ -1,0 +1,30 @@
+.opencode/
+
+# ─── Karim ERP — world-class ignores ─────────────────────
+node_modules/
+release/
+dist/
+*.log
+logs/
+!.gitkeep
+
+# Runtime / secrets (never commit)
+.env
+.env.backup-before-karim-rebrand
+*.dump
+
+# Database runtime + archives (local only)
+database/data/
+database/backups/
+database/*.log
+nul
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Electron packaging
+*.blockmap
+*.yml

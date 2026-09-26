@@ -1,0 +1,46 @@
+{
+ "run": "ltmufzmze1",
+ "base": "https://localhost:5001",
+ "startedAt": "2026-09-24T20:32:11.689Z",
+ "durationSec": 28,
+ "passed": 4,
+ "failed": 1,
+ "results": [
+  {
+   "phase": "S",
+   "name": "الخادم حي قبل الفحص",
+   "pass": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "phase": "S",
+   "name": "دخول المدير",
+   "pass": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIiwibmFtZSI6ItmF2K_ZitixINin2YTZhti42KfZhSIsImRlcHRfY29kZSI6bnVsbCwic2lkIjpudWxsLCJwd2RfY2hhbmdlIjpmYWxzZSwiaWF0IjoxNzkwMjgxOTQ0LCJleHAiOjE3OTAzNjgzNDR9.5lc_-RYJqmUugcmuk1T_3X36WzSv40pki6MexLt4QnU",
+   "detail": "HTTP 200"
+  },
+  {
+   "phase": "S",
+   "name": "قسم الكاشير موجود",
+   "pass": true,
+   "detail": "{\"id\":\"10\",\"code\":\"erp_kitchen\",\"name_ar\":\"المطبخ\",\"name_en\":\"المطبخ\",\"is_active"
+  },
+  {
+   "phase": "setup",
+   "name": "المرحلة انهارت باستثناء",
+   "pass": false,
+   "detail": "error: update or delete on table \"inventory_locations\" violates RESTRICT setting of foreign key constraint \"inventory_ledger_location_id_fkey\" on table \"inventory_ledger\"\n    at C:\\Users\\RemoteHome\\Desktop\\karimabdelhame"
+  },
+  {
+   "phase": "C",
+   "name": "خطوات التنظيف اكتملت (22/22 بلا خطأ)",
+   "pass": true,
+   "detail": "failures=0"
+  },
+  {
+   "phase": "C",
+   "name": "مطابقة اللقطة: صفر بقايا في كل الجداول الحساسة",
+   "pass": false,
+   "detail": "kitchen_policies: 1→0"
+  }
+ ]
+}

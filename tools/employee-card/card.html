@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<title>بطاقة موظف — {{NAME_AR}}</title>
+<link rel="stylesheet" href="../card.css">
+<style>
+  body { font-family: 'Cairo', Arial, sans-serif; background: #eef1f6; padding: 24px; }
+  .sheet { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .face-tag { font-weight: 800; color: #0A2540; margin: 0 0 8px; }
+  .face { display: flex; flex-direction: column; gap: 8px; }
+  .p-front-body { position: absolute; top: 16mm; right: 4mm; left: 4mm; bottom: 3mm; display: flex; flex-direction: column; align-items: center; gap: 1.6mm; text-align: center; }
+  .p-back-body { position: absolute; top: 13mm; right: 4mm; left: 4mm; bottom: 3mm; display: flex; flex-direction: column; gap: 1.4mm; }
+  .p-row { display: flex; gap: 2mm; align-items: center; justify-content: center; }
+  @media print { body { background: #fff; padding: 0; } .sheet { gap: 6mm; } }
+</style>
+</head>
+<body>
+<div class="no-print" style="margin-bottom:16px">
+  <button onclick="window.print()" style="padding:10px 28px;background:#0A2540;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer">طباعة البطاقتين</button>
+  <span style="color:#555"> — مقاس طولي 54×85.6مم — من Chrome اختر Margins: None + Background graphics</span>
+</div>
+<div class="sheet">
+  <div class="face">
+    <p class="face-tag">الوجه الأمامي</p>
+    <div class="idcard portrait">
+      <svg class="guilloche" viewBox="0 0 204 322" preserveAspectRatio="xMidYMid slice">{{GUILLOCHE}}</svg>
+      <div class="topband p-band">
+        <img class="logo" src="{{LOGO}}" alt="logo">
+        <div class="co">مطاعم الشرفه العالمي<small>AL SHORFA RESTAURANTS</small></div>
+        <div style="flex:1"></div>
+        {{WAQF_LOGO}}
+      </div>
+      <div class="holo"></div>
+      <div class="p-front-body">
+        <img class="photo" src="{{PHOTO}}" alt="photo">
+        <div>
+          <div class="field-label">الاسم</div>
+          <div class="field-val-ar full">{{NAME_AR}}</div>
+          <div class="field-val-en">{{NAME_EN}}</div>
+        </div>
+        <div style="font-size:2.7mm;font-weight:700">{{POSITION}} • {{DEPT}}</div>
+        <div><div class="field-label">رقم الموظف</div><div class="emp-no">{{EMP_NO}}</div></div>
+        <div class="p-row">
+          <div class="chip"></div>
+          <div class="qrbox"><img src="{{QR}}" alt="qr"></div>
+        </div>
+      </div>
+      <div class="micro"><span>{{MICROTEXT}}</span></div>
+    </div>
+  </div>
+  <div class="face">
+    <p class="face-tag">الوجه الخلفي</p>
+    <div class="idcard portrait">
+      {{WAQF_WM}}
+      <div class="topband p-band">
+        <img class="logo" src="{{LOGO}}" alt="logo">
+        <div class="co">بطاقة موظف — EMPLOYEE CARD</div>
+      </div>
+      <div class="holo"></div>
+      <div class="p-back-body">
+        <div class="mrz">{{MRZ1}}<br>{{MRZ2}}<br>{{MRZ3}}</div>
+        <div class="barcode">{{BARS}}</div>
+        <div class="sigstrip">التوقيع / Signature</div>
+        <div class="terms">{{TERMS}}</div>
+        <div><span class="emg">Emergency: {{EMERGENCY}}</span><br>
+        <span style="font-size:2mm;color:#475569">إصدار {{ISSUE}} • انتهاء {{EXPIRY}}</span></div>
+      </div>
+      <div class="micro"><span>{{MICROTEXT}}</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+ "meta": {
+  "appJsLines": 12353,
+  "topLevelFunctions": 800,
+  "topLevelVars": 1630,
+  "uniqueWindowAssignments": 259,
+  "inlineHandlerNames": 429,
+  "domIdsReferenced": 451,
+  "apiCalls": 212,
+  "rawFetches": 1,
+  "listeners": 50
+ }
+}

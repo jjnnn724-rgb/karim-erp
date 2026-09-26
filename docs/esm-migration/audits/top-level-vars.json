@@ -1,0 +1,8152 @@
+[
+ {
+  "name": "CONFIG",
+  "line": 4,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "DB_NAME",
+  "line": 5,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "DB_VERSION",
+  "line": 6,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "API_BASE",
+  "line": 7,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "PERSISTED_ENTITIES",
+  "line": 18,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "ROLE_ENTITY_EXCLUSIONS",
+  "line": 28,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "SERVER_CODE_AR",
+  "line": 86,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "KARIM_RT_KEY",
+  "line": 115,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "_refreshInflight",
+  "line": 119,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "apiList",
+  "line": 143,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "apiCreate",
+  "line": 161,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "apiUpdate",
+  "line": 162,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "apiRemove",
+  "line": 163,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "db",
+  "line": 187,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "ROLES",
+  "line": 188,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "ALL_PERMISSIONS",
+  "line": 199,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "STATE",
+  "line": 234,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "I18N",
+  "line": 259,
+  "section": "I18N"
+ },
+ {
+  "name": "ROLE_NAMES",
+  "line": 475,
+  "section": "I18N"
+ },
+ {
+  "name": "MENU_STRINGS",
+  "line": 487,
+  "section": "I18N"
+ },
+ {
+  "name": "HIJRI_MONTHS",
+  "line": 565,
+  "section": "I18N"
+ },
+ {
+  "name": "tempId",
+  "line": 706,
+  "section": "I18N"
+ },
+ {
+  "name": "payload",
+  "line": 707,
+  "section": "I18N"
+ },
+ {
+  "name": "bell",
+  "line": 718,
+  "section": "I18N"
+ },
+ {
+  "name": "unread",
+  "line": 721,
+  "section": "I18N"
+ },
+ {
+  "name": "badge",
+  "line": 722,
+  "section": "I18N"
+ },
+ {
+  "name": "data",
+  "line": 729,
+  "section": "I18N"
+ },
+ {
+  "name": "page",
+  "line": 735,
+  "section": "I18N"
+ },
+ {
+  "name": "notifs",
+  "line": 746,
+  "section": "I18N"
+ },
+ {
+  "name": "unread",
+  "line": 747,
+  "section": "I18N"
+ },
+ {
+  "name": "html",
+  "line": 748,
+  "section": "I18N"
+ },
+ {
+  "name": "n",
+  "line": 769,
+  "section": "I18N"
+ },
+ {
+  "name": "CHATSTATE",
+  "line": 782,
+  "section": "I18N"
+ },
+ {
+  "name": "fab",
+  "line": 786,
+  "section": "I18N"
+ },
+ {
+  "name": "panel",
+  "line": 793,
+  "section": "I18N"
+ },
+ {
+  "name": "inp",
+  "line": 800,
+  "section": "I18N"
+ },
+ {
+  "name": "s",
+  "line": 805,
+  "section": "I18N"
+ },
+ {
+  "name": "b",
+  "line": 813,
+  "section": "I18N"
+ },
+ {
+  "name": "box",
+  "line": 819,
+  "section": "I18N"
+ },
+ {
+  "name": "me",
+  "line": 820,
+  "section": "I18N"
+ },
+ {
+  "name": "mine",
+  "line": 822,
+  "section": "I18N"
+ },
+ {
+  "name": "u",
+  "line": 828,
+  "section": "I18N"
+ },
+ {
+  "name": "box",
+  "line": 832,
+  "section": "I18N"
+ },
+ {
+  "name": "head",
+  "line": 833,
+  "section": "I18N"
+ },
+ {
+  "name": "back",
+  "line": 835,
+  "section": "I18N"
+ },
+ {
+  "name": "row",
+  "line": 836,
+  "section": "I18N"
+ },
+ {
+  "name": "list",
+  "line": 837,
+  "section": "I18N"
+ },
+ {
+  "name": "box",
+  "line": 846,
+  "section": "I18N"
+ },
+ {
+  "name": "d",
+  "line": 849,
+  "section": "I18N"
+ },
+ {
+  "name": "u",
+  "line": 857,
+  "section": "I18N"
+ },
+ {
+  "name": "head",
+  "line": 858,
+  "section": "I18N"
+ },
+ {
+  "name": "back",
+  "line": 860,
+  "section": "I18N"
+ },
+ {
+  "name": "row",
+  "line": 861,
+  "section": "I18N"
+ },
+ {
+  "name": "box",
+  "line": 862,
+  "section": "I18N"
+ },
+ {
+  "name": "d",
+  "line": 864,
+  "section": "I18N"
+ },
+ {
+  "name": "inp",
+  "line": 869,
+  "section": "I18N"
+ },
+ {
+  "name": "p",
+  "line": 876,
+  "section": "I18N"
+ },
+ {
+  "name": "me",
+  "line": 888,
+  "section": "I18N"
+ },
+ {
+  "name": "involves",
+  "line": 889,
+  "section": "I18N"
+ },
+ {
+  "name": "inp",
+  "line": 904,
+  "section": "I18N"
+ },
+ {
+  "name": "body",
+  "line": 905,
+  "section": "I18N"
+ },
+ {
+  "name": "d",
+  "line": 909,
+  "section": "I18N"
+ },
+ {
+  "name": "box",
+  "line": 912,
+  "section": "I18N"
+ },
+ {
+  "name": "_SAVE_DEBOUNCE_MS",
+  "line": 933,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_saveTimer",
+  "line": 934,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_saveInFlight",
+  "line": 935,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_savePending",
+  "line": 936,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_saveAbortCtrl",
+  "line": 937,
+  "section": "STORAGE"
+ },
+ {
+  "name": "data",
+  "line": 1103,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "hash",
+  "line": 1104,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "chr",
+  "line": 1106,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "hex",
+  "line": 1110,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "timestamp",
+  "line": 1111,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "data",
+  "line": 1116,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "encoder",
+  "line": 1117,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "hashBuffer",
+  "line": 1118,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "hashArray",
+  "line": 1119,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "card",
+  "line": 1127,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "qrCache",
+  "line": 1145,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "key",
+  "line": 1147,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "dept",
+  "line": 1158,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "emp",
+  "line": 1172,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "reader",
+  "line": 1174,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "img",
+  "line": 1176,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "canvas",
+  "line": 1178,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "maxSize",
+  "line": 1179,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "w",
+  "line": 1180,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "ctx",
+  "line": 1184,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "dept",
+  "line": 1204,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "myAttendance",
+  "line": 1205,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "myLeaves",
+  "line": 1206,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "approvedLeaves",
+  "line": 1207,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "pendingLeaves",
+  "line": 1208,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totalDaysWorked",
+  "line": 1209,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "WORK_DAY_MINUTES",
+  "line": 1210,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "shiftStartStr",
+  "line": 1211,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "shiftMatch",
+  "line": 1212,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "shiftStartMin",
+  "line": 1213,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "shiftKarim",
+  "line": 1214,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateRecords",
+  "line": 1215,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totalLateMinutes",
+  "line": 1216,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateDays",
+  "line": 1235,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateRemainingHours",
+  "line": 1236,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "attendanceRate",
+  "line": 1237,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "onTimeRate",
+  "line": 1238,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "initials",
+  "line": 1239,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrData",
+  "line": 1240,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrUrl",
+  "line": 1243,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "canUploadPhoto",
+  "line": 1245,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "badge",
+  "line": 1247,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "delayDeductionHours",
+  "line": 1253,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "netSalary",
+  "line": 1254,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "joinDate",
+  "line": 1255,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "iqamaExpiry",
+  "line": 1256,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "healthExpiry",
+  "line": 1257,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "shiftLabel",
+  "line": 1258,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "daysUntilIqama",
+  "line": 1259,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "daysUntilHealth",
+  "line": 1260,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1375,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrUrl",
+  "line": 1379,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "humanUrl",
+  "line": 1380,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1407,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrUrl",
+  "line": 1410,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "a",
+  "line": 1411,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1418,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrData",
+  "line": 1421,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrUrl",
+  "line": 1422,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "a",
+  "line": 1423,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "year",
+  "line": 1436,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "month",
+  "line": 1437,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "minutes",
+  "line": 1444,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "minutes",
+  "line": 1449,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "minutes",
+  "line": 1454,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "hasCheckIn",
+  "line": 1460,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "hasCheckOut",
+  "line": 1461,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "late",
+  "line": 1466,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "early",
+  "line": 1467,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "employee",
+  "line": 1474,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "s",
+  "line": 1475,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "rows",
+  "line": 1476,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "minutes",
+  "line": 1477,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "krm",
+  "line": 1478,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lm",
+  "line": 1479,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "early",
+  "line": 1480,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "arrival",
+  "line": 1481,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateTxt",
+  "line": 1482,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateStyle",
+  "line": 1483,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "src",
+  "line": 1484,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "win",
+  "line": 1487,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateDaysTxt",
+  "line": 1489,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "fromTo",
+  "line": 1490,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "from",
+  "line": 1519,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "month",
+  "line": 1520,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "box",
+  "line": 1522,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "res",
+  "line": 1524,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "rows",
+  "line": 1525,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "badge",
+  "line": 1526,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "icon",
+  "line": 1527,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "extra",
+  "line": 1528,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "role",
+  "line": 1538,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "from",
+  "line": 1543,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "month",
+  "line": 1544,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printWin",
+  "line": 1546,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "data",
+  "line": 1550,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emps",
+  "line": 1552,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "WORK_DAY",
+  "line": 1553,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totLateMin",
+  "line": 1554,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totLateDays",
+  "line": 1555,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totReviewDays",
+  "line": 1556,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "totReviewMin",
+  "line": 1557,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateSummary",
+  "line": 1558,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "tot",
+  "line": 1559,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "rows",
+  "line": 1560,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lm",
+  "line": 1561,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "ld",
+  "line": 1562,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lv",
+  "line": 1563,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "rv",
+  "line": 1564,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateText",
+  "line": 1565,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateCell",
+  "line": 1566,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateAuditStatus",
+  "line": 1569,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateAuditColor",
+  "line": 1570,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "lateAuditText",
+  "line": 1571,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "anomalous",
+  "line": 1572,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "anomalousCount",
+  "line": 1573,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "topAnomalies",
+  "line": 1574,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "anomaliesHtml",
+  "line": 1575,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "topAnomaliesHtml",
+  "line": 1576,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printWin",
+  "line": 1621,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "res",
+  "line": 1624,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printWin",
+  "line": 1631,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "range",
+  "line": 1637,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printWin",
+  "line": 1638,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1645,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "card",
+  "line": 1648,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printWin",
+  "line": 1656,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1658,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "dept",
+  "line": 1661,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "initials",
+  "line": 1662,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrData",
+  "line": 1663,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrPromise",
+  "line": 1664,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "emp",
+  "line": 1721,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "dept",
+  "line": 1724,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "initials",
+  "line": 1725,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrData",
+  "line": 1726,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrUrl",
+  "line": 1727,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "canvas",
+  "line": 1728,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "ctx",
+  "line": 1730,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "grad",
+  "line": 1731,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "goldGrad",
+  "line": 1734,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "img",
+  "line": 1743,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "qrImg",
+  "line": 1777,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "link",
+  "line": 1796,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "BULK_IMPORT_ROWS",
+  "line": 1806,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "BULK_AR_TO_EN",
+  "line": 1807,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "digits",
+  "line": 1811,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "pass",
+  "line": 1812,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "en",
+  "line": 1819,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "parts",
+  "line": 1820,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "first",
+  "line": 1821,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "num",
+  "line": 1822,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "base",
+  "line": 1823,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "uname",
+  "line": 1828,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "attempt",
+  "line": 1829,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "roleOpts",
+  "line": 1836,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "dropzone",
+  "line": 1940,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "files",
+  "line": 1957,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "sel",
+  "line": 1966,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkCurrentStep",
+  "line": 1969,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "text",
+  "line": 2006,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "names",
+  "line": 2008,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "text",
+  "line": 2021,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "names",
+  "line": 2022,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "fmt",
+  "line": 2023,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "prefix",
+  "line": 2024,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "role",
+  "line": 2025,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "usedUsernames",
+  "line": 2026,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "fpStart",
+  "line": 2027,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "fps",
+  "line": 2028,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "statsBar",
+  "line": 2050,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "previewTable",
+  "line": 2051,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "roleCount",
+  "line": 2053,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "roleName",
+  "line": 2055,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "namesInput",
+  "line": 2124,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "ext",
+  "line": 2129,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "reader",
+  "line": 2130,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "wb",
+  "line": 2134,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "ws",
+  "line": 2135,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "rows",
+  "line": 2136,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "names",
+  "line": 2137,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "names",
+  "line": 2145,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "usedUsernames",
+  "line": 2155,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "added",
+  "line": 2157,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "data",
+  "line": 2240,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "ws",
+  "line": 2242,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "wb",
+  "line": 2244,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "csv",
+  "line": 2250,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "blob",
+  "line": 2254,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "url",
+  "line": 2255,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "a",
+  "line": 2256,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "data",
+  "line": 2264,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "blob",
+  "line": 2273,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "url",
+  "line": 2274,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "a",
+  "line": 2275,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "text",
+  "line": 2283,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "ta",
+  "line": 2288,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "printWin",
+  "line": 2298,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "printWin",
+  "line": 2342,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "slips",
+  "line": 2344,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "errEl",
+  "line": 2409,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "username",
+  "line": 2414,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "code",
+  "line": 2415,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "np",
+  "line": 2416,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "np2",
+  "line": 2417,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "r",
+  "line": 2422,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "data",
+  "line": 2423,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "u",
+  "line": 2430,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "r",
+  "line": 2433,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "data",
+  "line": 2434,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "username",
+  "line": 2456,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "password",
+  "line": 2457,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "loginBtn",
+  "line": 2458,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "errorEl",
+  "line": 2459,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "controller",
+  "line": 2473,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "timeout",
+  "line": 2474,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "r",
+  "line": 2475,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "user",
+  "line": 2505,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "message",
+  "line": 2508,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "oldJwt",
+  "line": 2552,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "password",
+  "line": 2561,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "errorEl",
+  "line": 2562,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "configured",
+  "line": 2570,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "src",
+  "line": 2574,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "logoEl",
+  "line": 2581,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "NAV_GROUPS",
+  "line": 2587,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "container",
+  "line": 2597,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "role",
+  "line": 2598,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "allowedMenus",
+  "line": 2599,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "itemHtml",
+  "line": 2600,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "badge",
+  "line": 2601,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "r",
+  "line": 2603,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "actionable",
+  "line": 2604,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "mLabel",
+  "line": 2613,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "navIconName",
+  "line": 2614,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "navLabelText",
+  "line": 2615,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "isActive",
+  "line": 2616,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "html",
+  "line": 2619,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "emitted",
+  "line": 2620,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "role",
+  "line": 2640,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "titles",
+  "line": 2645,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "deptDetailFrom",
+  "line": 2653,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "departmentsNav",
+  "line": 2659,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "titleEl",
+  "line": 2661,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "inRange",
+  "line": 2675,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "codes",
+  "line": 2677,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "rows",
+  "line": 2678,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "sum",
+  "line": 2679,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "materials",
+  "line": 2680,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "countAdj",
+  "line": 2681,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "operating",
+  "line": 2682,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "inRange",
+  "line": 2709,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "d",
+  "line": 2711,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "rev",
+  "line": 2717,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "exp",
+  "line": 2719,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "dashboardChartDays",
+  "line": 2729,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "dashboardChartDept",
+  "line": 2730,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "el",
+  "line": 2761,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "st",
+  "line": 2763,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "devices",
+  "line": 2764,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "online",
+  "line": 2765,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "t",
+  "line": 2766,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "stateTxt",
+  "line": 2767,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "dot",
+  "line": 2772,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "unlinked",
+  "line": 2773,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "role",
+  "line": 2783,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "totalRev",
+  "line": 2786,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "deptStats",
+  "line": 2787,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "profit",
+  "line": 2788,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "costRatio",
+  "line": 2789,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "pendingDisp",
+  "line": 2790,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "lowStock",
+  "line": 2791,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "today",
+  "line": 2792,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "startOfMonth",
+  "line": 2793,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "monthlyRev",
+  "line": 2794,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "monthlyExp",
+  "line": 2795,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "profitTrend",
+  "line": 2796,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "html",
+  "line": 2798,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "totalEmp",
+  "line": 2832,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "presentToday",
+  "line": 2833,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "pendingLeaves",
+  "line": 2834,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "totalSalaries",
+  "line": 2835,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "box",
+  "line": 2898,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "b",
+  "line": 2900,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "cashRows",
+  "line": 2901,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "outRows",
+  "line": 2902,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "fcRows",
+  "line": 2903,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "p",
+  "line": 2904,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "emp",
+  "line": 2975,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "todayRecord",
+  "line": 2977,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "now",
+  "line": 3006,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "alerts",
+  "line": 3007,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "days",
+  "line": 3010,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "days",
+  "line": 3014,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "days",
+  "line": 3018,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "html",
+  "line": 3023,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "dangerAlerts",
+  "line": 3024,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "warnAlerts",
+  "line": 3025,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "isAdmin",
+  "line": 3038,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "emp",
+  "line": 3039,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "dept",
+  "line": 3052,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "myAttendance",
+  "line": 3053,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "myLeaves",
+  "line": 3054,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "totalKarim",
+  "line": 3055,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "h",
+  "line": 3057,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "content",
+  "line": 3062,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "krm",
+  "line": 3087,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "src",
+  "line": 3088,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "statusText",
+  "line": 3089,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "statusMarkup",
+  "line": 3095,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "type",
+  "line": 3113,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "days",
+  "line": 3114,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "cardContainer",
+  "line": 3122,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "canUpload",
+  "line": 3124,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "panel",
+  "line": 3131,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "data",
+  "line": 3134,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "numTxt",
+  "line": 3138,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "devBadges",
+  "line": 3140,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "linkBadge",
+  "line": 3142,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "punchRows",
+  "line": 3143,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "isIn",
+  "line": 3144,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "rec",
+  "line": 3147,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "map",
+  "line": 3159,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "emp",
+  "line": 3165,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "mine",
+  "line": 3166,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "emp",
+  "line": 3176,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "cardContainer",
+  "line": 3182,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "isAdmin",
+  "line": 3184,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "ZKSTATE",
+  "line": 3191,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "content",
+  "line": 3213,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "canWrite",
+  "line": 3214,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "body",
+  "line": 3242,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "body",
+  "line": 3248,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "totals",
+  "line": 3255,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "online",
+  "line": 3256,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "rows",
+  "line": 3257,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "name",
+  "line": 3326,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "ipAddress",
+  "line": 3327,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "port",
+  "line": 3328,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "commKey",
+  "line": 3329,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "syncIntervalSeconds",
+  "line": 3330,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "enabled",
+  "line": 3331,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "d",
+  "line": 3340,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "body",
+  "line": 3362,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "r",
+  "line": 3377,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "r",
+  "line": 3385,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "d",
+  "line": 3396,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "m",
+  "line": 3410,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "canWrite",
+  "line": 3411,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "emps",
+  "line": 3412,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "linkedCount",
+  "line": 3413,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "unlinkedCount",
+  "line": 3414,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "empRows",
+  "line": 3415,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "unmappedRows",
+  "line": 3425,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "raw",
+  "line": 3472,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "r",
+  "line": 3484,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "candidates",
+  "line": 3492,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "rows",
+  "line": 3609,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "from",
+  "line": 3637,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "to",
+  "line": 3638,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "q",
+  "line": 3641,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "headers",
+  "line": 3642,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "res",
+  "line": 3643,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "blob",
+  "line": 3645,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "a",
+  "line": 3646,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "YSSTATE",
+  "line": 3658,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "content",
+  "line": 3661,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "canWrite",
+  "line": 3662,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "body",
+  "line": 3693,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "box",
+  "line": 3742,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 3745,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3746,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 3760,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "box",
+  "line": 3767,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 3769,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "j",
+  "line": 3770,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "chunks",
+  "line": 3771,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "body",
+  "line": 3789,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "st",
+  "line": 3804,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "eng",
+  "line": 3805,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "c",
+  "line": 3806,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "map",
+  "line": 3846,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "q",
+  "line": 3859,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "tb",
+  "line": 3860,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "win",
+  "line": 3867,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "dateStr",
+  "line": 3869,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 3893,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 3901,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3907,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "c",
+  "line": 3908,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 3916,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "p",
+  "line": 3918,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "items",
+  "line": 3919,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3920,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 3936,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "p",
+  "line": 3937,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "items",
+  "line": 3938,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3939,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3952,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 3973,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "products",
+  "line": 3979,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "internalProductId",
+  "line": 3992,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 3996,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "canWrite",
+  "line": 4009,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 4010,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "products",
+  "line": 4029,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "externalCode",
+  "line": 4046,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "externalBarcode",
+  "line": 4047,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "internalProductId",
+  "line": 4048,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "canWrite",
+  "line": 4076,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "mapRows",
+  "line": 4077,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "profit",
+  "line": 4078,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "unRows",
+  "line": 4091,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "total",
+  "line": 4119,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "totalExp",
+  "line": 4120,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 4121,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "cards",
+  "line": 4135,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "box",
+  "line": 4145,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "m",
+  "line": 4146,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "box",
+  "line": 4153,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "m",
+  "line": 4154,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "qs",
+  "line": 4155,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 4159,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "canWrite",
+  "line": 4163,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "targets",
+  "line": 4164,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 4165,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "pages",
+  "line": 4173,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ids",
+  "line": 4197,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "toMapId",
+  "line": 4198,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4204,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 4215,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "h",
+  "line": 4217,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "loc",
+  "line": 4218,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "lines",
+  "line": 4219,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "sum",
+  "line": 4220,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "d",
+  "line": 4237,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "h",
+  "line": 4238,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 4239,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "sum",
+  "line": 4240,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "u",
+  "line": 4246,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "mergeOpts",
+  "line": 4248,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "mode",
+  "line": 4264,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "body",
+  "line": 4265,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4270,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "displayAr",
+  "line": 4290,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "displayEn",
+  "line": 4291,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "displayAr",
+  "line": 4315,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "displayEn",
+  "line": 4316,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4320,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "cat",
+  "line": 4329,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "canWrite",
+  "line": 4335,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "qRows",
+  "line": 4336,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "rows",
+  "line": 4369,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4378,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4389,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "text",
+  "line": 4416,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "out",
+  "line": 4418,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "r",
+  "line": 4421,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "inv",
+  "line": 4422,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "match",
+  "line": 4423,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ORADATA",
+  "line": 4440,
+  "section": "ORACLE"
+ },
+ {
+  "name": "WASTATE",
+  "line": 4444,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "map",
+  "line": 4446,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "ar",
+  "line": 4447,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "s",
+  "line": 4460,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "box",
+  "line": 4468,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "st",
+  "line": 4477,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "c",
+  "line": 4478,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "down",
+  "line": 4479,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "banner",
+  "line": 4480,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "body",
+  "line": 4491,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "canWrite",
+  "line": 4492,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "tabs",
+  "line": 4493,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "el",
+  "line": 4499,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "st",
+  "line": 4510,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "box",
+  "line": 4538,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4541,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "url",
+  "line": 4544,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "msg",
+  "line": 4549,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "m",
+  "line": 4551,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "box",
+  "line": 4562,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4565,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "phone",
+  "line": 4579,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "r",
+  "line": 4582,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "box",
+  "line": 4600,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4602,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "s",
+  "line": 4603,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "chk",
+  "line": 4604,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "body",
+  "line": 4619,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4633,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "users",
+  "line": 4634,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4635,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "jid",
+  "line": 4636,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "userOptions",
+  "line": 4637,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4647,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "canAdmin",
+  "line": 4648,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4649,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "lines",
+  "line": 4654,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "recipients",
+  "line": 4655,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "body",
+  "line": 4656,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "jid",
+  "line": 4664,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "status",
+  "line": 4665,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "priority",
+  "line": 4666,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "assigned",
+  "line": 4667,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4674,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4675,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "to",
+  "line": 4685,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "body",
+  "line": 4686,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4695,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4696,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "r",
+  "line": 4703,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "body",
+  "line": 4713,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4730,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4731,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "n",
+  "line": 4741,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "cats",
+  "line": 4755,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "categories",
+  "line": 4756,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "input",
+  "line": 4771,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "question",
+  "line": 4772,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "result",
+  "line": 4773,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4777,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4788,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4789,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "d",
+  "line": 4934,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "cols",
+  "line": 4935,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "rows",
+  "line": 4936,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "content",
+  "line": 4945,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "dept",
+  "line": 4997,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "linkedUser",
+  "line": 4998,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "initials",
+  "line": 4999,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "q",
+  "line": 5031,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "grid",
+  "line": 5032,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "norm",
+  "line": 5035,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "isNum",
+  "line": 5036,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "qNum",
+  "line": 5037,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "hits",
+  "line": 5038,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "nameBox",
+  "line": 5048,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "grid",
+  "line": 5096,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "filtered",
+  "line": 5099,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "deptOptions",
+  "line": 5106,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "name",
+  "line": 5152,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "employeeId",
+  "line": 5153,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "department",
+  "line": 5154,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "position",
+  "line": 5155,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "phone",
+  "line": 5156,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "email",
+  "line": 5157,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "joinDate",
+  "line": 5158,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "salary",
+  "line": 5159,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "status",
+  "line": 5160,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "shift_start",
+  "line": 5161,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "shift_karim",
+  "line": 5162,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "iqamaExpiry",
+  "line": 5163,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "healthCertExpiry",
+  "line": 5164,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "healthEduExpiry",
+  "line": 5165,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "photoFile",
+  "line": 5166,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "createAccount",
+  "line": 5167,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "accountUsername",
+  "line": 5168,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "accountPassword",
+  "line": 5169,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "accountRole",
+  "line": 5170,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "newEmp",
+  "line": 5175,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "emp",
+  "line": 5196,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "deptOptions",
+  "line": 5198,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "emp",
+  "line": 5246,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "name",
+  "line": 5248,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "department",
+  "line": 5249,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "position",
+  "line": 5250,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "phone",
+  "line": 5251,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "email",
+  "line": 5252,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "joinDate",
+  "line": 5253,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "salary",
+  "line": 5254,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "status",
+  "line": 5255,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "shift_start",
+  "line": 5256,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "shift_karim",
+  "line": 5257,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "iqamaExpiry",
+  "line": 5258,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "healthCertExpiry",
+  "line": 5259,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "healthEduExpiry",
+  "line": 5260,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "deviceUserId",
+  "line": 5261,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "auto_checkout",
+  "line": 5262,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "auto_lock",
+  "line": 5263,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "updPayload",
+  "line": 5264,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "emp",
+  "line": 5278,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "attendanceRecords",
+  "line": 5282,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "leaveRecords",
+  "line": 5283,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "linkedUser",
+  "line": 5284,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "canUpload",
+  "line": 5285,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "krm",
+  "line": 5299,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "type",
+  "line": 5315,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "modalCard",
+  "line": 5328,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "emp",
+  "line": 5332,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "canUpload",
+  "line": 5336,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "container",
+  "line": 5344,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "data",
+  "line": 5348,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "dept",
+  "line": 5350,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "ws",
+  "line": 5353,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "wb",
+  "line": 5354,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "EMP_SHEET_COLS",
+  "line": 5360,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "empNormAr",
+  "line": 5361,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "s",
+  "line": 5365,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "m",
+  "line": 5366,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "wb",
+  "line": 5371,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "ws",
+  "line": 5372,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "file",
+  "line": 5393,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "prev",
+  "line": 5394,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "reader",
+  "line": 5396,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "wb",
+  "line": 5399,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "ws",
+  "line": 5400,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "data",
+  "line": 5401,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "raw",
+  "line": 5402,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "existingIds",
+  "line": 5403,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "deptByName",
+  "line": 5404,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "seen",
+  "line": 5405,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "o",
+  "line": 5407,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "ok",
+  "line": 5418,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "dup",
+  "line": 5419,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "bad",
+  "line": 5420,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "rows",
+  "line": 5430,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "added",
+  "line": 5434,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "existingIds",
+  "line": 5436,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "saved",
+  "line": 5440,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "totalValue",
+  "line": 5459,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "lowStock",
+  "line": 5460,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "allInvoices",
+  "line": 5461,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalWeight",
+  "line": 5462,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "whCats",
+  "line": 5463,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "whItems",
+  "line": 5465,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "whCatOpts",
+  "line": 5468,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "isLow",
+  "line": 5505,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelf",
+  "line": 5506,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ids",
+  "line": 5570,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ok",
+  "line": 5574,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stillBlocked",
+  "line": 5584,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rows",
+  "line": 5595,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelf",
+  "line": 5596,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalValue",
+  "line": 5598,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "low",
+  "line": 5599,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "PCMT",
+  "line": 5606,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "PCMT_CAN_WRITE",
+  "line": 5607,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "PCMT_CAN_PAY",
+  "line": 5608,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "PCMT_PAY_LABELS",
+  "line": 5609,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rem",
+  "line": 5690,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "canPay",
+  "line": 5691,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "canW",
+  "line": 5719,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "canP",
+  "line": 5720,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "inv",
+  "line": 5756,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "STOCK",
+  "line": 5940,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "STOCK_CAN_WRITE",
+  "line": 5941,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelfOptions",
+  "line": 6393,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "el",
+  "line": 6407,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "existing",
+  "line": 6417,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6424,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6438,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "qty",
+  "line": 6440,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "price",
+  "line": 6441,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "oldValue",
+  "line": 6444,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "newValue",
+  "line": 6445,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "newQty",
+  "line": 6446,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "newAvgCost",
+  "line": 6447,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "result",
+  "line": 6449,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "name",
+  "line": 6461,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "category",
+  "line": 6462,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "barcode",
+  "line": 6463,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "unit",
+  "line": 6464,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "minQty",
+  "line": 6465,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "qty",
+  "line": 6466,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "price",
+  "line": 6467,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "weight",
+  "line": 6468,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelfId",
+  "line": 6469,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "newItem",
+  "line": 6475,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6485,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelfOptions",
+  "line": 6487,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6500,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "barcode",
+  "line": 6502,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "name",
+  "line": 6504,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "category",
+  "line": 6505,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "unit",
+  "line": 6506,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "minQty",
+  "line": 6507,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "weight",
+  "line": 6508,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "shelfId",
+  "line": 6509,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "saved",
+  "line": 6511,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6518,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "m",
+  "line": 6528,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "currentInvoiceItems",
+  "line": 6539,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6600,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invItem",
+  "line": 6602,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "priceInput",
+  "line": 6605,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "unitInput",
+  "line": 6607,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalEl",
+  "line": 6615,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "total",
+  "line": 6620,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalInput",
+  "line": 6621,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "firstEditable",
+  "line": 6627,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invoiceNumber",
+  "line": 6655,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invoiceDate",
+  "line": 6656,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "supplierName",
+  "line": 6657,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "supplierPhone",
+  "line": 6658,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "supplierSel",
+  "line": 6659,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "paymentMethod",
+  "line": 6660,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "paidAmountRaw",
+  "line": 6661,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "notes",
+  "line": 6662,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "validItems",
+  "line": 6663,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "result",
+  "line": 6666,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "msg",
+  "line": 6676,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "openingRows",
+  "line": 6685,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "openingImportPreview",
+  "line": 6686,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "sup",
+  "line": 6694,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "data",
+  "line": 6706,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ws",
+  "line": 6707,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6708,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "reader",
+  "line": 6716,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6719,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "data",
+  "line": 6720,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "headers",
+  "line": 6722,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "findHeader",
+  "line": 6723,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "nameIdx",
+  "line": 6724,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "qtyIdx",
+  "line": 6725,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "unitIdx",
+  "line": 6726,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "priceIdx",
+  "line": 6727,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "boxesIdx",
+  "line": 6728,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "categoryIdx",
+  "line": 6729,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rows",
+  "line": 6731,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "line",
+  "line": 6733,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rowErrors",
+  "line": 6735,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "boxes",
+  "line": 6739,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "el",
+  "line": 6751,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "p",
+  "line": 6752,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "c",
+  "line": 6763,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invOpts",
+  "line": 6764,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "row",
+  "line": 6780,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "field",
+  "line": 6781,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "input",
+  "line": 6785,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "row",
+  "line": 6789,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6790,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "r",
+  "line": 6799,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "t",
+  "line": 6809,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "el",
+  "line": 6810,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "items",
+  "line": 6813,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "bad",
+  "line": 6816,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "sup",
+  "line": 6818,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invoiceNumber",
+  "line": 6819,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "result",
+  "line": 6822,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "inv",
+  "line": 6838,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "invoiceItems",
+  "line": 6840,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "inv",
+  "line": 6875,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "r",
+  "line": 6880,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "m",
+  "line": 6886,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6928,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ws",
+  "line": 6929,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "file",
+  "line": 6935,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "reader",
+  "line": 6937,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6940,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ws",
+  "line": 6941,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "data",
+  "line": 6942,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rows",
+  "line": 6943,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "prev",
+  "line": 6944,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "file",
+  "line": 6953,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "reader",
+  "line": 6955,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6958,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ws",
+  "line": 6959,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "data",
+  "line": 6960,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rows",
+  "line": 6961,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "added",
+  "line": 6962,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "name",
+  "line": 6964,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "item",
+  "line": 6967,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "wb",
+  "line": 6998,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "ws",
+  "line": 6999,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "file",
+  "line": 7057,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "list",
+  "line": 7061,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "prev",
+  "line": 7062,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalValue",
+  "line": 7065,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "file",
+  "line": 7071,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "rows",
+  "line": 7074,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "items",
+  "line": 7075,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "existingNames",
+  "line": 7084,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "result",
+  "line": 7085,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "added",
+  "line": 7088,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updated",
+  "line": 7089,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "totalItems",
+  "line": 7099,
+  "section": "SHELVES"
+ },
+ {
+  "name": "assignedItems",
+  "line": 7100,
+  "section": "SHELVES"
+ },
+ {
+  "name": "emptyShelves",
+  "line": 7101,
+  "section": "SHELVES"
+ },
+ {
+  "name": "items",
+  "line": 7115,
+  "section": "SHELVES"
+ },
+ {
+  "name": "totalQty",
+  "line": 7116,
+  "section": "SHELVES"
+ },
+ {
+  "name": "totalValue",
+  "line": 7117,
+  "section": "SHELVES"
+ },
+ {
+  "name": "name",
+  "line": 7169,
+  "section": "SHELVES"
+ },
+ {
+  "name": "code",
+  "line": 7170,
+  "section": "SHELVES"
+ },
+ {
+  "name": "location",
+  "line": 7171,
+  "section": "SHELVES"
+ },
+ {
+  "name": "capacity",
+  "line": 7172,
+  "section": "SHELVES"
+ },
+ {
+  "name": "icon",
+  "line": 7173,
+  "section": "SHELVES"
+ },
+ {
+  "name": "shelf",
+  "line": 7181,
+  "section": "SHELVES"
+ },
+ {
+  "name": "shelf",
+  "line": 7198,
+  "section": "SHELVES"
+ },
+ {
+  "name": "name",
+  "line": 7200,
+  "section": "SHELVES"
+ },
+ {
+  "name": "location",
+  "line": 7201,
+  "section": "SHELVES"
+ },
+ {
+  "name": "capacity",
+  "line": 7202,
+  "section": "SHELVES"
+ },
+ {
+  "name": "icon",
+  "line": 7203,
+  "section": "SHELVES"
+ },
+ {
+  "name": "currentWeight",
+  "line": 7219,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "weightUnit",
+  "line": 7220,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "totalReadings",
+  "line": 7223,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "totalWeight",
+  "line": 7224,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "todayReadings",
+  "line": 7225,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "el",
+  "line": 7277,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "el",
+  "line": 7282,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "el",
+  "line": 7287,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "notes",
+  "line": 7298,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "wr",
+  "line": 7300,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "itemOptions",
+  "line": 7310,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "itemId",
+  "line": 7323,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "weight",
+  "line": 7324,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "notes",
+  "line": 7325,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "item",
+  "line": 7326,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "wr2",
+  "line": 7329,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "kitchenOverviewLoading",
+  "line": 7344,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenProductionRows",
+  "line": 7346,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenProductionDestinationsRows",
+  "line": 7347,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenProductionMaterials",
+  "line": 7354,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenProductionMaterialRows",
+  "line": 7355,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenGovernance",
+  "line": 7405,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenGovernanceLoading",
+  "line": 7406,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenTransferStock",
+  "line": 7425,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenTransferRows",
+  "line": 7426,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "my",
+  "line": 7491,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "panel",
+  "line": 7494,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "mine",
+  "line": 7495,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pending",
+  "line": 7496,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "chefOk",
+  "line": 7497,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "awaitingReceive",
+  "line": 7498,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "received",
+  "line": 7499,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "myCost",
+  "line": 7500,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "myDeptName",
+  "line": 7501,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "panelHtml",
+  "line": 7503,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "src",
+  "line": 7505,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "labels",
+  "line": 7506,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "card",
+  "line": 7507,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "sourcesHtml",
+  "line": 7508,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "subDepts",
+  "line": 7509,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "role",
+  "line": 7538,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatches",
+  "line": 7540,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "chefQueue",
+  "line": 7541,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "warehouseQueue",
+  "line": 7542,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "chainBanner",
+  "line": 7543,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canDecideChef",
+  "line": 7544,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canDecideWarehouse",
+  "line": 7545,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canReceive",
+  "line": 7546,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "rows",
+  "line": 7587,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pendChef",
+  "line": 7588,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pendGM",
+  "line": 7589,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "shortages",
+  "line": 7596,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "invNames",
+  "line": 7597,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "rowsHtml",
+  "line": 7598,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "box",
+  "line": 7605,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "div",
+  "line": 7606,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 7611,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "input",
+  "line": 7613,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 7614,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "name",
+  "line": 7618,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 7619,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "unit",
+  "line": 7620,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7626,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7634,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "itemsHtml",
+  "line": 7635,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7640,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7641,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7643,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7650,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 7655,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7657,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7658,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7660,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7666,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "itemsHtml",
+  "line": 7667,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7672,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7673,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7675,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7683,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 7688,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7690,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7691,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7693,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7699,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "rows",
+  "line": 7700,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "keys",
+  "line": 7715,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "nm",
+  "line": 7717,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7722,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reqItems",
+  "line": 7723,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 7724,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "q",
+  "line": 7725,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "c",
+  "line": 7726,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "w",
+  "line": 7727,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7730,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7731,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7733,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saved",
+  "line": 7745,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7751,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 7752,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "chain",
+  "line": 7753,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "r",
+  "line": 7760,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 7761,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "sigBlock",
+  "line": 7762,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "w",
+  "line": 7763,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "returns",
+  "line": 7769,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "totalValue",
+  "line": 7770,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canReturn",
+  "line": 7771,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canDelete",
+  "line": 7772,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 7807,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "departments",
+  "line": 7815,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "hasKitchen",
+  "line": 7816,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchDepartments",
+  "line": 7821,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deptField",
+  "line": 7823,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "rows",
+  "line": 7848,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "countEl",
+  "line": 7849,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "parts",
+  "line": 7851,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "name",
+  "line": 7853,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCw",
+  "line": 7854,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "boxes",
+  "line": 7856,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "uom",
+  "line": 7857,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 7860,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "unit",
+  "line": 7861,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "s",
+  "line": 7865,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "row",
+  "line": 7869,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "list",
+  "line": 7870,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "q",
+  "line": 7871,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "matches",
+  "line": 7872,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "row",
+  "line": 7878,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCw",
+  "line": 7879,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qtyInput",
+  "line": 7884,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pkgInput",
+  "line": 7885,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pkgWrap",
+  "line": 7886,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "cwNote",
+  "line": 7887,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "av",
+  "line": 7900,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "container",
+  "line": 7905,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "div",
+  "line": 7907,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deptCode",
+  "line": 7915,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dept",
+  "line": 7917,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 7918,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "notes",
+  "line": 7919,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "name",
+  "line": 7921,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCw",
+  "line": 7922,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pkgUom",
+  "line": 7923,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "boxes",
+  "line": 7925,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "estKg",
+  "line": 7926,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 7929,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "unit",
+  "line": 7930,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "disp",
+  "line": 7935,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 7943,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "warnings",
+  "line": 7945,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "itemsHtml",
+  "line": 7946,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7951,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7952,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 7954,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 7961,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 7967,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 7969,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 7970,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 7972,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "SIGNATURE_PADS",
+  "line": 7978,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "SIGNATURE_DATE_FMT",
+  "line": 7979,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "t",
+  "line": 7984,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "cands",
+  "line": 7985,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "state",
+  "line": 7989,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "v",
+  "line": 7990,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "locked",
+  "line": 7994,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "state",
+  "line": 7999,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "size",
+  "line": 8009,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "nameW",
+  "line": 8011,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "uy",
+  "line": 8015,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "canvas",
+  "line": 8024,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "input",
+  "line": 8025,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "state",
+  "line": 8038,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "state",
+  "line": 8044,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "typed",
+  "line": 8045,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "locked",
+  "line": 8046,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8062,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "itemsHtml",
+  "line": 8064,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "inv",
+  "line": 8066,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "maxQty",
+  "line": 8067,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCatchWeight",
+  "line": 8068,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pkgUom",
+  "line": 8069,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "val",
+  "line": 8071,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reqBoxes",
+  "line": 8083,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "t",
+  "line": 8096,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "disp",
+  "line": 8097,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "inv",
+  "line": 8100,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCatchWeight",
+  "line": 8101,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "weight",
+  "line": 8103,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "boxes",
+  "line": 8104,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "val",
+  "line": 8105,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "valEl",
+  "line": 8107,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "avgEl",
+  "line": 8109,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 8113,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "val",
+  "line": 8114,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "valEl",
+  "line": 8116,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "totalEl",
+  "line": 8119,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8126,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "approvedItems",
+  "line": 8128,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "hasError",
+  "line": 8129,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "approveNotes",
+  "line": 8130,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 8131,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 8132,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "inv",
+  "line": 8134,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isCw",
+  "line": 8135,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "actualWeight",
+  "line": 8137,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "packagingQty",
+  "line": 8138,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "val",
+  "line": 8142,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "approvedQty",
+  "line": 8147,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "val",
+  "line": 8151,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 8158,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8170,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 8175,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8177,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8192,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8193,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "itemsHtml",
+  "line": 8194,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8199,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureData",
+  "line": 8200,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signerName",
+  "line": 8201,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8202,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "receivedItems",
+  "line": 8203,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8209,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "statusLabel",
+  "line": 8211,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "sourceItems",
+  "line": 8212,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "receiptAudit",
+  "line": 8213,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "chefAudit",
+  "line": 8214,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "d",
+  "line": 8218,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dept",
+  "line": 8220,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "printWindow",
+  "line": 8221,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "sigBlock",
+  "line": 8223,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pItems",
+  "line": 8224,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pTotal",
+  "line": 8225,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pStatusAr",
+  "line": 8226,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pRow",
+  "line": 8227,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "pChain",
+  "line": 8228,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "approvedDispatches",
+  "line": 8235,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "depts",
+  "line": 8238,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deptField",
+  "line": 8239,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "invOpts",
+  "line": 8242,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchId",
+  "line": 8289,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatch",
+  "line": 8290,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "container",
+  "line": 8291,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8293,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "options",
+  "line": 8294,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchId",
+  "line": 8302,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatch",
+  "line": 8303,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "container",
+  "line": 8304,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8306,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "options",
+  "line": 8307,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "div",
+  "line": 8308,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "container",
+  "line": 8316,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "invOpts",
+  "line": 8318,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "div",
+  "line": 8319,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deptCode",
+  "line": 8327,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 8328,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "notes",
+  "line": 8329,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8331,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "name",
+  "line": 8333,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 8334,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 8339,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchId",
+  "line": 8349,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatch",
+  "line": 8350,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "reason",
+  "line": 8351,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "notes",
+  "line": 8352,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "items",
+  "line": 8354,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "name",
+  "line": 8358,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "qty",
+  "line": 8359,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "result",
+  "line": 8364,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "recipeManagerState",
+  "line": 8391,
+  "section": "RECIPES"
+ },
+ {
+  "name": "deptOpts",
+  "line": 8415,
+  "section": "RECIPES"
+ },
+ {
+  "name": "name",
+  "line": 8419,
+  "section": "RECIPES"
+ },
+ {
+  "name": "costRatio",
+  "line": 8424,
+  "section": "RECIPES"
+ },
+ {
+  "name": "savedRecipe",
+  "line": 8425,
+  "section": "RECIPES"
+ },
+ {
+  "name": "r",
+  "line": 8432,
+  "section": "RECIPES"
+ },
+ {
+  "name": "deptOpts",
+  "line": 8434,
+  "section": "RECIPES"
+ },
+ {
+  "name": "r",
+  "line": 8438,
+  "section": "RECIPES"
+ },
+ {
+  "name": "name",
+  "line": 8440,
+  "section": "RECIPES"
+ },
+ {
+  "name": "deptId",
+  "line": 8441,
+  "section": "RECIPES"
+ },
+ {
+  "name": "sellingPrice",
+  "line": 8442,
+  "section": "RECIPES"
+ },
+ {
+  "name": "totalCost",
+  "line": 8443,
+  "section": "RECIPES"
+ },
+ {
+  "name": "costRatio",
+  "line": 8444,
+  "section": "RECIPES"
+ },
+ {
+  "name": "savedRecipe",
+  "line": 8445,
+  "section": "RECIPES"
+ },
+ {
+  "name": "q",
+  "line": 8463,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "filtered",
+  "line": 8464,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "d",
+  "line": 8466,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "totalRev",
+  "line": 8472,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "hasFilter",
+  "line": 8473,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptOpts",
+  "line": 8474,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "revFilterDept",
+  "line": 8477,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "whCatFilter",
+  "line": 8478,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "whShortFilter",
+  "line": 8479,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "rows",
+  "line": 8482,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "invById",
+  "line": 8483,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "it",
+  "line": 8485,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "qty",
+  "line": 8486,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "rows",
+  "line": 8496,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "out",
+  "line": 8497,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "refill",
+  "line": 8498,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "noCost",
+  "line": 8499,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "all",
+  "line": 8506,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "all",
+  "line": 8512,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "out",
+  "line": 8514,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "totalVal",
+  "line": 8515,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "refill",
+  "line": 8516,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "noCostCount",
+  "line": 8517,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "refillTxt",
+  "line": 8518,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "rows",
+  "line": 8519,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "fBtn",
+  "line": 8520,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "q",
+  "line": 8543,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "filtered",
+  "line": 8544,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "d",
+  "line": 8546,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptName",
+  "line": 8552,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "rows",
+  "line": 8553,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "opts",
+  "line": 8560,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptId",
+  "line": 8564,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "r",
+  "line": 8578,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "opts",
+  "line": 8580,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "r",
+  "line": 8584,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptId",
+  "line": 8586,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "amount",
+  "line": 8587,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "date",
+  "line": 8588,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "source",
+  "line": 8589,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "notes",
+  "line": 8590,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "saved",
+  "line": 8592,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "filtered",
+  "line": 8609,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "d",
+  "line": 8611,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "filteredTotal",
+  "line": 8616,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "hasFilter",
+  "line": 8617,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptOpts",
+  "line": 8618,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "expenseFilterDept",
+  "line": 8621,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "opts",
+  "line": 8624,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptId",
+  "line": 8628,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "e",
+  "line": 8642,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "opts",
+  "line": 8644,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "e",
+  "line": 8648,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deptId",
+  "line": 8650,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "amount",
+  "line": 8651,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "date",
+  "line": 8652,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "desc",
+  "line": 8653,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "category",
+  "line": 8654,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "notes",
+  "line": 8655,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "saved",
+  "line": 8657,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "e",
+  "line": 8664,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "costAnalysisFrom",
+  "line": 8677,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "from",
+  "line": 8680,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "totalRev",
+  "line": 8681,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "details",
+  "line": 8682,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "avgCost",
+  "line": 8683,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "inPeriod",
+  "line": 8684,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "categories",
+  "line": 8685,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "ctx1",
+  "line": 8688,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "ctx2",
+  "line": 8693,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "pnlFrom",
+  "line": 8704,
+  "section": "P&L"
+ },
+ {
+  "name": "PNL_PRESETS",
+  "line": 8705,
+  "section": "P&L"
+ },
+ {
+  "name": "st",
+  "line": 8757,
+  "section": "P&L"
+ },
+ {
+  "name": "rev",
+  "line": 8758,
+  "section": "P&L"
+ },
+ {
+  "name": "otherCosts",
+  "line": 8759,
+  "section": "P&L"
+ },
+ {
+  "name": "cogsPct",
+  "line": 8760,
+  "section": "P&L"
+ },
+ {
+  "name": "otherPct",
+  "line": 8761,
+  "section": "P&L"
+ },
+ {
+  "name": "marginChip",
+  "line": 8762,
+  "section": "P&L"
+ },
+ {
+  "name": "deptRows",
+  "line": 8763,
+  "section": "P&L"
+ },
+ {
+  "name": "daily",
+  "line": 8771,
+  "section": "P&L"
+ },
+ {
+  "name": "DEPARTMENT_ICON_OPTIONS",
+  "line": 8925,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "el",
+  "line": 8937,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "clk",
+  "line": 8939,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "CASHIER_ICONS",
+  "line": 8945,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "HIDDEN_CASHIERS",
+  "line": 8946,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "HIDDEN_DEPTS",
+  "line": 8947,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "CASH_LIVE_DATE",
+  "line": 8948,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "base",
+  "line": 8958,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "next",
+  "line": 8959,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "vals",
+  "line": 8971,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "peak",
+  "line": 8972,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "n",
+  "line": 8973,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "bw",
+  "line": 8974,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "rects",
+  "line": 8975,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "bh",
+  "line": 8977,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "x",
+  "line": 8978,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "y",
+  "line": 8979,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "isPeak",
+  "line": 8980,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "box",
+  "line": 8986,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "scY",
+  "line": 8987,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "qs",
+  "line": 8989,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "sig",
+  "line": 8997,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "day",
+  "line": 9001,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "isToday",
+  "line": 9002,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "total",
+  "line": 9003,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "list",
+  "line": 9004,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "tByNo",
+  "line": 9005,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "ranked",
+  "line": 9006,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "medals",
+  "line": 9007,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "IDLE_MIN",
+  "line": 9008,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "idleMin",
+  "line": 9009,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "idleTxt",
+  "line": 9010,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cards",
+  "line": 9011,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "ccTotal",
+  "line": 9012,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "share",
+  "line": 9013,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "isNew",
+  "line": 9014,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "up",
+  "line": 9015,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "icon",
+  "line": 9016,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "best",
+  "line": 9017,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "live",
+  "line": 9018,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "hourly",
+  "line": 9019,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "pay",
+  "line": 9020,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "payTotal",
+  "line": 9021,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashShare",
+  "line": 9022,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "idle",
+  "line": 9023,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "isIdle",
+  "line": 9024,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "prevT",
+  "line": 9025,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "justSold",
+  "line": 9026,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "heroHourly",
+  "line": 9039,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "heroInvoices",
+  "line": 9040,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "heroAvg",
+  "line": 9041,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "idleCount",
+  "line": 9042,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "_hh",
+  "line": 9043,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "_rate",
+  "line": 9044,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "_nowH",
+  "line": 9045,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "_proj",
+  "line": 9046,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "keepY",
+  "line": 9073,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "restore",
+  "line": 9074,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "day",
+  "line": 9083,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "top",
+  "line": 9090,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "invRows",
+  "line": 9091,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "sum",
+  "line": 9092,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "code",
+  "line": 9115,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "colors",
+  "line": 9120,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "color",
+  "line": 9121,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "parent_code",
+  "line": 9122,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "d",
+  "line": 9130,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "d",
+  "line": 9135,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "name",
+  "line": 9137,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "icon",
+  "line": 9138,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "parent_code",
+  "line": 9139,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "saved",
+  "line": 9141,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "d0",
+  "line": 9148,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "revN",
+  "line": 9149,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "expN",
+  "line": 9150,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "ack",
+  "line": 9152,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "d",
+  "line": 9154,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "dept",
+  "line": 9169,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "from",
+  "line": 9171,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "s",
+  "line": 9172,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "bd",
+  "line": 9173,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "inRangeRows",
+  "line": 9174,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "deptCodes",
+  "line": 9175,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "revs",
+  "line": 9176,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "exps",
+  "line": 9177,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "periodChip",
+  "line": 9178,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "totalEmployees",
+  "line": 9185,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "activeEmployees",
+  "line": 9186,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "presentToday",
+  "line": 9187,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "pendingLeaves",
+  "line": 9188,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "totalSalaries",
+  "line": 9189,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "lateToday",
+  "line": 9190,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "absentToday",
+  "line": 9191,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "_mStart",
+  "line": 9192,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "monthGaps",
+  "line": 9193,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "ctx1",
+  "line": 9226,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "deptCounts",
+  "line": 9229,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "ctx2",
+  "line": 9233,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "last7Days",
+  "line": 9236,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "attendanceData",
+  "line": 9238,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "isAdmin",
+  "line": 9246,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9248,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "todayRecord",
+  "line": 9250,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attFrom",
+  "line": 9276,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rangeRecords",
+  "line": 9277,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "presentCount",
+  "line": 9278,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "lateCount",
+  "line": 9279,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "inferredCount",
+  "line": 9280,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "totalDays",
+  "line": 9281,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "totalKarim",
+  "line": 9282,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "activeEmployees",
+  "line": 9283,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "empMap",
+  "line": 9285,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "deptMap",
+  "line": 9286,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attQ",
+  "line": 9287,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "normAr",
+  "line": 9288,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "nq",
+  "line": 9289,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "filteredRecs",
+  "line": 9290,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "ATT_PS",
+  "line": 9292,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attPages",
+  "line": 9293,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "pageRecs",
+  "line": 9296,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9337,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "dept",
+  "line": 9339,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "inferredBadge",
+  "line": 9340,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "krm",
+  "line": 9341,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "status",
+  "line": 9342,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "statusClass",
+  "line": 9343,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "recSource",
+  "line": 9344,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "f",
+  "line": 9365,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "t",
+  "line": 9366,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attRes",
+  "line": 9371,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "d",
+  "line": 9377,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attRes",
+  "line": 9380,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "d",
+  "line": 9450,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "box",
+  "line": 9456,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "leaves",
+  "line": 9463,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "excused",
+  "line": 9464,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "recByEmpDate",
+  "line": 9465,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "gaps",
+  "line": 9466,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9470,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "s",
+  "line": 9482,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "box",
+  "line": 9486,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "gaps",
+  "line": 9488,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "gq",
+  "line": 9489,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "nr",
+  "line": 9491,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "byType",
+  "line": 9494,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "typeMeta",
+  "line": 9496,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9513,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9514,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "others",
+  "line": 9515,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "toMin",
+  "line": 9530,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "workMinutes",
+  "line": 9531,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "late",
+  "line": 9533,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "type",
+  "line": 9537,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "reason",
+  "line": 9538,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9540,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "shiftStart",
+  "line": 9541,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "who",
+  "line": 9542,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "ci",
+  "line": 9546,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "co",
+  "line": 9547,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "tm",
+  "line": 9548,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "audit",
+  "line": 9552,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9554,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "saved",
+  "line": 9558,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "withId",
+  "line": 9565,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "other",
+  "line": 9567,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9570,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "audit",
+  "line": 9571,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "box",
+  "line": 9578,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9602,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9604,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "missIn",
+  "line": 9605,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "rec",
+  "line": 9617,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "ci",
+  "line": 9619,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "co",
+  "line": 9620,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "reason",
+  "line": 9621,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "tm",
+  "line": 9622,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "toMin",
+  "line": 9626,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "workMinutes",
+  "line": 9627,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9629,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "shiftStart",
+  "line": 9630,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "late",
+  "line": 9631,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "audit",
+  "line": 9632,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "notes",
+  "line": 9633,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "data",
+  "line": 9642,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "result",
+  "line": 9646,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "saved",
+  "line": 9647,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "idx",
+  "line": 9648,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "actionLabel",
+  "line": 9651,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9664,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "todayDate",
+  "line": 9666,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "existing",
+  "line": 9667,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "now",
+  "line": 9669,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "timeStr",
+  "line": 9670,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "workStartHour",
+  "line": 9671,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "gS",
+  "line": 9673,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "sMin",
+  "line": 9674,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "late",
+  "line": 9675,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9683,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "todayDate",
+  "line": 9685,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "record",
+  "line": 9686,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "timeStr",
+  "line": 9689,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "nowMin",
+  "line": 9690,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "eS",
+  "line": 9691,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "eHours",
+  "line": 9692,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "eEnd",
+  "line": 9693,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "oMin",
+  "line": 9694,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "earlyLeave",
+  "line": 9696,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attFrom",
+  "line": 9704,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "filtered",
+  "line": 9705,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "data",
+  "line": 9706,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "emp",
+  "line": 9708,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "dept",
+  "line": 9709,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "krm",
+  "line": 9710,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "src",
+  "line": 9711,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "ws",
+  "line": 9714,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "wb",
+  "line": 9715,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "leaveWorkflowData",
+  "line": 9723,
+  "section": "LEAVES"
+ },
+ {
+  "name": "leaveWorkflowLoaded",
+  "line": 9724,
+  "section": "LEAVES"
+ },
+ {
+  "name": "leaveWorkflowLoading",
+  "line": 9725,
+  "section": "LEAVES"
+ },
+ {
+  "name": "LEAVE_STAGE_LABELS",
+  "line": 9726,
+  "section": "LEAVES"
+ },
+ {
+  "name": "isAdmin",
+  "line": 9743,
+  "section": "LEAVES"
+ },
+ {
+  "name": "empOptions",
+  "line": 9744,
+  "section": "LEAVES"
+ },
+ {
+  "name": "emp",
+  "line": 9748,
+  "section": "LEAVES"
+ },
+ {
+  "name": "typeOptions",
+  "line": 9752,
+  "section": "LEAVES"
+ },
+ {
+  "name": "empCount",
+  "line": 9800,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "name",
+  "line": 9840,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "code",
+  "line": 9841,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "manager",
+  "line": 9842,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "dept",
+  "line": 9850,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "dept",
+  "line": 9863,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "name",
+  "line": 9865,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "manager",
+  "line": 9866,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "dept",
+  "line": 9874,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "totalSalaries",
+  "line": 9884,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "dept",
+  "line": 9902,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "attendanceCount",
+  "line": 9903,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "data",
+  "line": 10071,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "dept",
+  "line": 10073,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "attendanceCount",
+  "line": 10074,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "ws",
+  "line": 10077,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "wb",
+  "line": 10078,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "todayStr",
+  "line": 10088,
+  "section": "REPORTS"
+ },
+ {
+  "name": "firstDayOfMonth",
+  "line": 10089,
+  "section": "REPORTS"
+ },
+ {
+  "name": "period",
+  "line": 10142,
+  "section": "REPORTS"
+ },
+ {
+  "name": "reportType",
+  "line": 10143,
+  "section": "REPORTS"
+ },
+ {
+  "name": "period",
+  "line": 10149,
+  "section": "REPORTS"
+ },
+ {
+  "name": "todayDate",
+  "line": 10150,
+  "section": "REPORTS"
+ },
+ {
+  "name": "startDate",
+  "line": 10151,
+  "section": "REPORTS"
+ },
+ {
+  "name": "type",
+  "line": 10163,
+  "section": "REPORTS"
+ },
+ {
+  "name": "periodLabel",
+  "line": 10166,
+  "section": "REPORTS"
+ },
+ {
+  "name": "container",
+  "line": 10167,
+  "section": "REPORTS"
+ },
+ {
+  "name": "liveContainer",
+  "line": 10183,
+  "section": "REPORTS"
+ },
+ {
+  "name": "reportTypeNames",
+  "line": 10185,
+  "section": "REPORTS"
+ },
+ {
+  "name": "html",
+  "line": 10186,
+  "section": "REPORTS"
+ },
+ {
+  "name": "groupMap",
+  "line": 10211,
+  "section": "REPORTS"
+ },
+ {
+  "name": "reportNames",
+  "line": 10212,
+  "section": "REPORTS"
+ },
+ {
+  "name": "params",
+  "line": 10214,
+  "section": "REPORTS"
+ },
+ {
+  "name": "data",
+  "line": 10217,
+  "section": "REPORTS"
+ },
+ {
+  "name": "entries",
+  "line": 10226,
+  "section": "REPORTS"
+ },
+ {
+  "name": "methodNames",
+  "line": 10228,
+  "section": "REPORTS"
+ },
+ {
+  "name": "summary",
+  "line": 10238,
+  "section": "REPORTS"
+ },
+ {
+  "name": "rows",
+  "line": 10239,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generatedAt",
+  "line": 10240,
+  "section": "REPORTS"
+ },
+ {
+  "name": "tableHtml",
+  "line": 10241,
+  "section": "REPORTS"
+ },
+ {
+  "name": "raw",
+  "line": 10326,
+  "section": "REPORTS"
+ },
+ {
+  "name": "invoice",
+  "line": 10329,
+  "section": "REPORTS"
+ },
+ {
+  "name": "cashier",
+  "line": 10330,
+  "section": "REPORTS"
+ },
+ {
+  "name": "items",
+  "line": 10331,
+  "section": "REPORTS"
+ },
+ {
+  "name": "parts",
+  "line": 10332,
+  "section": "REPORTS"
+ },
+ {
+  "name": "revs",
+  "line": 10339,
+  "section": "REPORTS"
+ },
+ {
+  "name": "exps",
+  "line": 10340,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalRev",
+  "line": 10341,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalExp",
+  "line": 10343,
+  "section": "REPORTS"
+ },
+ {
+  "name": "profit",
+  "line": 10344,
+  "section": "REPORTS"
+ },
+ {
+  "name": "costRatio",
+  "line": 10345,
+  "section": "REPORTS"
+ },
+ {
+  "name": "dept",
+  "line": 10359,
+  "section": "REPORTS"
+ },
+ {
+  "name": "s",
+  "line": 10389,
+  "section": "REPORTS"
+ },
+ {
+  "name": "ratio",
+  "line": 10390,
+  "section": "REPORTS"
+ },
+ {
+  "name": "rating",
+  "line": 10391,
+  "section": "REPORTS"
+ },
+ {
+  "name": "dispatches",
+  "line": 10407,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalDispatchValue",
+  "line": 10408,
+  "section": "REPORTS"
+ },
+ {
+  "name": "val",
+  "line": 10421,
+  "section": "REPORTS"
+ },
+ {
+  "name": "itemsList",
+  "line": 10422,
+  "section": "REPORTS"
+ },
+ {
+  "name": "returns",
+  "line": 10436,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalReturnsValue",
+  "line": 10437,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalInventoryValue",
+  "line": 10461,
+  "section": "REPORTS"
+ },
+ {
+  "name": "lowStockItems",
+  "line": 10462,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalWeight",
+  "line": 10463,
+  "section": "REPORTS"
+ },
+ {
+  "name": "items",
+  "line": 10494,
+  "section": "REPORTS"
+ },
+ {
+  "name": "value",
+  "line": 10495,
+  "section": "REPORTS"
+ },
+ {
+  "name": "activeEmployees",
+  "line": 10509,
+  "section": "REPORTS"
+ },
+ {
+  "name": "totalSalaries",
+  "line": 10510,
+  "section": "REPORTS"
+ },
+ {
+  "name": "attendanceThisMonth",
+  "line": 10511,
+  "section": "REPORTS"
+ },
+ {
+  "name": "leavesThisPeriod",
+  "line": 10512,
+  "section": "REPORTS"
+ },
+ {
+  "name": "dept",
+  "line": 10526,
+  "section": "REPORTS"
+ },
+ {
+  "name": "empAttendance",
+  "line": 10527,
+  "section": "REPORTS"
+ },
+ {
+  "name": "dept",
+  "line": 10537,
+  "section": "REPORTS"
+ },
+ {
+  "name": "s",
+  "line": 10539,
+  "section": "REPORTS"
+ },
+ {
+  "name": "period",
+  "line": 10559,
+  "section": "REPORTS"
+ },
+ {
+  "name": "group",
+  "line": 10560,
+  "section": "REPORTS"
+ },
+ {
+  "name": "groupNames",
+  "line": 10561,
+  "section": "REPORTS"
+ },
+ {
+  "name": "params",
+  "line": 10563,
+  "section": "REPORTS"
+ },
+ {
+  "name": "data",
+  "line": 10564,
+  "section": "REPORTS"
+ },
+ {
+  "name": "rows",
+  "line": 10565,
+  "section": "REPORTS"
+ },
+ {
+  "name": "t",
+  "line": 10566,
+  "section": "REPORTS"
+ },
+ {
+  "name": "YCASH",
+  "line": 10614,
+  "section": "REPORTS"
+ },
+ {
+  "name": "params",
+  "line": 10617,
+  "section": "REPORTS"
+ },
+ {
+  "name": "data",
+  "line": 10620,
+  "section": "REPORTS"
+ },
+ {
+  "name": "t",
+  "line": 10629,
+  "section": "REPORTS"
+ },
+ {
+  "name": "cashiers",
+  "line": 10630,
+  "section": "REPORTS"
+ },
+ {
+  "name": "rows",
+  "line": 10631,
+  "section": "REPORTS"
+ },
+ {
+  "name": "isInv",
+  "line": 10632,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generatedAt",
+  "line": 10633,
+  "section": "REPORTS"
+ },
+ {
+  "name": "cashierOpts",
+  "line": 10634,
+  "section": "REPORTS"
+ },
+ {
+  "name": "tableHtml",
+  "line": 10635,
+  "section": "REPORTS"
+ },
+ {
+  "name": "pg",
+  "line": 10658,
+  "section": "REPORTS"
+ },
+ {
+  "name": "data",
+  "line": 10730,
+  "section": "REPORTS"
+ },
+ {
+  "name": "lines",
+  "line": 10731,
+  "section": "REPORTS"
+ },
+ {
+  "name": "h",
+  "line": 10732,
+  "section": "REPORTS"
+ },
+ {
+  "name": "reportContent",
+  "line": 10742,
+  "section": "REPORTS"
+ },
+ {
+  "name": "printWindow",
+  "line": 10744,
+  "section": "REPORTS"
+ },
+ {
+  "name": "reportHTML",
+  "line": 10745,
+  "section": "REPORTS"
+ },
+ {
+  "name": "box",
+  "line": 10825,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "s",
+  "line": 10828,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "file",
+  "line": 10873,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "reader",
+  "line": 10876,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "payload",
+  "line": 10902,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "ZATCA_WRITE",
+  "line": 10920,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "ZATCA_STATUS_LABEL",
+  "line": 10921,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "d",
+  "line": 10924,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "c",
+  "line": 10925,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "can",
+  "line": 10926,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "envOptions",
+  "line": 10927,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "queueChips",
+  "line": 10928,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "payload",
+  "line": 10993,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "el",
+  "line": 11023,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sel",
+  "line": 11033,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "base",
+  "line": 11034,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "env",
+  "line": 11035,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "ta",
+  "line": 11053,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "otp",
+  "line": 11068,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "box",
+  "line": 11083,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "csid",
+  "line": 11124,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "vat",
+  "line": 11125,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "vat",
+  "line": 11146,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "KOT_CAN_WRITE",
+  "line": 11167,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "can",
+  "line": 11169,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "payload",
+  "line": 11212,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "data",
+  "line": 11226,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "blob",
+  "line": 11227,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "url",
+  "line": 11228,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "a",
+  "line": 11229,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "el",
+  "line": 11238,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "box",
+  "line": 11244,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "d",
+  "line": 11247,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "rows",
+  "line": 11248,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "d",
+  "line": 11264,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "f",
+  "line": 11270,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "form",
+  "line": 11273,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "res",
+  "line": 11276,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "d",
+  "line": 11277,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "c",
+  "line": 11293,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "restoreEnv",
+  "line": 11295,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "r",
+  "line": 11299,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "response",
+  "line": 11308,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "q",
+  "line": 11340,
+  "section": "USERS"
+ },
+ {
+  "name": "grid",
+  "line": 11341,
+  "section": "USERS"
+ },
+ {
+  "name": "filtered",
+  "line": 11344,
+  "section": "USERS"
+ },
+ {
+  "name": "linkedEmployee",
+  "line": 11352,
+  "section": "USERS"
+ },
+ {
+  "name": "roleOpts",
+  "line": 11353,
+  "section": "USERS"
+ },
+ {
+  "name": "deptOpts",
+  "line": 11354,
+  "section": "USERS"
+ },
+ {
+  "name": "roleEl",
+  "line": 11358,
+  "section": "USERS"
+ },
+ {
+  "name": "name",
+  "line": 11363,
+  "section": "USERS"
+ },
+ {
+  "name": "deptCode",
+  "line": 11369,
+  "section": "USERS"
+ },
+ {
+  "name": "u",
+  "line": 11384,
+  "section": "USERS"
+ },
+ {
+  "name": "emp",
+  "line": 11386,
+  "section": "USERS"
+ },
+ {
+  "name": "roleOpts",
+  "line": 11387,
+  "section": "USERS"
+ },
+ {
+  "name": "deptOpts",
+  "line": 11388,
+  "section": "USERS"
+ },
+ {
+  "name": "u",
+  "line": 11392,
+  "section": "USERS"
+ },
+ {
+  "name": "name",
+  "line": 11394,
+  "section": "USERS"
+ },
+ {
+  "name": "role",
+  "line": 11395,
+  "section": "USERS"
+ },
+ {
+  "name": "newPw",
+  "line": 11396,
+  "section": "USERS"
+ },
+ {
+  "name": "employeeId",
+  "line": 11397,
+  "section": "USERS"
+ },
+ {
+  "name": "active",
+  "line": 11398,
+  "section": "USERS"
+ },
+ {
+  "name": "deptCode",
+  "line": 11400,
+  "section": "USERS"
+ },
+ {
+  "name": "CFO_STATE",
+  "line": 11428,
+  "section": "CFO"
+ },
+ {
+  "name": "modalDiv",
+  "line": 11591,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "overlay",
+  "line": 11594,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "modalDiv",
+  "line": 11598,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "content",
+  "line": 11602,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "html",
+  "line": 11605,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "emp",
+  "line": 11670,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "cardContainer",
+  "line": 11674,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "canUpload",
+  "line": 11676,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "emp",
+  "line": 11682,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "cardContainer",
+  "line": 11684,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "_pwaPrompt",
+  "line": 11704,
+  "section": "PWA"
+ },
+ {
+  "name": "loginSub",
+  "line": 11824,
+  "section": "INITIALIZATION"
+ },
+ {
+  "name": "content",
+  "line": 11862,
+  "section": "INITIALIZATION"
+ },
+ {
+  "name": "COMMAND_ITEMS",
+  "line": 11910,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "commandPaletteSelected",
+  "line": 11936,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "commandPaletteFiltered",
+  "line": 11937,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "keyboardSequence",
+  "line": 12030,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "keyboardTimeout",
+  "line": 12031,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "_liveClockTimer",
+  "line": 12196,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "_origToast",
+  "line": 12249,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "_origRenderPage",
+  "line": 12286,
+  "section": "ENHANCEMENT PACK"
+ }
+]

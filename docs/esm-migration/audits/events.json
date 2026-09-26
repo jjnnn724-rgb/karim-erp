@@ -1,0 +1,276 @@
+{
+ "listeners": [
+  {
+   "where": "app.js",
+   "line": 801,
+   "event": "keydown"
+  },
+  {
+   "where": "app.js",
+   "line": 1015,
+   "event": "beforeunload"
+  },
+  {
+   "where": "app.js",
+   "line": 1956,
+   "event": "drop"
+  },
+  {
+   "where": "app.js",
+   "line": 8028,
+   "event": "input"
+  },
+  {
+   "where": "app.js",
+   "line": 11595,
+   "event": "click"
+  },
+  {
+   "where": "app.js",
+   "line": 11705,
+   "event": "beforeinstallprompt"
+  },
+  {
+   "where": "app.js",
+   "line": 11726,
+   "event": "online"
+  },
+  {
+   "where": "app.js",
+   "line": 11727,
+   "event": "offline"
+  },
+  {
+   "where": "app.js",
+   "line": 11798,
+   "event": "click"
+  },
+  {
+   "where": "app.js",
+   "line": 11803,
+   "event": "keydown"
+  },
+  {
+   "where": "app.js",
+   "line": 11813,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "app.js",
+   "line": 12008,
+   "event": "click"
+  },
+  {
+   "where": "app.js",
+   "line": 12019,
+   "event": "keydown"
+  },
+  {
+   "where": "app.js",
+   "line": 12032,
+   "event": "keydown"
+  },
+  {
+   "where": "app.js",
+   "line": 12163,
+   "event": "click"
+  },
+  {
+   "where": "app.js",
+   "line": 12314,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/icons.js",
+   "line": 188,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/icons.js",
+   "line": 197,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/scanner.js",
+   "line": 50,
+   "event": "keydown"
+  },
+  {
+   "where": "js/realtime.js",
+   "line": 187,
+   "event": "click"
+  },
+  {
+   "where": "js/realtime.js",
+   "line": 193,
+   "event": "click"
+  },
+  {
+   "where": "js/realtime.js",
+   "line": 633,
+   "event": "visibilitychange"
+  },
+  {
+   "where": "js/realtime.js",
+   "line": 638,
+   "event": "click"
+  },
+  {
+   "where": "js/realtime.js",
+   "line": 701,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/db-constraints-client.js",
+   "line": 162,
+   "event": "submit"
+  },
+  {
+   "where": "js/db-constraints-client.js",
+   "line": 179,
+   "event": "blur"
+  },
+  {
+   "where": "js/db-constraints-client.js",
+   "line": 213,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 54,
+   "event": "beforeinstallprompt"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 74,
+   "event": "online"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 75,
+   "event": "offline"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 424,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 464,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 570,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 649,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1240,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1262,
+   "event": "change"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1886,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1921,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1934,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 1963,
+   "event": "click"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 2062,
+   "event": "keydown"
+  },
+  {
+   "where": "js/pos.js",
+   "line": 2166,
+   "event": "visibilitychange"
+  },
+  {
+   "where": "js/bilingual.js",
+   "line": 392,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 43,
+   "event": "click"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 45,
+   "event": "click"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 47,
+   "event": "click"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 55,
+   "event": "click"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 58,
+   "event": "click"
+  },
+  {
+   "where": "js/pos-orders.js",
+   "line": 486,
+   "event": "DOMContentLoaded"
+  },
+  {
+   "where": "index.html",
+   "line": 240,
+   "event": "load"
+  }
+ ],
+ "customEvents": [],
+ "socketEvents": {
+  "connect": 1,
+  "pong_check": 1,
+  "disconnect": 1,
+  "reconnect_attempt": 1,
+  "reconnect_failed": 1,
+  "clients_list": 1,
+  "device_connected": 1,
+  "device_disconnected": 1,
+  "state_updated": 1,
+  "sale:completed": 1,
+  "yarasoft:imported": 1,
+  "yarasoft:needs-mapping": 1,
+  "yarasoft:oracle-sync": 1,
+  "biometric:punch": 1,
+  "biometric:synced": 1,
+  "biometric:unmapped": 1,
+  "entity_changed": 1,
+  "incoming_notification": 1,
+  "notification": 1
+ }
+}

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <title>مطاعم الشرفه العالمي — نظام إدارة المطاعم المتكامل</title>
+  <meta name="description" content="نظام إدارة مطاعم متكامل: كاشير، مخزون، مصاريف، تقارير، وموارد بشرية">
+  <meta name="theme-color" content="#b45309">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon" type="image/png" href="/app/assets/icon-192.png">
+  <link rel="apple-touch-icon" href="/app/assets/icon-192.png">
+  <link rel="manifest" href="/app/manifest.json">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Karim ERP">
+
+  <link rel="preload" as="style" href="css/offline-fonts.css">
+  <link rel="stylesheet"
+        href="css/offline-fonts.css"
+        media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet"
+          href="css/offline-fonts.css">
+  </noscript>
+
+  <link rel="preload" as="style" href="css/design-tokens.css">
+  <link rel="preload" as="style" href="css/styles.css">
+  <link rel="preload" as="script" href="/app/js/app.js?v=4.7.117">
+  <link rel="preload" as="script" href="/app/js/icons.js">
+  <link rel="preload" as="image" href="/app/assets/icon-192.png">
+
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/realtime.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/scanner.css" media="print" onload="this.media='all'">
+
+  <script src="/app/vendor/chart.umd.min.js" async></script>
+  <script src="/app/vendor/xlsx.full.min.js" async></script>
+  <script src="/app/vendor/html5-qrcode.min.js" async></script>
+  <script src="/socket.io/socket.io.js" defer></script>
+</head>
+
+<body>
+
+  <div id="toasts"></div>
+
+  <div id="offlineBar" style="display:none;position:fixed;top:0;right:0;left:0;z-index:9999;background:#b91c1c;color:#fff;text-align:center;padding:8px;font-size:13px">⚠ لا يوجد اتصال بالشبكة — وضع عدم الاتصال</div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div class="loading-label">جارٍ التحميل...</div>
+  </div>
+
+  <div class="command-palette" id="commandPalette">
+    <div class="command-palette-box">
+        <input
+          type="text"
+          class="command-input"
+          id="commandInput"
+          placeholder="ابحث عن أي شيء... صفحة، إجراء، قائمة"
+          aria-label="البحث السريع عن صفحة أو إجراء أو قائمة"
+          role="searchbox"
+        >
+      <div class="command-results" id="commandResults"></div>
+    </div>
+  </div>
+
+  <button class="fab" id="fabBtn" onclick="toggleFabMenu()" data-tooltip="إجراءات سريعة" aria-label="إجراءات سريعة">
+    <i class="ji" data-i="plus"></i>
+  </button>
+
+  <div class="fab-menu" id="fabMenu">
+    <div class="fab-action" onclick="go('dashboard',null);toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="لوحة التحكم">
+      <div class="fab-action-icon"><i class="ji" data-i="chart"></i></div>
+      <span>لوحة التحكم</span>
+    </div>
+
+    <div class="fab-action" onclick="showDispatchRequestModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="طلب صرف">
+      <div class="fab-action-icon"><i class="ji" data-i="package"></i></div>
+      <span>طلب صرف</span>
+    </div>
+
+    <div class="fab-action" onclick="showAddRevenueModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إضافة إيراد">
+      <div class="fab-action-icon"><i class="ji" data-i="banknote"></i></div>
+      <span>إضافة إيراد</span>
+    </div>
+
+    <div class="fab-action" onclick="showAddExpenseModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إضافة مصروف">
+      <div class="fab-action-icon"><i class="ji" data-i="wallet"></i></div>
+      <span>إضافة مصروف</span>
+    </div>
+
+    <div class="fab-action fab-action-danger" onclick="toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إغلاق">
+      <div class="fab-action-icon"><i class="ji" data-i="x"></i></div>
+      <span>إغلاق</span>
+    </div>
+  </div>
+
+  <div id="login">
+    <div class="login-box">
+      <div class="login-logo" id="loginLogo"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي" loading="eager"></div>
+
+      <div class="login-title" id="loginTitle">مطاعم الشرفه العالمي</div>
+      <div class="login-sub" id="loginSub">نظام إدارة المطاعم المتكامل · الإصدار <span id="loginVersion" class="mono">4.7.2</span></div>
+
+      <div class="fg">
+        <label id="luLabel" class="fg-label">
+          <i class="ji" data-i="user"></i>
+          اسم المستخدم
+        </label>
+        <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="username" autocapitalize="none" spellcheck="false" required aria-required="true">
+      </div>
+
+      <div class="fg">
+        <label id="lpLabel" class="fg-label">
+          <i class="ji" data-i="lock"></i>
+          كلمة المرور
+        </label>
+        <input
+          type="password"
+          id="lp"
+          placeholder="كلمة المرور"
+          autocomplete="current-password"
+          required
+          aria-required="true"
+        >
+      </div>
+
+      <div id="lerr" class="form-error" role="alert"></div>
+
+      <button class="btn-premium" id="loginBtn" type="button">
+        <i class="ji" data-i="log-in"></i>
+        تسجيل الدخول
+      </button>
+
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" onclick="showForgotPasswordModal();return false;" style="color:var(--gold,#c9a227);font-size:13px;text-decoration:none">
+          <i class="ji" data-i="key"></i> نسيت كلمة المرور؟
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-top:10px">
+        <button class="btn btn-sm" id="pwaInstallBtn" onclick="pwaInstall()" style="display:none"><i class="ji" data-i="arrow-down"></i> ثبّت التطبيق على الجهاز</button>
+      </div>
+
+      <div class="login-hint">
+        <span class="kbd">Ctrl + K</span>
+        للبحث السريع بعد الدخول
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="app-layout">
+
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo" id="logoDisplay"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي" loading="lazy"></div>
+
+          <div class="sidebar-brand">
+            <div class="sidebar-name" id="restNameDisplay">مطاعم الشرفه العالمي</div>
+            <div class="sidebar-role" id="roleIndicator">مدير النظام</div>
+            <div class="sidebar-date" id="dateDisp"></div>
+          </div>
+        </div>
+
+        <div id="navContainer"></div>
+
+        <div class="sidebar-footer">
+          <button class="sb-toggle" onclick="toggleLang()">
+            <i class="ji" data-i="globe"></i> English
+          </button>
+          <button class="sb-toggle" onclick="toggleTheme()">
+            <i class="ji" data-i="sun"></i> <span id="themeToggleLabel">الوضع الفاتح</span>
+          </button>
+          <button class="sb-toggle" onclick="toggleSidebar()">
+            <i class="ji" data-i="menu"></i> القائمة
+          </button>
+
+          <button class="sb-toggle sb-logout" onclick="doLogout()">
+            <i class="ji" data-i="log-out"></i> خروج
+          </button>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div class="page-title" id="pageTitle">لوحة التحكم</div>
+
+          <div class="topbar-right">
+            <div class="notification-bell" onclick="showNotifications()" data-tooltip="الإشعارات" role="button" tabindex="0" data-kb-activate aria-label="الإشعارات">
+              <i class="ji" data-i="bell"></i>
+              <span class="badge bdg-red" id="notifBadge" style="display:none">0</span>
+            </div>
+
+            <div class="topbar-btn" onclick="toggleLang()" role="button" tabindex="0" data-kb-activate aria-label="تبديل اللغة"><i class="ji" data-i="globe"></i> EN</div>
+            <div class="topbar-btn" onclick="toggleTheme()" data-tooltip="تبديل المظهر" role="button" tabindex="0" data-kb-activate aria-label="تبديل المظهر"><i class="ji" data-i="moon"></i></div>
+
+            <a
+              href="/app/pos.html"
+              target="_blank"
+              class="btn btn-sm btn-green"
+            >
+              <i class="ji" data-i="shopping-cart"></i>
+              الكاشير POS
+            </a>
+
+            <button
+              class="btn btn-gold btn-sm"
+              id="quickDispatchBtn"
+              onclick="showDispatchRequestModal()"
+              style="display:none"
+            >
+              <i class="ji" data-i="package"></i> طلب صرف
+            </button>
+          </div>
+        </div>
+
+        <div id="content"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="modals"></div>
+
+  <script src="js/icons.js" defer></script>
+  <script src="js/vendor/qrcode.min.js" defer></script>
+  <script src="js/db-constraints-client.js" defer></script>
+  <script src="js/app.js?v=4.7.117" defer></script>
+  <script src="js/scanner.js" defer></script>
+  <script src="js/realtime.js?v=4.7.117" defer></script>
+  <script>
+    if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(() => {});
+      });
+    }
+  </script>
+
+</body>
+</html>
+
