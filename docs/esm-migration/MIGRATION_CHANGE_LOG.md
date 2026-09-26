@@ -60,4 +60,19 @@
 
 ---
 
-## EXTRACTION-004 — (التالي المخطط: ui/toast + ui/load — toast/showLoad/hideLoad مع معالجة سطري IIFE — لم يُنفذ بعد)
+## EXTRACTION-004 — ui/toast (toast + طبقة التحميل)
+
+| الحقل | القيمة |
+|---|---|
+| **التاريخ** | 2026-09-27 |
+| **Commit** | `refactor(ui): extract toast and loading overlay from app.js (EXTRACTION-004, BRIDGE-004)` |
+| **الأصل** | app.js: `toast` (سطر 256 بعد استخراج 003) + `showLoad/hideLoad` (266-267) + 3 سطور IIFE غير محمية (11305-11308) |
+| **الوجهة** | `frontend/app/js/ui/toast.js` (new, ESM — أول وحدة في مجلد ui) + جسر في main.js |
+| **الجسر** | BRIDGE-004: `window.toast`, `window.showLoad`, `window.hideLoad` — realtime.js مستهلك خارجي (window.toast ×11) |
+| **اعتماد خارجي محفوظ** | `enhancedToast()` إعلان top-level في app.js (Enhancement Pack) — يُحل من window وقت النداء؛ `esc()` عبر BRIDGE-003 |
+| **index.html / sw.js** | `?v=4.7.121` + `CACHE_VERSION 4.7.16` + `ui/toast.js` في precache |
+| **التحقق** | node --check ✓ · فحص حي: الدوال الثلاث على window، **إطلاق toast حقيقي ظهر على الشاشة** (سلسلة كاملة: جسر → موديول → esc → enhancedToast)، boot=dashboard، socket حي ✓ |
+
+---
+
+## EXTRACTION-005 — (التالي المخطط: core/state + core/api — لم يُنفذ بعد)

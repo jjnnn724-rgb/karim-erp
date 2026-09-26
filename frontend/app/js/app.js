@@ -253,7 +253,7 @@ window.STATE = STATE;  // expose for realtime.js entity_changed sync
 // UTILS
 // ============================================
 // المنسقات ونظام التاريخ الهجري (uid..fDT): نُقلت إلى js/core/utils.js (يجسر عبر js/main.js — BRIDGE-003)
-function toast(msg,type='success'){ try{ enhancedToast(esc(msg),type); }catch(e){} }
+// toast: نُقل إلى js/ui/toast.js (يجسر عبر js/main.js — BRIDGE-004)
 function cleanNotificationText(value, max=320){
   let text = value == null ? '' : String(value);
   try {
@@ -263,8 +263,7 @@ function cleanNotificationText(value, max=320){
   text = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
-function showLoad(){ const l=document.getElementById('loading'); if(l) {l.classList.add('show');} }
-function hideLoad(){ const l=document.getElementById('loading'); if(l) {l.classList.remove('show');} }
+// showLoad/hideLoad: نُقلا إلى js/ui/toast.js (يجسر عبر js/main.js — BRIDGE-004)
 function destroyCharts(){ Object.values(STATE.charts).forEach(c=>{try{c.destroy();}catch(e){}}); STATE.charts={}; }
 function metricCard(label,value,cls){ return `<div class="mcard"><div class="mcard-label">${label}</div><div class="mcard-val ${cls}">${value}</div></div>`; }
 // سياسة الإشعارات على الشاشة: الجرس والشارة والمركز ومنبثقات الأحداث لمدير النظام فقط.
@@ -11303,10 +11302,10 @@ generateReport();
   w.go = typeof go !== 'undefined' ? go : function(){};
   // Modals & toasts
   w.closeModal = typeof closeModal !== 'undefined' ? closeModal : function(){};
-  w.toast = toast;
+  // toast → js/ui/toast.js (BRIDGE-004 — main.js يعرّفها على window قبل app.js)
   w.showModal = typeof showModal !== 'undefined' ? showModal : function(){};
-  w.showLoad = showLoad;
-  w.hideLoad = hideLoad;
+  // showLoad → js/ui/toast.js (BRIDGE-004)
+  // hideLoad → js/ui/toast.js (BRIDGE-004)
   // Health/init
   w.initDatabase = initDatabase;
   // I18n login screen
