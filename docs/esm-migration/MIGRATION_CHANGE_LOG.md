@@ -24,4 +24,22 @@
 
 ---
 
-## EXTRACTION-002 — (التالي المخطط: core/i18n — لم يُنفذ بعد)
+## EXTRACTION-002 — I18N core (قاموس + لغة)
+
+| الحقل | القيمة |
+|---|---|
+| **التاريخ** | 2026-09-27 |
+| **Commit** | `refactor(i18n): extract I18N core from app.js (EXTRACTION-002, BRIDGE-002)` |
+| **الأصل** | `frontend/app/js/app.js:256–549` (بنرات + `I18N` + `t` + `readLangLocal` + `persistLangLocal` + `ROLE_NAMES` + `MENU_STRINGS` + `applyI18nMaps` + `applyLangAttrs` + `applyLoginI18n`) — 293 سطرًا |
+| **الوجهة** | `frontend/app/js/core/i18n.js` (new, ESM) + جسر في `js/main.js` |
+| **النقل** | **byte-identical مُتحقق منه آليًا** (22,930 حرفًا مطابقة لقطعة الـ baseline) |
+| **الجسر** | BRIDGE-002: 9 bindings على window (`I18N`, `t`, `readLangLocal`, `persistLangLocal`, `ROLE_NAMES`, `MENU_STRINGS`, `applyI18nMaps`, `applyLangAttrs`, `applyLoginI18n`) — استهلاك app.js بأسماء bare يُحل من window |
+| **اعتماد خارجي محفوظ** | `STATE.lang` / `STATE.settings` تُقرأ من window وقت الاستدعاء (تقييم الموديول بلا آثار جانبية — بيانات فقط) |
+| **قرار تصميمي موثق** | قسم "I18N" الأصلي (257–915) كان مزيجًا (ترجمة + أدوات + إشعارات + دردشة) — الاستخراج اقتصر على نواة الترجمة النقية فقط (cohesion > size)؛ البقية تبقى لاستخراجات لاحقة (utils → ui/notifications) |
+| **index.html** | مزامنة preload القديم (4.7.117→4.7.119) + رفع `main.js`/`app.js`/`realtime.js` إلى `?v=4.7.119` |
+| **sw.js** | `CACHE_VERSION` 4.7.13→**4.7.14** + إضافة `core/i18n.js` للـ precache |
+| **التحقق** | `node --check app.js` ✓ (12,031 سطرًا) · مقارنة بايتية ✓ · **اختبار سلوكي حي:** تبديل اللغة AR→EN (`dir=ltr`, `t('login.btn')='Sign In'`, `localStorage.karim_lang='en'`, إعادة رسم كاملة) ثم العودة EN→AR عبر مسار الإنتاج الرسمي `toggleLang()` (`rtl`, `'تسجيل الدخول'`, `'ar'`) ✓ |
+
+---
+
+## EXTRACTION-003 — (التالي المخطط: core/utils — esc/today/nowTime/fN/fC/fD/fDT/metricCard + الهجري — لم يُنفذ بعد)

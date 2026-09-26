@@ -11,7 +11,20 @@
  */
 
 import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js';
+import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
 window.pwaUpdateOfflineBar = pwaUpdateOfflineBar;
+
+// BRIDGE-002: I18N core — extracted from app.js (2026-09-27)
+// app.js consumes these via bare identifiers (classic-script global lookup → window).
+window.I18N = I18N;
+window.t = t;
+window.readLangLocal = readLangLocal;
+window.persistLangLocal = persistLangLocal;
+window.ROLE_NAMES = ROLE_NAMES;
+window.MENU_STRINGS = MENU_STRINGS;
+window.applyI18nMaps = applyI18nMaps;
+window.applyLangAttrs = applyLangAttrs;
+window.applyLoginI18n = applyLoginI18n;
