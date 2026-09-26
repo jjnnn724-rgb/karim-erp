@@ -6,28 +6,7 @@ const DB_NAME = 'RestaurantDB';
 const DB_VERSION = 2;
 const API_BASE = window.location.origin + '/api';
 
-// ============================================
-// DATABASE-BACKED ENTITY API
-// ────────────────────────────────────────────
-// Every one of these already has a real PostgreSQL table + a whitelisted,
-// authenticated REST endpoint on the server (backend/schema-registry.js +
-// backend/server.js generic CRUD routes). This is the single source of
-// truth from now on — the old approach of dumping the whole STATE object
-// into one JSON blob (`app_state`) is kept ONLY for `settings`/UI prefs.
-// ============================================
-const PERSISTED_ENTITIES = [
-    'users', 'departments', 'revenues', 'expenses', 'inventory', 'inventoryTx',
-    'dispatches', 'recipes', 'purchaseInvoices', 'kitchenReturns',
-    'employees', 'attendance', 'leaveRequests', 'hrDepartments',
-    'leaveTypes', 'payroll', 'shelves', 'weightReadings', 'notifications',
-    'salary_advances', 'payroll_adjustments', 'employee_contracts', 'employee_evaluations', 'payroll_runs',
-];
-
-// بعض الأدوار لا تملك قراءة كل الكيانات — الاستبعاد هنا يمنع ضجيج 403 في الكونسول عند الإقلاع
-// (لوحة رئيس القسم لا تحتاج المستخدمين ولا مسيرات الرواتب — لصفحات الإدارة حصرًا)
-const ROLE_ENTITY_EXCLUSIONS = {
-    dept_head: ['users', 'payroll'],
-};
+// سجل الكيانات (DATABASE-BACKED ENTITY API): نُقل إلى js/core/state.js (BRIDGE-005)
 
 async function apiFetch(path, options = {}) {
     const buildHeaders = () => {
@@ -231,24 +210,7 @@ menus: {
 }
 };
 
-const STATE = {
-// <i class=ji data-i=alert-triangle></i> SECURITY: users[] is intentionally empty. Authentication is handled
-// server-side via POST /api/auth/login (JWT). Client-side credential
-// storage is forbidden — see doLogin() below.
-users: [],
-currentUser: null,
-departments: [], revenues: [], expenses: [], inventory: [], inventoryTx: [], dispatches: [], recipes: [], purchaseInvoices: [], kitchenReturns: [], suppliers: [], supplierPayments: [],
-purchaseRequests: [], // طلبات شراء النواقص (مخزن → شيف → مدير عام) — من GET /api/warehouse/purchase-requests
-employees: [], attendance: [], leaveRequests: [], hrDepartments: [], leaveTypes: [], payroll: [],
-salary_advances: [], payroll_adjustments: [], employee_contracts: [], employee_evaluations: [], payroll_runs: [],
-shelves: [], weightReadings: [],
-settings: { name:'مطاعم الشرفه العالمي', logo:'<i class=ji data-i=utensils></i>', logoB64:null, currency:'SAR', lowStockAlert:true, workStartHour:9 },
-recipeCatalog: {},
-page: 'dashboard', dept: null, charts: {}, lang: 'ar', theme: 'light',
-notifications: [],
-deptPanel: null   // Task 28: لوحة رئيس القسم — من GET /api/warehouse/dept-panel
-};
-window.STATE = STATE;  // expose for realtime.js entity_changed sync
+// STATE المركزي + جسر window.STATE: نُقلا إلى js/core/state.js (يجسر عبر js/main.js — BRIDGE-005)
 // ============================================
 // UTILS
 // ============================================

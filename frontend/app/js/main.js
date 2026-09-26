@@ -14,6 +14,7 @@ import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js';
 import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js';
 import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js';
 import { toast, showLoad, hideLoad } from './ui/toast.js';
+import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -53,3 +54,9 @@ window.fDT = fDT;
 window.toast = toast;
 window.showLoad = showLoad;
 window.hideLoad = hideLoad;
+
+// BRIDGE-005: central STATE + entity registry — extracted from app.js (2026-09-27)
+// window.STATE is the frozen realtime.js contract (entity_changed sync, 17 refs).
+window.STATE = STATE;
+window.PERSISTED_ENTITIES = PERSISTED_ENTITIES;
+window.ROLE_ENTITY_EXCLUSIONS = ROLE_ENTITY_EXCLUSIONS;
