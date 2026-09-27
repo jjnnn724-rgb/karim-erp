@@ -21,10 +21,8 @@ const find = (re, from = 0) => { for (let i = from; i < lines.length; i++) if (r
 
 let s0, s1, span;
 if (mode === 'audit' || mode === 'move') {
-  const titleLine = find(new RegExp(startAnchor));     // first line whose text matches the section title
-  s0 = /^\/\/\s*=+\s*$/.test(lines[titleLine - 1] || '') && !/^\/\/\s*=+\s*$/.test(lines[titleLine] || '')
-    ? titleLine - 2   // layout: banner / TITLE / banner → include the top banner
-    : titleLine - 1;
+  const titleLine = find(new RegExp(startAnchor));
+  s0 = titleLine - 1;                                  // top banner sits directly above the title line
   const endTitle = find(new RegExp(endAnchor), s0 + 1); // end anchor searched AFTER span start
   s1 = endTitle - 2;                                   // line before end anchor's top banner
   span = lines.slice(s0, s1 + 1);
