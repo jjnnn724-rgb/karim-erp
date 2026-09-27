@@ -104,6 +104,9 @@ Object.assign(window, finance);     // BRIDGE-014
 const hr = await import('./features/hr.js?v=4.7.136');
 Object.assign(window, hr);          // BRIDGE-015
 
+const yarasoft = await import('./features/yarasoft.js?v=4.7.137');
+Object.assign(window, yarasoft);    // BRIDGE-016
+
 const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
 
