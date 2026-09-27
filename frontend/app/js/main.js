@@ -28,6 +28,9 @@ import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.7.131';
 import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.7.131';
 import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.131';
 import { CONFIG, ROLES } from './core/config.js?v=4.7.131';
+import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.7.142';
+import * as authNav from './features/auth-navigation.js?v=4.7.142';
+import * as pageRouter from './features/page-router.js?v=4.7.142';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -85,6 +88,12 @@ window.serverErrorInfo = serverErrorInfo;
 window.CONFIG = CONFIG;
 window.ROLES = ROLES;
 
+// BRIDGE-025: storage — extracted from app.js (2026-09-27)
+window.initDatabase = initDatabase;
+window.loadData = loadData;
+window.saveData = saveData;
+window.uiPreferencesPayload = uiPreferencesPayload;
+
 // BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
 const smartCard = await import('./features/smart-card.js?v=4.7.131');
 Object.assign(window, smartCard);   // BRIDGE-008
@@ -127,6 +136,12 @@ Object.assign(window, dashboard);     // BRIDGE-022
 
 const employeePortal = await import('./features/employee-portal.js?v=4.7.141');
 Object.assign(window, employeePortal); // BRIDGE-023
+
+const authNavNS = await import('./features/auth-navigation.js?v=4.7.142');
+Object.assign(window, authNavNS);     // BRIDGE-026
+
+const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
+Object.assign(window, pageRouterNS);  // BRIDGE-027
 
 const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
