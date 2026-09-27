@@ -98,6 +98,9 @@ Object.assign(window, zkteco);      // BRIDGE-010
 const kitchen = await import('./features/kitchen.js?v=4.7.134');
 Object.assign(window, kitchen);     // BRIDGE-013
 
+const finance = await import('./features/finance.js?v=4.7.135');
+Object.assign(window, finance);     // BRIDGE-014
+
 const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
 
