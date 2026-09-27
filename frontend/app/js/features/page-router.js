@@ -11,14 +11,27 @@ if(!modalDiv){ modalDiv=document.createElement('div'); modalDiv.id='modals'; doc
 modalDiv.innerHTML=`<div class="overlay open"><div class="modal ${extraClass}">${content}</div></div>`;
 const overlay=modalDiv.querySelector('.overlay');
 overlay.addEventListener('click',(e)=>{ if(e.target===overlay) {closeModal();} });
+// فتح النافذة من أعلى محتواها + قفل تمرير الخلفية (الموبايل/الشاشات الصغيرة)
+const m=overlay.querySelector('.modal');
+if(m){m.scrollTop=0;}
+_updateBodyScrollLock();
+}
+function _updateBodyScrollLock(){
+const openCount=document.querySelectorAll('#modals .overlay.open').length;
+document.body.style.overflow = openCount>0 ? 'hidden' : '';
 }
 function closeModal(){
 const modalDiv=document.getElementById('modals');
 if(modalDiv) {modalDiv.innerHTML='';}
+if(typeof _updateBodyScrollLock==='function'){_updateBodyScrollLock();}
 }
 async function renderPage(){
 const content=document.getElementById('content');
 if(!content){return;}
+// تصفير التمرير عند تغيير الصفحة فقط (لا عند إعادة رسم نفس الصفحة كالفلترة/الترقيم)
+const pageChanged = (renderPage._lastPage !== STATE.page);
+renderPage._lastPage = STATE.page;
+if (pageChanged) { try { content.scrollTop = 0; window.scrollTo(0, 0); } catch (_) {} }
 content.style.opacity='0'; destroyCharts();
 let html='';
 switch(STATE.page){
