@@ -352,10 +352,20 @@ showModal(`
 <div id="modalSmartCard"></div>
 <div class="workflow-banner u-mt16"><strong><i class=ji data-i=user-check></i> بصمة الحضور:</strong> ${emp.deviceUserId?`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> مربوط برقم البصمة ${esc(String(emp.deviceUserId))}</span>`:'<span class="badge bdg-orange"><i class=ji data-i=circle-x></i> غير مربوط</span> <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" onclick="closeModal();editEmployee(this.dataset.eid)" data-eid="${emp.id}">ربط رقم البصمة</button>'}</div>
 <div class="workflow-banner u-mt16"><strong><i class=ji data-i=key></i> حساب الدخول والصلاحيات:</strong> ${linkedUser?`@${esc(linkedUser.username)} — ${esc(ROLES[linkedUser.role]?.name||linkedUser.role)} · ${linkedUser.active!==false?'نشط':'موقوف'} <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" onclick="closeModal();editUser(this.dataset.eid)" data-eid="${linkedUser.id}">تعديل الحساب</button>`:`غير منشأ <button class="btn btn-green btn-sm" style="margin-inline-start:8px" onclick="closeModal();showCreateEmployeeAccountModal(this.dataset.eid)" data-eid="${emp.id}">إنشاء حساب</button>`}</div>
-${attendanceRecords.length>0?`
 <div class="tbl-wrap u-mt16">
 <div class="tbl-hd"><h3><i class=ji data-i=timer></i> سجل الحضور والانصراف</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="printLuxCard('${emp.id}')"><i class=ji data-i=id-card></i> البطاقة الفاخرة</button><button class="btn btn-green btn-sm" onclick="printEmployeeAttendanceDay('${emp.id}')"><i class=ji data-i=printer></i> اليوم</button><button class="btn btn-blue btn-sm" onclick="printEmployeeAttendanceMonth('${emp.id}')"><i class=ji data-i=calendar></i> الشهر كامل</button></div></div>
-<div class="tbl-scroll">
+<div class="u-mt12" style="background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.25);border-radius:10px;padding:12px">
+<strong style="font-size:13px"><i class=ji data-i=calendar-search></i> بحث بفترة مخصصة (من — إلى):</strong>
+<div class="u-row-wrap u-mt8" style="gap:8px;align-items:center">
+<label style="font-size:12px">من</label><input type="date" id="empAttFrom" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 8px;border-radius:8px;border:1px solid #d1d5db">
+<label style="font-size:12px">إلى</label><input type="date" id="empAttTo" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 8px;border-radius:8px;border:1px solid #d1d5db">
+<button class="btn btn-blue btn-sm" onclick="searchEmployeeAttendanceRange('${emp.id}')"><i class=ji data-i=search></i> بحث</button>
+<button class="btn btn-green btn-sm" onclick="printEmployeeAttendanceRange('${emp.id}')"><i class=ji data-i=printer></i> طباعة الفترة</button>
+</div>
+<div id="empAttRangeResults"></div>
+</div>
+${attendanceRecords.length>0?`
+<div class="tbl-scroll u-mt12">
 <table>
 <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th></tr></thead>
 <tbody>
@@ -366,8 +376,8 @@ return `<tr><td>${fD(a.date)}</td><td class="c-green">${a.checkIn||'—'}</td><t
 </tbody>
 </table>
 </div>
-</div>
 `:''}
+</div>
 ${leaveRecords.length>0?`
 <div class="tbl-wrap u-mt16">
 <div class="tbl-hd"><h3><i class=ji data-i=calendar></i> آخر الإجازات</h3></div>

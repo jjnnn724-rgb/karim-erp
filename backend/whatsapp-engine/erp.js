@@ -40,6 +40,13 @@ async function hrAttendanceLookup(pool, cfg, store, args, rec) {
     text = text.replace(/(?<!\d)(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?(?!\d)/g, (_, d, m, y) => {
         const iso = toISO(d, m, y || new Date().getFullYear()); if (iso) {dates.push(iso);} return ' ';
     });
+    // «آخر 5 أيام» / «آخر أسبوع» / «آخر شهر» — مدة نسبية تُحسب من اليوم وتُنظَّف من الاسم
+    const rel = text.match(/(?:اخر|آخر|أخر)\s*(\d{1,3})\s*(?:يوم|أيام|ايام)/)
+        || text.match(/(?:اخر|آخر|أخر)\s*(?:اسبوع|أسبوع)/)
+        || text.match(/(?:اخر|آخر|أخر)\s*(?:شهر)/);
+    if (rel) {text = text.replace(rel[0], ' ');}
+    // تنظيف كلمات الوصل المتبقية بعد شيل التواريخ («من X الى Y» → الاسم فقط)
+    for (let i = 0; i < 3; i++) {text = text.replace(/(^|\s)(من|الى|إلى|الي)(?=\s|$)/g, ' ');}
     const nameQ = norm(text).trim().replace(/\s+/g, ' ');
     if (!nameQ) {return 'اكتب الاسم: حضور <اسم الموظف> [من تاريخ] [إلى تاريخ] — مثال: حضور أحمد 1/9 15/9';}
     const emps = (await withTimeout(pool.query(`SELECT id, name FROM employees WHERE status='active'`), cfg.erpTimeoutMs, 'ERP')).rows;
@@ -55,6 +62,13 @@ async function hrAttendanceLookup(pool, cfg, store, args, rec) {
     if (ds.length === 1) { from = ds[0]; to = ds[0]; }
     else if (ds.length >= 2) { from = ds[0]; to = ds[1]; }
     if (from > to) {[from, to] = [to, from];}
+    if (rel) {
+        const n = /^\d+$/.test(String(rel[1] || '')) ? Math.min(62, Number(rel[1])) : (/اسبوع|أسبوع/.test(rel[0]) ? 7 : 30);
+        const start = new Date(today + 'T00:00:00');
+        start.setDate(start.getDate() - (n - 1));
+        const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        from = iso(start); to = today;
+    }
     if ((new Date(to) - new Date(from)) / 86400000 > 62) {
         return 'المدة طويلة — حد أقصى 62 يوم. مثال: حضور أحمد 1/9 15/9';
     }
@@ -81,6 +95,23 @@ async function hrAttendanceLookup(pool, cfg, store, args, rec) {
     const lastEntry = latest.rows[0] || {};
     try { await store.logEvent('erp_command', rec.remoteJid, `att_lookup:${emp.name}`); } catch (_) {}
     const h = Math.floor((s.mins || 0) / 60), mm = (s.mins || 0) % 60;
+    // سجل الأيام: حضور وانصراف كل يوم في الفترة (حتى 14 سطرًا ليبقى الرسالة مضغوطة)
+    const dayRows = (await withTimeout(pool.query(
+        `SELECT date, "checkIn", "checkOut", "workMinutes", late
+           FROM attendance WHERE "employeeId" = $1 AND date >= $2 AND date <= $3
+           ORDER BY date DESC LIMIT 14`, [emp.id, from, to]
+    ), cfg.erpTimeoutMs, 'ERP')).rows;
+    const dayName = (iso) => { try { return new Intl.DateTimeFormat('ar', { weekday: 'long', timeZone: 'Asia/Riyadh' }).format(new Date(iso + 'T12:00:00')); } catch (_) { return ''; } };
+    const shortDay = (iso) => iso.slice(5).replace('-', '/');
+    const dayLines = dayRows.map((d) => {
+        const mins = Number(d.workMinutes || 0);
+        const dur = mins > 0 ? ` (${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')})` : '';
+        const lateTxt = d.late ? ' ⏰تأخير' : '';
+        const inTxt = d.checkIn || '—';
+        const outTxt = d.checkOut || '—';
+        return `▪ ${dayName(d.date)} ${shortDay(d.date)}: دخول ${inTxt} — خروج ${outTxt}${dur}${lateTxt}`;
+    });
+    const rangeNote = (s.days > dayRows.length) ? `\n(آخر ${dayRows.length} يوم من الفترة — المجموع ${s.days} يوم)` : '';
     return [
         `حضور ${emp.name}`,
         `${from}${from === to ? '' : ' ← ' + to}`,
@@ -89,6 +120,9 @@ async function hrAttendanceLookup(pool, cfg, store, args, rec) {
         `أيام مسجلة: ${s.days} | حاضر: ${s.present}`,
         `نسي خروج: ${s.miss_out} | نسي دخول: ${s.miss_in}`,
         `إجمالي الساعات: ${h}:${String(mm).padStart(2, '0')}`,
+        '━━━━━━━━━━',
+        ...(dayLines.length ? dayLines : ['لا سجلات في هذه الفترة']),
+        ...(rangeNote ? [rangeNote] : []),
     ].join('\n');
 }
 

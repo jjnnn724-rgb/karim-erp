@@ -546,6 +546,63 @@ if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة ا
 try{ const report = await fetchEmployeeAttendanceReport(empId, range.from, range.to); printAttendanceReport(report, `كشف حضور وانصراف الشهر ${range.from.slice(0,7)}`, printWin); }
 catch(e){ toast(e.message||'تعذر تحميل كشف الشهر','error'); }
 }
+// بحث حضور الموظف بفترة مخصصة (من — إلى) من داخل بطاقة الموظف
+async function searchEmployeeAttendanceRange(empId){
+const from=document.getElementById('empAttFrom')?.value||'';
+const to=document.getElementById('empAttTo')?.value||'';
+if(!from||!to){toast('اختر تاريخ البداية والنهاية','warning');return;}
+if(to<from){toast('تاريخ النهاية يسبق تاريخ البداية','warning');return;}
+const box=document.getElementById('empAttRangeResults');
+if(!box){return;}
+box.innerHTML='<div class="u-mt12 text-muted">جارٍ تحميل السجل...</div>';
+try{
+const report=await fetchEmployeeAttendanceReport(empId,from,to);
+box.innerHTML=renderAttendanceRangeBlock(report);
+}catch(e){
+box.innerHTML=`<div class="u-mt12" style="color:#c0392b;font-size:13px">${esc(e.message||'تعذر جلب سجل الحضور')}</div>`;
+}
+}
+function renderAttendanceRangeBlock(report){
+const s=report.summary||{};
+const rows=(report.records||[]).map(r=>{
+const minutes=Number(r.workMinutes||0);
+const krm=`${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}`;
+const late=Number(r.lateMinutes||0);
+const early=Number(r.earlyLeaveMinutes||0);
+const arrival=Math.max(0,late-early);
+const statusTxt=formatAttendanceStatus({checkIn:r.checkIn,checkOut:r.checkOut,lateMinutes:arrival,earlyLeaveMinutes:early,workMinutes:minutes});
+const statusStyle=!r.checkIn||!String(r.checkIn).trim()?'color:#f59e0b;font-weight:700':((r.checkOut&&String(r.checkOut).trim())&&(late>0||early>0))?'color:#c0392b;font-weight:700':'color:#27ae60';
+const review=r.needsReview?' <span class="badge bdg-orange">مراجعة</span>':'';
+return `<tr><td>${esc(r.date||'')}</td><td class="c-green">${esc(r.checkIn||'—')}</td><td class="c-red">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
+}).join('')||'<tr><td colspan="5" style="text-align:center;color:#64748b">لا توجد سجلات في هذه الفترة</td></tr>';
+const lateSummary=Number(s.totalLateMinutes||0)>0?formatLateRow({lateMinutes:s.totalLateMinutes}):'—';
+return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام الحضور</small><b style="display:block;font-size:18px">${s.daysPresent||0}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #2563eb"><small style="color:#64748b">أيام مكتملة</small><b style="display:block;font-size:18px">${s.completeDays||0}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">أيام تأخير</small><b style="display:block;font-size:18px;color:#c0392b">${s.lateDays||0}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي التأخير</small><b style="display:block;font-size:15px;color:#c0392b">${lateSummary}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #c9a227"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalKarim||0}</b></div>
+</div>
+<div class="tbl-scroll u-mt8">
+<table>
+<thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+</div>
+<small style="color:#94a3b8;display:block;margin-top:6px">الفترة: ${esc(s.from||'')} — ${esc(s.to||'')} ${Number(s.reviewDays||0)>0?` • قيد المراجعة: ${s.reviewDays} يوم (${s.reviewMinutes||0} د)`:''}</small>`;
+}
+async function printEmployeeAttendanceRange(empId){
+const from=document.getElementById('empAttFrom')?.value||'';
+const to=document.getElementById('empAttTo')?.value||'';
+if(!from||!to){toast('اختر تاريخ البداية والنهاية أولًا','warning');return;}
+if(to<from){toast('تاريخ النهاية يسبق تاريخ البداية','warning');return;}
+const printWin=window.open('', '_blank');
+if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
+try{
+const report=await fetchEmployeeAttendanceReport(empId,from,to);
+printAttendanceReport(report,`كشف حضور وانصراف للفترة ${from} — ${to}`,printWin);
+}catch(e){ printWin.close(); toast(e.message||'تعذر طباعة كشف الفترة','error'); }
+}
 async function regenerateFingerprint(empId){
 if(!confirm('تجديد بطاقة QR؟ سيصبح الرمز القديم غير صالح.')) {return;}
 const emp = findEmployeeById(empId);
@@ -707,4 +764,4 @@ toast('تم حفظ البطاقة كصورة','success');
 }
 }
 
-export { generateFingerprintSync, generateDigitalFingerprint, findEmployeeById, ensureEmployeeCardData, qrCache, generateQRDataURL, getEmployeeQRData, getEmployeeHumanQRData, uploadEmployeePhoto, handlePhotoUpload, renderSmartCard, showFullQRModal, downloadHumanQRImage, downloadQRImage, reportDateRangeForMonth, fetchEmployeeAttendanceReport, formatHoursFromMinutes, formatLateSummary, formatLateRow, formatAttendanceStatus, printAttendanceReport, runStrictAuditUI, printMonthlyAttendance, printLuxCard, printEmployeeAttendanceDay, printEmployeeAttendanceMonth, regenerateFingerprint, printSmartCard, downloadSmartCard };
+export { generateFingerprintSync, generateDigitalFingerprint, findEmployeeById, ensureEmployeeCardData, qrCache, generateQRDataURL, getEmployeeQRData, getEmployeeHumanQRData, uploadEmployeePhoto, handlePhotoUpload, renderSmartCard, showFullQRModal, downloadHumanQRImage, downloadQRImage, reportDateRangeForMonth, fetchEmployeeAttendanceReport, formatHoursFromMinutes, formatLateSummary, formatLateRow, formatAttendanceStatus, printAttendanceReport, runStrictAuditUI, printMonthlyAttendance, printLuxCard, printEmployeeAttendanceDay, printEmployeeAttendanceMonth, searchEmployeeAttendanceRange, printEmployeeAttendanceRange, regenerateFingerprint, printSmartCard, downloadSmartCard };
