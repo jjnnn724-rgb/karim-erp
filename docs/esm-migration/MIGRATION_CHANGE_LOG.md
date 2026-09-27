@@ -121,4 +121,23 @@ app.js بعد الدفعة: **5,157 سطرًا** (−7,196 من baseline — أ�
 
 ---
 
-## EXTRACTION-016+ — (التالي المخطط: departments/reports/settings+users/CFO/dashboard/employee-portal ثم auth+navigation — لم يُنفذ بعد)
+## EXTRACTIONS 016–023 — الوحدات المعزولة + لوحة التحكم وبوابة الموظف
+
+| # | الوحدة | الأسطر | التصديرات | ملاحظات |
+|---|---|---|---|---|
+| 016 | `features/yarasoft.js` | 782 | 56 (YSSTATE + صفحة الاستيراد الكاملة) | |
+| 017 | `features/whatsapp.js` | 501 | 46 (WASTATE + محرك واتساب) | تبويب Oracle داخلها |
+| 018 | `features/departments.js` | ~260 | 25 | |
+| 019 | `features/reports.js` | ~667 | 21 | |
+| 020 | `features/settings-users.js` | ~675 | 54 | |
+| 021 | `features/cfo.js` | ~162 | 13 (CFO_STATE + الدفتر + الميزان) | |
+| 022 | `features/dashboard.js` | ~308 | 10 | |
+| 023 | `features/employee-portal.js` | ~155 | 5 (منها loadMyBiometricPanel وzkPortalIndicator — عقد البصمة) | ORADATA (حالة متصفح أوراكل) نُقلت إلى whatsapp — كان سينكسر وقت النداء |
+
+**فحص ما بعد الدفعة:** تنقل حي لـ 12 صفحة كلها ok ✓ · 10 دوال مميزة لكل موديول على window ✓ · apiFetch ✓ · الرجوع للوحة ✓
+
+app.js بعد الدفعة: **1,653 سطرًا** (−10,700 من baseline — أي ~87%)
+
+**المتبقي في app.js:** STORAGE (initDatabase/fan-out) · AUTH & NAVIGATION (doLogin/refreshSession/go/buildNav/renderPage) · MODAL & RENDER PAGE · LOGIN GLOBALS IIFE · INITIALIZATION (boot) · ENHANCEMENT PACK — هذه **العمود الفقري الحرج** وستكون الجولة الختامية.
+
+---
