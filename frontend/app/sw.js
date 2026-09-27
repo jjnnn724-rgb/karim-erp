@@ -35,7 +35,7 @@ const STATIC_ASSETS = [
     '/app/js/app.js?v=4.7.133',
     '/app/js/icons.js',
     '/app/js/scanner.js',
-    '/app/js/realtime.js',
+    '/app/js/realtime.js?v=4.7.133',
     '/app/js/bilingual.js',
     '/app/js/pos.js',
     '/app/js/pos-orders.js',
