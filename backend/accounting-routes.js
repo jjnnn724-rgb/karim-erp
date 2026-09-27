@@ -176,6 +176,138 @@ async function postSaleToLedger(orderId) {
     return out;
 }
 
+/**
+ * ترحيل فاتورة شراء: مخزون (صافي) + ضريبة مدخلات مستردة ← ذمم موردين (إجمالي).
+ * Dr 1200 Inventory (net) · Dr 1150 Input VAT (vat) · Cr 2000 AP (gross).
+ * idempotent بمفتاح (purchase_invoice, invoiceId) — إعادة التشغيل لا تكرر أبدًا.
+ * يُستدعى best-effort بعد COMMIT الفاتورة — فشله لا يُسقط الشراء أبدًا.
+ */
+async function postPurchaseToLedger(invoiceId) {
+    const inv = (await pool.query(
+        `SELECT id, "invoiceNumber", date, subtotal_net, vat_total, "totalAmount"
+          FROM "purchaseInvoices" WHERE id = $1 LIMIT 1`,
+        [invoiceId])).rows[0];
+    if (!inv) {return { skipped: 'invoice_not_found' };}
+    const net = round2(inv.subtotal_net ?? inv.totalAmount);
+    const vat = round2(inv.vat_total ?? 0);
+    const gross = round2(inv.totalAmount);
+    if (gross <= 0) {return { skipped: 'zero_total' };}
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
+        ? String(inv.date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    const lines = [
+        { account_code: '1200', debit: net, credit: 0, memo: `مخزون فاتورة شراء ${inv.invoiceNumber || invoiceId}` },
+    ];
+    if (vat > 0) {lines.push({ account_code: '1150', debit: vat, credit: 0, memo: `ضريبة مدخلات ${inv.invoiceNumber || invoiceId}` });}
+    lines.push({ account_code: '2000', debit: 0, credit: gross, memo: `مستحق مورد ${inv.invoiceNumber || invoiceId}` });
+    const out = await postJournal(pool, {
+        date: day,
+        memo: `فاتورة شراء — ${inv.invoiceNumber || invoiceId}`,
+        source_type: 'purchase_invoice',
+        source_id: String(invoiceId),
+        lines,
+    });
+    logger.info(`[LEDGER] فاتورة شراء ${invoiceId}: ${out.replay ? 'مُرحّلة مسبقًا' : `قيد ${out.entry.entry_no}`}`);
+    return out;
+}
+
+/**
+ * إصلاح خطأ محاسبي كان قائمًا: الصرف للأقسام والإرجاع منها يحرّكان المخزون
+ * (1200) والمصاريف دون أي قيد — فحساب المخزون يتضخم ولا COGS في الأستاذ.
+ * الحركات المتماثلة (نقية، قابلة للاختبار):
+ *   صرف OUT: Dr 5000 تكلفة بضاعة ← Cr 1200 مخزون (بمتوسط التكلفة المرجح)
+ *   إرجاع IN: Dr 1200 مخزون ← Cr 5000 تكلفة بضاعة (عكس متماثل)
+ */
+function buildStockMoveLines(totalValue, direction) {
+    const v = round2(totalValue);
+    if (!(v > 0)) {return [];}
+    if (direction === 'in') {
+        return [
+            { account_code: '1200', debit: v, credit: 0, memo: 'إرجاع مخزون' },
+            { account_code: '5000', debit: 0, credit: v, memo: 'عكس تكلفة' },
+        ];
+    }
+    return [
+        { account_code: '5000', debit: v, credit: 0, memo: 'تكلفة صرف' },
+        { account_code: '1200', debit: 0, credit: v, memo: 'صرف مخزون' },
+    ];
+}
+
+/** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT. */
+async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } = {}) {
+    const v = round2(totalValue);
+    if (!(v > 0)) {return { skipped: 'zero_total' };}
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
+        ? String(date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const out = await postJournal(pool, {
+        date: day,
+        memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
+        source_type: 'dispatch',
+        source_id: String(dispatchId),
+        lines: buildStockMoveLines(v, 'out'),
+    });
+    logger.info(`[LEDGER] صرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
+    return out;
+}
+
+/** ترحيل إرجاع معتمد (عكس متماثل): idempotent بمفتاح (kitchen_return, id). */
+async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {}) {
+    const v = round2(totalValue);
+    if (!(v > 0)) {return { skipped: 'zero_total' };}
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
+        ? String(date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const out = await postJournal(pool, {
+        date: day,
+        memo: `إرجاع مخزون — مرتجع #${returnId}${deptCode ? ` (${deptCode})` : ''}`,
+        source_type: 'kitchen_return',
+        source_id: String(returnId),
+        lines: buildStockMoveLines(v, 'in'),
+    });
+    logger.info(`[LEDGER] مرتجع #${returnId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
+    return out;
+}
+
+// ─── الإقرار الضريبي (قراءة فقط): ضريبة المخرجات − ضريبة المدخلات ───────────
+// مصادر من الأستاذ العام المرحّل فعليًا (2100 دائن − 1150 مدين) مع مطابقة
+// متقاطعة من فواتير الشراء — ما يُقدَّم للهيئة يُبنى على المرحّل لا التقديري.
+router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const from = dayRe.test(String(req.query.from || '')) ? String(req.query.from) : monthStart;
+        const to = dayRe.test(String(req.query.to || '')) ? String(req.query.to) : now.toISOString().slice(0, 10);
+        if (from > to) {return res.status(422).json({ error: 'LEDGER_PERIOD_INVALID', message: 'بداية الفترة بعد نهايتها' });}
+        const posted = await pool.query(
+            `SELECT l.account_code,
+                    ROUND(COALESCE(SUM(l.debit),0),2)::float AS debit,
+                    ROUND(COALESCE(SUM(l.credit),0),2)::float AS credit
+             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+             WHERE e.date >= $1::date AND e.date <= $2::date AND l.account_code IN ('1150','2100')
+             GROUP BY 1`, [from, to]);
+        const byCode = {};
+        for (const r of posted.rows) {byCode[r.account_code] = r;}
+        const outputVat = round2(byCode['2100']?.credit || 0); // ضريبة محصلة (مبيعات)
+        const inputVat = round2(byCode['1150']?.debit || 0);   // ضريبة مستردة (مشتريات)
+        const net = round2(outputVat - inputVat);
+        const purchases = (await pool.query(
+            `SELECT COUNT(*)::int AS n, COALESCE(ROUND(SUM(subtotal_net),2),0)::float AS net,
+                    COALESCE(ROUND(SUM(vat_total),2),0)::float AS vat
+             FROM "purchaseInvoices" WHERE date >= $1 AND date <= $2`, [from, to])).rows[0];
+        res.json({
+            from, to,
+            output_vat: outputVat,
+            input_vat: inputVat,
+            net_payable: net >= 0 ? net : 0,
+            carry_forward_credit: net < 0 ? round2(-net) : 0,
+            purchases_crosscheck: { count: Number(purchases.n), net: Number(purchases.net), vat: Number(purchases.vat) },
+        });
+    } catch (error) {
+        logger.error('[ledger/vat-return]', error);
+        res.status(500).json({ error: 'LEDGER_VAT_RETURN_FAILED', message: 'تعذر حساب الإقرار الضريبي' });
+    }
+});
+
 // ─── شجرة الحسابات ───────────────────────────────────────────────────────────
 router.get('/chart', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
@@ -363,4 +495,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger };
+module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines };

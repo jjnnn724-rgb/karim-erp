@@ -244,11 +244,11 @@ async function validateChecks(tableName, data, constraints) {
     // تقييم بسيط للشروط الشائعة
     const def = cc.def;
     
-    // CHECK (col IN (...))
+    // CHECK (col IN (...)) — pg يضيف casts للنصوص ('A'::character varying) تُجرد هنا
     const inMatch = def.match(/\((\w+)\)::text = ANY \(\(ARRAY\[([^\]]+)\]\)::text\[\]\)/);
     if (inMatch) {
       const col = inMatch[1];
-      const values = inMatch[2].split(',').map(v => v.trim().replace(/'/g, ''));
+      const values = inMatch[2].split(',').map(v => v.trim().replace(/'/g, '').replace(/::[\w\s()]+$/, '').trim());
       if (data[col] !== undefined && data[col] !== null && !values.includes(String(data[col]))) {
         errors.push({
           constraint: cc.name,

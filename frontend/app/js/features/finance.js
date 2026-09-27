@@ -48,7 +48,7 @@ const noCost=rows.filter(r=>r.noCost&&r.gap>0).length;
 ysPrintReport('كشف نواقص المخزن الشامل', `${rows.length} صنفًا (نافذ ${out} • منخفض ${rows.length-out})${noCost?` • ${noCost} بلا تكلفة مدخلة`:''}`,
 [['الأصناف الناقصة',fN(rows.length)],['نافذ تمامًا',fN(out)],['قيمة التعبئة حتى الحد',noCost&&refill<=0?'— (التكلفة غير مدخلة)':fC(refill)]],
 ['#','الصنف','الفئة','الوحدة','الرصيد','الحد الأدنى','العجز','قيمة العجز','الحالة'],
-rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.unit)}</td><td>${fN(r.qty)}</td><td>${fN(r.min)}</td><td>${fN(r.gap)}</td><td>${r.noCost&&r.gap>0?'—':fC(r.gapVal)}</td><td>${r.out?'نافذ':'منخفض'}</td></tr>`).join(''));
+rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.unit)}</td><td>${fN(r.qty)}</td><td>${fN(r.min)}</td><td>${fN(r.gap)}</td><td>${r.noCost&&r.gap>0?'—':fC(r.gapVal)}</td><td>${r.out?'نافذ':'منخفض'}</td></tr>`).join('')||'<tr><td colspan="9">لا توجد أصناف مسجلة — أدخل الرصيد الافتتاحي أو استورد الأصناف أولًا</td></tr>');
 }
 function whShortRows(){
 const all=STATE._whShort||[];
@@ -83,7 +83,7 @@ ${noCostCount?`<div class="audit-banner"><i class=ji data-i=alert-triangle></i> 
 <div class="tbl-scroll tbl-sticky-first" style="margin-top:12px"><table><thead><tr><th>#</th><th>الصنف</th><th>الفئة</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>العجز</th><th>قيمة العجز</th><th>الحالة</th></tr></thead>
 <tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td class="fw-bold">${esc(r.name)}</td><td class="c-gold">${esc(r.category)}</td><td>${esc(r.unit)}</td>
 <td class="c-red fw-bold">${fN(r.qty)}</td><td>${fN(r.min)}</td><td class="c-orange fw-bold">${fN(r.gap)}</td><td class="c-gold">${r.noCost&&r.gap>0?'—':fC(r.gapVal)}</td>
-<td><span class="badge ${r.out?'bdg-red':'bdg-orange'}">${r.out?'⛔ نافذ':'⚠ منخفض'}</span></td></tr>`).join('')||'<tr><td colspan="9" class="u-empty-sm">لا نواقص — المخزون كله فوق الحد ✓</td></tr>'}</tbody></table></div>
+<td><span class="badge ${r.out?'bdg-red':'bdg-orange'}">${r.out?'⛔ نافذ':'⚠ منخفض'}</span></td></tr>`).join('')||((STATE.inventory||[]).length?'<tr><td colspan="9" class="u-empty-sm">لا نواقص — المخزون كله فوق الحد ✓</td></tr>':'<tr><td colspan="9" class="u-empty-sm">لا توجد أصناف مسجلة — أدخل الرصيد الافتتاحي أو استورد الأصناف أولًا</td></tr>')}</tbody></table></div>
 <div style="padding:8px 16px"><small class="text-muted">آخر تحديث: ${STATE._whShortAt?esc(String(STATE._whShortAt).replace('T',' ').slice(0,19)):'—'} • العجز = الحد − الرصيد • قيمة العجز بمتوسط التكلفة</small></div>
 </div>`;
 }

@@ -107,14 +107,18 @@ function riyadhNowParts(date = new Date()) {
 }
 
 function calculateMinutes(row) {
+    // المصدر الأول: النصان المعروضان (HH:MM) — ما تراه العين هو ما يُحسب.
+    // يمنع قيمًا شاذة (25:43) من أزمنة instant متقطعة الأيام. التفاف ليلي فقط عند out<in.
+    const m = String(row.checkIn || '').match(/^(\d{1,2}):(\d{2})$/);
+    const o = String(row.checkOut || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (m && o) {
+        let diff = (Number(o[1]) * 60 + Number(o[2])) - (Number(m[1]) * 60 + Number(m[2]));
+        if (diff < 0) {diff += 24 * 60;}
+        return Math.max(0, diff);
+    }
     if (Number.isFinite(Number(row.workMinutes))) {return Number(row.workMinutes);}
     if (row.checkInAt && row.checkOutAt) {
         return Math.max(0, Math.round((new Date(row.checkOutAt) - new Date(row.checkInAt)) / 60000));
-    }
-    if (row.checkIn && row.checkOut) {
-        const [ih, im] = String(row.checkIn).split(':').map(Number);
-        const [oh, om] = String(row.checkOut).split(':').map(Number);
-        if ([ih, im, oh, om].every(Number.isFinite)) {return Math.max(0, (oh * 60 + om) - (ih * 60 + im));}
     }
     return 0;
 }
@@ -865,4 +869,4 @@ router.post('/shifts/recompute', jwtAuth, requireRole('admin', 'hr', 'manager'),
     catch (e) { res.status(500).json({ error: 'RECOMPUTE_FAILED', message: e.message }); }
 });
 
-module.exports = { router, provisionCard, signQrPayload };
+module.exports = { router, provisionCard, signQrPayload, calculateMinutes, calculateLateMinutes };

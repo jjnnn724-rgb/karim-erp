@@ -95,7 +95,7 @@ window.saveData = saveData;
 window.uiPreferencesPayload = uiPreferencesPayload;
 
 // BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
-const smartCard = await import('./features/smart-card.js?v=4.7.150');
+const smartCard = await import('./features/smart-card.js?v=4.7.157');
 Object.assign(window, smartCard);   // BRIDGE-008
 
 const bulkImport = await import('./features/bulk-import.js?v=4.7.132');
@@ -104,22 +104,22 @@ Object.assign(window, bulkImport);  // BRIDGE-009
 const zkteco = await import('./features/zkteco.js?v=4.7.152');
 Object.assign(window, zkteco);      // BRIDGE-010
 
-const kitchen = await import('./features/kitchen.js?v=4.7.151');
+const kitchen = await import('./features/kitchen.js?v=4.7.166');
 Object.assign(window, kitchen);     // BRIDGE-013
 
-const finance = await import('./features/finance.js?v=4.7.135');
+const finance = await import('./features/finance.js?v=4.7.167');
 Object.assign(window, finance);     // BRIDGE-014
 
-const hr = await import('./features/hr.js?v=4.7.150');
+const hr = await import('./features/hr.js?v=4.7.157');
 Object.assign(window, hr);          // BRIDGE-015
 
-const yarasoft = await import('./features/yarasoft.js?v=4.7.141');
+const yarasoft = await import('./features/yarasoft.js?v=4.7.167');
 Object.assign(window, yarasoft);    // BRIDGE-016
 
 const whatsapp = await import('./features/whatsapp.js?v=4.7.138');
 Object.assign(window, whatsapp);    // BRIDGE-017
 
-const departments = await import('./features/departments.js?v=4.7.150');
+const departments = await import('./features/departments.js?v=4.7.165');
 Object.assign(window, departments); // BRIDGE-018
 
 const reports = await import('./features/reports.js?v=4.7.139');
@@ -146,7 +146,7 @@ Object.assign(window, pageRouterNS);  // BRIDGE-027
 const employees = await import('./features/employees.js?v=4.7.150');
 Object.assign(window, employees);   // BRIDGE-011
 
-const warehouse = await import('./features/warehouse.js?v=4.7.150');
+const warehouse = await import('./features/warehouse.js?v=4.7.164');
 Object.assign(window, warehouse);   // BRIDGE-012
 
 

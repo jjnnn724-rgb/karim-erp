@@ -299,13 +299,14 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
 
     // ──────────────────────────────────────────────────
     // /ready — pass / fail for serving traffic
-    // Only database failure is critical enough to fail readiness.
-    // Memory/disk are warnings (the process is still usable).
+    // Database OR outbox failure is critical (503). Memory/disk stay
+    // warnings (the process is still usable). TASK 8: publisher stall
+    // must remove the node from rotation, not just warn.
     // ──────────────────────────────────────────────────
     router.get('/ready', async (req, res) => {
         const checks = await runAllChecks();
-        const dbCheck = checks.find(c => c.component === 'database');
-        const status = dbCheck?.status === 'fail' ? 'fail' : rollupStatus(checks) === 'fail' ? 'warn' : 'ok';
+        const criticalFail = checks.some(c => (c.component === 'database' || c.component === 'outbox') && c.status === 'fail');
+        const status = criticalFail ? 'fail' : rollupStatus(checks) === 'fail' ? 'warn' : 'ok';
         const code = statusCodeFor(status);
         res.status(code).json({
             status,

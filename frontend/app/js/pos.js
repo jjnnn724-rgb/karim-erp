@@ -2139,17 +2139,27 @@ function posRtSchedule() {
 function initPosRealtime() {
     if (typeof io === 'undefined') {return;}
     try {
+        // Single socket per tab (TASK 6): reuse the main realtime socket when it
+        // is already connected — a second connection doubles presence counts,
+        // ping traffic, and breaks the chat once-guard via window._rtSocket.
+        const shared = window._rtSocket;
+        const useShared = shared && shared.connected;
         const ua = navigator.userAgent || '';
         const dev = /Android/i.test(ua) ? 'Android' : /Windows/i.test(ua) ? 'Windows PC' : 'كاشير';
-        const socket = io(window.location.origin, {
+        const socket = useShared ? shared : io(window.location.origin, {
             query: { deviceName: `كاشير POS (${dev})` },
+            auth: window._jwt ? { token: window._jwt } : {},
             transports: ['websocket', 'polling'],
-            reconnectionAttempts: 20,
+            reconnectionAttempts: Infinity,
             reconnectionDelay: 1500,
+            reconnectionDelayMax: 30000,
+            randomizationFactor: 0.5,
             timeout: 10000,
         });
-        window._rtSocket = socket;
-        socket.on('connect', () => posRtSetLive(true));
+        if (!useShared) {window._rtSocket = socket;}
+        const markLive = () => posRtSetLive(true);
+        if (useShared && socket.connected) {markLive();}
+        else {socket.on('connect', markLive);}
         socket.on('disconnect', () => posRtSetLive(false));
         socket.on('reconnect_failed', () => posRtSetLive(false));
         socket.on('entity_changed', (data) => {
@@ -2161,6 +2171,7 @@ function initPosRealtime() {
             try { if (window.POS_ORDERS && typeof window.POS_ORDERS.onRealtimeSale === 'function') {window.POS_ORDERS.onRealtimeSale();} } catch (_) {}
         });
         socket.on('state_updated', posRtSchedule);
+        try { socket.on('domain_event', () => posRtSchedule()); } catch (_) {}
     } catch (_) { /* وضع عدم الاتصال — يعمل يدويًا */ }
 }
 document.addEventListener('visibilitychange', () => {

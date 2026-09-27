@@ -298,7 +298,7 @@ const inRange=(r)=>{ if(!fromDate&&!toDate) {return true;} const d=String(r.date
 const codes = deptWithChildren(deptId);
 const rows=STATE.expenses.filter(e=>codes.has(String(e.deptId))&&inRange(e));
 const sum=list=>list.reduce((s,e)=>s+Number(e.amount||0),0);
-const materials=sum(rows.filter(isStockMovementExpense));
+const materials=Math.max(0,sum(rows.filter(isStockMovementExpense)));
 const countAdj=sum(rows.filter(isCountCorrectionExpense));
 const operating=sum(rows.filter(e=>!isStockMovementExpense(e)&&!isCountCorrectionExpense(e)));
 return {materials,countAdj,operating,total:materials+countAdj+operating,rows};

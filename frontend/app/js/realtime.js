@@ -264,14 +264,91 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT = 10;
 let isSyncing = false;
 
+// ─── Durable channel (TASK 6): sequence-tracked domain_event + resume/ack ───
+// Shadow phase: track + acknowledge only (no UI dependence yet); resume fills
+// gaps via GET /rt/events?since= on every (re)connect.
+const RT_SEQ_KEY = 'karim_rt_seq';
+const RT_INSTALL_KEY = 'karim_rt_install';
+let rtLastSeq = 0;
+let rtInstallId = '';
+let rtAckTimer = null;
+try {
+    rtLastSeq = Number(window.localStorage?.getItem(RT_SEQ_KEY) || 0) || 0;
+    rtInstallId = window.localStorage?.getItem(RT_INSTALL_KEY) || '';
+    if (!rtInstallId) {
+        const rnd = (window.crypto?.getRandomValues?.(new Uint32Array(4)) || [Date.now(), Math.random() * 1e9 | 0]).join('-');
+        rtInstallId = `web-${Date.now().toString(36)}-${String(rnd).slice(0, 24)}`;
+        window.localStorage?.setItem(RT_INSTALL_KEY, rtInstallId);
+    }
+} catch (_) { /* storage unavailable (private mode) — memory only */ }
+function rtPersistSeq() {
+    try {window.localStorage?.setItem(RT_SEQ_KEY, String(rtLastSeq));} catch (_) {}
+}
+function rtHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (window._jwt) {h['Authorization'] = 'Bearer ' + window._jwt;}
+    if (window._appKey) {h['x-api-key'] = window._appKey;}
+    return h;
+}
+async function rtResume() {
+    // Missed-event recovery: advance through the durable log, then ACK.
+    try {
+        const res = await fetch(`${window.location.origin}/api/rt/events?since=${rtLastSeq}&limit=200`, { headers: rtHeaders() });
+        if (!res.ok) {return;}
+        const data = await res.json();
+        const evts = Array.isArray(data?.events) ? data.events : [];
+        if (data?.resyncRequired) {
+            // Gap too large → full refresh (existing pattern), then jump forward.
+            try { if (typeof window.loadData === 'function') {await window.loadData();} } catch (_) {}
+            if (Number.isFinite(Number(data?.currentSequence))) {rtLastSeq = Number(data.currentSequence);}
+            rtPersistSeq(); rtScheduleAck();
+            return;
+        }
+        for (const e of evts) {
+            const sq = Number(e?.sequence);
+            if (Number.isFinite(sq) && sq > rtLastSeq) {rtLastSeq = sq;}
+        }
+        if (Number.isFinite(Number(data?.deliveredUpTo)) && Number(data.deliveredUpTo) > rtLastSeq) {
+            rtLastSeq = Number(data.deliveredUpTo);
+        }
+        rtPersistSeq(); rtScheduleAck();
+    } catch (_) { /* offline — next connect retries */ }
+}
+function rtScheduleAck() {
+    if (rtAckTimer) {return;}
+    rtAckTimer = setTimeout(async () => {
+        rtAckTimer = null;
+        try {
+            await fetch(`${window.location.origin}/api/rt/ack`, {
+                method: 'POST', headers: rtHeaders(),
+                body: JSON.stringify({ installationId: rtInstallId, lastSequence: rtLastSeq }),
+            });
+        } catch (_) {}
+    }, 5000);
+}
+function rtOnDomainEvent(env) {
+    // Shadow: track sequence + ACK. UI application per-module arrives in Phase B.
+    const sq = Number(env?.sequence);
+    if (Number.isFinite(sq) && sq > rtLastSeq) {
+        rtLastSeq = sq;
+        rtPersistSeq(); rtScheduleAck();
+    }
+    if (typeof window.console !== 'undefined' && window.console.debug) {
+        window.console.debug('[rt] domain_event', env?.eventType, `#${env?.sequence}`);
+    }
+}
+
 function initSocket() {
     const deviceName = getDeviceName();
 
     socket = io(window.location.origin, {
         query: { deviceName },
+        auth: window._jwt ? { token: window._jwt } : {},
         transports: ['websocket', 'polling'],
-        reconnectionAttempts: MAX_RECONNECT,
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1500,
+        reconnectionDelayMax: 30000,
+        randomizationFactor: 0.5,
         timeout: 10000,
     });
 
@@ -286,6 +363,11 @@ function initSocket() {
         // die with it; without this, chat/notifications silently stop after any
         // reconnect until a full page reload.
         try { if (typeof window._rtRegisterUser === 'function') {window._rtRegisterUser();} } catch (_) {}
+        // Durable resume: catch up the outbox gap, then ACK (shadow, non-blocking).
+        try { rtResume(); } catch (_) {}
+        // Durable subscription (shadow phase — track + ACK only).
+        try { socket.off('domain_event', rtOnDomainEvent); } catch (_) {}
+        try { socket.on('domain_event', rtOnDomainEvent); } catch (_) {}
 
         // Start ping
         if (pingInterval) {clearInterval(pingInterval);}
@@ -318,6 +400,8 @@ function initSocket() {
     // ── Reconnecting ──
     socket.on('reconnect_attempt', (n) => {
         reconnectAttempts = n;
+        // Refresh handshake JWT (rotates every 24h; stale token → anonymous fallback).
+        try { if (window._jwt) {socket.auth = { token: window._jwt };} } catch (_) {}
         setBadgeState('syncing', `إعادة الاتصال (${n})...`);
     });
 
@@ -367,11 +451,10 @@ function initSocket() {
     socket.on('state_updated', async (data) => {
         if (isSyncing) {return;}
         isSyncing = true;
-        setBadgeState('syncing', 'جارٍ التزامن...');
-        AudioEngine.playSync();
-        showSyncToast(`تحديث من ${data.updatedBy || 'جهاز آخر'}`, '<i class=ji data-i=refresh></i>', 4000);
-
         try {
+            setBadgeState('syncing', 'جارٍ التزامن...');
+            AudioEngine.playSync();
+            showSyncToast(`تحديث من ${data.updatedBy || 'جهاز آخر'}`, '<i class=ji data-i=refresh></i>', 4000);
             await loadData();
             // Re-render the UI if the main app has loaded
             if (typeof window.renderPage === 'function') {
@@ -703,7 +786,7 @@ if (document.readyState === 'loading') {
     init();
 }
 
-})(); // end IIFE
-
-// Expose AudioEngine globally for chat sounds etc.
+// Expose AudioEngine globally for chat sounds etc. (inside IIFE: const is scoped here)
 window.AudioEngine = AudioEngine;
+
+})(); // end IIFE

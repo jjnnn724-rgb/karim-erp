@@ -32,7 +32,7 @@ const { pool } = require('./shared-pool');
 const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
 
 // ─── JWT Authentication Middleware ────────────────────
-const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { jwtAuth, requireRole, verifyAccessToken } = require('./cashier-module/jwt-middleware');
 const { router: hrRouter } = require('./hr-routes');
 const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch } = require('./warehouse-routes');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
@@ -199,6 +199,38 @@ const io = new Server(httpServer, {
     pingTimeout: 30000,
     pingInterval: 10000,
 });
+
+// ─── Real-time guard (TASK 4): optional handshake JWT + per-socket limits ───
+// Coexistence: anonymous sockets still connect (legacy/pre-login). Verified
+// sockets join `erp:authed`; with RT_REQUIRE_AUTH=true sensitive broadcasts
+// go only there, otherwise legacy global behavior is unchanged.
+const { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS } = require('./realtime/guard');
+const socketLimiter = createSocketLimiter();
+io.use((socket, next) => {
+    const user = resolveHandshakeUser(verifyAccessToken, socket.handshake);
+    socket.data.authed = Boolean(user);
+    if (user) {
+        socket.data.rtUser = user;
+        socket.join('erp:authed');
+    }
+    next();
+});
+function rtGuard(socket, event) {
+    const ok = socketLimiter.check(socket.id, event, SOCKET_EVENT_BUDGETS[event] || 10);
+    if (!ok) {logger.warn(`[Socket] rate-limited ${event} from ${socket.id}`);}
+    return ok;
+}
+// Sensitive broadcast: authed-room only when flag on, legacy global otherwise.
+// Anti-echo preserved via exceptSocketId in both modes.
+function emitScoped(event, data, exceptSocketId) {
+    if (isRtAuthRequired()) {
+        const target = io.to('erp:authed');
+        if (exceptSocketId) {target.except(exceptSocketId).emit(event, data); return;}
+        target.emit(event, data); return;
+    }
+    if (exceptSocketId) {io.except(exceptSocketId).emit(event, data); return;}
+    io.emit(event, data);
+}
 
 // Track connected clients
 const connectedClients = new Map(); // socketId → { ip, deviceName, joinedAt }
@@ -548,7 +580,7 @@ io.on('connection', (socket) => {
     logger.info(`🟢 [Socket] اتصل: ${deviceName} (${clientIp}) — إجمالي: ${clientCount} جهاز`);
 
     // Notify all clients about new connection
-    io.emit('device_connected', {
+    emitScoped('device_connected', {
         deviceName,
         ip: clientIp,
         totalClients: clientCount,
@@ -570,6 +602,7 @@ io.on('connection', (socket) => {
     // user:<id> و role:<role> و dept:<dept_code>، والصلاحيات تُقرأ من قاعدة
     // البيانات (لا من رسالة العميل) حتى لا يمكن انتحال غرفة غير حقها.
     socket.on('register_user', async (data) => {
+        if (!rtGuard(socket, 'register_user')) {return;}
         try {
             const userId = Number(data?.userId);
             if (!Number.isInteger(userId) || userId <= 0) {return;}
@@ -592,13 +625,14 @@ io.on('connection', (socket) => {
 
     // Handle disconnect
     socket.on('disconnect', (reason) => {
+        socketLimiter.reset(socket.id);
         const client = connectedClients.get(socket.id);
         if (client) {
             connectedClients.delete(socket.id);
             const remaining = connectedClients.size;
             logger.info(`🔴 [Socket] انقطع: ${client.deviceName} (${client.ip}) — سبب: ${reason} — متبقي: ${remaining}`);
 
-            io.emit('device_disconnected', {
+            emitScoped('device_disconnected', {
                 deviceName: client.deviceName,
                 ip: client.ip,
                 totalClients: remaining,
@@ -613,11 +647,13 @@ io.on('connection', (socket) => {
 
     // Handle ping for latency check
     socket.on('ping_check', (data) => {
+        if (!rtGuard(socket, 'ping_check')) {return;}
         socket.emit('pong_check', { ...data, serverTime: Date.now() });
     });
 
     // Handle manual data request
     socket.on('request_sync', async () => {
+        if (!rtGuard(socket, 'request_sync')) {return;}
         try {
             const result = await pool.query('SELECT state_data FROM app_state WHERE id = 1');
             if (result.rows.length > 0 && result.rows[0].state_data) {
@@ -630,6 +666,8 @@ io.on('connection', (socket) => {
 
     // Handle notification broadcast (device-to-device messaging)
     socket.on('broadcast_notification', (data) => {
+        if (!rtGuard(socket, 'broadcast_notification')) {return;}
+        if (isRtAuthRequired() && !socket.data.authed) {return;}
         const client = connectedClients.get(socket.id);
         // Guard against malformed payloads (data may be undefined)
         const payload = data && typeof data === 'object' ? data : {};
@@ -773,6 +811,42 @@ app.get('/', (req, res) => {
             })),
         },
     }));
+    // TASK 8: outbox publisher stall + lag gate the /ready endpoint.
+    // ok = flowing; warn = lag/dead-letters; fail = loop stalled (>30s) → 503.
+    registerCheck(async () => {
+        try {
+            const { outboxStats } = require('./realtime/publisher');
+            const st = outboxStats();
+            let lagSec = 0;
+            try {
+                const r = await pool.query(
+                    `SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at)))::int, 0) AS lag
+                      FROM event_outbox WHERE published_at IS NULL`);
+                lagSec = Number(r.rows[0]?.lag || 0);
+            } catch (_) {return { component: 'outbox', status: 'warn', details: { reason: 'table_unchecked' } };}
+            const lastCycleMs = st.lastCycleAt ? Date.now() - new Date(st.lastCycleAt).getTime() : null;
+            const details = { ...st, lagSec };
+            if (st.cycles > 0 && lastCycleMs != null && lastCycleMs > 30000) {
+                return { component: 'outbox', status: 'fail', details };
+            }
+            if (lagSec > 60 || (st.deadLettered || 0) > 0) {
+                return { component: 'outbox', status: lagSec > 60 ? 'fail' : 'warn', details };
+            }
+            return { component: 'outbox', status: 'ok', details };
+        } catch (e) {
+            return { component: 'outbox', status: 'warn', error: e.message };
+        }
+    });
+    // TASK 8: websocket accepting gate — fail when the listener is down.
+    registerCheck(() => {
+        try {
+            const listening = Boolean(httpServer?.listening);
+            const clients = io?.engine ? Number(io.engine.clientsCount || 0) : 0;
+            return { component: 'websocket', status: listening ? 'ok' : 'fail', details: { listening, clients } };
+        } catch (e) {
+            return { component: 'websocket', status: 'fail', error: e.message };
+        }
+    });
     // Extra: shutdown probe (k8s-aware)
     registerCheck(() => {
         const s = getShutdownStatus();
@@ -957,11 +1031,7 @@ app.post('/api/state', jwtAuth, requireRole('admin', 'manager'), stateLimiter, a
         source: 'state_save',
     };
 
-    if (senderSocket) {
-        io.except(senderSocket).emit('state_updated', payload);
-    } else {
-        io.emit('state_updated', payload);
-    }
+    emitScoped('state_updated', payload, senderSocket || undefined);
 
     // Trigger async backup (throttled + windowsHide → لا نافذة سوداء)
     scheduleBackup();
@@ -999,11 +1069,7 @@ app.delete('/api/state', jwtAuth, requireRole('admin'), asyncHandler(async (req,
         source: 'state_reset',
     };
 
-    if (senderSocket) {
-        io.except(senderSocket).emit('state_updated', payload);
-    } else {
-        io.emit('state_updated', payload);
-    }
+    emitScoped('state_updated', payload, senderSocket || undefined);
 
     res.json({ status: 'success', message: 'Application state cleared from database.' });
 }));
@@ -1297,12 +1363,7 @@ function emitEntityChange(entity, action, data, req) {
     };
 
     const senderSocket = req.headers['x-socket-id'];
-    if (senderSocket) {
-        io.except(senderSocket).emit('entity_changed', payload);
-        return;
-    }
-
-    io.emit('entity_changed', payload);
+    emitScoped('entity_changed', payload, senderSocket || undefined);
 }
 
 entities.forEach(entity => {

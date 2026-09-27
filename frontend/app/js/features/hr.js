@@ -100,14 +100,12 @@ if(!STATE.attTo) {STATE.attTo=today();}
 const attFrom=STATE.attFrom, attTo=STATE.attTo;
 const rangeRecords=STATE.attendance.filter(a=>a.date>=attFrom&&a.date<=attTo);
 const presentCount=rangeRecords.filter(a=>a.checkIn).length;
-const lateCount=rangeRecords.filter(a=>a.late).length;
-const inferredCount=rangeRecords.filter(a=>a.checkin_inferred||a.checkout_inferred).length;
 const totalDays=new Set(rangeRecords.map(a=>a.date)).size;
-const totalKarim=rangeRecords.reduce((s,a)=>s+(a.workMinutes?Number(a.workMinutes)/60:0),0);
+// إجمالي الساعات من النصوص المعروضة أولًا (يمنع تضخم قيم شاذة كـ 25:43)
+const totalKarim=rangeRecords.reduce((s,a)=>{const m=attRawMinutes(a);return s+(m==null?(a.workMinutes?Number(a.workMinutes):0):m)/60;},0);
 const activeEmployees=STATE.employees.filter(e=>e.status==='active');
 // ─── ترقيم صفحات الجدول (100 صف/صفحة) + فهارس — يمنع تهنيج المتصفح ───
 const empMap=new Map((STATE.employees||[]).map(e=>[String(e.id),e]));
-const deptMap=new Map((STATE.hrDepartments||[]).map(d=>[String(d.code),d]));
 const attQ=String(STATE.attSearch||'').trim().toLowerCase();
 const normAr=s=>String(s||'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').toLowerCase();
 const nq=normAr(attQ);
@@ -122,7 +120,6 @@ return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=users></i> إجمالي الموظفين</div><div class="mcard-val c-gold">${fN(activeEmployees.length)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> سجلات الحضور</div><div class="mcard-val c-green">${fN(presentCount)}</div></div>
-<div class="mcard"><div class="mcard-label"><i class=ji data-i=alert-triangle></i> المتأخرون</div><div class="mcard-val ${lateCount>0?'c-red':'c-green'}">${fN(lateCount)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> أيام العمل</div><div class="mcard-val c-blue">${fN(totalDays)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=clock></i> إجمالي الساعات</div><div class="mcard-val c-gold">${totalKarim.toFixed(0)}</div></div>
 </div>
@@ -155,28 +152,22 @@ ${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" onclic
 </div>
 <div class="tbl-scroll tbl-sticky-first">
 <table>
-<thead><tr><th>التاريخ</th><th>الموظف</th><th>الكود</th><th>القسم</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th><th>المصدر</th><th>الحالة</th></tr></thead>
+<thead><tr><th>الموظف</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>المصدر</th></tr></thead>
 <tbody id="attTodayBody">
-${filteredRecs.length===0?'<tr><td colspan=9 style="text-align:center;padding:30px;color:var(--faint)">لا توجد سجلات في الفترة المحددة</td></tr>':''}
+${filteredRecs.length===0?'<tr><td colspan=6 style="text-align:center;padding:30px;color:var(--faint)">لا توجد سجلات في الفترة المحددة</td></tr>':''}
 ${pageRecs.map(record=>{
 const emp=empMap.get(String(record.employeeId));
 if(!emp) {return '';}
-const dept=deptMap.get(String(emp.department));
 const inferredBadge='<span class="badge bdg-orange" title="قيمة مستكملة تلقائيًا">~ تلقائي</span>';
-const krm=record.workMinutes!=null?(Number(record.workMinutes)/60).toFixed(1):(record.checkIn&&record.checkOut?(((new Date('2000-01-01 '+record.checkOut)-new Date('2000-01-01 '+record.checkIn))/3600000)>=0?((new Date('2000-01-01 '+record.checkOut)-new Date('2000-01-01 '+record.checkIn))/3600000).toFixed(1):'—'):'—');
-const status=record.checkIn?(record.checkOut?(record.early_leave?'<i class=ji data-i=hourglass></i> انصراف مبكر':'<i class=ji data-i=circle-check></i> مكتمل'):'<i class=ji data-i=dot-green></i> حاضر'):(record.checkOut?'<i class=ji data-i=alert-triangle></i> بصمة ناقصة':'<i class=ji data-i=dot-gray></i> غائب');
-const statusClass=record.checkIn?(record.checkOut?(record.early_leave?'bdg-orange':'bdg-green'):'bdg-blue'):(record.checkOut?'bdg-blue':'bdg-orange');
+const krm=attRawHours(record);
 const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
 return `<tr data-date="${record.date}">
-<td class="text-muted">${fD(record.date)}</td>
 <td class="fw-bold">${esc(emp.name)}</td>
-<td class="text-muted">${esc(emp.employeeId ?? '—')}</td>
-<td>${dept?esc(dept.name):'—'}</td>
-<td class="c-green">${record.checkIn?esc(record.checkIn)+(record.checkin_inferred?' '+inferredBadge:''):'—'}</td>
-<td class="c-red">${record.checkOut?esc(record.checkOut)+(record.checkout_inferred?' '+inferredBadge:''):'—'}</td>
+<td class="text-muted">${fD(record.date)}</td>
+<td class="c-green" dir="ltr">${record.checkIn?esc(record.checkIn)+(record.checkin_inferred?' '+inferredBadge:''):'—'}</td>
+<td class="c-red" dir="ltr">${record.checkOut?esc(record.checkOut)+(record.checkout_inferred?' '+inferredBadge:''):'—'}</td>
 <td class="c-gold">${krm} ساعة</td>
 <td>${recSource}</td>
-<td><span class="badge ${statusClass}">${status}</span>${(record && (record.checkin_inferred || record.checkout_inferred) && STATE.currentUser?.role==='admin') ? ` <button class="btn btn-sm" title="إلغاء الاستكمال التلقائي" onclick="revertInference('${record.id}')">↩</button>` : ''}${['admin','manager','hr'].includes(STATE.currentUser?.role)?` <button class="btn btn-gold btn-sm" title="تصحيح بصمة نسيها الموظف" onclick="attCorrectModal('${record.id}')"><i class=ji data-i=pencil></i> تصحيح</button>`:''}</td>
 </tr>`;
 }).join('')}
 </tbody>
@@ -217,6 +208,18 @@ function attSearchFilter(q){
 function attPageGo(dir){
   STATE.attPage = Math.max(1, (STATE.attPage || 1) + dir);
   renderPage();
+}
+// دقائق العمل من النصين المعروضين أولًا (يمنع قيمًا شاذة كـ 25:43) — التفاف ليلي فقط عند out<in
+function attRawMinutes(a){
+const m=String(a.checkIn||'').match(/^(\d{1,2}):(\d{2})$/);
+const o=String(a.checkOut||'').match(/^(\d{1,2}):(\d{2})$/);
+if(m&&o){let d=(Number(o[1])*60+Number(o[2]))-(Number(m[1])*60+Number(m[2]));if(d<0){d+=24*60;}return Math.max(0,d);}
+if(a.workMinutes!=null&&Number.isFinite(Number(a.workMinutes))){return Math.max(0,Number(a.workMinutes));}
+return null;
+}
+function attRawHours(a){
+const m=attRawMinutes(a);
+return m==null?'—':(m/60).toFixed(1);
 }
 // ─── صندوق الاستثناءات: غياب/تأخير/انصراف مبكر/بصمة ناقصة في مكان واحد ───
 function attExceptionsBox(){
@@ -512,15 +515,8 @@ const record=STATE.attendance.find(a=>a.employeeId===emp.id&&a.date===todayDate)
 if(!record?.checkIn){ toast('لم يتم تسجيل الحضور','error'); return; }
 if(record.checkOut){ toast('تم تسجيل الانصراف مسبقاً','warning'); return; }
 const timeStr=new Date().toTimeString().substring(0,5);
-const nowMin=new Date().getHours()*60+new Date().getMinutes();
-const eS = emp.shift_start && /^\d{1,2}:\d{2}$/.test(emp.shift_start) ? emp.shift_start.split(':').map(Number) : [9,0];
-const eHours = Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10;
-const eEnd = eS[0]*60+eS[1]+Math.round(eHours*60);
-let oMin = nowMin;
-if(eEnd > 24*60 && oMin < 12*60) {oMin += 24*60;}
-const earlyLeave = (eEnd - oMin) > 30;
-await persistUpdate('attendance', record.id, {checkOut:timeStr, early_leave: earlyLeave});
-record.checkOut=timeStr; record.early_leave=earlyLeave;
+await persistUpdate('attendance', record.id, {checkOut:timeStr, early_leave: false});
+record.checkOut=timeStr; record.early_leave=false;
 renderPage();
 toast('تم تسجيل الانصراف','success');
 addNotification('تسجيل انصراف',`تم تسجيل انصرافك في ${timeStr}`,'success');
@@ -528,13 +524,12 @@ addNotification('تسجيل انصراف',`تم تسجيل انصرافك في $
 function exportAttendanceExcel(){
 const attFrom=STATE.attFrom||'', attTo=STATE.attTo||'';
 const filtered=STATE.attendance.filter(a=>(!attFrom||a.date>=attFrom)&&(!attTo||a.date<=attTo));
-const data=[['التاريخ','الموظف','الكود','القسم','الحضور','الانصراف','ساعات العمل','المصدر','متأخر','انصراف مبكر']];
+const data=[['التاريخ','الموظف','الحضور','الانصراف','ساعات العمل','المصدر']];
 filtered.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:a.employeeId-b.employeeId).forEach(a=>{
 const emp=findEmployeeById(a.employeeId);
-const dept=STATE.hrDepartments.find(d=>d.code===emp?.department);
-const krm=a.workMinutes!=null?(Number(a.workMinutes)/60).toFixed(1):a.checkIn&&a.checkOut?((new Date('2000-01-01 '+a.checkOut)-new Date('2000-01-01 '+a.checkIn))/3600000).toFixed(1):'';
+const krm=attRawHours(a);
 const src=a.source==='device'?'بصمة':a.source==='qr'?'QR':a.source==='backfill'?'أرشيف':'يدوي';
-data.push([a.date,emp?.name||'',emp?.employeeId||'',dept?.name||'',a.checkIn||'',a.checkOut||'',krm,src,a.late?'نعم':'لا',a.early_leave?'نعم':'لا']);
+data.push([a.date,emp?.name||'',a.checkIn||'',a.checkOut||'',krm,src]);
 });
 const ws=XLSX.utils.aoa_to_sheet(data);
 const wb=XLSX.utils.book_new();

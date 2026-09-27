@@ -5,6 +5,7 @@ const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { computeInvoicePaymentStatus } = require('./procurement-routes');
+const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
 
 const router = express.Router();
@@ -643,6 +644,13 @@ let totalValue = 0;
         await appendDispatchEvent(client, dispatch.id, 'warehouse_approved', dispatch.status, 'approved', req, approvalSignature, { approvedItems, notes: req.body?.approveNotes || null });
         await client.query('COMMIT');
 
+        // ترحيل محاسبي متماثل best-effort: Dr COGS / Cr مخزون (لا يُسقط الاعتماد)
+        try {
+            await require('./accounting-routes').postDispatchToLedger(dispatch.id, {
+                totalValue, date: dateOnly(dispatch.date), deptCode: dispatch.deptCode,
+            });
+        } catch (ledgerErr) { logger.warn('[dispatch_ledger] best-effort skipped:', ledgerErr.message); }
+
         emit(req, 'dispatches', 'update', updatedDispatch);
         // Task 20: إشعار فوري — المخازن صرفت: مقدم الطلب والشيف العمومي
         ensureDispatchCreatorSchema().catch(() => {});
@@ -998,6 +1006,12 @@ async function directReturn(client, req, res) {
                 dept.code, dept.name, round(totalValue, 2), req.user.username || String(req.user.id)]
         )).rows[0];
         await client.query('COMMIT');
+        // عكس محاسبي متماثل best-effort (المباشر أيضًا يحرّك المخزون)
+        try {
+            await require('./accounting-routes').postReturnToLedger(returnRow.id, {
+                totalValue, date: returnRow.date, deptCode: returnRow.deptCode,
+            });
+        } catch (ledgerErr) { logger.warn('[return_ledger] best-effort skipped:', ledgerErr.message); }
         emit(req, 'kitchenReturns', 'create', returnRow);
         for (const item of stockChanges) {emit(req, 'inventory', 'update', item);}
         for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
@@ -1159,6 +1173,13 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                 String(dispatch.id), dispatch.deptCode, dispatch.deptName, round(totalValue, 2), req.user.username || String(req.user.id)]
         )).rows[0];
         await client.query('COMMIT');
+
+        // عكس محاسبي متماثل best-effort: Dr مخزون / Cr COGS
+        try {
+            await require('./accounting-routes').postReturnToLedger(returnRow.id, {
+                totalValue, date: returnRow.date, deptCode: returnRow.deptCode,
+            });
+        } catch (ledgerErr) { logger.warn('[return_ledger] best-effort skipped:', ledgerErr.message); }
 
         emit(req, 'kitchenReturns', 'create', returnRow);
         // Task 20: إشعار فوري — إرجاع أصناف للقسم: المخازن والشيف يعرفان بالعكس
@@ -1418,6 +1439,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 unitProvided: raw.unit !== undefined && raw.unit !== null && cleanName(raw.unit) !== '',
                 qty: n(raw.qty),
                 price: n(raw.price),
+                taxCategory: String(raw.tax_category ?? raw.taxCategory ?? 'STANDARD').trim().toUpperCase(),
                 weight: Math.max(0, n(raw.weight)),
                 packagingQty: pkgQty !== null && Number.isFinite(pkgQty) && pkgQty >= 0 ? pkgQty : null,
                 packagingUom: cleanName(raw.packagingUom || raw.packaging_uom || raw.catch_weight_unit) || null,
@@ -1502,7 +1524,6 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         inventoryRows.push(...freshInventory);
 
         // ─── الربط المالي: مورد الدفعة + المسدد + حالة السداد ───
-        const invoiceTotal = round(totalAmount, 2);
         let supplierId = req.body?.supplierId !== undefined && req.body?.supplierId !== null && req.body?.supplierId !== ''
             ? Number(req.body.supplierId) : null;
         let supplierRow = null;
@@ -1527,7 +1548,9 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'INVALID_SUPPLIER', 'معرف المورد غير صحيح');
             }
-            supplierRow = (await client.query('SELECT id, name, is_active FROM suppliers WHERE id=$1', [supplierId])).rows[0];
+            supplierRow = (await client.query(
+                `SELECT id, name, is_active, tax_registration_status, vat_number, commercial_register
+                  FROM suppliers WHERE id=$1`, [supplierId])).rows[0];
             if (!supplierRow) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'SUPPLIER_NOT_FOUND', 'المورد المحدد غير موجود');
@@ -1551,6 +1574,33 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 return fail(res, 409, 'SUPPLIER_INACTIVE', `المورد «${supplierRow.name}» موقوف — فعّله قبل إنشاء الفواتير`);
             }
         }
+        // ─── VAT engine: Supplier → Tax Profile → Rule → Line VAT ──────────
+        // بدون مورد مربوط: لا ملف ضريبي → ضريبة صفر (لا يُدَّعى input VAT).
+        // بمورد NOT_REGISTERED/EXEMPT أو أصناف معفاة: القاعدة تقرر (غالبًا صفر).
+        // totalAmount = الإجمالي الشامل (صافي + ضريبة) — الدفعات والحالة عليه.
+        const standardRate = await loadStandardRate(pool);
+        const supplierProfile = supplierRow
+            ? {
+                status: supplierRow.tax_registration_status || 'NOT_REGISTERED',
+                vat_number: supplierRow.vat_number || null,
+                country: 'SA',
+            }
+            : { status: 'NOT_REGISTERED', vat_number: null, country: 'SA' };
+        let vatCalc;
+        try {
+            vatCalc = computeInvoiceVat(
+                invoiceItems.map((it) => ({ net: it.total, taxCategory: it.taxCategory || 'STANDARD' })),
+                supplierProfile,
+                { transactionDate: dateOnly(requestedDate) || new Date().toISOString().slice(0, 10), standardRate }
+            );
+        } catch (taxErr) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_TAX_CATEGORY', String(taxErr.message).slice(0, 200));
+        }
+        const invoiceNet = vatCalc.subtotalNet;
+        const invoiceVat = vatCalc.vatTotal;
+        const invoiceTotal = vatCalc.grandTotal;
+        const headerRate = vatCalc.lines.reduce((m, l) => Math.max(m, l.rate), 0);
         let paidAmount;
         if (req.body?.paidAmount !== undefined && req.body?.paidAmount !== null && req.body?.paidAmount !== '') {
             const rawPaidAmount = Number(req.body.paidAmount);
@@ -1566,12 +1616,21 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const invoiceSupplierName = supplierRow ? supplierRow.name : req.body?.supplierName || null;
 
         const invoice = (await client.query(
-            `INSERT INTO "purchaseInvoices" (id, "invoiceNumber", date, "supplierName", "supplierPhone", items, "totalAmount", "paymentMethod", notes, "createdAt", "createdBy", "supplierId", "paidAmount", "paymentStatus")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+            `INSERT INTO "purchaseInvoices" (id, "invoiceNumber", date, "supplierName", "supplierPhone", items, "totalAmount", "paymentMethod", notes, "createdAt", "createdBy", "supplierId", "paidAmount", "paymentStatus",
+                subtotal_net, vat_total, tax_rate_snapshot, tax_rule_code_snapshot,
+                supplier_name_snapshot, supplier_vat_number_snapshot, supplier_cr_snapshot,
+                supplier_tax_status_snapshot, zatca_uuid)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
             [invoiceId, requestedInvoiceNumber || `INV-${id()}`, dateOnly(requestedDate), invoiceSupplierName,
                 req.body?.supplierPhone || null, json(invoiceItems), invoiceTotal, paymentMethod,
                 req.body?.notes || null, new Date().toISOString(), req.user.username || String(req.user.id),
-                supplierId, paidAmount, paymentStatus]
+                supplierId, paidAmount, paymentStatus,
+                invoiceNet, invoiceVat, headerRate, vatCalc.ruleCode,
+                supplierRow ? supplierRow.name : (req.body?.supplierName || null),
+                supplierRow ? (supplierRow.vat_number || null) : null,
+                supplierRow ? (supplierRow.commercial_register || null) : null,
+                supplierRow ? (supplierRow.tax_registration_status || 'NOT_REGISTERED') : 'NOT_REGISTERED',
+                crypto.randomUUID()]
         )).rows[0];
         if (supplierId !== null && paidAmount > 0) {
             await client.query(
@@ -1583,10 +1642,18 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         }
         await client.query('COMMIT');
 
+        // ترحيل محاسبي best-effort (لا يُسقط الشراء عند غياب شجرة الحسابات)
+        try { await require('./accounting-routes').postPurchaseToLedger(invoiceId); }
+        catch (ledgerErr) { logger.warn('[purchase_ledger] best-effort skipped:', ledgerErr.message); }
+
         emit(req, 'purchaseInvoices', 'create', invoice);
         for (const item of inventoryRows) {emit(req, 'inventory', 'update', item);}
         for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
-        res.status(201).json({ invoice, inventory: inventoryRows, transactions, createdNames, totalAmount: round(totalAmount, 2) });
+        res.status(201).json({
+            invoice, inventory: inventoryRows, transactions, createdNames,
+            totalAmount: invoiceTotal, subtotalNet: invoiceNet, vatTotal: invoiceVat,
+            taxRule: vatCalc.ruleCode,
+        });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error('[pr_create]', error);
@@ -1732,6 +1799,11 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
             }
             reversed++;
         }
+        // عكس القيد المحاسبي المرتبط (إن وُجد) — إبطال موثق بدل الحذف الصامت
+        await client.query(
+            `UPDATE journal_entries SET status='void'
+              WHERE source_type='purchase_invoice' AND source_id=$1 AND status='posted'`,
+            [String(invoiceId)]);
         await client.query('DELETE FROM "purchaseInvoices" WHERE id = $1', [invoiceId]);
         await client.query('COMMIT');
         emit(req, 'purchaseInvoices', 'delete', { id: invoiceId, invoiceNumber: inv.invoiceNumber, void: true, force: !!force });

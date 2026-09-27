@@ -215,7 +215,7 @@ function idempotency(opts = {}) {
         }
         const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, MAX_KEY_LEN);
 
-        const { pool } = require('./shared-pool');
+        const { pool } = require('../shared-pool');
         let redis = null;
         try {
             const Redis = require('ioredis');

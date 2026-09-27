@@ -20,7 +20,7 @@ const MAX_ATTEMPTS = Math.max(3, Number(process.env.RT_OUTBOX_MAX_ATTEMPTS || 20
 
 let running = false;
 let timer = null;
-let stats = { cycles: 0, published: 0, failed: 0, lastCycleAt: null, lastError: null };
+let stats = { cycles: 0, published: 0, failed: 0, deadLettered: 0, lastCycleAt: null, lastError: null };
 
 function envelope(event) {
     return {
@@ -106,6 +106,19 @@ async function cycle({ io, pool, logger }) {
         stats.cycles += 1;
         stats.lastCycleAt = new Date().toISOString();
         await publishCycle({ io, pool, logger });
+        // رؤية المهملات (abandoned) كل 10 دورات — استعلام واحد خفيف، بلا حذف أبدًا
+        if (stats.cycles % 10 === 0) {
+            try {
+                const r = await pool.query(
+                    `SELECT COUNT(*)::int AS c FROM event_outbox WHERE published_at IS NULL AND attempts >= $1`,
+                    [MAX_ATTEMPTS]);
+                const n = Number(r.rows[0]?.c || 0);
+                if (n !== stats.deadLettered) {
+                    stats.deadLettered = n;
+                    if (n > 0) {logger.warn(`[outbox-publisher] dead-lettered events: ${n} (abandoned after ${MAX_ATTEMPTS} attempts — audit only, never deleted)`);}
+                }
+            } catch (e) {logger.warn('[outbox-publisher] dead-letter check failed:', e.message);}
+        }
     } catch (e) {
         logger.error('[outbox-publisher] cycle error:', e.message);
         stats.lastError = e.message;
@@ -143,4 +156,4 @@ function outboxStats() {
     return { ...stats, workerId: WORKER_ID, batchSize: BATCH_SIZE, intervalMs: INTERVAL_MS };
 }
 
-module.exports = { startOutboxPublisher, stopOutboxPublisher, outboxStats };
+module.exports = { startOutboxPublisher, stopOutboxPublisher, outboxStats, publishCycle, cycle, envelope };

@@ -33,6 +33,13 @@ return `
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=refresh></i> ${t('wh.lastMove')}</div><div class="mcard-val c-blue u-t14">${STATE.inventoryTx.length>0?fD(STATE.inventoryTx[STATE.inventoryTx.length-1].date):'—'}</div></div>
 </div>
 ${whShortPanel()}
+<nav class="wh-secnav" aria-label="أقسام صفحة المخزن">
+<button type="button" class="btn btn-sm" data-sec="wh-sec-items" onclick="whGoSec('wh-sec-items')"><i class=ji data-i=package></i> الأصناف</button>
+<button type="button" class="btn btn-sm" data-sec="wh-sec-moves" onclick="whGoSec('wh-sec-moves')"><i class=ji data-i=chart></i> الحركات</button>
+<button type="button" class="btn btn-sm" data-sec="wh-sec-returns" onclick="whGoSec('wh-sec-returns')"><i class=ji data-i=undo></i> المرتجعات</button>
+<button type="button" class="btn btn-sm" data-sec="wh-sec-prs" onclick="whGoSec('wh-sec-prs')"><i class=ji data-i=clipboard-list></i> طلبات الشراء</button>
+</nav>
+<section id="wh-sec-items" aria-label="أصناف المخزون">
 <div class="tbl-wrap">
 <div class="tbl-hd">
 <h3><i class=ji data-i=package></i> ${t('wh.invTitle')}</h3>
@@ -41,13 +48,15 @@ ${whShortPanel()}
 <input type="text" class="inp" placeholder="بحث: اسم / باركود / فئة..." oninput="ysTableSearch(this,'whInvBody')" style="max-width:240px">
 <button class="btn btn-blue btn-sm" onclick="whPrintInventory()"><i class=ji data-i=printer></i> طباعة</button>
 <button class="btn btn-green btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=file-text></i> ${t('wh.invBill')}</button>
+<button class="btn btn-blue btn-sm" onclick="scanToAddInventoryItem()"><i class=ji data-i=camera></i> ${t('wh.scan')}</button>
+<button class="btn btn-gold btn-sm" onclick="showAddItemModal()"><i class=ji data-i=plus></i> ${t('wh.new')}</button>
+<details class="wh-adv"><summary class="btn btn-sm">إجراءات متقدمة</summary><div class="u-row-wrap">
 <button class="btn btn-gold btn-sm" onclick="showOpeningBalanceModal()" title="إدخال سريع لأرصدة بداية الفترة دفعة واحدة"><i class=ji data-i=flag></i> رصيد افتتاحي</button>
 <button class="btn btn-blue btn-sm" onclick="showImportItemsCatalogModal()"><i class=ji data-i=inbox></i> ${t('wh.impCat')}</button>
 <button class="btn btn-blue btn-sm" onclick="showBulkInventoryImportModal()"><i class=ji data-i=chart></i> ${t('wh.impStock')}</button>
-<button class="btn btn-blue btn-sm" onclick="scanToAddInventoryItem()"><i class=ji data-i=camera></i> ${t('wh.scan')}</button>
-<button class="btn btn-gold btn-sm" onclick="showAddItemModal()"><i class=ji data-i=plus></i> ${t('wh.new')}</button>
 <button class="btn btn-red btn-sm" onclick="whBulkDelete()"><i class=ji data-i=trash></i> حذف المحدد</button>
 <button class="btn btn-purple btn-sm" onclick="showInventoryAuditModal()"><i class=ji data-i=clipboard-list></i> ${t('wh.audit')}</button><button class="btn btn-blue btn-sm" onclick="showFiscalYearModal()"><i class=ji data-i=calendar></i> ${t('wh.fyear')}</button>
+</div></details>
 </div>
 </div>
 <div class="tbl-scroll">
@@ -76,25 +85,9 @@ return `<tr>
 </table>
 </div>
 </div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=file-text></i> ${t('wh.invBills')}</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث: رقم / مورد..." oninput="ysTableSearch(this,'whBillsBody')" style="max-width:220px"></div></div>
-<div class="tbl-scroll">
-<table>
-<thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>عدد الأصناف</th><th>الإجمالي</th><th>طريقة الدفع</th><th>إجراءات</th></tr></thead>
-<tbody id="whBillsBody">
-${allInvoices.map(inv=>`<tr>
-<td class="fw-bold">${esc(inv.invoiceNumber)}</td>
-<td>${fD(inv.date)}</td>
-<td>${esc(inv.supplierName||'—')}</td>
-<td>${Array.isArray(inv.items)?inv.items.length:(typeof inv.items==='string'?(()=>{try{return JSON.parse(inv.items).length||0}catch(_){return 0}})():0)}</td>
-<td class="c-gold fw-bold">${fC(inv.totalAmount)}</td>
-<td><span class="badge bdg-blue">${getPaymentMethodLabel(inv.paymentMethod)}</span></td>
-<td><button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${inv.id}')"><i class=ji data-i=eye></i> عرض</button></td>
-</tr>`).join('')||'<tr><td colspan="7" class="u-empty">لا توجد فواتير</td></tr>'}
-</tbody>
-</table>
-</div>
-</div>
+</section>
+<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(allInvoices.length)} فاتورة بإجمالي ${fC(allInvoices.reduce((s,i)=>s+Number(i.totalAmount||0),0))}</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button></div></div></div>
+<section id="wh-sec-moves" aria-label="حركات المخزون">
 <div class="tbl-wrap">
 <div class="tbl-hd"><h3><i class=ji data-i=chart></i> آخر حركات المخزون</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
 <div class="tbl-scroll">
@@ -114,9 +107,18 @@ ${(STATE.inventoryTx||[]).slice().reverse().slice(0,20).map(tx=>`<tr>
 </table>
 </div>
 </div>
-${renderKitchenReturnsSection()}
-${renderPRSection()}
+</section>
+<section id="wh-sec-returns" aria-label="مرتجعات المطبخ">${renderKitchenReturnsSection()}</section>
+<section id="wh-sec-prs" aria-label="طلبات الشراء">${renderPRSection()}</section>
 `;
+}
+// ─── تنقل داخلي لأقسام صفحة المخزن (صفحة واحدة — تمرير فقط) ────────────────
+function whGoSec(id){
+    const el = document.getElementById(id);
+    if (el && el.scrollIntoView) {el.scrollIntoView({ behavior: 'smooth', block: 'start' });}
+    document.querySelectorAll('.wh-secnav button').forEach(b => {
+        b.classList.toggle('btn-gold', b.dataset.sec === id);
+    });
 }
 function getPaymentMethodLabel(method){return method==='cash'?'<i class=ji data-i=banknote></i> نقدي':method==='bank'?'<i class=ji data-i=landmark></i> بنكي':'<i class=ji data-i=credit-card></i> آجل';}
 async function whBulkDelete(){
@@ -156,7 +158,7 @@ ysPrintReport('كشف أصناف المخزون', `${fN(STATE.inventory.length)}
 }
 
 // ═══ مركز المشتريات والموردين — دليل موردون، أرصدة مستحقة، دفعات، كشوف حساب ═══
-const PCMT = { tab:'invoices', invFilter:'all', suppSearch:'', paySupplier:'', stmt:null, stmtSupplier:null, stmtFrom:'', stmtTo:'' };
+const PCMT = { tab:'invoices', invFilter:'all', suppSearch:'', suppTax:'ALL', suppPage:1, suppLimit:20, suppTotal:0, suppResults:null, suppLoading:false, suppError:'', paySupplier:'', stmt:null, stmtSupplier:null, stmtFrom:'', stmtTo:'' };
 const PCMT_CAN_WRITE = ['admin','manager','warehouse'];
 const PCMT_CAN_PAY = ['admin','manager','accountant'];
 const PCMT_PAY_LABELS = { cash:'نقدي', bank:'تحويل بنكي', card:'بطاقة', cheque:'شيك', credit:'آجل' };
@@ -219,7 +221,13 @@ ${PCMT.tab==='invoices'?`<select class="u-input" style="max-width:180px" onchang
 <option value="partial" ${PCMT.invFilter==='partial'?'selected':''}>مسددة جزئياً</option>
 <option value="paid" ${PCMT.invFilter==='paid'?'selected':''}>مدفوعة</option>
 </select>`:''}
-${PCMT.tab==='suppliers'?`<input class="u-input" style="max-width:220px" placeholder="بحث باسم المورد..." value="${esc(PCMT.suppSearch)}" oninput="PCMT.suppSearch=this.value;pcmtRerenderSuppliers()">`:''}
+${PCMT.tab==='suppliers'?`<input class="u-input" style="max-width:240px" placeholder="ابحث بالاسم أو الرقم الضريبي أو السجل التجاري" aria-label="بحث الموردين" value="${esc(PCMT.suppSearch)}" oninput="pcmtSuppSearchInput(this.value)">
+<select class="u-input" style="max-width:150px" aria-label="فلتر الحالة الضريبية" onchange="pcmtSuppTaxChange(this.value)">
+<option value="ALL" ${PCMT.suppTax==='ALL'?'selected':''}>الكل</option>
+<option value="REGISTERED" ${PCMT.suppTax==='REGISTERED'?'selected':''}>مسجل ضريبيًا</option>
+<option value="NOT_REGISTERED" ${PCMT.suppTax==='NOT_REGISTERED'?'selected':''}>غير مسجل</option>
+<option value="EXEMPT" ${PCMT.suppTax==='EXEMPT'?'selected':''}>معفى</option>
+</select>`:''}
 ${PCMT.tab==='suppliers'&&PCMT_CAN_WRITE.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="showSupplierModal()"><i class=ji data-i=plus></i> مورد جديد</button>`:''}
 ${PCMT.tab==='payments'&&PCMT_CAN_PAY.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="showPaymentModal()"><i class=ji data-i=plus></i> تسجيل دفعة</button>`:''}
 </div>
@@ -230,6 +238,58 @@ function pcmtRerenderSuppliers(){
     const wrap=document.querySelector('.tbl-wrap'); if(!wrap) {return;}
     const old=wrap.innerHTML; wrap.innerHTML=pcmtSuppliersTab(STATE.suppliers||[]);
     void old;
+}
+// ─── Smart supplier search (server-side, debounced, stale-guarded) ─────────
+// apiFetch owns its AbortController (30s) → here we debounce 300ms and ignore
+// stale responses via requestId (never full page reload; page keeps term+filter).
+let PCMT_SUPP_REQ = 0; let PCMT_SUPP_TIMER = null;
+function pcmtSuppSearchInput(val){
+    PCMT.suppSearch = String(val ?? '');
+    PCMT.suppPage = 1;
+    if (PCMT_SUPP_TIMER) {clearTimeout(PCMT_SUPP_TIMER);}
+    PCMT_SUPP_TIMER = setTimeout(() => {pcmtFetchSuppliers();}, 300);
+}
+function pcmtSuppTaxChange(val){
+    PCMT.suppTax = ['REGISTERED','NOT_REGISTERED','EXEMPT'].includes(val) ? val : 'ALL';
+    PCMT.suppPage = 1; // taxStatus change → reset page
+    pcmtFetchSuppliers();
+}
+function pcmtSuppPage(delta){
+    const pages = Math.max(1, Math.ceil((PCMT.suppTotal || 0) / (PCMT.suppLimit || 20)));
+    const next = Math.min(pages, Math.max(1, (PCMT.suppPage || 1) + delta));
+    if (next === PCMT.suppPage) {return;}
+    PCMT.suppPage = next; // page change → keep searchTerm + taxStatus
+    pcmtFetchSuppliers();
+}
+async function pcmtFetchSuppliers(){
+    const myId = ++PCMT_SUPP_REQ;
+    PCMT.suppLoading = true; PCMT.suppError = '';
+    if (STATE.page === 'procurement' && PCMT.tab === 'suppliers') {renderPage();}
+    const params = new URLSearchParams({
+        q: PCMT.suppSearch || '', tax_status: PCMT.suppTax || 'ALL',
+        page: String(PCMT.suppPage || 1), limit: String(PCMT.suppLimit || 20),
+    });
+    try{
+        const res = await apiFetch('/procurement/suppliers/search?' + params.toString());
+        if (myId !== PCMT_SUPP_REQ) {return;} // stale response — ignore
+        PCMT.suppResults = Array.isArray(res.data) ? res.data : [];
+        PCMT.suppTotal = Number(res.pagination?.total || 0);
+        PCMT.suppPage = Number(res.pagination?.page || 1);
+        PCMT.suppLoading = false;
+    }catch(e){
+        if (myId !== PCMT_SUPP_REQ) {return;}
+        PCMT.suppLoading = false;
+        PCMT.suppError = e.message || 'تعذر البحث';
+        PCMT.suppResults = [];
+        PCMT.suppTotal = 0;
+    }
+    if (STATE.page === 'procurement' && PCMT.tab === 'suppliers') {renderPage();}
+}
+const PCMT_TAX_AR = { REGISTERED:'مسجل ضريبيًا', NOT_REGISTERED:'غير مسجل', EXEMPT:'معفى' };
+function pcmtTaxBadge(st){
+    const v = String(st || 'NOT_REGISTERED').toUpperCase();
+    const cls = v === 'REGISTERED' ? 'bdg-green' : (v === 'EXEMPT' ? 'bdg-blue' : 'bdg-red');
+    return `<span class="badge ${cls}">${PCMT_TAX_AR[v] || v}</span>`;
 }
 function pcmtInvoicesTab(allInvoices, unpaid){
     let invoices = allInvoices.slice().reverse();
@@ -261,18 +321,29 @@ ${canPay?`<button class="btn btn-green btn-sm" onclick="payInvoiceFull('${esc(St
 </div>`;
 }
 function pcmtSuppliersTab(suppliers){
-    const q=String(PCMT.suppSearch||'').trim().toLowerCase();
-    const rows=suppliers.filter(s=>!q||String(s.name||'').toLowerCase().includes(q));
-    return `
-<div class="tbl-scroll">
-<table>
-<thead><tr><th>المورد</th><th>الهاتف</th><th>نوع التوريد</th><th>عدد الفواتير</th><th>إجمالي المشتريات</th><th>إجمالي الدفعات</th><th>الرصيد المستحق</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-<tbody>
-${rows.map(s=>{
+    // Server mode (smart search active) → merge directory financials by id.
+    // Client mode (legacy fallback) → filter the preloaded directory.
+    const serverMode = PCMT.suppResults !== null;
+    const byId = new Map((suppliers || []).map(s => [String(s.id), s]));
+    let rows;
+    if (serverMode) {
+        rows = (PCMT.suppResults || []).map(r => Object.assign({}, byId.get(String(r.id)) || {}, r));
+    } else {
+        const q = String(PCMT.suppSearch || '').trim().toLowerCase();
+        rows = (suppliers || []).filter(s => !q || String(s.name || '').toLowerCase().includes(q));
+    }
+    const pages = Math.max(1, Math.ceil((serverMode ? PCMT.suppTotal : rows.length) / (PCMT.suppLimit || 20)));
+    const bodyHtml = PCMT.suppLoading
+        ? '<tr><td colspan="11" class="u-empty" aria-live="polite">جارٍ البحث...</td></tr>'
+        : PCMT.suppError
+            ? `<tr><td colspan="11" class="u-empty">تعذر البحث: ${esc(PCMT.suppError)} <button class="btn btn-sm" onclick="pcmtFetchSuppliers()">إعادة المحاولة</button></td></tr>`
+            : (rows.map(s=>{
 const canW=PCMT_CAN_WRITE.includes(STATE.currentUser?.role);
 const canP=PCMT_CAN_PAY.includes(STATE.currentUser?.role);
 return `<tr ${s.is_active?'':'style="opacity:.55"'}>
 <td class="fw-bold">${esc(s.name)}</td>
+<td dir="ltr">${esc(s.vat_number||'—')}</td>
+<td>${pcmtTaxBadge(s.tax_status||s.tax_registration_status)}</td>
 <td>${esc(s.phone||'—')}</td>
 <td>${esc(s.category||'—')}</td>
 <td>${fN(s.invoiceCount||0)}</td>
@@ -287,10 +358,22 @@ ${canW?`<button class="btn btn-sm" onclick="showSupplierModal('${esc(String(s.id
 <button class="btn btn-purple btn-sm" onclick="toggleSupplier('${esc(String(s.id))}')"><i class=ji data-i=${s.is_active?'lock':'unlock'}></i> ${s.is_active?'إيقاف':'تفعيل'}</button>
 <button class="btn btn-red btn-sm" onclick="deleteSupplier('${esc(String(s.id))}')"><i class=ji data-i=trash></i> حذف</button>`:''}
 </td>
-</tr>`;}).join('')||'<tr><td colspan="9" class="u-empty">لا يوجد موردون — أضف أول مورد من زر «مورد جديد»</td></tr>'}
+</tr>`;}).join('')||'<tr><td colspan="11" class="u-empty">لا يوجد موردون مطابقون — جرّب بحثًا مختلفًا أو أضف موردًا جديدًا</td></tr>');
+    return `
+<div class="tbl-scroll">
+<table>
+<thead><tr><th>المورد</th><th>الرقم الضريبي</th><th>الحالة الضريبية</th><th>الهاتف</th><th>نوع التوريد</th><th>عدد الفواتير</th><th>إجمالي المشتريات</th><th>إجمالي الدفعات</th><th>الرصيد المستحق</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+<tbody>
+${bodyHtml}
 </tbody>
 </table>
-</div>`;
+</div>
+${serverMode?`<div class="fr" style="margin-top:8px;align-items:center" aria-live="polite">
+<span class="u-t13 text-muted">النتائج: ${fN(PCMT.suppTotal||0)} — صفحة ${fN(PCMT.suppPage||1)} من ${fN(pages)}</span>
+<div class="fr"></div>
+<button class="btn btn-sm" ${PCMT.suppPage<=1?'disabled':''} onclick="pcmtSuppPage(-1)">السابق</button>
+<button class="btn btn-sm" ${PCMT.suppPage>=pages?'disabled':''} onclick="pcmtSuppPage(1)">التالي</button>
+</div>`:''}`;
 }
 function pcmtPaymentsTab(){
     let payments=STATE.supplierPayments||[];
@@ -323,25 +406,90 @@ ${canDel?`<td><button class="btn btn-red btn-sm" onclick="deletePayment('${esc(S
 }
 function showSupplierModal(id){
     const s=id?(STATE.suppliers||[]).find(x=>String(x.id)===String(id)):null;
+    const st = String(s?.tax_status || s?.tax_registration_status || 'NOT_REGISTERED').toUpperCase();
     showModal(`
 <h3><i class=ji data-i=users></i> ${s?'تعديل مورد':'مورد جديد'}</h3>
-<div class="fr"><div class="fg"><label>اسم المورد *</label><input type="text" id="suppName" value="${esc(s?.name||'')}" placeholder="مثال: مؤسسة اللحوم الطازجة"></div>
-<div class="fg"><label>رقم الهاتف</label><input type="text" id="suppPhone" value="${esc(s?.phone||'')}" placeholder="05xxxxxxxx"></div></div>
+<div class="fr"><div class="fg"><label>اسم المورد *</label><input type="text" id="suppName" value="${esc(s?.name||'')}" placeholder="مثال: شركة نجم خير الشرق"></div>
+<div class="fg"><label>الاسم الإنجليزي (اختياري)</label><input type="text" id="suppNameEn" dir="ltr" value="${esc(s?.name_en||s?.nameEn||'')}" placeholder="Optional English name"></div></div>
+<div class="fr"><div class="fg"><label>رقم الهاتف</label><input type="text" id="suppPhone" dir="ltr" value="${esc(s?.phone||'')}" placeholder="0551234567"></div>
+<div class="fg"><label>البريد الإلكتروني</label><input type="email" id="suppEmail" dir="ltr" value="${esc(s?.email||'')}"></div></div>
+<div class="fg"><label>الحالة الضريبية *</label>
+<div class="fr" role="radiogroup" aria-label="الحالة الضريبية">
+<label><input type="radio" name="suppTaxStatus" value="REGISTERED" ${st==='REGISTERED'?'checked':''} onchange="pcmtTaxStatusChanged()"> مسجل في ضريبة القيمة المضافة</label>
+<label><input type="radio" name="suppTaxStatus" value="NOT_REGISTERED" ${st==='NOT_REGISTERED'?'checked':''} onchange="pcmtTaxStatusChanged()"> غير مسجل</label>
+<label><input type="radio" name="suppTaxStatus" value="EXEMPT" ${st==='EXEMPT'?'checked':''} onchange="pcmtTaxStatusChanged()"> معفى</label>
+</div></div>
+<div class="fr"><div class="fg"><label>الرقم الضريبي (15 رقمًا)</label><input type="text" id="suppVat" dir="ltr" inputmode="numeric" maxlength="15" value="${esc(s?.vat_number||s?.vatNumber||'')}" placeholder="302212427200003">
+<small id="suppVatHint" class="text-muted" aria-live="polite"></small></div>
+<div class="fg"><label>السجل التجاري</label><input type="text" id="suppCr" dir="ltr" maxlength="20" value="${esc(s?.cr||s?.commercial_register||s?.commercialRegister||'')}" placeholder="754"><small class="text-muted">أرقام وحروف إنجليزية فقط</small></div></div>
 <div class="fr"><div class="fg"><label>نوع التوريد</label><input type="text" id="suppCategory" value="${esc(s?.category||'')}" placeholder="لحوم / خضار / مشروبات..."></div>
 <div class="fg"><label>الرصيد الافتتاحي المستحق</label><input type="number" id="suppOpening" value="${s?Number(s.openingBalance||0):0}" step="0.01" min="0"><small class="text-muted">ما عليه له قبل استخدام النظام</small></div></div>
 <div class="fg"><label>العنوان</label><input type="text" id="suppAddress" value="${esc(s?.address||'')}"></div>
 <div class="fg"><label>ملاحظات</label><textarea id="suppNotes" rows="2">${esc(s?.notes||'')}</textarea></div>
 <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="saveSupplier(${s?`'${esc(String(s.id))}'`:'null'})"><i class=ji data-i=save></i> حفظ</button></div>
 `);
+    pcmtTaxStatusChanged();
+}
+// Dynamic validation (UX only — backend is authoritative)
+function pcmtTaxStatusChanged(){
+    const checked = document.querySelector('input[name="suppTaxStatus"]:checked');
+    const st = checked ? checked.value : 'NOT_REGISTERED';
+    const vat = document.getElementById('suppVat');
+    const hint = document.getElementById('suppVatHint');
+    if (!vat) {return;}
+    if (st === 'REGISTERED') {
+        vat.disabled = false;
+        vat.placeholder = '١٥ رقم (مثال: 302212427200003)';
+        if (hint) {hint.textContent = 'مطلوب: 15 رقمًا بالضبط';}
+    } else if (st === 'NOT_REGISTERED') {
+        vat.disabled = true; vat.value = '';
+        if (hint) {hint.textContent = 'لا ينطبق — المورد غير مسجل';}
+    } else {
+        vat.disabled = false;
+        if (hint) {hint.textContent = 'اختياري للمعفى — 15 رقمًا إن وُجد';}
+    }
+}
+function pcmtReadTaxStatus(){
+    const checked = document.querySelector('input[name="suppTaxStatus"]:checked');
+    return checked ? checked.value : 'NOT_REGISTERED';
 }
 async function saveSupplier(id){
-    const payload={ name:document.getElementById('suppName')?.value.trim(), phone:document.getElementById('suppPhone')?.value.trim(),
+    const status = pcmtReadTaxStatus();
+    const vatRaw = String(document.getElementById('suppVat')?.value ?? '').replace(/\D/g, '');
+    if (status === 'REGISTERED' && !/^[0-9]{15}$/.test(vatRaw)) {
+        toast('الرقم الضريبي يجب أن يكون 15 رقمًا', 'error');
+        document.getElementById('suppVat')?.focus();
+        return;
+    }
+    const crRaw = String(document.getElementById('suppCr')?.value ?? '').trim();
+    if (crRaw && !/^[0-9A-Za-z-]{1,20}$/.test(crRaw)) {
+        toast('السجل التجاري: أرقام وحروف إنجليزية فقط (حتى 20 خانة) — مثال: 754', 'error');
+        document.getElementById('suppCr')?.focus();
+        return;
+    }
+    const emailRaw = String(document.getElementById('suppEmail')?.value ?? '').trim();
+    if (emailRaw && !/^\S+@\S+\.\S+$/.test(emailRaw)) {
+        toast('البريد الإلكتروني غير صحيح', 'error');
+        document.getElementById('suppEmail')?.focus();
+        return;
+    }
+    const phoneRaw = String(document.getElementById('suppPhone')?.value ?? '').trim();
+    if (phoneRaw && !/^[0-9+\-\s()]{1,30}$/.test(phoneRaw)) {
+        toast('رقم الهاتف: أرقام فقط (مسموح + ومسافة وشرطة) — مثال: 0551234567', 'error');
+        document.getElementById('suppPhone')?.focus();
+        return;
+    }
+    const payload={ name:document.getElementById('suppName')?.value.trim(), name_en:document.getElementById('suppNameEn')?.value.trim(),
+        phone:document.getElementById('suppPhone')?.value.trim(), email:document.getElementById('suppEmail')?.value.trim(),
+        tax_registration_status:status, vat_number:status==='NOT_REGISTERED' ? null : (vatRaw || null),
+        commercial_register:document.getElementById('suppCr')?.value.trim() || null,
         category:document.getElementById('suppCategory')?.value.trim(), address:document.getElementById('suppAddress')?.value.trim(),
         notes:document.getElementById('suppNotes')?.value.trim(), openingBalance:document.getElementById('suppOpening')?.value };
     if(!payload.name||payload.name.length<2){ toast('اسم المورد مطلوب (حرفان على الأقل)','error'); return; }
     try{
         if(id){ const row=await apiFetch('/procurement/suppliers/'+id,{method:'PUT',body:JSON.stringify(payload)}); upsertStateEntity('suppliers',row); toast('تم تحديث بيانات المورد','success'); }
         else{ const row=await apiFetch('/procurement/suppliers',{method:'POST',body:JSON.stringify(payload)}); upsertStateEntity('suppliers',row); toast('تمت إضافة المورد','success'); }
+        PCMT.suppResults = null; // reset smart search → fresh directory
         closeModal(); renderPage();
     }catch(e){ toast(e.message||'تعذر حفظ المورد','error'); }
 }
@@ -1121,8 +1269,10 @@ else {toast(m||'فشل الحذف من قاعدة البيانات','error');}
 }
 // Purchase Invoice
 let currentInvoiceItems = [];
+let invoicePaidTouched = false; // لمس المستخدم حقل المسدد يدويًا؟ (لا → الخادم يحسم الشامل تلقائيًا)
 function showAddPurchaseInvoiceModal(){
 currentInvoiceItems = [];
+invoicePaidTouched = false;
 renderInvoiceItemsList();
 showModal(`
 <h3><i class=ji data-i=file-text></i> فاتورة مشتريات جديدة</h3>
@@ -1132,7 +1282,7 @@ showModal(`
 </div>
 <div class="fr">
 <div class="fg"><label>المورد <small class="text-muted">(اختياري — يربط الفاتورة بالحساب)</small></label><select id="invoiceSupplierSel" onchange="pcmtInvoiceSupplierChanged()"><option value="">بدون ربط (اسم حر)</option>${(STATE.suppliers||[]).filter(s=>s.is_active).map(s=>`<option value="${esc(String(s.id))}">${esc(s.name)}</option>`).join('')}</select></div>
-<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName"></div>
+<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName" oninput="pcmtSupplierLinkHint()"><small id="invoiceSupplierLinkHint" aria-live="polite"></small></div>
 <div class="fg" id="invoiceSupplierPhoneWrap" style="display:none"><label>رقم الهاتف</label><input type="text" id="supplierPhone"></div>
 </div>
 <div style="margin:16px 0">
@@ -1141,11 +1291,11 @@ showModal(`
 <button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addInvoiceItemRow()"><i class=ji data-i=plus></i> إضافة صنف</button>
 </div>
 <div class="fr">
-<div class="fg"><label>إجمالي الفاتورة <small class="text-muted">(محسوب تلقائيًا)</small></label><input type="number" id="invoiceTotal" readonly aria-readonly="true" title="يُحسب تلقائيًا من كمية وسعر كل صنف" onclick="focusInvoiceEntryField()" style="background:var(--gold-d);color:var(--gold);font-weight:800;cursor:pointer"><small class="text-muted">اكتب الكمية والسعر في سطور الأصناف، وسيتم تحديث الإجمالي تلقائيًا.</small></div>
+<div class="fg"><label>إجمالي الفاتورة <small class="text-muted">(محسوب تلقائيًا)</small></label><input type="number" id="invoiceTotal" readonly aria-readonly="true" title="يُحسب تلقائيًا من كمية وسعر كل صنف" onclick="focusInvoiceEntryField()" style="background:var(--gold-d);color:var(--gold);font-weight:800;cursor:pointer"><small id="invoiceVatHint" class="text-muted" aria-live="polite"></small></div>
 <div class="fg"><label>طريقة الدفع</label><select id="paymentMethod" onchange="pcmtInvoicePaidChanged()"><option value="cash">نقدي (مسدد)</option><option value="bank">تحويل بنكي (مسدد)</option><option value="credit">آجل (غير مسدد)</option></select></div>
 </div>
 <div class="fr">
-<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="0" oninput="pcmtInvoicePaidChanged(true)"><small class="text-muted">اتركه 0 للآجل — سيحدد حالة السداد تلقائياً</small></div>
+<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="0" oninput="pcmtInvoicePaidChanged(true)"><small class="text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — عدّله فقط لدفعة جزئية</small></div>
 <div class="fg"><label>حالة السداد المتوقعة</label><div id="invoiceStatusPreview"><span class="badge bdg-red">غير مسددة</span></div></div>
 </div>
 <div class="fg"><label>ملاحظات</label><textarea id="invoiceNotes" rows="2"></textarea></div>
@@ -1159,26 +1309,63 @@ function pcmtInvoiceSupplierChanged(){
     const phoneWrap=document.getElementById('invoiceSupplierPhoneWrap');
     if(nameWrap) {nameWrap.style.display=linked?'none':'';}
     if(phoneWrap) {phoneWrap.style.display=linked?'none':'';}
+    pcmtSupplierLinkHint();
+    updateInvoiceTotal();
     pcmtInvoicePaidChanged();
 }
+// تنبيه الربط الذكي: اسم حر يطابق موردًا مسجلًا ضريبيًا → زر ربط واحد
+function pcmtSupplierLinkHint(){
+    const hint=document.getElementById('invoiceSupplierLinkHint');
+    const sel=document.getElementById('invoiceSupplierSel');
+    if(!hint) {return;}
+    hint.innerHTML='';
+    if(!sel || String(sel.value)!=='') {return;} // مربوط بالفعل
+    const typed=String(document.getElementById('supplierName')?.value||'').trim().toLowerCase();
+    if(!typed) {return;}
+    const match=(STATE.suppliers||[]).find(s=>s.is_active&&String(s.name||'').trim().toLowerCase()===typed
+        &&String(s.tax_status||s.tax_registration_status||'').toUpperCase()==='REGISTERED');
+    if(!match) {return;}
+    hint.innerHTML=`«${esc(match.name)}» مسجل ضريبيًا (15%) — <button type="button" class="btn btn-gold btn-sm" onclick="pcmtSupplierQuickLink('${esc(String(match.id))}')">اربط لتطبيق الضريبة</button>`;
+}
+function pcmtSupplierQuickLink(id){
+    const sel=document.getElementById('invoiceSupplierSel');
+    if(sel){sel.value=String(id);pcmtInvoiceSupplierChanged();}
+}
 function pcmtInvoicePaidChanged(fromInput){
-    const totalEl=document.getElementById('invoiceTotal');
     const paidEl=document.getElementById('invoicePaidAmount');
     const prev=document.getElementById('invoiceStatusPreview');
     if(!paidEl||!prev) {return;}
+    if(fromInput){invoicePaidTouched=true;}
+    const est=pcmtGrandEstimate();
     if(!fromInput){
         const method=document.getElementById('paymentMethod')?.value||'cash';
-        paidEl.value=method==='credit'?'0':(totalEl?.value||'0');
+        paidEl.value=method==='credit'?'0':est.grand.toFixed(2);
     }
-    const total=Number(totalEl?.value||0);
-    const paid=Math.min(Math.max(Number(paidEl.value||0),0),total);
+    const total=est.grand;
+    const paidRaw=Number(paidEl.value||0);
+    const paid=Math.min(Math.max(paidRaw,0),total);
     let badge;
     if(total<=0||paid>=total) {badge='<span class="badge bdg-green">مدفوعة</span>';}
     else if(paid<=0) {badge='<span class="badge bdg-red">غير مسددة</span>';}
     else {badge=`<span class="badge bdg-gold">مسددة جزئياً — متبقٍ ${fN(total-paid)}</span>`;}
     prev.innerHTML=badge;
 }
-function addInvoiceItemRow(){ currentInvoiceItems.push({id:uid(),itemName:'',itemId:null,qty:1,price:0,total:0,unit:'وحدة',weight:''}); renderInvoiceItemsList(); }
+// تقدير الشامل (مرآة حساب الخادم سطرًا بسطر — الخادم هو المرجع عند الحفظ)
+function pcmtGrandEstimate(){
+    const r2=v=>Math.round((Number(v)||0)*100)/100;
+    const sel=document.getElementById('invoiceSupplierSel')?.value || '';
+    const sup=sel?(STATE.suppliers||[]).find(s=>String(s.id)===String(sel)):null;
+    const registered=!!sup&&String(sup.tax_status||sup.tax_registration_status||'').toUpperCase()==='REGISTERED';
+    let net=0, vat=0;
+    for(const it of (currentInvoiceItems||[])){
+        const n=r2(Number(it.total)||0); net=r2(net+n);
+        const cat=String(it.taxCategory||'STANDARD').toUpperCase();
+        const rate=(registered&&cat==='STANDARD')?15:0;
+        vat=r2(vat+r2(n*rate/100));
+    }
+    return { net, vat, grand:r2(net+vat), registered };
+}
+function addInvoiceItemRow(){ currentInvoiceItems.push({id:uid(),itemName:'',itemId:null,qty:1,price:0,total:0,unit:'وحدة',weight:'',taxCategory:'STANDARD'}); renderInvoiceItemsList(); }
 function removeInvoiceItemRow(index){ currentInvoiceItems.splice(index,1); renderInvoiceItemsList(); }
 function updateInvoiceItem(index,field,value){
 const item = currentInvoiceItems[index];
@@ -1194,6 +1381,7 @@ if(unitInput) {unitInput.value=item.unit;}
 }else if(field==='qty'){ item.qty=parseFloat(value)||0; }
 else if(field==='unit'){ item.unit=String(value||'').trim()||'وحدة'; }
 else if(field==='price'){ item.price=parseFloat(value)||0; }
+else if(field==='taxCategory'){ item.taxCategory=['STANDARD','ZERO_RATED','EXEMPT','OUT_OF_SCOPE'].includes(value)?value:'STANDARD'; updateInvoiceTotal(); }
 else if(field==='weight'){ item.weight=String(value||'').trim()===''?'':(parseFloat(value)||0); }
 item.total = item.qty * item.price;
 const totalEl=document.getElementById(`item_total_${index}`);
@@ -1204,7 +1392,21 @@ function updateInvoiceTotal(){
 const total = currentInvoiceItems.reduce((sum,item)=>sum+item.total,0);
 const totalInput=document.getElementById('invoiceTotal');
 if(totalInput) {totalInput.value=total.toFixed(2);}
-// حالة السداد التوقّعية تتبع الإجمالي الحي (النقدي يُسدد كاملًا تلقائيًا)
+// تقدير ضريبي فوري (مرآة الخادم — هو المرجع عند الحفظ)
+const hint=document.getElementById('invoiceVatHint');
+if(hint){
+    const est=pcmtGrandEstimate();
+    if(est.registered&&est.vat>0){
+        hint.innerHTML=`شامل الضريبة تلقائيًا: صافي ${fC(est.net)} + ضريبة 15% (${fC(est.vat)}) = شامل ${fC(est.grand)} — يُحسم عند الحفظ`;
+    } else if (est.registered) {
+        hint.innerHTML='المورد مسجل — لا ضريبة على هذه الأصناف (معفاة/صفرية)';
+    } else {
+        const sel=document.getElementById('invoiceSupplierSel')?.value || '';
+        const sup=sel?(STATE.suppliers||[]).find(s=>String(s.id)===String(sel)):null;
+        hint.innerHTML=sup?'المورد غير مسجل/معفى — لا ضريبة متوقعة':'بدون ربط مورد — لا ضريبة متوقعة';
+    }
+}
+// حالة السداد التوقّعية تتبع الإجمالي الحي (النقدي يُسدد الشامل تلقائيًا)
 pcmtInvoicePaidChanged();
 }
 function focusInvoiceEntryField(){
@@ -1229,6 +1431,12 @@ function renderInvoiceItemsList(){
   <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوحدة</small><input type="text" id="item_unit_${idx}" value="${esc(item.unit||'وحدة')}" list="invoiceUnitOptions" placeholder="كجم / شوال / علبة" class="u-input" onchange="updateInvoiceItem(${idx},'unit',this.value)"></div>
   <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوزن الإجمالي (كجم)</small><input type="number" id="item_weight_${idx}" value="${item.weight??''}" min="0" step="0.01" placeholder="اختياري" class="u-input" onchange="updateInvoiceItem(${idx},'weight',this.value)"></div>
   <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">سعر الوحدة</small><input type="number" id="item_price_${idx}" value="${item.price}" min="0" step="0.01" placeholder="السعر" class="u-input" onchange="updateInvoiceItem(${idx},'price',this.value)"></div>
+  <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الفئة الضريبية</small><select class="u-input" aria-label="الفئة الضريبية للصنف" onchange="updateInvoiceItem(${idx},'taxCategory',this.value)">
+  <option value="STANDARD" ${(item.taxCategory||'STANDARD')==='STANDARD'?'selected':''}>خاضع 15%</option>
+  <option value="ZERO_RATED" ${item.taxCategory==='ZERO_RATED'?'selected':''}>صفري 0%</option>
+  <option value="EXEMPT" ${item.taxCategory==='EXEMPT'?'selected':''}>معفى</option>
+  <option value="OUT_OF_SCOPE" ${item.taxCategory==='OUT_OF_SCOPE'?'selected':''}>خارج النطاق</option>
+  </select></div>
   <div style="flex:1;min-width:95px;text-align:center;font-weight:800;color:var(--gold)"><small style="display:block;margin-bottom:4px;color:var(--text3)">الإجمالي</small><span id="item_total_${idx}">${fC(item.total)}</span></div>
   <button type="button" onclick="removeInvoiceItemRow(${idx})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 12px;cursor:pointer" title="حذف الصنف"><i class=ji data-i=x></i></button>
   </div>`;
@@ -1250,7 +1458,8 @@ try{
 const result=await apiFetch('/warehouse/purchase-invoices',{method:'POST',body:JSON.stringify({
 invoiceNumber,date:invoiceDate,supplierName,supplierPhone,paymentMethod,notes,
 supplierId:supplierSel||null,
-paidAmount:(paidAmountRaw!==''&&paidAmountRaw!=null)?Number(paidAmountRaw):undefined,
+// أوتوماتيك: لم يلمس المستخدم المسدد → الخادم يسدد الشامل (نقدي) أو صفر (آجل)
+paidAmount:invoicePaidTouched&&(paidAmountRaw!==''&&paidAmountRaw!=null)?Number(paidAmountRaw):undefined,
 items:validItems.map(item=>({...item}))
 })});
 upsertStateEntity('purchaseInvoices',result.invoice);
@@ -1258,6 +1467,7 @@ upsertStateEntity('purchaseInvoices',result.invoice);
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
 closeModal(); renderPage();
 let msg = `تم إضافة فاتورة شراء بقيمة ${fC(result.totalAmount||0)} وتحديث المخزون`;
+if(result.vatTotal > 0){ msg += ` (صافي ${fC(result.subtotalNet||0)} + ضريبة ${fC(result.vatTotal)})`; }
 if(result.invoice?.supplierId){ msg += ` — الحالة: ${(result.invoice.paymentStatus==='paid')?'مدفوعة':(result.invoice.paymentStatus==='partial')?'مسددة جزئياً':'غير مسددة'}`; await refreshProcurementData(); }
 if((result.createdNames||[]).length > 0){
 msg += ` — تم إنشاء ${result.createdNames.length} صنف جديد: ${result.createdNames.slice(0,3).join('،')}${result.createdNames.length>3?` (+${result.createdNames.length-3})`:''}`;
@@ -1923,4 +2133,4 @@ resetWeight();
 renderPage();
 }
 
-export { renderWarehouse, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem };
+export { renderWarehouse, whGoSec, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem };

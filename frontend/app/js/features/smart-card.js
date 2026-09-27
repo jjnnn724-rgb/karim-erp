@@ -376,23 +376,45 @@ if (late > 0) return `تأخير دخول ${late} د`;
 if (early > 0) return `خروج مبكر ${early} د`;
 return 'في الوقت';
 }
-function printAttendanceReport(report, title, existingWin=null){
+const fmtHM = (mins) => { const m = Math.max(0, Math.round(Number(mins) || 0)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+// لوجو مضمن base64 لنوافذ الطباعة (ملف URL قد يُحجب بشهادة HTTPS) — يُجلب مرة ويُحفظ
+let __printLogoCache = null;
+async function printLogoDataUrl(){
+if (__printLogoCache) {return __printLogoCache;}
+try {
+const res = await fetch(getAbsoluteLogoSrc());
+if (!res.ok) {throw new Error('logo fetch');}
+const blob = await res.blob();
+__printLogoCache = await new Promise((resolve) => { const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = () => resolve(null); fr.readAsDataURL(blob); });
+} catch (_) {__printLogoCache = null;}
+return __printLogoCache || getAbsoluteLogoSrc();
+}
+async function printAttendanceReport(report, title, existingWin=null){
 const employee = report.employee || {};
 const s = report.summary || {};
+// ساعات الوردية المتوقعة للموظف (10/12/8...) — أساس حكم الميعاد
+const shiftMin = (Number(employee.shift_hours) > 0 ? Number(employee.shift_hours) : 10) * 60;
+let onTimeDays = 0, shortTotal = 0;
 const rows = (report.records || []).map(r=>{
 const minutes = Number(r.workMinutes || 0);
-const krm = `${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}`;
-const lm = Number(r.lateMinutes || 0);
-const early = Number(r.earlyLeaveMinutes || 0);
-const arrival = Math.max(0, lm - early);
-const lateTxt = formatAttendanceStatus({ checkIn: r.checkIn, checkOut: r.checkOut, lateMinutes: arrival, earlyLeaveMinutes: early, workMinutes: minutes });
-const lateStyle = !r.checkIn || !String(r.checkIn).trim() ? 'color:#f59e0b;font-weight:700' : (r.checkOut && String(r.checkOut).trim() && (lm > 0 || early > 0) ? 'color:#c0392b;font-weight:700' : 'color:#27ae60');
+const krm = fmtHM(minutes);
+const hasIn = !!(r.checkIn && String(r.checkIn).trim());
+const hasOut = !!(r.checkOut && String(r.checkOut).trim());
+let cell, style;
+if (!hasIn) {cell = 'بلا حضور'; style = 'color:#f59e0b;font-weight:700';}
+else if (!hasOut) {cell = 'بلا انصراف'; style = 'color:#f59e0b;font-weight:700';}
+else if (minutes === 0) {cell = 'يحتاج مراجعة'; style = 'color:#f59e0b;font-weight:700';}
+else {
+const short = shiftMin - minutes;
+if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDays++;}
+else {cell = `ناقص ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
+}
 const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
-return `<tr><td>${esc(r.date||'')}</td><td>${esc(r.checkIn||'—')}</td><td>${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${lateStyle}">${lateTxt}</td><td>${esc(src)}</td></tr>`;
+return `<tr><td>${esc(r.date||'')}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
 }).join('') || '<tr><td colspan="6">لا توجد سجلات في الفترة المحددة</td></tr>';
 const win = existingWin || window.open('', '_blank');
 if(!win){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
-const lateDaysTxt = Number(s.totalLateMinutes||0) > 0 ? `${Number(s.totalLateHours||0)} ساعة <small>(${Number(s.totalLateMinutes||0)} دقيقة)</small>` : '—';
+const logoSrc = await printLogoDataUrl();
 const fromTo = s.from && s.to ? `${s.from} → ${s.to}` : '';
 win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${esc(title)} - ${esc(employee.name||'')}</title><style>
 body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e;background:#f8f7f5}
@@ -412,12 +434,12 @@ th{background:#0f172a;color:#f5d76e;padding:10px;font-size:12px}td{padding:9px;b
 .footer{margin-top:18px;text-align:center;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;padding-top:10px}
 @media print{body{background:#fff}.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}button{display:none}}
 </style></head><body>
-<div class="header"><img src="${esc(getAbsoluteLogoSrc())}" alt="logo"><div><h1>${esc(STATE.settings.name)}</h1><p>${esc(title)} — ${fromTo}</p></div></div>
+<div class="header"><img src="${esc(logoSrc)}" alt="logo" onerror="this.style.display='none'"><div><h1>${esc(STATE.settings.name)}</h1><p>${esc(title)} — ${fromTo} • الوردية المتوقعة: ${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س/يوم</p></div></div>
 <div class="container">
-<div class="employee-card"><div class="avatar">${esc((employee.name||'?').trim()[0]||'?')}</div><div class="info"><strong>${esc(employee.name||'—')}</strong><br><small>الرقم الوظيفي: ${esc(employee.employeeId||'—')} • المنصب: ${esc(employee.position||'—')} ${employee.shift_start?`• الوردية: ${esc(employee.shift_start)}${employee.shift_karim?` (${esc(employee.shift_karim)} س)`:''}`:''}</small></div><div style="text-align:left;color:#475569;font-size:12px">الفترة<br><strong style="color:#0f172a">${fromTo||'—'}</strong></div></div>
-<div class="summary"><div class="card"><small>أيام الحضور</small><b>${s.daysPresent||0}</b></div><div class="card"><small>أيام مكتملة</small><b>${s.completeDays||0}</b></div><div class="card late"><small>أيام فيها تأخير</small><b class="red">${s.lateDays||0}</b><small>${s.totalLateMinutes||0} دقيقة</small></div><div class="card late"><small>إجمالي التأخير</small><b class="red">${lateDaysTxt}</b><small>${s.totalLateHours||0} ساعة${Number(s.reviewDays||0) > 0 ? ` • قيد المراجعة: ${s.reviewDays} يوم (${s.reviewMinutes||0} د)` : ''}</small></div><div class="card"><small>إجمالي الساعات</small><b class="gold">${s.totalKarim||0}</b></div></div>
-<table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>التأخير</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
-<div class="footer">يوم العمل حسب وردية الموظف • أيام فيها تأخير (${s.lateDays||0}) • ${s.totalLateMinutes||0} دقيقة${Number(s.reviewDays||0) > 0 ? ` • قيد المراجعة: ${s.reviewDays} يوم (${s.reviewMinutes||0} د)` : ''} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div>
+<div class="employee-card"><div class="avatar">${esc((employee.name||'?').trim()[0]||'?')}</div><div class="info"><strong>${esc(employee.name||'—')}</strong><br><small>الرقم الوظيفي: ${esc(employee.employeeId||'—')} • المنصب: ${esc(employee.position||'—')} ${employee.shift_start?`• الوردية: ${esc(employee.shift_start)}${employee.shift_hours?` (${esc(employee.shift_hours)} س)`:''}`:''}</small></div><div style="text-align:left;color:#475569;font-size:12px">الفترة<br><strong style="color:#0f172a">${fromTo||'—'}</strong></div></div>
+<div class="summary"><div class="card"><small>أيام الحضور</small><b>${s.daysPresent||0}</b></div><div class="card"><small>أيام مكتملة</small><b>${s.completeDays||0}</b></div><div class="card"><small>أيام في الميعاد</small><b style="color:#27ae60">${onTimeDays}</b></div><div class="card"><small>إجمالي النقص</small><b class="red">${shortTotal > 0 ? fmtHM(shortTotal) : '—'}</b></div><div class="card"><small>إجمالي الساعات</small><b class="gold">${s.totalHours||0}</b></div></div>
+<table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="footer">يوم العمل حسب وردية الموظف (${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س) • أيام في الميعاد (${onTimeDays}) • إجمالي النقص ${shortTotal > 0 ? fmtHM(shortTotal) : '—'} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div>
 </div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 win.document.close();
 }
@@ -527,11 +549,15 @@ async function printLuxCard(empId){
 const printWin=window.open('', '_blank');
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة البطاقة','warning'); return; }
 try{
-const res=await fetch(API_BASE+`/hr/employees/${encodeURIComponent(empId)}/lux-card`,{headers:{'Authorization':'Bearer '+window._jwt}});
-if(!res.ok) {throw new Error(`تعذر توليد البطاقة (${res.status})`);}
+const res=await fetch(API_BASE+`/hr/employees/${encodeURIComponent(empId)}/lux-card`,{headers:{'Authorization':'Bearer '+window._jwt, ...(window._appKey?{'x-api-key':window._appKey}:{})}});
+if(!res.ok) {
+let msg=`تعذر توليد البطاقة (${res.status})`;
+try{ const e=await res.clone().json(); if(e&&(e.message||e.error)){msg=e.message||e.error;} }catch(_){}
+throw new Error(msg);
+}
 printWin.document.write(await res.text());
 printWin.document.close();
-}catch(e){ printWin.close(); toast(e.message||'تعذر توليد البطاقة','error'); }
+}catch(e){ try{printWin.close();}catch(_){} toast(e.message||'تعذر توليد البطاقة','error'); }
 }
 async function printEmployeeAttendanceDay(empId, date = today()){
 const printWin=window.open('', '_blank');
@@ -564,24 +590,28 @@ box.innerHTML=`<div class="u-mt12" style="color:#c0392b;font-size:13px">${esc(e.
 }
 function renderAttendanceRangeBlock(report){
 const s=report.summary||{};
+const employee=report.employee||{};
+const shiftMin=(Number(employee.shift_hours)>0?Number(employee.shift_hours):10)*60;
+let onTimeDays=0, shortTotal=0;
 const rows=(report.records||[]).map(r=>{
 const minutes=Number(r.workMinutes||0);
-const krm=`${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}`;
-const late=Number(r.lateMinutes||0);
-const early=Number(r.earlyLeaveMinutes||0);
-const arrival=Math.max(0,late-early);
-const statusTxt=formatAttendanceStatus({checkIn:r.checkIn,checkOut:r.checkOut,lateMinutes:arrival,earlyLeaveMinutes:early,workMinutes:minutes});
-const statusStyle=!r.checkIn||!String(r.checkIn).trim()?'color:#f59e0b;font-weight:700':((r.checkOut&&String(r.checkOut).trim())&&(late>0||early>0))?'color:#c0392b;font-weight:700':'color:#27ae60';
+const krm=fmtHM(minutes);
+const hasIn=!!(r.checkIn&&String(r.checkIn).trim());
+const hasOut=!!(r.checkOut&&String(r.checkOut).trim());
+let statusTxt, statusStyle;
+if(!hasIn){statusTxt='بلا حضور';statusStyle='color:#f59e0b;font-weight:700';}
+else if(!hasOut){statusTxt='بلا انصراف';statusStyle='color:#f59e0b;font-weight:700';}
+else if(minutes===0){statusTxt='يحتاج مراجعة';statusStyle='color:#f59e0b;font-weight:700';}
+else{const short=shiftMin-minutes;if(short<=0){statusTxt='في الميعاد';statusStyle='color:#27ae60';onTimeDays++;}else{statusTxt=`ناقص ${fmtHM(short)}`;statusStyle='color:#c0392b;font-weight:700';shortTotal+=short;}}
 const review=r.needsReview?' <span class="badge bdg-orange">مراجعة</span>':'';
-return `<tr><td>${esc(r.date||'')}</td><td class="c-green">${esc(r.checkIn||'—')}</td><td class="c-red">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
+return `<tr><td>${esc(r.date||'')}</td><td class="c-green" dir="ltr">${esc(r.checkIn||'—')}</td><td class="c-red" dir="ltr">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
 }).join('')||'<tr><td colspan="5" style="text-align:center;color:#64748b">لا توجد سجلات في هذه الفترة</td></tr>';
-const lateSummary=Number(s.totalLateMinutes||0)>0?formatLateRow({lateMinutes:s.totalLateMinutes}):'—';
 return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام الحضور</small><b style="display:block;font-size:18px">${s.daysPresent||0}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #2563eb"><small style="color:#64748b">أيام مكتملة</small><b style="display:block;font-size:18px">${s.completeDays||0}</b></div>
-<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">أيام تأخير</small><b style="display:block;font-size:18px;color:#c0392b">${s.lateDays||0}</b></div>
-<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي التأخير</small><b style="display:block;font-size:15px;color:#c0392b">${lateSummary}</b></div>
-<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #c9a227"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalKarim||0}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام في الميعاد</small><b style="display:block;font-size:18px;color:#27ae60">${onTimeDays}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي النقص</small><b style="display:block;font-size:15px;color:#c0392b">${shortTotal>0?fmtHM(shortTotal):'—'}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #c9a227"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalHours||0}</b></div>
 </div>
 <div class="tbl-scroll u-mt8">
 <table>

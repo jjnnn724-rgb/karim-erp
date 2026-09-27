@@ -15,6 +15,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { normalizeVatNumber, validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
 
 const router = express.Router();
 
@@ -30,6 +31,9 @@ const PAYMENT_METHOD_LABELS = {
 };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PHONE_RE = /^[0-9+\-\s()]{0,30}$/;
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const CR_RE = /^[0-9A-Za-z-]{1,20}$/;
+const TAX_STATUS_VALUES = ['REGISTERED', 'NOT_REGISTERED', 'EXEMPT'];
 
 // ─── Pure helpers (مصدَّرة للاختبارات) ────────────────────────────────────────
 
@@ -142,6 +146,53 @@ function validateSupplierPayload(body, { isUpdate = false } = {}) {
         if (notes.length > 500) {errors.push('الملاحظات طويلة جدًا');}
         else {clean.notes = notes;}
     }
+    // ─── Tax profile (ZATCA-ready; backend is authoritative, frontend UX only) ──
+    const nameEn = String(b.name_en ?? b.nameEn ?? '').trim();
+    if (nameEn) {
+        if (nameEn.length > 120) {errors.push('الاسم الإنجليزي طويل جدًا (120 حرفًا كحد أقصى)');}
+        else {clean.name_en = nameEn;}
+    }
+    const email = String(b.email ?? '').trim();
+    if (email) {
+        if (email.length > 120 || !EMAIL_RE.test(email)) {errors.push('البريد الإلكتروني غير صحيح');}
+        else {clean.email = email;}
+    }
+    const cr = String(b.commercial_register ?? b.commercialRegister ?? '').trim();
+    if (cr) {
+        if (!CR_RE.test(cr)) {errors.push('رقم السجل التجاري غير صحيح (حروف/أرقام حتى 20 خانة)');}
+        else {clean.commercial_register = cr;}
+    }
+    let status = null;
+    const rawStatus = b.tax_registration_status ?? b.tax_status ?? b.taxStatus;
+    if (rawStatus !== undefined && rawStatus !== null && String(rawStatus).trim() !== '') {
+        status = String(rawStatus).trim().toUpperCase();
+        if (!TAX_STATUSES.has(status)) {errors.push('الحالة الضريبية غير معروفة (REGISTERED | NOT_REGISTERED | EXEMPT)');}
+        else {clean.tax_registration_status = status;}
+    } else if (!isUpdate) {
+        status = 'NOT_REGISTERED';
+        clean.tax_registration_status = status;
+    }
+    const rawVat = b.vat_number ?? b.vatNumber ?? b.vat;
+    const vatProvided = rawVat !== undefined && rawVat !== null && String(rawVat).trim() !== '';
+    const vatCheck = validateVatNumber(rawVat);
+    const vatNormalized = vatCheck.normalized;
+    if (vatProvided && !vatCheck.ok) {
+        errors.push('الرقم الضريبي يجب أن يكون 15 رقمًا (مثال: 302212427200003)');
+    } else if (status === 'REGISTERED') {
+        if (!vatProvided || vatNormalized === null) {errors.push('المورد المسجل ضريبيًا يحتاج رقمًا ضريبيًا (15 رقمًا)');}
+        else {clean.vat_number = vatNormalized;}
+    } else if (status === 'NOT_REGISTERED') {
+        if (vatProvided) {errors.push('المورد غير المسجل لا يقبل رقمًا ضريبيًا — اتركه فارغًا');}
+        else {clean.vat_number = null;}
+    } else if (status === 'EXEMPT') {
+        // المعفي: يقبل رقمًا صالحًا أو فارغًا حسب سياسة النشاط — لا نفترض شيئًا
+        clean.vat_number = vatProvided ? vatNormalized : null;
+    } else if (vatProvided && !isUpdate) {
+        // create + VAT دون حالة صريحة → اطلب الحالة بدل التخمين
+        errors.push('حدد الحالة الضريبية (مسجل) مع الرقم الضريبي');
+    } else if (vatProvided && isUpdate) {
+        clean.vat_number = vatNormalized; // يُحسم ضد الحالة النهائية في مسار PUT
+    }
     if (b.openingBalance !== undefined && b.openingBalance !== null && b.openingBalance !== '') {
         const opening = Number(b.openingBalance);
         if (!Number.isFinite(opening) || opening < 0) {errors.push('الرصيد الافتتاحي يجب أن يكون رقمًا غير سالب');}
@@ -238,6 +289,56 @@ async function ensureProcurementSchema() {
         CREATE INDEX IF NOT EXISTS purchase_invoices_supplier_idx ON "purchaseInvoices"("supplierId");
         CREATE INDEX IF NOT EXISTS purchase_invoices_status_idx ON "purchaseInvoices"("paymentStatus");
     `);
+    // ─── Tax profile safety net (migration 068 is authoritative; this keeps
+    //     dev/legacy DBs bootable when migrations haven't run yet) ──────────
+    await pool.query(`
+        ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS name_en TEXT;
+        ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT;
+        ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS tax_registration_status VARCHAR(20) NOT NULL DEFAULT 'NOT_REGISTERED';
+        ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS vat_number VARCHAR(15);
+        ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS commercial_register VARCHAR(20);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS subtotal_net NUMERIC(14,2) NOT NULL DEFAULT 0;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS vat_total NUMERIC(14,2) NOT NULL DEFAULT 0;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS tax_rate_snapshot NUMERIC(5,2);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS tax_rule_code_snapshot VARCHAR(60);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS supplier_name_snapshot TEXT;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS supplier_vat_number_snapshot VARCHAR(15);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS supplier_cr_snapshot VARCHAR(20);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS supplier_tax_status_snapshot VARCHAR(20);
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS zatca_uuid TEXT;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS zatca_qr TEXT;
+        CREATE TABLE IF NOT EXISTS tax_config (
+            id INT PRIMARY KEY CHECK (id = 1),
+            standard_vat_rate NUMERIC(5,2) NOT NULL DEFAULT 15.00,
+            country_code CHAR(2) NOT NULL DEFAULT 'SA',
+            currency CHAR(3) NOT NULL DEFAULT 'SAR',
+            vat_law_ref TEXT NOT NULL DEFAULT 'KSA VAT Law — standard rate 15% since 1 July 2020 (ZATCA)',
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        INSERT INTO tax_config (id, standard_vat_rate, country_code, currency)
+        VALUES (1, 15.00, 'SA', 'SAR') ON CONFLICT (id) DO NOTHING;
+        CREATE TABLE IF NOT EXISTS supplier_tax_audit (
+            id BIGSERIAL PRIMARY KEY,
+            supplier_id BIGINT NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+            changed_by TEXT,
+            changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            old_status VARCHAR(20), new_status VARCHAR(20),
+            old_vat VARCHAR(15), new_vat VARCHAR(15),
+            reason TEXT
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_suppliers_vat_number
+            ON suppliers (vat_number) WHERE vat_number IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_suppliers_tax_status ON suppliers (tax_registration_status);
+        CREATE INDEX IF NOT EXISTS idx_suppliers_cr
+            ON suppliers (commercial_register) WHERE commercial_register IS NOT NULL;
+    `).catch((e) => logger.warn('[procurement_tax_schema] skipped:', e.message));
+    try {
+        await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_suppliers_name_trgm
+            ON suppliers USING gin (name gin_trgm_ops)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_suppliers_vat_trgm
+            ON suppliers USING gin (vat_number gin_trgm_ops)`);
+    } catch (e) { logger.warn('[procurement_trgm] skipped:', e.message); }
     // ترقية الفواتير القديمة: استنتاج المسدد والحالة من طريقة الدفع
     await pool.query(`
         UPDATE "purchaseInvoices"
@@ -338,6 +439,63 @@ router.get('/suppliers', jwtAuth, requireRole(...READ_ROLES), async (req, res) =
     }
 });
 
+// ─── Smart supplier search: GET /procurement/suppliers/search ───────────────
+// q → name (partial, trgm) OR vat_number (exact/prefix) OR commercial_register
+// tax_status filter server-side · always paginated · always parameterized · auth enforced
+router.get('/suppliers/search', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const q = String(req.query.q ?? '').trim().slice(0, 100);
+        const taxStatus = String(req.query.tax_status ?? req.query.taxStatus ?? 'ALL').trim().toUpperCase();
+        if (!['ALL', 'REGISTERED', 'NOT_REGISTERED', 'EXEMPT'].includes(taxStatus)) {
+            return fail(res, 422, 'INVALID_TAX_STATUS', 'فلتر الحالة الضريبية غير معروف');
+        }
+        let page = Number.parseInt(req.query.page, 10);
+        if (!Number.isInteger(page) || page < 1) {page = 1;}
+        let limit = Number.parseInt(req.query.limit, 10);
+        if (!Number.isInteger(limit) || limit < 1) {limit = 20;}
+        limit = Math.min(limit, 100);
+        const offset = (page - 1) * limit;
+
+        const clauses = [];
+        const params = [];
+        if (q) {
+            params.push(q);
+            const qi = params.length;
+            const digits = q.replace(/\D/g, '');
+            if (digits) {
+                params.push(digits);
+                const di = params.length;
+                clauses.push(`(s.name ILIKE '%' || $${qi} || '%' OR s.vat_number LIKE $${di} || '%'
+                    OR s.commercial_register ILIKE '%' || $${qi} || '%'
+                    OR COALESCE(s.name_en,'') ILIKE '%' || $${qi} || '%')`);
+            } else {
+                clauses.push(`(s.name ILIKE '%' || $${qi} || '%' OR s.commercial_register ILIKE '%' || $${qi} || '%'
+                    OR COALESCE(s.name_en,'') ILIKE '%' || $${qi} || '%')`);
+            }
+        }
+        if (taxStatus !== 'ALL') {
+            params.push(taxStatus);
+            clauses.push(`s.tax_registration_status = $${params.length}`);
+        }
+        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        const total = Number((await pool.query(
+            `SELECT COUNT(*)::int AS c FROM suppliers s ${where}`, params)).rows[0].c);
+        const rows = (await pool.query(
+            `SELECT s.id, s.name, s.name_en, s.phone, s.email, s.category,
+                    s.tax_registration_status AS tax_status, s.vat_number,
+                    s.commercial_register AS cr, s.is_active
+             FROM suppliers s ${where}
+             ORDER BY s.name ASC
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, limit, offset])).rows;
+        const pages = total === 0 ? 0 : Math.ceil(total / limit);
+        res.json({ data: rows, pagination: { page, limit, total, pages } });
+    } catch (error) {
+        logger.error('[procurement_suppliers_search]', error);
+        fail(res, 500, 'SUPPLIERS_SEARCH_FAILED', 'تعذر البحث في الموردين');
+    }
+});
+
 router.post('/suppliers', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), async (req, res) => {
     const v = validateSupplierPayload(req.body);
     if (!v.ok) {return fail(res, 422, 'INVALID_SUPPLIER', v.errors.join(' — '));}
@@ -345,11 +503,18 @@ router.post('/suppliers', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), async (
     try {
         const dup = await client.query('SELECT id FROM suppliers WHERE lower(name)=lower($1) LIMIT 1', [v.clean.name]);
         if (dup.rows.length) {return fail(res, 409, 'SUPPLIER_DUPLICATE', `المورد «${v.clean.name}» مسجل بالفعل`);}
+        if (v.clean.vat_number) {
+            const dupVat = await client.query('SELECT id FROM suppliers WHERE vat_number=$1 LIMIT 1', [v.clean.vat_number]);
+            if (dupVat.rows.length) {return fail(res, 409, 'VAT_DUPLICATE', `الرقم الضريبي ${v.clean.vat_number} مسجل لمورد آخر`);}
+        }
         const row = (await client.query(
-            `INSERT INTO suppliers (id, name, phone, category, address, notes, "openingBalance", is_active)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING *`,
-            [id(), v.clean.name, v.clean.phone || null, v.clean.category || null,
-                v.clean.address || null, v.clean.notes || null, v.clean.openingBalance ?? 0]
+            `INSERT INTO suppliers (id, name, name_en, phone, email, category, address, notes,
+                "openingBalance", is_active, tax_registration_status, vat_number, commercial_register)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10,$11,$12) RETURNING *`,
+            [id(), v.clean.name, v.clean.name_en || null, v.clean.phone || null, v.clean.email || null,
+                v.clean.category || null, v.clean.address || null, v.clean.notes || null,
+                v.clean.openingBalance ?? 0, v.clean.tax_registration_status || 'NOT_REGISTERED',
+                v.clean.vat_number || null, v.clean.commercial_register || null]
         )).rows[0];
         emit(req, 'procurement', 'create', row);
         res.status(201).json(row);
@@ -377,22 +542,69 @@ router.put('/suppliers/:id', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), asyn
                 [v.clean.name, supplierId])).rows[0];
             if (dup) { await client.query('ROLLBACK'); return fail(res, 409, 'SUPPLIER_DUPLICATE', `الاسم «${v.clean.name}» مستخدم بمورد آخر`); }
         }
+        // Final tax status/VAT pair: body wins, otherwise current row (never guess)
+        const finalStatus = v.clean.tax_registration_status ?? cur.tax_registration_status ?? 'NOT_REGISTERED';
+        let finalVat = 'vat_number' in v.clean ? v.clean.vat_number : (cur.vat_number ?? null);
+        if (finalStatus === 'REGISTERED') {
+            if (!validateVatNumber(finalVat).ok) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'INVALID_SUPPLIER', 'المورد المسجل ضريبيًا يحتاج رقمًا ضريبيًا (15 رقمًا)');
+            }
+        } else if (finalStatus === 'NOT_REGISTERED') {
+            if (finalVat) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'INVALID_SUPPLIER', 'المورد غير المسجل لا يقبل رقمًا ضريبيًا — اتركه فارغًا');
+            }
+            finalVat = null;
+        } else if (finalVat && !validateVatNumber(finalVat).ok) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_SUPPLIER', 'الرقم الضريبي يجب أن يكون 15 رقمًا');
+        }
+        if (finalVat) {
+            const dupVat = (await client.query(
+                'SELECT id FROM suppliers WHERE vat_number=$1 AND id<>$2 LIMIT 1',
+                [finalVat, supplierId])).rows[0];
+            if (dupVat) { await client.query('ROLLBACK'); return fail(res, 409, 'VAT_DUPLICATE', `الرقم الضريبي ${finalVat} مسجل لمورد آخر`); }
+        }
         const next = {
             name: v.clean.name ?? cur.name,
+            name_en: 'name_en' in v.clean ? (v.clean.name_en || null) : (cur.name_en ?? null),
+            email: 'email' in v.clean ? (v.clean.email || null) : (cur.email ?? null),
             phone: 'phone' in v.clean ? v.clean.phone : cur.phone,
             category: 'category' in v.clean ? v.clean.category : cur.category,
             address: 'address' in v.clean ? v.clean.address : cur.address,
             notes: 'notes' in v.clean ? v.clean.notes : cur.notes,
             openingBalance: 'openingBalance' in v.clean ? v.clean.openingBalance : cur.openingBalance,
             is_active: 'is_active' in v.clean ? v.clean.is_active : cur.is_active,
+            tax_registration_status: finalStatus,
+            vat_number: finalVat,
+            commercial_register: 'commercial_register' in v.clean
+                ? (v.clean.commercial_register || null) : (cur.commercial_register ?? null),
         };
         const row = (await client.query(
-            `UPDATE suppliers SET name=$2, phone=$3, category=$4, address=$5, notes=$6,
-                    "openingBalance"=$7, is_active=$8, "updatedAt"=now()
+            `UPDATE suppliers SET name=$2, name_en=$3, email=$4, phone=$5, category=$6, address=$7, notes=$8,
+                    "openingBalance"=$9, is_active=$10, tax_registration_status=$11, vat_number=$12,
+                    commercial_register=$13, "updatedAt"=now()
              WHERE id=$1 RETURNING *`,
-            [supplierId, next.name, next.phone, next.category, next.address, next.notes,
-                next.openingBalance, next.is_active]
+            [supplierId, next.name, next.name_en, next.email, next.phone, next.category, next.address, next.notes,
+                next.openingBalance, next.is_active, next.tax_registration_status, next.vat_number,
+                next.commercial_register]
         )).rows[0];
+        // Audit log on tax-profile change (never rewrites historical invoices)
+        if ((cur.tax_registration_status ?? null) !== next.tax_registration_status
+            || (cur.vat_number ?? null) !== (next.vat_number ?? null)) {
+            try {
+                await client.query(
+                    `INSERT INTO supplier_tax_audit
+                        (supplier_id, changed_by, old_status, new_status, old_vat, new_vat, reason)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    [supplierId, req.user?.username || String(req.user?.id || ''),
+                        cur.tax_registration_status || null, next.tax_registration_status,
+                        cur.vat_number || null, next.vat_number || null,
+                        String(req.body?.tax_change_reason ?? '').slice(0, 300) || null]
+                );
+            } catch (auditErr) { logger.warn('[supplier_tax_audit] skipped:', auditErr.message); }
+        }
         await client.query('COMMIT');
         emit(req, 'procurement', 'update', row);
         res.json(row);
@@ -636,4 +848,5 @@ module.exports = {
     roundMoney, computeInvoicePaymentStatus, computeSupplierBalance,
     buildStatementRows, validateSupplierPayload, validatePaymentPayload,
     PAYMENT_METHODS, INVOICE_PAYMENT_STATUSES, PAYMENT_METHOD_LABELS,
+    TAX_STATUS_VALUES,
 };

@@ -16,7 +16,7 @@ const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const {
     shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, graceMinutes, lockGraceMinutes,
-    normalizeShiftStart, normalizeShiftKarim,
+    normalizeShiftStart, normalizeShiftKarim, delayEngineEnabled,
 } = require('./shift-day');
 
 const proto = require('./zkteco/protocol');
@@ -227,6 +227,7 @@ function classifyPunch({
  */
 function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
     const zero = { arrivalLateMinutes: 0, earlyLeaveMinutes: 0, totalLateMinutes: 0, lateFlag: false, earlyFlag: false };
+    if (!delayEngineEnabled()) return zero;
     if (!checkIn && !checkOut) return zero;
 
     const checkInMin = toMin(checkIn);
@@ -941,6 +942,7 @@ module.exports = {
     matchUserToEmployee,
     autoCompleteEnabled,
     smartReconcileEnabled,
+    delayEngineEnabled,
     maxReconcileDays,
     graceMinutes,
     lockGraceMinutes,

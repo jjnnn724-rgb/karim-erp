@@ -1303,3 +1303,19 @@ body::before{display:none}
 /* 3) Tabular numerals utility for data cells */
 .num,.tbl-num td:nth-child(n+2){font-variant-numeric:tabular-nums}
 
+/* 4) Warehouse in-page section nav (single page — anchor scroll only) */
+.wh-secnav{position:sticky;top:0;z-index:30;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;margin:12px 0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r)}
+.wh-secnav button[aria-current="true"],.wh-secnav .btn-gold{font-weight:800}
+section[id^="wh-sec-"]{scroll-margin-top:70px}
+section[id^="wh-sec-"]+.tbl-wrap,section[id^="wh-sec-"]+section[id^="wh-sec-"]{margin-top:14px}
+.wh-adv{display:inline-block}
+.wh-adv summary{list-style:none;cursor:pointer}
+.wh-adv summary::-webkit-details-marker{display:none}
+.wh-adv[open]{display:block;width:100%}
+.wh-adv[open] .u-row-wrap{margin-top:8px;padding:10px;border:1px dashed var(--border);border-radius:var(--r)}
+
+/* 5) Numbered step headers inside modals (kitchen production order, ...) */
+.wh-step{display:flex;gap:10px;align-items:flex-start;margin:14px 0 6px}
+.wh-stepnum{flex:none;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+.wh-step strong{display:block;font-size:14px}
+

@@ -135,8 +135,16 @@ function expectedEndTime(shiftStart, shiftKarim) {
     return `${p(Math.floor(total / 60) % 24)}:${p(total % 60)}`;
 }
 
+/** مفتاح إيقاف محرك التأخير — ATTENDANCE_DELAY_ENGINE=false يعطّل كل حسابات
+ *  التأخير/التبكير (بصمة خام فقط: حضور/انصراف/ساعات). الافتراضي مفعّل للحفاظ
+ *  على السلوك الحالي؛ الإيقاف لا يمس تسجيل البصمات ولا حساب الساعات. */
+function delayEngineEnabled() {
+    return String(process.env.ATTENDANCE_DELAY_ENGINE ?? 'true').trim().toLowerCase() !== 'false';
+}
+
 /** متأخر؟ مقارنة ببداية الوردية — بدون أي سماح: أي دقيقة فعلية تُحتسب (GRACE_MINUTES مهمل = 0) */
 function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = graceMinutes()) {
+    if (!delayEngineEnabled()) {return false;}
     let sH = fallbackStart;
     let sM = 0;
     const m = String(shiftStart || '').match(/^(\d{1,2}):(\d{2})$/);
@@ -172,6 +180,7 @@ function getShiftStartMinutes(employee) {
 
 function calculateDelayParts(row, employee) {
     const zero = { arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 };
+    if (!delayEngineEnabled()) {return zero;}
     if (!row) {return zero;}
     const checkInMin = parseTimeMinutes(row.checkIn);
     const shiftMin = getShiftStartMinutes(employee);
@@ -210,6 +219,7 @@ function calculateLateMinutes(row, employee) {
 
 /** انصراف مبكر؟ أي خروج قبل نهاية الوردية المتوقعة — بدون أي سماح */
 function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = graceMinutes()) {
+    if (!delayEngineEnabled()) {return false;}
     const m = String(shiftStart || '09:00').match(/^(\d{1,2}):(\d{2})$/);
     const sMin = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
     const endMin = sMin + Math.round(Number(shiftKarim || 10) * 60);
@@ -221,6 +231,7 @@ function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = gra
 
 module.exports = {
     nightCutoffHour,
+    delayEngineEnabled,
     graceMinutes,
     lockGraceMinutes,
     prevDay,

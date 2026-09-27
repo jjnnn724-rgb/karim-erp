@@ -177,7 +177,8 @@ async function main() {
     .replaceAll('{{MRZ1}}', f1).replaceAll('{{MRZ2}}', f2).replaceAll('{{MRZ3}}', f3)
     .replaceAll('{{BARS}}', code128bars(empNo))
     .replaceAll('{{TERMS}}', 'هذه البطاقة ملك لمطاعم الشرفه العالمي — يمنع إساءة استخدامها — عند الفقد الاتصال بالإدارة فورًا.')
-    .replaceAll('{{EMERGENCY}}', process.env.EMERGENCY_PHONE || '+966-5X-XXX-XXXX')
+    .replaceAll('{{EMERGENCY}}', process.env.EMERGENCY_PHONE || '')
+    .replaceAll('<span class="emg">Emergency </span>', '')
     .replaceAll('{{ISSUE}}', issue).replaceAll('{{EXPIRY}}', exp);
   fs.mkdirSync(OUT, { recursive: true });
   const html = fill(fs.readFileSync(path.join(CARDIR, 'card.html'), 'utf8'));

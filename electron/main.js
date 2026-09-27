@@ -48,6 +48,31 @@ try {
 const IS_SERVICE_MODE = process.argv.includes('--service') || process.env.ALSHORFA_SERVICE === '1';
 const IS_BACKUP_MODE = process.argv.includes('--backup');
 const WINDOWS_SERVICE_NAME = 'AlShorfaERP';
+
+// ─── وضع العميل النحيف (v7.1 §5/LAW 05 — عميل موحد، السيرفر مصدر الصلاحيات) ───
+// وجود ملف server-target.json (بجانب الـ exe أو في %APPDATA%\karim-erp) يحوّل
+// هذا الجهاز إلى عميل يعرض واجهة السيرفر المركزي فقط — بلا PostgreSQL أو
+// خدمات محلية. غياب الملف = السلوك القائم (سيرفر محلي) — توافق كامل (LAW 13).
+const CLIENT_TARGET_CANDIDATES = [
+    () => path.join(path.dirname(app.getPath('exe')), 'server-target.json'),
+    () => path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'karim-erp', 'server-target.json'),
+    () => path.join(__dirname, 'server-target.json'),
+    () => path.join(__dirname, '..', 'server-target.json'),
+];
+function readClientTarget() {
+    for (const candidate of CLIENT_TARGET_CANDIDATES) {
+        try {
+            const p = candidate();
+            if (!fs.existsSync(p)) {continue;}
+            const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+            const url = String(raw.serverUrl || '').trim().replace(/\/+$/, '');
+            if (/^https?:\/\/.+/.test(url)) {return { url, source: p };}
+        } catch (_) {}
+    }
+    return null;
+}
+const CLIENT_TARGET = readClientTarget();
+const IS_CLIENT_MODE = Boolean(CLIENT_TARGET);
 if ((IS_SERVICE_MODE || IS_BACKUP_MODE) && process.platform === 'win32') {
     app.disableHardwareAcceleration();
 }
@@ -1589,8 +1614,66 @@ function setupAutoUpdater() {
 /**
  * عندما يكون التطبيق جاهزاً
  */
+// ─── وضع العميل: ثقة مقيدة بشهادة السيرفر المضبوط فقط (العقد §36 — مرحلة انتقالية) ───
+// التفضيل الدائم: تثبيت Karim-Local-CA.crt على الجهاز (مسار الرابط /app/Karim-Local-CA.crt).
+// هذا المعالج شبكة أمان فقط: يقبل خطأ UNTRUSTED_AUTHORITY لمضيف السيرفر المضبوط حصرًا،
+// وأي شهادة/مضيف آخر يُرفض — لا تخفٍّ عام أبدًا.
+if (IS_CLIENT_MODE) {
+    let allowedHost = null;
+    try { allowedHost = new URL(CLIENT_TARGET.url).host; } catch (_) {}
+    app.on('certificate-error', (event, webContents, urlString, error, certificate, callback) => {
+        let host = null;
+        try { host = new URL(urlString).host; } catch (_) {}
+        if (host && host === allowedHost && error === 'UNTRUSTED_AUTHORITY'
+            && /mkcert|karim|shorfa/i.test(String(certificate.issuerName || ''))) {
+            event.preventDefault();
+            callback(true);
+            return;
+        }
+        callback(false);
+    });
+    console.log(`[Client] وضع العميل النحيف — السيرفر: ${CLIENT_TARGET.url} (المصدر: ${CLIENT_TARGET.source})`);
+}
+
+/** نافذة العميل النحيف — تعرض واجهة السيرفر المركزي فقط */
+function createClientWindow() {
+    mainWindow = new BrowserWindow({
+        width: CONFIG.WINDOW_WIDTH,
+        height: CONFIG.WINDOW_HEIGHT,
+        minWidth: CONFIG.MIN_WIDTH,
+        minHeight: CONFIG.MIN_HEIGHT,
+        title: 'مطاعم الشرفه العالمي — عميل الشبكة',
+        icon: getAppIcon(),
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: true,
+        },
+        show: false,
+        backgroundColor: '#1a1a2e',
+    });
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.loadURL(CLIENT_TARGET.url);
+    // السيرفر غير جاهز/غير متاح → إعادة محاولة لطيفة بدل صفحة خطأ ميتة
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame || errorCode === -3) return;
+        mainWindow.__clientRetries = (mainWindow.__clientRetries || 0) + 1;
+        if (mainWindow.__clientRetries > 30) return;
+        console.log(`[Client] السيرفر غير متاح (${errorDescription}) — إعادة ${mainWindow.__clientRetries}/30 بعد 2 ث`);
+        setTimeout(() => { try { mainWindow.loadURL(CLIENT_TARGET.url); } catch (_) {} }, 2000);
+    });
+    mainWindow.once('ready-to-show', () => { mainWindow.show(); });
+    mainWindow.on('closed', () => { mainWindow = null; });
+}
+
 app.whenReady().then(async () => {
     console.log('[App] Electron ready. Initializing...');
+
+    // ── وضع العميل النحيف: واجهة السيرفر المركزي فقط — لا خدمات ولا قاعدة بيانات ──
+    if (IS_CLIENT_MODE) {
+        createClientWindow();
+        return;
+    }
 
     if (IS_BACKUP_MODE) {
         try {

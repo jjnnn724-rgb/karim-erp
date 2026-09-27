@@ -232,7 +232,7 @@ th{background:#f7ead8;color:#7c3500}tfoot td{font-weight:700;background:#fafafa}
 @media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>
 <div class="controls"><button onclick="window.print()">طباعة</button><button class="secondary" onclick="window.close()">إغلاق</button></div>
 <main class="sheet"><header class="head"><h1>${esc(STATE.settings?.name || 'Karim ERP')}</h1><p style="font-size:16px;font-weight:700;color:#111">${esc(title)}</p><p>${esc(subtitle || '')}</p><p>تاريخ التقرير: ${dateStr}</p></header>
-${summaryPairs?.length ? `<section class="summary">${summaryPairs.map(p => `<div><span>${esc(p[0])}</span><b>${esc(String(p[1]))}</b></div>`).join('')}</section>` : ''}
+${summaryPairs?.length ? `<section class="summary">${summaryPairs.map(p => `<div><span>${esc(p[0])}</span><b>${p[1]}</b></div>`).join('')}</section>` : ''}
 <table><thead><tr>${headCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${bodyRows || '<tr><td>لا بيانات</td></tr>'}</tbody></table>
 </main></body></html>`);
 win.document.close();
