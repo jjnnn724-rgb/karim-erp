@@ -401,7 +401,7 @@ async loadPattern(employeeId) {
             } else if (verdict.action === 'out' || verdict.action === 'fix_out') {
                 const result = await this.handleCheckOut({
                     client, employeeId, shiftDate, wall, instant,
-                    shiftStart, shiftKarim, verdict, source, device, onLeave,
+                    shiftStart, shiftKarim, verdict, source, device, onLeave, punchState,
                 });
                 action = result.action; record = result.record;
             }
@@ -482,7 +482,7 @@ async loadPattern(employeeId) {
     // معالج الخروج (الأذكى)
     // ════════════════════════════════════════════════════════════════════════
 
-    async handleCheckOut({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, verdict, source, device, onLeave }) {
+    async handleCheckOut({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, verdict, source, device, onLeave, punchState }) {
         const note = `تسجيل انصراف عبر ${source}${device ? ` (${device.name || device.deviceName})` : ''}`;
         const earlyFlag = isEarlyLeave(wall.hour, wall.minute, shiftStart, shiftKarim);
 
