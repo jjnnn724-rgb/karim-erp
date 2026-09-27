@@ -5,6 +5,10 @@
 // ============================================
 // WHATSAPP ENGINE PAGE
 // ============================================
+// ORACLE DATA BROWSER PAGE
+// ============================================
+const ORADATA = { tables: [], selected: null, data: null, page: 1, search: '' };
+// ============================================
 const WASTATE = { tab:'overview', status:null, msgs:null, outbox:null, rules:null, logs:null, timer:null, qrTimer:null };
 function waStateBadge(s){
 const map={CONNECTED:'bdg-green',QR_REQUIRED:'bdg-gold',AUTHENTICATING:'bdg-blue',RECONNECTING:'bdg-orange',DISCONNECTED:'bdg-gray',LOGGED_OUT:'bdg-red',FAILED:'bdg-red',STOPPED:'bdg-gray',INITIALIZING:'bdg-blue'};
