@@ -30,14 +30,12 @@
 
   <link rel="preload" as="style" href="css/design-tokens.css">
   <link rel="preload" as="style" href="css/styles.css">
-  <link rel="preload" as="style" href="css/theme-v5.css">
   <link rel="preload" as="script" href="/app/js/app.js?v=4.7.143">
   <link rel="preload" as="script" href="/app/js/icons.js">
   <link rel="preload" as="image" href="/app/assets/icon-192.png">
 
   <link rel="stylesheet" href="css/design-tokens.css">
-  <link rel="stylesheet" href="css/styles.css?v=4.7.155">
-  <link rel="stylesheet" href="css/theme-v5.css?v=4.7.155">
+  <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/realtime.css" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/scanner.css" media="print" onload="this.media='all'">
 
@@ -135,7 +133,7 @@
 
       <div id="lerr" class="form-error" role="alert"></div>
 
-      <button class="btn-premium" id="loginBtn" type="button" onclick="loginFallback(event)">
+      <button class="btn-premium" id="loginBtn" type="button">
         <i class="ji" data-i="log-in"></i>
         تسجيل الدخول
       </button>
@@ -234,36 +232,13 @@
   <script src="js/icons.js" defer></script>
   <script src="js/vendor/qrcode.min.js" defer></script>
   <script src="js/db-constraints-client.js" defer></script>
-  <script>
-  // Login fallback (classic script — runs even if the ES module graph fails).
-  // If main.js already bound the button (dataset.loginBound), do nothing to avoid double submit.
-  function loginBootError(msg){
-    var el=document.getElementById('lerr');
-    if(el){ el.textContent=msg; el.style.display='block'; }
-  }
-  function loginFallback(){
-    var b=document.getElementById('loginBtn');
-    if(b && b.dataset.loginBound){ return; }
-    if(typeof window.doLogin==='function'){ try{ window.doLogin(); }catch(e){ loginBootError('تعذر بدء الدخول — حدث الصفحة (Ctrl+F5).'); } return; }
-    loginBootError('النظام لم يكتمل تحميله بعد — انتظر 5 ثوان ثم أعد المحاولة، ولو تكرر حدث الصفحة (Ctrl+F5).');
-  }
-  (function(){
-    var lp=document.getElementById('lp');
-    if(lp){ lp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ loginFallback(); } }); }
-    window.addEventListener('error',function(ev){
-      var b=document.getElementById('loginBtn');
-      if(b && !b.dataset.loginBound && (!ev.filename || ev.filename.indexOf('/js/')!==-1)){
-        loginBootError('فشل تحميل ملفات النظام — حدث الصفحة (Ctrl+F5) وتأكد من الاتصال بالشبكة.');
-      }
-    },true);
-  })();
-  </script>
-  <script type="module" src="js/main.js?v=4.7.168"></script>
+  <script type="module" src="js/main.js?v=4.7.150"></script>
   <script src="js/app.js?v=4.7.143" defer></script>
   <script src="js/scanner.js" defer></script>
   <script src="js/realtime.js?v=4.7.165" defer></script>
   <script src="js/core/i18n-auto-catalog.js" defer></script>
   <script src="js/core/i18n-auto.js" defer></script>
+  <script src="js/realtime.js?v=4.7.133" defer></script>
   <script>
     if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {

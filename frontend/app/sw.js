@@ -57,7 +57,6 @@ const STATIC_ASSETS = [
     '/app/vendor/html5-qrcode.min.js',
     '/app/css/design-tokens.css',
     '/app/css/styles.css',
-    '/app/css/theme-v5.css',
     '/app/js/core/i18n-auto-catalog.js',
     '/app/js/core/i18n-auto.js',
     '/app/css/realtime.css',
