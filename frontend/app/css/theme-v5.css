@@ -1,0 +1,229 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — Theme v5.0  "Refined"  (UI/UX polish layer)
+   ─────────────────────────────────────────────────────────────────
+   طبقة تجميل شاملة فوق النظام الحالي — صفر كسر:
+   كل الانتقاءات تستهدف أصنافًا قائمة فقط، وكل الألوان عبر التوكنز.
+   المعايير المستعارة من أنظمة مفتوحة المصدر:
+   • Tabler (MIT)        — لمسة لوحات الإدارة: بطاقات ناعمة، جداول أنظف
+   • Open Props (MIT)    — سلالم الظلال والحركة والـ ease
+   • IBM Carbon (open)   — كثافة بيانات و focus states صارمة
+   • Untitled UI (open)  — إيقاع مسافات و radius متدرج
+   التحميل: بعد styles.css مباشرة (آخر طبقة).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1) تحسينات الطباعة والجذر ─────────────────────────────────── */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-feature-settings: "ss01" on, "tnum" on;      /* أرقام جدولية للبيانات */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+b, strong, .fw-bold { font-weight: 700; }
+.mono, .font-mono { font-variant-numeric: tabular-nums; }
+
+/* ── 2) رفع جودة الارتفاع البصري (Open Props-style ramp) ───────── */
+:root {
+  --karim-shadow-md: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  --karim-shadow-lg: 0 2px 4px rgba(16,24,40,.05), 0 12px 28px -6px rgba(16,24,40,.14);
+  --karim-shadow-xl: 0 4px 8px rgba(16,24,40,.06), 0 24px 48px -12px rgba(16,24,40,.20);
+  --v5-ease-spring: cubic-bezier(.34,1.3,.5,1);
+}
+[data-theme="dark"] {
+  --karim-shadow-lg: 0 2px 4px rgba(0,0,0,.3), 0 12px 28px -6px rgba(0,0,0,.5);
+  --karim-shadow-xl: 0 4px 8px rgba(0,0,0,.35), 0 24px 48px -12px rgba(0,0,0,.6);
+}
+
+/* ── 3) الشريط الجانبي — عمق وسلاسة ────────────────────────────── */
+.sidebar {
+  background: linear-gradient(180deg, #0d1322 0%, #0a0f1b 100%);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.05);
+}
+.sidebar-header { backdrop-filter: none; }
+.nav-item {
+  position: relative;
+  border-radius: 9px;
+  transition: background .14s var(--karim-ease-out), color .14s var(--karim-ease-out), transform .14s var(--v5-ease-spring);
+}
+.nav-item:hover { background: rgba(255,255,255,.07); transform: translateX(calc(-1 * 2px)); }
+html[dir="ltr"] .nav-item:hover { transform: translateX(2px); }
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(233,162,59,.16), rgba(233,162,59,.07));
+  color: #f5b954;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 20%; bottom: 20%;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--karim-gold);
+  box-shadow: 0 0 10px 1px rgba(233,162,59,.55);
+}
+.nav-item:focus-visible {
+  outline: 2px solid rgba(245,185,84,.8);
+  outline-offset: 2px;
+  border-radius: 9px;
+}
+
+/* ── 4) الشريط العلوي — زجاج خفيف ─────────────────────────────── */
+.topbar {
+  backdrop-filter: blur(8px) saturate(1.3);
+  -webkit-backdrop-filter: blur(8px) saturate(1.3);
+  background: color-mix(in srgb, var(--karim-surface) 82%, transparent);
+}
+@supports not (background: color-mix(in srgb, red, blue)) {
+  .topbar { background: var(--karim-surface); }
+}
+.topbar-btn {
+  border-radius: 9px;
+  transition: background .13s var(--karim-ease-out), color .13s var(--karim-ease-out), transform .13s var(--v5-ease-spring);
+}
+.topbar-btn:hover { transform: translateY(-1px); }
+.topbar-btn:active { transform: translateY(0); }
+
+/* ── 5) البطاقات — تفاعل لمسي راقٍ ─────────────────────────────── */
+.mcard {
+  transition: border-color .16s var(--karim-ease-out), box-shadow .16s var(--karim-ease-out), transform .16s var(--v5-ease-spring);
+}
+.mcard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--karim-shadow-lg);
+}
+.mcard:active { transform: translateY(0); }
+.karim-glass-card { box-shadow: var(--karim-shadow-md); }
+.karim-glass-card:hover { box-shadow: var(--karim-shadow-lg); }
+
+/* ── 6) الأزرار — استجابة ضغط + حلقات تركيز موحدة ─────────────── */
+.btn, .karim-btn-gold, .karim-btn-success, .karim-icon-btn {
+  transition: background .12s var(--karim-ease-out), border-color .12s var(--karim-ease-out),
+              color .12s var(--karim-ease-out), transform .1s var(--karim-ease-out),
+              box-shadow .12s var(--karim-ease-out);
+  will-change: transform;
+}
+.btn:not(:disabled):active,
+.karim-btn-gold:not(:disabled):active,
+.karim-btn-success:not(:disabled):active { transform: scale(.97); }
+.btn:focus-visible, .karim-btn-gold:focus-visible, .karim-btn-success:focus-visible,
+.karim-icon-btn:focus-visible, .topbar-btn:focus-visible, .karim-input:focus-visible, .inp:focus-visible {
+  outline: 2px solid var(--karim-gold);
+  outline-offset: 2px;
+}
+.btn-gold, .karim-btn-gold { box-shadow: 0 1px 2px rgba(180,83,9,.35), inset 0 1px 0 rgba(255,255,255,.14); }
+.btn-gold:hover, .karim-btn-gold:hover { box-shadow: 0 2px 6px rgba(180,83,9,.4), inset 0 1px 0 rgba(255,255,255,.18); }
+[data-theme="dark"] .btn-gold, [data-theme="dark"] .karim-btn-gold {
+  box-shadow: 0 1px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+/* ── 7) الجداول — قراءة بيانات كثيفة بمعيار Carbon ────────────── */
+.tbl-wrap {
+  background: var(--karim-surface);
+  border-radius: var(--karim-radius-lg);
+}
+.tbl-scroll table { border-collapse: separate; border-spacing: 0; }
+.tbl-scroll tbody tr { transition: background .1s var(--karim-ease-out); }
+.tbl-scroll tbody tr:hover { background: var(--karim-surface-hover); }
+.tbl-scroll tbody tr:last-child td { border-bottom: none; }
+
+/* ── 8) الحقول — إحساس موحد ────────────────────────────────────── */
+.inp, .karim-input, select.inp, textarea.inp {
+  border-radius: var(--karim-radius-md);
+  transition: border-color .13s var(--karim-ease-out), box-shadow .13s var(--karim-ease-out), background .13s var(--karim-ease-out);
+}
+.inp:hover:not(:focus):not(:disabled), .karim-input:hover:not(:focus):not(:disabled) {
+  border-color: var(--karim-border-strong);
+}
+
+/* ── 9) الشارات ────────────────────────────────────────────────── */
+.badge { border-radius: var(--karim-radius-full); font-variant-numeric: tabular-nums; }
+
+/* ── 10) النوافذ المنبثقة — دخول حي ────────────────────────────── */
+.modal {
+  box-shadow: var(--karim-shadow-xl);
+  animation: v5-modal-in .22s var(--v5-ease-spring) both;
+}
+@keyframes v5-modal-in {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 11) الإشعارات (Toast) ─────────────────────────────────────── */
+.toast {
+  border-radius: var(--karim-radius-lg);
+  box-shadow: var(--karim-shadow-xl);
+  animation: v5-toast-in .26s var(--v5-ease-spring) both;
+}
+@keyframes v5-toast-in {
+  from { opacity: 0; transform: translateY(10px) translateX(-8px); }
+  to   { opacity: 1; transform: translateY(0) translateX(0); }
+}
+html[dir="ltr"] .toast { animation-name: v5-toast-in-ltr; }
+@keyframes v5-toast-in-ltr {
+  from { opacity: 0; transform: translateY(10px) translateX(8px); }
+  to   { opacity: 1; transform: translateY(0) translateX(0); }
+}
+
+/* ── 12) شاشة الدخول — حضور مؤسسي ─────────────────────────────── */
+#login {
+  background:
+    radial-gradient(1100px 500px at 50% -12%, rgba(180,83,9,.07), transparent 60%),
+    var(--karim-bg);
+}
+.login-box {
+  box-shadow: var(--karim-shadow-xl);
+  animation: v5-login-in .4s var(--v5-ease-spring) both;
+}
+@keyframes v5-login-in {
+  from { opacity: 0; transform: translateY(18px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+#loginBtn {
+  transition: transform .12s var(--karim-ease-out), box-shadow .15s var(--karim-ease-out), filter .15s;
+}
+#loginBtn:not(:disabled):hover { filter: brightness(1.05); box-shadow: 0 6px 18px rgba(180,83,9,.35); }
+#loginBtn:not(:disabled):active { transform: scale(.98); }
+
+/* ── 13) الزر العائم (FAB) ─────────────────────────────────────── */
+.fab {
+  box-shadow: 0 6px 20px rgba(16,24,40,.22);
+  transition: transform .15s var(--v5-ease-spring), box-shadow .15s var(--karim-ease-out);
+}
+.fab:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 26px rgba(16,24,40,.26); }
+[data-theme="dark"] .fab { box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+
+/* ── 14) انتقال الصفحات — حيوية هادئة ──────────────────────────── */
+#content > * { animation: v5-page-in .2s var(--karim-ease-out) both; }
+@keyframes v5-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 15) الوميض (Spinner) — نبض ───────────────────────────────── */
+.karim-spinner, .spinner { animation-duration: .65s; }
+#loading { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+
+/* ── 16) أشرطة التمرير — أنعم ──────────────────────────────────── */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--karim-text-faint); }
+
+/* ── 17) وضع تقليل الحركة (إتاحة) ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .mcard:hover, .fab:hover, .nav-item:hover { transform: none; }
+}
+
+/* ── 18) طباعة نظيفة ───────────────────────────────────────────── */
+@media print {
+  .sidebar, .topbar, .fab, .fab-menu { display: none !important; }
+  .main-area { margin: 0 !important; }
+  body { background: #fff; }
+}

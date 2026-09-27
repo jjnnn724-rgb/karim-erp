@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = '4.7.38';
+const CACHE_VERSION = '4.7.37';
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -57,6 +57,7 @@ const STATIC_ASSETS = [
     '/app/vendor/html5-qrcode.min.js',
     '/app/css/design-tokens.css',
     '/app/css/styles.css',
+    '/app/css/theme-v5.css',
     '/app/css/realtime.css',
     '/app/css/scanner.css',
     '/app/css/offline-fonts.css',
