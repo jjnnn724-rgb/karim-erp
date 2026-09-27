@@ -116,6 +116,12 @@ Object.assign(window, departments); // BRIDGE-018
 const reports = await import('./features/reports.js?v=4.7.139');
 Object.assign(window, reports);     // BRIDGE-019
 
+const settingsUsers = await import('./features/settings-users.js?v=4.7.140');
+Object.assign(window, settingsUsers); // BRIDGE-020
+
+const cfo = await import('./features/cfo.js?v=4.7.140');
+Object.assign(window, cfo);           // BRIDGE-021
+
 const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
 
