@@ -121,14 +121,22 @@
           <i class="ji" data-i="lock"></i>
           كلمة المرور
         </label>
-        <input
-          type="password"
-          id="lp"
-          placeholder="كلمة المرور"
-          autocomplete="current-password"
-          required
-          aria-required="true"
-        >
+        <div class="pwd-wrap" style="position:relative">
+          <input
+            type="password"
+            id="lp"
+            placeholder="كلمة المرور"
+            autocomplete="current-password"
+            required
+            aria-required="true"
+            style="padding-inline-end:44px"
+          >
+          <button type="button" class="pwd-eye" id="lpEye" aria-label="إظهار كلمة المرور"
+            style="position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0"
+            onclick="toggleLoginPassword(this)">
+            <i class="ji" data-i="eye" style="font-size:17px"></i>
+          </button>
+        </div>
       </div>
 
       <div id="lerr" class="form-error" role="alert"></div>
@@ -240,6 +248,20 @@
   <script src="js/core/i18n-auto.js" defer></script>
   <script src="js/realtime.js?v=4.7.133" defer></script>
   <script>
+
+  // ─── عين إظهار/إخفاء كلمة المرور (صفحة الدخول) ───
+  function toggleLoginPassword(btn){
+    var inp = document.getElementById('lp');
+    if(!inp){return;}
+    var show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    var icon = btn.querySelector('.ji');
+    if(icon){ var ni = document.createElement('i'); ni.className = 'ji'; ni.setAttribute('data-i', show ? 'eye-off' : 'eye'); icon.replaceWith(ni); }
+    btn.setAttribute('aria-label', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+    inp.focus({ preventScroll: true });
+  }
+  window.toggleLoginPassword = toggleLoginPassword;
+
     if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(() => {});
