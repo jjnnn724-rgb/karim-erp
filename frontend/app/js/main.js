@@ -107,6 +107,9 @@ Object.assign(window, hr);          // BRIDGE-015
 const yarasoft = await import('./features/yarasoft.js?v=4.7.137');
 Object.assign(window, yarasoft);    // BRIDGE-016
 
+const whatsapp = await import('./features/whatsapp.js?v=4.7.138');
+Object.assign(window, whatsapp);    // BRIDGE-017
+
 const employees = await import('./features/employees.js?v=4.7.133');
 Object.assign(window, employees);   // BRIDGE-011
 
