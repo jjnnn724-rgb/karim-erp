@@ -306,11 +306,17 @@ function normalizeRequestedItems(items) {
             packagingQty: 0,
             hasPackagingQty: false,
             packagingUom: raw.packagingUom || null,
+            // وحدة الطلب الأصلية كما كتبها القسم (شكارة/كرتون...) — للعرض فقط،
+            // الكمية qty دائمًا بوحدة المخزن الأساسية بعد التحويل
+            requestedUom: raw.requestedUom || null,
+            requestedQty: (raw.requestedQty !== undefined && raw.requestedQty !== null && raw.requestedQty !== '') ? n(raw.requestedQty) : null,
         };
         current.qty += qty;
         if (actualWeight !== null && Number.isFinite(actualWeight) && actualWeight > 0) { current.actualWeight += actualWeight; current.hasActualWeight = true; }
         if (packagingQty !== null && Number.isFinite(packagingQty) && packagingQty > 0) { current.packagingQty += packagingQty; current.hasPackagingQty = true; }
         if (!current.packagingUom && raw.packagingUom) {current.packagingUom = raw.packagingUom;}
+        if (!current.requestedUom && raw.requestedUom) {current.requestedUom = raw.requestedUom;}
+        if (current.requestedQty == null && raw.requestedQty != null) {current.requestedQty = n(raw.requestedQty);}
         if (!current.itemId && (raw.itemId || raw.item_id)) {current.itemId = Number(raw.itemId || raw.item_id) || null;}
         if (!current.avgCost && raw.avgCost != null) {current.avgCost = n(raw.avgCost, 0);}
         grouped.set(key, current);
@@ -874,6 +880,8 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRole(...RECEIVE_ROLES), a
                 catchWeightQty: received.receivedPackagingQty != null ? received.receivedPackagingQty : null,
                 catchWeightUnit: received.receivedPackagingQty != null ? (received.packagingUom || 'كرتون') : null });
             ledgerMovements.push({inventory_id:item.id,quantity:received.receivedDeltaQty,target_location:targetLocation.code,balance:inn.balanceAfter});
+            // ملاحظة: قيد مصروف القسم يُقيَّد عند الاعتماد (adjustmentType='dispatch') —
+            // لا يُقيَّد هنا عند الاستلام تجنّبًا للاحتساب المزدوج؛ الإرجاع يعكسه بمصروف سالب.
         }
         const receivedAt = new Date().toISOString();
         const actorName = req.user.name || req.user.username || String(req.user.id);

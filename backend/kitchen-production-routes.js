@@ -155,6 +155,90 @@ if(!req.body.reference){const recent=(await client.query(`SELECT DISTINCT invent
 router.get('/production-materials',jwtAuth,requireRole(...READ),async(req,res)=>{try{await ensureSchema();const r=await pool.query(`SELECT b.inventory_id,i.name,i.unit,i.weight,COALESCE(b.on_hand,0) AS on_hand,COALESCE(b.reserved,0) AS reserved,GREATEST(0,COALESCE(b.on_hand,0)-COALESCE(b.reserved,0)) AS available,COALESCE(i."avgCost",0) AS avg_cost FROM inventory_location_balances b JOIN inventory i ON i.id=b.inventory_id JOIN inventory_locations l ON l.id=b.location_id WHERE l.code='KITCHEN-MAIN' AND l.active=true AND GREATEST(0,COALESCE(b.on_hand,0)-COALESCE(b.reserved,0))>0 ORDER BY i.name`);res.json(r.rows);}catch(e){res.status(500).json({error:'PRODUCTION_MATERIALS_FAILED',message:e.message});}});
 router.get('/production-destinations',jwtAuth,requireRole(...READ),async(req,res)=>{try{await ensureSchema();const r=await pool.query(`SELECT id,code,name,icon,color FROM departments WHERE LOWER(COALESCE(code,'')) NOT IN ('kitchen','مطبخ') AND LOWER(COALESCE(name,'')) NOT LIKE '%مطبخ%' AND LOWER(COALESCE(name,'')) NOT LIKE '%kitchen%' ORDER BY id`);res.json(r.rows);}catch(e){res.status(500).json({error:'PRODUCTION_DESTINATIONS_FAILED',message:e.message});}});
 
+// ═══════════════════════════════════════════════════════════════════════════
+// بطاقات تكلفة أمر الإنتاج — البيع الخارجي + البوفيه المفتوح
+// الاستهلاك الفعلي: أصناف أذون الصرف المسجلة في دفتر الحركات (سعر متوسط التكلفة
+// وقت الاعتماد، يتحدث تلقائيًا مع كل إذن جديد) − المرتجعات + مكونات أوامر الإنتاج
+// الموزعة على الجهة (تكلفة الدفتر × نسبة التوزيع).
+// الإيراد الفعلي: إيرادات الكاشير المرتبطة بالقسم (ياراسوفت/POS) من جدول الإيرادات.
+// ═══════════════════════════════════════════════════════════════════════════
+router.get('/production/cost-cards',jwtAuth,requireRole(...READ),async(req,res)=>{
+  try{
+    await ensureSchema();
+    const from=/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from||''))?String(req.query.from):new Date().toISOString().slice(0,8)+'01';
+    const to=/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to||''))?String(req.query.to):new Date().toISOString().slice(0,10);
+    if(from>to){return res.status(422).json({error:'INVALID_RANGE',message:'تاريخ النهاية يسبق البداية'});}
+    // قسم البوفيه المفتوح كفرع للمطبخ (ضمان البيانات — آمن على التكرار)
+    await pool.query(`INSERT INTO departments (id, code, name, icon, color, parent_code)
+      SELECT 7201,'open_buffet','البوفيه المفتوح','🍽','#8B5CF6','kitchen'
+      WHERE NOT EXISTS (SELECT 1 FROM departments WHERE code='open_buffet')`);
+    // نطاق الأقسام الفرعية (الأب + الفروع) من الشجرة الحية
+    async function scopeOf(code){
+      const rows=(await pool.query(
+        `WITH RECURSIVE tree AS (
+           SELECT code FROM departments WHERE code=$1
+           UNION ALL
+           SELECT d.code FROM departments d JOIN tree t ON d.parent_code=t.code
+         ) SELECT code FROM tree`,[code])).rows.map(r=>r.code);
+      return rows.length?rows:[code];
+    }
+    const externalScope=await scopeOf('external_sales');
+    const kitchenScope=await scopeOf('kitchen');
+    const cards=[];
+    for(const card of [
+      {code:'external_sales',name:'البيع الخارجي',icon:'🚚',color:'#2196F3',scope:externalScope,prodCodes:['external_sales']},
+      {code:'open_buffet',name:'البوفيه المفتوح',icon:'🍽',color:'#8B5CF6',scope:kitchenScope,prodCodes:['open_buffet']},
+    ]){
+      const scope=card.scope;
+      // 1) الاستهلاك المفصل من أذون الصرف (حركات الخروج المرتبطة بإذن)
+      const consumedItems=(await pool.query(
+        `SELECT tx."itemName" AS name, tx.qty, COALESCE(tx.catch_weight_unit, i.unit, 'وحدة') AS unit, tx.cost, tx."totalValue" AS value, tx.date, tx."dispatchId" AS dispatch_no
+         FROM "inventoryTx" tx JOIN dispatches d ON d.id = tx."dispatchId" LEFT JOIN inventory i ON i.id = tx."itemId"
+         WHERE tx.type='out' AND d."deptCode" = ANY($1::varchar[]) AND tx.date >= $2 AND tx.date <= $3
+         ORDER BY tx.date DESC, tx.id DESC LIMIT 400`,
+        [scope,from,to])).rows;
+      const consumedGross=Number(consumedItems.reduce((s,x)=>s+Number(x.value||0),0).toFixed(2));
+      // 2) المرتجعات من القسم (تُخصم من الاستهلاك)
+      const returned=(await pool.query(
+        `SELECT COALESCE(SUM("totalValue"),0)::numeric(14,2) AS t FROM "kitchenReturns"
+         WHERE "deptCode" = ANY($1::varchar[]) AND date >= $2 AND date <= $3`,[scope,from,to])).rows[0]?.t||0;
+      const consumedNet=Number((consumedGross-Number(returned)).toFixed(2));
+      // 3) مكونات أوامر الإنتاج الموزعة على هذه الجهة (تكلفة الدفتر × نسبة التوزيع)
+      const prodRows=(await pool.query(
+        `SELECT pbd.batch_id, pbd.allocated_qty, kb.planned_qty, kb.product_name, kb.created_at::date AS prod_date,
+                COALESCE((SELECT SUM(l.total_cost) FROM inventory_ledger l
+                  WHERE l.reference_type='kitchen_production' AND l.reference_id=pbd.batch_id::text),0)::numeric(16,4) AS batch_cost
+         FROM kitchen_production_distributions pbd
+         JOIN kitchen_production_batches kb ON kb.id=pbd.batch_id
+         WHERE pbd.destination_code = ANY($1::varchar[]) AND kb.created_at::date >= $2 AND kb.created_at::date <= $3`,
+        [card.prodCodes,from,to])).rows;
+      const productionLines=prodRows.map(r=>{
+        const planned=Number(r.planned_qty)||0;
+        const ratio=planned>0?Math.min(1,Number(r.allocated_qty)/planned):1;
+        const cost=Number((Number(r.batch_cost)*ratio).toFixed(2));
+        return {batch_id:r.batch_id,product_name:r.product_name,allocated_qty:Number(r.allocated_qty),planned_qty:planned,batch_cost:Number(r.batch_cost),cost,prod_date:r.prod_date};
+      });
+      const productionCost=Number(productionLines.reduce((s,x)=>s+x.cost,0).toFixed(2));
+      // 4) الإيراد الفعلي من الكاشيرات (ياراسوفت + POS) لقسم/أقسام النطاق
+      const revenue=Number((await pool.query(
+        `SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t FROM revenues
+         WHERE "deptId" = ANY($1::varchar[]) AND date >= $2 AND date <= $3`,[scope,from,to])).rows[0]?.t||0);
+      const totalCost=Number((consumedNet+productionCost).toFixed(2));
+      cards.push({code:card.code,name:card.name,icon:card.icon,color:card.color,
+        from,to,scopeCodes:scope,
+        consumption:{gross:consumedNet,returned:Number(returned),dispatchItemsCount:consumedItems.length,items:consumedItems},
+        production:{cost:productionCost,lines:productionLines},
+        revenue,totalCost:totalCost,
+        net:Number((revenue-totalCost).toFixed(2)),
+        costRatio:revenue>0?Number((totalCost/revenue*100).toFixed(1)):null});
+    }
+    res.json({ok:true,from,to,cards});
+  }catch(e){
+    console.error('[production_cost_cards]',e);
+    res.status(500).json({error:'COST_CARDS_FAILED',message:e.message});
+  }
+});
+
 router.post('/production',jwtAuth,requireRole(...WRITE),async(req,res)=>{
   const client=await pool.connect();
   try{

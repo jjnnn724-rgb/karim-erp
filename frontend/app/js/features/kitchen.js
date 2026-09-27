@@ -136,7 +136,7 @@ function renderKitchen(){
  const policy=ops.policies?.[0]; const modeLabel={flexible:'مرن',monitor:'مراقب',strict:'صارم'}[policy?.operation_mode||'monitor'];
  const pending=STATE.dispatches.filter(d=>d.status==='pending');
  if(!STATE.kitchenOps&&!kitchenOverviewLoading) {setTimeout(refreshKitchenOverview,0);} if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); } if(!kitchenGovernance.audits&&!kitchenGovernanceLoading) {setTimeout(refreshKitchenGovernance,0);}
-   return `<div class="kitchen-page"><div class="kitchen-page-head"><div><div class="eyebrow">KITCHEN PRODUCTION CONTROL</div><h3><i class=ji data-i=chef-hat></i> ${t('kit.title')}</h3><p>${t('kit.sub')}</p></div><div class="kitchen-actions"><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('kit.req')}</button><button class="btn btn-blue" onclick="showKitchenProductionModal()"><i class=ji data-i=cooking-pot></i> ${t('kit.prod')}</button><button class="btn" onclick="refreshKitchenOverview()"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button></div></div><div class="metrics-grid kitchen-kpis"><div class="mcard"><div class="mcard-label">${t('kit.policy')}</div><div class="mcard-val c-gold" style="font-size:20px">${modeLabel}</div><small class="text-muted">${t('kit.flexNote')}</small></div><div class="mcard"><div class="mcard-label">${t('kit.openProd')}</div><div class="mcard-val c-blue">${fN((ops.batches||[]).filter(b=>['draft','open'].includes(b.status)).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.exceptions')}</div><div class="mcard-val c-orange">${fN((ops.exceptions||[]).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.pendingReq')}</div><div class="mcard-val c-purple">${fN(pending.length)}</div></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=cooking-pot></i> أوامر الإنتاج</h3></div><div class="tbl-scroll tbl-sticky-first"><table><thead><tr><th>الوصفة</th><th>الموقع</th><th>المخطط</th><th>المنتج</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>${(ops.batches||[]).map(b=>`<tr><td class="fw-bold">${esc(b.product_name||'—')}</td><td>${esc(b.location_name||'—')}</td><td>${fN(b.planned_qty)}</td><td class="c-green">${fN(b.produced_qty)}</td><td class="c-gold">${fN(b.remaining_qty)}</td><td><span class="badge ${b.status==='closed'?'bdg-blue':b.status==='cancelled'?'bdg-red':'bdg-green'}">${b.status==='closed'?'مغلق — موزع':b.status==='cancelled'?'ملغى':'مفتوح'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد أوامر إنتاج بعد</td></tr>'}</tbody></table></div></div>${renderKitchenDistributionRegister()}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> استثناءات البيع أو الإنتاج</h3></div><div class="tbl-scroll"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>السياسة</th><th>السبب</th><th>الحالة</th></tr></thead><tbody>${(ops.exceptions||[]).map(e=>`<tr><td>${esc(e.product_name||'—')}</td><td>${fN(e.quantity)}</td><td>${esc(e.operation_mode)}</td><td>${esc(e.reason)}</td><td><span class="badge bdg-orange">تحتاج مراجعة</span></td></tr>`).join('')||'<tr><td colspan="5" class="u-empty-sm">لا توجد استثناءات مفتوحة</td></tr>'}</tbody></table></div></div>${renderKitchenDispatchRegister()}${renderKitchenReturnsSection()}${renderPRSection()}${renderKitchenGovernance()}</div>`;
+   return `<div class="kitchen-page"><div class="kitchen-page-head"><div><div class="eyebrow">KITCHEN PRODUCTION CONTROL</div><h3><i class=ji data-i=chef-hat></i> ${t('kit.title')}</h3><p>${t('kit.sub')}</p></div><div class="kitchen-actions"><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('kit.req')}</button><button class="btn btn-blue" onclick="showKitchenProductionModal()"><i class=ji data-i=cooking-pot></i> ${t('kit.prod')}</button><button class="btn" onclick="refreshKitchenOverview()"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button></div></div><div class="metrics-grid kitchen-kpis"><div class="mcard"><div class="mcard-label">${t('kit.policy')}</div><div class="mcard-val c-gold" style="font-size:20px">${modeLabel}</div><small class="text-muted">${t('kit.flexNote')}</small></div><div class="mcard"><div class="mcard-label">${t('kit.openProd')}</div><div class="mcard-val c-blue">${fN((ops.batches||[]).filter(b=>['draft','open'].includes(b.status)).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.exceptions')}</div><div class="mcard-val c-orange">${fN((ops.exceptions||[]).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.pendingReq')}</div><div class="mcard-val c-purple">${fN(pending.length)}</div></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=cooking-pot></i> أوامر الإنتاج</h3></div><div class="tbl-scroll tbl-sticky-first"><table><thead><tr><th>الوصفة</th><th>الموقع</th><th>المخطط</th><th>المنتج</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>${(ops.batches||[]).map(b=>`<tr><td class="fw-bold">${esc(b.product_name||'—')}</td><td>${esc(b.location_name||'—')}</td><td>${fN(b.planned_qty)}</td><td class="c-green">${fN(b.produced_qty)}</td><td class="c-gold">${fN(b.remaining_qty)}</td><td><span class="badge ${b.status==='closed'?'bdg-blue':b.status==='cancelled'?'bdg-red':'bdg-green'}">${b.status==='closed'?'مغلق — موزع':b.status==='cancelled'?'ملغى':'مفتوح'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد أوامر إنتاج بعد</td></tr>'}</tbody></table></div></div>${renderKitchenDistributionRegister()}${renderCostCardsSection()}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> استثناءات البيع أو الإنتاج</h3></div><div class="tbl-scroll"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>السياسة</th><th>السبب</th><th>الحالة</th></tr></thead><tbody>${(ops.exceptions||[]).map(e=>`<tr><td>${esc(e.product_name||'—')}</td><td>${fN(e.quantity)}</td><td>${esc(e.operation_mode)}</td><td>${esc(e.reason)}</td><td><span class="badge bdg-orange">تحتاج مراجعة</span></td></tr>`).join('')||'<tr><td colspan="5" class="u-empty-sm">لا توجد استثناءات مفتوحة</td></tr>'}</tbody></table></div></div>${renderKitchenDispatchRegister()}${renderKitchenReturnsSection()}${renderPRSection()}${renderKitchenGovernance()}</div>`;
 }
 // ═══ Task 19: أدوات سلسلة اعتماد طلبات الصرف (رئيس القسم → الشيف العمومي → المخازن) ═══
 function myDeptCode(){ return STATE.currentUser?.dept_code || null; }
@@ -503,8 +503,9 @@ return `<div class="dispatch-item" style="background:var(--bg3);padding:12px;bor
 </div>
 <div class="fr" style="align-items:flex-end">
 <div class="fg" style="flex:1;min-width:120px"><label>الكمية</label><input type="number" class="dispatch-item-qty u-input-f1" placeholder="الكمية" min="0.001" step="0.001" style="font-size:16px;font-weight:700" oninput="updateDispSummary()"></div>
+<div class="fg dispatch-item-uomwrap" style="flex:1;min-width:120px;display:none"><label>وحدة الطلب</label><select class="dispatch-item-uom" onchange="dispUomChanged(this)" style="font-size:15px"></select></div>
 <div class="fg pkg-wrap" style="flex:1;min-width:120px;display:none"><label>عدد الكراتين *</label><input type="number" class="dispatch-item-pkg u-input-f1" placeholder="عدد الكراتين" min="1" step="1" style="font-size:16px;font-weight:700" oninput="updateDispSummary()"></div>
-<div style="display:flex;flex-direction:column;gap:2px;min-width:86px"><span class="row-unit badge bdg-green">قطعة</span><small class="row-avail text-muted"></small><small class="row-cwest text-muted" style="display:none"></small></div>
+<div style="display:flex;flex-direction:column;gap:2px;min-width:86px"><span class="row-unit badge bdg-green">قطعة</span><small class="row-eq text-muted" style="font-size:11px"></small><small class="row-avail text-muted"></small><small class="row-cwest text-muted" style="display:none"></small></div>
 <button type="button" class="btn btn-sm btn-red" onclick="removeDispatchItem(this)" title="حذف الصنف"><i class=ji data-i=x></i></button>
 </div>
 </div>`;
@@ -523,8 +524,20 @@ const uom=row.querySelector('.dispatch-item-pkguom')?.value||'كرتون';
 if(boxes>0) {parts.push(`${name}: ${fN(boxes)} ${uom}`);}
 }else{
 const qty=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
+const uomSel=row.querySelector('.dispatch-item-uom');
+const uomOpt=uomSel?.selectedOptions?.[0]||null;
+const eqEl=row.querySelector('.row-eq');
+if(qty>0&&uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
+const factor=Number(uomOpt.dataset.factor);
+const base=qty*factor;
+const baseUnit=uomSel.options[0]?.value||'';
+if(eqEl){eqEl.textContent=`≈ ${fN(Math.round(base*1000)/1000)} ${baseUnit}`;}
+parts.push(`${name}: ${fN(qty)} ${uomOpt.value} (${fN(Math.round(base*1000)/1000)} ${baseUnit})`);
+}else{
+if(eqEl){eqEl.textContent='';}
 const unit=row.querySelector('.row-unit')?.textContent?.trim()||'';
 if(qty>0) {parts.push(`${name}: ${fN(qty)} ${unit}`);}
+}
 }
 });
 const s=document.getElementById('dispSummary');
@@ -535,7 +548,7 @@ const row=input?.closest('.dispatch-item'); if(!row) {return;}
 const list=row.querySelector('.dispatch-item-list'); if(!list) {return;}
 const q=String(input.value||'').trim().toLowerCase();
 const matches=(STATE.inventory||[]).filter(i=>!q||String(i.name||'').toLowerCase().includes(q)||(i.barcode&&String(i.barcode).includes(q))).slice(0,30);
-list.innerHTML=matches.map(i=>{const cw=i.catch_weight_enabled?1:0;return `<div onmousedown="dispPickItem(this)" data-name="${esc(i.name)}" data-unit="${esc(i.unit||'قطعة')}" data-max="${i.qty}" data-catch="${cw}" data-pkguom="${esc(i.packaging_uom||'كرتون')}" data-avgbox="${i.packaging_qty_per_base||''}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border)"><b>${esc(i.name)}</b>${cw?' <span class="badge bdg-blue">وزن متغير</span>':''}${i.barcode?` <small class="text-muted">${esc(i.barcode)}</small>`:''}<div class="text-muted" style="font-size:11px">متاح: ${fN(i.qty)} ${esc(i.unit||'')}</div></div>`;}).join('')||'<div class="text-muted" style="padding:8px">لا نتائج مطابقة</div>';
+list.innerHTML=matches.map(i=>{const cw=i.catch_weight_enabled?1:0;const sec=Array.isArray(i.secondary_units)?i.secondary_units.filter(u=>u&&u.uom&&Number(u.factor)>0):[];return `<div onmousedown="dispPickItem(this)" data-name="${esc(i.name)}" data-unit="${esc(i.unit||'قطعة')}" data-max="${i.qty}" data-catch="${cw}" data-pkguom="${esc(i.packaging_uom||'كرتون')}" data-avgbox="${i.packaging_qty_per_base||''}" data-secunits="${esc(JSON.stringify(sec))}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border)"><b>${esc(i.name)}</b>${cw?' <span class="badge bdg-blue">وزن متغير</span>':''}${sec.length?` <span class="badge bdg-purple" title="وحدات طلب: ${esc(sec.map(u=>u.uom).join('، '))}">وحدات: ${esc(sec.map(u=>u.uom).join('، '))}</span>`:''}${i.barcode?` <small class="text-muted">${esc(i.barcode)}</small>`:''}<div class="text-muted" style="font-size:11px">متاح: ${fN(i.qty)} ${esc(i.unit||'')}</div></div>`;}).join('')||'<div class="text-muted" style="padding:8px">لا نتائج مطابقة</div>';
 list.style.display='';
 }
 function dispHideList(input){ const l=input?.closest('.dispatch-item')?.querySelector('.dispatch-item-list'); if(l) {l.style.display='none';} }
@@ -562,9 +575,32 @@ if(pkgWrap){pkgWrap.style.display='none';}
 if(pkgInput){pkgInput.value='';}
 if(cwNote){cwNote.style.display='none';cwNote.textContent='';}
 }
+// وحدات الطلب الثانوية: قائمة اختيار (الأساسية + المسجلة للصنف)
+const uomWrap=row.querySelector('.dispatch-item-uomwrap');
+const uomSel=row.querySelector('.dispatch-item-uom');
+const eqEl=row.querySelector('.row-eq');
+let sec=[];
+try{ sec=JSON.parse(el.dataset.secunits||'[]').filter(u=>u&&u.uom&&Number(u.factor)>0); }catch(_){}
+if(uomSel&&uomWrap){
+if(!isCw&&sec.length){
+const baseUnit=el.dataset.unit||'قطعة';
+uomSel.innerHTML=`<option value="${esc(baseUnit)}" data-factor="1">${esc(baseUnit)} (وحدة المخزن)</option>`+sec.map(u=>`<option value="${esc(u.uom)}" data-factor="${Number(u.factor)}">${esc(u.uom)} = ${fN(u.factor)} ${esc(baseUnit)}</option>`).join('');
+uomSel.selectedIndex=0;
+uomWrap.style.display='';
+}else{
+uomSel.innerHTML='';
+uomWrap.style.display='none';
+}
+}
+if(eqEl){eqEl.textContent='';}
 const av=row.querySelector('.row-avail'); if(av) {av.textContent=`متاح: ${fN(el.dataset.max||0)}`;}
 el.parentElement.style.display='none';
 updateDispSummary();
+}
+// تغيير وحدة الطلب — يعيد حساب المكافئ بوحدة المخزن فورًا
+function dispUomChanged(select){
+const row=select?.closest('.dispatch-item');
+if(row){ updateDispSummary(); }
 }
 function addDispatchItemField(){
 const container=document.getElementById('dispatchItemsContainer');
@@ -592,8 +628,19 @@ const estKg=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
 if(name&&boxes>0) {items.push({itemName:name,qty:boxes,unit:pkgUom,packagingQty:boxes,packagingUom:pkgUom,estWeightKg:estKg||null});}
 }else{
 const qty=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
-const unit=row.querySelector('.row-unit')?.textContent?.trim()||'قطعة';
-if(name&&qty>0) {items.push({itemName:name,qty,unit});}
+const uomSel=row.querySelector('.dispatch-item-uom');
+const uomOpt=uomSel?.selectedOptions?.[0]||null;
+const baseUnit=uomSel?.options?.[0]?.value||row.querySelector('.row-unit')?.textContent?.trim()||'قطعة';
+if(name&&qty>0){
+if(uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
+// طلب بوحدة ثانوية (شكارة/كرتون...) → يُحوَّل فورًا لوحدة المخزن الأساسية
+const factor=Number(uomOpt.dataset.factor);
+const baseQty=Math.round(qty*factor*1000)/1000;
+items.push({itemName:name,qty:baseQty,unit:baseUnit,requestedQty:qty,requestedUom:uomOpt.value});
+}else{
+items.push({itemName:name,qty,unit:baseUnit});
+}
+}
 }
 });
 if(items.length===0){ toast('أضف صنفًا واحدًا على الأقل','error'); return; }
@@ -737,7 +784,7 @@ const val=Math.min(item.qty,maxQty)*(inv?.avgCost||0);
 total+=val;
 itemsHtml+=`<div style="background:var(--bg3);padding:15px;border-radius:var(--r);margin-bottom:10px">
 <div class="fr"><div><strong>${esc(item.itemName)}</strong></div>
-<div>المتاح: ${fN(maxQty)} | المطلوب: ${fN(item.qty)}</div></div>
+<div>المتاح: ${fN(maxQty)} | المطلوب: ${fN(item.qty)}${item.requestedUom&&item.requestedQty?` <span class="badge bdg-purple" title="القسم طلب بوحدة ثانوية — تم التحويل لوحدة المخزن">طلب بـ ${fN(item.requestedQty)} ${esc(item.requestedUom)}</span>`:''}</div></div>
 <div class="fr">
 <div class="fg"><label>الكمية المعتمدة</label><input type="number" id="apQty_${idx}" value="${Math.min(item.qty,maxQty)}" step="0.01" min="0" max="${maxQty}" oninput="updateApproveTotal()"></div>
 <div class="fg"><label>القيمة</label><div id="apVal_${idx}" class="c-gold fw-bold">${fC(val)}</div></div></div>
@@ -1120,5 +1167,67 @@ STATE.recipes=STATE.recipes.filter(r=>String(r.id)!==String(id));
 renderPage();
 toast('تم الحذف','warning');
 }
+// ═══ بطاقات تكلفة أمر الإنتاج: البيع الخارجي + البوفيه المفتوح ═══
+// الصرف الفعلي (أذون الصرف + مكونات أوامر الإنتاج) مقابل الإيراد الفعلي من الكاشير
+let costCardsData=null;
+function renderCostCardsSection(){
+const monthStart=new Date().toISOString().slice(0,8)+'01';
+return `<div class="tbl-wrap u-mt16" id="costCardsWrap"><div class="tbl-hd"><h3><i class=ji data-i=chart></i> بطاقات التكلفة — الصرف الفعلي مقابل الإيراد الفعلي</h3>
+<div class="u-row-wrap"><label style="font-size:12px">من</label><input type="date" id="costCardsFrom" value="${monthStart}" onchange="loadCostCards()"><label style="font-size:12px">إلى</label><input type="date" id="costCardsTo" value="${new Date().toISOString().slice(0,10)}" onchange="loadCostCards()"><button class="btn btn-blue btn-sm" onclick="loadCostCards()"><i class=ji data-i=refresh></i> تحديث</button></div></div>
+<div id="costCardsBoard"><div class="text-muted u-mt12">جارٍ تحميل بطاقات التكلفة...</div></div></div>`;
+}
+async function loadCostCards(){
+const box=document.getElementById('costCardsBoard');
+if(!box){return;}
+const from=document.getElementById('costCardsFrom')?.value||'';
+const to=document.getElementById('costCardsTo')?.value||'';
+try{
+costCardsData=await apiFetch(`/kitchen/production/cost-cards?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+box.innerHTML=(costCardsData.cards||[]).map(c=>costCardHtml(c)).join('')||'<div class="text-muted">لا بطاقات</div>';
+}catch(e){ box.innerHTML=`<div style="color:#c0392b">${esc(e.message||'تعذر تحميل بطاقات التكلفة')}</div>`; }
+}
+function costCardHtml(c){
+const items=(c.consumption?.items||[]).slice(0,25).map(x=>`<tr><td>${esc(x.name)}</td><td>${fN(x.qty)} ${esc(x.unit||'')}</td><td>${fC(x.cost)}</td><td class="c-red">${fC(x.value)}</td><td class="text-muted">${esc(String(x.date||'').slice(0,10))}</td><td class="text-muted">#${esc(String(x.dispatch_no||''))}</td></tr>`).join('');
+const prods=(c.production?.lines||[]).map(p=>`<tr><td>${esc(p.product_name||`دفعة #${p.batch_id}`)}</td><td>${fN(p.allocated_qty)} من ${fN(p.planned_qty)}</td><td class="text-muted">${fC(p.batch_cost)}</td><td class="c-red fw-bold">${fC(p.cost)}</td><td class="text-muted">${esc(String(p.prod_date||'').slice(0,10))}</td></tr>`).join('');
+return `<div class="u-mt16" style="background:#fff;border-radius:14px;border-top:4px solid ${esc(c.color||'#c9a227')};box-shadow:0 2px 10px rgba(0,0,0,.06);padding:14px">
+<div class="u-row-between"><h4 style="margin:0">${esc(c.icon||'')} ${esc(c.name)} <small class="text-muted">(${esc(c.from)} — ${esc(c.to)})</small></h4>
+<button class="btn btn-gold btn-sm" onclick="printCostCard('${esc(c.code)}')"><i class=ji data-i=printer></i> طباعة البطاقة</button></div>
+<div class="u-mt12" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
+<div style="background:rgba(231,76,60,.06);border-radius:10px;padding:10px"><small style="color:#64748b">الصرف الفعلي (أذون صرف − مرتجعات)</small><b style="display:block;font-size:18px;color:#c0392b">${fC(c.consumption?.gross||0)}</b></div>
+<div style="background:rgba(139,92,246,.06);border-radius:10px;padding:10px"><small style="color:#64748b">تكلفة أوامر الإنتاج الموزعة</small><b style="display:block;font-size:18px;color:#8B5CF6">${fC(c.production?.cost||0)}</b></div>
+<div style="background:rgba(201,162,39,.08);border-radius:10px;padding:10px"><small style="color:#64748b">الإيراد الفعلي (كاشير القسم)</small><b style="display:block;font-size:18px;color:#9a7417">${fC(c.revenue||0)}</b></div>
+<div style="background:rgba(22,163,74,.06);border-radius:10px;padding:10px"><small style="color:#64748b">نسبة الكوست / الصافي</small><b style="display:block;font-size:18px;color:${(c.costRatio||0)>85?'#c0392b':'#16a34a'}">${c.costRatio!=null?fN(c.costRatio)+'%':'—'}</b><small style="color:#16a34a">صافي ${fC(c.net||0)}</small></div>
+</div>
+${prods?`<div class="tbl-scroll u-mt12"><table><thead><tr><th>أمر إنتاج</th><th>التوزيع</th><th>تكلفة الدفعة كاملة</th><th>نصيب الجهة</th><th>التاريخ</th></tr></thead><tbody>${prods}</tbody></table></div>`:''}
+${items?`<div class="tbl-scroll u-mt8"><table><thead><tr><th>الصنف المصروف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>التاريخ</th><th>الإذن</th></tr></thead><tbody>${items}</tbody></table></div><small class="text-muted">المرتجعات المسجلة: ${fC(c.consumption?.returned||0)} (مخصومة) • يُحدَّث سعر الوحدة تلقائيًا من متوسط تكلفة المخزون عند كل إذن صرف</small>`:'<div class="text-muted u-mt8">لا صرف مسجل في هذه الفترة</div>'}
+</div>`;
+}
+function printCostCard(code){
+const c=(costCardsData?.cards||[]).find(x=>x.code===code);
+if(!c){toast('حمّل البطاقات أولًا','warning');return;}
+const win=window.open('','_blank');
+if(!win){toast('اسمح بالنوافذ المنبثقة','warning');return;}
+const items=(c.consumption?.items||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${fN(x.qty)} ${esc(x.unit||'')}</td><td>${fC(x.cost)}</td><td>${fC(x.value)}</td><td>${esc(String(x.date||'').slice(0,10))}</td><td>#${esc(String(x.dispatch_no||''))}</td></tr>`).join('')||'<tr><td colspan="6">لا صرف</td></tr>';
+const prods=(c.production?.lines||[]).map(p=>`<tr><td>${esc(p.product_name||`دفعة #${p.batch_id}`)}</td><td>${fN(p.allocated_qty)}</td><td>${fC(p.batch_cost)}</td><td>${fC(p.cost)}</td><td>${esc(String(p.prod_date||'').slice(0,10))}</td></tr>`).join('')||'';
+win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>بطاقة تكلفة ${esc(c.name)}</title><style>
+body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e}
+.header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:20px 28px}
+.header h1{margin:0;font-size:20px;color:#f5d76e}.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+.container{padding:20px 28px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.summary .card{background:#fff;border-radius:12px;padding:12px;text-align:center;border-top:3px solid #e2e8f0;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.summary b{display:block;font-size:17px;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#0f172a;color:#f5d76e;padding:8px;font-size:11px}td{padding:7px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
+h3{margin:16px 0 0;font-size:14px}
+@media print{.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+</style></head><body><div class="header"><h1>بطاقة تكلفة — ${esc(c.name)}</h1><p>الفترة ${esc(c.from)} — ${esc(c.to)} • ${esc(STATE.settings.name||'')}</p></div>
+<div class="container">
+<div class="summary"><div class="card"><small>الصرف الفعلي</small><b style="color:#c0392b">${fC(c.consumption?.gross||0)}</b></div><div class="card"><small>تكلفة أوامر الإنتاج</small><b style="color:#8B5CF6">${fC(c.production?.cost||0)}</b></div><div class="card"><small>الإيراد الفعلي</small><b style="color:#9a7417">${fC(c.revenue||0)}</b></div><div class="card"><small>نسبة الكوست</small><b>${c.costRatio!=null?fN(c.costRatio)+'%':'—'}</b><small>الصافي ${fC(c.net||0)}</small></div></div>
+${prods?`<h3>أوامر الإنتاج الموزعة على الجهة</h3><table><thead><tr><th>أمر الإنتاج</th><th>الكمية الموزعة</th><th>تكلفة الدفعة</th><th>نصيب الجهة</th><th>التاريخ</th></tr></thead><tbody>${prods}</tbody></table>`:''}
+<h3>الصرف المفصل من أذون الصرف</h3><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>التاريخ</th><th>الإذن</th></tr></thead><tbody>${items}</tbody></table>
+<p style="margin-top:14px;text-align:center;color:#94a3b8;font-size:11px">تم التوليد: ${new Date().toLocaleString('ar-EG')}</p>
+</div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
+win.document.close();
+}
 
-export { kitchenOverviewLoading, refreshKitchenOverview, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, renderKitchen, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, deleteDispatch, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, deleteKitchenReturn, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe };
+export { kitchenOverviewLoading, refreshKitchenOverview, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, renderKitchen, renderCostCardsSection, loadCostCards, printCostCard, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, deleteDispatch, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, deleteKitchenReturn, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, dispUomChanged, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe };

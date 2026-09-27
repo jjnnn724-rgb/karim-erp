@@ -1047,7 +1047,37 @@ showModal(`<h3><i class=ji data-i=pencil></i> تعديل الصنف</h3>
 <div>الكمية الحالية: <strong class="c-gold">${fN(item.qty)} ${item.unit}</strong></div>
 <div>متوسط السعر: <strong class="c-gold">${fC(item.avgCost)}</strong></div>
 </div>
+<div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--border)">
+<strong style="font-size:13px"><i class=ji data-i=repeat></i> وحدات طلب ثانوية</strong>
+<small class="text-muted" style="display:block;margin:4px 0 8px">لو الأقسام تطلب الصنف بوحدة مختلفة (شكارة، كرتون، شوال...) سجلها هنا مع محتواها — مثال: شكارة أرز = 50 كجم. عند طلب الصرف بالشكارة يتحوّل المبلغ تلقائيًا لوحدة المخزن.</small>
+<div id="secUnitsRows"></div>
+<button type="button" class="btn btn-blue btn-sm" onclick="addSecUnitRow()"><i class=ji data-i=plus></i> إضافة وحدة</button>
+</div>
 <div class="modal-footer"><button type="button" class="btn btn-red" onclick="deleteItem('${esc(String(id))}')"><i class=ji data-i=trash></i> حذف</button><button type="button" class="btn" onclick="closeModal()">إلغاء</button><button type="button" class="btn btn-gold" onclick="updateInventoryItem('${esc(String(id))}')"><i class=ji data-i=save></i> حفظ</button></div>`);
+try{ (Array.isArray(item.secondary_units)?item.secondary_units:[]).forEach(u=>addSecUnitRow(u.uom,u.factor)); }catch(_){}
+}
+// ─── محرر وحدات الطلب الثانوية ───
+function addSecUnitRow(uom='', factor=''){
+const box=document.getElementById('secUnitsRows');
+if(!box){return;}
+const div=document.createElement('div');
+div.className='fr sec-unit-row';
+div.style.cssText='align-items:end;margin-top:6px;gap:6px';
+div.innerHTML=`<div class="fg" style="flex:1"><label>اسم الوحدة</label><input type="text" class="sec-uom" value="${esc(String(uom||''))}" placeholder="شكارة، كرتون، شوال..."></div>
+<div class="fg" style="flex:1"><label>محتواها من الوحدة الأساسية</label><input type="number" class="sec-factor" value="${esc(String(factor||''))}" step="0.001" min="0.001" placeholder="50"></div>
+<button type="button" class="btn btn-red btn-sm" onclick="this.parentElement.remove()" title="حذف الوحدة"><i class=ji data-i=x></i></button>`;
+box.appendChild(div);
+}
+function collectSecUnits(){
+const rows=[...document.querySelectorAll('#secUnitsRows .sec-unit-row')];
+const out=[];
+for(const r of rows){
+const uom=String(r.querySelector('.sec-uom')?.value||'').trim();
+const factor=parseFloat(r.querySelector('.sec-factor')?.value);
+if(!uom||!(factor>0)){continue;}
+out.push({uom,factor});
+}
+return out;
 }
 async function updateInventoryItem(id){
 const item=STATE.inventory.find(i=>String(i.id)===String(id));
@@ -1060,10 +1090,11 @@ const unit=document.getElementById('eiUnit')?.value||'قطعة';
 const minQty=parseFloat(document.getElementById('eiMin')?.value)||5;
 const weight=parseFloat(document.getElementById('eiWeight')?.value)||0;
 const shelfId=document.getElementById('eiShelf')?.value||null;
+const secUnits=collectSecUnits();
 try{
-const saved = await persistUpdate('inventory', id, {name,category,barcode,unit,minQty,weight,shelfId,qty:item.qty,avgCost:item.avgCost});
-Object.assign(item, saved || {name,category,barcode,unit,minQty,weight,shelfId});
-closeModal();renderPage();toast('تم التحديث','success');
+const saved = await persistUpdate('inventory', id, {name,category,barcode,unit,minQty,weight,shelfId,qty:item.qty,avgCost:item.avgCost,secondary_units:secUnits.length?secUnits:null});
+Object.assign(item, saved || {name,category,barcode,unit,minQty,weight,shelfId,secondary_units:secUnits.length?secUnits:null});
+closeModal();renderPage();toast(secUnits.length?`تم التحديث — وحدات الطلب: ${secUnits.map(u=>u.uom).join('، ')}`:'تم التحديث','success');
 }catch(e){ toast(e.message||'فشل تحديث الصنف في قاعدة البيانات','error'); }
 }
 async function deleteItem(id, force){
@@ -1892,4 +1923,4 @@ resetWeight();
 renderPage();
 }
 
-export { renderWarehouse, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem };
+export { renderWarehouse, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem };

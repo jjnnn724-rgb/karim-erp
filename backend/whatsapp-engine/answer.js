@@ -636,6 +636,20 @@ async function answerFreeText(engine, text, rec) {
     const mgr = () => erp.isManagerChat(rec.remoteJid, rec.senderPn);
     try {
         if (/^(مساعده|مساعدة|help|اوامر|الاوامر|commands?|ايه الاوامر|شو بتقدر|ماذا يمكنك|ايش تقدر)$/.test(t)) {return helpText();}
+        if (/^(ورديات|الورديات)\b/.test(text.trim()) || (/^ورديات\b/m.test(text) && /\d{1,2}:\d{2}/.test(text))) {
+            if (!(await mgr())) {return DENY;}
+            const shiftsEngine = require('../shifts-engine');
+            const r = await shiftsEngine.applyShiftText(text.replace(/^(ورديات|الورديات)\s*/,'').trim() || text, undefined);
+            const lines = [
+                `⚙️ محرك الورديات`,
+                `✓ تم تطبيق: ${r.applied} من ${r.parsed}`,
+                ...(r.failed ? ['⚠ غير مطبق: ' + r.failed.length] : []),
+                ...(r.appliedList.slice(0, 12)),
+                `📊 إعادة الحساب: أيام التأخير ${r.recompute.lateDaysBefore} → ${r.recompute.lateDaysAfter} | دقائق ${r.recompute.lateMinutesBefore} → ${r.recompute.lateMinutesAfter}`,
+                ...(r.failed.length ? ['\n' + r.failed.slice(0, 8).join('\n')] : []),
+            ];
+            return lines.join('\n');
+        }
         if (t.includes('تقرير')) {
             if (!(await mgr())) {return DENY;}
             const { collectBriefing, formatWhatsapp } = require('../manager-briefing');

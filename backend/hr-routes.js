@@ -680,4 +680,189 @@ router.get('/employees/ledger', jwtAuth, requireRole('admin', 'hr', 'manager'), 
         }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// محرك خصومات الالتزام بالدوام — تأخير + غياب مستنبطان من البصمات والإجازات
+// السياسة: يوم الغياب = الراتب/30 • دقيقة التأخير = (الراتب/30/دقائق يوم العمل)
+// البنود الآلية تحمل بادئة «⟨آلي⟩» في السبب — إعادة التطبيق تستبدلها دون تكرار
+// ═══════════════════════════════════════════════════════════════════════════
+const AUTO_DEDUCTION_MARK = '⟨آلي⟩ خصم التزام الدوام';
+
+function monthBounds(month) {
+    const [y, m] = month.split('-').map(Number);
+    const start = new Date(Date.UTC(y, m - 1, 1));
+    const end = new Date(Date.UTC(y, m, 0));
+    return { start, end, daysInMonth: end.getUTCDate() };
+}
+
+function eachDate(start, end) {
+    const out = [];
+    for (const d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+        out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+}
+
+async function computeMonthDeductions(month, { skipFridays = false } = {}) {
+    const { start, end, daysInMonth } = monthBounds(month);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const emps = (await pool.query(
+        `SELECT id, name, "employeeId", salary, shift_karim, "joinDate" FROM employees WHERE status = 'active' ORDER BY id`)).rows;
+
+    const att = (await pool.query(
+        `SELECT "employeeId", date, "checkIn", "checkOut" FROM attendance
+          WHERE date >= $1 AND date <= $2 AND "checkIn" IS NOT NULL`,
+        [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)])).rows;
+    const attByEmp = new Map();
+    for (const a of att) {
+        if (!attByEmp.has(a.employeeId)) {attByEmp.set(a.employeeId, []);}
+        attByEmp.get(a.employeeId).push(a);
+    }
+
+    // الإجازات المعتمدة المتقاطعة مع الشهر — تُغطي أيامها من احتساب الغياب
+    const leaves = (await pool.query(
+        `SELECT "employeeId", "startDate", "endDate" FROM "leaveRequests"
+          WHERE status = 'approved' AND "startDate" <= $2 AND "endDate" >= $1`,
+        [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)])).rows;
+    const leaveByEmp = new Map();
+    for (const l of leaves) {
+        if (!leaveByEmp.has(l.employeeId)) {leaveByEmp.set(l.employeeId, new Set());}
+        for (const d of eachDate(new Date(`${l.startDate}T00:00:00Z`), new Date(`${l.endDate}T00:00:00Z`))) {
+            leaveByEmp.get(l.employeeId).add(d);
+        }
+    }
+
+    const empIds = emps.map(e => e.id);
+    const priorAuto = empIds.length ? (await pool.query(
+        `SELECT "employeeId", kind, COALESCE(SUM(amount),0)::numeric(12,2) AS total FROM payroll_adjustments
+          WHERE month = $1 AND reason LIKE $2 GROUP BY "employeeId", kind`,
+        [month, `${AUTO_DEDUCTION_MARK}%`])).rows : [];
+
+    const detail = [];
+    for (const emp of emps) {
+        const salary = Number(emp.salary || 0);
+        if (salary <= 0) {continue;}
+        const workDayMinutes = (Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10) * 60;
+        const dayRate = salary / 30;
+        const minuteRate = dayRate / workDayMinutes;
+
+        const records = attByEmp.get(emp.id) || [];
+        let lateMinutes = 0;
+        for (const row of records) {
+            const parts = calculateDelayParts(row, emp);
+            const w = calculateMinutes(row);
+            const needsReview = Boolean(row.checkIn && row.checkOut && w === 0);
+            if (!needsReview) {lateMinutes += Number(parts.lateMinutes || 0);}
+        }
+        const presentDays = new Set(records.map(r => r.date));
+
+        // الغياب: يوم بلا بصمة حضور، غير مغطى بإجازة معتمدة، بعد الالتحاق، وغير مستقبلي
+        const joinDate = emp.joinDate ? String(emp.joinDate).slice(0, 10) : null;
+        const coveredLeave = leaveByEmp.get(emp.id) || new Set();
+        let absentDays = 0;
+        const absentDates = [];
+        for (const d of eachDate(start, end)) {
+            if (d > todayStr) {break;}
+            if (joinDate && d < joinDate) {continue;}
+            if (skipFridays && new Date(`${d}T00:00:00Z`).getUTCDay() === 5) {continue;}
+            if (presentDays.has(d) || coveredLeave.has(d)) {continue;}
+            absentDays += 1;
+            absentDates.push(d);
+        }
+
+        const lateDeduction = Math.round(lateMinutes * minuteRate * 100) / 100;
+        const absentDeduction = Math.round(absentDays * dayRate * 100) / 100;
+        detail.push({
+            employeeId: emp.id, name: emp.name, employeeCode: emp.employeeId,
+            salary, workDayMinutes, daysPresent: presentDays.size,
+            lateMinutes, absentDays, absentDates,
+            lateDeduction, absentDeduction,
+            totalDeduction: Math.round((lateDeduction + absentDeduction) * 100) / 100,
+        });
+    }
+    return { month, detail, priorAuto };
+}
+
+router.get('/deductions/preview', jwtAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
+    try {
+        const month = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? String(req.query.month) : new Date().toISOString().slice(0, 7);
+        const skipFridays = req.query.skip_fridays === '1' || req.query.skipFridays === 'true';
+        const { detail } = await computeMonthDeductions(month, { skipFridays });
+        const totals = detail.reduce((s, e) => ({
+            late: s.late + e.lateDeduction, absent: s.absent + e.absentDeduction, total: s.total + e.totalDeduction,
+        }), { late: 0, absent: 0, total: 0 });
+        res.json({ ok: true, month, skipFridays, totals: {
+            late: Math.round(totals.late * 100) / 100, absent: Math.round(totals.absent * 100) / 100, total: Math.round(totals.total * 100) / 100,
+        }, employees: detail });
+    } catch (e) {
+        logger.error('[hr_deductions_preview]', e);
+        res.status(500).json({ error: 'DEDUCTIONS_PREVIEW_FAILED', message: 'تعذر حساب معاينة الخصومات' });
+    }
+});
+
+router.post('/deductions/apply', jwtAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
+    const month = /^\d{4}-\d{2}$/.test(String(req.body?.month || '')) ? String(req.body.month) : '';
+    if (!month) {return res.status(422).json({ error: 'MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });}
+    const skipFridays = req.body?.skipFridays === true;
+    const client = await pool.connect();
+    try {
+        const { detail } = await computeMonthDeductions(month, { skipFridays });
+        await client.query('BEGIN');
+        // إعادة التطبيق تستبدل البنود الآلية السابقة لهذا الشهر — البنود اليدوية لا تُمس
+        await client.query(`DELETE FROM payroll_adjustments WHERE month = $1 AND reason LIKE $2`, [month, `${AUTO_DEDUCTION_MARK}%`]);
+        let inserted = 0, totalAmount = 0;
+        for (const e of detail) {
+            if (e.lateDeduction > 0) {
+                await client.query(
+                    `INSERT INTO payroll_adjustments (id, "employeeId", month, kind, amount, reason, created_by)
+                     VALUES ($1, $2, $3, 'penalty', $4, $5, $6)`,
+                    [Date.now() * 1000 + Math.floor(Math.random() * 1000) + (e.employeeId % 1000), e.employeeId, month, e.lateDeduction,
+                        `${AUTO_DEDUCTION_MARK} — تأخير ${e.lateMinutes} دقيقة (${(e.lateMinutes / 60).toFixed(1)} ساعة)`, req.user.id]);
+                inserted += 1; totalAmount += e.lateDeduction;
+            }
+            if (e.absentDeduction > 0) {
+                await client.query(
+                    `INSERT INTO payroll_adjustments (id, "employeeId", month, kind, amount, reason, created_by)
+                     VALUES ($1, $2, $3, 'penalty', $4, $5, $6)`,
+                    [Date.now() * 1000 + Math.floor(Math.random() * 1000) + (e.employeeId % 1000) + 500, e.employeeId, month, e.absentDeduction,
+                        `${AUTO_DEDUCTION_MARK} — غياب ${e.absentDays} يوم`, req.user.id]);
+                inserted += 1; totalAmount += e.absentDeduction;
+            }
+        }
+        await client.query('COMMIT');
+        totalAmount = Math.round(totalAmount * 100) / 100;
+        logger.info(`[hr_deductions_apply] month=${month} rows=${inserted} total=${totalAmount} by=${req.user.id}`);
+        res.json({ ok: true, month, insertedRows: inserted, totalAmount,
+            employees: detail.filter(e => e.totalDeduction > 0).length });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[hr_deductions_apply]', e);
+        res.status(500).json({ error: 'DEDUCTIONS_APPLY_FAILED', message: 'تعذر تطبيق الخصومات' });
+    } finally { client.release(); }
+});
+
+
+// ─── محرك الورديات: تحليل واقع البصمة + تطبيق الورديات + إعادة حساب تلقائية ───
+const shiftsEngine = require('./shifts-engine');
+
+router.get('/shifts/analysis', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
+    try {
+        const month = /^d{4}-d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
+        res.json(await shiftsEngine.realityAnalysis(month));
+    } catch (e) { res.status(500).json({ error: 'SHIFT_ANALYSIS_FAILED', message: e.message }); }
+});
+
+router.post('/shifts/apply', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
+    try {
+        const text = String(req.body && req.body.text || '').slice(0, 8000);
+        if (!text.trim()) {return res.status(422).json({ error: 'EMPTY', message: 'اكتب الورديات أولاً' });}
+        const summary = await shiftsEngine.applyShiftText(text);
+        res.json({ ok: true, ...summary });
+    } catch (e) { res.status(500).json({ error: 'SHIFTS_APPLY_FAILED', message: e.message }); }
+});
+
+router.post('/shifts/recompute', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
+    try { res.json({ ok: true, recompute: await shiftsEngine.recomputeDerived() }); }
+    catch (e) { res.status(500).json({ error: 'RECOMPUTE_FAILED', message: e.message }); }
+});
+
 module.exports = { router, provisionCard, signQrPayload };

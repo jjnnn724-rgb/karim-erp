@@ -1,0 +1,606 @@
+{
+ "at": "2026-09-27T04:19:05.888Z",
+ "month": "2026-09",
+ "values": [
+  {
+   "id": "77",
+   "name": "محمود عابد بعقوب",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "78",
+   "name": "حاشد على الجرادى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "75",
+   "name": "اسماعيل على صالح",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "13",
+   "name": "حامد سالم العاتي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "86",
+   "name": "مد رياض برودان",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "47",
+   "name": "اسامه حافظ",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "83",
+   "name": "رفعت مياة",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "3",
+   "name": "محمد حمود على ناجي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "113",
+   "name": "عبد الله شروانى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "95",
+   "name": "شوكت عثمان",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "68",
+   "name": "عبد الله عمر عباس",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "106",
+   "name": "محمد ناصر المرسى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "55",
+   "name": "خوكان ساندر على",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "97",
+   "name": "عمر النهارى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "74",
+   "name": "شبلى صداق حسن",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "64",
+   "name": "عيسى عبد الحليم",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "57",
+   "name": "مد شاين ميا",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "30",
+   "name": "شريف الدين مولا",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "40",
+   "name": "فهد مياه",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "8",
+   "name": "ايمن محمد كامل البرعي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "6",
+   "name": "حسين احمد بحي المخالفي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "54",
+   "name": "محمد على محمد حسن الحطامي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "35",
+   "name": "بسام احمد صالح",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "61",
+   "name": "يعقوب مد عبد الصمد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "103",
+   "name": "احمد هارى حرة",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "34",
+   "name": "سويل ماتوبر على ماتوبر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "33",
+   "name": "محمد عثمان حسين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "76",
+   "name": "اسحاق ادم الفقيه",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "32",
+   "name": "مد فاروس",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "125",
+   "name": "Aman Ullah Arman",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "122",
+   "name": "اسامة احمد صالح سيف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "17",
+   "name": "رياض عادل بادي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "37",
+   "name": "عرفة محمد كامل",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "115",
+   "name": "على احمد راشد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "89",
+   "name": "ماجد على الادريسي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "114",
+   "name": "محمد محمد دياب عبد الله",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "19",
+   "name": "احمد السيد العدوي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "26",
+   "name": "رامز ايوب",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "129",
+   "name": "محمد حاتم محمد الشافعي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "29",
+   "name": "مد كوثر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "127",
+   "name": "Ashik Mia",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "66",
+   "name": "عبد المقيبت وهب الله",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "99",
+   "name": "حسبى الله هشام مسكين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "121",
+   "name": "حمدى محمد عبدالله الخولانى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "81",
+   "name": "عارف المنتصر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "116",
+   "name": "Helal Uddin",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "90",
+   "name": "احمد سمير حسانين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "73",
+   "name": "احمد عبد الباري همام",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "120",
+   "name": "ايهاب عسيرى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "107",
+   "name": "لقمان عثمان اوسين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "15",
+   "name": "Mohammad Hridoy Mia",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "92",
+   "name": "اسد حميد عبد الله حاتم",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "91",
+   "name": "توفيق على حسن",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "80",
+   "name": "عاصم على سعيد الفرجي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "102",
+   "name": "محمد احمد كوثر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "56",
+   "name": "مد زاكر حسين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "58",
+   "name": "مد عبيد حسن عاصف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "27",
+   "name": "وليد ناجي سيف على",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "28",
+   "name": "شاين ماتوبر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "16",
+   "name": "طارق تيوب على صالح",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "23",
+   "name": "على محمد صالح سيف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "79",
+   "name": "عمر احمد سرور",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "4",
+   "name": "غالب قهد غالب",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "42",
+   "name": "هاشم هشام",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "96",
+   "name": "عبد الاحد عبد الله خان",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "111",
+   "name": "محمد شحانات",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "88",
+   "name": "سوفيل انام احمد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "100",
+   "name": "عوض محمد الحنونى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "62",
+   "name": "شاقور اسلام",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "128",
+   "name": "ناصر جالل حسين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "52",
+   "name": "ابراهيم حافظ نعمان",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "41",
+   "name": "انور حسين عبد القادر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "46",
+   "name": "سامح مبروك",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "70",
+   "name": "ريان طاهر مثنى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "2",
+   "name": "محمد الدسوقي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "53",
+   "name": "عبده ماهر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "119",
+   "name": "السيد شوقى زغلول فرج",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "117",
+   "name": "سوباجيو جيريم",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "124",
+   "name": "اسماعيل درامين",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "69",
+   "name": "عبد الله طاهر مثنى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "44",
+   "name": "جمال الدين محمود النداف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "112",
+   "name": "عقيف الدين ارشد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "85",
+   "name": "خالد محمد صالح سيف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "45",
+   "name": "احمد عبد العزيز",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "63",
+   "name": "محمد احمد يحيى",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "9",
+   "name": "سيف صالح بن عفيف",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "1",
+   "name": "عبد اللطيف محمد الفضل",
+   "shift_start": "13:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "12",
+   "name": "عبد الناصر على احمد صالح",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "84",
+   "name": "محمد عبد الواسع محمد عبدة",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "94",
+   "name": "بارفيز احمد محمد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "101",
+   "name": "سامح السيد عيد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "60",
+   "name": "فاروق عبد احمد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "51",
+   "name": "ابراهيم نة ر الاسلام",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "108",
+   "name": "Abrar normatov",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "109",
+   "name": "Normatov Akmal",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "48",
+   "name": "بالل ادم حلمي",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "130",
+   "name": "بدران محمد مصطفى عبدالوهاب",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "38",
+   "name": "داليم مد جبر",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "36",
+   "name": "امجد على صالح",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  },
+  {
+   "id": "104",
+   "name": "نجم الدين العماد",
+   "shift_start": "09:00",
+   "shift_karim": "10.00"
+  }
+ ]
+}

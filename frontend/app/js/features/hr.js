@@ -143,6 +143,7 @@ return `
 <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center">
 <input type="search" id="attSearch" placeholder="بحث بالاسم أو الكود أو القسم..." value="${esc(STATE.attSearch||'')}" oninput="attSearchFilter(this.value)" style="min-width:180px">
 <button class="btn btn-gold btn-sm" onclick="scanAttendanceKiosk()"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
+<button class="btn btn-blue btn-sm" onclick="openShiftsPanel()"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>
 <button class="btn btn-blue btn-sm" onclick="exportAttendanceExcel()"><i class=ji data-i=inbox></i> تصدير Excel</button>
 <button class="btn btn-green btn-sm" onclick="printMonthlyAttendance()"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
 <button class="btn btn-blue btn-sm" onclick="runStrictAuditUI()"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
@@ -757,7 +758,7 @@ function hrSuiteSection(){
   const kindAr = { penalty: 'جزاء', bonus: 'علاوة', deduction: 'خصم', allowance: 'بدل' };
   return `
   <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> توليد مسير الرواتب</h3>
-  <div class="u-row-wrap"><input type="month" id="payrunMonth" value="${curMonth}">${canWrite ? `<button class="btn btn-gold btn-sm" onclick="runPayrollGen()"><i class=ji data-i=zap></i> توليد المسير</button>` : ''}</div></div>
+  <div class="u-row-wrap"><input type="month" id="payrunMonth" value="${curMonth}">${canWrite ? `<button class="btn btn-blue btn-sm" onclick="hrDeductionsModal()"><i class=ji data-i=gavel></i> معالجة خصومات الالتزام</button><button class="btn btn-gold btn-sm" onclick="runPayrollGen()"><i class=ji data-i=zap></i> توليد المسير</button>` : ''}</div></div>
   <div class="tbl-scroll"><table><thead><tr><th>الشهر</th><th>الموظفون</th><th>الأساسي</th><th>أوفرتايم</th><th>علاوات</th><th>جزاءات</th><th>سلف</th><th>الصافي</th></tr></thead><tbody>
   ${runs.map(r => `<tr><td class="fw-bold">${esc(r.month)}</td><td>${r.employee_count}</td><td>${fC(r.total_basic)}</td><td class="c-green">${fC(r.total_overtime)}</td><td class="c-green">${fC(r.total_bonuses)}</td><td class="c-red">${fC(r.total_penalties)}</td><td class="c-red">${fC(r.total_advances)}</td><td class="c-gold fw-bold">${fC(r.total_net)}</td></tr>`).join('') || '<tr><td colspan="8" class="u-empty-sm">لا مسيرات مولدة بعد</td></tr>'}
   </tbody></table></div></div>
@@ -800,6 +801,61 @@ async function hrDelete(entity, id){
   showLoad();
   try{ await apiRemove(entity, id); await window.loadData().catch(() => {}); renderPage(); toast('تم الحذف', 'warning'); }
   catch(e){ toast(e.message || 'تعذر الحذف', 'error'); }
+  finally{ hideLoad(); }
+}
+// ─── معالجة خصومات الالتزام بالدوام: معاينة من البصمات ثم تطبيق آلي ───
+function hrDeductionsModal(){
+  const curMonth = new Date().toISOString().slice(0, 7);
+  showModal(`<h3><i class=ji data-i=gavel></i> معالجة خصومات الالتزام بالدوام</h3>
+  <div class="u-row-wrap" style="gap:8px;align-items:center">
+  <input type="month" id="hrDedMonth" value="${curMonth}">
+  <label style="font-size:13px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="hrDedSkipFri"> استثناء الجمعة</label>
+  <button class="btn btn-blue btn-sm" onclick="hrDeductionsPreview()"><i class=ji data-i=search></i> معاينة</button>
+  </div>
+  <div id="hrDedBody" class="u-mt12"><div class="text-muted">اختر الشهر واضغط «معاينة» — يُحسب التأخير والغياب من البصمات مع استبعاد أيام الإجازات المعتمدة.</div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" id="hrDedApplyBtn" onclick="hrDeductionsApply()" style="display:none"><i class=ji data-i=zap></i> تطبيق الخصومات</button></div>`);
+}
+async function hrDeductionsPreview(){
+  const m = document.getElementById('hrDedMonth')?.value || '';
+  if(!/^\d{4}-\d{2}$/.test(m)){ toast('اختر الشهر', 'error'); return; }
+  const skipFri = document.getElementById('hrDedSkipFri')?.checked ? '1' : '0';
+  const box = document.getElementById('hrDedBody');
+  if(!box){ return; }
+  box.innerHTML = '<div class="text-muted">جارٍ الحساب من البصمات...</div>';
+  try{
+    const r = await apiFetch(`/hr/deductions/preview?month=${encodeURIComponent(m)}&skip_fridays=${skipFri}`);
+    window.__hrDedPreview = r;
+    const rows = (r.employees || []).filter(e => e.totalDeduction > 0).map(e => `<tr>
+      <td class="fw-bold">${esc(e.name)}</td><td>${fC(e.salary)}</td><td>${e.daysPresent}</td>
+      <td class="c-red">${e.lateMinutes} د</td><td class="c-red fw-bold">${fC(e.lateDeduction)}</td>
+      <td class="c-red">${e.absentDays}</td><td class="c-red fw-bold">${fC(e.absentDeduction)}</td>
+      <td class="c-gold fw-bold">${fC(e.totalDeduction)}</td></tr>`).join('');
+    box.innerHTML = `<div class="u-mb8" style="display:flex;gap:10px;flex-wrap:wrap">
+      <span class="badge bdg-red">خصم التأخير: ${fC(r.totals?.late)}</span>
+      <span class="badge bdg-orange">خصم الغياب: ${fC(r.totals?.absent)}</span>
+      <span class="badge bdg-gold">الإجمالي: ${fC(r.totals?.total)}</span>
+      <span class="badge">موظفون به خصومات: ${(r.employees || []).filter(e => e.totalDeduction > 0).length}</span></div>
+    <div class="tbl-scroll" style="max-height:320px"><table>
+    <thead><tr><th>الموظف</th><th>الراتب</th><th>أيام حضور</th><th>تأخير</th><th>خصم التأخير</th><th>غياب</th><th>خصم الغياب</th><th>الإجمالي</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="8" class="u-empty-sm">لا خصومات — كل الموظفين ملتزمون بدوامهم 👌</td></tr>'}</tbody></table></div>
+    <small class="text-muted">السياسة: يوم الغياب = الراتب÷30 • دقيقة التأخير = الراتب÷30÷ساعات الوردية • الإجازات المعتمدة مستثناة${r.skipFridays ? ' • الجمعة مستثناة' : ''}</small>`;
+    const btn = document.getElementById('hrDedApplyBtn');
+    if(btn){ btn.style.display = ''; }
+  }catch(e){ box.innerHTML = `<div style="color:#c0392b">${esc(e.message || 'تعذر جلب المعاينة')}</div>`; }
+}
+async function hrDeductionsApply(){
+  const r = window.__hrDedPreview;
+  if(!r?.month){ toast('اعمل معاينة أولًا', 'error'); return; }
+  if(!confirm(`تطبيق خصومات الالتزام لشهر ${r.month}؟\nالإجمالي: ${fC(r.totals?.total)}\n\nيُستبدل أي تطبيق آلي سابق لنفس الشهر — البنود اليدوية لا تُمس.`)) { return; }
+  showLoad();
+  try{
+    const skipFri = document.getElementById('hrDedSkipFri')?.checked === true;
+    const res = await apiFetch('/hr/deductions/apply', { method: 'POST', body: JSON.stringify({ month: r.month, skipFridays: skipFri }) });
+    await window.loadData().catch(() => {});
+    closeModal();
+    renderPage();
+    toast(`تم تطبيق ${res.insertedRows} بند خصم — إجمالي ${fC(res.totalAmount)} (ستظهر في «جزاءات وعلاوات الشهر» وتُخصم عند توليد المسير)`, 'success');
+  }catch(e){ toast(e.message || 'تعذر تطبيق الخصومات', 'error'); }
   finally{ hideLoad(); }
 }
 function hrAdvanceModal(){
@@ -906,4 +962,63 @@ toast('تم التصدير','success');
 }
 
 
-export { renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkInOutByScan, scanAttendanceKiosk, checkIn, checkOut, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel };
+export { renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkInOutByScan, scanAttendanceKiosk, checkIn, checkOut, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrDeductionsModal, hrDeductionsPreview, hrDeductionsApply, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel };
+
+// ─── محرك الورديات: إدخال جماعي من المالك + تطبيق وإعادة حساب تلقائية ───
+function openShiftsPanel(){
+  const html = `
+  <div style="min-width:min(680px,92vw)">
+    <h3 style="margin:0 0 8px"><i class=ji data-i=clock></i> الورديات — تطبيق من واقع بصماتك</h3>
+    <p class="text-muted" style="margin:0 0 10px;font-size:13px">سطر لكل موظف: <b>EMP-رقم أو اسم الموظف أو بصمة رقم</b> ثم وقت الدخول ثم عدد ساعات الوردية (أو وقت الخروج).<br>
+    أمثلة: <code>EMP-019: 16:00 12</code> · <code>بصمة 45: 04:00 - 16:00</code> · <code>احمد السيد العدوي 16:00 12س</code></p>
+    <textarea id="shiftsInput" rows="10" style="width:100%;direction:ltr;text-align:left;font-family:monospace" placeholder="EMP-019: 16:00 12
+بصمة 45: 04:00 - 16:00
+احمد السيد العدوي 16:00 12س"></textarea>
+    <label style="display:flex;gap:6px;align-items:center;margin:8px 0;font-size:13px"><input type="checkbox" id="shiftsAutoSuggest" checked> أضف تلقائيًا ورديات مقترحة من واقع البصمة للموظفين غير المذكورين (فجوة ≥30 دقيقة)</label>
+    <div style="display:flex;gap:8px;justify-content:flex-start">
+      <button class="btn btn-gold" onclick="applyShiftsFromPanel()">تطبيق وإعادة حساب الحضور</button>
+      <button class="btn" onclick="closeModal()">إلغاء</button>
+    </div>
+    <div id="shiftsResult" style="margin-top:10px;font-size:13px"></div>
+  </div>`;
+  showModal(html);
+}
+async function applyShiftsFromPanel(){
+  const box = document.getElementById('shiftsInput');
+  const useAuto = document.getElementById('shiftsAutoSuggest') && document.getElementById('shiftsAutoSuggest').checked;
+  const text = (box && box.value ? box.value : '').trim();
+  if (!text) { toast('اكتب الورديات أولاً', 'warning'); return; }
+  showLoad();
+  try {
+    let text2 = text;
+    if (useAuto) {
+      try {
+        const analysis = await apiFetch('/hr/shifts/analysis?month=' + new Date().toISOString().slice(0, 7));
+        const wrong = (analysis.items || []).filter(x => Math.abs(x.driftMinutes) >= 30);
+        const manual = text2.toLowerCase();
+        const extra = wrong.filter(x => {
+          const n = (x.name || '').toLowerCase();
+          return !text2.includes(n) && !text2.includes('emp-' + String(x.id)) && !(new RegExp('emp-\s*' + String(x.id) + '\b', 'i')).test(text2) && !(x.name || '').split(' ').some(w => w.length >= 3 && text2.includes(w));
+        }).slice(0, 200);
+        if (extra.length) {
+          text2 += '\n' + extra.map(x => `${x.name} ${x.realityP25}`).join('\n');
+        }
+      } catch (_) { /* التحليل اختياري — الاستمرار بالنص المُدخل */ }
+    }
+    const res = await apiFetch('/hr/shifts/apply', { method: 'POST', body: JSON.stringify({ text: text2 }) });
+    const rc = res && res.recompute ? res.recompute : {};
+    const msg = [
+      `✓ تطبيق: ${res.applied}/${res.parsed} موظف`,
+      `📊 أيام التأخير: ${rc.lateDaysBefore} → ${rc.lateDaysAfter}`,
+      `📊 دقائق التأخير: ${rc.lateMinutesBefore} → ${rc.lateMinutesAfter}`,
+      ...(res.failed && res.failed.length ? ['⚠ غير مطبق: ' + res.failed.slice(0, 5).join(' · ')] : []),
+    ].join('\n');
+    const box2 = document.getElementById('shiftsResult');
+    if (box2) { box2.style.whiteSpace = 'pre-line'; box2.textContent = msg; }
+    toast(`تم تطبيق ${res.applied} وردية وإعادة حساب الحضور`, 'success');
+    renderPage();
+  } catch (e) { toast('تعذر التطبيق: ' + (e.message || e), 'error'); }
+  finally { hideLoad(); }
+}
+window.openShiftsPanel = openShiftsPanel;
+window.applyShiftsFromPanel = applyShiftsFromPanel;

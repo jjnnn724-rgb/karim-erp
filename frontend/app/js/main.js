@@ -21,13 +21,13 @@
  * bridge tracked in docs/esm-migration/DEPRECATION_LOG.md.
  */
 
-import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.7.131';
-import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.7.131';
-import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.7.131';
-import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.7.131';
-import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.7.131';
-import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.131';
-import { CONFIG, ROLES } from './core/config.js?v=4.7.131';
+import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.7.132';
+import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.7.132';
+import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.7.132';
+import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.7.132';
+import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.7.132';
+import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.132';
+import { CONFIG, ROLES } from './core/config.js?v=4.7.132';
 import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.7.142';
 import * as authNav from './features/auth-navigation.js?v=4.7.142';
 import * as pageRouter from './features/page-router.js?v=4.7.142';
@@ -95,22 +95,22 @@ window.saveData = saveData;
 window.uiPreferencesPayload = uiPreferencesPayload;
 
 // BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
-const smartCard = await import('./features/smart-card.js?v=4.7.131');
+const smartCard = await import('./features/smart-card.js?v=4.7.150');
 Object.assign(window, smartCard);   // BRIDGE-008
 
-const bulkImport = await import('./features/bulk-import.js?v=4.7.131');
+const bulkImport = await import('./features/bulk-import.js?v=4.7.132');
 Object.assign(window, bulkImport);  // BRIDGE-009
 
-const zkteco = await import('./features/zkteco.js?v=4.7.131');
+const zkteco = await import('./features/zkteco.js?v=4.7.132');
 Object.assign(window, zkteco);      // BRIDGE-010
 
-const kitchen = await import('./features/kitchen.js?v=4.7.134');
+const kitchen = await import('./features/kitchen.js?v=4.7.150');
 Object.assign(window, kitchen);     // BRIDGE-013
 
 const finance = await import('./features/finance.js?v=4.7.135');
 Object.assign(window, finance);     // BRIDGE-014
 
-const hr = await import('./features/hr.js?v=4.7.136');
+const hr = await import('./features/hr.js?v=4.7.150');
 Object.assign(window, hr);          // BRIDGE-015
 
 const yarasoft = await import('./features/yarasoft.js?v=4.7.141');
@@ -119,7 +119,7 @@ Object.assign(window, yarasoft);    // BRIDGE-016
 const whatsapp = await import('./features/whatsapp.js?v=4.7.138');
 Object.assign(window, whatsapp);    // BRIDGE-017
 
-const departments = await import('./features/departments.js?v=4.7.139');
+const departments = await import('./features/departments.js?v=4.7.150');
 Object.assign(window, departments); // BRIDGE-018
 
 const reports = await import('./features/reports.js?v=4.7.139');
@@ -143,10 +143,10 @@ Object.assign(window, authNavNS);     // BRIDGE-026
 const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
 Object.assign(window, pageRouterNS);  // BRIDGE-027
 
-const employees = await import('./features/employees.js?v=4.7.133');
+const employees = await import('./features/employees.js?v=4.7.150');
 Object.assign(window, employees);   // BRIDGE-011
 
-const warehouse = await import('./features/warehouse.js?v=4.7.133');
+const warehouse = await import('./features/warehouse.js?v=4.7.150');
 Object.assign(window, warehouse);   // BRIDGE-012
 
 

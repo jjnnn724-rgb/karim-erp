@@ -317,12 +317,13 @@ const entitySchemas = {
         description: 'Storage shelves/locations',
     },
 
-    // ─── Inventory (migration 001 + 010: barcode + 061: catch weight) ──────
+    // ─── Inventory (migration 001 + 010: barcode + 061: catch weight + 066: secondary units) ──────
     inventory: {
         writeable: [
             'name', 'category', 'unit', 'qty', 'avgCost',
             'minQty', 'shelfId', 'weight', 'barcode',
-            'catch_weight_enabled', 'inventory_uom', 'packaging_uom', 'catch_weight_uom'
+            'catch_weight_enabled', 'inventory_uom', 'packaging_uom', 'catch_weight_uom',
+            'secondary_units'
         ],
         required: ['name'],
         types: {
@@ -339,6 +340,7 @@ const entitySchemas = {
             inventory_uom: TYPES.STRING,
             packaging_uom: TYPES.STRING,
             catch_weight_uom: TYPES.STRING,
+            secondary_units: TYPES.JSON,
         },
         maxLength: { name: 255, category: 100, unit: 50, barcode: 100, inventory_uom: 20, packaging_uom: 20, catch_weight_uom: 20 },
         protected: ['id'],
