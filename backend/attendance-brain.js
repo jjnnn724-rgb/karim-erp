@@ -17,6 +17,9 @@ const { logger } = require('./logger');
 
 const IN_STATES = new Set([0, 2, 4]);
 const OUT_STATES = new Set([1, 3, 5]);
+// قاعدة الزر المنسي: أدنى فجوة (بالدقائق) منذ الدخول تعتبر البصمة التالية «خروج»
+// حتى لو كان زر الجهاز على «دخول» — أرضية 60 دقيقة، افتراضي 240 (4 ساعات).
+const WRONG_BUTTON_GAP_MIN = Math.max(60, Number(process.env.ATT_WRONG_BUTTON_GAP_MIN) || 240);
 
 function toMin(hhmm) {
     const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
@@ -57,7 +60,7 @@ async function learnPattern(employeeId) {
  * override=true تعني مخالفة حالة الجهاز — تُسجَّل حتمًا.
  * lastPunch: {min, out} لآخر بصمة — التكرار يُتجاهل فقط بنفس الاتجاه.
  */
-function classify({ punchState, wallMin, shiftStartMin, shiftEndMin, hasOpenRow, lastPunch, pattern }) {
+function classify({ punchState, wallMin, shiftStartMin, shiftEndMin, hasOpenRow, openRowCheckIn, lastPunch, pattern }) {
     const deviceIn = IN_STATES.has(Number(punchState));
     const deviceOut = OUT_STATES.has(Number(punchState));
     const thisOut = deviceOut && !deviceIn;
@@ -68,6 +71,20 @@ function classify({ punchState, wallMin, shiftStartMin, shiftEndMin, hasOpenRow,
     if (hasOpenRow) {
         // صف مفتوح: المنطق الاعتيادي (خروج يُغلق، دخول مكرر يُتجاهل لاحقًا)
         if (deviceOut) {return { action: 'out', confidence: 0.9, reason: 'صف مفتوح + حالة خروج', override: false };}
+        // ═══ قاعدة الزر المنسي (الحالة الشائعة) ═══
+        // صف مفتوح + زر «دخول»: لا تتجاهل تلقائيًا — قرر بالفجوة الزمنية منذ الدخول
+        // والنمط المعتاد للموظف. فجوة طويلة = الموظف نسي تغيير الزر عند الخروج → أغلق كخروج.
+        const openMin = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastPunch ? lastPunch.min : null);
+        if (openMin != null) {
+            const gap = ((wallMin - openMin) + 24 * 60) % (24 * 60); // يتعامل مع الورديات الليلية
+            if (gap >= WRONG_BUTTON_GAP_MIN) {
+                return { action: 'out', confidence: 0.85, reason: `زر دخول بالخطأ عند الخروج — فجوة ${Math.floor(gap / 60)}س${gap % 60}د منذ الدخول`, override: true };
+            }
+            const patOut = pattern?.medianOut != null ? pattern.medianOut % (24 * 60) : null;
+            if (patOut != null && Math.abs(wallMin - patOut) <= 90) {
+                return { action: 'out', confidence: 0.8, reason: 'زر دخول بالخطأ — الوقت قرب موعد الانصراف المعتاد', override: true };
+            }
+        }
         return { action: 'in', confidence: 0.7, reason: 'صف مفتوح + حالة دخول', override: false };
     }
     // بلا صف مفتوح: أين تقع البصمة؟

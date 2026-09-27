@@ -353,12 +353,14 @@ async loadPattern(employeeId) {
             // هل يوجد صف مفتوح؟ (يوم الوردية أو اليوم السابق للورديات الليلية)
             // يُقرأ قبل التصنيف حتى يتجاهل المصنف زر الجهاز ويعتمد التسلسل.
             const openCheck = await client.query(
-                `SELECT id FROM attendance
+                `SELECT id, "checkIn" FROM attendance
                   WHERE "employeeId" = $1 AND "checkOut" IS NULL AND date IN ($2, $3)
                   LIMIT 1`,
                 [employeeId, shiftDate, prevDay(shiftDate)]
             );
             const hasOpenRow = openCheck.rows.length > 0;
+            // دقائق الدخول للصف المفتوح — يغذي قاعدة «زر دخول بالخطأ عند الخروج»
+            const openRowCheckIn = hasOpenRow ? (openCheck.rows[0].checkIn || null) : null;
 
             // تصنيف ذكي
             const verdict = classifyPunch({
@@ -367,6 +369,7 @@ async loadPattern(employeeId) {
                 shiftStartMin,
                 shiftEndMin,
                 hasOpenRow,
+                openRowCheckIn,
                 lastPunch,
                 pattern,
                 dayLogs,
