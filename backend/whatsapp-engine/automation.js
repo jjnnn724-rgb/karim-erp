@@ -103,9 +103,24 @@ async function managerTargets() {
 async function pushBriefing(engine, day, tag) {
     const erp = require('./erp');
     const { collectBriefing, formatWhatsapp } = require('../manager-briefing');
+    const gemini = require('./ai/gemini');
     const cfg = engine.getConfig();
     const b = await collectBriefing(store.pool, day || undefined);
-    const text = `🌙 التقرير الليلي ${b.day}\n` + formatWhatsapp(b);
+    const bodyText = formatWhatsapp(b);
+    // خلاصة تنفيذية بالذكاء الاصطناعي (مجاني — اختياري): تُبنى من بيانات التقرير فقط
+    let exec = '';
+    if (gemini.enabled()) {
+        try {
+            const g = await gemini.generateWithRetry({
+                system: gemini.systemGuard(),
+                prompt: 'اكتب «📌 خلاصة تنفيذية» من 3 أسطر فقط: أبرز رقم بالمقارنة، أهم مشكلة تشغيلية، وتوصية واحدة عملية. بلا مقدمات.',
+                dataText: bodyText.slice(0, 3800),
+                maxWords: 90,
+            });
+            if (g && g.text) {exec = '\n' + g.text + '\n' + '─'.repeat(14) + '\n';}
+        } catch (e) { logger.warn('[WHATSAPP] executive summary skipped: ' + String(e.message).slice(0, 100)); }
+    }
+    const text = `🌙 التقرير الليلي ${b.day}\n` + exec + bodyText;
     void cfg;
     const targets = await managerTargets();
     let queued = 0;

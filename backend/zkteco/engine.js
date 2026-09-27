@@ -378,7 +378,7 @@ class AttendanceSyncEngine {
                  WHERE id = $1`,
                 [device.id, error.message]
             ).catch(() => {});
-            logger.warn(`[ZKTECO_ENGINE] فشل ${device.name} (${device.ipAddress}): ${error.message}`);
+            logger.warn(`[ZKTECO_ENGINE] فشل ${device.name} (${device.ipAddress}): ${error.message} :: ${(error.stack || '').split('\n').slice(1, 4).join(' | ')}`);
             throw error;
         } finally {
             st.syncing = false;

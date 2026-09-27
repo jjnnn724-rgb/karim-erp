@@ -13,6 +13,7 @@ const { pool } = require('../shared-pool');
 const store = require('./store');
 const erp = require('./erp');
 const { normalizeText } = require('./rules');
+const gemini = require('./ai/gemini');
 
 function norm(s) {
     return normalizeText(s).replace(/\s+/g, ' ').trim();
@@ -798,6 +799,24 @@ async function answerFreeText(engine, text, rec) {
             return erp.runCommand(engine, { rule: { name: 'حالة طلب' }, args: t }, rec);
         }
         if (/^(سلام|اهلا|أهلا|هلا|صباح|مساء|hai+|hi+|hey)$/.test(t)) {return 'أهلًا بيك — اكتب «مساعدة» لعرض ما أقدر أجاوب عليه من بيانات المطعم لحظيًا.';}
+        // ─── العقل الحر (Gemini مجاني): أي سؤال آخر من الإدارة — مُرَكَّض ببيانات النظام الحية ───
+        if (gemini.enabled()) {
+            if (!(await mgr())) {return DENY;}
+            try {
+                const { collectBriefing, formatWhatsapp } = require('../manager-briefing');
+                const b = await erp.withTimeout(collectBriefing(pool, undefined), Math.min(60000, cfg.erpTimeoutMs * 4), 'ERP');
+                const dataText = formatWhatsapp(b).slice(0, 3800);
+                const g = await gemini.generateWithRetry({
+                    system: gemini.systemGuard(),
+                    prompt: `سؤال الإدارة: «${text}»\nأجب باحترافية من البيانات المرفقة فقط، وبنفس أسلوب واتساب المنسق.`,
+                    dataText,
+                    maxWords: 180,
+                });
+                if (g && g.text) {return g.text;}
+            } catch (e) {
+                logger.warn('[WHATSAPP] gemini fallback failed: ' + String(e.message).slice(0, 120));
+            }
+        }
         return null;
     } catch (e) {
         logger.warn('[WHATSAPP] router failed: ' + String(e.message).slice(0, 150));
