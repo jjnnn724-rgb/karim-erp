@@ -12,6 +12,9 @@
 const lib = require('./shared');
 // Ensure we are in the project root
 process.chdir(lib.ROOT);
+
+// شهادة HTTPS تلقائية لهذا الجهاز (اسم الجهاز + كل عناوين الشبكة) قبل تشغيل HTTPS
+try { require('./lan-cert').ensure(); } catch (_) {}
 const { log, ROOT, isPgRunning, isPortInUse, getEnv, httpReq } = lib;
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');

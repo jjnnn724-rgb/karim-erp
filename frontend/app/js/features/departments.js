@@ -93,16 +93,28 @@ apiFetch('/yara-reports/cashiers-today'+qs).catch(()=>null),
 window._cashLiveAt=Date.now();
 // تخطي إعادة الرسم عند ثبات البيانات — يمنع قفز الصفحة أثناء التمرير لأسفل
 try{
-const sig=JSON.stringify([d?.day_total,d?.cashiers_total,(d?.cashiers||[]).map(c=>[c.cashier_no,c.today_invoices,c.today_total,c.last_at])]);
+const sig=JSON.stringify([d?.day_total,d?.cashiers_total,(d?.cashiers||[]).map(c=>[c.cashier_no,c.today_invoices,c.today_total,c.last_at]),(t?.cashiers||[]).map(c=>[c.no,c.invoices,c.net])]);
 if(silent&&window._cashLiveSig===sig){ return; }
 window._cashLiveSig=sig;
 }catch(_){}
 const day=d?.today||cashTodayStr();
 const isToday=!CASH_LIVE_DATE;
 const total=Number(d?.day_total?.total||t?.total?.net||0);
-const list=(d?.cashiers||[]).filter(c=>!HIDDEN_CASHIERS.includes(String(c.cashier_no)));
 const tByNo={}; (t?.cashiers||[]).forEach(c=>{ tByNo[String(c.no)]=c; });
-const ranked=list.slice().sort((a,b)=>Number(b.today_total||0)-Number(a.today_total||0));
+// دمج مباشر أوراكل: أي بيع في 1/4/5/6/9 يظهر فورا حتى قبل مزامنة المحلي (1 دقيقة)
+const list=(d?.cashiers||[]).filter(c=>!HIDDEN_CASHIERS.includes(String(c.cashier_no))).slice();
+for(const oc of (t?.cashiers||[])){
+const no=String(oc.no);
+if(HIDDEN_CASHIERS.includes(no)) continue;
+const found=list.find(c=>String(c.cashier_no)===no);
+if(!found){
+list.push({cashier_no:no,name:oc.name||('كاشير '+no),dept_code:'',today_invoices:oc.invoices||0,today_total:oc.net||0,yday_invoices:0,yday_total:0,delta_pct:null,last_at:null,live:true});
+}else{
+// لو المباشر أعلى (بيع لسه ما اتزامنش) اعرض الأعلى فورا
+if(Number(oc.net||0)>Number(found.today_total||0)){found.today_total=oc.net;found.today_invoices=Math.max(Number(found.today_invoices||0),Number(oc.invoices||0));found.live=true;}
+}
+}
+const ranked=list.slice().sort((a,b)=>Math.max(Number(b.today_total||0),Number((tByNo[String(b.cashier_no)]||{}).net||0))-Math.max(Number(a.today_total||0),Number((tByNo[String(a.cashier_no)]||{}).net||0)));
 const medals=['🥇','🥈','🥉'];
 const IDLE_MIN=45;
 const idleMin=(iso)=>{ if(!iso) {return null;} const ms=Date.now()-new Date(iso).getTime(); return ms>=0?Math.floor(ms/60000):null; };

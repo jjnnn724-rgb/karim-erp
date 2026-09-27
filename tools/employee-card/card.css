@@ -1,88 +1,233 @@
-/* employee-card/card.css — shared print styles (ID-1 85.6×54mm, 300DPI-ready) */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
-
+/* employee-card/card.css — البطاقة الفاخرة (ID-1 طولي 54×85.6مم) — نسخة عالمية نابضة
+   لوحة الحيوية: كحلي ملكي + بنفسجي عميق + تركواز + مرجاني + ذهبي
+   الخطوط تُحمّل من <link> في card.html — لا تستخدم @import هنا إطلاقًا
+   (روابط خطوط جوجل تحوي «;» فتكسر أي إزالة نسبية للسطر) */
 :root {
   --navy: #0A2540;
+  --navy-deep: #061627;
+  --royal: #16307E;
+  --indigo: #4338CA;
+  --violet: #7C3AED;
+  --teal: #0FB5A6;
+  --teal-deep: #0B8A7F;
+  --coral: #FF6B4A;
+  --amber: #FFB020;
   --gold: #C9A961;
-  --gold-light: #E8D5A3;
-  --paper: #FAFAFA;
-  --ink: #1a1a1a;
+  --gold-rich: #D9B45C;
+  --gold-light: #F3DFA8;
+  --paper: #FDFCF9;
+  --ink: #14213D;
 }
+
 .idcard {
   width: 85.6mm; height: 54mm;
   border-radius: 3.2mm;
   position: relative; overflow: hidden;
-  font-family: 'Cairo', 'Inter', Arial, sans-serif;
+  font-family: 'Cairo', 'Inter', 'Segoe UI', Tahoma, Arial, sans-serif;
   direction: rtl;
   background: var(--paper);
   color: var(--ink);
-  box-shadow: 0 4px 24px rgba(10, 37, 64, .25);
+  box-shadow: 0 10px 34px rgba(10, 37, 64, .32);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
 /* طولية 54 × 85.6 */
-.idcard.portrait { width: 54mm; height: 85.6mm; }
-.idcard.portrait .topband.p-band { height: 13mm; }
-.idcard.portrait .topband.p-band .co { font-size: 3.6mm; }
-.idcard.portrait .topband.p-band .co small { font-size: 2.2mm; }
-.idcard.portrait .photo { width: 24mm; height: 29mm; }
-.idcard.portrait .qrbox { width: 16mm; height: 16mm; }
-.idcard.portrait .chip { width: 12mm; height: 9mm; }
-.idcard.portrait .micro span { right: 5mm; left: 5mm; }
-.idcard .guilloche {
-  position: absolute; inset: 0; opacity: .10; pointer-events: none;
+.idcard.portrait { width: 54mm; height: 85.6mm; border-radius: 3.6mm; }
+
+/* ═══ الرأس المتدرج النابض + الفقاعات اللونية ═══ */
+.idcard .hdr {
+  position: absolute; top: 0; right: 0; left: 0; height: 16.5mm;
+  background:
+    radial-gradient(120% 150% at 88% -10%, rgba(124, 58, 237, .55) 0%, rgba(124, 58, 237, 0) 55%),
+    radial-gradient(110% 140% at 8% -20%, rgba(15, 181, 166, .38) 0%, rgba(15, 181, 166, 0) 52%),
+    linear-gradient(132deg, #061627 0%, #0A2540 34%, #16307E 68%, #4338CA 100%);
+  color: #fff; display: flex; align-items: center; gap: 1.8mm; padding: 0 3mm;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.idcard .topband {
-  position: absolute; top: 0; right: 0; left: 0; height: 10mm;
-  background: linear-gradient(135deg, #071c31 0%, #0A2540 60%, #071c31 100%);
-  color: #fff; display: flex; align-items: center; gap: 2mm; padding: 0 3mm;
-  text-shadow: 0 .3mm .8mm rgba(0,0,0,.6);
+.idcard .hdr.slim { height: 12mm; }
+.idcard .hdr .orb {
+  position: absolute; border-radius: 50%; filter: blur(.6mm); opacity: .5; pointer-events: none;
 }
-.idcard .topband img.logo { width: 8.5mm; height: 8.5mm; object-fit: contain; background: #fff; border-radius: 50%; padding: .6mm; align-self: center; flex: none; }
-.idcard .topband img.waqf { margin-inline-start: auto; border-color: #fff; width: 9mm; height: 9mm; }
-.idcard .topband .co { font-weight: 800; font-size: 3.4mm; color: #fff; }
-.idcard .topband .co small { display: block; font-family: Inter, sans-serif; font-weight: 700; font-size: 2.1mm; color: #F3DFA8; letter-spacing: .3mm; }
+.idcard .hdr .o1 { width: 14mm; height: 14mm; left: -4mm; top: -5mm; background: radial-gradient(circle at 35% 35%, #2DD4BF, #0FB5A6 70%); opacity: .42; }
+.idcard .hdr .o2 { width: 9mm; height: 9mm; right: 16mm; top: 8mm; background: radial-gradient(circle at 35% 35%, #FFB020, #FF6B4A 75%); opacity: .5; }
+.idcard .hdr .o3 { width: 6.5mm; height: 6.5mm; right: 34mm; top: -2.5mm; background: radial-gradient(circle at 35% 35%, #F3DFA8, #C9A961 75%); opacity: .55; }
+.idcard .hdr .wave {
+  position: absolute; left: 0; right: 0; bottom: -.35mm; width: 100%; height: 3.2mm; display: block;
+}
+.idcard .hdr img.logo {
+  width: 9.5mm; height: 9.5mm; object-fit: contain; background: #fff; border-radius: 50%;
+  padding: .7mm; flex: none; position: relative;
+  border: .45mm solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, #F3DFA8, #C9A961 45%, #0FB5A6 100%) border-box;
+}
+.idcard .hdr img.waqf { margin-inline-start: auto; width: 9mm; height: 9mm; object-fit: contain; background: #fff; border-radius: 50%; padding: .5mm; position: relative; }
+.idcard .hdr .co { font-weight: 900; font-size: 3.2mm; color: #fff; line-height: 1.3; position: relative; letter-spacing: 0; white-space: nowrap; }
+.idcard .hdr .co small {
+  display: block; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.7mm;
+  color: var(--gold-light); letter-spacing: .34mm; white-space: nowrap;
+}
+.idcard .hdr.slim .co { font-size: 3.2mm; font-weight: 800; }
+
+/* ═══ الشريط الهولوغرامي الحيوي ═══ */
 .idcard .holo {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 4.5mm;
-  background: linear-gradient(180deg, #ff9a9e, #fecfef, #a8edea, #fed6e3, #d299c2, #fef9d7, #ff9a9e);
-  background-size: 100% 300%;
-  opacity: .85;
+  position: absolute; top: 0; bottom: 0; left: 0; width: 3.6mm;
+  background: linear-gradient(180deg,
+    #FF6B4A 0%, #FFB020 14%, #FFE45C 26%, #34D399 40%,
+    #2DD4BF 52%, #38BDF8 64%, #818CF8 76%, #C084FC 88%, #FF6B4A 100%);
+  background-size: 100% 280%;
+  opacity: .9;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.idcard .waqfwm {
-  position: absolute; inset: 0; background-size: cover; background-position: center;
-  opacity: .16; pointer-events: none;
+.idcard .holo::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.28) 0 .35mm, transparent .35mm .8mm);
 }
-.idcard .edge {
-  position: absolute; inset: 1.8mm; border: .3mm solid rgba(201,169,97,.65);
-  border-radius: 2mm; pointer-events: none;
+
+/* ═══ زخرفة جيوشيه ملوّنة ═══ */
+.idcard .guilloche { position: absolute; inset: 0; opacity: .12; pointer-events: none; }
+
+/* ═══ العلامة المائية ═══ */
+.idcard .waqfwm { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: .14; pointer-events: none; }
+
+/* ═══ جسم الوجه الأمامي ═══ */
+.idcard .front-body {
+  position: absolute; top: 16.5mm; right: 3.2mm; left: 3.2mm; bottom: 5.6mm;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1.15mm; text-align: center;
+}
+.photo-ring {
+  width: 21.5mm; height: 21.5mm; border-radius: 50%; flex: none;
+  padding: .8mm; margin-top: .8mm;
+  background: conic-gradient(from 210deg, #C9A961, #F3DFA8 25%, #0FB5A6 55%, #38BDF8 75%, #C9A961 100%);
+  box-shadow: 0 1.2mm 3mm rgba(10,37,64,.28);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.photo-ring .photo {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+  border: .55mm solid #fff; background: #e8e8e8; display: block;
+}
+.name-block { min-height: 8.2mm; display: flex; flex-direction: column; justify-content: center; gap: .3mm; }
+.field-val-ar {
+  font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 3.8mm; color: var(--navy);
+  line-height: 1.28; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.field-val-ar.full { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 3.7mm; line-height: 1.32; }
+.field-val-en {
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 2.15mm; color: #475569;
+  letter-spacing: .28mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+/* شارات المنصب والقسم */
+.pill-row { display: flex; gap: 1.2mm; justify-content: center; align-items: center; flex-wrap: nowrap; max-width: 100%; }
+.pill {
+  display: inline-block; border-radius: 2.4mm; padding: .75mm 2.6mm;
+  font-size: 2.35mm; font-weight: 800; line-height: 1.35; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 24mm;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.pill.pos {
+  color: #1a1a1a;
+  background: linear-gradient(120deg, #FFE9B8 0%, #F3DFA8 40%, #E9C86A 100%);
+  border: .28mm solid #C9A961;
+  box-shadow: 0 .5mm 1.4mm rgba(201,169,97,.35);
+}
+.pill.dept {
+  color: #fff;
+  background: linear-gradient(120deg, #0B8A7F 0%, #0FB5A6 100%);
+  border: .28mm solid rgba(255,255,255,.35);
+  box-shadow: 0 .5mm 1.4mm rgba(15,181,166,.35);
+}
+/* رقم الموظف */
+.empchip {
+  display: inline-flex; align-items: center; gap: 1.6mm;
+  border-radius: 2mm; padding: .7mm 2.4mm;
+  background: linear-gradient(120deg, #061627, #16307E 70%, #4338CA);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.empchip .lbl { font-size: 1.9mm; font-weight: 700; color: #F3DFA8; letter-spacing: .1mm; }
+.emp-no { font-family: 'Courier New', monospace; font-size: 3.2mm; font-weight: 700; letter-spacing: .55mm; color: #fff; direction: ltr; }
+/* QR */
+.qrbox {
+  width: 15.5mm; margin-top: .4mm; background: #fff; border-radius: 1.8mm; padding: 1mm 1mm .55mm;
+  border: .38mm solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, #C9A961, #0FB5A6 60%, #4338CA 100%) border-box;
+  box-shadow: 0 .8mm 2.2mm rgba(10,37,64,.18);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.qrbox img { width: 100%; height: auto; display: block; }
+.qrbox .qrcap { font-size: 1.55mm; font-weight: 700; color: #0B8A7F; letter-spacing: .06mm; margin-top: .3mm; }
+
+/* ═══ جسم الوجه الخلفي ═══ */
+.idcard .back-body {
+  position: absolute; top: 12.5mm; right: 3.2mm; left: 4.6mm; bottom: 5.6mm;
+  display: flex; flex-direction: column; gap: 1.3mm;
+}
+.terms-card {
+  background: linear-gradient(135deg, rgba(15,181,166,.09), rgba(67,56,202,.07));
+  border: .28mm solid rgba(15,181,166,.35); border-radius: 1.8mm;
+  padding: 1.2mm 2mm; font-size: 1.95mm; color: #334155; line-height: 1.62; font-weight: 600;
+}
+.sigstrip {
+  height: 6.4mm; border-radius: 1.4mm;
+  background: repeating-linear-gradient(45deg, #FAF7EE, #FAF7EE 2mm, #F0E9D6 2mm, #F0E9D6 2.7mm);
+  border: .28mm solid #C9A961;
+  display: flex; align-items: center; padding: 0 2mm;
+  font-size: 2mm; color: #64748b; font-weight: 700;
+}
+.mrz {
+  font-family: 'Courier New', monospace; font-size: 2.25mm; letter-spacing: .38mm;
+  direction: ltr; text-align: left;
+  background: linear-gradient(180deg, #FDFBF4, #F6F1E2);
+  border: .28mm solid #C9A961; border-radius: 1.2mm; padding: 1mm 1.8mm; line-height: 1.62;
+  color: #1a1a1a;
+}
+.barcode {
+  height: 7.4mm; background: #fff; border: .28mm solid #cbd5e1; border-radius: 1mm;
+  display: flex; align-items: stretch; justify-content: center; gap: .45mm;
+  padding: .9mm 2mm; direction: ltr;
+}
+.barcode i { background: var(--navy); }
+.meta-row { display: flex; align-items: center; justify-content: space-between; gap: 1.5mm; }
+.emg {
+  display: inline-block; font-size: 2.15mm; font-weight: 800; color: #fff; direction: ltr;
+  background: linear-gradient(120deg, #E11D48, #FF6B4A 100%);
+  border-radius: 1.6mm; padding: .8mm 2.2mm;
+  box-shadow: 0 .5mm 1.6mm rgba(225,29,72,.35);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.dates { font-size: 1.7mm; color: #475569; font-weight: 700; text-align: left; direction: ltr; line-height: 1.55; white-space: nowrap; flex: none; }
+.dates b { color: var(--navy); }
+
+/* ═══ التذييل والحواف ═══ */
+.idcard .foot {
+  position: absolute; bottom: 0; right: 0; left: 0; height: 5.2mm;
+  background: linear-gradient(90deg, #061627 0%, #16307E 45%, #4338CA 78%, #7C3AED 100%);
+  display: flex; align-items: center; justify-content: center;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.idcard .foot::before {
+  content: ''; position: absolute; top: 0; right: 0; left: 0; height: .35mm;
+  background: linear-gradient(90deg, transparent, var(--gold-light) 30%, #2DD4BF 55%, var(--gold-light) 80%, transparent);
+}
+.idcard .foot span {
+  font-size: 1.28mm; letter-spacing: .3mm; color: rgba(255,255,255,.88); white-space: nowrap;
+  font-family: 'Inter', sans-serif; font-weight: 600;
 }
 .idcard .micro {
-  position: absolute; inset: 1.2mm; border: .15mm solid rgba(10,37,64,.25);
-  border-radius: 2.4mm; pointer-events: none;
+  position: absolute; inset: 1.1mm; border: .16mm solid rgba(201,169,97,.55);
+  border-radius: 2.7mm; pointer-events: none;
 }
-.idcard .micro span {
-  position: absolute; bottom: .4mm; right: 6mm; left: 6mm; text-align: center;
-  font-size: 1.3mm; letter-spacing: .35mm; color: rgba(10,37,64,.8); white-space: nowrap;
-  font-family: Inter, sans-serif; font-weight: 600;
-}
-.photo {
-  width: 25mm; height: 30mm; object-fit: cover; border-radius: 2mm;
-  border: .4mm solid var(--gold); background: #e8e8e8;
-}
-.field-label { font-size: 2.2mm; color: #374151; font-weight: 700; }
-.field-val-ar { font-family: Cairo, sans-serif; font-weight: 800; font-size: 3.7mm; color: var(--navy); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-/* الاسم الكامل يلتف على سطرين في البطاقة الطولية */
-.field-val-ar.full { white-space: normal; overflow: visible; font-size: 4mm; line-height: 1.4; }
-.field-val-en { font-family: Inter, sans-serif; font-weight: 600; font-size: 2.5mm; color: #334155; letter-spacing: .15mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.emp-no { font-family: 'OCR-B', 'Courier New', monospace; font-size: 3.4mm; font-weight: 700; letter-spacing: .6mm; color: var(--navy); direction: ltr; }
-.qrbox { width: 15mm; height: 15mm; background: #fff; border: .3mm solid var(--gold); border-radius: 1.2mm; padding: .8mm; }
-.qrbox img { width: 100%; height: 100%; }
-.mrz { font-family: 'Courier New', monospace; font-size: 2.3mm; letter-spacing: .4mm; direction: ltr; text-align: left; background: rgba(255,255,255,.92); border: .3mm solid #cbd5e1; border-radius: 1mm; padding: 1mm 2mm; line-height: 1.6; }
-.terms { font-size: 1.9mm; color: #475569; line-height: 1.7; }
-.barcode { height: 8mm; background: rgba(255,255,255,.92); border: .3mm solid #cbd5e1; border-radius: 1mm; display: flex; align-items: stretch; justify-content: center; gap: .45mm; padding: 1mm 2mm; direction: ltr; }
-.emg { display: inline-block; margin-top: 1mm; font-size: 2.4mm; font-weight: 800; color: var(--navy); border: .35mm solid var(--gold); border-radius: 1.2mm; padding: .6mm 2mm; direction: ltr; }
-.sigstrip { height: 7mm; background: repeating-linear-gradient(45deg, #f4f1e8, #f4f1e8 2mm, #e9e2cf 2mm, #e9e2cf 2.6mm); border: .3mm solid #cbd5e1; border-radius: 1mm; display: flex; align-items: center; padding: 0 2mm; font-size: 2mm; color: #64748b; }
+
+/* ═══ شاشة العرض والطباعة ═══ */
 @media print {
   @page { size: 54mm 85.6mm; margin: 0; }
-  body { margin: 0; background: #fff; }
+  body { margin: 0; background: #fff; padding: 0 !important; }
   .no-print { display: none !important; }
-  .idcard { box-shadow: none; border-radius: 0; break-inside: avoid; }
+  .sheet { gap: 0 !important; display: block !important; }
+  .face { break-inside: avoid; page-break-inside: avoid; }
+  .face + .face { page-break-before: always; }
+  .idcard { box-shadow: none; border-radius: 0; }
 }

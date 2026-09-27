@@ -458,6 +458,12 @@ app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, inventor
 // Professional stocktaking studio: live counting, bulk counts, cancel, printable sheets.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, stocktakingRouter);
 ensureStocktakingSchema().catch((error) => logger.error('[STOCKTAKING_SCHEMA] initialization failed:', error.message));
+// ── v7.1 Real-time infrastructure: outbox publisher + missed-event recovery + client ACK ──
+// طبقة إضافية فوق Socket.IO القائم — لا تستبدل أي بث قائم (العقد C1/C5: dual-publish فقط).
+const rtRecovery = require('./realtime/recovery-routes');
+app.use('/api/rt', rtRecovery.router);
+require('./realtime/publisher').startOutboxPublisher({ io, pool, logger })
+    .catch((error) => logger.error('[OUTBOX_PUBLISHER] start failed (non-fatal):', error.message));
 // Kitchen production control: flexible/monitor/strict policies, kitchen transfers, production and exceptions.
 app.use('/api/kitchen', (req, res, next) => { req.io = io; next(); }, kitchenProductionRouter);
 ensureKitchenSchema().catch((error) => logger.error('[KITCHEN_SCHEMA] initialization failed:', error.message));

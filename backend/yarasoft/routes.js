@@ -616,7 +616,7 @@ router.get('/oracle/catalog-status', jwtAuth, requireRole(...READ_ROLES), async 
 // GET  /daily-closing?date=YYYY-MM-DD   إجماليات حية + حالة القفل لكل قسم
 // POST /daily-closing/close             قفل يوم (لقطة ثابتة) {date, dept_codes?, notes}
 // POST /daily-closing/reopen            إعادة فتح يوم/قسم {date, dept_code}
-const YS_CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
+const YS_CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_4', 'ys_cc_5', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
 
 function parseCloseDate(value) {
     const raw = String(value || '').trim();

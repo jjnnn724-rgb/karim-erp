@@ -7,7 +7,7 @@
  */
 'use strict';
 
-const CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
+const CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_4', 'ys_cc_5', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
 
 function todayRiyadh() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());

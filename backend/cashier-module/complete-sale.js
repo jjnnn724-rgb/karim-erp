@@ -940,6 +940,28 @@ async function completeSale(req, res) {
             [idempotencyKey, bodyHash, JSON.stringify(responsePayload), orderId, cashier.id]
         );
 
+        // ── v7.1 Transactional Outbox: حدث SALE_POSTED داخل نفس معاملة البيع ──
+        // العقد C5/G1: إثبات القناة المالية بأسلوب dual-publish — البث القديم
+        // sale:completed أدناه يبقى كما هو. الإدراج محمي (فشل-مفتوح) في G1:
+        // عدم تطبيق الترحيل 067 لا يؤثر على البيع إطلاقًا.
+        await require('../realtime/outbox').tryInsertDomainEvent(pool, client, {
+            eventType: 'SALE_POSTED',
+            eventVersion: 1,
+            aggregateType: 'sale',
+            aggregateId: String(orderId),
+            payload: {
+                order_id: orderId,
+                total: Number(orderRow.total_amount),
+                cashier_id: cashier.id,
+                department_id: req.body.department_id || null,
+                at: new Date().toISOString(),
+            },
+            routingMetadata: {
+                rooms: req.body.department_id ? [`dept:${req.body.department_id}`, 'erp:all'] : ['erp:all'],
+                target: { type: 'permission', value: 'sale.view' },
+            },
+        });
+
         await client.query('COMMIT;');
 
         // أطلق اتصال المسبح فورًا بعد الالتزام — العمل بعد الالتزام (المرآة،

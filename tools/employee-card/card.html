@@ -3,72 +3,122 @@
 <head>
 <meta charset="utf-8">
 <title>بطاقة موظف — {{NAME_AR}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../card.css">
 <style>
-  body { font-family: 'Cairo', Arial, sans-serif; background: #eef1f6; padding: 24px; }
-  .sheet { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
-  .face-tag { font-weight: 800; color: #0A2540; margin: 0 0 8px; }
-  .face { display: flex; flex-direction: column; gap: 8px; }
-  .p-front-body { position: absolute; top: 16mm; right: 4mm; left: 4mm; bottom: 3mm; display: flex; flex-direction: column; align-items: center; gap: 1.6mm; text-align: center; }
-  .p-back-body { position: absolute; top: 13mm; right: 4mm; left: 4mm; bottom: 3mm; display: flex; flex-direction: column; gap: 1.4mm; }
-  .p-row { display: flex; gap: 2mm; align-items: center; justify-content: center; }
-  @media print { body { background: #fff; padding: 0; } .sheet { gap: 6mm; } }
+  body {
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(67,56,202,.14), transparent 60%),
+      radial-gradient(800px 460px at 90% 0%, rgba(15,181,166,.13), transparent 60%),
+      radial-gradient(700px 420px at 55% 110%, rgba(255,107,74,.10), transparent 60%),
+      #EEF1F7;
+    padding: 24px;
+  }
+  .sheet { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
+  .face { display: flex; flex-direction: column; gap: 10px; }
+  .face-tag {
+    font-weight: 900; color: #0A2540; margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;
+  }
+  .face-tag::before { content: ''; width: 22px; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, #C9A961, #0FB5A6); }
+  .toolbar { margin-bottom: 18px; text-align: center; }
+  .toolbar button {
+    padding: 12px 34px; border: none; border-radius: 12px; cursor: pointer;
+    font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 800; color: #fff;
+    background: linear-gradient(120deg, #061627, #16307E 55%, #4338CA);
+    box-shadow: 0 6px 22px rgba(22,48,126,.35);
+  }
+  .toolbar button:hover { filter: brightness(1.12); }
+  .toolbar .hint { display: block; margin-top: 8px; color: #55607a; font-size: 12.5px; }
+  .toolbar .hint b { color: #0B8A7F; }
+  .title-bar { text-align: center; margin-bottom: 6px; }
+  .title-bar h1 { margin: 0; font-size: 21px; color: #0A2540; font-weight: 900; }
+  .title-bar p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+  .title-bar .grad { background: linear-gradient(90deg, #16307E, #7C3AED 40%, #0FB5A6 75%, #FFB020);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .sheet { gap: 0; }
+  }
 </style>
 </head>
 <body>
-<div class="no-print" style="margin-bottom:16px">
-  <button onclick="window.print()" style="padding:10px 28px;background:#0A2540;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer">طباعة البطاقتين</button>
-  <span style="color:#555"> — مقاس طولي 54×85.6مم — من Chrome اختر Margins: None + Background graphics</span>
+<div class="no-print">
+  <div class="title-bar">
+    <h1>البطاقة الفاخرة — <span class="grad">مطاعم الشرفه العالمي</span></h1>
+    <p>{{NAME_AR}} • {{POSITION}} • رقم {{EMP_NO}}</p>
+  </div>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨 طباعة البطاقتين</button>
+    <span class="hint">مقاس ID-1 طولي 54×85.6مم — من نافذة الطباعة اختر: <b>Margins: None</b> + <b>Background graphics ✓</b> + Paper: A4 — كل وجه في صفحة</span>
+  </div>
 </div>
 <div class="sheet">
+
   <div class="face">
-    <p class="face-tag">الوجه الأمامي</p>
+    <p class="face-tag no-print">الوجه الأمامي</p>
     <div class="idcard portrait">
       <svg class="guilloche" viewBox="0 0 204 322" preserveAspectRatio="xMidYMid slice">{{GUILLOCHE}}</svg>
-      <div class="topband p-band">
+      <div class="hdr">
+        <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
         <img class="logo" src="{{LOGO}}" alt="logo">
         <div class="co">مطاعم الشرفه العالمي<small>AL SHORFA RESTAURANTS</small></div>
         <div style="flex:1"></div>
         {{WAQF_LOGO}}
+        <svg class="wave" viewBox="0 0 54 6" preserveAspectRatio="none"><path d="M0,0 L54,0 L54,2.2 C46,4.6 38,1.2 30,2.8 C21,4.7 10,2.4 0,4.2 Z" fill="#FDFCF9"/></svg>
       </div>
       <div class="holo"></div>
-      <div class="p-front-body">
-        <img class="photo" src="{{PHOTO}}" alt="photo">
-        <div>
-          <div class="field-label">الاسم</div>
+      <div class="front-body">
+        <div class="photo-ring"><img class="photo" src="{{PHOTO}}" alt="photo"></div>
+        <div class="name-block">
           <div class="field-val-ar full">{{NAME_AR}}</div>
           <div class="field-val-en">{{NAME_EN}}</div>
         </div>
-        <div style="font-size:2.7mm;font-weight:700">{{POSITION}} • {{DEPT}}</div>
-        <div><div class="field-label">رقم الموظف</div><div class="emp-no">{{EMP_NO}}</div></div>
-        <div class="p-row">
-          <div class="chip"></div>
-          <div class="qrbox"><img src="{{QR}}" alt="qr"></div>
+        <div class="pill-row">
+          <span class="pill pos">{{POSITION}}</span>
+          <span class="pill dept">{{DEPT}}</span>
+        </div>
+        <div class="empchip"><span class="lbl">رقم الموظف</span><span class="emp-no">{{EMP_NO}}</span></div>
+        <div class="qrbox">
+          <img src="{{QR}}" alt="qr">
+          <div class="qrcap">امسح للتحقق الفوري ✓</div>
         </div>
       </div>
-      <div class="micro"><span>{{MICROTEXT}}</span></div>
+      <div class="foot"><span>{{MICROTEXT}}</span></div>
+      <div class="micro"></div>
     </div>
   </div>
+
   <div class="face">
-    <p class="face-tag">الوجه الخلفي</p>
+    <p class="face-tag no-print">الوجه الخلفي</p>
     <div class="idcard portrait">
       {{WAQF_WM}}
-      <div class="topband p-band">
+      <svg class="guilloche" viewBox="0 0 204 322" preserveAspectRatio="xMidYMid slice">{{GUILLOCHE}}</svg>
+      <div class="hdr slim">
+        <div class="orb o1"></div><div class="orb o3"></div>
         <img class="logo" src="{{LOGO}}" alt="logo">
-        <div class="co">بطاقة موظف — EMPLOYEE CARD</div>
+        <div class="co">بطاقة موظف<small>EMPLOYEE ID CARD</small></div>
+        <svg class="wave" viewBox="0 0 54 6" preserveAspectRatio="none"><path d="M0,0 L54,0 L54,2.2 C46,4.6 38,1.2 30,2.8 C21,4.7 10,2.4 0,4.2 Z" fill="#FDFCF9"/></svg>
       </div>
       <div class="holo"></div>
-      <div class="p-back-body">
+      <div class="back-body">
+        <div class="terms-card">{{TERMS}}</div>
+        <div class="sigstrip">التوقيع / Signature</div>
         <div class="mrz">{{MRZ1}}<br>{{MRZ2}}<br>{{MRZ3}}</div>
         <div class="barcode">{{BARS}}</div>
-        <div class="sigstrip">التوقيع / Signature</div>
-        <div class="terms">{{TERMS}}</div>
-        <div><span class="emg">Emergency: {{EMERGENCY}}</span><br>
-        <span style="font-size:2mm;color:#475569">إصدار {{ISSUE}} • انتهاء {{EXPIRY}}</span></div>
+        <div class="meta-row">
+          <span class="emg">Emergency {{EMERGENCY}}</span>
+          <span class="dates">ISSUE <b>{{ISSUE}}</b><br>EXPIRY <b>{{EXPIRY}}</b></span>
+        </div>
       </div>
-      <div class="micro"><span>{{MICROTEXT}}</span></div>
+      <div class="foot"><span>{{MICROTEXT}}</span></div>
+      <div class="micro"></div>
     </div>
   </div>
+
 </div>
 </body>
 </html>

@@ -42,15 +42,17 @@ function code128bars(text) {
   return out;
 }
 function guilloche() {
-  // وردة هندسية لاتجاه طولي (204×322)
+  // وردة هندسية نابضة الألوان (كحلي/ذهبي/تركواز/بنفسجي/مرجاني) لاتجاه طولي (204×322)
   let s = '';
-  for (let r = 8; r <= 170; r += 7) {
-    const c = r % 21 < 11 ? '#0A2540' : '#C9A961';
+  const rings = ['#0A2540', '#C9A961', '#0FB5A6', '#7C3AED', '#FF6B4A'];
+  for (let r = 8, i = 0; r <= 170; r += 7, i++) {
+    const c = rings[i % rings.length];
     s += `<circle cx="102" cy="161" r="${r}" fill="none" stroke="${c}" stroke-width="0.7"/>`;
   }
   for (let a = 0; a < 360; a += 15) {
+    const c = a % 45 === 0 ? '#C9A961' : (a % 30 === 0 ? '#0FB5A6' : '#7C3AED');
     const x2 = 102 + 100 * Math.cos(a * Math.PI / 180), y2 = 161 + 160 * Math.sin(a * Math.PI / 180);
-    s += `<line x1="102" y1="161" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#C9A961" stroke-width="0.4" opacity="0.6"/>`;
+    s += `<line x1="102" y1="161" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="0.4" opacity="0.6"/>`;
   }
   return s;
 }
@@ -147,7 +149,9 @@ async function main() {
   const parts = nameEn.split(' ').filter(Boolean);
   const f2 = mrzPad(clean(parts.slice(-1)[0] || 'X').slice(0, 12) + '<<' + clean(parts.slice(0, -1).join('<')).slice(0, 14), 30);
   const f3 = mrzPad('SAU' + mrzPad(empNo, 9) + mrzCheck(mrzPad(empNo, 9)), 30);
-  const cssInline = fs.readFileSync(path.join(CARDIR, 'card.css'), 'utf8').replace(/@import[^;]+;/, '');
+  // إزالة سطر @import إن وُجد — نمط مقيّد بالسطر كاملًا فقط، لأن ذكر الكلمة داخل تعليق
+  // أو وجود «;» داخل رابط الخطوط مع نمط فضفاض كان يبتلع قواعد CSS سليمة ويكسر البطاقة
+  const cssInline = fs.readFileSync(path.join(CARDIR, 'card.css'), 'utf8').replace(/^@import\s+url\([^\n]*\)\s*;\s*$/gm, '');
   // علامة مائية لبرج الوقف (خلفية الوجه الخلفي)
   let waqfWm = '';
   try {
@@ -181,23 +185,27 @@ async function main() {
   // SVG مستقل (الوجه الأمامي) للمتجهات/المطبعة
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="638" height="1016" viewBox="0 0 204 322">
 <defs><clipPath id="rc"><rect x="0" y="0" width="204" height="322" rx="12"/></clipPath>
-<linearGradient id="band" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0A2540"/><stop offset=".6" stop-color="#14365c"/><stop offset="1" stop-color="#0A2540"/></linearGradient></defs>
-<g clip-path="url(#rc)"><rect width="204" height="322" fill="#FAFAFA"/>
+<linearGradient id="band" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061627"/><stop offset=".34" stop-color="#0A2540"/><stop offset=".68" stop-color="#16307E"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
+<linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C9A961"/><stop offset=".5" stop-color="#0FB5A6"/><stop offset="1" stop-color="#4338CA"/></linearGradient></defs>
+<g clip-path="url(#rc)"><rect width="204" height="322" fill="#FDFCF9"/>
 <g opacity="0.12">${guilloche()}</g>
-<rect width="204" height="49" fill="url(#band)"/>
-<text x="12" y="22" fill="#fff" font-size="13" font-weight="bold" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
-<text x="12" y="36" fill="#E8D5A3" font-size="8" font-family="Inter,Arial">AL SHORFA RESTAURANTS</text>
-<rect x="0" y="0" width="11" height="322" fill="#C9A961" opacity="0.8"/>
+<rect width="204" height="62" fill="url(#band)"/>
+<circle cx="30" cy="6" r="26" fill="#0FB5A6" opacity=".38"/><circle cx="176" cy="34" r="16" fill="#FFB020" opacity=".45"/><circle cx="120" cy="2" r="11" fill="#C9A961" opacity=".5"/>
+<text x="12" y="26" fill="#fff" font-size="13" font-weight="bold" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
+<text x="12" y="40" fill="#E8D5A3" font-size="8" font-family="Inter,Arial">AL SHORFA RESTAURANTS</text>
+<rect x="0" y="0" width="11" height="322" fill="url(#accent)" opacity="0.9"/>
 <text x="192" y="120" text-anchor="end" font-size="15" font-weight="bold" fill="#0A2540" font-family="Cairo,Arial">${escH(emp.name || '')}</text>
-<text x="192" y="138" text-anchor="end" font-size="9" fill="#334155" font-family="Inter,Arial">${escH(nameEn)}</text>
+<text x="192" y="138" text-anchor="end" font-size="9" fill="#475569" font-family="Inter,Arial">${escH(nameEn)}</text>
 <text x="192" y="154" text-anchor="end" font-size="9" fill="#1a1a1a" font-family="Cairo,Arial">${escH(position)} • ${escH(dept)}</text>
-<text x="192" y="174" text-anchor="end" font-size="11" font-weight="bold" fill="#0A2540" font-family="Courier New,monospace" letter-spacing="2">${empNo}</text>
-<rect x="55" y="182" width="94" height="64" fill="#e8e8e8" stroke="#C9A961" stroke-width="1.5"/>
+<text x="192" y="174" text-anchor="end" font-size="11" font-weight="bold" fill="#fff" font-family="Courier New,monospace" letter-spacing="2"><tspan fill="#fff">${empNo}</tspan></text>
+<rect x="120" y="162" width="76" height="12" rx="6" fill="#16307E"/>
+<rect x="55" y="182" width="94" height="64" fill="#e8e8e8" stroke="url(#accent)" stroke-width="2"/>
 <image href="${photoUri}" x="55" y="182" width="94" height="64" preserveAspectRatio="xMidYMid slice"/>
 <image href="${qr}" x="74" y="252" width="56" height="56"/>
-<rect x="74" y="252" width="56" height="56" fill="none" stroke="#C9A961"/>
+<rect x="74" y="252" width="56" height="56" fill="none" stroke="url(#accent)" stroke-width="1.5"/>
 <rect x="0" y="0" width="204" height="322" rx="12" fill="none" stroke="#C9A961" stroke-width="1.2" opacity="0.65"/>
-<text x="102" y="316" text-anchor="middle" font-size="4.5" letter-spacing="1.5" fill="#0A254080" font-family="Inter,Arial">AL SHORFA RESTAURANTS • KARIM ERP • ${docNo} •</text>
+<rect x="0" y="306" width="204" height="16" fill="url(#band)"/>
+<text x="102" y="316" text-anchor="middle" font-size="4.5" letter-spacing="1.5" fill="#ffffffcc" font-family="Inter,Arial">AL SHORFA RESTAURANTS • KARIM ERP • ${docNo} •</text>
 </g></svg>`;
   fs.writeFileSync(path.join(OUT, `card-${fp}.svg`), svg);
   console.log(JSON.stringify({ ok: true, fp, name: emp.name, files: [`card-${fp}.html`, `card-${fp}.svg`] }));

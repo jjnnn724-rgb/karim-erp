@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true
+  },
+  "include": [
+    "backend/**/*",
+    "frontend/**/*",
+    "scripts/**/*",
+    "database/**/*",
+    "tests/**/*",
+    "electron/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release",
+    "database/backups",
+    "database/data",
+    "*.config.js",
+    "*.config.mjs"
+  ],
+  "ts-node": {
+    "esm": false,
+    "transpileOnly": true
+  }
+}

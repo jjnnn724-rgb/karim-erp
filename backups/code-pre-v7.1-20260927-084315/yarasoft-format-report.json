@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-09-10T15:22:28.971Z",
+  "share": "/tmp/yktest",
+  "reachable": true,
+  "tree": [
+    "  [مجلد] Invoices",
+    "    inv1.txt",
+    "    inv2.txt"
+  ],
+  "invoices": {
+    "path": "/tmp/yktest/Invoices",
+    "reachable": true,
+    "fileCount": 2,
+    "extensions": {
+      ".txt": 2
+    },
+    "namingPatterns": [
+      "inv* (2 ملفًا)"
+    ],
+    "oldest": {
+      "name": "inv1.txt",
+      "mtime": "2026-09-10T15:22:28.945Z"
+    },
+    "newest": {
+      "name": "inv1.txt",
+      "mtime": "2026-09-10T15:22:28.945Z"
+    },
+    "samples": [
+      {
+        "file": "inv1.txt",
+        "sizeBytes": 64,
+        "encoding": "utf-8 (بدون BOM، قابل للتحقق)",
+        "lineCount": 2,
+        "sha256": "1018ad1c061039c99eb12a626d0094f50e3dab57be2adfd03806750bd0bc1419",
+        "firstLines": [
+          "InvoiceNo;Date;Customer;PayType",
+          "Y-1001;31/01/2025;احمد;cash"
+        ],
+        "lastLines": [
+          "InvoiceNo;Date;Customer;PayType",
+          "Y-1001;31/01/2025;احمد;cash"
+        ],
+        "kind": "delimited",
+        "delimiter": ";",
+        "columnCounts": [
+          4
+        ],
+        "hasHeaderRow": true,
+        "columnsDetected": [
+          "InvoiceNo",
+          "Date",
+          "Customer",
+          "PayType"
+        ]
+      },
+      {
+        "file": "inv2.txt",
+        "sizeBytes": 64,
+        "encoding": "utf-8 (بدون BOM، قابل للتحقق)",
+        "lineCount": 2,
+        "sha256": "e786fa1c6f6088232efe6a395a732bf636c069d073023ff14ba82da95b79ad2f",
+        "firstLines": [
+          "InvoiceNo;Date;Customer;PayType",
+          "Y-1002;01/02/2025;سارة;card"
+        ],
+        "lastLines": [
+          "InvoiceNo;Date;Customer;PayType",
+          "Y-1002;01/02/2025;سارة;card"
+        ],
+        "kind": "delimited",
+        "delimiter": ";",
+        "columnCounts": [
+          4
+        ],
+        "hasHeaderRow": true,
+        "columnsDetected": [
+          "InvoiceNo",
+          "Date",
+          "Customer",
+          "PayType"
+        ]
+      }
+    ]
+  },
+  "formatAnalysis": {
+    "detectedKind": null,
+    "delimiter": null,
+    "encoding": null,
+    "headerRow": null,
+    "columnsDetected": [],
+    "dateFormat": "DD/MM/YYYY أو MM/DD/YYYY (افحص عينة > 12)",
+    "decimalFormat": null,
+    "invoiceNumberFormat": "Y-####",
+    "invoicePerFile": "فاتورة واحدة لكل ملف (الأرجح من العينة)",
+    "creditNotes": "لا يوجد مجلد إشعارات دائنة ظاهر في الجذر"
+  },
+  "suggestedProfile": {
+    "kind": "delimited",
+    "delimiter": ";",
+    "headerRow": true,
+    "columns": {
+      "invoiceNumber": "InvoiceNo",
+      "date": "Date",
+      "paymentMethod": "PayType",
+      "customer": "Customer"
+    },
+    "_sourceFile": "inv1.txt"
+  },
+  "errors": []
+}

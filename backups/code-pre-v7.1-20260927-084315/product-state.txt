@@ -1,0 +1,25 @@
+ id |    name_ar    | price | cost_price | department_id | is_active |                                                      metadata                                                      
+----+---------------+-------+------------+---------------+-----------+--------------------------------------------------------------------------------------------------------------------
+  1 | ربع كبسه دجاج | 20.00 |       0.00 |             1 | t         | {"managed_in": "restaurant", "catalog_scope": "menu", "recipe_managed": true, "legacy_recipe_id": "1787864410437"}
+(1 row)
+
+      id       |     name      | deptId  | sellingPrice | totalCost | costRatio 
+---------------+---------------+---------+--------------+-----------+-----------
+ 1787864410437 | ربع كبسه دجاج | kitchen |        20.00 |      0.00 |      0.00
+(1 row)
+
+ id | product_id | inventory_id | quantity_per_unit | unit | waste_percent | notes | created_at | updated_at 
+----+------------+--------------+-------------------+------+---------------+-------+------------+------------
+(0 rows)
+
+ id |    code     | name_ar | location_id 
+----+-------------+---------+-------------
+  1 | erp_kitchen | المطبخ  |            
+(1 row)
+
+ id |      code      |    name_ar     
+----+----------------+----------------
+  1 | MAIN-WAREHOUSE | المخزن الرئيسي
+  2 | KITCHEN-MAIN   | مخزن المطبخ
+(2 rows)
+

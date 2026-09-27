@@ -101,10 +101,10 @@ Object.assign(window, smartCard);   // BRIDGE-008
 const bulkImport = await import('./features/bulk-import.js?v=4.7.132');
 Object.assign(window, bulkImport);  // BRIDGE-009
 
-const zkteco = await import('./features/zkteco.js?v=4.7.132');
+const zkteco = await import('./features/zkteco.js?v=4.7.152');
 Object.assign(window, zkteco);      // BRIDGE-010
 
-const kitchen = await import('./features/kitchen.js?v=4.7.150');
+const kitchen = await import('./features/kitchen.js?v=4.7.151');
 Object.assign(window, kitchen);     // BRIDGE-013
 
 const finance = await import('./features/finance.js?v=4.7.135');
