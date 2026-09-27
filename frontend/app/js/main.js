@@ -149,3 +149,82 @@ Object.assign(window, employees);   // BRIDGE-011
 const warehouse = await import('./features/warehouse.js?v=4.7.133');
 Object.assign(window, warehouse);   // BRIDGE-012
 
+
+// BRIDGE-028: login-critical exposure + button binding (moved verbatim from app.js IIFE).
+// Runs AFTER all dynamic imports settle — bare names resolve to window (bridged above).
+// MUST stay before DOMContentLoaded fires (module TLA delays DOMC — contract preserved).
+(function exposeLoginCriticalGlobals(){
+// ============================================
+(function exposeLoginCriticalGlobals(){
+  const w = window;
+  // Auth & login
+  w.doLogin = doLogin;
+  w.doLogout = doLogout;
+  w.completeRequiredPasswordChange = typeof completeRequiredPasswordChange !== 'undefined' ? completeRequiredPasswordChange : null;
+  w.enterApp = typeof enterApp !== 'undefined' ? enterApp : null;
+  // Forgot password flow
+  w.showForgotPasswordModal = showForgotPasswordModal;
+  w.submitForgotPassword = typeof submitForgotPassword !== 'undefined' ? submitForgotPassword : null;
+  w.fpFail = typeof fpFail !== 'undefined' ? fpFail : null;
+  w.issueResetCode = typeof issueResetCode !== 'undefined' ? issueResetCode : null;
+  w.copyResetCode = typeof copyResetCode !== 'undefined' ? copyResetCode : null;
+  // Session refresh & tokens
+  w.KARIM_RTget = KARIM_RTget;
+  w.KARIM_RTset = KARIM_RTset;
+  w.KARIM_RTclear = KARIM_RTclear;
+  w.refreshSession = refreshSession;
+  // UI toggles used before/after login
+  w.toggleLang = toggleLang;
+  w.toggleTheme = toggleTheme;
+  w.toggleSidebar = typeof toggleSidebar !== 'undefined' ? toggleSidebar : null;
+  w.toggleFabMenu = typeof toggleFabMenu !== 'undefined' ? toggleFabMenu : null;
+  // PWA — extracted to js/core/pwa.js (bridged by js/main.js — BRIDGE-001)
+  // Navigation (used by FAB menu even before login)
+  w.go = typeof go !== 'undefined' ? go : function(){};
+  // Modals & toasts
+  w.closeModal = typeof closeModal !== 'undefined' ? closeModal : function(){};
+  // toast → js/ui/toast.js (BRIDGE-004 — main.js يعرّفها على window قبل app.js)
+  w.showModal = typeof showModal !== 'undefined' ? showModal : function(){};
+  // showLoad → js/ui/toast.js (BRIDGE-004)
+  // hideLoad → js/ui/toast.js (BRIDGE-004)
+  // Health/init
+  w.initDatabase = initDatabase;
+  // I18n login screen
+  w.applyLoginI18n = applyLoginI18n;
+  w.applyLangAttrs = applyLangAttrs;
+  // Date helpers
+  w.toggleDateMode = typeof toggleDateMode !== 'undefined' ? toggleDateMode : function(){};
+  w.syncGregToHijri = typeof syncGregToHijri !== 'undefined' ? syncGregToHijri : function(){};
+  w.syncHijriToGreg = typeof syncHijriToGreg !== 'undefined' ? syncHijriToGreg : function(){};
+  // Command palette (keyboard shortcut Ctrl+K)
+  w.openCommandPalette = typeof openCommandPalette !== 'undefined' ? openCommandPalette : function(){};
+  w.closeCommandPalette = typeof closeCommandPalette !== 'undefined' ? closeCommandPalette : function(){};
+  w.handleCommandKey = typeof handleCommandKey !== 'undefined' ? handleCommandKey : function(){};
+  // FAB actions visible even before login
+  w.showDispatchRequestModal = typeof showDispatchRequestModal !== 'undefined' ? showDispatchRequestModal : function(){};
+  w.showAddRevenueModal = typeof showAddRevenueModal !== 'undefined' ? showAddRevenueModal : function(){};
+  w.showAddExpenseModal = typeof showAddExpenseModal !== 'undefined' ? showAddExpenseModal : function(){};
+  // Notifications
+  w.showNotifications = showNotifications;
+  w.markAllNotificationsRead = markAllNotificationsRead;
+  w.clearAllNotifications = clearAllNotifications;
+  w.markNotificationRead = markNotificationRead;
+  w.openNotification = typeof openNotification !== 'undefined' ? openNotification : function(){};
+  w.navigateNotification = typeof navigateNotification !== 'undefined' ? navigateNotification : function(){};
+  w.refreshNotifications = typeof refreshNotifications !== 'undefined' ? refreshNotifications : function(){};
+  w.updateNotificationBadge = updateNotificationBadge;
+
+  const loginButton = document.getElementById('loginBtn');
+  if (loginButton && !loginButton.dataset.loginBound) {
+    loginButton.addEventListener('click', doLogin);
+    loginButton.dataset.loginBound = 'true';
+  }
+  const passwordInput = document.getElementById('lp');
+  if (passwordInput && !passwordInput.dataset.loginBound) {
+    passwordInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { doLogin(); }
+    });
+    passwordInput.dataset.loginBound = 'true';
+  }
+})();
+})();
