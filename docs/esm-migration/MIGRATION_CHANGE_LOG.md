@@ -141,3 +141,20 @@ app.js بعد الدفعة: **1,653 سطرًا** (−10,700 من baseline — أ
 **المتبقي في app.js:** STORAGE (initDatabase/fan-out) · AUTH & NAVIGATION (doLogin/refreshSession/go/buildNav/renderPage) · MODAL & RENDER PAGE · LOGIN GLOBALS IIFE · INITIALIZATION (boot) · ENHANCEMENT PACK — هذه **العمود الفقري الحرج** وستكون الجولة الختامية.
 
 ---
+
+## EXTRACTIONS 024–027 — العمود الفقري الحرج (الجولة الختامية)
+
+| # | الوحدة | التصديرات | ملاحظات |
+|---|---|---|---|
+| 024 | `ui/enhancement.js` | 23 (Enhancement Pack v10) | **مستمع DOMContentLoaded الخاص بالحزمة بقي في app.js** — للحفاظ على ترتيب الإقلاع حرفيًا (كان يُسجل بعد مستمع boot) |
+| 025 | `core/storage.js` | 11 (initDatabase + fan-out + saveData/loadData + beforeunload beacon) | |
+| 026 | `features/auth-navigation.js` | 35 (doLogin/doLogout/refreshSession/KARIM_RT*/enterApp/showForgotPasswordModal/toggleLang/toggleTheme...) | |
+| 027 | `features/page-router.js` | 3 (showModal/closeModal/renderPage) | |
+
+**قرار معماري موثق:** IIFE «exposeLoginCriticalGlobals» (390-461) أُبقي في app.js — مسؤوليتان مشروعتان: (1) كشف دوال الدخول قبل أي مسار فشل في الإقلاع، (2) ربط زر الدخول وحقول كلمة المرور بأحداث DOM. كل مراجعها غير المحمية أصبحت تُحل من window عبر جسور main.js (نفس القيمة — تعيينات لا تضر).
+
+**حادثة توثيق:** فشلت محاولات الدخول عبر الواجهة في الاختبار الأخير — السبب **محدد معدل المصادقة (10 محاولات/15 دقيقة لكل IP+مستخدم)** استُهلك من اختبارات الترحيل نفسها (401s الفاشلة تُحسب عمدًا كإشارة هجوم). الوحدة نفسها مُثبتة: استدعاء doLogin مباشر نجح (jwt + مدير النظام). النافذة تُصفَّر تلقائيًا.
+
+**app.js الختامي:** ~600 سطر (إقلاع + IIFE + غراء التحسينات + مؤشرات) — بقي ENHANCEMENT DOMC وboot لضمان الترتيب الحرفي.
+
+---
