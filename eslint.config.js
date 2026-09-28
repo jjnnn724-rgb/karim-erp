@@ -35,6 +35,12 @@ module.exports = [
     },
   },
   {
+    files: ['scripts/lib/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+    },
+  },
+  {
     files: ['frontend/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: {
       sourceType: 'module',
@@ -63,9 +69,16 @@ module.exports = [
       'release/',
       'database/backups/',
       'database/data/',
+      'backups/',
+      'android/',
+      'build/',
+      'updates/',
+      'logs/',
+      'node/',
       '*.log',
       '.env*',
       'coverage/',
+      'frontend/app/vendor/',
       'frontend/app/js/vendor/',
       'frontend/app/js/app.js',
       'electron/',

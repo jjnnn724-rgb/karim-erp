@@ -17,22 +17,22 @@ const { logger } = require('../../logger');
 const KINDS = new Set(['image', 'video', 'audio', 'document']);
 
 function mediaNodeOf(message) {
-    if (!message || typeof message !== 'object') return { kind: null, node: null };
-    if (message.imageMessage) return { kind: 'image', node: message.imageMessage };
-    if (message.videoMessage) return { kind: 'video', node: message.videoMessage };
+    if (!message || typeof message !== 'object') {return { kind: null, node: null };}
+    if (message.imageMessage) {return { kind: 'image', node: message.imageMessage };}
+    if (message.videoMessage) {return { kind: 'video', node: message.videoMessage };}
     if (message.audioMessage) {
         return { kind: message.audioMessage.ptt ? 'ptt' : 'audio', node: message.audioMessage };
     }
-    if (message.documentMessage) return { kind: 'document', node: message.documentMessage };
-    if (message.stickerMessage) return { kind: 'sticker', node: message.stickerMessage };
+    if (message.documentMessage) {return { kind: 'document', node: message.documentMessage };}
+    if (message.stickerMessage) {return { kind: 'sticker', node: message.stickerMessage };}
     return { kind: null, node: null };
 }
 
 /** Pure: classify incoming message media (null = no downloadable media) */
 function detectMedia(message) {
     const { kind, node } = mediaNodeOf(message);
-    if (!kind || !node) return { kind: null };
-    if (kind === 'sticker') return { kind: 'sticker' };
+    if (!kind || !node) {return { kind: null };}
+    if (kind === 'sticker') {return { kind: 'sticker' };}
     return {
         kind,
         mime: String(node.mimetype || ''),
@@ -70,7 +70,7 @@ function incomingDir(baseDir, now = new Date()) {
 function buildMediaAck(kind, caption) {
     const label = { image: 'الصورة', video: 'الفيديو', audio: 'المقطع الصوتي', ptt: 'الرسالة الصوتية', document: 'المستند' }[kind] || 'الملف';
     let s = `تم استلام ${label} بنجاح — مطاعم الشرفه العالمي.`;
-    if (caption) s += `\nالتعليق: ${String(caption).slice(0, 200)}`;
+    if (caption) {s += `\nالتعليق: ${String(caption).slice(0, 200)}`;}
     s += `\nسيقوم فريقنا بمراجعتها والرد عليكم.`;
     return s;
 }
@@ -92,10 +92,10 @@ async function saveIncoming(sock, fullMsg, detected, cfg) {
             new Promise((_, rej) => setTimeout(() => rej(new Error('MEDIA_TIMEOUT')), 60000)),
         ]);
     } catch (e) {
-        throw new Error('MEDIA_DOWNLOAD_FAILED');
+        throw new Error('MEDIA_DOWNLOAD_FAILED', { cause: e });
     }
-    if (!buffer || !buffer.length) throw new Error('MEDIA_EMPTY');
-    if (buffer.length > maxBytes) throw new Error('MEDIA_TOO_LARGE');
+    if (!buffer || !buffer.length) {throw new Error('MEDIA_EMPTY');}
+    if (buffer.length > maxBytes) {throw new Error('MEDIA_TOO_LARGE');}
     const base = (cfg?.mediaDir || 'C:/KarimData/whatsapp-media').trim();
     const dir = incomingDir(base);
     fs.mkdirSync(dir, { recursive: true });

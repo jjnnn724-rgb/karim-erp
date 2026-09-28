@@ -44,10 +44,15 @@ async function authorizeEventForUser(event, user) {
     }
     if (target.type === 'permission') {
         // خريطة أولية محافظة: صلاحيات البيع/المخزون لأدوار التشغيل المعروفة
+        // TASK 9: أُضيفت purchase/inventory/hr/expense لمنتجي الوحدات الجدد.
         const permRoles = {
             'sale.view': ['admin', 'manager', 'auditor', 'cashier', 'accountant'],
             'dispatch.view': ['admin', 'manager', 'auditor', 'warehouse', 'kitchen', 'dept_head'],
             'revenue.view': ['admin', 'manager', 'auditor', 'accountant', 'cashier'],
+            'purchase.view': ['admin', 'manager', 'auditor', 'accountant', 'warehouse'],
+            'inventory.view': ['admin', 'manager', 'auditor', 'accountant', 'warehouse', 'kitchen'],
+            'hr.view': ['admin', 'manager', 'auditor', 'hr'],
+            'expense.view': ['admin', 'manager', 'auditor', 'accountant'],
         };
         const allowed = permRoles[String(target.value)] || ['admin', 'manager', 'auditor'];
         return allowed.includes(role);

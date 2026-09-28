@@ -36,8 +36,9 @@ async function main() {
         // shell fails with ENOENT, so 'npm test' never worked on the primary
         // target platform. Prefer the local jest binary directly.
         const jestBin = require.resolve('jest/bin/jest');
-        const result = spawnSync(process.execPath, [jestBin, 'tests/', '--silent', '--runInBand'], {
-            stdio: 'inherit', cwd: ROOT, timeout: 300000,
+        const result = spawnSync(process.execPath, [jestBin, 'tests/', '--silent', '--runInBand', '--forceExit'], {
+            // 15 دقيقة: تشغيل runInBand على آلة إنتاج مشغولة (بصمة/واتساب/Oracle) قد يتجاوز 5 دقائق
+            stdio: 'inherit', cwd: ROOT, timeout: 900000,
             env: { ...process.env, NODE_ENV: 'test' },
         });
         if (result.status === 0) {
@@ -53,7 +54,7 @@ async function main() {
     if (what === 'all' || what === 'smoke' || what === 'integration' || what === 'workflow') {
         log.step('فحص الخادم');
         const health = await httpReq('GET', '/api/health');
-        let backendStarted = false;
+        let backendStarted;
 
         if (health.status !== 200) {
             log.warn('الخادم لا يعمل — بدء مؤقت للاختبار...');
@@ -108,8 +109,10 @@ async function main() {
 
     log.plain('');
     log.header('Test Summary');
-    log.plain(`  نجاح: ${log.COLORS.green}${totalPass}${log.COLORS.reset}`);
-    log.plain(`  فشل: ${totalFail > 0 ? log.COLORS.red : ''}${totalFail}${log.COLORS.reset}`);
+    // COLORS كان غير معرّف على log — استخدم ثوابت ANSI المحلية بدل الاعتماد على shared.js
+    const COLORS = { green: '\x1b[32m', red: '\x1b[31m', reset: '\x1b[0m' };
+    log.plain(`  نجاح: ${COLORS.green}${totalPass}${COLORS.reset}`);
+    log.plain(`  فشل: ${totalFail > 0 ? COLORS.red : ''}${totalFail}${COLORS.reset}`);
     process.exit(totalFail > 0 ? 1 : 0);
 }
 

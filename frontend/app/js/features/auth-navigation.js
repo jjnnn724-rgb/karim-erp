@@ -152,7 +152,11 @@ toast(`مرحبًا ${STATE.currentUser.name}`,'success');
 
 // Render the authenticated shell immediately. Large business datasets continue
 // loading in the background, then the current page is refreshed with real data.
-loadData().then(()=>{
+loadData().then(async ()=>{
+  try {
+    const me = await apiFetch('/permissions/me');
+    STATE.permissions = { grants: me.grants || [], denies: me.denies || [], menus: me.menus || [], deniedMenus: me.deniedMenus || [] };
+  } catch (_) { STATE.permissions = { grants: [], denies: [], menus: [], deniedMenus: [] }; }
   document.getElementById('restNameDisplay').textContent = STATE.settings.name;
   document.getElementById('loginTitle').textContent = STATE.settings.name;
   updateLogoDisplay();
@@ -179,6 +183,7 @@ CHATSTATE.open=false; CHATSTATE.unread=0; CHATSTATE.messages=[]; CHATSTATE.loade
 if (oldJwt) {fetch(API_BASE + '/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + oldJwt } }).catch(() => {});}
 STATE.currentUser = null;
 STATE.deptPanel = null;
+STATE.permissions = { grants: [], denies: [], menus: [], deniedMenus: [] };
 const password = document.getElementById('lp');
 const errorEl = document.getElementById('lerr');
 if(password) {password.value = '';}
@@ -210,14 +215,22 @@ const NAV_GROUPS = [
  {id:'finance', title:'nav.grp.finance', keys:['cfo','revenues','expenses','cost-analysis','pnl']},
  {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','shelves','weight','kitchen','dispatch','recipes','procurement']},
  {id:'hr', title:'nav.grp.hr', keys:['hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal']},
- {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','yarasoft','oracle-data','whatsapp','query','professional']},
+  {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','permissions','yarasoft','oracle-data','whatsapp','query','professional']},
 ];
+function userMenus(){
+    // الفعالة = (الدور ∪ المنح) − المسحوب. السحب يغلب الدور والمنح معًا (عدا المدير).
+    const role = ROLES[STATE.currentUser?.role];
+    const base = role ? role.menus.slice() : [];
+    const extra = Array.isArray(STATE.permissions?.menus) ? STATE.permissions.menus : [];
+    const denied = new Set(Array.isArray(STATE.permissions?.deniedMenus) ? STATE.permissions.deniedMenus : []);
+    if (STATE.currentUser?.role === 'admin') {denied.clear();}
+    return [...new Set([...base, ...extra])].filter((m) => !denied.has(m));
+}
 function buildNav(){
 applyI18nMaps();
 try{ applyLangAttrs(); }catch(_){}
 const container = document.getElementById('navContainer');
-const role = ROLES[STATE.currentUser?.role];
-const allowedMenus = role?role.menus:[];
+const allowedMenus = userMenus();
 const itemHtml = (key, name) => {
 let badge = '';
 if(key==='dispatch'){ // شارة الصرف: عدد الطلبات التي تنتظر إجراء من هذا الدور تحديدًا
@@ -263,7 +276,7 @@ if(!role || !role.menus.includes(page)){ toast('لا تملك صلاحية ال�
 STATE.page = page; destroyCharts();
 document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
 if(el) {el.classList.add('active');}
-const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),procurement:t('pg.procurement'),shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll')};
+const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),procurement:t('pg.procurement'),shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll'),permissions:t('pg.permissions')};
 document.getElementById('pageTitle').textContent = titles[page]||page;
 renderPage();
 }
@@ -343,7 +356,7 @@ return {rev,exp,profit:rev-exp,costRatio:rev>0?(exp/rev)*100:0};
 function updateDateDisplay(){ const el=document.getElementById('dateDisp'); if(el) {el.textContent = new Date().toLocaleDateString(STATE.lang==='en'?'en-US':'ar-EG-u-nu-latn',{weekday:'short',day:'numeric',month:'short'});} }
 function updateRoleIndicator(){ if(!STATE.currentUser) {return;} const role=ROLES[STATE.currentUser.role]||{icon:null,name:STATE.currentUser.role}; const el=document.getElementById('roleIndicator'); if(!el) {return;} el.textContent=''; if(role.icon && role.icon.indexOf('<i class=ji')===0){ const wrap=document.createElement('span'); wrap.innerHTML=role.icon; el.appendChild(wrap.firstChild); el.appendChild(document.createTextNode(' '+role.name)); } else { el.textContent=role.name; } }
 function updateQuickDispatchButton(){ const btn=document.getElementById('quickDispatchBtn'); if(!btn) {return;} btn.style.display = STATE.currentUser && ['admin','kitchen','manager','dept_head'].includes(STATE.currentUser.role)?'inline-flex':'none'; }
-function checkMenuAccessLocal(menuKey){ if(!STATE.currentUser) {return false;} const role=ROLES[STATE.currentUser.role]; return role?role.menus.includes(menuKey):false; }
+function checkMenuAccessLocal(menuKey){ if(!STATE.currentUser) {return false;} if(userMenus().includes(menuKey)) {return true;} const role=ROLES[STATE.currentUser.role]; return role?role.menus.includes(menuKey):false; }
 // عنقود لوحة التحكم: نُقل إلى js/features/dashboard.js (يجسر عبر js/main.js — BRIDGE-022)
 // عنقود بوابة الموظف: نُقل إلى js/features/employee-portal.js (يجسر عبر js/main.js — BRIDGE-023)
 // عنقود البصمة (ZKTECO): نُقل إلى js/features/zkteco.js (يجسر عبر js/main.js — BRIDGE-010)

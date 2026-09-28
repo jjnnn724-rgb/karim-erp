@@ -135,4 +135,28 @@ router.get('/health', jwtAuth, async (req, res) => {
     }
 });
 
-module.exports = { router };
+/**
+ * GET /api/rt/version — EXE compatibility handshake (TASK 10, public probe).
+ * Client sends ?clientContract=N (default 1). Server answers compatible unless
+ * the contract is older than supported. No auth (version probe, no data).
+ */
+const RT_API_CONTRACT = 1;
+const RT_MIN_CLIENT = '4.7.0';
+router.get('/version', async (req, res) => {
+    try {
+        const pkg = require('../../package.json');
+        const clientContract = Number(req.query.clientContract || 1);
+        const serverContract = RT_API_CONTRACT;
+        const compatible = Number.isFinite(clientContract) && clientContract >= serverContract;
+        res.json({
+            compatible,
+            minClientVersion: RT_MIN_CLIENT,
+            apiContractVersion: serverContract,
+            serverVersion: pkg.version || null,
+        });
+    } catch (e) {
+        res.status(500).json({ compatible: false, error: e.message });
+    }
+});
+
+module.exports = { router, RT_API_CONTRACT, RT_MIN_CLIENT };

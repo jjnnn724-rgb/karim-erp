@@ -27,7 +27,7 @@ const BASE36 = '0123456789abcdefghijklmnopqrstuvwxyz';
 function b36(len) {
     const bytes = crypto.randomBytes(Math.ceil(len * 0.6));
     let out = '';
-    for (const b of bytes) out += BASE36[b % 36];
+    for (const b of bytes) {out += BASE36[b % 36];}
     return out.slice(0, len);
 }
 function makeRequestId() {
@@ -46,13 +46,13 @@ function makeSpanId() {
  * format: "00-{traceid_32hex}-{spanid_16hex}-{flags_2hex}"
  */
 function parseTraceParent(header) {
-    if (!header || typeof header !== 'string') return null;
+    if (!header || typeof header !== 'string') {return null;}
     const parts = header.split('-');
-    if (parts.length < 4) return null;
+    if (parts.length < 4) {return null;}
     const [version, traceId, parentSpanId, traceFlags] = parts;
-    if (version !== '00') return null;
-    if (!/^[0-9a-f]{32}$/i.test(traceId)) return null;
-    if (!/^[0-9a-f]{16}$/i.test(parentSpanId)) return null;
+    if (version !== '00') {return null;}
+    if (!/^[0-9a-f]{32}$/i.test(traceId)) {return null;}
+    if (!/^[0-9a-f]{16}$/i.test(parentSpanId)) {return null;}
     return {
         version,
         traceId: traceId.toLowerCase(),
@@ -85,7 +85,7 @@ function correlationMiddleware(options = {}) {
                 break;
             }
         }
-        if (!requestId) requestId = makeRequestId();
+        if (!requestId) {requestId = makeRequestId();}
 
         // Sanitize (prevent log injection / header-splitting)
         requestId = String(requestId).replace(/[\r\n\t\s"'\\]/g, '_').slice(0, 200);
@@ -160,8 +160,8 @@ function getContext() {
 function updateUserContext(userCtx) {
     const ctx = getContext();
     if (ctx && userCtx) {
-        if (userCtx.id)   ctx.userId   = userCtx.id;
-        if (userCtx.role) ctx.userRole = userCtx.role;
+        if (userCtx.id)   {ctx.userId   = userCtx.id;}
+        if (userCtx.role) {ctx.userRole = userCtx.role;}
     }
 }
 
@@ -172,7 +172,7 @@ function updateUserContext(userCtx) {
  */
 function sqlComment(label = 'job') {
     const ctx = getContext();
-    if (!ctx) return `/* ${label} */ `;
+    if (!ctx) {return `/* ${label} */ `;}
     return `/* ${label} request=${ctx.requestId} user=${ctx.userId || 'anon'} */ `;
 }
 
@@ -182,7 +182,7 @@ function sqlComment(label = 'job') {
  */
 function currentTraceFields() {
     const ctx = getContext();
-    if (!ctx) return {};
+    if (!ctx) {return {};}
     return {
         requestId: ctx.requestId,
         traceId:   ctx.traceId,

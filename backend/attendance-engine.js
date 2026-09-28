@@ -109,7 +109,7 @@ async function learnPattern(employeeId, days = 30) {
     ).catch(() => ({ rows: [] }));
 
     const med = (arr) => {
-        if (!arr.length) return null;
+        if (!arr.length) {return null;}
         const s = [...arr].sort((a, b) => a - b);
         return s[Math.floor(s.length / 2)];
     };
@@ -117,7 +117,7 @@ async function learnPattern(employeeId, days = 30) {
     const ins = rows.map(r => toMin(r.checkIn)).filter(v => v != null);
     const outs = rows.map(r => {
         let v = toMin(r.checkOut);
-        if (v == null) return null;
+        if (v == null) {return null;}
         const iv = toMin(r.checkIn);
         if (iv != null && v <= iv) { v += 24 * 60; } // ليلية
         return v;
@@ -227,8 +227,8 @@ function classifyPunch({
  */
 function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
     const zero = { arrivalLateMinutes: 0, earlyLeaveMinutes: 0, totalLateMinutes: 0, lateFlag: false, earlyFlag: false };
-    if (!delayEngineEnabled()) return zero;
-    if (!checkIn && !checkOut) return zero;
+    if (!delayEngineEnabled()) {return zero;}
+    if (!checkIn && !checkOut) {return zero;}
 
     const checkInMin = toMin(checkIn);
     const shiftMin = toMin(shiftStart) ?? 9 * 60;
@@ -290,7 +290,7 @@ class AttendanceEngine {
             `SELECT shift_start, shift_karim, auto_checkout, auto_lock
              FROM employees WHERE id = $1`, [employeeId]
         );
-        if (!rows[0]) return null;
+        if (!rows[0]) {return null;}
         return {
             shiftStart: normalizeShiftStart(rows[0].shift_start),
             shiftKarim: normalizeShiftKarim(rows[0].shift_karim),
@@ -300,7 +300,7 @@ class AttendanceEngine {
     }
 
 async loadPattern(employeeId) {
-        if (this.patterns.has(employeeId)) return this.patterns.get(employeeId);
+        if (this.patterns.has(employeeId)) {return this.patterns.get(employeeId);}
         const pattern = await learnPattern(employeeId);
         this.patterns.set(employeeId, pattern);
         return pattern;
@@ -329,7 +329,7 @@ async loadPattern(employeeId) {
      */
     async processPunch({ employeeId, punchState, instant, wall, device, source = 'device' }) {
         const shift = await this.getEmployeeShift(employeeId);
-        if (!shift) return { action: null, error: 'Employee not found' };
+        if (!shift) {return { action: null, error: 'Employee not found' };}
 
         const { shiftStart, shiftKarim, autoCheckout, autoLock } = shift;
         const shiftStartMin = toMin(shiftStart);
@@ -410,6 +410,18 @@ async loadPattern(employeeId) {
                 action = result.action; record = result.record;
             }
 
+            // TASK 9: حدث دومين داخل نفس المعاملة — قبل COMMIT (LAW 6) حتى
+            // يُجهض مع البصمة عند الفشل، وfail-open (G1): خلل الصندوق لا يكسر البصمة.
+            if (action === 'check_in' || action === 'check_out') {
+                try {
+                    const { emitDomainEvent } = require('./realtime/producers');
+                    await emitDomainEvent(pool, client, 'HR', {
+                        eventType: action === 'check_in' ? 'EMPLOYEE_CLOCK_IN' : 'EMPLOYEE_CLOCK_OUT',
+                        aggregateType: 'attendance', aggregateId: record?.id ?? `${employeeId}:${shiftDate}`,
+                        payload: { employee_id: employeeId, date: shiftDate, time: action === 'check_in' ? record?.checkIn : record?.checkOut, source },
+                    });
+                } catch (_) { /* fail-open: البصمة أهم من الحدث */ }
+            }
             await client.query('COMMIT');
 
             if (action && this.io) {
@@ -612,7 +624,7 @@ async loadPattern(employeeId) {
     // ════════════════════════════════════════════════════════════════════════
 
     async reconcileAttendance({ sinceDays = maxReconcileDays() } = {}) {
-        if (!smartReconcileEnabled()) return { fixedLogs: 0, fixedRows: 0 };
+        if (!smartReconcileEnabled()) {return { fixedLogs: 0, fixedRows: 0 };}
 
         const mapping = await this.loadEmployeeMapping();
         const matchNow = (d) => matchUserToEmployee(d, mapping.byDeviceId, mapping.byEmployeeNo).employeeId;
@@ -645,7 +657,7 @@ async loadPattern(employeeId) {
 
         const byEmp = new Map();
         for (const r of rows) {
-            if (!byEmp.has(r.employeeId)) byEmp.set(r.employeeId, []);
+            if (!byEmp.has(r.employeeId)) {byEmp.set(r.employeeId, []);}
             byEmp.get(r.employeeId).push(r);
         }
 
@@ -666,7 +678,7 @@ async loadPattern(employeeId) {
                 const [ih, im] = inT.split(':').map(Number);
                 const [oh, om] = outT.split(':').map(Number);
                 let d = (oh * 60 + om) - (ih * 60 + im);
-                if (d < 0) d += 24 * 60;
+                if (d < 0) {d += 24 * 60;}
                 return d;
             };
 
@@ -857,16 +869,16 @@ async loadPattern(employeeId) {
                 ? shiftDateForEmployee(wall.date, wall.hour, shift)
                 : shiftDateFor(wall.date, wall.hour);
             if (wd === shiftDate) {
-                if (IN_STATES.has(Number(l.punchState))) byDay.in.push(l);
-                else if (OUT_STATES.has(Number(l.punchState))) byDay.out.push(l);
+                if (IN_STATES.has(Number(l.punchState))) {byDay.in.push(l);}
+                else if (OUT_STATES.has(Number(l.punchState))) {byDay.out.push(l);}
             }
         }
         return byDay;
     }
 
     isLockedOut(row, shiftDate, shiftStart, shiftKarim, autoLock) {
-        if (!autoLock || !row) return false;
-        if (!row.checkout_inferred && !row.checkin_inferred) return false;
+        if (!autoLock || !row) {return false;}
+        if (!row.checkout_inferred && !row.checkin_inferred) {return false;}
         return Date.now() > endInstantOf(shiftDate, shiftStart, shiftKarim) + lockGraceMinutes() * 60000;
     }
 
@@ -879,9 +891,9 @@ async loadPattern(employeeId) {
         const byId = new Map();
         for (const row of rows) {
             const duid = row.deviceUserId != null ? String(row.deviceUserId).trim() : '';
-            if (duid) byDeviceId.set(duid, row.id);
+            if (duid) {byDeviceId.set(duid, row.id);}
             const empNo = row.employeeId != null ? String(row.employeeId).trim() : '';
-            if (empNo) byEmployeeNo.set(empNo, row.id);
+            if (empNo) {byEmployeeNo.set(empNo, row.id);}
             byId.set(row.id, {
                 shiftStart: normalizeShiftStart(row.shift_start),
                 shiftKarim: normalizeShiftKarim(row.shift_karim),
@@ -911,9 +923,9 @@ async loadPattern(employeeId) {
 function matchUserToEmployee(deviceUserId, byDeviceId, byEmployeeNo) {
     const key = String(deviceUserId).trim();
     let hit = byDeviceId.get(key);
-    if (hit != null) return { employeeId: hit, via: 'device_user_id' };
+    if (hit != null) {return { employeeId: hit, via: 'device_user_id' };}
     hit = byEmployeeNo.get(key);
-    if (hit != null) return { employeeId: hit, via: 'employee_number' };
+    if (hit != null) {return { employeeId: hit, via: 'employee_number' };}
     const asNum = Number(key);
     if (Number.isFinite(asNum) && /^\d+$/.test(key)) {
         for (const [candidate, employeeId] of byEmployeeNo.entries()) {

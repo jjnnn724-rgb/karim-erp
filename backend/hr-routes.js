@@ -850,9 +850,17 @@ const shiftsEngine = require('./shifts-engine');
 
 router.get('/shifts/analysis', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
     try {
-        const month = /^d{4}-d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
+        const month = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
         res.json(await shiftsEngine.realityAnalysis(month));
     } catch (e) { res.status(500).json({ error: 'SHIFT_ANALYSIS_FAILED', message: e.message }); }
+});
+
+/** تدقيق ساعات الدوام الفعلية: الموظف دا كم ساعة مقابل دوامه المطلوب (10/12 ساعة) — لا يقل عن دوامه */
+router.get('/shifts/worked-hours', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
+    try {
+        const month = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
+        res.json(await shiftsEngine.workedHoursAudit(month));
+    } catch (e) { res.status(500).json({ error: 'WORKED_HOURS_FAILED', message: e.message }); }
 });
 
 router.post('/shifts/apply', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {

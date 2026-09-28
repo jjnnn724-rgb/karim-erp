@@ -80,6 +80,27 @@ function buildConnectString(cfg) {
     return `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${cfg.host})(PORT=${cfg.port}))(CONNECT_DATA=(SERVICE_NAME=${cfg.service})))`;
 }
 
+// ─── الموصل الصامد: تدوير بيانات الاعتماد + أثر صفري ───────────────────────
+// مجموعات احتياطية YARASOFT_ORACLE_USER_2/PASSWORD_2 (+_3). عند تغيير يارا سوفت
+// لكلمة المرور (ORA-01017) يُجرَّب التالي تلقائيًا دون تدخل — والقيم أبدًا لا
+// تُسجَّل (sanitizeError) ولا تُعرض (testConnection يعرض رقم المجموعة فقط).
+// ملاحظة أمانة مهنية: أي اتصال Oracle يظهر في V$SESSION لدى مدير قاعدتهم —
+// الخفاء الحقيقي = قراءة فقط + اتصال واحد قصير + بلا أقفال إطلاقًا.
+function credentialSets() {
+    const sets = [];
+    for (const suffix of ['', '_2', '_3']) {
+        const user = (process.env[`YARASOFT_ORACLE_USER${suffix}`] || '').trim();
+        const password = process.env[`YARASOFT_ORACLE_PASSWORD${suffix}`] || '';
+        if (user && password) {sets.push({ index: sets.length + 1, user, password });}
+    }
+    return sets;
+}
+let activeCredIndex = 0;
+let activeCredAt = null;
+function credentialStatus() {
+    return { setsConfigured: credentialSets().length, activeSet: activeCredIndex + 1, activeSince: activeCredAt };
+}
+
 let driverStatus = { tried: false, available: false, thick: false, reason: '' };
 
 function getDriver() {
@@ -90,11 +111,10 @@ function getDriver() {
     driverStatus.tried = true;
     let mod;
     try {
-        // eslint-disable-next-line import/no-dynamic-require
         mod = require('oracledb');
     } catch (e) {
         driverStatus = { tried: true, available: false, thick: false, reason: 'مكتبة oracledb غير مثبتة — نفّذ: npm install oracledb' };
-        throw new Error(driverStatus.reason);
+        throw new Error(driverStatus.reason, { cause: e });
     }
     const cfg = loadOracleConfig();
     if (cfg.icPath && fs.existsSync(cfg.icPath)) {
@@ -105,7 +125,7 @@ function getDriver() {
             driverStatus = { tried: true, available: true, thick: true, mod, reason: '' };
         } catch (e) {
             driverStatus = { tried: true, available: false, thick: false, mod: null, reason: 'تعذر تهيئة Thick mode: ' + sanitizeError(e.message) };
-            throw new Error(driverStatus.reason);
+            throw new Error(driverStatus.reason, { cause: e });
         }
     } else {
         driverStatus = { tried: true, available: true, thick: false, mod, reason: '' };
@@ -115,17 +135,76 @@ function getDriver() {
 
 async function connectOnce(timeoutSec = 8) {
     const cfg = loadOracleConfig();
-    if (!cfg.user) {throw new Error('YARASOFT_ORACLE_USER غير مضبوط في .env');}
-    const password = process.env.YARASOFT_ORACLE_PASSWORD || '';
-    if (!password) {throw new Error('YARASOFT_ORACLE_PASSWORD غير مضبوط في .env');}
+    const sets = credentialSets();
+    if (!sets.length) {throw new Error('YARASOFT_ORACLE_USER غير مضبوط في .env');}
     const oracledb = getDriver();
-    const conn = await oracledb.getConnection({
-        user: cfg.user,
-        password,
-        connectString: buildConnectString(cfg),
-        connectTimeout: timeoutSec,
-    });
-    return conn;
+    // ابدأ من آخر مجموعة ناجحة (تدوير ذكي)، ثم جرّب البقية عند ORA-01017
+    const order = sets.map((_, i) => i);
+    order.sort((a, b) => (a === activeCredIndex ? -1 : b === activeCredIndex ? 1 : a - b));
+    let lastErr = null;
+    for (const i of order) {
+        try {
+            const conn = await oracledb.getConnection({
+                user: sets[i].user,
+                password: sets[i].password,
+                connectString: buildConnectString(cfg),
+                connectTimeout: timeoutSec,
+            });
+            if (activeCredIndex !== i) {
+                activeCredIndex = i;
+                activeCredAt = new Date().toISOString();
+            }
+            await tagSession(conn, 'connect');
+            return conn;
+        } catch (e) {
+            lastErr = e;
+            if (!/ORA-01017/i.test(String(e.message || ''))) {throw e;} // خطأ غير اعتمادي: لا تجرب البقية
+        }
+    }
+    throw lastErr;
+}
+
+// ─── بصمة الجلسة: اسم جهازنا وهويتنا ظاهران لدى مدير Oracle ───────────────
+// V$SESSION سيعرض: MACHINE (سيرفرنا) + CLIENT_IDENTIFIER + MODULE + ACTION.
+// الشفافية المهنية: قارئ فقط، معروف الهوية، بلا أسرار.
+function sessionIdentity() {
+    const os = require('os');
+    return {
+        clientId: (process.env.KARIM_ORACLE_CLIENT_ID || 'POS-SYNC').slice(0, 64),
+        module: 'POS-SYNC',
+        host: os.hostname(),
+    };
+}
+async function tagSession(conn, action) {
+    try {
+        const id = sessionIdentity();
+        if (typeof conn.clientIdentifier !== 'undefined') {conn.clientIdentifier = id.clientId;}
+        if (typeof conn.module !== 'undefined') {conn.module = id.module;}
+        if (typeof conn.action !== 'undefined' && action) {conn.action = String(action).slice(0, 64);}
+    } catch (_) { /* thin mode قد لا يدعمها — غير حرج */ }
+}
+
+// ─── حارس الجلسة الدائمة: تغيير الباسورد في Oracle لا يقتل الجلسات المفتوحة ─
+// نبقي جلسة SELECT واحدة حية (تُفحص بنبضة قبل كل استخدام) لمسار المرآة عالي
+// التكرار؛ فحتى لو غيّروا كلمة المرور نبقى داخلين بالجلسة القديمة حتى تسقط
+// طبيعيًا — وحينها يعمل التدوير التلقائي. تُغلق نظيفًا عند إيقاف الخادم.
+let keptConn = null;
+async function getKeptConn(action = 'mirror') {
+    if (keptConn) {
+        try {
+            await keptConn.execute(`SELECT SYSDATE FROM DUAL`);
+            await tagSession(keptConn, action);
+            return keptConn;
+        } catch (_) { try { await keptConn.close(); } catch (_) {} keptConn = null; }
+    }
+    keptConn = await connectOnce(15);
+    await tagSession(keptConn, action);
+    return keptConn;
+}
+async function closeKeptConn() {
+    if (!keptConn) {return;}
+    try { await keptConn.close(); } catch (_) {}
+    keptConn = null;
 }
 
 /** فحص الاتصال — قراءة فقط (banner) ثم إغلاق فوري */
@@ -140,7 +219,7 @@ async function testConnection() {
             const r = await oraExecute(conn, `SELECT banner FROM v$version WHERE rownum = 1`);
             version = r.rows && r.rows[0] ? String(r.rows[0][0]).slice(0, 120) : '';
         } catch (_) { version = ''; }
-        return { ok: true, ms: Date.now() - started, version, thick: driverStatus.thick, host: cfg.host, port: cfg.port, service: cfg.service, user: cfg.user };
+        return { ok: true, ms: Date.now() - started, version, thick: driverStatus.thick, host: cfg.host, port: cfg.port, service: cfg.service, user: cfg.user, credentialSet: activeCredIndex + 1, credentialSets: credentialSets().length, identity: sessionIdentity() };
     } catch (e) {
         const raw = String(e.message || e);
         const hint = raw.includes('NJS-138')
@@ -161,7 +240,7 @@ async function pullItems() {
     try {
         conn = await connectOnce(30);
         const r = await oraExecute(conn,
-            `SELECT ITM_NO, ITMNAME, BAR_CODE, UNIT1, COST_PRICE, LAS_BUY_PRICE, SALE_PRICE1 FROM ITEMS ORDER BY ITM_NO`
+            `SELECT ITM_NO, ITMNAME, BAR_CODE, UNIT1, COST_PRICE, LAS_BUY_PRICE, SALE_PRICE1, LVL, INV_MIN_BAL, ITEM_TYPE FROM ITEMS ORDER BY ITM_NO`
         );
         return {
             ok: true,
@@ -172,6 +251,9 @@ async function pullItems() {
                 unit: x[3] != null ? String(x[3]).trim() : '',
                 cost: Number(x[4] ?? x[5] ?? 0) || 0,
                 price: Number(x[6] ?? 0) || 0,
+                lvl: Number(x[7]) || 0,
+                minBal: Math.max(0, Number(x[8]) || 0),
+                itemType: x[9] != null ? String(x[9]).trim() : '',
             })).filter(i => i.code || i.name),
         };
     } catch (e) {
@@ -257,6 +339,15 @@ const engine = {
             } catch (e) {
                 logger.error && logger.error('[yarasoft_oracle] consume failed: ' + sanitizeError(e.message));
             }
+            // مرآة الكاشيرية: نسخ أوامر اليوم محليًا (best-effort — لا تكسر الدورة)
+            try {
+                const { refreshMirrorOrders } = require('./mirror');
+                const m = await refreshMirrorOrders({ io: this.io });
+                if (m.ok && m.upserted > 0) {logger.info && logger.info(`[yarasoft_mirror] upserted ${m.upserted} orders`);}
+                else if (!m.ok) {logger.warn && logger.warn('[yarasoft_mirror] skipped: ' + (m.error || ''));}
+            } catch (e) {
+                logger.warn && logger.warn('[yarasoft_mirror] cycle failed (non-fatal): ' + sanitizeError(e.message));
+            }
             return { ok: true, rows: rows.length };
         } catch (e) {
             this.lastError = sanitizeError(e.message);
@@ -280,6 +371,7 @@ const engine = {
     stop() {
         this.running = false;
         if (this.timer) { clearInterval(this.timer); this.timer = null; }
+        try { closeKeptConn().catch(() => {}); } catch (_) {}
     },
 
     /** سحب فوري عند الطلب (زر "سحب الآن") — نفس دورة المؤقت تمامًا */
@@ -288,4 +380,6 @@ const engine = {
     },
 };
 
-module.exports = { loadOracleConfig, testConnection, discoverTables, pullItems, oracleEngine: engine, sanitizeError, assertOracleReadOnly, oraExecute };
+module.exports = { loadOracleConfig, getDriver, testConnection, discoverTables, pullItems,
+    oracleEngine: engine, sanitizeError, assertOracleReadOnly, oraExecute, credentialSets, credentialStatus,
+    sessionIdentity, tagSession, getKeptConn, closeKeptConn };

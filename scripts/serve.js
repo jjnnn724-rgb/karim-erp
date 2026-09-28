@@ -27,7 +27,7 @@ const os = require('os');
 (function runEnvironmentPreflight() {
     try {
         const verifyScript = path.join(ROOT, 'scripts', 'verify-env.js');
-        if (!fs.existsSync(verifyScript)) return;
+        if (!fs.existsSync(verifyScript)) {return;}
         const r = spawnSync(process.execPath, [verifyScript, '--silent-warnings'], {
             cwd: ROOT, encoding: 'utf-8', timeout: 15000, shell: process.platform === 'win32',
         });
@@ -54,7 +54,7 @@ let launcherStopping = false;
 let backendRestarts = 0;
 const MAX_BACKEND_RESTARTS = 50;
 const BACKEND_RESTART_DELAY_MS = 3000;
-let backendLogStream = null;
+const backendLogStream = null;
 
 function backendLogFile() {
     try {
@@ -88,7 +88,7 @@ async function ensurePgRunning() {
     const dbPassword = getEnv('DB_PASSWORD');
 
     // 1) المنفذ المحفوظ أولاً (سريع)
-    let dbPort = getEnv('DB_PORT', '5432');
+    const dbPort = getEnv('DB_PORT', '5432');
     if (dbPassword && lib.isPgRunning(dbHost, dbPort, dbUser, dbPassword)) {
         log.ok('PostgreSQL يعمل');
         return true;

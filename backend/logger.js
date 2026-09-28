@@ -9,6 +9,13 @@
  * - Performance timing utilities
  */
 
+// ─── Environment (قبل إنشاء الـ logger) ───────────────────
+// يجب أن يُحمَّل .env قبل قراءة NODE_ENV أدناه — وإلا انطلق pino-pretty
+// transport (worker thread) في الإنتاج وحُجب الحدث الرئيسي حين يمتلئ
+// أنبوب الكونسول (تعليق السيرفر + حرق نواة CPU). dotenv لا يتجاوز
+// المتغيرات الموجودة مسبقًا، فالتكرار من نقاط الدخول الأخرى آمن.
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const pino = require('pino');
 
 // ─── Configuration ───────────────────────────────────────
@@ -31,19 +38,15 @@ function getTransport() {
     
     // In development, use pretty printing
     if (!isProduction && process.env.LOG_PRETTY !== 'false') {
-        try {
-            return {
-                target: 'pino-pretty',
-                options: {
-                    colorize: true,
-                    translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
-                    ignore: 'pid,hostname',
-                    levelFirst: true,
-                },
-            };
-        } catch (e) {
-            // pino-pretty not available, fall back to default
-        }
+        return {
+            target: 'pino-pretty',
+            options: {
+                colorize: true,
+                translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
+                ignore: 'pid,hostname',
+                levelFirst: true,
+            },
+        };
     }
     
     // Default: JSON to stdout

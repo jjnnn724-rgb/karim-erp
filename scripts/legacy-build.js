@@ -353,7 +353,7 @@ function writeReport() {
 async function main() {
     const command = String(process.argv[2] || 'check').toLowerCase();
     const full = process.argv.includes('--full');
-    let code = 0;
+    let code;
     if (command === 'check') {code = stepCheck();}
     else if (command === 'portable') {code = stepPortable(full);}
     else if (command === 'inno') {code = stepInno();}

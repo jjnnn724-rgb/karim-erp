@@ -506,15 +506,15 @@ router.get('/fingerprints', jwtAuth, requireRole(...READ_ROLES), async (req, res
         const from = req.query.from || '2025-09-01';
         const to = req.query.to || new Date().toISOString().slice(0, 10);
         const { rows } = await pool.query(
-            `SELECT l.id, TO_CHAR(l.\"attendanceTime\" AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD HH24:MI:SS') AS \"punchTime\",
-                    COALESCE(e.name, 'غير مربوط') AS \"employeeName\", COALESCE(e.\"employeeId\",'') AS \"employeeNumber\",
-                    COALESCE(l.\"deviceUserId\",'') AS \"fingerprint\", l.\"punchState\", l.\"verifyType\",
-                    COALESCE(d.name,'') AS \"deviceName\"
+            `SELECT l.id, TO_CHAR(l."attendanceTime" AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD HH24:MI:SS') AS "punchTime",
+                    COALESCE(e.name, 'غير مربوط') AS "employeeName", COALESCE(e."employeeId",'') AS "employeeNumber",
+                    COALESCE(l."deviceUserId",'') AS "fingerprint", l."punchState", l."verifyType",
+                    COALESCE(d.name,'') AS "deviceName"
              FROM attendance_logs l
-             LEFT JOIN attendance_devices d ON d.id = l.\"deviceId\"
-             LEFT JOIN employees e ON e.id = l.\"employeeId\"
-             WHERE l.\"attendanceTime\" >= $1::date AND l.\"attendanceTime\" < ($2::date + INTERVAL '1 day')
-             ORDER BY l.\"attendanceTime\" ASC`,
+             LEFT JOIN attendance_devices d ON d.id = l."deviceId"
+             LEFT JOIN employees e ON e.id = l."employeeId"
+             WHERE l."attendanceTime" >= $1::date AND l."attendanceTime" < ($2::date + INTERVAL '1 day')
+             ORDER BY l."attendanceTime" ASC`,
             [from, to]
         );
         res.json({ ok:true, from, to, count: rows.length, fingerprints: rows });

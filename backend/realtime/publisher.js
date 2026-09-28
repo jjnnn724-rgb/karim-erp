@@ -20,7 +20,7 @@ const MAX_ATTEMPTS = Math.max(3, Number(process.env.RT_OUTBOX_MAX_ATTEMPTS || 20
 
 let running = false;
 let timer = null;
-let stats = { cycles: 0, published: 0, failed: 0, deadLettered: 0, lastCycleAt: null, lastError: null };
+const stats = { cycles: 0, published: 0, failed: 0, deadLettered: 0, lastCycleAt: null, lastError: null };
 
 function envelope(event) {
     return {
@@ -39,7 +39,7 @@ function envelope(event) {
 
 async function publishCycle({ io, pool, logger }) {
     const client = await pool.connect();
-    let claimed = [];
+    let claimed;
     try {
         // ── المعاملة القصيرة: المطالبة فقط ثم COMMIT فورًا (تحرير الأقفال) ──
         await client.query('BEGIN');

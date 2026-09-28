@@ -646,6 +646,7 @@ async function answerFreeText(engine, text, rec) {
                 ...(r.failed ? ['⚠ غير مطبق: ' + r.failed.length] : []),
                 ...(r.appliedList.slice(0, 12)),
                 `📊 إعادة الحساب: أيام التأخير ${r.recompute.lateDaysBefore} → ${r.recompute.lateDaysAfter} | دقائق ${r.recompute.lateMinutesBefore} → ${r.recompute.lateMinutesAfter}`,
+                ...(r.auditLines && r.auditLines.length && r.audit ? [`⏱ ${r.audit.summaryLine}`, ...r.auditLines] : []),
                 ...(r.failed.length ? ['\n' + r.failed.slice(0, 8).join('\n')] : []),
             ];
             return lines.join('\n');

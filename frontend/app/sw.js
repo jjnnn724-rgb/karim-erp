@@ -105,14 +105,14 @@ function isBypassed(url) {
 
 function getCacheName(url) {
     const path = url.pathname;
-    if (path.match(/\.(png|jpg|jpeg|webp|svg|gif|ico|bmp)$/)) return IMAGE_CACHE;
-    if (path.match(/\.(woff|woff2|ttf|eot|otf)$/)) return FONT_CACHE;
-    if (path.match(/\.(css|js|mjs|html|json)$/)) return STATIC_CACHE;
+    if (path.match(/\.(png|jpg|jpeg|webp|svg|gif|ico|bmp)$/)) {return IMAGE_CACHE;}
+    if (path.match(/\.(woff|woff2|ttf|eot|otf)$/)) {return FONT_CACHE;}
+    if (path.match(/\.(css|js|mjs|html|json)$/)) {return STATIC_CACHE;}
     return CACHE;
 }
 
 function isFresh(response, ttl) {
-    if (!response) return false;
+    if (!response) {return false;}
     const swCachedAt = response.headers.get('sw-cached-at');
     if (swCachedAt) {
         return (Date.now() - Number(swCachedAt)) < ttl;
@@ -185,12 +185,12 @@ async function networkFirstAPI(req, cacheName, ttl) {
 
 self.addEventListener('fetch', (event) => {
     const req = event.request;
-    if (req.method !== 'GET') return;
+    if (req.method !== 'GET') {return;}
 
     let url;
     try { url = new URL(req.url); } catch (_) { return; }
-    if (url.origin !== self.location.origin) return;
-    if (isBypassed(url)) return;
+    if (url.origin !== self.location.origin) {return;}
+    if (isBypassed(url)) {return;}
 
     if (req.mode === 'navigate') {
         event.respondWith(
@@ -244,7 +244,7 @@ self.addEventListener('periodicsync', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-    if (!event.data) return;
+    if (!event.data) {return;}
     const data = event.data.json();
     const options = {
         body: data.body || 'إشعار جديد',

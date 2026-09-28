@@ -36,7 +36,7 @@ function getLocalIp() {
   const nets = os.networkInterfaces();
   for (const n of Object.keys(nets)) {
     for (const net of nets[n] || []) {
-      if (net.family === 'IPv4' && !net.internal && /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(net.address)) return net.address;
+      if (net.family === 'IPv4' && !net.internal && /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(net.address)) {return net.address;}
     }
   }
   return 'localhost';
@@ -75,8 +75,8 @@ function ensureDeps() {
 function ensurePostgres() {
   const bins = resolver.findAllPgBins('psql');
   const services = resolver.findPgServices();
-  if (bins.length) log.ok(`PostgreSQL مكتشفة: ${bins[0]}${services.length ? ` — خدمة: ${services[0]}` : ''}`);
-  else log.warn('لا توجد ثنائيات psql في PATH أو Program Files');
+  if (bins.length) {log.ok(`PostgreSQL مكتشفة: ${bins[0]}${services.length ? ` — خدمة: ${services[0]}` : ''}`);}
+  else {log.warn('لا توجد ثنائيات psql في PATH أو Program Files');}
 
   // إقلاع أي خدمة متوقفة
   for (const svc of services) {
@@ -125,8 +125,8 @@ function ensurePostgres() {
 
 // ─── 4) إصلاح المسارات ───────────────────────────────────
 function fixPaths() {
-  if (!fs.existsSync(ENV_FILE)) return;
-  let txt = fs.readFileSync(ENV_FILE, 'utf-8');
+  if (!fs.existsSync(ENV_FILE)) {return;}
+  const txt = fs.readFileSync(ENV_FILE, 'utf-8');
   const orig = txt;
   // أي بقايا مسارات مطورة قديمة → ProgramData المحمول (يعمل على أي جهاز)
   const programData = process.env.PROGRAMDATA || 'C:\\ProgramData';
@@ -137,7 +137,7 @@ function fixPaths() {
   const dirs = new Set();
   for (const m of txt.matchAll(/^(?:SSL_KEY|SSL_CERT|WHATSAPP_SESSION_DIR|WHATSAPP_LOG_DIR|YARASOFT_SHARE|YARASOFT_ORACLE_STAGING|BACKUPS_DIR)\s*=\s*(.+)$/gim)) {
     const p = (m[1] || '').trim().replace(/^["']|["']$/g, '');
-    if (p && path.isAbsolute(p)) dirs.add(p.startsWith('C:/KarimData') || p.startsWith('C:\\KarimData') ? path.dirname(p) : path.dirname(p));
+    if (p && path.isAbsolute(p)) {dirs.add(p.startsWith('C:/KarimData') || p.startsWith('C:\\KarimData') ? path.dirname(p) : path.dirname(p));}
   }
   void dataRoot;
   for (const d of dirs) {
@@ -151,7 +151,7 @@ function fixPaths() {
       fs.mkdirSync(d, { recursive: true });
     } catch (_) {}
   }
-  if (txt !== orig) fs.writeFileSync(ENV_FILE, txt, 'utf-8');
+  if (txt !== orig) {fs.writeFileSync(ENV_FILE, txt, 'utf-8');}
   log.ok('المسارات والمجلدات جاهزة');
 }
 
@@ -178,7 +178,7 @@ function ensureDatabase(resolved) {
       log.error(`فشل إنشاء قاعدة "${dbName}" — تحقق من صلاحيات المستخدم`);
       process.exit(1);
     }
-  } else log.ok(`قاعدة "${dbName}" موجودة`);
+  } else {log.ok(`قاعدة "${dbName}" موجودة`);}
 
   // migrations
   log.info('تطبيق migrations...');
@@ -199,8 +199,8 @@ async function main() {
   checkNode();
 
   step(2, TOTAL, 'الاعتماديات');
-  if (!DOCTOR) ensureDeps();
-  else log.info('وضع الفحص — تخطي npm install');
+  if (!DOCTOR) {ensureDeps();}
+  else {log.info('وضع الفحص — تخطي npm install');}
 
   step(3, TOTAL, 'اكتشاف PostgreSQL تلقائياً');
   const resolved = ensurePostgres();
@@ -225,12 +225,12 @@ async function main() {
   let total = 0;
   for (const d of dirs) {
     const full = path.join(ROOT, d);
-    if (!fs.existsSync(full)) continue;
+    if (!fs.existsSync(full)) {continue;}
     const walk = (dir) => {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const f = path.join(dir, e.name);
         if (e.isDirectory()) {
-          if (e.name !== 'node_modules') walk(f);
+          if (e.name !== 'node_modules') {walk(f);}
         } else if (e.isFile() && f.endsWith('.js')) {
           total++;
           const r = spawnSync(process.execPath, ['--check', f], { stdio: 'pipe', encoding: 'utf-8' });
@@ -243,8 +243,8 @@ async function main() {
     };
     walk(full);
   }
-  if (bad) log.warn(`${bad}/${total} ملف به أخطاء syntax`);
-  else log.ok(`${total} ملف JS سليم`);
+  if (bad) {log.warn(`${bad}/${total} ملف به أخطاء syntax`);}
+  else {log.ok(`${total} ملف JS سليم`);}
 
   const ip = getLocalIp();
   const port = lib.getEnv('PORT', '5000');

@@ -314,6 +314,19 @@ async function rtResume() {
         rtPersistSeq(); rtScheduleAck();
     } catch (_) { /* offline — next connect retries */ }
 }
+const RT_API_CONTRACT = 1;
+async function rtCheckVersion() {
+    // EXE compat handshake (TASK 10): warn-only, never blocking (no lockout risk).
+    try {
+        const res = await fetch(`${window.location.origin}/api/rt/version?clientContract=${RT_API_CONTRACT}`);
+        if (!res.ok) {return;}
+        const v = await res.json();
+        if (v && v.compatible === false) {
+            setBadgeState('syncing', 'نسخة العميل غير متوافقة — حدّث التطبيق');
+            try { if (window.toast) {window.toast(`نسخة العميل غير متوافقة (الأدنى ${v.minClientVersion || '؟'}) — حدّث التطبيق`, 'warning');} } catch (_) {}
+        }
+    } catch (_) {}
+}
 function rtScheduleAck() {
     if (rtAckTimer) {return;}
     rtAckTimer = setTimeout(async () => {
@@ -327,12 +340,33 @@ function rtScheduleAck() {
     }, 5000);
 }
 function rtOnDomainEvent(env) {
-    // Shadow: track sequence + ACK. UI application per-module arrives in Phase B.
+    // تتبّع التسلسل + ACK (يحدث أولًا دائمًا — لا يعتمد على نوع الحدث).
     const sq = Number(env?.sequence);
     if (Number.isFinite(sq) && sq > rtLastSeq) {
         rtLastSeq = sq;
         rtPersistSeq(); rtScheduleAck();
     }
+    // ── Phase B: تطبيق فعلي لأحداث الدومين الدائمة (بيانات فقط) ──
+    // SALE_POSTED يشغّل نفس التحديث المشتق من sale:completed — لكن بلا صوت ولا
+    // توست: الصوت مصدره البث القديم في مرحلة التعايش حتى لا يُسمع البيع
+    // مرتين. نفس مفتاح المؤقّت يمنع التكرار لو الحدثان وصلا معًا.
+    try {
+        if (env?.eventType === 'SALE_POSTED' && typeof window.loadData === 'function') {
+            clearTimeout(window.__posSaleRefreshTimer);
+            window.__posSaleRefreshTimer = setTimeout(async () => {
+                if (isSyncing) {return;}
+                isSyncing = true;
+                try {
+                    await window.loadData();
+                    if (typeof window.renderPage === 'function') {await window.renderPage();}
+                } catch (e) {
+                    console.warn('[realtime] SALE_POSTED refresh failed:', e);
+                } finally {
+                    isSyncing = false;
+                }
+            }, 150);
+        }
+    } catch (_) { /* لا تعطل قناة التتبع أبدًا */ }
     if (typeof window.console !== 'undefined' && window.console.debug) {
         window.console.debug('[rt] domain_event', env?.eventType, `#${env?.sequence}`);
     }
@@ -365,6 +399,8 @@ function initSocket() {
         try { if (typeof window._rtRegisterUser === 'function') {window._rtRegisterUser();} } catch (_) {}
         // Durable resume: catch up the outbox gap, then ACK (shadow, non-blocking).
         try { rtResume(); } catch (_) {}
+        // EXE compat probe (warn-only).
+        try { rtCheckVersion(); } catch (_) {}
         // Durable subscription (shadow phase — track + ACK only).
         try { socket.off('domain_event', rtOnDomainEvent); } catch (_) {}
         try { socket.on('domain_event', rtOnDomainEvent); } catch (_) {}

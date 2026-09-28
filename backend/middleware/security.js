@@ -238,7 +238,7 @@ function hppGuard(options = {}) {
     return function hppGuardMiddleware(req, res, next) {
         ['query', 'body'].forEach((src) => {
             const obj = req[src];
-            if (!obj || typeof obj !== 'object') return;
+            if (!obj || typeof obj !== 'object') {return;}
             for (const k of Object.keys(obj)) {
                 const v = obj[k];
                 if (Array.isArray(v) && !arrayKeys.has(k)) {

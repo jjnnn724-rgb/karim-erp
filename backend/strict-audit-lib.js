@@ -18,7 +18,7 @@ async function runStrictAudit(month) {
     const c = (await pool.query(q, params)).rows[0].c;
     const pass = c === 0;
     checks.push({ name, status: pass ? 'PASS' : 'FAIL', count: c });
-    if (!pass) failures.push({ name, count: c });
+    if (!pass) {failures.push({ name, count: c });}
   };
 
   await check('صفوف زمنية مستحيلة (انصراف قبل دخول أو مساوٍ له)',
@@ -44,12 +44,12 @@ async function runStrictAudit(month) {
     const rows = (await pool.query(
       `SELECT "checkIn", "checkOut", "workMinutes" FROM attendance
        WHERE "employeeId" = $1 ${m ? `AND date LIKE '${m}-%'` : ''}`, [e.id])).rows;
-    if (!rows.length) continue;
+    if (!rows.length) {continue;}
     const sMin = toMin(e.shift_start) ?? 540;
     const karim = Number(e.shift_karim) > 0 ? Number(e.shift_karim) : 10;
     let lateDays = 0;
     for (const r of rows) {
-      if (!r.checkIn) continue;
+      if (!r.checkIn) {continue;}
       const inMin = toMin(r.checkIn);
       const arrival = inMin == null ? 0 : Math.max(0, inMin - sMin);
       let early = 0;
@@ -57,15 +57,15 @@ async function runStrictAudit(month) {
       if (outMin != null && inMin != null) {
         const endRaw = sMin + Math.round(karim * 60);
         let out = outMin;
-        if (out < inMin) out += 24 * 60;
-        if (endRaw > 24 * 60 && out < 12 * 60) out += 24 * 60;
-        if (out >= inMin) early = Math.max(0, endRaw - out);
+        if (out < inMin) {out += 24 * 60;}
+        if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
+        if (out >= inMin) {early = Math.max(0, endRaw - out);}
       }
       const wm = Number(r.workMinutes);
       const review = Boolean(r.checkIn && r.checkOut && Number.isFinite(wm) && wm === 0);
-      if (!review && arrival + early > 0) lateDays++;
+      if (!review && arrival + early > 0) {lateDays++;}
     }
-    if (lateDays > rows.length) bad.push({ emp: e.employeeId, lateDays, days: rows.length });
+    if (lateDays > rows.length) {bad.push({ emp: e.employeeId, lateDays, days: rows.length });}
   }
   checks.push({
     name: `أيام تأخير تتجاوز الحضور${m ? ` (${m})` : ''}`,
@@ -73,7 +73,7 @@ async function runStrictAudit(month) {
     count: bad.length,
     detail: bad.slice(0, 10),
   });
-  if (bad.length) failures.push({ name: 'late-days exceed days-present', count: bad.length });
+  if (bad.length) {failures.push({ name: 'late-days exceed days-present', count: bad.length });}
 
   return { ok: failures.length === 0, month: m, checks, failures };
 }

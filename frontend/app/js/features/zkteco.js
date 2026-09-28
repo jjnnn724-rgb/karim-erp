@@ -79,7 +79,7 @@ const rows = ZKSTATE.devices.map(d=>`
 <td>${d.deviceUid?`<span class="badge bdg-gray">${esc(d.deviceUid)}</span>`:'<span class="text-muted">—</span>'}</td>
 <td>${d.lastSyncAt?zkFmtDate(d.lastSyncAt)+' · '+zkFmtTime(d.lastSyncAt):'—'}</td>
 <td class="c-gold">${fN(d.totalSynced||0)}</td>
-<td>${d.lastError?`<span class="text-danger" title="${esc(d.lastError)}">⚠ ${esc(d.lastError.slice(0,40))}…</span>`:'—'}</td>
+<td>${d.lastError?`<span class="text-danger" title="${esc(d.lastError)}"><i class=ji data-i=alert-triangle></i> ${esc(d.lastError.slice(0,40))}…</span>`:'—'}</td>
 <td>
 <div class="u-row-wrap" style="gap:4px">
 ${['admin','hr'].includes(STATE.currentUser?.role)?`
@@ -280,7 +280,7 @@ ${(STATE.hrDepartments||[]).map(d=>`<option value="${esc(d.code)}">${esc(d.name)
 <div class="tbl-scroll">
 <table>
 <thead><tr><th>رقم البصمة</th><th>عدد البصمات</th><th>آخر بصمة</th><th></th></tr></thead>
-<tbody>${unmappedRows||'<tr><td colspan="4" class="u-empty-sm">كل البصمات مرتبطة بموظفين ✓</td></tr>'}</tbody>
+<tbody>${unmappedRows||'<tr><td colspan="4" class="u-empty-sm">كل البصمات مرتبطة بموظفين</td></tr>'}</tbody>
 </table>
 </div>
 </div>`;

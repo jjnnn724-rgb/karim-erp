@@ -65,12 +65,12 @@ const ROUTE_TABLE_MAP = {
 /** استخراج table name من المسار */
 function getTableFromPath(path, method) {
   // البحث عن تطابق دقيق أولاً
-  if (ROUTE_TABLE_MAP[path]) return ROUTE_TABLE_MAP[path];
+  if (ROUTE_TABLE_MAP[path]) {return ROUTE_TABLE_MAP[path];}
   
   // البحث عن pattern مع :id
   for (const [pattern, table] of Object.entries(ROUTE_TABLE_MAP)) {
     const regex = new RegExp('^' + pattern.replace(/:id/g, '\\d+') + '$');
-    if (regex.test(path)) return table;
+    if (regex.test(path)) {return table;}
   }
   
   // fallback: محاولة استخراج من المسار

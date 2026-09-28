@@ -172,7 +172,7 @@ class ServiceBase {
 
     async create(table, data) {
         const entries = Object.entries(data);
-        if (entries.length === 0) throw new ValidationError(table, 'لا توجد حقول للإدراج');
+        if (entries.length === 0) {throw new ValidationError(table, 'لا توجد حقول للإدراج');}
         const columns = entries.map(([k]) => this._identPart(k)).join(', ');
         const placeholders = entries.map((_, i) => `$${i + 1}`).join(', ');
         const values = entries.map(([, v]) => v);
@@ -189,7 +189,7 @@ class ServiceBase {
 
     async update(table, id, data) {
         const entries = Object.entries(data);
-        if (entries.length === 0) return this.findById(table, id);
+        if (entries.length === 0) {return this.findById(table, id);}
         const sets = entries.map(([k], i) => `${this._identPart(k)} = $${i + 2}`).join(', ');
         const values = [id, ...entries.map(([, v]) => v)];
         const q = `UPDATE ${this._ident(table)} SET ${sets} WHERE id = $1 RETURNING *`;

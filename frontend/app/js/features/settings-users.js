@@ -101,7 +101,7 @@ function showOperationalResetModal(){
     if(STATE.currentUser?.role!=='admin'){ toast('هذا الإجراء متاح لمدير النظام فقط','error'); return; }
     showModal(`<h3 class="u-red"><i class=ji data-i=alert-triangle></i> تصفير شامل — كل السستم</h3>
       <div style="background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.45);padding:16px;border-radius:var(--r);line-height:2;margin-bottom:16px">
-        <strong>⚠ تحذير نهائي — لا يمكن التراجع</strong><br>
+        <strong><i class=ji data-i=alert-triangle></i> تحذير نهائي — لا يمكن التراجع</strong><br>
         سيتم حذف：<strong>كل شيء</strong> — الرواتب، الحضور، الإجازات، الموظفين، الإيرادات، المصاريف، طلبات الصرف، فواتير المبيعات، فواتير المشتريات، الأصناف، المخزون، الوصفات، حركات المخزون، الورديات، الإشعارات، العملاء، الموردين، الأصول، دليل الحسابات، جداول Oracle المنسوخة، وكل رقم في السستم.<br><br>
         سيبقى فقط：<strong>مدير النظام + المحاسب</strong> (admin/admin12345 + admin1/123456) والإعدادات الأساسية وسجل التدقيق.<br><br>
         <strong style="color:var(--red)">أكّد أخذ نسخة احتياطية (backup) قبل التنفيذ!</strong>
@@ -173,7 +173,7 @@ try {
 // Everything about the tax-authority link is managed from here: enable/disable,
 // seller data, environment, CSR/CSID onboarding, live queue monitor and retries.
 const ZATCA_WRITE = () => ['admin','manager'].includes(STATE.currentUser?.role);
-const ZATCA_STATUS_LABEL = { queued:'بالانتظار', processing:'قيد الإرسال', reported:'مُبلّغة ✓', failed:'فشلت', dead_letter:'فشل نهائي', skipped_cancelled:'ملغاة', skipped_disabled:'موقوفة' };
+const ZATCA_STATUS_LABEL = { queued:'بالانتظار', processing:'قيد الإرسال', reported:'مُبلّغة', failed:'فشلت', dead_letter:'فشل نهائي', skipped_cancelled:'ملغاة', skipped_disabled:'موقوفة' };
 
 function renderZatcaHub(){
 const d=STATE.zatca; if(!d) {return '<div class="mcard u-empty">جارٍ التحميل…</div>';}
@@ -504,7 +504,7 @@ const rows=(d.files||[]).map((f,i)=>`<tr>
 <td class="fw-bold">${esc(f.file)} ${i===0?'<span class="badge bdg-green">الأحدث</span>':''}</td>
 <td>${sysFmtBytes(f.bytes)}</td>
 <td class="text-muted">${esc(String(f.mtime||'').replace('T',' ').slice(0,19))}</td>
-<td>${f.shaOk===true?'<span class="badge bdg-green">سليمة ✓</span>':f.shaOk===false?'<span class="badge bdg-red">تالفة!</span>':'<span class="badge bdg-gray">بلا بصمة</span>'}</td>
+<td>${f.shaOk===true?'<span class="badge bdg-green">سليمة</span>':f.shaOk===false?'<span class="badge bdg-red">تالفة!</span>':'<span class="badge bdg-gray">بلا بصمة</span>'}</td>
 <td>${f.manifest?'<span class="badge bdg-blue">كاملة + إعدادات</span>':'<span class="text-muted">قاعدة فقط</span>'}</td>
 <td><button class="btn btn-gold btn-sm" onclick="sysRestoreModal('${esc(f.file)}')" ${f.shaOk===false?'disabled':''}><i class=ji data-i=archive></i> استعادة</button></td>
 </tr>`).join('');

@@ -46,7 +46,7 @@ describe('whatsapp session backup', () => {
         expect(JSON.parse(fs.readFileSync(first, 'utf-8')).me).toBe('test');
         // force 3 backups with distinct stamps
         const stamps = ['creds-20260920-101111.json', 'creds-20260920-101112.json', 'creds-20260920-101113.json'];
-        for (const s of stamps) fs.copyFileSync(path.join(sess, 'creds.json'), path.join(bak, s));
+        for (const s of stamps) {fs.copyFileSync(path.join(sess, 'creds.json'), path.join(bak, s));}
         backupSession(sess, bak, 2);
         const left = fs.readdirSync(bak).filter((f) => f.startsWith('creds-'));
         expect(left.length).toBe(2);

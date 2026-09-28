@@ -196,7 +196,7 @@ class WhatsappConnection extends EventEmitter {
         this._stopLivenessPinger();
         let consecutiveFails = 0;
         this._livenessTimer = setInterval(() => {
-            if (this.state !== 'CONNECTED' || !this.sock) return;
+            if (this.state !== 'CONNECTED' || !this.sock) {return;}
             try {
                 // محاولة إرسال ping عبر WebSocket
                 const ws = this.sock?.ws || this.sock?.ev;

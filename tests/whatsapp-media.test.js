@@ -61,7 +61,7 @@ describe('whatsapp send-media payload', () => {
     test('local image file builds payload with caption', () => {
         const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wa-')), 'p.png');
         fs.writeFileSync(tmp, Buffer.from([1, 2, 3]));
-        const p = buildMediaPayload({ media_type: 'image', media_path: tmp, caption: 'عرض اليوم' });
+        const p = buildMediaPayload({ media_type: 'image', media_path: tmp, caption: 'عرض اليوم' }, { mediaDir: path.dirname(tmp) });
         expect(p.image).toBeDefined();
         expect(p.caption).toBe('عرض اليوم');
         fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
@@ -72,7 +72,7 @@ describe('whatsapp send-media payload', () => {
         expect(p.fileName).toBe('a.pdf');
     });
     test('missing file throws MEDIA_FILE_MISSING', () => {
-        expect(() => buildMediaPayload({ media_type: 'image', media_path: 'C:/nope/missing.jpg' })).toThrow('MEDIA_FILE_MISSING');
+        expect(() => buildMediaPayload({ media_type: 'image', media_path: path.join(os.tmpdir(), 'wa-missing-' + Date.now(), 'missing.jpg') }, { mediaDir: os.tmpdir() })).toThrow('MEDIA_FILE_MISSING');
     });
     test('unknown kind throws INVALID_MEDIA_TYPE', () => {
         expect(() => buildMediaPayload({ media_type: 'sticker', media_path: 'x' })).toThrow('INVALID_MEDIA_TYPE');

@@ -1,3 +1,5 @@
+// .env قد يحمل ATTENDANCE_DELAY_ENGINE=false (إنتاج) — ثبّت السلوك المختبر هنا
+process.env.ATTENDANCE_DELAY_ENGINE = 'true';
 /**
  * tests/whatsapp-engine.test.js — وحدات محرك واتساب (منطق نقي بلا شبكة/قاعدة)
  */

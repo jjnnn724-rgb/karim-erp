@@ -344,7 +344,7 @@ function isDatabaseError(e) {
  *   }
  */
 function wrapUnknown(raw, hint = '') {
-    if (isAppError(raw)) return raw;
+    if (isAppError(raw)) {return raw;}
 
     // ─── Zod validation array ─────────────────────────
     if (Array.isArray(raw) && raw[0]?.code !== undefined) {

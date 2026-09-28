@@ -35,7 +35,7 @@ const BOOT_STATE = {
 // ─── Package version (cached) ──────────────────────────────
 let packageInfo = null;
 function getPackageInfo() {
-    if (packageInfo) return packageInfo;
+    if (packageInfo) {return packageInfo;}
     try {
         const pkg = require(path.join(__dirname, '..', '..', 'package.json'));
         packageInfo = { name: pkg.name, version: pkg.version, commit: (process.env.GIT_COMMIT || '').slice(0, 8) || null };
@@ -131,7 +131,7 @@ async function checkDatabase(pool) {
 async function checkRedis(ioredis) {
     const t0 = Date.now();
     try {
-        if (!ioredis) return { component: 'redis', status: 'warn', durationMs: 0, error: 'not_configured' };
+        if (!ioredis) {return { component: 'redis', status: 'warn', durationMs: 0, error: 'not_configured' };}
         const pong = await Promise.race([
             ioredis.ping(),
             new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
@@ -197,8 +197,8 @@ function rollupStatus(checks) {
 }
 
 function statusCodeFor(status) {
-    if (status === 'fail') return 503;
-    if (status === 'warn') return 200;
+    if (status === 'fail') {return 503;}
+    if (status === 'warn') {return 200;}
     return 200;
 }
 
@@ -207,7 +207,7 @@ function statusCodeFor(status) {
  * Called from module init.
  */
 function registerCheck(fn) {
-    if (typeof fn === 'function') BOOT_STATE.readyChecks.push(fn);
+    if (typeof fn === 'function') {BOOT_STATE.readyChecks.push(fn);}
 }
 
 function markBootComplete() {
@@ -226,8 +226,8 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
         const checks = [];
         checks.push(checkMemory());
         checks.push(checkDisk(dataDir));
-        if (pool)  checks.push(await checkDatabase(pool));
-        if (redis) checks.push(await checkRedis(redis));
+        if (pool)  {checks.push(await checkDatabase(pool));}
+        if (redis) {checks.push(await checkRedis(redis));}
 
         // Extra user-registered checks (with timeout per-check)
         for (const fn of BOOT_STATE.readyChecks) {
@@ -236,7 +236,7 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
                     Promise.resolve(fn()),
                     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000)),
                 ]);
-                if (result) checks.push(result);
+                if (result) {checks.push(result);}
             } catch (e) {
                 checks.push({
                     component: fn.name || 'custom_check',
@@ -299,13 +299,14 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
 
     // ──────────────────────────────────────────────────
     // /ready — pass / fail for serving traffic
-    // Database OR outbox failure is critical (503). Memory/disk stay
-    // warnings (the process is still usable). TASK 8: publisher stall
-    // must remove the node from rotation, not just warn.
+    // Database, outbox publisher, or websocket listener failure is
+    // critical (503). Memory/disk stay warnings (still usable).
+    // TASK 8: a stalled publisher or deaf socket must remove the
+    // node from rotation, not just warn.
     // ──────────────────────────────────────────────────
     router.get('/ready', async (req, res) => {
         const checks = await runAllChecks();
-        const criticalFail = checks.some(c => (c.component === 'database' || c.component === 'outbox') && c.status === 'fail');
+        const criticalFail = checks.some(c => (c.component === 'database' || c.component === 'outbox' || c.component === 'websocket') && c.status === 'fail');
         const status = criticalFail ? 'fail' : rollupStatus(checks) === 'fail' ? 'warn' : 'ok';
         const code = statusCodeFor(status);
         res.status(code).json({

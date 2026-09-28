@@ -85,6 +85,7 @@ const entitySchemas = {
             'photo', 'digitalFingerprint', 'cardId',
             'deviceUserId',  // رقم الموظف على جهاز البصمة (migration 038)
             'shift_start', 'shift_karim',  // الوردية (migration 040)
+            'day_off',  // الراحة الأسبوعية 0-6 (migration 070)
             'auto_checkout',  // انصراف تلقائي — مدير فقط (migration 044)
             'auto_lock'  // قفل اليوم بعد الإغلاق التلقائي — مدير فقط (migration 046)
         ],
@@ -109,6 +110,7 @@ const entitySchemas = {
             deviceUserId: TYPES.STRING,
             shift_start: TYPES.STRING,
             shift_karim: TYPES.NUMBER,
+            day_off: TYPES.NUMBER,
             auto_checkout: TYPES.BOOLEAN,
             auto_lock: TYPES.BOOLEAN,
         },
@@ -713,12 +715,13 @@ function validateType(fieldName, value, expectedType, schema) {
             }
             break;
 
-        case TYPES.UUID:
+        case TYPES.UUID: {
             const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (!uuidPattern.test(value)) {
                 return { valid: false, error: `الحقل "${fieldName}" يجب أن يكون معرفًا فريدًا صحيحًا (UUID)` };
             }
             break;
+        }
 
         case TYPES.STRING:
         case TYPES.TEXT:

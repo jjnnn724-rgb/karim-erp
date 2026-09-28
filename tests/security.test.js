@@ -204,14 +204,14 @@ describe('filterBody() - Payload Filtering', () => {
         expect(filtered.role).toBe('admin');
         
         // Protected fields should be reported as errors (not writable)
-        expect(errors.some(e => e.includes('Protected') && e.includes('not writable'))).toBe(true);
+        expect(errors.some(e => e.includes('محمي'))).toBe(true);
     });
 
     it('should enforce enum values', () => {
         // users.role is an ENUM with allowed values
         const payload = { username: 'newuser', name: 'New', role: 'invalid_role' };
         const { errors } = filterBody('users', payload);
-        expect(errors.some(e => e.includes('Invalid value') && e.includes('role'))).toBe(true);
+        expect(errors.some(e => e.includes('قيمة غير صالحة للحقل'))).toBe(true);
     });
 
     it('should enforce max length constraints', () => {
@@ -219,7 +219,7 @@ describe('filterBody() - Payload Filtering', () => {
         const payload = { username: longString };
         const { errors } = filterBody('users', payload);
         
-        expect(errors.some(e => e.includes('exceeds maximum length') && e.includes('username'))).toBe(true);
+        expect(errors.some(e => e.includes('أطول من المسموح'))).toBe(true);
     });
 
     it('should handle null/undefined body gracefully', () => {
@@ -234,7 +234,7 @@ describe('filterBody() - Payload Filtering', () => {
 
     it('should reject unknown entities', () => {
         const { errors } = filterBody('nonexistent_table', { foo: 'bar' });
-        expect(errors.some(e => e.includes('Unknown entity'))).toBe(true);
+        expect(errors.some(e => e.includes('نوع البيانات غير معروف'))).toBe(true);
     });
 });
 

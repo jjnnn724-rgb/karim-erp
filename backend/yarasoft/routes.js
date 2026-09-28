@@ -506,12 +506,13 @@ async function previewItemImport() {
     const mapped = await pool.query(`SELECT external_code, external_barcode FROM yarasoft_product_mapping WHERE active = true`);
     const mapCodes = new Set(mapped.rows.map(r => r.external_code).filter(Boolean));
     const mapBarcodes = new Set(mapped.rows.map(r => r.external_barcode).filter(Boolean));
-    let fresh = 0, skipped = 0;
+    let fresh = 0, skipped = 0, groups = 0;
     for (const it of pulled.items) {
+        if ((it.lvl || 0) < 3 || (it.itemType !== '' && it.itemType !== '0')) {groups++;continue;} // رؤوس المجموعات وأصناف البيع ليست خامات مخزنية
         if ((it.code && mapCodes.has(it.code)) || (it.barcode && (mapBarcodes.has(it.barcode) || byBarcode.has(it.barcode))) || (it.name && byName.has(it.name))) {skipped++;}
         else {fresh++;}
     }
-    return { ok: true, total: pulled.items.length, fresh, skipped };
+    return { ok: true, total: pulled.items.length, fresh, skipped, groups };
 }
 
 async function importItems() {
@@ -528,8 +529,9 @@ async function importItems() {
             n = Math.round(n * 100) / 100;
             return Math.max(0, Math.min(999999999999.99, n));
         };
-        let i = 0;
+        let i = 0, groups = 0;
         for (const it of pulled.items) {
+            if ((it.lvl || 0) < 3 || (it.itemType !== '' && it.itemType !== '0')) {groups++;continue;} // رؤوس المجموعات وأصناف البيع ليست خامات
             i++;
             const code = it.code || null, barcode = it.barcode || null;
             // idempotency: ربط موجود؟ باركود/اسم موجود؟
@@ -546,10 +548,11 @@ async function importItems() {
                 skipped++;
             } else {
                 const nid = idBase + i;
+                const minQty = Math.max(0, Math.min(999999, Number(it.minBal) || 0)); // الحد الأدنى من Oracle
                 await client.query(
                     `INSERT INTO inventory (id, name, category, unit, qty, "avgCost", "minQty", barcode, external_code)
-                     VALUES ($1, $2, 'يارسوفت', $3, 0, $4, 0, $5, $6)`,
-                    [nid, (it.name || code || 'صنف').slice(0, 255), (it.unit || 'حبة').slice(0, 50), safeMoney(it.cost), barcode, code ? String(code).slice(0, 64) : null]);
+                     VALUES ($1, $2, 'يارسوفت', $3, 0, $4, $5, $6, $7)`,
+                    [nid, (it.name || code || 'صنف').slice(0, 255), (it.unit || 'حبة').slice(0, 50), safeMoney(it.cost), minQty, barcode, code ? String(code).slice(0, 64) : null]);
                 internalId = nid;
                 imported++;
             }
@@ -562,7 +565,7 @@ async function importItems() {
             }
         }
         await client.query('COMMIT');
-        return { ok: true, total: pulled.items.length, imported, skipped };
+        return { ok: true, total: pulled.items.length, imported, skipped, groups };
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
         return { ok: false, error: String(e.message).slice(0, 300) };
@@ -878,7 +881,176 @@ router.get('/oracle/catch-up/status', jwtAuth, requireRole(...READ_ROLES), async
     try {
         const { jobStatus } = require('./sync-doctor');
         res.json({ ok: true, job: jobStatus() });
-    } catch (error) { res.status(500).json({ ok: false, error: 'CATCHUP_STATUS_FAILED' }); }
+    } catch (error) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
 });
 
-module.exports = { router, setEngine: (e) => { engineRef = e; } };
+router.get('/oracle/catch-up/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const { jobStatus } = require('./sync-doctor');
+        res.json({ ok: true, job: jobStatus() });
+    } catch (error) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
+});
+
+// ═══ مرآة الكاشيرية الحية (1/4/5/6/9): أوامر يارا سوفت داخل نظامنا ═══
+// GET  /mirror/cashiers?date=YYYY-MM-DD   ملخص كل كاشير (فواتير/إيراد/متوسط/آخر فاتورة/المتبقي)
+// GET  /mirror/orders?cashier=&date=&limit=&offset=  قائمة الأوردرات (الأحدث أولًا)
+// GET  /mirror/orders/:doc                 تفاصيل أوردر بسطوره
+// GET  /mirror/close?cashier=&date=        تقرير التقفيل (Z): إجماليات + خصم + ضريبة + مدفوع + متبقي + ساعات + أعلى أصناف
+// POST /mirror/refresh                     تحديث يدوي فوري
+const MIRROR_CASHIERS = ['1', '4', '5', '6', '9'];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function mirrorDay(req) {
+    const d = String(req.query.date || '').slice(0, 10);
+    if (DATE_RE.test(d)) {return d;}
+    return new Date().toISOString().slice(0, 10);
+}
+
+router.get('/mirror/cashiers', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const day = mirrorDay(req);
+        const rows = (await pool.query(
+            `SELECT cashier_no,
+                    COUNT(*)::int AS invoices,
+                    COALESCE(SUM(total),0)::float AS revenue,
+                    COALESCE(SUM(net),0)::float AS net,
+                    COALESCE(SUM(discount),0)::float AS discount,
+                    COALESCE(SUM(vat),0)::float AS vat,
+                    COALESCE(SUM(payed),0)::float AS payed,
+                    COALESCE(SUM(pay_cash),0)::float AS pay_cash,
+                    COALESCE(SUM(pay_network),0)::float AS pay_network,
+                    COALESCE(SUM(pay_credit),0)::float AS pay_credit,
+                    COALESCE(SUM(pay_mobile),0)::float AS pay_mobile,
+                    MAX(doc_time) AS last_time,
+                    MAX(synced_at) AS synced_at
+             FROM ys_mirror_orders
+             WHERE doc_date = $1::date AND cashier_no = ANY($2)
+             GROUP BY cashier_no ORDER BY cashier_no`,
+            [day, MIRROR_CASHIERS])).rows;
+        const byCashier = new Map(rows.map((r) => [r.cashier_no, r]));
+        res.json({
+            ok: true, date: day,
+            cashiers: MIRROR_CASHIERS.map((c) => {
+                const r = byCashier.get(c) || {};
+                const n = Number(r.invoices || 0);
+                return {
+                    cashier_no: c, invoices: n,
+                    revenue: Number(r.revenue || 0), net: Number(r.net || 0),
+                    discount: Number(r.discount || 0), vat: Number(r.vat || 0),
+                    payed: Number(r.payed || 0),
+                    pay_cash: Number(r.pay_cash || 0), pay_network: Number(r.pay_network || 0),
+                    pay_credit: Number(r.pay_credit || 0), pay_mobile: Number(r.pay_mobile || 0),
+                    open: Math.round((Number(r.total || r.revenue || 0) - Number(r.payed || 0)) * 100) / 100,
+                    avg: n ? Math.round((Number(r.revenue || 0) / n) * 100) / 100 : 0,
+                    last_time: r.last_time, synced_at: r.synced_at,
+                };
+            }),
+        });
+    } catch (error) {
+        logger.error('[mirror/cashiers]', error);
+        res.status(500).json({ error: 'MIRROR_CASHIERS_FAILED', message: 'تعذر جلب ملخص الكاشيرية' });
+    }
+});
+
+router.get('/mirror/orders', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const day = mirrorDay(req);
+        const cashier = String(req.query.cashier || '').trim();
+        if (cashier && !MIRROR_CASHIERS.includes(cashier)) {
+            return res.status(422).json({ error: 'INVALID_CASHIER', message: 'كاشير غير مشمول بالمرآة (1/4/5/6/9)' });
+        }
+        const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+        const offset = Math.max(0, Number(req.query.offset) || 0);
+        const clauses = [`doc_date = $1::date`];
+        const params = [day];
+        if (cashier) { params.push(cashier); clauses.push(`cashier_no = $${params.length}`); }
+        else { params.push(MIRROR_CASHIERS); clauses.push(`cashier_no = ANY($${params.length})`); }
+        const where = `WHERE ${clauses.join(' AND ')}`;
+        const total = Number((await pool.query(`SELECT COUNT(*)::int AS c FROM ys_mirror_orders ${where}`, params)).rows[0].c);
+        const rows = (await pool.query(
+            `SELECT doc_no, cashier_no, doc_date, doc_time, shift_no, net, total, discount, vat, payed, saler_id,
+                    pay_cash, pay_network, pay_credit, pay_mobile, table_name, zone_name, printed,
+                    COALESCE(jsonb_array_length(lines),0)::int AS lines_count, synced_at
+             FROM ys_mirror_orders ${where}
+             ORDER BY doc_time DESC NULLS LAST, doc_no DESC
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, limit, offset])).rows;
+        res.json({ ok: true, date: day, cashier: cashier || null, total, limit, offset, orders: rows });
+    } catch (error) {
+        logger.error('[mirror/orders]', error);
+        res.status(500).json({ error: 'MIRROR_ORDERS_FAILED', message: 'تعذر جلب الأوردرات' });
+    }
+});
+
+router.get('/mirror/orders/:doc', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const row = (await pool.query(`SELECT * FROM ys_mirror_orders WHERE doc_no = $1 LIMIT 1`, [String(req.params.doc)])).rows[0];
+        if (!row) {return res.status(404).json({ error: 'ORDER_NOT_FOUND', message: 'الأوردر غير موجود في المرآة' });}
+        res.json({ ok: true, order: row });
+    } catch (error) {
+        logger.error('[mirror/order-detail]', error);
+        res.status(500).json({ error: 'MIRROR_ORDER_FAILED', message: 'تعذر جلب تفاصيل الأوردر' });
+    }
+});
+
+router.get('/mirror/close', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const day = mirrorDay(req);
+        const cashier = String(req.query.cashier || '').trim();
+        if (!cashier || !MIRROR_CASHIERS.includes(cashier)) {
+            return res.status(422).json({ error: 'CASHIER_REQUIRED', message: 'حدد الكاشير (1/4/5/6/9) لتقرير التقفيل' });
+        }
+        const rows = (await pool.query(`SELECT * FROM ys_mirror_orders WHERE doc_date = $1::date AND cashier_no = $2 ORDER BY doc_time`, [day, cashier])).rows;
+        const sum = (f) => Math.round(rows.reduce((s, r) => s + Number(r[f] || 0), 0) * 100) / 100;
+        const total = sum('total');
+        const payed = sum('payed');
+        const paySplit = {
+            cash: sum('pay_cash'), network: sum('pay_network'),
+            credit: sum('pay_credit'), mobile: sum('pay_mobile'),
+        };
+        const byHour = {};
+        for (const r of rows) {
+            const h = String(r.doc_time || '').slice(0, 2).padStart(2, '0');
+            if (!/^\d{2}$/.test(h)) {continue;}
+            byHour[h] = byHour[h] || { invoices: 0, revenue: 0 };
+            byHour[h].invoices++;
+            byHour[h].revenue = Math.round((byHour[h].revenue + Number(r.total || 0)) * 100) / 100;
+        }
+        const items = {};
+        for (const r of rows) {
+            for (const l of (Array.isArray(r.lines) ? r.lines : [])) {
+                const k = `${l.code || ''}¦${l.name || ''}`;
+                items[k] = items[k] || { code: l.code || '', name: l.name || '', qty: 0, total: 0 };
+                items[k].qty = Math.round((items[k].qty + Number(l.qty || 0)) * 1000) / 1000;
+                items[k].total = Math.round((items[k].total + Number(l.total || 0)) * 100) / 100;
+            }
+        }
+        const topItems = Object.values(items).sort((a, b) => b.total - a.total).slice(0, 15);
+        res.json({
+            ok: true, date: day, cashier_no: cashier,
+            invoices: rows.length, gross: total,
+            discount: sum('discount'), vat: sum('vat'), net: sum('net'),
+            payed, pay_split: paySplit, open: Math.round((total - payed) * 100) / 100,
+            avg: rows.length ? Math.round((total / rows.length) * 100) / 100 : 0,
+            printed: rows.filter((r) => r.printed).length,
+            first_time: rows.length ? rows[0].doc_time : null,
+            last_time: rows.length ? rows[rows.length - 1].doc_time : null,
+            by_hour: byHour, top_items: topItems,
+        });
+    } catch (error) {
+        logger.error('[mirror/close]', error);
+        res.status(500).json({ error: 'MIRROR_CLOSE_FAILED', message: 'تعذر تقرير التقفيل' });
+    }
+});
+
+router.post('/mirror/refresh', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+    try {
+        const { refreshMirrorOrders } = require('./mirror');
+        const out = await refreshMirrorOrders({ days: 2, io: req.io || null });
+        res.json(out);
+    } catch (error) {
+        logger.error('[mirror/refresh]', error);
+        res.status(500).json({ error: 'MIRROR_REFRESH_FAILED', message: 'تعذر التحديث اليدوي' });
+    }
+});
+
+module.exports = { router, setEngine: (e) => { engineRef = e; }, previewItemImport, importItems };

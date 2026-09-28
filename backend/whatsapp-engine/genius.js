@@ -59,14 +59,14 @@ function fmtNum(n) {
 /* ─── البحث عن موظف (اسم أو كود) ─── */
 async function findEmployees(query) {
   const q = norm(query);
-  if (!q) return [];
+  if (!q) {return [];}
   const emps = (await withTimeout(
     pool.query(`SELECT id, name, "employeeId", shift_start, shift_karim, department, position, status FROM employees WHERE status = 'active'`),
     DB_TIMEOUT, 'GENIUS'
   )).rows;
   // تطابق مباشر بالكود أولًا
   const codeHit = emps.filter(e => norm(e.employeeId) === q.replace(/\s+/g, ''));
-  if (codeHit.length) return codeHit;
+  if (codeHit.length) {return codeHit;}
   const hits = emps.filter(e => {
     const n = norm(e.name);
     return n && (n.includes(q) || q.includes(n));
@@ -89,14 +89,14 @@ const DEPT_MAP = {
 };
 
 function mapDeptName(name) {
-  if (!name) return undefined;
+  if (!name) {return undefined;}
   const n = norm(name);
   for (const [ar, en] of Object.entries(DEPT_MAP)) {
-    if (n.includes(norm(ar))) return en;
+    if (n.includes(norm(ar))) {return en;}
   }
   // إذا كان الاسم بالإنجليزي بالفعل - استخدمه كما هو
   const upper = name.toUpperCase();
-  if (['KITCHEN', 'SERVICE', 'ADMIN', 'SALES', 'CLEANING', 'STORE', 'SECURITY', 'ACCOUNTING', 'GRILL', 'PASTRY'].includes(upper)) return upper;
+  if (['KITCHEN', 'SERVICE', 'ADMIN', 'SALES', 'CLEANING', 'STORE', 'SECURITY', 'ACCOUNTING', 'GRILL', 'PASTRY'].includes(upper)) {return upper;}
   return undefined;
 }
 
@@ -191,7 +191,7 @@ async function attendanceDetail(empId, days = 5) {
     pool.query(`SELECT id, name, "employeeId", shift_start, shift_karim, department, position FROM employees WHERE id = $1`, [empId]),
     DB_TIMEOUT, 'GENIUS'
   )).rows[0];
-  if (!emp) return 'الموظف غير موجود.';
+  if (!emp) {return 'الموظف غير موجود.';}
   const n = Math.min(14, Math.max(1, Number(days) || 5));
   const rows = (await withTimeout(
     pool.query(
@@ -200,7 +200,7 @@ async function attendanceDetail(empId, days = 5) {
        ORDER BY date DESC LIMIT $2`, [empId, n * 2]),
     DB_TIMEOUT, 'GENIUS'
   )).rows.slice(0, n);
-  if (!rows.length) return `لا توجد بصمات مسجلة لـ ${emp.name} (${emp.employeeId}).`;
+  if (!rows.length) {return `لا توجد بصمات مسجلة لـ ${emp.name} (${emp.employeeId}).`;}
   const lines = [];
   lines.push(`👤 ${emp.name} (${emp.employeeId})`);
   lines.push(`الوردية: ${emp.shift_start || '—'}${emp.shift_karim ? ` (${emp.shift_karim} س)` : ''}`);
@@ -210,17 +210,17 @@ async function attendanceDetail(empId, days = 5) {
   for (const r of [...rows].reverse()) {
     const d = calculateDelayParts(r, emp);
     totMin += d.lateMinutes || 0;
-    if ((d.lateMinutes || 0) > 0) lateDays++;
+    if ((d.lateMinutes || 0) > 0) {lateDays++;}
     const ci = r.checkIn || '—';
     const co = r.checkOut || '—';
     const h = fmtHours(r.workMinutes);
     let st = 'في الوقت';
-    if (!r.checkIn && r.checkOut) st = 'بلا حضور';
-    else if (r.checkIn && !r.checkOut) st = 'بلا انصراف';
-    else if (d.arrivalLateMinutes > 0 && d.earlyLeaveMinutes > 0) st = `تأخير ${d.arrivalLateMinutes} د + تبكير ${d.earlyLeaveMinutes} د`;
-    else if (d.arrivalLateMinutes > 0) st = `تأخير ${d.arrivalLateMinutes} د`;
-    else if (d.earlyLeaveMinutes > 0) st = `تبكير ${d.earlyLeaveMinutes} د`;
-    if (r.on_leave) st += ' (إجازة)';
+    if (!r.checkIn && r.checkOut) {st = 'بلا حضور';}
+    else if (r.checkIn && !r.checkOut) {st = 'بلا انصراف';}
+    else if (d.arrivalLateMinutes > 0 && d.earlyLeaveMinutes > 0) {st = `تأخير ${d.arrivalLateMinutes} د + تبكير ${d.earlyLeaveMinutes} د`;}
+    else if (d.arrivalLateMinutes > 0) {st = `تأخير ${d.arrivalLateMinutes} د`;}
+    else if (d.earlyLeaveMinutes > 0) {st = `تبكير ${d.earlyLeaveMinutes} د`;}
+    if (r.on_leave) {st += ' (إجازة)';}
     lines.push(`${r.date} ${arabicDayName(r.date)}: ${ci} ← ${co} (${h}) — ${st}`);
   }
   lines.push(`الخلاصة: ${lateDays} يوم فيها تأخير من ${rows.length} • إجمالي ${fmtNum(totMin)} دقيقة`);
@@ -236,10 +236,10 @@ async function inventoryAnswer(query) {
                 FROM inventory ORDER BY id LIMIT 3000`), DB_TIMEOUT, 'GENIUS')).rows;
   if (q) {
     const hits = rows.filter(r => { const n = norm(r.name); return n && (n.includes(q) || q.includes(n)); }).slice(0, 6);
-    if (!hits.length) return `لا يوجد صنف باسم «${esc(query).trim()}».`;
+    if (!hits.length) {return `لا يوجد صنف باسم «${esc(query).trim()}».`;}
     if (hits.length > 1) {
       const lines = [`أصناف تطابق (${hits.length}) — حدد:`];
-      for (const r of hits.slice(0, 6)) lines.push(`- ${r.name}: ${fmtNum(r.qty)} ${r.unit || ''}`);
+      for (const r of hits.slice(0, 6)) {lines.push(`- ${r.name}: ${fmtNum(r.qty)} ${r.unit || ''}`);}
       return lines.join('\n').slice(0, MAX_MSG);
     }
     const r = hits[0];
@@ -256,13 +256,13 @@ async function inventoryAnswer(query) {
   const out = rows.filter(r => r.qty <= 0);
   const low = rows.filter(r => r.qty > 0 && r.minq > 0 && r.qty <= r.minq)
     .sort((a, b) => (a.qty / a.minq) - (b.qty / b.minq));
-  if (!out.length && !low.length) return 'لا توجد نواقص — المخزون كله فوق الحد ✓';
+  if (!out.length && !low.length) {return 'لا توجد نواقص — المخزون كله فوق الحد ✓';}
   const lines = [`🚨 النواقص الحرجة: نافذ ${out.length} • منخفض ${low.length}`];
   for (const r of out.slice(0, 8)) {
     const refill = r.minq > 0 ? ` (العجز ${fmtNum(r.minq)}${r.cost > 0 ? ` ≈ ${fmtNum(Math.round(r.minq * r.cost))} SAR` : ''})` : '';
     lines.push(`⛔ ${r.name}${refill}`);
   }
-  for (const r of low.slice(0, 5)) lines.push(`⚠ ${r.name}: ${fmtNum(r.qty)}/${fmtNum(r.minq)} ${r.unit || ''}`);
+  for (const r of low.slice(0, 5)) {lines.push(`⚠ ${r.name}: ${fmtNum(r.qty)}/${fmtNum(r.minq)} ${r.unit || ''}`);}
   return lines.join('\n').slice(0, MAX_MSG);
 }
 
@@ -338,19 +338,19 @@ async function buildDailyBriefing(dayStr) {
 /* ─── الموجّه العبقري: نص → رد أو null ─── */
 async function handleText(text, rec) {
   let t = norm(text);
-  if (!t || t.length < 2) return null;
+  if (!t || t.length < 2) {return null;}
   // إسقاط بادئات الاستفهام/الطلب الشائعة (وش، كم، هات...) حتى 3 مرات
   for (let i = 0; i < 4; i++) {
     const nt = t.replace(/^(وش|وشو|ايش|ايش|وشهي|ما|ماذا|ماهي|كم|وين|فين|عطني|اعطني|هات|ابغي|ابي|ابغى|اريد|ممكن|لو سمحت|من فضلك|يا|اهلا|عليكم|السلام عليكم|سلام)\s+/, '').trim();
-    if (nt === t) break;
+    if (nt === t) {break;}
     t = nt;
   }
-  if (!t || t.length < 2) return null;
+  if (!t || t.length < 2) {return null;}
   const jid = rec && (rec.remoteJid || rec.jid);
   const senderPn = rec && (rec.senderPn || rec.sender || '');
-  let manager = true;
+  let manager;
   try { manager = await isManagerChat(jid, senderPn); } catch (_) { manager = false; }
-  if (!manager) return null; // البيانات الحساسة للإدارة فقط — يرد المسار العادي بالاعتذار
+  if (!manager) {return null;} // البيانات الحساسة للإدارة فقط — يرد المسار العادي بالاعتذار
 
   const has = (...words) => words.some(w => t.includes(w));
 
@@ -374,7 +374,7 @@ async function handleText(text, rec) {
       const day = dm ? dm[1] : undefined;
       const mn = month ? month[1] : (has('الشهر', 'هذا الشهر') ? riyadhToday().slice(0, 7) : undefined);
       const rows = await lateEmployees({ date: day, month: mn, limit: 20 });
-      if (!rows.length) return { text: day ? `لا متأخرين في ${day}` : mn ? `لا متأخرين في ${mn}` : 'لا متأخرين اليوم', source: 'genius' };
+      if (!rows.length) {return { text: day ? `لا متأخرين في ${day}` : mn ? `لا متأخرين في ${mn}` : 'لا متأخرين اليوم', source: 'genius' };}
       const lines = [`⏰ متأخرين ${day ? day : mn ? `الشهر ${mn}` : 'اليوم'} (${rows.length}):`];
       for (const r of rows) {
         const lateM = r.checkIn ? calculateDelayParts({ checkIn: r.checkIn, checkOut: r.checkOut, late: r.late, workMinutes: r.workMinutes }, { shift_start: r.shift_start }) : { arrivalLateMinutes: 0 };
@@ -387,9 +387,9 @@ async function handleText(text, rec) {
       const dm = t.match(/(\d{4}-\d{1,2}-\d{1,2})/);
       const day = dm ? dm[1] : riyadhToday();
       const rows = await absentToday({ date: day, limit: 30 });
-      if (!rows.length) return { text: `✅ كل الموظفين حاضرين ${day}`, source: 'genius' };
+      if (!rows.length) {return { text: `✅ كل الموظفين حاضرين ${day}`, source: 'genius' };}
       const lines = [`🚫 غائبين ${day} (${rows.length}):`];
-      for (const r of rows) lines.push(`- ${r.name} (${r.employeeId}) — ${r.department || ''} ${r.position || ''}`.trim());
+      for (const r of rows) {lines.push(`- ${r.name} (${r.employeeId}) — ${r.department || ''} ${r.position || ''}`.trim());}
       return { text: lines.join('\n').slice(0, MAX_MSG), source: 'genius' };
     }
     // فلترة موظفين: "موظفين قسم المطبخ" / "عمال وردية 04:00" / "شيفات قسم المشاوي"
@@ -402,10 +402,10 @@ async function handleText(text, rec) {
     const dep = mapDeptName(depRaw) || depRaw;
     if (dep || pos || shift) {
       const rows = await queryEmployees({ department: dep, position: pos, shiftStart: shift, limit: 30 });
-      if (!rows.length) return { text: 'لا يوجد موظفون يطابقون الفلترة.', source: 'genius' };
+      if (!rows.length) {return { text: 'لا يوجد موظفون يطابقون الفلترة.', source: 'genius' };}
       const title = [dep ? `قسم ${dep}` : '', pos ? `وظيفة ${pos}` : '', shift ? `وردي ${shift}` : ''].filter(Boolean).join(' • ') || 'الكل';
       const lines = [`👥 موظفون — ${title} (${rows.length}):`];
-      for (const r of rows) lines.push(`- ${r.name} (${r.employeeId}) — ${r.shift_start || ''}${r.shift_karim ? ` (${r.shift_karim} س)` : ''} — ${r.department || ''} ${r.position || ''}`.trim());
+      for (const r of rows) {lines.push(`- ${r.name} (${r.employeeId}) — ${r.shift_start || ''}${r.shift_karim ? ` (${r.shift_karim} س)` : ''} — ${r.department || ''} ${r.position || ''}`.trim());}
       return { text: lines.join('\n').slice(0, MAX_MSG), source: 'genius' };
     }
     // ملخص قسم / وردية اليوم
@@ -416,7 +416,7 @@ async function handleText(text, rec) {
       const dep = mapDeptName(depRaw) || depRaw;
       const shift = shiftMatch ? shiftMatch[1] : undefined;
       const rows = await departmentSummary({ department: dep, date: day });
-      if (!rows.length) return { text: `لا بيانات لليوم ${day}`, source: 'genius' };
+      if (!rows.length) {return { text: `لا بيانات لليوم ${day}`, source: 'genius' };}
       const lines = [`📊 ملخص الحضور ${day} ${dep ? `— قسم ${dep}` : ''}:`];
       for (const r of rows) {
         lines.push(`${r.department}: حاضر ${r.present} • غايب ${r.absent} • نسي خروج ${r.miss_out} • متأخر ${r.late}`);
@@ -438,7 +438,7 @@ async function handleText(text, rec) {
     let q = t.replace(/^(المخزون|المخزن|مخزون|مخزن|النواقص|نواقص|الحرجه|حرجه)\s+/, '').trim();
     // إسقاط كلمات الحشو (lookahead حتى لا يأكل الفاصل المشترك بين كلمتين متتاليتين)
     q = q.replace(/(^|\s)(المخزون|المخزن|مخزون|مخزن|النواقص|نواقص|الحرجه|حرجه|كل|عرض|هات|ايه|ايش|ما|شو|وش|عندنا|عندكم|لدينا|عندي|في|من|اللي|التي|موجوده|موجود|موجودين|لي|لنا|الاصناف|الموجوده)(?=\s|$)/g, '').trim().replace(/\s+/g, ' ');
-    if (!q) q = '';
+    if (!q) {q = '';}
     const ans = await inventoryAnswer(q);
     try { await store.logEvent('genius_stock', jid || '', q || 'critical'); } catch (_) {}
     return { text: ans, source: 'genius' };
@@ -455,10 +455,10 @@ async function handleText(text, rec) {
       .trim().replace(/\s+/g, ' ');
     const dm = t.match(/اخر\s*(\d{1,2})\s*(يوم|ايام)/);
     const days = dm ? Math.min(14, Math.max(1, Number(dm[1]))) : 5;
-    if (dm) q = q.replace(dm[0], ' ').trim().replace(/\s+/g, ' ');
-    if (!q) return { text: 'اكتب: حضور <اسم الموظف> — مثال: حضور أحمد', source: 'genius' };
+    if (dm) {q = q.replace(dm[0], ' ').trim().replace(/\s+/g, ' ');}
+    if (!q) {return { text: 'اكتب: حضور <اسم الموظف> — مثال: حضور أحمد', source: 'genius' };}
     const hits = await findEmployees(q);
-    if (!hits.length) return { text: `لا يوجد موظف نشط باسم «${esc(q)}».`, source: 'genius' };
+    if (!hits.length) {return { text: `لا يوجد موظف نشط باسم «${esc(q)}».`, source: 'genius' };}
     if (hits.length > 1) {
       return { text: 'أكثر من موظف يطابق — حدد بالكود:\n' + hits.map(e => `- ${e.name} (${e.employeeId})`).join('\n'), source: 'genius' };
     }
@@ -478,14 +478,14 @@ let _briefRunning = false;
 function briefTime() {
   const s = String(process.env.WHATSAPP_BRIEF_TIME || '08:00').trim();
   const m = s.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return { h: 8, min: 0 };
+  if (!m) {return { h: 8, min: 0 };}
   return { h: Math.min(23, Math.max(0, Number(m[1]))), min: Math.min(59, Math.max(0, Number(m[2]))) };
 }
 
 function monthlyTime() {
   const s = String(process.env.WHATSAPP_MONTHLY_BRIEF_TIME || '06:00').trim();
   const m = s.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return { h: 6, min: 0 };
+  if (!m) {return { h: 6, min: 0 };}
   return { h: Math.min(23, Math.max(0, Number(m[1]))), min: Math.min(59, Math.max(0, Number(m[2]))) };
 }
 
@@ -493,7 +493,7 @@ function riyadhHM() {
   const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false })
     .formatToParts(new Date());
   const o = {};
-  for (const x of p) o[x.type] = x.value;
+  for (const x of p) {o[x.type] = x.value;}
   return { h: Number(o.hour), min: Number(o.minute) };
 }
 
@@ -512,7 +512,7 @@ async function sendDailyBriefing(engine) {
     const dbJids = await store.managerJids();
     for (const n of dbJids || []) {
       const j = String(n).includes('@') ? String(n) : `${String(n).replace(/\D/g, '')}@s.whatsapp.net`;
-      if (!targets.includes(j)) targets.push(j);
+      if (!targets.includes(j)) {targets.push(j);}
     }
   } catch (_) {}
   if (!targets.length) {
@@ -523,7 +523,7 @@ async function sendDailyBriefing(engine) {
   try {
     const seen = await pool.query(
       `SELECT 1 FROM wa_events WHERE kind = 'genius_briefing_sent' AND ref = $1 LIMIT 1`, [today]);
-    if (seen.rows.length) return { sent: 0, reason: 'already-sent' };
+    if (seen.rows.length) {return { sent: 0, reason: 'already-sent' };}
   } catch (_) {}
   const text = await buildDailyBriefing(today);
   let sent = 0;
@@ -549,15 +549,15 @@ async function sendMonthlyBriefing(engine) {
     const dbJids = await store.managerJids();
     for (const n of dbJids || []) {
       const j = String(n).includes('@') ? String(n) : `${String(n).replace(/\D/g, '')}@s.whatsapp.net`;
-      if (!targets.includes(j)) targets.push(j);
+      if (!targets.includes(j)) {targets.push(j);}
     }
   } catch (_) {}
-  if (!targets.length) return { sent: 0, reason: 'no-managers' };
+  if (!targets.length) {return { sent: 0, reason: 'no-managers' };}
   // منع التكرار الشهري (مرة واحدة يوم 1)
   try {
     const seen = await pool.query(
       `SELECT 1 FROM wa_events WHERE kind = 'genius_monthly_sent' AND ref = $1 LIMIT 1`, [today.slice(0, 7)]);
-    if (seen.rows.length) return { sent: 0, reason: 'already-sent' };
+    if (seen.rows.length) {return { sent: 0, reason: 'already-sent' };}
   } catch (_) {}
   const text = await buildMonthlyBriefing(today);
   let sent = 0;
@@ -627,7 +627,7 @@ async function buildMonthlyBriefing(dayStr) {
 }
 
 function startDailyBriefing(engine) {
-  if (_briefTimer) return;
+  if (_briefTimer) {return;}
   if (String(process.env.WHATSAPP_DAILY_BRIEFING || 'on').trim().toLowerCase() === 'off') {
     logger.info('[GENIUS] daily briefing OFF (WHATSAPP_DAILY_BRIEFING=off)');
     return;
@@ -635,9 +635,9 @@ function startDailyBriefing(engine) {
   const { h, min } = briefTime();
   logger.info(`[GENIUS] daily briefing scheduled at ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} Riyadh`);
   _briefTimer = setInterval(async () => {
-    if (_briefRunning) return;
+    if (_briefRunning) {return;}
     try {
-      if (!engine?.connection?.isConnected?.()) return;
+      if (!engine?.connection?.isConnected?.()) {return;}
       const now = riyadhHM();
       if (now.h === h && now.min >= min && now.min < min + 2) {
         _briefRunning = true;
@@ -646,11 +646,11 @@ function startDailyBriefing(engine) {
       }
     } catch (e) { logger.warn('[GENIUS] briefing tick: ' + String(e.message).slice(0, 120)); }
   }, 60000);
-  if (_briefTimer.unref) _briefTimer.unref();
+  if (_briefTimer.unref) {_briefTimer.unref();}
 }
 
 function startMonthlyBriefing(engine) {
-  if (_monthlyTimer) return;
+  if (_monthlyTimer) {return;}
   if (String(process.env.WHATSAPP_MONTHLY_BRIEFING || 'on').trim().toLowerCase() === 'off') {
     logger.info('[GENIUS] monthly briefing OFF (WHATSAPP_MONTHLY_BRIEFING=off)');
     return;
@@ -658,11 +658,11 @@ function startMonthlyBriefing(engine) {
   const { h, min } = monthlyTime();
   logger.info(`[GENIUS] monthly briefing scheduled on day 1 at ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} Riyadh`);
   _monthlyTimer = setInterval(async () => {
-    if (_briefRunning) return;
+    if (_briefRunning) {return;}
     try {
-      if (!engine?.connection?.isConnected?.()) return;
+      if (!engine?.connection?.isConnected?.()) {return;}
       const day = riyadhDay();
-      if (day !== 1) return;
+      if (day !== 1) {return;}
       const now = riyadhHM();
       if (now.h === h && now.min >= min && now.min < min + 2) {
         _briefRunning = true;
@@ -671,7 +671,7 @@ function startMonthlyBriefing(engine) {
       }
     } catch (e) { logger.warn('[GENIUS] monthly tick: ' + String(e.message).slice(0, 120)); }
   }, 60000);
-  if (_monthlyTimer.unref) _monthlyTimer.unref();
+  if (_monthlyTimer.unref) {_monthlyTimer.unref();}
 }
 
 function stopDailyBriefing() {

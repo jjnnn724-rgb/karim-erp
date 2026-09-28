@@ -243,7 +243,7 @@ async function loginHandler(req, res) {
         });
 } catch (err) {
         logger.error('[auth] login handler error:', err);
-        if (!res.headersSent) res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى', detail: err?.message || String(err) });
+        if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى', detail: err?.message || String(err) });}
     } finally {
         client.release();
     }

@@ -100,6 +100,9 @@ describe('electron/main.js — database is never exposed with trust auth', () =>
 
     it('never passes an empty DB_PASSWORD to the spawned server process', () => {
         expect(mainSrc).not.toMatch(/DB_PASSWORD:\s*''/);
-        expect(mainSrc).toMatch(/DB_PASSWORD:\s*getOrCreateDbPassword\(\)/);
+        // العقد المحدَّث: activeDbPassword() يرجع كلمة نظام المتاحة، وإلا يولّد
+        // ويثبّت كلمة عشوائية عبر getOrCreateDbPassword() — لا فراغ أبدًا.
+        expect(mainSrc).toMatch(/DB_PASSWORD:\s*activeDbPassword\(\)/);
+        expect(mainSrc).toMatch(/function activeDbPassword\(\)[\s\S]*?getOrCreateDbPassword\(\)/);
     });
 });

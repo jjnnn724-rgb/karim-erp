@@ -41,13 +41,13 @@ class MessageScheduler {
     }
 
     start(intervalMs = 30000) {
-        if (this._timer) return;
+        if (this._timer) {return;}
         this._timer = setInterval(
             () => this.tick().catch((e) =>
                 logger.error('[SCHEDULER] tick failed: ' + String(e.message).slice(0, 200))),
             Math.max(5000, Math.min(300000, intervalMs))
         );
-        if (this._timer.unref) this._timer.unref();
+        if (this._timer.unref) {this._timer.unref();}
         logger.info(`[SCHEDULER] Started — interval: ${intervalMs / 1000}s`);
     }
 
@@ -59,8 +59,8 @@ class MessageScheduler {
     }
 
     async tick() {
-        if (this._busy) return;
-        if (!this.engine?.connection?.isConnected()) return;
+        if (this._busy) {return;}
+        if (!this.engine?.connection?.isConnected()) {return;}
         this._busy = true;
         try {
             const due = await this._getDueMessages(20);
@@ -148,7 +148,7 @@ class MessageScheduler {
      * recurrence: 'daily' | 'weekly' | 'monthly' | null
      */
     _calcNextRun(recurrence) {
-        if (!recurrence || recurrence === 'once') return null;
+        if (!recurrence || recurrence === 'once') {return null;}
         const now = new Date();
         let next;
         if (recurrence === 'daily') {
@@ -185,12 +185,12 @@ class MessageScheduler {
      * @param {Object} options - { recurrence, templateName, templateVars, createdBy }
      */
     async schedule(jid, text, scheduledAt, options = {}) {
-        if (!isValidChatJid(jid)) throw new Error('INVALID_JID');
-        if (!text) throw new Error('EMPTY_BODY');
-        if (!scheduledAt) throw new Error('NO_SCHEDULE_TIME');
+        if (!isValidChatJid(jid)) {throw new Error('INVALID_JID');}
+        if (!text) {throw new Error('EMPTY_BODY');}
+        if (!scheduledAt) {throw new Error('NO_SCHEDULE_TIME');}
 
         const isoTime = scheduledAt instanceof Date ? scheduledAt.toISOString() : new Date(scheduledAt).toISOString();
-        if (isNaN(new Date(isoTime).getTime())) throw new Error('INVALID_DATE');
+        if (isNaN(new Date(isoTime).getTime())) {throw new Error('INVALID_DATE');}
 
         const r = await store.pool.query(
             `INSERT INTO wa_scheduled_messages

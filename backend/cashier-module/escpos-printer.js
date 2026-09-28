@@ -192,6 +192,7 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(textLine('ZATCA Phase-2 QR'));
     chunks.push(await buildQrCommand(qrPayload));
     chunks.push(blankLine());
+    chunks.push(textLine('شكراً لزيارتكم'));
     chunks.push(CMD.FEED(3));
     chunks.push(CMD.CUT_PAPER);
     return Buffer.concat(chunks);

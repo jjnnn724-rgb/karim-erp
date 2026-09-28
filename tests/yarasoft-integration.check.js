@@ -52,7 +52,7 @@ async function main() {
     await pool.query(`DELETE FROM invoice_import_log WHERE external_invoice_number LIKE 'YK-%'`);
     await pool.query(`DELETE FROM revenues WHERE external_ref LIKE 'yarasoft_pos:YK-%'`);
     await pool.query(`DELETE FROM inventory_ledger WHERE reference_type = 'yarasoft_invoice' AND reference_id LIKE 'YK-%'`);
-    await pool.query(`DELETE FROM yarasoft_product_mapping WHERE external_code LIKE 'X%' AND external_code NOT LIKE 'X%\_%' AND external_code ~ '^X[0-9]+$'`);
+    await pool.query(`DELETE FROM yarasoft_product_mapping WHERE external_code LIKE 'X%' AND external_code NOT LIKE 'X%\\_%' AND external_code ~ '^X[0-9]+$'`);
     await pool.query(`DELETE FROM inventory WHERE name = 'YK-TEST-شاي'`);
 
     // 1) المخطط — تطبيق مزدوج

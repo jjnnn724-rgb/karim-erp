@@ -137,6 +137,7 @@ function hideLoading() {
 async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (accessToken) {headers.Authorization = `Bearer ${accessToken}`;}
+    if (posAppKeyGet()) {headers['x-api-key'] = posAppKeyGet();}
     if (opts.idempotencyKey) {headers['Idempotency-Key'] = opts.idempotencyKey;}
     if (window._rtSocket && window._rtSocket.connected) {headers['x-socket-id'] = window._rtSocket.id || '';}
     // لاتيني فقط: المتصفح يرفض الترويسات غير Latin-1 (خطأ ISO-8859-1)
@@ -149,6 +150,7 @@ async function api(path, opts = {}) {
     const doFetch = async () => {
         const h = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
         if (accessToken) {h.Authorization = `Bearer ${accessToken}`;}
+        if (posAppKeyGet()) {h['x-api-key'] = posAppKeyGet();}
         if (opts.idempotencyKey) {h['Idempotency-Key'] = opts.idempotencyKey;}
         if (window._rtSocket && window._rtSocket.connected) {h['x-socket-id'] = window._rtSocket.id || '';}
         try {
@@ -181,6 +183,12 @@ async function api(path, opts = {}) {
     return data;
 }
 
+// ─── مفتاح التطبيق (x-api-key): يُسلَّم مع الدخول/التجديد ويُرفق بكل طلب ────
+const POS_APP_KEY = 'karim_pos_appkey_v1';
+let posAppKey = '';
+function posAppKeyGet(){ return posAppKey || ''; }
+function posAppKeySet(k){ posAppKey = String(k || ''); try { if (posAppKey) {localStorage.setItem(POS_APP_KEY, posAppKey);} else {localStorage.removeItem(POS_APP_KEY);} } catch (_) {} }
+try { posAppKey = String(localStorage.getItem(POS_APP_KEY) || ''); } catch (_) {}
 // ─── جلسة مفتوحة دائمة لشاشة الكاشير: حفظ رمز التحديث + تجديد صامت ───
 const POS_RT_KEY = 'karim_pos_rt_v1';
 function posRTget(){ try { return localStorage.getItem(POS_RT_KEY) || ''; } catch (_) { return ''; } }
@@ -201,6 +209,7 @@ function posRefreshSession(){
             const d = await r.json().catch(() => ({}));
             if (!r.ok || !d.access_token) { posRTclear(); return false; }
             accessToken = d.access_token;
+            if (d.app_key) {posAppKeySet(d.app_key);}
             if (d.refresh_token) {posRTset(d.refresh_token);}
             if (d.user) {currentUser = d.user;}
             return true;
@@ -211,7 +220,7 @@ function posRefreshSession(){
 }
 function posLogoutToLogin(){
     accessToken = null; currentUser = null; currentSession = null;
-    posRTclear();
+    posRTclear(); posAppKeySet('');
     const pe = $('#password'); if (pe) {pe.value = '';}
     showScreen('login-screen');
 }
@@ -1774,6 +1783,7 @@ $('#login-form').addEventListener('submit', async (event) => {
             showToast('تم تغيير كلمة المرور بنجاح.', 'success');
         }
         accessToken = result.access_token;
+        if (result.app_key) {posAppKeySet(result.app_key);}
         if (result.refresh_token) {posRTset(result.refresh_token);}
         currentUser = result.user;
         $('#cashier-name').textContent = currentUser.name;
@@ -1851,6 +1861,7 @@ $('#cp-submit').addEventListener('click', async () => {
             body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
         });
         accessToken = result.access_token;
+        if (result.app_key) {posAppKeySet(result.app_key);}
         if (result.refresh_token) {posRTset(result.refresh_token);}
         hideModal('change-password-modal');
         $('#change-password-modal').querySelectorAll('input').forEach((el) => (el.value = ''));

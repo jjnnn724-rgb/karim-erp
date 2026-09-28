@@ -93,10 +93,10 @@ function invalidateCache() {
 /** التحقق من قيمة واحدة ضد قيود العمود */
 function validateColumn(tableName, columnName, value, constraints) {
   const table = constraints[tableName];
-  if (!table) return { ok: true, errors: [] };
+  if (!table) {return { ok: true, errors: [] };}
 
   const col = table.columns[columnName];
-  if (!col) return { ok: true, errors: [] }; // عمود غير معروف - نتجاهل
+  if (!col) {return { ok: true, errors: [] };} // عمود غير معروف - نتجاهل
 
   const errors = [];
 
@@ -150,7 +150,7 @@ function validateColumn(tableName, columnName, value, constraints) {
 /** التحقق من قيود UNIQUE */
 async function validateUnique(tableName, data, constraints, excludeId = null) {
   const table = constraints[tableName];
-  if (!table) return { ok: true, errors: [] };
+  if (!table) {return { ok: true, errors: [] };}
 
   const uniqueConstraints = table.constraints.filter(c => c.type === 'u');
   const errors = [];
@@ -158,12 +158,12 @@ async function validateUnique(tableName, data, constraints, excludeId = null) {
   for (const uc of uniqueConstraints) {
     // استخراج الأعمدة من التعريف
     const match = uc.def.match(/UNIQUE\s*\(([^)]+)\)/i);
-    if (!match) continue;
+    if (!match) {continue;}
     const cols = match[1].split(',').map(c => c.trim().replace(/"/g, ''));
 
     // التحقق من وجود جميع الأعمدة في البيانات
     const hasAllCols = cols.every(c => data[c] !== undefined);
-    if (!hasAllCols) continue;
+    if (!hasAllCols) {continue;}
 
     // بناء استعلام التحقق
     const where = cols.map(c => `"${c}" = $${cols.indexOf(c) + 1}`).join(' AND ');
@@ -193,7 +193,7 @@ async function validateUnique(tableName, data, constraints, excludeId = null) {
 /** التحقق من Foreign Keys */
 async function validateForeignKeys(tableName, data, constraints) {
   const table = constraints[tableName];
-  if (!table) return { ok: true, errors: [] };
+  if (!table) {return { ok: true, errors: [] };}
 
   const fkConstraints = table.constraints.filter(c => c.type === 'f');
   const errors = [];
@@ -201,7 +201,7 @@ async function validateForeignKeys(tableName, data, constraints) {
   for (const fk of fkConstraints) {
     // تحليل FK: FOREIGN KEY ("col") REFERENCES ref_table(ref_col) ON DELETE ...
     const match = fk.def.match(/FOREIGN KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)/i);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const localCols = match[1].split(',').map(c => c.trim().replace(/"/g, ''));
     const refTable = match[2];
@@ -209,7 +209,7 @@ async function validateForeignKeys(tableName, data, constraints) {
 
     // التحقق من وجود القيم المحلية
     const hasAll = localCols.every(c => data[c] !== undefined && data[c] !== null && data[c] !== '');
-    if (!hasAll) continue; // nullable FK - مسموح
+    if (!hasAll) {continue;} // nullable FK - مسموح
 
     // بناء استعلام التحقق
     const where = refCols.map((c, i) => `"${c}" = $${i + 1}`).join(' AND ');
@@ -235,7 +235,7 @@ async function validateForeignKeys(tableName, data, constraints) {
 /** التحقق من CHECK constraints */
 async function validateChecks(tableName, data, constraints) {
   const table = constraints[tableName];
-  if (!table) return { ok: true, errors: [] };
+  if (!table) {return { ok: true, errors: [] };}
 
   const checkConstraints = table.constraints.filter(c => c.type === 'c');
   const errors = [];
@@ -320,7 +320,7 @@ async function validateRow(tableName, data, options = {}) {
   if (checkRequired && table) {
     for (const [colName, col] of Object.entries(table.columns)) {
       // تخطي PK columns (توليد تلقائي)
-      if (pkColumns.has(colName)) continue;
+      if (pkColumns.has(colName)) {continue;}
       
       const hasDefault = col.default && (
         col.default.includes('nextval') || 

@@ -35,12 +35,12 @@ const KARIM_PORTS = ['5432', '5433', '5434', '5435', '5436', '5444'];
 function readEnvFile() {
   const out = {};
   try {
-    if (!fs.existsSync(ENV_FILE)) return out;
+    if (!fs.existsSync(ENV_FILE)) {return out;}
     for (const line of fs.readFileSync(ENV_FILE, 'utf-8').split('\n')) {
       const t = line.trim();
-      if (!t || t.startsWith('#')) continue;
+      if (!t || t.startsWith('#')) {continue;}
       const i = t.indexOf('=');
-      if (i === -1) continue;
+      if (i === -1) {continue;}
       out[t.slice(0, i).trim()] = t.slice(i + 1).trim().replace(/^["']|["']$/g, '');
     }
   } catch (_) {}
@@ -49,14 +49,14 @@ function readEnvFile() {
 
 // الأولوية الصحيحة: بيئة النظام أولاً (Docker/Service/Electron) ثم ملف .env ثم الافتراضي
 function env(key, fallback = '') {
-  if (process.env[key] !== undefined && process.env[key] !== '') return process.env[key];
+  if (process.env[key] !== undefined && process.env[key] !== '') {return process.env[key];}
   const f = readEnvFile();
-  if (f[key] !== undefined && f[key] !== '') return f[key];
+  if (f[key] !== undefined && f[key] !== '') {return f[key];}
   // Pre-v5 backward compat: HORUS_* -> KARIM_* (one release cycle)
   const legacyMap = { KARIM_MIGRATION_MODE: 'HORUS_MIGRATION_MODE', KARIM_BACKUP_DIR: 'HORUS_BACKUP_DIR', KARIM_BACKUP_RETENTION: 'HORUS_BACKUP_RETENTION', KARIM_DATA_DIR: 'HORUS_DATA_DIR' };
   if (legacyMap[key]) {
-    if (process.env[legacyMap[key]]) return process.env[legacyMap[key]];
-    if (f[legacyMap[key]]) return f[legacyMap[key]];
+    if (process.env[legacyMap[key]]) {return process.env[legacyMap[key]];}
+    if (f[legacyMap[key]]) {return f[legacyMap[key]];}
   }
   return fallback;
 }
@@ -66,7 +66,7 @@ function findAllPgBins(tool = 'psql') {
   const found = [];
   const push = (p) => {
     try {
-      if (p && fs.existsSync(p) && !found.includes(p)) found.push(p);
+      if (p && fs.existsSync(p) && !found.includes(p)) {found.push(p);}
     } catch (_) {}
   };
   const exe = IS_WIN ? '.exe' : '';
@@ -74,9 +74,9 @@ function findAllPgBins(tool = 'psql') {
     // 1) مجلدات التثبيت الرسمية — الأحدث أولاً
     for (const root of ['C:\\Program Files\\PostgreSQL', 'C:\\Program Files (x86)\\PostgreSQL', 'C:\\PostgreSQL']) {
       try {
-        if (!fs.existsSync(root)) continue;
+        if (!fs.existsSync(root)) {continue;}
         const vers = fs.readdirSync(root).filter((v) => /^\d+/.test(v)).sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
-        for (const v of vers) push(path.join(root, v, 'bin', tool + exe));
+        for (const v of vers) {push(path.join(root, v, 'bin', tool + exe));}
       } catch (_) {}
     }
     // 2) Registry — أدق مصدر لنسخ EDB
@@ -94,19 +94,19 @@ function findAllPgBins(tool = 'psql') {
       if (w.status === 0) {
         for (const line of String(w.stdout || '').split('\n')) {
           const p = line.trim();
-          if (p && p.toLowerCase().endsWith(tool.toLowerCase() + exe)) push(p);
+          if (p && p.toLowerCase().endsWith(tool.toLowerCase() + exe)) {push(p);}
         }
       }
     } catch (_) {}
   } else {
     try {
       if (fs.existsSync('/usr/lib/postgresql')) {
-        for (const v of fs.readdirSync('/usr/lib/postgresql').sort().reverse()) push(path.join('/usr/lib/postgresql', v, 'bin', tool));
+        for (const v of fs.readdirSync('/usr/lib/postgresql').sort().reverse()) {push(path.join('/usr/lib/postgresql', v, 'bin', tool));}
       }
     } catch (_) {}
     try {
       const w = spawnSync('which', ['-a', tool], { encoding: 'utf-8', timeout: 5000 });
-      if (w.status === 0) for (const l of String(w.stdout || '').split('\n')) push(l.trim());
+      if (w.status === 0) {for (const l of String(w.stdout || '').split('\n')) {push(l.trim());}}
     } catch (_) {}
     try {
       const ls = spawnSync('pg_lsclusters', [], { encoding: 'utf-8', timeout: 5000 });
@@ -127,7 +127,7 @@ function getPgBinary(name = 'psql') {
 
 // ─── خدمات Windows ──────────────────────────────────────
 function findPgServices() {
-  if (!IS_WIN) return [];
+  if (!IS_WIN) {return [];}
   try {
     const r = spawnSync('sc', ['query', 'type=', 'service', 'state=', 'all'], { encoding: 'utf-8', timeout: 10000 });
     const names = [...String(r.stdout || '').matchAll(/SERVICE_NAME:\s*(postgresql[^\r\n]*)/gi)].map((m) => m[1].trim());
@@ -149,8 +149,8 @@ function serviceState(svc) {
 }
 
 function ensureService(svc) {
-  if (!svc) return false;
-  if (serviceState(svc) === 'RUNNING') return true;
+  if (!svc) {return false;}
+  if (serviceState(svc) === 'RUNNING') {return true;}
   try {
     const r = spawnSync('sc', ['start', svc], { encoding: 'utf-8', timeout: 30000 });
     const out = String(r.stdout || '') + String(r.stderr || '');
@@ -163,19 +163,19 @@ function ensureService(svc) {
 // ─── فحص الاتصال ────────────────────────────────────────
 function tryAuth(host, port, user, password, bin) {
   const psql = bin || getPgBinary('psql');
-  if (!psql) return { ok: false, kind: 'no-binary' };
+  if (!psql) {return { ok: false, kind: 'no-binary' };}
   try {
     const r = spawnSync(psql, ['-h', host, '-p', String(port), '-U', user, '-d', 'postgres', '-tAc', 'SELECT 1'], {
       encoding: 'utf-8',
       timeout: 6000,
       env: { ...process.env, PGPASSWORD: password || '' },
     });
-    if (r.status === 0 && String(r.stdout || '').trim() === '1') return { ok: true, kind: null, bin: psql };
+    if (r.status === 0 && String(r.stdout || '').trim() === '1') {return { ok: true, kind: null, bin: psql };}
     const s = String(r.stderr || '');
-    if (/password authentication failed/i.test(s)) return { ok: false, kind: 'wrong-password', bin: psql };
-    if (/role .* does not exist/i.test(s)) return { ok: false, kind: 'wrong-role', bin: psql };
-    if (/connection refused|could not connect|timeout expired/i.test(s)) return { ok: false, kind: 'refused', bin: psql };
-    if (/database .* does not exist/i.test(s)) return { ok: true, kind: null, bin: psql };
+    if (/password authentication failed/i.test(s)) {return { ok: false, kind: 'wrong-password', bin: psql };}
+    if (/role .* does not exist/i.test(s)) {return { ok: false, kind: 'wrong-role', bin: psql };}
+    if (/connection refused|could not connect|timeout expired/i.test(s)) {return { ok: false, kind: 'refused', bin: psql };}
+    if (/database .* does not exist/i.test(s)) {return { ok: true, kind: null, bin: psql };}
     return { ok: false, kind: 'other', bin: psql, detail: s.split('\n')[0] };
   } catch (_) {
     return { ok: false, kind: 'refused', bin: psql };
@@ -191,8 +191,8 @@ function resolveDatabase(opts = {}) {
   const preferred = String(opts.port || env('DB_PORT', '') || env('PG_PORT', '')).trim();
 
   const candidates = [];
-  if (preferred) candidates.push(preferred);
-  for (const p of KARIM_PORTS) if (!candidates.includes(p)) candidates.push(p);
+  if (preferred) {candidates.push(preferred);}
+  for (const p of KARIM_PORTS) {if (!candidates.includes(p)) {candidates.push(p);}}
 
   const bins = findAllPgBins('psql');
   const services = findPgServices();
@@ -226,7 +226,7 @@ function resolveDatabase(opts = {}) {
       }
       lastKind = r.kind;
       // كلمة المرور خاطئة على هذا المنفذ = لا فائدة من تجربة ثنائي آخر لنفس المنفذ
-      if (r.kind === 'wrong-password' || r.kind === 'wrong-role') break;
+      if (r.kind === 'wrong-password' || r.kind === 'wrong-role') {break;}
     }
     // لو الرفض من الشبكة جرّب المنفذ التالي فوراً
   }
@@ -236,7 +236,7 @@ function resolveDatabase(opts = {}) {
 
 function detectMajor(psqlBin) {
   try {
-    if (!psqlBin) return null;
+    if (!psqlBin) {return null;}
     const r = spawnSync(psqlBin, ['--version'], { encoding: 'utf-8', timeout: 5000 });
     const m = String(r.stdout || '').match(/(\d+)\./);
     return m ? parseInt(m[1], 10) : null;
@@ -264,11 +264,11 @@ function diagnoseArabic(result) {
 // كتابة القيم المكتشفة في .env (المنفذ فقط — كلمة المرور لا تُمس أبداً تلقائياً)
 function persistPort(port) {
   try {
-    if (!fs.existsSync(ENV_FILE)) return false;
+    if (!fs.existsSync(ENV_FILE)) {return false;}
     let txt = fs.readFileSync(ENV_FILE, 'utf-8');
-    if (new RegExp(`^DB_PORT=${port}$`, 'm').test(txt)) return true;
-    if (/^DB_PORT=.*$/m.test(txt)) txt = txt.replace(/^DB_PORT=.*$/m, `DB_PORT=${port}`);
-    else txt += `\nDB_PORT=${port}\n`;
+    if (new RegExp(`^DB_PORT=${port}$`, 'm').test(txt)) {return true;}
+    if (/^DB_PORT=.*$/m.test(txt)) {txt = txt.replace(/^DB_PORT=.*$/m, `DB_PORT=${port}`);}
+    else {txt += `\nDB_PORT=${port}\n`;}
     fs.writeFileSync(ENV_FILE, txt, 'utf-8');
     return true;
   } catch (_) {

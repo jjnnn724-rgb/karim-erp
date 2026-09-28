@@ -129,7 +129,7 @@ function makeRules() {
 
 // ─── Dev-only secret fallback (never used in production) ────
 function fallbackDevSecret() {
-    if (process.env.NODE_ENV === 'production') return '';
+    if (process.env.NODE_ENV === 'production') {return '';}
     // Deterministic-ish but unique-per-machine dev secret
     try {
         const hostId = os.hostname() + os.totalmem() + os.cpus().length;
@@ -144,12 +144,12 @@ function fallbackDevSecret() {
 const COERCERS = {
     int: (v) => {
         const n = parseInt(v, 10);
-        if (isNaN(n)) throw new Error('not an integer');
+        if (isNaN(n)) {throw new Error('not an integer');}
         return n;
     },
     port: (v) => {
         const n = parseInt(v, 10);
-        if (isNaN(n) || n < 1 || n > 65535) throw new Error('invalid port');
+        if (isNaN(n) || n < 1 || n > 65535) {throw new Error('invalid port');}
         return n;
     },
     path: (v) => path.resolve(v),
@@ -166,7 +166,7 @@ function validateEnv() {
     const config = {};
 
     for (const [key, rule] of Object.entries(rules)) {
-        let raw = process.env[key];
+        const raw = process.env[key];
         let value = raw;
 
         // ── Apply default if empty ────────────────────
@@ -293,7 +293,7 @@ async function validateDB(pool) {
                 "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_migrations') AS t"
             );
             migrationsTable = !!rows[0]?.t;
-            if (!migrationsTable) warnings.push({ code: 'NO_MIGRATIONS_TABLE', message: 'جدول schema_migrations غير موجود' });
+            if (!migrationsTable) {warnings.push({ code: 'NO_MIGRATIONS_TABLE', message: 'جدول schema_migrations غير موجود' });}
         } catch (_) { /* ignore */ }
     } catch (e) {
         errors.push({ code: 'DB_FAIL', message: `تعذر الاتصال بقاعدة البيانات: ${e.message}` });
@@ -324,7 +324,7 @@ async function runAll({ pool, failFast = true } = {}) {
     // 1) Env
     logger.info('  [1/3] فحص متغيرات البيئة .env');
     results.env = validateEnv();
-    if (!results.env.ok) fatalErrors.push(...results.env.errors);
+    if (!results.env.ok) {fatalErrors.push(...results.env.errors);}
     allWarnings.push(...results.env.warnings);
     logStep('env', results.env);
 
@@ -332,7 +332,7 @@ async function runAll({ pool, failFast = true } = {}) {
     logger.info('  [2/3] فحص المساحة والقرص');
     const dataDir = results.env.config.DATA_DIR || makeRules().DATA_DIR.default;
     results.disk = validateDiskOnce(dataDir);
-    if (!results.disk.ok) fatalErrors.push(...results.disk.errors);
+    if (!results.disk.ok) {fatalErrors.push(...results.disk.errors);}
     allWarnings.push(...results.disk.warnings);
     logStep('disk', results.disk);
 
@@ -340,7 +340,7 @@ async function runAll({ pool, failFast = true } = {}) {
     if (pool) {
         logger.info('  [3/3] فحص الاتصال بقاعدة البيانات');
         results.db = await validateDB(pool);
-        if (!results.db.ok) fatalErrors.push(...results.db.errors);
+        if (!results.db.ok) {fatalErrors.push(...results.db.errors);}
         allWarnings.push(...results.db.warnings);
         logStep('db', results.db);
     } else {
@@ -354,7 +354,7 @@ async function runAll({ pool, failFast = true } = {}) {
         logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         logger.info(`✅ تم الإقلاع بنجاح (${elapsed}ms)  —  التحذيرات: ${allWarnings.length}`);
         if (allWarnings.length) {
-            for (const w of allWarnings) logger.warn('  ⚠️ ', w.message || w.code);
+            for (const w of allWarnings) {logger.warn('  ⚠️ ', w.message || w.code);}
         }
         logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         return { ok: true, warnings: allWarnings, results, config: results.env.config };
@@ -363,9 +363,9 @@ async function runAll({ pool, failFast = true } = {}) {
     // ── Fail ────────────────────────────────────────
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     logger.error('❌ فشل التحقق قبل الإقلاع — الأخطاء:');
-    for (const e of fatalErrors) logger.error('   ❌', `[${e.key || e.code}]`, e.message);
+    for (const e of fatalErrors) {logger.error('   ❌', `[${e.key || e.code}]`, e.message);}
     if (allWarnings.length) {
-        for (const w of allWarnings) logger.warn('   ⚠️', w.message || w.code);
+        for (const w of allWarnings) {logger.warn('   ⚠️', w.message || w.code);}
     }
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 

@@ -39,6 +39,7 @@ case 'recipes': html=renderRecipes(); break;
 case 'reports': html=renderReports(); break;
 case 'settings': html=renderSettings(); break;
 case 'users': html=renderUsers(); break;
+case 'permissions': html=renderPermissionsPage(); break;
 case 'hr-dashboard': html=renderHRDashboard(); break;
 case 'employees': renderEmployeesPage(); setTimeout(()=>{content.style.opacity='1';},30); return;
 case 'leaves': html=renderLeavesPage(); break;

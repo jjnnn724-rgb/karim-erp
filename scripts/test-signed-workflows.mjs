@@ -1,17 +1,26 @@
 #!/usr/bin/env node
+// اختبار محلي ضد سيرفر بشهادة موقّعة ذاتيًا — ثق بالشهادة في هذا الاختبار فقط
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fs from 'node:fs/promises';
 import db from '../backend/shared-pool.js';
 import authLib from '../backend/cashier-module/jwt-middleware.js';
 
 const { pool } = db;
 const { signAccessToken } = authLib;
-const base = process.env.KARIM_TEST_BASE || 'http://127.0.0.1:5000/api';
+// السيرفر يعمل HTTPS بشهادة محلية عند توفر SSL_KEY/SSL_CERT (نفس شرط server.js)
+const fsSync = await import('node:fs');
+const sslOn = Boolean(process.env.SSL_KEY && process.env.SSL_CERT
+    && fsSync.existsSync(process.env.SSL_KEY) && fsSync.existsSync(process.env.SSL_CERT));
+const base = process.env.KARIM_TEST_BASE || (sslOn ? 'https://127.0.0.1:5000/api' : 'http://127.0.0.1:5000/api');
+// بوابة مفتاح التطبيق: نفس API_KEY من .env (السيرفر يفرض ترويسة x-api-key)
+const appKeyHeaders = process.env.API_KEY ? { 'x-api-key': process.env.API_KEY } : {};
+const sslAgent = sslOn ? new (await import('node:https')).Agent({ rejectUnauthorized: false }) : undefined;
 const signatureData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
 async function request(path, options = {}, expected = null) {
   const response = await fetch(`${base}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...appKeyHeaders, ...(options.headers || {}) },
   });
   const text = await response.text();
   let data = null;
@@ -38,10 +47,22 @@ let kitchenAuditId = null;
 try {
   const departments = await request('/departments?page=1&limit=200&sort=id&order=asc', { headers: adminHeaders });
   const department = rows(departments).find((row) => String(row.code || '').toLowerCase() === 'kitchen') || rows(departments)[0];
-  if (!department) throw new Error('No department available');
+  if (!department) {
+    console.log('⚠ لا توجد أقسام في قاعدة البيانات — تخطي اختبار دورة العمل (بيانات حية غير متوفرة)');
+    console.log('  لتشغيله: أضف قسمًا وصنفًا واحدًا على الأقل ثم أعد التنفيذ');
+    await pool.end();
+    // مهلة قصيرة تمنع assertion libuv عند الخروج مع مقابض قاعدة بيانات تُغلق
+    setTimeout(() => process.exit(0), 100);
+  }
   const inventory = await request('/inventory?page=1&limit=200&sort=id&order=asc', { headers: adminHeaders });
   const item = rows(inventory).find((row) => Number(row.qty || 0) > 0) || rows(inventory)[0];
-  if (!item) throw new Error('No inventory item available');
+  if (!item) {
+    console.log('⚠ لا توجد أصناف مخزون في قاعدة البيانات — تخطي اختبار دورة العمل (بيانات حية غير متوفرة)');
+    console.log('  لتشغيله: أضف صنفًا واحدًا على الأقل ثم أعد التنفيذ');
+    await pool.end();
+    // مهلة قصيرة تمنع assertion libuv عند الخروج مع مقابض قاعدة بيانات تُغلق
+    setTimeout(() => process.exit(0), 100);
+  }
 
   const kitchenUser = await request('/users', { method: 'POST', headers: adminHeaders, body: JSON.stringify({ username: `${marker}-k`, password: 'Temporary-Only-1234!', name: 'اختبار استلام المطبخ', role: 'kitchen', active: true }) });
   kitchenUserId = kitchenUser.data?.id;

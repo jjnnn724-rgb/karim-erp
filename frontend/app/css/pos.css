@@ -235,10 +235,10 @@ body::before { display: none; }
 .product-icon svg.ji { width: 17px; height: 17px; }
 .product-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
 /* مؤشر الاتصال اللحظي في هيدر الكاشير */
-.pos-live{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--pos-green);background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.3);border-radius:20px;padding:2px 9px;white-space:nowrap}
-.pos-live-dot{width:7px;height:7px;border-radius:50%;background:#12b76a;animation:posPulse 1.6s ease-in-out infinite}
-.pos-live.offline{color:#d92d20;background:rgba(217,45,32,.1);border-color:rgba(217,45,32,.3)}
-.pos-live.offline .pos-live-dot{background:#d92d20;animation:none}
+.pos-live{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--pos-green);background:var(--pos-green-light);border:1px solid var(--pos-green);border-radius:20px;padding:2px 9px;white-space:nowrap}
+.pos-live-dot{width:7px;height:7px;border-radius:50%;background:var(--pos-green);animation:posPulse 1.6s ease-in-out infinite}
+.pos-live.offline{color:var(--pos-red);background:var(--pos-red-light);border-color:var(--pos-red)}
+.pos-live.offline .pos-live-dot{background:var(--pos-red);animation:none}
 @keyframes posPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
 .product-name {
   font-size: 13px; font-weight: 600; color: var(--pos-text); line-height: 1.35;
@@ -493,10 +493,10 @@ body::before { display: none; }
   font-size: 13px; color: var(--pos-text); box-shadow: var(--pos-shadow-lg); animation: toastEntry .16s ease;
 }
 @keyframes toastEntry { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.toast.success { border-right: 3px solid #12b76a; }
-.toast.error { border-right: 3px solid #d92d20; }
-.toast.warning { border-right: 3px solid #f79009; }
-.toast.info { border-right: 3px solid #2e90fa; }
+.toast.success { border-right: 3px solid var(--pos-green); }
+.toast.error { border-right: 3px solid var(--pos-red); }
+.toast.warning { border-right: 3px solid var(--pos-orange); }
+.toast.info { border-right: 3px solid var(--pos-blue); }
 .toast-icon { display: inline-flex; width: 16px; height: 16px; }
 .toast-icon svg.ji { width: 16px; height: 16px; }
 
@@ -782,7 +782,7 @@ body::before { display: none; }
 /* Open buffet people-based cashier mode */
 .buffet-mode-header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border:1px solid rgba(212,168,67,.35);border-radius:14px;background:linear-gradient(135deg,rgba(212,168,67,.14),rgba(255,255,255,.04));color:var(--pos-text)}
 .buffet-mode-header strong{font-size:18px;color:var(--pos-gold)}.buffet-mode-header span{font-size:13px;color:var(--pos-text-3)}
-.buffet-person-card{cursor:pointer;border:1px solid rgba(212,168,67,.28);min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(180deg,#fffaf0,#fff);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.buffet-person-card{cursor:pointer;border:1px solid var(--pos-border-strong);min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--pos-surface);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
 .buffet-person-card:hover{transform:translateY(-3px);border-color:var(--pos-gold);box-shadow:0 10px 24px rgba(90,65,20,.14)}
 .buffet-person-card .product-name{font-size:21px;font-weight:700;color:var(--pos-text)}.buffet-person-card .product-meta{font-size:14px;color:var(--pos-text-3)}.buffet-person-card .product-price{font-size:22px;color:var(--pos-gold)}.buffet-add-label{margin-top:7px;padding:7px 16px;border-radius:999px;background:var(--pos-gold);color:#fff;font-weight:700;font-size:13px}
 @media (max-width:700px){.buffet-mode-header{align-items:flex-start;flex-direction:column}.buffet-person-card{min-height:170px}}
@@ -802,7 +802,7 @@ body::before { display: none; }
 @media (max-width:700px){.buffet-live-strip{flex-direction:column;align-items:stretch}.buffet-live-pill{justify-content:space-between}}
 
 /* ── Hospitality tier card ── */
-.buffet-person-card.buffet-hosp{border-style:dashed;border-color:rgba(8,135,92,.4);background:linear-gradient(180deg,#f2faf5,#fff)}
+.buffet-person-card.buffet-hosp{border-style:dashed;border-color:var(--pos-green);background:var(--pos-green-light)}
 .buffet-person-card.buffet-hosp .product-icon{color:var(--pos-green)}
 .buffet-person-card .product-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--pos-gold-lighter);color:var(--pos-gold)}
 .buffet-person-card .product-icon svg{width:24px;height:24px}
@@ -824,21 +824,21 @@ body::before { display: none; }
 .bpr-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
 .bpr-badge.core{background:var(--pos-blue-light);color:var(--pos-blue)}
 .bpr-badge.free{background:var(--pos-green-light);color:var(--pos-green)}
-.bpr-badge.off{background:#f2f4f7;color:var(--pos-text-3)}
+.bpr-badge.off{background:var(--pos-surface-2);color:var(--pos-text-3)}
 .bpr-badge.ok{background:var(--pos-green-light);color:var(--pos-green)}
 .bpr-price-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.bpr-price{width:120px;padding:8px 12px;border:1px solid var(--pos-border-strong);border-radius:8px;font-size:16px;font-weight:700;color:var(--pos-gold-dark);text-align:center;background:#fff}
+.bpr-price{width:120px;padding:8px 12px;border:1px solid var(--pos-border-strong);border-radius:8px;font-size:16px;font-weight:700;color:var(--pos-gold-dark);text-align:center;background:var(--pos-surface)}
 .bpr-price:focus{outline:none;border-color:var(--pos-gold);box-shadow:0 0 0 3px rgba(217,119,6,.16)}
 .bpr-price.invalid,.bpr-name-input.invalid{border-color:var(--pos-red);box-shadow:0 0 0 3px rgba(180,35,24,.12)}
 .bpr-unit{font-size:12px;color:var(--pos-text-3)}
 .bpr-actions{display:flex;gap:8px}
-.bpr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid var(--pos-border);background:#fff;font-size:12.5px;font-weight:600;color:var(--pos-text-2);cursor:pointer;transition:all .14s ease}
+.bpr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid var(--pos-border);background:var(--pos-surface);font-size:12.5px;font-weight:600;color:var(--pos-text-2);cursor:pointer;transition:all .14s ease}
 .bpr-btn:hover{border-color:var(--pos-border-strong);background:var(--pos-surface-2)}
 .bpr-btn.danger{color:var(--pos-red);border-color:rgba(180,35,24,.3)}
 .bpr-btn.danger:hover{background:var(--pos-red-light)}
 .bpr-btn:disabled{opacity:.45;cursor:not-allowed}
 .bpr-btn svg{width:14px;height:14px}
-.buffet-add-tier-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:11px 12px;border:1px dashed var(--pos-border-strong);border-radius:10px;background:#fff}
+.buffet-add-tier-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:11px 12px;border:1px dashed var(--pos-border-strong);border-radius:10px;background:var(--pos-surface)}
 .buffet-add-tier-row input[type=text]{flex:2;min-width:160px;padding:8px 11px;border:1px solid var(--pos-border);border-radius:8px;font-size:13px}
 .buffet-add-tier-row input[type=number]{flex:1;min-width:90px;padding:8px 11px;border:1px solid var(--pos-border);border-radius:8px;font-size:13px}
 .buffet-add-tier-row input:focus{outline:none;border-color:var(--pos-gold);box-shadow:0 0 0 3px rgba(217,119,6,.14)}
@@ -877,7 +877,7 @@ body::before { display: none; }
 .br-card{border:1px solid var(--pos-border);border-radius:10px;padding:11px 13px;background:var(--pos-surface-2);display:flex;flex-direction:column;gap:3px}
 .br-card span{font-size:11.5px;color:var(--pos-text-3);font-weight:600}
 .br-card strong{font-size:17px;color:var(--pos-text)}
-.br-card.gold{background:linear-gradient(135deg,var(--pos-gold-lighter),#fff);border-color:rgba(180,83,9,.35)}
+.br-card.gold{background:var(--pos-gold-lighter);border-color:var(--pos-gold)}
 .br-card.gold strong{color:var(--pos-gold-dark)}
 .br-card.warn strong{color:var(--pos-red)}
 .br-card.info strong{color:var(--pos-blue)}

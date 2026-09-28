@@ -16,6 +16,7 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { normalizeVatNumber, validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
+const { emitDomainEvent } = require('./realtime/producers');
 
 const router = express.Router();
 
@@ -748,6 +749,11 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
                 `UPDATE "purchaseInvoices" SET "paidAmount"=$2, "paymentStatus"=$3 WHERE id=$1 RETURNING *`,
                 [invoice.id, paid, status])).rows[0];
         }
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'PAYMENT', {
+            eventType: 'PAYMENT_CREATED', aggregateType: 'supplier_payment', aggregateId: paymentId,
+            payload: { payment_id: paymentId, supplier_id: v.clean.supplierId, amount: v.clean.amount, method: v.clean.method, invoice_id: v.clean.invoiceId || null },
+        });
         await client.query('COMMIT');
         emit(req, 'procurement', 'create', payment);
         if (invoice) {emit(req, 'purchaseInvoices', 'update', invoice, 'فواتير الشراء');}
@@ -818,6 +824,11 @@ router.delete('/payments/:id', jwtAuth, requireRole(...PAYMENT_DELETE_ROLES), as
         const payment = (await client.query('SELECT * FROM supplier_payments WHERE id=$1 FOR UPDATE', [paymentId])).rows[0];
         if (!payment) { await client.query('ROLLBACK'); return fail(res, 404, 'PAYMENT_NOT_FOUND', 'الدفعة غير موجودة'); }
         await client.query('DELETE FROM supplier_payments WHERE id=$1', [paymentId]);
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'PAYMENT', {
+            eventType: 'PAYMENT_VOIDED', aggregateType: 'supplier_payment', aggregateId: paymentId,
+            payload: { payment_id: paymentId, supplier_id: payment.supplierId, amount: Number(payment.amount) },
+        });
         let invoice = null;
         if (payment.invoiceId) {
             invoice = (await client.query('SELECT * FROM "purchaseInvoices" WHERE id=$1 FOR UPDATE', [payment.invoiceId])).rows[0];

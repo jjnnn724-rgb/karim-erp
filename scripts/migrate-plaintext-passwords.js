@@ -61,12 +61,24 @@ function configuredBootstrapPassword() {
 function writeBootstrapCredential(password) {
     const bootstrapFile = getBootstrapFile();
     fs.mkdirSync(path.dirname(bootstrapFile), { recursive: true });
-    fs.writeFileSync(bootstrapFile, JSON.stringify({
-        username: 'admin',
-        initial_password: password,
-        created_at: new Date().toISOString(),
-        action_required: 'Sign in locally and change this password before using the system.',
-    }, null, 2), { mode: 0o600 });
+    // ملف قائم ⇒ التهيئة تمت في تشغيل سابق: أعد استخدام بياناته ولا تحاول
+    // الكتابة فوقه — قد يكون مقفلًا بـ ACL (Administrators/SYSTEM) من تشغيل
+    // مرتفع الصلاحيات، وفشل EPERM هنا لا يجوز أن يُسقط إقلاع النظام كله.
+    if (fs.existsSync(bootstrapFile)) {
+        log.warn('بيانات دخول المسؤول الأولية موجودة مسبقًا — أُعيد استخدامها دون تعديل: ' + bootstrapFile);
+        return;
+    }
+    try {
+        fs.writeFileSync(bootstrapFile, JSON.stringify({
+            username: 'admin',
+            initial_password: password,
+            created_at: new Date().toISOString(),
+            action_required: 'Sign in locally and change this password before using the system.',
+        }, null, 2), { mode: 0o600 });
+    } catch (e) {
+        log.warn('تعذر كتابة بيانات دخول المسؤول الأولية (' + (e.message || e) + ') — يكتمل التشغيل؛ عيّن كلمة مرور الأدمن يدويًا إن لزم.');
+        return;
+    }
     if (lib.IS_WIN) {
         try {
             require('child_process').execFileSync('icacls', [bootstrapFile, '/inheritance:r', '/grant:r', 'Administrators:F', 'SYSTEM:F'], { stdio: 'ignore', windowsHide: true });

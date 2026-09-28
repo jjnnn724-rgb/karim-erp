@@ -91,14 +91,14 @@ function checkRateLimit(jid) {
 setInterval(() => {
     const now = Date.now();
     for (const [jid, entry] of userRateLimit) {
-        if (now > entry.resetAt) userRateLimit.delete(jid);
+        if (now > entry.resetAt) {userRateLimit.delete(jid);}
     }
 }, 10 * 60 * 1000).unref?.();
 
 // ─── Phone number masking for privacy ───
 function maskPhone(jid) {
     const digits = String(jid || '').replace(/@.*/, '').replace(/\D/g, '');
-    if (digits.length < 4) return '***';
+    if (digits.length < 4) {return '***';}
     return digits.slice(0, 2) + '***' + digits.slice(-2);
 }
 
@@ -161,8 +161,8 @@ async function callLLM(prompt, cfg) {
                     // LM Studio / textgen format: { choices: [{ message: { content } }] }
                     const text = parsed?.message?.content?.trim() ||
                                  parsed?.choices?.[0]?.message?.content?.trim();
-                    if (text) resolve({ text, usage: parsed.usage });
-                    else reject(new Error('Empty LLM response'));
+                    if (text) {resolve({ text, usage: parsed.usage });}
+                    else {reject(new Error('Empty LLM response'));}
                 } catch (e) {
                     reject(new Error('Invalid LLM response format'));
                 }
@@ -225,7 +225,7 @@ class AIChatbot {
      * Flow: NLU → ERP query (if applicable) → LLM (if available) → fallback
      */
     async respond(jid, message, context = {}) {
-        if (!this._enabled) return null;
+        if (!this._enabled) {return null;}
 
         // Rate limit check
         if (!checkRateLimit(jid)) {

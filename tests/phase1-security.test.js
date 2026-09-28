@@ -65,7 +65,7 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
             keywords.forEach(keyword => {
                 const result = validateColumnName(keyword);
                 expect(result.valid).toBe(false);
-                expect(result.reason).toContain('Reserved keyword');
+                expect(result.reason).toContain('كلمة محجوزة');
             });
         });
 
@@ -107,8 +107,8 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
 
             const result = filterBody('users', bodyWithProtected);
 
-            expect(result.errors).toContain('Protected field "id" is not writable');
-            expect(result.errors).toContain('Protected field "created_at" is not writable');
+            expect(result.errors.join(' ')).toContain('الحقل "id" محمي');
+            expect(result.errors.join(' ')).toContain('الحقل "created_at" محمي');
             expect(result.filtered.id).toBeUndefined();
             expect(result.filtered.created_at).toBeUndefined();
             expect(result.filtered.username).toBe('testuser');
@@ -117,14 +117,14 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
         it('should handle empty object gracefully', () => {
             const result = filterBody('users', {});
             expect(result.filtered).toEqual({});
-            expect(result.errors).toContain('Missing required fields: username, name');
+            expect(result.errors.join(' ')).toContain('حقول مطلوبة ناقصة: username، name');
         });
 
         it('should reject null and non-object bodies', () => {
-            expect(filterBody('users', null).errors).toContain('Request body must be a non-null object');
-            expect(filterBody('users', undefined).errors).toContain('Request body must be a non-null object');
-            expect(filterBody('users', 'string').errors).toContain('Request body must be a non-null object');
-            expect(filterBody('users', 123).errors).toContain('Request body must be a non-null object');
+            expect(filterBody('users', null).errors.join(' ')).toContain('يجب إرسال بيانات بصيغة صحيحة');
+            expect(filterBody('users', undefined).errors.join(' ')).toContain('يجب إرسال بيانات بصيغة صحيحة');
+            expect(filterBody('users', 'string').errors.join(' ')).toContain('يجب إرسال بيانات بصيغة صحيحة');
+            expect(filterBody('users', 123).errors.join(' ')).toContain('يجب إرسال بيانات بصيغة صحيحة');
         });
 
         it('should validate enum values against allowed values', () => {
@@ -136,7 +136,7 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
             };
 
             const result = filterBody('users', invalidEnumBody);
-            expect(result.errors.some(e => e.includes('Invalid value for "role"'))).toBe(true);
+            expect(result.errors.some(e => e.includes('قيمة غير صالحة للحقل "role"'))).toBe(true);
         });
 
         it('should enforce maxLength constraints on strings', () => {
@@ -146,7 +146,7 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
             };
 
             const result = filterBody('users', longStringBody);
-            expect(result.errors.some(e => e.includes('exceeds maximum length'))).toBe(true);
+            expect(result.errors.some(e => e.includes('أطول من المسموح'))).toBe(true);
         });
 
         it('should validate data types correctly', () => {
@@ -157,7 +157,7 @@ describe('Phase 1.1 — Identifier Injection Prevention', () => {
             };
 
             const result = filterBody('employees', wrongTypesBody);
-            expect(result.errors.some(e => e.includes('"salary" must be a number'))).toBe(true);
+            expect(result.errors.some(e => e.includes('"salary" يجب أن يكون رقمًا'))).toBe(true);
         });
 
         it('should allow all whitelisted fields through', () => {
@@ -408,21 +408,20 @@ describe('Phase 1.4 — XSS Protection & Error Handling', () => {
 
     describe('Production Error Sanitization', () => {
         it('should hide stack traces in production and guard headersSent', () => {
-            // Source-contract assertions on the production-safe error handler:
-            // 1) the production branch never spreads err.stack into the response
-            // 2) the handler delegates when headers were already sent
+            // عقد المصدر المحدَّث: معالج الأخطاء المركزي backend/errors/error-handler.js
+            // 1) حماية headersSent — لا كتابة رؤوس بعد بدء الإرسال
+            // 2) جسم الاستجابة يُبنى من AppError.toJSON() فقط — لا تسريب stack للعميل
             const fs = require('fs');
             const path = require('path');
-            const source = fs.readFileSync(path.join(__dirname, '..', 'backend', 'server.js'), 'utf8');
-            expect(source).toContain('if (res.headersSent) {return next(err);}');
-            // The PRODUCTION response branch must carry only errorId + generic message
-            const prodBranch = source.match(/isProduction\s*\?\s*\{[^}]*\}/);
-            expect(prodBranch).not.toBeNull();
-            expect(prodBranch[0]).not.toContain('stack');
-            expect(prodBranch[0]).toContain('An unexpected error occurred');
-            // The dev branch is the only place a stack may leak to the client
-            const devBranch = source.match(/:\s*\{ errorId, message: getErrorMessage\(err\), stack: err\.stack \}/);
-            expect(devBranch).not.toBeNull();
+            const handlerSource = fs.readFileSync(path.join(__dirname, '..', 'backend', 'errors', 'error-handler.js'), 'utf8');
+            expect(handlerSource).toContain('if (res.headersSent)');
+            expect(handlerSource).toContain('const jsonBody = error.toJSON()');
+            // toJSON في AppError يُرجع id/code/status/timestamp (+ message العام) — بلا stack
+            const appErrorSource = fs.readFileSync(path.join(__dirname, '..', 'backend', 'errors', 'app-error.js'), 'utf8');
+            const toJSONBlock = appErrorSource.match(/toJSON\(\)\s*\{[\s\S]*?\n {4}\}/);
+            expect(toJSONBlock).not.toBeNull();
+            expect(toJSONBlock[0]).not.toContain('stack');
+            expect(toJSONBlock[0]).toContain('timestamp');
         });
 
         it('should include errorId for support reference', () => {

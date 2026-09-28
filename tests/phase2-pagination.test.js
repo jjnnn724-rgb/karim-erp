@@ -36,7 +36,7 @@ describe('Phase 2.2: Pagination & Sorting System', () => {
         test('should have correct constants', () => {
             expect(DEFAULT_PAGE).toBe(1);
             expect(DEFAULT_LIMIT).toBe(50);
-            expect(MAX_LIMIT).toBe(200);
+            expect(MAX_LIMIT).toBe(1000);
             expect(MAX_OFFSET).toBe(50000);
         });
     });
@@ -81,16 +81,16 @@ describe('Phase 2.2: Pagination & Sorting System', () => {
             expect(result.limit).toBe(25);
         });
 
-        test('should enforce MAX_LIMIT cap (200)', () => {
+        test('should enforce MAX_LIMIT cap (1000)', () => {
             const result = parsePaginationParams({ limit: '9999' }, ['id']);
             expect(result.limit).toBe(MAX_LIMIT); // Capped at 200
-            expect(result.errors).toContain('Limit 9999 exceeds maximum of 200');
+            expect(result.errors).toContain('Limit 9999 exceeds maximum of 1000');
             expect(result.valid).toBe(false);
         });
 
         test('should allow exactly MAX_LIMIT', () => {
-            const result = parsePaginationParams({ limit: '200' }, ['id']);
-            expect(result.limit).toBe(200);
+            const result = parsePaginationParams({ limit: '1000' }, ['id']);
+            expect(result.limit).toBe(1000);
         });
 
         test('should default to DEFAULT_LIMIT for non-numeric', () => {
@@ -302,7 +302,7 @@ describe('Phase 2.2: Pagination & Sorting System', () => {
             
             // All malicious inputs should be neutralized
             expect(result.page).toBe(1);
-            expect(result.limit).toBe(200); // Capped
+            expect(result.limit).toBe(1000); // Capped
             expect(['id', 'name']).toContain(result.sort);
             expect(result.order).toBe('ASC');
             expect(result.valid).toBe(false);

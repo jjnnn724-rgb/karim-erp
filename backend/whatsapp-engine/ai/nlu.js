@@ -138,16 +138,8 @@ const INTENTS = {
         entities: ['date_offset'],
         minConfidence: 0.5,
     },
-    DAILY_REPORT: {
-        id: 'DAILY_REPORT',
-        category: 'pos',
-        keywords: {
-            ar: ['تقرير', 'التقرير اليومي', 'تقرير اليوم', 'ملخص اليوم', 'ملخص يومي', 'تقرير المبيعات', 'ملخص المبيعات'],
-            en: ['report', 'daily report', 'today report', 'sales report', 'summary'],
-        },
-        entities: ['date_offset'],
-        minConfidence: 0.5,
-    },
+    // ملاحظة: كان هنا تعريف مكرر لـ DAILY_REPORT (نسخة pos) — حُذف لأن النسخة finance
+    // (أسفل الملف) هي التي كانت تفعّل فعلياً في وقت التشغيل (آخر تعريف يفوز في كائن JS).
 
     // ─── Inventory / Stock ───
     STOCK_ITEM: {
@@ -434,13 +426,13 @@ const INTENTS = {
 // ════════════════════════════════════════════════════════════════════════════════
 
 function detectLanguage(text) {
-    if (text == null) return 'ar';
+    if (text == null) {return 'ar';}
     const str = String(text);
-    if (!str.trim()) return 'ar';
+    if (!str.trim()) {return 'ar';}
     const arabicChars = (str.match(/[\u0600-\u06FF]/g) || []).length;
     const englishChars = (str.match(/[a-zA-Z]/g) || []).length;
-    if (arabicChars > englishChars) return 'ar';
-    if (englishChars > arabicChars) return 'en';
+    if (arabicChars > englishChars) {return 'ar';}
+    if (englishChars > arabicChars) {return 'en';}
     return 'ar'; // default
 }
 
@@ -458,19 +450,19 @@ function analyzeSentiment(text) {
     let score = 0;
     let urgent = false;
 
-    for (const w of SENTIMENT_POSITIVE) { if (t.includes(normalizeText(w))) score += 2; }
-    for (const w of SENTIMENT_NEGATIVE) { if (t.includes(normalizeText(w))) score -= 2; }
+    for (const w of SENTIMENT_POSITIVE) { if (t.includes(normalizeText(w))) {score += 2;} }
+    for (const w of SENTIMENT_NEGATIVE) { if (t.includes(normalizeText(w))) {score -= 2;} }
     for (const w of SENTIMENT_URGENT) { if (t.includes(normalizeText(w))) { urgent = true; score += 1; } }
-    for (const w of SENTIMENT_ANGRY) { if (t.includes(normalizeText(w))) score -= 3; }
+    for (const w of SENTIMENT_ANGRY) { if (t.includes(normalizeText(w))) {score -= 3;} }
 
     // Exclamation marks indicate urgency
     const exclamations = (String(text == null ? '' : text).match(/!/g) || []).length;
     if (exclamations >= 2) { urgent = true; score -= 1; }
 
     let label = 'neutral';
-    if (score >= 3) label = 'positive';
-    else if (score <= -3) label = 'angry';
-    else if (score <= -1) label = 'negative';
+    if (score >= 3) {label = 'positive';}
+    else if (score <= -3) {label = 'angry';}
+    else if (score <= -1) {label = 'negative';}
 
     return { score, label, urgent };
 }
@@ -482,25 +474,25 @@ function analyzeSentiment(text) {
 function extractEntities(text, intentId) {
     const entities = {};
     const t = String(text == null ? '' : text).trim();
-    if (!t) return entities;
+    if (!t) {return entities;}
 
     // Extract order numbers
     if (/^\d{2,}$/.test(t.replace(/[^\d]/g, '')) || /(?:طلب|اوردر|order)[\s#:]*\d{2,}/i.test(t)) {
         const num = t.replace(/[^\d]/g, '').slice(0, 20);
-        if (num.length >= 2) entities.order_number = num;
+        if (num.length >= 2) {entities.order_number = num;}
     }
 
     // Extract cashier number
     const cashierMatch = t.match(/كاشير\s*(\d{1,2})/i) || t.match(/cashier\s*(\d{1,2})/i);
-    if (cashierMatch) entities.cashier_number = cashierMatch[1];
+    if (cashierMatch) {entities.cashier_number = cashierMatch[1];}
 
     // Extract date indicators
-    if (/امس|أمس|امبارح|yesterday/i.test(t)) entities.date_offset = -1;
-    else if (/بكرة|بكره|tommorow|tomorrow/i.test(t)) entities.date_offset = 1;
-    else entities.date_offset = 0;
+    if (/امس|أمس|امبارح|yesterday/i.test(t)) {entities.date_offset = -1;}
+    else if (/بكرة|بكره|tommorow|tomorrow/i.test(t)) {entities.date_offset = 1;}
+    else {entities.date_offset = 0;}
 
     // Extract explicit dates (DD/MM or DD/MM/YYYY)
-    const dateMatch = t.match(/(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?/);
+    const dateMatch = t.match(/(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?/);
     if (dateMatch) {
         entities.date_range = {
             day: dateMatch[1],
@@ -513,7 +505,7 @@ function extractEntities(text, intentId) {
     const amountMatch = t.match(/(\d{3,})\s*(?:ريال|sar|rs|جنيه|egp)?/i);
     if (amountMatch) {
         const val = parseInt(amountMatch[1], 10);
-        if (val >= 100) entities.amount = val;
+        if (val >= 100) {entities.amount = val;}
     }
 
     // Extract employee/item/supplier name (heuristic: text after keywords)
@@ -532,7 +524,7 @@ function extractEntities(text, intentId) {
                     nameText = nameText.replace(new RegExp(normKw, 'gi'), ' ');
                 }
                 // Remove dates and numbers
-                nameText = nameText.replace(/\d{1,2}[\/\.\-]\d{1,2}([\/\.\-]\d{2,4})?/g, '');
+                nameText = nameText.replace(/\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?/g, '');
                 nameText = nameText.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
                 if (nameText.length >= 2 && nameText.length <= 60) {
                     entities[entityName] = nameText.slice(0, 60);
@@ -556,7 +548,7 @@ function extractEntities(text, intentId) {
  * Also handles: "امبارح كمان" "بكرة" "اليوم" etc. as date modifiers on previous intent.
  */
 function _resolveContextFollowUp(normalized, context) {
-    if (!context.lastIntent || context.lastIntent === 'UNKNOWN') return null;
+    if (!context.lastIntent || context.lastIntent === 'UNKNOWN') {return null;}
 
     // ─── Date-based follow-ups ───
     // If user asks about "yesterday" and previous intent was a sales/expense query,
@@ -577,12 +569,12 @@ function _resolveContextFollowUp(normalized, context) {
         // Map to yesterday/today/tomorrow variant based on date offset and previous intent
         const prevCategory = INTENTS[context.lastIntent]?.category;
         if (prevCategory === 'pos') {
-            if (dateOffset === -1) return 'SALES_YESTERDAY';
-            if (dateOffset === 0) return 'SALES_TODAY';
+            if (dateOffset === -1) {return 'SALES_YESTERDAY';}
+            if (dateOffset === 0) {return 'SALES_TODAY';}
         }
         if (prevCategory === 'hr') {
-            if (dateOffset === -1) return 'ATTENDANCE_ALL';
-            if (dateOffset === 0) return 'ATTENDANCE_TODAY';
+            if (dateOffset === -1) {return 'ATTENDANCE_ALL';}
+            if (dateOffset === 0) {return 'ATTENDANCE_TODAY';}
         }
         if (prevCategory === 'finance') {
             return context.lastIntent; // inherit same finance intent
@@ -629,7 +621,7 @@ function detectIntent(text, context = {}) {
     const scores = [];
 
     for (const [id, intent] of Object.entries(INTENTS)) {
-        if (id === 'UNKNOWN') continue;
+        if (id === 'UNKNOWN') {continue;}
 
         let score = 0;
         const keywords = intent.keywords[lang] || [];
@@ -640,7 +632,7 @@ function detectIntent(text, context = {}) {
 
         for (const kw of keywords) {
             const normKw = normalizeText(kw);
-            if (!normKw) continue;
+            if (!normKw) {continue;}
             if (normalized === normKw) {
                 score += 1.0; // exact match
             } else if (normalized.includes(normKw)) {
@@ -653,7 +645,7 @@ function detectIntent(text, context = {}) {
         // Cross-language matching (lower weight)
         for (const kw of otherKeywords) {
             const normKw = normalizeText(kw);
-            if (!normKw) continue;
+            if (!normKw) {continue;}
             if (normalized.includes(normKw)) {
                 score += 0.3;
             }
@@ -745,7 +737,7 @@ function updateContext(jid, nluResult, replyText) {
         entities: nluResult.entities || {},
     });
     // Keep last 10 messages
-    if (ctx.history.length > 10) ctx.history.shift();
+    if (ctx.history.length > 10) {ctx.history.shift();}
     ctx.lastIntent = nluResult.intent;
     ctx.updatedAt = Date.now();
     _context.set(jid, ctx);
@@ -820,7 +812,7 @@ function generateClarification(alternatives, lang) {
     const langLabels = labels[lang] || labels.ar;
     const options = alternatives.slice(0, 3).map(id => langLabels[id] || id).filter(Boolean);
 
-    if (!options.length) return null;
+    if (!options.length) {return null;}
 
     if (lang === 'en') {
         return `I'm not sure which you mean. Did you want:\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\nReply with the number.`;

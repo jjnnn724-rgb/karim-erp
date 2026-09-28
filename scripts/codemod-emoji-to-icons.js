@@ -34,7 +34,7 @@ const M = { // emoji (longest first when overlapping) → icon name
   '🆔':'id-card', '🪪':'id-card', '🏷️':'tag', '🏷':'tag', '🎨':'palette', '📷':'camera', '🖨️':'printer',
   '🖨':'printer', '⌨️':'keyboard', '⌨':'keyboard', '🎬':'play', '👋':'user-check', '🚀':'play',
   '🎉':'party', '🎊':'party', '🏅':'award', '🏆':'award', '🔖':'bookmark', '📂':'folder-open', '📁':'folder',
-  '🗂️':'folder-open', '🗂':'folder-open', '🗄':'archive', '🌑':'moon', '🌙':'moon', '☀️':'sun', '☀':'sun',
+  '🗂️':'folder-open', '🗂':'folder-open', '🌑':'moon', '🌙':'moon', '☀️':'sun', '☀':'sun',
   '🔥':'flame', '🌿':'leaf', '🍃':'leaf', '🏖️':'sun', '🏖':'sun', '🏁':'flag', '🥧':'pie', '⚪':'dot-gray',
   '🟢':'dot-green', '🔴':'dot-red', '🟠':'dot-orange', '🟡':'dot-yellow', '🧨':'alert-triangle',
   '💥':'alert-triangle', '🎭':'activity', '💻':'monitor', '📡':'wifi', '🕒':'clock', '🧑':'user',
@@ -53,7 +53,8 @@ const files = [
 // sort keys: multi-codepoint sequences must be tried first
 const keys = Object.keys(M).sort((a, b) => b.length - a.length);
 
-let totalReplaced = 0, unhandled = {};
+let totalReplaced = 0;
+const unhandled = {};
 
 for (const rel of files) {
   const fp = path.join(ROOT, rel);

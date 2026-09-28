@@ -19,7 +19,7 @@ function stampName(now = new Date()) {
 function backupSession(sessionDir, backupDir, keep = 10) {
     try {
         const src = path.join(sessionDir, 'creds.json');
-        if (!fs.existsSync(src)) return null;
+        if (!fs.existsSync(src)) {return null;}
         fs.mkdirSync(backupDir, { recursive: true });
         const dest = path.join(backupDir, stampName());
         fs.copyFileSync(src, dest);

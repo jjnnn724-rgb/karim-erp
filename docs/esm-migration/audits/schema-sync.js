@@ -28,8 +28,8 @@ const cols = `table_name, column_name, data_type, character_maximum_length, nume
   let added = 0;
   for (const c of tCols) {
     const key = c.table_name + '.' + c.column_name;
-    if (lKey.has(key)) continue;
-    let type = c.data_type === 'character varying' ? `varchar(${c.character_maximum_length || 255})`
+    if (lKey.has(key)) {continue;}
+    const type = c.data_type === 'character varying' ? `varchar(${c.character_maximum_length || 255})`
       : c.data_type === 'numeric' ? `numeric(${c.numeric_precision || 20},${c.numeric_scale || 6})`
       : c.udt_name === 'timestamptz' ? 'timestamptz'
       : c.data_type === 'ARRAY' ? c.udt_name + '[]'

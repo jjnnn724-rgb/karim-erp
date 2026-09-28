@@ -53,7 +53,7 @@ function listBackups() {
         .filter((f) => f.endsWith('.sql'))
         .map((f) => {
             const full = path.join(dir, f);
-            let st = null;
+            let st;
             try { st = fs.statSync(full); } catch (_) { return null; }
             let manifest = null;
             try {
@@ -124,7 +124,7 @@ router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
             }
             if (!req.file) {return res.status(422).json({ error: 'NO_FILE', message: 'اختر ملف .sql أولًا' });}
             // اسم آمن + منع الكتابة فوق نسخة قائمة
-            let base = path.basename(String(req.file.originalname || 'backup.sql')).replace(/[^a-zA-Z0-9_\-\.ء-غف-ي ]/g, '_').slice(0, 120);
+            let base = path.basename(String(req.file.originalname || 'backup.sql')).replace(/[^a-zA-Z0-9_.ء-غف-ي -]/g, '_').slice(0, 120);
             if (!/\.sql$/i.test(base)) {base += '.sql';}
             let full = path.join(backupsDir(), base);
             if (fs.existsSync(full)) {

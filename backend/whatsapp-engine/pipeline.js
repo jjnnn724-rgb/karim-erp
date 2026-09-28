@@ -55,7 +55,7 @@ function _checkPipelineRate(jid) {
         return true;
     }
     entry.count++;
-    if (entry.count > PIPELINE_RATE_LIMIT) return false;
+    if (entry.count > PIPELINE_RATE_LIMIT) {return false;}
     return true;
 }
 
@@ -63,7 +63,7 @@ function _checkPipelineRate(jid) {
 setInterval(() => {
     const now = Date.now();
     for (const [jid, entry] of _pipelineRate) {
-        if (now > entry.resetAt) _pipelineRate.delete(jid);
+        if (now > entry.resetAt) {_pipelineRate.delete(jid);}
     }
 }, 5 * 60 * 1000).unref?.();
 
@@ -93,6 +93,7 @@ async function _processIncomingInner(engine, raw) {
     // ─── Input sanitization — strip control characters ───
     if (rec.body) {
         rec.body = String(rec.body)
+            // eslint-disable-next-line no-control-regex -- تعقيم مقصود: إزالة أحرف التحكم
             .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // control chars
             .slice(0, 4000); // max message length
     }

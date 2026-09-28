@@ -6,7 +6,7 @@
 const CONFIG = { VERSION: '4.6.20', APP_NAME: 'مطاعم الشرفه العالمي', LOGO_PATH: '/app/assets/karim-logo.ico' };
 
 const ROLES = {
-admin: { name: 'مدير النظام', icon: '<i class=ji data-i=crown></i>', menus: ['dashboard','cfo','revenues','expenses','cost-analysis','pnl','departments','warehouse','procurement','kitchen','dispatch','recipes','reports','settings','users','hr-dashboard','employees','leaves','attendance','zkteco','yarasoft','oracle-data','yara-daily-locks','whatsapp','hr-departments','payroll','employee-portal'] },
+admin: { name: 'مدير النظام', icon: '<i class=ji data-i=crown></i>', menus: ['dashboard','cfo','revenues','expenses','cost-analysis','pnl','departments','warehouse','procurement','kitchen','dispatch','recipes','reports','settings','users','permissions','hr-dashboard','employees','leaves','attendance','zkteco','yarasoft','oracle-data','yara-daily-locks','whatsapp','hr-departments','payroll','employee-portal'] },
 manager: { name: 'مدير المطعم', icon: '<i class=ji data-i=chart></i>', menus: ['dashboard','cfo','revenues','expenses','cost-analysis','pnl','departments','dispatch','recipes','reports','hr-dashboard','employees','leaves','attendance','zkteco','whatsapp','employee-portal','warehouse','procurement','kitchen'] },
 warehouse: { name: 'أمين المخزن', icon: '<i class=ji data-i=package></i>', menus: ['dashboard','warehouse','procurement','dispatch'] },
 kitchen: { name: 'الشيف العمومي', icon: '<i class=ji data-i=chef-hat></i>', menus: ['dashboard','kitchen','dispatch','recipes','attendance','leaves','employee-portal'] },

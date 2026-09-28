@@ -37,7 +37,7 @@ async function main() {
     (function runPreflight() {
         try {
             const verifyScript = path.join(ROOT, 'scripts', 'verify-env.js');
-            if (!fs.existsSync(verifyScript)) return;
+            if (!fs.existsSync(verifyScript)) {return;}
             const r = spawnSync(NODE_BIN, [verifyScript, '--quick', '--doctor'], {
                 cwd: ROOT, encoding: 'utf-8', timeout: 15000, shell: process.platform === 'win32',
             });
@@ -109,7 +109,7 @@ async function main() {
         } catch (_) {}
     }
     if (!dbPort) {dbPort = lib.getEnv('DB_PORT', '5432');}
-    let dbPassword = lib.getEnv('DB_PASSWORD');
+    const dbPassword = lib.getEnv('DB_PASSWORD');
 
     // PROFESSIONAL RULE: never invent a DB password silently.
     if (!dbPassword) {

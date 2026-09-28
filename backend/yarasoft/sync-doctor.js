@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
-const { loadOracleConfig, oraExecute } = require('./oracle-link');
+const { loadOracleConfig, getDriver, oraExecute } = require('./oracle-link');
 
 const isoDay = (d) => {
     const x = d instanceof Date ? d : new Date(d);
@@ -39,7 +39,8 @@ function catchupDays() {
 
 async function oraConnect() {
     const cfg = loadOracleConfig();
-    const oracledb = require('oracledb');
+    // Thick mode إلزامي: خادم يارسوفت لا تدعمه node-oracledb Thin (NJS-138)
+    const oracledb = getDriver();
     const conn = await oracledb.getConnection({
         user: (process.env.YARASOFT_ORACLE_USER || '').trim(),
         password: process.env.YARASOFT_ORACLE_PASSWORD || '',

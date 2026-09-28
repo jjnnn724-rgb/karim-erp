@@ -33,7 +33,7 @@ function toLocalDateKey(date, timeZone = ERP_TIMEZONE) {
     }).formatToParts(date);
     const values = {};
     for (const part of parts) {
-        if (part.type !== 'literal') values[part.type] = part.value;
+        if (part.type !== 'literal') {values[part.type] = part.value;}
     }
     return `${values.year}-${values.month}-${values.day}`;
 }
@@ -45,15 +45,15 @@ function addDays(baseDate, offsetDays) {
 }
 
 function parseDateValue(raw) {
-    if (!raw) return null;
+    if (!raw) {return null;}
     if (typeof raw === 'string') {
         const s = raw.trim();
-        if (!s) return null;
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-        const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?$/);
+        if (!s) {return null;}
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {return s;}
+        const m = s.match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/);
         if (m) {
             let year = Number(m[3] || new Date().getFullYear());
-            if (year < 100) year += 2000;
+            if (year < 100) {year += 2000;}
             const month = Number(m[2]);
             const day = Number(m[1]);
             if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
@@ -93,7 +93,7 @@ function rangeFromDateKeywords(rawText, baseDate = new Date()) {
         }
     }
 
-    const directDate = text.match(/(?:بتاريخ|في|يوم|date)?\s*(\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?)$/);
+    const directDate = text.match(/(?:بتاريخ|في|يوم|date)?\s*(\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)$/);
     if (directDate) {
         const iso = parseDateValue(directDate[1]);
         if (iso) {
@@ -101,8 +101,8 @@ function rangeFromDateKeywords(rawText, baseDate = new Date()) {
         }
     }
 
-    const fromDate = text.match(/(?:من\s+)(\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?)/);
-    const toDate = text.match(/(?:إلى|الى)\s*(\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?)/);
+    const fromDate = text.match(/(?:من\s+)(\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)/);
+    const toDate = text.match(/(?:إلى|الى)\s*(\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)/);
     if (fromDate && toDate) {
         const from = parseDateValue(fromDate[1]);
         const to = parseDateValue(toDate[1]);
@@ -134,13 +134,13 @@ function extractEmployeeIdentifier(text) {
         .split(/\s+/)
         .map((token) => token.trim())
         .filter((token) => {
-            if (!token) return false;
+            if (!token) {return false;}
             const base = normalizeText(String(token)).replace(/^و+/, '').replace(/^ال+/, '').trim();
-            if (noise.has(normalizeText(token)) || noise.has(base)) return false;
-            if (base.length <= 2 && /^(?:ات|و|ال)$/i.test(base)) return false;
-            if (/^\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?$/.test(token)) return false;
-            if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return false;
-            if (/^(?:num|number|رقم)$/i.test(token)) return false;
+            if (noise.has(normalizeText(token)) || noise.has(base)) {return false;}
+            if (base.length <= 2 && /^(?:ات|و|ال)$/i.test(base)) {return false;}
+            if (/^\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?$/.test(token)) {return false;}
+            if (/^\d{4}-\d{2}-\d{2}$/.test(token)) {return false;}
+            if (/^(?:num|number|رقم)$/i.test(token)) {return false;}
             return base.length > 1;
         });
 
@@ -179,7 +179,7 @@ function buildControlledIntent(text) {
 
 async function canAccessErpReport(userPermissions = []) {
     const perms = Array.isArray(userPermissions) ? userPermissions : [];
-    if (!perms.length) return true;
+    if (!perms.length) {return true;}
     return perms.some((p) => ['attendance.read', 'revenue.read', 'sales.read', 'reports.read'].includes(String(p)));
 }
 
@@ -239,7 +239,7 @@ function parseQuestion(text) {
     }
 
     const dates = [];
-    const dateRegex = /(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?/g;
+    const dateRegex = /(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?/g;
     let m;
     while ((m = dateRegex.exec(raw)) !== null) {
         const d = parseInt(m[1], 10);
@@ -258,11 +258,11 @@ function parseQuestion(text) {
         .split(/\s+/)
         .filter((token) => {
             const base = normalizeText(String(token)).replace(/^و+/, '').replace(/^ال+/, '').trim();
-            if (!token || !base) return false;
-            if (allKeywords.some((kw) => normalizeText(kw) === base)) return false;
-            if (/^(?:اليوم|امس|أمس|today|yesterday|date|تاريخ|من|الى|إلى|يوم|بتاريخ|في|on|at|check|entry|exit|revenue|sales|invoice|report|تقرير|و|ال)$/i.test(base)) return false;
-            if (/^\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?$/.test(token)) return false;
-            if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return false;
+            if (!token || !base) {return false;}
+            if (allKeywords.some((kw) => normalizeText(kw) === base)) {return false;}
+            if (/^(?:اليوم|امس|أمس|today|yesterday|date|تاريخ|من|الى|إلى|يوم|بتاريخ|في|on|at|check|entry|exit|revenue|sales|invoice|report|تقرير|و|ال)$/i.test(base)) {return false;}
+            if (/^\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?$/.test(token)) {return false;}
+            if (/^\d{4}-\d{2}-\d{2}$/.test(token)) {return false;}
             return base.length > 1;
         })
         .join(' ')
@@ -284,7 +284,7 @@ function parseQuestion(text) {
 
 // ─── مُشكّلات الاستجابة ───
 function fmt(val, unit = '') {
-    if (val == null || isNaN(val)) return '—';
+    if (val == null || isNaN(val)) {return '—';}
     return `${Number(val).toLocaleString('ar-EG')}${unit}`;
 }
 
@@ -360,7 +360,7 @@ const QUERY_EXECUTORS = {
     async attendanceEmp(parsed) {
         const today = new Date().toISOString().slice(0, 10);
         const name = parsed.empName;
-        if (!name) return '<div class="mcard">اكتب اسم الموظف: "حضور أحمد"</div>';
+        if (!name) {return '<div class="mcard">اكتب اسم الموظف: "حضور أحمد"</div>';}
         try {
             const r = await withTimeout(pool.query(`
                 SELECT e.name AS employeeName, e."shift_start" AS shift_start, a.date, a."checkIn", a."checkOut", a."workMinutes", a.late
@@ -371,7 +371,7 @@ const QUERY_EXECUTORS = {
                 LIMIT 5
             `, [`%${name}%`]), 5000, 'ATTENDANCE_EMP');
             const rows = r.rows.filter((row) => row.date !== null);
-            if (!rows.length) return `<div class="mcard">لا يوجد موظف باسم "${name}"</div>`;
+            if (!rows.length) {return `<div class="mcard">لا يوجد موظف باسم "${name}"</div>`;}
             const latest = rows[0];
             const lastChecks = rows.slice(0, 3).map((row) => `• ${row.date}: دخول ${row.checkIn || '—'} | خروج ${row.checkOut || '—'}`).join('<br>');
             return makeCard(`📊 حضور ${latest.employeeName}`, [

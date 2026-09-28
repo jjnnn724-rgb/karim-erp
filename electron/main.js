@@ -19,15 +19,30 @@ const http = require('http');
 const crypto = require('crypto');
 const net = require('net');
 
-// Load .env next to the app root so packaged Electron uses the same
-// database credentials/ports as scripts/serve.js (single source of truth).
+// Load .env — سلسلة البحث (الأول الموجود يفوز، والمتغيرات الخارجية تسبق الجميع):
+//   1) بجانب الـ exe (ملف إعدادات الجهاز — يبقى موجودًا بعد أي تحديث)
+//   2) %APPDATA%\karim-erp\.env (قابل للكتابة — القالب الأولي يُكتب هنا)
+//   3) جذر المشروع (وضع التطوير من المصدر)
+// بدون هذا التسلسل التطبيق المثبّت يشتغل بلا إعدادات ويفشل عند قاعدة البيانات.
+let KARIM_ENV_FILE = '';
 try {
-  const dotenvPath = path.join(app.getAppPath(), '.env');
-  require('dotenv').config({ path: dotenvPath });
+    const dotenv = require('dotenv');
+    const exeDir = (() => { try { return path.dirname(app.getPath('exe')); } catch (_) { return null; } })();
+    const userData = (() => { try { return app.getPath('userData'); } catch (_) { return null; } })();
+    const candidates = [
+        exeDir ? path.join(exeDir, '.env') : null,
+        userData ? path.join(userData, '.env') : null,
+        path.join(app.getAppPath(), '.env'),
+    ].filter(Boolean);
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            dotenv.config({ path: p });
+            KARIM_ENV_FILE = p;
+            break;
+        }
+    }
 } catch (_) {
-  try {
-    require('dotenv').config();
-  } catch (_) {}
+    try { require('dotenv').config(); } catch (_) {}
 }
 
 // Auto-update integration (electron-updater)
@@ -50,9 +65,13 @@ const IS_BACKUP_MODE = process.argv.includes('--backup');
 const WINDOWS_SERVICE_NAME = 'AlShorfaERP';
 
 // ─── وضع العميل النحيف (v7.1 §5/LAW 05 — عميل موحد، السيرفر مصدر الصلاحيات) ───
-// وجود ملف server-target.json (بجانب الـ exe أو في %APPDATA%\karim-erp) يحوّل
-// هذا الجهاز إلى عميل يعرض واجهة السيرفر المركزي فقط — بلا PostgreSQL أو
-// خدمات محلية. غياب الملف = السلوك القائم (سيرفر محلي) — توافق كامل (LAW 13).
+// طريقتان لتحويل الجهاز إلى عميل:
+//   1) server-target.json (بجانب الـ exe أو في %APPDATA%\karim-erp) — عنوان صريح
+//      { "serverUrl": "https://192.168.1.10:5000" } — يدوي وله الأولوية دائمًا.
+//   2) client-mode.json (نفس الأماكن) — ملف علامة بلا عنوان: العميل يكتشف
+//      السيرفر تلقائيًا من إعلانه على الشبكة (UDP — common/lan-discovery).
+// غياب الملفين = السلوك القائم (سيرفر محلي) — توافق كامل (LAW 13).
+const CLIENT_MARKER_NAME = 'client-mode.json';
 const CLIENT_TARGET_CANDIDATES = [
     () => path.join(path.dirname(app.getPath('exe')), 'server-target.json'),
     () => path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'karim-erp', 'server-target.json'),
@@ -71,8 +90,25 @@ function readClientTarget() {
     }
     return null;
 }
+function clientMarkerCandidates() {
+    const exeDir = (() => { try { return path.dirname(app.getPath('exe')); } catch (_) { return null; } })();
+    const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return [
+        exeDir ? path.join(exeDir, CLIENT_MARKER_NAME) : null,
+        path.join(appData, 'karim-erp', CLIENT_MARKER_NAME),
+        path.join(__dirname, CLIENT_MARKER_NAME),
+        path.join(__dirname, '..', CLIENT_MARKER_NAME),
+    ].filter(Boolean);
+}
+function readClientMarker() {
+    for (const p of clientMarkerCandidates()) {
+        try { if (fs.existsSync(p)) {return p;} } catch (_) {}
+    }
+    return null;
+}
 const CLIENT_TARGET = readClientTarget();
-const IS_CLIENT_MODE = Boolean(CLIENT_TARGET);
+const CLIENT_MARKER = CLIENT_TARGET ? null : readClientMarker();
+const IS_CLIENT_MODE = Boolean(CLIENT_TARGET || CLIENT_MARKER);
 if ((IS_SERVICE_MODE || IS_BACKUP_MODE) && process.platform === 'win32') {
     app.disableHardwareAcceleration();
 }
@@ -199,6 +235,21 @@ function ensureDir(dirPath) {
 
 // ─── PostgreSQL Management ────────────────────────────────
 /**
+ * إيجاد pg_ctl: المحمولة المدمجة أولًا (database/bin) ثم المثبتة على النظام.
+ * (النسخ القديمة كانت تنادي findPgCtl دون تعريفها — المحمولة كانت مكسورة تمامًا.)
+ */
+function findPgCtl() {
+    const bundled = [
+        path.join(CONFIG.RESOURCE_PATH, 'database', 'bin', 'pg_ctl.exe'),
+        path.join(CONFIG.APP_PATH, 'database', 'bin', 'pg_ctl.exe'),
+    ];
+    for (const p of bundled) {
+        if (existsSync(p)) {return p;}
+    }
+    return findSystemPgCtl();
+}
+
+/**
  * System PostgreSQL only — v3.0
  * All data stored on the system PostgreSQL service (port 5432)
  * No portable database, no bundled binaries.
@@ -276,6 +327,30 @@ function getOrCreateDbPassword() {
 }
 
 /**
+ * قالب إعدادات أول تشغيل — يُكتب في userData (قابل للكتابة دائمًا) إن لم يوجد
+ * أي .env، ليعرف المالك بالضبط أين يضع كلمة مرور قاعدة البيانات.
+ */
+function writeEnvTemplate() {
+    try {
+        const target = path.join(CONFIG.PERSISTENT_PATH, '.env');
+        if (existsSync(target)) {return target;}
+        fs.writeFileSync(target, [
+            '# ── إعدادات Karim ERP ──',
+            '# املأ DB_PASSWORD بكلمة مرور postgres الخاصة بجهاز السيرفر ثم أعد فتح التطبيق.',
+            '# (ملف بجانب التطبيق exe له الأولوية إن رغبت في مكان آخر)',
+            '',
+            'PORT=5000',
+            'DB_PORT=5432',
+            'DB_NAME=karim_erp',
+            'DB_USER=postgres',
+            'DB_PASSWORD=',
+            '',
+        ].join('\n'), 'utf8');
+        return target;
+    } catch (_) { return ''; }
+}
+
+/**
  * تهيئة قاعدة البيانات إذا لم تكن موجودة
  * ينشئ مجلد البيانات ويشغل initdb
  */
@@ -326,7 +401,16 @@ async function initializeDatabase(pgCtlPath, dataDir) {
             try { fs.unlinkSync(pwFilePath); } catch (_) { /* best effort cleanup */ }
             if (code === 0) {
                 console.log('[PostgreSQL] Database cluster initialized successfully.');
-                
+
+                // ثبّت المنفذ المطلوب داخل config الكلاستر نفسه — يلزم pg_ctl -w
+                // بفحص المنفذ الصحيح ويتفادى تصادم أي PostgreSQL آخر على 5432
+                if (Number(CONFIG.DB_PORT) !== 5432) {
+                    try {
+                        fs.appendFileSync(path.join(dataDir, 'postgresql.conf'), `\nport = ${Number(CONFIG.DB_PORT)}\n`);
+                        console.log(`[PostgreSQL] Cluster port pinned to ${CONFIG.DB_PORT}.`);
+                    } catch (_) { /* يُعوَّض بخيار -o عند التشغيل */ }
+                }
+
                 // Restrict to localhost only — the DATABASE must never be
                 // reachable from the network. Only the Express app server
                 // (which enforces JWT auth) listens on 0.0.0.0.
@@ -446,7 +530,11 @@ async function trySystemPostgres() {
     if (!portOpen) return fail(`المثبتة لا تستمع على المنفذ ${CONFIG.DB_PORT} (تأكد من خدمتها وأن DB_PORT يطابقها)`);
     // 3) المصادقة — كلمة مرور النظام من DB_PASSWORD حصرًا (لا تخمين)
     const sysPassword = process.env.DB_PASSWORD || '';
-    if (!sysPassword) return fail('DB_PASSWORD فارغ — ضع كلمة مرور postgres للنظام لاستخدام المثبتة');
+    if (!sysPassword) {
+        // أول تشغيل بلا إعدادات: اكتب قالبًا واضحًا وارفض بهدوء بدل فشل غامض
+        const tpl = writeEnvTemplate();
+        return fail('DB_PASSWORD فارغ — ضع كلمة مرور postgres للنظام في ملف الإعدادات:\n' + (tpl || process.env.KARIM_ENV_FILE || '%APPDATA%\\karim-erp\\.env'));
+    }
     const sysEnv = { ...process.env, PGPASSWORD: sysPassword };
     const auth = await executeCommand(`"${sysPsql}" -h 127.0.0.1 -p ${CONFIG.DB_PORT} -U postgres -d postgres -tAc "SELECT 1"`, { timeout: 10000, ignoreError: true, env: sysEnv });
     if (String(auth || '').trim() !== '1') {
@@ -521,7 +609,10 @@ async function startPostgreSQL() {
             '-D', dataDir,
             '-l', logFile,
             '-w',          // Wait for startup to complete
-            '-t', '60'     // Timeout in seconds
+            '-t', '60',    // Timeout in seconds
+            // احترام DB_PORT: لو منفذ 5432 مشغول بخادم PostgreSQL آخر على نفس
+            // الجهاز، المحمولة تصعد على المنفذ المطلوب بدل فشل التصادم
+            ...(Number(CONFIG.DB_PORT) !== 5432 ? ['-o', `-p ${Number(CONFIG.DB_PORT)}`] : []),
         ], {
             cwd: binDir,
             env: runtimeEnv,
@@ -556,6 +647,16 @@ async function startPostgreSQL() {
             }
         }, CONFIG.DB_STARTUP_TIMEOUT);
         startupTimeout.unref?.();
+        // جاهزية حقيقية: افحص المنفذ بنفسك — pg_ctl -w قد يفحص منفذًا آخر
+        // (config قديم) أو يتأخر في الخروج حتى وهو الخادم يعمل فعلًا
+        const portPoll = setInterval(() => {
+            if (isDbReady) {clearInterval(portPoll); return;}
+            const s = require('net').createConnection({ port: Number(CONFIG.DB_PORT), host: '127.0.0.1' });
+            s.on('connect', () => { s.end(); clearInterval(portPoll); clearTimeout(startupTimeout); isDbReady = true; console.log('[PostgreSQL] Server accepted connections.'); resolve(true); });
+            s.on('error', () => {});
+            setTimeout(() => { try { s.destroy(); } catch (_) {} }, 900);
+        }, 1000);
+        if (portPoll.unref) {portPoll.unref();}
         pgProcess.on('close', (code) => {
             if (code === 0) {
                 clearTimeout(startupTimeout);
@@ -721,6 +822,27 @@ async function runScheduledBackup() {
 /**
  * تشغيل سيرفر Express Backend
  */
+/**
+ * بيئة تشغيل العمليات الفرعية (backend/workers):
+ * Node الحقيقي أولًا — require(ESM) (baileys وغيره) مدعوم من Node 20.19+/22.12+
+ * بينما Node 18 المدمج في إلكترون 28 يرفضه ويسقط الخادم. عند غياب Node على
+ * الجهاز نرجو لإلكترون كـ Node (يعمل بفضل حماية التحميل المحمي في server.js).
+ */
+function findBackendRuntime() {
+    try {
+        const where = spawnSync('where', ['node.exe'], { encoding: 'utf-8', timeout: 5000 });
+        if (where.status === 0) {
+            const first = String(where.stdout || '').trim().split(/\r?\n/)[0].trim();
+            if (first && existsSync(first)) {
+                console.log(`[Runtime] Backend runtime: ${first}`);
+                return first;
+            }
+        }
+    } catch (_) {}
+    console.log('[Runtime] Backend runtime: Electron-as-Node (node.exe غير موجود على PATH)');
+    return process.execPath;
+}
+
 async function startExpressServer() {
     const serverJsPath = path.join(CONFIG.APP_PATH, 'backend', 'server.js');
     
@@ -734,7 +856,7 @@ async function startExpressServer() {
         }
     }
     
-    const nodeExe = process.execPath;  // Same Node.js that runs Electron
+    const nodeExe = findBackendRuntime();  // Node حقيقي إن وُجد — وإلا إلكترون كـ Node
     const actualServerPath = existsSync(serverJsPath) ? serverJsPath : path.join(CONFIG.RESOURCE_PATH, 'backend', 'server.js');
     
     console.log(`[Server] Starting Express on ${CONFIG.HOST}:${CONFIG.PORT}...`);
@@ -776,6 +898,9 @@ async function startExpressServer() {
             JWT_ACCESS_SECRET:  secrets.access,
             JWT_REFRESH_SECRET: secrets.refresh,
             SKIP_BULLMQ: '1',
+            // قناة تحديث أجهزة الشبكة: السيرفر يخدم هذا المجلد على /updates
+            KARIM_UPDATES_DIR: path.join(CONFIG.PERSISTENT_PATH, 'updates'),
+            KARIM_SERVER_NAME: os.hostname(),
             // process.execPath is the packaged Electron exe — without this flag
             // the server child boots a SECOND full Chromium instance instead of
             // plain Node (wasted RAM/CPU, undefined electron-sensitive behavior)
@@ -982,15 +1107,15 @@ function createMainWindow() {
     mainWindow.loadURL(indexPath);
     
     // Cold start: the window loads BEFORE startAllServices() finishes booting
-    // PostgreSQL + Express + migrations (up to a minute on first run). Without
-    // a retry the user sees a dead ERR_CONNECTION_REFUSED page with no recovery.
+    // PostgreSQL + Express + migrations (up to ~3 minutes on FIRST run — initdb
+    // + 60+ migrations). 200 × 1.5s = 5 دقائق صبر كافٍ لأول تشغيل حقيقي.
     let loadRetryCount = 0;
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, isMainFrame) => {
         if (!isMainFrame) return;
         if (errorCode === -3) return; // ERR_ABORTED — intentional navigation, not a failure
-        if (loadRetryCount >= 60) return;
+        if (loadRetryCount >= 200) return;
         loadRetryCount++;
-        console.log(`[Window] Backend not ready yet (${errorDescription}) — retry ${loadRetryCount}/60 in 1.5s`);
+        console.log(`[Window] Backend not ready yet (${errorDescription}) — retry ${loadRetryCount}/200 in 1.5s`);
         setTimeout(() => { try { mainWindow.loadURL(indexPath); } catch (_) {} }, 1500);
     });
     
@@ -1138,6 +1263,27 @@ function createTray() {
             label: 'عرض عنوان IP',
             click: () => showIpAddressDialog()
         },
+        {
+            label: 'نسخ رابط أجهزة الشبكة',
+            click: () => {
+                const scheme = (process.env.SSL_KEY && process.env.SSL_CERT) ? 'https' : 'http';
+                const primary = getLocalIpAddresses().primary || '127.0.0.1';
+                const url = `${scheme}://${primary}:${CONFIG.PORT}`;
+                try { require('electron').clipboard.writeText(url); } catch (_) {}
+                dialog.showMessageBox(mainWindow, {
+                    type: 'info', title: 'رابط أجهزة الشبكة',
+                    message: `رابط الوصول من أجهزة الشبكة:\n${url}\n\nتم نسخه للحافظة. أجهزة العميل (EXE) تكتشفه تلقائيًا أيضًا.`
+                }).catch(() => {});
+            }
+        },
+        {
+            label: 'مجلد تحديثات الأجهزة (updates)',
+            click: () => {
+                const dir = path.join(CONFIG.PERSISTENT_PATH, 'updates');
+                ensureDir(dir);
+                require('electron').shell.openPath(dir).catch(() => {});
+            }
+        },
         { type: 'separator' },
         {
             label: 'إعادة تشغيل الخادم',
@@ -1198,6 +1344,27 @@ function updateTrayMenu() {
         {
             label: 'عرض عنوان IP',
             click: () => showIpAddressDialog()
+        },
+        {
+            label: 'نسخ رابط أجهزة الشبكة',
+            click: () => {
+                const scheme = (process.env.SSL_KEY && process.env.SSL_CERT) ? 'https' : 'http';
+                const primary = getLocalIpAddresses().primary || '127.0.0.1';
+                const url = `${scheme}://${primary}:${CONFIG.PORT}`;
+                try { require('electron').clipboard.writeText(url); } catch (_) {}
+                dialog.showMessageBox(mainWindow, {
+                    type: 'info', title: 'رابط أجهزة الشبكة',
+                    message: `رابط الوصول من أجهزة الشبكة:\n${url}\n\nتم نسخه للحافظة. أجهزة العميل (EXE) تكتشفه تلقائيًا أيضًا.`
+                }).catch(() => {});
+            }
+        },
+        {
+            label: 'مجلد تحديثات الأجهزة (updates)',
+            click: () => {
+                const dir = path.join(CONFIG.PERSISTENT_PATH, 'updates');
+                ensureDir(dir);
+                require('electron').shell.openPath(dir).catch(() => {});
+            }
         },
         { type: 'separator' },
         {
@@ -1381,6 +1548,19 @@ async function startAllServices() {
 
         // Step 4: Start Express Server
         console.log('⚙️  Step 4/4: Starting Express Server...');
+        // Pre-flight: المنفذ مأخوذ؟ (غالبًا نسخة إنتاجية شغالة على نفس الجهاز) —
+        // رسالة واضحة أفضل من فشل bind غامض بعد تشغيل الخدمات
+        const portBusy = await new Promise((resolve) => {
+            const s = require('net').createConnection({ port: Number(CONFIG.PORT), host: '127.0.0.1' });
+            s.on('connect', () => { s.end(); resolve(true); });
+            s.on('error', () => resolve(false));
+            setTimeout(() => { try { s.destroy(); } catch (_) {} resolve(false); }, 1500);
+        });
+        if (portBusy) {
+            throw new Error(
+                `المنفذ ${CONFIG.PORT} مستخدم من عملية أخرى على هذا الجهاز (غالبًا نسخة أخرى من النظام لا تزال تعمل).\n\n` +
+                `الحل:\n1) أوقف النسخة الأخرى، أو\n2) غيّر PORT في ملف الإعدادات (${KARIM_ENV_FILE || path.join(CONFIG.PERSISTENT_PATH, '.env')}) ثم أعد فتح التطبيق.`);
+        }
         await startExpressServer();
         console.log('✅ Express Server ready!\n');
         
@@ -1522,21 +1702,10 @@ async function forceQuitApp() {
 
 // ─── Auto-Updater Setup ─────────────────────────────────────
 /**
- * تكوين التحديث التلقائي عبر GitHub Releases
- * يتطلب: electron-updater + electron-log + إصدار موقع
+ * توصيل أحداث التحديث (مشترك بين وضعي السيرفر والعميل)
  */
-function setupAutoUpdater() {
+function wireAutoUpdaterEvents() {
     if (!autoUpdater) return;
-
-    const feedUrl = 'https://github.com/karim-erp/karim-desktop/releases/latest';
-    
-    autoUpdater.setFeedURL({
-        provider: 'github',
-        owner: 'karim-erp',
-        repo: 'karim-desktop',
-        private: false,
-        releaseType: 'release'
-    });
 
     autoUpdater.on('checking-for-update', () => {
         console.log('[AutoUpdate] Checking for updates...');
@@ -1593,6 +1762,54 @@ function setupAutoUpdater() {
             }
         });
     });
+}
+
+/**
+ * وضع العميل: التحديث من السيرفر نفسه عبر الشبكة (provider: generic)
+ * المسار: {SERVER}/updates/latest.yml — السيرفر يخدم مجلد updates الثابت.
+ * شهادة mkcert: إن وُجدت شهادة CA مرفقة مع التطبيق تُضاف للثقة عبر
+ * NODE_EXTRA_CA_CERTS قبل أول اتصال TLS — وإلا فشل الفحص يُسجل فقط.
+ */
+function setupClientLanUpdater() {
+    if (!autoUpdater) return;
+    try {
+        const caPath = path.join(process.resourcesPath || CONFIG.APP_PATH, 'Karim-Local-CA.crt');
+        if (existsSync(caPath)) {
+            process.env.NODE_EXTRA_CA_CERTS = caPath;
+            console.log('[AutoUpdate] LAN updates — CA trusted:', caPath);
+        }
+    } catch (_) {}
+    wireAutoUpdaterEvents();
+    autoUpdater.setFeedURL({
+        provider: 'generic',
+        url: RESOLVED_SERVER_URL.replace(/\/+$/, '') + '/updates',
+        useMultipleRangeRequest: false,
+    });
+    const check = () => autoUpdater.checkForUpdates().catch((e) => {
+        console.warn('[AutoUpdate] LAN check failed (السيرفر بلا latest.yml بعد؟):', e.message);
+    });
+    setTimeout(check, 20000);
+    const timer = setInterval(check, 10 * 60 * 1000);
+    if (timer.unref) {timer.unref();}
+}
+
+/**
+ * تكوين التحديث التلقائي عبر GitHub Releases (وضع السيرفر/المكتبي)
+ * يتطلب: electron-updater + electron-log + إصدار موقع
+ */
+function setupAutoUpdater() {
+    if (!autoUpdater) return;
+
+    const feedUrl = 'https://github.com/karim-erp/karim-desktop/releases/latest';
+
+    wireAutoUpdaterEvents();
+    autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'karim-erp',
+        repo: 'karim-desktop',
+        private: false,
+        releaseType: 'release'
+    });
 
     // Check for updates on startup (after 30 seconds)
     setTimeout(() => {
@@ -1617,14 +1834,15 @@ function setupAutoUpdater() {
 // ─── وضع العميل: ثقة مقيدة بشهادة السيرفر المضبوط فقط (العقد §36 — مرحلة انتقالية) ───
 // التفضيل الدائم: تثبيت Karim-Local-CA.crt على الجهاز (مسار الرابط /app/Karim-Local-CA.crt).
 // هذا المعالج شبكة أمان فقط: يقبل خطأ UNTRUSTED_AUTHORITY لمضيف السيرفر المضبوط حصرًا،
-// وأي شهادة/مضيف آخر يُرفض — لا تخفٍّ عام أبدًا.
+// وأي شهادة/مضيف آخر يُرفض — لا تخفٍّ عام أبدًا. المضيف يُحدَّث بعد الاكتشاف التلقائي.
+let RESOLVED_SERVER_URL = CLIENT_TARGET ? CLIENT_TARGET.url : null;
+let CLIENT_ALLOWED_HOST = null;
 if (IS_CLIENT_MODE) {
-    let allowedHost = null;
-    try { allowedHost = new URL(CLIENT_TARGET.url).host; } catch (_) {}
+    try { CLIENT_ALLOWED_HOST = CLIENT_TARGET ? new URL(CLIENT_TARGET.url).host : null; } catch (_) {}
     app.on('certificate-error', (event, webContents, urlString, error, certificate, callback) => {
         let host = null;
         try { host = new URL(urlString).host; } catch (_) {}
-        if (host && host === allowedHost && error === 'UNTRUSTED_AUTHORITY'
+        if (host && host === CLIENT_ALLOWED_HOST && error === 'UNTRUSTED_AUTHORITY'
             && /mkcert|karim|shorfa/i.test(String(certificate.issuerName || ''))) {
             event.preventDefault();
             callback(true);
@@ -1632,7 +1850,96 @@ if (IS_CLIENT_MODE) {
         }
         callback(false);
     });
-    console.log(`[Client] وضع العميل النحيف — السيرفر: ${CLIENT_TARGET.url} (المصدر: ${CLIENT_TARGET.source})`);
+    console.log(`[Client] وضع العميل النحيف — ${CLIENT_TARGET ? 'السيرفر: ' + CLIENT_TARGET.url + ' (المصدر: ' + CLIENT_TARGET.source + ')' : 'اكتشاف تلقائي للسيرفر على الشبكة (UDP)'}`);
+}
+
+// ─── اكتشاف السيرفر على الشبكة (وضع client-mode.json) ───
+const lanDiscovery = require('../common/lan-discovery');
+
+/** فحص خادم مرشَّح: GET /api/server/info — يقبل فقط إجابة karim-erp حقيقية */
+function probeServerInfo(url) {
+    return new Promise((resolve) => {
+        try {
+            const u = new URL(String(url).replace(/\/+$/, '') + '/api/server/info');
+            const mod = u.protocol === 'https:' ? require('https') : require('http');
+            const req = mod.get({
+                hostname: u.hostname,
+                port: u.port || (u.protocol === 'https:' ? 443 : 80),
+                path: u.pathname,
+                timeout: 2500,
+                rejectUnauthorized: false, // التحقق الحقيقي عبر محتوى الإجابة + معالج الشهادات أعلاه
+            }, (res) => {
+                let body = '';
+                res.on('data', (d) => { body += d; if (body.length > 4096) {res.destroy();} });
+                res.on('end', () => {
+                    try {
+                        const info = JSON.parse(body);
+                        resolve(info && info.app === 'karim-erp' ? info : null);
+                    } catch (_) { resolve(null); }
+                });
+            });
+            req.on('timeout', () => { req.destroy(); resolve(null); });
+            req.on('error', () => resolve(null));
+        } catch (_) { resolve(null); }
+    });
+}
+
+/** كاش آخر سيرفر مكتشَف — يُستخدم فقط لو فشل البث الحي (إعادة إقلاع أسرع) */
+function discoveredCachePath() {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'karim-erp', 'discovered-server.json');
+}
+function readDiscoveredCache() {
+    try {
+        const raw = JSON.parse(fs.readFileSync(discoveredCachePath(), 'utf8'));
+        const url = String(raw.serverUrl || '').trim().replace(/\/+$/, '');
+        return /^https?:\/\/.+/.test(url) ? url : null;
+    } catch (_) { return null; }
+}
+
+/** جولة اكتشاف: استماع UDP + تحقق HTTP لكل مرشح — يثبت الناجح في الكاش */
+async function discoverServerUrlOnce(listenMs = 4000) {
+    const candidates = await lanDiscovery.discoverServers({ listenMs });
+    for (const c of candidates) {
+        const info = await probeServerInfo(c.url);
+        if (info) {
+            try {
+                ensureDir(path.dirname(discoveredCachePath()));
+                fs.writeFileSync(discoveredCachePath(), JSON.stringify({
+                    serverUrl: c.url, name: info.serverName || c.name,
+                    version: info.version, at: new Date().toISOString(),
+                }, null, 2));
+            } catch (_) {}
+            return c.url;
+        }
+    }
+    return null;
+}
+
+/** نافذة «جارٍ البحث عن الخادم» — تُستبدل بواجهة السيرفر فور العثور عليه */
+function createSearchWindow() {
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+<title>Karim ERP — جارٍ البحث عن الخادم</title>
+<style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#e6e6f0;font-family:'Segoe UI',Tahoma,sans-serif;text-align:center}
+.box{max-width:520px;padding:40px}.logo{font-size:52px;margin-bottom:12px}
+h1{font-size:22px;font-weight:600;margin:0 0 10px}p{color:#9a9ab8;font-size:14px;line-height:1.8;margin:0}
+.dots::after{content:'';animation:dots 1.2s steps(4) infinite}@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.spin{display:inline-block;width:34px;height:34px;border:3px solid #3d3d5c;border-top-color:#6c5ce7;border-radius:50%;animation:sp 1s linear infinite;margin-bottom:22px}
+@keyframes sp{to{transform:rotate(360deg)}}</style></head>
+<body><div class="box"><div class="spin"></div><div class="logo">🍽️</div>
+<h1>جارٍ البحث عن خادم Karim ERP<span class="dots"></span></h1>
+<p>تأكد أن جهاز الخادم يعمل ومتصل بنفس الشبكة.<br>سيتم الاتصال تلقائيًا فور العثور عليه.</p></div></body></html>`;
+    const win = new BrowserWindow({
+        width: 640, height: 440,
+        title: 'Karim ERP — جارٍ البحث عن الخادم',
+        icon: getAppIcon(),
+        webPreferences: { nodeIntegration: false, contextIsolation: true, webSecurity: true },
+        show: false,
+        backgroundColor: '#1a1a2e',
+    });
+    win.setMenuBarVisibility(false);
+    win.once('ready-to-show', () => win.show());
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    return win;
 }
 
 /** نافذة العميل النحيف — تعرض واجهة السيرفر المركزي فقط */
@@ -1653,14 +1960,14 @@ function createClientWindow() {
         backgroundColor: '#1a1a2e',
     });
     mainWindow.setMenuBarVisibility(false);
-    mainWindow.loadURL(CLIENT_TARGET.url);
+    mainWindow.loadURL(RESOLVED_SERVER_URL);
     // السيرفر غير جاهز/غير متاح → إعادة محاولة لطيفة بدل صفحة خطأ ميتة
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
         if (!isMainFrame || errorCode === -3) return;
         mainWindow.__clientRetries = (mainWindow.__clientRetries || 0) + 1;
         if (mainWindow.__clientRetries > 30) return;
         console.log(`[Client] السيرفر غير متاح (${errorDescription}) — إعادة ${mainWindow.__clientRetries}/30 بعد 2 ث`);
-        setTimeout(() => { try { mainWindow.loadURL(CLIENT_TARGET.url); } catch (_) {} }, 2000);
+        setTimeout(() => { try { mainWindow.loadURL(RESOLVED_SERVER_URL); } catch (_) {} }, 2000);
     });
     mainWindow.once('ready-to-show', () => { mainWindow.show(); });
     mainWindow.on('closed', () => { mainWindow = null; });
@@ -1671,6 +1978,28 @@ app.whenReady().then(async () => {
 
     // ── وضع العميل النحيف: واجهة السيرفر المركزي فقط — لا خدمات ولا قاعدة بيانات ──
     if (IS_CLIENT_MODE) {
+        // عنوان صريح من server-target.json؟ يستخدم فورًا. وإلا: اكتشاف UDP تلقائي.
+        if (!RESOLVED_SERVER_URL) {
+            const searchWin = createSearchWindow();
+            let found = null;
+            // حتى 90 جولة × 4 ثوانٍ = ~6 دقائق؛ بين الجولات يُجرَّب الكاش (إقلاع أسرع)
+            for (let attempt = 1; attempt <= 90 && !found; attempt++) {
+                found = await discoverServerUrlOnce(4000)
+                    || (attempt % 3 === 0 ? await (async () => { const c = readDiscoveredCache(); return (c && await probeServerInfo(c)) ? c : null; })() : null);
+            }
+            try { if (searchWin && !searchWin.isDestroyed()) {searchWin.close();} } catch (_) {}
+            if (!found) {
+                dialog.showErrorBox(
+                    'تعذر العثور على خادم Karim ERP',
+                    'تأكد أن جهاز الخادم يعمل ومتصل بنفس الشبكة، ثم أعد فتح التطبيق.\n\nلتعيين الخادم يدويًا: أنشئ ملف server-target.json بجانب التطبيق:\n{ "serverUrl": "https://عنوان-الخادم:5000" }');
+                app.quit();
+                return;
+            }
+            RESOLVED_SERVER_URL = found.replace(/\/+$/, '');
+        }
+        try { CLIENT_ALLOWED_HOST = new URL(RESOLVED_SERVER_URL).host; } catch (_) {}
+        console.log(`[Client] السيرفر: ${RESOLVED_SERVER_URL}`);
+        setupClientLanUpdater();
         createClientWindow();
         return;
     }

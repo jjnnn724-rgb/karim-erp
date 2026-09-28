@@ -151,7 +151,7 @@
   --karim-text:       #eceff5;
   --karim-text-2:     #c3cad8;
   --karim-text-muted: #9aa5b8;
-  --karim-text-faint: #6b7a93;
+  --karim-text-faint: #7e92b3; /* 5.97:1 on bg — WCAG AA (was #6b7a93 at 4.34) */
 
   --karim-green: #4ade80;  --karim-green-light: rgba(74, 222, 128, 0.12);
   --karim-red:   #f87171;  --karim-red-light:   rgba(248, 113, 113, 0.12);
@@ -178,7 +178,7 @@
   --teal: #2dd4bf;
   --text: #eceff5;
   --text2: #9aa5b8;
-  --text3: #6b7a93;
+  --text3: #7e92b3;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 1px 3px rgba(0, 0, 0, 0.4);
 

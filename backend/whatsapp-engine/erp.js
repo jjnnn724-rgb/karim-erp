@@ -27,17 +27,19 @@ async function withTimeout(promise, ms, label) {
 async function hrAttendanceLookup(pool, cfg, store, args, rec) {
     const norm = (s) => String(s || '').replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
     const toISO = (d, m, y) => {
-        let Y = Number(y), M = Number(m), D = Number(d);
+        let Y = Number(y);
+        const M = Number(m);
+        const D = Number(d);
         if (Y < 100) {Y += 2000;}
         if (!(Y >= 2020 && Y <= 2100 && M >= 1 && M <= 12 && D >= 1 && D <= 31)) {return null;}
         return `${Y}-${String(M).padStart(2, '0')}-${String(D).padStart(2, '0')}`;
     };
     const dates = [];
     let text = ` ${args} `;
-    text = text.replace(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/g, (_, y, m, d) => {
+    text = text.replace(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/g, (_, y, m, d) => {
         const iso = toISO(d, m, y); if (iso) {dates.push(iso);} return ' ';
     });
-    text = text.replace(/(?<!\d)(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?(?!\d)/g, (_, d, m, y) => {
+    text = text.replace(/(?<!\d)(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?(?!\d)/g, (_, d, m, y) => {
         const iso = toISO(d, m, y || new Date().getFullYear()); if (iso) {dates.push(iso);} return ' ';
     });
     // «آخر 5 أيام» / «آخر أسبوع» / «آخر شهر» — مدة نسبية تُحسب من اليوم وتُنظَّف من الاسم

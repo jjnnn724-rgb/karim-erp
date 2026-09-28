@@ -29,7 +29,7 @@ import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.
 import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.132';
 import { CONFIG, ROLES } from './core/config.js?v=4.7.132';
 import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.7.142';
-import * as authNav from './features/auth-navigation.js?v=4.7.142';
+import * as authNav from './features/auth-navigation.js?v=4.7.178';
 import * as pageRouter from './features/page-router.js?v=4.7.142';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
@@ -95,58 +95,61 @@ window.saveData = saveData;
 window.uiPreferencesPayload = uiPreferencesPayload;
 
 // BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
-const smartCard = await import('./features/smart-card.js?v=4.7.157');
+const smartCard = await import('./features/smart-card.js?v=4.7.178');
 Object.assign(window, smartCard);   // BRIDGE-008
 
 const bulkImport = await import('./features/bulk-import.js?v=4.7.132');
 Object.assign(window, bulkImport);  // BRIDGE-009
 
-const zkteco = await import('./features/zkteco.js?v=4.7.152');
+const zkteco = await import('./features/zkteco.js?v=4.7.170');
 Object.assign(window, zkteco);      // BRIDGE-010
 
-const kitchen = await import('./features/kitchen.js?v=4.7.166');
+const kitchen = await import('./features/kitchen.js?v=4.7.173');
 Object.assign(window, kitchen);     // BRIDGE-013
 
-const finance = await import('./features/finance.js?v=4.7.167');
+const finance = await import('./features/finance.js?v=4.7.170');
 Object.assign(window, finance);     // BRIDGE-014
 
-const hr = await import('./features/hr.js?v=4.7.157');
+const hr = await import('./features/hr.js?v=4.7.170');
 Object.assign(window, hr);          // BRIDGE-015
 
-const yarasoft = await import('./features/yarasoft.js?v=4.7.167');
+const yarasoft = await import('./features/yarasoft.js?v=4.7.176');
 Object.assign(window, yarasoft);    // BRIDGE-016
 
-const whatsapp = await import('./features/whatsapp.js?v=4.7.138');
+const whatsapp = await import('./features/whatsapp.js?v=4.7.170');
 Object.assign(window, whatsapp);    // BRIDGE-017
 
-const departments = await import('./features/departments.js?v=4.7.165');
+const departments = await import('./features/departments.js?v=4.7.170');
 Object.assign(window, departments); // BRIDGE-018
 
 const reports = await import('./features/reports.js?v=4.7.139');
 Object.assign(window, reports);     // BRIDGE-019
 
-const settingsUsers = await import('./features/settings-users.js?v=4.7.140');
+const settingsUsers = await import('./features/settings-users.js?v=4.7.170');
 Object.assign(window, settingsUsers); // BRIDGE-020
+
+const permissions = await import('./features/permissions.js?v=4.7.178');
+Object.assign(window, permissions); // BRIDGE-PERM
 
 const cfo = await import('./features/cfo.js?v=4.7.140');
 Object.assign(window, cfo);           // BRIDGE-021
 
-const dashboard = await import('./features/dashboard.js?v=4.7.141');
+const dashboard = await import('./features/dashboard.js?v=4.7.170');
 Object.assign(window, dashboard);     // BRIDGE-022
 
 const employeePortal = await import('./features/employee-portal.js?v=4.7.141');
 Object.assign(window, employeePortal); // BRIDGE-023
 
-const authNavNS = await import('./features/auth-navigation.js?v=4.7.142');
+const authNavNS = await import('./features/auth-navigation.js?v=4.7.178');
 Object.assign(window, authNavNS);     // BRIDGE-026
 
 const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
 Object.assign(window, pageRouterNS);  // BRIDGE-027
 
-const employees = await import('./features/employees.js?v=4.7.150');
+const employees = await import('./features/employees.js?v=4.7.175');
 Object.assign(window, employees);   // BRIDGE-011
 
-const warehouse = await import('./features/warehouse.js?v=4.7.164');
+const warehouse = await import('./features/warehouse.js?v=4.7.174');
 Object.assign(window, warehouse);   // BRIDGE-012
 
 

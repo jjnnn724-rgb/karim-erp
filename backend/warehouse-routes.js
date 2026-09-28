@@ -6,6 +6,7 @@ const { logger } = require('./logger');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
+const { emitDomainEvent } = require('./realtime/producers');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
 
 const router = express.Router();
@@ -560,9 +561,9 @@ let totalValue = 0;
                 [inv.id, mainLocation.id]
             );
             for (const loc of balanceLocations.rows) {
-                if (remainingQty <= 0) break;
+                if (remainingQty <= 0) {break;}
                 const take = Math.min(n(loc.on_hand), remainingQty);
-                if (take <= 0) continue;
+                if (take <= 0) {continue;}
                 // توزيع عدد الكراتين على المواقع بنسبة المسحوب (معلومة موازية — الرصيد يبقى بالكيلو)
                 const locBoxes = isCatchWeight && effectiveQty > 0 ? round((packagingQty * take) / effectiveQty, 3) : null;
                 await postInventoryLedgerEntry(client, {
@@ -642,6 +643,17 @@ let totalValue = 0;
                 req.user.name || req.user.username || String(req.user.id), approvalSignature, signatureHash(approvalSignature), dispatch.id]
         )).rows[0];
         await appendDispatchEvent(client, dispatch.id, 'warehouse_approved', dispatch.status, 'approved', req, approvalSignature, { approvedItems, notes: req.body?.approveNotes || null });
+        // TASK 9: حدثا دومين داخل نفس المعاملة (fail-open): الصرف + المصروف المولد
+        await emitDomainEvent(pool, client, 'DISPATCH', {
+            eventType: 'DISPATCH_APPROVED', aggregateType: 'dispatch', aggregateId: dispatch.id,
+            deptCode: dispatch.deptCode,
+            payload: { dispatch_id: dispatch.id, dept: dispatch.deptCode, total: round(totalValue, 2), items: approvedItems.length },
+        });
+        await emitDomainEvent(pool, client, 'EXPENSE', {
+            eventType: 'EXPENSE_CREATED', aggregateType: 'dispatch', aggregateId: dispatch.id,
+            deptCode: dispatch.deptCode,
+            payload: { dispatch_id: dispatch.id, dept: dispatch.deptCode, total: round(totalValue, 2), kind: 'dispatch_materials' },
+        });
         await client.query('COMMIT');
 
         // ترحيل محاسبي متماثل best-effort: Dr COGS / Cr مخزون (لا يُسقط الاعتماد)
@@ -1005,6 +1017,12 @@ async function directReturn(client, req, res) {
             [returnId, dateOnly(new Date()), json(returnItems), req.body?.notes || null, req.body?.reason || 'إرجاع مباشر',
                 dept.code, dept.name, round(totalValue, 2), req.user.username || String(req.user.id)]
         )).rows[0];
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'DISPATCH', {
+            eventType: 'DISPATCH_RETURNED', aggregateType: 'kitchen_return', aggregateId: returnId,
+            deptCode: dept.code,
+            payload: { return_id: returnId, direct: true, dept: dept.code, total: round(totalValue, 2) },
+        });
         await client.query('COMMIT');
         // عكس محاسبي متماثل best-effort (المباشر أيضًا يحرّك المخزون)
         try {
@@ -1172,6 +1190,12 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             [returnId, dateOnly(new Date()), json(returnItems), req.body?.notes || null, req.body?.reason || null,
                 String(dispatch.id), dispatch.deptCode, dispatch.deptName, round(totalValue, 2), req.user.username || String(req.user.id)]
         )).rows[0];
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'DISPATCH', {
+            eventType: 'DISPATCH_RETURNED', aggregateType: 'kitchen_return', aggregateId: returnId,
+            deptCode: dispatch.deptCode,
+            payload: { return_id: returnId, dispatch_id: dispatch.id, dept: dispatch.deptCode, total: round(totalValue, 2) },
+        });
         await client.query('COMMIT');
 
         // عكس محاسبي متماثل best-effort: Dr مخزون / Cr COGS
@@ -1400,6 +1424,59 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
         logger.error('[warehouse_bulk_receipt]', error);
         return res.status(500).json({ error: 'BULK_RECEIPT_FAILED', message: 'تعذر تسجيل استيراد المخزون' });
     } finally { client.release(); }
+});
+
+// ─── Smart inventory search: GET /warehouse/inventory/search ────────────────
+// q → name (partial, trgm) OR barcode OR category · category exact · stock
+// filter (all|low|out|ok) server-side · always paginated · parameterized.
+router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant'), async (req, res) => {
+    try {
+        const q = String(req.query.q ?? '').trim().slice(0, 100);
+        const category = String(req.query.category ?? 'all').trim().slice(0, 100);
+        const stock = String(req.query.stock ?? 'all').trim().toLowerCase();
+        if (!['all', 'low', 'out', 'ok'].includes(stock)) {
+            return fail(res, 422, 'INVALID_STOCK_FILTER', 'فلتر المخزون غير معروف');
+        }
+        let page = Number.parseInt(req.query.page, 10);
+        if (!Number.isInteger(page) || page < 1) {page = 1;}
+        let limit = Number.parseInt(req.query.limit, 10);
+        if (!Number.isInteger(limit) || limit < 1) {limit = 50;}
+        limit = Math.min(limit, 200);
+        const offset = (page - 1) * limit;
+
+        const clauses = [];
+        const params = [];
+        if (q) {
+            params.push(q);
+            const i = params.length;
+            clauses.push(`(i.name ILIKE '%' || $${i} || '%' OR COALESCE(i.barcode,'') ILIKE '%' || $${i} || '%' OR COALESCE(i.category,'') ILIKE '%' || $${i} || '%')`);
+        }
+        if (category && category !== 'all') {
+            params.push(category);
+            clauses.push(`i.category = $${params.length}`);
+        }
+        if (stock === 'out') {clauses.push(`COALESCE(i.qty,0) <= 0`);}
+        else if (stock === 'low') {clauses.push(`COALESCE(i.qty,0) > 0 AND COALESCE(i.qty,0) <= COALESCE(i."minQty",0)`);}
+        else if (stock === 'ok') {clauses.push(`COALESCE(i.qty,0) > COALESCE(i."minQty",0)`);}
+        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        const total = Number((await pool.query(
+            `SELECT COUNT(*)::int AS c FROM inventory i ${where}`, params)).rows[0].c);
+        const rows = (await pool.query(
+            `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
+                    i.weight, i.barcode, i."shelfId"
+             FROM inventory i ${where}
+             ORDER BY i.category NULLS LAST, i.name ASC
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, limit, offset])).rows;
+        const categories = (await pool.query(
+            `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`)).rows
+            .map(r => r.category);
+        const pages = total === 0 ? 0 : Math.ceil(total / limit);
+        res.json({ data: rows, pagination: { page, limit, total, pages }, categories });
+    } catch (error) {
+        logger.error('[warehouse_inventory_search]', error);
+        fail(res, 500, 'INVENTORY_SEARCH_FAILED', 'تعذر البحث في الأصناف');
+    }
 });
 
 router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
@@ -1640,6 +1717,11 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                     dateOnly(requestedDate), invoiceId, 'دفعة تلقائية مع تسجيل فاتورة الشراء', req.user.username || String(req.user.id)]
             );
         }
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'PURCHASE', {
+            eventType: 'PURCHASE_CREATED', aggregateType: 'purchase_invoice', aggregateId: invoiceId,
+            payload: { invoice_id: invoiceId, number: invoice.invoiceNumber, total: invoiceTotal, vat: invoiceVat, supplier_id: supplierId },
+        });
         await client.query('COMMIT');
 
         // ترحيل محاسبي best-effort (لا يُسقط الشراء عند غياب شجرة الحسابات)
@@ -1743,7 +1825,7 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
             await client.query('ROLLBACK');
             return fail(res, 409, 'INVOICE_HAS_PAYMENTS', 'الفاتورة مرتبطة بدفعات موردين — احذف الدفعات أولًا', { payments: payRef.c, total: payRef.t });
         }
-        let deletedPayments = 0;
+        const deletedPayments = 0;
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
         let items = inv.items;
         if (typeof items === 'string') { try { items = JSON.parse(items); } catch (_) { items = []; } }
@@ -1805,6 +1887,11 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
               WHERE source_type='purchase_invoice' AND source_id=$1 AND status='posted'`,
             [String(invoiceId)]);
         await client.query('DELETE FROM "purchaseInvoices" WHERE id = $1', [invoiceId]);
+        // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
+        await emitDomainEvent(pool, client, 'PURCHASE', {
+            eventType: 'PURCHASE_VOIDED', aggregateType: 'purchase_invoice', aggregateId: invoiceId,
+            payload: { invoice_id: invoiceId, number: inv.invoiceNumber, reversed_items: reversed },
+        });
         await client.query('COMMIT');
         emit(req, 'purchaseInvoices', 'delete', { id: invoiceId, invoiceNumber: inv.invoiceNumber, void: true, force: !!force });
         logger.warn(`[purchase_invoice_void] ${req.user?.username} ألغى الفاتورة ${inv.invoiceNumber} (${invoiceId})${force ? ' قسريًا' : ''} مع عكس ${reversed} صنفًا وحذف ${deletedPayments} دفعة`);

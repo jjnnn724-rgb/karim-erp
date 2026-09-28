@@ -102,17 +102,17 @@ function loadEnv() {
 function getEnv(key, fallback = '') {
         // Professional priority: system env first (Docker/Service/Electron injection),
         // then .env file, then fallback. Backward-compat with legacy KARIM_* names.
-        if (process.env[key] !== undefined && process.env[key] !== '') return process.env[key];
+        if (process.env[key] !== undefined && process.env[key] !== '') {return process.env[key];}
         const envFile = loadEnv();
-        if (envFile[key] !== undefined && envFile[key] !== '') return envFile[key];
+        if (envFile[key] !== undefined && envFile[key] !== '') {return envFile[key];}
         // Legacy aliases (one release cycle): pre-v5 HORUS_* -> KARIM_*
         const legacyMap = { KARIM_MIGRATION_MODE: 'HORUS_MIGRATION_MODE', KARIM_BACKUP_DIR: 'HORUS_BACKUP_DIR', KARIM_BACKUP_RETENTION: 'HORUS_BACKUP_RETENTION', KARIM_DATA_DIR: 'HORUS_DATA_DIR' };
         if (legacyMap[key]) {
-            if (process.env[legacyMap[key]]) return process.env[legacyMap[key]];
-            if (envFile[legacyMap[key]]) return envFile[legacyMap[key]];
+            if (process.env[legacyMap[key]]) {return process.env[legacyMap[key]];}
+            if (envFile[legacyMap[key]]) {return envFile[legacyMap[key]];}
         }
-        if (key === 'DB_PORT' && process.env.PG_PORT) return process.env.PG_PORT;
-        if (key === 'DB_PORT' && envFile.PG_PORT) return envFile.PG_PORT;
+        if (key === 'DB_PORT' && process.env.PG_PORT) {return process.env.PG_PORT;}
+        if (key === 'DB_PORT' && envFile.PG_PORT) {return envFile.PG_PORT;}
         return fallback;
     }
 
@@ -126,7 +126,7 @@ function getPgBinary(name) {
     try {
         const resolver = require('./db-resolver');
         const found = resolver.getPgBinary(name);
-        if (found) return found;
+        if (found) {return found;}
     } catch (_) {}
     if (IS_WIN) {
         // Fallback: Check common PostgreSQL install locations, newest first
@@ -196,7 +196,7 @@ function isDemoMigration(f) { return DEMO_MIGRATIONS.has(path.basename(String(f 
 function isDemoMode() {
     // KARIM_ primary; HORUS_ legacy for old .env files (one release cycle)
     const v = String(getEnv('KARIM_MIGRATION_MODE', '') || process.env.HORUS_MIGRATION_MODE || '');
-    if (v) return v.toLowerCase() === 'demo';
+    if (v) {return v.toLowerCase() === 'demo';}
     return false;
 }
 function shouldApplyMigration(f) { return isDemoMode() || !isDemoMigration(f); }
@@ -219,6 +219,20 @@ function generateSecret(len = 48) { return genSecret(len); }
 // references like lib.BIN_DIR don't crash with undefined.
 const BIN_DIR = path.join(ROOT, 'database', 'bin');
 
+// ─── أسرار حقيقية فقط (عقد أمني): القيم العامة الوهمية تُرفض مهما طال طولها ───
+const KNOWN_PLACEHOLDER_SECRETS = [
+    'replace-me-with-a-long-random-secret-access-key-32chars-min',
+    'replace-me-with-a-long-random-secret-refresh-key-32chars-min',
+];
+/** سر حقيقي؟ يرفض الناقص/القصير/<32/placeholder معروف/نمط replace-me */
+function isRealSecret(value) {
+    const v = String(value || '').trim();
+    if (v.length < 32) {return false;}
+    if (KNOWN_PLACEHOLDER_SECRETS.includes(v)) {return false;}
+    if (/replace-me/i.test(v)) {return false;}
+    return true;
+}
+
 function setupEnvSecrets() {
     if (!ensureEnvFile()) {return false;}
     let txt = fs.readFileSync(ENV_FILE, 'utf-8');
@@ -226,7 +240,7 @@ function setupEnvSecrets() {
     const gen = (len = 48) => crypto.randomBytes(len).toString('hex');
     const fix = (key, cur) => {
         const re = new RegExp(`^${key}=.*$`, 'm');
-        if (!cur || cur.length < 32 || cur.includes('replace-me') || cur.includes('karim_preview')) {
+        if (!isRealSecret(cur) || cur.includes('karim_preview')) {
             const sec = gen();
             if (re.test(txt)) {txt = txt.replace(re, `${key}=${sec}`);}
             else {txt += `\n${key}=${sec}\n`;}
@@ -349,7 +363,7 @@ function detectDbPort() {
     try {
         const resolver = require('./db-resolver');
         const r = resolver.resolveDatabase({ autostart: true });
-        if (r.ok) return String(r.port);
+        if (r.ok) {return String(r.port);}
     } catch (_) {}
     // Fallback: classic probe over expanded port list
     const host = getEnv('DB_HOST', '127.0.0.1');
@@ -373,7 +387,7 @@ function detectDbPort() {
 // psql(): single query returning stdout (db.js imports this — was missing and crashed).
 function psql(query, dbName = 'postgres', opts = {}) {
     const psqlBin = getPgBinary('psql');
-    if (!psqlBin) throw new Error('psql not found — ثبّت PostgreSQL أولاً');
+    if (!psqlBin) {throw new Error('psql not found — ثبّت PostgreSQL أولاً');}
     const host = getEnv('DB_HOST', '127.0.0.1');
     const port = getEnv('DB_PORT', '5432');
     const user = getEnv('DB_USER', 'postgres');
@@ -411,4 +425,5 @@ module.exports = {
     ensureEnvFile, genSecret, generateSecret, setupEnvSecrets,
     run, runAsync, ensureDir, rmrf,
     isPortInUse, httpReq, psql, psqlFile, detectDbPort,
+    isRealSecret, KNOWN_PLACEHOLDER_SECRETS,
 };

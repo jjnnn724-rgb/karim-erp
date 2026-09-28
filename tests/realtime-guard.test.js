@@ -57,7 +57,7 @@ describe('resolveHandshakeUser — never trusts client claims', () => {
 
 describe('createSocketLimiter — per-socket budgets', () => {
     test('allows up to budget then blocks', () => {
-        let t = 1000;
+        const t = 1000;
         const lim = createSocketLimiter({ now: () => t });
         for (let i = 0; i < 10; i++) {expect(lim.check('s1', 'register_user', 10)).toBe(true);}
         expect(lim.check('s1', 'register_user', 10)).toBe(false);

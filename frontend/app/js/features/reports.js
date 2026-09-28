@@ -533,7 +533,7 @@ container.innerHTML=`<div class="u-empty-sm">تعذر تحميل التقرير:
 }
 }
 // ─── مبيعات الكاشيرية من يارا سوفت (تفصيلي: كاشير × صنف / فواتير) ───
-let YCASH={cashier:'',view:'items',page:1};
+const YCASH={cashier:'',view:'items',page:1};
 async function generateYaraCashiersReport(startDate,endDate,periodLabel,container){
 try{
 const params=new URLSearchParams({from:startDate,to:endDate,view:YCASH.view,limit:'100'});

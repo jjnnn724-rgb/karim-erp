@@ -321,7 +321,6 @@ class ZKClient {
         }
         if (remain > 0) {
             chunks.push(await this._readChunk(start, remain));
-            start += remain;
         }
         await this.freeData();
         return Buffer.concat(chunks);

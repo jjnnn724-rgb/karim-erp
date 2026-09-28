@@ -69,27 +69,27 @@ const REPORT = { checks: [], warnings: [], errors: [], fixed: [] };
 function add(kind, id, message, extra = null, didFix = false) {
     const ok = kind !== 'error';
     REPORT.checks.push({ id, kind, message, extra, ok });
-    if (kind === 'ok') logOk(message);
+    if (kind === 'ok') {logOk(message);}
     if (kind === 'warn') {
         REPORT.warnings.push({ id, message, extra });
         if (didFix) { REPORT.fixed.push({ id, message, extra }); logWarn(`[FIXED] ${message}`); }
-        else logWarn(message);
+        else {logWarn(message);}
     }
     if (kind === 'error') { logErr(message); REPORT.errors.push({ id, message, extra }); }
 }
 
 function loadEnvFile(filePath) {
     const env = {};
-    if (!fs.existsSync(filePath)) return env;
+    if (!fs.existsSync(filePath)) {return env;}
     const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
     for (const line of lines) {
         const t = line.trim();
-        if (!t || t.startsWith('#') || !t.includes('=')) continue;
+        if (!t || t.startsWith('#') || !t.includes('=')) {continue;}
         const idx = t.indexOf('=');
         const k = t.slice(0, idx).trim();
         let v = t.slice(idx + 1).trim();
-        if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
-        if (v.startsWith("'") && v.endsWith("'")) v = v.slice(1, -1);
+        if (v.startsWith('"') && v.endsWith('"')) {v = v.slice(1, -1);}
+        if (v.startsWith("'") && v.endsWith("'")) {v = v.slice(1, -1);}
         env[k] = v;
     }
     return env;
@@ -99,7 +99,7 @@ function saveEnv(envObj, basePath) {
     const existing = fs.existsSync(basePath) ? loadEnvFile(basePath) : {};
     const merged = Object.assign({}, existing, envObj);
     const lines = [];
-    for (const [k, v] of Object.entries(merged)) lines.push(`${k}=${v}`);
+    for (const [k, v] of Object.entries(merged)) {lines.push(`${k}=${v}`);}
     fs.writeFileSync(basePath, lines.join('\n') + '\n', 'utf8');
 }
 
@@ -130,7 +130,7 @@ function checkPgConnection({ host, port, user, password, dbName }) {
     let psql;
     try { const r = require(path.join(SCRIPT_DIR, 'db-resolver')); psql = r.getPgBinary('psql'); }
     catch { psql = IS_WIN ? 'psql.exe' : 'psql'; }
-    if (!psql) psql = IS_WIN ? 'psql.exe' : 'psql';
+    if (!psql) {psql = IS_WIN ? 'psql.exe' : 'psql';}
     try {
         const r = spawnSync(psql, [
             '-h', host, '-p', String(port), '-U', user, '-d', dbName || 'postgres',
@@ -141,7 +141,7 @@ function checkPgConnection({ host, port, user, password, dbName }) {
 }
 
 (async function main() {
-    if (!JSON_OUT) logHeader('Karim ERP — Environment Pre-Flight Checker v1.0');
+    if (!JSON_OUT) {logHeader('Karim ERP — Environment Pre-Flight Checker v1.0');}
 
     // 1) Node version
     logStep('1/9 — Node.js version');
@@ -157,8 +157,8 @@ function checkPgConnection({ host, port, user, password, dbName }) {
         ['ENV_EXAMPLE', PATHS.ENV_EXAMPLE],
     ];
     for (const [id, p] of critical) {
-        if (fs.existsSync(p)) add('ok', id, `موجود: ${path.relative(ROOT, p)}`);
-        else add('error', id, `الملف الأساسي مفقود: ${p}`);
+        if (fs.existsSync(p)) {add('ok', id, `موجود: ${path.relative(ROOT, p)}`);}
+        else {add('error', id, `الملف الأساسي مفقود: ${p}`);}
     }
 
     // 3) .env exists and compare to .env.example
@@ -185,11 +185,11 @@ function checkPgConnection({ host, port, user, password, dbName }) {
     if (missingKeys.length) {
         const msg = `المفاتيح التالية في .env.example ومفقودة من .env: ${missingKeys.join(', ')}`;
         if (FIX) {
-            for (const k of missingKeys) env[k] = example[k];
+            for (const k of missingKeys) {env[k] = example[k];}
             saveEnv(env, PATHS.ENV_FILE);
             add('warn', 'E_ENV_MISSING', msg, missingKeys, true);
-        } else add('warn', 'E_ENV_MISSING', msg, missingKeys);
-    } else add('ok', 'E_ENV_KEYS', 'كل مفاتيح .env.example موجودة');
+        } else {add('warn', 'E_ENV_MISSING', msg, missingKeys);}
+    } else {add('ok', 'E_ENV_KEYS', 'كل مفاتيح .env.example موجودة');}
 
     // 4) Absolute path sanity in .env
     logStep('4/9 — صحة المسارات المطلقة داخل .env');
@@ -205,14 +205,14 @@ function checkPgConnection({ host, port, user, password, dbName }) {
     let envChanged = false;
     for (const [key, cat, defaultName] of PATH_KEYS) {
         const raw = env[key];
-        if (!raw) continue;
+        if (!raw) {continue;}
         let resolved;
         if (path.isAbsolute(raw)) {
             if (fs.existsSync(raw)) { resolved = raw; }
             else {
                 const base = raw.split(/[\\/]/).filter(Boolean).pop() || defaultName;
                 const localGuess = path.resolve(ROOT, cat, base);
-                if (fs.existsSync(localGuess)) resolved = localGuess;
+                if (fs.existsSync(localGuess)) {resolved = localGuess;}
                 else {
                     const programData = process.env.PROGRAMDATA || 'C:\\ProgramData';
                     const shared = path.join(programData, 'KarimERP', cat);
@@ -220,22 +220,22 @@ function checkPgConnection({ host, port, user, password, dbName }) {
                         try { fs.mkdirSync(key.includes('SSL') ? path.dirname(shared) : shared, { recursive: true }); } catch {}
                         envChanged = true;
                         resolved = shared;
-                    } else resolved = raw;
+                    } else {resolved = raw;}
                 }
             }
         } else { resolved = path.resolve(ROOT, raw); }
         if (FIX && env[key] !== resolved) { env[key] = resolved; envChanged = true; }
         if (!fs.existsSync(resolved)) {
             const msg = `مسار ${key} يشير إلى مكان غير موجود على هذا الجهاز: ${raw} → المقترح: ${resolved}`;
-            if (FIX) add('warn', 'E_PATH_' + key, msg, { old: raw, new: resolved }, true);
-            else add('warn', 'E_PATH_' + key, msg);
-        } else add('ok', 'E_PATH_' + key, `${key} صالح → ${resolved}`);
+            if (FIX) {add('warn', 'E_PATH_' + key, msg, { old: raw, new: resolved }, true);}
+            else {add('warn', 'E_PATH_' + key, msg);}
+        } else {add('ok', 'E_PATH_' + key, `${key} صالح → ${resolved}`);}
     }
     for (const d of [PATHS.LOGS_DIR, PATHS.BACKUPS_DIR]) {
         try {
             if (!fs.existsSync(d)) {
                 if (FIX) { fs.mkdirSync(d, { recursive: true }); add('ok', 'DIR_' + path.basename(d), `أنشئ المجلد: ${path.relative(ROOT, d)}`, null, true); }
-                else add('warn', 'DIR_' + path.basename(d), `المجلد مفقود: ${path.relative(ROOT, d)}`);
+                else {add('warn', 'DIR_' + path.basename(d), `المجلد مفقود: ${path.relative(ROOT, d)}`);}
             }
         } catch (_) {}
     }
@@ -244,19 +244,19 @@ function checkPgConnection({ host, port, user, password, dbName }) {
     // 5) Disk space
     logStep('5/9 — مساحة القرص الصلب');
     const disk = hasEnoughDiskSpace(ROOT, 500);
-    if (disk.ok) add('ok', 'E_DISK', disk.freeMB !== null ? `مساحة متاحة: ${disk.freeMB} MB` : 'مساحة كافية (افتراض');
-    else add('warn', 'E_DISK', `مساحة منخفضة: ${disk.freeMB}MB — الحد الأدنى 500MB — قد يتوقف قاعدة البيانات`);
+    if (disk.ok) {add('ok', 'E_DISK', disk.freeMB !== null ? `مساحة متاحة: ${disk.freeMB} MB` : 'مساحة كافية (افتراض');}
+    else {add('warn', 'E_DISK', `مساحة منخفضة: ${disk.freeMB}MB — الحد الأدنى 500MB — قد يتوقف قاعدة البيانات`);}
 
     // 6) Port availability
     logStep('6/9 — منافذ التشغيل');
     const httpPort = parseInt(env.PORT || process.env.PORT || 5000, 10);
     const dbPort = parseInt(env.DB_PORT || process.env.DB_PORT || 5432, 10);
     const httpFree = await portFree(httpPort);
-    if (httpFree) add('ok', 'E_PORT_HTTP', `المنفذ HTTP ${httpPort} حر`);
-    else add('warn', 'E_PORT_HTTP', `المنفذ HTTP ${httpPort} مستخدم — غير PORT في .env أو أوقف العملية المشغلة`);
+    if (httpFree) {add('ok', 'E_PORT_HTTP', `المنفذ HTTP ${httpPort} حر`);}
+    else {add('warn', 'E_PORT_HTTP', `المنفذ HTTP ${httpPort} مستخدم — غير PORT في .env أو أوقف العملية المشغلة`);}
     const dbFree = await portFree(dbPort);
-    if (dbFree) add('warn', 'E_PORT_DB', `المنفذ DB ${dbPort} حر — تأكد من تشغيل PostgreSQL قبل بدء الخادم`);
-    else add('ok', 'E_PORT_DB', `المنفذ DB ${dbPort} مستخدم (غالبًا PostgreSQL شغالة)`);
+    if (dbFree) {add('warn', 'E_PORT_DB', `المنفذ DB ${dbPort} حر — تأكد من تشغيل PostgreSQL قبل بدء الخادم`);}
+    else {add('ok', 'E_PORT_DB', `المنفذ DB ${dbPort} مستخدم (غالبًا PostgreSQL شغالة)`);}
 
     // 7) PostgreSQL connection
     logStep('7/9 — اتصال قاعدة البيانات');
@@ -265,18 +265,18 @@ function checkPgConnection({ host, port, user, password, dbName }) {
             host: env.DB_HOST || 'localhost', port: dbPort,
             user: env.DB_USER || 'postgres', password: env.DB_PASSWORD, dbName: env.DB_NAME,
         });
-        if (pg.ok) add('ok', 'E_DB_CONN', `متصل بقاعدة البيانات بنجاح`);
-        else add('warn', 'E_DB_CONN', `تعذر الاتصال بقاعدة البيانات: ${pg.details}`);
-    } else add('warn', 'E_DB_CONN', `تخطي فحص قاعدة البيانات (بيانات الاعتماد ناقصة أو المنفذ غير مستخدم)`);
+        if (pg.ok) {add('ok', 'E_DB_CONN', `متصل بقاعدة البيانات بنجاح`);}
+        else {add('warn', 'E_DB_CONN', `تعذر الاتصال بقاعدة البيانات: ${pg.details}`);}
+    } else {add('warn', 'E_DB_CONN', `تخطي فحص قاعدة البيانات (بيانات الاعتماد ناقصة أو المنفذ غير مستخدم)`);}
 
     // 8) node_modules sanity
     logStep('8/9 — الاعتماديات (node_modules)');
     if (fs.existsSync(PATHS.NODE_MODULES)) {
         const required = ['express', 'pg', 'dotenv', 'socket.io', 'zod', 'bullmq'];
         const missing = required.filter(p => !fs.existsSync(path.join(PATHS.NODE_MODULES, p)));
-        if (!missing.length) add('ok', 'E_MODULES', `الاعتماديات الأساسية ${required.length}/${required.length} موجودة`);
-        else add('warn', 'E_MODULES', `المفقودة: ${missing.join(', ')} — شغّل: npm install`);
-    } else add('warn', 'E_MODULES', `node_modules غير موجود — شغّل: npm install`);
+        if (!missing.length) {add('ok', 'E_MODULES', `الاعتماديات الأساسية ${required.length}/${required.length} موجودة`);}
+        else {add('warn', 'E_MODULES', `المفقودة: ${missing.join(', ')} — شغّل: npm install`);}
+    } else {add('warn', 'E_MODULES', `node_modules غير موجود — شغّل: npm install`);}
 
     // 9) Package scripts
     logStep('9/9 — صحة سكربتات package.json');
@@ -285,8 +285,8 @@ function checkPgConnection({ host, port, user, password, dbName }) {
         const scripts = Object.keys(pkg.scripts || {});
         const need = ['start', 'test', 'smoke', 'setup', 'doctor', 'migrate', 'backup'];
         const miss = need.filter(s => !scripts.includes(s));
-        if (!miss.length) add('ok', 'E_PKG', `كل السكربتات المطلوبة موجودة في package.json`);
-        else add('warn', 'E_PKG', `السكربتات الناقصة من package.json: ${miss.join(', ')}`);
+        if (!miss.length) {add('ok', 'E_PKG', `كل السكربتات المطلوبة موجودة في package.json`);}
+        else {add('warn', 'E_PKG', `السكربتات الناقصة من package.json: ${miss.join(', ')}`);}
     } catch (e) { add('error', 'E_PKG', `package.json تالف: ${e.message}`); }
 
     // Final summary
@@ -299,8 +299,8 @@ function checkPgConnection({ host, port, user, password, dbName }) {
         logInfo(`⚠️  تحذيرات:  ${sumWarn}`);
         logInfo(`❌ أخطاء:    ${sumErr}`);
         logInfo('');
-        if (!FIX && sumWarn > 0) logInfo('💡 لإصلاح المسارات والمجلدات تلقائياً:  node scripts/verify-env.js --fix');
-        if (sumErr > 0) logInfo('❌ قم بإزالة الأخطاء أولاً ثم أعد التشغيل');
+        if (!FIX && sumWarn > 0) {logInfo('💡 لإصلاح المسارات والمجلدات تلقائياً:  node scripts/verify-env.js --fix');}
+        if (sumErr > 0) {logInfo('❌ قم بإزالة الأخطاء أولاً ثم أعد التشغيل');}
         logInfo('');
     } else {
         process.stdout.write(JSON.stringify({ ok: sumErr === 0, summary: { ok: sumOk, warn: sumWarn, error: sumErr }, ...REPORT }, null, 2) + '\n');

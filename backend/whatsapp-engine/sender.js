@@ -170,7 +170,7 @@ class WhatsappSender {
         const mediaKind = String(kind || '').toLowerCase();
         if (!isValidChatJid(to)) {throw new PacingError('INVALID_JID', 'JID غير صالح');}
         if (!MEDIA_KINDS.has(mediaKind)) {throw new PacingError('INVALID_MEDIA_TYPE', 'نوع الميديا: image/video/audio/document');}
-        let src = '';
+        let src;
         if (url) {
             if (!/^https:\/\//i.test(String(url))) {throw new PacingError('INVALID_MEDIA_URL', 'رابط الميديا يجب أن يكون https');}
             src = String(url).trim();
@@ -327,7 +327,7 @@ class WhatsappSender {
                 })),
             }],
         };
-        if (footer) btnPayload.footer = String(footer).slice(0, 60);
+        if (footer) {btnPayload.footer = String(footer).slice(0, 60);}
 
         const out = await store.enqueueOutbox({
             clientKey: clientKey || `btn:${to}:${hash}:${Date.now()}`,

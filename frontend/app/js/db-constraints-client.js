@@ -19,7 +19,7 @@ async function fetchConstraints() {
     const res = await fetch('/api/schema/constraints', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
     });
-    if (!res.ok) throw new Error('Failed to fetch constraints');
+    if (!res.ok) {throw new Error('Failed to fetch constraints');}
     constraintsCache = await res.json();
     cacheTime = Date.now();
     return constraintsCache;
@@ -38,11 +38,11 @@ function invalidateConstraintsCache() {
 /** التحقق من حقل واحد */
 async function validateField(tableName, columnName, value) {
   const constraints = await fetchConstraints();
-  if (!constraints || !constraints[tableName]) return { ok: true, errors: [] };
+  if (!constraints || !constraints[tableName]) {return { ok: true, errors: [] };}
   
   const table = constraints[tableName];
   const col = table.columns[columnName];
-  if (!col) return { ok: true, errors: [] };
+  if (!col) {return { ok: true, errors: [] };}
   
   const errors = [];
   
@@ -96,7 +96,7 @@ async function validateField(tableName, columnName, value) {
 /** التحقق من نموذج كامل */
 async function validateForm(tableName, formData) {
   const constraints = await fetchConstraints();
-  if (!constraints || !constraints[tableName]) return { ok: true, errors: [] };
+  if (!constraints || !constraints[tableName]) {return { ok: true, errors: [] };}
   
   const table = constraints[tableName];
   const allErrors = [];
@@ -131,7 +131,7 @@ function showFormErrors(formElement, errors) {
   // تجميع الأخطاء حسب الحقل
   const byField = {};
   errors.forEach(e => {
-    if (!byField[e.field]) byField[e.field] = [];
+    if (!byField[e.field]) {byField[e.field] = [];}
     byField[e.field].push(e.message);
   });
   
@@ -169,7 +169,7 @@ function attachAutoValidation(formElement, tableName, options = {}) {
         showFormErrors(formElement, result.errors);
         // تركيز أول حقل بخطأ
         const firstError = formElement.querySelector('.is-invalid');
-        if (firstError) firstError.focus();
+        if (firstError) {firstError.focus();}
       }
     });
   }
@@ -191,7 +191,7 @@ function attachAutoValidation(formElement, tableName, options = {}) {
         } else {
           input.classList.remove('is-invalid');
           const errorDiv = input.parentNode.querySelector('.db-error');
-          if (errorDiv) errorDiv.remove();
+          if (errorDiv) {errorDiv.remove();}
         }
       });
     });

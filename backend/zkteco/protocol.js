@@ -224,6 +224,19 @@ function parseAttendanceLogs(data, expectedRecords, users = []) {
     }
     const userByUid = new Map(users.map(u => [Number(u.uid), u]));
 
+    // كشف تكيفي لفيرموير MB20-VL على نمط 40 بايت: بعض الأجهزة تضع طريقة التحقق
+    // (1 بصمة / 15 وجه) في البايت 26 والحالة (0-5) في البايت 31 بدل توزيع pyzk
+    // الرسمي (الحالة@26). نفعّل التفسير البديل فقط إذا كانت الدفعة كلها (≥4 سجلات)
+    // تطابق بصمة الفيرموير بدقة — وإلا بقينا على المواصفة الرسمية.
+    let mb20Quirk = false;
+    if (stride === 40 && body.length / 40 >= 4) {
+        mb20Quirk = true;
+        for (let off = 0; off + 40 <= body.length; off += 40) {
+            const b26 = body[off + 26], b31 = body[off + 31];
+            if (!([1, 15].includes(b26) && b31 >= 0 && b31 <= 5)) { mb20Quirk = false; break; }
+        }
+    }
+
     for (let off = 0; off + stride <= body.length; off += stride) {
         const row = body.subarray(off, off + stride);
         let deviceUserId, uid = null;
@@ -242,15 +255,20 @@ function parseAttendanceLogs(data, expectedRecords, users = []) {
             timeBuf = row.subarray(4, 8);
             status = row[8];
             punch = row[9];
-        } else {
-            // <H24sB4sB8s — مثبت تجريبيًا على MB20-VL:
-            // البايت 26 = طريقة التحقق (1 بصمة / 15 وجه) وليس الحالة،
-            // وحالة الحضور/الانصراف (0-5) في البايت 31
+        } else if (mb20Quirk) {
+            // فيرموير MB20-VL: البايت 26 = طريقة التحقق (1 بصمة / 15 وجه) والحالة في 31
             uid = row.readUInt16LE(0);
             deviceUserId = readNullTerminated(row, 2, 24);
             verify = row[26];
             timeBuf = row.subarray(27, 31);
             status = row[31];
+            punch = row[31];
+        } else {
+            // <H24sB4sB8s — pyzk الرسمي: الحالة (0-5 حضور/انصراف) في البايت 26 والانصراف/التحقق في 31
+            uid = row.readUInt16LE(0);
+            deviceUserId = readNullTerminated(row, 2, 24);
+            timeBuf = row.subarray(27, 31);
+            status = row[26];
             punch = row[31];
         }
         if (!deviceUserId) {continue;}

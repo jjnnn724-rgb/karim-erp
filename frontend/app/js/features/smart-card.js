@@ -45,7 +45,7 @@ return;
 }catch(e){
 // STRICT: never invent card data. A missing/unreadable card is an error, not a guess.
 // Callers display this message loudly and continue with local data when possible.
-throw new Error('تعذر تحميل بيانات بطاقة الموظف من الخادم — ' + (e.message || 'تحقق من الاتصال وصلاحياتك'));
+throw new Error('تعذر تحميل بيانات بطاقة الموظف من الخادم — ' + (e.message || 'تحقق من الاتصال وصلاحياتك'), { cause: e });
 }
 }
 const qrCache = new Map();
@@ -120,9 +120,9 @@ const shiftStartMin = shiftMatch ? parseInt(shiftMatch[1]) * 60 + parseInt(shift
 const shiftKarim = Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10;
 const lateRecords = myAttendance.filter(a => a.late);
 const totalLateMinutes = myAttendance.reduce((sum, a) => {
-    if (!a.checkIn) return sum;
+    if (!a.checkIn) {return sum;}
     const [h, m] = String(a.checkIn).split(':').map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return sum;
+    if (!Number.isFinite(h) || !Number.isFinite(m)) {return sum;}
     const arrival = Math.max(0, h * 60 + m - shiftStartMin);
     let early = 0;
     if (a.checkOut) {
@@ -131,9 +131,9 @@ const totalLateMinutes = myAttendance.reduce((sum, a) => {
             const endRaw = shiftStartMin + Math.round(shiftKarim * 60);
             let out = oh * 60 + om;
             const inMin = h * 60 + m;
-            if (out < inMin) out += 24 * 60;
-            if (endRaw > 24 * 60 && out < 12 * 60) out += 24 * 60;
-            if (out >= inMin) early = Math.max(0, endRaw - out);
+            if (out < inMin) {out += 24 * 60;}
+            if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
+            if (out >= inMin) {early = Math.max(0, endRaw - out);}
         }
     }
     return sum + arrival + early;
@@ -213,8 +213,8 @@ ${canUploadPhoto ? `<label class="photo-upload-btn" title="رفع صورة" styl
 <div style="padding:12px 16px;border-top:1px solid #f1f5f9">
 <div class="smart-card-section" data-t="pc.periodInsurance"></div>
 <div class="smart-card-row"><span><i class=ji data-i=clock style="color:#C9A961"></i> <span data-t="pc.workStart">الدوام</span></span><span class="smart-card-value">${shiftLabel}</span></div>
-<div class="smart-card-row"><span><i class=ji data-i=id-card style="color:#C9A961"></i> الإقامة</span><span class="smart-card-value" style="${daysUntilIqama<30?'color:#e74c3c;font-weight:700':''}">${iqamaExpiry}${daysUntilIqama<30?' ⚠ بعد '+daysUntilIqama+' يوم':''}</span></div>
-<div class="smart-card-row"><span><i class=ji data-i=heart style="color:#C9A961"></i> شهادة صحية</span><span class="smart-card-value" style="${daysUntilHealth<30?'color:#e74c3c;font-weight:700':''}">${healthExpiry}${daysUntilHealth<30?' ⚠ بعد '+daysUntilHealth+' يوم':''}</span></div>
+<div class="smart-card-row"><span><i class=ji data-i=id-card style="color:#C9A961"></i> الإقامة</span><span class="smart-card-value" style="${daysUntilIqama<30?'color:#e74c3c;font-weight:700':''}">${iqamaExpiry}${daysUntilIqama<30?' <i class=ji data-i=alert-triangle></i> بعد '+daysUntilIqama+' يوم':''}</span></div>
+<div class="smart-card-row"><span><i class=ji data-i=heart style="color:#C9A961"></i> شهادة صحية</span><span class="smart-card-value" style="${daysUntilHealth<30?'color:#e74c3c;font-weight:700':''}">${healthExpiry}${daysUntilHealth<30?' <i class=ji data-i=alert-triangle></i> بعد '+daysUntilHealth+' يوم':''}</span></div>
 </div>
 <div style="padding:12px 16px;border-top:1px solid #f1f5f9;background:#fafbfc">
 <div class="smart-card-section" data-t="pc.performance"></div>
@@ -365,15 +365,15 @@ return `${(minutes / 60).toFixed(1)} ساعة <small>(${Math.round(minutes)} د�
 function formatAttendanceStatus({ checkIn, checkOut, lateMinutes = 0, earlyLeaveMinutes = 0, workMinutes = null }) {
 const hasCheckIn = !!(checkIn && String(checkIn).trim());
 const hasCheckOut = !!(checkOut && String(checkOut).trim());
-if (!hasCheckIn && !hasCheckOut) return 'بلا حضور';
-if (!hasCheckIn) return 'بلا حضور';
-if (!hasCheckOut) return 'بلا انصراف';
-if (hasCheckIn && hasCheckOut && Number(workMinutes) === 0) return 'يحتاج مراجعة';
+if (!hasCheckIn && !hasCheckOut) {return 'بلا حضور';}
+if (!hasCheckIn) {return 'بلا حضور';}
+if (!hasCheckOut) {return 'بلا انصراف';}
+if (hasCheckIn && hasCheckOut && Number(workMinutes) === 0) {return 'يحتاج مراجعة';}
 const late = Number(lateMinutes || 0);
 const early = Number(earlyLeaveMinutes || 0);
-if (late > 0 && early > 0) return `تأخير دخول ${late} د • خروج مبكر ${early} د`;
-if (late > 0) return `تأخير دخول ${late} د`;
-if (early > 0) return `خروج مبكر ${early} د`;
+if (late > 0 && early > 0) {return `تأخير دخول ${late} د • خروج مبكر ${early} د`;}
+if (late > 0) {return `تأخير دخول ${late} د`;}
+if (early > 0) {return `خروج مبكر ${early} د`;}
 return 'في الوقت';
 }
 const fmtHM = (mins) => { const m = Math.max(0, Math.round(Number(mins) || 0)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
@@ -407,7 +407,7 @@ else if (minutes === 0) {cell = 'يحتاج مراجعة'; style = 'color:#f59e0
 else {
 const short = shiftMin - minutes;
 if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDays++;}
-else {cell = `ناقص ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
+else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
 }
 const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
 return `<tr><td>${esc(r.date||'')}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
@@ -437,9 +437,9 @@ th{background:#0f172a;color:#f5d76e;padding:10px;font-size:12px}td{padding:9px;b
 <div class="header"><img src="${esc(logoSrc)}" alt="logo" onerror="this.style.display='none'"><div><h1>${esc(STATE.settings.name)}</h1><p>${esc(title)} — ${fromTo} • الوردية المتوقعة: ${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س/يوم</p></div></div>
 <div class="container">
 <div class="employee-card"><div class="avatar">${esc((employee.name||'?').trim()[0]||'?')}</div><div class="info"><strong>${esc(employee.name||'—')}</strong><br><small>الرقم الوظيفي: ${esc(employee.employeeId||'—')} • المنصب: ${esc(employee.position||'—')} ${employee.shift_start?`• الوردية: ${esc(employee.shift_start)}${employee.shift_hours?` (${esc(employee.shift_hours)} س)`:''}`:''}</small></div><div style="text-align:left;color:#475569;font-size:12px">الفترة<br><strong style="color:#0f172a">${fromTo||'—'}</strong></div></div>
-<div class="summary"><div class="card"><small>أيام الحضور</small><b>${s.daysPresent||0}</b></div><div class="card"><small>أيام مكتملة</small><b>${s.completeDays||0}</b></div><div class="card"><small>أيام في الميعاد</small><b style="color:#27ae60">${onTimeDays}</b></div><div class="card"><small>إجمالي النقص</small><b class="red">${shortTotal > 0 ? fmtHM(shortTotal) : '—'}</b></div><div class="card"><small>إجمالي الساعات</small><b class="gold">${s.totalHours||0}</b></div></div>
+<div class="summary"><div class="card"><small>أيام الحضور</small><b>${s.daysPresent||0}</b></div><div class="card"><small>أيام مكتملة</small><b>${s.completeDays||0}</b></div><div class="card"><small>أيام في الميعاد</small><b style="color:#27ae60">${onTimeDays}</b></div><div class="card"><small>إجمالي التأخير</small><b class="red">${shortTotal > 0 ? fmtHM(shortTotal) : '—'}</b></div><div class="card"><small>إجمالي الساعات</small><b class="gold">${s.totalHours||0}</b></div></div>
 <table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
-<div class="footer">يوم العمل حسب وردية الموظف (${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س) • أيام في الميعاد (${onTimeDays}) • إجمالي النقص ${shortTotal > 0 ? fmtHM(shortTotal) : '—'} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div>
+<div class="footer">يوم العمل حسب وردية الموظف (${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س) • أيام في الميعاد (${onTimeDays}) • إجمالي التأخير ${shortTotal > 0 ? fmtHM(shortTotal) : '—'} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div>
 </div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 win.document.close();
 }
@@ -458,7 +458,7 @@ if(c.detail&&c.detail.length){extra=`<br><small class="text-muted">${c.detail.ma
 return `<tr><td style="text-align:right">${esc(c.name)}${extra}</td><td><span class="badge ${badge}"><i class=ji data-i=${icon}></i> ${c.status==='PASS'?'سليم':c.status==='WARN'?'تنبيه':'فشل'}</span></td><td><b>${c.count}</b></td></tr>`;
 }).join('');
 box.innerHTML=`<div class="tbl-scroll"><table><thead><tr><th style="text-align:right">الفحص</th><th>الحالة</th><th>العدد</th></tr></thead><tbody>${rows||'<tr><td colspan="3">لا نتائج</td></tr>'}</tbody></table></div>
-<div class="u-mt12" style="padding:10px;border-radius:8px;${res.ok?'background:#ecfdf5;color:#166534':'background:#fef2f2;color:#991b1b'}">${res.ok?'✅ كل الفحوصات سليمة — البيانات معتمدة':'❌ يوجد فشل — راجع البنود أعلاه قبل الاعتماد'}</div>`;
+<div class="u-mt12" style="padding:10px;border-radius:8px;${res.ok?'background:#ecfdf5;color:#166534':'background:#fef2f2;color:#991b1b'}">${res.ok?'<i class=ji data-i=circle-check></i> كل الفحوصات سليمة — البيانات معتمدة':'<i class=ji data-i=circle-x></i> يوجد فشل — راجع البنود أعلاه قبل الاعتماد'}</div>`;
 if(!res.ok){toast('التدقيق الصارم رصد مخالفات — راجع التفاصيل', 'error');}
 }catch(e){ if(box){box.innerHTML=`<div class="u-mt12" style="color:#c0392b">تعذر تشغيل التدقيق: ${esc(e.message||'خطأ غير متوقع')}</div>`;} toast(e.message||'تعذر تشغيل التدقيق الصارم','error'); }
 }
@@ -541,7 +541,7 @@ th{background:#0f172a;color:#f5d76e;padding:10px;font-size:11px}td{padding:8px;b
 printWin.document.close();
 } catch(e){ 
     console.error('[printMonthlyAttendance] error:', e);
-    if (printWin && !printWin.closed) printWin.close();
+    if (printWin && !printWin.closed) {printWin.close();}
     toast(e.message || 'تعذر تحميل الكشف الشهري - ' + e.toString(), 'error'); 
 }
 }
@@ -602,7 +602,7 @@ let statusTxt, statusStyle;
 if(!hasIn){statusTxt='بلا حضور';statusStyle='color:#f59e0b;font-weight:700';}
 else if(!hasOut){statusTxt='بلا انصراف';statusStyle='color:#f59e0b;font-weight:700';}
 else if(minutes===0){statusTxt='يحتاج مراجعة';statusStyle='color:#f59e0b;font-weight:700';}
-else{const short=shiftMin-minutes;if(short<=0){statusTxt='في الميعاد';statusStyle='color:#27ae60';onTimeDays++;}else{statusTxt=`ناقص ${fmtHM(short)}`;statusStyle='color:#c0392b;font-weight:700';shortTotal+=short;}}
+else{const short=shiftMin-minutes;if(short<=0){statusTxt='في الميعاد';statusStyle='color:#27ae60';onTimeDays++;}else{statusTxt=`تأخير ${fmtHM(short)}`;statusStyle='color:#c0392b;font-weight:700';shortTotal+=short;}}
 const review=r.needsReview?' <span class="badge bdg-orange">مراجعة</span>':'';
 return `<tr><td>${esc(r.date||'')}</td><td class="c-green" dir="ltr">${esc(r.checkIn||'—')}</td><td class="c-red" dir="ltr">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
 }).join('')||'<tr><td colspan="5" style="text-align:center;color:#64748b">لا توجد سجلات في هذه الفترة</td></tr>';
@@ -610,7 +610,7 @@ return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام الحضور</small><b style="display:block;font-size:18px">${s.daysPresent||0}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #2563eb"><small style="color:#64748b">أيام مكتملة</small><b style="display:block;font-size:18px">${s.completeDays||0}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام في الميعاد</small><b style="display:block;font-size:18px;color:#27ae60">${onTimeDays}</b></div>
-<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي النقص</small><b style="display:block;font-size:15px;color:#c0392b">${shortTotal>0?fmtHM(shortTotal):'—'}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي التأخير</small><b style="display:block;font-size:15px;color:#c0392b">${shortTotal>0?fmtHM(shortTotal):'—'}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #c9a227"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalHours||0}</b></div>
 </div>
 <div class="tbl-scroll u-mt8">

@@ -28,14 +28,14 @@
           href="css/offline-fonts.css">
   </noscript>
 
-  <link rel="preload" as="style" href="css/design-tokens.css">
-  <link rel="preload" as="style" href="css/styles.css">
+  <link rel="preload" as="style" href="css/design-tokens.css?v=4.7.172">
+  <link rel="preload" as="style" href="css/styles.css?v=4.7.172">
   <link rel="preload" as="script" href="/app/js/app.js?v=4.7.143">
   <link rel="preload" as="script" href="/app/js/icons.js">
   <link rel="preload" as="image" href="/app/assets/icon-192.png">
 
-  <link rel="stylesheet" href="css/design-tokens.css">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/design-tokens.css?v=4.7.172">
+  <link rel="stylesheet" href="css/styles.css?v=4.7.172">
   <link rel="stylesheet" href="css/realtime.css" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/scanner.css" media="print" onload="this.media='all'">
 
@@ -140,6 +140,7 @@
       </div>
 
       <div id="lerr" class="form-error" role="alert"></div>
+      <div id="capsWarn" class="caps-warn" role="status">زر Caps Lock مفعّل — تأكد من لغة الإدخال</div>
 
       <button class="btn-premium" id="loginBtn" type="button">
         <i class="ji" data-i="log-in"></i>
@@ -240,13 +241,12 @@
   <script src="js/icons.js" defer></script>
   <script src="js/vendor/qrcode.min.js" defer></script>
   <script src="js/db-constraints-client.js" defer></script>
-  <script type="module" src="js/main.js?v=4.7.150"></script>
+  <script type="module" src="js/main.js?v=4.7.178"></script>
   <script src="js/app.js?v=4.7.143" defer></script>
   <script src="js/scanner.js" defer></script>
-  <script src="js/realtime.js?v=4.7.165" defer></script>
+  <script src="js/realtime.js?v=4.7.169" defer></script>
   <script src="js/core/i18n-auto-catalog.js" defer></script>
   <script src="js/core/i18n-auto.js" defer></script>
-  <script src="js/realtime.js?v=4.7.133" defer></script>
   <script>
 
   // ─── عين إظهار/إخفاء كلمة المرور (صفحة الدخول) ───
@@ -261,6 +261,21 @@
     inp.focus({ preventScroll: true });
   }
   window.toggleLoginPassword = toggleLoginPassword;
+
+  // ─── تحذير Caps Lock (تفصيلة احترافية لمنع فشل الدخول الصامت) ───
+  (function(){
+    var lp = document.getElementById('lp');
+    var warn = document.getElementById('capsWarn');
+    if(!lp || !warn || !window.addEventListener) {return;}
+    function check(e){
+      var on = false;
+      try{ on = !!(e && e.getModifierState && e.getModifierState('CapsLock')); }catch(_){}
+      warn.classList.toggle('on', on);
+    }
+    lp.addEventListener('keyup', check);
+    lp.addEventListener('keydown', function(e){ if(e && e.key === 'CapsLock') { check(e); } });
+    lp.addEventListener('blur', function(){ warn.classList.remove('on'); });
+  })();
 
     if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {

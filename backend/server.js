@@ -7,10 +7,11 @@ const compression = require('compression');
 const os = require('os');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+// dotenv يجب أن يُحمَّل قبل أي وحدة تقرأ NODE_ENV أثناء التحميل (logger أولها)
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { logger, httpLogger } = require("./logger");
 const { MEDIA_ROOT, ensureMediaDirs } = require('./media-storage');
 const { spawn } = require('child_process');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // ─── Enterprise Foundation Layers ──────────────────────────
 const { correlationMiddleware, updateUserContext } = require('./middleware/correlation');
@@ -33,6 +34,7 @@ const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
 
 // ─── JWT Authentication Middleware ────────────────────
 const { jwtAuth, requireRole, verifyAccessToken } = require('./cashier-module/jwt-middleware');
+const { requireRoleOrPerm, permForEntity } = require('./permissions');
 const { router: hrRouter } = require('./hr-routes');
 const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch } = require('./warehouse-routes');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
@@ -63,34 +65,8 @@ const { initGracefulShutdown, rejectDuringShutdown, getShutdownStatus } = requir
 const { collectDailyReport, renderDailyReportHtml, sendDailyReport, startDailyReportScheduler, smtpConfigured } = require('./daily-report-service');
 
 // ─── API Response Cache (10s TTL for heavy GET endpoints) ──
-const _apiCache = new Map();
-const API_CACHE_TTL = 10_000;
-function apiCacheMiddleware(req, res, next) {
-    if (req.method !== 'GET') { return next();
-    }
-    // /api/state is live client state (polls for freshness) AND carries its
-    // own rate limiter: serving it from cache would both show stale data and
-    // bypass generalLimiter (route middleware never runs on a cache HIT).
-    if (req.path === '/api/state' || req.path === '/state') { return next(); }
-    const key = req.originalUrl;
-    const cached = _apiCache.get(key);
-    if (cached && Date.now() - cached.ts < API_CACHE_TTL) {
-        res.set('X-Cache', 'HIT');
-        return res.json(cached.data);
-    }
-    const origJson = res.json.bind(res);
-    res.json = (data) => {
-        // Cache ONLY successful 2xx responses — caching a 503/500 (e.g. a
-        // transient health DB blip, which carries no `.error` field) would
-        // replay failures for the whole TTL and poison every client.
-        const ok = res.statusCode >= 200 && res.statusCode < 300;
-        if (ok && data && !data.error) { _apiCache.set(key, { data, ts: Date.now() }); }
-        else { _apiCache.delete(key); }
-        res.set('X-Cache', 'MISS');
-        return origJson(data);
-    };
-    next();
-    }
+// Extracted to backend/api-cache.js (session-scoped key + invalidation).
+const { apiCacheMiddleware } = require('./api-cache');
 // ─── حماية من طوفان النسخ الاحتياطية (backup throttling) ─────────
 let lastBackupAt = 0;
 let pendingBackupTimer = null;
@@ -134,6 +110,7 @@ const app = express();
 
 // HTTPS محلي (mkcert) عند توفر SSL_KEY/SSL_CERT — وإلا HTTP عادي
 let httpServer;
+let LAN_SCHEME = 'http'; // يُحدَّث تلقائيًا — يستخدمه إعلان LAN ليعرف العميل الصيغة الصحيحة
 {
     const fs = require('fs');
     const keyPath = process.env.SSL_KEY;
@@ -144,6 +121,7 @@ let httpServer;
             key: fs.readFileSync(keyPath),
             cert: fs.readFileSync(certPath),
         }, app);
+        LAN_SCHEME = 'https';
         logger.info('[SSL] HTTPS enabled (local certificate)');
     } else {
         httpServer = createServer(app);
@@ -347,7 +325,7 @@ app.use(compression({
     level: 9,
     memLevel: 9,
     filter: (req, res) => {
-        if (req.headers['x-no-compression']) return false;
+        if (req.headers['x-no-compression']) {return false;}
         const ct = res.getHeader('Content-Type') || '';
         return compression.filter(req, res) || /text|json|javascript|css|xml|svg|font|woff/i.test(ct);
     },
@@ -362,7 +340,7 @@ function setStaticCacheHeaders(res, filePath) {
     const reqUrl = res.req?.url || '';
     const nocacheTest = /[?&]nocache/.test(reqUrl || '');
     // Immutable versioned assets: vendor folder (by path or by URL mount) OR ?v= query
-    const isImmutable = /[\/\\]app[\/\\]js[\/\\]vendor[\/\\]/i.test(filePath)
+    const isImmutable = /[/\\]app[/\\]js[/\\]vendor[/\\]/i.test(filePath)
         || /\/app\/js\/vendor\//i.test(normPath)
         || /^\/app\/js\/vendor\//i.test(reqUrl)
         || /[?&]v=\d/.test(reqUrl);
@@ -412,7 +390,7 @@ function setStaticCacheHeaders(res, filePath) {
 
     // PWA: Service Worker registration requires explicit scope allowance
     // if the served file path is not at the scope root.
-    if (/[\/\\]sw\.js$/i.test(filePath) || /^\/app\/sw\.js/i.test(reqUrl)) {
+    if (/[/\\]sw\.js$/i.test(filePath) || /^\/app\/sw\.js/i.test(reqUrl)) {
         res.setHeader('Service-Worker-Allowed', '/app/');
         // Service workers must never be cached long-term — SW update relies on byte-diff check.
         res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
@@ -434,7 +412,7 @@ app.use(morgan('combined'));
 // يرفض الطلب بـ 422 لو البيانات ستخالف قيود الـ DB
 const { autoDbValidation } = require('./db-validation-middleware');
 app.use('/api', autoDbValidation({
-  exemptPaths: ['/api/health', '/api/auth', '/api/state', '/api/network-info', '/api/clients', '/api/metrics', '/api/reports', '/api/manager'],
+  exemptPaths: ['/api/health', '/api/auth', '/api/state', '/api/network-info', '/api/clients', '/api/metrics', '/api/reports', '/api/manager', '/api/server/info'],
   skipUnique: false,
   skipFK: false,
   skipChecks: false,
@@ -452,6 +430,10 @@ function apiKeyMiddleware(req, res, next) {
     // Health probe is always open (watchdog / load-balancer / import script).
     // NOTE: req.path is relative to the '/api' mount point.
     if (req.path === '/health' || req.path === '/api/health' || req.originalUrl === '/api/health') {
+        return next();
+    }
+    // هوية الخادم للعميل EXE أثناء الاكتشاف — معلومات عامة فقط (اسم/إصدار/وقت)
+    if (req.path === '/server/info') {
         return next();
     }
     // Auth endpoints stay open: they are credential/JWT-gated + rate-limited,
@@ -508,6 +490,9 @@ app.use('/api/finance', (req, res, next) => { req.io = io; next(); }, financeRou
 // Accounting dept: chart of accounts + double-entry journal + CFO summary.
 const { router: accountingRouter } = require('./accounting-routes');
 app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, accountingRouter);
+// User permission grants (admin assigns; additive over roles).
+const { router: permissionRouter } = require('./permission-routes');
+app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permissionRouter);
 
 // Task 20: صندوق إشعارات كل مستخدم — جرس حي بعدّاد غير المقروء + إشعارات سلسلة الصرف
 ensureNotificationsSchema().catch((error) => logger.error('[NOTIFICATIONS_SCHEMA] initialization failed:', error.message));
@@ -530,8 +515,19 @@ app.use('/api/yara-reports', require('./yarasoft/yara-reports'));
 const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
 // ─── محرك واتساب (Baileys — معطّل حتى WHATSAPP_ENABLED=true) ─────────────
-const { router: whatsappRouter, ensureWhatsappSchema, whatsappEngine } = require('./whatsapp-engine');
-app.use('/api/whatsapp', (req, res, next) => { req.io = io; req.app.locals.whatsappEngine = whatsappEngine; next(); }, whatsappRouter);
+// محرك واتساب تحميله محمي: بيئة تشغيل لا تدعم require(ESM) (baileys) —
+// مثل Node 18 المدمج في إلكترون — تعطل تحميله يجب ألا يُسقط الخادم كله.
+let whatsappRouter = null, ensureWhatsappSchema = null, whatsappEngine = null;
+try {
+    ({ router: whatsappRouter, ensureWhatsappSchema, whatsappEngine } = require('./whatsapp-engine'));
+} catch (e) {
+    logger.error('[WHATSAPP] تعذر تحميل محرك واتساب — يعمل النظام بدونه:', e.message);
+}
+app.use('/api/whatsapp', (req, res, next) => {
+    req.io = io;
+    req.app.locals.whatsappEngine = whatsappEngine;
+    next();
+}, whatsappRouter || ((req, res) => res.status(503).json({ error: 'WHATSAPP_UNAVAILABLE', message: 'محرك واتساب غير متاح في بيئة التشغيل الحالية' })));
 
 // -------------------------------------------------------
 // Database Connection Pool (imported from shared-pool.js)
@@ -705,6 +701,7 @@ function ensureChatSchema() {
 }
 const _chatThrottle = new Map(); // userId -> last send timestamp (anti-spam)
 async function handleChatSend({ userId, toUserId, body }) {
+    // eslint-disable-next-line no-control-regex -- تعقيم مقصود: إزالة أحرف التحكم من مدخلات المحادثة
     const text = String(body || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim().slice(0, 1000);
     if (!text) {const e = new Error('EMPTY_MESSAGE'); e.statusCode = 422; throw e;}
     const peer = Number(toUserId);
@@ -859,6 +856,28 @@ app.get('/', (req, res) => {
     circuitRegisterHealth();
     app.use('/api/health', healthRouter);
     app.use('/health',      healthRouter);
+
+    // ─── هوية الخادم + قناة تحديث العملاء عبر الشبكة (EXE عميل/سيرفر) ───
+    // العميل يكتشف السيرفر عبر UDP (common/lan-discovery) ثم يتحقق من هنا،
+    // وملف latest.yml + حزمة التثبيت داخل مجلد updates يكفيان لتحديث كل
+    // أجهزة الشبكة من السيرفر نفسه — بلا إنترنت ولا GitHub.
+    const SERVER_PKG_VERSION = (() => { try { return require('../package.json').version || ''; } catch (_) { return ''; } })();
+    const UPDATES_DIR = process.env.KARIM_UPDATES_DIR
+        || (process.resourcesPath ? path.join(process.resourcesPath, 'updates')
+            : path.join(__dirname, '..', 'updates'));
+    try { require('fs').mkdirSync(UPDATES_DIR, { recursive: true }); } catch (_) {}
+    app.use('/updates', express.static(UPDATES_DIR, { index: false, dotfiles: 'deny', fallthrough: true }));
+    app.get('/api/server/info', (req, res) => {
+        res.json({
+            ok: true,
+            app: 'karim-erp',
+            version: SERVER_PKG_VERSION,
+            serverName: process.env.KARIM_SERVER_NAME || require('os').hostname(),
+            scheme: LAN_SCHEME,
+            serverTime: new Date().toISOString(),
+            uptimeSeconds: Math.round(process.uptime()),
+        });
+    });
 }
 
 // ─── Idempotency Middleware (write-safe by default on /api) ───
@@ -1253,7 +1272,7 @@ async function ensureEmployeeUserLinkSchema() {
 }
 
 // ─── Dedicated attendance range endpoint (avoids 142-page pagination bottleneck) ───
-app.get('/api/attendance/range', jwtAuth, requireRole(...SENSITIVE_READ_ROLES, 'hr'), asyncHandler(async (req, res) => {
+app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_ROLES, 'hr'], 'hr.view'), asyncHandler(async (req, res) => {
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     if (!from || !to) {return res.status(400).json({ error: 'MISSING_DATES', message: 'from and to params required (YYYY-MM-DD)' });}
@@ -1373,7 +1392,7 @@ entities.forEach(entity => {
 
     // GET all (authenticated + role-gated for sensitive entities + paginated + rate limited)
     const listMiddlewares = [jwtAuth, generalLimiter];
-    if (requiresElevatedRead) {listMiddlewares.push(requireRole(...readRolesFor(entity)));}
+    if (requiresElevatedRead) {listMiddlewares.push(requireRoleOrPerm(readRolesFor(entity), permForEntity(entity, 'read')));}
     app.get(`/api/${entity}`, ...listMiddlewares, asyncHandler(async (req, res) => {
         // Get sortable columns from schema registry for this entity
         const allowedSortColumns = getSortableColumns(entity);
@@ -1431,7 +1450,7 @@ entities.forEach(entity => {
     // مقفولة من الجولة الأولى بينما /:id تقبل أي حساب مصادق (IDOR بتعداد
     // المعرفات: chef يقرأ /api/payroll/5 و /api/users/3 رغم قفل القائمة).
     const byIdMiddlewares = [jwtAuth];
-    if (requiresElevatedRead) {byIdMiddlewares.push(requireRole(...readRolesFor(entity)));}
+    if (requiresElevatedRead) {byIdMiddlewares.push(requireRoleOrPerm(readRolesFor(entity), permForEntity(entity, 'read')));}
     app.get(`/api/${entity}/:id`, ...byIdMiddlewares, asyncHandler(async (req, res) => {
         const { id } = req.params;
         const result = await pool.query(`SELECT * FROM "${entity}" WHERE id = $1`, [id]);
@@ -1442,7 +1461,7 @@ entities.forEach(entity => {
     // POST create (role-based auth for sensitive entities)
     if (requiresAdminRole || entity === 'dispatches') {
         const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
-        app.post(`/api/${entity}`, jwtAuth, requireRole(...createRoles), crudLimiter, asyncHandler(async (req, res) => {
+        app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist (CRITICAL FIX) ──
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
 
@@ -1554,7 +1573,7 @@ entities.forEach(entity => {
         // Security audit 2026-09-03: الكتابة على الكيانات غير الإدارية لم تعد
         // مفتوحة لأي حساب مُصادق — كل كيان يُقفل على أدواره من الخريطة أعلاه.
         const openWriteRoles = getEntityWriteRoles(entity);
-        const writeGuard = openWriteRoles ? [requireRole(...openWriteRoles)] : [];
+        const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist ──
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
@@ -1646,12 +1665,13 @@ entities.forEach(entity => {
     // PUT update (role-based auth for sensitive entities)
     if (requiresAdminRole || entity === 'dispatches') {
         const updateRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
-        app.put(`/api/${entity}/:id`, jwtAuth, requireRole(...updateRoles), crudLimiter, asyncHandler(async (req, res) => {
+        app.put(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(updateRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             if (entity === 'dispatches') {return res.status(405).json({ error: 'DISPATCH_WORKFLOW_REQUIRED', message: 'استخدم مسار دورة إذن الصرف المخصص بدل تعديل الحالة مباشرة' });}
             
             // ─── SECURITY: Filter body against whitelist ──
-            let { filtered, errors, removedKeys } = filterBody(entity, req.body, "update");
+            const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");
+            let filtered = _filteredIn;
             if (errors.length > 0 || removedKeys.length > 0) {
                 const firstProblem = errors[0] || (removedKeys.length ? `الحقل "${removedKeys[0]}" غير مسموح في هذا الطلب` : null);
                 return res.status(400).json({
@@ -1727,12 +1747,13 @@ entities.forEach(entity => {
         }));
     } else {
         const openWriteRoles = getEntityWriteRoles(entity);
-        const writeGuard = openWriteRoles ? [requireRole(...openWriteRoles)] : [];
+        const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.put(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             
             // ─── SECURITY: Filter body against whitelist ──
-            let { filtered, errors, removedKeys } = filterBody(entity, req.body, "update");
+            const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");
+            let filtered = _filteredIn;
             if (errors.length > 0 || removedKeys.length > 0) {
                 const firstProblem = errors[0] || (removedKeys.length ? `الحقل "${removedKeys[0]}" غير مسموح في هذا الطلب` : null);
                 return res.status(400).json({
@@ -1820,7 +1841,7 @@ entities.forEach(entity => {
     // DELETE (role-based auth for sensitive entities)
     if (requiresAdminRole || entity === 'dispatches') {
         const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse'] : ['admin', 'manager'];
-        app.delete(`/api/${entity}/:id`, jwtAuth, requireRole(...deleteRoles), crudLimiter, asyncHandler(async (req, res) => {
+        app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             if (entity === 'users') {await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);}
             // تدقيق أمني جولة 2: إذن الصرف الموقّع (معتمد/مرفوض/مستلم) مستند مالي
@@ -1849,7 +1870,7 @@ entities.forEach(entity => {
         }));
     } else {
         const openWriteRoles = getEntityWriteRoles(entity);
-        const writeGuard = openWriteRoles ? [requireRole(...openWriteRoles)] : [];
+        const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.delete(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             // تدقيق أمني جولة 2: كيانات مالية/دفترية append-only — الحذف العام
@@ -2013,6 +2034,26 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     }
     markBootComplete(); // flips /health/startup → 200
 
+    // ─── إعلان LAN: أجهزة العميل (EXE) تكتشف هذا الخادم تلقائيًا عبر UDP 50505 ───
+    if (String(process.env.KARIM_LAN_BEACON ?? 'true').trim().toLowerCase() !== 'false') {
+        try {
+            const primaryIp = (Object.values(require('os').networkInterfaces()).flat()
+                .filter(i => i && i.family === 'IPv4' && !i.internal)
+                .map(i => i.address).find(a => a.startsWith('192.168.')) || null);
+            require('../common/lan-discovery').startLanBeacon({
+                info: {
+                    svc: 'karim-erp',
+                    name: process.env.KARIM_SERVER_NAME || require('os').hostname(),
+                    version: (() => { try { return require('../package.json').version || ''; } catch (_) { return ''; } })(),
+                    scheme: LAN_SCHEME,
+                    port: Number(PORT),
+                    host: primaryIp,
+                },
+                logger,
+            });
+        } catch (e) { logger.warn('[LAN_BEACON] تعذر بدء الإعلان (سيستمر الخادم بدونه):', e.message); }
+    }
+
     stopDailyReportScheduler = startDailyReportScheduler(pool);
     // ─── مزامنة البصمة داخل النظام: طبّق المخطط ثم ابدأ المحرك ───
     ensureZktecoSchema()
@@ -2023,15 +2064,36 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
         .then(() => yarasoftEngine.start(io))
         .catch((error) => logger.error('[YARASOFT] تعذر تهيئة استيراد الفواتير (سيستمر الخادم بدونها):', error.message));
     // ─── الربط المباشر Oracle (معطّل حتى YARASOFT_ORACLE_ENABLED=true) ───
-    try { const { oracleEngine: oe } = require('./yarasoft/oracle-link'); oe.io = io; oe.start(); }
+    // الدورة تُنفَّذ في عملية قصيرة العمر (scripts/oracle-poll-worker.js): خيوط
+    // oracledb Thick الأصلية لا تبقى في عملية السيرفر — راجع تعليق العامل لتفاصيل
+    // مشكلة حرق CPU التي حُلّت بهذا العزل.
+    try {
+        const { spawn: spawnWorker } = require('child_process');
+        const { loadOracleConfig } = require('./yarasoft/oracle-link');
+        const oraCfg = loadOracleConfig();
+        if (oraCfg.enabled) {
+            const pollMs = Math.max(1, oraCfg.pollMinutes || 1) * 60 * 1000;
+            const runOracleWorker = () => {
+                const w = spawnWorker(process.execPath, [path.join(__dirname, '..', 'scripts', 'oracle-poll-worker.js')],
+                    { stdio: 'ignore', cwd: path.join(__dirname, '..'), env: process.env });
+                w.on('error', (e) => logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message));
+            };
+            runOracleWorker(); // دورة أولى بعد الإقلاع مباشرة
+            const oraTimer = setInterval(runOracleWorker, pollMs);
+            if (oraTimer.unref) {oraTimer.unref();}
+            logger.info(`[YARASOFT_ORACLE] عامل دورة Oracle نشط (كل ${oraCfg.pollMinutes} دقيقة، عملية معزولة)`);
+        }
+    }
     catch (error) { logger.error('[YARASOFT_ORACLE] تعذر بدء الربط المباشر (سيستمر الخادم بدونه):', error.message); }
     // ─── محرك المزامنة الذكي: لحاق تلقائي بالفواتير الفائتة بعد الإقلاع ───
-    try { require('./yarasoft/sync-doctor').bootCatchUp(io); }
-    catch (error) { logger.error('[SYNC-DOCTOR] تعذر بدء اللحاق التلقائي:', error.message); }
+    // نُقل إلى scripts/oracle-poll-worker.js (عملية معزولة) — راجع تعليق عامل Oracle
+    // (كان: try { require('./yarasoft/sync-doctor').bootCatchUp(io); } catch ...)
     // ─── محرك واتساب: المخطط ثم البدء (معطّل حتى WHATSAPP_ENABLED=true) ───
-    ensureWhatsappSchema()
-        .then(() => whatsappEngine.start(io))
-        .catch((error) => logger.error('[WHATSAPP] تعذر تهيئة محرك واتساب (سيستمر الخادم بدونه):', error.message));
+    if (ensureWhatsappSchema && whatsappEngine) {
+        ensureWhatsappSchema()
+            .then(() => whatsappEngine.start(io))
+            .catch((error) => logger.error('[WHATSAPP] تعذر تهيئة محرك واتساب (سيستمر الخادم بدونه):', error.message));
+    }
     logger.info(`${'='.repeat(50)}\n`);
 });
 

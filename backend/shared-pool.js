@@ -28,9 +28,9 @@ function dbEnv(key, fallback) {
         const lines = fs.readFileSync(envFile, 'utf-8').split('\n');
         for (const line of lines) {
             const t = line.trim();
-            if (!t || t.startsWith('#')) continue;
+            if (!t || t.startsWith('#')) {continue;}
             const idx = t.indexOf('=');
-            if (idx === -1) continue;
+            if (idx === -1) {continue;}
             const k = t.slice(0, idx).trim();
             if (k === key) {
                 return t.slice(idx + 1).trim().replace(/^["']|["']$/g, '');

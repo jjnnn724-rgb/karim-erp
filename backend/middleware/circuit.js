@@ -44,7 +44,7 @@ const circuits = new Map();
 
 function getOrCreate(key, opts = {}) {
     let c = circuits.get(key);
-    if (c) return c;
+    if (c) {return c;}
     c = {
         key,
         state: 'CLOSED',      // CLOSED | OPEN | HALF_OPEN
@@ -59,7 +59,7 @@ function getOrCreate(key, opts = {}) {
 }
 
 function transition(c, newState) {
-    if (c.state === newState) return;
+    if (c.state === newState) {return;}
     logger.warn({
         event: 'circuit.state',
         key: c.key,
@@ -68,9 +68,9 @@ function transition(c, newState) {
         failures: c.failures,
     }, `[Circuit ${c.key}] ${c.state} → ${newState}`);
     c.state = newState;
-    if (newState === 'OPEN')   c.openedAt = Date.now();
+    if (newState === 'OPEN')   {c.openedAt = Date.now();}
     if (newState === 'CLOSED') { c.failures = 0; c.successes = 0; }
-    if (newState === 'HALF_OPEN') c.halfOpenInflight = 0;
+    if (newState === 'HALF_OPEN') {c.halfOpenInflight = 0;}
 }
 
 /**
@@ -112,13 +112,13 @@ function protect(key, fn, opts = {}) {
                 true
             );
         }
-        if (c.state === 'HALF_OPEN') c.halfOpenInflight++;
+        if (c.state === 'HALF_OPEN') {c.halfOpenInflight++;}
 
         // ── Call ────────────────────────────────────
         try {
             const result = await fn(...args);
             // Success → heal
-            if (c.state === 'HALF_OPEN') c.successes++;
+            if (c.state === 'HALF_OPEN') {c.successes++;}
             c.failures = Math.max(0, c.failures - 1);
             if (c.failures === 0 || c.state === 'HALF_OPEN') {
                 if (c.state === 'HALF_OPEN' && c.successes >= c.opts.halfOpenMax) {
@@ -141,7 +141,7 @@ function protect(key, fn, opts = {}) {
                     transition(c, 'OPEN');
                 }
             }
-            if (raw instanceof ExternalApiError) throw raw;
+            if (raw instanceof ExternalApiError) {throw raw;}
             throw new ExternalApiError(providerName, raw, { circuitState: c.state, failures: c.failures }, retryable);
         } finally {
             if (c.state === 'HALF_OPEN' && c.halfOpenInflight > 0) {
@@ -165,18 +165,18 @@ async function withRetry(fn, opts = {}) {
             return await fn(attempt);
         } catch (err) {
             lastErr = err;
-            if (attempt === cfg.max) break;
+            if (attempt === cfg.max) {break;}
 
             // Decide: retryable?
             const status = err?.statusCode || err?.response?.status;
             const retryableByCode = !status || cfg.retryableStatuses.includes(status);
             const retryableByFn   = typeof cfg.isRetryable === 'function' ? cfg.isRetryable(err, attempt) : true;
             const circuitShort    = !!err?.circuitShortCircuited;
-            if (!retryableByCode || !retryableByFn || circuitShort) break;
+            if (!retryableByCode || !retryableByFn || circuitShort) {break;}
 
             // Exponential backoff with decorrelated jitter
             let delay = cfg.baseDelayMs * Math.pow(2, attempt);
-            if (cfg.jitter) delay = delay / 2 + (delay / 2) * Math.random();
+            if (cfg.jitter) {delay = delay / 2 + (delay / 2) * Math.random();}
             delay = Math.min(delay, cfg.maxDelayMs);
 
             logger.debug({

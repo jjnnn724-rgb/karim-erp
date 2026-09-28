@@ -309,7 +309,7 @@ async function main() {
         setTimeout(() => process.exit(0), 200);
         return;
     }
-    let code = 0;
+    let code;
     if (command === 'start') {code = await cmdStart();}
     else if (command === 'stop') {code = await cmdStop();}
     else if (command === 'restart') { await cmdStop(); code = await cmdStart(); }

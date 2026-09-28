@@ -32,6 +32,7 @@ function createMocks(overrides = {}) {
             Object.assign(headers, newHeaders);
             return this;
         },
+        once(event, fn) { return this; }, // المحرك يسجّل hook على 'finish'
         status(code) {
             statusCode = code;
             return this;

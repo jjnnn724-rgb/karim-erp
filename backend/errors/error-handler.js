@@ -134,11 +134,11 @@ function globalErrorHandler(err, req, res, next) {
 
     // Always include request id in the response header + body
     const requestId = req?.headers['x-request-id'] || req?.requestId || null;
-    if (requestId) res.setHeader('X-Request-Id', requestId);
+    if (requestId) {res.setHeader('X-Request-Id', requestId);}
     res.setHeader('X-Error-Id', error.errorId);
 
     const jsonBody = error.toJSON();
-    if (requestId) jsonBody.requestId = requestId;
+    if (requestId) {jsonBody.requestId = requestId;}
 
     // Prevent caching of errors
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

@@ -82,12 +82,12 @@ describe('Round-2 — canDeleteDispatch (signed dispatch documents are not delet
 // ─── 2) الكيانات المحمية من الحذف ───────────────────────────────────────────
 describe('Round-2 — PROTECTED_DELETE_ENTITIES (append-only financial records)', () => {
     it('تغطي دفتر الحركات والمرتجعات وفواتير الموردين بالضبط', () => {
-        expect(PROTECTED_DELETE_ENTITIES).toEqual(expect.arrayContaining(['inventoryTx', 'kitchenReturns', 'purchaseInvoices']));
-        expect(PROTECTED_DELETE_ENTITIES).toHaveLength(3);
+        expect(PROTECTED_DELETE_ENTITIES).toEqual(expect.arrayContaining(['inventoryTx', 'kitchenReturns', 'purchaseInvoices', 'payroll_runs']));
+        expect(PROTECTED_DELETE_ENTITIES).toHaveLength(4);
     });
 
     it('isProtectedDeleteEntity يطابق الثلاثة ويرفض البقية', () => {
-        for (const e of ['inventoryTx', 'kitchenReturns', 'purchaseInvoices']) {
+        for (const e of ['inventoryTx', 'kitchenReturns', 'purchaseInvoices', 'payroll_runs']) {
             expect(isProtectedDeleteEntity(e)).toBe(true);
         }
         for (const e of ['expenses', 'revenues', 'employees', 'inventory', 'dispatches', 'notifications', 'shelves']) {

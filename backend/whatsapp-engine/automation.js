@@ -16,7 +16,7 @@ const store = require('./store');
 // Flag يكتبها المراقب الخارجي قبل إعادة التشغيل — المحرك يبلّغ الإدارة مرة واحدة ثم يحذفه
 const RECOVERY_FLAG = process.env.WATCHDOG_FLAG || 'C:/KarimData/watchdog/restart-flag.json';
 async function checkRecoveryFlag(engine) {
-    let flag = null;
+    let flag;
     try {
         if (!fs.existsSync(RECOVERY_FLAG)) {return { skipped: true };}
         flag = JSON.parse(fs.readFileSync(RECOVERY_FLAG, 'utf8'));

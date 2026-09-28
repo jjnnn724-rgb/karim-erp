@@ -333,7 +333,7 @@ box.innerHTML=`<div class="tbl-wrap" style="margin-top:14px;border:1px solid var
 <td class="c-green">${g.rec?.checkIn?esc(g.rec.checkIn):'—'}</td>
 <td class="c-red">${g.rec?.checkOut?esc(g.rec.checkOut):'—'}</td>
 <td><button class="btn btn-gold btn-sm" onclick='attResolveModal("${g.emp.id}","${g.date}")'><i class=ji data-i=gavel></i> معالجة</button></td>
-</tr>`; }).join('')||'<tr><td colspan="6" class="u-empty-sm">لا نواقص — الشهر مقفل نضيف ✓</td></tr>'}</tbody></table></div>
+</tr>`; }).join('')||'<tr><td colspan="6" class="u-empty-sm">لا نواقص — الشهر مقفل نضيف</td></tr>'}</tbody></table></div>
 ${gaps.length>300?`<div style="padding:8px 14px" class="text-muted">... و${fN(gaps.length-300)} أخرى — ضيق الفترة بالأعلى</div>`:''}</div>`;
 }
 function attResolveModal(empId, date){
@@ -1003,10 +1003,10 @@ async function applyShiftsFromPanel(){
     const res = await apiFetch('/hr/shifts/apply', { method: 'POST', body: JSON.stringify({ text: text2 }) });
     const rc = res && res.recompute ? res.recompute : {};
     const msg = [
-      `✓ تطبيق: ${res.applied}/${res.parsed} موظف`,
-      `📊 أيام التأخير: ${rc.lateDaysBefore} → ${rc.lateDaysAfter}`,
-      `📊 دقائق التأخير: ${rc.lateMinutesBefore} → ${rc.lateMinutesAfter}`,
-      ...(res.failed && res.failed.length ? ['⚠ غير مطبق: ' + res.failed.slice(0, 5).join(' · ')] : []),
+      `تطبيق: ${res.applied}/${res.parsed} موظف`,
+      `أيام التأخير: ${rc.lateDaysBefore} → ${rc.lateDaysAfter}`,
+      `دقائق التأخير: ${rc.lateMinutesBefore} → ${rc.lateMinutesAfter}`,
+      ...(res.failed && res.failed.length ? ['غير مطبق: ' + res.failed.slice(0, 5).join(' · ')] : []),
     ].join('\n');
     const box2 = document.getElementById('shiftsResult');
     if (box2) { box2.style.whiteSpace = 'pre-line'; box2.textContent = msg; }

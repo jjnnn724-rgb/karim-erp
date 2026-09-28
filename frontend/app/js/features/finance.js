@@ -24,7 +24,7 @@ return `<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=banknot
 }
 window.revFilterDept='all';window.revFilterFrom='';window.revFilterTo='';window.revFilterSearch='';;
 window.whCatFilter='all'; // كان let في قسم الوزن — صار خاصية window لأن المخزن والوزن يتشاركان الفلتر (BRIDGE-012)
-let whShortFilter='all'; // all | out | low — فلتر لوحة النواقص الشاملة
+const whShortFilter='all'; // all | out | low — فلتر لوحة النواقص الشاملة
 async function refreshWhShortages(silent){
 try{
 const rows=await apiFetch('/warehouse/purchase-requests/shortages');
@@ -83,7 +83,7 @@ ${noCostCount?`<div class="audit-banner"><i class=ji data-i=alert-triangle></i> 
 <div class="tbl-scroll tbl-sticky-first" style="margin-top:12px"><table><thead><tr><th>#</th><th>الصنف</th><th>الفئة</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>العجز</th><th>قيمة العجز</th><th>الحالة</th></tr></thead>
 <tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td class="fw-bold">${esc(r.name)}</td><td class="c-gold">${esc(r.category)}</td><td>${esc(r.unit)}</td>
 <td class="c-red fw-bold">${fN(r.qty)}</td><td>${fN(r.min)}</td><td class="c-orange fw-bold">${fN(r.gap)}</td><td class="c-gold">${r.noCost&&r.gap>0?'—':fC(r.gapVal)}</td>
-<td><span class="badge ${r.out?'bdg-red':'bdg-orange'}">${r.out?'⛔ نافذ':'⚠ منخفض'}</span></td></tr>`).join('')||((STATE.inventory||[]).length?'<tr><td colspan="9" class="u-empty-sm">لا نواقص — المخزون كله فوق الحد ✓</td></tr>':'<tr><td colspan="9" class="u-empty-sm">لا توجد أصناف مسجلة — أدخل الرصيد الافتتاحي أو استورد الأصناف أولًا</td></tr>')}</tbody></table></div>
+<td><span class="badge ${r.out?'bdg-red':'bdg-orange'}">${r.out?'<i class=ji data-i=circle-x></i> نافذ':'<i class=ji data-i=alert-triangle></i> منخفض'}</span></td></tr>`).join('')||((STATE.inventory||[]).length?'<tr><td colspan="9" class="u-empty-sm">لا نواقص — المخزون كله فوق الحد</td></tr>':'<tr><td colspan="9" class="u-empty-sm">لا توجد أصناف مسجلة — أدخل الرصيد الافتتاحي أو استورد الأصناف أولًا</td></tr>')}</tbody></table></div>
 <div style="padding:8px 16px"><small class="text-muted">آخر تحديث: ${STATE._whShortAt?esc(String(STATE._whShortAt).replace('T',' ').slice(0,19)):'—'} • العجز = الحد − الرصيد • قيمة العجز بمتوسط التكلفة</small></div>
 </div>`;
 }

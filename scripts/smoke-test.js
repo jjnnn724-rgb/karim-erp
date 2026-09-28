@@ -2,6 +2,15 @@
 // اختبار دخان (smoke test) شامل لكل endpoints الـ backend
 // يعمل بدون قاعدة بيانات — يتحقق فقط من استجابات الـ HTTP الصحيحة
 const http = require('http');
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const https = require('https');
+// السيرفر يعمل HTTPS بشهادة محلية عند توفر SSL_KEY/SSL_CERT (نفس شرط server.js)
+// يُحسب وقت الطلب (لا عند التحميل) لأن dotenv يُحمَّل لاحقًا
+const fsSsl = require('fs');
+function sslEnabled() {
+    return Boolean(process.env.SSL_KEY && process.env.SSL_CERT
+        && fsSsl.existsSync(process.env.SSL_KEY) && fsSsl.existsSync(process.env.SSL_CERT));
+}
 
 const PINK = '\x1b[35m', GREEN = '\x1b[32m', RED = '\x1b[31m', CYAN = '\x1b[36m', RESET = '\x1b[0m', BOLD = '\x1b[1m';
 
@@ -16,7 +25,9 @@ function req(method, path, body = null, headers = {}) {
             opts.headers['Content-Type'] = 'application/json';
             opts.headers['Content-Length'] = Buffer.byteLength(data);
         }
-        const r = http.request(opts, (res) => {
+        const useHttps = sslEnabled();
+        if (useHttps) {opts.rejectUnauthorized = false;} // شهادة محلية موقّعة ذاتيًا
+        const r = (useHttps ? https : http).request(opts, (res) => {
             let buf = '';
             res.on('data', d => buf += d);
             res.on('end', () => {
@@ -46,25 +57,29 @@ async function main() {
     console.log(`${BOLD}${PINK}===================================================${RESET}\n`);
 
     // 1. Health check — قد يرجع 200 (صحي) أو 503 (degraded) لو الـ DB مش متاح
+    // صيغة v4.7: components كمصفوفة — نقبل أيضًا صيغة checks القديمة للتوافق
     console.log(`${BOLD}[1] Health & System${RESET}`);
     let r = await req('GET', '/api/health');
+    const healthComp = (name) => Array.isArray(r.json?.components)
+        ? r.json.components.some(c => c.component === name)
+        : Boolean(r.json?.checks?.[name]);
     check('GET /api/health يعمل', r.status, [200, 503], 'in');
     check('health يحتوي status', r.json?.status ? 1 : 0, 1);
-    check('health يحتوي checks.database', r.json?.checks?.database ? 1 : 0, 1);
-    check('health يحتوي checks.realtime', r.json?.checks?.realtime ? 1 : 0, 1);
-    check('health يحتوي version', r.json?.version ? 1 : 0, 1);
+    check('health يحتوي checks.database', healthComp('database') ? 1 : 0, 1);
+    check('health يحتوي checks.realtime', (healthComp('realtime') || healthComp('websocket')) ? 1 : 0, 1);
+    check('health يحتوي version', (r.json?.version || r.json?.app?.version) ? 1 : 0, 1);
 
-    // 2. Network info
+    // 2. Network info — أصبحت محمية بـ JWT (تحديث أمني): نقبل 200 أو 401
     console.log(`\n${BOLD}[2] Network${RESET}`);
     r = await req('GET', '/api/network-info');
-    check('GET /api/network-info', r.status, 200);
-    check('network-info يحتوي ips', r.json?.ips ? 1 : 0, 1);
+    check('GET /api/network-info (200 أو 401 محمية)', r.status, [200, 401], 'in');
+    check('network-info يحتوي ips', r.status === 200 ? (r.json?.ips ? 1 : 0) : 1, 1);
 
-    // 3. Clients (Socket.io)
+    // 3. Clients (Socket.io) — محمية بـ JWT أيضًا
     console.log(`\n${BOLD}[3] Real-time Clients${RESET}`);
     r = await req('GET', '/api/clients');
-    check('GET /api/clients', r.status, 200);
-    check('clients يحتوي count', typeof r.json?.count === 'number' ? 1 : 0, 1);
+    check('GET /api/clients (200 أو 401 محمية)', r.status, [200, 401], 'in');
+    check('clients يحتوي count', r.status === 200 ? (typeof r.json?.count === 'number' ? 1 : 0) : 1, 1);
 
     // 4. State endpoint — الآن يتطلب JWT (تحديث أمني)
     // بدون JWT: يجب أن يرجع 401
@@ -126,7 +141,8 @@ async function main() {
     // 11. Unknown route
     console.log(`\n${BOLD}[11] 404 Handling${RESET}`);
     r = await req('GET', '/api/nonexistent');
-    check('GET /api/nonexistent (404)', r.status, 404);
+    // بوابة المصادقة تسبق معالج 404 عمدًا (لا تسريب لوجود المسارات) — نقبل 401 أو 404
+    check('GET /api/nonexistent (401/404)', r.status, [401, 404], 'in');
 
     // Summary
     console.log(`\n${BOLD}${PINK}===================================================${RESET}`);

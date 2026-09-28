@@ -49,7 +49,7 @@ else if(!st.running){ stateTxt='محرك مزامنة البصمة متوقف'; 
 else if(online>0){ stateTxt='البصمة مربوطة ومتصلة'; stateCls='var(--green)'; }
 else { stateTxt='البصمة مسجلة لكن غير متصلة'; stateCls='var(--red)'; }
 const dot=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${stateCls};box-shadow:0 0 8px ${stateCls}"></span>`;
-const unlinked=t.unlinkedEmployees?` · <b style="color:var(--orange)">${fN(t.unlinkedEmployees)} موظف غير مربوط</b>`:' · كل الموظفين مربوطون ✓';
+const unlinked=t.unlinkedEmployees?` · <b style="color:var(--orange)">${fN(t.unlinkedEmployees)} موظف غير مربوط</b>`:' · كل الموظفين مربوطون';
 el.innerHTML=`
 <div class="mini-chart-header"><div><div class="u-sub-strong">بصمة الحضور — علامة الربط</div></div><div class="kpi-chip"><i class=ji data-i=user-check></i></div></div>
 <div style="font-size:17px;font-weight:800;color:${stateCls};display:flex;align-items:center;gap:8px">${dot} ${stateTxt}</div>

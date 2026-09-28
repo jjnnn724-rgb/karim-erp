@@ -82,7 +82,7 @@ function parseNumber(raw) {
     let s = String(raw).trim();
     if (!s) {return null;}
     s = s.replace(/[\u066B]/g, '.').replace(/[\u060C\u066C\s]/g, ''); // فواصل عربية
-    s = s.replace(/[^0-9.,\-]/g, '');
+    s = s.replace(/[^0-9.,-]/g, '');
     if (!s || !/\d/.test(s)) {return null;}
     const lastComma = s.lastIndexOf(',');
     const lastDot = s.lastIndexOf('.');
@@ -98,9 +98,9 @@ function parseNumber(raw) {
 
 const DATE_FORMATS = [
     { re: /^(\d{4})-(\d{1,2})-(\d{1,2})/, order: ['y', 'm', 'd'] },                 // 2025-01-31
-    { re: /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/, order: ['d', 'm', 'y'] },       // 31/01/2025
-    { re: /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/, order: ['m', 'd', 'y'] },       // 01/31/2025 (لو فشلت الأولى)
-    { re: /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/, order: ['d', 'm', 'y2'] },     // 31/01/25
+    { re: /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/, order: ['d', 'm', 'y'] },       // 31/01/2025
+    { re: /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/, order: ['m', 'd', 'y'] },       // 01/31/2025 (لو فشلت الأولى)
+    { re: /^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/, order: ['d', 'm', 'y2'] },     // 31/01/25
     { re: /^(\d{4})(\d{2})(\d{2})$/, order: ['y', 'm', 'd'] },                      // 20250131
     { re: /^(\d{2})(\d{2})(\d{4})$/, order: ['d', 'm', 'y'] },                      // 31012025
 ];
@@ -353,10 +353,16 @@ function parseDelimited(text, profile) {
     if (!items.length) {throw new ParseError('لم يُعثر على أسطر أصناف في الملف — راجع تعيين الأعمدة في ملف تعريف الصيغة');}
     // تجميع الملف المسطح: أسطر أصناف متعددة الفواتير تُقسَّم حسب رقم الفاتورة،
     // وحقول الترويسة (الرقم/التاريخ/العميل/الدفع) تُؤخذ من سطر الصنف نفسه عند غياب سطر ترويسة مستقل
+    // حارس انزياح الأعمدة (ملف بقسمين: ترويسة فاتورة ثم جدول أصناف): عمود الكود
+    // يقع غالبًا في موضع رقم الفاتورة، فلا يصح اعتباره مفتاح تجميع — إن وُجدت
+    // ترويسة فاتورة واحدة معلومة ولم يحمل أي بند رقمها فالملف كله فاتورة واحدة.
+    const headerKey = String(headerInfo.invoiceNumber || '').trim();
+    const itemKeys = new Set(items.map(it => String(it._invoiceKey || '').trim()).filter(Boolean));
+    const singleInvoiceFile = Boolean(headerKey) && !itemKeys.has(headerKey);
     const groups = new Map();
     const order = [];
     for (const it of items) {
-        const key = it._invoiceKey || '';
+        const key = singleInvoiceFile ? headerKey : (it._invoiceKey || '');
         if (!groups.has(key)) {
             groups.set(key, {
                 invoiceNumber: headerInfo.invoiceNumber,

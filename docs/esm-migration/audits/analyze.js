@@ -39,7 +39,7 @@ const SECTIONS = [
 ];
 const sectionOf = (line) => {
   let name = 'HEADER';
-  for (const [start, s] of SECTIONS) { if (line >= start) name = s; else break; }
+  for (const [start, s] of SECTIONS) { if (line >= start) {name = s;} else {break;} }
   return name;
 };
 
@@ -50,8 +50,8 @@ const fns = [], vars = [];
 appLines.forEach((l, i) => {
   const line = i + 1;
   let m;
-  if ((m = l.match(fnRe))) fns.push({ name: m[1], line, section: sectionOf(line) });
-  else if ((m = l.match(varRe))) vars.push({ name: m[1], line, section: sectionOf(line) });
+  if ((m = l.match(fnRe))) {fns.push({ name: m[1], line, section: sectionOf(line) });}
+  else if ((m = l.match(varRe))) {vars.push({ name: m[1], line, section: sectionOf(line) });}
 });
 
 // ---- 2. window.* assignments and reads ----
@@ -59,7 +59,7 @@ const winAssign = new Map(); // name -> [{line, section}]
 appLines.forEach((l, i) => {
   for (const m of l.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=(?!=)/g)) {
     const name = m[1];
-    if (!winAssign.has(name)) winAssign.set(name, []);
+    if (!winAssign.has(name)) {winAssign.set(name, []);}
     winAssign.get(name).push({ line: i + 1, section: sectionOf(i + 1) });
   }
 });
@@ -72,7 +72,7 @@ const winGlobals = [...winAssign.keys()].map((name) => {
   const consumers = {};
   for (const [f, txt] of Object.entries(siblings)) {
     const c = countUsage(txt, name);
-    if (c) consumers['js/' + f] = c;
+    if (c) {consumers['js/' + f] = c;}
   }
   consumers['index.html'] = countUsage(indexHtml, name);
   const totalExternal = Object.values(consumers).reduce((a, b) => a + b, 0);
@@ -117,7 +117,7 @@ appLines.forEach((l, i) => {
 const rawFetch = [];
 appLines.forEach((l, i) => {
   const m = l.match(/(?:^|[^a-zA-Z.])fetch\(\s*[`'"]([^`'"]+)[`'"]/);
-  if (m) rawFetch.push({ line: i + 1, path: m[1], section: sectionOf(i + 1) });
+  if (m) {rawFetch.push({ line: i + 1, path: m[1], section: sectionOf(i + 1) });}
 });
 
 // ---- 6. storage ----
@@ -137,7 +137,7 @@ const storScan = (label, text) => {
   }
 };
 storScan('app.js', read('js/app.js'));
-for (const [f, txt] of Object.entries(siblings)) storScan('js/' + f, txt);
+for (const [f, txt] of Object.entries(siblings)) {storScan('js/' + f, txt);}
 storScan('index.html', indexHtml);
 
 // ---- 7. events ----
@@ -146,11 +146,11 @@ const listenScan = (label, text) => {
   const lines = text.split('\n');
   lines.forEach((l, i) => {
     const m = l.match(/(?:window|document|[A-Za-z_$][\w$.]*)\.addEventListener\(\s*['"`]([^'"`]+)['"`]/);
-    if (m) listeners.push({ where: label, line: i + 1, event: m[1] });
+    if (m) {listeners.push({ where: label, line: i + 1, event: m[1] });}
   });
 };
 listenScan('app.js', read('js/app.js'));
-for (const [f, txt] of Object.entries(siblings)) listenScan('js/' + f, txt);
+for (const [f, txt] of Object.entries(siblings)) {listenScan('js/' + f, txt);}
 listenScan('index.html', indexHtml);
 const customEvents = [];
 for (const m of read('js/app.js').matchAll(/(?:dispatchEvent\(new\s+(?:Custom)?Event|new\s+CustomEvent)\(\s*['"`]([^'"`]+)['"`]/g)) {

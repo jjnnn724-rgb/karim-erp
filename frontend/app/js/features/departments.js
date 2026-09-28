@@ -23,8 +23,8 @@ s.profit=s.rev-s.exp;
 s.costRatio=s.rev>0?(s.exp/s.rev)*100:0;
 const kids=(STATE.departments||[]).filter(d=>String(d.parent_code||'')==='kitchen');
 const kidBadges=kids.map(k=>{const ks=calcStats(k.code);return `<span class="badge bdg-blue" title="مصروف ${fN(ks.exp)} SAR • إيراد ${fN(ks.rev)} SAR">${esc(k.icon||'•')} ${esc(k.name)}: ${fC(ks.exp)}</span>`;}).join(' ');
-return `<div class="dept-card u-mt16" style="grid-column:1/-1;border:2px solid #c9a227;background:linear-gradient(135deg,rgba(201,162,39,.08),rgba(201,162,39,.02));cursor:pointer" onclick="openDepartmentDetail('kitchen')">
-<div class="dept-hd"><span class="dept-ic" style="font-size:26px">🍳</span><div class="dept-info"><div class="dept-name" style="font-size:18px">المطبخ العام <span class="badge bdg-gold">بطاقة تجميعية</span></div><div class="dept-code">الإيراد من كاشير البوفيه (9) والمبيعات المباشرة • المصروف من أذون الصرف لكل الأقسام الفرعية</div></div>
+return `<div class="dept-card u-mt16" style="grid-column:1/-1;border:2px solid var(--border-gold);background:var(--bg2);cursor:pointer" onclick="openDepartmentDetail('kitchen')">
+<div class="dept-hd"><span class="dept-ic" style="font-size:26px"><i class=ji data-i=chef-hat></i></span><div class="dept-info"><div class="dept-name" style="font-size:18px">المطبخ العام <span class="badge bdg-gold">بطاقة تجميعية</span></div><div class="dept-code">الإيراد من كاشير البوفيه (9) والمبيعات المباشرة • المصروف من أذون الصرف لكل الأقسام الفرعية</div></div>
 <div class="dept-badge">${t('dept.cost')} ${fN(s.costRatio.toFixed(1))}%</div></div>
 <div class="dept-stats"><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=banknote></i> إجمالي الإيراد</div><div class="dstat-val c-gold">${fC(s.rev)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=wallet></i> إجمالي المصروف (أذون الصرف)</div><div class="dstat-val c-red">${fC(s.exp)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=gem></i> الصافي</div><div class="dstat-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div>
 ${kids.length?`<div class="u-mt8" style="font-size:12px;display:flex;flex-wrap:wrap;gap:6px">${kidBadges}</div>`:''}
@@ -124,7 +124,7 @@ const tByNo={}; (t?.cashiers||[]).forEach(c=>{ tByNo[String(c.no)]=c; });
 const list=(d?.cashiers||[]).filter(c=>!HIDDEN_CASHIERS.includes(String(c.cashier_no))).slice();
 for(const oc of (t?.cashiers||[])){
 const no=String(oc.no);
-if(HIDDEN_CASHIERS.includes(no)) continue;
+if(HIDDEN_CASHIERS.includes(no)) {continue;}
 const found=list.find(c=>String(c.cashier_no)===no);
 if(!found){
 list.push({cashier_no:no,name:oc.name||('كاشير '+no),dept_code:'',today_invoices:oc.invoices||0,today_total:oc.net||0,yday_invoices:0,yday_total:0,delta_pct:null,last_at:null,live:true});
@@ -134,7 +134,7 @@ if(Number(oc.net||0)>Number(found.today_total||0)){found.today_total=oc.net;foun
 }
 }
 const ranked=list.slice().sort((a,b)=>Math.max(Number(b.today_total||0),Number((tByNo[String(b.cashier_no)]||{}).net||0))-Math.max(Number(a.today_total||0),Number((tByNo[String(a.cashier_no)]||{}).net||0)));
-const medals=['🥇','🥈','🥉'];
+const rankBadge=(i)=>i===0?'<span class="cash-rank rank-1">1</span>':i===1?'<span class="cash-rank rank-2">2</span>':i===2?'<span class="cash-rank rank-3">3</span>':'';
 const IDLE_MIN=45;
 const idleMin=(iso)=>{ if(!iso) {return null;} const ms=Date.now()-new Date(iso).getTime(); return ms>=0?Math.floor(ms/60000):null; };
 const idleTxt=(m)=>{ if(m===null) {return 'لا فواتير اليوم';} if(m<60) {return `خامل منذ ${m} د`;} const h=Math.floor(m/60); return `خامل منذ ${h} س ${m%60} د`; };
@@ -154,16 +154,16 @@ const idle=idleMin(c.last_at);
 const isIdle=idle!==null&&idle>=IDLE_MIN&&Number(c.today_invoices||0)>0;
 const prevT=window._cashPrevTot?window._cashPrevTot[String(c.cashier_no)]:undefined;
 const justSold=prevT!==undefined&&Number(c.today_total||0)!==Number(prevT);
-return `<div class="dept-card${justSold?' cash-new':''}" style="cursor:pointer;${best?'border:2px solid var(--gold);box-shadow:0 0 18px #f5b30133':''}${isIdle?';border:2px solid var(--red)':''}" onclick="openCashierLive('${esc(c.cashier_no)}')" title="اضغط لعرض أصناف وفواتير ${esc(c.name)} اليوم">
+return `<div class="dept-card${justSold?' cash-new':''}" style="cursor:pointer;${best?'border:2px solid var(--gold)':''}${isIdle?';border:2px solid var(--red)':''}" onclick="openCashierLive('${esc(c.cashier_no)}')" title="اضغط لعرض أصناف وفواتير ${esc(c.name)} اليوم">
 <div class="dept-hd"><span class="dept-ic"><i class=ji data-i=${icon}></i></span>
-<div class="dept-info"><div class="dept-name">${idx<3?medals[idx]+' ':''}${esc(c.name)}</div>
+<div class="dept-info"><div class="dept-name">${rankBadge(idx)}${esc(c.name)}</div>
 <div class="dept-code">كاشير ${esc(c.cashier_no)} · ${fN(c.today_invoices)} فاتورة · حصة ${share.toFixed(0)}%${live.shift?` · وردية ${esc(live.shift)}`:''}</div></div>
 <div class="dept-badge ${isNew?'c-gold':(up?'c-green':'c-red')}" title="مقابل إجمالي يوم أمس الكامل — ليست مقارنة عادلة أثناء اليوم">${isNew?'• جديد':`${up?'▲':'▼'} ${fN(Math.abs(Number(c.delta_pct)))}%`}</div></div>
-${isIdle?`<div class="badge bdg-red" style="margin:4px 0">⚠ ${idleTxt(idle)} — راجع الكاشير</div>`:''}
+${isIdle?`<div class="badge bdg-red" style="margin:4px 0"><i class=ji data-i=alert-triangle></i> ${idleTxt(idle)} — راجع الكاشير</div>`:''}
 <div class="dstat-val c-gold" style="font-size:26px;margin:6px 0">${fC(Number(c.today_total||0))}</div>
 ${cashBarsSVG(hourly,120,30,'var(--green)')}
 <div class="u-footer-sep" style="font-size:12px"><span class="text-muted">متوسط الفاتورة: ${fC(Number(live.avg||0))}</span><span class="text-muted">نقدي ${cashShare}%</span></div>
-<div style="height:9px;border-radius:99px;background:var(--bg3);overflow:hidden"><div style="height:100%;width:${share.toFixed(1)}%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--green));transition:width .8s"></div></div>
+<div style="height:9px;border-radius:99px;background:var(--bg3);overflow:hidden"><div style="height:100%;width:${share.toFixed(1)}%;border-radius:99px;background:var(--gold);transition:width .8s"></div></div>
 <div class="u-footer-sep" style="font-size:12px"><span class="text-muted">أمس: ${fC(Number(c.yday_total||0))} (${fN(c.yday_invoices)} فاتورة)</span><span class="text-muted">آخر فاتورة: ${cashTime(c.last_at)}</span></div>
 </div>`;}).join('');
 const heroHourly=Array.isArray(t?.hourly)?t.hourly:[];
@@ -174,7 +174,7 @@ const _hh=(Array.isArray(heroHourly)?heroHourly.map(v=>Number(v)||0):[]).filter(
 const _rate=_hh.length?_hh.reduce((s,v)=>s+v,0)/_hh.length:0;
 let _nowH=12; try{_nowH=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Riyadh',hour:'numeric',hour12:false}).format(new Date()));}catch(_){}
 const _proj=Math.round(Number(d?.cashiers_total?.total||0)+_rate*Math.max(0,23-_nowH));
-box.innerHTML=`<div class="mcard" style="margin-bottom:14px;background:linear-gradient(135deg,var(--bg2),transparent)">
+box.innerHTML=`<div class="mcard" style="margin-bottom:14px">
 <div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=zap></i> الكاشيرية لايف</h3>
 <div class="u-row-wrap">
 ${isToday?'<span class="badge bdg-green"><span class="pulse-dot"></span> مباشر</span>':'<span class="badge bdg-blue">عرض تاريخي</span>'}

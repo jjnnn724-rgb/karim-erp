@@ -68,9 +68,9 @@ describe('مفتاح الدخول بحساب المستخدم (accountKeyGenerat
 });
 
 describe('تحصين الخادم ضد الضغط (server.js)', () => {
-    test('ضغط الاستجابات gzip مركّب بعتبة 1KB قبل تعريف المسارات', () => {
+    test('ضغط الاستجابات gzip بعتبة 512B ومستوى 9 قبل تعريف المسارات', () => {
         expect(SERVER).toMatch(/require\('compression'\)/);
-        expect(SERVER).toMatch(/app\.use\(compression\(\{\s*threshold:\s*1024\s*\}\)\)/);
+        expect(SERVER).toMatch(/app\.use\(compression\(\{[\s\S]{0,120}?threshold:\s*512/);
         // يجب أن يسبق تعريف أول مسار
         const compIdx = SERVER.indexOf('app.use(compression(');
         const firstRouteIdx = SERVER.indexOf("app.get('/");
@@ -79,21 +79,21 @@ describe('تحصين الخادم ضد الضغط (server.js)', () => {
     });
 
     test('حد الجسم العام مشدود 2MB — قطع هجمات الحشو مبكرًا', () => {
-        expect(SERVER).toMatch(/express\.json\(\{\s*limit:\s*'2mb'\s*\}\)/);
-        expect(SERVER).toMatch(/express\.urlencoded\(\{\s*extended:\s*true,\s*limit:\s*'2mb'\s*\}\)/);
+        expect(SERVER).toMatch(/express\.json\(\{\s*limit:\s*'2mb'/);
+        expect(SERVER).toMatch(/express\.urlencoded\(\{[^}]*limit:\s*'2mb'/);
         expect(SERVER).not.toMatch(/express\.json\(\{\s*limit:\s*'50mb'\s*\}\);\s*\n\s*app\.use\(express\.urlencoded/);
     });
 
     test('استثناء وحيد 50MB لاستيراد الإكسل، وركوبه قبل المحلل العام', () => {
         expect(SERVER).toMatch(/app\.use\('\/api\/inventory\/import',\s*express\.json\(\{\s*limit:\s*'50mb'\s*\}\)\)/);
         const scopedIdx = SERVER.indexOf("/api/inventory/import', express.json");
-        const globalIdx = SERVER.indexOf("express.json({ limit: '2mb' })");
+        const globalIdx = SERVER.indexOf("express.json({ limit: '2mb'");
         expect(scopedIdx).toBeGreaterThan(-1);
         expect(scopedIdx).toBeLessThan(globalIdx);
     });
 
-    test('مكتبات vendor تُخزَّن 30 يومًا بصيغة immutable', () => {
-        expect(SERVER).toMatch(/\/app\/js\/vendor'[^\n]+maxAge:\s*'30d',\s*immutable:\s*true/);
+    test('مكتبات vendor تُخزَّن 365 يومًا بصيغة immutable', () => {
+        expect(SERVER).toMatch(/\/app\/js\/vendor'[\s\S]{0,140}?maxAge:\s*'365d',\s*immutable:\s*true/);
     });
 
     test('compression مُثبّت كت redependency إنتاجية في package.json', () => {

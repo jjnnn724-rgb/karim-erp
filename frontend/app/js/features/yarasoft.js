@@ -6,6 +6,7 @@
 // YARASOFT POS IMPORT PAGE (استيراد فواتير نقاط البيع)
 // ============================================
 const YSSTATE = { tab:'status', status:null, log:[], review:[], mappings:null };
+YSSTATE.mirror = { date:'', cashiers:[], orders:[], total:0, offset:0, limit:50, cashier:'', close:null };
 
 async function renderYarasoftPage(){
 const content = document.getElementById('content');
@@ -23,6 +24,7 @@ ${canWrite?`<button class="btn btn-green" onclick="ysRunNow()"><i class=ji data-
 <button class="btn btn-sm ${YSSTATE.tab==='review'?'btn-gold':''}" onclick="ysSetTab('review')"><i class=ji data-i=alert-triangle></i> مراجعة الأصناف</button>
 <button class="btn btn-sm ${YSSTATE.tab==='sections'?'btn-gold':''}" onclick="ysSetTab('sections')"><i class=ji data-i=layout-grid></i> أقسام الإيرادات</button>
 <button class="btn btn-sm ${YSSTATE.tab==='warehouse'?'btn-gold':''}" onclick="ysSetTab('warehouse')"><i class=ji data-i=package></i> مخازن يارا سوفت</button>
+<button class="btn btn-sm ${YSSTATE.tab==='mirror'?'btn-gold':''}" onclick="ysSetTab('mirror')"><i class=ji data-i=store></i> مرآة الكاشيرية</button>
 <button class="btn btn-sm ${YSSTATE.tab==='mappings'?'btn-gold':''}" onclick="ysSetTab('mappings')"><i class=ji data-i=tag></i> ربط المنتجات</button>
 <button class="btn btn-sm ${YSSTATE.tab==='tools'?'btn-gold':''}" onclick="ysSetTab('tools')"><i class=ji data-i=settings></i> معاينة الصيغة</button>
 </div>
@@ -95,12 +97,12 @@ try{
 const d=await apiFetch('/yarasoft/oracle/reconcile?days=14');
 const rows=(d.rows||[]).map(r=>`<tr>
 <td class="fw-bold">${esc(r.day)}</td><td>${fN(r.ora_cc)}</td><td>${fN(r.ora_b4)}</td>
-<td class="c-green">${fN(r.local_count)}</td><td>${r.status==='ok'?'<span class="badge bdg-green">مكتمل ✓</span>':`<span class="badge bdg-red">ناقص ${fN((r.ora_cc+r.ora_b4)-r.local_count)}</span>`}</td>
+<td class="c-green">${fN(r.local_count)}</td><td>${r.status==='ok'?'<span class="badge bdg-green"><i class=ji data-i=circle-check></i> مكتمل</span>':`<span class="badge bdg-red">ناقص ${fN((r.ora_cc+r.ora_b4)-r.local_count)}</span>`}</td>
 </tr>`).join('');
-box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${d.overall==='ok'?'<span class="badge bdg-green">المزامنة سليمة ✓</span>':`<span class="badge bdg-red">يوجد فائت</span>`} <span class="text-muted">Oracle: <b>${fN(d.totalOra||0)}</b> — عندنا: <b>${fN(d.totalLocal||0)}</b> (آخر ${fN(d.days||14)} يوم، بدون كاشير 2)</span></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table>
+box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${d.overall==='ok'?'<span class="badge bdg-green"><i class=ji data-i=circle-check></i> المزامنة سليمة</span>':`<span class="badge bdg-red">يوجد فائت</span>`} <span class="text-muted">Oracle: <b>${fN(d.totalOra||0)}</b> — عندنا: <b>${fN(d.totalLocal||0)}</b> (آخر ${fN(d.days||14)} يوم، بدون كاشير 2)</span></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table>
 <thead><tr><th>اليوم</th><th>كاشير (Oracle)</th><th>شركات (Oracle)</th><th>عندنا</th><th>الحالة</th></tr></thead>
 <tbody>${rows||'<tr><td colspan="5" class="u-empty-sm">لا بيانات</td></tr>'}</tbody></table></div>
-${(d.missingDays||[]).length?`<div style="padding:10px 0"><span class="c-red fw-bold">أيام ناقصة: ${(d.missingDays||[]).join('، ')}</span> — دوس مزامنة الفائت للحاقها.</div>`:'<div class="c-green" style="padding:10px 0">كل الأيام مكتملة ✓</div>'}`;
+${(d.missingDays||[]).length?`<div style="padding:10px 0"><span class="c-red fw-bold">أيام ناقصة: ${(d.missingDays||[]).join('، ')}</span> — دوس مزامنة الفائت للحاقها.</div>`:'<div class="c-green" style="padding:10px 0"><i class=ji data-i=circle-check></i> كل الأيام مكتملة</div>'}`;
 }catch(e){ box.innerHTML=`<div class="mcard u-empty">${esc(e.message||'تعذر الفحص')}</div>`; }
 }
 async function ysCatchUp(){
@@ -118,8 +120,8 @@ const box=document.getElementById('ysSyncDocBody'); if(!box) {return;}
 try{
 const d=await apiFetch('/yarasoft/oracle/catch-up/status');
 const j=d.job||{};
-const chunks=(j.chunks||[]).map(c=>`<tr><td>${esc(c.fromDay)} ← ${esc(c.toDay)}</td><td>${c.skipped?'<span class="badge bdg-gray">مغطى ✓</span>':'<span class="badge bdg-gold">اتسحب</span>'}</td><td>${fN(c.posted||0)}</td></tr>`).join('');
-box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${j.running?'<span class="badge bdg-gold">جارٍ اللحاق...</span>':`<span class="badge bdg-green">اكتمل ✓</span> — منشور: <b>${fN(j.posted||0)}</b> — مكرر متخطى: <b>${fN(j.dups||0)}</b>`}${j.error?` <span class="c-red">${esc(j.error)}</span>`:''}</div>
+const chunks=(j.chunks||[]).map(c=>`<tr><td>${esc(c.fromDay)} ← ${esc(c.toDay)}</td><td>${c.skipped?'<span class="badge bdg-gray"><i class=ji data-i=check></i> مغطى</span>':'<span class="badge bdg-gold">اتسحب</span>'}</td><td>${fN(c.posted||0)}</td></tr>`).join('');
+box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${j.running?'<span class="badge bdg-gold">جارٍ اللحاق...</span>':`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> اكتمل</span> — منشور: <b>${fN(j.posted||0)}</b> — مكرر متخطى: <b>${fN(j.dups||0)}</b>`}${j.error?` <span class="c-red">${esc(j.error)}</span>`:''}</div>
 ${chunks?`<div class="tbl-scroll" style="max-height:220px;overflow:auto"><table><thead><tr><th>المقطع</th><th>الحالة</th><th>منشور</th></tr></thead><tbody>${chunks}</tbody></table></div>`:''}
 <div style="padding-top:8px"><button class="btn btn-blue btn-sm" onclick="ysReconcile()"><i class=ji data-i=chart></i> فحص الفجوات بعد المزامنة</button></div>`;
 if(j.running && loop!==false) {setTimeout(()=>{ if(document.getElementById('ysSyncDocBody')) {ysCatchUpStatus(true);} },5000);}
@@ -134,7 +136,7 @@ async function ysOracleTest(){  showLoad();
   }catch(e){ toast(e.message || 'تعذر الفحص', 'error'); }
   finally{ hideLoad(); }
 }
-function ysSetTab(tab){ YSSTATE.tab = tab; const t=document.getElementById('ysTabs'); if(t){ t.querySelectorAll('button').forEach((b,i)=>{ const tabs=['status','review','sections','warehouse','mappings','tools']; b.classList.toggle('btn-gold', tabs[i]===tab); }); } ysRenderBody(); }
+function ysSetTab(tab){ YSSTATE.tab = tab; const t=document.getElementById('ysTabs'); if(t){ t.querySelectorAll('button').forEach((b,i)=>{ const tabs=['status','review','sections','warehouse','mirror','mappings','tools']; b.classList.toggle('btn-gold', tabs[i]===tab); }); } ysRenderBody(); }
 function ysRenderBody(){
 const body = document.getElementById('ysBody');
 if(!body) {return;}
@@ -142,6 +144,7 @@ if(YSSTATE.tab==='status') {ysRenderStatus(body);}
 else if(YSSTATE.tab==='review') {ysLoadReview(body);}
 else if(YSSTATE.tab==='sections') {ysLoadSections(body);}
 else if(YSSTATE.tab==='warehouse') {ysLoadWarehouse(body);}
+else if(YSSTATE.tab==='mirror') {ysLoadMirror(body);}
 else if(YSSTATE.tab==='mappings') {ysLoadMappings(body);}
 else {ysRenderTools(body);}
 }
@@ -315,7 +318,7 @@ el.innerHTML=`
 <div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> أصناف بلا مطابقة (${fN((YSSTATE.review||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysReviewBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" onclick="ysLoadReview(document.getElementById('ysBody'))"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" onclick="ysPrintReview()"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الفاتورة</th><th>كود Yarasoft</th><th>الباركود</th><th>اسم الصنف</th><th>الكمية</th><th>السبب</th><th></th></tr></thead>
-<tbody id="ysReviewBody">${rows||'<tr><td colspan="7" class="u-empty-sm">لا أصناف معلقة — كل الفواتير مستوردة ✓</td></tr>'}</tbody>
+<tbody id="ysReviewBody">${rows||'<tr><td colspan="7" class="u-empty-sm">لا أصناف معلقة — كل الفواتير مستوردة</td></tr>'}</tbody>
 </table></div>
 </div>`;
 }
@@ -710,7 +713,7 @@ ${canWrite?`<div class="u-row-wrap" style="gap:8px;margin:12px 0">
 <div class="tbl-hd"><h3><i class=ji data-i=shield></i> الحجر الصحي — قيم شاذة لم تدخل المخزون (${fN((quar||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysQuarBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" onclick="ysPrintQuarantine()"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>النوع</th><th>الكود</th><th>الكمية</th><th>القيمة</th><th>سعر الوحدة</th><th>السبب</th></tr></thead>
-<tbody id="ysQuarBody">${qRows||'<tr><td colspan="6" class="u-empty-sm">لا قيم معزولة — كل الأرصدة سليمة ✓</td></tr>'}</tbody>
+<tbody id="ysQuarBody">${qRows||'<tr><td colspan="6" class="u-empty-sm">لا قيم معزولة — كل الأرصدة سليمة</td></tr>'}</tbody>
 </table></div>
 </div>`;
 }
@@ -742,6 +745,120 @@ else {toast(r.error||'تعذر المزامنة','error');}
 await window.loadData().catch(()=>{});
 await ysLoadWarehouse(document.getElementById('ysBody'));
 }catch(e){toast(e.message||'فشلت المزامنة','error');}finally{hideLoad();}
+}
+// ═══ مرآة الكاشيرية الحية: أوامر يارا سوفت (1/4/5/6/9) داخل نظامنا ═══
+function ysMirrorDay(){ return YSSTATE.mirror.date || new Date().toISOString().slice(0,10); }
+async function ysLoadMirror(el){
+    el = el || document.getElementById('ysBody'); if(!el) {return;}
+    el.innerHTML = '<div class="mcard u-empty"><div class="spinner"></div><div class="u-sub">جارٍ تحميل مرآة الكاشيرية...</div></div>';
+    try{
+        const day = ysMirrorDay();
+        const [cash, ord] = await Promise.all([
+            apiFetch(`/yarasoft/mirror/cashiers?date=${day}`),
+            apiFetch(`/yarasoft/mirror/orders?date=${day}&cashier=${YSSTATE.mirror.cashier||''}&limit=${YSSTATE.mirror.limit||50}&offset=${YSSTATE.mirror.offset||0}`),
+        ]);
+        YSSTATE.mirror.cashiers = cash.cashiers || [];
+        YSSTATE.mirror.orders = ord.orders || [];
+        YSSTATE.mirror.total = ord.total || 0;
+        ysRenderMirror(el);
+    }catch(e){ el.innerHTML = `<div class="mcard u-empty">تعذر التحميل: ${esc(e.message||'خطأ')} <button class="btn btn-sm" onclick="ysLoadMirror()">إعادة</button></div>`; }
+}
+function ysRenderMirror(el){
+    const m = YSSTATE.mirror;
+    const cards = (m.cashiers||[]).map(c=>`
+        <div class="mcard" style="cursor:pointer;${String(m.cashier)===String(c.cashier_no)?'border:2px solid var(--gold);':''}" onclick="YSSTATE.mirror.cashier='${c.cashier_no}';YSSTATE.mirror.offset=0;ysLoadMirror()">
+        <div class="mcard-label"><i class=ji data-i=store></i> كاشير ${esc(c.cashier_no)}</div>
+        <div class="mcard-val c-gold">${fC(c.revenue||0)}</div>
+        <div class="u-t13 text-muted">${fN(c.invoices||0)} فاتورة · متوسط ${fC(c.avg||0)} · آخر ${esc(c.last_time||'—')}</div>
+        </div>`).join('');
+    const pages = Math.max(1, Math.ceil((m.total||0)/(m.limit||50)));
+    const page = Math.floor((m.offset||0)/(m.limit||50))+1;
+    const rows = (m.orders||[]).map(o=>`<tr>
+        <td class="fw-bold" dir="ltr">${esc(o.doc_no)}</td>
+        <td><span class="badge bdg-blue">كاشير ${esc(o.cashier_no)}</span></td>
+        <td dir="ltr">${esc(o.doc_time||'—')}</td>
+        <td>${esc(o.table_name||'—')}${o.zone_name?` <small class="text-muted">(${esc(o.zone_name)})</small>`:''}</td>
+        <td>${fN(o.lines_count||0)}</td>
+        <td class="c-gold fw-bold">${fC(o.total)}</td>
+        <td class="c-green">${fC(o.payed)}</td>
+        <td><button class="btn btn-blue btn-sm" onclick="ysMirrorDetail('${esc(o.doc_no)}')"><i class=ji data-i=eye></i> عرض وطباعة</button>
+        ${o.printed?'<span class="badge bdg-gray">مطبوعة</span>':''}</td>
+        </tr>`).join('') || '<tr><td colspan="8" class="u-empty">لا أوردرات في هذه الفترة</td></tr>';
+    el.innerHTML = `
+    <div class="fr" style="align-items:end;margin-bottom:10px;flex-wrap:wrap">
+      <div class="fg" style="max-width:160px"><label>التاريخ</label><input type="date" class="inp" value="${ysMirrorDay()}" onchange="YSSTATE.mirror.date=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"></div>
+      <div class="fg" style="max-width:150px"><label>الكاشير</label><select class="inp" onchange="YSSTATE.mirror.cashier=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"><option value="">الكل (1/4/5/6/9)</option>${['1','4','5','6','9'].map(c=>`<option value="${c}" ${String(m.cashier)===c?'selected':''}>كاشير ${c}</option>`).join('')}</select></div>
+      <button class="btn btn-gold btn-sm" onclick="ysMirrorRefresh()"><i class=ji data-i=refresh></i> تحديث فوري</button>
+      ${m.cashier?`<button class="btn btn-green btn-sm" onclick="ysMirrorClose('${m.cashier}')"><i class=ji data-i=printer></i> تقفيل كاشير ${m.cashier}</button>`:''}
+      <span class="u-t13 text-muted" style="margin-inline-start:auto">المرآة تتحدث كل دقيقة من Oracle</span>
+    </div>
+    <div class="metrics-grid">${cards}</div>
+    <div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=receipt></i> الأوردرات (${fN(m.total||0)})</h3></div>
+    <div class="tbl-scroll"><table><thead><tr><th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الطاولة</th><th>سطور</th><th>الإجمالي</th><th>المدفوع</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="fr" style="padding:8px 14px;align-items:center"><span class="u-t13 text-muted">صفحة ${fN(page)} من ${fN(pages)}</span><div class="fr"></div>
+    <button class="btn btn-sm" ${page<=1?'disabled':''} onclick="YSSTATE.mirror.offset=Math.max(0,YSSTATE.mirror.offset-YSSTATE.mirror.limit);ysLoadMirror()">السابق</button>
+    <button class="btn btn-sm" ${page>=pages?'disabled':''} onclick="YSSTATE.mirror.offset=YSSTATE.mirror.offset+YSSTATE.mirror.limit;ysLoadMirror()">التالي</button></div>
+    </div>`;
+}
+async function ysMirrorRefresh(){
+    try{ const r = await apiFetch('/yarasoft/mirror/refresh',{method:'POST',body:'{}'}); toast(r.ok?`حُدّثت المرآة: ${fN(r.upserted||0)} أوردر`:(r.error||'تعذر التحديث'),'success'); }
+    catch(e){ toast(e.message||'تعذر التحديث','error'); }
+    ysLoadMirror();
+}
+async function ysMirrorDetail(doc){
+    try{
+        const d = await apiFetch(`/yarasoft/mirror/orders/${encodeURIComponent(doc)}`);
+        const o = d.order; if(!o) {toast('الأوردر غير موجود','error');return;}
+        const lines = (Array.isArray(o.lines)?o.lines:[]).map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.name||'—')}<br><small class="text-muted">${esc(l.code||'')}</small></td><td>${fN(l.qty)}</td><td>${esc(l.unit||'')}</td><td>${fC(l.price)}</td><td>${fC(l.discount||0)}</td><td>${fC(l.vat||0)}</td><td class="c-gold fw-bold">${fC(l.total)}</td></tr>`).join('');
+        YSSTATE.mirrorDetail = o;
+        showModal(`<h3><i class=ji data-i=receipt></i> فاتورة ${esc(o.doc_no)} — كاشير ${esc(o.cashier_no)}</h3>
+        <div class="fr"><div class="mcard"><div class="mcard-label">التاريخ/الوقت</div><div class="mcard-val u-t14">${esc(o.doc_date||'')} ${esc(o.doc_time||'')}</div></div>
+        <div class="mcard"><div class="mcard-label">الإجمالي</div><div class="mcard-val c-gold">${fC(o.total)}</div></div>
+        <div class="mcard"><div class="mcard-label">المدفوع / المتبقي</div><div class="mcard-val c-green">${fC(o.payed)} / ${fC(Number(o.total||0)-Number(o.payed||0))}</div></div>
+        <div class="mcard"><div class="mcard-label">الطاولة</div><div class="mcard-val u-t14">${esc(o.table_name||'—')}</div></div></div>
+        <div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>وحدة</th><th>سعر</th><th>خصم</th><th>ضريبة</th><th>إجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>
+        <div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-blue" onclick="ysMirrorPrint()"><i class=ji data-i=printer></i> طباعة الفاتورة</button></div>`);
+    }catch(e){ toast(e.message||'تعذر التفاصيل','error'); }
+}
+function ysMirrorPrint(){
+    const o = YSSTATE.mirrorDetail; if(!o) {return;}
+    const lines = (Array.isArray(o.lines)?o.lines:[]).map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.name||'—')}</td><td>${fN(l.qty)}</td><td>${fC(l.price)}</td><td>${fC(l.total)}</td></tr>`).join('');
+    ysPrintReport(`فاتورة يارا سوفت ${esc(o.doc_no)}`, `كاشير ${esc(o.cashier_no)} — ${esc(o.doc_date||'')} ${esc(o.doc_time||'')}${o.table_name?` — طاولة ${esc(o.table_name)}`:''}`,
+        [['الإجمالي', fC(o.total)],['الخصم', fC(o.discount)],['الضريبة', fC(o.vat)],['المدفوع', fC(o.payed)],['المتبقي', fC(Number(o.total||0)-Number(o.payed||0))],
+         ['نقدي', fC(o.pay_cash)],['شبكة', fC(o.pay_network)],['آجل', fC(o.pay_credit)],['جوال', fC(o.pay_mobile)]],
+        ['#','الصنف','كمية','سعر','إجمالي'], lines);
+}
+async function ysMirrorClose(cashier){
+    try{
+        const r = await apiFetch(`/yarasoft/mirror/close?cashier=${cashier}&date=${ysMirrorDay()}`);
+        if(!r.ok){ toast(r.error||'تعذر التقفيل','error'); return; }
+        const hours = Object.entries(r.by_hour||{}).sort((a,b)=>a[0].localeCompare(b[0]))
+            .map(([h,v])=>`<tr><td dir="ltr">${h}:00</td><td>${fN(v.invoices)}</td><td class="c-gold">${fC(v.revenue)}</td></tr>`).join('');
+        const top = (r.top_items||[]).map((t,i)=>`<tr><td>${i+1}</td><td>${esc(t.name||'—')}</td><td>${fN(t.qty)}</td><td class="c-gold">${fC(t.total)}</td></tr>`).join('');
+        YSSTATE.mirrorClose = r;
+        showModal(`<h3><i class=ji data-i=calculator></i> تقفيل كاشير ${esc(cashier)} — ${esc(r.date)}</h3>
+        <div class="metrics-grid">
+        <div class="mcard"><div class="mcard-label">الفواتير</div><div class="mcard-val">${fN(r.invoices)}</div></div>
+        <div class="mcard"><div class="mcard-label">الإجمالي</div><div class="mcard-val c-gold">${fC(r.gross)}</div></div>
+        <div class="mcard"><div class="mcard-label">الخصم / الضريبة</div><div class="mcard-val">${fC(r.discount)} / ${fC(r.vat)}</div></div>
+        <div class="mcard"><div class="mcard-label">المدفوع / المتبقي</div><div class="mcard-val c-green">${fC(r.payed)} / ${fC(r.open)}</div></div>
+        <div class="mcard"><div class="mcard-label">نقدي / شبكة</div><div class="mcard-val">${fC(r.pay_split?.cash)} / ${fC(r.pay_split?.network)}</div></div>
+        <div class="mcard"><div class="mcard-label">آجل / جوال</div><div class="mcard-val">${fC(r.pay_split?.credit)} / ${fC(r.pay_split?.mobile)}</div></div>
+        <div class="mcard"><div class="mcard-label">المتوسط</div><div class="mcard-val">${fC(r.avg)}</div></div>
+        <div class="mcard"><div class="mcard-label">أول / آخر فاتورة</div><div class="mcard-val u-t14">${esc(r.first_time||'—')} / ${esc(r.last_time||'—')}</div></div>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-hd"><h3>الإيراد بالساعة</h3></div><div class="tbl-scroll"><table><thead><tr><th>الساعة</th><th>فواتير</th><th>إيراد</th></tr></thead><tbody>${hours||'<tr><td colspan="3" class="u-empty">لا بيانات</td></tr>'}</tbody></table></div></div>
+        <div class="tbl-wrap"><div class="tbl-hd"><h3>أعلى 15 صنفًا</h3><button class="btn btn-blue btn-sm" onclick="ysMirrorPrintClose()"><i class=ji data-i=printer></i> طباعة التقفيل</button></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>إجمالي</th></tr></thead><tbody>${top||'<tr><td colspan="4" class="u-empty">لا بيانات</td></tr>'}</tbody></table></div></div>`);
+    }catch(e){ toast(e.message||'تعذر التقفيل','error'); }
+}
+function ysMirrorPrintClose(){
+    const r = YSSTATE.mirrorClose; if(!r) {return;}
+    ysPrintReport(`تقفيل كاشير ${r.cashier_no} — ${r.date}`, `${r.invoices} فاتورة`,
+        [['الإجمالي', fC(r.gross)],['الخصم', fC(r.discount)],['الضريبة', fC(r.vat)],['الصافي', fC(r.net)],
+         ['المدفوع', fC(r.payed)],['المتبقي', fC(r.open)],['نقدي', fC(r.pay_split?.cash)],['شبكة', fC(r.pay_split?.network)],
+         ['آجل', fC(r.pay_split?.credit)],['جوال', fC(r.pay_split?.mobile)],['المتوسط', fC(r.avg)]],
+        ['#','الصنف','كمية','إجمالي'],
+        (r.top_items||[]).map((t,i)=>`<tr><td>${i+1}</td><td>${esc(t.name||'—')}</td><td>${fN(t.qty)}</td><td>${fC(t.total)}</td></tr>`).join(''));
 }
 // ─── معاينة الصيغة (DRY RUN على نص ملصق) ───
 function ysRenderTools(el){
@@ -785,4 +902,4 @@ out.innerHTML=`<div class="mcard" style="border:1px solid var(--orange)"><b styl
 }
 }
 
-export { YSSTATE, renderYarasoftPage, ysRefresh, ysLoadOracleBox, ysOracleImportItems, ysOraclePollNow, ysReconcile, ysCatchUp, ysCatchUpStatus, ysOracleTest, ysSetTab, ysRenderBody, ysNetBadge, ysRenderStatus, ysStatusBadge, ysTableSearch, ysPrintReport, ysRunNow, ysReprocess, ysPrintLog, ysViewInvoice, ysPrintInvoiceDetail, ysLoadReview, ysRenderReview, ysPrintReview, ysResolveReview, ysConfirmReview, ysLoadMappings, ysRenderMappings, ysAddMappingModal, ysSaveMapping, ysDeactivateMapping, ysLoadSections, ysRenderSections, ysPrintSections, ysCashierIcon, ysCashierCards, ysOpenSecInvoices, ysSecInvReload, ysSecInvToggleAll, ysSecInvReclassify, ysCloseSecDrill, ysInvDetail, ysPrintInvDetail, ysApproveSectionModal, ysConfirmApproveSection, ysRenameSectionModal, ysConfirmRenameSection, ysManualSectionModal, ysConfirmManualSection, ysLoadWarehouse, ysPrintQuarantine, ysOrganizeCategories, ysSyncBalances, ysRenderTools, ysPreview };
+export { YSSTATE, renderYarasoftPage, ysRefresh, ysLoadOracleBox, ysOracleImportItems, ysOraclePollNow, ysReconcile, ysCatchUp, ysCatchUpStatus, ysOracleTest, ysSetTab, ysRenderBody, ysNetBadge, ysRenderStatus, ysStatusBadge, ysTableSearch, ysPrintReport, ysRunNow, ysReprocess, ysPrintLog, ysViewInvoice, ysPrintInvoiceDetail, ysLoadReview, ysRenderReview, ysPrintReview, ysResolveReview, ysConfirmReview, ysLoadMappings, ysRenderMappings, ysAddMappingModal, ysSaveMapping, ysDeactivateMapping, ysLoadSections, ysRenderSections, ysPrintSections, ysCashierIcon, ysCashierCards, ysOpenSecInvoices, ysSecInvReload, ysSecInvToggleAll, ysSecInvReclassify, ysCloseSecDrill, ysInvDetail, ysPrintInvDetail, ysApproveSectionModal, ysConfirmApproveSection, ysRenameSectionModal, ysConfirmRenameSection, ysManualSectionModal, ysConfirmManualSection, ysLoadWarehouse, ysPrintQuarantine, ysOrganizeCategories, ysSyncBalances, ysLoadMirror, ysRenderMirror, ysMirrorRefresh, ysMirrorDetail, ysMirrorPrint, ysMirrorClose, ysMirrorPrintClose, ysRenderTools, ysPreview };

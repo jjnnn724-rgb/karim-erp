@@ -141,6 +141,7 @@ menus: {
     'employee-portal': '<i class=ji data-i=home></i>',
     'hr-departments': '<i class=ji data-i=building></i>',
     payroll: '<i class=ji data-i=banknote></i>',
+    permissions: '<i class=ji data-i=key></i>',
     'query': '<i class=ji data-i=search></i>',
     professional: '<i class=ji data-i=credit-card></i>'
 }

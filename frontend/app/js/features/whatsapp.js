@@ -45,7 +45,7 @@ function waStateHtml(){
 const st=WASTATE.status; if(!st) {return '<div class="mcard u-empty">تعذر الجلب</div>';}
 const c=st.connection||{}, q=st.queue||{};
 const down=['LOGGED_OUT','DISCONNECTED','FAILED','STOPPED'].includes(c.state);
-const banner=(down||st.linkNeeded)?`<div class="mcard" style="border:2px solid var(--red);background:rgba(231,76,60,.08);margin-bottom:12px"><b style="color:var(--red)">⚠ الواتساب غير متصل${c.state==='LOGGED_OUT'?' — الجلسة انتهت ويلزم مسح QR جديد':''}</b><br><small class="text-muted">الردود التلقائية والتقارير متوقفة مؤقتًا — الرسائل محفوظة في الطابور وستُرسل عند عودة الاتصال. امسح الرمز من الأسفل بتليفون الإدارة.</small></div>`:'';
+const banner=(down||st.linkNeeded)?`<div class="mcard" style="border:2px solid var(--red);background:rgba(231,76,60,.08);margin-bottom:12px"><b style="color:var(--red)"><i class=ji data-i=alert-triangle></i> الواتساب غير متصل${c.state==='LOGGED_OUT'?' — الجلسة انتهت ويلزم مسح QR جديد':''}</b><br><small class="text-muted">الردود التلقائية والتقارير متوقفة مؤقتًا — الرسائل محفوظة في الطابور وستُرسل عند عودة الاتصال. امسح الرمز من الأسفل بتليفون الإدارة.</small></div>`:'';
 return `${banner}<div class="metrics-grid">
 <div class="mcard"><div class="mcard-label">الحالة</div><div style="margin-top:6px">${waStateBadge(c.state)}</div><small class="text-muted">إعادة وصل: ${fN(c.reconnects||0)}${c.lastError?` — ${esc(String(c.lastError).slice(0,80))}`:''}</small></div>
 <div class="mcard"><div class="mcard-label">آخر اتصال ناجح</div><div class="mcard-val" style="font-size:15px">${c.lastOkAt?esc(String(c.lastOkAt).replace('T',' ').slice(0,19)):'—'}</div></div>
@@ -107,7 +107,7 @@ const box=document.getElementById('waQrBox'); if(!box) {return;}
 if(manual){ box.innerHTML='<span class="spinner"></span> جارٍ جلب الرمز...'; }
 try{
 const d=await apiFetch('/whatsapp/qr');
-if(d.connected){ box.innerHTML='<span class="badge bdg-green">متصل ✓ — لا حاجة لرمز</span>'; waQrStop(); return; }
+if(d.connected){ box.innerHTML='<span class="badge bdg-green">متصل — لا حاجة لرمز</span>'; waQrStop(); return; }
 if(d.qr&&typeof QRCode!=='undefined'&&QRCode.toDataURL){
 const url=await QRCode.toDataURL(d.qr,{width:230,margin:1});
 box.innerHTML=`<img src="${url}" alt="QR" style="border:8px solid #fff;border-radius:8px"><div class="text-muted" style="margin-top:8px">امسح خلال دقيقة — يتحدث تلقائيًا</div>`;
@@ -120,7 +120,7 @@ const m=msg.match(/QR_NOT_READY|AUTHENTICATING|STOPPED|FAILED|LOGGED_OUT|ENGINE_
 if(manual||m){
 box.innerHTML=`<span class="text-muted">لا رمز بعد (${esc(msg.slice(0,120))}) — ${msg.includes('رمز جديد')||msg.includes('التحقق')?'دوس «رمز جديد» لمسح الجلسة القديمة وتوليد QR':'انتظر 20 ثانية ثم أعد «جلب الرمز»'}</span>`;
 if(manual){ toast(msg,'error'); }
-}else if(manual){ toast(msg,'error'); }
+}
 return;
 }
 waQrStop();
@@ -328,7 +328,7 @@ el.innerHTML=`
 <input id="waQueryInput" type="text" class="inp" placeholder="اكتب سؤالك... (مثال: حضور أحمد 1/9)" style="font-size:16px">
 <button class="btn btn-gold" onclick="waDoQuery()" style="margin-top:8px"><i class=ji data-i=paper-plane></i> استعلام</button>
 </div>
-<div style="margin-bottom:12px"><div class="tbl-hd"><h4>⚡ استعلامات سريعة</h4></div>
+<div style="margin-bottom:12px"><div class="tbl-hd"><h4><i class=ji data-i=zap></i> استعلامات سريعة</h4></div>
 <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap">
 ${categories.map(c=>`<button class="btn btn-sm btn-blue" onclick="document.getElementById('waQueryInput').value='${c.label} ';waDoQuery()">${c.label}</button>`).join('')}
 </div></div>
@@ -344,9 +344,9 @@ result.innerHTML='<div class="mcard"><div class="spinner"></div>جارٍ الم�
 try{
 const d=await apiFetch('/whatsapp/query',{method:'POST',body:JSON.stringify({question})});
 if(d.ok && d.result){
-result.innerHTML=`<div class="mcard" style="border:2px solid var(--green);background:rgba(39,174,96,.06)"><b>✅ الاستجابة:</b><div style="margin-top:8px;line-height:1.8">${d.result}</div></div>`;
+result.innerHTML=`<div class="mcard" style="border:2px solid var(--green);background:rgba(39,174,96,.06)"><b>الاستجابة:</b><div style="margin-top:8px;line-height:1.8">${d.result}</div></div>`;
 }else{
-result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ ${d.message||'فشل الاستعلام'}</b></div>`;
+result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)"><i class=ji data-i=circle-x></i> ${d.message||'فشل الاستعلام'}</b></div>`;
 }
 }catch(e){result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">خطأ: ${e.message}</b></div>`;}
 }
@@ -424,7 +424,7 @@ async function oraDataRefresh(){
     if(!r.ok){ body.innerHTML = `<div class="mcard u-empty">${esc(r.error||"خطأ")}</div>`; return; }
     ORADATA.tables = r.tables || [];
     oraDataRender();
-    const el = document.getElementById("oraLastRefresh"); if(el) el.textContent = "آخر تحديث: " + new Date().toLocaleString("ar-EG");
+    const el = document.getElementById("oraLastRefresh"); if(el) {el.textContent = "آخر تحديث: " + new Date().toLocaleString("ar-EG");}
   } catch(e){ body.innerHTML = `<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
 async function oraDataSync(){

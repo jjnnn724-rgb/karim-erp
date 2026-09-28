@@ -19,7 +19,7 @@ const MONTH = process.argv[2] || '2026-09';
 
   const byEmp = new Map();
   for (const r of rows) {
-    if (!byEmp.has(r.id)) byEmp.set(r.id, { name: r.name, cur: r.cur_shift, fp: r.fp, days: [] });
+    if (!byEmp.has(r.id)) {byEmp.set(r.id, { name: r.name, cur: r.cur_shift, fp: r.fp, days: [] });}
     const b = byEmp.get(r.id);
     if (r.checkIn) {
       const [H, M] = r.checkIn.split(':').map(Number);
@@ -29,7 +29,7 @@ const MONTH = process.argv[2] || '2026-09';
 
   const findings = [];
   for (const [id, b] of byEmp) {
-    if (b.days.length < 5) continue; // أدلة غير كافية
+    if (b.days.length < 5) {continue;} // أدلة غير كافية
     const mins = b.days.map(d => d.inMin).sort((a, c) => a - c);
     const med = mins[Math.floor(mins.length / 2)];
     const cur = /^(\d{1,2}):(\d{2})/.test(b.cur || '') ? Number(RegExp.$1) * 60 + Number(RegExp.$2) : 540;

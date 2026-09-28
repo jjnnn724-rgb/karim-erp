@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { pool } = require('./cashier-module/db-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
+const { emitDomainEvent } = require('./realtime/producers');
 
 const router = express.Router();
 const READ = ['admin','manager','warehouse','kitchen','auditor','cashier'];
@@ -301,6 +302,12 @@ router.post('/production',jwtAuth,requireRole(...WRITE),async(req,res)=>{
       await client.query(`INSERT INTO kitchen_production_distributions(batch_id,destination_type,destination_code,destination_name,department_id,allocated_qty,notes,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[batch.id,item.destinationType,item.destinationCode,item.destinationName,item.departmentId,item.quantity,item.notes,req.user.id]);
       await client.query(`INSERT INTO kitchen_production_events(batch_id,event_type,quantity,reason,actor_user_id) VALUES($1,'distributed',$2,$3,$4)`,[batch.id,item.quantity,`توزيع إلى ${item.destinationName}`,req.user.id]);
     }
+    // TASK 9: حدث دومين داخل نفس المعاملة (fail-open) — القناة الموثوقة بجانب البث الحي
+    await emitDomainEvent(pool, client, 'KITCHEN', {
+      eventType: 'KITCHEN_ORDER_COMPLETED', aggregateType: 'kitchen_batch', aggregateId: batch.id,
+      payload: { batch_id: batch.id, product_name: finalProductName, qty,
+        destinations: distributions.map(d => ({ name: d.destinationName, qty: d.quantity })) },
+    });
     await client.query('COMMIT');
     const savedDistributions=(await pool.query('SELECT * FROM kitchen_production_distributions WHERE batch_id=$1 ORDER BY id',[batch.id])).rows;
     res.json({batch,distributions:savedDistributions,consumed_materials:consumedMaterials});

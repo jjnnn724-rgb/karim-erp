@@ -86,7 +86,7 @@ const COMMON_DIRS = Object.freeze([
 ]);
 
 function toAbsolute(maybeRelative, base = PROJECT_ROOT) {
-    if (!maybeRelative) return maybeRelative;
+    if (!maybeRelative) {return maybeRelative;}
     // Normalize separators first
     const p = normalize(String(maybeRelative).trim().replace(/^["']|["']$/g, ''));
     return isAbsolute(p) ? p : resolve(base, p);
@@ -134,21 +134,21 @@ function relativeToRoot(path) {
  *     default under PATHS.SHARED_INSTALL_DIR/<filename>/.
  */
 function repairLegacyAbsolutePath(rawValue, { category = 'generic', fallbackName = 'data', createFallback = true } = {}) {
-    if (!rawValue) return toAbsolute(`./${fallbackName}`);
+    if (!rawValue) {return toAbsolute(`./${fallbackName}`);}
     const trimmed = String(rawValue).trim().replace(/^["']|["']$/g, '');
-    if (!trimmed) return toAbsolute(`./${fallbackName}`);
+    if (!trimmed) {return toAbsolute(`./${fallbackName}`);}
 
     // Relative path → resolve against root
-    if (!isAbsolute(trimmed)) return toAbsolute(trimmed);
+    if (!isAbsolute(trimmed)) {return toAbsolute(trimmed);}
 
     // Absolute path EXISTS on current machine → great, keep it
-    if (existsSync(trimmed)) return trimmed;
+    if (existsSync(trimmed)) {return trimmed;}
 
     // Absolute path is BROKEN (came from another machine).
     // Attempt 1: find the same basename under PROJECT_ROOT
     const base = trimmed.split(sep).pop() || fallbackName;
     const localGuess = toAbsolute(join('.', category, base));
-    if (existsSync(localGuess)) return localGuess;
+    if (existsSync(localGuess)) {return localGuess;}
 
     // Attempt 2: create a new portable default
     const fallback = join(PATHS.SHARED_INSTALL_DIR, category, base);

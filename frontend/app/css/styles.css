@@ -41,7 +41,7 @@ num,.mcard-val,.amount-cell,.dstat-val{font-variant-numeric:tabular-nums}
 }
 [data-theme="dark"] .login-box{box-shadow:0 8px 30px rgba(0,0,0,.45)}
 .login-logo{display:flex;align-items:center;justify-content:center;min-height:64px;margin-bottom:14px}
-.login-logo img{width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid var(--border)}
+.login-logo img{width:64px;height:64px;border-radius:14px;object-fit:cover;border:1px solid var(--border-gold);box-shadow:0 0 0 4px var(--gold-d)}
 .login-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;text-align:center}
 .login-sub{font-size:12.5px;color:var(--text3);margin-bottom:22px;text-align:center}
 #login input{
@@ -80,14 +80,14 @@ num,.mcard-val,.amount-cell,.dstat-val{font-variant-numeric:tabular-nums}
 .sidebar-logo img{width:38px;height:38px;border-radius:9px;object-fit:cover}
 .sidebar-brand{flex:1;min-width:0}
 .sidebar-name{font-size:13.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sidebar-role{font-size:10.5px;color:#8b96ab;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sidebar-date{font-size:10.5px;color:#5d6a81;font-variant-numeric:tabular-nums}
+.sidebar-role{font-size:10.5px;color:#9aa5b8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-date{font-size:10.5px;color:#7e92b3;font-variant-numeric:tabular-nums}
 .sidebar.collapsed .sidebar-brand,.sidebar.collapsed .nav-item span:not(.nav-icon),.sidebar.collapsed .nav-section{display:none}
 .sidebar.collapsed .nav-item{justify-content:center;padding:11px 0;margin:2px 12px}
 .sidebar.collapsed .sidebar-header{justify-content:center;padding:16px 8px}
 
 .nav-section{
-  padding:18px 18px 6px;font-size:10px;font-weight:600;color:#5d6a81;
+  padding:18px 18px 6px;font-size:10px;font-weight:600;color:#7e92b3;
   text-transform:uppercase;letter-spacing:.8px;
 }
 .nav-item{
@@ -406,6 +406,7 @@ tfoot td{background:var(--bg3);font-weight:600;color:var(--text);border-top:1px 
 .fg input::placeholder,.fg textarea::placeholder{color:var(--text-faint,var(--text3))}
 .fr{display:flex;gap:10px}
 .fr .fg{flex:1}
+@media(max-width:640px){.fr{flex-wrap:wrap}.fr .fg{flex:1 1 100%;min-width:0}}
 select option{background:var(--bg2);color:var(--text)}
 .details-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
 .details-item{background:var(--bg2);padding:12px 14px}
@@ -1085,7 +1086,10 @@ body::before{display:none}
 /* ═════════════ FORM & SHELL ONE-OFFS (v4.2 — moved out of markup) ═════════════ */
 .loading-label{color:var(--text3);font-weight:500}
 .fg-label{display:flex;align-items:center;gap:6px}
-.form-error{color:var(--red);font-size:12px;margin-bottom:12px;display:none}
+.form-error{color:var(--red);font-size:12px;font-weight:600;margin-bottom:12px;min-height:16px;display:none}
+.form-error:not(:empty){display:block}
+.caps-warn{display:none;margin-top:6px;font-size:11.5px;color:var(--orange);font-weight:600}
+.caps-warn.on{display:block}
 #login .btn-premium{width:100%;justify-content:center;margin-top:8px}
 .login-hint{margin-top:16px;text-align:center;font-size:11px;color:var(--text3)}
 .kbd{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:var(--karim-font-mono,monospace)}
@@ -1318,4 +1322,29 @@ section[id^="wh-sec-"]+.tbl-wrap,section[id^="wh-sec-"]+section[id^="wh-sec-"]{m
 .wh-step{display:flex;gap:10px;align-items:flex-start;margin:14px 0 6px}
 .wh-stepnum{flex:none;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
 .wh-step strong{display:block;font-size:14px}
+
+/* 6) Cashier rank badges (solid metal tones — no emoji medals) */
+.cash-rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:800;margin-inline-end:6px;color:#fff}
+.cash-rank.rank-1{background:#b45309}
+.cash-rank.rank-2{background:#6b7280}
+.cash-rank.rank-3{background:#92400e}
+[data-theme="dark"] .cash-rank.rank-1{background:#e9a23b;color:#0c111d}
+[data-theme="dark"] .cash-rank.rank-2{background:#9aa5b8;color:#0c111d}
+[data-theme="dark"] .cash-rank.rank-3{background:#c77f22;color:#0c111d}
+
+/* 7) Visible keyboard focus (WCAG 2.4.7) — gold ring, never removed.
+   Form fields keep their own focus style (border+glow); everything else gets the ring. */
+:focus{outline:none}
+:focus-visible:not(input):not(select):not(textarea){outline:2px solid var(--karim-gold);outline-offset:2px;border-radius:4px}
+[data-theme="dark"] :focus-visible{outline-color:var(--karim-gold-light)}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
+
+/* 8) Form standards (NDS-aligned): required marker + inline error state */
+.fg label.req::after{content:' *';color:var(--red);font-weight:700}
+.fg.invalid input,.fg.invalid select,.fg.invalid textarea{border-color:var(--red)}
+.fg.invalid input:focus,.fg.invalid select:focus,.fg.invalid textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--karim-red-light)}
+.fg .field-err{display:block;margin-top:4px;font-size:12px;color:var(--red);font-weight:600}
+.u-empty,.u-empty-sm{color:var(--text3)}
 

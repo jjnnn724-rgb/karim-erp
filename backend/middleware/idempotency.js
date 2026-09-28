@@ -32,13 +32,13 @@ const MAX_KEY_LEN = 255;
 class MemoryStore {
     constructor(max = 5000) { this.map = new Map(); this.max = max; }
     _evictIfNeeded() {
-        if (this.map.size <= this.max) return;
+        if (this.map.size <= this.max) {return;}
         const oldestKeys = [...this.map.keys()].slice(0, Math.ceil(this.max * 0.2));
-        for (const k of oldestKeys) this.map.delete(k);
+        for (const k of oldestKeys) {this.map.delete(k);}
     }
     async get(key) {
         const v = this.map.get(key);
-        if (!v) return null;
+        if (!v) {return null;}
         if (v.expiresAt < Date.now()) { this.map.delete(key); return null; }
         return v.value;
     }
@@ -57,7 +57,7 @@ async function storeGet(redis, pool, key) {
     if (redis) {
         try {
             const v = await redis.get(`idem:${key}`);
-            if (v) return JSON.parse(v);
+            if (v) {return JSON.parse(v);}
         } catch (e) { logger.warn('[idempotency] redis get failed:', e.message); }
     }
     // PG fallback
@@ -81,7 +81,7 @@ async function storeGet(redis, pool, key) {
                     lockedUntil:  rows[0].locked_until,
                 };
                 // Re-fill Redis async (read-through)
-                if (redis) redis.setex(`idem:${key}`, DEFAULT_TTL_MS / 1000, JSON.stringify(r)).catch(() => {});
+                if (redis) {redis.setex(`idem:${key}`, DEFAULT_TTL_MS / 1000, JSON.stringify(r)).catch(() => {});}
                 return r;
             }
         } catch (e) { /* table may not exist yet — not critical */ }
@@ -122,7 +122,7 @@ async function storeLock(redis, pool, key, hash, ttlMs = DEFAULT_INFLIGHT_TTL_MS
     if (redis) {
         try {
             const ok = await redis.set(`idem-lock:${key}`, hash, 'PX', ttlMs, 'NX');
-            if (ok === 'OK') return true;
+            if (ok === 'OK') {return true;}
             return false;
         } catch (e) { logger.warn('[idempotency] redis lock failed:', e.message); }
     }
@@ -135,7 +135,7 @@ async function storeLock(redis, pool, key, hash, ttlMs = DEFAULT_INFLIGHT_TTL_MS
                                              NOW() + ($4::bigint || ' ms')::interval)
                 ON CONFLICT (key) DO NOTHING
             `, [key, hash, ttlMs, DEFAULT_TTL_MS]);
-            if (rowCount === 1) return true;
+            if (rowCount === 1) {return true;}
             // Row exists → check if stale lock
             const { rows } = await pool.query(`
                 SELECT status, locked_until FROM idempotency_keys WHERE key = $1
@@ -194,7 +194,7 @@ function idempotency(opts = {}) {
 
     return async function idempotencyMiddleware(req, res, next) {
         // ── Bypass: safe methods ────────────────────────
-        if (!methods.includes(req.method)) return next();
+        if (!methods.includes(req.method)) {return next();}
 
         const key = req.headers[HEADER];
 
@@ -242,8 +242,8 @@ function idempotency(opts = {}) {
                 // Cache hit — replay the stored response
                 res.setHeader('X-Idempotency-Replay', 'true');
                 res.setHeader('X-Idempotency-Key', safeKey);
-                if (existing.statusCode) res.status(existing.statusCode);
-                if (existing.responseBody) return res.json(existing.responseBody);
+                if (existing.statusCode) {res.status(existing.statusCode);}
+                if (existing.responseBody) {return res.json(existing.responseBody);}
                 return res.end();
             }
 
@@ -279,7 +279,7 @@ function idempotency(opts = {}) {
 
             let finalized = false;
             function finalize() {
-                if (finalized) return;
+                if (finalized) {return;}
                 finalized = true;
                 const statusCode = res.statusCode || capturedStatus;
                 const success = statusCode < 500;
@@ -304,7 +304,7 @@ function idempotency(opts = {}) {
  * Run during setup / migrations.
  */
 async function ensureIdempotencySchema(pool) {
-    if (!pool) return;
+    if (!pool) {return;}
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS idempotency_keys (

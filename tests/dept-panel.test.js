@@ -29,22 +29,23 @@ describe('canAccessDeptPanel — بوابة الهوية والدور معًا',
         expect(canAccessDeptPanel({ id: 5, role: 'dept_head', dept_code: '   ' })).toEqual({ ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' });
     });
 
-    test('الأدوار المسموحة الأربعة تمر (dept_head بقسمه + kitchen + admin + manager)', () => {
+    test('الأدوار المسموحة الخمسة تمر (dept_head بقسمه + kitchen + admin + manager + accountant)', () => {
         expect(canAccessDeptPanel({ id: 1, role: 'admin' })).toEqual({ ok: true });
         expect(canAccessDeptPanel({ id: 2, role: 'manager' })).toEqual({ ok: true });
         expect(canAccessDeptPanel({ id: 3, role: 'kitchen' })).toEqual({ ok: true });
         expect(canAccessDeptPanel({ id: 4, role: 'dept_head', dept_code: 'salads' })).toEqual({ ok: true });
+        // المحاسب أُضيف للقراءة — تكاليف الأقسام من صميم عمله (مُوثَّق في warehouse-routes)
     });
 
-    test('الأدوار خارج الخريطة تُرفض 403 (warehouse/employee/hr/accountant)', () => {
+    test('الأدوار خارج الخريطة تُرفض 403 (warehouse/employee/hr)', () => {
         expect(canAccessDeptPanel({ id: 6, role: 'warehouse' })).toEqual({ ok: false, code: 'ROLE_NOT_ALLOWED' });
         expect(canAccessDeptPanel({ id: 7, role: 'employee' })).toEqual({ ok: false, code: 'ROLE_NOT_ALLOWED' });
         expect(canAccessDeptPanel({ id: 8, role: 'hr' })).toEqual({ ok: false, code: 'ROLE_NOT_ALLOWED' });
-        expect(canAccessDeptPanel({ id: 9, role: 'accountant' })).toEqual({ ok: false, code: 'ROLE_NOT_ALLOWED' });
+        expect(canAccessDeptPanel({ id: 9, role: 'accountant' })).toEqual({ ok: true });
     });
 
     test('خريطة الأدوار موقوفة عن التغيير ومتوافقة مع الواجهة', () => {
-        expect(DEPT_PANEL_ROLES).toEqual(['admin', 'manager', 'dept_head', 'kitchen']);
+        expect(DEPT_PANEL_ROLES).toEqual(['admin', 'manager', 'dept_head', 'kitchen', 'accountant']);
     });
 });
 
@@ -92,6 +93,7 @@ describe('classifyExpenseSource — تصنيف المصدر من مفردات ا
         expect(EXPENSE_SOURCE_LABELS).toEqual({
             dispatch: 'صرف مخزني',
             dispatch_return: 'عكس صرف (مرتجع)',
+            purchase_direct: 'مشتريات مباشرة للقسم',
             stocktaking: 'فروق جرد',
             auto_other: 'تلقائي آخر',
             manual: 'يدوي',
@@ -207,13 +209,13 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
         expect(anon.status).toBe(401);
     }, 20000);
 
-    test('الشيف العمومي يرى المطبخ مع أقسامه الفرعية السبعة، وadmin يطلب قسمًا بعينه', async () => {
+    test('الشيف العمومي يرى المطبخ مع أقسامه الفرعية العشرة، وadmin يطلب قسمًا بعينه', async () => {
         const chefToken = signAccessToken({ id: 9001, username: 'chef', role: 'kitchen', name: 'الشيف العمومي', dept_code: null });
         const chefRes = await fetch(baseUrl + '/dept-panel', { headers: { Authorization: `Bearer ${chefToken}` } });
         expect(chefRes.status).toBe(200);
         const chefBody = await chefRes.json();
         expect(chefBody.scope.deptCode).toBe('kitchen');
-        expect(chefBody.subDepartments.map(s => s.code).sort()).toEqual(['bakery', 'butcher', 'fnb', 'hot_kitchen', 'kstore', 'salads', 'sweets']);
+        expect(chefBody.subDepartments.map(s => s.code).sort()).toEqual(['bakery', 'butcher', 'fnb', 'hot_hall', 'hot_kitchen', 'kstore', 'open_buffet', 'salads', 'storeroom', 'sweets']);
         const adminRes = await fetch(baseUrl + '/dept-panel?dept=sweets', { headers: { Authorization: `Bearer ${adminToken}` } });
         expect(adminRes.status).toBe(200);
         expect((await adminRes.json()).department.code).toBe('sweets');

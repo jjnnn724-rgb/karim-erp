@@ -46,6 +46,10 @@ function makeReq(overrides = {}) {
 let adminUserId = null;
 
 async function createTestUser() {
+    // بقايا تشغيل سابق فاشل؟ أزلها أولًا حتى تبقى الدورة قابلة لإعادة التشغيل
+    await pool.query(`DELETE FROM pos_password_reset_codes WHERE user_id IN (SELECT id FROM users WHERE username = '${MARK}-user');`);
+    await pool.query(`DELETE FROM pos_refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username = '${MARK}-user');`);
+    await pool.query(`DELETE FROM users WHERE username = '${MARK}-user';`);
     const hash = await bcrypt.hash('OriginalPass123', 12);
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active)
@@ -58,9 +62,12 @@ async function createTestUser() {
 async function getAdminUser() {
     if (adminUserId) {return adminUserId;}
     const hash = await bcrypt.hash('AdminPass123', 12);
+    // ON CONFLICT يقاوم بقايا تشغيل سابق فشل قبل afterAll — يعيد id الموجود
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active)
-         VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM users), $1, $2, 'admin', $3, true) RETURNING id;`,
+         VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM users), $1, $2, 'admin', $3, true)
+         ON CONFLICT (username) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id;`,
         [MARK + '-admin', hash, 'Admin Test']
     );
     adminUserId = r.rows[0].id;
@@ -83,10 +90,22 @@ async function insertCodeRow(userId, { code = '123456', expired = false, used = 
 }
 
 afterAll(async () => {
-    // تنظيف ذاتي كامل — صفر بقايا
+    // تنظيف ذاتي — صفر بقايا داخل مساحة MARK-%:
+    // حذف مستخدم له أثر تدقيق ممنوع (pos_audit_logs append-only بـ ON DELETE CASCADE)،
+    // لذلك عند المنع نُقاعد الحساب (إعادة تسمية خارج نطاق MARK + تعطيل) بدل الفشل.
     await pool.query(`DELETE FROM pos_password_reset_codes WHERE user_id IN (SELECT id FROM users WHERE username LIKE '${MARK}-%');`);
     await pool.query(`DELETE FROM pos_refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username LIKE '${MARK}-%');`);
-    await pool.query(`DELETE FROM users WHERE username LIKE '${MARK}-%';`);
+    try {
+        await pool.query(`DELETE FROM users WHERE username LIKE '${MARK}-%';`);
+    } catch (e) {
+        if (/append-only|pos_audit_logs/i.test(e.message || '')) {
+            await pool.query(
+                `UPDATE users SET username = username || '-retired-' || id, active = false, name = name || ' [retired]' WHERE username LIKE '${MARK}-%';`
+            ).catch(() => {});
+        } else {
+            throw e;
+        }
+    }
     await pool.end().catch(() => {});
 });
 

@@ -4,13 +4,14 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 describe('production package hardening', () => {
-  test('Windows service targets the Electron executable declared by the build', () => {
+  test('Windows service ships with the package and runs the backend with --service', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-    const serviceXml = fs.readFileSync(path.join(ROOT, 'windows-service', 'AlShorfaERPService.xml'), 'utf8');
+    const serviceXml = fs.readFileSync(path.join(ROOT, 'windows-service', 'KarimERP-Service.xml'), 'utf8');
     const executableName = pkg.build.win.executableName;
-    expect(executableName).toBe('AlShorfaERP');
-    expect(serviceXml).toContain(`<executable>..\\..\\${executableName}.exe</executable>`);
-    expect(serviceXml).toContain('<arguments>--service</arguments>');
+    expect(executableName).toBe('KarimERP');
+    // الخدمة المحمولة: node المضمّن يشغّل backend/server.js — بلا مسارات مطلقة
+    expect(serviceXml).toContain('<executable>');
+    expect(serviceXml).toContain('backend\\server.js --service');
   });
 
   test('fresh database seed does not ship the public admin password', () => {

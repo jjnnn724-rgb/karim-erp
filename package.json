@@ -66,7 +66,8 @@
     "karimabdelhamed20177": "node scripts/karimabdelhamed20177.js",
     "karimabdelhamed20177:doctor": "node scripts/karimabdelhamed20177.js --doctor",
     "doctor:machine": "node scripts/deploy-machine.mjs --doctor",
-    "setup:machine": "node scripts/deploy-machine.mjs"
+    "setup:machine": "node scripts/deploy-machine.mjs",
+    "client:package": "node scripts/make-client-package.js"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",
@@ -79,6 +80,7 @@
     "files": [
       "electron/**/*",
       "backend/**/*",
+      "common/**/*",
       "frontend/**/*",
       "database/**/*",
       "scripts/**/*",
@@ -107,19 +109,16 @@
         ]
       },
       {
-        "from": "build/templates",
-        "to": "templates",
-        "filter": [
-          "*.nsh"
-        ]
-      },
-      {
         "from": "windows-service",
         "to": "windows-service",
         "filter": [
           "WinSW-x64.exe",
           "*.bat"
         ]
+      },
+      {
+        "from": "Karim-Local-CA.crt",
+        "to": "Karim-Local-CA.crt"
       }
     ],
     "win": {
@@ -145,7 +144,6 @@
       "publisherName": "Karim ERP"
     },
     "nsis": {
-      "script": "build/AlShorfa-ERP-Setup.nsi",
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
@@ -155,42 +153,28 @@
       "uninstallDisplayName": "مطاعم الشرفه العالمي",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "license": "build/license-ar.rtf",
-      "language": "2057",
-      "multiLanguage": true,
-      "languages": [
-        "Arabic",
-        "English"
-      ],
-      "displayLanguageSelector": true
+      "language": "1025",
+      "displayLanguageSelector": true,
+      "multiLanguageInstaller": true,
+      "installerLanguages": [
+        "ar_SA",
+        "en_US"
+      ]
     },
     "portable": {
       "artifactName": "KarimERP-Portable-${version}-${arch}.exe",
-      "target": "portable",
-      "requestedExecutionLevel": "asInvoker",
-      "useAppDataAsConfig": true,
-      "configDirName": "KarimERP"
+      "requestExecutionLevel": "user",
+      "unpackDirName": "KarimERP"
     },
     "publish": {
       "provider": "github",
       "owner": "karim-erp",
       "repo": "karim-desktop",
-      "releaseType": "release",
-      "draft": false,
-      "prerelease": false
+      "releaseType": "release"
     },
-    "asar": true,
+    "asar": false,
     "compression": "maximum",
     "npmRebuild": false,
-    "asarUnpack": [
-      "database/bin/**/*",
-      "**/*.dll",
-      "**/*.exe",
-      "**/*.node"
-    ],
     "electronUpdaterCompatibility": ">=4.7.0",
     "generateUpdatesFilesForAllChannels": true
   },
@@ -259,15 +243,15 @@
     "socket.io-client": "^4.8.3",
     "uuid": "^11.1.1",
     "xlsx": "^0.18.5",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "electron-updater": "^6.1.7",
+    "electron-log": "^5.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
-    "electron-log": "^5.1.2",
-    "electron-updater": "^6.1.7",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
     "jest": "^29.7.0",

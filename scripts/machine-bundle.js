@@ -63,13 +63,13 @@ function stamp() {
 }
 
 function copyDir(src, dest) {
-  if (!fs.existsSync(src)) return 0;
+  if (!fs.existsSync(src)) {return 0;}
   fs.mkdirSync(dest, { recursive: true });
   let n = 0;
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {
     const s = path.join(src, e.name);
     const d = path.join(dest, e.name);
-    if (e.isDirectory()) n += copyDir(s, d);
+    if (e.isDirectory()) {n += copyDir(s, d);}
     else { fs.copyFileSync(s, d); n++; }
   }
   return n;
@@ -80,10 +80,10 @@ function zipDir(srcDir, outZip) {
     const r = spawnSync('powershell', ['-NoProfile', '-Command',
       `Compress-Archive -Path '${srcDir}\\*' -DestinationPath '${outZip}' -Force`],
       { encoding: 'utf-8', timeout: 300000 });
-    if (r.status !== 0) throw new Error('Compress-Archive failed: ' + (r.stderr || '').slice(0, 200));
+    if (r.status !== 0) {throw new Error('Compress-Archive failed: ' + (r.stderr || '').slice(0, 200));}
   } else {
     const r = spawnSync('zip', ['-qr', outZip, '.'], { cwd: srcDir, encoding: 'utf-8', timeout: 300000 });
-    if (r.status !== 0) throw new Error('zip failed');
+    if (r.status !== 0) {throw new Error('zip failed');}
   }
 }
 
@@ -93,10 +93,10 @@ function unzipFile(zip, destDir) {
     const r = spawnSync('powershell', ['-NoProfile', '-Command',
       `Expand-Archive -Path '${zip}' -DestinationPath '${destDir}' -Force`],
       { encoding: 'utf-8', timeout: 300000 });
-    if (r.status !== 0) throw new Error('Expand-Archive failed');
+    if (r.status !== 0) {throw new Error('Expand-Archive failed');}
   } else {
     const r = spawnSync('unzip', ['-q', '-o', zip, '-d', destDir], { encoding: 'utf-8', timeout: 300000 });
-    if (r.status !== 0) throw new Error('unzip failed');
+    if (r.status !== 0) {throw new Error('unzip failed');}
   }
 }
 
@@ -112,7 +112,7 @@ async function doExport(includeMedia) {
   const dumpFile = path.join(cfgDir, 'data.sql');
   const schemaFile = path.join(cfgDir, 'schema.sql');
   const tableArgs = [];
-  for (const t of PORTABLE_TABLES) tableArgs.push('-t', t);
+  for (const t of PORTABLE_TABLES) {tableArgs.push('-t', t);}
   const s = spawnSync(pgDump, [...dbArgs(), '--schema-only', '-f', schemaFile, ...tableArgs],
     { encoding: 'utf-8', timeout: 120000, env: pgEnv() });
   if (s.status !== 0) { log.error('schema dump فشل'); process.exit(1); }
@@ -184,7 +184,7 @@ async function doImport(zipPath) {
   const nBak = copyDir(path.join(work, 'files', 'whatsapp-backups'), bakDst);
   copyDir(path.join(work, 'files', 'whatsapp-media'), lib.getEnv('WHATSAPP_MEDIA_DIR', 'C:/KarimData/whatsapp-media'));
   const envFile = path.join(ROOT, '.env');
-  if (fs.existsSync(envFile)) fs.copyFileSync(envFile, envFile + '.before-import');
+  if (fs.existsSync(envFile)) {fs.copyFileSync(envFile, envFile + '.before-import');}
   fs.copyFileSync(path.join(work, 'config', 'env.snapshot'), envFile);
   log.ok(`sessions=${nSess} backups=${nBak} (.env القديم → .env.before-import)`);
 

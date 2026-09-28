@@ -1,7 +1,0 @@
-# pnpm build scripts policy (pnpm v10).
-# Only these packages may run their postinstall/build scripts:
-#   electron        — downloads the Electron binary
-#   msgpackr-extract — optional native build (falls back to prebuilt binaries)
-onlyBuiltDependencies:
-  - electron
-  - msgpackr-extract

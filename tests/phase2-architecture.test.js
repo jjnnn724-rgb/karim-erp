@@ -66,7 +66,7 @@ describe('Phase 2.2 — Pagination System', () => {
         });
 
         it('should clamp limit to MAX_LIMIT', () => {
-            const result = parsePaginationParams({ limit: '999' }, ['id']);
+            const result = parsePaginationParams({ limit: '9999' }, ['id']);
             expect(result.limit).toBe(MAX_LIMIT);
             expect(result.errors.length).toBeGreaterThan(0);
             expect(result.errors[0]).toContain('exceeds maximum');
@@ -257,7 +257,7 @@ describe('Phase 2.3 — Rate Limiting System', () => {
 
             let nextCalled = false;
             const req = { ip: '127.0.0.1' };
-            const res = { set: jest.fn(), status: jest.fn().mockReturnThis(), json: jest.fn() };
+            const res = { set: jest.fn(), once: jest.fn(), status: jest.fn().mockReturnThis(), json: jest.fn() };
             const next = () => { nextCalled = true; };
 
             await limiter(req, res, next);
@@ -272,7 +272,7 @@ describe('Phase 2.3 — Rate Limiting System', () => {
             });
 
             const res = { 
-                set: jest.fn(), 
+                set: jest.fn(), once: jest.fn(), 
                 status: jest.fn().mockReturnThis(), 
                 json: jest.fn(),
             };
@@ -305,7 +305,7 @@ describe('Phase 2.3 — Rate Limiting System', () => {
 
             let headersSet = false;
             const res = { 
-                set: jest.fn(() => { headersSet = true; }), 
+                set: jest.fn(() => { headersSet = true; }), once: jest.fn(), 
                 status: jest.fn().mockReturnThis(), 
                 json: jest.fn(),
             };
@@ -341,7 +341,7 @@ describe('Phase 2.4 — Graceful Shutdown & Health Checks', () => {
     describe('rejectDuringShutdown Middleware', () => {
         it('should call next() when not shutting down', () => {
             const req = {};
-            const res = { set: jest.fn(), status: jest.fn().mockReturnThis(), json: jest.fn() };
+            const res = { set: jest.fn(), once: jest.fn(), status: jest.fn().mockReturnThis(), json: jest.fn() };
             const next = jest.fn();
 
             rejectDuringShutdown(req, res, next);

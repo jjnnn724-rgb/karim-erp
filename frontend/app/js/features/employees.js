@@ -45,9 +45,11 @@ function empShiftChip(emp){
     overnight = end <= startMin;
   }
   const hrsTxt = String(hrs).replace(/\.0$/, '');
-  const auto = emp.auto_checkout ? `<span class="badge bdg-purple" title="انصراف تلقائي عند ${shiftEndText(st, hrs)} لمن ينسى البصمة">⏱ تلقائي</span>` : '';
-  const lock = emp.auto_lock ? `<span class="badge bdg-red" title="اليوم يُقفل بعد الإغلاق التلقائي — لا تُقبل بصمات لاحقة">🔒 مقفل</span>` : '';
-  return `<span class="badge bdg-blue" title="الوردية ${st} لمدة ${hrsTxt} ساعات — الانصراف المتوقع ${shiftEndText(st, hrs)}"><i class=ji data-i=clock></i> ${st} · ${hrsTxt}س${overnight ? ' 🌙' : ''}</span>${auto}${lock}`;
+  const auto = emp.auto_checkout ? `<span class="badge bdg-purple" title="انصراف تلقائي عند ${shiftEndText(st, hrs)} لمن ينسى البصمة"><i class=ji data-i=timer></i> تلقائي</span>` : '';
+  const lock = emp.auto_lock ? `<span class="badge bdg-red" title="اليوم يُقفل بعد الإغلاق التلقائي — لا تُقبل بصمات لاحقة"><i class=ji data-i=lock></i> مقفل</span>` : '';
+  const offNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const off = (emp.day_off === 0 || emp.day_off) ? `<span class="badge bdg-green" title="راحة أسبوعية ثابتة"><i class=ji data-i=calendar></i> راحة: ${offNames[Number(emp.day_off)] || ''}</span>` : '';
+  return `<span class="badge bdg-blue" title="الوردية ${st} لمدة ${hrsTxt} ساعات — الانصراف المتوقع ${shiftEndText(st, hrs)}"><i class=ji data-i=clock></i> ${st} · ${hrsTxt}س${overnight ? ' <i class=ji data-i=moon></i>' : ''}</span>${auto}${lock}${off}`;
 }
 function shiftEndText(st, hrs){
   const m = String(st || '09:00').match(/^(\d{1,2}):(\d{2})$/);
@@ -193,6 +195,7 @@ showModal(`
 <div class="fr">
 <div class="fg"><label><i class=ji data-i=clock></i> بداية الوردية</label><input type="time" id="empShiftStart" value="09:00"></div>
 <div class="fg"><label><i class=ji data-i=timer></i> ساعات الوردية</label><input type="number" id="empShiftKarim" min="1" max="24" step="0.5" value="10" placeholder="10 أو 12"></div>
+<div class="fg"><label><i class=ji data-i=calendar></i> الراحة الأسبوعية</label><select id="empDayOff"><option value="">بلا</option><option value="0">الأحد</option><option value="1">الاثنين</option><option value="2">الثلاثاء</option><option value="3">الأربعاء</option><option value="4">الخميس</option><option value="5">الجمعة</option><option value="6">السبت</option></select></div>
 </div>
 <div class="fg"><label><i class=ji data-i=id-card></i> انتهاء الإقامة</label>${hijriDateField('empIqama', '')}</div>
 <div class="mcard" style="margin:12px 0;padding:14px;border:1px solid var(--gold);border-radius:var(--r)"><b><i class=ji data-i=stethoscope></i> الوثائق الصحية</b><div class="fr" style="margin-top:8px">
@@ -224,6 +227,8 @@ const salary=parseFloat(document.getElementById('empSalary')?.value)||0;
 const status=document.getElementById('empStatus')?.value;
 const shift_start=document.getElementById('empShiftStart')?.value||'09:00';
 const shift_karim=parseFloat(document.getElementById('empShiftKarim')?.value)||10;
+const dayOffRaw=document.getElementById('empDayOff')?.value;
+const day_off=(dayOffRaw===''||dayOffRaw==null)?null:Number(dayOffRaw);
 const iqamaExpiry=document.getElementById('empIqama')?.value||null;
 const healthCertExpiry=document.getElementById('empHealth')?.value||null;
 const healthEduExpiry=document.getElementById('empHealthEdu')?.value||null;
@@ -239,7 +244,7 @@ if(createAccount&&STATE.users.some(u=>u.username===accountUsername)){toast('اس
 const newEmp = {
 id:uid(),name,employeeId,department,position,phone,email,joinDate,salary,status,
 deviceUserId:document.getElementById('empDeviceUserId')?.value.trim()||null,
-shift_start,shift_karim,
+shift_start,shift_karim,day_off,
 userId:null,iqamaExpiry,healthCertExpiry,healthEduExpiry,photo:null,
 ...(STATE.currentUser?.role==='admin' ? { auto_checkout: Boolean(document.getElementById('empAutoCheckout')?.checked), auto_lock: Boolean(document.getElementById('empAutoLock')?.checked) } : {}),
 digitalFingerprint: await generateDigitalFingerprint({id:Date.now(),employeeId,name,joinDate}),
@@ -292,6 +297,7 @@ showModal(`
 <div class="fr">
 <div class="fg"><label><i class=ji data-i=clock></i> بداية الوردية</label><input type="time" id="empShiftStart" value="${esc(emp.shift_start||'09:00')}"></div>
 <div class="fg"><label><i class=ji data-i=timer></i> ساعات الوردية</label><input type="number" id="empShiftKarim" min="1" max="24" step="0.5" value="${emp.shift_karim??10}" placeholder="10 أو 12"></div>
+<div class="fg"><label><i class=ji data-i=calendar></i> الراحة الأسبوعية</label><select id="empDayOff"><option value="">بلا</option>${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'].map((d,i)=>`<option value="${i}" ${String(emp.day_off)===String(i)?'selected':''}>${d}</option>`).join('')}</select></div>
 </div>
 ${STATE.currentUser?.role==='admin'?`<div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoCheckout" ${emp.auto_checkout?'checked':''}> <span>انصراف تلقائي عند نهاية الوردية <small class="text-muted">(لمن ينسى بصمة الخروج — مدير فقط — متوقف حاليًا بقرار الإدارة)</small></span></label></div><div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoLock" ${emp.auto_lock?'checked':''}> <span>🔒 قفل اليوم بعد الإغلاق <small class="text-muted">(لا تُقبل بصمات لاحقة لذلك اليوم — مدير فقط)</small></span></label></div>`:''}
 <div class="fg"><label><i class=ji data-i=id-card></i> انتهاء الإقامة</label>${hijriDateField('empIqama', emp.iqamaExpiry || '')}</div>
@@ -319,13 +325,15 @@ const salary=parseFloat(document.getElementById('empSalary')?.value)||0;
 const status=document.getElementById('empStatus')?.value;
 const shift_start=document.getElementById('empShiftStart')?.value||'09:00';
 const shift_karim=parseFloat(document.getElementById('empShiftKarim')?.value)||10;
+const dayOffRaw=document.getElementById('empDayOff')?.value;
+const day_off=(dayOffRaw===''||dayOffRaw==null)?null:Number(dayOffRaw);
 const iqamaExpiry=document.getElementById('empIqama')?.value||null;
 const healthCertExpiry=document.getElementById('empHealth')?.value||null;
 const healthEduExpiry=document.getElementById('empHealthEdu')?.value||null;
 const deviceUserId=document.getElementById('empDeviceUserId')?.value.trim()||null;
 const auto_checkout = STATE.currentUser?.role==='admin' ? Boolean(document.getElementById('empAutoCheckout')?.checked) : undefined;
 const auto_lock = STATE.currentUser?.role==='admin' ? Boolean(document.getElementById('empAutoLock')?.checked) : undefined;
-const updPayload = {name,department,position,phone,email,joinDate,salary,status,shift_start,shift_karim,iqamaExpiry,healthCertExpiry,healthEduExpiry,deviceUserId};
+const updPayload = {name,department,position,phone,email,joinDate,salary,status,shift_start,shift_karim,day_off,iqamaExpiry,healthCertExpiry,healthEduExpiry,deviceUserId};
 if(auto_checkout !== undefined) {updPayload.auto_checkout = auto_checkout;}
 if(auto_lock !== undefined) {updPayload.auto_lock = auto_lock;}
 await persistUpdate('employees', id, updPayload);

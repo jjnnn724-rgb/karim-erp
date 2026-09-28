@@ -26,7 +26,7 @@ const GRACE_MIN = 10;
 
   const byEmp = new Map();
   for (const r of rows) {
-    if (!byEmp.has(r.id)) byEmp.set(r.id, { name: r.name, cur: r.cur_shift, karim: Number(r.cur_karim), days: [] });
+    if (!byEmp.has(r.id)) {byEmp.set(r.id, { name: r.name, cur: r.cur_shift, karim: Number(r.cur_karim), days: [] });}
     const b = byEmp.get(r.id);
     if (r.checkIn) {
       const [H, M] = r.checkIn.split(':').map(Number);
@@ -40,7 +40,7 @@ const GRACE_MIN = 10;
 
   const plan = [];
   for (const [id, b] of byEmp) {
-    if (b.days.length < 5) continue;
+    if (b.days.length < 5) {continue;}
     const inSorted = b.days.map(d => d.inMin).sort((a, c) => a - c);
     const minsSorted = b.days.map(d => d.mins).filter(m => m > 0).sort((a, c) => a - c);
     const p25 = pct(inSorted, 0.25);
@@ -49,7 +49,7 @@ const GRACE_MIN = 10;
     const cur = /^(\d{1,2}):(\d{2})/.test(b.cur || '') ? Number(RegExp.$1) * 60 + Number(RegExp.$2) : 540;
     const drift = newStart - cur;
     const karimDrift = newKarim - b.karim;
-    if (Math.abs(drift) < 30 && Math.abs(karimDrift) < 1) continue;
+    if (Math.abs(drift) < 30 && Math.abs(karimDrift) < 1) {continue;}
     plan.push({ id, name: b.name, days: b.days.length, cur: fmt(cur), newStart: fmt(newStart), newStartMin: newStart, curKarim: b.karim, newKarim, drift, karimDrift });
   }
   plan.sort((a, c) => Math.abs(c.drift) - Math.abs(a.drift));
@@ -57,7 +57,7 @@ const GRACE_MIN = 10;
   for (const p of plan.slice(0, 12)) {
     console.log(`  ${p.name.slice(0, 26).padEnd(26)} ${p.cur}/${p.curKarim}س → ${p.newStart}/${p.newKarim}س (${p.days} يوم)`);
   }
-  if (plan.length > 12) console.log(`  … و${plan.length - 12} آخرين`);
+  if (plan.length > 12) {console.log(`  … و${plan.length - 12} آخرين`);}
 
   if (MODE !== 'apply') { console.log('DRY — لم يُعدَّل شيء. للتطبيق: node fix-real-shifts.js apply'); await c.end(); return; }
 
