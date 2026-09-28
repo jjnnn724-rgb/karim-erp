@@ -1577,7 +1577,10 @@ entities.forEach(entity => {
     } else {
         // Security audit 2026-09-03: الكتابة على الكيانات غير الإدارية لم تعد
         // مفتوحة لأي حساب مُصادق — كل كيان يُقفل على أدواره من الخريطة أعلاه.
-        const openWriteRoles = getEntityWriteRoles(entity);
+        // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
+        // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
+        // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist ──
@@ -1751,7 +1754,10 @@ entities.forEach(entity => {
             res.json(publicRow);
         }));
     } else {
-        const openWriteRoles = getEntityWriteRoles(entity);
+        // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
+        // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
+        // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.put(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
@@ -1874,7 +1880,10 @@ entities.forEach(entity => {
             res.json({ message: 'Deleted successfully' });
         }));
     } else {
-        const openWriteRoles = getEntityWriteRoles(entity);
+        // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
+        // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
+        // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.delete(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;

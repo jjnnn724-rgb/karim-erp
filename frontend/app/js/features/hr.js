@@ -489,37 +489,17 @@ onDecode: checkInOutByScan
 });
 }
 async function checkIn(){
-const emp=STATE.employees.find(e=>e.userId===STATE.currentUser.id);
-if(!emp){ toast('لم يتم ربط حسابك بملف موظف','error'); return; }
-const todayDate=today();
-const existing=STATE.attendance.find(a=>a.employeeId===emp.id&&a.date===todayDate);
-if(existing?.checkIn){ toast('تم تسجيل الحضور مسبقاً','warning'); return; }
-const now=new Date();
-const timeStr=now.toTimeString().substring(0,5);
-const workStartHour=STATE.settings.workStartHour||9;
-// فترة سماح 30 دقيقة مقابل بداية وردية الموظف نفسه
-const gS = emp.shift_start && /^\d{1,2}:\d{2}$/.test(emp.shift_start) ? emp.shift_start.split(':').map(Number) : null;
-const sMin = gS ? gS[0] * 60 + gS[1] : workStartHour * 60;
-const late=(now.getHours()*60+now.getMinutes()) > (sMin + 30);
-if(existing){ await persistUpdate('attendance', existing.id, {checkIn:timeStr, late}); existing.checkIn=timeStr; existing.late=late; }
-else{ const rec={id:uid(),employeeId:emp.id,date:todayDate,checkIn:timeStr,checkOut:null,late,notes:''}; await persistCreate('attendance', (saved)=>STATE.attendance.push(saved), rec); }
-renderPage(); buildNav();
-toast(`تم تسجيل الحضور ${late?'(متأخر)':''}`,'success');
-addNotification('تسجيل حضور',`تم تسجيل حضورك في ${timeStr}`,'success');
+// SPEC-employee-pwa-attendance-geofence-v1 (S5): البصمة الذاتية تمر حصريًا عبر
+// مسار البوابة الآمن — Geofence + ساعة السيرفر + تدقيق كامل. الكتابة المباشرة
+// عبر CRUD العام أُغلقت على السيرفر لأدوار الموظفين.
+if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch('in'); }
+toast('البصمة الذاتية غير متاحة في هذه الجلسة — استخدم تطبيق الجوال','error');
 }
 async function checkOut(){
-const emp=STATE.employees.find(e=>e.userId===STATE.currentUser.id);
-if(!emp){ toast('لم يتم ربط حسابك','error'); return; }
-const todayDate=today();
-const record=STATE.attendance.find(a=>a.employeeId===emp.id&&a.date===todayDate);
-if(!record?.checkIn){ toast('لم يتم تسجيل الحضور','error'); return; }
-if(record.checkOut){ toast('تم تسجيل الانصراف مسبقاً','warning'); return; }
-const timeStr=new Date().toTimeString().substring(0,5);
-await persistUpdate('attendance', record.id, {checkOut:timeStr, early_leave: false});
-record.checkOut=timeStr; record.early_leave=false;
-renderPage();
-toast('تم تسجيل الانصراف','success');
-addNotification('تسجيل انصراف',`تم تسجيل انصرافك في ${timeStr}`,'success');
+// SPEC-employee-pwa-attendance-geofence-v1 (S5): نفس المسار الآمن — المحرك
+// الذكي يقرر الدخول/الانصراف وفق التسلسل، والسيرفر يفرض قيد المكان والزمن.
+if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch('out'); }
+toast('البصمة الذاتية غير متاحة في هذه الجلسة — استخدم تطبيق الجوال','error');
 }
 function exportAttendanceExcel(){
 const attFrom=STATE.attFrom||'', attTo=STATE.attTo||'';

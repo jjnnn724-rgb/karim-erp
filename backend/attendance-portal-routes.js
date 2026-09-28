@@ -86,13 +86,14 @@ router.get('/status', jwtAuth, async (req, res, next) => {
             hasEmployeeProfile: Boolean(employee),
             employeeName: employee?.name || null,
             deviceBound: Boolean(boundDevice),
+            mobileV2: process.env.MOBILE_UI_V2 !== 'false', // مفتاح واجهة الجوال (افتراضي: مفعّل)
         });
     } catch (e) { next(e); }
 });
 
 // ─── البصمة الذاتية ─────────────────────────────────────────────────────────
 
-router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'manager', 'cashier', 'kitchen', 'warehouse', 'waiter', 'employee'), async (req, res, next) => {
+router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'warehouse', 'employee'), async (req, res, next) => {
     try {
         const settings = await loadPunchSettings();
 
@@ -201,10 +202,14 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'manager', 'cashier', 
         };
 
         // القلب: نفس محرك الحضور الذكي القائم — لا منطق موازٍ إطلاقًا
+        // intent: نيّة الموظف من زر الواجهة (0=حضور/1=انصراف كأعلام أجهزة
+        // البصمة) — المحرك الذكي يعالجها كتلميح وقد يتجاوزها وفق التسلسل
+        const intent = String(req.body?.intent || '').toLowerCase();
+        const punchState = intent === 'in' ? 0 : intent === 'out' ? 1 : null;
         const { engine } = require('./attendance-engine');
         const result = await engine.processPunch({
             employeeId: employee.id,
-            punchState: null, // البوابة بلا أزرار دخول/خروج — التصنيف الذكي يقرر
+            punchState,
             instant: now,
             wall,
             device: { name: 'بوابة الجوال' },

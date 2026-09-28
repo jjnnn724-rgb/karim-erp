@@ -146,6 +146,10 @@ Object.assign(window, authNavNS);     // BRIDGE-026
 const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
 Object.assign(window, pageRouterNS);  // BRIDGE-027
 
+// BRIDGE-029: mobile shell — تجربة الجوال + البصمة الذاتية (SPEC-employee-pwa-attendance-geofence-v1)
+const mobileShell = await import('./features/mobile-shell.js?v=4.7.183');
+Object.assign(window, mobileShell);
+
 const employees = await import('./features/employees.js?v=4.7.175');
 Object.assign(window, employees);   // BRIDGE-011
 
