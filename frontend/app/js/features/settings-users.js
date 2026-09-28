@@ -13,6 +13,8 @@ setTimeout(()=>{ if(document.getElementById('zatcaHub')) {loadZatcaHub();} }, 0)
 setTimeout(()=>{ if(document.getElementById('kotSettingsBody')) {loadKotSettings();} }, 0);
 // Card settings load themselves into #cardSettingsBody the same way
 setTimeout(()=>{ if(document.getElementById('cardSettingsBody')) {loadCardSettings();} }, 0);
+// Punch portal admin panel loads itself into #punchSettingsBody (SPEC-employee-pwa-attendance-geofence-v1, S7-S8)
+setTimeout(()=>{ if(document.getElementById('punchSettingsBody')) {loadPunchSettingsUI();} }, 0);
 // Backup list loads itself into #sysBackupList (admin only)
 setTimeout(()=>{ if(document.getElementById('sysBackupList') && STATE.currentUser?.role==='admin') {sysLoadBackups();} }, 0);
 return `
@@ -57,6 +59,12 @@ return `
 <div class="tbl-hd"><h3><i class=ji data-i=id-card></i> بطاقات الموظفين (QR + تحقق)</h3></div>
 <div style="padding:24px" id="cardSettingsBody">
 <div class="mcard u-empty">جارٍ تحميل إعدادات البطاقات…</div>
+</div>
+</div>
+<div class="tbl-wrap">
+<div class="tbl-hd"><h3><i class=ji data-i=timer></i> البصمة الذاتية (Geofence)</h3></div>
+<div style="padding:24px" id="punchSettingsBody">
+<div class="mcard u-empty"><div class="spinner"></div></div>
 </div>
 </div>
 <div class="tbl-wrap">
@@ -678,4 +686,167 @@ try {
 } catch(e) { toast(e.message||'تعذر حذف المستخدم','error'); }
 }
 
-export { renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser };
+// ═══════════════════════════════════════════════════════════════════════════
+// PUNCH PORTAL ADMIN PANEL — SPEC-employee-pwa-attendance-geofence-v1 (S7–S8)
+// الإعدادات تنعكس فورًا (السيرفر يقرأها حيًا) — بلا إعادة تشغيل.
+// ═══════════════════════════════════════════════════════════════════════════
+let _punchAdminState = { settings: {}, attempts: [], summary: null };
+
+async function loadPunchSettingsUI(){
+const body=document.getElementById('punchSettingsBody');
+if(!body){return;}
+try{
+const [sRes, aRes] = await Promise.all([
+apiFetch('/attendance/portal/settings-admin'),
+apiFetch('/attendance/portal/attempts?limit=50'),
+]);
+_punchAdminState.settings = {};
+(sRes.settings||[]).forEach(r=>{ _punchAdminState.settings[r.key] = r.value; });
+_punchAdminState.attempts = aRes.attempts||[];
+_punchAdminState.summary = aRes.summary||null;
+body.innerHTML = renderPunchAdminHTML();
+loadPunchAttemptsTable();
+}catch(e){ body.innerHTML = `<div class="mcard u-empty">تعذر تحميل لوحة البصمة: ${esc(e.message)}</div>`; }
+}
+
+function punchKv(key){ return _punchAdminState.settings?.[key]; }
+function punchBool(key){ return ['true','1','on'].includes(String(punchKv(key)||'false').toLowerCase()); }
+function punchChecked(key){ return punchBool(key) ? 'checked' : ''; }
+
+function renderPunchAdminHTML(){
+const hasCoords = punchKv('punch_restaurant_lat') && punchKv('punch_restaurant_lng');
+const geoOn = punchBool('punch_geofence_enabled');
+const portalOn = punchBool('punch_portal_enabled');
+return `
+<div class="fg" style="display:flex;gap:18px;flex-wrap:wrap">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchPortalEnabled" ${punchChecked('punch_portal_enabled')}> <b>تفعيل البصمة الذاتية للموظفين</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchGeofenceEnabled" ${punchChecked('punch_geofence_enabled')}> <b>قيد الموقع الجغرافي (Geofence)</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchDeviceBinding" ${punchChecked('punch_device_binding')}> <b>ربط جهاز واحد بكل موظف</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchSelfieEnabled" ${punchChecked('punch_selfie_enabled')}> <b>لقطة تحقق مع البصمة</b></label>
+</div>
+<div class="fg" style="margin-top:14px">
+<label><i class=ji data-i=map-pin></i> إحداثيات المطعم (تُلتقط وأنت داخل المطعم)</label>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px">
+<input id="punchLat" value="${esc(punchKv('punch_restaurant_lat')||'')}" placeholder="خط العرض" style="width:150px">
+<input id="punchLng" value="${esc(punchKv('punch_restaurant_lng')||'')}" placeholder="خط الطول" style="width:150px">
+<button class="btn btn-blue btn-sm" onclick="captureRestaurantLocation()"><i class=ji data-i=map-pin></i> أنا هنا — التقط الموقع</button>
+</div>
+</div>
+<div class="fg" style="margin-top:10px">
+<label>نطاق البصمة المسموح (متر) — من 50 إلى 500</label>
+<input type="number" id="punchRadius" value="${esc(punchKv('punch_radius_meters')||'120')}" min="50" max="500" style="width:150px">
+</div>
+<div class="fg" style="margin-top:10px">
+<label>أقصى دقة موقع مقبولة (متر) وأقدم إصلاح GPS (ثانية)</label>
+<div style="display:flex;gap:10px">
+<input type="number" id="punchMaxAcc" value="${esc(punchKv('punch_max_accuracy_m')||'50')}" min="10" max="200" style="width:150px">
+<input type="number" id="punchMaxAge" value="${esc(punchKv('punch_max_fix_age_s')||'30')}" min="5" max="120" style="width:150px">
+</div>
+</div>
+<div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+<button class="btn btn-gold" onclick="savePunchSettings()"><i class=ji data-i=save></i> حفظ الإعدادات (ينعكس فورًا)</button>
+${(!hasCoords&&geoOn)?'<span class="u-red">⚠ الجيوفانس مفعّل بلا إحداثيات — البصمة ستُرفض! التقط الموقع أو أطفئ الجيوفانس.</span>':''}
+${portalOn?'<span style="color:#2ecc71;font-weight:700">● الميزة مفعّلة الآن — الموظفون يبصمون</span>':'<span class="text-muted">● الميزة مغلقة — الموظفون لا يرون زر البصمة</span>'}
+</div>
+<div class="tbl-wrap" style="margin-top:18px">
+<div class="tbl-hd"><h3><i class=ji data-i=activity></i> سجل محاولات البصمة</h3>
+<div class="u-row-wrap">
+<select id="punchAttemptsFilter" onchange="loadPunchAttempts()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+<option value="">كل المحاولات</option>
+<option value="rejected">المرفوضة فقط</option>
+<option value="accepted">المقبولة فقط</option>
+</select>
+<button class="btn btn-blue btn-sm" onclick="loadPunchAttempts()"><i class=ji data-i=refresh></i> تحديث</button>
+</div>
+</div>
+<div style="padding:16px 24px">
+<div id="punchAttemptsSummary" style="margin-bottom:12px"></div>
+<div id="punchAttemptsTable"></div>
+</div>
+</div>
+`;
+}
+
+function renderPunchAttemptsSummary(){
+const sm = _punchAdminState.summary || {};
+const box = document.getElementById('punchAttemptsSummary');
+if(!box){return;}
+const items = [
+['مقبولة (24س)', sm.accepted_24h ?? 0, '#2ecc71'],
+['مرفوضة (24س)', sm.rejected_24h ?? 0, (sm.rejected_24h ?? 0) > 0 ? '#e67e22' : '#9aa0ac'],
+['خارج النطاق (7 أيام)', sm.out_of_range_7d ?? 0, '#e67e22'],
+['جهاز غير مطابق (7 أيام)', sm.device_mismatch_7d ?? 0, '#e74c3c'],
+];
+box.innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap">${items.map(([l,v,c]) =>
+`<div class="mcard" style="padding:10px 16px;margin:0"><div style="font-size:12px;color:var(--text2)">${l}</div><div style="font-size:22px;font-weight:900;color:${c}">${v}</div></div>`).join('')}</div>`;
+}
+
+async function loadPunchAttemptsTable(){
+const tbl = document.getElementById('punchAttemptsTable');
+if(!tbl){return;}
+const filter = document.getElementById('punchAttemptsFilter')?.value || '';
+try{
+const res = await apiFetch('/attendance/portal/attempts?limit=50' + (filter?`&decision=${filter}`:''));
+_punchAdminState.attempts = res.attempts||[];
+_punchAdminState.summary = res.summary||null;
+renderPunchAttemptsSummary();
+const rows = _punchAdminState.attempts;
+if(!rows.length){ tbl.innerHTML = '<div class="mcard u-empty">لا محاولات مسجلة بعد</div>'; return; }
+tbl.innerHTML = `<div style="overflow-x:auto"><table class="keep-table" style="width:100%;font-size:13px">
+<thead><tr><th>الوقت</th><th>المستخدم</th><th>القرار</th><th>السبب</th><th>المسافة</th><th>الدقة</th><th>IP</th></tr></thead>
+<tbody>${rows.map(a=>{
+const dt = a.attempted_at ? new Date(a.attempted_at).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'}) : '—';
+const okRow = a.decision==='accepted';
+return `<tr style="border-top:1px solid var(--border)">
+<td>${esc(dt)}</td>
+<td>${esc(a.username||'—')}</td>
+<td>${okRow?'<b style="color:#2ecc71">مقبولة</b>':'<b style="color:#e74c3c">مرفوضة</b>'}</td>
+<td>${esc(a.reject_code||'—')}</td>
+<td>${a.distance_m!=null?esc(String(a.distance_m))+'م':'—'}</td>
+<td>${a.accuracy_m!=null?esc(String(a.accuracy_m))+'م':'—'}</td>
+<td>${esc(a.remote_ip||'—')}</td>
+</tr>`;}).join('')}</tbody></table></div>`;
+}catch(e){ tbl.innerHTML = `<div class="mcard u-empty">تعذر تحميل السجل: ${esc(e.message)}</div>`; }
+}
+
+async function loadPunchAttempts(){
+await loadPunchAttemptsTable();
+}
+
+async function captureRestaurantLocation(){
+if(!navigator.geolocation){ toast('جهازك لا يدعم تحديد الموقع','error'); return; }
+toast('جارٍ التقاط الموقع — اطلب أقصى دقة وانتظر…','info');
+navigator.geolocation.getCurrentPosition(async (pos)=>{
+try{
+await apiFetch('/attendance/portal/settings-admin', { method:'PUT', body: JSON.stringify({
+punch_restaurant_lat: pos.coords.latitude,
+punch_restaurant_lng: pos.coords.longitude,
+})});
+toast('تم حفظ إحداثيات المطعم بدقة ' + Math.round(pos.coords.accuracy) + 'م','success');
+await loadPunchSettingsUI();
+}catch(e){ toast(e.message||'فشل الحفظ','error'); }
+}, (err)=>{
+toast(err.code===1?'مُنِع الوصول للموقع — اسمح به من المتصفح':'تعذر تحديد الموقع','error');
+}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+async function savePunchSettings(){
+const body = {
+punch_portal_enabled: document.getElementById('punchPortalEnabled')?.checked || false,
+punch_geofence_enabled: document.getElementById('punchGeofenceEnabled')?.checked || false,
+punch_device_binding: document.getElementById('punchDeviceBinding')?.checked || false,
+punch_selfie_enabled: document.getElementById('punchSelfieEnabled')?.checked || false,
+punch_radius_meters: document.getElementById('punchRadius')?.value || '120',
+punch_max_accuracy_m: document.getElementById('punchMaxAcc')?.value || '50',
+punch_max_fix_age_s: document.getElementById('punchMaxAge')?.value || '30',
+punch_restaurant_lat: document.getElementById('punchLat')?.value ?? '',
+punch_restaurant_lng: document.getElementById('punchLng')?.value ?? '',
+};
+try{
+await apiFetch('/attendance/portal/settings-admin', { method:'PUT', body: JSON.stringify(body) });
+toast('تم حفظ إعدادات البصمة — تنعكس على الموظفين فورًا','success');
+await loadPunchSettingsUI();
+}catch(e){ toast(e.message||'فشل الحفظ','error'); }
+}
+
+export { renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };

@@ -125,7 +125,7 @@ Object.assign(window, departments); // BRIDGE-018
 const reports = await import('./features/reports.js?v=4.7.139');
 Object.assign(window, reports);     // BRIDGE-019
 
-const settingsUsers = await import('./features/settings-users.js?v=4.7.170');
+const settingsUsers = await import('./features/settings-users.js?v=4.7.185');
 Object.assign(window, settingsUsers); // BRIDGE-020
 
 const permissions = await import('./features/permissions.js?v=4.7.178');

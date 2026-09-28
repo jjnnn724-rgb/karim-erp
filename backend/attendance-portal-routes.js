@@ -239,4 +239,112 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier'
     }
 });
 
+// ─── لوحة الإدارة (S7–S8): إعدادات البصمة + سجل المحاولات — admin/hr ────────
+
+/** مواصفة المفاتيح المسموحة — أي مفتاح آخر يُرفض (لا حقن إعدادات) */
+const PUNCH_SETTING_KEYS = {
+    punch_portal_enabled:   { type: 'bool' },
+    punch_geofence_enabled: { type: 'bool' },
+    punch_device_binding:   { type: 'bool' },
+    punch_selfie_enabled:   { type: 'bool' },
+    punch_radius_meters:    { type: 'int', min: 50, max: 500 },
+    punch_max_accuracy_m:   { type: 'int', min: 10, max: 200 },
+    punch_max_fix_age_s:    { type: 'int', min: 5, max: 120 },
+    punch_restaurant_lat:   { type: 'float', min: -90, max: 90, nullable: true },
+    punch_restaurant_lng:   { type: 'float', min: -180, max: 180, nullable: true },
+};
+
+function validatePunchSettingValue(key, value) {
+    const spec = PUNCH_SETTING_KEYS[key];
+    if (!spec) {return { error: 'UNKNOWN_KEY' };}
+    if (spec.type === 'bool') {
+        if (typeof value === 'boolean') {return { value: String(value) };}
+        const s = String(value).trim().toLowerCase();
+        if (['true', 'false', '1', '0', 'on', 'off'].includes(s)) {return { value: ['true', '1', 'on'].includes(s) ? 'true' : 'false' };}
+        return { error: 'INVALID_BOOL' };
+    }
+    if (value === '' || value === null) {
+        return spec.nullable ? { value: null } : { error: 'REQUIRED' };
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < spec.min || n > spec.max) {
+        return { error: 'OUT_OF_RANGE', min: spec.min, max: spec.max };
+    }
+    return { value: String(n) };
+}
+
+// حالة الإعدادات الكاملة (admin/hr)
+router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
+        res.json({ ok: true, settings: rows });
+    } catch (e) { next(e); }
+});
+
+// تحديث الإعدادات — ينعكس فورًا (كل طلب بصمة يقرأها حيًا) بلا إعادة تشغيل
+router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const body = req.body || {};
+        const updates = Object.entries(body).filter(([k]) => k in PUNCH_SETTING_KEYS);
+        if (!updates.length) {
+            return res.status(422).json({ ok: false, error: 'NO_VALID_KEYS', message: 'لا توجد مفاتيح إعدادات صالحة في الطلب' });
+        }
+        const errors = [];
+        for (const [key, raw] of updates) {
+            const v = validatePunchSettingValue(key, raw);
+            if (v.error) {errors.push({ key, error: v.error, min: v.min, max: v.max });}
+        }
+        if (errors.length) {
+            return res.status(422).json({ ok: false, error: 'INVALID_SETTINGS', errors });
+        }
+        for (const [key, raw] of updates) {
+            const v = validatePunchSettingValue(key, raw);
+            await pool.query(
+                `INSERT INTO punch_settings (key, value, updated_at, updated_by) VALUES ($1, $2, NOW(), $3)
+                 ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW(), updated_by = $3`,
+                [key, v.value, req.user.username || req.user.name || String(req.user.sub || '') || null]
+            );
+        }
+        const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
+        res.json({ ok: true, settings: rows });
+    } catch (e) { next(e); }
+});
+
+// سجل المحاولات — فلاتر: decision / reject / username، حد أقصى 200 صف
+router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+        const conds = [];
+        const params = [];
+        if (req.query.decision === 'accepted' || req.query.decision === 'rejected') {
+            params.push(req.query.decision); conds.push(`decision = $${params.length}`);
+        }
+        if (req.query.reject) {
+            params.push(String(req.query.reject).slice(0, 60)); conds.push(`reject_code = $${params.length}`);
+        }
+        if (req.query.username) {
+            params.push(String(req.query.username).slice(0, 100)); conds.push(`username = $${params.length}`);
+        }
+        const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+        params.push(limit);
+        const { rows } = await pool.query(
+            `SELECT id, username, employee_id, attempted_at, remote_ip, network_ok, has_location,
+                    accuracy_m, fix_age_s, distance_m, radius_m, device_id, decision, reject_code
+             FROM punch_attempts ${where}
+             ORDER BY attempted_at DESC LIMIT $${params.length}`,
+            params
+        );
+        // ملخص سريع للتنبيهات (آخر 24 ساعة)
+        const summary = (await pool.query(
+            `SELECT
+                COUNT(*) FILTER (WHERE decision = 'rejected' AND attempted_at > NOW() - INTERVAL '24 hours')::int AS rejected_24h,
+                COUNT(*) FILTER (WHERE decision = 'accepted' AND attempted_at > NOW() - INTERVAL '24 hours')::int AS accepted_24h,
+                COUNT(*) FILTER (WHERE reject_code = 'PUNCH_DEVICE_MISMATCH' AND attempted_at > NOW() - INTERVAL '7 days')::int AS device_mismatch_7d,
+                COUNT(*) FILTER (WHERE reject_code = 'PUNCH_OUT_OF_RANGE' AND attempted_at > NOW() - INTERVAL '7 days')::int AS out_of_range_7d
+             FROM punch_attempts`
+        )).rows[0];
+        res.json({ ok: true, attempts: rows, summary });
+    } catch (e) { next(e); }
+});
+
 module.exports = router;
