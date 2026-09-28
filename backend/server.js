@@ -462,6 +462,11 @@ app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, hrRouter);
 // Leave approval workflow: employee → direct manager → operations manager → general manager → HR.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRouter);
+// البصمة الذاتية المقيدة جغرافيًا (SPEC-employee-pwa-attendance-geofence-v1) —
+// مولودة مغلقة: punch_portal_enabled=false حتى يفعّلها المالك من punch_settings.
+const punchPortalRouter = require('./attendance-portal-routes'); // module.exports = router
+app.use('/api/attendance/portal', punchPortalRouter);
+
 ensureLeaveWorkflowSchema().catch((error) => logger.error('[LEAVE_WORKFLOW_SCHEMA] initialization failed:', error.message));
 // Atomic warehouse/accounting workflows: dispatch approval, kitchen returns, and purchase invoices.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, warehouseRouter);
