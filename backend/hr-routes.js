@@ -597,6 +597,71 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
     } finally { client.release(); }
 });
 
+/** تحقق مختصر من بطاقة موظف (QR الجديد الخفيف) — GET /card/v/<cardId>.<sig16>
+ * نفس الأمان: sig16 = أول 16 hex من HMAC(cardId) — والتحقق الكامل من DB.
+ * البطاقات القديمة (d/s) تعمل كما هي — لا كسر للخلف. */
+router.get('/card/v/:code', async (req, res) => {
+    try {
+        if (!QR_SECRET) {return res.status(503).send('التحقق غير مهيأ');}
+        const parts = String(req.params.code || '').split('.');
+        if (parts.length !== 2 || !parts[0] || !/^[0-9a-f]{16}$/i.test(parts[1])) {
+            return res.status(400).send('رمز غير صالح');
+        }
+        const [cardId, shortSig] = parts;
+        const expect = crypto.createHmac('sha256', QR_SECRET)
+            .update(String(cardId), 'utf8').digest('hex').slice(0, 16);
+        if (!crypto.timingSafeEqual(Buffer.from(shortSig.toLowerCase()), Buffer.from(expect))) {
+            return res.status(403).send('توقيع غير صالح — بطاقة مزورة محتملة');
+        }
+        const emp = (await pool.query(
+            `SELECT e.name, e."employeeId", e."deviceUserId", e.department, e.position, e.photo, e.status,
+                    h.name AS dept_name, e."cardStatus", e."cardIssuedAt"
+               FROM employees e LEFT JOIN "hrDepartments" h ON h.code = e.department
+              WHERE e."cardId" = $1 LIMIT 1`, [String(cardId)])).rows[0];
+        if (!emp) {return res.status(404).send('الموظف غير موجود');}
+        req.query.d = Buffer.from(JSON.stringify({
+            eid: String(emp.employeeId), cid: String(cardId), v: 2, t: 'short',
+        })).toString('base64url');
+        req.query.s = 'short';
+        req.shortVerified = emp;
+        return shortVerifyRender(req, res);
+    } catch (e) {
+        logger.error('[hr_card_verify_short]', e);
+        res.status(500).send('تعذر التحقق حاليًا');
+    }
+});
+
+function shortVerifyRender(req, res) {
+    const emp = req.shortVerified;
+    const active = emp.status === 'active' && (emp.cardStatus || 'active') === 'active';
+    const logoB64 = (() => { try {
+        return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
+    } catch (_) { return ''; } })();
+    res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — مطاعم الشرفه العالمي</title>
+<style>body{font-family:'Cairo',Arial,sans-serif;background:linear-gradient(135deg,#061627,#0A2540 45%,#16307E);color:#fff;margin:0;padding:24px;text-align:center;min-height:100vh}
+.brand{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px}
+.brand img{width:76px;height:76px;object-fit:contain;background:#fff;border:2px solid #C9A961;border-radius:50%;padding:6px;box-shadow:0 0 18px rgba(201,169,97,.55)}
+.brand .t{text-align:right}.brand .t b{display:block;font-size:22px;color:#F3DFA8}.brand .t span{font-size:12px;letter-spacing:2px;color:#fff;opacity:.9}
+.card{max-width:420px;margin:20px auto;background:#FAFAFA;color:#1a1a1a;border-radius:16px;padding:28px 22px;box-shadow:0 12px 40px rgba(0,0,0,.4);border-top:6px solid #C9A961}
+h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13px;font-weight:700}
+.badge{display:inline-block;margin:12px 0;padding:8px 26px;border-radius:20px;font-weight:800;font-size:16px}
+.ok{background:#e6f7ec;color:#0e7a3d}.no{background:#fdeaea;color:#b42323}
+.row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 2px;font-size:14px}
+.row b{color:#0A2540}.meta{color:#6b7280;font-size:12px;margin-top:14px}</style></head><body>
+<div class="brand">
+${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاعم الشرفه العالمي">` : ''}
+<div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
+</div><div class="card">
+<h1>${emp.name}</h1>
+<div class="co">${emp.position || ''} • ${emp.dept_name || emp.department || ''}</div>
+<div><span class="badge ${active ? 'ok' : 'no'}">${active ? '✓ بطاقة سارية وموظف نشط' : '✕ غير سارية'}</span></div>
+<div class="row"><span>رقم الموظف</span><b>${emp.employeeId || ''}</b></div>
+<div class="row"><span>رقم البصمة</span><b>${emp.deviceUserId || ''}</b></div>
+<div class="row"><span>إصدار البطاقة</span><b>${emp.cardIssuedAt ? String(emp.cardIssuedAt).slice(0, 10) : ''}</b></div>
+<div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${new Date().toISOString().slice(0, 16).replace('T', ' ')}</div>
+</div></body></html>`);
+}
+
 /** تحقق عام من بطاقة موظف (مسح QR) — بيانات عامة فقط، بتوقيع HMAC */
 router.get('/card/verify', async (req, res) => {
     try {
@@ -620,8 +685,11 @@ router.get('/card/verify', async (req, res) => {
         const logoB64 = (() => { try {
             return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
         } catch (_) { return ''; } })();
-        res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف</title>
-<style>body{font-family:'Cairo',Arial,sans-serif;background:#0A2540;color:#fff;margin:0;padding:24px;text-align:center}
+        res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — مطاعم الشرفه العالمي</title>
+<style>body{font-family:'Cairo',Arial,sans-serif;background:linear-gradient(135deg,#061627,#0A2540 45%,#16307E);color:#fff;margin:0;padding:24px;text-align:center;min-height:100vh}
+.brand{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px}
+.brand img{width:76px;height:76px;object-fit:contain;background:#fff;border:2px solid #C9A961;border-radius:50%;padding:6px;box-shadow:0 0 18px rgba(201,169,97,.55)}
+.brand .t{text-align:right}.brand .t b{display:block;font-size:22px;color:#F3DFA8}.brand .t span{font-size:12px;letter-spacing:2px;color:#fff;opacity:.9}
 .card{max-width:420px;margin:20px auto;background:#FAFAFA;color:#1a1a1a;border-radius:16px;padding:28px 22px;box-shadow:0 12px 40px rgba(0,0,0,.4);border-top:6px solid #C9A961}
 .logo{width:64px;height:64px;object-fit:contain;background:#fff;border:1px solid #C9A961;border-radius:12px;padding:4px}
 h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13px;font-weight:700}
@@ -629,8 +697,10 @@ h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13
 .ok{background:#e6f7ec;color:#0e7a3d}.no{background:#fdeaea;color:#b42323}
 .row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 2px;font-size:14px}
 .row b{color:#0A2540}.meta{color:#6b7280;font-size:12px;margin-top:14px}</style></head><body>
-<h2>مطاعم الشرفه العالمي</h2><div class="co">AL SHORFA RESTAURANTS — تحقق البطاقات</div>
-<div class="card">
+<h2 style="display:none">تحقق</h2><div class="brand">
+${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاعم الشرفه العالمي">` : ''}
+<div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
+</div><div class="card">
 ${logoB64 ? `<img class="logo" src="data:image/png;base64,${logoB64}">` : ''}
 <h1>${emp.name}</h1>
 <div class="co">${emp.position || ''} • ${emp.dept_name || emp.department || ''}</div>

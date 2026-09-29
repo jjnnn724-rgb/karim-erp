@@ -5,6 +5,10 @@
  * الفصل مقصود: كل قرارات الرفض/القبول دوال نقية تُختبَر 100% بمعزل عن السيرفر،
  * ومسار Express مجرد توصيل (attendance-portal-routes.js).
  *
+ * Type policy (handover 2026-09-29): this module is the REFERENCE for the
+ * company's incremental TypeScript adoption — @ts-check + full JSDoc, passes
+ * `tsc --strict` with 0 errors (see tsconfig.strict.json).
+ *
  * تسلسل الحكم (الأولوية من أعلى لأسفل — أول فشل يرفض فورًا):
  *   0. PUNCH_PORTAL_DISABLED   الميزة مغلقة بالمفتاح المركزي
  *   1. PUNCH_OUT_OF_NETWORK    الطلب ليس من شبكة داخلية (L1 — لا تُتخطى أبدًا)
@@ -18,7 +22,66 @@
  *   6. PUNCH_DEVICE_MISMATCH   جهاز غير مربوط بالحساب (L4)
  *   → accepted
  */
+// @ts-check
 'use strict';
+
+// ─── الأنواع (JSDoc — يقرأها tsc strict وتوثّق للشركة) ───────────────────────
+
+/**
+ * إصلاح GPS واحد قادم من الجهاز.
+ * @typedef {Object} GeoFix
+ * @property {number} lat
+ * @property {number} lng
+ * @property {number} accuracy دقة الإصلاح بالأمتار
+ * @property {number} fixAgeS عمر الإصلاح بالثواني لحظة الإرسال
+ */
+
+/**
+ * موقع الطلب: إما مجموعة إصلاحات (المسار المُحصّن) أو إصلاح واحد (توافق قديم).
+ * @typedef {Object} PunchLocation
+ * @property {GeoFix[]} [fixes]
+ * @property {number} [lat]
+ * @property {number} [lng]
+ * @property {number} [accuracy]
+ * @property {number} [fixAgeS]
+ * @property {boolean} [mocked]
+ */
+
+/**
+ * إعدادات البصمة بعد التطبيع (تُبنى من punch_settings عبر resolvePunchSettings).
+ * @typedef {Object} PunchSettings
+ * @property {boolean} portalEnabled
+ * @property {boolean} geofenceEnabled
+ * @property {boolean} deviceBinding
+ * @property {boolean} selfieEnabled
+ * @property {boolean} faceEnabled
+ * @property {number} faceThreshold
+ * @property {boolean} multiFixRequired
+ * @property {boolean} strictGeofence
+ * @property {number} maxRejects10m
+ * @property {number} maxAccuracyM
+ * @property {number} maxFixAgeS
+ * @property {number} radiusMeters
+ * @property {number|null} lat إحداثيات المطعم — null = غير مضبوطة
+ * @property {number|null} lng
+ */
+
+/**
+ * طلب البصمة بعد التنظيف في مسار Express.
+ * @typedef {Object} PunchRequest
+ * @property {string} remoteIp
+ * @property {string|null} deviceId
+ * @property {PunchLocation|null} [location]
+ * @property {string|null} [boundDeviceId]
+ */
+
+/**
+ * نتيجة الحكم النهائية.
+ * @typedef {Object} EvaluateResult
+ * @property {'accepted'|'rejected'} decision
+ * @property {string} [rejectCode]
+ * @property {{networkOk: boolean, hasLocation: boolean, fixCount?: number, spreadM?: number, maxSpeedKmh?: number, distanceM: number|null, accuracyM: number|null, fixAgeS: number|null, deviceId: string|null}} details
+ */
 
 // ─── المسافات ────────────────────────────────────────────────────────────────
 
@@ -26,9 +89,14 @@ const EARTH_RADIUS_M = 6371000;
 
 /**
  * المسافة بين نقطتين بالأمتار (Haversine) — دقة مترية كافية لنطاق المطعم.
+ * @param {number} lat1
+ * @param {number} lng1
+ * @param {number} lat2
+ * @param {number} lng2
+ * @returns {number}
  */
 function haversineMeters(lat1, lng1, lat2, lng2) {
-    const toRad = (d) => (d * Math.PI) / 180;
+    const toRad = (/** @type {number} */ d) => (d * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
     const a = Math.sin(dLat / 2) ** 2
@@ -42,6 +110,8 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
  * هل العنوان من شبكة داخلية (RFC1918 / loopback / link-local / ULA)؟
  * يعالج صيغ IPv4-mapped IPv6 (::ffff:192.168.1.7) الشائعة في Node على ويندوز.
  * العناوين العامة (إنترنت) → false دائمًا.
+ * @param {unknown} ip
+ * @returns {boolean}
  */
 function isInternalIp(ip) {
     if (!ip) {return false;}
@@ -55,7 +125,8 @@ function isInternalIp(ip) {
         if (/^fe[89ab][0-9a-f]:/.test(s)) {return true;}
         return false;
     }
-    const [a, b] = [Number(m[1]), Number(m[2])];
+    const a = Number(m[1]);
+    const b = Number(m[2]);
     if ([a, b].some((x) => Number.isNaN(x) || x < 0 || x > 255)) {return false;}
     if (a === 10 || a === 127) {return true;}
     if (a === 192 && b === 168) {return true;}
@@ -67,59 +138,193 @@ function isInternalIp(ip) {
 // ─── الإعدادات ───────────────────────────────────────────────────────────────
 
 /**
+ * @template T
+ * @param {unknown} v
+ * @param {T} fallback
+ * @returns {number|T}
+ */
+function numOr(v, fallback) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * @param {unknown} v
+ * @param {boolean} fallback
+ * @returns {boolean}
+ */
+function boolOr(v, fallback) {
+    if (v === undefined || v === null || v === '') {return fallback;}
+    return ['1', 'true', 'yes', 'on'].includes(String(v).trim().toLowerCase());
+}
+
+/**
  * دمج صفوف punch_settings مع قيم افتراضية/بيئة — يرجع كائن إعدادات مطبَّع.
  * الإحداثيات النصية تُقبل فقط لو كانت أرقامًا صالحة (وإلا تُعتبر غير مضبوطة).
+ * @param {Array<{key: string, value: string}>} rows
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {PunchSettings}
  */
-function resolvePunchSettings(rows = [], env = {}) {
+function resolvePunchSettings(rows, env = {}) {
+    /** @type {Record<string, string>} */
     const kv = {};
     for (const r of rows) {kv[r.key] = r.value;}
-    const num = (v, fallback) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : fallback;
-    };
-    const bool = (v, fallback) => {
-        if (v === undefined || v === null || v === '') {return fallback;}
-        return ['1', 'true', 'yes', 'on'].includes(String(v).trim().toLowerCase());
-    };
-    const lat = num(kv.punch_restaurant_lat, num(env.PUNCH_LAT, null));
-    const lng = num(kv.punch_restaurant_lng, num(env.PUNCH_LNG, null));
-    const coordsSet = Number.isFinite(lat) && Number.isFinite(lng)
+    const lat = /** @type {number|null} */ (numOr(kv.punch_restaurant_lat, numOr(env.PUNCH_LAT, null)));
+    const lng = /** @type {number|null} */ (numOr(kv.punch_restaurant_lng, numOr(env.PUNCH_LNG, null)));
+    const coordsSet = lat !== null && lng !== null
+        && Number.isFinite(lat) && Number.isFinite(lng)
         && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
     return {
-        portalEnabled: bool(kv.punch_portal_enabled, false),
-        geofenceEnabled: bool(kv.punch_geofence_enabled, false),
-        deviceBinding: bool(kv.punch_device_binding, true),
-        selfieEnabled: bool(kv.punch_selfie_enabled, false),
-        radiusMeters: num(kv.punch_radius_meters, 120),
-        maxAccuracyM: num(kv.punch_max_accuracy_m, 50),
-        maxFixAgeS: num(kv.punch_max_fix_age_s, 30),
-        faceEnabled: bool(kv.punch_face_enabled, false),
-        faceThreshold: num(kv.punch_face_threshold, 0.55),
-        // تحصين الموقع: قراءات متعددة + نطاق صارم + قفل المحاولات المرفوضة
-        multiFixRequired: bool(kv.punch_multi_fix_required, true),
-        strictGeofence: bool(kv.punch_strict_geofence, false),
-        maxRejects10m: num(kv.punch_max_rejects_10m, 5),
+        portalEnabled: boolOr(kv.punch_portal_enabled, false),
+        geofenceEnabled: boolOr(kv.punch_geofence_enabled, false),
+        deviceBinding: boolOr(kv.punch_device_binding, true),
+        selfieEnabled: boolOr(kv.punch_selfie_enabled, false),
+        faceEnabled: boolOr(kv.punch_face_enabled, false),
+        faceThreshold: /** @type {number} */ (numOr(kv.punch_face_threshold, 0.55)),
+        multiFixRequired: boolOr(kv.punch_multi_fix_required, true),
+        strictGeofence: boolOr(kv.punch_strict_geofence, false),
+        maxRejects10m: /** @type {number} */ (numOr(kv.punch_max_rejects_10m, 5)),
+        maxAccuracyM: /** @type {number} */ (numOr(kv.punch_max_accuracy_m, 50)),
+        maxFixAgeS: /** @type {number} */ (numOr(kv.punch_max_fix_age_s, 30)),
+        radiusMeters: /** @type {number} */ (numOr(kv.punch_radius_meters, 120)),
         lat: coordsSet ? lat : null,
         lng: coordsSet ? lng : null,
     };
+}
+
+// ─── تحصين الموقع (multi-fix): كشف التجميد/الانتقال المستحيل/التشتت ─────────
+
+const MAX_FIX_SPEED_KMH = 300;   // انتقال أسرع من ذلك = تزوير
+const MAX_SESSION_SPREAD_M = 150; // تشتت القراءات داخل نفس الجلسة
+
+/**
+ * يحوّل موقع الطلب إلى قائمة إصلاحات موحدة (متعدد أو قديم أحادي).
+ * @param {PunchLocation|null|undefined} loc
+ * @returns {GeoFix[]}
+ */
+function normalizeFixes(loc) {
+    if (Array.isArray(loc?.fixes) && loc.fixes.length) {
+        return loc.fixes
+            .map((f) => ({
+                lat: Number(f.lat),
+                lng: Number(f.lng),
+                accuracy: Number(f.accuracy),
+                fixAgeS: Number.isFinite(Number(f.fixAgeS)) ? Number(f.fixAgeS) : 0,
+            }))
+            .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng)
+                && Math.abs(f.lat) <= 90 && Math.abs(f.lng) <= 180);
+    }
+    if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng))) {
+        return [{
+            lat: Number(loc.lat),
+            lng: Number(loc.lng),
+            accuracy: Number.isFinite(Number(loc.accuracy)) ? Number(loc.accuracy) : 999,
+            fixAgeS: Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0,
+        }];
+    }
+    return [];
+}
+
+/**
+ * فحوص جودة مجموعة الإصلاحات — كلها على السيرفر من البيانات الخام:
+ *   • تجميد: كل الإحداثيات متطابقة تمامًا (GPS الحقيقي يهتز دائمًا) → تزوير
+ *   • انتقال مستحيل: سرعة بين إصلاحين > 300 كم/س → تزوير
+ *   • تشتت: بعد بين أبعد إصلاحين > 150م داخل نفس الجلسة → قفزات
+ * @param {GeoFix[]} fixes
+ * @returns {{best: GeoFix, spreadM: number, maxSpeedKmh: number, frozen: boolean}}
+ */
+function assessFixQuality(fixes) {
+    if (fixes.length < 2) {return { best: fixes[0], spreadM: 0, maxSpeedKmh: 0, frozen: false };}
+    const allSame = fixes.every((f) => f.lat === fixes[0].lat && f.lng === fixes[0].lng);
+    let spreadM = 0;
+    let maxSpeedKmh = 0;
+    for (let i = 0; i < fixes.length; i++) {
+        for (let j = i + 1; j < fixes.length; j++) {
+            const d = haversineMeters(fixes[i].lat, fixes[i].lng, fixes[j].lat, fixes[j].lng);
+            if (d > spreadM) {spreadM = d;}
+            const dtH = Math.abs(fixes[j].fixAgeS - fixes[i].fixAgeS) / 3600;
+            if (dtH > 0 && d > 0) {
+                const kmh = (d / 1000) / dtH;
+                if (kmh > maxSpeedKmh) {maxSpeedKmh = kmh;}
+            }
+        }
+    }
+    const best = fixes.reduce((a, b) => (b.accuracy < a.accuracy ? b : a), fixes[0]);
+    return {
+        best,
+        spreadM: Math.round(spreadM * 10) / 10,
+        maxSpeedKmh: Math.round(maxSpeedKmh),
+        frozen: allSame,
+    };
+}
+
+// ─── التعرف على الوجه (L5) — مطابقة متجهات بدون صور ─────────────────────────
+
+const FACE_DESCRIPTOR_LEN = 128;
+
+/**
+ * تحقق صارم من متجه الوجه: 128 رقمًا محدودًا — يُرفض أي شيء آخر.
+ * @param {unknown} d
+ * @returns {d is number[]}
+ */
+function isValidFaceDescriptor(d) {
+    return Array.isArray(d) && d.length === FACE_DESCRIPTOR_LEN
+        && d.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 20);
+}
+
+/**
+ * المسافة الإقليدية بين متجهين — مقياس مطابقة face_recognition القياسي.
+ * @param {number[]} a
+ * @param {number[]} b
+ * @returns {number}
+ */
+function faceDistance(a, b) {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+        const d = a[i] - b[i];
+        sum += d * d;
+    }
+    return Math.sqrt(sum);
+}
+
+/**
+ * حكم مطابقة الوجه: المسافة ≤ العتبة = نفس الشخص.
+ * العتبة 0.55 هي القيمة الموصى بها لمكتبة face_recognition (أقل = أشد).
+ * @param {unknown} candidate متجه المحاولة القادم من الجهاز
+ * @param {unknown} stored القالب المخزن من قاعدة البيانات
+ * @param {number|unknown} threshold
+ * @returns {{ok: boolean, distance?: number, threshold?: number, rejectCode?: string}}
+ */
+function evaluateFaceMatch(candidate, stored, threshold) {
+    if (!isValidFaceDescriptor(candidate)) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_INVALID' };
+    }
+    if (!isValidFaceDescriptor(stored)) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_NOT_ENROLLED' };
+    }
+    const distance = faceDistance(candidate, stored);
+    const thr = /** @type {number} */ (numOr(threshold, 0.55));
+    return { ok: distance <= thr, distance: Math.round(distance * 10000) / 10000, threshold: thr };
 }
 
 // ─── الحكم الموحّد ───────────────────────────────────────────────────────────
 
 /**
  * الحكم على محاولة البصمة كاملة (L1→L4 + مفتاح التفعيل).
- * @param {Object} settings        ناتج resolvePunchSettings
- * @param {Object} req             بيانات الطلب المنظفة:
- *   { remoteIp, deviceId, location?: { lat, lng, accuracy, fixAgeS?, mocked? } }
- * @returns {{ decision:'accepted'|'rejected', rejectCode?:string, details:Object }}
+ * @param {PunchSettings} settings ناتج resolvePunchSettings
+ * @param {PunchRequest} req بيانات الطلب المنظفة
+ * @returns {EvaluateResult}
  */
 function evaluatePunch(settings, req) {
     const details = {
         networkOk: false,
         hasLocation: false,
-        distanceM: null,
-        accuracyM: null,
-        fixAgeS: null,
+        fixCount: /** @type {number|undefined} */ (undefined),
+        spreadM: /** @type {number|undefined} */ (undefined),
+        maxSpeedKmh: /** @type {number|undefined} */ (undefined),
+        distanceM: /** @type {number|null} */ (null),
+        accuracyM: /** @type {number|null} */ (null),
+        fixAgeS: /** @type {number|null} */ (null),
         deviceId: req.deviceId || null,
     };
 
@@ -141,7 +346,7 @@ function evaluatePunch(settings, req) {
 
     // 2-5. الطبقات الجغرافية — تعمل فقط إذا فُعّلت إداريًا (وقُطبت الإحداثيات)
     if (settings.geofenceEnabled) {
-        if (!settings.lat || !settings.lng) {
+        if (settings.lat == null || settings.lng == null) {
             return { decision: 'rejected', rejectCode: 'PUNCH_GEOFENCE_NOT_CONFIGURED', details };
         }
         if (!details.hasLocation) {
@@ -215,108 +420,17 @@ function evaluatePunch(settings, req) {
     return { decision: 'accepted', details };
 }
 
-// ─── تحصين الموقع (multi-fix): كشف التجميد/الانتقال المستحيل/التشتت ─────────
-
-const MAX_FIX_SPEED_KMH = 300;   // انتقال أسرع من ذلك = تزوير
-const MAX_SESSION_SPREAD_M = 150; // تشتت القراءات داخل نفس الجلسة
-
-/** يحوّل موقع الطلب إلى قائمة إصلاحات موحدة (متعدد أو قديم أحادي) */
-function normalizeFixes(loc) {
-    if (Array.isArray(loc?.fixes) && loc.fixes.length) {
-        return loc.fixes
-            .map((f) => ({
-                lat: Number(f.lat),
-                lng: Number(f.lng),
-                accuracy: Number(f.accuracy),
-                fixAgeS: Number.isFinite(Number(f.fixAgeS)) ? Number(f.fixAgeS) : 0,
-            }))
-            .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng) && Math.abs(f.lat) <= 90 && Math.abs(f.lng) <= 180);
-    }
-    if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng))) {
-        return [{
-            lat: Number(loc.lat),
-            lng: Number(loc.lng),
-            accuracy: Number.isFinite(Number(loc.accuracy)) ? Number(loc.accuracy) : 999,
-            fixAgeS: Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0,
-        }];
-    }
-    return [];
-}
-
-/**
- * فحوص جودة مجموعة الإصلاحات — كلها على السيرفر من البيانات الخام:
- *   • تجميد: كل الإحداثيات متطابقة تمامًا (GPS الحقيقي يهتز دائمًا) → تزوير
- *   • انتقال مستحيل: سرعة بين إصلاحين > 300 كم/س → تزوير
- *   • تشتت: بعد بين أبعد إصلاحين > 150م داخل نفس الجلسة → قفزات
- * يرجع { best, spreadM, maxSpeedKmh, frozen } أو { rejectCode }.
- */
-function assessFixQuality(fixes) {
-    if (fixes.length < 2) {return { best: fixes[0], spreadM: 0, maxSpeedKmh: 0, frozen: false };}
-    const allSame = fixes.every((f) => f.lat === fixes[0].lat && f.lng === fixes[0].lng);
-    let spreadM = 0;
-    let maxSpeedKmh = 0;
-    for (let i = 0; i < fixes.length; i++) {
-        for (let j = i + 1; j < fixes.length; j++) {
-            const d = haversineMeters(fixes[i].lat, fixes[i].lng, fixes[j].lat, fixes[j].lng);
-            if (d > spreadM) {spreadM = d;}
-            const dtH = Math.abs(fixes[j].fixAgeS - fixes[i].fixAgeS) / 3600;
-            if (dtH > 0 && d > 0) {
-                const kmh = (d / 1000) / dtH;
-                if (kmh > maxSpeedKmh) {maxSpeedKmh = kmh;}
-            }
-        }
-    }
-    const best = fixes.reduce((a, b) => (b.accuracy < a.accuracy ? b : a), fixes[0]);
-    return { best, spreadM: Math.round(spreadM * 10) / 10, maxSpeedKmh: Math.round(maxSpeedKmh), frozen: allSame };
-}
-
-// ─── التعرف على الوجه (L5) — مطابقة متجهات بدون صور ────────────────────────
-
-const FACE_DESCRIPTOR_LEN = 128;
-
-/** تحقق صارم من متجه الوجه: 128 رقمًا محدودًا — يُرفض أي شيء آخر */
-function isValidFaceDescriptor(d) {
-    return Array.isArray(d) && d.length === FACE_DESCRIPTOR_LEN
-        && d.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 20);
-}
-
-/** المسافة الإقليدية بين متجهين — مقياس مطابقة face_recognition القياسي */
-function faceDistance(a, b) {
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) {
-        const d = a[i] - b[i];
-        sum += d * d;
-    }
-    return Math.sqrt(sum);
-}
-
-/**
- * حكم مطابقة الوجه: المسافة ≤ العتبة = نفس الشخص.
- * العتبة 0.55 هي القيمة الموصى بها لمكتبة face_recognition (أقل = أشد).
- */
-function evaluateFaceMatch(candidate, stored, threshold) {
-    if (!isValidFaceDescriptor(candidate)) {
-        return { ok: false, rejectCode: 'PUNCH_FACE_INVALID' };
-    }
-    if (!isValidFaceDescriptor(stored)) {
-        return { ok: false, rejectCode: 'PUNCH_FACE_NOT_ENROLLED' };
-    }
-    const distance = faceDistance(candidate, stored);
-    const thr = Number(threshold) > 0 ? Number(threshold) : 0.55;
-    return { ok: distance <= thr, distance: Math.round(distance * 10000) / 10000, threshold: thr };
-}
-
 module.exports = {
     haversineMeters,
     isInternalIp,
     resolvePunchSettings,
-    evaluatePunch,
+    normalizeFixes,
+    assessFixQuality,
     isValidFaceDescriptor,
     faceDistance,
     evaluateFaceMatch,
+    evaluatePunch,
     FACE_DESCRIPTOR_LEN,
-    normalizeFixes,
-    assessFixQuality,
     MAX_SESSION_SPREAD_M,
     MAX_FIX_SPEED_KMH,
 };

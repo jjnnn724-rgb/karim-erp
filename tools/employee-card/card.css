@@ -35,7 +35,7 @@
 
 /* ═══ الرأس المتدرج النابض + الفقاعات اللونية ═══ */
 .idcard .hdr {
-  position: absolute; top: 0; right: 0; left: 0; height: 18.5mm;
+  position: absolute; top: 0; right: 0; left: 0; height: 20mm;
   background:
     radial-gradient(120% 150% at 88% -10%, rgba(124, 58, 237, .55) 0%, rgba(124, 58, 237, 0) 55%),
     radial-gradient(110% 140% at 8% -20%, rgba(15, 181, 166, .38) 0%, rgba(15, 181, 166, 0) 52%),
@@ -57,19 +57,20 @@
   position: absolute; left: 0; right: 0; bottom: -.35mm; width: 100%; height: 3.2mm; display: block;
 }
 .idcard .hdr img.logo {
-  width: 10mm; height: 10mm; object-fit: contain; background: #fff; border-radius: 50%;
+  width: 11mm; height: 11mm; object-fit: contain; background: #fff; border-radius: 50%;
   padding: .8mm; flex: none; position: relative;
-  border: .6mm solid transparent;
+  border: .7mm solid transparent;
   background:
     linear-gradient(#fff, #fff) padding-box,
     conic-gradient(from 210deg, #C9A961, #F3DFA8 25%, #0FB5A6 55%, #C9A961 100%) border-box;
-  box-shadow: 0 0 2.4mm rgba(243, 223, 168, .55);
+  box-shadow: 0 0 3mm rgba(243, 223, 168, .7), 0 .6mm 1.8mm rgba(0,0,0,.45);
 }
-.idcard .hdr img.waqf { margin-inline-start: auto; width: 7mm; height: 7mm; object-fit: contain; background: #fff; border-radius: 50%; padding: .5mm; position: relative; flex: none; }
-.idcard .hdr .co { font-weight: 900; font-size: 3.3mm; color: #F3DFA8; line-height: 1.25; position: relative; letter-spacing: 0; white-space: nowrap; flex: none; text-shadow: 0 .3mm .8mm rgba(0,0,0,.55); }
+.idcard .hdr img.waqf { margin-inline-start: auto; width: 6.5mm; height: 6.5mm; object-fit: contain; background: #fff; border-radius: 50%; padding: .5mm; position: relative; flex: none; }
+/* اسم المطعم: سطران كاملان بدل القص — يناسب عرض 54مم مع الشعارين */
+.idcard .hdr .co { flex: 1 1 auto; min-width: 0; overflow: hidden; font-weight: 900; font-size: 3.1mm; color: #F7ECC8; line-height: 1.28; position: relative; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-shadow: 0 .4mm 1mm rgba(0,0,0,.65); }
 .idcard .hdr .co small {
-  display: block; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.7mm;
-  color: #fff; letter-spacing: .18mm; white-space: nowrap; opacity: .92;
+  display: block; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.6mm;
+  color: #fff; letter-spacing: .2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .95;
 }
 .idcard .hdr.slim .co { font-size: 3.2mm; font-weight: 800; }
 
@@ -94,15 +95,15 @@
 /* ═══ العلامة المائية ═══ */
 .idcard .waqfwm { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: .14; pointer-events: none; }
 
-/* ═══ جسم الوجه الأمامي ═══ */
+/* ═══ جسم الوجه الأمامي (مضغوط ليناسب QR داخل البطاقة) ═══ */
 .idcard .front-body {
-  position: absolute; top: 18.5mm; right: 3.2mm; left: 3.2mm; bottom: 5.6mm;
-  display: flex; flex-direction: column; align-items: center;
-  gap: 1.15mm; text-align: center;
+  position: absolute; top: 20mm; right: 3.2mm; left: 3.2mm; bottom: 5.6mm;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: .8mm; text-align: center; overflow: hidden;
 }
 .photo-ring {
-  width: 21.5mm; height: 21.5mm; border-radius: 50%; flex: none;
-  padding: .8mm; margin-top: .8mm;
+  width: 18.5mm; height: 18.5mm; border-radius: 50%; flex: none;
+  padding: .7mm; margin-top: .4mm;
   background: conic-gradient(from 210deg, #C9A961, #F3DFA8 25%, #0FB5A6 55%, #38BDF8 75%, #C9A961 100%);
   box-shadow: 0 1.2mm 3mm rgba(10,37,64,.28);
   print-color-adjust: exact; -webkit-print-color-adjust: exact;
@@ -111,23 +112,23 @@
   width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
   border: .55mm solid #fff; background: #e8e8e8; display: block;
 }
-.name-block { min-height: 8.2mm; display: flex; flex-direction: column; justify-content: center; gap: .3mm; }
+.name-block { min-height: 7mm; display: flex; flex-direction: column; justify-content: center; gap: .2mm; max-width: 100%; }
 .field-val-ar {
-  font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 4mm; color: var(--navy);
+  font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 3.6mm; color: var(--navy);
   line-height: 1.28; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
-.field-val-ar.full { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 3.7mm; line-height: 1.32; }
+.field-val-ar.full { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 3.3mm; line-height: 1.3; }
 .field-val-en {
-  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 2.15mm; color: #475569;
-  letter-spacing: .28mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-transform: uppercase;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 2mm; color: #475569;
+  letter-spacing: .24mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase; max-width: 100%;
 }
 /* شارات المنصب والقسم */
-.pill-row { display: flex; gap: 1.2mm; justify-content: center; align-items: center; flex-wrap: nowrap; max-width: 100%; }
+.pill-row { display: flex; gap: 1mm; justify-content: center; align-items: center; flex-wrap: nowrap; max-width: 100%; flex: none; }
 .pill {
-  display: inline-block; border-radius: 2.4mm; padding: .75mm 2.6mm;
-  font-size: 2.35mm; font-weight: 800; line-height: 1.35; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-width: 24mm;
+  display: inline-block; border-radius: 2.4mm; padding: .6mm 2.2mm;
+  font-size: 2.1mm; font-weight: 800; line-height: 1.3; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 23mm;
   print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
 .pill.pos {
@@ -144,16 +145,16 @@
 }
 /* رقم الموظف */
 .empchip {
-  display: inline-flex; align-items: center; gap: 1.6mm;
-  border-radius: 2mm; padding: .7mm 2.4mm;
+  display: inline-flex; align-items: center; gap: 1.4mm; flex: none;
+  border-radius: 2mm; padding: .55mm 2.2mm;
   background: linear-gradient(120deg, #061627, #16307E 70%, #4338CA);
   print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.empchip .lbl { font-size: 1.9mm; font-weight: 700; color: #F3DFA8; letter-spacing: .1mm; }
-.emp-no { font-family: 'Courier New', monospace; font-size: 3.2mm; font-weight: 700; letter-spacing: .55mm; color: #fff; direction: ltr; }
-/* QR */
+.empchip .lbl { font-size: 1.8mm; font-weight: 700; color: #F3DFA8; letter-spacing: .1mm; }
+.emp-no { font-family: 'Courier New', monospace; font-size: 2.9mm; font-weight: 700; letter-spacing: .5mm; color: #fff; direction: ltr; }
+/* QR بهوية الشعار + بيانات الموظف (مثبت داخل البطاقة — لا ينزل تحت) */
 .qrbox {
-  width: 15.5mm; margin-top: .4mm; background: #fff; border-radius: 1.8mm; padding: 1mm 1mm .55mm;
+  width: 15mm; margin-top: 0; flex: none; background: #fff; border-radius: 1.8mm; padding: .8mm .8mm .45mm;
   border: .38mm solid transparent;
   background:
     linear-gradient(#fff, #fff) padding-box,
@@ -161,8 +162,17 @@
   box-shadow: 0 .8mm 2.2mm rgba(10,37,64,.18);
   print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.qrbox img { width: 100%; height: auto; display: block; }
-.qrbox .qrcap { font-size: 1.55mm; font-weight: 700; color: #0B8A7F; letter-spacing: .06mm; margin-top: .3mm; }
+.qrbox .qr-wrap { position: relative; width: 100%; background: #fff; }
+.qrbox .qr-wrap img.qr { width: 100%; height: auto; display: block; image-rendering: pixelated; }
+.qrbox .qr-wrap .qr-logo {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 4.2mm; height: 4.2mm; object-fit: contain; background: #fff;
+  border-radius: 50%; padding: .6mm;
+  border: .35mm solid #C9A961;
+  box-shadow: 0 .4mm 1.2mm rgba(10,37,64,.35);
+}
+.qrbox .qrcap { font-size: 1.45mm; font-weight: 700; color: #0B8A7F; letter-spacing: .06mm; margin-top: .25mm; }
+.qrbox .qr-emp { font-size: 1.5mm; font-weight: 900; color: #0A2540; letter-spacing: .1mm; margin-top: .1mm; direction: ltr; font-family: 'Courier New', monospace; }
 
 /* ═══ جسم الوجه الخلفي ═══ */
 .idcard .back-body {

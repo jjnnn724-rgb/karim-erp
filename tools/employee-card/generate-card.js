@@ -80,6 +80,8 @@ async function main() {
   const qrs = process.env.EMPLOYEE_QR_SECRET || process.env.JWT_SECRET || '';
   const payload = { eid: String(card.employee.employeeId), cid: card.employee.cardId, v: card.qrPayload.qrVersion, t: card.qrPayload.token };
   const sig = crypto.createHmac('sha256', qrs).update(`${payload.eid}|${payload.cid}|${payload.v}|${payload.t}`, 'utf8').digest('hex');
+  // توقيع مختصر مربوط بمعرف البطاقة فقط — يجب أن يطابق السيرفر (/card/v/:code)
+  const shortSig = crypto.createHmac('sha256', qrs).update(String(payload.cid), 'utf8').digest('hex').slice(0, 16);
   // رابط التحقق: جدول الإعدادات أولًا (تحكم الواجهة) ثم البيئة ثم الافتراضي
   let base = process.env.CARD_VERIFY_BASE || '';
   try {
@@ -91,8 +93,11 @@ async function main() {
   } catch (_) {}
   if (!base) base = 'https://192.168.1.165:5000';
   base = base.replace(/\/$/, '');
-  const verifyUrl = `${base}/api/hr/card/verify?d=${Buffer.from(JSON.stringify(payload)).toString('base64url')}&s=${sig}`;
-  const qr = await QRCode.toDataURL(verifyUrl, { width: 220, margin: 1 });
+  const verifyUrl = `${base}/api/hr/card/v/${payload.cid}.${shortSig}`;
+  // رابط مختصر (~70 حرف بدل ~300): نفس الأمان (HMAC مقتطع 16 hex = 64-bit)
+  // والتحقق الكامل يتم server-side من قاعدة البيانات — QR خفيف يمسح فورًا.
+  // مستوى M + هامش 2: وحدات كبيرة وواضحة للكاميرا حتى مع شعار المنتصف.
+  const qr = await QRCode.toDataURL(verifyUrl, { width: 320, margin: 2, errorCorrectionLevel: 'M' });
   let photo = arg('photo', '');
   if (!photo && emp.photo) {
     if (emp.photo.startsWith('data:')) photo = emp.photo;
@@ -192,7 +197,9 @@ async function main() {
 <g opacity="0.12">${guilloche()}</g>
 <rect width="204" height="62" fill="url(#band)"/>
 <circle cx="30" cy="6" r="26" fill="#0FB5A6" opacity=".38"/><circle cx="176" cy="34" r="16" fill="#FFB020" opacity=".45"/><circle cx="120" cy="2" r="11" fill="#C9A961" opacity=".5"/>
-<text x="12" y="26" fill="#fff" font-size="13" font-weight="bold" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
+<circle cx="178" cy="26" r="17" fill="#fff" stroke="#C9A961" stroke-width="2"/>
+<image href="${logoUri}" x="165" y="13" width="26" height="26" preserveAspectRatio="xMidYMid meet"/>
+<text x="12" y="26" fill="#fff" font-size="12" font-weight="bold" font-family="Cairo,Arial" textLength="140" lengthAdjust="spacingAndGlyphs">مطاعم الشرفه العالمي</text>
 <text x="12" y="40" fill="#E8D5A3" font-size="8" font-family="Inter,Arial">AL SHORFA RESTAURANTS</text>
 <rect x="0" y="0" width="11" height="322" fill="url(#accent)" opacity="0.9"/>
 <text x="192" y="120" text-anchor="end" font-size="15" font-weight="bold" fill="#0A2540" font-family="Cairo,Arial">${escH(emp.name || '')}</text>
@@ -202,8 +209,11 @@ async function main() {
 <rect x="120" y="162" width="76" height="12" rx="6" fill="#16307E"/>
 <rect x="55" y="182" width="94" height="64" fill="#e8e8e8" stroke="url(#accent)" stroke-width="2"/>
 <image href="${photoUri}" x="55" y="182" width="94" height="64" preserveAspectRatio="xMidYMid slice"/>
-<image href="${qr}" x="74" y="252" width="56" height="56"/>
-<rect x="74" y="252" width="56" height="56" fill="none" stroke="url(#accent)" stroke-width="1.5"/>
+<rect x="70" y="250" width="64" height="64" fill="#fff" stroke="url(#accent)" stroke-width="1.5"/>
+<image href="${qr}" x="70" y="250" width="64" height="64"/>
+<circle cx="102" cy="282" r="10" fill="#fff" stroke="#C9A961" stroke-width="1.5"/>
+<image href="${logoUri}" x="94.5" y="274.5" width="15" height="15" preserveAspectRatio="xMidYMid meet"/>
+<text x="102" y="322" text-anchor="middle" font-size="6" font-weight="bold" fill="#0A2540" font-family="Courier New,monospace" letter-spacing="1">${empNo} • ${escH(nameEn).slice(0, 20)}</text>
 <rect x="0" y="0" width="204" height="322" rx="12" fill="none" stroke="#C9A961" stroke-width="1.2" opacity="0.65"/>
 <rect x="0" y="306" width="204" height="16" fill="url(#band)"/>
 <text x="102" y="316" text-anchor="middle" font-size="4.5" letter-spacing="1.5" fill="#ffffffcc" font-family="Inter,Arial">AL SHORFA RESTAURANTS • KARIM ERP • ${docNo} •</text>

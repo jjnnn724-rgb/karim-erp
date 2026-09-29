@@ -32,13 +32,14 @@
     "restore": "node database/scripts/restore.js",
     "build": "node build/build.js",
     "zatca-worker": "node backend/cashier-module/zatca-worker.js",
+    "attendance-push-worker": "node backend/attendance-push/worker.js",
     "print-worker": "node backend/cashier-module/print-worker.js",
     "migrate:pos": "node database/scripts/run-migration.js database/migrations/003_cashier_module.sql",
     "test": "node scripts/test.js jest",
     "test:lint": "npx eslint . --ext .js,.mjs",
     "test:format": "npx prettier --check . --ignore-path .prettierignore",
-    "test:type": "npx tsc --noEmit",
-    "test:all": "npm run test:lint && npm run test:format && npm run test",
+    "test:type": "npm run typecheck && npm run typecheck:strict",
+    "test:all": "npm run test:lint && npm run test:type && npm run test",
     "smoke": "node scripts/test.js smoke",
     "integration": "node scripts/test.js integration",
     "workflow": "node scripts/test.js workflow",
@@ -67,7 +68,9 @@
     "karimabdelhamed20177:doctor": "node scripts/karimabdelhamed20177.js --doctor",
     "doctor:machine": "node scripts/deploy-machine.mjs --doctor",
     "setup:machine": "node scripts/deploy-machine.mjs",
-    "client:package": "node scripts/make-client-package.js"
+    "client:package": "node scripts/make-client-package.js",
+    "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",

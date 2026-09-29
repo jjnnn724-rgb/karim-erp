@@ -508,6 +508,20 @@ app.use('/api/notifications', (req, res, next) => { req.io = io; next(); }, noti
 // أجهزة البصمة + ربط الموظفين + بصمات بوابة الموظف
 app.use('/api/zkteco', (req, res, next) => { req.io = io; req.app.locals.attendanceEngine = attendanceEngine; next(); }, zktecoRouter);
 
+// ─── Attendance PUSH channel (Face/Hikvision → queue → unified engine) ───
+// معزول ومحمي: أي فشل هنا لا يسقط السيرفر (نفس discipline مثل whatsapp-engine).
+// POST /api/v1/attendance/push (Bearer per-device, 202 fast) — يعمل حتى بدون Redis عبر SQL mirror.
+let attendancePush = null;
+try {
+    attendancePush = require('./attendance-push');
+    app.use('/api/v1/attendance', (req, res, next) => { req.io = io; next(); }, attendancePush.router);
+    attendancePush.ensureAttendancePushSchema()
+        .then(() => attendancePush.startEmbeddedPoller(io))
+        .catch((error) => logger.error('[ATTENDANCE_PUSH_SCHEMA] init skipped (non-fatal):', error.message));
+} catch (e) {
+    logger.error('[ATTENDANCE_PUSH] module failed to load — push channel disabled, core still running:', e.message);
+}
+
 // ─── Yarasoft POS invoice import (inside the ERP process) ───
 // استيراد فواتير نقاط البيع من مشاركة الشبكة — قراءة فقط من Yarasoft
 app.use('/api/yarasoft', (req, res, next) => { req.io = io; req.app.locals.yarasoftEngine = yarasoftEngine; next(); }, yarasoftRouter);

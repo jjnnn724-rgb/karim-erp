@@ -83,7 +83,11 @@
         </div>
         <div class="empchip"><span class="lbl">رقم الموظف</span><span class="emp-no">{{EMP_NO}}</span></div>
         <div class="qrbox">
-          <img src="{{QR}}" alt="qr">
+          <div class="qr-wrap">
+            <img class="qr" src="{{QR}}" alt="qr">
+            <img class="qr-logo" src="{{LOGO}}" alt="الشرفه">
+          </div>
+          <div class="qr-emp">{{EMP_NO}}</div>
           <div class="qrcap">امسح للتحقق الفوري ✓</div>
         </div>
       </div>
