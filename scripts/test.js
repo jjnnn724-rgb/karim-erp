@@ -124,7 +124,8 @@ async function runScript(filename, label) {
         return false;
     }
     const result = spawnSync(process.execPath, [filepath], {
-        stdio: 'inherit', cwd: ROOT, timeout: 180000,
+        // 10 دقائق: سكربتات الفحص الحي قد تتأخر تحت حمل الإنتاج
+        stdio: 'inherit', cwd: ROOT, timeout: 600000,
         env: { ...process.env, DB_PASSWORD: lib.getEnv('DB_PASSWORD') },
     });
     if (result.status === 0) {

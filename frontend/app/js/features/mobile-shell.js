@@ -154,6 +154,100 @@ function injectPunchCard() {
     if (btn && !btn.disabled) {btn.addEventListener('click', mobileDoPunch);}
 }
 
+// ─── بصمة الوجه (L5): مُحمّل كسول + كاميرا داخل نافذة منبثقة ─────────────────
+
+let _faceApiPromise = null;
+function loadFaceApiLib() {
+    if (window.faceapi) {return Promise.resolve(window.faceapi);}
+    if (_faceApiPromise) {return _faceApiPromise;}
+    _faceApiPromise = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = '/app/vendor/face-api.js';
+        sc.onload = async () => {
+            try {
+                const fapi = window.faceapi;
+                await fapi.tf.setBackend('webgl').catch(() => fapi.tf.setBackend('cpu'));
+                await fapi.tf.ready();
+                const uri = '/app/vendor/face-models';
+                await Promise.all([
+                    fapi.nets.tinyFaceDetector.loadFromUri(uri),
+                    fapi.nets.faceLandmark68Net.loadFromUri(uri),
+                    fapi.nets.faceRecognitionNet.loadFromUri(uri),
+                ]);
+                resolve(fapi);
+            } catch (e) { reject(e); }
+        };
+        sc.onerror = () => reject(new Error('تعذر تحميل مكتبة التعرف على الوجه'));
+        document.head.appendChild(sc);
+    });
+    return _faceApiPromise;
+}
+
+/**
+ * يفتح الكاميرا ويحلل الوجه حتى ثباته ثم يرجع descriptor (128 رقمًا).
+ * الحلقة: كشف كل 700م — يتطلب كشفين متتاليين بثقة مقبولة قبل التمكين.
+ */
+async function openFaceCameraAndGetDescriptor(title) {
+    await loadFaceApiLib();
+    return new Promise((resolve, reject) => {
+        window.showModal(`
+            <h3 style="margin-top:0"><i class=ji data-i="user"></i> ${title}</h3>
+            <video id="faceVideo" autoplay playsinline muted
+                   style="width:100%;max-width:420px;border-radius:14px;background:#000;transform:scaleX(-1)"></video>
+            <div id="faceMsg" class="u-t14" style="margin:10px 0;color:var(--text2)">جارٍ تهيئة الكاميرا والنماذج…</div>
+            <button type="button" id="faceConfirm" class="btn btn-gold" style="width:100%" disabled>أكّد البصمة</button>
+            <button type="button" class="btn btn-sm" style="width:100%;margin-top:8px" onclick="window.__faceCancel()">إلغاء</button>
+        `);
+        let stream = null;
+        let stopped = false;
+        const cleanup = () => {
+            stopped = true;
+            try { stream?.getTracks().forEach((t) => t.stop()); } catch (_) {}
+        };
+        window.__faceCancel = () => { cleanup(); window.closeModal(); reject(new Error('FACE_CANCELLED')); };
+        (async () => {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: 640, height: 480 },
+            });
+            const video = document.getElementById('faceVideo');
+            if (!video) {cleanup(); return;}
+            video.srcObject = stream;
+            await video.play().catch(() => {});
+            const msg = document.getElementById('faceMsg');
+            const confirmBtn = document.getElementById('faceConfirm');
+            const opts = new window.faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+            let stable = 0;
+            const loop = async () => {
+                if (stopped) {return;}
+                try {
+                    const det = await window.faceapi
+                        .detectSingleFace(video, opts).withFaceLandmarks().withFaceDescriptor();
+                    if (det && det.detection.score > 0.5) {
+                        stable++;
+                        msg.textContent = stable >= 2
+                            ? '✅ تم التعرف على الوجه — اضغط تأكيد'
+                            : 'ثبّت نظرة للكاميرا…';
+                        if (stable >= 2 && confirmBtn.disabled) {
+                            confirmBtn.disabled = false;
+                            const descriptor = Array.from(det.descriptor);
+                            confirmBtn.onclick = () => {
+                                cleanup(); window.closeModal(); resolve(descriptor);
+                            };
+                        }
+                    } else {
+                        stable = 0;
+                        msg.textContent = 'أقرب وجهك للكاميرا في إضاءة جيدة…';
+                    }
+                } catch (e) {
+                    msg.textContent = 'خطأ في التحليل: ' + e.message;
+                }
+                if (!stopped) {setTimeout(loop, 700);}
+            };
+            loop();
+        })().catch((e) => { cleanup(); window.closeModal(); reject(e); });
+    });
+}
+
 async function mobileDoPunch(intent) {
     if (_punchBusy) {return;}
     const btn = document.getElementById('punchBtn');
@@ -169,6 +263,7 @@ async function mobileDoPunch(intent) {
         setResult('err', 'لا يوجد اتصال بالشبكة — اتصل بشبكة المطعم وأعد المحاولة');
         return;
     }
+    await refreshPunchStatus().catch(() => {}); // حالة حية (مفعّل؟ وجه مسجل؟)
     // لو عطّلت الإدارة الجيوفانس فلا يُشترط الموقع (L1 الشبكة تبقى إلزامية بالسيرفر)
     const geofenceOn = _punchStatus ? Boolean(_punchStatus.geofence) : true;
     if (!navigator.geolocation && geofenceOn) {
@@ -187,13 +282,14 @@ async function mobileDoPunch(intent) {
         }
     };
 
-    const sendPunch = async (locPayload) => {
+    const sendPunch = async (locPayload, faceDescriptor) => {
         try {
             const payload = {
                 deviceId: mobileDeviceId(),
                 intent: intent || null, // نيّة الزر (in/out) — المحرك الذكي يقرر
                 location: locPayload,
             };
+            if (faceDescriptor) {payload.faceDescriptor = faceDescriptor;}
             const res = await window.apiFetch('/attendance/portal/punch', {
                 method: 'POST',
                 body: JSON.stringify(payload),
@@ -232,8 +328,26 @@ async function mobileDoPunch(intent) {
         if (window.toast) {window.toast(msgs[err?.code] || 'تعذر تحديد الموقع', 'error');}
     };
 
+    // L5: إن كان الوجه مفعّلًا — الكاميرا أولًا ثم الموقع ثم الإرسال
+    let descriptor = null;
+    if (_punchStatus?.faceEnabled) {
+        if (_punchStatus.faceEnrolled === false) {
+            setResult('err', 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية');
+            finish();
+            return;
+        }
+        btn.textContent = 'افتح الكاميرا وانظر للأسفل…';
+        try {
+            descriptor = await openFaceCameraAndGetDescriptor('تأكيد البصمة بالوجه');
+        } catch (e) {
+            finish();
+            if (e.message !== 'FACE_CANCELLED') {setResult('err', e.message);}
+            return;
+        }
+    }
+
     if (!geofenceOn) {
-        await sendPunch(null); // الجيوفانس معطل إداريًا — L1 الشبكة يحمي السيرفر
+        await sendPunch(null, descriptor); // الجيوفانس معطل إداريًا — L1 الشبكة يحمي السيرفر
         return;
     }
     navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -244,7 +358,7 @@ async function mobileDoPunch(intent) {
             accuracy: pos.coords.accuracy,
             fixAgeS,
             mocked: false,
-        });
+        }, descriptor);
     }, geolocationError, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
 }
 
@@ -319,4 +433,6 @@ export {
     mobileDeviceId,
     renderMobileNav,
     refreshPunchStatus,
+    loadFaceApiLib,
+    openFaceCameraAndGetDescriptor,
 };

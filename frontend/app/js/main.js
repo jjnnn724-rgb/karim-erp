@@ -125,7 +125,7 @@ Object.assign(window, departments); // BRIDGE-018
 const reports = await import('./features/reports.js?v=4.7.139');
 Object.assign(window, reports);     // BRIDGE-019
 
-const settingsUsers = await import('./features/settings-users.js?v=4.7.187');
+const settingsUsers = await import('./features/settings-users.js?v=4.7.191');
 Object.assign(window, settingsUsers); // BRIDGE-020
 
 const permissions = await import('./features/permissions.js?v=4.7.186');
@@ -147,7 +147,7 @@ const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
 Object.assign(window, pageRouterNS);  // BRIDGE-027
 
 // BRIDGE-029: mobile shell — تجربة الجوال + البصمة الذاتية (SPEC-employee-pwa-attendance-geofence-v1)
-const mobileShell = await import('./features/mobile-shell.js?v=4.7.183');
+const mobileShell = await import('./features/mobile-shell.js?v=4.7.191');
 Object.assign(window, mobileShell);
 
 const employees = await import('./features/employees.js?v=4.7.175');

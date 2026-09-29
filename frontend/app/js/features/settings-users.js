@@ -717,6 +717,7 @@ _punchAdminState.attempts = aRes.attempts||[];
 _punchAdminState.summary = aRes.summary||null;
 body.innerHTML = renderPunchAdminHTML();
 loadPunchAttemptsTable();
+renderPunchFacesList();
 }catch(e){ body.innerHTML = `<div class="mcard u-empty">تعذر تحميل لوحة البصمة: ${esc(e.message)}</div>`; }
 }
 
@@ -758,6 +759,20 @@ return `
 <button class="btn btn-gold" onclick="savePunchSettings()"><i class=ji data-i=save></i> حفظ الإعدادات (ينعكس فورًا)</button>
 ${(!hasCoords&&geoOn)?'<span class="u-red">⚠ الجيوفانس مفعّل بلا إحداثيات — البصمة ستُرفض! التقط الموقع أو أطفئ الجيوفانس.</span>':''}
 ${portalOn?'<span style="color:#2ecc71;font-weight:700">● الميزة مفعّلة الآن — الموظفون يبصمون</span>':'<span class="text-muted">● الميزة مغلقة — الموظفون لا يرون زر البصمة</span>'}
+</div>
+<div class="tbl-wrap" style="margin-top:18px;border-color:var(--gold)">
+<div class="tbl-hd"><h3><i class=ji data-i=user></i> تسجيل بصمة الوجه</h3></div>
+<div style="padding:16px 24px">
+<div id="punchFacesList" style="margin-bottom:12px"></div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<select id="punchFaceUser" style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);max-width:280px">
+<option value="">— اختر الموظف —</option>
+${(STATE.employees||[]).filter(e=>e.userId).map(e=>`<option value="${e.userId}">${esc(e.name)} (${esc(e.employeeId||"")})</option>`).join("")}
+</select>
+<button class="btn btn-gold btn-sm" onclick="enrollPunchFace()"><i class=ji data-i=camera></i> تسجيل الوجه بالكاميرا</button>
+</div>
+<small class="text-muted" style="display:block;margin-top:8px">يُحسب متجه الوجه من كاميرا حية ويُخزن كأرقام فقط — لا تُحفظ أي صورة. الوجه المقيد جغرافيًا مثل بقية البصمة.</small>
+</div>
 </div>
 <div class="tbl-wrap" style="margin-top:18px">
 <div class="tbl-hd"><h3><i class=ji data-i=activity></i> سجل محاولات البصمة</h3>
@@ -860,4 +875,42 @@ await loadPunchSettingsUI();
 }catch(e){ toast(e.message||'فشل الحفظ','error'); }
 }
 
-export { renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };
+function renderPunchFacesList(){
+const box = document.getElementById('punchFacesList');
+if(!box){return;}
+box.innerHTML = window.__punchFaces?.length
+? window.__punchFaces.map(f=>`<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px">
+<span><b>${esc(f.name||f.username||('موظف '+f.user_id))}</b> <small class="text-muted">سُجل ${esc(String(f.enrolled_at||'').slice(0,10))}</small></span>
+<button class="btn btn-red btn-sm" onclick="removePunchFace(${f.user_id})"><i class=ji data-i=trash></i> إزالة</button>
+</div>`).join('')
+: '<small class="text-muted">لا وجوه مسجلة بعد</small>';
+}
+
+async function refreshPunchFaces(){
+try{ const r = await apiFetch('/attendance/portal/face/list'); window.__punchFaces = r.faces||[]; }
+catch(_){ window.__punchFaces = []; }
+renderPunchFacesList();
+}
+
+async function enrollPunchFace(){
+const userId = Number(document.getElementById('punchFaceUser')?.value);
+if(!userId){ toast('اختر الموظف أولًا','error'); return; }
+try{
+toast('جارٍ فتح الكاميرا — انظر للأسفل بثبات…','info');
+const descriptor = await window.openFaceCameraAndGetDescriptor('تسجيل وجه: ' + (STATE.employees.find(e=>e.userId===userId)?.name||''));
+await apiFetch('/attendance/portal/face/enroll', { method:'POST', body: JSON.stringify({ targetUserId: userId, descriptor }) });
+toast('تم تسجيل الوجه بنجاح','success');
+await refreshPunchFaces();
+}catch(e){ if(e.message!=='FACE_CANCELLED'){ toast(e.message||'فشل التسجيل','error'); } }
+}
+
+async function removePunchFace(userId){
+if(!confirm('إزالة قالب الوجه لهذا الموظف؟')){return;}
+try{
+await apiFetch('/attendance/portal/face/enroll/'+userId, { method:'DELETE' });
+toast('تمت الإزالة','success');
+await refreshPunchFaces();
+}catch(e){ toast(e.message||'فشل','error'); }
+}
+
+export { enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };

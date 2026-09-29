@@ -90,6 +90,8 @@ function resolvePunchSettings(rows = [], env = {}) {
         radiusMeters: num(kv.punch_radius_meters, 120),
         maxAccuracyM: num(kv.punch_max_accuracy_m, 50),
         maxFixAgeS: num(kv.punch_max_fix_age_s, 30),
+        faceEnabled: bool(kv.punch_face_enabled, false),
+        faceThreshold: num(kv.punch_face_threshold, 0.55),
         lat: coordsSet ? lat : null,
         lng: coordsSet ? lng : null,
     };
@@ -176,9 +178,49 @@ function evaluatePunch(settings, req) {
     return { decision: 'accepted', details };
 }
 
+// ─── التعرف على الوجه (L5) — مطابقة متجهات بدون صور ────────────────────────
+
+const FACE_DESCRIPTOR_LEN = 128;
+
+/** تحقق صارم من متجه الوجه: 128 رقمًا محدودًا — يُرفض أي شيء آخر */
+function isValidFaceDescriptor(d) {
+    return Array.isArray(d) && d.length === FACE_DESCRIPTOR_LEN
+        && d.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 20);
+}
+
+/** المسافة الإقليدية بين متجهين — مقياس مطابقة face_recognition القياسي */
+function faceDistance(a, b) {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+        const d = a[i] - b[i];
+        sum += d * d;
+    }
+    return Math.sqrt(sum);
+}
+
+/**
+ * حكم مطابقة الوجه: المسافة ≤ العتبة = نفس الشخص.
+ * العتبة 0.55 هي القيمة الموصى بها لمكتبة face_recognition (أقل = أشد).
+ */
+function evaluateFaceMatch(candidate, stored, threshold) {
+    if (!isValidFaceDescriptor(candidate)) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_INVALID' };
+    }
+    if (!isValidFaceDescriptor(stored)) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_NOT_ENROLLED' };
+    }
+    const distance = faceDistance(candidate, stored);
+    const thr = Number(threshold) > 0 ? Number(threshold) : 0.55;
+    return { ok: distance <= thr, distance: Math.round(distance * 10000) / 10000, threshold: thr };
+}
+
 module.exports = {
     haversineMeters,
     isInternalIp,
     resolvePunchSettings,
     evaluatePunch,
+    isValidFaceDescriptor,
+    faceDistance,
+    evaluateFaceMatch,
+    FACE_DESCRIPTOR_LEN,
 };

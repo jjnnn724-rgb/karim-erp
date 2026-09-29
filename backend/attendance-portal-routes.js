@@ -17,7 +17,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { evaluatePunch, resolvePunchSettings } = require('./punch-portal-logic');
+const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor } = require('./punch-portal-logic');
 
 const router = express.Router();
 
@@ -57,12 +57,13 @@ async function auditAttempt(entry) {
         await pool.query(
             `INSERT INTO punch_attempts
                 (user_id, username, employee_id, remote_ip, network_ok, has_location,
-                 accuracy_m, fix_age_s, distance_m, radius_m, device_id, decision, reject_code, engine_result)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+                 accuracy_m, fix_age_s, distance_m, radius_m, device_id, decision, reject_code, engine_result, face_distance)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
             [entry.userId, entry.username, entry.employeeId, entry.remoteIp, entry.networkOk,
                 entry.hasLocation, entry.accuracyM, entry.fixAgeS, entry.distanceM,
                 entry.radiusM, entry.deviceId, entry.decision, entry.rejectCode,
-                entry.engine_result ? JSON.stringify(entry.engine_result) : null]
+                entry.engine_result ? JSON.stringify(entry.engine_result) : null,
+                entry.faceDistance ?? null]
         );
     } catch (e) {
         logger.error('[punch-portal] فشل تدقيق المحاولة (لا يوقف الحكم):', e.message);
@@ -77,6 +78,9 @@ router.get('/status', jwtAuth, async (req, res, next) => {
         const employee = await getEmployeeForUser(req.user.id);
         const boundDevice = settings.deviceBinding && employee
             ? await getBoundDevice(req.user.id) : null;
+        const faceTemplate = settings.faceEnabled && employee
+            ? (await pool.query('SELECT 1 FROM punch_face_templates WHERE user_id = $1 AND active = TRUE', [req.user.id])).rows[0]
+            : null;
         res.json({
             ok: true,
             enabled: settings.portalEnabled,
@@ -87,6 +91,8 @@ router.get('/status', jwtAuth, async (req, res, next) => {
             employeeName: employee?.name || null,
             deviceBound: Boolean(boundDevice),
             mobileV2: process.env.MOBILE_UI_V2 !== 'false', // مفتاح واجهة الجوال (افتراضي: مفعّل)
+            faceEnabled: settings.faceEnabled === true,
+            faceEnrolled: Boolean(faceTemplate),
         });
     } catch (e) { next(e); }
 });
@@ -173,6 +179,31 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier'
             });
         }
 
+        // L5: التحقق من الوجه (إن فُعّل إداريًا) — مطابقة المتجه على السيرفر
+        let faceDistance = null;
+        if (settings.faceEnabled) {
+            const tpl = (await pool.query(
+                'SELECT descriptor FROM punch_face_templates WHERE user_id = $1 AND active = TRUE', [req.user.id]
+            )).rows[0];
+            if (!tpl) {
+                await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: 'PUNCH_FACE_NOT_ENROLLED' });
+                return res.status(403).json({ ok: false, error: 'PUNCH_FACE_NOT_ENROLLED', message: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيل الوجه' });
+            }
+            const candidate = req.body?.faceDescriptor;
+            const faceRes = evaluateFaceMatch(candidate, tpl.descriptor, settings.faceThreshold);
+            faceDistance = faceRes.distance ?? null;
+            if (!faceRes.ok) {
+                const code = faceRes.rejectCode || 'PUNCH_FACE_MISMATCH';
+                await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: code, faceDistance });
+                const messages = {
+                    PUNCH_FACE_INVALID: 'بيانات الوجه غير سليمة — أعد المحاولة أمام إضاءة جيدة',
+                    PUNCH_FACE_NOT_ENROLLED: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية',
+                    PUNCH_FACE_MISMATCH: 'الوجه غير مطابق لصاحب الحساب — البصمة مرفوضة',
+                };
+                return res.status(403).json({ ok: false, error: code, message: messages[code] || 'الوجه غير مطابق' });
+            }
+        }
+
         // L4: أول بصمة ناجحة تربط الجهاز
         if (settings.deviceBinding && deviceId) {
             const bound = await getBoundDevice(req.user.id);
@@ -224,6 +255,7 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier'
         await auditAttempt({
             ...auditBase,
             decision: 'accepted',
+            faceDistance,
             engine_result: { action: result.action, decision: result.decision },
         });
 
@@ -250,6 +282,8 @@ const PUNCH_SETTING_KEYS = {
     punch_radius_meters:    { type: 'int', min: 50, max: 500 },
     punch_max_accuracy_m:   { type: 'int', min: 10, max: 200 },
     punch_max_fix_age_s:    { type: 'int', min: 5, max: 120 },
+    punch_face_enabled:     { type: 'bool' },
+    punch_face_threshold:   { type: 'float', min: 0.3, max: 0.9 },
     punch_restaurant_lat:   { type: 'float', min: -90, max: 90, nullable: true },
     punch_restaurant_lng:   { type: 'float', min: -180, max: 180, nullable: true },
 };
@@ -344,6 +378,52 @@ router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, ne
              FROM punch_attempts`
         )).rows[0];
         res.json({ ok: true, attempts: rows, summary });
+    } catch (e) { next(e); }
+});
+
+// ─── تسجيل/إزالة قالب الوجه (L5) — admin/hr فقط ─────────────────────────────
+
+// تسجيل وجه موظف: descriptor من 128 قيمة يُحسب في المتصفح من كاميرا حية —
+// لا صور تُرفع ولا تُخزن (الخصوصية §5.5). التسجيل الجديد يُبطل القالب القديم.
+router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const { targetUserId, descriptor } = req.body || {};
+        if (!targetUserId) {return res.status(422).json({ ok: false, error: 'TARGET_REQUIRED', message: 'حدد الموظف المستهدف' });}
+        if (!isValidFaceDescriptor(descriptor)) {
+            return res.status(422).json({ ok: false, error: 'FACE_DESCRIPTOR_INVALID', message: 'بيانات الوجه غير سليمة — أعد التسجيل أمام إضاءة جيدة' });
+        }
+        const user = (await pool.query('SELECT id, username, name, active FROM users WHERE id = $1', [targetUserId])).rows[0];
+        if (!user || !user.active) {return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND', message: 'الحساب غير موجود أو غير نشط' });}
+        await pool.query('UPDATE punch_face_templates SET active = FALSE WHERE user_id = $1 AND active = TRUE', [targetUserId]);
+        const ins = await pool.query(
+            `INSERT INTO punch_face_templates (user_id, descriptor, enrolled_by) VALUES ($1, $2, $3) RETURNING id, enrolled_at`,
+            [targetUserId, JSON.stringify(descriptor), req.user.username || req.user.name || null]
+        );
+        logger.info('[punch-portal] face enrolled', { userId: targetUserId, by: req.user.username });
+        res.json({ ok: true, id: ins.rows[0].id, enrolledAt: ins.rows[0].enrolled_at, user: { id: user.id, name: user.name } });
+    } catch (e) { next(e); }
+});
+
+// إزالة قالب وجه موظف
+router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const r = await pool.query(
+            'UPDATE punch_face_templates SET active = FALSE WHERE user_id = $1 AND active = TRUE RETURNING id',
+            [Number(req.params.userId)]
+        );
+        res.json({ ok: true, removed: r.rows.length });
+    } catch (e) { next(e); }
+});
+
+// قائمة الوجوه المسجلة (admin/hr) — للوحة الإدارة
+router.get('/face/list', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT t.user_id, u.username, u.name, t.enrolled_at, t.enrolled_by, t.active
+             FROM punch_face_templates t LEFT JOIN users u ON u.id = t.user_id
+             WHERE t.active = TRUE ORDER BY t.enrolled_at DESC`
+        );
+        res.json({ ok: true, faces: rows });
     } catch (e) { next(e); }
 });
 
