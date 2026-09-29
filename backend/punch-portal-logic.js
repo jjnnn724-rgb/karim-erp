@@ -9,9 +9,12 @@
  *   0. PUNCH_PORTAL_DISABLED   الميزة مغلقة بالمفتاح المركزي
  *   1. PUNCH_OUT_OF_NETWORK    الطلب ليس من شبكة داخلية (L1 — لا تُتخطى أبدًا)
  *   2. PUNCH_LOCATION_REQUIRED لا ترويسات موقع (L2 مفعّلة)
+ *   2ب. PUNCH_LOCATION_WEAK    قراءات غير كافية (multi-fix إلزامي)
+ *   2ج. PUNCH_LOCATION_FROZEN  إحداثيات مجمّدة أو انتقال مستحيل (تزوير)
  *   3. PUNCH_LOCATION_MOCKED   مؤشر موقع مزيف (L3)
- *   4. PUNCH_LOCATION_WEAK     دقة مريبة / إحداثيات قديمة (L3)
+ *   4. PUNCH_LOCATION_WEAK     دقة مريبة / إحداثيات قديمة / تشتت (L3)
  *   5. PUNCH_OUT_OF_RANGE      خارج نطاق المطعم (L2)
+ *   5ب. PUNCH_LOCATION_AMBIGUOUS منطقة الغموض في الوضع الصارم
  *   6. PUNCH_DEVICE_MISMATCH   جهاز غير مربوط بالحساب (L4)
  *   → accepted
  */
@@ -92,6 +95,10 @@ function resolvePunchSettings(rows = [], env = {}) {
         maxFixAgeS: num(kv.punch_max_fix_age_s, 30),
         faceEnabled: bool(kv.punch_face_enabled, false),
         faceThreshold: num(kv.punch_face_threshold, 0.55),
+        // تحصين الموقع: قراءات متعددة + نطاق صارم + قفل المحاولات المرفوضة
+        multiFixRequired: bool(kv.punch_multi_fix_required, true),
+        strictGeofence: bool(kv.punch_strict_geofence, false),
+        maxRejects10m: num(kv.punch_max_rejects_10m, 5),
         lat: coordsSet ? lat : null,
         lng: coordsSet ? lng : null,
     };
@@ -127,8 +134,10 @@ function evaluatePunch(settings, req) {
         return { decision: 'rejected', rejectCode: 'PUNCH_OUT_OF_NETWORK', details };
     }
 
-    const loc = req.location || null;
-    details.hasLocation = Boolean(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng));
+    // تحصين الموقع: تطبيع الإصلاحات (متعددة أو أحادية للتوافق القديم)
+    const fixes = normalizeFixes(req.location);
+    details.hasLocation = fixes.length > 0;
+    details.fixCount = fixes.length;
 
     // 2-5. الطبقات الجغرافية — تعمل فقط إذا فُعّلت إداريًا (وقُطبت الإحداثيات)
     if (settings.geofenceEnabled) {
@@ -138,11 +147,33 @@ function evaluatePunch(settings, req) {
         if (!details.hasLocation) {
             return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_REQUIRED', details };
         }
-        details.accuracyM = Number(loc.accuracy);
-        details.fixAgeS = Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0;
+
+        // تحصين 1: قراءات متعددة إلزامية — القناع الواحد لا يثبت شيئًا
+        if (settings.multiFixRequired && fixes.length < 2) {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
+        }
+
+        // تحصين 2: جودة المجموعة من البيانات الخام (سيرفر لا عميل)
+        const quality = assessFixQuality(fixes);
+        details.spreadM = quality.spreadM;
+        details.maxSpeedKmh = quality.maxSpeedKmh;
+        if (quality.frozen) {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_FROZEN', details };
+        }
+        if (quality.maxSpeedKmh > MAX_FIX_SPEED_KMH) {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_FROZEN', details };
+        }
+        if (quality.spreadM > MAX_SESSION_SPREAD_M) {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
+        }
+
+        // أفضل إصلاح = الأدق بين القراءات
+        const best = quality.best;
+        details.accuracyM = best.accuracy;
+        details.fixAgeS = best.fixAgeS;
 
         // 3. مؤشر موقع مزيف: العميل يبلّغ صراحةً
-        if (loc.mocked === true) {
+        if (req.location?.mocked === true) {
             return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_MOCKED', details };
         }
 
@@ -158,10 +189,16 @@ function evaluatePunch(settings, req) {
             return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
         }
 
-        // 5. النطاق: المسافة من إحداثيات المطعم
-        details.distanceM = Math.round(haversineMeters(settings.lat, settings.lng, loc.lat, loc.lng) * 10) / 10;
+        // 5. النطاق: المسافة من إحداثيات المطعم (من أفضل إصلاح)
+        details.distanceM = Math.round(haversineMeters(settings.lat, settings.lng, best.lat, best.lng) * 10) / 10;
         if (details.distanceM > settings.radiusMeters) {
             return { decision: 'rejected', rejectCode: 'PUNCH_OUT_OF_RANGE', details };
+        }
+        // النطاق الصارم: منطقة الغموض (المسافة مقبولة لكن هامش الدقة يمتد
+        // خارج النطاق بمسافة كبيرة) تُرفض إذا فعّلت الإدارة الصرامة
+        if (settings.strictGeofence
+            && details.distanceM + details.accuracyM > settings.radiusMeters + 10) {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_AMBIGUOUS', details };
         }
     }
 
@@ -176,6 +213,61 @@ function evaluatePunch(settings, req) {
     }
 
     return { decision: 'accepted', details };
+}
+
+// ─── تحصين الموقع (multi-fix): كشف التجميد/الانتقال المستحيل/التشتت ─────────
+
+const MAX_FIX_SPEED_KMH = 300;   // انتقال أسرع من ذلك = تزوير
+const MAX_SESSION_SPREAD_M = 150; // تشتت القراءات داخل نفس الجلسة
+
+/** يحوّل موقع الطلب إلى قائمة إصلاحات موحدة (متعدد أو قديم أحادي) */
+function normalizeFixes(loc) {
+    if (Array.isArray(loc?.fixes) && loc.fixes.length) {
+        return loc.fixes
+            .map((f) => ({
+                lat: Number(f.lat),
+                lng: Number(f.lng),
+                accuracy: Number(f.accuracy),
+                fixAgeS: Number.isFinite(Number(f.fixAgeS)) ? Number(f.fixAgeS) : 0,
+            }))
+            .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng) && Math.abs(f.lat) <= 90 && Math.abs(f.lng) <= 180);
+    }
+    if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng))) {
+        return [{
+            lat: Number(loc.lat),
+            lng: Number(loc.lng),
+            accuracy: Number.isFinite(Number(loc.accuracy)) ? Number(loc.accuracy) : 999,
+            fixAgeS: Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0,
+        }];
+    }
+    return [];
+}
+
+/**
+ * فحوص جودة مجموعة الإصلاحات — كلها على السيرفر من البيانات الخام:
+ *   • تجميد: كل الإحداثيات متطابقة تمامًا (GPS الحقيقي يهتز دائمًا) → تزوير
+ *   • انتقال مستحيل: سرعة بين إصلاحين > 300 كم/س → تزوير
+ *   • تشتت: بعد بين أبعد إصلاحين > 150م داخل نفس الجلسة → قفزات
+ * يرجع { best, spreadM, maxSpeedKmh, frozen } أو { rejectCode }.
+ */
+function assessFixQuality(fixes) {
+    if (fixes.length < 2) {return { best: fixes[0], spreadM: 0, maxSpeedKmh: 0, frozen: false };}
+    const allSame = fixes.every((f) => f.lat === fixes[0].lat && f.lng === fixes[0].lng);
+    let spreadM = 0;
+    let maxSpeedKmh = 0;
+    for (let i = 0; i < fixes.length; i++) {
+        for (let j = i + 1; j < fixes.length; j++) {
+            const d = haversineMeters(fixes[i].lat, fixes[i].lng, fixes[j].lat, fixes[j].lng);
+            if (d > spreadM) {spreadM = d;}
+            const dtH = Math.abs(fixes[j].fixAgeS - fixes[i].fixAgeS) / 3600;
+            if (dtH > 0 && d > 0) {
+                const kmh = (d / 1000) / dtH;
+                if (kmh > maxSpeedKmh) {maxSpeedKmh = kmh;}
+            }
+        }
+    }
+    const best = fixes.reduce((a, b) => (b.accuracy < a.accuracy ? b : a), fixes[0]);
+    return { best, spreadM: Math.round(spreadM * 10) / 10, maxSpeedKmh: Math.round(maxSpeedKmh), frozen: allSame };
 }
 
 // ─── التعرف على الوجه (L5) — مطابقة متجهات بدون صور ────────────────────────
@@ -223,4 +315,8 @@ module.exports = {
     faceDistance,
     evaluateFaceMatch,
     FACE_DESCRIPTOR_LEN,
+    normalizeFixes,
+    assessFixQuality,
+    MAX_SESSION_SPREAD_M,
+    MAX_FIX_SPEED_KMH,
 };

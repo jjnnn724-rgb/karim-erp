@@ -108,16 +108,19 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier'
         const deviceId = String(req.headers['x-device-id'] || req.body?.deviceId || '').trim().slice(0, 80) || null;
 
         const loc = req.body?.location || null;
+        // الإصلاحات المتعددة تمر خامًا — السيرفر يحللها بنفسه (تجميد/انتقال/تشتت)
         const evaluateInput = {
             remoteIp,
             deviceId,
-            location: loc ? {
-                lat: Number(loc.lat),
-                lng: Number(loc.lng),
-                accuracy: Number(loc.accuracy),
-                fixAgeS: Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0,
-                mocked: loc.mocked === true,
-            } : null,
+            location: Array.isArray(loc?.fixes) && loc.fixes.length
+                ? { fixes: loc.fixes, mocked: loc.mocked === true }
+                : loc ? {
+                    lat: Number(loc.lat),
+                    lng: Number(loc.lng),
+                    accuracy: Number(loc.accuracy),
+                    fixAgeS: Number.isFinite(Number(loc.fixAgeS)) ? Number(loc.fixAgeS) : 0,
+                    mocked: loc.mocked === true,
+                } : null,
             boundDeviceId: null, // يُملأ بعد الربط أدناه
         };
 
@@ -144,6 +147,17 @@ router.post('/punch', jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier'
             radiusM: settings.radiusMeters,
             deviceId,
         };
+
+        // قفل مؤقت: موجة رفض متكررة = محاولة عبث — يُوقف ولا يُحاكي
+        if (settings.maxRejects10m > 0) {
+            const rejects = (await pool.query(
+                "SELECT COUNT(*)::int AS n FROM punch_attempts WHERE user_id = $1 AND decision = 'rejected' AND attempted_at > NOW() - INTERVAL '10 minutes'",
+                [req.user.id])).rows[0].n;
+            if (rejects >= settings.maxRejects10m) {
+                await auditAttempt({ user_id: req.user.id, username: req.user.username || null, decision: 'rejected', rejectCode: 'PUNCH_LOCKED', remoteIp });
+                return res.status(429).json({ ok: false, error: 'PUNCH_LOCKED', message: 'محاولات مرفوضة متكررة — البصمة مقفلة 10 دقائق' });
+            }
+        }
 
         // الأسباب البنيوية قبل لمس محرك الحضور
         if (verdict.rejectCode === 'PUNCH_PORTAL_DISABLED') {

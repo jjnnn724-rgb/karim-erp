@@ -29,11 +29,18 @@ const baseSettings = resolvePunchSettings([
 ]);
 
 const goodLocation = { lat: 24.7142, lng: 46.6760, accuracy: 12, fixAgeS: 2 };
+// التحصين الجديد يفرض قراءات متعددة — مولّد 3 إصلاحات مع اهتزاز طبيعي
+const fixesAt = (lat, lng, accuracy = 12) => [
+    { lat, lng, accuracy, fixAgeS: 1 },
+    { lat: lat + 0.00002, lng: lng - 0.00002, accuracy: accuracy + 1, fixAgeS: 2 },
+    { lat: lat - 0.00001, lng: lng + 0.00003, accuracy: accuracy - 1, fixAgeS: 3 },
+];
+const goodFixes = { fixes: fixesAt(24.7142, 46.6760, 12) };
 const baseReq = {
     remoteIp: '192.168.1.55',      // داخل شبكة المطعم
     deviceId: 'device-abc-123',
     boundDeviceId: 'device-abc-123',
-    location: { ...goodLocation },
+    location: goodFixes,
 };
 
 describe('haversineMeters — المسافة الجيوديسية', () => {
@@ -124,7 +131,7 @@ describe('evaluatePunch — سيناريوهات §5.7 الحرفية', () => {
         // ~0.0027 درجة ≈ 300 متر
         const r = evaluatePunch(baseSettings, {
             ...baseReq,
-            location: { ...goodLocation, lat: RESTAURANT.lat + 0.0027 },
+            location: { fixes: fixesAt(RESTAURANT.lat + 0.0027, RESTAURANT.lng, 12) },
         });
         expect(r.rejectCode).toBe('PUNCH_OUT_OF_RANGE');
         expect(r.details.distanceM).toBeGreaterThan(120);
@@ -132,24 +139,24 @@ describe('evaluatePunch — سيناريوهات §5.7 الحرفية', () => {
     test('على الحدود بالضبط (نفس المسافة = النطاق) → مقبول (<=)', () => {
         const r = evaluatePunch(baseSettings, {
             ...baseReq,
-            location: { ...goodLocation, lat: RESTAURANT.lat, lng: RESTAURANT.lng, accuracy: 10 },
+            location: { fixes: fixesAt(RESTAURANT.lat, RESTAURANT.lng, 10) },
         });
         expect(r.decision).toBe('accepted');
     });
     test('§5.7-4 دقة أسوأ من الحد (مثلاً 80م) → PUNCH_LOCATION_WEAK', () => {
-        const r = evaluatePunch(baseSettings, { ...baseReq, location: { ...goodLocation, accuracy: 80 } });
+        const r = evaluatePunch(baseSettings, { ...baseReq, location: { fixes: fixesAt(24.7142, 46.6760, 80) } });
         expect(r.rejectCode).toBe('PUNCH_LOCATION_WEAK');
     });
     test('دقة "مثالية" (< 1م) غير طبيعية → مؤشر تلاعب → PUNCH_LOCATION_WEAK', () => {
-        const r = evaluatePunch(baseSettings, { ...baseReq, location: { ...goodLocation, accuracy: 0 } });
+        const r = evaluatePunch(baseSettings, { ...baseReq, location: { fixes: fixesAt(24.7142, 46.6760, 0) } });
         expect(r.rejectCode).toBe('PUNCH_LOCATION_WEAK');
     });
     test('إحداثيات قديمة (fixAgeS > 30) → PUNCH_LOCATION_WEAK', () => {
-        const r = evaluatePunch(baseSettings, { ...baseReq, location: { ...goodLocation, fixAgeS: 95 } });
+        const r = evaluatePunch(baseSettings, { ...baseReq, location: { fixes: fixesAt(24.7142, 46.6760, 12).map(f => ({...f, fixAgeS: 95})) } });
         expect(r.rejectCode).toBe('PUNCH_LOCATION_WEAK');
     });
     test('GPS مزيف (mocked) → PUNCH_LOCATION_MOCKED', () => {
-        const r = evaluatePunch(baseSettings, { ...baseReq, location: { ...goodLocation, mocked: true } });
+        const r = evaluatePunch(baseSettings, { ...baseReq, location: { fixes: fixesAt(24.7142, 46.6760, 12), mocked: true } });
         expect(r.rejectCode).toBe('PUNCH_LOCATION_MOCKED');
     });
     test('§5.7-5 جهاز غير مربوط بالحساب → PUNCH_DEVICE_MISMATCH', () => {

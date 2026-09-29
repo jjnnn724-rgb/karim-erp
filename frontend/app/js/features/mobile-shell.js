@@ -248,6 +248,37 @@ async function openFaceCameraAndGetDescriptor(title) {
     });
 }
 
+/**
+ * يجمع عدة إصلاحات GPS خلال ~6 ثوانٍ (watchPosition) — السيرفر يحللها
+ * (تجميد/انتقال/تشتت) فيرفض التزوير ويقيس بدقة أعلى من قناع واحد.
+ */
+function collectLocationFixes() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {resolve(null); return;}
+        const fixes = [];
+        const sendTime = Date.now();
+        const wid = navigator.geolocation.watchPosition((pos) => {
+            fixes.push({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                fixAgeS: Math.max(0, Math.round((sendTime - (pos.timestamp || Date.now())) / 1000)),
+            });
+            if (fixes.length >= 4) {
+                try {navigator.geolocation.clearWatch(wid);} catch (_) {}
+                resolve(fixes);
+            }
+        }, () => {
+            try {navigator.geolocation.clearWatch(wid);} catch (_) {}
+            resolve(fixes.length ? fixes : null);
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 9000 });
+        setTimeout(() => {
+            try {navigator.geolocation.clearWatch(wid);} catch (_) {}
+            if (fixes.length) {resolve(fixes);}
+        }, 9500);
+    });
+}
+
 async function mobileDoPunch(intent) {
     if (_punchBusy) {return;}
     const btn = document.getElementById('punchBtn');
@@ -350,16 +381,14 @@ async function mobileDoPunch(intent) {
         await sendPunch(null, descriptor); // الجيوفانس معطل إداريًا — L1 الشبكة يحمي السيرفر
         return;
     }
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-        const fixAgeS = Math.max(0, Math.round((Date.now() - (pos.timestamp || Date.now())) / 1000));
-        await sendPunch({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            fixAgeS,
-            mocked: false,
-        }, descriptor);
-    }, geolocationError, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    // تحصين الموقع: 4 قراءات خلال ثوانٍ — السيرفر يحلل التجميد/الانتقال/التشتت
+    btn.textContent = 'جارٍ تحديد موقعك بدقة…';
+    const fixes = await collectLocationFixes();
+    if (!fixes) {
+        geolocationError({ code: 2 });
+        return;
+    }
+    await sendPunch({ fixes, mocked: false }, descriptor);
 }
 
 // ─── التركيب والتهيئة (S4) ───────────────────────────────────────────────────
