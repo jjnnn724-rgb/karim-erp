@@ -20,7 +20,10 @@ function renderPermissionsPage() {
     }
     const granted = new Set(PERM.grants || []);
     const denied = new Set(PERM.denies || []);
-    const isAdminTarget = target.role === 'admin';
+    // FIX: كان بلا حماية — أول فتح للصفحة (PERM.userId=null) كان يرمي TypeError
+    // ويُبقي الصفحة بيضاء تمامًا (تعذر الرندر). الحماية تمنع الانهيار،
+    // والقالب أدناه يعرض "اختر مستخدمًا" كما هو مصمم.
+    const isAdminTarget = target?.role === 'admin';
     return `
 <div class="tbl-wrap"><div class="tbl-hd">
 <h3><i class=ji data-i=key></i> ${t('pg.permissions')} — منح فردية فوق الدور</h3>

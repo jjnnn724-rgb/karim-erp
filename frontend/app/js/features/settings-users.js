@@ -7,16 +7,27 @@
 // ============================================
 function renderSettings(){
 if(!checkMenuAccessLocal('settings')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+// PERF: الأقسام أسفل الشاشة تُحمَّل كسولاً عند الاقتراب منها (IntersectionObserver)
+// — صفحة الإعدادات تُفتح فورًا بدل انتظار 5 طلبات متوازية (شكوى بطء فتح النوافذ)
+const lazyPanel = (id, loader) => {
+    const el = document.getElementById(id);
+    if (!el) {return;}
+    if (!('IntersectionObserver' in window)) {setTimeout(loader, 0); return;}
+    const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) {io.disconnect(); loader();}
+    }, { rootMargin: '250px' });
+    io.observe(el);
+};
 // ZATCA hub loads itself into #zatcaHub once this template is painted
-setTimeout(()=>{ if(document.getElementById('zatcaHub')) {loadZatcaHub();} }, 0);
+lazyPanel('zatcaHub', loadZatcaHub);
 // KOT settings load themselves into #kotSettingsBody the same way
-setTimeout(()=>{ if(document.getElementById('kotSettingsBody')) {loadKotSettings();} }, 0);
+lazyPanel('kotSettingsBody', loadKotSettings);
 // Card settings load themselves into #cardSettingsBody the same way
-setTimeout(()=>{ if(document.getElementById('cardSettingsBody')) {loadCardSettings();} }, 0);
+lazyPanel('cardSettingsBody', loadCardSettings);
 // Punch portal admin panel loads itself into #punchSettingsBody (SPEC-employee-pwa-attendance-geofence-v1, S7-S8)
-setTimeout(()=>{ if(document.getElementById('punchSettingsBody')) {loadPunchSettingsUI();} }, 0);
+lazyPanel('punchSettingsBody', loadPunchSettingsUI);
 // Backup list loads itself into #sysBackupList (admin only)
-setTimeout(()=>{ if(document.getElementById('sysBackupList') && STATE.currentUser?.role==='admin') {sysLoadBackups();} }, 0);
+if (STATE.currentUser?.role==='admin') {lazyPanel('sysBackupList', sysLoadBackups);}
 return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=store></i> ${t('set.restaurant')}</div><div class="mcard-val c-gold">${esc(STATE.settings.name)}</div></div>

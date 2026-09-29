@@ -182,6 +182,7 @@ try{ document.getElementById('chatFab')?.remove(); document.getElementById('chat
 CHATSTATE.open=false; CHATSTATE.unread=0; CHATSTATE.messages=[]; CHATSTATE.loaded=false; CHATSTATE.sockHooked=false;
 if (oldJwt) {fetch(API_BASE + '/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + oldJwt } }).catch(() => {});}
 STATE.currentUser = null;
+try{ applyTopbarRoleGates(); }catch(_){}
 STATE.deptPanel = null;
 STATE.permissions = { grants: [], denies: [], menus: [], deniedMenus: [] };
 const password = document.getElementById('lp');
@@ -226,6 +227,26 @@ function userMenus(){
     if (STATE.currentUser?.role === 'admin') {denied.clear();}
     return [...new Set([...base, ...extra])].filter((m) => !denied.has(m));
 }
+// ─── بوابات الأدوار للشريط العلوي (طلب المالك 2026-09-29) ──────────────────
+// زر الكاشير POS + لمبتا حالة الخادم/قاعدة البيانات + قائمة الإجراءات السريعة
+// تُضبط حسب دور الجلسة — تُستدعى من buildNav (بعد كل دخول/تبديل لغة/خروج).
+function applyTopbarRoleGates(){
+const role = STATE.currentUser?.role || null;
+const on = (el, roles) => { if(el) {el.style.display = roles.includes(role) ? '' : 'none';} };
+// زر الكاشير POS: للإدارة العليا + مدير الحسابات + الكاشير فقط
+on(document.querySelector('a[href="/app/pos.html"]'), ['admin','accountant','cashier']);
+// لمبتا الحالة (الخادم + قاعدة البيانات): للإدارة العامة فقط
+on(document.getElementById('rt-badge'), ['admin']);
+// قائمة الإجراءات السريعة (FAB): كل إجراء لدوره
+on(document.querySelector('.fab-action[aria-label="لوحة التحكم"]'), ['admin','manager','hr','accountant','dept_head']);
+on(document.querySelector('.fab-action[aria-label="طلب صرف"]'), ['admin','manager','kitchen','dept_head','warehouse']);
+on(document.querySelector('.fab-action[aria-label="إضافة إيراد"]'), ['admin','manager','accountant']);
+on(document.querySelector('.fab-action[aria-label="إضافة مصروف"]'), ['admin','manager','accountant']);
+// زر الـ FAB نفسه يختفي لو لم يتبقَّ أي إجراء متاح (موظف/كاشير)
+const anyFab = ['admin','manager','hr','accountant','dept_head','kitchen','warehouse'].includes(role);
+on(document.getElementById('fabBtn'), anyFab ? ['admin','manager','hr','accountant','dept_head','kitchen','warehouse'] : []);
+}
+
 function buildNav(){
 applyI18nMaps();
 try{ applyLangAttrs(); }catch(_){}
@@ -269,6 +290,7 @@ for(const [key,name] of Object.entries(ALL_PERMISSIONS.menus)){
   }
 }
 container.innerHTML = html;
+try{ applyTopbarRoleGates(); }catch(_){}
 }
 function go(page,el){
 const role = ROLES[STATE.currentUser?.role];
@@ -368,4 +390,4 @@ function checkMenuAccessLocal(menuKey){ if(!STATE.currentUser) {return false;} i
 // عنقود الإعدادات والمستخدمين: نُقل إلى js/features/settings-users.js (يجسر عبر js/main.js — BRIDGE-020)
 // عنقود المدير المالي: نُقل إلى js/features/cfo.js (يجسر عبر js/main.js — BRIDGE-021)
 
-export { completeRequiredPasswordChange, showForgotPasswordModal, fpFail, submitForgotPassword, issueResetCode, copyResetCode, markLoginInvalid, clearLoginInvalid, doLogin, enterApp, doLogout, getLogoSrc, getAbsoluteLogoSrc, logoMarkup, updateLogoDisplay, NAV_GROUPS, buildNav, go, deptDetailFrom, deptDetailTo, openDepartmentDetail, toggleSidebar, toggleLang, toggleTheme, isOperatingExpense, accountingExpenseAmount, isStockMovementExpense, isCountCorrectionExpense, deptExpenseBreakdown, deptWithChildren, calcStats, updateDateDisplay, updateRoleIndicator, updateQuickDispatchButton, checkMenuAccessLocal };
+export { applyTopbarRoleGates, completeRequiredPasswordChange, showForgotPasswordModal, fpFail, submitForgotPassword, issueResetCode, copyResetCode, markLoginInvalid, clearLoginInvalid, doLogin, enterApp, doLogout, getLogoSrc, getAbsoluteLogoSrc, logoMarkup, updateLogoDisplay, NAV_GROUPS, buildNav, go, deptDetailFrom, deptDetailTo, openDepartmentDetail, toggleSidebar, toggleLang, toggleTheme, isOperatingExpense, accountingExpenseAmount, isStockMovementExpense, isCountCorrectionExpense, deptExpenseBreakdown, deptWithChildren, calcStats, updateDateDisplay, updateRoleIndicator, updateQuickDispatchButton, checkMenuAccessLocal };

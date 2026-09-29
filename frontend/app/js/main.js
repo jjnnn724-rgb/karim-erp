@@ -29,7 +29,7 @@ import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.
 import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.132';
 import { CONFIG, ROLES } from './core/config.js?v=4.7.132';
 import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.7.142';
-import * as authNav from './features/auth-navigation.js?v=4.7.178';
+import * as authNav from './features/auth-navigation.js?v=4.7.190';
 import * as pageRouter from './features/page-router.js?v=4.7.142';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
@@ -125,10 +125,10 @@ Object.assign(window, departments); // BRIDGE-018
 const reports = await import('./features/reports.js?v=4.7.139');
 Object.assign(window, reports);     // BRIDGE-019
 
-const settingsUsers = await import('./features/settings-users.js?v=4.7.185');
+const settingsUsers = await import('./features/settings-users.js?v=4.7.187');
 Object.assign(window, settingsUsers); // BRIDGE-020
 
-const permissions = await import('./features/permissions.js?v=4.7.178');
+const permissions = await import('./features/permissions.js?v=4.7.186');
 Object.assign(window, permissions); // BRIDGE-PERM
 
 const cfo = await import('./features/cfo.js?v=4.7.140');
@@ -140,7 +140,7 @@ Object.assign(window, dashboard);     // BRIDGE-022
 const employeePortal = await import('./features/employee-portal.js?v=4.7.141');
 Object.assign(window, employeePortal); // BRIDGE-023
 
-const authNavNS = await import('./features/auth-navigation.js?v=4.7.178');
+const authNavNS = await import('./features/auth-navigation.js?v=4.7.190');
 Object.assign(window, authNavNS);     // BRIDGE-026
 
 const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
