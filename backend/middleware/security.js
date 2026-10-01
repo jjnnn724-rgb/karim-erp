@@ -33,16 +33,19 @@ const DEFAULTS = {
     referrerPolicy: 'strict-origin-when-cross-origin',
     xssFilter: false, // deprecated header, rely on CSP
     permissionsPolicy: {
-        camera:     '()',
-        microphone: '()',
-        geolocation:'()',
-        payment:    '()',
-        gyroscope:  '()',
+        // البصمة الذاتية تحتاج الكاميرا والميكروفون والـ GPS من نفس النطاق —
+        // القيمة () تحجبهم على الجميع بما فيهم self، فتُكسر بصمة الوجه وتحديد الموقع.
+        // (self) = مسموح للنطاق الأصلي فقط (karimeg.online أو السيرفر المحلي).
+        camera:       '(self)',
+        microphone:   '(self)',
+        geolocation:  '(self)',
+        payment:      '()',          // غير مستخدم — يبقى محظورًا
+        gyroscope:    '()',
         accelerometer:'()',
-        magnetometer:'()',
-        'ambient-light-sensor':'()',
-        battery:    '()',
-        usb:        '()',
+        magnetometer: '()',
+        usb:          '()',
+        // NOTE: ambient-light-sensor/battery removed — Chrome dropped them and
+        // logs "Unrecognized feature" console errors for each page load.
     },
     crossOriginEmbedderPolicy: 'credentialless',
     crossOriginOpenerPolicy:   'same-origin',
@@ -72,6 +75,11 @@ function buildCspDirectives(opts, nonce) {
         'script-src': [
             self,
             nonce ? `'nonce-${nonce}'` : '',
+            // Cloudflare Web Analytics injects beacon.min.js automatically when
+            // enabled in their dashboard — allow it explicitly so it neither
+            // breaks nor spams CSP violations. (Disable it in Cloudflare
+            // dashboard → Speed → Observability if you don't want it at all.)
+            'https://static.cloudflareinsights.com',
             // The app uses inline handlers on the login page and several browser
             // widgets rely on inline JavaScript. Keep the per-request nonce but
             // allow the inline fallback necessary for the current frontend.
