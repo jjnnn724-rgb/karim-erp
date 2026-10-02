@@ -47,7 +47,7 @@ async function loadShiftHistoryMap(employeeIds, toDate) {
             if (!map.has(k)) {map.set(k, []);}
             map.get(k).push(r);
         }
-    } catch (_) {}
+    } catch (_) { logger.warn("attendance-engine non-fatal:", _ && _.message ? _.message : _); }
     return map;
 }
 
@@ -378,7 +378,7 @@ class AttendanceEngine {
                     shiftKarim: normalizeShiftKarim(Number(at.shift_karim) > 0 ? Number(at.shift_karim) : base.shiftKarim),
                 };
             }
-        } catch (_) {}
+        } catch (_) { logger.warn("attendance-engine non-fatal:", _ && _.message ? _.message : _); }
         return base;
     }
 

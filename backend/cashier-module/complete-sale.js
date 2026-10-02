@@ -977,7 +977,7 @@ async function completeSale(req, res) {
         // الاتصالات بينما خطواتها اللاحقة تنتظر اتصالًا حرًا من نفس المسبح.
         client.release();
         client = null;
-        try { recordSale({ durationMs: Date.now() - startedAt, status: 'success' }); } catch (_) {}
+        try { recordSale({ durationMs: Date.now() - startedAt, status: 'success' }); } catch (_) { logger.warn("complete-sale non-fatal:", _ && _.message ? _.message : _); }
         // ── Post-commit: مرآة الإيرادات للوحة الكلاسيكية (غير قاتلة) ──
         if (erpSync?.legacyMirror) {
             try { await appendLegacyRevenueMirror(erpSync.legacyMirror); }
@@ -1022,7 +1022,7 @@ async function completeSale(req, res) {
 
         return res.status(201).json(responsePayload);
     } catch (err) {
-        if (client) { try { await client.query('ROLLBACK;'); } catch (_) {} }
+        if (client) { try { await client.query('ROLLBACK;'); } catch (_) { logger.warn("complete-sale non-fatal:", _ && _.message ? _.message : _); } }
         // ── Transient saturation retry (bounded, exactly-once) ──────────
         // Under heavy bursts, queued transactions can hit statement_timeout
         // (57014), deadlock (40P01) or pool-checkout timeout. The transaction

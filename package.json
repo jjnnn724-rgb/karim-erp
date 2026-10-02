@@ -71,7 +71,9 @@
     "client:package": "node scripts/make-client-package.js",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
-    "import:employee-documents": "node scripts/import-employee-documents.js"
+    "import:employee-documents": "node scripts/import-employee-documents.js",
+    "finance:reconcile": "node scripts/finance-reconcile.js",
+    "security:routes": "node scripts/security-route-audit.js"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",

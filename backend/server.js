@@ -548,7 +548,9 @@ app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permis
 // Task 20: صندوق إشعارات كل مستخدم — جرس حي بعدّاد غير المقروء + إشعارات سلسلة الصرف
 ensureNotificationsSchema().catch((error) => logger.error('[NOTIFICATIONS_SCHEMA] initialization failed:', error.message));
 ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_SCHEMA] initialization failed:', error.message));
-app.use('/api/notifications', (req, res, next) => { req.io = io; next(); }, notificationRouter);
+// SECURITY ROOT FIX 2026-10-02: كانت مفتوحة بلا jwtAuth — أي متصفح كان يستطيع
+// إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
+app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
 
 // ─── ZKTeco biometric sync (inside the ERP process) ───
 // أجهزة البصمة + ربط الموظفين + بصمات بوابة الموظف
