@@ -42,4 +42,18 @@ for (const old of nightlies.slice(KEEP)) {
     fs.unlinkSync(path.join(BACKUPS, old));
     console.log('[backup] pruned:', old);
 }
+
+// ── نسخ مجلدات البيانات الحرجة: جلسة واتساب + شهادة HTTPS + KarimData ──
+// (ROOT FIX 2026-10-02: كانت خارج أي نسخ احتياطي — ضياعها يعني مسح QR
+//  وإعادة إصدار شهادة HTTPS). Yarasoft/ يستثنى (20GB staging قابلة للإعادة).
+const CRIT = ['C:/HorusData/certs', 'C:/HorusData/whatsapp-sessions', 'C:/HorusData/links', 'C:/KarimData'];
+const dataZip = path.join(BACKUPS, `karim_data-folders-${today}.zip`);
+try {
+    execFileSync('powershell', ['-NoProfile', '-Command',
+        `Compress-Archive -Force -Path '${CRIT.join("','")}' -DestinationPath '${dataZip}'`], { stdio: 'pipe' });
+    console.log('[backup] data-folders.zip →', dataZip, `(${Math.round(fs.statSync(dataZip).size / 1024)}KB)`);
+} catch (e) { console.warn("[backup] data-folders zip skipped:", e.message); }
+const dZips = fs.readdirSync(BACKUPS).filter((f2) => f2.startsWith("karim_data-folders-")).sort().reverse();
+for (const old of dZips.slice(3)) { fs.unlinkSync(path.join(BACKUPS, old)); console.log("[backup] pruned:", old); }
+
 console.log('[backup] done ✓');

@@ -7,6 +7,8 @@ const path = require('path');
 const { execSync } = require('child_process');
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const ROOT = path.join(__dirname, '..');
+// شل مستقل: يضمن وجود git/df من أي بيئة تشغيل (cmd/bash).
+process.env.PATH = ["C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\cmd", "C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\usr\\bin", "C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\bin", "C:\\Windows\\System32", process.env.PATH].join(";");
 for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
     const m = line.match(/^([A-Z_]+)=(.*)$/);
     if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
@@ -56,6 +58,10 @@ const { Client } = require('pg');
     let up = false;
     try { const r = await fetch('https://127.0.0.1:5000/api/attendance/portal/status'); up = (r.status === 401 || r.status === 200); } catch (_) {}
     gate('السيرفر حي ويستجيب', up, up ? 'HTTPS 5000 يستجيب' : 'لا استجابة');
+
+    // 6ب) مجلدات البيانات الحرجة (جلسة واتساب + شهادة HTTPS)
+    const dataZipPath = path.join(ROOT, 'database', 'backups', `karim_data-folders-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.zip`);
+    gate('نسخة مجلدات البيانات الحرجة (واتساب+شهادة) اليوم', fs.existsSync(dataZipPath), fs.existsSync(dataZipPath) ? 'موجودة اليوم ✓' : 'مفقودة');
 
     // 7) القرص
     let freeMB = -1;
