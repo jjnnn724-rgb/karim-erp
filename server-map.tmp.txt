@@ -1,0 +1,73 @@
+FN 78 scheduleBackup
+FN 93 runBackup
+FN 198 rtGuard
+FN 205 emitScoped
+FN 218 getErrorMessage
+FN 232 sanitizeHeader
+FN 336 setStaticCacheHeaders
+FN 431 apiKeyMiddleware
+FN 759 ensureChatSchema
+FN 777 handleChatSend
+FN 1161 purgeExpenseJournal
+FN 1167 postExpenseJournal
+FN 1232 generateLegacyId
+FN 1235 prepareDbValue
+FN 1243 ensureIdForEntity
+FN 1255 validateDeptHeadUserLink
+FN 1277 validateDeptHeadUserUpdate
+FN 1305 enforceAttendanceSelfService
+FN 1334 publicEntityRow
+FN 1343 viewerSafeRow
+FN 1376 readRolesFor
+FN 1391 ensureEmployeeUserLinkSchema
+FN 1410 validateDeptParent
+FN 1439 validateEmployeeUserLink
+FN 1502 emitEntityChange
+FN 1527 payrollMonthOf
+FN 1535 payrollPeriodViolation
+FN 1546 payrollRowViolation
+REQ 1: const express = require('express');
+REQ 2: const { createServer } = require('http');
+REQ 3: const { Server } = require('socket.io');
+REQ 4: const cors = require('cors');
+REQ 5: const morgan = require('morgan');
+REQ 6: const compression = require('compression');
+REQ 7: const os = require('os');
+REQ 8: const bcrypt = require('./pw-crypto');
+REQ 9: const path = require('path');
+REQ 10: const crypto = require('crypto');
+REQ 13: const { logger, httpLogger } = require("./logger");
+REQ 14: const { MEDIA_ROOT, ensureMediaDirs } = require('./media-storage');
+REQ 15: const { spawn } = require('child_process');
+REQ 18: const { correlationMiddleware, updateUserContext } = require('./middleware/correlation');
+REQ 19: const { securityHeaders, hppGuard } = require('./middleware/security');
+REQ 20: const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
+REQ 21: const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
+REQ 22: const { registerWithHealthChecks: circuitRegisterHealth } = require('./middleware/circuit');
+REQ 23: const startup = require('./startup');
+REQ 33: const { pool } = require('./shared-pool');
+REQ 34: const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
+REQ 37: const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-
+REQ 38: const { requireRoleOrPerm, permForEntity } = require('./permissions');
+REQ 39: const { router: hrRouter } = require('./hr-routes');
+REQ 40: const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDelet
+REQ 41: const { router: inventoryControlRouter } = require('./inventory-control-routes');
+REQ 42: const { router: stocktakingRouter, ensureStocktakingSchema } = require('./stocktaking-routes');
+REQ 43: const { router: inventoryTransferRouter } = require('./inventory-transfer-routes');
+REQ 44: const { router: kitchenProductionRouter, ensureKitchenSchema } = require('./kitchen-production-route
+REQ 45: const { router: procurementRouter, ensureProcurementSchema } = require('./procurement-routes');
+REQ 46: const { router: financeRouter } = require('./finance-routes');
+REQ 47: const { router: leaveWorkflowRouter, ensureLeaveWorkflowSchema } = require('./leave-workflow-routes'
+REQ 48: const { ensureNotificationsSchema } = require('./notification-service');
+REQ 49: const notificationRouter = require('./notification-routes');
+REQ 50: const { notifyChainEvent, ensureDispatchCreatorSchema } = require('./dispatch-notifier');
+REQ 52: const { router: zktecoRouter, ensureZktecoSchema, attendanceEngine } = require('./zkteco');
+REQ 53: const { router: yarasoftRouter, ensureYarasoftSchema, yarasoftEngine } = require('./yarasoft');
+REQ 56: const { filterBody, entityExists, validateColumnName, getSortableColumns, getSchema, getEntityWriteR
+REQ 57: const { encryptForVault, decryptFromVault, ensurePasswordVaultSchema } = require('./password-vault')
+REQ 60: const { parsePaginationParams, buildPaginatedQuery } = require('./pagination');
+REQ 63: const { generalLimiter, authLimiter, stateLimiter, crudLimiter } = require('./rate-limiter');
+REQ 66: const { initGracefulShutdown, rejectDuringShutdown, getShutdownStatus } = require('./graceful-shutdo
+REQ 67: const { collectDailyReport, renderDailyReportHtml, sendDailyReport, startDailyReportScheduler, smtpC
+REQ 71: const { apiCacheMiddleware } = require('./api-cache');
+TOTAL LINES: 2479
