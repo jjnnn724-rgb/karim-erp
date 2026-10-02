@@ -7,6 +7,8 @@
  */
 module.exports = {
   testEnvironment: 'node',
+  globalSetup: '<rootDir>/tests/global-setup.js',
+  setupFiles: ['<rootDir>/tests/setup-env.js'],
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.js'],
 };
