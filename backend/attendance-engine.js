@@ -463,7 +463,7 @@ async loadPattern(employeeId) {
                     staleOpenRowId = openCheck.rows[0].id;
                     const shiftLenMs = Math.round(Number(shiftKarim) * 3600 * 1000);
                     const inferredOutAt = new Date(new Date(openCheck.rows[0].checkInAt).getTime() + shiftLenMs);
-                    const wallOut = this._wallParts(inferredOutAt);
+                    const wallOut = instantToWall(inferredOutAt);
                     await client.query(
                         `UPDATE attendance SET "checkOut" = $2, "checkOutAt" = $3, "workMinutes" = $4,
                             checkout_inferred = true,

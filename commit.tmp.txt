@@ -1,0 +1,4 @@
+0d31740 security+finance: notifications route jwtAuth (hole closed), finance-reconcile auto-repair (fixed 2 orphan supplier payment journals), zero-silence pass on critical files, security-route-audit script (225 routes)
+3894a89 ops: free 20GB - Yarasoft done-files archived to D: with repeatable script; data-folder backup in nightly
+d5288e3 chore: remove patch temp file
+9156d21 quality: 9-of-10 plan phase 1-3 — test DB isolation, nightly backups (scheduled), zero-silent-catch gate, unified quality-gate script
