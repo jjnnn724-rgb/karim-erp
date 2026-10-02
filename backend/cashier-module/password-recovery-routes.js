@@ -19,12 +19,13 @@
  */
 
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('../pw-crypto');
 const { pool } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { writeAuditLog } = require('./audit-middleware');
 const { authLimiter } = require('../rate-limiter');
 const { logger } = require('../logger');
+const { encryptForVault } = require('../password-vault');
 const {
     RESET_CODE_TTL_MS,
     MAX_VERIFY_ATTEMPTS,
@@ -157,6 +158,9 @@ async function resetHandler(req, res) {
                 `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
                 [hash, u.id]
             );
+            // خزنة كلمات المرور: حدّث النسخة القابلة للاسترجاع
+            const _vault = encryptForVault(new_password);
+            if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, u.id]); }
             await client.query(
                 `UPDATE pos_password_reset_codes SET used_at = CURRENT_TIMESTAMP WHERE id = $1;`,
                 [row.id]

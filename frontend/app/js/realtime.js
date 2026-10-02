@@ -743,7 +743,6 @@ let realtimeStarted = false;
 function startRealtime() {
     if (realtimeStarted) {return;}
     realtimeStarted = true;
-    AudioEngine.init();
     buildUI();
     initSocket();
 
@@ -753,12 +752,16 @@ function startRealtime() {
         if (document.visibilityState === 'visible') {checkDbHealth();}
     });
 
-    // Unlock audio on first interaction
-    document.addEventListener('click', () => {
-        if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') {
-            AudioEngine.ctx.resume();
-        }
-    }, { once: true });
+    // AudioContext must be created/resumed after a user gesture (Chrome autoplay
+    // policy) — creating it at load only spams console warnings and stays muted.
+    const unlockAudio = () => {
+        if (!AudioEngine.ctx) {AudioEngine.init();}
+        if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') {AudioEngine.ctx.resume().catch(() => {});}
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    // NOTE: no touchstart here — it is NOT a user-activation event (warns anyway),
+    // and every tap is followed by click which unlocks.
 
     // Expose broadcast function globally
     window.rtBroadcast = function(message, type = 'info') {

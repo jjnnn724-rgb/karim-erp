@@ -5,7 +5,20 @@
  * External dependency: STATE (window.STATE) — read at call time only. Intl (builtin) used for Hijri.
  */
 function uid(){ return Date.now() + Math.floor(Math.random()*9999); }
-function esc(s){ return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : ''; }
+function esc(s){ return s ? String(s).replace(/[&<>"']/g, m =>
+({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : ''; }
+/**
+ * مصدر صورة آمن للعرض في <img src> — إصلاح XSS (2026-10-01): esc() لا يحجب
+ * javascript: (بلا محارف خاصة) فأي صورة مخزنة خبيثة كانت تنفذ عند العرض.
+ * المسموح: data:image/* و http(s) ومسارات نسبية فقط — غيرها = سلسلة فارغة.
+ */
+function safeImgSrc(v){
+const s = String(v || '').trim();
+if (/^data:image\/(png|jpeg|gif|webp);base64,/i.test(s)) {return s;}
+if (/^https?:\/\/[^"'<>\s]+$/i.test(s)) {return s;}
+if (/^\/[^"'<>\s]*$/.test(s) || /^uploads\//i.test(s)) {return s;}
+return '';
+}
 function today(){ return new Date().toISOString().split('T')[0]; }
 function nowTime(){ return new Date().toTimeString().substring(0,5); }
 function fN(n){ const v = parseFloat(n||0); return v.toLocaleString('en-US',{minimumFractionDigits:v%1!==0?2:0,maximumFractionDigits:2}); }
@@ -63,29 +76,31 @@ function hijriToGregorian(hy, hm, hd){
   return '';
 }
 // حقل تاريخ هجري/ميلادي: زر تبديل + 3 قوائم هجري أو حقل ميلادي
-function hijriDateField(prefix, gregValue){
+// defaultMode='greg' يفتح لوحة الميلادي افتراضيًا (الإقامة: القيمة المصدري ميلادي)
+function hijriDateField(prefix, gregValue, defaultMode){
   const cur = gregToHijriParts(gregValue) || gregToHijriParts(today());
   const nowH = gregToHijriParts(today()) || { y: 1447 };
   let years = '';
   for(let y = nowH.y - 1; y <= nowH.y + 10; y++) {years += `<option value="${y}" ${cur && cur.y === y ? 'selected' : ''}>${y}هـ</option>`;}
   const days = Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}" ${cur && cur.d === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('');
   const months = HIJRI_MONTHS.map((m, i) => `<option value="${i + 1}" ${cur && cur.m === i + 1 ? 'selected' : ''}>${m}</option>`).join('');
+  const gregFirst = defaultMode === 'greg';
   return `
   <input type="hidden" id="${prefix}" value="${esc(gregValue || '')}">
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
     <button type="button" class="btn btn-xs btn-outline" id="${prefix}Toggle" onclick="toggleDateMode('${prefix}')" title="تبديل بين هجري وميلادي">
-      <i class=ji data-i=calendar></i> <span id="${prefix}ModeLabel">هجري</span>
+      <i class=ji data-i=calendar></i> <span id="${prefix}ModeLabel">${gregFirst ? 'ميلادي' : 'هجري'}</span>
     </button>
     <small class="text-muted" id="${prefix}Greg">${esc(gregValue || '—')}</small>
   </div>
-  <div id="${prefix}HijriPanel">
+  <div id="${prefix}HijriPanel" ${gregFirst ? 'style="display:none"' : ''}>
     <div class="fr" style="gap:6px">
       <div class="fg"><label>اليوم</label><select id="${prefix}Hd" onchange="syncHijriToGreg('${prefix}')">${days}</select></div>
       <div class="fg"><label>الشهر</label><select id="${prefix}Hm" onchange="syncHijriToGreg('${prefix}')">${months}</select></div>
       <div class="fg"><label>السنة</label><select id="${prefix}Hy" onchange="syncHijriToGreg('${prefix}')">${years}</select></div>
     </div>
   </div>
-  <div id="${prefix}GregPanel" style="display:none">
+  <div id="${prefix}GregPanel" ${gregFirst ? '' : 'style="display:none"'}>
     <input type="date" id="${prefix}GregInput" value="${esc(gregValue || '')}" onchange="syncGregToHijri('${prefix}')" class="input" style="width:100%">
   </div>`;
 }
@@ -143,4 +158,4 @@ function syncHijriToGreg(prefix){
 }
 function fDT(d){ return d ? new Date(d).toLocaleString(STATE.lang==='en'?'en-US':'ar-EG') : ''; }
 
-export { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT };
+export { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT };

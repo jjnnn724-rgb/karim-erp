@@ -1,20 +1,9 @@
 @echo off
-REM Restart-Karim.bat — إعادة تشغيل سيرفسات هورس بضغطة واحدة (يطلب أدمن لوحده)
-net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo Requesting administrator privileges...
-    powershell -NoProfile -Command "Start-Process '%~f0' -Verb RunAs"
-    exit /b
-)
-echo [%date% %time%] Stopping karim services...
-net stop KarimERP-Server
-net stop KarimERP-PrintWorker
-timeout /t 5 /nobreak >nul
-echo [%date% %time%] Starting karim services...
-net start KarimERP-Server
-net start KarimERP-PrintWorker
-echo.
-sc query KarimERP-Server | findstr STATE
-sc query KarimERP-PrintWorker | findstr STATE
-echo.
-pause
+REM Restart-Karim.bat — إعادة تشغيل Karim ERP (واجهة توافق للعادة القديمة).
+REM ────────────────────────────────────────────────────────────────────────────
+REM النسخة القديمة كانت تنفّذ net stop/start لخدمات (KarimERP-Server) غير مسطبة
+REM أصلًا — فلا تفعل شيئًا غير فتح شاشة سوداء. الآن كل المنطق في:
+REM   RESTART-KARIM.vbs + scripts\restart-server.ps1  (مخفي بالكامل + فحص صحة)
+REM للنقر المزدوج بدون أي شاشة استخدم RESTART-KARIM.vbs مباشرة أو اختصار سطح المكتب.
+wscript.exe "%~dp0RESTART-KARIM.vbs"
+exit /b 0

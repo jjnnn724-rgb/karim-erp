@@ -38,6 +38,19 @@ function serverMessage(data, fallback){
 }
 // ─── جلسة مفتوحة دائمة: رمز التحديث محفوظ محليًا + تجديد صامت ───
 const KARIM_RT_KEY = 'karim_rt_v1';
+
+// جسر الشريط الجانبي للهاتف ومطابقة المقاسات (Responsive Sidebar Bridge)
+function toggleSidebar(){
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) {return;}
+    if (window.matchMedia('(max-width: 900px)').matches){
+        sidebar.classList.toggle('mobile-open');
+    } else {
+        sidebar.classList.toggle('collapsed');
+    }
+}
+// showDatabaseRestoreInfo(): نُقل إلى js/features/settings-users.js (يجسر عبر window.showDatabaseRestoreInfo)
+// uiPreferencesPayload(): نُقل إلى js/core/storage.js (يجسر عبر window.uiPreferencesPayload)
 function KARIM_RTget(){ try { return localStorage.getItem(KARIM_RT_KEY) || ''; } catch (_) { return ''; } }
 function KARIM_RTset(rt){ try { if (rt) {localStorage.setItem(KARIM_RT_KEY, rt);} } catch (_) {} }
 function KARIM_RTclear(){ try { localStorage.removeItem(KARIM_RT_KEY); } catch (_) {} }
@@ -69,7 +82,9 @@ const apiList = async (entity) => {
     const pageSize = 1000; // matches server MAX_LIMIT — fewer round-trips, less 429 pressure at boot
     const rows = [];
     let page = 1;
-    const listTimeout = setTimeout(() => { throw new Error('TIMEOUT'); }, 45000);
+    // NOTE (2026-09-30): no setTimeout-throw guard here — a throw inside a timer
+    // callback is UNCAUGHT by definition (5× "Uncaught Error: TIMEOUT" in console).
+    // Per-request timeout is already enforced by apiFetch (30s AbortController).
     while (page <= 1000) {
         const response = await apiFetch(`/${entity}?page=${page}&limit=${pageSize}&sort=id&order=asc`);
         const pageRows = response && Array.isArray(response.data)
@@ -80,12 +95,15 @@ const apiList = async (entity) => {
         if (pageRows.length === 0 || (totalPages > 0 && page >= totalPages) || pageRows.length < pageSize) {break;}
         page += 1;
     }
-    clearTimeout(listTimeout);
     return rows;
 };
 const apiCreate = (entity, body)    => apiFetch(`/${entity}`, { method: 'POST', body: JSON.stringify(body) });
 const apiUpdate = (entity, id, body)=> apiFetch(`/${entity}/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-const apiRemove = (entity, id)      => apiFetch(`/${entity}/${id}`, { method: 'DELETE' });
+const apiRemove = (entity, id, force) => apiFetch(`/${entity}/${id}${force ? '?force=1' : ''}`, { method: 'DELETE' });
+// ADMIN FULL-CONTROL (2026-10-01): حذف نهائي لأي سجل — للأدمن فقط.
+// الاستخدام: await adminForceRemove('expenses', id) أو persistRemove('inventoryTx', id, true)
+// السيرفر يتحقق من دور admin ويوثّق الحذف في admin_delete_audit.
+const adminForceRemove = (entity, id) => apiFetch(`/${entity}/${id}?force=1`, { method: 'DELETE' });
 
 // Optimistic-UI helper used by every add/edit/delete function below:
 // hit the real DB endpoint first: only touch local STATE + re-render once
@@ -100,8 +118,21 @@ async function persistCreate(entity, localArrayPush, body) {
 async function persistUpdate(entity, id, body) {
     return apiUpdate(entity, id, body);
 }
-async function persistRemove(entity, id) {
+async function persistRemove(entity, id, force) {
+    if (force) {return adminForceRemove(entity, id);}
     return apiRemove(entity, id);
+}
+// حذف نهائي للأدمن مع تأكيد موحّد — يُستخدم لأي سجل في السيستم كاملًا.
+async function adminDeleteAny(entity, id, label) {
+    if (window.STATE?.currentUser?.role !== 'admin') {window.toast?.('الحذف النهائي للأدمن فقط', 'error'); return false;}
+    if (!window.confirm(`⚠️ حذف نهائي ${label || ('#' + id)} من ${entity}؟\nسيُحذف نهائيًا ويُوثّق باسمك. هل أنت متأكد؟`)) {return false;}
+    try {
+        if (typeof window.showLoad === 'function') {window.showLoad();}
+        await adminForceRemove(entity, id);
+        window.toast?.('حُذف نهائيًا (موثّق باسم الأدمن)', 'info');
+        return true;
+    } catch (e) {window.toast?.(e.message || 'تعذر الحذف النهائي', 'error'); return false;}
+    finally {if (typeof window.hideLoad === 'function') {window.hideLoad();}}
 }
 function upsertStateEntity(entity, row) {
     if (!row || !STATE[entity]) {return;}
@@ -121,6 +152,11 @@ menus: {
     'pnl': '<i class=ji data-i=gem></i>',
     departments: '<i class=ji data-i=building></i>',
     warehouse: '<i class=ji data-i=package></i>',
+    'wh-invoices': '<i class=ji data-i=file-text></i>',
+    'wh-moves': '<i class=ji data-i=chart></i>',
+    'wh-returns': '<i class=ji data-i=undo></i>',
+    'wh-prs': '<i class=ji data-i=clipboard-list></i>',
+    'roster': '<i class=ji data-i=calendar-clock></i>',
     shelves: '<i class=ji data-i=archive></i>',
     weight: '<i class=ji data-i=scale></i>',
     kitchen: '<i class=ji data-i=chef-hat></i>',
@@ -387,8 +423,19 @@ const box=document.getElementById('chatMsgs'); if(box){ box.scrollTop=box.scroll
 
 // ============================================
 // INITIALIZATION
+// READINESS GATE (2026-09-30): main.js يحسم window.__karimReady بعد اكتمال
+// كل الجسور. سكربت defer كلاسيكي يعمل قبل ذلك كان يسقط بـ ReferenceError
+// (showAddRevenueModal/updateLogoDisplay is not defined) ويوقف app.js كله.
+function whenBridgesReady(timeoutMs) {
+  if (window.__karimBridgesReady) {return Promise.resolve();}
+  const timeout = new Promise((res) => setTimeout(res, timeoutMs || 15000));
+  const evt = new Promise((res) => document.addEventListener('karim:bridges-ready', res, { once: true }));
+  const ready = (window.__karimReady && typeof window.__karimReady.then === 'function') ? window.__karimReady : Promise.resolve();
+  return Promise.race([evt, timeout, ready]);
+}
 // ============================================
 window.addEventListener('DOMContentLoaded',async ()=>{
+await whenBridgesReady();
 showLoad();
 // Keep the login screen responsive while the health check runs in the background.
 hideLoad();
@@ -443,7 +490,10 @@ content.innerHTML = `<div class="mcard" style="margin:20px"><h3 class="u-orange"
 }
 }
 });
+// Top-level bare identifiers below resolve via window — they exist only AFTER
+// main.js bridges settle. Wrapped + gated instead of executing at parse time.
 // Export remaining non-login functions (keep for safety / backward compat)
+function bridgeAppGlobals(){
 // (export repointed to main.js bridge)
 window.showAddRevenueModal=showAddRevenueModal; window.addRevenue=addRevenue; window.editRevenue=editRevenue; window.updateRevenue=updateRevenue; window.deleteRevenue=deleteRevenue;
 window.showAddExpenseModal=showAddExpenseModal; window.addExpense=addExpense; window.editExpense=editExpense; window.updateExpense=updateExpense; window.deleteExpense=deleteExpense;
@@ -480,8 +530,8 @@ window.showBulkImportModal=showBulkImportModal; window.bulkReadFile=bulkReadFile
 // حزمة التحسينات v10: نُقلت إلى js/ui/enhancement.js — مستمع DOMC الخاص بها بقي هنا (BRIDGE-024)
 // <i class=ji data-i=play></i> Initialize enhancements
 document.addEventListener('DOMContentLoaded', () => {
-  hideSplash();
-  setTimeout(hideSplash, 3000); // Fallback in case hideSplash is delayed
+  whenBridgesReady().then(() => { try { hideSplash(); } catch (_) {} });
+  setTimeout(() => { try { hideSplash(); } catch (_) {} }, 3000); // Fallback in case hideSplash is delayed
   // Add keyboard shortcut hint to topbar
   setTimeout(()=>{
     const topbarRight = document.querySelector('.topbar-right');
@@ -505,6 +555,13 @@ window.toggleFabMenu = toggleFabMenu;
 window.celebrate = celebrate;
 window.showShortcutsHelp = showShortcutsHelp;
 window.animateCounter = animateCounter;
+// ADMIN FULL-CONTROL (2026-10-01): دوال الحذف النهائي للأدمن — أي سجل في السيستم.
+window.apiRemove = apiRemove;
+window.adminForceRemove = adminForceRemove;
+window.adminDeleteAny = adminDeleteAny;
+window.persistRemove = persistRemove;
+} // bridgeAppGlobals
+whenBridgesReady().then(()=>{ try{ bridgeAppGlobals(); }catch(e){ console.error('[app-bridge]', e); } });
 
 // <i class=ji data-i=play></i> Init particle background for login
 (function initLoginParticles(){

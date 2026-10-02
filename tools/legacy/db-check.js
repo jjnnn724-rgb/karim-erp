@@ -1,11 +1,13 @@
 const { Pool } = require('pg');
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const pool = new Pool({
-  user: 'postgres',
-  host: '127.0.0.1',
-  database: 'karim_erp',
-  password: 'Kimo20177',
-  port: 5432,
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || '127.0.0.1',
+  database: process.env.DB_NAME || 'karim_erp',
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT) || 5432,
 });
+if (!pool.options.password) { console.error('DB_PASSWORD missing in .env'); process.exit(1); }
 
 (async () => {
   try {

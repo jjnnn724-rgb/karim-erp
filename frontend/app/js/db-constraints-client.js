@@ -222,4 +222,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-export { fetchConstraints, invalidateConstraintsCache, validateField, validateForm, showFormErrors, clearFormErrors, attachAutoValidation };
+// (window.DBConstraints أعلاه هو الجسر — لا export هنا لأن الملف يُحمَّل كسكربت كلاسيكي)

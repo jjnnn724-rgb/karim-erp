@@ -24,7 +24,7 @@ async function main() {
             spawnSync('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *backend*'], { stdio: 'ignore' });
             // wmic was removed from Windows 11 24H2+ — use PowerShell/CIM instead
             const findResult = spawnSync('powershell', ['-NoProfile', '-Command',
-                "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'backend[\\\\/]server\\.js' } | ForEach-Object { $_.ProcessId }"],
+                "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*backend*server.js*' } | ForEach-Object { $_.ProcessId }"],
                 { encoding: 'utf-8' });
             if (findResult.status === 0 && findResult.stdout) {
                 const pids = findResult.stdout.split(/\s+/).filter(p => /^\d+$/.test(p.trim()));
@@ -33,9 +33,22 @@ async function main() {
                     log.ok(`تم إيقاف العملية ${pid}`);
                 }
             }
+            // CORRECTNESS: مشرف serve.js لو نجا كان يعيد تشغيل السيرفر فورًا
+            // ويتعطل الإيقاف كله — نقتله بنفس الاستهداف (عمليات هذا المشروع فقط).
+            const supResult = spawnSync('powershell', ['-NoProfile', '-Command',
+                "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*scripts*serve.js*' } | ForEach-Object { $_.ProcessId }"],
+                { encoding: 'utf-8' });
+            if (supResult.status === 0 && supResult.stdout) {
+                const supPids = supResult.stdout.split(/\s+/).filter(p => /^\d+$/.test(p.trim()));
+                for (const pid of supPids) {
+                    spawnSync('taskkill', ['/F', '/PID', pid], { stdio: 'ignore' });
+                    log.ok(`تم إيقاف المشرف ${pid}`);
+                }
+            }
         } else {
             // Linux/Mac: pkill by pattern
             spawnSync('pkill', ['-f', 'backend/server.js'], { stdio: 'ignore' });
+            spawnSync('pkill', ['-f', 'scripts/serve.js'], { stdio: 'ignore' });
             log.ok('تم إيقاف الخادم');
         }
     } else {

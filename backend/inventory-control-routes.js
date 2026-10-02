@@ -145,7 +145,7 @@ router.post('/inventory/audits', jwtAuth, requireRole(...AUDIT_WRITE_ROLES), asy
             SELECT inv.id AS item_id, inv.name, inv.unit, COALESCE(inv.category,'') AS category,
                    COALESCE(inv.barcode,'') AS barcode, inv."avgCost" AS avg_cost, COALESCE(b.on_hand, 0) AS system_qty
               FROM inventory inv
-              JOIN inventory_location_balances b ON b.inventory_id = inv.id AND b.location_id = $1
+              LEFT JOIN inventory_location_balances b ON b.inventory_id = inv.id AND b.location_id = $1
              ORDER BY inv.name
         `, [auditLocation.id])).rows;
 

@@ -1,7 +1,12 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Karim ERP</string>
     <string name="title_activity_main">Karim ERP</string>
     <string name="package_name">com.karimerp.app</string>
     <string name="custom_url_scheme">com.karimerp.app</string>
+
+    <!-- Offline & Error Screen -->
+    <string name="offline_title">Connection Error</string>
+    <string name="offline_message">Unable to connect to Karim ERP server. Please check your internet connection and try again.</string>
+    <string name="retry_button">Try Again</string>
 </resources>

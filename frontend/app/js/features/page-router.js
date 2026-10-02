@@ -19,6 +19,9 @@ if(modalDiv) {modalDiv.innerHTML='';}
 async function renderPage(){
 const content=document.getElementById('content');
 if(!content){return;}
+// إصلاح 2026-10-01 (صفحة بيضاء من الجوال): أي استثناء أثناء الرسم كان يترك
+// المحتوى بشفافية صفر — الآن شبكة أمان تعرض رسالة بدل البياض وتعيد الظهور
+try{
 content.style.opacity='0'; destroyCharts();
 let html='';
 switch(STATE.page){
@@ -30,7 +33,13 @@ case 'pnl': html=renderPnl(); break;
 case 'departments': html=renderDepartments(); break;
 case 'departmentDetail': html=renderDepartmentDetail(); break;
 case 'warehouse': html=renderWarehouse(); break;
+case 'wh-invoices': html=renderWhInvoices(); break;
+case 'wh-moves': html=renderWhMoves(); break;
+case 'wh-returns': html=renderWhReturns(); break;
+case 'wh-prs': html=renderWhPrs(); break;
 case 'procurement': html=renderProcurement(); break;
+case 'roster': html=(typeof renderRoster==='function')?renderRoster():'<div class="mcard u-empty">تعذر تحميل وحدة الدوامات — حدّث الصفحة (Ctrl+F5)</div>'; break;
+case 'dept-employees': html=(typeof renderDeptEmployeesPage==='function')?renderDeptEmployeesPage():'<div class="mcard u-empty">تعذر تحميل وحدة موظفي القسم — حدّث الصفحة (Ctrl+F5)</div>'; break;
 case 'shelves': html=renderShelves(); break;
 case 'weight': html=renderWeight(); break;
 case 'dispatch': html=renderDispatch(); break;
@@ -112,9 +121,16 @@ if(STATE.page==='pnl') {setTimeout(pnlInitCharts,120);}
 if(STATE.page==='reports'){
 setTimeout(()=>{
 if(STATE.page!=='reports') {return;}
-updateDateInputs();
-generateReport();
+try{ updateDateInputs(); }catch(e){ console.warn('[reports] updateDateInputs:', e.message); }
+try{ generateReport(); }catch(e){ console.warn('[reports] generateReport:', e.message); }
 },100);
+}
+}catch(pageErr){
+console.error('[renderPage]', STATE.page, pageErr);
+try{
+content.innerHTML=`<div class="mcard" style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><h3>تعذر عرض الصفحة</h3><p class="text-muted">${String(pageErr.message||'خطأ غير متوقع')}</p><button class="btn btn-gold" onclick="renderPage()">إعادة المحاولة</button></div>`;
+content.style.opacity='1';
+}catch(_){}
 }
 }
 // PWA — تثبيت + شريط عدم الاتصال: نُقل إلى js/core/pwa.js (يجسر عبر js/main.js — BRIDGE-001)

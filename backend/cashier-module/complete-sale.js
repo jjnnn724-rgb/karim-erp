@@ -482,11 +482,16 @@ async function completeSale(req, res) {
 
         if (sessionId) {
             const ss = await client.query(
-                `SELECT id, department_id, cashier_id, status FROM pos_shift_sessions WHERE id = $1 FOR UPDATE;`,
+                `SELECT id, department_id, cashier_id, status,
+                        TO_CHAR(opened_at AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') AS biz_date,
+                        TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') AS today
+                   FROM pos_shift_sessions WHERE id = $1 FOR UPDATE;`,
                 [sessionId]
             );
             if (ss.rows.length === 0) { await client.query('ROLLBACK;'); return res.status(404).json({ error: 'SHIFT_SESSION_NOT_FOUND' }); }
             if (ss.rows[0].status !== 'open') { await client.query('ROLLBACK;'); return res.status(409).json({ error: 'SHIFT_NOT_OPEN', status: ss.rows[0].status }); }
+            // Day-end discipline: never sell on a previous-day shift — close it and open today's.
+            if (ss.rows[0].biz_date !== ss.rows[0].today) { await client.query('ROLLBACK;'); return res.status(409).json({ error: 'SHIFT_STALE', message: 'الوردية من يوم سابق — أغلقها وافتح وردية اليوم' }); }
             if (Number(ss.rows[0].cashier_id) !== Number(cashier.id) && cashier.role === 'cashier') {
                 await client.query('ROLLBACK;'); return res.status(403).json({ error: 'SHIFT_NOT_OWNED_BY_CASHIER' });
             }
@@ -497,6 +502,8 @@ async function completeSale(req, res) {
             const ss = await client.query(
                 `SELECT id FROM pos_shift_sessions
                   WHERE cashier_id = $1 AND department_id = $2 AND status = 'open'
+                    AND TO_CHAR(opened_at AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') =
+                        TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD')
                   ORDER BY opened_at DESC LIMIT 1 FOR UPDATE;`,
                 [cashier.id, req.body.department_id]
             );

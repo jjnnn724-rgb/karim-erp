@@ -1,9 +1,13 @@
 const { pool } = require('./backend/shared-pool.js');
 const bcrypt = require('bcryptjs');
 
+const crypto = require('crypto');
+
 async function main() {
-    // New password - easy to remember
-    const newPassword = 'Admin@2026';
+    // SECURITY: كلمة المرور تأتي من متغير البيئة KARIM_FIXED_ADMIN_PASSWORD أو وسيط سطر الأوامر فقط —
+    // ولا توجد أي قيمة افتراضية مكتوبة في الكود. بلا مصدر ⇒ تُولَّد عشوائيًا.
+    const newPassword = (process.argv[2] || String(process.env.KARIM_FIXED_ADMIN_PASSWORD || '').trim())
+        || crypto.randomBytes(18).toString('base64url');
     const hash = await bcrypt.hash(newPassword, 12);
 
     console.log('🔐 New password:', newPassword);

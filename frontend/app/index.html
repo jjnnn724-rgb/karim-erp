@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script src="js/login-boot.js?v=4.9.1" defer></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -28,21 +29,20 @@
           href="css/offline-fonts.css">
   </noscript>
 
-  <link rel="preload" as="style" href="css/design-tokens.css?v=4.7.172">
-  <link rel="preload" as="style" href="css/styles.css?v=4.7.172">
-  <link rel="preload" as="script" href="/app/js/app.js?v=4.7.143">
+  <link rel="preload" as="style" href="css/design-tokens.css?v=4.9.1">
+  <link rel="preload" as="style" href="css/styles.css?v=4.9.1">
+  <link rel="preload" as="script" href="/app/js/app.js?v=4.9.1">
   <link rel="preload" as="script" href="/app/js/icons.js">
-  <link rel="preload" as="image" href="/app/assets/icon-192.png">
 
-  <link rel="stylesheet" href="css/design-tokens.css?v=4.7.172">
-  <link rel="stylesheet" href="css/styles.css?v=4.7.172">
-  <link rel="stylesheet" href="css/mobile.css?v=4.7.180">
+  <link rel="stylesheet" href="css/design-tokens.css?v=4.9.1">
+  <link rel="stylesheet" href="css/styles.css?v=4.9.1">
+  <link rel="stylesheet" href="css/mobile.css?v=4.9.1">
   <link rel="stylesheet" href="css/realtime.css" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/scanner.css" media="print" onload="this.media='all'">
 
-  <script src="/app/vendor/chart.umd.min.js" async></script>
-  <script src="/app/vendor/xlsx.full.min.js" async></script>
-  <script src="/app/vendor/html5-qrcode.min.js" async></script>
+  <script src="/app/vendor/chart.umd.min.js?v=4.9.1" async></script>
+  <script src="/app/vendor/xlsx.full.min.js?v=4.9.1" async></script>
+  <script src="/app/vendor/html5-qrcode.min.js?v=4.9.1" async></script>
   <script src="/socket.io/socket.io.js" defer></script>
 </head>
 
@@ -107,7 +107,7 @@
       <div class="login-logo" id="loginLogo"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي" loading="eager"></div>
 
       <div class="login-title" id="loginTitle">مطاعم الشرفه العالمي</div>
-      <div class="login-sub" id="loginSub">نظام إدارة المطاعم المتكامل · الإصدار <span id="loginVersion" class="mono">4.7.2</span></div>
+      <div class="login-sub" id="loginSub">نظام إدارة المطاعم المتكامل · الإصدار <span id="loginVersion" class="mono">4.8.0</span></div>
 
       <div class="fg">
         <label id="luLabel" class="fg-label">
@@ -210,6 +210,7 @@
 
             <div class="topbar-btn" onclick="toggleLang()" role="button" tabindex="0" data-kb-activate aria-label="تبديل اللغة"><i class="ji" data-i="globe"></i> EN</div>
             <div class="topbar-btn" onclick="toggleTheme()" data-tooltip="تبديل المظهر" role="button" tabindex="0" data-kb-activate aria-label="تبديل المظهر"><i class="ji" data-i="moon"></i></div>
+            <div class="topbar-btn" onclick="showChangeMyPasswordModal()" data-tooltip="تغيير كلمة المرور" role="button" tabindex="0" data-kb-activate aria-label="تغيير كلمة المرور"><i class="ji" data-i="key"></i></div>
 
             <a
               href="/app/pos.html"
@@ -240,51 +241,18 @@
   <div id="modals"></div>
 
   <script src="js/icons.js" defer></script>
-  <script src="js/vendor/qrcode.min.js" defer></script>
+  <script src="js/vendor/qrcode.min.js?v=4.9.1" defer></script>
   <script src="js/db-constraints-client.js" defer></script>
-  <script type="module" src="js/main.js?v=4.7.191"></script>
-  <script src="js/app.js?v=4.7.143" defer></script>
+  <script type="module" src="js/main.js?v=4.9.1"></script>
+  <script src="js/app.js?v=4.9.1" defer></script>
   <script src="js/scanner.js" defer></script>
-  <script src="js/realtime.js?v=4.7.169" defer></script>
+  <script src="js/realtime.js?v=4.9.1" defer></script>
   <script src="js/core/i18n-auto-catalog.js" defer></script>
   <script src="js/core/i18n-auto.js" defer></script>
-  <script>
+</body>
 
-  // ─── عين إظهار/إخفاء كلمة المرور (صفحة الدخول) ───
-  function toggleLoginPassword(btn){
-    var inp = document.getElementById('lp');
-    if(!inp){return;}
-    var show = inp.type === 'password';
-    inp.type = show ? 'text' : 'password';
-    var icon = btn.querySelector('.ji');
-    if(icon){ var ni = document.createElement('i'); ni.className = 'ji'; ni.setAttribute('data-i', show ? 'eye-off' : 'eye'); icon.replaceWith(ni); }
-    btn.setAttribute('aria-label', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
-    inp.focus({ preventScroll: true });
-  }
-  window.toggleLoginPassword = toggleLoginPassword;
-
-  // ─── تحذير Caps Lock (تفصيلة احترافية لمنع فشل الدخول الصامت) ───
-  (function(){
-    var lp = document.getElementById('lp');
-    var warn = document.getElementById('capsWarn');
-    if(!lp || !warn || !window.addEventListener) {return;}
-    function check(e){
-      var on = false;
-      try{ on = !!(e && e.getModifierState && e.getModifierState('CapsLock')); }catch(_){}
-      warn.classList.toggle('on', on);
-    }
-    lp.addEventListener('keyup', check);
-    lp.addEventListener('keydown', function(e){ if(e && e.key === 'CapsLock') { check(e); } });
-    lp.addEventListener('blur', function(){ warn.classList.remove('on'); });
-  })();
-
-    if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(() => {});
-      });
-    }
-  </script>
-
+    <!-- SMART-SEARCH-TRIAL: تجربة قابلة للحذف — احذف السطر التالي + الملف smart-item-search.js لإزالتها كليًا -->
+    <script src="js/features/smart-item-search.js?v=2.0.0"></script>
 </body>
 </html>
 

@@ -5,8 +5,9 @@ const cors = require('cors');
 const morgan = require('morgan');
 const compression = require('compression');
 const os = require('os');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('./pw-crypto');
 const path = require('path');
+const crypto = require('crypto');
 // dotenv يجب أن يُحمَّل قبل أي وحدة تقرأ NODE_ENV أثناء التحميل (logger أولها)
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { logger, httpLogger } = require("./logger");
@@ -33,7 +34,7 @@ const { pool } = require('./shared-pool');
 const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
 
 // ─── JWT Authentication Middleware ────────────────────
-const { jwtAuth, requireRole, verifyAccessToken } = require('./cashier-module/jwt-middleware');
+const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
 const { requireRoleOrPerm, permForEntity } = require('./permissions');
 const { router: hrRouter } = require('./hr-routes');
 const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch } = require('./warehouse-routes');
@@ -53,6 +54,7 @@ const { router: yarasoftRouter, ensureYarasoftSchema, yarasoftEngine } = require
 
 // ─── Schema Registry (Column Whitelist for Security) ──
 const { filterBody, entityExists, validateColumnName, getSortableColumns, getSchema, getEntityWriteRoles, isProtectedDeleteEntity, maskEmployeeRowForRole } = require('./schema-registry');
+const { encryptForVault, decryptFromVault, ensurePasswordVaultSchema } = require('./password-vault');
 
 // ─── Pagination Utilities ─────────────────────────────
 const { parsePaginationParams, buildPaginatedQuery } = require('./pagination');
@@ -360,20 +362,22 @@ function setStaticCacheHeaders(res, filePath) {
         res.setHeader('Cache-Control', `public, max-age=2592000`);
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.css'].includes(ext)) {
-        res.setHeader('Cache-Control', noCache ? 'no-cache, must-revalidate, proxy-revalidate' : isImmutable
-            ? `public, max-age=31536000, immutable`
-            : `public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600, stale-if-error=86400`);
+        res.setHeader('Cache-Control', NO_CACHE);
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.js', '.mjs'].includes(ext)) {
-        res.setHeader('Cache-Control', noCache ? 'no-cache, must-revalidate, proxy-revalidate' : isImmutable
-            ? `public, max-age=31536000, immutable`
-            : `public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600, stale-if-error=86400`);
+        // ROOT FIX (نهاية عهد ?v= اليدوي): كود التطبيق لا يُخزَّن طويلًا أبدًا حتى مع
+        // ?v= — السياسة القديمة كانت تعطي ?v= كاش سنة immutable، فبقي الكود الجديد
+        // محجوبًا في المتصفحات أسبوعين. مكتبات vendor وحدها immutable (ثابتة فعلًا).
+        const isVendorLib = normPath.toLowerCase().indexOf('/vendor/') !== -1 || String(reqUrl).toLowerCase().indexOf('/vendor/') !== -1;
+        res.setHeader('Cache-Control', isVendorLib
+            ? 'public, max-age=31536000, immutable'
+            : NO_CACHE);
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.json'].includes(ext)) {
         if (/manifest\.json$/i.test(filePath)) {
             res.setHeader('Cache-Control', `public, max-age=3600`);
         } else {
-            res.setHeader('Cache-Control', `public, max-age=86400`);
+            res.setHeader('Cache-Control', NO_CACHE);
         }
     } else if (['.html', '.htm'].includes(ext)) {
         res.setHeader('Cache-Control', NO_CACHE);
@@ -436,6 +440,12 @@ function apiKeyMiddleware(req, res, next) {
     if (req.path === '/server/info') {
         return next();
     }
+    // التحقق العام من بطاقات الموظف (مسح QR بالهاتف): مؤمّن ذاتيًا بتوقيع
+    // HMAC ويعرض بيانات عامة فقط — ومتصفح الهاتف لا يملك x-api-key أبدًا،
+    // فحجبه بالمفتاح يعني "مفتاح التطبيق مفقود" لكل مسح. يُستثنى عمدًا و بأمان.
+    if (req.path === '/hr/card/verify' || req.path.indexOf('/hr/card/v/') === 0) {
+        return next();
+    }
     // Auth endpoints stay open: they are credential/JWT-gated + rate-limited,
     // and the browser cannot know the app key before login. The key is handed
     // to the client inside login/refresh responses and required on all DATA
@@ -450,7 +460,12 @@ function apiKeyMiddleware(req, res, next) {
     if (!providedKey) {
         return res.status(401).json({ error: 'API_KEY_REQUIRED', message: 'مفتاح التطبيق مفقود — أضف ترويسة x-api-key' });
     }
-    if (providedKey !== API_KEY) {
+    // SECURITY: مقارنة timing-safe (بتغليف فرق الطول أولًا) — المقارنة المباشرة
+    // === تفتح باب قياس زمن الاستجابة لكشف المفتاح بايتًا بايتًا.
+    const a = Buffer.from(String(providedKey));
+    const b = Buffer.from(String(API_KEY));
+    const keyOk = a.length === b.length && crypto.timingSafeEqual(a, b);
+    if (!keyOk) {
         return res.status(401).json({ error: 'API_KEY_INVALID', message: 'مفتاح التطبيق غير صحيح' });
     }
     next();
@@ -460,12 +475,19 @@ app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
 
 // Real employee portal: signed QR cards, attendance actions, and printable reports.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, hrRouter);
+try {
+    require('./hr-routes').startShiftRollover();
+} catch (e) {
+    logger.error('[SHIFT_ROLLOVER] scheduler failed to start:', e.message);
+}
 // Leave approval workflow: employee → direct manager → operations manager → general manager → HR.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRouter);
 // البصمة الذاتية المقيدة جغرافيًا (SPEC-employee-pwa-attendance-geofence-v1) —
 // مولودة مغلقة: punch_portal_enabled=false حتى يفعّلها المالك من punch_settings.
 const punchPortalRouter = require('./attendance-portal-routes'); // module.exports = router
 app.use('/api/attendance/portal', punchPortalRouter);
+
+// وحدة جدول الدومات حُذفت من جذورها (2026-09-30) — الدوام الثابت هو المصدر.
 
 ensureLeaveWorkflowSchema().catch((error) => logger.error('[LEAVE_WORKFLOW_SCHEMA] initialization failed:', error.message));
 // Atomic warehouse/accounting workflows: dispatch approval, kitchen returns, and purchase invoices.
@@ -495,6 +517,30 @@ app.use('/api/finance', (req, res, next) => { req.io = io; next(); }, financeRou
 // Accounting dept: chart of accounts + double-entry journal + CFO summary.
 const { router: accountingRouter } = require('./accounting-routes');
 app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, accountingRouter);
+// Accounting controls (isolated): period lock + draft/approve + balance-sheet + cash-flow.
+// Guarded load — any failure here never takes the core ledger down.
+try {
+    const acctPeriods = require('./accounting-periods');
+    app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, acctPeriods.router);
+    acctPeriods.ensureAccountingPeriodsSchema();
+} catch (e) {
+    logger.error('[ACCOUNTING_PERIODS] module failed to load — controls disabled, ledger still running:', e.message);
+}
+try {
+    const acctGrowth = require('./accounting-growth');
+    app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, acctGrowth.router);
+    acctGrowth.ensureAccountingGrowthSchema();
+} catch (e) {
+    logger.error('[ACCOUNTING_GROWTH] module failed to load — growth disabled, ledger still running:', e.message);
+}
+try {
+    const budgetAlerts = require('./budget-alerts');
+    app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, budgetAlerts.router);
+    budgetAlerts.ensureBudgetAlertsSchema();
+    budgetAlerts.startAlertsScheduler(io);
+} catch (e) {
+    logger.error('[BUDGET_ALERTS] module failed to load — alerts disabled, ledger still running:', e.message);
+}
 // User permission grants (admin assigns; additive over roles).
 const { router: permissionRouter } = require('./permission-routes');
 app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permissionRouter);
@@ -619,7 +665,14 @@ io.on('connection', (socket) => {
     socket.on('register_user', async (data) => {
         if (!rtGuard(socket, 'register_user')) {return;}
         try {
-            const userId = Number(data?.userId);
+            // SECURITY: الهوية تُؤخذ من JWT المُتحقق منه في الـ handshake فقط —
+            // عميل مجهول يزعم أي userId كان سيُلتحق بغرف إشعارات ومحادثات مستخدم آخر.
+            const verified = socket.data.rtUser;
+            if (!verified || !verified.id) {
+                socket.emit('user_register_rejected', { reason: 'AUTH_REQUIRED', message: 'أعد تسجيل الدخول لتفعيل الإشعارات الفورية' });
+                return;
+            }
+            const userId = Number(verified.id);
             if (!Number.isInteger(userId) || userId <= 0) {return;}
             const user = (await pool.query('SELECT id, username, role, dept_code FROM users WHERE id = $1 AND active = true', [userId])).rows[0];
             if (!user) {return;}
@@ -909,8 +962,10 @@ app.use('/api', idempotency({
 }));
 ensureIdempotencySchema(pool).catch((e) => logger.warn('[idempotency] schema skipped:', e.message));
 
-// Network info
-app.get('/api/network-info', (req, res) => {
+// Network info — SECURITY: طوبولوجيا الشبكة (كل عناوين LAN) تُخفى خلف JWT.
+// كان يُقرأ بمفتاح التطبيق وحده، والمفتاح يوزع على كل عميل بعد تسجيل الدخول.
+// عميل الاكتشاف (EXE) يقرأ /server/info العامة — لا يحتاج هذا المسار.
+app.get('/api/network-info', jwtAuth, (req, res) => {
     const nets = os.networkInterfaces();
     const results = {};
     for (const name of Object.keys(nets)) {
@@ -929,8 +984,8 @@ app.get('/api/network-info', (req, res) => {
     });
 });
 
-// Connected clients list
-app.get('/api/clients', (req, res) => {
+// Connected clients list — SECURITY: كذلك خلف JWT (أسماء أجهزة + عناوين).
+app.get('/api/clients', jwtAuth, (req, res) => {
     res.json({
         count: connectedClients.size,
         clients: Array.from(connectedClients.values()).map(c => ({
@@ -944,6 +999,26 @@ app.get('/api/clients', (req, res) => {
 // ─── Runtime metrics (enterprise observability) ─────────────
 // لقطة حية: عدّادات الطلبات ومئينات زمن الاستجابة وتأخر حلقة الأحداث
 // وذاكرة العملية واستغلال مسبّح قاعدة البيانات — للمالك/المدير فقط.
+ensurePasswordVaultSchema().catch((e) => logger.warn('[pw-vault] schema skipped:', e.message));
+
+// خزنة كلمات المرور: عرض نسخة كلمة المرور المسجلة — للأدمن حصريًا (قرار المالك
+// لمساعدة الموظف النسي كلمته). بلا نسخة محفوظة ترجع available:false بدل فشل.
+app.get('/api/users/:id/password', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {return res.status(422).json({ error: 'USER_ID_INVALID', message: 'معرف المستخدم غير صالح' });}
+    try {
+        const r = await pool.query('SELECT password_vault FROM users WHERE id = $1', [id]);
+        if (!r.rows[0]) {return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' });}
+        res.set('Cache-Control', 'no-store');
+        const plain = decryptFromVault(r.rows[0].password_vault);
+        if (!plain) {return res.json({ ok: true, available: false, message: 'لا توجد نسخة محفوظة لهذا الحساب — أعد تعيين كلمة المرور من «تعديل الحساب» وستُسجَّل' });}
+        res.json({ ok: true, available: true, password: plain });
+    } catch (e) {
+        logger.error('[pw-vault] view failed:', e.message);
+        res.status(500).json({ error: 'VAULT_VIEW_FAILED', message: 'تعذر جلب كلمة المرور' });
+    }
+}));
+
 app.get('/api/metrics', jwtAuth, requireRole('admin', 'manager'), (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json(metrics.snapshot(pool));
@@ -1078,6 +1153,33 @@ app.post('/api/state', jwtAuth, requireRole('admin', 'manager'), stateLimiter, a
 }));
 
 // DELETE /api/state — DANGEROUS: requires admin role
+// ROOT FIX 2026-10-02: مرآة قيود المصاريف — كل مصروف يدوي يقابله قيد
+// Dr 6900 مصروف / Cr 1000 صندوق، ويُحدَّث/يُمسح مع تعديل أو حذف المصروف
+// حتى يعكس الأستاذ دائمًا الواقع التشغيلي (idempotent بمعرف المصروف).
+async function purgeExpenseJournal(expenseId) {
+    try {
+        await pool.query(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type='expense' AND source_id=$1)`, [String(expenseId)]);
+        await pool.query(`DELETE FROM journal_entries WHERE source_type='expense' AND source_id=$1`, [String(expenseId)]);
+    } catch (e) { logger.warn("[expense-journal-purge]", e.message); }
+}
+async function postExpenseJournal(expenseRow) {
+    try {
+        const amt = Number(expenseRow?.amount) || 0;
+        if (!(amt > 0)) {return;}
+        const { postJournal } = require('./accounting-routes');
+        const day = /^\d{4}-\d{2}-\d{2}$/.test(String(expenseRow.date || '').slice(0, 10)) ? String(expenseRow.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+        await postJournal(pool, {
+            date: day,
+            memo: `مصروف ${expenseRow.category || ''} — ${String(expenseRow.notes || '').slice(0, 60)}`.trim(),
+            source_type: 'expense', source_id: String(expenseRow.id),
+            lines: [
+                { account_code: '6900', debit: amt, credit: 0, memo: 'مصروف تشغيلي' },
+                { account_code: '1000', debit: 0, credit: amt, memo: 'دفع نقدي من الصندوق' },
+            ],
+        });
+    } catch (e) { logger.warn("[expense-ledger]", e.message); }
+}
+
 app.delete('/api/state', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
     // ─── AUDIT LOG: Record who cleared state ────────────
     const auditInfo = {
@@ -1125,7 +1227,6 @@ app.delete('/api/state', jwtAuth, requireRole('admin'), asyncHandler(async (req,
 // the POST handler must mint one server-side when the entity needs it.
 // Milliseconds × 1000 + a crypto-random suffix keeps BIGINT headroom while
 // making same-millisecond collisions virtually impossible under bursts.
-const crypto = require('crypto');
 function generateLegacyId() {
     return Date.now() * 1000 + crypto.randomInt(0, 1000);
 }
@@ -1230,7 +1331,7 @@ async function enforceAttendanceSelfService(entity, req, filtered, existingId = 
 // Never expose password hashes to browsers, logs, sockets, or export responses.
 function publicEntityRow(entity, row) {
     if (entity !== 'users' || !row) {return row;}
-    const { password: _password, ...safe } = row;
+    const { password: _password, password_vault: _pwVault, ...safe } = row;
     return safe;
 }
 
@@ -1390,18 +1491,62 @@ app.put('/api/users/:id/employee', jwtAuth, requireRole('admin', 'manager'), cru
     } finally { client.release(); }
 }));
 
+// SECURITY audit (pre-delivery): بث السوكيت يصل لكل المقابس — ومنها المجهولة عبر
+// التونل. صفوف الرواتب (payroll*) لا تُبث إطلاقًا إلا كإشارة تغيير {id}، وصفوف
+// employees تُبث بكلمة الرواتب مقنعة. الشاشات المرتفعة تعيد الجلب عبر loadData()
+// فلا فقدان وظيفة — نفس عقد viewerSafeRow على REST.
+const SOCKET_SIGNAL_ONLY_ENTITIES = new Set(['payroll', 'salary_advances', 'payroll_adjustments', 'payroll_runs']);
+
 function emitEntityChange(entity, action, data, req) {
+    let safeData = data;
+    if (SOCKET_SIGNAL_ONLY_ENTITIES.has(entity) && data && typeof data === 'object') {
+        safeData = { id: data.id };
+    } else if (entity === 'employees') {
+        safeData = maskEmployeeRowForRole(publicEntityRow(entity, data), null);
+    }
     const payload = {
         entity,
         entityName: entityNames[entity] || entity,
         action, // 'create' | 'update' | 'delete'
-        data,
+        data: safeData,
         changedBy: req.headers['x-device-name'] || req.ip,
         changedAt: new Date().toISOString(),
     };
 
     const senderSocket = req.headers['x-socket-id'];
     emitScoped('entity_changed', payload, senderSocket || undefined);
+}
+
+// ─── Closed-payroll guard (V6 Phase 3, decision #7): writes to payroll entities
+// in a locked accounting period are rejected with 423 PERIOD_LOCKED.
+// Fail-open everywhere: controls down / month unparseable / row missing → allow
+// (reads are never affected; only these 5 entities are checked).
+const PAYROLL_GUARDED_ENTITIES = new Set(['payroll', 'payroll_adjustments', 'salary_advances', 'advance_applications', 'payroll_runs']);
+function payrollMonthOf(entity, obj) {
+    if (!PAYROLL_GUARDED_ENTITIES.has(entity) || !obj || typeof obj !== 'object') {return null;}
+    const pick = obj.month ?? obj.period ?? null;
+    if (typeof pick === 'string' && /^\d{4}-\d{2}$/.test(pick)) {return pick;}
+    const d = obj.date ?? obj.pay_date ?? obj.payment_date ?? null;
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {return d.slice(0, 7);}
+    return null;
+}
+async function payrollPeriodViolation(entity, obj) {
+    const month = payrollMonthOf(entity, obj);
+    if (!month) {return null;}
+    try {
+        const { isPeriodClosed } = require('./accounting-periods');
+        if (await isPeriodClosed(month)) {
+            return { error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن تعديل الرواتب (أعد فتح الفترة أولًا)` };
+        }
+    } catch (_) { /* controls down → fail-open */ }
+    return null;
+}
+async function payrollRowViolation(entity, id, extra) {
+    try {
+        const row = (await pool.query(`SELECT * FROM "${entity}" WHERE id = $1`, [id])).rows[0];
+        if (!row) {return null;}
+        return payrollPeriodViolation(entity, { ...row, ...(extra || {}) });
+    } catch (_) {return null;}
 }
 
 entities.forEach(entity => {
@@ -1536,15 +1681,18 @@ entities.forEach(entity => {
             }
             // Auto-generate id for legacy tables that mark `id` as protected
             filtered = ensureIdForEntity(entity, filtered);
+            const periodBlockCreate = await payrollPeriodViolation(entity, filtered);
+            if (periodBlockCreate) {return res.status(423).json(periodBlockCreate);}
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
-                if (String(filtered.password).trim().length < 6) {return res.status(422).json({ error: 'PASSWORD_TOO_SHORT', message: 'كلمة المرور يجب ألا تقل عن 6 أحرف' });}
+                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });}
                 // Privilege-escalation guard: only admins may mint accounts with elevated roles
                 if (req.user?.role !== 'admin' && 'role' in filtered) {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
                 }
                 try { await validateDeptHeadUserLink(entity, filtered); }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                req._pwVaultPlain = String(filtered.password);
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -1569,6 +1717,22 @@ entities.forEach(entity => {
             );
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
+            // ROOT FIX 2026-10-02: جلسات الجرد تُبنى من أرصدة المواقع — الصنف
+            // المنشأ عبر CRUD العام بلا صف رصيد كان يختفي من لقطة الجرد كليًا
+            // (EMPTY_AUDIT). يُضمن صف رصيد في المخزن الرئيسي عند إنشاء أي صنف.
+            if (entity === 'inventory') {
+                try {
+                    const _mainLoc = (await pool.query(
+                        `SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active = true LIMIT 1`)).rows[0];
+                    if (_mainLoc) {
+                        await pool.query(
+                            `INSERT INTO inventory_location_balances (inventory_id, location_id, on_hand)
+                             VALUES ($1, $2, GREATEST(0, $3::numeric)) ON CONFLICT (inventory_id, location_id) DO NOTHING`,
+                            [result.rows[0].id, _mainLoc.id, Number(result.rows[0].qty) || 0]);
+                    }
+                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); }
+            }
+            if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
             emitEntityChange(entity, 'create', publicRow, req);
             // Task 20: إشعار فوري لسلسلة الاعتماد عند إنشاء طلب صرف
             if (entity === 'dispatches') {
@@ -1585,6 +1749,10 @@ entities.forEach(entity => {
                         if (child.unref) {child.unref();}
                     } catch (_) {}
                 }
+            }
+            if (entity === 'users' && req._pwVaultPlain) {
+                const _enc = encryptForVault(req._pwVaultPlain);
+                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
             }
             res.status(201).json(publicRow);
         }));
@@ -1612,6 +1780,8 @@ entities.forEach(entity => {
 
             // Auto-generate id for legacy tables that mark `id` as protected
             let filtered = ensureIdForEntity(entity, f0);
+            const periodBlockCreateOpen = await payrollPeriodViolation(entity, filtered);
+            if (periodBlockCreateOpen) {return res.status(423).json(periodBlockCreateOpen);}
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered); }
             catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
             if (entity === 'employees') {
@@ -1647,7 +1817,7 @@ entities.forEach(entity => {
             }
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
-                if (String(filtered.password).trim().length < 6) {return res.status(422).json({ error: 'PASSWORD_TOO_SHORT', message: 'كلمة المرور يجب ألا تقل عن 6 أحرف' });}
+                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });}
                 // Privilege-escalation guard: role changes are admin-only
                 if (req.user?.role !== 'admin' && 'role' in filtered) {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
@@ -1655,6 +1825,7 @@ entities.forEach(entity => {
                 // Task 19: حساب رئيس القسم يجب ربطه بقسم صحيح عند الإنشاء
                 try { await validateDeptHeadUserLink(entity, filtered); }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                req._pwVaultPlain = String(filtered.password);
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -1679,7 +1850,46 @@ entities.forEach(entity => {
             );
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
+            // نفس حرس الرصيد — المعالج الثاني للكيانات ذات الأدوار المفتوحة
+            if (entity === 'inventory') {
+                try {
+                    const _mainLoc = (await pool.query(
+                        `SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active = true LIMIT 1`)).rows[0];
+                    if (_mainLoc) {
+                        await pool.query(
+                            `INSERT INTO inventory_location_balances (inventory_id, location_id, on_hand)
+                             VALUES ($1, $2, GREATEST(0, $3::numeric)) ON CONFLICT (inventory_id, location_id) DO NOTHING`,
+                            [result.rows[0].id, _mainLoc.id, Number(result.rows[0].qty) || 0]);
+                    }
+                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); }
+            }
+            if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
             emitEntityChange(entity, 'create', publicRow, req);
+            // ─── تدقيق أمني (2026-10-01): إنشاء إجازة معتمدة/مرفوضة مباشرة (أعذار
+            // إدارية) كان يتركها خارج سلسلة الاعتماد — تُلحق بسجل مكتمل/مرفوض
+            // موثق حتى تظهر في المتابعة ولا تُخفى عن المراجعة
+            if (entity === 'leaveRequests' && ['approved', 'rejected'].includes(String(result.rows[0]?.status))) {
+                try {
+                    await require('./leave-workflow-routes').ensureLeaveWorkflowSchema();
+                    const done = result.rows[0].status === 'approved';
+                    const wf = (await pool.query(
+                        `INSERT INTO leave_approval_workflows(leave_request_id,current_stage,status,current_note,completed_at)
+                         VALUES($1,$2,$3,$4,$5) ON CONFLICT (leave_request_id) DO NOTHING RETURNING *`,
+                        [result.rows[0].id, done ? 'hr' : 'direct_manager', done ? 'completed' : 'rejected',
+                         result.rows[0].reason || null, done ? new Date() : null])).rows[0];
+                    if (wf) {
+                        await pool.query(
+                            `INSERT INTO leave_approval_events(workflow_id,stage,action,note,actor_user_id,actor_role)
+                             VALUES($1,'direct_manager',$2,$3,$4,$5)`,
+                            [wf.id, done ? 'approve' : 'reject', 'إنشاء مباشر معتمد إداريًا',
+                             req.user?.id ?? null, req.user?.role ?? null]);
+                    }
+                } catch (e) { logger.warn('[leave-workflow-auto]', e.message); }
+            }
+            if (entity === 'users' && req._pwVaultPlain) {
+                const _enc = encryptForVault(req._pwVaultPlain);
+                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
+            }
             res.status(201).json(publicRow);
         }));
     }
@@ -1708,14 +1918,15 @@ entities.forEach(entity => {
                 if (filtered.password !== undefined && !String(filtered.password).trim()) {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
                 }
-                if (filtered.password !== undefined && String(filtered.password).trim().length < 6) {
-                    return res.status(422).json({ error: 'PASSWORD_TOO_SHORT', message: 'كلمة المرور يجب ألا تقل عن 6 أحرف' });
+                if (filtered.password !== undefined && !isStrongPassword(String(filtered.password).trim())) {
+                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });
                 }
                 // Privilege-escalation guard: role changes are admin-only
                 if ('role' in filtered && req.user?.role !== 'admin') {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
                 }
                 if (filtered.password !== undefined) {
+                    req._pwVaultPlain = String(filtered.password);
                     filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12) };
                 }
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
@@ -1743,6 +1954,8 @@ entities.forEach(entity => {
                     delete filtered.auto_lock;
                 }
             }
+            const periodBlockPut = await payrollRowViolation(entity, id, filtered);
+            if (periodBlockPut) {return res.status(423).json(periodBlockPut);}
 
             const keys = Object.keys(filtered);
             const values = keys.map(key => prepareDbValue(entity, key, filtered[key]));
@@ -1765,6 +1978,21 @@ entities.forEach(entity => {
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
             emitEntityChange(entity, 'update', publicRow, req);
+            // SECURITY ROOT FIX 2026-10-02: أي تعديل حساس على حساب مستخدم (كلمة
+            // مرور أو إيقاف) يبطل جلسات التحديث المفتوحة — كانت تظل صالحة حتى
+            // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
+            if (entity === 'users' && (req._pwVaultPlain !== undefined || filtered.active === false)) {
+                try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
+                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+            }
+            if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
+                await purgeExpenseJournal(id);
+                await postExpenseJournal(result.rows[0]);
+            }
+            if (entity === 'users' && req._pwVaultPlain) {
+                const _enc = encryptForVault(req._pwVaultPlain);
+                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
+            }
             res.json(publicRow);
         }));
     } else {
@@ -1790,19 +2018,28 @@ entities.forEach(entity => {
             }
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered, id); }
             catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
+            // ─── تدقيق أمني (2026-10-01): قرارات الإجازات (حالة/معتمِد/رافض) عبر
+            // مسار السلسلة فقط — التعديل العام المباشر كان يتجاوز المراحل والمنع الذاتي
+            if (entity === 'leaveRequests') {
+                const decideKeys = ['status', 'approvedBy', 'approvedDate', 'rejectionReason', 'rejectedBy', 'rejectedDate'];
+                if (decideKeys.some((k) => Object.prototype.hasOwnProperty.call(req.body || {}, k))) {
+                    return res.status(405).json({ error: 'LEAVE_WORKFLOW_REQUIRED', message: 'قرارات الإجازة عبر مسار الاعتماد المخصص (/hr/leave-workflow) — لا تعديل مباشر' });
+                }
+            }
             if (entity === 'users') {
                 // Empty/whitespace passwords must never overwrite a stored hash
                 if (filtered.password !== undefined && !String(filtered.password).trim()) {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
                 }
-                if (filtered.password !== undefined && String(filtered.password).trim().length < 6) {
-                    return res.status(422).json({ error: 'PASSWORD_TOO_SHORT', message: 'كلمة المرور يجب ألا تقل عن 6 أحرف' });
+                if (filtered.password !== undefined && !isStrongPassword(String(filtered.password).trim())) {
+                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });
                 }
                 // Privilege-escalation guard: role changes are admin-only
                 if ('role' in filtered && req.user?.role !== 'admin') {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
                 }
                 if (filtered.password !== undefined) {
+                    req._pwVaultPlain = String(filtered.password);
                     filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12) };
                 }
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
@@ -1838,6 +2075,8 @@ entities.forEach(entity => {
                 }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: error.message }); }
             }
+            const periodBlockPutOpen = await payrollRowViolation(entity, id, filtered);
+            if (periodBlockPutOpen) {return res.status(423).json(periodBlockPutOpen);}
             const keys = Object.keys(filtered);
             const values = keys.map(key => prepareDbValue(entity, key, filtered[key]));
             if (keys.length === 0) {return res.status(400).json({ error: 'Empty payload after filtering' });}
@@ -1859,34 +2098,117 @@ entities.forEach(entity => {
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
             emitEntityChange(entity, 'update', publicRow, req);
+            // SECURITY ROOT FIX 2026-10-02: أي تعديل حساس على حساب مستخدم (كلمة
+            // مرور أو إيقاف) يبطل جلسات التحديث المفتوحة — كانت تظل صالحة حتى
+            // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
+            if (entity === 'users' && (req._pwVaultPlain !== undefined || filtered.active === false)) {
+                try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
+                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+            }
+            if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
+                await purgeExpenseJournal(id);
+                await postExpenseJournal(result.rows[0]);
+            }
+            if (entity === 'users' && req._pwVaultPlain) {
+                const _enc = encryptForVault(req._pwVaultPlain);
+                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
+            }
             res.json(publicRow);
         }));
     }
 
     // DELETE (role-based auth for sensitive entities)
+    // ADMIN FULL-CONTROL (2026-10-01): دور admin يتجاوز كل قيود الحذف —
+    // حذف إذن صرف بأي حالة + حذف الكيانات المحصّنة ماليًا عبر ?force=1 —
+    // مع توثيق إجباري في جدول admin_delete_audit (لا يُكسر التسلسل بصمت).
+    async function logAdminForceDelete(req, entity, id, reason) {
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS admin_delete_audit (
+                    id BIGSERIAL PRIMARY KEY,
+                    entity TEXT NOT NULL,
+                    record_id TEXT NOT NULL,
+                    deleted_by TEXT,
+                    deleted_by_id BIGINT,
+                    reason TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )`);
+            await pool.query(
+                `INSERT INTO admin_delete_audit (entity, record_id, deleted_by, deleted_by_id, reason)
+                 VALUES ($1,$2,$3,$4,$5)`,
+                [String(entity), String(id),
+                 req.user?.username || req.user?.name || null,
+                 Number(req.user?.id) || null,
+                 String(reason || req.query?.reason || req.body?.reason || 'admin force delete').slice(0, 500)]);
+        } catch (e) { logger.warn('[admin-force-delete-audit] skipped:', e.message); }
+    }
+    // حذف تتابعي لمتعلقات إذن صرف (للأدمن فقط) — دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات.
+    // الأرصدة المخزنية والمتوسطات لا تُمس عمدًا (واقع فيزيائي — تُسوّى بجرد تأكيدي).
+    // يعمل حتى لو صف الإذن نفسه محذوف مسبقًا (تنظيف البقايا).
+    async function purgeDispatchRelated(dispatchId) {
+        const out = { journal: 0, ledger: 0, tx: 0, expenses: 0, events: 0, notifications: 0 };
+        const ref = `DIS-${dispatchId}`;
+        const hash = `%طلب صرف #${dispatchId}%`;
+        try {
+            out.journal = (await pool.query(
+                `DELETE FROM journal_entries WHERE source_type='dispatch' AND source_id=$1 RETURNING id`,
+                [String(dispatchId)])).rows.length;
+            out.ledger = (await pool.query(
+                `DELETE FROM inventory_ledger WHERE reference_type='dispatch' AND (reference_id=$1 OR reference_id=$2) RETURNING id`,
+                [ref, String(dispatchId)])).rows.length;
+            out.tx = (await pool.query(
+                `DELETE FROM "inventoryTx" WHERE "dispatchId"=$1 RETURNING id`, [ref])).rows.length;
+            out.expenses = (await pool.query(
+                `DELETE FROM expenses WHERE COALESCE("adjustmentType",'') IN ('dispatch','dispatch_return')
+                  AND (notes LIKE $1 OR "desc" LIKE $2) RETURNING id`, [hash, hash])).rows.length;
+            out.events = (await pool.query(
+                `DELETE FROM dispatch_workflow_events WHERE dispatch_id=$1 RETURNING id`,
+                [isNaN(Number(dispatchId)) ? -1 : Number(dispatchId)])).rows.length;
+            out.notifications = (await pool.query(
+                `DELETE FROM notifications WHERE entity='dispatches' AND entity_id=$1 RETURNING id`,
+                [String(dispatchId)])).rows.length;
+        } catch (e) { logger.warn('[purge-dispatch] partial:', e.message); }
+        return out;
+    }
     if (requiresAdminRole || entity === 'dispatches') {
         const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse'] : ['admin', 'manager'];
         app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             if (entity === 'users') {await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);}
+            const periodBlockDel = await payrollRowViolation(entity, id);
+            if (periodBlockDel) {return res.status(423).json(periodBlockDel);}
             // تدقيق أمني جولة 2: إذن الصرف الموقّع (معتمد/مرفوض/مستلم) مستند مالي
             // لا يُمحى عبر CRUD العام — الاعتماد يرحّل مصروفات وحركات دفتر وأحداث
             // موقّعة بسلسلة hash؛ حذفه يقطع السلسلة. المعلّق فقط يجوز حذفه (إلغاء طلب خاطئ).
+            // استثناء الأدمن (2026-10-01): admin يحذف أي حالة — بتوثيق إجباري.
             if (entity === 'dispatches') {
                 const dispatchRow = (await pool.query('SELECT status FROM dispatches WHERE id = $1', [id])).rows[0];
                 if (!dispatchRow) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
-                const deleteGuard = canDeleteDispatch(dispatchRow);
-                if (!deleteGuard.ok) {
-                    const deleteMessages = {
-                        DISPATCH_ALREADY_APPROVED: 'لا يمكن حذف إذن صرف معتمد — مستند مالي موقّع مرحّل مصروفات وحركات مخزون',
-                        DISPATCH_REJECTED: 'لا يمكن حذف إذن مرفوض — قرار الرفض موقّع وموثّق في سلسلة الأحداث',
-                        DISPATCH_ALREADY_RECEIVED: 'لا يمكن حذف إذن تم استلامه — الاستلام موقّع ومرحّل للمخزون',
-                        DISPATCH_CHEF_DECIDED: 'لا يمكن حذف إذن اعتمده الشيف العمومي — قرار موقّع في السلسلة',
-                        DISPATCH_INVALID_STATUS: 'حالة إذن الصرف لا تسمح بحذفه',
-                    };
-                    return res.status(409).json({ error: deleteGuard.code, message: deleteMessages[deleteGuard.code] || 'حذف إذن الصرف غير مسموح في هذه الحالة' });
+                const isAdmin = req.user?.role === 'admin';
+                if (!isAdmin) {
+                    const deleteGuard = canDeleteDispatch(dispatchRow);
+                    if (!deleteGuard.ok) {
+                        const deleteMessages = {
+                            DISPATCH_ALREADY_APPROVED: 'لا يمكن حذف إذن صرف معتمد — مستند مالي موقّع مرحّل مصروفات وحركات مخزون',
+                            DISPATCH_REJECTED: 'لا يمكن حذف إذن مرفوض — قرار الرفض موقّع وموثّق في سلسلة الأحداث',
+                            DISPATCH_ALREADY_RECEIVED: 'لا يمكن حذف إذن تم استلامه — الاستلام موقّع ومرحّل للمخزون',
+                            DISPATCH_CHEF_DECIDED: 'لا يمكن حذف إذن اعتمده الشيف العمومي — قرار موقّع في السلسلة',
+                            DISPATCH_INVALID_STATUS: 'حالة إذن الصرف لا تسمح بحذفه',
+                        };
+                        return res.status(409).json({ error: deleteGuard.code, message: deleteMessages[deleteGuard.code] || 'حذف إذن الصرف غير مسموح في هذه الحالة — الأدمن فقط يستطيع الحذف النهائي (force)' });
+                    }
+                } else {
+                    // حذف تتابعي بأمر المالك (2026-10-01): إذن الأدمن يحذف معه كل
+                    // المتعلقات المالية (دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات) —
+                    // الأرصدة المخزنية لا تُمس (واقع فيزيائي — يُسوّى بجرد)
+                    const rel = await purgeDispatchRelated(id);
+                    await logAdminForceDelete(req, entity, id,
+                        `dispatch status=${dispatchRow.status} force-delete by admin + cascade ` +
+                        `(journal=${rel.journal} ledger=${rel.ledger} tx=${rel.tx} expenses=${rel.expenses} events=${rel.events} notifications=${rel.notifications})`);
+                    logger.warn('[admin] force-delete dispatch + cascade', { id, status: dispatchRow.status, by: req.user?.username || req.user?.id, ...rel });
                 }
             }
+            if (entity === 'expenses') { await purgeExpenseJournal(id); }
             const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
 
@@ -1904,9 +2226,18 @@ entities.forEach(entity => {
             // تدقيق أمني جولة 2: كيانات مالية/دفترية append-only — الحذف العام
             // عليها مغلق تمامًا (لا دور يملكه): دفتر الحركات، مرتجعات الأقسام
             // (حذفها يعيد فتح سقف الإرجاع)، وفواتير الموردين (حذفها يمحو الدين).
+            // استثناء الأدمن (2026-10-01): admin يحذف عبر ?force=1 — بتوثيق إجباري.
             if (isProtectedDeleteEntity(entity)) {
-                return res.status(405).json({ error: 'PROTECTED_ENTITY_DELETE', message: 'هذا السجل جزء من السجل المالي المحصّن ولا يجوز حذفه عبر واجهة عامة' });
+                const isAdminForce = req.user?.role === 'admin'
+                    && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true || req.body?.force === '1');
+                if (!isAdminForce) {
+                    return res.status(405).json({ error: 'PROTECTED_ENTITY_DELETE', message: 'هذا السجل جزء من السجل المالي المحصّن ولا يجوز حذفه عبر واجهة عامة — الأدمن فقط يستطيع الحذف النهائي (force)' });
+                }
+                await logAdminForceDelete(req, entity, id, `protected entity force-delete by admin`);
+                logger.warn('[admin] force-delete protected entity', { entity, id, by: req.user?.username || req.user?.id });
             }
+            const periodBlockDelOpen = await payrollRowViolation(entity, id);
+            if (periodBlockDelOpen) {return res.status(423).json(periodBlockDelOpen);}
             // تدقيق أمني جولة 2: صنف مخزون له حركات/أرصدة لا يُحذف —
             // الحذف كان إما يفشل بخطأ FK خام (500) أو يمحو التاريخ المالي
             // للصنف عبر CASCADE. يجب تعطيل/تصفية الصنف عبر مساره المخصص.
@@ -1920,9 +2251,15 @@ entities.forEach(entity => {
                     [itemIdNum]
                 )).rows[0]?.total || 0;
                 if (movementCount > 0) {
-                    return res.status(409).json({ error: 'INVENTORY_HAS_MOVEMENTS', message: 'لا يمكن حذف صنف له حركات مخزون أو أرصدة — صحّح رصيده بجرد أو أوقف استخدامه' });
+                    const isAdminForceInv = req.user?.role === 'admin'
+                        && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true);
+                    if (!isAdminForceInv) {
+                        return res.status(409).json({ error: 'INVENTORY_HAS_MOVEMENTS', message: 'لا يمكن حذف صنف له حركات مخزون أو أرصدة — صحّح رصيده بجرد أو أوقف استخدامه (الأدمن: حذف نهائي بـ force)' });
+                    }
+                    await logAdminForceDelete(req, entity, id, `inventory with ${movementCount} movements force-delete by admin`);
                 }
             }
+            if (entity === 'expenses') { await purgeExpenseJournal(id); }
             const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
 
@@ -2087,6 +2424,17 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     ensureZktecoSchema()
         .then(() => attendanceEngine.start(io))
         .catch((error) => logger.error('[ZKTECO] تعذر تهيئة مزامنة البصمة (سيستمر الخادم بدونها):', error.message));
+    // ─── تنظيف الإشعارات: ROOT FIX 2026-10-02 — جدول الإشعارات كان يكبر بلا
+    // تنظيف — المقروء الأقدم من 30 يومًا يُمسح يوميًا (fail-open). ───
+    const purgeReadNotifications = async () => {
+        try {
+            const r = await pool.query("DELETE FROM notifications WHERE read = true AND read_at < NOW() - INTERVAL '30 days'");
+            if (r.rowCount) {logger.info(`[notifications] purged ${r.rowCount} read notifications`);}
+        } catch (e) { logger.warn("[notifications-purge]", e.message); }
+    };
+    purgeReadNotifications();
+    const _notifPurgeTimer = setInterval(purgeReadNotifications, 24 * 60 * 60 * 1000);
+    if (_notifPurgeTimer.unref) {_notifPurgeTimer.unref();}
     // ─── استيراد فواتير Yarasoft داخل النظام: المخطط ثم المحرك (معطّل حتى YARASOFT_ENABLED=true) ───
     ensureYarasoftSchema()
         .then(() => yarasoftEngine.start(io))

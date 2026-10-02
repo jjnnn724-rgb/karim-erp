@@ -1033,6 +1033,7 @@ async function resumeActiveShift() {
     $('#pos-session-id').textContent = `وردية #${currentSession.session_id}`;
     const buffetModeResume = isOpenBuffetDepartment();
     $('#catalog-btn').classList.toggle('hidden', !isManagerRole());
+    $('#day-close-btn').classList.toggle('hidden', !isManagerRole());
     $('#buffet-prices-btn').classList.toggle('hidden', !(isManagerRole() && buffetModeResume));
     $('#buffet-invoices-btn').classList.toggle('hidden', !buffetModeResume);
     $('#buffet-report-btn').classList.toggle('hidden', !buffetModeResume);
@@ -1673,7 +1674,7 @@ async function openShift({ newSession = false } = {}) {
         $('#pos-dept-name').textContent = currentDepartment.name;
         $('#pos-session-id').textContent = `وردية #${result.session_id}`;
         const buffetModeOpen = isOpenBuffetDepartment();
-        $('#catalog-btn').classList.toggle('hidden', !isManagerRole());
+$('#catalog-btn').classList.toggle('hidden', !isManagerRole()); $('#day-close-btn').classList.toggle('hidden', !isManagerRole());
         $('#buffet-prices-btn').classList.toggle('hidden', !(isManagerRole() && buffetModeOpen));
         $('#buffet-invoices-btn').classList.toggle('hidden', !buffetModeOpen);
         $('#buffet-report-btn').classList.toggle('hidden', !buffetModeOpen);
@@ -1760,6 +1761,69 @@ async function confirmCloseShift() {
         }, 2500);
     } catch (err) {
         showToast(err.response?.message || err.message || 'فشل إغلاق الوردية', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+let dayCloseData = null;
+async function openDayClose() {
+    if (!isManagerRole()) {return;}
+    showLoading('جارٍ تحميل حالة اليوم...');
+    try {
+        const st = await api('/api/pos/day-close/status');
+        dayCloseData = st;
+        if (st.existing_z) {
+            $('#day-close-body').innerHTML = `<div class="row"><span>الحالة:</span><strong class="c-green">مقفل ✓ (${escapeHtml(st.existing_z.z_number)})</strong></div>
+            <div class="row"><span>صافي الفرق:</span><strong>${fmtMoney(st.existing_z.total_variance)} ${CURRENCY}</strong></div>`;
+            $('#confirm-day-close').disabled = true;
+        } else if (!st.open.length && !st.closed.length) {
+            $('#day-close-body').innerHTML = '<div class="row"><span>لا توجد ورديات في هذا اليوم.</span></div>';
+            $('#confirm-day-close').disabled = true;
+        } else {
+            // SECURITY: أسماء الكاشيرين والأقسام إدخال بشري — تُهرَّب قبل innerHTML
+            const rows = st.open.map(s => `<div class="row"><span>وردية #${Number(s.id)} — ${escapeHtml(s.cashier_name || '')} (${escapeHtml(s.dept_name || '')})</span>
+                <input type="number" id="dc-actual-${Number(s.id)}" min="0" step="0.01" placeholder="الجرد الفعلي" style="width:130px"></div>`).join('')
+                + st.closed.map(s => `<div class="row"><span>وردية #${s.id} — مغلقة ✓ (فرق ${fmtMoney(s.cash_variance)})</span></div>`).join('')
+                + (st.stale_open.length ? `<div class="row" style="color:var(--red)"><span>⚠ ${Number(st.stale_open.length)} وردية عالقة من أيام سابقة — تُقفل من صفحتها.</span></div>` : '');
+            $('#day-close-body').innerHTML = `<div class="row"><span>التاريخ:</span><strong>${escapeHtml(st.date)}</strong></div>${rows}
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="dc-manager-approve"> <span>اعتماد مدير للفروقات فوق العتبة (${Number(st.threshold)})</span></label>`;
+            $('#confirm-day-close').disabled = false;
+        }
+        showModal('day-close-modal');
+    } catch (err) {
+        showToast(err.response?.message || err.message || 'فشل تحميل حالة اليوم', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function confirmDayClose() {
+    if (!dayCloseData || !isManagerRole()) {return;}
+    const counts = {};
+    for (const s of dayCloseData.open) {
+        const v = parseFloat(document.getElementById(`dc-actual-${s.id}`)?.value);
+        if (!Number.isFinite(v) || v < 0) { showToast(`أدخل الجرد الفعلي للوردية #${s.id}`, 'error'); return; }
+        counts[String(s.id)] = v;
+    }
+    if (!confirm(`تنفيذ الإقفال اليومي ${dayCloseData.date}؟ سيُغلق اليوم برقم Z ويُرحّل الفرق للدفتر.`)) {return;}
+    showLoading('جارٍ تنفيذ الإقفال اليومي...');
+    try {
+        const r = await api('/api/pos/day-close', {
+            method: 'POST',
+            body: JSON.stringify({ date: dayCloseData.date, counts, manager_approve: document.getElementById('dc-manager-approve')?.checked === true }),
+        });
+        $('#day-close-body').innerHTML = `
+            <div class="row"><span>رقم الإقفال:</span><strong class="c-green">${r.z.z_number} ✓</strong></div>
+            <div class="row"><span>المتوقع:</span><strong>${fmtMoney(r.z.total_expected)} ${CURRENCY}</strong></div>
+            <div class="row"><span>الفعلي:</span><strong>${fmtMoney(r.z.total_actual)} ${CURRENCY}</strong></div>
+            <div class="row"><span>صافي الفرق:</span><strong>${fmtMoney(r.z.total_variance)} ${CURRENCY}</strong></div>
+            <div class="row"><span>الفواتير:</span><strong>${r.invoices}</strong></div>
+            <div class="row"><span>القيد:</span><strong>${r.journal ? r.journal.entry_no : 'لا فرق — بلا قيد'}</strong></div>`;
+        $('#confirm-day-close').disabled = true;
+        showToast(`تم الإقفال ${r.z.z_number}`, 'success');
+    } catch (err) {
+        showToast(err.response?.message || err.message || 'فشل الإقفال', 'error');
     } finally {
         hideLoading();
     }
@@ -1962,7 +2026,7 @@ $('#print-receipt-btn').addEventListener('click', () => {
     hideModal('receipt-modal');
 });
 
-$('#close-shift-btn').addEventListener('click', closeShiftSummary);
+$('#close-shift-btn').addEventListener('click', closeShiftSummary); $('#day-close-btn').addEventListener('click', openDayClose); $('#cancel-day-close').addEventListener('click', () => hideModal('day-close-modal')); $('#confirm-day-close').addEventListener('click', confirmDayClose);
 $('#cancel-close-shift').addEventListener('click', () => hideModal('close-shift-modal'));
 $('#buffet-prices-btn').addEventListener('click', openBuffetPrices);
 $('#save-buffet-prices').addEventListener('click', saveBuffetPrices);

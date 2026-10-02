@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مطاعم الشرفه العالمي — كاشير المطعم</title>
     <meta name="theme-color" content="#b45309">
     <link rel="manifest" href="/app/manifest.json">
@@ -10,14 +10,13 @@
     <link rel="apple-touch-icon" href="/app/assets/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="karim POS">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/design-tokens.css">
-    <link rel="stylesheet" href="css/pos.css?v=4.6.2">
+    <link rel="stylesheet" href="css/pos.css?v=4.9.1">
 </head>
 <body>
 
@@ -79,6 +78,7 @@
                 <button class="icon-btn" id="orders-history-btn" title="سجل الفواتير"><i class=ji data-i=receipt></i></button>
                 <button class="icon-btn" id="discount-btn" title="خصم على السلة" disabled><i class=ji data-i=tag></i></button>
                 <button class="icon-btn" id="close-shift-btn" title="إغلاق الوردية"><i class=ji data-i=stop></i></button>
+                <button class="icon-btn hidden" id="day-close-btn" title="الإقفال اليومي Z (مدير)"><i class=ji data-i=lock></i></button>
                 <button class="mobile-cart-toggle" id="mobile-cart-toggle" type="button" aria-controls="mobile-cart-panel" aria-expanded="false"><i class=ji data-i=shopping-cart></i> السلة <span id="mobile-cart-count">0</span></button>
             </div>
         </header>
@@ -274,6 +274,18 @@
             <div class="modal-buttons">
                 <button id="confirm-close-shift" class="modal-btn danger"><i class=ji data-i=stop></i> تأكيد الإغلاق</button>
                 <button id="cancel-close-shift" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Day Close (Z) Modal ═══ -->
+    <div id="day-close-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=lock></i> الإقفال اليومي (Z)</h3>
+            <div id="day-close-body"></div>
+            <div class="modal-buttons">
+                <button id="confirm-day-close" class="modal-btn danger"><i class=ji data-i=lock></i> تنفيذ الإقفال</button>
+                <button id="cancel-day-close" class="modal-btn secondary">إلغاء</button>
             </div>
         </div>
     </div>
@@ -517,7 +529,7 @@
     <script src="js/icons.js"></script>
     <script src="js/vendor/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/pos.js?v=4.7.177"></script>
+    <script src="js/pos.js?v=4.9.1"></script>
     <script src="js/pos-orders.js"></script>
     <script>
       if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost')) {

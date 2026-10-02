@@ -763,7 +763,22 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
               + COALESCE((SELECT SUM(COALESCE("totalAmount",0)) FROM "purchaseInvoices" WHERE "supplierId"=$1),0)
               - COALESCE((SELECT SUM(amount) FROM supplier_payments WHERE "supplierId"=$1),0) AS due
         `, [v.clean.supplierId])).rows[0];
-        res.status(201).json({ payment, invoice, supplierDueTotal: roundMoney(totals.due) });
+                // ROOT FIX 2026-10-02: دفعة المورد تُرحّل للقيود — Dr 2000 ذمم /
+        // Cr 1000 صندوق (أو 1010 بنك حسب طريقة الدفع) — idempotent بمعرف الدفعة.
+        try {
+            const { postJournal } = require('../accounting-routes');
+            const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? '1000' : '1010';
+            await postJournal(pool, {
+                date: v.clean.date || new Date().toISOString().slice(0, 10),
+                memo: `دفعة مورد ${supplier.name} (${v.clean.method})`,
+                source_type: 'supplier_payment', source_id: String(paymentId),
+                lines: [
+                    { account_code: "2000", debit: Number(v.clean.amount), credit: 0, memo: `سداد ذمم ${supplier.name}` },
+                    { account_code: _cashAcct, debit: 0, credit: Number(v.clean.amount), memo: "خروج نقدية — دفعة مورد" },
+                ],
+            });
+        } catch (jeErr) { logger.warn("[payment_ledger] best-effort skipped:", jeErr.message); }
+res.status(201).json({ payment, invoice, supplierDueTotal: roundMoney(totals.due) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error('[procurement_payment_create]', error);
@@ -841,6 +856,10 @@ router.delete('/payments/:id', jwtAuth, requireRole(...PAYMENT_DELETE_ROLES), as
             }
         }
         await client.query('COMMIT');
+        try {
+            await pool.query(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1)`, [String(paymentId)]);
+            await pool.query(`DELETE FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1`, [String(paymentId)]);
+        } catch (jeErr) { logger.warn("[payment_ledger_purge]", jeErr.message); }
         emit(req, 'procurement', 'delete', payment);
         if (invoice) {emit(req, 'purchaseInvoices', 'update', invoice, 'فواتير الشراء');}
         res.json({ ok: true, deleted: paymentId, invoice });

@@ -2,6 +2,17 @@
  * features/employees.js — extracted verbatim from app.js (see docs/esm-migration/MIGRATION_CHANGE_LOG.md).
  * Bridge policy: all top-level bindings are mounted on window by js/main.js (see BRIDGE log).
  */
+// ساعات العمل مع الالتفاف الليلي: الخروج بعد منتصف الليل يُكمل اليوم التالي
+// (مطابق لمنطق calculateMinutes في الخادم) — بدونها يظهر الخروج بعد 12 ص بالسالب.
+function portalWorkHours(a){
+if(!(a.checkIn && a.checkOut)) {return null;}
+const mins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (Number(m[1]) * 60 + Number(m[2])) : null; };
+const ci = mins(a.checkIn), co = mins(a.checkOut);
+if(ci == null || co == null) {return null;}
+let diff = co - ci;
+if(diff < 0) {diff += 24 * 60;}
+return diff / 60;
+}
 // ============================================
 // EMPLOYEES PAGE
 // ============================================
@@ -168,8 +179,19 @@ const filtered=(STATE.employees||[]).filter(emp=>
   || normalizeAr(emp.position).includes(search));
 grid.innerHTML=filtered.length?renderEmployeesCards(filtered):`<div class="mcard u-empty-grid">${t('emp.noResult')}</div>`;
 }
+// منتقي القسم الموحد للبطاقة: موارد بشرية + تشغيل — التصنيف هنا يُسمع تلقائيًا في جدول الدوامات
+function empDeptOptions(selected){
+const sel=String(selected||'');
+let o='<option value="">— بلا قسم —</option>';
+const hr=(STATE.hrDepartments||[]).map(d=>`<option value="${esc(d.code)}" ${sel===String(d.code)?'selected':''}>${esc(d.name)}</option>`).join('');
+if(hr){o+=`<optgroup label="أقسام الموارد البشرية">${hr}</optgroup>`;}
+// FIX 2026-10-01: أقسام الموظفين من أقسام HR حصرًا — قائمة التشغيل كانت
+// مصدر اختلاف الأكواد الذي جعل موظفي الأقسام الجديدة يختفون من شاشات المديرين
+// (كل الموظفين الحاليين على أكواد hrDepartments بالفعل).
+return o;
+}
 function showAddEmployeeModal(){
-const deptOptions=STATE.hrDepartments.map(d=>`<option value="${d.code}">${esc(d.name)}</option>`).join('');
+const deptOptions=empDeptOptions('');
 showModal(`
 <h3><i class=ji data-i=plus></i> إضافة موظف جديد</h3>
 <div class="fr">
@@ -264,7 +286,7 @@ try{
 function editEmployee(id){
 const emp=findEmployeeById(id);
 if(!emp){return;}
-const deptOptions=STATE.hrDepartments.map(d=>`<option value="${d.code}" ${emp.department===d.code?'selected':''}>${esc(d.name)}</option>`).join('');
+const deptOptions=empDeptOptions(emp.department);
 showModal(`
 <h3><i class=ji data-i=pencil></i> تعديل بيانات الموظف</h3>
 <div style="text-align:center;margin-bottom:20px">
@@ -300,7 +322,7 @@ showModal(`
 <div class="fg"><label><i class=ji data-i=calendar></i> الراحة الأسبوعية</label><select id="empDayOff"><option value="">بلا</option>${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'].map((d,i)=>`<option value="${i}" ${String(emp.day_off)===String(i)?'selected':''}>${d}</option>`).join('')}</select></div>
 </div>
 ${STATE.currentUser?.role==='admin'?`<div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoCheckout" ${emp.auto_checkout?'checked':''}> <span>انصراف تلقائي عند نهاية الوردية <small class="text-muted">(لمن ينسى بصمة الخروج — مدير فقط — متوقف حاليًا بقرار الإدارة)</small></span></label></div><div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoLock" ${emp.auto_lock?'checked':''}> <span>🔒 قفل اليوم بعد الإغلاق <small class="text-muted">(لا تُقبل بصمات لاحقة لذلك اليوم — مدير فقط)</small></span></label></div>`:''}
-<div class="fg"><label><i class=ji data-i=id-card></i> انتهاء الإقامة</label>${hijriDateField('empIqama', emp.iqamaExpiry || '')}</div>
+<div class="fg"><label><i class=ji data-i=id-card></i> انتهاء الإقامة</label>${hijriDateField('empIqama', emp.iqamaExpiry || '', 'greg')}</div>
 <div class="mcard" style="margin:12px 0;padding:14px;border:1px solid var(--gold);border-radius:var(--r)"><b><i class=ji data-i=stethoscope></i> الوثائق الصحية</b><div class="fr" style="margin-top:8px">
 <div class="fg"><label><i class=ji data-i=stethoscope></i> انتهاء الشهادة الصحية</label>${hijriDateField('empHealth', emp.healthCertExpiry || '')}</div>
 <div class="fg"><label><i class=ji data-i=award></i> انتهاء التثقيف الصحي</label>${hijriDateField('empHealthEdu', emp.healthEduExpiry || '')}</div>
@@ -378,7 +400,8 @@ ${attendanceRecords.length>0?`
 <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th></tr></thead>
 <tbody>
 ${attendanceRecords.map(a=>{
-const krm=a.checkIn&&a.checkOut?((new Date(`2000-01-01 ${a.checkOut}`)-new Date(`2000-01-01 ${a.checkIn}`))/3600000).toFixed(1):'—';
+const krmH = portalWorkHours(a);
+const krm = krmH != null ? krmH.toFixed(1) : '—';
 return `<tr><td>${fD(a.date)}</td><td class="c-green">${a.checkIn||'—'}</td><td class="c-red">${a.checkOut||'—'}</td><td class="c-gold">${krm} ساعة</td></tr>`;
 }).join('')}
 </tbody>

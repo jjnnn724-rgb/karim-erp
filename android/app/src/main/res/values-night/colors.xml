@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Karim ERP Professional Palette (Dark Mode) -->
+    <color name="colorPrimary">#0F172A</color>
+    <color name="colorPrimaryDark">#020617</color>
+    <color name="colorAccent">#3B82F6</color>
+    <color name="colorSecondary">#60A5FA</color>
+
+    <color name="backgroundColor">#0F172A</color>
+    <color name="surfaceColor">#1E293B</color>
+    <color name="splashBackground">#0F172A</color>
+
+    <color name="textColorPrimary">#F8FAFC</color>
+    <color name="textColorSecondary">#94A3B8</color>
+    <color name="statusBarColor">#020617</color>
+    <color name="navigationBarColor">#0F172A</color>
+</resources>

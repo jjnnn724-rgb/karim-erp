@@ -29,6 +29,16 @@ const WRITE_ROLES = ['admin', 'accountant'];
 const uid = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
+// مراكز التكلفة اختيارية على مستوى القاعدة: إن لم تُطبق migration 081 بعد،
+// يعمل الترحيل (يدوي وتلقائي) بدونها بدل أن يكسر البيع. يُكتشف مرة واحدة.
+let _ccReady = null;
+async function ccReady(db) {
+    if (_ccReady !== null) {return _ccReady;}
+    try { await db.query('SELECT 1 FROM cost_centers LIMIT 1'); _ccReady = true; }
+    catch (_) { _ccReady = false; }
+    return _ccReady;
+}
+
 /** ترقيم قيد يومي متسلسل — بالأقصى لا بالعدّ (الفجوات من حذف/إبطال لا تكسره) */
 async function nextEntryNo(client) {
     const d = new Date();
@@ -49,15 +59,21 @@ async function nextEntryNo(client) {
  * ترحيل قيد متوازن — يستخدم نفس الاتصال (معاملة المتصل) أو المسبح.
  * يُرجع { entry, replay:true } عند وجود نفس المصدر مسبقًا (لا ازدواج).
  */
-async function postJournal(db, { date, memo, source_type = 'manual', source_id = null, lines, created_by = null }) {
+async function postJournal(db, { date, memo, source_type = 'manual', source_id = null, lines, created_by = null, status = 'posted' }) {
     const day = String(date || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {throw Object.assign(new Error('تاريخ القيد غير صالح (YYYY-MM-DD)'), { statusCode: 422 });}
+    // قفل الفترات: أي ترحيل (يدوي أو تلقائي) على شهر مقفل يُرفض — التوافق محفوظ
+    // لأن الفترات المفتوحة (الافتراضي) تمر دون أي تغيير سلوكي.
+    const wantDraft = status === 'draft';
+    await require('./accounting-periods').assertPeriodOpen(day);
     const clean = (Array.isArray(lines) ? lines : [])
         .map(l => ({
             account_code: String(l.account_code || '').trim(),
             debit: round2(l.debit),
             credit: round2(l.credit),
             memo: l.memo != null ? String(l.memo).slice(0, 255) : null,
+            cost_center_code: l.cost_center_code != null
+                ? String(l.cost_center_code).trim().toUpperCase().slice(0, 20) : null,
         }))
         .filter(l => l.account_code && (l.debit > 0 || l.credit > 0));
     if (clean.length < 2) {throw Object.assign(new Error('القيد يحتاج سطرين على الأقل بمبالغ موجبة'), { statusCode: 422 });}
@@ -73,6 +89,15 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
     const ok = new Set(acc.rows.map(r => r.code));
     const bad = codes.filter(c => !ok.has(c));
     if (bad.length) {throw Object.assign(new Error(`حسابات غير صالحة للترحيل: ${bad.join('، ')}`), { statusCode: 422 });}
+    const ccCodes = [...new Set(clean.map(l => l.cost_center_code).filter(Boolean))];
+    const useCC = ccCodes.length > 0 && await ccReady(db);
+    if (ccCodes.length && useCC) {
+        const cc = await db.query(
+            `SELECT code FROM cost_centers WHERE code = ANY($1) AND is_active = true`, [ccCodes]);
+        const ccOk = new Set(cc.rows.map(r => r.code));
+        const ccBad = ccCodes.filter(c => !ccOk.has(c));
+        if (ccBad.length) {throw Object.assign(new Error(`مراكز تكلفة غير صالحة: ${ccBad.join('، ')}`), { statusCode: 422 });}
+    }
 
     // معرّف المصدر الفعّال: اليدوي بلا مرجع يأخذ مرجعًا فريدًا دائمًا (لا يمنع القيود اليدوية)
     let effSourceId = source_id != null && String(source_id).trim() !== '' ? String(source_id) : null;
@@ -90,16 +115,24 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
         const doRun = async (client) => {
             const entryNo = await nextEntryNo(client);
             const e = (await client.query(
-                `INSERT INTO journal_entries (id, entry_no, date, memo, source_type, source_id, created_by)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-                [uid(), entryNo, day, memo ? String(memo).slice(0, 500) : null, source_type, effSourceId, created_by]
+                `INSERT INTO journal_entries (id, entry_no, date, memo, source_type, source_id, created_by, status)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+                [uid(), entryNo, day, memo ? String(memo).slice(0, 500) : null, source_type, effSourceId, created_by, wantDraft ? 'draft' : 'posted']
             )).rows[0];
             for (const l of clean) {
-                await client.query(
-                    `INSERT INTO journal_lines (id, entry_id, account_code, debit, credit, memo)
-                     VALUES ($1,$2,$3,$4,$5,$6)`,
-                    [uid() + Math.floor(Math.random() * 999), e.id, l.account_code, l.debit, l.credit, l.memo]
-                );
+                if (useCC) {
+                    await client.query(
+                        `INSERT INTO journal_lines (id, entry_id, account_code, debit, credit, memo, cost_center_code)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                        [uid() + Math.floor(Math.random() * 999), e.id, l.account_code, l.debit, l.credit, l.memo, l.cost_center_code]
+                    );
+                } else {
+                    await client.query(
+                        `INSERT INTO journal_lines (id, entry_id, account_code, debit, credit, memo)
+                         VALUES ($1,$2,$3,$4,$5,$6)`,
+                        [uid() + Math.floor(Math.random() * 999), e.id, l.account_code, l.debit, l.credit, l.memo]
+                    );
+                }
             }
             return { entry: e, lines: clean, replay: false };
         };
@@ -143,22 +176,25 @@ async function postSaleToLedger(orderId) {
         `SELECT id, subtotal, discount_total, tax_total, total_amount, created_at FROM pos_orders WHERE id = $1 LIMIT 1`,
         [orderId])).rows[0];
     if (!o) {return { skipped: 'order_not_found' };}
+    // ROOT FIX 2026-10-02: كان يُرحّل كل صفوف الدفع بما فيها صفوف «الباقي»
+    // (direction=out) كتحصيل — فيفشل توازن القيد دائمًا لأي بيع كاش فيه باقي
+    // ويُبتلع الخطأ بصمت بلا قيد. الصحيح: الصندوق يستلم الإجمالي فقط —
+    // non-cash بمبلغه، والنقدي = الإجمالي − غير النقدي.
     const pays = (await pool.query(
-        `SELECT method, amount FROM pos_invoice_payments WHERE order_id = $1`, [orderId])).rows;
+        `SELECT method, amount, direction FROM pos_invoice_payments WHERE order_id = $1`, [orderId])).rows;
     const total = round2(o.total_amount);
     const tax = round2(o.tax_total);
     const revenue = round2(total - tax);
     if (total <= 0) {return { skipped: 'zero_total' };}
     const lines = [];
     if (pays.length) {
-        for (const p of pays) {
-            const amt = round2(p.amount);
-            if (amt <= 0) {continue;}
-            lines.push({
-                account_code: String(p.method).toLowerCase() === 'cash' ? '1000' : '1010',
-                debit: amt, credit: 0, memo: `تحصيل ${p.method}`,
-            });
-        }
+        const nonCash = round2(pays
+            .filter((p) => p.direction !== 'out' && String(p.method).toLowerCase() !== 'cash')
+            .reduce((s, p) => s + Number(p.amount), 0));
+        const cardPart = Math.min(nonCash, total);
+        const cashDebit = round2(total - cardPart);
+        if (cardPart > 0) {lines.push({ account_code: '1010', debit: cardPart, credit: 0, memo: 'تحصيل غير نقدي' });}
+        if (cashDebit > 0) {lines.push({ account_code: '1000', debit: cashDebit, credit: 0, memo: 'تحصيل نقدي' });}
     } else {
         lines.push({ account_code: '1000', debit: total, credit: 0, memo: 'تحصيل نقدي' });
     }
@@ -208,6 +244,37 @@ async function postPurchaseToLedger(invoiceId) {
         lines,
     });
     logger.info(`[LEDGER] فاتورة شراء ${invoiceId}: ${out.replay ? 'مُرحّلة مسبقًا' : `قيد ${out.entry.entry_no}`}`);
+    return out;
+}
+
+/**
+ * قيد الرصيد الافتتاحي (2026-10-02): جرد البداية ليس مشتريات — لا مورد دائن
+ * ولا ضريبة مدخلات. المعالجة الصحيحة: Dr 1200 مخزون المواد ← Cr 3000 رأس المال
+ * بإجمالي القيمة. يُستدعى لفواتير الأرصدة الافتتاحية (invoiceNumber يبدأ بـ OPEN-)
+ * بنفس مفتاح idempotency (source_type, source_id) — إعادة الترحيل تُكتشف تلقائيًا.
+ */
+async function postOpeningToLedger(invoiceId) {
+    const inv = (await pool.query(
+        `SELECT id, "invoiceNumber", date, "totalAmount"
+          FROM "purchaseInvoices" WHERE id = $1 LIMIT 1`,
+        [invoiceId])).rows[0];
+    if (!inv) {return { skipped: 'invoice_not_found' };}
+    const gross = round2(inv.totalAmount);
+    if (gross <= 0) {return { skipped: 'zero_total' };}
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
+        ? String(inv.date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    const out = await postJournal(pool, {
+        date: day,
+        memo: `رصيد افتتاحي — ${inv.invoiceNumber || invoiceId}`,
+        source_type: 'purchase_invoice',
+        source_id: String(invoiceId),
+        lines: [
+            { account_code: '1200', debit: gross, credit: 0, memo: 'مخزون افتتاحي' },
+            { account_code: '3000', debit: 0, credit: gross, memo: 'رأس المال — رصيد افتتاحي' },
+        ],
+    });
+    logger.info(`[LEDGER] رصيد افتتاحي ${invoiceId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;
 }
 
@@ -402,6 +469,7 @@ router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             source_id: req.body?.source_id || null,
             lines: req.body?.lines,
             created_by: req.user?.id || null,
+            status: req.body?.status === 'draft' ? 'draft' : 'posted',
         });
         if (out.replay) {return res.status(409).json({ error: 'LEDGER_DUPLICATE', message: 'قيد بنفس المرجع موجود مسبقًا', entry: out.entry });}
         res.status(201).json({ entry: out.entry, lines: out.lines });
@@ -416,6 +484,13 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (re
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id <= 0) {return res.status(422).json({ error: 'LEDGER_ID_INVALID', message: 'معرف القيد غير صالح' });}
+        const cur = (await pool.query('SELECT date FROM journal_entries WHERE id = $1', [id])).rows[0];
+        if (!cur) {return res.status(404).json({ error: 'LEDGER_ENTRY_NOT_FOUND', message: 'القيد غير موجود' });}
+        try {
+            await require('./accounting-periods').assertPeriodOpen(cur.date);
+        } catch (pe) {
+            return res.status(423).json({ error: 'PERIOD_LOCKED', message: pe.message });
+        }
         const { rows } = await pool.query(
             `UPDATE journal_entries SET status = 'void' WHERE id = $1 AND status = 'posted' RETURNING *`, [id]);
         if (!rows[0]) {return res.status(404).json({ error: 'LEDGER_ENTRY_NOT_FOUND', message: 'القيد غير موجود أو ملغي مسبقًا' });}
@@ -438,8 +513,12 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
              WHERE ("month" = $1 OR ("year" || '-' || LPAD("month"::text,2,'0')) = $1) AND status <> 'cancelled'`,
             [month])).rows[0];
         if (!total || Number(total.t) <= 0) {return res.status(422).json({ error: 'LEDGER_PAYROLL_EMPTY', message: 'لا رواتب مستحقة لهذا الشهر' });}
+        // ROOT FIX 2026-10-02: التاريخ كان ثابتًا على 28 — يُحسب الآن آخر يوم
+        // فعلي لشهر الرواتب (يبقى داخل الفترة المالية للشهر نفسه).
+        const [_py, _pm] = month.split('-').map(Number);
+        const monthEndDate = new Date(Date.UTC(_py, _pm, 0)).toISOString().slice(0, 10);
         const out = await postJournal(pool, {
-            date: `${month}-28`,
+            date: monthEndDate,
             memo: `ترحيل رواتب شهر ${month} (${total.n} موظف)`,
             source_type: 'payroll',
             source_id: month,
@@ -466,7 +545,7 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
         const rev = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM revenues WHERE date >= $1 AND date <= $2 AND "deptId" != 'ys_b4_ext'`, [from, to]);
         const exp = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM expenses
             WHERE date >= $1 AND date <= $2 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [from, to]);
-        const pay = await q(`SELECT COALESCE(SUM("netSalary"),0)::numeric(14,2) AS t FROM payroll WHERE status <> 'cancelled'`, []);
+        const pay = await q(`SELECT COALESCE(SUM("netSalary"),0)::numeric(14,2) AS t FROM payroll WHERE status <> 'cancelled' AND ("year" || '-' || LPAD("month"::text,2,'0')) BETWEEN substr($1,1,7) AND substr($2,1,7)`, [from, to]);
         const pos = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(total_amount),0)::numeric(14,2) AS t FROM pos_orders WHERE status = 'issued' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')`, [from, to]);
         const cash = await q(`SELECT COALESCE(SUM(CASE WHEN l.account_code IN ('1000','1010') THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS t
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'`, []);
@@ -495,4 +574,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines };
+module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, resetCcCache: () => { _ccReady = null; } };

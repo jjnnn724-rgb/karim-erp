@@ -220,12 +220,12 @@ body::before { display: none; }
 .product-card {
   background: var(--pos-surface); border: 1px solid var(--pos-border); border-radius: var(--radius-lg);
   padding: 12px; cursor: pointer; user-select: none; position: relative;
-  transition: border-color .12s, box-shadow .12s, transform .1s;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .12s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex; flex-direction: column; gap: 6px; min-height: 108px;
 }
 .product-card::before, .product-card::after { display: none; }
-.product-card:hover { border-color: var(--pos-border-strong); box-shadow: var(--pos-shadow); }
-.product-card:active { transform: scale(.98); }
+.product-card:hover { border-color: var(--pos-gold); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06); transform: translateY(-2px); }
+.product-card:active { transform: scale(.97); }
 .product-card.out-of-stock { opacity: .5; cursor: not-allowed; }
 .product-icon {
   width: 36px; height: 36px; border-radius: 8px; background: var(--pos-gold-lighter); color: var(--pos-gold);
@@ -355,12 +355,14 @@ body::before { display: none; }
 .btn-complete{position:sticky;bottom:0;z-index:2;
   width: 100%; padding: 13px; margin-top: 8px; background: var(--pos-green); color: #fff;
   border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer;
-  font-family: inherit; transition: background .12s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: inherit; transition: background .12s, box-shadow .12s, transform .08s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 12px rgba(8, 135, 92, 0.2);
 }
 .btn-complete::before { display: none; }
-.btn-complete:hover:not(:disabled) { background: #07704d; }
-.btn-complete:active:not(:disabled) { transform: none; }
-.btn-complete:disabled { background: var(--pos-surface-2); color: var(--pos-text-3); border: 1px solid var(--pos-border); cursor: not-allowed; }
+.btn-complete:hover:not(:disabled) { background: #07704d; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(8, 135, 92, 0.3); }
+.btn-complete:active:not(:disabled) { transform: translateY(1px); }
+.btn-complete:disabled { background: var(--pos-surface-2); color: var(--pos-text-3); border: 1px solid var(--pos-border); cursor: not-allowed; box-shadow: none; }
 .sale-error { color: var(--pos-red); font-size: 12px; margin-top: 8px; min-height: 15px; text-align: center; }
 
 /* ═════════════ MODALS ═════════════ */
@@ -885,3 +887,27 @@ body::before { display: none; }
 .br-sec::before{content:'';width:4px;height:15px;border-radius:2px;background:var(--pos-gold);display:inline-block}
 .br-cols{display:flex;gap:16px;flex-wrap:wrap}
 .br-cols>div{flex:1;min-width:260px}
+
+/* ── Mobile touch targets (UX-03: أهداف لمس ≥ 44px على الشاشات الصغيرة) ── */
+@media (max-width: 700px) {
+  .icon-btn { min-width: 44px; height: 44px; font-size: 15px; }
+  .icon-btn, .btn, input, select { touch-action: manipulation; }
+}
+
+/* ????????????? UI/UX PHASE 3 � POS ENTERPRISE POLISH ????????????? */
+.br-card {
+  transition: transform .14s cubic-bezier(0.16,1,0.3,1),
+              box-shadow .14s ease, border-color .14s ease;
+}
+.br-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.07);
+  border-color: var(--pos-border-strong);
+}
+.br-card.gold:hover { border-color: var(--pos-gold); }
+.buffet-inv-table tbody tr:nth-child(even) td { background: rgba(0,0,0,.012); }
+.cart-item { transition: background .1s ease; border-radius: 6px; }
+.cart-item:hover { background: rgba(217,119,6,.06); }
+.icon-btn { transition: background .12s ease, transform .1s ease, color .12s ease; }
+.icon-btn:active { transform: scale(0.92); }
+.pos-modal { animation: modalPop .2s cubic-bezier(0.16, 1, 0.3, 1) both; }

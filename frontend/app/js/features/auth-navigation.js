@@ -6,7 +6,7 @@
 // AUTH & NAVIGATION
 // ============================================
 async function completeRequiredPasswordChange(accessToken, currentPassword){
-  const nextPassword = window.prompt('لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 12 حرفًا على الأقل وتحتوي على حروف وأرقام:');
+  const nextPassword = window.prompt('لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 8 حروف على الأقل وتحتوي على حروف وأرقام:');
   if(!nextPassword) {throw new Error('تم إلغاء تغيير كلمة المرور الإلزامي.');}
   const confirmPassword = window.prompt('أعد إدخال كلمة المرور الجديدة للتأكيد:');
   if(nextPassword !== confirmPassword) {throw new Error('كلمتا المرور غير متطابقتين.');}
@@ -21,9 +21,44 @@ async function completeRequiredPasswordChange(accessToken, currentPassword){
   return result;
 }
 
+// ─── تغيير كلمة المرور الذاتي (أي مستخدم مسجل — مدير أو موظف — من الشريط العلوي) ──
+function showChangeMyPasswordModal(){
+showModal(`<h3><i class=ji data-i=key></i> تغيير كلمة المرور</h3><div class="fr"><div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="cpCurrent" autocomplete="current-password"></div><div class="fg"><label>كلمة المرور الجديدة <small>(8 حروف على الأقل مع حروف وأرقام)</small></label><input type="password" id="cpNew" autocomplete="new-password"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="cpNew2" autocomplete="new-password"></div></div><div id="cpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" id="cpSubmitBtn" onclick="submitChangeMyPassword()"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
+setTimeout(()=>document.getElementById('cpCurrent')?.focus(),80);
+}
+function cpFail(message){
+const errEl=document.getElementById('cpError');
+if(errEl){ errEl.textContent=message; errEl.style.display='block'; }
+toast(message,'error');
+}
+async function submitChangeMyPassword(){
+const cur=document.getElementById('cpCurrent')?.value||'';
+const np=document.getElementById('cpNew')?.value||'';
+const np2=document.getElementById('cpNew2')?.value||'';
+if(!cur||!np){ cpFail('أكمل كلمة المرور الحالية والجديدة'); return; }
+if(np.length<8||!/[A-Za-z]/.test(np)||!/\d/.test(np)){ cpFail('كلمة المرور الجديدة يجب أن تكون 8 حروف على الأقل مع حروف وأرقام'); return; }
+if(np!==np2){ cpFail('كلمتا المرور غير متطابقتين'); return; }
+if(np===cur){ cpFail('اختر كلمة مرور مختلفة عن كلمة المرور الحالية'); return; }
+const btn=document.getElementById('cpSubmitBtn');
+if(btn){ btn.disabled=true; }
+try{
+const r=await fetch(API_BASE+'/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json',...(window._jwt?{Authorization:'Bearer '+window._jwt}:{})},body:JSON.stringify({current_password:cur,new_password:np})});
+const data=await r.json().catch(()=>({}));
+if(!r.ok){ cpFail(serverMessage(data,'تعذر تغيير كلمة المرور — تحقق من كلمة المرور الحالية')); return; }
+// تدوير الجلسة: الخادم ألغى refresh القديم وأصدر بدلًا منه — حدّث المخزن المحلي
+window._jwt = data.access_token || window._jwt;
+if (data.app_key) {window._appKey = data.app_key;}
+if (data.refresh_token) {KARIM_RTset(data.refresh_token);}
+if (data.user && STATE.currentUser) {STATE.currentUser.name = data.user.name || STATE.currentUser.name;}
+closeModal();
+toast('تم تغيير كلمة المرور بنجاح','success');
+}catch(e){ cpFail('تعذر الاتصال بالخادم — حاول مرة أخرى'); }
+finally { if(btn){ btn.disabled=false; } }
+}
+
 // ─── استعادة كلمة المرور الذاتية (رمز لمرة واحدة يصدره المدير) ──────────────
 function showForgotPasswordModal(){
-showModal(`<h3><i class=ji data-i=key></i> استعادة كلمة المرور</h3><div class="workflow-banner">نسيت كلمة المرور؟ أدخل اسم المستخدم، ثم اطلب من المدير توليد <strong>رمز استعادة من 6 أرقام</strong> (صالح 10 دقائق)، وأدخل الرمز مع كلمة المرور الجديدة.</div><div class="fr"><div class="fg"><label>اسم المستخدم</label><input type="text" id="fpUsername" autocomplete="username" autocapitalize="none" spellcheck="false"></div><div class="fg"><label>رمز الاستعادة (6 أرقام)</label><input type="text" id="fpCode" inputmode="numeric" maxlength="6" placeholder="______"></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(12 حرفًا على الأقل مع حروف وأرقام)</small></label><input type="password" id="fpNew"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="fpNew2"></div></div><div id="fpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="submitForgotPassword()"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> استعادة كلمة المرور</h3><div class="workflow-banner">نسيت كلمة المرور؟ أدخل اسم المستخدم، ثم اطلب من المدير توليد <strong>رمز استعادة من 6 أرقام</strong> (صالح 10 دقائق)، وأدخل الرمز مع كلمة المرور الجديدة.</div><div class="fr"><div class="fg"><label>اسم المستخدم</label><input type="text" id="fpUsername" autocomplete="username" autocapitalize="none" spellcheck="false"></div><div class="fg"><label>رمز الاستعادة (6 أرقام)</label><input type="text" id="fpCode" inputmode="numeric" maxlength="6" placeholder="______"></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(8 حروف على الأقل مع حروف وأرقام)</small></label><input type="password" id="fpNew"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="fpNew2"></div></div><div id="fpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="submitForgotPassword()"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
 setTimeout(()=>document.getElementById('fpUsername')?.focus(),80);
 }
 function fpFail(message){
@@ -139,6 +174,12 @@ await enterApp();
 async function enterApp(){
 document.getElementById('login').style.display = 'none';
 document.getElementById('app').style.display = 'block';
+// إصلاح أمني 2026-10-01: صفحة الدور السابق (أدمن) كانت تُعرض للدخول التالي —
+// ابدأ دائمًا من أول قائمة دور المستخدم الحالي
+try{
+const home = window.ROLES?.[STATE.currentUser?.role]?.menus?.[0];
+if(home) {STATE.page = home;}
+}catch(_){}
 document.getElementById('restNameDisplay').textContent = STATE.settings.name;
 document.getElementById('loginTitle').textContent = STATE.settings.name;
 updateLogoDisplay();
@@ -185,6 +226,25 @@ STATE.currentUser = null;
 try{ applyTopbarRoleGates(); }catch(_){}
 STATE.deptPanel = null;
 STATE.permissions = { grants: [], denies: [], menus: [], deniedMenus: [] };
+// إصلاح أمني 2026-10-01 (تسرب قائمة الأدمن): الخروج كان يترك القوائم والمحتوى
+// وحالة الجوال للدور السابق — الدخول التالي (موظف) يرى بقايا الأدمن. تنظيف شامل:
+STATE.page = 'dashboard';
+try{
+const nc = document.getElementById('navContainer'); if(nc) {nc.innerHTML='';}
+const cc = document.getElementById('content'); if(cc) {cc.innerHTML='';}
+document.getElementById('mobileNav')?.remove();
+document.getElementById('punchCard')?.remove();
+document.getElementById('faceEnrollCard')?.remove();
+document.getElementById('mobileOfflineBar')?.remove();
+document.getElementById('topbarLogout')?.remove();
+document.getElementById('modals') && (document.getElementById('modals').innerHTML='');
+document.body.classList.remove('mobile-shell-on','mobile-offline');
+if(window.__mobileContentObserver){ try{window.__mobileContentObserver.disconnect();}catch(_){} window.__mobileContentObserver=null; }
+if(typeof window.resetMobileShellSession==='function'){ window.resetMobileShellSession(); }
+if(Array.isArray(STATE.notifications)) {STATE.notifications=[];}
+try{ updateNotificationBadge(); }catch(_){}
+try{ window.closeModal && window.closeModal(); }catch(_){}
+}catch(_){}
 const password = document.getElementById('lp');
 const errorEl = document.getElementById('lerr');
 if(password) {password.value = '';}
@@ -211,11 +271,16 @@ if(loginLogo) {loginLogo.innerHTML = logoMarkup('login-brand-logo');}
 }
 // Grouping map: menu key → section (display only; roles, badges, handlers untouched).
 // Unknown keys fall back to their current section so nothing can disappear.
+// صفحات مخفية من القائمة الجانبية — إخفاء عرض فقط:
+// الصفحات نفسها تعمل عبر الروابط والأزرار الداخلية (مثال: طلب صرف) —
+// ولإخفاء أي صفحة أضفها للقائمة دي. (2026-10-01: رجعت 'dispatch' للظهور بطلب المالك)
+// صفحات مخفية من القائمة بطلب المالك — الإخفاء عرض فقط (الصفحات تعمل عبر الروابط)
+const NAV_HIDDEN_PAGES = []; // احتياطي فقط — مصدر الإخفاء: settings.hidden_nav_pages (يُدار من شاشة الإعدادات)
 const NAV_GROUPS = [
  {id:'main', title:'nav.grp.main', keys:['dashboard']},
  {id:'finance', title:'nav.grp.finance', keys:['cfo','revenues','expenses','cost-analysis','pnl']},
- {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','shelves','weight','kitchen','dispatch','recipes','procurement']},
- {id:'hr', title:'nav.grp.hr', keys:['hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal']},
+  {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','shelves','weight','kitchen','dispatch','recipes','procurement']},
+ {id:'hr', title:'nav.grp.hr', keys:['hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal','roster','dept-employees']},
   {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','permissions','yarasoft','oracle-data','whatsapp','query','professional']},
 ];
 function userMenus(){
@@ -252,6 +317,11 @@ applyI18nMaps();
 try{ applyLangAttrs(); }catch(_){}
 const container = document.getElementById('navContainer');
 const allowedMenus = userMenus();
+// إخفاء ديناميكي يديره الأدمن من شاشة الإعدادات (settings.hidden_nav_pages)
+// حراسة: الرئيسية والإعدادات لا يُخفيان (منع حجب النظام عن نفسه)
+const dynamicHidden = new Set(String(STATE.settings?.hidden_nav_pages || '').split(',').map(x => x.trim()).filter(Boolean));
+dynamicHidden.delete('dashboard');
+dynamicHidden.delete('settings');
 const itemHtml = (key, name) => {
 let badge = '';
 if(key==='dispatch'){ // شارة الصرف: عدد الطلبات التي تنتظر إجراء من هذا الدور تحديدًا
@@ -276,7 +346,7 @@ const emitted = new Set();
 for(const g of NAV_GROUPS){
   let items = '';
   for(const key of g.keys){
-    if(!allowedMenus.includes(key) || !(key in ALL_PERMISSIONS.menus)) {continue;}
+    if(NAV_HIDDEN_PAGES.includes(key) || dynamicHidden.has(key) || !allowedMenus.includes(key) || !(key in ALL_PERMISSIONS.menus)) {continue;}
     items += itemHtml(key, ALL_PERMISSIONS.menus[key]);
     emitted.add(key);
   }
@@ -285,6 +355,7 @@ for(const g of NAV_GROUPS){
 // Safety net: any allowed menu not covered above renders under the main header
 for(const [key,name] of Object.entries(ALL_PERMISSIONS.menus)){
   if(allowedMenus.includes(key) && !emitted.has(key)){
+    if(NAV_HIDDEN_PAGES.includes(key) || dynamicHidden.has(key)) {continue;} // نفس قواعد الإخفاء
     if(!html.includes('nav-fallback')) {html += `<div class="nav-section nav-fallback">${t('nav.main')}</div>`;}
     html += itemHtml(key, name);
   }
@@ -298,7 +369,7 @@ if(!role || !role.menus.includes(page)){ toast('لا تملك صلاحية ال�
 STATE.page = page; destroyCharts();
 document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
 if(el) {el.classList.add('active');}
-const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),procurement:t('pg.procurement'),shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll'),permissions:t('pg.permissions')};
+const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),'wh-invoices':t('pg.wh-invoices'),'wh-moves':t('pg.wh-moves'),'wh-returns':t('pg.wh-returns'),'wh-prs':t('pg.wh-prs'),procurement:t('pg.procurement'),'roster':t('pg.roster'),'dept-employees':'موظفو قسمي',shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll'),permissions:t('pg.permissions')};
 document.getElementById('pageTitle').textContent = titles[page]||page;
 renderPage();
 }

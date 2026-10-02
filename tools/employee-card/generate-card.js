@@ -42,17 +42,18 @@ function code128bars(text) {
   return out;
 }
 function guilloche() {
-  // وردة هندسية نابضة الألوان (كحلي/ذهبي/تركواز/بنفسجي/مرجاني) لاتجاه طولي (204×322)
+  // وردة هندسية ذهبية على الأسود (MIDNIGHT GOLD) — فخامة هادئة بلا ألوان صارخة
   let s = '';
-  const rings = ['#0A2540', '#C9A961', '#0FB5A6', '#7C3AED', '#FF6B4A'];
+  const rings = ['#8F7339', '#C9A961', '#F3DFA8', '#C9A961'];
   for (let r = 8, i = 0; r <= 170; r += 7, i++) {
     const c = rings[i % rings.length];
-    s += `<circle cx="102" cy="161" r="${r}" fill="none" stroke="${c}" stroke-width="0.7"/>`;
+    const op = r % 21 === 0 ? 0.9 : 0.55;
+    s += `<circle cx="102" cy="161" r="${r}" fill="none" stroke="${c}" stroke-width="${r % 21 === 0 ? 0.9 : 0.5}" opacity="${op}"/>`;
   }
-  for (let a = 0; a < 360; a += 15) {
-    const c = a % 45 === 0 ? '#C9A961' : (a % 30 === 0 ? '#0FB5A6' : '#7C3AED');
+  for (let a = 0; a < 360; a += 12) {
+    const c = a % 36 === 0 ? '#F3DFA8' : '#C9A961';
     const x2 = 102 + 100 * Math.cos(a * Math.PI / 180), y2 = 161 + 160 * Math.sin(a * Math.PI / 180);
-    s += `<line x1="102" y1="161" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="0.4" opacity="0.6"/>`;
+    s += `<line x1="102" y1="161" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="0.3" opacity="0.45"/>`;
   }
   return s;
 }
@@ -91,7 +92,7 @@ async function main() {
       if (row.key === 'emergency_phone' && row.value) process.env.EMERGENCY_PHONE = row.value;
     }
   } catch (_) {}
-  if (!base) base = 'https://192.168.1.165:5000';
+  if (!base) base = process.env.CARD_VERIFY_BASE || 'https://karimeg.online';
   base = base.replace(/\/$/, '');
   const verifyUrl = `${base}/api/hr/card/v/${payload.cid}.${shortSig}`;
   // رابط مختصر (~70 حرف بدل ~300): نفس الأمان (HMAC مقتطع 16 hex = 64-bit)
@@ -109,8 +110,10 @@ async function main() {
   const photoUri = photo && photo.startsWith('data:') ? photo
     : (photo ? 'data:image/jpeg;base64,' + fs.readFileSync(photo).toString('base64')
       : 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120"><rect width="100" height="120" fill="#dfe5ee"/><text x="50" y="70" font-size="36" text-anchor="middle" fill="#0A2540">${(emp.name || '?').trim()[0] || '?'}</text></svg>`));
-  // الشعار: karim-logo.png أولًا ثم بدائل المشروع ثم عنصر SVG — لا يفشل التوليد أبدًا لنقص ملف
+  // الشعار: 19.jpg الأصلي أولًا (ملف التصميم إن وُضع بجانب المولد) ثم شعار النظام
   const logoCands = [
+    path.join(CARDIR, '19.jpg'),
+    path.join(CARDIR, '19.png'),
     path.join(ROOT, 'frontend', 'app', 'assets', 'karim-logo.png'),
     path.join(ROOT, 'frontend', 'app', 'assets', 'karim-logo.png'),
     path.join(ROOT, 'frontend', 'app', 'assets', 'icon-512.png'),
@@ -157,66 +160,59 @@ async function main() {
   // إزالة سطر @import إن وُجد — نمط مقيّد بالسطر كاملًا فقط، لأن ذكر الكلمة داخل تعليق
   // أو وجود «;» داخل رابط الخطوط مع نمط فضفاض كان يبتلع قواعد CSS سليمة ويكسر البطاقة
   const cssInline = fs.readFileSync(path.join(CARDIR, 'card.css'), 'utf8').replace(/^@import\s+url\([^\n]*\)\s*;\s*$/gm, '');
-  // علامة مائية لبرج الوقف (خلفية الوجه الخلفي)
-  let waqfWm = '';
-  try {
-    for (const cand of ['waqf-watermark.jpg', 'waqf-watermark.png']) {
-      const wmp = path.join(CARDIR, cand);
-      if (fs.statSync(wmp).isFile()) {
-        const ext = cand.endsWith('.jpg') ? 'jpeg' : 'png';
-        waqfWm = `<div class="waqfwm" style="background-image:url('data:image/${ext};base64,${fs.readFileSync(wmp).toString('base64')}')"></div>`;
+  // صورة البرج للهيدر السيادي: 000.jfif أولًا (ملف التصميم الأصلي إن وُضع
+  // بجانب المولد) ثم العلامة المائية الموجودة — لا يفشل التوليد أبدًا.
+  let towerUri = '';
+  for (const cand of ['000.jfif', '000.jpg', 'waqf-watermark.jpg', 'waqf-watermark.png']) {
+    try {
+      const tp = path.join(CARDIR, cand);
+      if (fs.statSync(tp).isFile()) {
+        const ext = cand.endsWith('.png') ? 'png' : 'jpeg';
+        towerUri = `data:image/${ext};base64,` + fs.readFileSync(tp).toString('base64');
         break;
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
+  if (!towerUri) {
+    towerUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="160"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0C1424"/><stop offset="1" stop-color="#04070D"/></linearGradient></defs><rect width="400" height="160" fill="url(#g)"/></svg>`);
+  }
+  const slash = (s) => String(s || '').replace(/-/g, '/');
+  const positionEn = translit(position).toUpperCase().slice(0, 40) || 'STAFF';
+  const blood = emp.blood_type || emp.blood || emp.blood_group || '—';
   const fill = (tpl) => tpl
     .replace('<link rel="stylesheet" href="../card.css">', `<style>${cssInline}</style>`)
-    .replaceAll('{{GUILLOCHE}}', guilloche())
-    .replaceAll('{{LOGO}}', logoUri).replaceAll('{{PHOTO}}', photoUri).replaceAll('{{QR}}', qr)
-    .replaceAll('{{WAQF_WM}}', waqfWm)
-    .replaceAll('{{WAQF_LOGO}}', waqfUri ? `<img class="logo waqf" src="${waqfUri}" alt="waqf">` : '')
+    .replaceAll('{{LOGO}}', logoUri).replaceAll('{{TOWER}}', towerUri)
+    .replaceAll('{{PHOTO}}', photoUri).replaceAll('{{QR}}', qr)
     .replaceAll('{{NAME_AR}}', escH(emp.name || '')).replaceAll('{{NAME_EN}}', escH(nameEn))
-    .replaceAll('{{POSITION}}', escH(position)).replaceAll('{{DEPT}}', escH(dept))
+    .replaceAll('{{POSITION}}', escH(position)).replaceAll('{{POSITION_EN}}', escH(positionEn))
+    .replaceAll('{{DEPT}}', escH(dept))
     .replaceAll('{{EMP_NO}}', empNo)
-    .replaceAll('{{MICROTEXT}}', 'AL SHORFA RESTAURANTS • KARIM ERP • ' + docNo + ' • ')
-    .replaceAll('{{MRZ1}}', f1).replaceAll('{{MRZ2}}', f2).replaceAll('{{MRZ3}}', f3)
-    .replaceAll('{{BARS}}', code128bars(empNo))
-    .replaceAll('{{TERMS}}', 'هذه البطاقة ملك لمطاعم الشرفه العالمي — يمنع إساءة استخدامها — عند الفقد الاتصال بالإدارة فورًا.')
-    .replaceAll('{{EMERGENCY}}', process.env.EMERGENCY_PHONE || '')
-    .replaceAll('<span class="emg">Emergency </span>', '')
-    .replaceAll('{{ISSUE}}', issue).replaceAll('{{EXPIRY}}', exp);
+    .replaceAll('{{BLOOD}}', escH(blood))
+    .replaceAll('{{MRZ1}}', f1).replaceAll('{{MRZ2}}', f2)
+    .replaceAll('{{EMERGENCY}}', process.env.EMERGENCY_PHONE || '+966 56 022 9281')
+    .replaceAll('{{ISSUE}}', slash(issue)).replaceAll('{{EXPIRY}}', slash(exp));
   fs.mkdirSync(OUT, { recursive: true });
   const html = fill(fs.readFileSync(path.join(CARDIR, 'card.html'), 'utf8'));
   fs.writeFileSync(path.join(OUT, `card-${fp}.html`), html);
-  // SVG مستقل (الوجه الأمامي) للمتجهات/المطبعة
+  // SVG بريميوم مستقل (الوجه الأمامي) للمتجهات/المطبعة — معدن + ذهب
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="638" height="1016" viewBox="0 0 204 322">
-<defs><clipPath id="rc"><rect x="0" y="0" width="204" height="322" rx="12"/></clipPath>
-<linearGradient id="band" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061627"/><stop offset=".34" stop-color="#0A2540"/><stop offset=".68" stop-color="#16307E"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
-<linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C9A961"/><stop offset=".5" stop-color="#0FB5A6"/><stop offset="1" stop-color="#4338CA"/></linearGradient></defs>
-<g clip-path="url(#rc)"><rect width="204" height="322" fill="#FDFCF9"/>
-<g opacity="0.12">${guilloche()}</g>
-<rect width="204" height="62" fill="url(#band)"/>
-<circle cx="30" cy="6" r="26" fill="#0FB5A6" opacity=".38"/><circle cx="176" cy="34" r="16" fill="#FFB020" opacity=".45"/><circle cx="120" cy="2" r="11" fill="#C9A961" opacity=".5"/>
-<circle cx="178" cy="26" r="17" fill="#fff" stroke="#C9A961" stroke-width="2"/>
-<image href="${logoUri}" x="165" y="13" width="26" height="26" preserveAspectRatio="xMidYMid meet"/>
-<text x="12" y="26" fill="#fff" font-size="12" font-weight="bold" font-family="Cairo,Arial" textLength="140" lengthAdjust="spacingAndGlyphs">مطاعم الشرفه العالمي</text>
-<text x="12" y="40" fill="#E8D5A3" font-size="8" font-family="Inter,Arial">AL SHORFA RESTAURANTS</text>
-<rect x="0" y="0" width="11" height="322" fill="url(#accent)" opacity="0.9"/>
-<text x="192" y="120" text-anchor="end" font-size="15" font-weight="bold" fill="#0A2540" font-family="Cairo,Arial">${escH(emp.name || '')}</text>
-<text x="192" y="138" text-anchor="end" font-size="9" fill="#475569" font-family="Inter,Arial">${escH(nameEn)}</text>
-<text x="192" y="154" text-anchor="end" font-size="9" fill="#1a1a1a" font-family="Cairo,Arial">${escH(position)} • ${escH(dept)}</text>
-<text x="192" y="174" text-anchor="end" font-size="11" font-weight="bold" fill="#fff" font-family="Courier New,monospace" letter-spacing="2"><tspan fill="#fff">${empNo}</tspan></text>
-<rect x="120" y="162" width="76" height="12" rx="6" fill="#16307E"/>
-<rect x="55" y="182" width="94" height="64" fill="#e8e8e8" stroke="url(#accent)" stroke-width="2"/>
-<image href="${photoUri}" x="55" y="182" width="94" height="64" preserveAspectRatio="xMidYMid slice"/>
-<rect x="70" y="250" width="64" height="64" fill="#fff" stroke="url(#accent)" stroke-width="1.5"/>
-<image href="${qr}" x="70" y="250" width="64" height="64"/>
-<circle cx="102" cy="282" r="10" fill="#fff" stroke="#C9A961" stroke-width="1.5"/>
-<image href="${logoUri}" x="94.5" y="274.5" width="15" height="15" preserveAspectRatio="xMidYMid meet"/>
-<text x="102" y="322" text-anchor="middle" font-size="6" font-weight="bold" fill="#0A2540" font-family="Courier New,monospace" letter-spacing="1">${empNo} • ${escH(nameEn).slice(0, 20)}</text>
-<rect x="0" y="0" width="204" height="322" rx="12" fill="none" stroke="#C9A961" stroke-width="1.2" opacity="0.65"/>
-<rect x="0" y="306" width="204" height="16" fill="url(#band)"/>
-<text x="102" y="316" text-anchor="middle" font-size="4.5" letter-spacing="1.5" fill="#ffffffcc" font-family="Inter,Arial">AL SHORFA RESTAURANTS • KARIM ERP • ${docNo} •</text>
+<defs><clipPath id="rc"><rect x="0" y="0" width="204" height="322" rx="14"/></clipPath>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#32353b"/><stop offset="1" stop-color="#15171a"/></linearGradient>
+<linearGradient id="goldm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".3" stop-color="#E2BE5A"/><stop offset=".7" stop-color="#9E7A28"/><stop offset="1" stop-color="#FFF3D6"/></linearGradient></defs>
+<g clip-path="url(#rc)"><rect width="204" height="322" fill="url(#metal)"/>
+<text x="102" y="52" text-anchor="middle" font-size="38" font-weight="900" fill="url(#goldm)" font-family="Cairo,Arial">𓁫</text>
+<text x="102" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="#DFBA57" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
+<text x="102" y="84" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">AL SHURFA AL ALAMI RESTAURANTS</text>
+<rect x="55" y="94" width="94" height="108" fill="#111317" stroke="#DFBA57" stroke-width="2"/>
+<image href="${photoUri}" x="56" y="95" width="92" height="106" preserveAspectRatio="xMidYMid slice"/>
+<rect x="62" y="204" width="80" height="12" rx="2" fill="url(#goldm)"/>
+<text x="102" y="224" text-anchor="middle" font-size="15" font-weight="bold" fill="#FFFFFF" font-family="Cairo,Arial">${escH(emp.name || '')}</text>
+<text x="102" y="238" text-anchor="middle" font-size="8" fill="#9CA3AF" font-family="Inter,Arial">${escH(nameEn)}</text>
+<text x="102" y="256" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF" font-family="Cairo,Arial">${escH(position)}</text>
+<text x="102" y="268" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">${escH(positionEn)}</text>
+<rect x="20" y="276" width="164" height="18" rx="3" fill="url(#goldm)"/>
+<text x="102" y="289" text-anchor="middle" font-size="11" font-weight="900" fill="#15171a" font-family="Courier New,monospace" letter-spacing="1">${empNo}</text>
+<rect x="0" y="0" width="204" height="322" rx="14" fill="none" stroke="#DFBA57" stroke-width="1.5" opacity="0.6"/>
 </g></svg>`;
   fs.writeFileSync(path.join(OUT, `card-${fp}.svg`), svg);
   console.log(JSON.stringify({ ok: true, fp, name: emp.name, files: [`card-${fp}.html`, `card-${fp}.svg`] }));

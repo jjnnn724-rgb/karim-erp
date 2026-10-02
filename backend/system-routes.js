@@ -46,9 +46,64 @@ function shaOk(file) {
         return expected === actual;
     } catch (_) { return false; }
 }
-function listBackups() {
+
+// PERF: مع نسخ بمئات الميجابايت كان التحقق من أحدث 3 نسخ يقرأ ~2GB متزامنًا في
+// كل طلب سرد (قِسنا 11.6 ثانية). الآن: نتيجة التحقق تُخزَّن في الذاكرة + ملف
+// .sha-cache.json بجانب النسخ (فتبقى معروفة حتى بعد إعادة تشغيل السيرفر)،
+// ويُحسب الناقص بقراءة متدفقّة async لا تحبس حلقة الأحداث — القائمة تفتح فورًا
+// في كل الأحوال، والاستعادة نفسها تتحقق من ملفها الوحيد قبل التنفيذ فلا تضعف السلامة.
+const shaCache = new Map();
+const shaVerifying = new Set();
+function shaCacheFile() { return path.join(backupsDir(), '.sha-cache.json'); }
+function shaCacheLoad() {
+    if (shaCache.size) {return;}
+    try {
+        const raw = JSON.parse(fs.readFileSync(shaCacheFile(), 'utf8'));
+        for (const [k, v] of Object.entries(raw || {})) {shaCache.set(k, Boolean(v));}
+    } catch (_) { /* لا ملف بعد — طبيعي أول تشغيل */ }
+}
+function shaCachePersist() {
+    try {
+        fs.writeFileSync(shaCacheFile(), JSON.stringify(Object.fromEntries(shaCache)), 'utf8');
+    } catch (_) { /* غير حرج — يُعاد الحساب لاحقًا */ }
+}
+async function shaOkAsync(file) {
+    try {
+        const side = `${file}.sha256`;
+        if (!fs.existsSync(side)) {return null;}
+        const [expected] = fs.readFileSync(side, 'utf8').trim().split(/\s+/);
+        const hash = crypto.createHash('sha256');
+        await new Promise((resolve, reject) => {
+            const stream = fs.createReadStream(file, { highWaterMark: 4 * 1024 * 1024 });
+            stream.on('data', (d) => hash.update(d));
+            stream.on('end', resolve);
+            stream.on('error', reject);
+        });
+        return expected === hash.digest('hex');
+    } catch (_) { return false; }
+}
+function shaCached(full, size, mtimeMs) {
+    shaCacheLoad();
+    const key = `${path.basename(full)}|${size}|${mtimeMs}`;
+    if (shaCache.has(key)) {return shaCache.get(key);}
+    if (!shaVerifying.has(key)) {
+        shaVerifying.add(key);
+        // تأخير بسيط: الاستجابة تخرج أولًا، ثم يجرى التحقق بتدفق غير حاجب
+        setTimeout(async () => {
+            try { shaCache.set(key, await shaOkAsync(full)); } catch (_) { shaCache.set(key, false); }
+            shaVerifying.delete(key);
+            shaCachePersist();
+        }, 1500);
+    }
+    return null; // قيد التحقق في الخلفية
+}
+function listBackups({ verify = false } = {}) {
     const dir = backupsDir();
     if (!fs.existsSync(dir)) {return { dir, files: [] };}
+    // PERF: قراءة البصمة (SHA-256) تعني قراءة كل ملف كاملًا — مع نسخ بمئات
+    // الميجابايت كان السرد يجمّد الصفحة. الافتراضي الآن: stat فقط + وجود
+    // البصمة، والتحقق الكامل اختياري (?verify=1) أو لأحدث 3 ملفات فقط.
+    // الاستعادة نفسها تتحقق من ملفها الوحيد (سطر restore) — فلا مخاطرة.
     const files = fs.readdirSync(dir)
         .filter((f) => f.endsWith('.sql'))
         .map((f) => {
@@ -60,16 +115,24 @@ function listBackups() {
                 const mf = `${full}.json`;
                 if (fs.existsSync(mf)) {manifest = JSON.parse(fs.readFileSync(mf, 'utf8'));}
             } catch (_) {}
-            return { file: f, bytes: st.size, mtime: st.mtime, shaOk: shaOk(full), manifest };
+            const hasSha = fs.existsSync(`${full}.sha256`);
+            return { file: f, bytes: st.size, mtime: st.mtime, shaOk: null, hasSha, manifest, _full: full };
         })
         .filter(Boolean)
-        .sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
+        .sort((a, b) => new Date(b.mtime) - new Date(a.mtime))
+        .slice(0, 100);
+    const newestN = verify ? files.length : Math.min(3, files.length);
+    for (let i = 0; i < newestN; i++) {
+        try { files[i].shaOk = shaCached(files[i]._full, files[i].bytes, new Date(files[i].mtime).getTime()); } catch (_) { files[i].shaOk = false; }
+        delete files[i]._full;
+    }
+    for (const f of files) {delete f._full;}
     return { dir, files };
 }
 
 let lastBackupAt = 0;
 router.get('/backups', jwtAuth, requireRole('admin'), async (req, res) => {
-    try { res.json({ ok: true, ...listBackups() }); }
+    try { res.json({ ok: true, ...listBackups({ verify: req.query.verify === '1' }) }); }
     catch (e) { logger.error('[system/backups]', e.message); res.status(500).json({ error: 'SYS_BACKUP_LIST_FAILED', message: 'تعذر جلب قائمة النسخ' }); }
 });
 

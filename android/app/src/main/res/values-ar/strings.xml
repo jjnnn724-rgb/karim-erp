@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">كريم ERP</string>
+    <string name="title_activity_main">كريم ERP</string>
+    <string name="package_name">com.karimerp.app</string>
+    <string name="custom_url_scheme">com.karimerp.app</string>
+
+    <!-- Offline & Error Screen Arabic -->
+    <string name="offline_title">تعذر الاتصال بالخادم</string>
+    <string name="offline_message">غير قادر على الاتصال بنظام كريم ERP. يرجى التأكد من الاتصال بالإنترنت وإعادة المحاولة.</string>
+    <string name="retry_button">إعادة المحاولة</string>
+</resources>

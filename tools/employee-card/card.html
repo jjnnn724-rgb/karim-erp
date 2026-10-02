@@ -2,43 +2,37 @@
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="utf-8">
-<title>بطاقة موظف — {{NAME_AR}}</title>
+<title>بطاقة هوية سيادية — {{NAME_AR}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../card.css">
 <style>
   body {
     font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
-    background:
-      radial-gradient(900px 500px at 12% -8%, rgba(67,56,202,.14), transparent 60%),
-      radial-gradient(800px 460px at 90% 0%, rgba(15,181,166,.13), transparent 60%),
-      radial-gradient(700px 420px at 55% 110%, rgba(255,107,74,.10), transparent 60%),
-      #EEF1F7;
+    background: #0A0C0F;
     padding: 24px;
   }
   .sheet { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
   .face { display: flex; flex-direction: column; gap: 10px; }
   .face-tag {
-    font-weight: 900; color: #0A2540; margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;
+    font-weight: 900; color: #D4AF37; margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px;
   }
   .face-tag::before { content: ''; width: 22px; height: 4px; border-radius: 2px;
-    background: linear-gradient(90deg, #C9A961, #0FB5A6); }
+    background: linear-gradient(90deg, #82611A, #FFF3D6); }
   .toolbar { margin-bottom: 18px; text-align: center; }
   .toolbar button {
     padding: 12px 34px; border: none; border-radius: 12px; cursor: pointer;
-    font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 800; color: #fff;
-    background: linear-gradient(120deg, #061627, #16307E 55%, #4338CA);
-    box-shadow: 0 6px 22px rgba(22,48,126,.35);
+    font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 800; color: #040609;
+    background: linear-gradient(135deg, #FFF3D6 0%, #D4AF37 45%, #967223 100%);
+    box-shadow: 0 6px 22px rgba(212,175,55,.35);
   }
-  .toolbar button:hover { filter: brightness(1.12); }
-  .toolbar .hint { display: block; margin-top: 8px; color: #55607a; font-size: 12.5px; }
-  .toolbar .hint b { color: #0B8A7F; }
+  .toolbar button:hover { filter: brightness(1.08); }
+  .toolbar .hint { display: block; margin-top: 8px; color: #8a8f98; font-size: 12.5px; }
+  .toolbar .hint b { color: #D4AF37; }
   .title-bar { text-align: center; margin-bottom: 6px; }
-  .title-bar h1 { margin: 0; font-size: 21px; color: #0A2540; font-weight: 900; }
-  .title-bar p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
-  .title-bar .grad { background: linear-gradient(90deg, #16307E, #7C3AED 40%, #0FB5A6 75%, #FFB020);
-    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .title-bar h1 { margin: 0; font-size: 21px; color: #FFF3D6; font-weight: 900; }
+  .title-bar p { margin: 4px 0 0; color: #8a8f98; font-size: 13px; }
   @media print {
     body { background: #fff; padding: 0; }
     .sheet { gap: 0; }
@@ -48,78 +42,82 @@
 <body>
 <div class="no-print">
   <div class="title-bar">
-    <h1>البطاقة الفاخرة — <span class="grad">مطاعم الشرفه العالمي</span></h1>
+    <h1>البطاقة السيادية — مطاعم الشرفه العالمي</h1>
     <p>{{NAME_AR}} • {{POSITION}} • رقم {{EMP_NO}}</p>
   </div>
   <div class="toolbar">
     <button onclick="window.print()">طباعة البطاقتين</button>
-    <span class="hint">مقاس ID-1 طولي 54×85.6مم — من نافذة الطباعة اختر: <b>Margins: None</b> + <b>Background graphics ✓</b> + Paper: A4 — كل وجه في صفحة</span>
+    <span class="hint">مقاس CR80 طولي 54×86مم — من نافذة الطباعة اختر: <b>Margins: None</b> + <b>Background graphics ✓</b> — كل وجه في صفحة</span>
   </div>
 </div>
 <div class="sheet">
 
   <div class="face">
     <p class="face-tag no-print">الوجه الأمامي</p>
-    <div class="idcard portrait">
-      <svg class="guilloche" viewBox="0 0 204 322" preserveAspectRatio="xMidYMid slice">{{GUILLOCHE}}</svg>
-      <div class="hdr">
-        <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
-        <img class="logo" src="{{LOGO}}" alt="logo">
-        <div class="co">مطاعم الشرفه العالمي<small>AL SHORFA RESTAURANTS</small></div>
-        <div style="flex:1"></div>
-        {{WAQF_LOGO}}
-        <svg class="wave" viewBox="0 0 54 6" preserveAspectRatio="none"><path d="M0,0 L54,0 L54,2.2 C46,4.6 38,1.2 30,2.8 C21,4.7 10,2.4 0,4.2 Z" fill="#FDFCF9"/></svg>
-      </div>
-      <div class="holo"></div>
-      <div class="front-body">
-        <div class="photo-ring"><img class="photo" src="{{PHOTO}}" alt="photo"></div>
-        <div class="name-block">
-          <div class="field-val-ar full">{{NAME_AR}}</div>
-          <div class="field-val-en">{{NAME_EN}}</div>
+    <div class="card">
+      <div class="inner-border"></div>
+      <div class="seamless-woven-header">
+        <div class="tower-melt-box">
+          <img src="{{TOWER}}" alt="وقف الملك عبد العزيز - برج الساعة">
         </div>
-        <div class="pill-row">
-          <span class="pill pos">{{POSITION}}</span>
-          <span class="pill dept">{{DEPT}}</span>
-        </div>
-        <div class="empchip"><span class="lbl">رقم الموظف</span><span class="emp-no">{{EMP_NO}}</span></div>
-        <div class="qrbox">
-          <div class="qr-wrap">
-            <img class="qr" src="{{QR}}" alt="qr">
-            <img class="qr-logo" src="{{LOGO}}" alt="الشرفه">
-          </div>
-          <div class="qr-emp">{{EMP_NO}}</div>
-          <div class="qrcap">امسح للتحقق الفوري ✓</div>
+        <div class="shurfa-blend-box">
+          <img src="{{LOGO}}" alt="مطاعم الشرفه العالمي">
         </div>
       </div>
-      <div class="foot"><span>{{MICROTEXT}}</span></div>
-      <div class="micro"></div>
+      <div class="photo-frame-wrapper">
+        <div class="photo-frame"><img class="emp-photo" src="{{PHOTO}}" alt="صورة الموظف"></div>
+        <div class="sovereign-tag">OFFICIAL EXECUTIVE</div>
+      </div>
+      <p class="name-ar">{{NAME_AR}}</p>
+      <p class="name-en">{{NAME_EN}}</p>
+      <div class="rank-strip">
+        <p class="title">{{POSITION}}</p>
+        <p class="dept">{{DEPT}}</p>
+      </div>
+      <div class="id-gold-bar">
+        <span class="id-title">OFFICIAL ID:</span>
+        <span class="id-number">{{EMP_NO}}</span>
+      </div>
     </div>
   </div>
 
   <div class="face">
     <p class="face-tag no-print">الوجه الخلفي</p>
-    <div class="idcard portrait">
-      {{WAQF_WM}}
-      <svg class="guilloche" viewBox="0 0 204 322" preserveAspectRatio="xMidYMid slice">{{GUILLOCHE}}</svg>
-      <div class="hdr slim">
-        <div class="orb o1"></div><div class="orb o3"></div>
-        <img class="logo" src="{{LOGO}}" alt="logo">
-        <div class="co">بطاقة موظف<small>EMPLOYEE ID CARD</small></div>
-        <svg class="wave" viewBox="0 0 54 6" preserveAspectRatio="none"><path d="M0,0 L54,0 L54,2.2 C46,4.6 38,1.2 30,2.8 C21,4.7 10,2.4 0,4.2 Z" fill="#FDFCF9"/></svg>
-      </div>
-      <div class="holo"></div>
-      <div class="back-body">
-        <div class="terms-card">{{TERMS}}</div>
-        <div class="sigstrip">التوقيع / Signature</div>
-        <div class="mrz">{{MRZ1}}<br>{{MRZ2}}<br>{{MRZ3}}</div>
-        <div class="barcode">{{BARS}}</div>
-        <div class="meta-row">
-          <span class="emg">Emergency {{EMERGENCY}}</span>
-          <span class="dates">ISSUE <b>{{ISSUE}}</b><br>EXPIRY <b>{{EXPIRY}}</b></span>
+    <div class="card">
+      <div class="inner-border"></div>
+      <div class="seamless-woven-header" style="height: 14.5mm; margin-top: 0.5mm; margin-bottom: 1.5mm;">
+        <div class="tower-melt-box">
+          <img src="{{TOWER}}" alt="وقف الملك عبد العزيز">
+        </div>
+        <div class="shurfa-blend-box">
+          <img src="{{LOGO}}" alt="مطاعم الشرفه العالمي" style="max-height: 12.5mm; max-width: 26mm;">
         </div>
       </div>
-      <div class="foot"><span>{{MICROTEXT}}</span></div>
-      <div class="micro"></div>
+      <div class="mag-stripe"></div>
+      <div class="qr-frame">
+        <img class="qr-img" src="{{QR}}" alt="رمز التحقق الأمني">
+      </div>
+      <p class="legal-notice">
+        بطاقة هوية رسمية صادرة عن مطاعم الشرفه العالمي — مجمع برج الساعة.<br>
+        يتحمل حاملها المسؤولية القانونية كاملة عن استخدامها.
+      </p>
+      <div class="meta-table">
+        <div class="meta-col">
+          <div class="meta-head">تاريخ الإصدار</div>
+          <div class="meta-val">{{ISSUE}}</div>
+        </div>
+        <div class="meta-col">
+          <div class="meta-head">تاريخ الانتهاء</div>
+          <div class="meta-val">{{EXPIRY}}</div>
+        </div>
+      </div>
+      <div class="emergency-line">
+        طوارئ الإدارة: <span>{{EMERGENCY}}</span>
+      </div>
+      <div class="mrz-sovereign" dir="ltr">
+        {{MRZ1}}<br>
+        {{MRZ2}}
+      </div>
     </div>
   </div>
 

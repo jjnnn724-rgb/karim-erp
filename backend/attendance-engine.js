@@ -22,8 +22,48 @@ const {
 const proto = require('./zkteco/protocol');
 const IN_STATES = proto.CHECK_IN_STATES;
 const OUT_STATES = proto.CHECK_OUT_STATES;
+// قاعدة الزر المنسي: أدنى فجوة (بالدقائق) منذ الدخول تعتبر البصمة التالية «خروج»
+// حتى لو كان زر الجهاز على «دخول» — أرضية 60 دقيقة، افتراضي 240 (4 ساعات).
+const WRONG_BUTTON_GAP_MIN = Math.max(60, Number(process.env.ATT_WRONG_BUTTON_GAP_MIN) || 240);
 
 const BUSINESS_TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // Asia/Riyadh
+
+// ─── تاريخ سريان الدوام (087): الدوام الساري في يوم = أحدث صف بتاريخ ≤ اليوم ───
+// fail-open دائمًا: أي خطأ → خريطة فارغة (المستهلك يعود لأعمدة البطاقة).
+async function loadShiftHistoryMap(employeeIds, toDate) {
+    const map = new Map();
+    try {
+        const ids = [...new Set((employeeIds || []).map(Number).filter(Number.isInteger))];
+        if (!ids.length) {return map;}
+        const { rows } = await pool.query(
+            `SELECT employee_id, shift_start, shift_karim, day_off, effective_from::text AS effective_from
+               FROM employee_shift_history
+              WHERE employee_id = ANY($1::bigint[]) AND effective_from <= $2::date
+              ORDER BY employee_id, effective_from`,
+            [ids, String(toDate)]
+        );
+        for (const r of rows) {
+            const k = String(r.employee_id);
+            if (!map.has(k)) {map.set(k, []);}
+            map.get(k).push(r);
+        }
+    } catch (_) {}
+    return map;
+}
+
+function resolveShiftAt(histRows, dateStr, fallback) {
+    let best = null;
+    for (const r of (histRows || [])) {
+        if (String(r.effective_from) <= String(dateStr)) {best = r;}
+        else {break;}
+    }
+    if (!best) {return fallback;}
+    return {
+        shift_start: best.shift_start || fallback?.shift_start,
+        shift_karim: Number(best.shift_karim) > 0 ? Number(best.shift_karim) : fallback?.shift_karim,
+        day_off: best.day_off ?? fallback?.day_off ?? null,
+    };
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // إعدادات قابلة للتكوين عبر ENV
@@ -81,9 +121,35 @@ function instantToWall(instant) {
     };
 }
 
+/**
+ * ترطيب lastPunch من صف خام في attendance_logs — يُستدعى عند فقد كاش الذاكرة
+ * (بعد إعادة التشغيل) حتى يظل حرس «التكرار خلال 5 دقائق» محصنًا عبر الإقلاعات.
+ * نقية وقابلة للاختبار: صف {attendanceTime, punchState} → {min, out} أو null.
+ */
+function lastPunchFromRow(row) {
+    if (!row || !row.attendanceTime) {return null;}
+    const t = new Date(row.attendanceTime);
+    if (Number.isNaN(t.getTime())) {return null;}
+    const wall = instantToWall(t);
+    const state = Number(row.punchState);
+    return { min: wall.hour * 60 + wall.minute, out: OUT_STATES.has(state) && !IN_STATES.has(state) };
+}
+
+/** آخر بصمة خام للموظف قبض البصمة الحالية مباشرة — fail-open دائمًا */
+async function lastPunchFromDb(employeeId, instant) {
+    try {
+        // `< instant` حصرًا: بصمة الزكطة الحالية نفسها (المُدرجة قبل النداء) تُستبعد
+        const { rows } = await pool.query(
+            `SELECT "attendanceTime", "punchState" FROM attendance_logs
+              WHERE "employeeId" = $1 AND "attendanceTime" < $2
+              ORDER BY "attendanceTime" DESC LIMIT 1`,
+            [employeeId, instant]);
+        return lastPunchFromRow(rows[0]);
+    } catch (_) { return null; }
+}
+
 /** دقائق بين وقتين على نفس يوم الوردية (يدعم عبر منتصف الليل) */
-function minutesBetween(inTime, outTime, shiftDate) {
-    const [ih, im] = String(inTime).split(':').map(Number);
+function minutesBetween(inTime, outTime, shiftDate) {    const [ih, im] = String(inTime).split(':').map(Number);
     const [oh, om] = String(outTime).split(':').map(Number);
     let d = (oh * 60 + om) - (ih * 60 + im);
     if (d < 0) { d += 24 * 60; }
@@ -144,6 +210,7 @@ function classifyPunch({
     shiftStartMin,     // بداية الوردية بالدقائق
     shiftEndMin,       // نهاية الوردية بالدقائق (قد > 1440 للوردية الليلية)
     hasOpenRow,        // هل يوجد صف مفتوح (بلا خروج) لليوم
+    openRowCheckIn,    // ساعة دخول الصف المفتوح ('HH:MM' أو null) — حرس الارتداد
     lastPunch,         // { min, out } آخر بصمة معالجة
     pattern,           // { medianIn, medianOut, samples }
     dayLogs,           // جميع بصمات اليوم مصنفة: { in: [], out: [] }
@@ -157,16 +224,29 @@ function classifyPunch({
         return { action: 'ignore', confidence: 0.95, reason: 'بصمة مكررة بنفس الاتجاه خلال 5 دقائق', override: false };
     }
 
-    // 2. صف مفتوح موجود → أي بصمة تالية تُغلقه (زر الجهاز يُتجاهل تمامًا:
+    // 2. صف مفتوح موجود → أي بصمة تالية تُغلقه (زر الجهاز يُتجاهل تماماً:
     //    التبديل بين دخول/انصراف على الجهاز سبب شائع للخطأ، والتسلسل هو المرجع)
     if (hasOpenRow) {
         if (deviceOut) {
+            // حرس الارتداد: «خروج» خلال ساعة من الدخول = ضغط مزدوج عند الوصول — يُتجاهل
+            const openMin = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastPunch ? lastPunch.min : null);
+            const arrivedGap = openMin != null ? ((wallMin - openMin) + 24 * 60) % (24 * 60) : 999;
+            if (arrivedGap <= 60) {
+                return { action: 'ignore', confidence: 0.9, reason: 'بصمة خروج خلال ساعة من الدخول — ضغط مزدوج عند الوصول', override: false };
+            }
             return { action: 'out', confidence: 0.9, reason: 'صف مفتوح + حالة خروج', override: false };
         }
-        return { action: 'out', confidence: 0.85, reason: 'صف مفتوح + زر دخول بالخطأ — أُغلق الصف بالتسلسل', override: true };
+        // زر «دخول» والصف مفتوح: الزر المنسي عند الخروج (فجوة طويلة منذ الدخول أو
+        // قرب موعد الانصراف المعتاد) — مقابل الضغط المزدوج عند الوصول (يُتجاهل)
+        const openMin2 = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastPunch ? lastPunch.min : null);
+        const gap2 = openMin2 != null ? ((wallMin - openMin2) + 24 * 60) % (24 * 60) : null;
+        const patOut2 = pattern?.medianOut != null ? pattern.medianOut % (24 * 60) : null;
+        if (gap2 != null && (gap2 >= WRONG_BUTTON_GAP_MIN || (patOut2 != null && Math.abs(wallMin - patOut2) <= 90))) {
+            return { action: 'out', confidence: 0.85, reason: ('زر دخول بالخطأ عند الخروج — فجوة ' + Math.floor(gap2 / 60) + 'س' + (gap2 % 60) + 'د منذ الدخول'), override: true };
+        }
+        return { action: 'ignore', confidence: 0.9, reason: 'صف مفتوح + زر دخول بعد قليل — ضغط مزدوج عند الوصول', override: false };
     }
 
-    // 3. لا صف مفتوح: تحليل الوقت والنمط
     const near = (target, tol) => target != null && Math.abs(wallMin - target) <= tol;
 
     const patIn = pattern?.medianIn;
@@ -178,43 +258,20 @@ function classifyPunch({
     const atShiftStart = clockDistanceMinutes(wallMin, shiftStartWindow) <= 120 || (patIn != null && clockDistanceMinutes(wallMin, patIn) <= 60);
     const atShiftEnd = clockDistanceMinutes(wallMin, shiftEndWindow) <= 180 || (patOut != null && clockDistanceMinutes(wallMin, patOut) <= 90);
     const inZone = atShiftStart || near(shiftStartMin, 120) || near(patIn, 60);
-    const outZone = atShiftEnd || near(shiftEndMin % (24 * 60), 180) || (patOut != null && near(patOut, 90));
+    const outZone = atShiftEnd || near(shiftEndWindow, 180) || (patOut != null && near(patOut, 90));
 
-    // 3أ. وقت دخول واضح
-    if (!thisOut && (inZone || !outZone)) {
-        return { action: 'in', confidence: inZone ? 0.9 : 0.6, reason: 'بلا صف مفتوح + وقت دخول', override: false };
+    // 3. لا صف مفتوح: القرار بالزمن لا بزر الجهاز (معالجة جذرية 2026-10-02):
+    //    أ) قرب بداية الوردية أو نمط الدخول → دخول بالضرورة (زر «خروج» عند بداية
+    //       الدوام سبب شائع للخطأ ويُتجاهل تماماً)
+    if (inZone) {
+        return { action: 'in', confidence: 0.9, reason: 'بلا صف مفتوح + وقت دخول — زر الجهاز يُتجاهل', override: deviceOut };
     }
-
-    // 3ب. زر خروج بالخطأ صباحاً (الحالة الذهبية)
-    if (thisOut && inZone && !outZone) {
-        return { action: 'in', confidence: 0.85, reason: 'حالة الجهاز خروج لكن الوقت وقت دخول (زر خاطئ)', override: true };
-    }
-
-    // 3ب.1 تعارض بين نوع البصمة ونافذة الوردية: نُعطي الأولوية لوقت الدوام وليس لعلامة الجهاز
-    if (thisOut && atShiftStart && !atShiftEnd) {
-        return { action: 'in', confidence: 0.93, reason: 'تعارض بين نوع البصمة ونافذة الدوام — تم حلها وفق وقت الدخول', override: true };
-    }
-    if (!thisOut && atShiftEnd && !atShiftStart) {
-        return { action: 'out', confidence: 0.93, reason: 'تعارض بين نوع البصمة ونافذة الدوام — تم حلها وفق وقت الخروج', override: true };
-    }
-
-    // 3ج. وقت خروج واضح
+    //    ب) قرب نهاية الوردية أو نمط الانصراف → خروج (وردية ليلية فقد صفها)
     if (outZone) {
         return { action: 'out', confidence: 0.85, reason: 'بلا صف مفتوح + وقت انصراف', override: !deviceOut };
     }
-
-    // 3د. تحليل بصمات اليوم الحالية
-    if (dayLogs?.in?.length && !dayLogs?.out?.length) {
-        // لدينا دخول اليوم، لا خروج → هذه على الأرجح خروج
-        return { action: 'out', confidence: 0.75, reason: 'دخول مسجل اليوم + لا خروج', override: !deviceOut };
-    }
-    if (!dayLogs?.in?.length && dayLogs?.out?.length) {
-        // لدينا خروج، لا دخول → هذه على الأرجح دخول
-        return { action: 'in', confidence: 0.75, reason: 'خروج مسجل اليوم + لا دخول', override: deviceOut };
-    }
-
-    // 3ه. خارج النوافذ → افتراضي خروج مع ثقة منخفضة للمراجعة
-    return { action: 'out', confidence: 0.5, reason: 'خارج النوافذ — مراجعة بشرية مستحسنة', override: !deviceOut };
+    //    ج) وقت محايد → فتح جلسة افتراضياً (الوصول أشيع من انصراف يتيم)
+    return { action: 'in', confidence: 0.7, reason: 'وقت محايد — فتح جلسة افتراضياً', override: deviceOut };
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -237,13 +294,19 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
 
     let early = 0;
     let earlyFlag = false;
+    // قرار المالك (2026-09): التأخير يُقاس بإتمام ساعات الوردية لا بلحظة الدخول —
+    // «أهم شي يكمل 10 أو 12 ساعته»: الدخول المبكر يغطي الانصراف المبكر، والتأخير
+    // يُمتص بالبقاء أطول. أي نقص (قبل أو بعد) يُحسب تأخيرًا. بلا بصمة خروج اليوم
+    // مفتوح → يُحكم عليه عند إغلاقه (قيد المراجعة).
+    let totalLate = arrival;
+    let out;
 
     if (checkOut) {
         const checkOutMin = toMin(checkOut);
         if (checkOutMin != null) {
             const karim = Number(shiftKarim) > 0 ? Number(shiftKarim) : 10;
             const endRaw = shiftMin + Math.round(karim * 60);
-            let out = checkOutMin;
+            out = checkOutMin;
 
             if (checkInMin != null && out < checkInMin) {
                 out += 24 * 60;
@@ -255,13 +318,18 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
                 early = Math.max(0, endRaw - out);
                 earlyFlag = early > 0;
             }
+            if (checkInMin != null) {
+                const requiredMin = Math.round(karim * 60);
+                const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
+                totalLate = Math.max(0, requiredMin - workedMin);
+            }
         }
     }
 
     return {
         arrivalLateMinutes: arrival,
         earlyLeaveMinutes: early,
-        totalLateMinutes: arrival + early,
+        totalLateMinutes: totalLate,
         lateFlag,
         earlyFlag,
     };
@@ -285,18 +353,33 @@ class AttendanceEngine {
 
     setIO(io) { this.io = io; }
 
-    async getEmployeeShift(employeeId) {
+    async getEmployeeShift(employeeId, forDate) {
+        // الدوام الساري في التاريخ المطلوب (تاريخ السريان 087) — الماضي محفوظ،
+        // والمستقبل المرتب يطبق تلقائيًا. الرجوع للأعمدة عند غياب التاريخ.
         const { rows } = await pool.query(
             `SELECT shift_start, shift_karim, auto_checkout, auto_lock
              FROM employees WHERE id = $1`, [employeeId]
         );
         if (!rows[0]) {return null;}
-        return {
+        const base = {
             shiftStart: normalizeShiftStart(rows[0].shift_start),
             shiftKarim: normalizeShiftKarim(rows[0].shift_karim),
             autoCheckout: rows[0].auto_checkout === true,
             autoLock: rows[0].auto_lock === true,
         };
+        const d = forDate || new Date().toISOString().slice(0, 10);
+        try {
+            const hist = await loadShiftHistoryMap([employeeId], d);
+            const at = resolveShiftAt(hist.get(String(employeeId)), d, null);
+            if (at) {
+                return {
+                    ...base,
+                    shiftStart: normalizeShiftStart(at.shift_start || base.shiftStart),
+                    shiftKarim: normalizeShiftKarim(Number(at.shift_karim) > 0 ? Number(at.shift_karim) : base.shiftKarim),
+                };
+            }
+        } catch (_) {}
+        return base;
     }
 
 async loadPattern(employeeId) {
@@ -345,7 +428,13 @@ async loadPattern(employeeId) {
 
             const wallMin = wall.hour * 60 + wall.minute;
             const thisOut = OUT_STATES.has(Number(punchState)) && !IN_STATES.has(Number(punchState));
-            const lastPunch = this.lastPunches.get(employeeId) ?? null;
+            let lastPunch = this.lastPunches.get(employeeId) ?? null;
+            if (!lastPunch) {
+                // الكاش فارغ (أول بصمة بعد إقلاع جديد) — ترطيب من القاعدة حتى لا
+                // يفقد حرس «التكرار خلال 5 دقائق» ذاكرته عبر إعادة التشغيل
+                lastPunch = await lastPunchFromDb(employeeId, instant);
+                if (lastPunch) {this.lastPunches.set(employeeId, lastPunch);}
+            }
             const pattern = await this.loadPattern(employeeId);
 
             // جلب بصمات اليوم الحالية للتصنيف الذكي
@@ -354,7 +443,7 @@ async loadPattern(employeeId) {
             // هل يوجد صف مفتوح؟ (يوم الوردية أو اليوم السابق للورديات الليلية)
             // يُقرأ قبل التصنيف حتى يتجاهل المصنف زر الجهاز ويعتمد التسلسل.
             const openCheck = await client.query(
-                `SELECT id, "checkIn" FROM attendance
+                `SELECT id, "checkIn", "checkInAt" FROM attendance
                   WHERE "employeeId" = $1 AND "checkOut" IS NULL AND date IN ($2, $3)
                   LIMIT 1`,
                 [employeeId, shiftDate, prevDay(shiftDate)]
@@ -363,18 +452,48 @@ async loadPattern(employeeId) {
             // دقائق الدخول للصف المفتوح — يغذي قاعدة «زر دخول بالخطأ عند الخروج»
             const openRowCheckIn = hasOpenRow ? (openCheck.rows[0].checkIn || null) : null;
 
-            // تصنيف ذكي
+            // ═══ قاعدة النسيان الجذرية (2026-10-02) ═══
+            // صف مفتوح تجاوز طول الوردية بساعتي رحمة = الموظف نسي بصمة الخروج:
+            // يُقفل مستنتجاً بنهاية ورديته (وليس بهذه البصمة!) حتى لا تتولد صفوف
+            // 24 ساعة، وهذه البصمة تفتح يومها الحالي كدخول جديد.
+            let staleOpenRowId = null;
+            if (hasOpenRow && openCheck.rows[0].checkInAt) {
+                const openHours = (instant - new Date(openCheck.rows[0].checkInAt)) / 3600000;
+                if (openHours > Number(shiftKarim) + 2) {
+                    staleOpenRowId = openCheck.rows[0].id;
+                    const shiftLenMs = Math.round(Number(shiftKarim) * 3600 * 1000);
+                    const inferredOutAt = new Date(new Date(openCheck.rows[0].checkInAt).getTime() + shiftLenMs);
+                    const wallOut = this._wallParts(inferredOutAt);
+                    await client.query(
+                        `UPDATE attendance SET "checkOut" = $2, "checkOutAt" = $3, "workMinutes" = $4,
+                            checkout_inferred = true,
+                            notes = COALESCE(notes,'') || ' | انصراف مستنتج بنهاية الوردية — نسيان بصمة الخروج'
+                         WHERE id = $1`,
+                        [staleOpenRowId, wallOut.time, inferredOutAt, Math.round(Number(shiftKarim) * 60)]
+                    );
+                    logger.warn('[AttendanceEngine] صف مفتوح قديم أُقفل مستنتجاً (نسيان خروج):', employeeId, openRowCheckIn);
+                }
+            }
+            const effectiveHasOpenRow = hasOpenRow && !staleOpenRowId;
+
+            // تصنيف ذكي — مع تجاوز الصف القديم الذي أُقفل مستنتجاً أعلاه
             const verdict = classifyPunch({
                 punchState,
                 wallMin,
                 shiftStartMin,
                 shiftEndMin,
-                hasOpenRow,
+                hasOpenRow: effectiveHasOpenRow,
                 openRowCheckIn,
                 lastPunch,
                 pattern,
                 dayLogs,
             });
+            // إن كانت البصمة ستفتح يوماً جديداً بعد قفل صف قديم → دخول مباشر
+            if (staleOpenRowId) {
+                verdict.action = 'in';
+                verdict.override = true;
+                verdict.reason = 'بعد قفل نسيان الخروج مستنتجاً — هذه البصمة دخول اليوم';
+            }
 
             // تسجيل القرارات المثيرة للمراجعة
             if (verdict.override || verdict.confidence < confidenceThreshold()) {
@@ -644,10 +763,10 @@ async loadPattern(employeeId) {
 
         // 2. معالجة الأيام المغلقة
         const nowMs = Date.now();
-        const cairoNow = new Date(nowMs + BUSINESS_TZ_OFFSET_MS);
+        const riyadhNow = new Date(nowMs + BUSINESS_TZ_OFFSET_MS);
         const p2 = (n) => String(n).padStart(2, '0');
-        const todayStr = `${cairoNow.getUTCFullYear()}-${p2(cairoNow.getUTCMonth() + 1)}-${p2(cairoNow.getUTCDate())}`;
-        const sinceD = new Date(Date.UTC(cairoNow.getUTCFullYear(), cairoNow.getUTCMonth(), cairoNow.getUTCDate()) - sinceDays * 86400000);
+        const todayStr = `${riyadhNow.getUTCFullYear()}-${p2(riyadhNow.getUTCMonth() + 1)}-${p2(riyadhNow.getUTCDate())}`;
+        const sinceD = new Date(Date.UTC(riyadhNow.getUTCFullYear(), riyadhNow.getUTCMonth(), riyadhNow.getUTCDate()) - sinceDays * 86400000);
         const sinceStr = `${sinceD.getUTCFullYear()}-${p2(sinceD.getUTCMonth() + 1)}-${p2(sinceD.getUTCDate())}`;
 
         const rows = (await pool.query(
@@ -950,6 +1069,7 @@ module.exports = {
     calculateDelayDetail,
     calculateTotalLateMinutes,
     classifyPunch,
+    lastPunchFromRow,
     learnPattern,
     matchUserToEmployee,
     autoCompleteEnabled,
@@ -963,6 +1083,8 @@ module.exports = {
     shiftDateFor,
     shiftDateForEmployee,
     prevDay,
+    loadShiftHistoryMap,
+    resolveShiftAt,
     endInstantOf,
     minutesBetween,
     instantToWall,

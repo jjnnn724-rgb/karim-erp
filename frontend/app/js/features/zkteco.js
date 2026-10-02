@@ -470,4 +470,4 @@ toast('تم تنزيل ملف البصمات (يفتح مباشرة في Excel �
 finally{ hideLoad(); }
 }
 
-export { ZKSTATE, renderZktecoPage, zkFmtTime, zkFmtDate, zkSetTab, zkRefresh, zkAddDeviceModal, zkAddDevice, zkEditDeviceModal, zkUpdateDevice, zkTestDevice, zkSyncNow, zkToggleEnabled, zkDeleteDevice, zkSaveMapping, zkAutoLink, zkMapDeviceUser, zkConfirmMapDeviceUser, zkImportPreview, zkConfirmImport };
+export { ZKSTATE, renderZktecoPage, zkFmtTime, zkFmtDate, zkSetTab, zkRefresh, zkAddDeviceModal, zkAddDevice, zkEditDeviceModal, zkUpdateDevice, zkTestDevice, zkSyncNow, zkToggleEnabled, zkDeleteDevice, zkSaveMapping, zkAutoLink, zkMapDeviceUser, zkConfirmMapDeviceUser, zkImportPreview, zkConfirmImport, zkExportLogs };

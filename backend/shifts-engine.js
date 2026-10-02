@@ -133,7 +133,7 @@ async function applyShiftText(text, month) {
 }
 
 /** إعادة حساب كل مشتقات الحضور من الورديات الحالية (يدوي + تلقائي بعد التطبيق) */
-async function recomputeDerived(graceMin = 10) {
+async function recomputeDerived(graceMin = 0) {
     const before = (await pool.query(
         `SELECT count(*)::int AS late_days, COALESCE(SUM(GREATEST(0,
             (split_part(a."checkIn",':',1)::int*60 + split_part(a."checkIn",':',2)::int)

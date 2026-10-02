@@ -53,7 +53,9 @@ describe('resolvePanelDept — نطاق اللوحة وقفل رئيس القس�
     test('dept_head يُجبر على قسمه حتى لو طلب قسمًا آخر (DEPT_MISMATCH)', () => {
         expect(resolvePanelDept({ role: 'dept_head', dept_code: 'salads' }, 'fnb')).toEqual({ ok: false, code: 'DEPT_MISMATCH' });
         expect(resolvePanelDept({ role: 'dept_head', dept_code: 'salads' }, 'SALADS')).toEqual({ ok: true, deptCode: 'salads' });
-        expect(resolvePanelDept({ role: 'dept_head', dept_code: 'Salads' }, null)).toEqual({ ok: true, deptCode: 'salads' });
+        // تحديث 2026-10-02: الإرجاع بالكود الأصلي كما في القاعدة (ترقية 2026-10-01) —
+        // بحث القسم في SQL حساس لحالة الأحرف (SERVICE ≠ service)، المقارنة بلا حساسية فقط.
+        expect(resolvePanelDept({ role: 'dept_head', dept_code: 'Salads' }, null)).toEqual({ ok: true, deptCode: 'Salads' });
     });
 
     test('dept_head بلا قسم مرفوض ولا يقع في النظرة العامة', () => {

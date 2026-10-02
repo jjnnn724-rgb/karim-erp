@@ -170,13 +170,15 @@ describe('employee normalization and delay logic', () => {
         expect(normalizeDepartmentCode('البيع الخارجي')).toBe('ys_b4_ext');
     });
 
-    test('counts only actual late minutes, not early-leave minutes as delay', () => {
+    test('counts only the net shortfall of the shift hours (قرار المالك: الإتمام هو المعيار)', () => {
+        // دوام 09:00 + 8 ساعات: وصل 09:35 (تأخير 35د) وخرج 17:30 (بعد النهاية 30د)
+        // → أكمل 7:55 من 8 ساعات → العجز الصافي 5 دقائق فقط (تأخير − تعويض بالبقاء)
         const row = { checkIn: '09:35', checkOut: '17:30' };
         const employee = { shift_start: '09:00', shift_karim: 8 };
         const parts = calculateDelayParts(row, employee);
         expect(parts.arrivalLateMinutes).toBe(35);
         expect(parts.earlyLeaveMinutes).toBe(0);
-        expect(parts.lateMinutes).toBe(35);
+        expect(parts.lateMinutes).toBe(5);
     });
 });
 

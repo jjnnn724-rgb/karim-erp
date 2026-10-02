@@ -27,9 +27,10 @@ const PUBLIC_DEFAULT_PASSWORD = '1234';
 const BOOTSTRAP_MARKERS = new Set(['__SETUP_PENDING__', '__PASSWORD_MUST_BE_SET__']);
 const SALT_ROUNDS = 12;
 const BCRYPT_REGEX = /^\$2[aby]\$/;
-// المالك يريد كلمة مرور admin ثابتة دائمًا (تُعاد ضبطها عند كل إقلاع لو تغيّرت).
-// يمكن تجاوز القيمة عبر متغير البيئة KARIM_FIXED_ADMIN_PASSWORD.
-const FIXED_ADMIN_PASSWORD = String(process.env.KARIM_FIXED_ADMIN_PASSWORD || '').trim() || 'Admin@2026';
+// SECURITY: لا توجد أي كلمة مرور افتراضية في الكود — القيمة الثابتة تأتي حصريًا
+// من متغير البيئة KARIM_FIXED_ADMIN_PASSWORD في .env (خارج Git). بلا متغير =
+// لا تثبيت إطلاقًا، وكلمة مرور admin تبقى ما ضبطه المسؤول.
+const FIXED_ADMIN_PASSWORD = String(process.env.KARIM_FIXED_ADMIN_PASSWORD || '').trim();
 
 function randomPassword(len = 24) {
     return crypto.randomBytes(len).toString('base64').slice(0, len);
@@ -156,8 +157,9 @@ async function main() {
             log.ok(`[BOOTSTRAP] ${admin.username} (id=${admin.id}) — تم استبدال كلمة المرور الافتراضية القديمة`);
         }
 
-        // قرار المالك: كلمة مرور admin ثابتة دائمًا — أي تغيير لها يُتراجع عند الإقلاع التالي.
-        if (admin) {
+        // تثبيت كلمة مرور admin يعمل فقط إذا ضبط المالك KARIM_FIXED_ADMIN_PASSWORD في .env —
+        // لا توجد قيمة افتراضية في الكود إطلاقًا (كانت تُفرض 'Admin@2026' العامة عند كل إقلاع).
+        if (admin && FIXED_ADMIN_PASSWORD) {
             const adminPinned = BCRYPT_REGEX.test(admin.password) && await bcrypt.compare(FIXED_ADMIN_PASSWORD, admin.password);
             if (!adminPinned) {
                 await client.query(

@@ -2,6 +2,17 @@
  * features/employee-portal.js — extracted verbatim from app.js (see docs/esm-migration/MIGRATION_CHANGE_LOG.md).
  * Bridge policy: all top-level bindings are mounted on window by js/main.js (see BRIDGE log).
  */
+// ساعات العمل مع الالتفاف الليلي: الخروج بعد منتصف الليل يُكمل اليوم التالي
+// (مطابق لمنطق calculateMinutes في الخادم) — بدونها يظهر الخروج بعد 12 ص بالسالب.
+function portalWorkHours(a){
+if(!(a.checkIn && a.checkOut)) {return null;}
+const mins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (Number(m[1]) * 60 + Number(m[2])) : null; };
+const ci = mins(a.checkIn), co = mins(a.checkOut);
+if(ci == null || co == null) {return null;}
+let diff = co - ci;
+if(diff < 0) {diff += 24 * 60;}
+return diff / 60;
+}
 // ============================================
 // EMPLOYEE PORTAL
 // ============================================
@@ -25,8 +36,7 @@ const myAttendance = STATE.attendance.filter(a=>a.employeeId===emp.id && a.check
 const myLeaves = STATE.leaveRequests.filter(l=>l.employeeId===emp.id);
 const totalKarim = myAttendance.reduce((sum,a)=>{
 if(a.checkIn && a.checkOut){
-const h = (new Date(`2000-01-01 ${a.checkOut}`) - new Date(`2000-01-01 ${a.checkIn}`))/3600000;
-return sum + h;
+return sum + (portalWorkHours(a) || 0);
 }
 return sum;
 },0);
@@ -55,7 +65,7 @@ ${STATE.employees.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}
 <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th><th>المصدر</th><th>الحالة</th></tr></thead>
 <tbody>
 ${myAttendance.slice().reverse().map(a=>{
-const krm = a.checkIn&&a.checkOut?((new Date(`2000-01-01 ${a.checkOut}`)-new Date(`2000-01-01 ${a.checkIn}`))/3600000).toFixed(1):'—';
+const krm = a.checkIn&&a.checkOut?(portalWorkHours(a) ?? 0).toFixed(1):'—';
 const src = a.source==='device'?'<span class="badge bdg-blue"><i class=ji data-i=user-check></i> بصمة</span>':a.source==='qr'?'<span class="badge bdg-green">QR</span>':'<span class="badge bdg-gray">يدوي</span>';
 const statusText = formatAttendanceStatus({
     checkIn: a.checkIn,

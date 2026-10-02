@@ -141,9 +141,14 @@ function resolvePanelDept(user, requestedDeptCode) {
     const own = String(user?.dept_code || '').trim().toLowerCase();
     const requested = String(requestedDeptCode || '').trim().toLowerCase();
     if (role === 'dept_head') {
-        if (!own) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
-        if (requested && requested !== own) {return { ok: false, code: 'DEPT_MISMATCH' };}
-        return { ok: true, deptCode: own };
+        // UPGRADE 2026-10-01: dept_code يقبل قائمة أقسام بفواصل (نفس rosterScope).
+        // المقارنة بلا حساسية حالة، لكن الإرجاع بالكود الأصلي كما في القاعدة —
+        // لأن بحث القسم في SQL حساس لحالة الأحرف (SERVICE ≠ service).
+        const ownRaw = String(user?.dept_code || '').split(',').map((x) => x.trim()).filter(Boolean);
+        if (!ownRaw.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
+        const match = requested ? ownRaw.find((c) => c.toLowerCase() === requested) : null;
+        if (requested && !match) {return { ok: false, code: 'DEPT_MISMATCH' };}
+        return { ok: true, deptCode: match || ownRaw[0] };
     }
     if (role === 'kitchen') {return { ok: true, deptCode: requested || 'kitchen' };}
     return { ok: true, deptCode: requested || null };
@@ -429,6 +434,12 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
         let scopeCodes = [];
         if (scope.deptCode) {
             department = (await client.query('SELECT code, name, icon, color, parent_code FROM departments WHERE code=$1', [scope.deptCode])).rows[0] || null;
+            if (!department) {
+                // UPGRADE 2026-10-01: fallback لأقسام HR — أقسام الموارد البشرية
+                // التي لا توأم تشغيلي لها تعمل في اللوحة تلقائيًا (تكاليفها تبدأ صفرًا)
+                department = (await client.query('SELECT code, name FROM "hrDepartments" WHERE code=$1', [scope.deptCode])).rows[0] || null;
+                if (department) {department.icon = department.icon || null; department.color = department.color || null; department.parent_code = null;}
+            }
             if (!department) {return fail(res, 404, 'DEPARTMENT_NOT_FOUND', 'القسم غير موجود');}
             subDepartments = (await client.query('SELECT code, name FROM departments WHERE parent_code=$1 ORDER BY code', [department.code])).rows;
             scopeCodes = [department.code, ...subDepartments.map(d => d.code)];
@@ -1376,9 +1387,16 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
         const inventory = [], transactions = [];
         const batchId = `BULK-${id()}`;
+        // PERF: جلب مجمع واحد لكل الأسماء الموجودة بأقفالها بدل استعلام لكل صنف
+        // (349 صنفًا × 154ms كان = ~54 ثانية). السلوك والأقفال مطابقة تمامًا،
+        // والأصناف الجديدة تُضاف للخريطة حتى تتصرّف أسماء الملف المكررة كتحديث.
+        const existingRows = await client.query(
+            'SELECT * FROM inventory WHERE LOWER(name) = ANY($1) FOR UPDATE',
+            [items.map(i => i.name.toLowerCase())]
+        );
+        const existingByName = new Map(existingRows.rows.map(r => [String(r.name).toLowerCase(), r]));
         for (const item of items) {
-            const existingResult = await client.query('SELECT * FROM inventory WHERE LOWER(name)=LOWER($1) FOR UPDATE', [item.name]);
-            let inv = existingResult.rows[0];
+            let inv = existingByName.get(item.name.toLowerCase());
             if (inv && String(inv.unit || 'قطعة').trim().toLowerCase() !== item.unit.trim().toLowerCase()) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'UNIT_MISMATCH', `الصنف «${inv.name}» مسجل بوحدة «${inv.unit || 'قطعة'}» وليس «${item.unit}»`);
@@ -1393,6 +1411,7 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
                      VALUES ($1,$2,$3,$4,0,$5,$6,0) RETURNING *`,
                     [id(), item.name, item.category, item.unit, nextCost, item.minQty]
                 )).rows[0];
+                existingByName.set(String(inv.name).toLowerCase(), inv);
             } else {
                 inv = (await client.query(
                     `UPDATE inventory SET "avgCost"=$2, category=COALESCE(NULLIF($3,''),category), "minQty"=$4 WHERE id=$1 RETURNING *`,
@@ -1534,10 +1553,15 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const createdNames = [];
         const invoiceId = id();
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+        // PERF: جلب مجمع واحد لكل الأسماء بأقفالها — نفس إصلاح bulk-receipt:
+        // LOWER(name) بلا فهرس كان = مسح كامل للجدول لكل صنف (349 صنفًا = انقطاع مهلة 30 ثانية).
+        const existingRows = await client.query(
+            'SELECT * FROM inventory WHERE LOWER(name) = ANY($1) FOR UPDATE',
+            [validItems.map(i => i.itemName.toLowerCase())]
+        );
+        const existingByName = new Map(existingRows.rows.map(r => [String(r.name).toLowerCase(), r]));
         for (const item of validItems) {
-            const existingResult = await client.query(
-                'SELECT * FROM inventory WHERE LOWER(name) = LOWER($1) FOR UPDATE', [item.itemName]);
-            let inv = existingResult.rows[0];
+            let inv = existingByName.get(item.itemName.toLowerCase());
             if (inv && item.unitProvided && String(item.unit).trim().toLowerCase() !== String(inv.unit || 'وحدة').trim().toLowerCase()) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'UNIT_MISMATCH', `الصنف «${inv.name}» مسجل بوحدة «${inv.unit || 'وحدة'}» وليس «${item.unit}»`);
@@ -1550,6 +1574,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                     [id(), item.itemName, item.category, item.unit, round(item.price, 2), round(item.weight)]
                 )).rows[0];
                 createdNames.push(inv.name);
+                existingByName.set(String(inv.name).toLowerCase(), inv);
             } else {
                 const oldQty = n(inv.qty);
                 const nextQty = round(oldQty + item.qty);
@@ -1605,6 +1630,14 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             ? Number(req.body.supplierId) : null;
         let supplierRow = null;
         const requestedSupplierName = cleanName(req.body?.supplierName);
+        // ذكاء الربط: اسم حر يطابق موردًا مسجلًا (تطابق تام بعد التطبيع) → يُربط تلقائيًا
+        // حتى لا تُنشأ فاتورة «بدون ربط» لنفس المورد الموجود أصلًا في دليل الموردين.
+        if (supplierId === null && requestedSupplierName) {
+            const byName = (await client.query(
+                `SELECT id, name, is_active FROM suppliers WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+                [requestedSupplierName])).rows[0];
+            if (byName) { supplierId = Number(byName.id); supplierRow = byName; }
+        }
         if (supplierId === null && /افتتاحي/.test(requestedSupplierName)) {
             supplierRow = (await client.query(
                 `SELECT id, name, is_active FROM suppliers
@@ -1632,20 +1665,6 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'SUPPLIER_NOT_FOUND', 'المورد المحدد غير موجود');
             }
-        // ─── منع الإضافة المكررة (نفس المستخدم + مورد + مبلغ خلال 10 ثواني) ───
-        if (supplierId && invoiceTotal > 0 && req.user?.id) {
-            const dupCheck = await client.query(
-                `SELECT id, invoiceNumber, totalAmount FROM "purchaseInvoices"
-                 WHERE "createdBy" = $1 AND "supplierId" = $2 AND "totalAmount" = $3
-                   AND "createdAt" >= NOW() - INTERVAL '10 seconds'
-                 ORDER BY "createdAt" DESC LIMIT 1`,
-[req.user.id, supplierId, invoiceTotal]);
-            if (dupCheck.rows.length > 0) {
-                await client.query("ROLLBACK");
-                return res.status(409).json({ ok: false, code: "DUPLICATE_INVOICE", message: "فاتورة مشابهة تم إنشاؤها قبل أقل من 10 ثوانٍ — تم تجاهل الطلب المكرر", duplicateOf: dupCheck.rows[0] });
-            }
-        }
-
             if (!supplierRow.is_active) {
                 await client.query('ROLLBACK');
                 return fail(res, 409, 'SUPPLIER_INACTIVE', `المورد «${supplierRow.name}» موقوف — فعّله قبل إنشاء الفواتير`);
@@ -1677,6 +1696,21 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const invoiceNet = vatCalc.subtotalNet;
         const invoiceVat = vatCalc.vatTotal;
         const invoiceTotal = vatCalc.grandTotal;
+        // ─── منع الإضافة المكررة (نفس المستخدم + مورد + مبلغ خلال 10 ثواني) ───
+        // FIX: كانت هذه الكتلة داخل منطق المورد أعلاه وتقرأ invoiceTotal قبل
+        // تعريفه → ReferenceError 500 لأي فاتورة بمورد. مكانها الصحيح هنا.
+        if (supplierId && invoiceTotal > 0 && req.user?.id) {
+            const dupCheck = await client.query(
+                `SELECT id, "invoiceNumber" FROM "purchaseInvoices"
+                 WHERE "createdBy" = $1 AND "supplierId" = $2 AND "totalAmount" = $3
+                   AND "createdAt"::timestamp >= NOW() - INTERVAL '10 seconds'
+                 ORDER BY "createdAt" DESC LIMIT 1`,
+                [req.user.id, supplierId, invoiceTotal]);
+            if (dupCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ ok: false, code: 'DUPLICATE_INVOICE', message: 'فاتورة مشابهة تم إنشاؤها قبل أقل من 10 ثوانٍ — تم تجاهل الطلب المكرر', duplicateOf: dupCheck.rows[0] });
+            }
+        }
         const headerRate = vatCalc.lines.reduce((m, l) => Math.max(m, l.rate), 0);
         let paidAmount;
         if (req.body?.paidAmount !== undefined && req.body?.paidAmount !== null && req.body?.paidAmount !== '') {
@@ -1724,8 +1758,14 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         });
         await client.query('COMMIT');
 
-        // ترحيل محاسبي best-effort (لا يُسقط الشراء عند غياب شجرة الحسابات)
-        try { await require('./accounting-routes').postPurchaseToLedger(invoiceId); }
+        // ترحيل محاسبي best-effort (لا يُسقط الشراء عند غياب شجرة الحسابات).
+        // الرصيد الافتتاحي (OPEN-) ليس مشتريات: Dr 1200 مخزون ← Cr 3000 رأس المال
+        // — لا مورد دائن ولا ضريبة مدخلات وهمية في ميزان المراجعة.
+        try {
+            const _acct = require('./accounting-routes');
+            const _isOpen = String(invoice.invoiceNumber || '').startsWith('OPEN-');
+            await (_isOpen ? _acct.postOpeningToLedger : _acct.postPurchaseToLedger)(invoiceId);
+        }
         catch (ledgerErr) { logger.warn('[purchase_ledger] best-effort skipped:', ledgerErr.message); }
 
         emit(req, 'purchaseInvoices', 'create', invoice);
@@ -1904,9 +1944,71 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
     } finally { client.release(); }
 });
 
-// ═══ طلبات شراء النواقص: أمين المخزن ينشئ (تلقائي من الحد الأدنى + يدوي) → الشيف يعتمد → المدير العام يعتمد نهائيًا ═══
+// ═══ حذف كل فواتير الشراء (أدمن فقط) — يعكس أثرها على كميات المخزون ═══
+// يشمل عكس قيود الاستلام (purchase_invoice) وقيود الإلغاء (purchase_invoice_void)
+// حتى تعود أرصدة المواقع لما قبل الفواتير، ثم يعيد حساب كميات الأصناف من الأرصدة.
+router.post('/purchase-invoices/clear-all', jwtAuth, requireRole('admin'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const confirm = cleanName(req.body?.confirm);
+        if (confirm !== 'حذف كل الفواتير') {
+            return fail(res, 422, 'CONFIRM_REQUIRED', 'عبارة التأكيد غير صحيحة — فعّل مربع التأكيد');
+        }
+        await client.query('BEGIN');
+        const all = await client.query('SELECT id, "invoiceNumber" FROM "purchaseInvoices"');
+        const ids = all.rows.map(r => String(r.id));
+        const numbers = all.rows.map(r => r.invoiceNumber).filter(Boolean);
+        const led = ids.length ? await client.query(
+            `DELETE FROM inventory_ledger
+              WHERE reference_type IN ('purchase_invoice','purchase_invoice_void')
+                AND reference_id = ANY($1::text[])
+             RETURNING inventory_id, location_id, quantity_delta`, [ids]) : { rows: [], rowCount: 0 };
+        const balDelta = new Map();
+        for (const r of led.rows) {
+            const k = `${r.inventory_id}|${r.location_id}`;
+            balDelta.set(k, (balDelta.get(k) || 0) - Number(r.quantity_delta));
+        }
+        for (const [k, d] of balDelta.entries()) {
+            const [iid, lid] = k.split('|');
+            await client.query(
+                `UPDATE inventory_location_balances SET on_hand = on_hand + $1, updated_at = CURRENT_TIMESTAMP
+                  WHERE inventory_id = $2::bigint AND location_id = $3::bigint`, [d, iid, lid]);
+        }
+        await client.query(
+            `UPDATE inventory SET qty = COALESCE((SELECT SUM(on_hand) FROM inventory_location_balances WHERE inventory_id = inventory.id), 0)`);
+        let txDeleted = 0;
+        if (numbers.length) {
+            const tx = await client.query(`DELETE FROM "inventoryTx" WHERE "invoiceNumber" = ANY($1::text[])`, [numbers]);
+            txDeleted = tx.rowCount;
+        }
+        const del = ids.length ? await client.query(`DELETE FROM "purchaseInvoices" WHERE id = ANY($1::bigint[]) RETURNING id`, [ids]) : { rowCount: 0 };
+        // ROOT FIX 2026-10-02: الحذف الشامل كان يترك قيود المشتريات يتيمة في
+        // ميزان المراجعة (فواتيرها محذوفة) — تُبطَّل موثقًا بنفس نمط إلغاء
+        // الفاتورة المفردة (status='void'، لا حذف صامت).
+        let voidedJournals = 0;
+        if (ids.length) {
+            const vj = await client.query(
+                `UPDATE journal_entries SET status='void'
+                  WHERE source_type='purchase_invoice' AND source_id = ANY($1::text[]) AND status='posted'`, [ids]);
+            voidedJournals = vj.rowCount;
+        }
+        await client.query('COMMIT');
+        try { emit(req, 'purchaseInvoices', 'reset', {}); emit(req, 'inventory', 'reset', {}); emit(req, 'inventoryTx', 'reset', {}); } catch (_) {}
+        logger.warn(`[PURCHASE_INVOICES] admin ${req.user?.id} حذف كل الفواتير (${del.rowCount}) وعكس ${led.rowCount} قيد مخزون وأبطأ ${voidedJournals} قيد محاسبي`);
+        res.json({ ok: true, deletedInvoices: del.rowCount, reversedLedgerRows: led.rowCount, deletedTransactions: txDeleted, voidedJournals });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[purchase_invoices_clear_all]', e);
+        res.status(500).json({ error: 'CLEAR_INVOICES_FAILED', message: 'تعذر حذف الفواتير — راجع سجل الخادم' });
+    } finally { client.release(); }
+});
+
+// ═══ طلبات شراء النواقص: بيتها المخزن — أمين المخزن ينشئ (تلقائي من الحد الأدنى + يدوي) → الشيف يوقّع → المدير العام يعتمد نهائيًا → المخزن يستلم ═══
 // طلب فقط (لا يولّد فاتورة ولا يحرك مخزونًا) — التوثيق بتوقيع صاحب الحساب عبر requireSignature.
-const PR_CREATE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'];
+// (2026-10-01 بطلب المالك: الإنشاء من المخزن حصرًا — kitchen/dept_head كانا ينشئان سابقًا)
+const PR_CREATE_ROLES = ['admin', 'manager', 'warehouse'];
+// الإلغاء أوسع عمدًا: أصحاب الطلبات القديمة (مطبخ/رئيس قسم) يلغون ما أنشأوه — الفحص الحقيقي ملكية داخل المسار
+const PR_CANCEL_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'];
 const PR_CHEF_ROLES = ['admin', 'manager', 'kitchen'];
 const PR_GM_ROLES = ['admin', 'manager'];
 // استلام المخزن للبضاعة بعد الاعتماد النهائي (توقيع أمين المخزن + دخول مخزني)
@@ -2151,8 +2253,21 @@ router.post('/purchase-requests', jwtAuth, requireRole(...PR_CREATE_ROLES), asyn
             }
         }
         const actorName = req.user.name || req.user.username || String(req.user.id);
+        // القسم الطالب: يُحفظ مع الطلب (يُستخدم للتسليم المباشر والتكلفة) — إصلاح 2026-10-01:
+        // كان يُرسَل من الواجهة ويُرمى هنا (null دائمًا) فيفشل التسليم المباشر لاحقًا
+        let deptCode = null, deptName = null;
+        const dcRaw = cleanName(req.body?.deptCode || req.body?.dept_code);
+        if (dcRaw) {
+            const dep = (await client.query(
+                'SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) LIMIT 1', [dcRaw])).rows[0];
+            if (!dep) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'PR_DEPT_UNKNOWN', 'القسم الطالب غير مسجل في دليل الأقسام');
+            }
+            deptCode = dep.code; deptName = dep.name;
+        }
         const inserted = (await client.query(`INSERT INTO purchase_requests(request_number,items,notes,status,created_by,creator_name,creator_role,dept_code,dept_name)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [prRequestNumber(),json(items),cleanName(req.body?.notes)||null,'pending',req.user.id,actorName,req.user.role,null,null])).rows[0];
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [prRequestNumber(),json(items),cleanName(req.body?.notes)||null,'pending',req.user.id,actorName,req.user.role,deptCode,deptName])).rows[0];
         // القسم الطالب: الشيف يوقّع → المدير العام يعتمد → يروح للمشتريات بدون تدخل أقسام
         await appendPREvent(client, inserted.id, 'created', null, 'pending', req, null, { items, notes: req.body?.notes || null });
         await client.query('COMMIT');
@@ -2301,6 +2416,16 @@ router.post('/purchase-requests/:id/gm-reject', jwtAuth, requireRole(...PR_GM_RO
 
 // استلام المخزن (الخطوة الأخيرة): توقيع أمين المخزن + دخول البضاعة للمخزون
 router.post('/purchase-requests/:id/warehouse-receive', jwtAuth, requireRole(...PR_WH_ROLES), async (req, res) => {
+    // مغلق بأمر المالك (2026-10-01): الطلب ينتهي باعتماد المدير العام نهائيًا —
+    // البضاعة تدخل المخزون عبر فواتير المشتريات (استلام هنا كان ازدواجًا)
+    return fail(res, 410, 'PR_RECEIVE_RETIRED', 'دورة طلب الشراء تنتهي باعتماد المدير العام — سجّل البضاعة بفاتورة مشتريات');
+});
+
+// ─── محفوظ ومعطل بأمر المالك (2026-10-01): منطق استلام المخزن القديم ─────────
+// أُوقف لمنع ازدواج دخول البضاعة (استلام + فاتورة). يُعاد التفعيل بمناداة هذه
+// الدالة من المسار أعلاه فقط — لا تُستدعى من أي مكان حاليًا.
+// eslint-disable-next-line no-unused-vars
+async function _retiredPRReceive(req, res) {
     const signature = requireSignature(req, res);
     if (!signature) {return;}
     const client = await pool.connect();
@@ -2495,10 +2620,10 @@ router.post('/purchase-requests/:id/warehouse-receive', jwtAuth, requireRole(...
         logger.error({ err: error.message, stack: String(error.stack || '').slice(0, 500) }, '[pr_wh_receive]');
         res.status(500).json({ error: 'PR_RECEIVE_FAILED', message: 'تعذر تسجيل استلام المخزن' });
     } finally { client.release(); }
-});
+}
 
 // إلغاء طلب معلّق (صاحبه أو الإدارة) — قبل أي توقيع
-router.post('/purchase-requests/:id/cancel', jwtAuth, requireRole(...PR_CREATE_ROLES), async (req, res) => {
+router.post('/purchase-requests/:id/cancel', jwtAuth, requireRole(...PR_CANCEL_ROLES), async (req, res) => {
     const client = await pool.connect();
     try {
         await ensurePurchaseRequestSchema();
@@ -2572,6 +2697,7 @@ module.exports = {
     canPRChefDecide,
     canPRGMDecide,
     PR_CREATE_ROLES,
+    PR_CANCEL_ROLES,
     PR_CHEF_ROLES,
     PR_GM_ROLES,
     PR_WH_ROLES,

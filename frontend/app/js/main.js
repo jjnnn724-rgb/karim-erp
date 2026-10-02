@@ -21,16 +21,16 @@
  * bridge tracked in docs/esm-migration/DEPRECATION_LOG.md.
  */
 
-import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.7.132';
-import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.7.132';
-import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.7.132';
-import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.7.132';
-import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.7.132';
-import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.7.132';
-import { CONFIG, ROLES } from './core/config.js?v=4.7.132';
-import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.7.142';
-import * as authNav from './features/auth-navigation.js?v=4.7.190';
-import * as pageRouter from './features/page-router.js?v=4.7.142';
+import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.9.1';
+import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.9.1';
+import { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.9.1';
+import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.9.1';
+import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.9.1';
+import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.9.1';
+import { CONFIG, ROLES } from './core/config.js?v=4.9.1';
+import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.9.1';
+import * as authNav from './features/auth-navigation.js?v=4.9.1';
+import * as pageRouter from './features/page-router.js?v=4.9.1';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -94,66 +94,70 @@ window.loadData = loadData;
 window.saveData = saveData;
 window.uiPreferencesPayload = uiPreferencesPayload;
 
+// READINESS GATE (2026-09-30): سكربتات defer الكلاسيكية (app.js) كانت تعمل
+// قبل اكتمال الجسر الديناميكي فتسقط بـ ReferenceError. هذا الوعد يُحل في نهاية
+// الملف — app.js ينتظره (مع مهلة أمان) قبل أي تهيئة.
+let __karimReadyResolve = null;
+window.__karimBridgesReady = false;
+window.__karimReady = new Promise((res) => { __karimReadyResolve = res; });
+
 // BRIDGE-008/009/010: feature modules — extracted from app.js (2026-09-27)
-const smartCard = await import('./features/smart-card.js?v=4.7.178');
-Object.assign(window, smartCard);   // BRIDGE-008
+// FAIL-ISOLATION (2026-09-30): وحدة واحدة فاشلة كانت تقتل الجسر كله → زر الدخول
+// ميت + صفحات فارغة بلا أي رسالة. كل وحدة الآن معزولة: تفشل وحدها ويُسجَّل
+// اسمها في الكونسول، وبقية النظام (الدخول + الصفحات) يعمل.
+async function safeBridge(path, tag) {
+  try { Object.assign(window, await import(path)); }
+  catch (e) { console.error('[BRIDGE-FAIL]', tag, path, e); }
+}
+await safeBridge('./features/smart-card.js?v=4.9.1', 'BRIDGE-008');
 
-const bulkImport = await import('./features/bulk-import.js?v=4.7.132');
-Object.assign(window, bulkImport);  // BRIDGE-009
+await safeBridge('./features/bulk-import.js?v=4.9.1', 'BRIDGE-009');
 
-const zkteco = await import('./features/zkteco.js?v=4.7.170');
-Object.assign(window, zkteco);      // BRIDGE-010
+await safeBridge('./features/zkteco.js?v=4.9.1', 'BRIDGE-010');
 
-const kitchen = await import('./features/kitchen.js?v=4.7.173');
-Object.assign(window, kitchen);     // BRIDGE-013
+await safeBridge('./features/kitchen.js?v=4.9.1', 'BRIDGE-013');
 
-const finance = await import('./features/finance.js?v=4.7.170');
-Object.assign(window, finance);     // BRIDGE-014
+await safeBridge('./features/finance.js?v=4.9.1', 'BRIDGE-014');
 
-const hr = await import('./features/hr.js?v=4.7.170');
-Object.assign(window, hr);          // BRIDGE-015
+await safeBridge('./features/hr.js?v=4.9.1', 'BRIDGE-015');
 
-const yarasoft = await import('./features/yarasoft.js?v=4.7.176');
-Object.assign(window, yarasoft);    // BRIDGE-016
+await safeBridge('./features/yarasoft.js?v=4.9.1', 'BRIDGE-016');
 
-const whatsapp = await import('./features/whatsapp.js?v=4.7.170');
-Object.assign(window, whatsapp);    // BRIDGE-017
+await safeBridge('./features/whatsapp.js?v=4.9.1', 'BRIDGE-017');
 
-const departments = await import('./features/departments.js?v=4.7.170');
-Object.assign(window, departments); // BRIDGE-018
+await safeBridge('./features/departments.js?v=4.9.1', 'BRIDGE-018');
 
-const reports = await import('./features/reports.js?v=4.7.139');
-Object.assign(window, reports);     // BRIDGE-019
+await safeBridge('./features/reports.js?v=4.9.1', 'BRIDGE-019');
 
-const settingsUsers = await import('./features/settings-users.js?v=4.7.191');
-Object.assign(window, settingsUsers); // BRIDGE-020
+await safeBridge('./features/settings-users.js?v=4.9.1', 'BRIDGE-020');
 
-const permissions = await import('./features/permissions.js?v=4.7.186');
-Object.assign(window, permissions); // BRIDGE-PERM
+await safeBridge('./features/permissions.js?v=4.9.1', 'BRIDGE-PERM');
 
-const cfo = await import('./features/cfo.js?v=4.7.140');
-Object.assign(window, cfo);           // BRIDGE-021
+await safeBridge('./features/cfo.js?v=4.9.1', 'BRIDGE-021');
 
-const dashboard = await import('./features/dashboard.js?v=4.7.170');
-Object.assign(window, dashboard);     // BRIDGE-022
+await safeBridge('./features/dashboard.js?v=4.9.1', 'BRIDGE-022');
 
-const employeePortal = await import('./features/employee-portal.js?v=4.7.141');
-Object.assign(window, employeePortal); // BRIDGE-023
+await safeBridge('./features/employee-portal.js?v=4.9.1', 'BRIDGE-023');
 
-const authNavNS = await import('./features/auth-navigation.js?v=4.7.190');
-Object.assign(window, authNavNS);     // BRIDGE-026
+await safeBridge('./ui/enhancement.js?v=4.9.1', 'BRIDGE-024');
 
-const pageRouterNS = await import('./features/page-router.js?v=4.7.142');
-Object.assign(window, pageRouterNS);  // BRIDGE-027
+await safeBridge('./features/auth-navigation.js?v=4.9.1', 'BRIDGE-026');
+
+await safeBridge('./features/roster.js?v=4.9.1', 'BRIDGE-ROSTER');
+
+await safeBridge('./features/page-router.js?v=4.9.1', 'BRIDGE-027');
 
 // BRIDGE-029: mobile shell — تجربة الجوال + البصمة الذاتية (SPEC-employee-pwa-attendance-geofence-v1)
-const mobileShell = await import('./features/mobile-shell.js?v=4.7.191');
+const mobileShell = await import('./features/mobile-shell.js?v=4.9.1');
 Object.assign(window, mobileShell);
 
-const employees = await import('./features/employees.js?v=4.7.175');
+const deptEmployees = await import('./features/dept-employees.js?v=4.9.1');
+Object.assign(window, deptEmployees);   // BRIDGE-030: إدارة موظفي القسم لرئيس القسم
+
+const employees = await import('./features/employees.js?v=4.9.1');
 Object.assign(window, employees);   // BRIDGE-011
 
-const warehouse = await import('./features/warehouse.js?v=4.7.174');
+const warehouse = await import('./features/warehouse.js?v=4.9.1');
 Object.assign(window, warehouse);   // BRIDGE-012
 
 
@@ -161,77 +165,64 @@ Object.assign(window, warehouse);   // BRIDGE-012
 // Runs AFTER all dynamic imports settle — bare names resolve to window (bridged above).
 // MUST stay before DOMContentLoaded fires (module TLA delays DOMC — contract preserved).
 (function exposeLoginCriticalGlobals(){
-// ============================================
-(function exposeLoginCriticalGlobals(){
   const w = window;
   // Auth & login
-  w.doLogin = doLogin;
-  w.doLogout = doLogout;
-  w.completeRequiredPasswordChange = typeof completeRequiredPasswordChange !== 'undefined' ? completeRequiredPasswordChange : null;
-  w.enterApp = typeof enterApp !== 'undefined' ? enterApp : null;
+  w.completeRequiredPasswordChange = typeof w.completeRequiredPasswordChange !== 'undefined' ? w.completeRequiredPasswordChange : null;
+  w.enterApp = typeof w.enterApp !== 'undefined' ? w.enterApp : null;
   // Forgot password flow
-  w.showForgotPasswordModal = showForgotPasswordModal;
-  w.submitForgotPassword = typeof submitForgotPassword !== 'undefined' ? submitForgotPassword : null;
-  w.fpFail = typeof fpFail !== 'undefined' ? fpFail : null;
-  w.issueResetCode = typeof issueResetCode !== 'undefined' ? issueResetCode : null;
-  w.copyResetCode = typeof copyResetCode !== 'undefined' ? copyResetCode : null;
+  w.submitForgotPassword = typeof w.submitForgotPassword !== 'undefined' ? w.submitForgotPassword : null;
+  w.fpFail = typeof w.fpFail !== 'undefined' ? w.fpFail : null;
+  w.issueResetCode = typeof w.issueResetCode !== 'undefined' ? w.issueResetCode : null;
+  w.copyResetCode = typeof w.copyResetCode !== 'undefined' ? w.copyResetCode : null;
   // Session refresh & tokens
-  w.KARIM_RTget = KARIM_RTget;
-  w.KARIM_RTset = KARIM_RTset;
-  w.KARIM_RTclear = KARIM_RTclear;
-  w.refreshSession = refreshSession;
   // UI toggles used before/after login
-  w.toggleLang = toggleLang;
-  w.toggleTheme = toggleTheme;
-  w.toggleSidebar = typeof toggleSidebar !== 'undefined' ? toggleSidebar : null;
-  w.toggleFabMenu = typeof toggleFabMenu !== 'undefined' ? toggleFabMenu : null;
+  w.toggleSidebar = typeof w.toggleSidebar !== 'undefined' ? w.toggleSidebar : null;
+  w.toggleFabMenu = typeof w.toggleFabMenu !== 'undefined' ? w.toggleFabMenu : null;
   // PWA — extracted to js/core/pwa.js (bridged by js/main.js — BRIDGE-001)
   // Navigation (used by FAB menu even before login)
-  w.go = typeof go !== 'undefined' ? go : function(){};
+  w.go = typeof w.go !== 'undefined' ? w.go : function(){};
   // Modals & toasts
-  w.closeModal = typeof closeModal !== 'undefined' ? closeModal : function(){};
+  w.closeModal = typeof w.closeModal !== 'undefined' ? w.closeModal : function(){};
   // toast → js/ui/toast.js (BRIDGE-004 — main.js يعرّفها على window قبل app.js)
-  w.showModal = typeof showModal !== 'undefined' ? showModal : function(){};
+  w.showModal = typeof w.showModal !== 'undefined' ? w.showModal : function(){};
   // showLoad → js/ui/toast.js (BRIDGE-004)
   // hideLoad → js/ui/toast.js (BRIDGE-004)
   // Health/init
-  w.initDatabase = initDatabase;
   // I18n login screen
-  w.applyLoginI18n = applyLoginI18n;
-  w.applyLangAttrs = applyLangAttrs;
   // Date helpers
-  w.toggleDateMode = typeof toggleDateMode !== 'undefined' ? toggleDateMode : function(){};
-  w.syncGregToHijri = typeof syncGregToHijri !== 'undefined' ? syncGregToHijri : function(){};
-  w.syncHijriToGreg = typeof syncHijriToGreg !== 'undefined' ? syncHijriToGreg : function(){};
+  w.toggleDateMode = typeof w.toggleDateMode !== 'undefined' ? w.toggleDateMode : function(){};
+  w.syncGregToHijri = typeof w.syncGregToHijri !== 'undefined' ? w.syncGregToHijri : function(){};
+  w.syncHijriToGreg = typeof w.syncHijriToGreg !== 'undefined' ? w.syncHijriToGreg : function(){};
   // Command palette (keyboard shortcut Ctrl+K)
-  w.openCommandPalette = typeof openCommandPalette !== 'undefined' ? openCommandPalette : function(){};
-  w.closeCommandPalette = typeof closeCommandPalette !== 'undefined' ? closeCommandPalette : function(){};
-  w.handleCommandKey = typeof handleCommandKey !== 'undefined' ? handleCommandKey : function(){};
+  w.openCommandPalette = typeof w.openCommandPalette !== 'undefined' ? w.openCommandPalette : function(){};
+  w.closeCommandPalette = typeof w.closeCommandPalette !== 'undefined' ? w.closeCommandPalette : function(){};
+  w.handleCommandKey = typeof w.handleCommandKey !== 'undefined' ? w.handleCommandKey : function(){};
   // FAB actions visible even before login
-  w.showDispatchRequestModal = typeof showDispatchRequestModal !== 'undefined' ? showDispatchRequestModal : function(){};
-  w.showAddRevenueModal = typeof showAddRevenueModal !== 'undefined' ? showAddRevenueModal : function(){};
-  w.showAddExpenseModal = typeof showAddExpenseModal !== 'undefined' ? showAddExpenseModal : function(){};
+  w.showDispatchRequestModal = typeof w.showDispatchRequestModal !== 'undefined' ? w.showDispatchRequestModal : function(){};
+  w.showAddRevenueModal = typeof w.showAddRevenueModal !== 'undefined' ? w.showAddRevenueModal : function(){};
+  w.showAddExpenseModal = typeof w.showAddExpenseModal !== 'undefined' ? w.showAddExpenseModal : function(){};
   // Notifications
-  w.showNotifications = showNotifications;
-  w.markAllNotificationsRead = markAllNotificationsRead;
-  w.clearAllNotifications = clearAllNotifications;
-  w.markNotificationRead = markNotificationRead;
-  w.openNotification = typeof openNotification !== 'undefined' ? openNotification : function(){};
-  w.navigateNotification = typeof navigateNotification !== 'undefined' ? navigateNotification : function(){};
-  w.refreshNotifications = typeof refreshNotifications !== 'undefined' ? refreshNotifications : function(){};
-  w.updateNotificationBadge = updateNotificationBadge;
+  w.openNotification = typeof w.openNotification !== 'undefined' ? w.openNotification : function(){};
+  w.navigateNotification = typeof w.navigateNotification !== 'undefined' ? w.navigateNotification : function(){};
+  w.refreshNotifications = typeof w.refreshNotifications !== 'undefined' ? w.refreshNotifications : function(){};
 
   const loginButton = document.getElementById('loginBtn');
   if (loginButton && !loginButton.dataset.loginBound) {
-    loginButton.addEventListener('click', doLogin);
+    // Lazy lookup at CLICK time (not bridge time): even if auth module bridged
+    // late, the button always finds doLogin. Never binds undefined.
+    loginButton.addEventListener('click', (...a) => window.doLogin?.(...a));
     loginButton.dataset.loginBound = 'true';
   }
   const passwordInput = document.getElementById('lp');
   if (passwordInput && !passwordInput.dataset.loginBound) {
     passwordInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') { doLogin(); }
+      if (event.key === 'Enter') { window.doLogin?.(); }
     });
     passwordInput.dataset.loginBound = 'true';
   }
 })();
-})();
+
+// All bridges settled (each isolated by safeBridge) — release classic scripts.
+window.__karimBridgesReady = true;
+if (typeof __karimReadyResolve === 'function') { __karimReadyResolve(); }
+try { document.dispatchEvent(new Event('karim:bridges-ready')); } catch (_) {}

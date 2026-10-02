@@ -20,7 +20,7 @@ return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=users></i> إجمالي الموظفين</div><div class="mcard-val c-gold">${fN(totalEmployees)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> الحاضرون اليوم</div><div class="mcard-val c-green">${fN(presentToday)}</div></div>
-<div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> الغائبون اليوم</div><div class="mcard-val ${absentToday>0?'c-red':'c-green'}">${fN(absentToday)}</div></div>
+<div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> لم يحضروا اليوم</div><div class="mcard-val ${absentToday>0?'c-red':'c-green'}">${fN(absentToday)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> إجازات معلقة</div><div class="mcard-val c-orange">${fN(pendingLeaves)}</div></div>
 </div>
 <div class="metrics-grid">
@@ -112,10 +112,25 @@ const nq=normAr(attQ);
 const filteredRecs=(nq?rangeRecords.filter(a=>{const e=empMap.get(String(a.employeeId));return e&&normAr(`${e.name} ${e.employeeId||''} ${e.department||''}`).includes(nq);}):rangeRecords)
 .sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:0);
 const ATT_PS=100;
-const attPages=Math.max(1,Math.ceil(filteredRecs.length/ATT_PS));
+// ─── صفوف الغياب داخل الجدول: موظف نشط بلا سجل في يوم ماضٍ → شرط + لم يحضر ───
+const leavesOk=(STATE.leaveRequests||[]).filter(l=>l.status==='approved');
+const excusedMain=(empId,date)=>leavesOk.some(l=>String(l.employeeId)===String(empId)&&String(l.startDate)<=date&&date<=String(l.endDate));
+const recByEmpDate=new Map(rangeRecords.map(a=>[String(a.employeeId)+'|'+a.date,a]));
+const empList=activeEmployees.filter(e=>!nq||normAr(`${e.name} ${e.employeeId||''} ${e.department||''}`).includes(nq));
+const absentRecs=[];
+const todayIso=today();
+for(const e of empList){
+for(let d=attFrom; d<=attTo; d=attNextDay(d)){
+if(d>todayIso) {continue;} // المستقبل ليس غيابًا
+if(recByEmpDate.has(String(e.id)+'|'+d)) {continue;}
+absentRecs.push({employeeId:e.id,date:d,_absent:true,_excused:excusedMain(e.id,d)});
+}
+}
+const allRecs=filteredRecs.concat(absentRecs).sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:(String(a.employeeId)>String(b.employeeId)?1:-1));
+const attPages=Math.max(1,Math.ceil(allRecs.length/ATT_PS));
 if(STATE.attPage>attPages){STATE.attPage=attPages;}
 if(!STATE.attPage||STATE.attPage<1){STATE.attPage=1;}
-const pageRecs=filteredRecs.slice((STATE.attPage-1)*ATT_PS,STATE.attPage*ATT_PS);
+const pageRecs=allRecs.slice((STATE.attPage-1)*ATT_PS,STATE.attPage*ATT_PS);
 return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=users></i> إجمالي الموظفين</div><div class="mcard-val c-gold">${fN(activeEmployees.length)}</div></div>
@@ -146,24 +161,34 @@ return `
 <button class="btn btn-blue btn-sm" onclick="runStrictAuditUI()"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
 <button class="btn btn-gold btn-sm" onclick="attGapsToggle()"><i class=ji data-i=alert-triangle></i> مراجعة نواقص الشهر</button>
 ${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" onclick="revertAllInferred()" title="إلغاء كل الاستكمال التلقائي"><i class=ji data-i=undo></i> إلغاء الاستكمال للكل</button>` : ''}
-<span class="text-muted" style="margin-inline-start:auto">صفحة ${fN(STATE.attPage)} من ${fN(attPages)} — ${fN(filteredRecs.length)} سجل</span>
+<span class="text-muted" style="margin-inline-start:auto">صفحة ${fN(STATE.attPage)} من ${fN(attPages)} — ${fN(allRecs.length)} سجل (شامل الغياب)</span>
 <button class="btn btn-sm" ${STATE.attPage<=1?'disabled':''} onclick="attPageGo(-1)">السابق</button>
 <button class="btn btn-sm" ${STATE.attPage>=attPages?'disabled':''} onclick="attPageGo(1)">التالي</button>
 </div>
 <div class="tbl-scroll tbl-sticky-first">
 <table>
-<thead><tr><th>الموظف</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>المصدر</th></tr></thead>
+<thead><tr><th>الموظف</th><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>المصدر</th></tr></thead>
 <tbody id="attTodayBody">
-${filteredRecs.length===0?'<tr><td colspan=6 style="text-align:center;padding:30px;color:var(--faint)">لا توجد سجلات في الفترة المحددة</td></tr>':''}
+${filteredRecs.length===0?'<tr><td colspan=7 style="text-align:center;padding:30px;color:var(--faint)">لا توجد سجلات في الفترة المحددة</td></tr>':''}
 ${pageRecs.map(record=>{
 const emp=empMap.get(String(record.employeeId));
 if(!emp) {return '';}
+if(record._absent){
+return `<tr data-date="${record.date}" style="background:rgba(231,76,60,.06)">
+<td class="fw-bold">${esc(emp.name)}</td>
+<td class="text-muted">${fD(record.date)}</td>
+<td class="text-muted">${attWeekday(record.date)}</td>
+<td>—</td><td>—</td><td>—</td>
+<td>${record._excused?'<span class="badge bdg-blue">إجازة</span>':'<span class="badge bdg-red">لم يحضر</span>'}</td>
+</tr>`;
+}
 const inferredBadge='<span class="badge bdg-orange" title="قيمة مستكملة تلقائيًا">~ تلقائي</span>';
 const krm=attRawHours(record);
 const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
 return `<tr data-date="${record.date}">
 <td class="fw-bold">${esc(emp.name)}</td>
 <td class="text-muted">${fD(record.date)}</td>
+<td class="text-muted">${attWeekday(record.date)}</td>
 <td class="c-green" dir="ltr">${record.checkIn?esc(record.checkIn)+(record.checkin_inferred?' '+inferredBadge:''):'—'}</td>
 <td class="c-red" dir="ltr">${record.checkOut?esc(record.checkOut)+(record.checkout_inferred?' '+inferredBadge:''):'—'}</td>
 <td class="c-gold">${krm} ساعة</td>
@@ -228,7 +253,7 @@ function attExceptionsBox(){
   const excused = new Set(leaves.map(l => String(l.employeeId)));
   const rows = [];
   const typeMeta = {
-    absent: { label: 'غائب', cls: 'bdg-red' },
+    absent: { label: 'لم يحضر', cls: 'bdg-red' },
     late: { label: 'متأخر', cls: 'bdg-orange' },
     early: { label: 'انصراف مبكر', cls: 'bdg-orange' },
     missing: { label: 'بصمة ناقصة', cls: 'bdg-blue' },
@@ -245,7 +270,7 @@ function attExceptionsBox(){
     const isExc = excused.has(String(emp.id));
     rows.push({ emp, type, detail, rec, isExc });
   });
-  if(!rows.length) {return `<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=shield-check></i> صندوق الاستثناءات — اليوم</h3><span class="badge bdg-green">لا استثناءات</span></div></div>`;}
+  if(!rows.length) {return `<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=shield-check></i> صندوق الاستثناءات — اليوم (${attWeekday(d)})</h3><span class="badge bdg-green">لا استثناءات</span></div></div>`;}
   const open = rows.filter(r => !r.isExc).length;
   const nowMin = (() => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
   const toMin = (t) => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
@@ -259,7 +284,7 @@ function attExceptionsBox(){
     let diff = b - a; if(diff < 0) {diff += 24 * 60;}
     return (diff / 60).toFixed(1);
   };
-  return `<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=siren></i> صندوق الاستثناءات — اليوم (${open} مفتوح)</h3></div>
+  return `<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=siren></i> صندوق الاستثناءات — اليوم (${attWeekday(d)}) (${open} مفتوح)</h3></div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>النوع</th><th>التفاصيل</th><th>بصمة الحضور</th><th>بصمة الانصراف</th><th>ساعات العمل</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
   ${rows.map(r => { const m = typeMeta[r.type]; return `<tr>
     <td class="fw-bold">${esc(r.emp.name)}</td>
@@ -296,7 +321,7 @@ const gaps=[];
 for(let d=from; d<=to; d=attNextDay(d)){
 if(excused(emp.id,d)) {continue;}
 const rec=recByEmpDate.get(String(emp.id)+'|'+d);
-if(!rec){ gaps.push({emp,date:d,type:'absent',label:'غائب تمامًا',rec:null}); }
+if(!rec){ gaps.push({emp,date:d,type:'absent',label:'لم يحضر تمامًا',rec:null}); }
 else if(rec.checkIn&&!rec.checkOut&&!rec.checkout_inferred){ gaps.push({emp,date:d,type:'missOut',label:'نسي بصمة الخروج',rec}); }
 else if(!rec.checkIn&&rec.checkOut){ gaps.push({emp,date:d,type:'missIn',label:'نسي بصمة الدخول',rec}); }
 }
@@ -304,6 +329,8 @@ else if(!rec.checkIn&&rec.checkOut){ gaps.push({emp,date:d,type:'missIn',label:'
 return gaps;
 }
 function attNextDay(iso){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+// اسم يوم الأسبوع لتاريخ YYYY-MM-DD (T12 لتفادي انزياح المنطقة الزمنية)
+function attWeekday(iso){ const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; }
 function attGapsSearch(q){
 STATE.attGapsQ=q||'';
 attGapsRender();
@@ -321,19 +348,19 @@ gaps=gaps.filter(g=>nr(`${g.emp.name} ${g.emp.employeeId||''} ${g.emp.department
 }
 const byType={absent:0,missOut:0,missIn:0};
 gaps.forEach(g=>byType[g.type]++);
-const typeMeta={absent:['غائب تمامًا','bdg-red'],missOut:['نسي الخروج','bdg-orange'],missIn:['نسي الدخول','bdg-orange']};
+const typeMeta={absent:['لم يحضر تمامًا','bdg-red'],missOut:['نسي الخروج','bdg-orange'],missIn:['نسي الدخول','bdg-orange']};
 box.innerHTML=`<div class="tbl-wrap" style="margin-top:14px;border:1px solid var(--gold)">
-<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص الفترة (${fN(gaps.length)}) — غائب: ${fN(byType.absent)} • نسي خروج: ${fN(byType.missOut)} • نسي دخول: ${fN(byType.missIn)}</h3>
+<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص الفترة (${fN(gaps.length)}) — لم يحضر: ${fN(byType.absent)} • نسي خروج: ${fN(byType.missOut)} • نسي دخول: ${fN(byType.missIn)}</h3>
 <div class="u-row-wrap"><input type="search" class="inp" id="attGapsSearch" placeholder="بحث بالاسم أو الكود..." value="${esc(STATE.attGapsQ||'')}" oninput="attGapsSearch(this.value)" style="max-width:200px"><small class="text-muted">العطلات الأسبوعية ظاهرة أيضًا — عدّها بعينك قبل المعالجة</small><button class="btn btn-sm" onclick="STATE.attGapsQ='';attGapsToggle()">إخفاء ✕</button></div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
-<thead><tr><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead>
-<tbody>${gaps.slice(0,300).map((g,i)=>{ const m=typeMeta[g.type]; return `<tr>
-<td class="text-muted">${fD(g.date)}</td><td class="fw-bold">${esc(g.emp.name)}</td>
+<thead><tr><th>التاريخ</th><th>اليوم</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead>
+<tbody>${gaps.slice(0,300).map((g,i)=>{ const m=typeMeta[g.type]; const absent=g.type==='absent'; return `<tr${absent?' style="background:rgba(231,76,60,.06)"':''}>
+<td class="text-muted">${fD(g.date)}</td><td class="fw-bold">${attWeekday(g.date)}</td><td class="fw-bold">${esc(g.emp.name)}</td>
 <td><span class="badge ${m[1]}">${m[0]}</span></td>
-<td class="c-green">${g.rec?.checkIn?esc(g.rec.checkIn):'—'}</td>
-<td class="c-red">${g.rec?.checkOut?esc(g.rec.checkOut):'—'}</td>
+<td class="c-green">${!absent&&g.rec?.checkIn?esc(g.rec.checkIn):'—'}</td>
+<td class="c-red">${!absent&&g.rec?.checkOut?esc(g.rec.checkOut):'—'}</td>
 <td><button class="btn btn-gold btn-sm" onclick='attResolveModal("${g.emp.id}","${g.date}")'><i class=ji data-i=gavel></i> معالجة</button></td>
-</tr>`; }).join('')||'<tr><td colspan="6" class="u-empty-sm">لا نواقص — الشهر مقفل نضيف</td></tr>'}</tbody></table></div>
+</tr>`; }).join('')||'<tr><td colspan="7" class="u-empty-sm">لا نواقص — الشهر مقفل نضيف</td></tr>'}</tbody></table></div>
 ${gaps.length>300?`<div style="padding:8px 14px" class="text-muted">... و${fN(gaps.length-300)} أخرى — ضيق الفترة بالأعلى</div>`:''}</div>`;
 }
 function attResolveModal(empId, date){
@@ -523,21 +550,21 @@ toast(`تم تصدير ${filtered.length} سجل`,'success');
 let leaveWorkflowData=[];
 let leaveWorkflowLoaded=false;
 let leaveWorkflowLoading=false;
-const LEAVE_STAGE_LABELS={employee:'الموظف',direct_manager:'المدير المباشر',operations_manager:'مدير التشغيل',general_manager:'المدير العام',hr:'شؤون العاملين'};
+const LEAVE_STAGE_LABELS={employee:'الموظف',direct_manager:'المدير المباشر',operations_manager:'مدير التشغيل (ملغاة)',general_manager:'المدير العام',hr:'شؤون العاملين'};
 function leaveWorkflowStatusLabel(status){return {in_progress:'قيد الاعتماد',returned:'عاد للموظف للتعديل',completed:'معتمد نهائيًا',rejected:'مرفوض'}[status]||status||'غير محدد';}
 function leaveWorkflowStatusClass(status){return {in_progress:'bdg-orange',returned:'bdg-purple',completed:'bdg-green',rejected:'bdg-red'}[status]||'bdg-orange';}
 function renderLeaveWorkflowTimeline(leave){
- const events=Array.isArray(leave.events)?leave.events:[];const current=leave.current_stage||'direct_manager';
- const stages=['direct_manager','operations_manager','general_manager','hr'];
+  const events=Array.isArray(leave.events)?leave.events:[];const current=leave.current_stage||'direct_manager';
+  const stages=['direct_manager','general_manager','hr'];
  return `<div class="leave-timeline">${stages.map((stage,index)=>{const event=events.find(e=>e.stage===stage&&['approve','reject','return'].includes(e.action));const reached=events.some(e=>e.stage===stage);const active=current===stage&&leave.workflow_status==='in_progress';return `<div class="leave-step ${active?'active':reached?'done':''}"><div class="leave-step-dot">${reached&&!active?'<i class=ji data-i=circle-check></i>':index+1}</div><div><strong>${LEAVE_STAGE_LABELS[stage]}</strong><small>${active?'متوقف هنا':event?.action==='approve'?'تمت الموافقة':event?.action==='reject'?'مرفوض':event?.action==='return'?'أعيد للموظف':'بانتظار الإجراء'}</small>${event?.note?`<em>${esc(event.note)}</em>`:''}</div></div>`;}).join('')}</div>`;
 }
 async function refreshLeaveWorkflow(){if(leaveWorkflowLoading){return;}leaveWorkflowLoading=true;try{leaveWorkflowData=await apiFetch('/hr/leave-workflow');leaveWorkflowLoaded=true;renderPage();}catch(e){toast(e.message||'تعذر تحميل مسار الإجازات','error')}finally{leaveWorkflowLoading=false;}}
 function workflowForLeave(id){return leaveWorkflowData.find(l=>String(l.id)===String(id))||STATE.leaveRequests.find(l=>String(l.id)===String(id));}
-function leaveCanAct(leave){if(!leave||leave.workflow_status!=='in_progress'){return false;}const role=STATE.currentUser?.role;if(role==='admin'){return true;}if(role==='hr'&&leave.current_stage==='hr'){return true;}if(role==='manager'&&['direct_manager','operations_manager'].includes(leave.current_stage)){return true;}return false;}
+function leaveCanAct(leave){if(!leave||leave.workflow_status!=='in_progress'){return false;}const role=STATE.currentUser?.role;if(role==='admin'){return true;}if(role==='hr'&&leave.current_stage==='hr'){return true;}if(role==='manager'&&['direct_manager','general_manager'].includes(leave.current_stage)){return true;}if(role==='dept_head'&&leave.current_stage==='direct_manager'){return true;}return false;}
 function renderLeavesPage(){
  const isPrivileged=['admin','hr','manager'].includes(STATE.currentUser.role);if(!leaveWorkflowLoaded&&!leaveWorkflowLoading){setTimeout(refreshLeaveWorkflow,0);}
  const leavesToShow=leaveWorkflowLoaded?leaveWorkflowData:STATE.leaveRequests;const pendingCount=leavesToShow.filter(l=>l.workflow_status==='in_progress'||(!l.workflow_status&&l.status==='pending')).length;
- return `<div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> ${t('lv.total')}</div><div class="mcard-val c-gold">${fN(leavesToShow.length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> ${t('lv.pending')}</div><div class="mcard-val c-orange">${fN(pendingCount)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> ${t('lv.approved')}</div><div class="mcard-val c-green">${fN(leavesToShow.filter(l=>l.workflow_status==='completed'||l.status==='approved').length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> مرفوضة</div><div class="mcard-val c-red">${fN(leavesToShow.filter(l=>l.workflow_status==='rejected'||l.status==='rejected').length)}</div></div></div><div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=calendar></i> دورة اعتماد الإجازات</h3><button class="btn btn-gold" onclick="showAddLeaveModal()"><i class=ji data-i=plus></i> طلب إجازة</button></div><div class="workflow-banner"><strong><i class=ji data-i=git-branch></i> مسار الاعتماد:</strong> الموظف ← المدير المباشر ← مدير التشغيل ← المدير العام ← شؤون العاملين</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> متابعة الطلبات</h3><small class="text-muted">المرحلة الحالية والملاحظات والإجراء المطلوب تظهر في كل طلب.</small></div><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>نوع الإجازة</th><th>الفترة</th><th>المرحلة الحالية</th><th>الحالة</th><th>آخر ملاحظة</th><th>إجراءات</th></tr></thead><tbody>${leavesToShow.slice().reverse().map(l=>{const emp=findEmployeeById(l.employeeId);const type=STATE.leaveTypes.find(t=>String(t.id)===String(l.leaveTypeId));const days=Math.ceil((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;const canAct=leaveCanAct(l);return `<tr><td class="fw-bold">${esc(l.employee_name||emp?.name||'—')}</td><td>${l.leave_type_icon||type?.icon||''} ${esc(l.leave_type_name||type?.name||'—')}</td><td>${fD(l.startDate)} — ${fD(l.endDate)}<small class="text-muted" style="display:block">${days} يوم</small></td><td><span class="badge ${canAct?'bdg-blue':'bdg-purple'}">${LEAVE_STAGE_LABELS[l.current_stage]||'—'}</span></td><td><span class="badge ${leaveWorkflowStatusClass(l.workflow_status||l.status)}">${leaveWorkflowStatusLabel(l.workflow_status||l.status)}</span></td><td class="u-maxw-260">${esc(l.current_note||l.reason||'—')}</td><td style="display:flex;gap:5px;flex-wrap:wrap">${canAct?`<button class="btn btn-green btn-sm" onclick="advanceLeaveWorkflow('${l.id}','approve')"><i class=ji data-i=circle-check></i> اعتماد</button><button class="btn btn-red btn-sm" onclick="advanceLeaveWorkflow('${l.id}','reject')"><i class=ji data-i=circle-x></i> رفض</button><button class="btn btn-sm" onclick="advanceLeaveWorkflow('${l.id}','return')"><i class=ji data-i=corner-up-left></i> إعادة</button>`:''}<button class="btn btn-blue btn-sm" onclick="viewLeaveDetails('${l.id}')"><i class=ji data-i=eye></i> عرض</button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`;
+ return `<div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> ${t('lv.total')}</div><div class="mcard-val c-gold">${fN(leavesToShow.length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> ${t('lv.pending')}</div><div class="mcard-val c-orange">${fN(pendingCount)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> ${t('lv.approved')}</div><div class="mcard-val c-green">${fN(leavesToShow.filter(l=>l.workflow_status==='completed'||l.status==='approved').length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> مرفوضة</div><div class="mcard-val c-red">${fN(leavesToShow.filter(l=>l.workflow_status==='rejected'||l.status==='rejected').length)}</div></div></div><div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=calendar></i> دورة اعتماد الإجازات</h3><button class="btn btn-gold" onclick="showAddLeaveModal()"><i class=ji data-i=plus></i> طلب إجازة</button></div><div class="workflow-banner"><strong><i class=ji data-i=git-branch></i> مسار الاعتماد:</strong> الموظف ← المدير المباشر (رئيس القسم) ← المدير العام ← شؤون العاملين (تقفل الطلب)</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> متابعة الطلبات</h3><small class="text-muted">المرحلة الحالية والملاحظات والإجراء المطلوب تظهر في كل طلب.</small></div><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>نوع الإجازة</th><th>الفترة</th><th>المرحلة الحالية</th><th>الحالة</th><th>آخر ملاحظة</th><th>إجراءات</th></tr></thead><tbody>${leavesToShow.slice().reverse().map(l=>{const emp=findEmployeeById(l.employeeId);const type=STATE.leaveTypes.find(t=>String(t.id)===String(l.leaveTypeId));const days=Math.ceil((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;const canAct=leaveCanAct(l);return `<tr><td class="fw-bold">${esc(l.employee_name||emp?.name||'—')}</td><td>${l.leave_type_icon||type?.icon||''} ${esc(l.leave_type_name||type?.name||'—')}</td><td>${fD(l.startDate)} — ${fD(l.endDate)}<small class="text-muted" style="display:block">${days} يوم</small></td><td><span class="badge ${canAct?'bdg-blue':'bdg-purple'}">${LEAVE_STAGE_LABELS[l.current_stage]||'—'}</span></td><td><span class="badge ${leaveWorkflowStatusClass(l.workflow_status||l.status)}">${leaveWorkflowStatusLabel(l.workflow_status||l.status)}</span></td><td class="u-maxw-260">${esc(l.current_note||l.reason||'—')}</td><td style="display:flex;gap:5px;flex-wrap:wrap">${canAct?`<button class="btn btn-green btn-sm" onclick="advanceLeaveWorkflow('${l.id}','approve')"><i class=ji data-i=circle-check></i> اعتماد</button><button class="btn btn-red btn-sm" onclick="advanceLeaveWorkflow('${l.id}','reject')"><i class=ji data-i=circle-x></i> رفض</button><button class="btn btn-sm" onclick="advanceLeaveWorkflow('${l.id}','return')"><i class=ji data-i=corner-up-left></i> إعادة</button>`:''}<button class="btn btn-blue btn-sm" onclick="viewLeaveDetails('${l.id}')"><i class=ji data-i=eye></i> عرض</button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`;
 }
 function showAddLeaveModal(){
 const isAdmin=['admin','hr','manager'].includes(STATE.currentUser.role);
@@ -642,6 +669,10 @@ const code=document.getElementById('hrDeptCode')?.value.trim().toUpperCase();
 const manager=document.getElementById('hrDeptManager')?.value.trim();
 if(!name||!code){ toast('أدخل الاسم والكود','error'); return; }
 if(STATE.hrDepartments.find(d=>d.code===code)){ toast('الكود موجود بالفعل','error'); return; }
+// FIX 2026-10-01: الكود هو مفتاح الربط مع حسابات رؤساء الأقسام (dept_code) —
+// كود عربي/فارغ يكسر فلترة موظفي القسم للأبد (حالة قسم الاستيورد). نولّد كودًا
+// لاتينيًا آمنًا تلقائيًا إن كان فارغًا أو يحوي أحرف غير لاتينية.
+if(!code || /[^A-Za-z0-9_-]/.test(code)){ code = 'HRD-' + Date.now().toString(36).toUpperCase().slice(-6); }
 await persistCreate('hrDepartments', (saved)=>STATE.hrDepartments.push(saved), {name,code,manager});
 closeModal(); renderPage();
 toast('تم إضافة القسم','success');

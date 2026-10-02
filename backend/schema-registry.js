@@ -325,7 +325,7 @@ const entitySchemas = {
             'name', 'category', 'unit', 'qty', 'avgCost',
             'minQty', 'shelfId', 'weight', 'barcode',
             'catch_weight_enabled', 'inventory_uom', 'packaging_uom', 'catch_weight_uom',
-            'secondary_units'
+            'packaging_qty_per_base', 'secondary_units'
         ],
         required: ['name'],
         types: {
@@ -339,6 +339,7 @@ const entitySchemas = {
             weight: TYPES.NUMBER,
             barcode: TYPES.STRING,
             catch_weight_enabled: TYPES.BOOLEAN,
+            packaging_qty_per_base: TYPES.NUMBER,
             inventory_uom: TYPES.STRING,
             packaging_uom: TYPES.STRING,
             catch_weight_uom: TYPES.STRING,
@@ -513,7 +514,7 @@ const entitySchemas = {
 
     // ─── Settings (ADMIN ONLY — migration 001) ────────
     settings: {
-        writeable: ['name', 'logo', 'logoB64', 'currency', 'lowStockAlert', 'workStartHour'],
+        writeable: ['name', 'logo', 'logoB64', 'currency', 'lowStockAlert', 'workStartHour', 'hidden_nav_pages'],
         required: ['name'],
         types: {
             name: TYPES.STRING,
@@ -522,8 +523,9 @@ const entitySchemas = {
             currency: TYPES.STRING,
             lowStockAlert: TYPES.BOOLEAN,
             workStartHour: TYPES.NUMBER,
+            hidden_nav_pages: TYPES.STRING,
         },
-        maxLength: { name: 255, logo: 100, currency: 50 },
+        maxLength: { name: 255, logo: 100, currency: 50, hidden_nav_pages: 500 },
         protected: ['id'],
         description: 'System settings (admin only)',
     },

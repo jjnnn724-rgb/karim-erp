@@ -1,6 +1,6 @@
 /* Karim ERP Service Worker v4.7.2 — Professional PWA Caching
  * - App shell caching with versioning
- * - API: network-first with cache fallback (5min TTL)
+ * - API/socket.io/uploads: bypassed entirely (never cached — user data stays private)
  * - Static assets: cache-first with stale-while-revalidate
  * - Images: cache-first, long TTL
  * - Fonts: cache-first, long TTL
@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = '4.7.41';
+const CACHE_VERSION = '4.23.0';
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -21,7 +21,7 @@ const STATIC_ASSETS = [
     '/app/index.html',
     '/app/pos.html',
     '/app/manifest.json',
-    '/app/js/main.js?v=4.7.150',
+    '/app/js/main.js?v=4.9.1',
     '/app/js/core/pwa.js',
     '/app/js/core/i18n.js',
     '/app/js/core/utils.js',
@@ -38,23 +38,28 @@ const STATIC_ASSETS = [
     '/app/js/features/whatsapp.js',
     '/app/js/features/departments.js',
     '/app/js/features/reports.js',
-    '/app/js/features/settings-users.js',
-    '/app/js/features/cfo.js',
+    '/app/js/features/settings-users.js?v=4.9.1',
+    '/app/js/features/cfo.js?v=4.9.1',
     '/app/js/ui/enhancement.js',
     '/app/js/features/page-router.js',
-    '/app/js/features/auth-navigation.js',
+    '/app/js/features/auth-navigation.js?v=4.9.1',
     '/app/js/core/storage.js',
     '/app/js/features/employee-portal.js',
     '/app/js/features/dashboard.js',
     '/app/js/features/zkteco.js',
-    '/app/js/app.js?v=4.7.143',
+    '/app/js/app.js?v=4.9.1',
+    '/app/js/pos.js?v=4.9.1',
+    '/app/js/features/smart-item-search.js?v=2.0.0', // SMART-SEARCH-TRIAL: احذف هذا السطر لإزالة التجربة
+    '/app/js/pos-orders.js',
+    '/app/js/db-constraints-client.js',
     '/app/js/icons.js',
     '/app/js/scanner.js',
-    '/app/js/realtime.js?v=4.7.133',
-    '/app/js/vendor/qrcode.min.js',
-    '/app/vendor/chart.umd.min.js',
-    '/app/vendor/xlsx.full.min.js',
-    '/app/vendor/html5-qrcode.min.js',
+    '/app/js/realtime.js?v=4.9.1',
+    '/app/js/vendor/qrcode.min.js?v=4.9.1',
+    '/app/vendor/chart.umd.min.js?v=4.9.1',
+    '/app/vendor/xlsx.full.min.js?v=4.9.1',
+    '/app/vendor/html5-qrcode.min.js?v=4.9.1',
+    '/app/css/mobile.css',
     '/app/css/design-tokens.css',
     '/app/css/styles.css',
     '/app/js/core/i18n-auto-catalog.js',
@@ -74,7 +79,7 @@ const STATIC_ASSETS = [
 ];
 
 const OFFLINE_FALLBACKS = ['/app/index.html', '/app/pos.html'];
-const API_TTL = 5 * 60 * 1000;
+// API_TTL أُزيل: بيانات /api/ لا تُخزَّن في الكاش إطلاقًا (سياسة bypass).
 const STATIC_TTL = 30 * 24 * 60 * 60 * 1000;
 
 self.addEventListener('install', (event) => {
@@ -142,47 +147,6 @@ async function staleWhileRevalidate(req, cacheName, ttl) {
     return fetchPromise;
 }
 
-async function networkFirstAPI(req, cacheName, ttl) {
-    const cache = await caches.open(cacheName);
-    try {
-        const res = await fetch(req);
-        if (res && res.ok) {
-            const copy = res.clone();
-            const headers = new Headers(res.headers);
-            headers.set('sw-cached-at', Date.now().toString());
-            const newRes = new Response(res.body, {
-                status: res.status,
-                statusText: res.statusText,
-                headers: headers
-            });
-            await cache.put(req, newRes);
-        }
-        return res;
-    } catch (err) {
-        const cached = await cache.match(req);
-        if (cached && isFresh(cached, ttl)) {
-            return cached;
-        }
-        if (cached) {
-            const headers = new Headers(cached.headers);
-            headers.set('X-Offline-Stale', 'true');
-            return new Response(cached.body, {
-                status: cached.status,
-                statusText: cached.statusText,
-                headers: headers
-            });
-        }
-        return new Response(JSON.stringify({
-            error: 'OFFLINE',
-            message: 'لا يوجد اتصال بالشبكة — عرض بيانات مخزنة',
-            offline: true
-        }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json', 'X-Offline': 'true' }
-        });
-    }
-}
-
 self.addEventListener('fetch', (event) => {
     const req = event.request;
     if (req.method !== 'GET') {return;}
@@ -207,12 +171,32 @@ self.addEventListener('fetch', (event) => {
 
     const cacheName = getCacheName(url);
 
-    if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/login')) {
-        event.respondWith(networkFirstAPI(req, API_CACHE, API_TTL));
+    // ROOT FIX (نهاية عهد ?v= اليدوي): الكود (js/css/html/json) = network-first —
+    // متصل بالإنترنت = أحدث كود دائمًا، والكاش فقط للاستخدام دون اتصال.
+    // كان stale-while-revalidate بعمر 30 يومًا يخدم كودًا قديمًا لأسبوعين.
+    if (url.pathname.match(/\.(css|js|mjs|html|json)$/)) {
+        event.respondWith(
+            fetch(req)
+                .then((res) => {
+                    if (res && res.ok) {
+                        const copy = res.clone();
+                        caches.open(cacheName).then((c) => c.put(req, copy)).catch(() => {});
+                    }
+                    return res;
+                })
+                // ROOT FIX (2026-09-30): لا تقدّم index.html أبدًا بدل JS/CSS —
+                // المتصفح يفسر HTML كموديول فيسقط بـ SyntaxError مسموم يبقى في الكاش.
+                // بدون اتصال: أعد آخر نسخة مخزنة لنفس الملف، وإلا 503 صريح.
+                .catch(() => caches.match(req).then((hit) => hit || new Response('/* offline */', {
+                    status: 503, statusText: 'Offline',
+                    headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+                })))
+        );
         return;
     }
 
-    if (url.pathname.match(/\.(css|js|mjs|html|json|woff|woff2|ttf|eot|otf|png|jpg|jpeg|webp|svg|gif|ico|bmp)$/)) {
+    // الصور والخطوط: كاش ثقيل (محتوى ثابت فعليًا)
+    if (url.pathname.match(/\.(woff|woff2|ttf|eot|otf|png|jpg|jpeg|webp|svg|gif|ico|bmp)$/)) {
         event.respondWith(staleWhileRevalidate(req, cacheName, STATIC_TTL));
         return;
     }
@@ -276,23 +260,3 @@ self.addEventListener('message', (event) => {
         );
     }
 });
-
-setInterval(() => {
-    caches.keys().then((keys) => {
-        keys.forEach((key) => {
-            if (key.startsWith('karim-api-')) {
-                caches.open(key).then((cache) => {
-                    cache.keys().then((requests) => {
-                        requests.forEach((req) => {
-                            cache.match(req).then((res) => {
-                                if (res && !isFresh(res, API_TTL)) {
-                                    cache.delete(req);
-                                }
-                            });
-                        });
-                    });
-                });
-            }
-        });
-    });
-}, 10 * 60 * 1000);

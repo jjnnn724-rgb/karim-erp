@@ -27,6 +27,21 @@ return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('').substring(0,16)
 }catch(e){ return generateFingerprintSync(emp); }
 }
 function findEmployeeById(id){ return STATE.employees.find(e=>String(e.id)===String(id)); }
+// شارة الدوام المجدول (2026-10-01): التعديل بتاريخ مستقبلي لا يسمع في البطاقة
+// فورًا بتصميم النظام — بدل الالتباس نعرض "مجدول من تاريخ كذا" تحت الدوام الحالي.
+// تملأ لاحقًا بلا حجب (نفس نمط QR) — أي فشل = لا شارة (صمت آمن).
+function fillScheduledShiftBadge(empId){
+try{
+apiFetch('/hr/shift-schedule/' + encodeURIComponent(empId)).then((r)=>{
+const box = document.getElementById('schedBadge-' + empId);
+if(!box) {return;}
+const next = Array.isArray(r.scheduled) ? r.scheduled[0] : null;
+if(!next) {return;}
+const extra = (r.scheduled||[]).length > 1 ? ` (+${(r.scheduled||[]).length - 1})` : '';
+box.innerHTML = `<br><small style="color:#b45309;background:#fef3c7;border-radius:6px;padding:1px 8px;font-size:11px">⏳ مجدول من ${esc(String(next.effective_from||'').slice(0,10))}: ${esc(String(next.shift_start||'').slice(0,5))} (${esc(String(next.shift_karim ?? ''))}س)${extra}</small>`;
+}).catch(()=>{});
+}catch(_){}
+}
 async function ensureEmployeeCardData(emp){
 if(!emp) {return;}
 try{
@@ -77,26 +92,40 @@ if(!file) {return;}
 if(file.size > 3*1024*1024){ toast('حجم الصورة كبير جداً (حد أقصى 3MB)','error'); return; }
 const emp = findEmployeeById(empId);
 if(!emp){ toast('الموظف غير موجود','error'); return; }
+// إصلاح 2026-10-01: النسخة القديمة كانت بلا try/catch (أي فشل = صمت تام)
+// ولا تحدّث STATE (الصورة محفوظة لكن لا تظهر حتى تحديث الصفحة)
+try{
+const dataUrl = await new Promise((resolve, reject)=>{
 const reader = new FileReader();
-reader.onload = async (evt)=>{
+reader.onerror = ()=>reject(new Error('تعذر قراءة ملف الصورة'));
+reader.onload = (evt)=>{
 const img = new Image();
-img.onload = async ()=>{
+img.onerror = ()=>reject(new Error('ملف الصورة تالف — اختر صورة أخرى'));
+img.onload = ()=>{
+try{
 const canvas = document.createElement('canvas');
 const maxSize = 300;
 let w = img.width, h = img.height;
+if(!w || !h) {reject(new Error('ملف الصورة تالف — اختر صورة أخرى')); return;}
 if(w>h){ if(w>maxSize){ h*=maxSize/w; w=maxSize; } }
 else{ if(h>maxSize){ w*=maxSize/h; h=maxSize; } }
-canvas.width = w; canvas.height = h;
-const ctx = canvas.getContext('2d');
-ctx.drawImage(img,0,0,w,h);
-emp.photo = canvas.toDataURL('image/jpeg', 0.85);
-await persistUpdate('employees', empId, { photo: emp.photo });
-toast('تم رفع الصورة وحفظها في قاعدة البيانات','success');
-renderPage();
+canvas.width = Math.round(w); canvas.height = Math.round(h);
+canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+resolve(canvas.toDataURL('image/jpeg', 0.85));
+}catch(e){ reject(e); }
 };
 img.src = evt.target.result;
 };
 reader.readAsDataURL(file);
+});
+const saved = await persistUpdate('employees', empId, { photo: dataUrl });
+// تحديث فوري محليًا + في STATE — تظهر في الحساب لحظيًا بلا انتظار التحديث
+const finalPhoto = (saved && saved.photo) || dataUrl;
+try{ emp.photo = finalPhoto; }catch(_){}
+try{ if(typeof upsertStateEntity === 'function'){ upsertStateEntity('employees', { id: empId, photo: finalPhoto }); } }catch(_){}
+toast('✅ تم حفظ الصورة — ظاهرة الآن في حساب الموظف','success');
+renderPage();
+}catch(e){ toast(e.message||'فشل رفع الصورة — أعد المحاولة','error'); }
 }
 function handlePhotoUpload(empId, file){ if(file) {uploadEmployeePhoto(empId, file);} }
 // ============================================
@@ -212,7 +241,7 @@ ${canUploadPhoto ? `<label class="photo-upload-btn" title="رفع صورة" styl
 </div>
 <div style="padding:12px 16px;border-top:1px solid #f1f5f9">
 <div class="smart-card-section" data-t="pc.periodInsurance"></div>
-<div class="smart-card-row"><span><i class=ji data-i=clock style="color:#C9A961"></i> <span data-t="pc.workStart">الدوام</span></span><span class="smart-card-value">${shiftLabel}</span></div>
+<div class="smart-card-row"><span><i class=ji data-i=clock style="color:#C9A961"></i> <span data-t="pc.workStart">الدوام</span></span><span class="smart-card-value">${shiftLabel}<span id="schedBadge-${emp.id}"></span></span></div>
 <div class="smart-card-row"><span><i class=ji data-i=id-card style="color:#C9A961"></i> الإقامة</span><span class="smart-card-value" style="${daysUntilIqama<30?'color:#e74c3c;font-weight:700':''}">${iqamaExpiry}${daysUntilIqama<30?' <i class=ji data-i=alert-triangle></i> بعد '+daysUntilIqama+' يوم':''}</span></div>
 <div class="smart-card-row"><span><i class=ji data-i=heart style="color:#C9A961"></i> شهادة صحية</span><span class="smart-card-value" style="${daysUntilHealth<30?'color:#e74c3c;font-weight:700':''}">${healthExpiry}${daysUntilHealth<30?' <i class=ji data-i=alert-triangle></i> بعد '+daysUntilHealth+' يوم':''}</span></div>
 </div>
@@ -267,6 +296,7 @@ ${qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="max-width:200px;width:100%;h
 <button class="btn btn-gold btn-sm" onclick="showFullQRModal('${emp.id}')"><i class=ji data-i=smartphone></i> QR كبير</button>
 <button class="btn btn-blue btn-sm" onclick="printSmartCard('${emp.id}')"><i class=ji data-i=printer></i> طباعة</button>
 <button class="btn btn-sm" onclick="downloadSmartCard('${emp.id}')"><i class=ji data-i=save></i> حفظ</button>
+<input type="month" id="empAttMonth" value="${new Date().toISOString().slice(0,7)}" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit" title="اختر الشهر المطلوب طباعة كشفه">
 <button class="btn btn-sm btn-green-soft" onclick="printEmployeeAttendanceDay('${emp.id}')"><i class=ji data-i=printer></i> كشف اليوم</button>
 <button class="btn btn-sm btn-blue" onclick="printEmployeeAttendanceMonth('${emp.id}')"><i class=ji data-i=calendar></i> كشف الشهر</button>
 <button class="btn btn-sm btn-purple" onclick="regenerateFingerprint('${emp.id}')"><i class=ji data-i=refresh></i> تجديد</button>
@@ -276,6 +306,7 @@ ${qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="max-width:200px;width:100%;h
 console.error('[renderSmartCard]', e);
 return `<div class="mcard"><i class=ji data-i=circle-x></i> تعذر عرض بطاقة الموظف — ${esc(e.message || 'خطأ غير متوقع')}</div>`;
 }
+try{ setTimeout(()=>fillScheduledShiftBadge(emp.id), 50); }catch(_){}
 }
 async function showFullQRModal(empId){
 const emp = findEmployeeById(empId);
@@ -392,10 +423,26 @@ return __printLogoCache || getAbsoluteLogoSrc();
 async function printAttendanceReport(report, title, existingWin=null){
 const employee = report.employee || {};
 const s = report.summary || {};
+// اسم اليوم لتاريخ YYYY-MM-DD (محلي — لا يعتمد وحدات أخرى)
+const scWeekday = (iso) => { const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; };
 // ساعات الوردية المتوقعة للموظف (10/12/8...) — أساس حكم الميعاد
 const shiftMin = (Number(employee.shift_hours) > 0 ? Number(employee.shift_hours) : 10) * 60;
 let onTimeDays = 0, shortTotal = 0;
-const rows = (report.records || []).map(r=>{
+const recByDate = new Map((report.records || []).map(r => [String(r.date || ''), r]));
+// كل أيام الفترة (بما فيها الغياب): يوم الغياب صف كامل شرط
+const rangeDays = [];
+if (/^\d{4}-\d{2}-\d{2}$/.test(s.from || '') && /^\d{4}-\d{2}-\d{2}$/.test(s.to || '')) {
+    const d0 = new Date(s.from + 'T12:00:00'), d1 = new Date(s.to + 'T12:00:00');
+    for (let d = new Date(d0); d <= d1 && rangeDays.length < 62; d.setDate(d.getDate() + 1)) {
+        rangeDays.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+}
+const dayList = rangeDays.length ? rangeDays : [...recByDate.keys()];
+const rows = dayList.map(iso => {
+const r = recByDate.get(iso);
+if (!r) {
+    return `<tr style="background:#fef2f2"><td>${esc(iso)}</td><td style="color:#64748b">${scWeekday(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#c0392b;font-weight:700">لم يحضر</td><td>—</td></tr>`;
+}
 const minutes = Number(r.workMinutes || 0);
 const krm = fmtHM(minutes);
 const hasIn = !!(r.checkIn && String(r.checkIn).trim());
@@ -410,8 +457,8 @@ if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDa
 else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
 }
 const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
-return `<tr><td>${esc(r.date||'')}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
-}).join('') || '<tr><td colspan="6">لا توجد سجلات في الفترة المحددة</td></tr>';
+return `<tr><td>${esc(r.date||'')}</td><td style="color:#64748b">${scWeekday(r.date)}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
+}).join('') || '<tr><td colspan="7">لا توجد سجلات في الفترة المحددة</td></tr>';
 const win = existingWin || window.open('', '_blank');
 if(!win){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
 const logoSrc = await printLogoDataUrl();
@@ -438,7 +485,7 @@ th{background:#0f172a;color:#f5d76e;padding:10px;font-size:12px}td{padding:9px;b
 <div class="container">
 <div class="employee-card"><div class="avatar">${esc((employee.name||'?').trim()[0]||'?')}</div><div class="info"><strong>${esc(employee.name||'—')}</strong><br><small>الرقم الوظيفي: ${esc(employee.employeeId||'—')} • المنصب: ${esc(employee.position||'—')} ${employee.shift_start?`• الوردية: ${esc(employee.shift_start)}${employee.shift_hours?` (${esc(employee.shift_hours)} س)`:''}`:''}</small></div><div style="text-align:left;color:#475569;font-size:12px">الفترة<br><strong style="color:#0f172a">${fromTo||'—'}</strong></div></div>
 <div class="summary"><div class="card"><small>أيام الحضور</small><b>${s.daysPresent||0}</b></div><div class="card"><small>أيام مكتملة</small><b>${s.completeDays||0}</b></div><div class="card"><small>أيام في الميعاد</small><b style="color:#27ae60">${onTimeDays}</b></div><div class="card"><small>إجمالي التأخير</small><b class="red">${shortTotal > 0 ? fmtHM(shortTotal) : '—'}</b></div><div class="card"><small>إجمالي الساعات</small><b class="gold">${s.totalHours||0}</b></div></div>
-<table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="footer">يوم العمل حسب وردية الموظف (${(shiftMin / 60).toFixed(2).replace(/\.00$/, '')} س) • أيام في الميعاد (${onTimeDays}) • إجمالي التأخير ${shortTotal > 0 ? fmtHM(shortTotal) : '—'} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div>
 </div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 win.document.close();
@@ -479,28 +526,75 @@ const data=await apiFetch(`/hr/attendance/monthly?month=${encodeURIComponent(mon
 console.log('[printMonthlyAttendance] data received:', data ? 'OK' : 'NULL', data?.employees?.length || 0, 'employees');
 const emps=Array.isArray(data.employees)?data.employees:[];
 const WORK_DAY = Number(data.workDayMinutes || 600);
-const totLateMin = emps.reduce((s,e)=>s+Number(e.lateMinutes||0),0);
-const totLateDays = emps.reduce((s,e)=>s+Number(e.lateDays||0),0);
+// ═══ قرار المالك: المعيار هو إتمام ساعات الوردية — «إجمالي التأخير» = العجز عن إتمامها ═══
+const totDeficitMin = emps.reduce((s,e)=>s+Number(e.deficitMinutes||0),0);
+const totShortDays = emps.reduce((s,e)=>s+Number(e.shortDays||0),0);
+const totCompleteDays = emps.reduce((s,e)=>s+Number(e.completeWorkDays||0),0);
+const totLateInDays = emps.reduce((s,e)=>s+Number(e.lateInDays||0),0);
+const totLateMin = totDeficitMin;   // توافق مع أسماء القالب أدناه
+const totLateDays = totShortDays;
 const totReviewDays = emps.reduce((s,e)=>s+Number(e.reviewDays||0),0);
 const totReviewMin = emps.reduce((s,e)=>s+Number(e.reviewMinutes||0),0);
 const lateSummary = formatLateSummary({ totalMinutes: totLateMin, lateDays: totLateDays });
 const tot=emps.reduce((s,e)=>({days:s.days+(e.days||0),late:s.late+(e.late||0),karimHours:s.karimHours+(e.karimHours||0)}),{days:0,late:0,karimHours:0});
+// ─── التفصيل اليومي لكل موظف (اليوم + شرط الغياب) — من سجلات الحضور المحلية ───
+const WD_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const wdOfM = (iso) => { const d = new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':WD_AR[d.getDay()]; };
+const dimM = new Date(Number(month.slice(0,4)), Number(month.slice(5,7)), 0).getDate();
+const codeToId = new Map((STATE.employees||[]).map(x => [String(x.employeeId||''), x.id]));
+const attByEmp = new Map();
+for (const a of (STATE.attendance||[])) {
+    if (String(a.date||'').slice(0,7) !== month) {continue;}
+    const k = String(a.employeeId);
+    if (!attByEmp.has(k)) {attByEmp.set(k, new Map());}
+    attByEmp.get(k).set(a.date, a);
+}
+const onLeaveM = (sid, iso) => (STATE.leaveRequests||[]).some(l => l.status==='approved' && String(l.employeeId)===String(sid) && String(l.startDate)<=iso && iso<=String(l.endDate));
+const toMinM = (t) => { const m = String(t||'').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : null; };
+const dayDetail = (e) => {
+    const sid = codeToId.get(String(e.employeeId||''));
+    const recs = (sid != null && attByEmp.get(String(sid))) || new Map();
+    const shiftMin = Number(e.workDayMinutes || WORK_DAY || 600);
+    let h = '';
+    for (let d = 1; d <= dimM; d++) {
+        const iso = `${month}-${String(d).padStart(2,'0')}`;
+        const r = recs.get(iso);
+        if (!r) {
+            h += (sid != null && onLeaveM(sid, iso))
+                ? `<tr><td>${iso}</td><td>${wdOfM(iso)}</td><td colspan="3" style="color:#3498db">إجازة معتمدة</td><td>—</td></tr>`
+                : `<tr style="background:#fef2f2"><td>${iso}</td><td>${wdOfM(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#c0392b;font-weight:700">لم يحضر</td></tr>`;
+            continue;
+        }
+        const ci = toMinM(r.checkIn), co = toMinM(r.checkOut);
+        let hrs = '—', st = 'يحتاج مراجعة', sc = 'color:#f59e0b';
+        if (ci != null && co != null) {
+            let w = co - ci; if (w < 0) {w += 1440;}
+            hrs = `${Math.floor(w/60)}:${String(w%60).padStart(2,'0')}`;
+            if (w >= shiftMin) {st = 'في الميعاد'; sc = 'color:#27ae60';}
+            else {st = `تأخير ${Math.floor((shiftMin-w)/60)}:${String((shiftMin-w)%60).padStart(2,'0')}`; sc = 'color:#c0392b;font-weight:700';}
+        } else if (ci != null) {st = 'بلا انصراف';}
+        else if (co != null) {st = 'بلا حضور';}
+        h += `<tr><td>${iso}</td><td>${wdOfM(iso)}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${hrs}</td><td style="${sc}">${st}</td></tr>`;
+    }
+    return h;
+};
 const rows=emps.map(e=>{
-const lm = Number(e.lateMinutes||0);
-const ld = Number(e.lateDays||0);
+const lm = Number(e.deficitMinutes||0);
+const sd = Number(e.shortDays||0);
+const ld = sd;
 const lv = Number(e.leaveDays||0);
 const rv = Number(e.reviewDays||0);
 const lateText = formatLateRow({ lateMinutes: lm, lateDays: ld });
-const lateCell = lm>0?`<span style="color:#c0392b;font-weight:700">${lateText}${rv > 0 ? ` <small>+${rv} قيد المراجعة</small>` : ''}</span>`:(rv > 0 ? `<span style="color:#f59e0b;font-weight:700">${rv} قيد المراجعة</span>`:'<span style="color:#27ae60">—</span>');
-return `<tr><td style="text-align:right"><strong>${esc(e.name||'—')}</strong><br><small style="color:#64748b">${esc(e.employeeId||'')}${e.position?` • ${esc(e.position)}`:''}${e.shift_start?` • ${esc(e.shift_start)}`:''}</small></td><td>${fN(e.days||0)}</td><td>${fN(e.complete||0)}</td><td>${fN(e.late||0)}</td><td>${lateCell}</td><td>${lv > 0 ? `<span style="color:#3498db;font-weight:700">${lv} يوم</span>` : '—'}</td><td class="c-gold" style="font-weight:700">${Number(e.karimHours||0).toFixed(1)}</td></tr>`;
+const deficitCell = sd>0?`<span style="color:#c0392b;font-weight:700">${sd} يوم • ${formatLateRow({ lateMinutes: lm })}${rv > 0 ? ` <small>+${rv} قيد المراجعة</small>` : ''}</span>`:(rv > 0 ? `<span style="color:#f59e0b;font-weight:700">${rv} قيد المراجعة</span>`:'<span style="color:#27ae60">✓ كامل</span>');
+return `<tr><td style="text-align:right"><strong>${esc(e.name||'—')}</strong><br><small style="color:#64748b">${esc(e.employeeId||'')}${e.position?` • ${esc(e.position)}`:''}${e.shift_start?` • الوردية ${esc(e.shift_start)} • ${Number(e.workDayMinutes||600)/60}س`:''}</small></td><td>${fN(e.days||0)}</td><td><span style="color:#16a34a;font-weight:700">${fN(e.completeWorkDays||0)}</span></td><td>${deficitCell}</td><td>${fN(e.lateInDays||0)}</td><td>${lv > 0 ? `<span style="color:#3498db;font-weight:700">${lv} يوم</span>` : '—'}</td><td class="c-gold" style="font-weight:700">${Number(e.karimHours||0).toFixed(1)}</td></tr><tr class="det"><td colspan="7" style="padding:0 0 10px;background:#f8fafc"><div style="font-weight:700;font-size:11px;color:#0f172a;padding:8px 10px 0">التفصيل اليومي — ${esc(e.name||'')}</div><table class="days"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead><tbody>${dayDetail(e)}</tbody></table></td></tr>`;
 }).join('')||'<tr><td colspan="7" class="u-empty-sm">لا توجد سجلات في هذا الشهر</td></tr>';
 const lateAuditStatus = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? 'متوازن داخليًا' : 'يتطلب مراجعة يدوية';
 const lateAuditColor = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? '#16a34a' : '#d97706';
 const lateAuditText = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? 'التقرير متوازن داخليًا - لا توجد تناقضات في الحسابات الأساسية' : 'التقرير يحتاج مراجعة يدوية - يوجد عدد كبير من القيم الشاذة أو غير المتوقعة';
-const anomalous = emps.filter(e => Number(e.lateMinutes || 0) >= 600 || Number(e.lateDays || 0) >= 10).slice(0, 12);
+const anomalous = emps.filter(e => Number(e.deficitMinutes || 0) >= 600 || Number(e.shortDays || 0) >= 5).slice(0, 12);
 const anomalousCount = anomalous.length;
-const topAnomalies = [...emps].sort((a, b) => Number(b.lateMinutes || 0) - Number(a.lateMinutes || 0)).slice(0, 5);
-const anomaliesHtml = anomalous.length ? `<div class="anomalies"><div class="title">موظفون يحتاجون مراجعة (${anomalousCount})</div><ul>${anomalous.map(e => `<li><strong>${esc(e.name || '—')}</strong> • ${esc(e.employeeId || '')} • ${Number(e.lateMinutes || 0)} دقيقة / ${Number(e.lateDays || 0)} يوم</li>`).join('')}</ul></div>` : '<div class="anomalies ok"><div class="title">لا توجد قيم شاذة في هذا الشهر</div></div>';
+const topAnomalies = [...emps].sort((a, b) => Number(b.deficitMinutes || 0) - Number(a.deficitMinutes || 0)).slice(0, 5);
+const anomaliesHtml = anomalous.length ? `<div class="anomalies"><div class="title">موظفون يحتاجون مراجعة (${anomalousCount})</div><ul>${anomalous.map(e => `<li><strong>${esc(e.name || '—')}</strong> • ${esc(e.employeeId || '')} • ${Number(e.deficitMinutes || 0)} دقيقة عجز / ${Number(e.shortDays || 0)} يوم</li>`).join('')}</ul></div>` : '<div class="anomalies ok"><div class="title">لا توجد قيم شاذة في هذا الشهر</div></div>';
 const topAnomaliesHtml = topAnomalies.length ? `<div class="top-anomalies"><div class="title">أعلى 5 حالات تأخير</div><ul>${topAnomalies.map((e, i) => `<li><span>${i + 1}. ${esc(e.name || '—')}</span><strong>${Number(e.lateMinutes || 0)} د</strong></li>`).join('')}</ul></div>` : '<div class="top-anomalies ok"><div class="title">لا توجد حالات عالية</div></div>';
 printWin.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>كشف الحضور الشهري ${esc(month)}</title><style>
 body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e;background:#f8f7f5}
@@ -535,9 +629,11 @@ body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#
 .summary-inline .mini small{color:#64748b;font-size:10px}
 table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.05)}
 th{background:#0f172a;color:#f5d76e;padding:10px;font-size:11px}td{padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
+table.days{margin-top:6px}table.days th{background:#334155;color:#e2e8f0;padding:6px;font-size:10px}table.days td{padding:5px;font-size:11px}
+tr.det td{border:none}
 .footer{margin-top:16px;text-align:center;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;padding-top:8px}
 @media print{body{background:#fff}.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
-</style></head><body><div class="header"><img src="${esc(getAbsoluteLogoSrc())}" alt="logo"><div><h1>كشف الحضور والانصراف الشهري المجمع</h1><p>شهر ${esc(month)} — ${emps.length} موظف • يوم العمل حسب وردية الموظف</p></div></div><div class="container"><div class="summary"><div class="card"><small>إجمالي أيام الحضور</small><b>${fN(emps.reduce((s,e)=>s+(e.days||0),0))}</b></div><div class="card late"><small>أيام فيها تأخير</small><b>${fN(totLateDays)}</b></div><div class="card late"><small>إجمالي التأخير</small><b class="red">${lateSummary}</b></div><div class="card"><small>إجمالي الساعات</small><b>${Number(tot.karimHours).toFixed(1)}</b></div><div class="card"><small>الموظفون</small><b>${emps.length}</b></div></div><div class="summary-inline"><div class="mini"><small>الحالات الشاذة</small><b>${anomalousCount}</b></div><div class="mini warn"><small>عتبة المراجعة</small><b>600 د</b></div><div class="mini"><small>حالة التقرير</small><b>${lateAuditStatus === 'متوازن داخليًا' ? 'موافق' : 'مراجعة'}</b></div></div><div class="audit"><div class="status"><span><span class="dot"></span> ${lateAuditStatus}</span></div><div class="msg">${lateAuditText}</div></div><div class="validation"><div class="title">معيار التحقق الاحترافي</div><ul><li>مجموع دقائق التأخير = Σ دقائق التأخير لكل موظف</li><li>عدد أيام التأخير مستقل عن مجموع الدقائق</li><li>لا يوجد خلط بين عدد الأيام والساعات</li><li>الورديات الليلية تُحسب حسب وقت الوردية</li><li>القيم الشاذة تُراجع يدويًا قبل الاعتماد</li></ul></div>${topAnomaliesHtml}${anomaliesHtml}<table><thead><tr><th style="text-align:right">الموظف</th><th>أيام</th><th>مكتملة</th><th>تأخير دخول</th><th>إجمالي التأخير</th><th>إجازات</th><th>الساعات</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">يوم العمل حسب وردية الموظف • أيام فيها تأخير (${totLateDays}) • ${totLateMin} دقيقة${totReviewDays > 0 ? ` • قيد المراجعة: ${totReviewDays} يوم (${totReviewMin} د)` : ''} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div></div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
+</style></head><body><div class="header"><img src="${esc(getAbsoluteLogoSrc())}" alt="logo"><div><h1>كشف الحضور والانصراف الشهري المجمع</h1><p>شهر ${esc(month)} — ${emps.length} موظف • يوم العمل حسب وردية الموظف</p></div></div><div class="container"><div class="summary"><div class="card"><small>إجمالي أيام الحضور</small><b>${fN(emps.reduce((s,e)=>s+(e.days||0),0))}</b></div><div class="card"><small>أيام مكتملة الدوام ✓</small><b>${fN(totCompleteDays)}</b></div><div class="card late"><small>عجز الساعات (لم يكمل دوامه)</small><b class="red">${lateSummary}</b></div><div class="card"><small>إجمالي الساعات</small><b>${Number(tot.karimHours).toFixed(1)}</b></div><div class="card"><small>الموظفون</small><b>${emps.length}</b></div></div><div class="summary-inline"><div class="mini"><small>الحالات الشاذة</small><b>${anomalousCount}</b></div><div class="mini warn"><small>عتبة المراجعة</small><b>600 د</b></div><div class="mini"><small>حالة التقرير</small><b>${lateAuditStatus === 'متوازن داخليًا' ? 'موافق' : 'مراجعة'}</b></div></div><div class="audit"><div class="status"><span><span class="dot"></span> ${lateAuditStatus}</span></div><div class="msg">${lateAuditText}</div></div><div class="validation"><div class="title">معيار التحقق الاحترافي</div><ul><li>المعتمد = إتمام ساعات الوردية: الدخول المبكر يغطي الانصراف المبكر والتأخير يُمتص بالبقاء</li><li>عدد أيام التأخير مستقل عن مجموع الدقائق</li><li>لا يوجد خلط بين عدد الأيام والساعات</li><li>الورديات الليلية تُحسب حسب وقت الوردية</li><li>القيم الشاذة تُراجع يدويًا قبل الاعتماد</li></ul></div>${topAnomaliesHtml}${anomaliesHtml}<table><thead><tr><th style="text-align:right">الموظف</th><th>أيام الحضور</th><th>مكتملة الدوام</th><th>نقص الدوام (يوم/د)</th><th>دخول بعد الوردية</th><th>إجازات</th><th>الساعات</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">المعتمد = إتمام ساعات الوردية (10/12 ساعة) • نقص الدوام: ${totShortDays} يوم • ${totDeficitMin} دقيقة${totReviewDays > 0 ? ` • قيد المراجعة: ${totReviewDays} يوم (${totReviewMin} د)` : ''} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div></div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 printWin.document.close();
 } catch(e){ 
     console.error('[printMonthlyAttendance] error:', e);
@@ -566,6 +662,10 @@ try{ const report = await fetchEmployeeAttendanceReport(empId, date, date); prin
 catch(e){ toast(e.message||'تعذر تحميل كشف اليوم','error'); }
 }
 async function printEmployeeAttendanceMonth(empId, date = new Date()){
+// FIX 2026-10-01: قراءة الشهر من منتقي الشهر في البطاقة — كان يطبع الشهر
+// الحالي حصرًا فتطلع كشوف بداية الشهر فارغة رغم أن الشهر الماضي مليء (شكوى اسحاق)
+const picked = document.getElementById('empAttMonth')?.value;
+if (picked && /^\d{4}-\d{2}$/.test(picked)) { const [y, m] = picked.split('-'); date = new Date(Number(y), Number(m) - 1, 1); }
 const range = reportDateRangeForMonth(date);
 const printWin=window.open('', '_blank');
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
@@ -593,7 +693,21 @@ const s=report.summary||{};
 const employee=report.employee||{};
 const shiftMin=(Number(employee.shift_hours)>0?Number(employee.shift_hours):10)*60;
 let onTimeDays=0, shortTotal=0;
-const rows=(report.records||[]).map(r=>{
+const cardByDate = new Map((report.records||[]).map(r=>[String(r.date||''), r]));
+const cardDays = [];
+if (/^\d{4}-\d{2}-\d{2}$/.test(s.from||'') && /^\d{4}-\d{2}-\d{2}$/.test(s.to||'')) {
+    const d0 = new Date(s.from+'T12:00:00'), d1 = new Date(s.to+'T12:00:00');
+    for (let d = new Date(d0); d <= d1 && cardDays.length < 62; d.setDate(d.getDate()+1)) {
+        cardDays.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    }
+}
+const cardList = cardDays.length ? cardDays : [...cardByDate.keys()];
+const wdOf = (iso) => { const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; };
+const rows=(cardList).map(iso=>{
+const r = cardByDate.get(iso);
+if (!r) {
+    return `<tr style="background:rgba(231,76,60,.06)"><td>${esc(iso)}</td><td style="color:#64748b">${wdOf(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#c0392b;font-weight:700">لم يحضر</td></tr>`;
+}
 const minutes=Number(r.workMinutes||0);
 const krm=fmtHM(minutes);
 const hasIn=!!(r.checkIn&&String(r.checkIn).trim());
@@ -604,8 +718,9 @@ else if(!hasOut){statusTxt='بلا انصراف';statusStyle='color:#f59e0b;font
 else if(minutes===0){statusTxt='يحتاج مراجعة';statusStyle='color:#f59e0b;font-weight:700';}
 else{const short=shiftMin-minutes;if(short<=0){statusTxt='في الميعاد';statusStyle='color:#27ae60';onTimeDays++;}else{statusTxt=`تأخير ${fmtHM(short)}`;statusStyle='color:#c0392b;font-weight:700';shortTotal+=short;}}
 const review=r.needsReview?' <span class="badge bdg-orange">مراجعة</span>':'';
-return `<tr><td>${esc(r.date||'')}</td><td class="c-green" dir="ltr">${esc(r.checkIn||'—')}</td><td class="c-red" dir="ltr">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
-}).join('')||'<tr><td colspan="5" style="text-align:center;color:#64748b">لا توجد سجلات في هذه الفترة</td></tr>';
+const wd=(()=>{ const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(r.date||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; })();
+return `<tr><td>${esc(r.date||'')}</td><td style="color:#64748b">${wd}</td><td class="c-green" dir="ltr">${esc(r.checkIn||'—')}</td><td class="c-red" dir="ltr">${esc(r.checkOut||'—')}</td><td class="c-gold">${krm}</td><td style="${statusStyle}">${statusTxt}${review}</td></tr>`;
+}).join('')||'<tr><td colspan="6" style="text-align:center;color:#64748b">لا توجد سجلات في هذه الفترة</td></tr>';
 return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام الحضور</small><b style="display:block;font-size:18px">${s.daysPresent||0}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #2563eb"><small style="color:#64748b">أيام مكتملة</small><b style="display:block;font-size:18px">${s.completeDays||0}</b></div>
@@ -615,7 +730,7 @@ return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1
 </div>
 <div class="tbl-scroll u-mt8">
 <table>
-<thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
+<thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
 <tbody>${rows}</tbody>
 </table>
 </div>
@@ -794,4 +909,4 @@ toast('تم حفظ البطاقة كصورة','success');
 }
 }
 
-export { generateFingerprintSync, generateDigitalFingerprint, findEmployeeById, ensureEmployeeCardData, qrCache, generateQRDataURL, getEmployeeQRData, getEmployeeHumanQRData, uploadEmployeePhoto, handlePhotoUpload, renderSmartCard, showFullQRModal, downloadHumanQRImage, downloadQRImage, reportDateRangeForMonth, fetchEmployeeAttendanceReport, formatHoursFromMinutes, formatLateSummary, formatLateRow, formatAttendanceStatus, printAttendanceReport, runStrictAuditUI, printMonthlyAttendance, printLuxCard, printEmployeeAttendanceDay, printEmployeeAttendanceMonth, searchEmployeeAttendanceRange, printEmployeeAttendanceRange, regenerateFingerprint, printSmartCard, downloadSmartCard };
+export { localDateOnly, generateFingerprintSync, generateDigitalFingerprint, findEmployeeById, ensureEmployeeCardData, qrCache, generateQRDataURL, getEmployeeQRData, getEmployeeHumanQRData, uploadEmployeePhoto, handlePhotoUpload, fillScheduledShiftBadge, renderSmartCard, showFullQRModal, downloadHumanQRImage, downloadQRImage, reportDateRangeForMonth, fetchEmployeeAttendanceReport, formatHoursFromMinutes, formatLateSummary, formatLateRow, formatAttendanceStatus, printAttendanceReport, runStrictAuditUI, printMonthlyAttendance, printLuxCard, printEmployeeAttendanceDay, printEmployeeAttendanceMonth, searchEmployeeAttendanceRange, printEmployeeAttendanceRange, regenerateFingerprint, printSmartCard, downloadSmartCard };

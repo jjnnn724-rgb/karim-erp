@@ -187,6 +187,10 @@ function calculateDelayParts(row, employee) {
     const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin);
 
     let early = 0;
+    // قرار المالك (2026-09): المعتمد = صافي العجز عن ساعات الوردية —
+    // «أهم شي يكمل 10 أو 12 ساعته»: الدخول المبكر يغطي الانصراف المبكر،
+    // والتأخير يُمتص بالبقاء أطول. أي نقص (قبل أو بعد) يُحسب تأخيرًا.
+    let late = arrival; // بلا بصمة خروج: اليوم مفتوح → يُحكم عليه عند إغلاقه
     const checkOutMin = parseTimeMinutes(row.checkOut);
     if (checkOutMin != null) {
         const karim = Number(employee?.shift_karim) > 0 ? Number(employee.shift_karim) : 10;
@@ -204,12 +208,17 @@ function calculateDelayParts(row, employee) {
         if (checkInMin != null && out >= shiftMin) {
             early = Math.max(0, endRaw - out);
         }
+        if (checkInMin != null) {
+            const requiredMin = Math.round(karim * 60);
+            const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
+            late = Math.max(0, requiredMin - workedMin);
+        }
     }
 
     return {
         arrivalLateMinutes: arrival,
         earlyLeaveMinutes: early,
-        lateMinutes: arrival + early,
+        lateMinutes: late,
     };
 }
 

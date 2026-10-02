@@ -179,7 +179,12 @@ function kitGoSec(id){
 }
 function myDeptCode(){ return STATE.currentUser?.dept_code || null; }
 function isDeptHead(){ return STATE.currentUser?.role==='dept_head'; }
-function deptNameByCode(code){ const d=(STATE.departments||[]).find(x=>String(x.code)===String(code)); return d?d.name:(code||'—'); }
+function deptNameByCode(code){
+// UPGRADE 2026-10-01: يقبل قائمة أقسام بفواصل (dept_code متعدد) ويعرض أسماءها
+const list=String(code||'').split(',').map(x=>x.trim()).filter(Boolean);
+if(!list.length){return '—';}
+return list.map(c=>{const d=(STATE.hrDepartments||[]).find(x=>String(x.code)===c)||(STATE.departments||[]).find(x=>String(x.code)===c);return d?d.name:c;}).join(' + ');
+}
 function dispatchChainStage(d){
 // المرحلة الحالية من السلسلة لعرضها في الواجهة
 if(d.status==='pending') {return d.needsChefApproval?t('stg.chefWait'):t('stg.whWait');}
@@ -247,12 +252,12 @@ const chainBanner=!isDeptHead()?`<div class="workflow-banner" style="margin-bott
 const canDecideChef=['admin','manager','kitchen'].includes(role);
 const canDecideWarehouse=['admin','manager','warehouse'].includes(role);
 const canReceive=['admin','manager','kitchen'].includes(role);
-return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{const canWarehouse=d.status==='pending'&&!d.needsChefApproval||d.status==='chef_approved';return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${d.status==='pending'&&d.needsChefApproval&&canDecideChef?`<button class="btn btn-green btn-sm" onclick="openChefApproveModal('${esc(String(d.id))}')"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" onclick="openChefRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canWarehouse&&canDecideWarehouse&&!['rejected'].includes(d.status)?`<button class="btn btn-green btn-sm" onclick="openApproveModal('${esc(String(d.id))}')"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" onclick="openRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${d.status==='pending'&&canDecideWarehouse?`<button type="button" class="btn btn-sm" onclick="deleteDispatch('${esc(String(d.id))}')" title="حذف طلب معلّق لم يُعتمد بعد"><i class=ji data-i=trash></i> حذف</button>`:''}${d.status==='approved'&&(canReceive||(isDeptHead()&&String(d.deptCode)===String(my)))?`<button type="button" class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}<button type="button" class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received'].includes(d.status)?`<button type="button" class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}${renderPRSection()}`;
+return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{const canWarehouse=d.status==='pending'&&!d.needsChefApproval||d.status==='chef_approved';return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${d.status==='pending'&&d.needsChefApproval&&canDecideChef?`<button class="btn btn-green btn-sm" onclick="openChefApproveModal('${esc(String(d.id))}')"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" onclick="openChefRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canWarehouse&&canDecideWarehouse&&!['rejected'].includes(d.status)?`<button class="btn btn-green btn-sm" onclick="openApproveModal('${esc(String(d.id))}')"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" onclick="openRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${((d.status==='pending'&&canDecideWarehouse)||role==='admin')?`<button type="button" class="btn btn-sm ${role==='admin'&&d.status!=='pending'?'btn-red':''}" onclick="deleteDispatch('${esc(String(d.id))}','${esc(String(d.status))}')" title="${role==='admin'?'حذف نهائي للأدمن (أي حالة — موثّق باسمك)':'حذف طلب معلّق لم يُعتمد بعد'}"><i class=ji data-i=trash></i> ${role==='admin'&&d.status!=='pending'?'حذف نهائي (أدمن)':'حذف'}</button>`:''}${d.status==='approved'&&(canReceive||(isDeptHead()&&String(d.deptCode)===String(my)))?`<button type="button" class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}<button type="button" class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received'].includes(d.status)?`<button type="button" class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}`;
 }
-// ═══ طلبات شراء النواقص: أمين المخزن ينشئ (تلقائي + يدوي) → الشيف يوقّع → المدير العام يعتمد نهائيًا ═══
-// طلب فقط بلا حركة مخزون — كل توقيع مقفل على اسم صاحب الحساب (signerName) ويُتحقق منه في الخادم.
+// ═══ طلبات شراء النواقص: بيتها المخزن — أمين المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد ← المخزن يستلم ═══
+// (2026-10-01 بطلب المالك: الإنشاء من المخزن حصرًا — kitchen/dept_head للعرض والاعتماد فقط)
 function prCanSee(){ return ['admin','manager','warehouse','kitchen','accountant'].includes(STATE.currentUser?.role); }
-function prCanCreate(){ return ['admin','manager','warehouse','kitchen','dept_head'].includes(STATE.currentUser?.role); }
+function prCanCreate(){ return ['admin','manager','warehouse'].includes(STATE.currentUser?.role); }
 function prCanReceive(){ return ['admin','manager','warehouse'].includes(STATE.currentUser?.role); }
 function prCanChef(){ return ['admin','manager','kitchen'].includes(STATE.currentUser?.role); }
 function prCanGM(){ return ['admin','manager'].includes(STATE.currentUser?.role); }
@@ -268,39 +273,46 @@ closeModal(); renderPage(); toast('حُذف الطلب نهائيًا','info');
 }catch(e){ toast(e.message||'تعذر حذف الطلب','error'); }
 finally{ hideLoad(); }
 }
-async function deleteDispatch(id){
-if(!['admin','manager','warehouse'].includes(STATE.currentUser?.role)){ toast('حذف أذونات الصرف للمخازن والإدارة فقط','error'); return; }
-if(!confirm('حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف — يُعالج بالإرجاع)')) {return;}
+async function deleteDispatch(id, forceStatus){
+const role = STATE.currentUser?.role;
+if(!['admin','manager','warehouse'].includes(role)){ toast('حذف أذونات الصرف للمخازن والإدارة فقط','error'); return; }
+const isAdmin = role === 'admin';
+const isSigned = forceStatus && forceStatus !== 'pending';
+if(isAdmin && isSigned){
+if(!confirm('⚠️ حذف نهائي لإذن صرف ' + forceStatus + ' ؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل الأدمن.\nهل أنت متأكد؟')) {return;}
+}else{
+if(!confirm('حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة الأدمن — حذف نهائي موثّق)')) {return;}
+}
 try{ showLoad();
-await apiRemove('dispatches', id);
+await apiFetch(`/dispatches/${encodeURIComponent(id)}`, { method: 'DELETE' });
 STATE.dispatches=(STATE.dispatches||[]).filter(x=>String(x.id)!==String(id));
-closeModal(); renderPage(); toast('حُذف طلب الصرف المعلق','info');
+closeModal(); renderPage(); toast(isAdmin && isSigned ? 'حُذف إذن الصرف نهائيًا (موثّق باسم الأدمن)' : 'حُذف طلب الصرف المعلق','info');
 }catch(e){ toast(e.message||'تعذر حذف طلب الصرف','error'); }
 finally{ hideLoad(); }
 }
-function prStatusLabel(s){ return ({pending:'بانتظار الشيف',chef_approved:'اعتمدها الشيف — بانتظار المدير العام',approved:'معتمدة نهائيًا ؟ بانتظار المخزن',fulfilled:'مستلم ومغلق',rejected:'مرفوضة',cancelled:'ملغاة'})[s]||s||'—'; }
-function prStatusClass(s){ return s==='approved'?'bdg-green':s==='fulfilled'?'bdg-teal':s==='chef_approved'?'bdg-blue':s==='pending'?'bdg-orange':s==='rejected'?'bdg-red':'bdg-purple'; }
+function prStatusLabel(s){ return ({pending:'بانتظار الشيف',chef_approved:'اعتمدها الشيف — بانتظار المدير العام',approved:'معتمدة نهائيًا — مغلق',partially_fulfilled:'مستلم جزئيًا (قديم)',fulfilled:'مستلم ومغلق (قديم)',rejected:'مرفوضة',cancelled:'ملغاة'})[s]||s||'—'; }
+function prStatusClass(s){ return (s==='approved'||s==='partially_fulfilled')?'bdg-green':s==='fulfilled'?'bdg-teal':s==='chef_approved'?'bdg-blue':s==='pending'?'bdg-orange':s==='rejected'?'bdg-red':'bdg-purple'; }
 async function refreshPurchaseRequests(){
 try{ STATE.purchaseRequests=await apiFetch('/warehouse/purchase-requests'); STATE._prLoaded=true; }
 catch(e){ console.warn('[pr] refresh failed:', e.message); }
-if(['warehouse','dispatch'].includes(STATE.page)) {renderPage();}
+if(['warehouse','dispatch','kitchen','wh-prs'].includes(STATE.page)) {renderPage();}
 }
 function renderPRSection(){
 if(!prCanSee()) {return '';}
 const rows=(STATE.purchaseRequests||[]).slice().reverse();
 const pendChef=rows.filter(r=>r.status==='pending').length;
 const pendGM=rows.filter(r=>r.status==='chef_approved').length;
-return `<div class="tbl-wrap" style="margin-top:18px"><div class="tbl-hd"><div><h3><i class=ji data-i=shopping-cart></i> طلبات شراء النواقص</h3><small class="text-muted">المطبخ/المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد ← المخزن يستلم ويُدخل البضاعة.</small></div><div class="u-row-wrap">${prCanCreate()?`<button class="btn btn-gold btn-sm" onclick="openPRCreateModal()"><i class=ji data-i=plus></i> طلب شراء جديد</button>`:''}<button class="btn btn-blue btn-sm" onclick="refreshPurchaseRequests()"><i class=ji data-i=refresh></i> تحديث</button><span class="badge bdg-orange">بانتظار الشيف: ${fN(pendChef)}</span><span class="badge bdg-blue">بانتظار المدير: ${fN(pendGM)}</span></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الرقم</th><th>الأصناف</th><th>الحالة</th><th>المنشئ</th><th>توقيع الشيف</th><th>اعتماد المدير</th><th>استلام المخزن</th><th>إجراءات</th></tr></thead><tbody>${rows.map((r,idx)=>{const items=Array.isArray(r.items)?r.items:[];return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(r.request_number||('#'+r.id))}</td><td>${items.map(i=>`${esc(i.itemName||i.name||'—')} (${fN(i.requestedQty??i.qty)})`).join('، ')||'—'}</td><td><span class="badge ${prStatusClass(r.status)}">${prStatusLabel(r.status)}</span></td><td>${esc(r.creator_name||'—')}</td><td>${r.chef_approved_name?`<span class="badge bdg-blue">${esc(r.chef_approved_name)}</span>`:'—'}</td><td>${r.gm_approved_name?`<span class="badge bdg-green">${esc(r.gm_approved_name)}</span>`:'—'}</td><td>${r.wh_received_name?`<span class="badge bdg-teal">${esc(r.wh_received_name)}</span>`:'—'}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewPRDetails('${esc(String(r.id))}')"><i class=ji data-i=eye></i> عرض</button>${r.status==='pending'&&prCanChef()?`<button class="btn btn-green btn-sm" onclick="openPRChefApproveModal('${esc(String(r.id))}')"><i class=ji data-i=chef-hat></i> توقيع الشيف</button><button class="btn btn-red btn-sm" onclick="openPRChefRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='chef_approved'&&prCanGM()?`<button class="btn btn-gold btn-sm" onclick="openPRGMApproveModal('${esc(String(r.id))}')"><i class=ji data-i=circle-check></i> اعتماد المدير العام</button><button class="btn btn-red btn-sm" onclick="openPRGMRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='approved'&&prCanReceive()?`<button class="btn btn-teal btn-sm" onclick="openPRReceiveModal('${esc(String(r.id))}')"><i class=ji data-i=inbox></i> استلام المخزن</button>`:''}${r.status==='pending'&&prCanCreate()||r.status==='chef_approved'&&prCanCancel()?`<button class="btn btn-red btn-sm" onclick="cancelPR('${esc(String(r.id))}')"><i class=ji data-i=x-circle></i> إلغاء</button>`:''}${prCanDelete()&&!['approved','fulfilled'].includes(r.status)?`<button class="btn btn-red btn-sm" onclick="deletePR('${esc(String(r.id))}')"><i class=ji data-i=trash></i> حذف نهائي</button>`:''}${['approved','chef_approved','pending','fulfilled'].includes(r.status)?`<button class="btn btn-sm" onclick="printPR('${esc(String(r.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="u-empty-sm">لا توجد طلبات شراء بعد — أنشئ طلبًا من نواقص المخزن</td></tr>'}</tbody></table></div></div>`;
+return `<div class="tbl-wrap" style="margin-top:18px"><div class="tbl-hd"><div><h3><i class=ji data-i=shopping-cart></i> طلبات شراء النواقص</h3><small class="text-muted">المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات).</small></div><div class="u-row-wrap">${prCanCreate()?`<button class="btn btn-gold btn-sm" onclick="openPRCreateModal()"><i class=ji data-i=plus></i> طلب شراء جديد</button>`:''}<button class="btn btn-blue btn-sm" onclick="refreshPurchaseRequests()"><i class=ji data-i=refresh></i> تحديث</button><span class="badge bdg-orange">بانتظار الشيف: ${fN(pendChef)}</span><span class="badge bdg-blue">بانتظار المدير: ${fN(pendGM)}</span></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الرقم</th><th>الأصناف</th><th>الحالة</th><th>المنشئ</th><th>توقيع الشيف</th><th>اعتماد المدير</th><th>استلام المخزن</th><th>إجراءات</th></tr></thead><tbody>${rows.map((r,idx)=>{const items=Array.isArray(r.items)?r.items:[];return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(r.request_number||('#'+r.id))}</td><td>${items.map(i=>`${esc(i.itemName||i.name||'—')} (${fN(i.requestedQty??i.qty)})`).join('، ')||'—'}</td><td><span class="badge ${prStatusClass(r.status)}">${prStatusLabel(r.status)}</span></td><td>${esc(r.creator_name||'—')}</td><td>${r.chef_approved_name?`<span class="badge bdg-blue">${esc(r.chef_approved_name)}</span>`:'—'}</td><td>${r.gm_approved_name?`<span class="badge bdg-green">${esc(r.gm_approved_name)}</span>`:'—'}</td><td>${r.wh_received_name?`<span class="badge bdg-teal">${esc(r.wh_received_name)}</span>`:'—'}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewPRDetails('${esc(String(r.id))}')"><i class=ji data-i=eye></i> عرض</button>${r.status==='pending'&&prCanChef()?`<button class="btn btn-green btn-sm" onclick="openPRChefApproveModal('${esc(String(r.id))}')"><i class=ji data-i=chef-hat></i> توقيع الشيف</button><button class="btn btn-red btn-sm" onclick="openPRChefRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='chef_approved'&&prCanGM()?`<button class="btn btn-gold btn-sm" onclick="openPRGMApproveModal('${esc(String(r.id))}')"><i class=ji data-i=circle-check></i> اعتماد المدير العام</button><button class="btn btn-red btn-sm" onclick="openPRGMRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='pending'&&prCanCreate()||r.status==='chef_approved'&&prCanCancel()?`<button class="btn btn-red btn-sm" onclick="cancelPR('${esc(String(r.id))}')"><i class=ji data-i=x-circle></i> إلغاء</button>`:''}${prCanDelete()&&!['approved','fulfilled'].includes(r.status)?`<button class="btn btn-red btn-sm" onclick="deletePR('${esc(String(r.id))}')"><i class=ji data-i=trash></i> حذف نهائي</button>`:''}${['approved','chef_approved','pending','fulfilled'].includes(r.status)?`<button class="btn btn-sm" onclick="printPR('${esc(String(r.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="u-empty-sm">لا توجد طلبات شراء بعد — أنشئ طلبًا من نواقص المخزن</td></tr>'}</tbody></table></div></div>`;
 }
 async function openPRCreateModal(){
-if(!prCanCreate()){ toast('إنشاء طلبات الشراء للمطبخ والمخازن والإدارة','error'); return; }
+if(!prCanCreate()){ toast('إنشاء طلبات الشراء من المخزن والإدارة فقط','error'); return; }
 try{
 showLoad();
 const shortages=await apiFetch('/warehouse/purchase-requests/shortages');
 const invNames=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">`).join('');
 const rowsHtml=(shortages||[]).map((s,idx)=>`<tr><td><input type="checkbox" class="pr-sel" data-idx="${idx}" checked></td><td class="fw-bold">${esc(s.itemName)}</td><td>${esc(s.unit||'')}</td><td class="c-red">${fN(s.currentQty)}</td><td>${fN(s.minQty)}</td><td><input type="number" class="pr-qty" data-idx="${idx}" data-item-id="${s.itemId}" data-name="${esc(s.itemName)}" data-unit="${esc(s.unit||'وحدة')}" min="0" step="0.001" value="${Number(s.suggestedQty||0)}" style="max-width:110px"></td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد نواقص حاليًا (كل الأصناف فوق الحد الأدنى) — أضف يدويًا بالأسفل</td></tr>';
 PR_SHORT_CACHE=shortages||[];
-showModal(`<h3><i class=ji data-i=shopping-cart></i> طلب شراء نواقص جديد</h3><div class="workflow-banner">علّم على أصناف النواقص وعدّل الكمية المطلوبة، أو أضف أصنافًا يدويًا (خضار وغيرها) — بعد الإنشاء يوقّع <strong>الشيف</strong> ثم يعتمد <strong>المدير العام</strong> ثم يستلم <strong>المخزن</strong>.</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص المخزن (${fN((shortages||[]).length)})</h3></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th><input type="checkbox" checked onchange="document.querySelectorAll('.pr-sel').forEach(c=>c.checked=this.checked)"></th><th>الصنف</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>المطلوب شراؤه</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div><div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=plus></i> إضافة يدوية</h3><button type="button" class="btn btn-blue btn-sm" onclick="prAddManualRow()"><i class=ji data-i=plus></i> صف جديد</button></div><div id="prManualRows"></div><datalist id="prInvNames">${invNames}</datalist></div><div class="fg"><label>القسم الطالب (تُحسب عليه التكلفة عند التسليم المباشر)</label>${isDeptHead()?`<input type="hidden" id="prDept" value="${esc(myDeptCode()||'')}"><input type="text" value="${esc(deptNameByCode(myDeptCode()))}" readonly disabled>`:((STATE.currentUser?.role==='kitchen')?`<input type="hidden" id="prDept" value="kitchen"><input type="text" value="المطبخ" readonly disabled>`:`<select id="prDept">${(STATE.departments||[]).filter(d=>!String(d.code||'').startsWith('ys_') && d.code !== 'kitchen' && d.code !== 'external_sales' && d.parent_code !== 'kitchen').map((d,i)=>`<option value="${esc(d.code)}" ${i===0?'selected':''}>${esc(d.name||d.code)}</option>`).join('')}</select>`)}</div><div class="fg u-mt12"><label>ملاحظات الطلب (اختياري)</label><textarea id="prNotes" rows="2" placeholder="مثال: أولوية للسلطات قبل نهاية الأسبوع"></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmPRCreate()"><i class=ji data-i=shopping-cart></i> إنشاء الطلب</button></div>`);
+showModal(`<h3><i class=ji data-i=shopping-cart></i> طلب شراء نواقص جديد</h3><div class="workflow-banner">علّم على أصناف النواقص وعدّل الكمية المطلوبة، أو أضف أصنافًا يدويًا (خضار وغيرها) — بعد الإنشاء يوقّع <strong>الشيف</strong> ثم يعتمد <strong>المدير العام</strong> نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات).</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص المخزن (${fN((shortages||[]).length)})</h3></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th><input type="checkbox" checked onchange="document.querySelectorAll('.pr-sel').forEach(c=>c.checked=this.checked)"></th><th>الصنف</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>المطلوب شراؤه</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div><div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=plus></i> إضافة يدوية</h3><button type="button" class="btn btn-blue btn-sm" onclick="prAddManualRow()"><i class=ji data-i=plus></i> صف جديد</button></div><div id="prManualRows"></div><datalist id="prInvNames">${invNames}</datalist></div><div class="fg"><label>القسم الطالب (تُحسب عليه التكلفة عند التسليم المباشر)</label><select id="prDept">${(STATE.departments||[]).filter(d=>!String(d.code||'').startsWith('ys_') && d.code !== 'kitchen' && d.code !== 'external_sales' && d.parent_code !== 'kitchen').map((d,i)=>`<option value="${esc(d.code)}" ${i===0?'selected':''}>${esc(d.name||d.code)}</option>`).join('')}</select></div><div class="fg u-mt12"><label>ملاحظات الطلب (اختياري)</label><textarea id="prNotes" rows="2" placeholder="مثال: أولوية للسلطات قبل نهاية الأسبوع"></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmPRCreate()"><i class=ji data-i=shopping-cart></i> إنشاء الطلب</button></div>`);
 }catch(e){ toast(e.message||'تعذر جلب النواقص','error'); }
 finally{ hideLoad(); }
 }
@@ -399,48 +411,16 @@ upsertStateEntity('purchaseRequests',saved); closeModal(); renderPage(); toast('
 finally{ hideLoad(); }
 }
 function openPRReceiveModal(id){
-const r=(STATE.purchaseRequests||[]).find(x=>String(x.id)===String(id)); if(!r){return;}
-const rows=(Array.isArray(r.items)?r.items:[]).map((i,ix)=>{
-return '<div class="edit-row-item" style="flex-wrap:wrap;align-items:flex-end">'
-+ '<div style="flex:2;min-width:160px"><strong>' + esc(i.itemName||i.name) + '</strong><br><small class="text-muted">المطلوب: ' + fN(i.requestedQty??i.qty) + ' ' + esc(i.unit||'') + '</small></div>'
-+ '<div class="fg" style="min-width:100px"><label>المستلم</label><input type="number" class="pr-recv-qty" data-idx="' + ix + '" value="' + fN(i.requestedQty??i.qty) + '" min="0" step="0.001" style="max-width:100px"></div>'
-+ '<div class="fg" style="min-width:100px"><label>سعر الوحدة</label><input type="number" class="pr-recv-cost" data-idx="' + ix + '" value="0" min="0" step="0.01" style="max-width:100px"></div>' + '<label style="min-width:96px;font-size:12px;align-self:center"><input type="checkbox" class="pr-recv-direct" data-idx="' + ix + '"> مباشر للقسم</label></div>';
-}).join('');
-showModal('<h3><i class=ji data-i=inbox></i> استلام المخزن</h3><div class="workflow-banner">اعتمد المدير العام <strong>' + esc(r.gm_approved_name||'—') + '</strong> — سجّل المستلم فعليًا لكل صنف (صفر للغير مستلم) وسعر الشراء: <strong>البضاعة تدخل المخزون فور التوقيع.</strong></div><div>' + rows + '</div><div class="fg"><label>طريقة التسليم</label><div class="fr"><label><input type="radio" name="prDeliver" value="stock" checked onchange="prDeliverModeSync(this.value)"> دخول المخزن (مخزون)</label><label><input type="radio" name="prDeliver" value="direct" onchange="prDeliverModeSync(this.value)"> تسليم مباشر للقسم (مصروف فوري)</label></div><small class="text-muted">القسم المستلم: ' + esc(r.dept_name||r.dept_code||'—') + '</small></div><div class="fg u-mt12"><label>ملاحظات الاستلام (اختياري)</label><textarea id="prRecvNotes" rows="2"></textarea></div>' + signaturePadMarkup('prRecvSignature','توقيع أمين المخزن — '+esc(accountSignatureName())) + '<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmPRReceive(\'' + esc(String(id)) + '\')">توقيع ودخول مخزني</button></div>');
-afterModalSignatureInit('prRecvSignature');
-window._prRecvItems=Array.isArray(r.items)?r.items:[];
-prFreshSuggest();
+// متقاعد بأمر المالك (2026-10-01): دورة طلب الشراء تنتهي باعتماد المدير العام —
+// البضاعة تدخل المخزون عبر فواتير المشتريات (الاستلام هنا كان ازدواجًا)
+toast('دورة طلب الشراء تنتهي باعتماد المدير العام — سجّل البضاعة بفاتورة مشتريات','info');
+return;
 }
-function prDeliverModeSync(v){
-document.querySelectorAll('.pr-recv-direct').forEach(cb=>{cb.checked=(v==='direct');});
-}
-function prFreshSuggest(){
-const keys=['دجاج','لحم','لحوم','سمك','خضار','طماطم','خيار','بقدونس','فاكه','فواكه','حليب','ألبان','البان','طازج','بيض','كزبرة','نعناع','جرجير','خس','بطاطس','بصل','كبدة','كبد'];
-document.querySelectorAll('.pr-recv-direct').forEach((cb,ix)=>{
-const nm=String(((window._prRecvItems||[])[ix]||{}).itemName||((window._prRecvItems||[])[ix]||{}).name||'');
-if(keys.some(k=>nm.includes(k))){cb.checked=true;}
-});
-}
+function prDeliverModeSync(v){ return; }
+function prFreshSuggest(){ return; }
 async function confirmPRReceive(id){
-const r=(STATE.purchaseRequests||[]).find(x=>String(x.id)===String(id)); if(!r){return;}
-const reqItems=Array.isArray(r.items)?r.items:[];
-const items=reqItems.map((i,ix)=>{
-const q=document.querySelector('.pr-recv-qty[data-idx="' + ix + '"]');
-const c=document.querySelector('.pr-recv-cost[data-idx="' + ix + '"]');
-const w=document.querySelector('.pr-recv-direct[data-idx="' + ix + '"]');
-return {itemName:i.itemName||i.name,receivedQty:Number(q&&q.value),unitCost:Number(c&&c.value)||0,direct:!!(w&&w.checked)};
-});
-const signatureData=readSignaturePad('prRecvSignature'); if(!signatureData) {return;}
-const signerName=readSignerName('prRecvSignature'); if(!signerName) {return;}
-try{ showLoad();
-const saved=await apiFetch('/warehouse/purchase-requests/' + encodeURIComponent(id) + '/warehouse-receive',{method:'POST',body:JSON.stringify({items:items,deliverMode:((document.querySelector('input[name="prDeliver"]:checked')||{}).value||'stock'),notes:(document.getElementById('prRecvNotes')||{}).value||'',signatureData:signatureData,signerName:signerName})});
-upsertStateEntity('purchaseRequests',saved);
-((saved&&saved.stockChanges)||[]).forEach(row=>upsertStateEntity('inventory',row));
-((saved&&saved.transactions)||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
-closeModal(); renderPage();
-toast('وقع المخزن ودخلت البضاعة المخزون','success');
-}catch(e){ toast(e.message||'تعذر تسجيل الاستلام','error'); }
-finally{ hideLoad(); }
+toast('الاستلام من طلب الشراء موقوف — سجّل البضاعة بفاتورة مشتريات','error');
+return;
 }
 async function cancelPR(id){
 if(!confirm('إلغاء طلب الشراء المعلّق؟')) {return;}

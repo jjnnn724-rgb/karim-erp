@@ -7,16 +7,22 @@
 // ============================================
 function renderSettings(){
 if(!checkMenuAccessLocal('settings')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
-// PERF: الأقسام أسفل الشاشة تُحمَّل كسولاً عند الاقتراب منها (IntersectionObserver)
+ // PERF: الأقسام أسفل الشاشة تُحمَّل كسولاً عند الاقتراب منها (IntersectionObserver)
 // — صفحة الإعدادات تُفتح فورًا بدل انتظار 5 طلبات متوازية (شكوى بطء فتح النوافذ)
+// FIX 2026-10-01: lazyPanel كانت تبحث عن العناصر أثناء توليد سلسلة الـ HTML —
+// أي قبل إدراجها في الصفحة — فلم يُسجَّل الـ observer إطلاقًا وبقيت الأقسام
+// عالقة على «جارٍ التحميل...» للأبد (شكوى: بطاقات الموظفين/البصمة/النسخ لا تفتح).
+// التأجيل بـ setTimeout(0) يشغّل الربط بعد إدراج العناصر فعليًا.
 const lazyPanel = (id, loader) => {
-    const el = document.getElementById(id);
-    if (!el) {return;}
-    if (!('IntersectionObserver' in window)) {setTimeout(loader, 0); return;}
-    const io = new IntersectionObserver((entries) => {
-        if (entries.some((e) => e.isIntersecting)) {io.disconnect(); loader();}
-    }, { rootMargin: '250px' });
-    io.observe(el);
+    setTimeout(() => {
+        const el = document.getElementById(id);
+        if (!el) {return;}
+        if (!('IntersectionObserver' in window)) {setTimeout(loader, 0); return;}
+        const io = new IntersectionObserver((entries) => {
+            if (entries.some((e) => e.isIntersecting)) {io.disconnect(); loader();}
+        }, { rootMargin: '250px' });
+        io.observe(el);
+    }, 0);
 };
 // ZATCA hub loads itself into #zatcaHub once this template is painted
 lazyPanel('zatcaHub', loadZatcaHub);
@@ -31,7 +37,7 @@ if (STATE.currentUser?.role==='admin') {lazyPanel('sysBackupList', sysLoadBackup
 return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=store></i> ${t('set.restaurant')}</div><div class="mcard-val c-gold">${esc(STATE.settings.name)}</div></div>
-<div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> ${t('set.currency')}</div><div class="mcard-val c-gold">${STATE.settings.currency}</div></div>
+<div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> ${t('set.currency')}</div><div class="mcard-val c-gold">${esc(STATE.settings.currency)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=image></i> ${t('set.logo')}</div><div class="mcard-val c-gold"><i class=ji data-i=circle-check></i> ${t('set.uploaded')}</div></div>
 </div>
 <div class="tbl-wrap">
@@ -54,36 +60,23 @@ return `
 <button class="btn btn-gold" onclick="saveSettings()"><i class=ji data-i=save></i> ${t('set.save')}</button>
 </div>
 </div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=landmark></i> ربط هيئة الزكاة والضريبة والجمارك (ZATCA / Fatoora)</h3></div>
-<div style="padding:24px">
-<div id="zatcaHub"><div class="mcard u-empty">جارٍ تحميل حالة ربط ZATCA…</div></div>
 </div>
+${STATE.currentUser?.role==='admin'?`
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=eye></i> إدارة ظهور القائمة الجانبية</h3></div><div style="padding:16px">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">
+${['cfo','revenues','expenses','cost-analysis','pnl','departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','shelves','weight','kitchen','dispatch','recipes','procurement','hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal','roster','reports','users','permissions','yarasoft','oracle-data','whatsapp'].map(k=>`<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:8px;background:var(--bg3)"><input type="checkbox" class="navVisBox" value="${k}" ${(String(STATE.settings.hidden_nav_pages||'').split(',').map(x=>x.trim()).includes(k))?'checked':''}> <span>${esc(t('pg.'+k)||k)}</span></label>`).join('')}
 </div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=printer></i> تذاكر تجهيز المطبخ (KOT)</h3></div>
-<div style="padding:24px" id="kotSettingsBody">
-<div class="mcard u-empty">جارٍ تحميل إعدادات تذاكر المطبخ…</div>
-</div>
-</div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=id-card></i> بطاقات الموظفين (QR + تحقق)</h3></div>
-<div style="padding:24px" id="cardSettingsBody">
-<div class="mcard u-empty">جارٍ تحميل إعدادات البطاقات…</div>
-</div>
-</div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=timer></i> البصمة الذاتية (Geofence)</h3></div>
-<div style="padding:24px" id="punchSettingsBody">
-<div class="mcard u-empty"><div class="spinner"></div></div>
-</div>
-</div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" onclick="sysDoBackup()"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" onclick="document.getElementById('sysUploadInput')?.click()"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" onchange="sysUploadBackup(this)"><button class="btn btn-blue btn-sm" onclick="sysLoadBackups()"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
+<small class="text-muted" style="display:block;margin-top:10px">المُعلَّم = مخفي من القائمة الجانبية لكل المستخدمين (عرض فقط — الصفحات تبقى تعمل عبر الروابط الداخلية). الرئيسية والإعدادات لا يُخفيان. سجل الصرف مخفي افتراضيًا.</small>
+<button class="btn btn-gold btn-sm u-mt12" onclick="saveNavVisibility()"><i class=ji data-i=save></i> حفظ ظهور القوائم</button>
+</div></div>`:''}
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=landmark></i> ربط هيئة الزكاة</h3></div><div id="zatcaHub" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=printer></i> تذاكر المطبخ</h3></div><div id="kotSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=id-card></i> بطاقات الموظفين</h3></div><div id="cardSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=timer></i> البصمة الذاتية</h3></div><div id="punchSettingsBody" style="padding:24px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" onclick="sysDoBackup()"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" onclick="document.getElementById('sysUploadInput')?.click()"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" onchange="sysUploadBackup(this)"><button class="btn btn-blue btn-sm" onclick="sysLoadBackups()"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
 <div style="padding:16px 24px"><small class="text-muted">النسخة تشمل قاعدة البيانات كاملة + الإعدادات — انسخ أحدث ملف على فلاشة خارجية للأمان من ضبط المصنع. الاستعادة تمسح الحالي (بنعمل نسخة أمان تلقائيًا أولًا).</small><div id="sysBackupList" style="margin-top:12px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
 </div>
-<div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=inbox></i> تصدير وتصفير</h3></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=inbox></i> تصدير وتصفير</h3></div>
 <div style="padding:24px">
 <div style="display:flex;gap:12px;flex-wrap:wrap">
 <button class="btn btn-green btn-sm" onclick="exportAllData()"><i class=ji data-i=inbox></i> تصدير قراءة البيانات (JSON)</button>
@@ -171,6 +164,15 @@ try {
   updateLogoDisplay();
   toast('تم إزالة الشعار من قاعدة البيانات','info');
 } catch(e) { toast(e.message||'تعذر إزالة الشعار','error'); }
+}
+async function saveNavVisibility(){
+const hidden=Array.from(document.querySelectorAll('.navVisBox:checked')).map(x=>x.value).join(',');
+try{
+const saved=await apiUpdate('settings','main_settings',{name:STATE.settings.name||'مطاعم الشرفه العالمي',hidden_nav_pages:hidden});
+Object.assign(STATE.settings,{hidden_nav_pages:hidden,hiddenNavPages:hidden});
+if(typeof window.buildNav==='function'){window.buildNav();}
+toast('تم تحديث ظهور القوائم لكل المستخدمين','success');
+}catch(e){ toast(e.message||'فشل حفظ ظهور القوائم','error'); }
 }
 async function saveSettings(){
 const payload={
@@ -523,7 +525,7 @@ const rows=(d.files||[]).map((f,i)=>`<tr>
 <td class="fw-bold">${esc(f.file)} ${i===0?'<span class="badge bdg-green">الأحدث</span>':''}</td>
 <td>${sysFmtBytes(f.bytes)}</td>
 <td class="text-muted">${esc(String(f.mtime||'').replace('T',' ').slice(0,19))}</td>
-<td>${f.shaOk===true?'<span class="badge bdg-green">سليمة</span>':f.shaOk===false?'<span class="badge bdg-red">تالفة!</span>':'<span class="badge bdg-gray">بلا بصمة</span>'}</td>
+<td>${f.shaOk===true?'<span class="badge bdg-green">سليمة</span>':f.shaOk===false?'<span class="badge bdg-red">تالفة!</span>':f.hasSha?'<span class="badge bdg-gray">بصمة موجودة</span>':'<span class="badge bdg-gray">بلا بصمة</span>'}</td>
 <td>${f.manifest?'<span class="badge bdg-blue">كاملة + إعدادات</span>':'<span class="text-muted">قاعدة فقط</span>'}</td>
 <td><button class="btn btn-gold btn-sm" onclick="sysRestoreModal('${esc(f.file)}')" ${f.shaOk===false?'disabled':''}><i class=ji data-i=archive></i> استعادة</button></td>
 </tr>`).join('');
@@ -597,9 +599,22 @@ function employeeAccountOptions(selectedId=null,userId=null){return `<option val
 async function linkUserToEmployee(userId,employeeId){const result=await apiFetch(`/users/${encodeURIComponent(userId)}/employee`,{method:'PUT',body:JSON.stringify({employeeId:employeeId||null})});(result.previousEmployees||[]).forEach(e=>upsertStateEntity('employees',{...e,userId:null}));if(result.employee){upsertStateEntity('employees',result.employee);}return result;}
 function toggleEmployeeAccountFields(){const enabled=Boolean(document.getElementById('empCreateAccount')?.checked);const box=document.getElementById('empAccountFields');if(box){box.style.display=enabled?'grid':'none';}}
 function showCreateEmployeeAccountModal(employeeId){showAddUserModal(employeeId);}
+// خزنة كلمات المرور: عرض النسخة المسجلة (أدمن فقط — مسار محمي على الخادم)
+async function viewUserPassword(id){
+const u=STATE.users.find(x=>String(x.id)===String(id));
+if(!u){return;}
+try{
+const r=await apiFetch('/users/'+id+'/password');
+if(!r.available){
+showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل الحساب» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+return;
+}
+showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">اسم المستخدم: <strong>@${esc(u.username)}</strong> — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:26px;font-weight:bold;letter-spacing:2px;color:var(--gold,#c9a227)">${esc(r.password)}</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="copyResetCode('${esc(r.password)}')"><i class=ji data-i=copy></i> نسخ</button></div>`);
+}catch(e){ toast('تعذر جلب كلمة المرور — حاول مرة أخرى','error'); }
+}
 function renderUserCards(users){
 if(!users || !users.length) {return '<div class="mcard u-empty-grid">' + t('user.noResult') + '</div>';}
-return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" onclick="editUser('${u.id}')"><i class=ji data-i=pencil></i> تعديل الحساب</button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" onclick="issueResetCode('${u.id}')" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id?`<button class="btn btn-red btn-sm" onclick="deleteUser('${u.id}')"><i class=ji data-i=trash></i></button>`:''}</div></div>`;}).join('');
+return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" onclick="editUser('${u.id}')"><i class=ji data-i=pencil></i> تعديل الحساب</button><button class="btn btn-sm" onclick="viewUserPassword('${u.id}')" title="عرض كلمة المرور المسجلة"><i class=ji data-i=eye></i></button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" onclick="issueResetCode('${u.id}')" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id?`<button class="btn btn-red btn-sm" onclick="deleteUser('${u.id}')"><i class=ji data-i=trash></i></button>`:''}</div></div>`;}).join('');
 }
 function renderUsers(){
 if(STATE.currentUser.role!=='admin') {return '<div class="mcard"><i class=ji data-i=circle-x></i> هذه الصفحة للمدير فقط</div>';}
@@ -625,8 +640,9 @@ grid.innerHTML = renderUserCards(filtered);
 function showAddUserModal(employeeId=null){
 const linkedEmployee=employeeId?STATE.employees.find(e=>String(e.id)===String(employeeId)):null;
 const roleOpts=Object.keys(ROLES).map(k=>`<option value="${k}">${ROLES[k].icon} ${ROLES[k].name}</option>`).join('');
-const deptOpts=(STATE.departments||[]).map(d=>`<option value="${esc(d.code)}">${esc(d.name||d.name_ar||d.code)}</option>`).join('');
-showModal(`<h3><i class=ji data-i=plus></i> إضافة مستخدم وربطه بموظف</h3><div class="workflow-banner">الحساب يحدد تسجيل الدخول والصلاحيات، والربط يوصله بالسجل الوظيفي والحضور والراتب.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(linkedEmployee?.name||'')}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername"></div></div><div class="fr"><div class="fg"><label>كلمة المرور</label><input type="password" id="userPassword"></div><div class="fg"><label>الدور</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:none"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><select id="userDeptCode"><option value="">— اختر القسم —</option>${deptOpts}</select></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(employeeId||'',null)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" selected>نشط</option><option value="false">موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="addUser()"><i class=ji data-i=save></i> حفظ وربط الحساب</button></div>`);
+const deptSrc=(STATE.hrDepartments&&STATE.hrDepartments.length?STATE.hrDepartments:(STATE.departments||[]));
+const deptBoxes=deptSrc.map(d=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:8px"><input type="checkbox" class="userDeptBox" value="${esc(d.code)}"> <span>${esc(d.name||d.name_ar||d.code)}</span></label>`).join('');
+showModal(`<h3><i class=ji data-i=plus></i> إضافة مستخدم وربطه بموظف</h3><div class="workflow-banner">الحساب يحدد تسجيل الدخول والصلاحيات، والربط يوصله بالسجل الوظيفي والحضور والراتب.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(linkedEmployee?.name||'')}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername"></div></div><div class="fr"><div class="fg"><label>كلمة المرور</label><input type="password" id="userPassword"></div><div class="fg"><label>الدور</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:none"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(employeeId||'',null)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" selected>نشط</option><option value="false">موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="addUser()"><i class=ji data-i=save></i> حفظ وربط الحساب</button></div>`);
 }
 function toggleUserDeptField(){
 const roleEl=document.getElementById('userRole'); const field=document.getElementById('userDeptField');
@@ -640,9 +656,9 @@ password=document.getElementById('userPassword')?.value,
 role=document.getElementById('userRole')?.value,
 employeeId=document.getElementById('userEmployee')?.value||null,
 active=document.getElementById('userActive')?.value!=='false';
-const deptCode=role==='dept_head'?(document.getElementById('userDeptCode')?.value||null):null;
+const deptCode=role==='dept_head'?(Array.from(document.querySelectorAll('#userDeptBoxes input[type=checkbox]:checked')).map(x=>x.value).join(',')||null):null;
 if(!name||!username||!password){ toast('أكمل الاسم واسم المستخدم وكلمة المرور','error'); return; }
-if(role==='dept_head'&&!deptCode){ toast('اختر قسم رئيس القسم','error'); return; }
+if(role==='dept_head'&&!deptCode){ toast('اختر قسمًا واحدًا على الأقل لرئيس القسم','error'); return; }
 if(STATE.users.find(u=>u.username===username)){ toast('اسم المستخدم موجود بالفعل','error'); return; }
 try{
  const payload={username,password,role,name,active};
@@ -659,8 +675,10 @@ const u=STATE.users.find(x=>String(x.id)===String(id));
 if(!u){return;}
 const emp=linkedEmployeeForUser(u.id);
 const roleOpts=Object.keys(ROLES).map(k=>`<option value="${k}" ${u.role===k?'selected':''}>${ROLES[k].icon} ${ROLES[k].name}</option>`).join('');
-const deptOpts=(STATE.departments||[]).map(d=>`<option value="${esc(d.code)}" ${String(u.dept_code||'')===String(d.code)?'selected':''}>${esc(d.name||d.name_ar||d.code)}</option>`).join('');
-showModal(`<h3><i class=ji data-i=pencil></i> تعديل حساب المستخدم</h3><div class="workflow-banner">اسم المستخدم ثابت كمعرّف دخول. يمكنك تعديل الاسم، الدور، الحالة، كلمة المرور، والموظف المرتبط.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(u.name)}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername" value="${esc(u.username)}" readonly></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(اتركها فارغة دون تغيير)</small></label><input type="password" id="userPassword"></div><div class="fg"><label>الدور والصلاحيات</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:${u.role==='dept_head'?'':'none'}"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><select id="userDeptCode"><option value="">— اختر القسم —</option>${deptOpts}</select></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(emp?.id||'',u.id)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" ${u.active!==false?'selected':''}>نشط</option><option value="false" ${u.active===false?'selected':''}>موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="updateUser('${id}')"><i class=ji data-i=save></i> حفظ التعديل</button></div>`);
+const deptSrc=(STATE.hrDepartments&&STATE.hrDepartments.length?STATE.hrDepartments:(STATE.departments||[]));
+const currentDepts=String(u.dept_code||'').split(',').map(x=>x.trim()).filter(Boolean);
+const deptBoxes=deptSrc.map(d=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:8px"><input type="checkbox" class="userDeptBox" value="${esc(d.code)}" ${currentDepts.includes(String(d.code))?'checked':''}> <span>${esc(d.name||d.name_ar||d.code)}</span></label>`).join('');
+showModal(`<h3><i class=ji data-i=pencil></i> تعديل حساب المستخدم</h3><div class="workflow-banner">اسم المستخدم ثابت كمعرّف دخول. يمكنك تعديل الاسم، الدور، الحالة، كلمة المرور، والموظف المرتبط.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(u.name)}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername" value="${esc(u.username)}" readonly></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(اتركها فارغة دون تغيير)</small></label><input type="password" id="userPassword"></div><div class="fg"><label>الدور والصلاحيات</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:${u.role==='dept_head'?'':'none'}"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(emp?.id||'',u.id)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" ${u.active!==false?'selected':''}>نشط</option><option value="false" ${u.active===false?'selected':''}>موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="updateUser('${id}')"><i class=ji data-i=save></i> حفظ التعديل</button></div>`);
 }
 async function updateUser(id){
 const u=STATE.users.find(x=>String(x.id)===String(id));
@@ -671,8 +689,8 @@ const newPw=document.getElementById('userPassword')?.value;
 const employeeId=document.getElementById('userEmployee')?.value||null;
 const active=document.getElementById('userActive')?.value!=='false';
 if(!name||!role){ toast('أكمل بيانات المستخدم','error'); return; }
-const deptCode=role==='dept_head'?(document.getElementById('userDeptCode')?.value||null):null;
-if(role==='dept_head'&&!deptCode){ toast('اختر قسم رئيس القسم','error'); return; }
+const deptCode=role==='dept_head'?(Array.from(document.querySelectorAll('#userDeptBoxes input[type=checkbox]:checked')).map(x=>x.value).join(',')||null):null;
+if(role==='dept_head'&&!deptCode){ toast('اختر قسمًا واحدًا على الأقل لرئيس القسم','error'); return; }
 try {
   const payload={name,role,active};
   if(role==='dept_head') {payload.dept_code=deptCode;}
@@ -735,6 +753,17 @@ return `
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchGeofenceEnabled" ${punchChecked('punch_geofence_enabled')}> <b>قيد الموقع الجغرافي (Geofence)</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchDeviceBinding" ${punchChecked('punch_device_binding')}> <b>ربط جهاز واحد بكل موظف</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchSelfieEnabled" ${punchChecked('punch_selfie_enabled')}> <b>لقطة تحقق مع البصمة</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchFaceEnabled" ${punchChecked('punch_face_enabled')}> <b>محرك الوجه الأساسي (v1 — يعمل مع أي كاميرا)</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchFaceV2Enabled" ${punchChecked('punch_face_v2_enabled')}> <b>محرك الوجه المتقدم (ArcFace 512-d على السيرفر) — القوالب الجديدة تُسجَّل به تلقائيًا</b></label>
+</div>
+<div class="fg" style="margin-top:10px">
+<label>عتبة المطابقة (أقل = أشد صرامة — ارفعها قليلًا لو رُفضت وجوه صحيحة في إضاءة مختلفة)</label>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<label>الأساسي (0.3-0.9):</label>
+<input type="number" id="punchFaceThreshold" value="${esc(punchKv('punch_face_threshold')||'0.55')}" min="0.3" max="0.9" step="0.01" style="width:100px">
+<label>المتقدم (0.2-0.8):</label>
+<input type="number" id="punchFaceV2Threshold" value="${esc(punchKv('punch_face_v2_threshold')||'0.42')}" min="0.2" max="0.8" step="0.01" style="width:100px">
+</div>
 </div>
 <div class="fg" style="margin-top:14px">
 <label><i class=ji data-i=map-pin></i> إحداثيات المطعم (تُلتقط وأنت داخل المطعم)</label>
@@ -753,6 +782,14 @@ return `
 <div style="display:flex;gap:10px">
 <input type="number" id="punchMaxAcc" value="${esc(punchKv('punch_max_accuracy_m')||'50')}" min="10" max="200" style="width:150px">
 <input type="number" id="punchMaxAge" value="${esc(punchKv('punch_max_fix_age_s')||'30')}" min="5" max="120" style="width:150px">
+</div>
+</div>
+<div class="fg" style="margin-top:10px;border:1px solid var(--gold);border-radius:10px;padding:10px 14px">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchTeleportCheck" ${punchChecked('punch_teleport_check') || punchKv('punch_teleport_check') == null ? 'checked' : ''}> <b>🛡️ فحص التنقل المستحيل — رفض القفزات بين بصمتين (مشاركة حسابات/تزييف متنقل)</b></label>
+<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
+<label>أقصى سرعة بين بصمتين (كم/س):</label>
+<input type="number" id="punchMaxTeleportKmh" value="${esc(punchKv('punch_max_teleport_kmh')||'250')}" min="50" max="1000" style="width:120px">
+<small class="text-muted">الافتراضي 250 — فوق أي سيارة داخل المدينة. القفزة الأصغر تُقبل.</small>
 </div>
 </div>
 <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
@@ -819,17 +856,22 @@ renderPunchAttemptsSummary();
 const rows = _punchAdminState.attempts;
 if(!rows.length){ tbl.innerHTML = '<div class="mcard u-empty">لا محاولات مسجلة بعد</div>'; return; }
 tbl.innerHTML = `<div style="overflow-x:auto"><table class="keep-table" style="width:100%;font-size:13px">
-<thead><tr><th>الوقت</th><th>المستخدم</th><th>القرار</th><th>السبب</th><th>المسافة</th><th>الدقة</th><th>IP</th></tr></thead>
+<thead><tr><th>الوقت</th><th>المستخدم</th><th>القرار</th><th>السبب</th><th>المسافة</th><th>الدقة</th><th>الثقة</th><th>IP</th></tr></thead>
 <tbody>${rows.map(a=>{
 const dt = a.attempted_at ? new Date(a.attempted_at).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'}) : '—';
 const okRow = a.decision==='accepted';
+const trust = a.trust_score != null ? Number(a.trust_score) : null;
+const trustCell = trust == null ? '—' : `<b style="color:${trust >= 80 ? '#2ecc71' : trust >= 50 ? '#e67e22' : '#e74c3c'}">${trust}%</b>`;
+const reason = a.reject_code === 'PUNCH_LOCATION_TELEPORT' && a.teleport_kmh != null
+? `تنقل مستحيل (${esc(String(a.teleport_kmh))} كم/س)` : esc(a.reject_code||'—');
 return `<tr style="border-top:1px solid var(--border)">
 <td>${esc(dt)}</td>
 <td>${esc(a.username||'—')}</td>
 <td>${okRow?'<b style="color:#2ecc71">مقبولة</b>':'<b style="color:#e74c3c">مرفوضة</b>'}</td>
-<td>${esc(a.reject_code||'—')}</td>
+<td>${reason}${a.trust_signals ? `<br><small class="text-muted">${esc(String(a.trust_signals))}</small>` : ''}</td>
 <td>${a.distance_m!=null?esc(String(a.distance_m))+'م':'—'}</td>
 <td>${a.accuracy_m!=null?esc(String(a.accuracy_m))+'م':'—'}</td>
+<td>${trustCell}</td>
 <td>${esc(a.remote_ip||'—')}</td>
 </tr>`;}).join('')}</tbody></table></div>`;
 }catch(e){ tbl.innerHTML = `<div class="mcard u-empty">تعذر تحميل السجل: ${esc(e.message)}</div>`; }
@@ -862,9 +904,15 @@ punch_portal_enabled: document.getElementById('punchPortalEnabled')?.checked || 
 punch_geofence_enabled: document.getElementById('punchGeofenceEnabled')?.checked || false,
 punch_device_binding: document.getElementById('punchDeviceBinding')?.checked || false,
 punch_selfie_enabled: document.getElementById('punchSelfieEnabled')?.checked || false,
+punch_face_enabled: document.getElementById('punchFaceEnabled')?.checked || false,
+punch_face_v2_enabled: document.getElementById('punchFaceV2Enabled')?.checked || false,
+punch_face_threshold: document.getElementById('punchFaceThreshold')?.value || '0.55',
+punch_face_v2_threshold: document.getElementById('punchFaceV2Threshold')?.value || '0.42',
 punch_radius_meters: document.getElementById('punchRadius')?.value || '120',
 punch_max_accuracy_m: document.getElementById('punchMaxAcc')?.value || '50',
 punch_max_fix_age_s: document.getElementById('punchMaxAge')?.value || '30',
+punch_teleport_check: document.getElementById('punchTeleportCheck')?.checked ?? true,
+punch_max_teleport_kmh: document.getElementById('punchMaxTeleportKmh')?.value || '250',
 punch_restaurant_lat: document.getElementById('punchLat')?.value ?? '',
 punch_restaurant_lng: document.getElementById('punchLng')?.value ?? '',
 };
@@ -880,7 +928,7 @@ const box = document.getElementById('punchFacesList');
 if(!box){return;}
 box.innerHTML = window.__punchFaces?.length
 ? window.__punchFaces.map(f=>`<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px">
-<span><b>${esc(f.name||f.username||('موظف '+f.user_id))}</b> <small class="text-muted">سُجل ${esc(String(f.enrolled_at||'').slice(0,10))}</small></span>
+<span><b>${esc(f.name||f.username||('موظف '+f.user_id))}</b> <small class="text-muted">سُجل ${esc(String(f.enrolled_at||'').slice(0,10))}</small> ${f.engine === 'v2' ? '<span class="badge bdg-blue">متقدم</span>' : '<span class="badge bdg-gray">أساسي</span>'}</span>
 <button class="btn btn-red btn-sm" onclick="removePunchFace(${f.user_id})"><i class=ji data-i=trash></i> إزالة</button>
 </div>`).join('')
 : '<small class="text-muted">لا وجوه مسجلة بعد</small>';
@@ -896,11 +944,19 @@ async function enrollPunchFace(){
 const userId = Number(document.getElementById('punchFaceUser')?.value);
 if(!userId){ toast('اختر الموظف أولًا','error'); return; }
 try{
-toast('جارٍ فتح الكاميرا — انظر للأسفل بثبات…','info');
-const descriptor = await window.openFaceCameraAndGetDescriptor('تسجيل وجه: ' + (STATE.employees.find(e=>e.userId===userId)?.name||''));
-await apiFetch('/attendance/portal/face/enroll', { method:'POST', body: JSON.stringify({ targetUserId: userId, descriptor }) });
-toast('تم تسجيل الوجه بنجاح','success');
+toast('جارٍ فتح الكاميرا — انظر للكاميرا بثبات…','info');
+// نفس الحفظ المزدوج المستخدم في الجوال (v2 صور + v1 متجهات) — البصمة تقبل أيهما جهز
+const face = await window.openFaceCameraForEnrollment('تسجيل وجه: ' + (STATE.employees.find(e=>e.userId===userId)?.name||''));
+const saved = await window.saveFaceEnrollment(userId, face);
+if (saved.v2 || saved.v1) {
+toast(window.faceEnrollMessage ? window.faceEnrollMessage(saved) : 'تم تسجيل الوجه بنجاح','success');
+if (!punchBool('punch_face_enabled') && !punchBool('punch_face_v2_enabled')) {
+toast('⚠️ تنبيه: محركا الوجه مطفآن في الإعدادات — فعّل أحدهما وإلا ستُرفض البصمات','error');
+}
 await refreshPunchFaces();
+} else {
+toast('فشل التسجيل: ' + (saved.v2Error || saved.v1Error || 'لا لقطة صالحة'),'error');
+}
 }catch(e){ if(e.message!=='FACE_CANCELLED'){ toast(e.message||'فشل التسجيل','error'); } }
 }
 
@@ -913,4 +969,4 @@ await refreshPunchFaces();
 }catch(e){ toast(e.message||'فشل','error'); }
 }
 
-export { enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };
+export { saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };

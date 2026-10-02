@@ -145,9 +145,13 @@ describe('Round-2 — canDecideLeave (no self-approval in the leave chain)', () 
     });
 
     it('admin استثناء موثّق: يمر في كل المراحل حتى لو كان صاحب الطلب', () => {
-        for (const stage of ['direct_manager', 'operations_manager', 'general_manager', 'hr']) {
+        // تحديث 2026-10-02: السلسلة أصبحت 3 مراحل منذ ترحيل 090 (operations_manager
+        // ملغاة وتبقى للسجلات القديمة فقط) — الاختبار كان يفترض سلسلة 4 مراحل قديمة.
+        for (const stage of ['direct_manager', 'general_manager', 'hr']) {
             expect(canDecideLeave({ role: 'admin' }, stage, true)).toEqual({ ok: true });
         }
+        // المرحلة الملغاة تبقى مرفوضة لكل الأدوار (ليست مرحلة نشطة)
+        expect(canDecideLeave({ role: 'admin' }, 'operations_manager', true).code).toBe('LEAVE_STAGE_FORBIDDEN');
     });
 
     it('دور بلا صلاحية في المرحلة يُرفض رفض مرحلة قبل أي شيء آخر', () => {

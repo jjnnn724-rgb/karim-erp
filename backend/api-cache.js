@@ -18,6 +18,9 @@ function apiCacheMiddleware(req, res, next) {
     // own rate limiter: serving it from cache would both show stale data and
     // bypass generalLimiter (route middleware never runs on a cache HIT).
     if (req.path === '/api/state' || req.path === '/state') { return next(); }
+    // SECURITY: خزنة كلمات المرور لا تُخزَّن أبدًا — عرض كلمة مرور قديمة من
+    // الكاش بعد تعيين جديد يربك الأدمن، وتخزين كلمات مرور في Map من غير حاجة.
+    if (req.path.startsWith('/api/users/') && req.path.endsWith('/password')) { return next(); }
     const key = `${req.headers.authorization || ''}|${req.originalUrl}`;
     const cached = _apiCache.get(key);
     if (cached && Date.now() - cached.ts < API_CACHE_TTL) {

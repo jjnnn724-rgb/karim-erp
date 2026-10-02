@@ -45,6 +45,8 @@ class AttendanceSyncEngine {
         this.running = false;
         this.timer = null;
         this._ticking = false;
+        this._tickStartedAt = 0;
+        this._watchdog = null;
         this.io = null;
         this.lastReconcileAt = 0;
         /** id → { syncing, lastAttemptAt, lastResultAt, lastError, consecutiveFailures } */
@@ -83,12 +85,24 @@ class AttendanceSyncEngine {
             this._tick();
             this.timer = setInterval(() => this._tick(), 5000);
         }, 3000);
+        // حرس الدورة: دورة عالقة أكثر من 5 دقائق (شبكة/استعلام) تُفك تلقائياً
+        // حتى لا يتوقف سحب البصمات بصمت كما حدث في 2026-10-02
+        this._watchdog = setInterval(() => {
+            if (this._tickStartedAt && Date.now() - this._tickStartedAt > 5 * 60 * 1000) {
+                logger.warn('[ZKTECO_ENGINE] دورة مزامنة عالقة أكثر من 5 دقائق — فك القفل تلقائياً');
+                this._ticking = false;
+                this._tickStartedAt = 0;
+            }
+        }, 60 * 1000);
         logger.info('[ZKTECO_ENGINE] محرك مزامنة البصمة يعمل داخل الخادم (دورة كل 5 ثوان)');
     }
 
     stop() {
         this.running = false;
         if (this.timer) { clearTimeout(this.timer); clearInterval(this.timer); this.timer = null; }
+        if (this._watchdog) { clearInterval(this._watchdog); this._watchdog = null; }
+        this._ticking = false;
+        this._tickStartedAt = 0;
         logger.info('[ZKTECO_ENGINE] أُوقف محرك مزامنة البصمة بأمان');
     }
 
@@ -110,12 +124,18 @@ class AttendanceSyncEngine {
     async _tick() {
         if (!this.running || this._ticking) {return;}
         this._ticking = true;
+        this._tickStartedAt = Date.now();
         const now = Date.now();
         try {
             const { rows } = await pool.query('SELECT * FROM attendance_devices WHERE enabled = true ORDER BY id');
             for (const device of rows) {
                 if (!this.running) {break;}
                 const st = this._state(device.id);
+                // حرس التعليق: مزامنة عالقة أكثر من دقيقتين (socket بلا رد) تُفك تلقائياً
+                if (st.syncing && st.lastAttemptAt && now - st.lastAttemptAt > 120000) {
+                    logger.warn('[ZKTECO_ENGINE] مزامنة عالقة أكثر من دقيقتين — فك القفل وإعادة المحاولة:', device.name || device.id);
+                    st.syncing = false;
+                }
                 if (st.syncing) {continue;}
                 const intervalMs = Math.max(5, Number(device.syncIntervalSeconds) || 30) * 1000;
                 // التراجع الأسي: جهاز يفشل باستمرار يُعاد محاولته بتأخير متزايد
@@ -140,6 +160,7 @@ class AttendanceSyncEngine {
             logger.error('[ZKTECO_ENGINE] دورة المزامنة فشلت:', error.message);
         } finally {
             this._ticking = false;
+            this._tickStartedAt = 0;
         }
     }
 

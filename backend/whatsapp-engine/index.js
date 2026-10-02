@@ -35,7 +35,10 @@ const { WorkflowEngine } = require('./workflows/engine');
 const { WebhookManager } = require('./webhooks');
 const { CircuitBreaker } = require('./circuit-breaker');
 const { Analytics } = require('./analytics');
-const { automation } = require('./automation');
+// ROOT FIX 2026-10-02: كان `{ automation } = require(...)` والوحدة تصدّر الدوال
+// مباشرة → automation=undefined → startAutomation ترمي TypeError داخل catch
+// صامت → مجدول التقرير الليلي لم يبدأ يومًا (لا wa_daily_last ولا رسائل 23:55).
+const automation = require('./automation');
 const { supervisorDecision } = require('./supervisor');
 const { MessageScheduler } = require('./scheduler');
 
@@ -182,7 +185,10 @@ class WhatsappEngine {
             logger.warn('[GENIUS] monthly scheduler failed: ' + String(e.message).slice(0, 150));
         }
 
-        try { automation.startAutomation(this); } catch (_) {}
+        try { automation.startAutomation(this); } catch (e) {
+            // لا صمت هنا مجددًا — فشل بدء المجدول يعني تقريرًا ليليًا لا يُرسل يوميًا
+            logger.error('[WHATSAPP] automation scheduler failed to start: ' + String(e.message).slice(0, 150));
+        }
         this._startWatchdog();
         // Sweep stale 'received' inbox (crash between insert and reply) — durable queue resends.
         try { require('./pipeline').sweepStale(this).catch(() => {}); } catch (_) {}

@@ -3,13 +3,26 @@ const crypto = require('crypto');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { generalLimiter } = require('./rate-limiter');
 const { buildMonthlyAttendanceSummaryQuery } = require('./monthly-attendance-query');
 const { shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, lockGraceMinutes, graceMinutes, calculateDelayParts } = require('./shift-day');
-const { calculateTotalLateMinutes } = require('./attendance-engine');
+const { calculateTotalLateMinutes, loadShiftHistoryMap, resolveShiftAt } = require('./attendance-engine');
 
 const router = express.Router();
 const QR_SECRET = process.env.EMPLOYEE_QR_SECRET || process.env.JWT_SECRET;
 const ADMIN_ROLES = ['admin', 'hr', 'manager'];
+
+// SECURITY: صفحة تحقق البطاقة عامة (بلا x-api-key) — قاعدة بيانات + HTML لكل
+// مسح QR، فيجب تقييدها لكل IP.
+const cardVerifyLimiter = generalLimiter;
+
+// HTML-escape لكل قيمة من قاعدة البيانات تُدرج في صفحة التحقق العامة —
+// الاسم/الوظيفة/القسم تأتي من إدخال بشري و Stored XSS هنا تنفذ على كل هاتف يمسح البطاقة.
+function esc(v) {
+    return String(v ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 const WORK_DAY_MINUTES = 10 * 60;
 function requireQrSecret(res) {
@@ -313,32 +326,43 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
     const detail = req.query.detail === '1';
     const { rows } = await pool.query(buildMonthlyAttendanceSummaryQuery(), [m]);
     // حساب إجمالي التأخير لكل موظف بدقة (دقائق فعلية) - استبعاد أيام الإجازة والصفوف الغامضة
+    // ═══ قرار المالك (2026-09): الحساب على أساس «إتمام ساعات الوردية» ═══
+    // اليوم مكتمل إذا المنفّذ >= مطلوب الوردية (shift_karim) — التأخير المعتمد =
+    // ما نقص من الساعات بأي طرف (تأخير دخول أو انصراف مبكر)، والدخول المبكر
+    // يغطي الانصراف المبكر. الأيام المفتوحة/المكررة تُعرض «قيد المراجعة» فقط.
     const detailed = await pool.query(
-        `SELECT a."employeeId", a."checkIn", a."checkOut", a."workMinutes", e.shift_start, e.shift_karim FROM attendance a JOIN employees e ON e.id=a."employeeId"
-          WHERE e.status='active' AND a.date LIKE $1 || '-%' AND a."checkIn" IS NOT NULL AND NOT a.on_leave`, [m]);
-    const lateMap = new Map();
-    const lateDaysMap = new Map();
-    const reviewMap = new Map();
-    const reviewDaysMap = new Map();
+        `SELECT a."employeeId", a.date, a."checkIn", a."checkOut", a.late, e.shift_start, e.shift_karim
+           FROM attendance a JOIN employees e ON e.id=a."employeeId"
+          WHERE e.status='active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)`, [m]);
+    const toMin = (t) => { const mm = String(t || '').match(/^(\d{1,2}):(\d{2})$/); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : null; };
+    const agg = new Map();
+    // المطلوب = الدوام الساري في تاريخ اليوم نفسه (تاريخ السريان 087) —
+    // تغيير البطاقة اليوم لا يعيد حساب الأيام السابقة أبدًا.
+    const mIds = [...new Set(detailed.rows.map((r) => Number(r.employeeId)).filter(Number.isInteger))];
+    const mHist = await loadShiftHistoryMap(mIds, `${m}-01`, `${m}-31`);
     for (const r of detailed.rows) {
-        const mins = calculateLateMinutes(r, { shift_start: r.shift_start, shift_karim: r.shift_karim });
-        const wm = Number(r.workMinutes);
-        const needsReview = Boolean(r.checkIn && r.checkOut && (Number.isFinite(wm) ? wm === 0 : false));
-        if (needsReview) {
-            reviewMap.set(r.employeeId, (reviewMap.get(r.employeeId) || 0) + mins);
-            reviewDaysMap.set(r.employeeId, (reviewDaysMap.get(r.employeeId) || 0) + 1);
-            continue;
-        }
-        lateMap.set(r.employeeId, (lateMap.get(r.employeeId) || 0) + mins);
-        if (mins > 0) {
-            lateDaysMap.set(r.employeeId, (lateDaysMap.get(r.employeeId) || 0) + 1);
-        }
+        let a = agg.get(r.employeeId);
+        if (!a) { a = { completeWorkDays: 0, shortDays: 0, deficitMinutes: 0, lateInDays: 0, reviewDays: 0 }; agg.set(r.employeeId, a); }
+        if (r.late) { a.lateInDays += 1; } // إحصائي: دخول بعد بداية الوردية (لا يعني عجزًا إذا أكمل)
+        const at = resolveShiftAt(mHist.get(String(r.employeeId)), r.date, null);
+        const reqHours = at ? Number(at.shift_karim) : Number(r.shift_karim);
+        const required = (reqHours > 0 ? reqHours : 10) * 60;
+        const ci = toMin(r.checkIn), co = toMin(r.checkOut);
+        if (ci == null || co == null) { a.reviewDays += 1; continue; } // يوم مفتوح/بيانات ناقصة
+        let worked = co - ci; if (co < ci) { worked += 1440; } // التفاف الوردية الليلية
+        if (worked === 0) { a.reviewDays += 1; continue; } // بصمة مكررة → قيد المراجعة
+        if (worked >= required) { a.completeWorkDays += 1; }
+        else { a.shortDays += 1; a.deficitMinutes += (required - worked); }
     }
     const out = { month: m, employees: rows.map(r => {
-        const lm = lateMap.get(r.id) || 0;
-        const lateDays = lateDaysMap.get(r.id) || 0;
+        const a = agg.get(r.id) || { completeWorkDays: 0, shortDays: 0, deficitMinutes: 0, lateInDays: 0, reviewDays: 0 };
         const empWorkDayMinutes = (Number(r.shift_karim) > 0 ? Number(r.shift_karim) : 10) * 60;
-        return { ...r, workDayMinutes: empWorkDayMinutes, karimHours: Number((r.minutes / 60).toFixed(1)), lateMinutes: lm, lateHours: Number((lm/60).toFixed(2)), lateDays: lateDays, leaveDays: r.leave_days || 0, reviewDays: reviewDaysMap.get(r.id) || 0, reviewMinutes: reviewMap.get(r.id) || 0, lateRemainingHours: Number(((lm % empWorkDayMinutes)/60).toFixed(2)) };
+        return { ...r, workDayMinutes: empWorkDayMinutes, karimHours: Number((r.minutes / 60).toFixed(1)),
+            completeWorkDays: a.completeWorkDays, shortDays: a.shortDays, deficitMinutes: a.deficitMinutes,
+            deficitHours: Number((a.deficitMinutes / 60).toFixed(2)), lateInDays: a.lateInDays,
+            // توافق أسماء الواجهة السابقة: «التأخير» الآن = العجز عن إتمام ساعات الوردية
+            lateMinutes: a.deficitMinutes, lateDays: a.shortDays,
+            leaveDays: r.leave_days || 0, reviewDays: a.reviewDays, reviewMinutes: 0 };
     }) };
     // متوسط ساعات يوم العمل لكل الموظفين (للعرض في رأس التقرير)
     out.workDayMinutes = 600; // افتراضي 10 ساعات
@@ -495,33 +519,53 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
     if (!/^\d{4}-\d{2}$/.test(month)) {return res.status(422).json({ error: 'PAYROLL_MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });}
     const [year, mon] = month.split('-').map(Number);
     if (mon < 1 || mon > 12) {return res.status(422).json({ error: 'PAYROLL_MONTH_INVALID', message: 'شهر غير صالح' });}
+    // V6 Phase 3 (decision #7): إعادة توليد شهر مقفل ممنوعة — تحمي المسير المعتمد.
+    try {
+        const { isPeriodClosed } = require('./accounting-periods');
+        if (await isPeriodClosed(month)) {return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن إعادة توليد الرواتب (أعد فتح الفترة أولًا)` });}
+        // ROOT FIX 2026-10-02: إعادة توليد شهر مُرحّل محاسبيًا تكسر مطابقة
+        // المسير مع القيد — تُرفض (الترحيل idempotent ولا يُصحح تلقائيًا).
+        try {
+            const _je = (await pool.query(
+                "SELECT 1 FROM journal_entries WHERE source_type='payroll' AND source_id=$1 AND status='posted' LIMIT 1", [month])).rows[0];
+            if (_je) {return res.status(409).json({ error: 'PAYROLL_ALREADY_POSTED', message: `رواتب ${month} مُرحّلة محاسبيًا — إعادة التوليد ستبطل مطابقة القيد. راجع المالية أولًا.` });}
+        } catch (_) { /* controls down → fail-open */ }
+    } catch (_) { /* controls down → fail-open */ }
     const includeOvertime = req.body?.includeOvertime === true;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         const emps = (await client.query(
             `SELECT id, name, salary, shift_start, shift_karim FROM employees WHERE status = 'active' ORDER BY id`)).rows;
+        // تاريخ السريان لمرة واحدة: أوفرتايم كل يوم بساعاته السارية فيه
+        const payHist = await loadShiftHistoryMap(emps.map((e) => e.id), `${month}-01`, `${month}-31`);
         const detail = [];
         let tBasic = 0, tOt = 0, tBonus = 0, tPen = 0, tAdv = 0, tNet = 0;
         for (const emp of emps) {
             const basic = Number(emp.salary || 0);
             const sHours = Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10;
-            const hourly = sHours > 0 ? basic / 30 / sHours : 0;
             // الأوفرتايم اختياري — يحسب بس لو الأدمن حطه (من البصمات)
             const att = (await client.query(
-                `SELECT "workMinutes" FROM attendance
+                `SELECT "workMinutes", date FROM attendance
                   WHERE "employeeId" = $1 AND date LIKE $2 AND "checkIn" IS NOT NULL AND "checkOut" IS NOT NULL`,
                 [emp.id, `${month}-%`])).rows;
             const daysPresent = att.length;
-            const expectedDay = Math.round(sHours * 60);
+            const empHist = payHist.get(String(emp.id));
             let otMinutes = 0;
             let overtimePay = 0;
             if (includeOvertime) {
                 for (const a of att) {
                     const w = Number(a.workMinutes);
-                    if (Number.isFinite(w) && w > expectedDay) {otMinutes += w - expectedDay;}
+                    if (!Number.isFinite(w)) {continue;}
+                    const at = resolveShiftAt(empHist, a.date, null);
+                    const hd = at ? Number(at.shift_karim) : sHours;
+                    const exp = Math.round((hd > 0 ? hd : 10) * 60);
+                    if (w > exp) {
+                        otMinutes += w - exp;
+                        overtimePay += ((w - exp) / 60) * (sHours > 0 ? basic / 30 / (hd > 0 ? hd : 10) : 0);
+                    }
                 }
-                overtimePay = Math.round((otMinutes / 60) * hourly * 100) / 100;
+                overtimePay = Math.round(overtimePay * 100) / 100;
             }
             // الجزاءات/العلاوات الشهرية
             const adj = (await client.query(
@@ -600,7 +644,7 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
 /** تحقق مختصر من بطاقة موظف (QR الجديد الخفيف) — GET /card/v/<cardId>.<sig16>
  * نفس الأمان: sig16 = أول 16 hex من HMAC(cardId) — والتحقق الكامل من DB.
  * البطاقات القديمة (d/s) تعمل كما هي — لا كسر للخلف. */
-router.get('/card/v/:code', async (req, res) => {
+router.get('/card/v/:code', cardVerifyLimiter, async (req, res) => {
     try {
         if (!QR_SECRET) {return res.status(503).send('التحقق غير مهيأ');}
         const parts = String(req.params.code || '').split('.');
@@ -614,7 +658,7 @@ router.get('/card/v/:code', async (req, res) => {
             return res.status(403).send('توقيع غير صالح — بطاقة مزورة محتملة');
         }
         const emp = (await pool.query(
-            `SELECT e.name, e."employeeId", e."deviceUserId", e.department, e.position, e.photo, e.status,
+            `SELECT e.name, e."employeeId", e.department, e.position, e.status,
                     h.name AS dept_name, e."cardStatus", e."cardIssuedAt"
                FROM employees e LEFT JOIN "hrDepartments" h ON h.code = e.department
               WHERE e."cardId" = $1 LIMIT 1`, [String(cardId)])).rows[0];
@@ -652,35 +696,43 @@ h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13
 ${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاعم الشرفه العالمي">` : ''}
 <div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
 </div><div class="card">
-<h1>${emp.name}</h1>
-<div class="co">${emp.position || ''} • ${emp.dept_name || emp.department || ''}</div>
+<h1>${esc(emp.name)}</h1>
+<div class="co">${esc(emp.position)} • ${esc(emp.dept_name || emp.department)}</div>
 <div><span class="badge ${active ? 'ok' : 'no'}">${active ? '✓ بطاقة سارية وموظف نشط' : '✕ غير سارية'}</span></div>
-<div class="row"><span>رقم الموظف</span><b>${emp.employeeId || ''}</b></div>
-<div class="row"><span>رقم البصمة</span><b>${emp.deviceUserId || ''}</b></div>
-<div class="row"><span>إصدار البطاقة</span><b>${emp.cardIssuedAt ? String(emp.cardIssuedAt).slice(0, 10) : ''}</b></div>
-<div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${new Date().toISOString().slice(0, 16).replace('T', ' ')}</div>
+<div class="row"><span>رقم الموظف</span><b>${esc(emp.employeeId)}</b></div>
+<div class="row"><span>إصدار البطاقة</span><b>${emp.cardIssuedAt ? esc(String(emp.cardIssuedAt).slice(0, 10)) : ''}</b></div>
+<div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${esc(new Date().toISOString().slice(0, 16).replace('T', ' '))}</div>
 </div></body></html>`);
 }
 
-/** تحقق عام من بطاقة موظف (مسح QR) — بيانات عامة فقط، بتوقيع HMAC */
-router.get('/card/verify', async (req, res) => {
+/** تحقق عام من بطاقة موظف (مسح QR) — بيانات عامة فقط، بتوقيع HMAC.
+ * SECURITY: الاستعلام يربط كامل هوية البطاقة (employeeId + cardId + qrVersion +
+ * qrTokenHash) — كان يكفي employeeId فقط فيبقى رابط مسروق صالحًا للأبد حتى بعد
+ * تجديد البطاقة أو إبطالها. */
+router.get('/card/verify', cardVerifyLimiter, async (req, res) => {
     try {
         const d = String(req.query.d || '');
         const s = String(req.query.s || '');
         let p = null;
         try { p = JSON.parse(Buffer.from(d, 'base64url').toString('utf8')); } catch (_) { p = null; }
-        if (!p || !p.eid || !p.t) {return res.status(400).send('رمز غير صالح');}
+        if (!p || !p.eid || !p.t || !p.cid) {return res.status(400).send('رمز غير صالح');}
         const expect = crypto.createHmac('sha256', QR_SECRET)
             .update(`${p.eid}|${p.cid}|${p.v}|${p.t}`, 'utf8').digest('hex');
-        if (!crypto.timingSafeEqual(Buffer.from(s), Buffer.from(expect))) {
+        // timingSafeEqual يرمي RangeError عند اختلاف الطول — افحص الصيغة أولًا
+        // حتى لا يتحول توقيع مشوه إلى 500.
+        if (!/^[a-f0-9]{64}$/i.test(s)) {return res.status(403).send('توقيع غير صالح — بطاقة مزورة محتملة');}
+        if (!crypto.timingSafeEqual(Buffer.from(s.toLowerCase()), Buffer.from(expect))) {
             return res.status(403).send('توقيع غير صالح — بطاقة مزورة محتملة');
         }
         const emp = (await pool.query(
-            `SELECT e.name, e."employeeId", e."deviceUserId", e.department, e.position, e.photo, e.status,
+            `SELECT e.name, e."employeeId", e.department, e.position, e.status,
                     h.name AS dept_name, e."cardStatus", e."cardIssuedAt"
                FROM employees e LEFT JOIN "hrDepartments" h ON h.code = e.department
-              WHERE e."employeeId" = $1 LIMIT 1`, [String(p.eid)])).rows[0];
-        if (!emp) {return res.status(404).send('الموظف غير موجود');}
+              WHERE e."employeeId" = $1 AND e."cardId" = $2
+                AND e."qrVersion" = $3::int AND e."qrTokenHash" = $4
+                AND e.status = 'active' AND e."cardStatus" = 'active'`,
+            [String(p.eid), String(p.cid), Number(p.v) || -1, hashToken(String(p.t))])).rows[0];
+        if (!emp) {return res.status(404).send('البطاقة غير صالحة أو تم تجديدها');}
         const active = emp.status === 'active' && (emp.cardStatus || 'active') === 'active';
         const logoB64 = (() => { try {
             return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
@@ -702,13 +754,12 @@ ${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاع�
 <div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
 </div><div class="card">
 ${logoB64 ? `<img class="logo" src="data:image/png;base64,${logoB64}">` : ''}
-<h1>${emp.name}</h1>
-<div class="co">${emp.position || ''} • ${emp.dept_name || emp.department || ''}</div>
+<h1>${esc(emp.name)}</h1>
+<div class="co">${esc(emp.position)} • ${esc(emp.dept_name || emp.department)}</div>
 <div><span class="badge ${active ? 'ok' : 'no'}">${active ? '✓ بطاقة سارية وموظف نشط' : '✕ غير سارية'}</span></div>
-<div class="row"><span>رقم الموظف</span><b>${emp.employeeId || ''}</b></div>
-<div class="row"><span>رقم البصمة</span><b>${emp.deviceUserId || ''}</b></div>
-<div class="row"><span>إصدار البطاقة</span><b>${emp.cardIssuedAt ? String(emp.cardIssuedAt).slice(0, 10) : ''}</b></div>
-<div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${new Date().toISOString().slice(0, 16).replace('T', ' ')}</div>
+<div class="row"><span>رقم الموظف</span><b>${esc(emp.employeeId)}</b></div>
+<div class="row"><span>إصدار البطاقة</span><b>${emp.cardIssuedAt ? esc(String(emp.cardIssuedAt).slice(0, 10)) : ''}</b></div>
+<div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${esc(new Date().toISOString().slice(0, 16).replace('T', ' '))}</div>
 </div></body></html>`);
     } catch (e) {
         logger.error('[hr_card_verify]', e);
@@ -812,20 +863,31 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
         [month, `${AUTO_DEDUCTION_MARK}%`])).rows : [];
 
     const detail = [];
+    // تاريخ السريان: دوام كل يوم يُحل بتاريخه (الماضي محمي من تغييرات البطاقة)
+    const dedHist = await loadShiftHistoryMap(emps.map((e) => e.id), start.toISOString().slice(0, 10), end.toISOString().slice(0, 10));
     for (const emp of emps) {
         const salary = Number(emp.salary || 0);
         if (salary <= 0) {continue;}
         const workDayMinutes = (Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10) * 60;
         const dayRate = salary / 30;
-        const minuteRate = dayRate / workDayMinutes;
+        const empHist = dedHist.get(String(emp.id));
 
         const records = attByEmp.get(emp.id) || [];
         let lateMinutes = 0;
+        let lateMoney = 0;
         for (const row of records) {
-            const parts = calculateDelayParts(row, emp);
+            const at = resolveShiftAt(empHist, row.date, null);
+            const empAt = at
+                ? { ...emp, shift_start: at.shift_start || emp.shift_start, shift_karim: Number(at.shift_karim) > 0 ? Number(at.shift_karim) : emp.shift_karim }
+                : emp;
+            const parts = calculateDelayParts(row, empAt);
             const w = calculateMinutes(row);
             const needsReview = Boolean(row.checkIn && row.checkOut && w === 0);
-            if (!needsReview) {lateMinutes += Number(parts.lateMinutes || 0);}
+            if (!needsReview) {
+                const dayMin = (Number(empAt.shift_karim) > 0 ? Number(empAt.shift_karim) : 10) * 60;
+                lateMinutes += Number(parts.lateMinutes || 0);
+                lateMoney += Number(parts.lateMinutes || 0) * (dayRate / dayMin);
+            }
         }
         const presentDays = new Set(records.map(r => r.date));
 
@@ -843,7 +905,7 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
             absentDates.push(d);
         }
 
-        const lateDeduction = Math.round(lateMinutes * minuteRate * 100) / 100;
+        const lateDeduction = Math.round(lateMoney * 100) / 100;
         const absentDeduction = Math.round(absentDays * dayRate * 100) / 100;
         detail.push({
             employeeId: emp.id, name: emp.name, employeeCode: emp.employeeId,
@@ -876,6 +938,11 @@ router.get('/deductions/preview', jwtAuth, requireRole(...ADMIN_ROLES), async (r
 router.post('/deductions/apply', jwtAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
     const month = /^\d{4}-\d{2}$/.test(String(req.body?.month || '')) ? String(req.body.month) : '';
     if (!month) {return res.status(422).json({ error: 'MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });}
+    // V6 Phase 3 (decision #7): تطبيق الخصومات على شهر مقفل ممنوع.
+    try {
+        const { isPeriodClosed } = require('./accounting-periods');
+        if (await isPeriodClosed(month)) {return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن تطبيق الخصومات (أعد فتح الفترة أولًا)` });}
+    } catch (_) { /* controls down → fail-open */ }
     const skipFridays = req.body?.skipFridays === true;
     const client = await pool.connect();
     try {
@@ -947,4 +1014,394 @@ router.post('/shifts/recompute', jwtAuth, requireRole('admin', 'hr', 'manager'),
     catch (e) { res.status(500).json({ error: 'RECOMPUTE_FAILED', message: e.message }); }
 });
 
-module.exports = { router, provisionCard, signQrPayload, calculateMinutes, calculateLateMinutes };
+// ─── جدول دوامات القسم: رئيس القسم يكتب دوامات رجاله — تسمع فورًا ───
+// يكتب أعمدة الدوام الثابت مباشرة (مصدر الحقيقة للمحرك) — بلا مسودات ولا اعتماد.
+// التاريخ القديم لا يُمس (صفوف الحضور السابقة كما هي)؛ التغيير والرجوع حران.
+// النطاق: dept_head وأي حساب مربوط بقسم → قسمه إجباريًا. kitchen→KITCHEN و
+// warehouse→WAREHOUSE افتراضيًا. المخوّلون (admin/hr/manager/accountant بلا قسم)
+// يمررون القسم صراحة. الضم: الصف بلا قسم يُسند لقسم النطاق عند الحفظ.
+const ROSTER_ROLES = ['admin', 'hr', 'manager', 'dept_head', 'kitchen', 'warehouse', 'accountant'];
+const ROSTER_ROLE_DEPT = { kitchen: 'KITCHEN', warehouse: 'WAREHOUSE' };
+const ROSTER_PRIVILEGED = ['admin', 'hr', 'manager'];
+
+function rosterScope(user, wantDept) {
+    const myCode = String(user?.dept_code || '').trim();
+    if (user?.role === 'dept_head' || myCode) {
+        if (!myCode) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT', message: 'حساب رئيس القسم غير مرتبط بأي قسم — راجع مسؤول النظام' };}
+        // UPGRADE 2026-10-01: dept_code يقبل قائمة أقسام مفصولة بفواصل
+        // (شخص يدير أكثر من قسم مؤقتًا: storeroom,SERVICE) — التراجع بضع قسم واحد
+        return { ok: true, depts: myCode.split(',').map((x) => x.trim()).filter(Boolean), fixed: true };
+    }
+    const mapped = ROSTER_ROLE_DEPT[user?.role];
+    if (mapped) {return { ok: true, depts: [mapped], fixed: true };}
+    if (!ROSTER_PRIVILEGED.includes(user?.role) && user?.role !== 'accountant') {
+        return { ok: false, code: 'FORBIDDEN', message: 'لا تملك صلاحية جدول الدوامات' };
+    }
+    // المخوّلون: قسم واحد أو قائمة مفصولة بفواصل (مثال: ADMIN,WAREHOUSE) أو فارغ = الكل
+    const list = String(wantDept || '').split(',').map((s) => s.trim()).filter(Boolean);
+    return { ok: true, depts: list, fixed: false };
+}
+
+async function rosterValidDepts() {
+    const codes = new Set();
+    try {
+        const a = await pool.query('SELECT code FROM "hrDepartments"');
+        a.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
+    } catch (_) {}
+    try {
+        const b = await pool.query('SELECT code FROM departments');
+        b.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
+    } catch (_) {}
+    return codes;
+}
+
+const sameDept = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+const inScopeDepts = (depts, code) => (depts || []).some((d) => sameDept(d, code));
+
+router.get('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, res) => {
+    try {
+        const scope = rosterScope(req.user, req.query.dept);
+        if (!scope.ok) {return res.status(403).json({ error: scope.code, message: scope.message });}
+        const valid = await rosterValidDepts();
+        const emps = (await pool.query(
+            `SELECT e.id, e.name, e."employeeId", e.position, e.department,
+                    e.shift_start, e.shift_karim, e.day_off, e.status
+               FROM employees e WHERE e.status = 'active' ORDER BY e.name`
+        )).rows;
+        const todayRows = (await pool.query(
+            `SELECT "employeeId", "checkIn", "checkOut" FROM attendance
+              WHERE date = TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD')`
+        )).rows;
+        const todayByEmp = new Map(todayRows.map((r) => [String(r.employeeId), r]));
+        let list = emps;
+        if (scope.depts.length) {
+            list = emps.filter((e) => inScopeDepts(scope.depts, e.department));
+        }
+        const canSeeUnassigned = req.user?.role === 'hr';
+        const unassigned = canSeeUnassigned
+            ? emps.filter((e) => !String(e.department || '').trim())
+            : [];
+        const withToday = (e) => {
+            const t = todayByEmp.get(String(e.id));
+            return { ...e, todayIn: t?.checkIn || null, todayOut: t?.checkOut || null };
+        };
+        // المجدول مستقبلًا + آخر التغييرات (الشفافية الاحترافية) — fail-open
+        const todayStr = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        let pendingFuture = [];
+        let recentLog = [];
+        try {
+            const visIds = [...new Set([...list, ...unassigned].map((e) => Number(e.id)).filter(Number.isInteger))];
+            if (visIds.length) {
+                const pf = await pool.query(
+                    `SELECT h.employee_id, e.name, e."employeeId" AS emp_no, h.shift_start, h.shift_karim,
+                            h.effective_from::text AS effective_from, u.name AS by_name
+                       FROM employee_shift_history h
+                       JOIN employees e ON e.id = h.employee_id
+                       LEFT JOIN users u ON u.id = h.created_by
+                      WHERE h.employee_id = ANY($1::bigint[]) AND h.effective_from > $2::date
+                        AND h.effective_from <> DATE '2000-01-01'
+                      ORDER BY h.effective_from, e.name LIMIT 100`,
+                    [visIds, todayStr]
+                );
+                pendingFuture = pf.rows;
+                const rl = await pool.query(
+                    `SELECT h.employee_id, e.name, e."employeeId" AS emp_no, h.shift_start, h.shift_karim,
+                            h.effective_from::text AS effective_from, h.created_at::text AS created_at, u.name AS by_name
+                       FROM employee_shift_history h
+                       JOIN employees e ON e.id = h.employee_id
+                       LEFT JOIN users u ON u.id = h.created_by
+                      WHERE h.employee_id = ANY($1::bigint[]) AND h.effective_from <> DATE '2000-01-01'
+                      ORDER BY h.created_at DESC LIMIT 20`,
+                    [visIds]
+                );
+                recentLog = rl.rows;
+            }
+        } catch (_) {}
+        res.json({
+            ok: true, depts: scope.depts, fixed: scope.fixed,
+            canSeeUnassigned,
+            validDepts: [...valid],
+            mine: list.map(withToday),
+            unassigned: unassigned.map(withToday),
+            pendingFuture: pendingFuture,
+            recentLog: recentLog,
+            today: todayStr,
+        });
+    } catch (e) {
+        logger.error('[dept-roster list]', e);
+        res.status(500).json({ error: 'ROSTER_LIST_FAILED', message: 'تعذر جلب جدول القسم' });
+    }
+});
+
+router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, res) => {
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (!rows.length) {return res.status(422).json({ error: 'ROSTER_EMPTY', message: 'لا توجد صفوف للحفظ' });}
+    if (rows.length > 500) {return res.status(422).json({ error: 'ROSTER_TOO_BIG', message: 'حد أقصى 500 صف في الحفظة الواحدة' });}
+    // تاريخ السريان حر (اليوم = فوري، المستقبل = مجدول). الماضي مرفوض لحماية القديم.
+    const todayStr = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // Asia/Riyadh
+    const tomorrow = new Date(Date.now() + 3 * 3600 * 1000 + 86400000).toISOString().slice(0, 10);
+    const effRaw = String(req.body?.effective_from || tomorrow);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(effRaw)) {return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: 'تاريخ السريان YYYY-MM-DD' });}
+    if (effRaw < todayStr) {return res.status(422).json({ error: 'ROSTER_PAST_DATE', message: 'تاريخ السريان لا يكون في الماضي — القديم محمي' });}
+    const applyNow = effRaw <= todayStr;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const scope = rosterScope(req.user, req.body?.dept);
+        if (!scope.ok) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: scope.code, message: scope.message });
+        }
+        const privileged = ROSTER_PRIVILEGED.includes(req.user?.role);
+        const valid = await rosterValidDepts();
+        const ids = [...new Set(rows.map((r) => Number(r.id)).filter((n) => Number.isInteger(n)))];
+        if (!ids.length) {
+            await client.query('ROLLBACK');
+            return res.status(422).json({ error: 'ROSTER_NO_IDS', message: 'لا معرفات موظفين صالحة' });
+        }
+        const cur = (await client.query(`SELECT * FROM employees WHERE id = ANY($1::bigint[]) FOR UPDATE`, [ids])).rows;
+        const byId = new Map(cur.map((e) => [Number(e.id), e]));
+        const updates = [];
+        for (const r of rows) {
+            const emp = byId.get(Number(r.id));
+            if (!emp) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: `الموظف ${r.id} غير موجود` });
+            }
+            const hasDept = !!String(emp.department || '').trim();
+            if (hasDept && !inScopeDepts(scope.depts, emp.department) && !(privileged && !scope.fixed)) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ error: 'ROSTER_OUT_OF_SCOPE', message: `الموظف «${emp.name}» ليس في قسمك` });
+            }
+            let start = String(r.shift_start ?? emp.shift_start ?? '09:00').trim();
+            const sm = start.match(/^(\d{1,2}):(\d{2})$/);
+            if (!sm || Number(sm[1]) > 23 || Number(sm[2]) > 59) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_TIME', message: `وقت غير صالح للموظف «${emp.name}» (HH:MM)` });
+            }
+            start = `${String(sm[1]).padStart(2, '0')}:${sm[2]}`;
+            const hours = Number(r.shift_karim ?? r.shift_hours ?? emp.shift_karim ?? 10);
+            if (!Number.isFinite(hours) || hours < 1 || hours > 24) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_Karim', message: `مدة الدوام 1-24 للموظف «${emp.name}»` });
+            }
+            let dayOff = r.day_off ?? r.dayOff ?? emp.day_off ?? null;
+            if (dayOff === '' || dayOff === undefined) {dayOff = null;}
+            if (dayOff !== null && !(Number.isInteger(Number(dayOff)) && Number(dayOff) >= 0 && Number(dayOff) <= 6)) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_DAYOFF', message: `يوم الراحة 0-6 للموظف «${emp.name}»` });
+            }
+            let dept = emp.department;
+            const wantDept = r.department !== undefined ? String(r.department || '').trim() : null;
+            if (!hasDept) {
+                // الضم لشؤون العاملين (ومن يملكها) فقط — رؤساء الأقسام يرون رجالهم حصرًا
+                if (!privileged) {
+                    await client.query('ROLLBACK');
+                    return res.status(403).json({ error: 'ROSTER_CLAIM_FORBIDDEN', message: `الموظف «${emp.name}» بلا قسم — التصنيف من شؤون العاملين` });
+                }
+                const claimTo = wantDept || scope.depts[0];
+                if (claimTo && ![...valid].some((c) => sameDept(c, claimTo))) {
+                    await client.query('ROLLBACK');
+                    return res.status(422).json({ error: 'ROSTER_BAD_DEPT', message: `قسم غير معروف: ${claimTo}` });
+                }
+                if (claimTo) {dept = [...valid].find((c) => sameDept(c, claimTo)) || claimTo;}
+            } else if (privileged && wantDept && !sameDept(wantDept, emp.department)) {
+                if (![...valid].some((c) => sameDept(c, wantDept))) {
+                    await client.query('ROLLBACK');
+                    return res.status(422).json({ error: 'ROSTER_BAD_DEPT', message: `قسم غير معروف: ${wantDept}` });
+                }
+                dept = [...valid].find((c) => sameDept(c, wantDept)) || wantDept;
+            }
+            updates.push({ id: emp.id, name: emp.name, shift_start: start, shift_karim: hours, day_off: dayOff, department: dept });
+        }
+        for (const u of updates) {
+            // أساس أول: أول تغيير لموظف يجمّد قيمه الحالية بتاريخ قديم — به الماضي
+            // يُحل دائمًا بدوامه الأصلي مهما تغيرت البطاقة لاحقًا.
+            await client.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 SELECT $1, e.shift_start, e.shift_karim, e.day_off, DATE '2000-01-01', $2 FROM employees e
+                  WHERE e.id = $1 AND NOT EXISTS (SELECT 1 FROM employee_shift_history h WHERE h.employee_id = $1)
+                 ON CONFLICT DO NOTHING`,
+                [u.id, req.user.id]
+            );
+            await client.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 VALUES ($1,$2,$3,$4,$5::date,$6)
+                 ON CONFLICT (employee_id, effective_from)
+                 DO UPDATE SET shift_start=EXCLUDED.shift_start, shift_karim=EXCLUDED.shift_karim,
+                               day_off=EXCLUDED.day_off, created_by=EXCLUDED.created_by, created_at=NOW()`,
+                [u.id, u.shift_start, u.shift_karim, u.day_off, effRaw, req.user.id]
+            );
+            if (applyNow) {
+                await client.query(
+                    `UPDATE employees SET shift_start = $2, shift_karim = $3, day_off = $4, department = $5 WHERE id = $1`,
+                    [u.id, u.shift_start, u.shift_karim, u.day_off, u.department]
+                );
+            }
+        }
+        await client.query('COMMIT');
+        logger.info({ userId: req.user?.id, depts: scope.depts, n: updates.length, effective_from: effRaw, applyNow }, '[dept-roster] saved');
+        try {
+            req.io?.emit('entity_changed', {
+                entity: 'employees', entityName: 'الموظفون', action: 'update',
+                data: updates, changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString(),
+            });
+        } catch (_) {}
+        res.json({ ok: true, updated: updates.length, rows: updates, effective_from: effRaw, appliedNow: applyNow });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[dept-roster save]', e);
+        res.status(500).json({ error: 'ROSTER_SAVE_FAILED', message: 'تعذر حفظ الجدول' });
+    } finally {
+        client.release();
+    }
+});
+
+// ─── الدوام المجدول لموظف واحد (شارة البطاقة): الحالي + القادم مستقبلًا ─────
+// نفس قواعد الرؤية: إدارة/شؤون عاملين، صاحب السجل، أو رئيس قسمه
+router.get('/shift-schedule/:employeeId', jwtAuth, async (req, res) => {
+    try {
+        const empId = Number(req.params.employeeId);
+        if (!Number.isInteger(empId)) {return res.status(422).json({ error: 'INVALID_ID', message: 'معرف الموظف غير صحيح' });}
+        const emp = (await pool.query(
+            'SELECT id, name, department, shift_start, shift_karim, day_off FROM employees WHERE id=$1 LIMIT 1',
+            [empId])).rows[0];
+        if (!emp) {return res.status(404).json({ error: 'NOT_FOUND', message: 'الموظف غير موجود' });}
+        const role = req.user?.role;
+        const privileged = ['admin', 'hr', 'manager'].includes(role);
+        const owner = await pool.query('SELECT 1 FROM employees WHERE id=$1 AND "userId"=$2 LIMIT 1', [empId, req.user.id]);
+        const isOwner = owner.rows.length > 0;
+        let sameDept = false;
+        if (role === 'dept_head' && req.user?.dept_code) {
+            sameDept = String(emp.department || '').toLowerCase() === String(req.user.dept_code).toLowerCase();
+        }
+        if (!privileged && !isOwner && !sameDept) {
+            return res.status(403).json({ error: 'FORBIDDEN', message: 'لا تملك صلاحية عرض هذا السجل' });
+        }
+        const sched = (await pool.query(
+            `SELECT shift_start, shift_karim, day_off, effective_from::text AS effective_from
+               FROM employee_shift_history
+              WHERE employee_id=$1 AND effective_from > CURRENT_DATE AND effective_from <> DATE '2000-01-01'
+              ORDER BY effective_from ASC LIMIT 5`,
+            [empId])).rows;
+        res.json({
+            ok: true,
+            current: { shift_start: emp.shift_start, shift_karim: emp.shift_karim, day_off: emp.day_off },
+            scheduled: sched,
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'SCHEDULE_FAILED', message: 'تعذر جلب الدوام المجدول' });
+    }
+});
+
+// ─── ترحيل الدوامات المجدولة: كل إقلاع + كل 5 دقائق يطبق ما حان تاريخه ───
+// idempotent تمامًا (يحدّث المختلف فقط). fail-open: أي خطأ يُسجَّل فقط.
+let _rosterRolloverTimer = null;
+async function rosterRolloverOnce() {
+    try {
+        const r = await pool.query(
+            `UPDATE employees e SET shift_start = h.shift_start, shift_karim = h.shift_karim, day_off = h.day_off
+               FROM (SELECT DISTINCT ON (employee_id) employee_id, shift_start, shift_karim, day_off
+                       FROM employee_shift_history WHERE effective_from <= CURRENT_DATE
+                       ORDER BY employee_id, effective_from DESC) h
+              WHERE e.id = h.employee_id
+                AND (e.shift_start IS DISTINCT FROM h.shift_start
+                  OR e.shift_karim IS DISTINCT FROM h.shift_karim
+                  OR e.day_off IS DISTINCT FROM h.day_off)`
+        );
+        if (r.rowCount > 0) {logger.info({ n: r.rowCount }, '[dept-roster] rollover applied scheduled shifts');}
+        return r.rowCount || 0;
+    } catch (e) {
+        logger.warn('[dept-roster] rollover skipped: ' + String(e?.message || e).slice(0, 150));
+        return 0;
+    }
+}
+function startShiftRollover() {
+    if (_rosterRolloverTimer) {return;}
+    rosterRolloverOnce();
+    _rosterRolloverTimer = setInterval(rosterRolloverOnce, 5 * 60 * 1000);
+    if (typeof _rosterRolloverTimer.unref === 'function') {_rosterRolloverTimer.unref();}
+    logger.info('[dept-roster] rollover on (boot + every 5m)');
+}
+
+module.exports = { router, provisionCard, signQrPayload, calculateMinutes, calculateLateMinutes, startShiftRollover, rosterRolloverOnce };
+
+// ═══ إدارة موظفي القسم لرئيس القسم (UPGRADE 2026-10-01) ═══
+// رئيس القسم يضيف/يعدل/يعطّل موظفي قسمه حصرًا — بحقول آمنة فقط
+// (بدون الراتب/الحالة/القسم/الربط بالحسابات — تلك لـ hr/admin).
+// النطاق نفسه المعتمد في rosterScope (dept_code بقائمة فواصل).
+function deptHeadEmpScope(user) {
+    const myCode = String(user?.dept_code || '').trim();
+    if (user?.role !== 'dept_head' || !myCode) {return null;}
+    return { depts: myCode.split(',').map((x) => x.trim()).filter(Boolean) };
+}
+const inEmpScope = (empRow, depts) => (depts || []).some((d) => String(empRow.department || '').trim().toLowerCase() === String(d).toLowerCase());
+
+router.get('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res) => {
+    try {
+        const scope = deptHeadEmpScope(req.user);
+        if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم — راجع الإدارة' });}
+        const rows = (await pool.query(
+            `SELECT e.id, e.name, e."employeeId", e.position, e.phone, e.department, e.status
+             FROM employees e WHERE e.status = 'active' ORDER BY e.name`
+        )).rows;
+        const list = rows.filter((e) => inEmpScope(e, scope.depts));
+        res.json({ ok: true, depts: scope.depts, employees: list });
+    } catch (e) { next(e); }
+});
+
+router.post('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res) => {
+    try {
+        const scope = deptHeadEmpScope(req.user);
+        if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}
+        const name = String(req.body?.name || '').trim().slice(0, 255);
+        const employeeId = String(req.body?.employeeId || '').trim().slice(0, 50);
+        const position = String(req.body?.position || '').trim().slice(0, 255) || null;
+        const phone = String(req.body?.phone || '').trim().slice(0, 50) || null;
+        if (!name || !employeeId) {return res.status(422).json({ ok: false, error: 'VALIDATION_ERROR', message: 'الاسم والرقم الوظيفي إجباريان' });}
+        if (!/^[A-Za-z0-9_-]{2,50}$/.test(employeeId)) {return res.status(422).json({ ok: false, error: 'VALIDATION_ERROR', message: 'الرقم الوظيفي: حروف لاتينية/أرقام فقط (2-50)' });}
+        const dup = (await pool.query('SELECT id FROM employees WHERE "employeeId" = $1', [employeeId])).rows[0];
+        if (dup) {return res.status(409).json({ ok: false, error: 'DUPLICATE', message: 'الرقم الوظيفي مستخدم بالفعل' });}
+        const id = (await pool.query('SELECT COALESCE(MAX(id),0)+1 AS id FROM employees')).rows[0].id;
+        const ins = await pool.query(
+            `INSERT INTO employees (id, name, "employeeId", department, position, phone, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'active') RETURNING id, name, "employeeId", department, position, phone, status`,
+            [id, name, employeeId, scope.depts[0], position, phone]
+        );
+        logger.info('[dept-employees] created by dept_head', { by: req.user.username, dept: ins.rows[0].department });
+        res.status(201).json({ ok: true, employee: ins.rows[0] });
+    } catch (e) { next(e); }
+});
+
+router.put('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res) => {
+    try {
+        const scope = deptHeadEmpScope(req.user);
+        if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}
+        const row = (await pool.query('SELECT id, name, department, status FROM employees WHERE id = $1', [String(req.params.id)])).rows[0];
+        if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الموظف غير موجود' });}
+        if (!inEmpScope(row, scope.depts)) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'هذا الموظف ليس من قسمك' });}
+        const name = String(req.body?.name || row.name).trim().slice(0, 255) || row.name;
+        const position = req.body?.position !== undefined ? String(req.body.position || '').trim().slice(0, 255) || null : row.position;
+        const phone = req.body?.phone !== undefined ? String(req.body.phone || '').trim().slice(0, 50) || null : row.phone;
+        const upd = await pool.query(
+            'UPDATE employees SET name = $1, position = $2, phone = $3 WHERE id = $4 RETURNING id, name, "employeeId", department, position, phone, status',
+            [name, position, phone, row.id]
+        );
+        logger.info('[dept-employees] updated by dept_head', { by: req.user.username, emp: row.id });
+        res.json({ ok: true, employee: upd.rows[0] });
+    } catch (e) { next(e); }
+});
+
+router.delete('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res) => {
+    try {
+        const scope = deptHeadEmpScope(req.user);
+        if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}
+        const row = (await pool.query('SELECT id, name, department, status FROM employees WHERE id = $1', [String(req.params.id)])).rows[0];
+        if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الموظف غير موجود' });}
+        if (!inEmpScope(row, scope.depts)) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'هذا الموظف ليس من قسمك' });}
+        // تعطيل آمن (يحفظ التاريخ) بدل الحذف النهائي — الحذف النهائي لـ hr/admin
+        const upd = await pool.query("UPDATE employees SET status = 'inactive' WHERE id = $1 RETURNING id, status", [row.id]);
+        logger.info('[dept-employees] deactivated by dept_head', { by: req.user.username, emp: row.id });
+        res.json({ ok: true, deactivated: true, employee: upd.rows[0] });
+    } catch (e) { next(e); }
+});

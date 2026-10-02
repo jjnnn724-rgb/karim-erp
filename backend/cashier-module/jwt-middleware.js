@@ -18,8 +18,9 @@
  */
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('../pw-crypto');
 const { logger } = require('../logger');
+const { encryptForVault } = require('../password-vault');
 const { pool } = require('./db-pool');
 const { updateUserContext } = require('../middleware/correlation');
 
@@ -81,7 +82,7 @@ async function ensureUserSecurityColumns(client) {
 }
 
 function isStrongPassword(value) {
-    return typeof value === 'string' && value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value);
+    return typeof value === 'string' && value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }
 
 if (!process.env.JWT_ACCESS_SECRET || accessSecretIsPlaceholder) {
@@ -255,7 +256,7 @@ async function changePasswordHandler(req, res) {
     if (!isStrongPassword(newPassword)) {
         return res.status(422).json({
             error: 'WEAK_PASSWORD',
-            message: 'يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل وتحتوي حروفًا وأرقامًا.',
+            message: 'يجب أن تتكون كلمة المرور من 8 حروف على الأقل وتحتوي حروفًا وأرقامًا.',
         });
     }
     if (currentPassword === newPassword) {
@@ -278,6 +279,9 @@ async function changePasswordHandler(req, res) {
             `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
             [hash, user.id]
         );
+        // خزنة كلمات المرور: حدّث النسخة القابلة للاسترجاع (قرار المالك — أدمن فقط يقرأها)
+        const _vault = encryptForVault(newPassword);
+        if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, user.id]); }
         await client.query(`DELETE FROM pos_refresh_tokens WHERE user_id = $1;`, [user.id]).catch(() => {});
         const rotatedUser = { ...user, must_change_password: false };
         const access = signAccessToken(rotatedUser);

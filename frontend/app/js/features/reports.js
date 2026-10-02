@@ -2,6 +2,9 @@
  * features/reports.js — extracted verbatim from app.js (see docs/esm-migration/MIGRATION_CHANGE_LOG.md).
  * Bridge policy: all top-level bindings are mounted on window by js/main.js (see BRIDGE log).
  */
+// FIX 2026-10-01: localDateOnly كانت ضاعت في الهجرة (معرفة في smart-card فقط)
+// فكان توليد كل التقارير يرمي «localDateOnly is not defined» — استيراد صريح.
+import { localDateOnly } from './smart-card.js?v=4.9.1';
 // ============================================
 // REPORTS
 // ============================================
@@ -31,7 +34,7 @@ return `
 <div class="fg" id="deptSelectGroup" style="display:none">
 <label>اختر القسم</label>
 <select id="reportDeptSelect" onchange="generateReport()">
-${STATE.departments.map(d=>`<option value="${d.code}">${esc(d.name)}</option>`).join('')}
+${(STATE.departments||[]).map(d=>`<option value="${d.code}">${esc(d.name)}</option>`).join('')}
 </select>
 </div>
 <div class="fg">
@@ -104,6 +107,7 @@ setTimeout(()=>{
 if(STATE.page!=='reports') {return;}
 const liveContainer=document.getElementById('reportContent');
 if(!liveContainer) {return;}
+try{
 const reportTypeNames={general:'الشامل',department:'الأقسام المفصل',kitchen:'أداء المطبخ',returns:'المرتجعات',warehouse:'المخازن والمخزون',hr:'الموارد البشرية','dept-specific':'قسم محدد'};
 let html=`
 <div class="report-header">
@@ -126,7 +130,11 @@ else if(type==='warehouse') {html+=generateWarehouseReport(startDate,endDate);}
 else if(type==='hr') {html+=generateHRReport(startDate,endDate);}
 else if(type==='dept-specific'){ const deptCode=document.getElementById('reportDeptSelect').value; html+=generateSpecificDeptReport(deptCode,startDate,endDate); }
 html+=`<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=chart></i> تم إنشاء هذا التقرير بواسطة <strong>${STATE.settings.name}</strong></div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${fDT(new Date().toISOString())} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
-container.innerHTML=html;
+liveContainer.innerHTML=html;
+}catch(repErr){
+console.error('[generateReport]', repErr);
+try{ liveContainer.innerHTML=`<div class="mcard" style="text-align:center;padding:30px">⚠️ تعذر إنشاء التقرير: ${esc(repErr.message||'خطأ غير متوقع')} <button class="btn btn-gold btn-sm" onclick="generateReport()">إعادة المحاولة</button></div>`; }catch(_){}
+}
 },300);
 }
 async function generatePosSalesReport(type,startDate,endDate,periodLabel,container){

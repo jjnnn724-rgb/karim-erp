@@ -83,8 +83,16 @@ function validateDevicePayload(body, { partial = false } = {}) {
 }
 
 // ─── ملخص المحرك ─────────────────────────────────────────────────────────────
+// PERF: عدّادات totals تمسح جداول كبيرة — تُحفظ 20 ثانية في الذاكرة.
+// القراءة فقط ولا تمس أي كتابة — آمنة تمامًا على المزامنة الحية.
+let _statusCache = null;
+let _statusCacheAt = 0;
+const STATUS_TTL_MS = 20_000;
 router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
+        if (_statusCache && Date.now() - _statusCacheAt < STATUS_TTL_MS) {
+            return res.json(_statusCache);
+        }
         const engine = req.app.locals.attendanceEngine;
         const devices = (await pool.query(
             `SELECT id, name, "ipAddress", port, status, "lastSyncAt", "lastError",
@@ -95,7 +103,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
             `SELECT COUNT(*)::int AS logs,
                     COUNT(*) FILTER (WHERE "employeeId" IS NULL)::int AS unmapped,
                     COUNT(*) FILTER (WHERE "attendanceTime" >=
-                        date_trunc('day', NOW() AT TIME ZONE 'Africa/Cairo') AT TIME ZONE 'Africa/Cairo')::int AS today
+                        date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')::int AS today
              FROM attendance_logs`
         )).rows[0];
         // مؤشر الربط: موظفون نشطون مربوطون برقم بصمة مقابل غير المربوطين
@@ -107,11 +115,14 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         totals.employees = link.employees || 0;
         totals.linkedEmployees = link.linkedEmployees || 0;
         totals.unlinkedEmployees = Math.max(0, totals.employees - totals.linkedEmployees);
-        res.json({
+        const payload = {
             running: engine ? engine.running : false,
             devices: devices.map(d => deviceStatusView(d, engine?.getStatus().devices.find(s => s.id === d.id))),
             totals,
-        });
+        };
+        _statusCache = payload;
+        _statusCacheAt = Date.now();
+        res.json(payload);
     } catch (error) {
         logger.error('[zkteco/status]', error);
         res.status(500).json({ error: 'ZK_STATUS_FAILED', message: 'تعذر جلب حالة مزامنة البصمة' });
@@ -346,7 +357,7 @@ router.get('/mappings', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
                     (SELECT COUNT(*)::int FROM attendance_logs l
                       WHERE l."employeeId" = e.id
                         AND l."attendanceTime" >=
-                            date_trunc('day', NOW() AT TIME ZONE 'Africa/Cairo') AT TIME ZONE 'Africa/Cairo') AS "todayPunches"
+                            date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') AS "todayPunches"
              FROM employees e
              ORDER BY e.name`
         );
@@ -538,13 +549,13 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
              FROM attendance_logs l LEFT JOIN attendance_devices d ON d.id = l."deviceId"
              WHERE l."employeeId" = $1
                AND l."attendanceTime" >=
-                   date_trunc('day', NOW() AT TIME ZONE 'Africa/Cairo') AT TIME ZONE 'Africa/Cairo'
+                   date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'
              ORDER BY l."attendanceTime" ASC LIMIT 50`,
             [emp.id]
         )).rows;
         const todayRecord = (await pool.query(
             `SELECT id, date, "checkIn", "checkOut", late, source, "workMinutes", notes
-             FROM attendance WHERE "employeeId" = $1 AND date = TO_CHAR(NOW() AT TIME ZONE 'Africa/Cairo', 'YYYY-MM-DD')`,
+             FROM attendance WHERE "employeeId" = $1 AND date = TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD')`,
             [emp.id]
         )).rows[0] || null;
         const devices = (await pool.query(

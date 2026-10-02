@@ -52,6 +52,15 @@ function register(app, opts = {}) {
     app.use('/api/pos', shiftRoutes);
     app.use('/api/pos/buffet', buffetRoutes.router);
 
+    // Daily Z close (manager/admin) — isolated load, never breaks core POS.
+    try {
+        const dayCloseRoutes = require('./day-close-routes');
+        app.use('/api/pos', dayCloseRoutes.router);
+        dayCloseRoutes.ensureDayCloseSchema();
+    } catch (e) {
+        logger.error('[day-close] module failed to load — Z close disabled, POS still running:', e.message);
+    }
+
     // Orders (relational — replaces app_state JSON blob for orders module)
     app.use('/api/orders', ordersRoutes);
 
@@ -89,6 +98,9 @@ function register(app, opts = {}) {
     logger.info('    POST /api/sales/complete      (Idempotency-Key + atomic)');
     logger.info('    POST /api/pos/shifts/open');
     logger.info('    POST /api/pos/shifts/:id/close');
+    logger.info('    GET  /api/pos/day-close/status (manager/admin — readiness)');
+    logger.info('    POST /api/pos/day-close (manager/admin — daily Z + variance journal)');
+    logger.info('    GET  /api/pos/day-close/:zNumber (Z slip)');
     logger.info('    GET  /api/pos/shifts/active');
     logger.info('    GET  /api/pos/shifts/:id/summary');
     logger.info('    GET  /api/pos/departments');

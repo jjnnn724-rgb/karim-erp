@@ -183,20 +183,29 @@ async function checkAlerts(engine) {
             }
         }
     } catch (e) { logger.warn('[WHATSAPP] alert failed check failed: ' + String(e.message).slice(0, 120)); }
-    // 4) وثائق منتهية أو تنتهي خلال 7 أيام (مرة يوميًا)
+    // 4) وثائق الموظفين (UPGRADE 2026-10-02): تنبيه مستقل لكل نوع — إقامة/
+    //    شهادة صحية/تثقيف صحي — بعتبة قابلة للضبط DOCUMENT_EXPIRY_WARNING_DAYS
+    //    (افتراضي 30). المقارنة الميلادية تشمل القيم المخزنة ميلادي ISO فقط
+    //    (عقد التطبيق)؛ القيم القديمة المشفرة هجريًا تُستثنى حتى يعاد ترميزها
+    //    عبر scripts/import-employee-documents.js — لا إنذار كاذب "منتهي".
     try {
         if (s.alertDocs) {
-            const r = await store.pool.query(
-                `SELECT COUNT(*) FILTER (WHERE ("iqamaExpiry" <> '' AND ("iqamaExpiry")::date < CURRENT_DATE)
-                     OR ("healthCertExpiry" <> '' AND ("healthCertExpiry")::date < CURRENT_DATE)
-                     OR ("healthEduExpiry" <> '' AND ("healthEduExpiry")::date < CURRENT_DATE))::int AS expired,
-                    COUNT(*) FILTER (WHERE (("iqamaExpiry" <> '' AND ("iqamaExpiry")::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7)
-                     OR ("healthCertExpiry" <> '' AND ("healthCertExpiry")::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7)
-                     OR ("healthEduExpiry" <> '' AND ("healthEduExpiry")::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7)))::int AS soon
-                   FROM employees WHERE status = 'active'`);
-            const { expired, soon } = r.rows[0] || {};
-            if (Number(expired || 0) > 0 || Number(soon || 0) > 0) {
-                await once(`docs-${riyadhNow().day}`, `⚠ الوثائق: ${expired} منتهية و${soon} تنتهي خلال 7 أيام — راجع «وثائق» في الشات أو لوحة HR.`);
+            const warnDays = Math.max(1, Number(process.env.DOCUMENT_EXPIRY_WARNING_DAYS) || 30);
+            const docs = [
+                { col: '"iqamaExpiry"', key: 'docs-iqama', label: '🪪 الإقامات' },
+                { col: '"healthCertExpiry"', key: 'docs-cert', label: '💉 الشهادات الصحية' },
+                { col: '"healthEduExpiry"', key: 'docs-edu', label: '🎓 التثقيف الصحي' },
+            ];
+            for (const d of docs) {
+                const r = await store.pool.query(
+                    `SELECT COUNT(*) FILTER (WHERE ${d.col} <> '' AND ${d.col} ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (${d.col})::date < CURRENT_DATE)::int AS expired,
+                            COUNT(*) FILTER (WHERE ${d.col} <> '' AND ${d.col} ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (${d.col})::date BETWEEN CURRENT_DATE AND CURRENT_DATE + $1)::int AS soon
+                       FROM employees WHERE status = 'active'`, [warnDays]);
+                const { expired, soon } = r.rows[0] || {};
+                if (Number(expired || 0) > 0 || Number(soon || 0) > 0) {
+                    await once(`${d.key}-${riyadhNow().day}`,
+                        `⚠ ${d.label}: ${expired} منتهية و${soon} تنتهي خلال ${warnDays} يوم — راجع «وثائق» في الشات أو لوحة HR.`);
+                }
             }
         }
     } catch (e) { logger.warn('[WHATSAPP] alert docs check failed: ' + String(e.message).slice(0, 120)); }
@@ -226,6 +235,9 @@ async function processCampaigns(engine) {
 
 function startAutomation(engine) {
     if (startAutomation._timer) {return;}
+    // شفافية بدء: لا مجدول صامت — هذا السطر هو الدليل اللوجي على أن الحلقة حيّة
+    logger.info('[WHATSAPP] automation scheduler started — daily report + alerts loop (60s)');
+    const _lastSkipLog = { at: 0 };
     const loop = async () => {
         try {
             const s = await getSettings();
@@ -235,16 +247,32 @@ function startAutomation(engine) {
             if (s.dailyReport) {
                 let last = null;
                 try { last = await store.getSetting('wa_daily_last'); } catch (_) {}
-                const shouldSend = connected && shouldSendDailyBriefing(new Date(), s.dailyTime, last, now.day);
-                if (shouldSend) {
+                const due = shouldSendDailyBriefing(new Date(), s.dailyTime, last, now.day);
+                if (due && !connected) {
+                    // لا فشل صامت: التقرير مستحق وواتساب مقطوع — يُسجل ويُعوَّض عند العودة
+                    if (Date.now() - _lastSkipLog.at > 30 * 60 * 1000) {
+                        _lastSkipLog.at = Date.now();
+                        logger.error('[WHATSAPP] التقرير الليلي مستحق (' + s.dailyTime + ') لكن واتساب غير متصل — سيُرسل تلقائيًا عند إعادة الاتصال');
+                        try { await store.logEvent('daily_deferred', now.day, 'disconnected'); } catch (_) {}
+                    }
+                    return;
+                }
+                if (due) {
                     try {
                         const r = await pushBriefing(engine, now.day, 'auto');
                         if (r.queued > 0) {
                             await store.setSetting('wa_daily_last', now.day);
+                        } else {
+                            // لا مستلمين = لا علم ولا علامة إرسال — يتكرر الفشل بصمت وإلا
+                            logger.error('[WHATSAPP] daily briefing queued 0 — لا أرقام إدارة (manager_jids فارغة؟)');
+                            try { await store.logEvent('daily_failed', now.day, 'queued:0 no-manager-targets'); } catch (_) {}
                         }
                         logger.info(`[WHATSAPP] daily briefing pushed for ${now.day} → ${r.queued} chats`);
                         try { await store.logEvent('daily_pushed', now.day, `queued:${r.queued}`); } catch (_) {}
-                    } catch (e) { logger.error('[WHATSAPP] daily briefing failed: ' + String(e.message).slice(0, 200)); }
+                    } catch (e) {
+                        logger.error('[WHATSAPP] daily briefing failed: ' + String(e.message).slice(0, 200));
+                        try { await store.logEvent('daily_failed', now.day, String(e.message).slice(0, 150)); } catch (_) {}
+                    }
                 }
             }
             if (!connected) {return;}

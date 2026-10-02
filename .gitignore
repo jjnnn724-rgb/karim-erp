@@ -28,3 +28,9 @@ Thumbs.db
 # Electron packaging
 *.blockmap
 *.yml
+
+# Token/session dumps (never commit)
+.admin-token-tmp
+.emp-token-tmp
+scripts/.*_tokens.json
+scripts/.*-tmp

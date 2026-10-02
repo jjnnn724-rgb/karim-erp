@@ -725,6 +725,14 @@ router.post('/shifts/open',
         }
         if (!Number.isInteger(department_id) || department_id <= 0) {return res.status(422).json({ error: 'INVALID_DEPARTMENT_ID' });}
         if (typeof opening_balance !== 'number' || opening_balance < 0) {return res.status(422).json({ error: 'INVALID_OPENING_BALANCE' });}
+        // ROOT FIX 2026-10-02: ثغرة البيع بعد الإغلاق — فتح وردية بعد Z كان يبيع
+        // في يوم مغلق بلا أثر في إغلاق اليوم. الأدمن وحده يتجاوز صراحة (force).
+        if (req.body?.force !== true) {
+            const closedToday = await pool.query(`SELECT 1 FROM pos_day_closes WHERE close_date = CURRENT_DATE LIMIT 1`);
+            if (closedToday.rows.length) {
+                return res.status(409).json({ error: 'DAY_ALREADY_CLOSED', message: 'اليوم مقفل بإغلاق نهائي (Z) — لا يمكن فتح وردية جديدة عليه. المدير المسؤول فقط يعيد الفتح.' });
+            }
+        }
 
         try {
             const result = await withTransaction(async (client) => {
@@ -865,6 +873,34 @@ router.get('/shifts/active', jwtAuth, requireRole('cashier','manager','admin','a
         if (r.rows.length === 0) {return res.status(404).json({ error: 'NO_OPEN_SHIFT' });}
         res.json(r.rows[0]);
     } catch (e) { logger.error(e); res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+});
+
+// ─── All open shifts (central close screen for manager/accountant) ───────────
+// المحاسب يغلق كل الكاشيرية من شاشته — لا حاجة للمرور على الأجهزة.
+router.get('/shifts/open', jwtAuth, requireRole('manager', 'admin', 'accountant', 'auditor'), async (req, res) => {
+    try {
+        const r = await pool.query(
+            `SELECT s.id, s.department_id, s.cashier_id, s.status, s.opening_balance,
+                    s.opened_at, u.username AS cashier_name, d.name_ar AS dept_name,
+                    TO_CHAR(s.opened_at AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') AS biz_date,
+                    TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') AS today,
+                    (s.opening_balance +
+                     COALESCE((SELECT SUM(CASE WHEN ip.method = 'cash' AND ip.direction = 'in' THEN ip.amount ELSE -ip.amount END)
+                                FROM pos_invoice_payments ip
+                                JOIN pos_orders o ON o.id = ip.order_id
+                               WHERE o.session_id = s.id AND ip.method = 'cash'), 0))::numeric(14,2) AS expected_cash,
+                    (SELECT COUNT(*)::int FROM pos_orders o WHERE o.session_id = s.id) AS invoice_count
+               FROM pos_shift_sessions s
+               JOIN pos_departments d ON d.id = s.department_id
+               LEFT JOIN users u ON u.id = s.cashier_id
+              WHERE s.status = 'open'
+              ORDER BY s.opened_at`
+        );
+        res.json({ ok: true, count: r.rows.length, shifts: r.rows });
+    } catch (e) {
+        logger.error('[shifts/open-all]', e.message);
+        res.status(500).json({ error: 'SHIFTS_FETCH_FAILED', message: 'تعذر جلب الورديات المفتوحة' });
+    }
 });
 
 // ─── Shift summary ──────────────────────────────────────────────────────────

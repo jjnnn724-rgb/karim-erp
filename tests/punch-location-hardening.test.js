@@ -77,12 +77,21 @@ describe('evaluatePunch — التحصين داخل المسار الكامل', 
         expect(r.decision).toBe('accepted');
         expect(r.details.fixCount).toBe(3);
     });
-    test('قناع واحد عند إلزامية multi-fix → PUNCH_LOCATION_WEAK', () => {
+    test('قناع واحد ضعيف الدقة عند إلزامية multi-fix → PUNCH_LOCATION_WEAK', () => {
+        const r = evaluatePunch(baseSettings, {
+            ...validReq,
+            location: { lat: RESTAURANT.lat, lng: RESTAURANT.lng, accuracy: 45 },
+        });
+        expect(r.rejectCode).toBe('PUNCH_LOCATION_WEAK');
+    });
+    test('قناع واحد عالي الجودة داخل النطاق → accepted مع SINGLE_FIX_FALLBACK (2026-10-02)', () => {
         const r = evaluatePunch(baseSettings, {
             ...validReq,
             location: { lat: RESTAURANT.lat, lng: RESTAURANT.lng, accuracy: 12 },
         });
-        expect(r.rejectCode).toBe('PUNCH_LOCATION_WEAK');
+        expect(r.decision).toBe('accepted');
+        expect(r.details.singleFix).toBe(true);
+        expect(r.details.trustSignals).toContain('SINGLE_FIX_FALLBACK');
     });
     test('إحداثيات مجمّدة (Fake GPS ثابت) → PUNCH_LOCATION_FROZEN', () => {
         const r = evaluatePunch(baseSettings, {

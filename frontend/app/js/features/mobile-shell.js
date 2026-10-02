@@ -643,19 +643,21 @@ async function mobileRemoveFace() {
 }
 
 /**
- * فحص التزييف الأصلي (Android فقط عبر بلجن MockLocationDetector):
- * يقرأ Location.isFromMockProvider + ضبط تطبيق التزييف — إشارة لا يستطيع
- * المتصفح توفيرها. يرجع true/false أو null عند غياب البلجن (ويب/PWA).
+ * فحص التزييف الأصلي (Android فقط عبر بلجن MockLocationDetector v2):
+ * يرجع { mocked, mockAppSelected, source, detail, ageS } — mocked دليل على
+ * القراءة نفسها (كاش طازج ≤ 2 د أو إصلاح حي)، mockAppSelected إشارة ضبط تُسجَّل
+ * ولا ترفض. يرجع null عند غياب البلجن (ويب/PWA). المهلة 9 ث لتغطية النافذة
+ * الحية للبلجن (6.5 ث) دون تجاوز زمن جمع قراءات الموقع.
  */
-async function checkNativeMockLocation() {
+async function checkNativeMockSignals() {
     try {
         const plugin = window.Capacitor?.Plugins?.MockLocationDetector;
         if (!plugin?.isMockLocation) {return null;}
         const r = await Promise.race([
             plugin.isMockLocation(),
-            new Promise((res) => setTimeout(() => res(null), 4000)),
+            new Promise((res) => setTimeout(() => res(null), 9000)),
         ]);
-        if (r && typeof r.mocked === 'boolean') {return r.mocked;}
+        if (r && typeof r.mocked === 'boolean') {return r;}
         return null;
     } catch (_) { return null; }
 }
@@ -792,6 +794,17 @@ async function mobileDoPunch(intent) {
         }
     };
 
+    // تسجيل الرفض الذي يحدث على الجهاز قبل الوصول للسيرفر — لا رفض صامت خارج
+    // punch_attempts (الشفافية جزء من العدالة). fire-and-forget: لا يؤخر النتيجة.
+    const logClientReject = (reason, detail) => {
+        try {
+            window.apiFetch('/attendance/portal/punch/client-reject', {
+                method: 'POST',
+                body: JSON.stringify({ reason, detail: detail || null }),
+            }).catch(() => {});
+        } catch (_) {}
+    };
+
     const geolocationError = (err) => {
         finish();
         const msgs = {
@@ -867,7 +880,7 @@ async function mobileDoPunch(intent) {
     // تحصين الموقع: 6 قراءات خلال ~9 ثوانٍ + فحص التزييف الأصلي (APK) —
     // السيرفر يحلل التجميد/الانتقال/التشتت/الدقة الثابتة/الواقعية ضد geolib.
     btn.textContent = 'جارٍ تحديد موقعك بدقة…';
-    const [fixes, nativeMocked] = await Promise.all([
+    const [fixes, mockSignals] = await Promise.all([
         collectLocationFixes((done, total, acc) => {
             if (btn) {
                 btn.textContent = acc != null
@@ -875,22 +888,33 @@ async function mobileDoPunch(intent) {
                     : `تحديد الموقع ${done}/${total}…`;
             }
         }),
-        checkNativeMockLocation(),
+        checkNativeMockSignals(),
     ]);
-    if (nativeMocked === true) {
+    // L1-native: دليل تزييف على القراءة نفسها (كاش طازج/إصلاح حي) → رفض فوري
+    if (mockSignals?.mocked === true) {
         finish();
-        setResult('err', '✋ تم رصد موقع مزيف على جهازك — أوقف تطبيقات تغيير الموقع وأعد المحاولة');
+        logClientReject('PUNCH_LOCATION_MOCKED_CLIENT', mockSignals.detail);
+        const mockWhy = mockSignals.source === 'live'
+            ? 'قراءة GPS الحالية على جهازك معلَّمة كموقع مزيف'
+            : 'آخر قراءة موقع على جهازك معلَّمة كموقع مزيف (أثر تطبيق تزييف حديث)';
+        setResult('err', `✋ ${mockWhy} — أوقف تطبيقات تغيير الموقع، افتح «خرائط Google» قرب نافذة حتى يثبت موقعك الحقيقي، ثم أعد المحاولة`);
         if (window.toast) {window.toast('تم رصد موقع مزيف', 'error');}
         return;
     }
+    // إشارة ضبط لا دليل تزييف: البصمة تُقبل لكن تُبلَّغ للسيرفر للتسجيل الإداري
+    const spoofSignals = mockSignals?.mockAppSelected === true ? ['MOCK_APP_SELECTED'] : [];
+    if (spoofSignals.length && window.toast) {
+        window.toast('تنبيه: يوجد تطبيق موقع مزيف مُعد على جهازك — سيُسجَّل ذلك إداريًا', 'warning');
+    }
     if (!fixes) {
+        logClientReject('PUNCH_LOCATION_UNAVAILABLE_CLIENT', mockSignals?.detail || null);
         geolocationError({ code: 2 });
         return;
     }
-    if (nativeMocked !== null) {
+    if (mockSignals !== null) {
         for (const f of fixes) {f.mocked = false;}
     }
-    await sendPunch({ fixes, mocked: nativeMocked === true }, descriptor);
+    await sendPunch({ fixes, mocked: false, spoofSignals }, descriptor);
 }
 
 // ─── التركيب والتهيئة (S4) ───────────────────────────────────────────────────
@@ -1019,7 +1043,7 @@ export {
     cropFaceToJpeg,
     cropCenterToJpeg,
     fileToJpegDataUrl,
-    checkNativeMockLocation,
+    checkNativeMockSignals,
     openFaceCameraAndGetDescriptor,
     openFaceCameraForEnrollment,
     saveFaceEnrollment,

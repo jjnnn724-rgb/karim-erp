@@ -66,30 +66,16 @@ async function whInvFetch(){
     }
     if (STATE.page === 'warehouse') {renderPage();}
 }
-function renderWarehouse(){
-if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
-if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); }
-// أول عرض: فعّل وضع الخادم (ترقيم) فورًا — القائمة المحلية fallback عند الفشل فقط
-if (WHINV.results === null && !WHINV.loading && !WHINV.error) { setTimeout(()=>whInvFetch(),0); }
+function whMetricsHtml(){
 const totalValue = STATE.inventory.reduce((s,i)=>s+(i.qty*i.avgCost),0);
 const lowStock = STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty));
-const allInvoices = (STATE.purchaseInvoices||[]).slice().reverse();
 const totalWeight = STATE.inventory.reduce((s,i)=>s+(i.weight||0),0);
-const whCats = [...new Set((STATE.inventory||[]).map(i=>String(i.category||'عام')))].sort((a,b)=>a.localeCompare(b,'ar'));
-if(window.whCatFilter!=='all' && !whCats.includes(window.whCatFilter)) {window.whCatFilter='all';}
-if (WHINV.cat === 'all' && window.whCatFilter && window.whCatFilter !== 'all') {WHINV.cat = window.whCatFilter;}
-const serverMode = WHINV.results !== null;
-const catOpts = (WHINV.cats.length ? WHINV.cats : whCats).map(c=>`<option value="${esc(c)}" ${WHINV.cat===c?'selected':''}>${esc(c)}</option>`).join('');
-const whItems = serverMode ? WHINV.results : (STATE.inventory||[])
-.filter(i=>window.whCatFilter==='all'||String(i.category||'عام')===window.whCatFilter)
-.sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'ar')||String(a.name||'').localeCompare(String(b.name||''),'ar'));
-const whPages = Math.max(1, Math.ceil((serverMode ? WHINV.total : whItems.length) / (WHINV.limit || 50)));
 return `
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=package></i> ${t('wh.items')}</div><div class="mcard-val c-gold">${fN(STATE.inventory.length)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> ${t('wh.value')}</div><div class="mcard-val c-green">${fC(totalValue)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=alert-triangle></i> ${t('wh.low')}</div><div class="mcard-val ${lowStock.length>0?'c-red':'c-green'}">${fN(lowStock.length)}</div></div>
-<div class="mcard"><div class="mcard-label"><i class=ji data-i=file-text></i> ${t('wh.invoices')}</div><div class="mcard-val c-blue">${fN(allInvoices.length)}</div></div>
+<div class="mcard"><div class="mcard-label"><i class=ji data-i=file-text></i> ${t('wh.invoices')}</div><div class="mcard-val c-blue">${fN((STATE.purchaseInvoices||[]).length)}</div></div>
 </div>
 <div class="metrics-grid">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=scale></i> ${t('wh.weight')}</div><div class="mcard-val c-teal">${fN(totalWeight)} كجم</div></div>
@@ -97,13 +83,24 @@ return `
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=chart></i> ${t('wh.cats')}</div><div class="mcard-val c-orange">${fN(new Set(STATE.inventory.map(i=>i.category)).size)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=refresh></i> ${t('wh.lastMove')}</div><div class="mcard-val c-blue u-t14">${STATE.inventoryTx.length>0?fD(STATE.inventoryTx[STATE.inventoryTx.length-1].date):'—'}</div></div>
 </div>
-${whShortPanel()}
-<nav class="wh-secnav" aria-label="أقسام صفحة المخزن">
-<button type="button" class="btn btn-sm" data-sec="wh-sec-items" onclick="whGoSec('wh-sec-items')"><i class=ji data-i=package></i> الأصناف</button>
-<button type="button" class="btn btn-sm" data-sec="wh-sec-moves" onclick="whGoSec('wh-sec-moves')"><i class=ji data-i=chart></i> الحركات</button>
-<button type="button" class="btn btn-sm" data-sec="wh-sec-returns" onclick="whGoSec('wh-sec-returns')"><i class=ji data-i=undo></i> المرتجعات</button>
-<button type="button" class="btn btn-sm" data-sec="wh-sec-prs" onclick="whGoSec('wh-sec-prs')"><i class=ji data-i=clipboard-list></i> طلبات الشراء</button>
-</nav>
+${whShortPanel()}`;
+}
+
+// ─── صفحة الأصناف (المخزن) ───
+function renderWarehouse(){
+if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); }
+if (WHINV.results === null && !WHINV.loading && !WHINV.error) { setTimeout(()=>whInvFetch(),0); }
+const serverMode = WHINV.results !== null;
+const whCats = [...new Set((STATE.inventory||[]).map(i=>String(i.category||'عام')))].sort((a,b)=>a.localeCompare(b,'ar'));
+if(window.whCatFilter!=='all' && !whCats.includes(window.whCatFilter)) {window.whCatFilter='all';}
+if (WHINV.cat === 'all' && window.whCatFilter && window.whCatFilter !== 'all') {WHINV.cat = window.whCatFilter;}
+const catOpts = (WHINV.cats.length ? WHINV.cats : whCats).map(c=>`<option value="${esc(c)}" ${WHINV.cat===c?'selected':''}>${esc(c)}</option>`).join('');
+const whItems = serverMode ? WHINV.results : (STATE.inventory||[])
+.filter(i=>window.whCatFilter==='all'||String(i.category||'عام')===window.whCatFilter)
+.sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'ar')||String(a.name||'').localeCompare(String(b.name||''),'ar'));
+const whPages = Math.max(1, Math.ceil((serverMode ? WHINV.total : whItems.length) / (WHINV.limit || 50)));
+return whMetricsHtml() + `
 <section id="wh-sec-items" aria-label="أصناف المخزون">
 <div class="tbl-wrap">
 <div class="tbl-hd">
@@ -165,17 +162,28 @@ ${serverMode?`<div class="fr" style="padding:8px 14px;align-items:center" aria-l
 <button class="btn btn-sm" ${WHINV.page<=1?'disabled':''} onclick="whInvPage(-1)">السابق</button>
 <button class="btn btn-sm" ${WHINV.page>=whPages?'disabled':''} onclick="whInvPage(1)">التالي</button>
 </div>`:''}
-</div>
-</section>
-<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(allInvoices.length)} فاتورة بإجمالي ${fC(allInvoices.reduce((s,i)=>s+Number(i.totalAmount||0),0))}</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button></div></div></div>
-<section id="wh-sec-moves" aria-label="حركات المخزون">
+</section>`;
+}
+
+// ─── صفحة فواتير الشراء (مستقلة) ───
+function renderWhInvoices(){
+if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+const allInvoices = (STATE.purchaseInvoices||[]).slice().reverse();
+return `
+<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(allInvoices.length)} فاتورة بإجمالي ${fC(allInvoices.reduce((s,i)=>s+Number(i.totalAmount||0),0))}</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button>${STATE.currentUser?.role==='admin'&&allInvoices.length?`<button class="btn btn-red btn-sm" onclick="showClearAllInvoicesModal()"><i class=ji data-i=trash></i> حذف كل الفواتير</button>`:''}</div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>${allInvoices.map((inv,ii)=>{const pay={cash:'نقدي',bank:'بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||esc(inv.paymentMethod||'—');const st={paid:['مدفوعة','bdg-green'],partial:['مسددة جزئياً','bdg-orange'],unpaid:['غير مسددة','bdg-red']}[inv.paymentStatus]||['غير محددة','bdg-gray'];return `<tr><td>${ii+1}</td><td class="fw-bold">${esc(inv.invoiceNumber||'—')}</td><td>${esc(inv.supplierName||'—')}</td><td class="text-muted">${fD(inv.date)}</td><td class="c-gold fw-bold">${fC(inv.totalAmount)}</td><td>${pay}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:nowrap;display:flex;gap:5px"><button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=eye></i> عرض</button><button class="btn btn-sm" onclick="printPurchaseInvoice('${esc(String(inv.id))}')" title="طباعة الفاتورة"><i class=ji data-i=printer></i> طباعة</button></td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير شراء بعد — أضف أول فاتورة من زر «فاتورة جديدة»</td></tr>'}</tbody></table></div></div>`;
+}
+
+// ─── صفحة حركات المخزون (مستقلة) ───
+function renderWhMoves(){
+if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+return `
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=chart></i> آخر حركات المخزون</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=chart></i> حركات المخزون</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
 <div class="tbl-scroll">
 <table>
 <thead><tr><th>التاريخ</th><th>الصنف</th><th>النوع</th><th>الكمية</th><th>السعر</th><th>القيمة</th><th>المرجع</th></tr></thead>
 <tbody id="whTxBody">
-${(STATE.inventoryTx||[]).slice().reverse().slice(0,20).map(tx=>`<tr>
+${(STATE.inventoryTx||[]).slice().reverse().slice(0,200).map(tx=>`<tr>
 <td>${fD(tx.date)}</td>
 <td class="fw-bold">${esc(tx.itemName)}</td>
 <td><span class="badge ${tx.type==='in'?'bdg-green':tx.type==='out'?'bdg-red':tx.type==='return'?'bdg-blue':'bdg-gold'}">${tx.type==='in'?'<i class=ji data-i=inbox></i> وارد':tx.type==='out'?'<i class=ji data-i=upload></i> صادر':tx.type==='return'?'<i class=ji data-i=undo></i> مرتجع':'<i class=ji data-i=flag></i> افتتاحي'}</span></td>
@@ -187,13 +195,22 @@ ${(STATE.inventoryTx||[]).slice().reverse().slice(0,20).map(tx=>`<tr>
 </tbody>
 </table>
 </div>
-</div>
-</section>
-<section id="wh-sec-returns" aria-label="مرتجعات المطبخ">${renderKitchenReturnsSection()}</section>
-<section id="wh-sec-prs" aria-label="طلبات الشراء">${renderPRSection()}</section>
-`;
+</div>`;
 }
-// ─── تنقل داخلي لأقسام صفحة المخزن (صفحة واحدة — تمرير فقط) ────────────────
+
+// ─── صفحة مرتجعات المطبخ (مستقلة) ───
+function renderWhReturns(){
+if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+return renderKitchenReturnsSection();
+}
+
+// ─── صفحة طلبات الشراء (مستقلة — بيتها المخزن: إنشاء مخزن ← توقيع شيف ← اعتماد مدير عام ← استلام مخزن)
+function renderWhPrs(){
+if(!prCanSee()) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); }
+return renderPRSection();
+}
+
 function whGoSec(id){
     const el = document.getElementById(id);
     if (el && el.scrollIntoView) {el.scrollIntoView({ behavior: 'smooth', block: 'start' });}
@@ -1298,6 +1315,15 @@ showModal(`<h3><i class=ji data-i=pencil></i> تعديل الصنف</h3>
 <div id="secUnitsRows"></div>
 <button type="button" class="btn btn-blue btn-sm" onclick="addSecUnitRow()"><i class=ji data-i=plus></i> إضافة وحدة</button>
 </div>
+<div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--border)">
+<strong style="font-size:13px"><i class=ji data-i=scale></i> الوزن المتغير — استلام بالكيلو وصرف بالكرتون</strong>
+<small class="text-muted" style="display:block;margin:4px 0 8px">لأصناف اللحوم: المطبخ يطلب بعدد الكراتين، والمخزن يصرف بالوزن الفعلي بالكيلو. حدد متوسط وزن الكرتون ليُقدَّر الطلب تلقائيًا.</small>
+<label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer"><input type="checkbox" id="eiCatch" ${item.catch_weight_enabled?'checked':''}> تفعيل الوزن المتغير لهذا الصنف</label>
+<div class="fr" style="margin-top:8px">
+<div class="fg"><label>وحدة التعبئة (الطلب)</label><input type="text" id="eiPkgUom" value="${esc(item.packaging_uom||'كرتون')}"></div>
+<div class="fg"><label>متوسط وزن التعبئة (كجم)</label><input type="number" id="eiPkgFactor" value="${item.packaging_qty_per_base??''}" step="0.001" min="0" placeholder="مثال: 25"></div>
+</div>
+</div>
 <div class="modal-footer"><button type="button" class="btn btn-red" onclick="deleteItem('${esc(String(id))}')"><i class=ji data-i=trash></i> حذف</button><button type="button" class="btn" onclick="closeModal()">إلغاء</button><button type="button" class="btn btn-gold" onclick="updateInventoryItem('${esc(String(id))}')"><i class=ji data-i=save></i> حفظ</button></div>`);
 try{ (Array.isArray(item.secondary_units)?item.secondary_units:[]).forEach(u=>addSecUnitRow(u.uom,u.factor)); }catch(_){}
 }
@@ -1337,8 +1363,13 @@ const weight=parseFloat(document.getElementById('eiWeight')?.value)||0;
 const shelfId=document.getElementById('eiShelf')?.value||null;
 const secUnits=collectSecUnits();
 try{
-const saved = await persistUpdate('inventory', id, {name,category,barcode,unit,minQty,weight,shelfId,qty:item.qty,avgCost:item.avgCost,secondary_units:secUnits.length?secUnits:null});
-Object.assign(item, saved || {name,category,barcode,unit,minQty,weight,shelfId,secondary_units:secUnits.length?secUnits:null});
+const eiCatch=document.getElementById('eiCatch');
+const catchEnabled=eiCatch?eiCatch.checked:Boolean(item.catch_weight_enabled);
+const pkgUom=document.getElementById('eiPkgUom')?.value.trim()||'كرتون';
+const pkgFactorRaw=document.getElementById('eiPkgFactor')?.value;
+const pkgFactor=(pkgFactorRaw===''||pkgFactorRaw===undefined||pkgFactorRaw===null)?null:parseFloat(pkgFactorRaw);
+const saved = await persistUpdate('inventory', id, {name,category,barcode,unit,minQty,weight,shelfId,qty:item.qty,avgCost:item.avgCost,secondary_units:secUnits.length?secUnits:null,catch_weight_enabled:catchEnabled,packaging_uom:catchEnabled?pkgUom:(item.packaging_uom||null),packaging_qty_per_base:(catchEnabled&&pkgFactor>0)?pkgFactor:null});
+Object.assign(item, saved || {name,category,barcode,unit,minQty,weight,shelfId,secondary_units:secUnits.length?secUnits:null,catch_weight_enabled:catchEnabled,packaging_uom:catchEnabled?pkgUom:null,packaging_qty_per_base:(catchEnabled&&pkgFactor>0)?pkgFactor:null});
 closeModal();renderPage();toast(secUnits.length?`تم التحديث — وحدات الطلب: ${secUnits.map(u=>u.uom).join('، ')}`:'تم التحديث','success');
 }catch(e){ toast(e.message||'فشل تحديث الصنف في قاعدة البيانات','error'); }
 }
@@ -1367,6 +1398,26 @@ else {toast(m||'فشل الحذف من قاعدة البيانات','error');}
 // Purchase Invoice
 let currentInvoiceItems = [];
 let invoicePaidTouched = false; // لمس المستخدم حقل المسدد يدويًا؟ (لا → الخادم يحسم الشامل تلقائيًا)
+// ═══ حذف كل فواتير الشراء (أدمن فقط) — نافذة تحذير + تأكيد صريح ═══
+function showClearAllInvoicesModal(){
+if(STATE.currentUser?.role!=='admin'){ toast('هذه العملية للأدمن فقط','error'); return; }
+const n=(STATE.purchaseInvoices||[]).length;
+if(!n){ toast('لا توجد فواتير لحذفها','info'); return; }
+showModal(`<h3><i class=ji data-i=trash></i> حذف كل فواتير الشراء (${fN(n)})</h3>
+<div class="workflow-banner" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.35)"><i class=ji data-i=alert-triangle></i> <strong>عملية نهائية لا يمكن التراجع عنها:</strong> ستُحذف الفواتير الـ ${fN(n)} كلها، وسيتم <strong>عكس كمياتها من المخزون</strong> (الاستلام كان يزيد الرصيد — الحذف ينقصه)، وستُحذف حركات المخزون المرتبطة بها. خذ نسخة احتياطية أولًا من الإعدادات.</div>
+<label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:10px 0"><input type="checkbox" id="clearInvConfirm" onchange="document.getElementById('clearInvBtn').disabled=!this.checked"> أفهم أن هذه العملية نهائية وتعكس كميات المخزون</label>
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" id="clearInvBtn" disabled onclick="clearAllInvoices()"><i class=ji data-i=trash></i> حذف كل الفواتير نهائيًا</button></div>`);
+}
+async function clearAllInvoices(){
+try{
+showLoad();
+const result=await apiFetch('/warehouse/purchase-invoices/clear-all',{method:'POST',body:JSON.stringify({confirm:'حذف كل الفواتير'})});
+hideLoad(); closeModal();
+STATE.purchaseInvoices=[]; STATE.inventoryTx=[];
+renderPage();
+toast(`تم حذف ${fN(result.deletedInvoices||0)} فاتورة وعكس ${fN(result.reversedLedgerRows||0)} قيد مخزون`,'success');
+}catch(e){ hideLoad(); toast(e.message||'تعذر حذف الفواتير','error'); }
+}
 function showAddPurchaseInvoiceModal(){
 currentInvoiceItems = [];
 invoicePaidTouched = false;
@@ -1880,7 +1931,7 @@ showModal(`
 <button class="btn btn-blue btn-sm" onclick="downloadInventoryTemplate()"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
 </div>
 <div class="fg"><label>اختر ملف Excel أو CSV</label><input type="file" id="inventoryExcelFile" accept=".xlsx,.xls,.csv" class="u-input"></div>
-<div id="inventoryImportPreview" class="u-mt12"></div>
+<div id="bulkImportProgress" style="display:none;margin:10px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px"><span id="bulkImportPhase">جارٍ الاستيراد...</span><span id="bulkImportPct" dir="ltr">0%</span></div><div style="height:10px;background:var(--bg3);border-radius:999px;overflow:hidden"><div id="bulkImportBar" style="height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#b45309);transition:width .3s"></div></div></div><div id="inventoryImportPreview" class="u-mt12"></div>
 <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="importBulkInventory()"><i class=ji data-i=inbox></i> استيراد المخزون</button></div>
 `);
 document.getElementById('inventoryExcelFile').addEventListener('change',previewInventoryFile);
@@ -1961,6 +2012,28 @@ prev.innerHTML=`<div class="preview-scroll"><div class="u-gold-strong u-mb8">م�
 async function importBulkInventory(){
 const file=document.getElementById('inventoryExcelFile')?.files[0];
 if(!file){ toast('اختر ملف Excel أولاً','error'); return; }
+// FIX: الطلب الواحد لملف كبير كان ينقطع عند مهلة apiFetch (30 ثانية) فيبدو
+// الزر «غير مستجيب». الآن: دفعات من 20 صنفًا مع شريط تقدم حي وأخطاء حقيقية.
+const footerBtns=document.querySelectorAll('#modal .modal-footer .btn, .modal-footer .btn');
+const importBtn=[...footerBtns].find(b=>b.getAttribute('onclick')==='importBulkInventory()');
+const fileInput=document.getElementById('inventoryExcelFile');
+const progWrap=document.getElementById('bulkImportProgress');
+const progBar=document.getElementById('bulkImportBar');
+const progPct=document.getElementById('bulkImportPct');
+const progPhase=document.getElementById('bulkImportPhase');
+const prev=document.getElementById('inventoryImportPreview');
+const setProgress=(done,total,label)=>{
+  if(!progWrap){return;}
+  progWrap.style.display='block';
+  const pct=Math.round((done/Math.max(total,1))*100);
+  if(progBar) progBar.style.width=pct+'%';
+  if(progPct) progPct.textContent=pct+'%';
+  if(progPhase && label) progPhase.textContent=label;
+};
+const setBusy=(busy)=>{
+  if(importBtn){ importBtn.disabled=busy; importBtn.textContent=busy?'جارٍ الاستيراد...':'استيراد المخزون'; }
+  if(fileInput) fileInput.disabled=busy;
+};
 try{
 const rows = await readInventoryImportRows(file);
 const items = inventoryImportRowsFromSheet(rows).map((row) => ({
@@ -1973,14 +2046,48 @@ const items = inventoryImportRowsFromSheet(rows).map((row) => ({
 })).filter((row) => row.name && row.qty > 0 && row.price >= 0);
 if(!items.length){toast('لا توجد صفوف صالحة للاستيراد','error'); return;}
 const existingNames=new Set(STATE.inventory.map(i=>String(i.name||'').toLowerCase()));
-const result=await apiFetch('/warehouse/inventory/bulk-receipt',{method:'POST',body:JSON.stringify({items})});
-(result.inventory||[]).forEach(row=>upsertStateEntity('inventory',row));
-(result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
-const added=items.filter(item=>!existingNames.has(item.name.toLowerCase())).length;
-const updated=items.length-added;
-closeModal(); renderPage();
+const CHUNK=20;
+const chunks=[];
+for(let i=0;i<items.length;i+=CHUNK){ chunks.push(items.slice(i,i+CHUNK)); }
+setBusy(true);
+setProgress(0,chunks.length+1,`جارٍ استيراد ${items.length} صنف في ${chunks.length} دفعة — لا تغلق النافذة`);
+let added=0, updated=0, importedNames=new Set();
+const failures=[];
+for(let ci=0;ci<chunks.length;ci++){
+  setProgress(ci,chunks.length,`جارٍ الاستيراد: ${Math.min(ci*CHUNK,items.length)}/${items.length} صنف`);
+  try{
+    const result=await apiFetch('/warehouse/inventory/bulk-receipt',{method:'POST',body:JSON.stringify({items:chunks[ci]})});
+    (result.inventory||[]).forEach(row=>upsertStateEntity('inventory',row));
+    (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
+    chunks[ci].forEach(item=>{
+      if(importedNames.has(item.name.toLowerCase())){ return; } // مكرر داخل الملف — عُدّ مرة
+      importedNames.add(item.name.toLowerCase());
+      if(existingNames.has(item.name.toLowerCase())){ updated++; } else { added++; }
+    });
+  }catch(err){
+    failures.push({ chunk: ci+1, names: chunks[ci].map(x=>x.name).slice(0,4).join('، '), message: err.message || 'فشل غير معروف' });
+  }
+}
+setProgress(chunks.length,chunks.length,'اكتمل');
+setBusy(false);
+renderPage();
+if(failures.length){
+  if(prev){
+    const rows=failures.map(f=>'<div style="margin:4px 0">&#8226; الدفعة '+f.chunk+' ('+esc(f.names)+'...): '+esc(f.message)+'</div>').join('');
+    prev.innerHTML='<div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);padding:12px;border-radius:var(--r)">'
+      +'<div class="fw-bold u-mb8">استُورد '+(added+updated)+' صنف من '+items.length+' — فشلت '+failures.length+' دفعة:</div>'
+      +rows
+      +'<div class="text-muted" style="font-size:12px;margin-top:8px">صحّح الخطأ في ملف Excel (غالبًا تعارض وحدة مع صنف موجود) وأعد رفع الملف — الأصناف الناجحة ستتحدث كمياتها، فاحذفها من الملف قبل الإعادة.</div></div>';
+  }
+  toast('اكتمل جزئيًا: '+(added+updated)+' نجح، '+failures.length+' دفعة فشلت — التفاصيل في المعاينة','warning');
+  return; // لا تغلق النافذة — التفاصيل معروضة
+}
+closeModal();
 toast(`تم الاستيراد: ${added} صنف جديد، ${updated} صنف محدَّث`,'success');
-}catch(err){ toast('خطأ في معالجة الملف','error'); }
+}catch(err){
+  setBusy(false);
+  toast(err.message || 'خطأ في معالجة الملف','error');
+}
 }
 // ============================================
 // SHELVES
@@ -2230,4 +2337,5 @@ resetWeight();
 renderPage();
 }
 
-export { renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem };
+function __dbgInvoiceState(){ return { len: currentInvoiceItems.length, items: currentInvoiceItems.map(i=>({n:i.itemName,q:i.qty,p:i.price,u:i.unit})) }; }
+export { __dbgInvoiceState, renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem, renderWhInvoices, renderWhMoves, renderWhReturns, renderWhPrs, showClearAllInvoicesModal, clearAllInvoices };

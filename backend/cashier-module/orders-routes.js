@@ -157,6 +157,20 @@ router.post('/', jwtAuth, crudLimiter, async (req, res) => {
             return res.status(400).json({ error: 'INVALID_PAYLOAD', message: 'Order must contain at least one item.' });
         }
         const payloadCheck = validateOrderPayload(b, { withItems: true });
+
+        // ROOT FIX 2026-10-02: المجاميع كانت تُوثَّق كما يزعم العميل — تُحسب
+        // الآن من البنود (سعر×كمية−خصم) والهوية من جلسة المصادقة، فلا يمكن
+        // تلفيق فاتورة بقيمة ملفقة من أي حساب مُصادق.
+        const itemsComputable = b.items.every((it) => Number.isFinite(Number(it.quantity)) && Number.isFinite(Number(it.unit_price)));
+        let finSubtotal = Number(b.subtotal) || 0, finDiscount = Number(b.discount) || 0, finTax = Number(b.tax) || 0, finTotal = Number(b.total) || 0;
+        if (itemsComputable) {
+            finSubtotal = Math.round(b.items.reduce((acc, it) => acc + Number(it.quantity) * Number(it.unit_price), 0) * 100) / 100;
+            finDiscount = Math.round(b.items.reduce((acc, it) => acc + (Number(it.discount) || 0), 0) * 100) / 100;
+            finTax = Math.max(0, finTax);
+            finTotal = Math.round((finSubtotal - finDiscount + finTax) * 100) / 100;
+            b.items.forEach((it) => { it.total = Math.round((Number(it.quantity) * Number(it.unit_price) - (Number(it.discount) || 0)) * 100) / 100; });
+        }
+        const cashierId = req.user?.id ?? b.cashier_id ?? null;
         if (!payloadCheck.ok) {
             return res.status(422).json({ error: 'INVALID_ORDER_NUMERICS', message: 'Order contains invalid numeric or payment fields.', details: payloadCheck.errors });
         }
@@ -178,9 +192,9 @@ router.post('/', jwtAuth, crudLimiter, async (req, res) => {
             orderId, orderNumber, b.table_id || null, b.department_code || null,
             b.status || 'open', b.type || 'dine_in',
             b.customer_name || null, b.customer_phone || null, b.notes || null,
-            b.subtotal || 0, b.discount || 0, b.tax || 0, b.total || 0,
+            finSubtotal, finDiscount, finTax, finTotal,
             b.payment_method || null, b.payment_status || 'unpaid',
-            b.cashier_id || null, b.waiter_name || null,
+            cashierId, b.waiter_name || null,
         ]);
 
         // 2. Insert items + handle inventory

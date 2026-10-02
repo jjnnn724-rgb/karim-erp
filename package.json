@@ -1,6 +1,6 @@
 {
   "name": "karim-erp",
-  "version": "4.7.0",
+  "version": "4.8.0",
   "description": "مطاعم الشرفه العالمي - نظام إدارة المطاعم المتكامل | Restaurant Management System with POS, Inventory, HR & ZATCA Compliance | v4.0 Enterprise UI redesign",
   "main": "electron/main.js",
   "author": {
@@ -30,7 +30,6 @@
     "cleanup-pg": "node database/scripts/cleanup-pg.js",
     "backup": "node database/scripts/backup.js",
     "restore": "node database/scripts/restore.js",
-    "build": "node build/build.js",
     "zatca-worker": "node backend/cashier-module/zatca-worker.js",
     "attendance-push-worker": "node backend/attendance-push/worker.js",
     "print-worker": "node backend/cashier-module/print-worker.js",
@@ -39,6 +38,7 @@
     "test:lint": "npx eslint . --ext .js,.mjs",
     "test:format": "npx prettier --check . --ignore-path .prettierignore",
     "test:type": "npm run typecheck && npm run typecheck:strict",
+    "test:type:gate": "node scripts/type-gate.js",
     "test:all": "npm run test:lint && npm run test:type && npm run test",
     "smoke": "node scripts/test.js smoke",
     "integration": "node scripts/test.js integration",
@@ -70,7 +70,8 @@
     "setup:machine": "node scripts/deploy-machine.mjs",
     "client:package": "node scripts/make-client-package.js",
     "typecheck": "tsc --noEmit",
-    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json"
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
+    "import:employee-documents": "node scripts/import-employee-documents.js"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",
@@ -218,6 +219,7 @@
     "payroll"
   ],
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
@@ -229,26 +231,28 @@
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "electron-log": "^5.1.2",
+    "electron-updater": "^6.1.7",
     "express": "^4.21.0",
+    "geolib": "^3.3.14",
     "html5-qrcode": "^2.3.8",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.11.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.5",
+    "onnxruntime-node": "^1.30.0",
     "oracledb": "^7.0.1",
     "pg": "^8.12.0",
     "pino": "^8.20.0",
     "pino-pretty": "^10.3.1",
     "pngjs": "^7.0.0",
     "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
     "uuid": "^11.1.1",
     "xlsx": "^0.18.5",
-    "zod": "^3.23.8",
-    "electron-updater": "^6.1.7",
-    "electron-log": "^5.1.2"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

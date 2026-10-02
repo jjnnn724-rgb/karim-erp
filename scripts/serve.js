@@ -192,6 +192,9 @@ function startBackend() {
 }
 
 function openBrowser(url) {
+    // KARIM_NO_BROWSER=1 للتشغيل الخلفي (سكريبت إعادة التشغيل المخفي) —
+    // بدونها كل إعادة تشغيل خلفية تفتح تبويب متصفح جديد بلا داعٍ.
+    if (process.env.KARIM_NO_BROWSER === '1') {return;}
     if (process.env.KARIMERP_NO_BROWSER === '1' || process.env.NO_BROWSER === '1') {
         log.plain(`  رابط النظام: ${url} — (فتح المتصفح معطّل)`);
         return;

@@ -364,7 +364,7 @@ describe('Phase 1.4 — XSS Protection & Error Handling', () => {
         it('should allow inline event handlers while keeping nonce-based scripts enforced', () => {
             const directive = buildCspDirectives({ reportOnly: false }, 'abc123');
 
-            expect(directive).toContain("script-src 'self' 'nonce-abc123' 'unsafe-hashes' 'unsafe-inline'");
+            expect(directive).toContain("script-src 'self' 'nonce-abc123' https://static.cloudflareinsights.com 'unsafe-hashes' 'unsafe-inline'");
             expect(directive).toContain("'unsafe-hashes'");
             expect(directive).toContain("'nonce-abc123'");
             expect(directive).toContain("script-src-attr 'unsafe-inline'");

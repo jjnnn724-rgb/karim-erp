@@ -3,18 +3,19 @@ const { pool } = require('./cashier-module/db-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 
 const router = express.Router();
-const STAGES = ['direct_manager', 'operations_manager', 'general_manager', 'hr'];
+// سلسلة الاعتماد (2026-10-01 بطلب المالك): الموظف ← مديره المباشر (رئيس قسمه)
+// ← المدير العام ← شؤون العاملين (تقفل الطلب). بلا مدير تشغيل.
+const STAGES = ['direct_manager', 'general_manager', 'hr'];
 const STAGE_LABELS = {
   employee: 'الموظف',
   direct_manager: 'المدير المباشر',
-  operations_manager: 'مدير التشغيل',
+  operations_manager: 'مدير التشغيل', // مرحلة ملغاة — تُبقى للسجلات القديمة فقط
   general_manager: 'المدير العام',
   hr: 'شؤون العاملين',
 };
 const STAGE_ROLES = {
-  direct_manager: ['manager', 'admin'],
-  operations_manager: ['manager', 'admin'],
-  general_manager: ['admin'],
+  direct_manager: ['manager', 'admin', 'dept_head'],
+  general_manager: ['admin', 'manager'],
   hr: ['hr', 'admin'],
 };
 let schemaPromise;
@@ -53,6 +54,9 @@ async function ensureLeaveWorkflowSchema() {
              CASE WHEN lr.status='approved' THEN CURRENT_TIMESTAMP ELSE NULL END
         FROM "leaveRequests" lr
        WHERE NOT EXISTS (SELECT 1 FROM leave_approval_workflows w WHERE w.leave_request_id=lr.id);
+      -- ترحيل 2026-10-01: طلبات عالقة لدى مدير التشغيل (مرحلة ملغاة) تتقدم للمدير العام
+      UPDATE leave_approval_workflows SET current_stage='general_manager', updated_at=CURRENT_TIMESTAMP
+       WHERE current_stage='operations_manager' AND status='in_progress';
     `);
   })();
   return schemaPromise;
@@ -92,8 +96,15 @@ router.get('/leave-workflow', jwtAuth, async (req, res) => {
     const employee = isPrivileged(req.user) ? null : await employeeForUser(req.user.id);
     const params = [];
     let filter = '';
-    if (employee) { params.push(employee.id); filter = `WHERE lr."employeeId"=$${params.length}`; }
-    else if (!isPrivileged(req.user)) {return res.json([]);}
+    if (isPrivileged(req.user)) {
+      filter = '';
+    } else if (req.user?.role === 'dept_head' && req.user?.dept_code) {
+      // رئيس القسم يرى طلبات قسمه فقط (للموافقة عليها) — بطلب المالك 2026-10-01
+      params.push(String(req.user.dept_code).toLowerCase());
+      filter = `WHERE LOWER(COALESCE(dept_emp.department,''))=$${params.length}`;
+    } else if (employee) {
+      params.push(employee.id); filter = `WHERE lr."employeeId"=$${params.length}`;
+    } else { return res.json([]); }
     const rows = (await pool.query(`
       SELECT lr.*,w.id AS workflow_id,w.current_stage,w.status AS workflow_status,w.current_note,w.updated_at AS workflow_updated_at,w.completed_at,
              e.name AS employee_name,lt.name AS leave_type_name,lt.icon AS leave_type_icon,
@@ -101,6 +112,7 @@ router.get('/leave-workflow', jwtAuth, async (req, res) => {
         FROM "leaveRequests" lr
         JOIN leave_approval_workflows w ON w.leave_request_id=lr.id
         LEFT JOIN employees e ON e.id=lr."employeeId"
+        LEFT JOIN employees dept_emp ON dept_emp.id=lr."employeeId"
         LEFT JOIN "leaveTypes" lt ON lt.id=lr."leaveTypeId"
         ${filter}
        ORDER BY lr."requestDate" DESC NULLS LAST,lr.id DESC`, params)).rows;
@@ -113,7 +125,16 @@ router.get('/leave-workflow/:id', jwtAuth, async (req, res) => {
     await ensureLeaveWorkflowSchema();
     const row = (await pool.query(`SELECT lr.*,w.id AS workflow_id,w.current_stage,w.status AS workflow_status,w.current_note,w.updated_at AS workflow_updated_at,w.completed_at,e.name AS employee_name,lt.name AS leave_type_name,lt.icon AS leave_type_icon FROM "leaveRequests" lr JOIN leave_approval_workflows w ON w.leave_request_id=lr.id LEFT JOIN employees e ON e.id=lr."employeeId" LEFT JOIN "leaveTypes" lt ON lt.id=lr."leaveTypeId" WHERE lr.id=$1`, [req.params.id])).rows[0];
     if (!row) {return fail(res, 404, 'LEAVE_NOT_FOUND', 'طلب الإجازة غير موجود');}
-    if (!isPrivileged(req.user)) { const employee = await employeeForUser(req.user.id); if (!employee || String(employee.id) !== String(row.employeeId)) {return fail(res, 403, 'LEAVE_FORBIDDEN', 'لا تملك صلاحية عرض هذا الطلب');} }
+    if (!isPrivileged(req.user)) {
+      const employee = await employeeForUser(req.user.id);
+      const isOwner = employee && String(employee.id) === String(row.employeeId);
+      let sameDept = false;
+      if (req.user?.role === 'dept_head' && req.user?.dept_code) {
+        const reqEmp = (await pool.query('SELECT department FROM employees WHERE id=$1 LIMIT 1', [row.employeeId])).rows[0];
+        sameDept = String(reqEmp?.department || '').toLowerCase() === String(req.user.dept_code).toLowerCase();
+      }
+      if (!isOwner && !sameDept) {return fail(res, 403, 'LEAVE_FORBIDDEN', 'لا تملك صلاحية عرض هذا الطلب');}
+    }
     row.events = (await pool.query('SELECT * FROM leave_approval_events WHERE workflow_id=$1 ORDER BY created_at ASC,id ASC', [row.workflow_id])).rows;
     res.json(row);
   } catch (e) { res.status(500).json({ error: 'LEAVE_WORKFLOW_DETAILS_FAILED', message: 'تعذر جلب تفاصيل طلب الإجازة' }); }
@@ -170,6 +191,16 @@ router.post('/leave-workflow/:id/action', jwtAuth, async (req, res) => {
         }
         return fail(res, 403, 'LEAVE_STAGE_FORBIDDEN', `الطلب موجود لدى ${STAGE_LABELS[workflow.current_stage]}`);
       }
+      // نطاق القسم (2026-10-01): رئيس القسم يبت في طلبات قسمه فقط — لا أقسام أخرى
+      if (req.user?.role === 'dept_head' && workflow.current_stage === 'direct_manager') {
+        const reqEmp = (await client.query('SELECT department FROM employees WHERE id=$1 LIMIT 1', [leave.employeeId])).rows[0];
+        const empDept = String(reqEmp?.department || '').toLowerCase();
+        const myDept = String(req.user?.dept_code || '').toLowerCase();
+        if (!myDept || empDept !== myDept) {
+          await client.query('ROLLBACK');
+          return fail(res, 403, 'LEAVE_DEPT_FORBIDDEN', 'تعتمد طلبات قسمك فقط — هذا الطلب لقسم آخر');
+        }
+      }
       if (workflow.status !== 'in_progress') { await client.query('ROLLBACK'); return fail(res, 409, 'LEAVE_NOT_ACTIONABLE', 'الطلب ليس في حالة قابلة للإجراء'); }
       let nextStage = workflow.current_stage, nextStatus = 'in_progress', completedAt = null;
       if (action === 'approve') {
@@ -191,4 +222,4 @@ router.post('/leave-workflow/:id/action', jwtAuth, async (req, res) => {
   finally { if (client) {client.release();} }
 });
 
-module.exports = { router, ensureLeaveWorkflowSchema, STAGE_LABELS, canDecideLeave };
+module.exports = { router, ensureLeaveWorkflowSchema, STAGES, STAGE_LABELS, STAGE_ROLES, canDecideLeave };

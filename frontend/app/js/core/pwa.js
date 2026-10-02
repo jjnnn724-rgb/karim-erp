@@ -5,11 +5,41 @@
  */
 
 let _pwaPrompt = null;
+
+/**
+ * زر تثبيت داخل الشريط الجانبي — لأن زر شاشة الدخول لا يراه المستخدم صاحب
+ * الجلسة المحفوظة. يظهر فقط عندما يمنح المتصفح beforeinstallprompt (سياق
+ * آمن موثوق + معايير PWA مستوفاة).
+ */
+function showSidebarInstall() {
+  const footer = document.querySelector('.sidebar-footer');
+  if (!footer || document.getElementById('pwaSidebarBtn')) {return;}
+  const btn = document.createElement('button');
+  btn.className = 'sb-toggle';
+  btn.id = 'pwaSidebarBtn';
+  btn.innerHTML = '<i class="ji" data-i="arrow-down"></i> ثبّت التطبيق';
+  btn.addEventListener('click', () => { window.pwaInstall?.(); });
+  footer.insertBefore(btn, footer.firstChild);
+}
+
+function hideSidebarInstall() {
+  const b = document.getElementById('pwaSidebarBtn');
+  if (b) {b.remove();}
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   _pwaPrompt = e;
   const b = document.getElementById('pwaInstallBtn');
   if (b) {b.style.display = '';}
+  showSidebarInstall();
+});
+// بعد التثبيت الفعلي — تنظيف كلا زري الدعوة
+window.addEventListener('appinstalled', () => {
+  _pwaPrompt = null;
+  hideSidebarInstall();
+  const b = document.getElementById('pwaInstallBtn');
+  if (b) {b.style.display = 'none';}
 });
 export async function pwaInstall(){
   if (_pwaPrompt) {
@@ -18,6 +48,7 @@ export async function pwaInstall(){
     _pwaPrompt = null;
     const b = document.getElementById('pwaInstallBtn');
     if (b) {b.style.display = 'none';}
+    hideSidebarInstall();
   } else {
     toast('من متصفح الجوال: مشاركة ← إضافة إلى الشاشة الرئيسية', 'info');
   }

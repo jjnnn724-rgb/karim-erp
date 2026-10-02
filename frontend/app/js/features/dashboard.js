@@ -24,6 +24,14 @@ function initDashboardCharts(){
  if(STATE.page!=='dashboard'||typeof Chart==='undefined') {return;}
  // لوحات بلا رسوم بيانية (لوحة رئيس القسم مثلًا) — لا تنشئ رسمًا على كانفس غير موجود
  if(!document.getElementById('dashboardDeptChart')) {return;}
+ // ROOT FIX (2026-09-30): تهيئة مكررة (تنقل سريع) كانت تسقط بـ
+ // "Canvas is already in use" — دمّر أي نسخة سابقة على نفس الكانفس أولًا.
+ try {
+   for (const id of ['dashboardDeptChart', 'dashboardTrendChart', 'dashboardExpenseChart']) {
+     const cv = document.getElementById(id);
+     if (cv && typeof Chart.getChart === 'function') { Chart.getChart(cv)?.destroy(); }
+   }
+ } catch (_) {}
  const {rev,exp,expAll}=dashboardFilteredRows();
  const css=getComputedStyle(document.documentElement), text=css.getPropertyValue('--text').trim()||'#263238', grid=css.getPropertyValue('--border').trim()||'#e5e7eb';
  const money=v=>Number(v||0).toLocaleString('ar-SA',{maximumFractionDigits:2});
@@ -177,6 +185,7 @@ async function mgrBriefLoad(){
 const box=document.getElementById('mgrBriefBox'); if(!box) {return;}
 try{
 const b=await apiFetch('/manager/briefing');
+window.mgrBriefLoad = mgrBriefLoad; // متاحة لزر التحديث داخل الـ HTML المولَّد
 const cashRows=(b.cashiers||[]).map(c=>`<tr><td class="fw-bold">${esc(c.name)}</td><td>${fN(c.invoices)}</td><td class="c-green">${fC(c.total)}</td></tr>`).join('');
 const outRows=(b.stockOut||[]).slice(0,5).map(s=>`<tr><td>${esc(s.name)}</td><td class="c-red">نافذ</td></tr>`).join('');
 const fcRows=(b.forecast||[]).slice(0,5).map(s=>`<tr><td>${esc(s.name)}</td><td class="c-gold">${fN(s.days_cover)} يوم</td></tr>`).join('');

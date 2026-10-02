@@ -633,17 +633,29 @@ function startDailyBriefing(engine) {
     return;
   }
   const { h, min } = briefTime();
-  logger.info(`[GENIUS] daily briefing scheduled at ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} Riyadh`);
+  logger.info(`[GENIUS] daily briefing scheduled at ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} Riyadh (catch-up: أي وقت بعد الموعد لو لم تُرسل اليوم)`);
   _briefTimer = setInterval(async () => {
     if (_briefRunning) {return;}
     try {
       if (!engine?.connection?.isConnected?.()) {return;}
+      // ROOT FIX 2026-10-02: كانت نافذة دقيقتين — أي إعادة تشغيل/انقطاع في تلك
+      // الدقيقتين = تخطٍ صامت لليوم كله. الآن: تعويض مجدول بأي وقت بعد الموعد،
+      // مرة واحدة يوميًا بعلم دائم في wa_settings (نفس نمط automation).
+      const targetMin = h * 60 + min;
       const now = riyadhHM();
-      if (now.h === h && now.min >= min && now.min < min + 2) {
-        _briefRunning = true;
-        try { await sendDailyBriefing(engine); }
-        finally { _briefRunning = false; }
-      }
+      if ((now.h * 60 + now.min) < targetMin) {return;}
+      const today = riyadhToday();
+      let last = null;
+      try { last = await store.getSetting('wa_genius_daily_last'); } catch (_) {}
+      if (last === today) {return;}
+      _briefRunning = true;
+      try {
+        const r = await sendDailyBriefing(engine);
+        // already-sent تُعلَّم كذلك: الحماية الداخلية wa_events غطت اليوم
+        if (r && (r.sent > 0 || r.reason === 'no-managers' || r.reason === 'already-sent')) {
+          try { await store.setSetting('wa_genius_daily_last', today); } catch (_) {}
+        }
+      } finally { _briefRunning = false; }
     } catch (e) { logger.warn('[GENIUS] briefing tick: ' + String(e.message).slice(0, 120)); }
   }, 60000);
   if (_briefTimer.unref) {_briefTimer.unref();}
@@ -663,12 +675,21 @@ function startMonthlyBriefing(engine) {
       if (!engine?.connection?.isConnected?.()) {return;}
       const day = riyadhDay();
       if (day !== 1) {return;}
+      // نفس إصلاح اليومي: نافذة دقيقتين → تعويض مجدول بقية يوم 1 بعد الموعد
+      const { h, min } = monthlyTime();
       const now = riyadhHM();
-      if (now.h === h && now.min >= min && now.min < min + 2) {
-        _briefRunning = true;
-        try { await sendMonthlyBriefing(engine); }
-        finally { _briefRunning = false; }
-      }
+      if ((now.h * 60 + now.min) < (h * 60 + min)) {return;}
+      const monthKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit' }).format(new Date());
+      let last = null;
+      try { last = await store.getSetting('wa_genius_monthly_last'); } catch (_) {}
+      if (last === monthKey) {return;}
+      _briefRunning = true;
+      try {
+        const r = await sendMonthlyBriefing(engine);
+        if (r && (r.sent > 0 || r.reason === 'no-managers' || r.reason === 'already-sent')) {
+          try { await store.setSetting('wa_genius_monthly_last', monthKey); } catch (_) {}
+        }
+      } finally { _briefRunning = false; }
     } catch (e) { logger.warn('[GENIUS] monthly tick: ' + String(e.message).slice(0, 120)); }
   }, 60000);
   if (_monthlyTimer.unref) {_monthlyTimer.unref();}
