@@ -34,3 +34,20 @@ Thumbs.db
 .emp-token-tmp
 scripts/.*_tokens.json
 scripts/.*-tmp
+
+# ─── FIX 2026-10-03 (Enterprise R1): أسرار كانت متتبعة — يُمنع تتبعها ───
+# مفتاح CA الخاص: من يملكه يزوّر شهادات موثوقة لأي hostname في الشبكة
+tools/mkcert/CA/rootCA-key.pem
+tools/mkcert/CA/*.key.pem
+# مفتاح توقيع APK (مع كلمات مروره داخل build.gradle — العزل يبدأ بالملف الثنائي)
+android/app/release.keystore
+# نسخ قاعدة بيانات كاملة داخل docker-deploy
+docker-deploy/full-backup.sql
+docker-deploy/.env
+*.sql.gz
+
+# ملفات تشخيص مؤقتة وتصدير PII — لا تتبع مطلقًا
+*.tmp.*
+*.tmp
+deleted_employees*.csv
+diag-*.txt
