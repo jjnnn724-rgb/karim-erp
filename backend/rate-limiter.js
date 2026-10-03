@@ -293,10 +293,12 @@ const generalLimiter = createRateLimiter(DEFAULT_CONFIGS.general);
  * Stricter to prevent brute force attacks — but keyed per ACCOUNT so a
  * shared-IP LAN (one router for all terminals) never blocks co-workers
  * logging in at opening time. Each account keeps its own strict counter.
+ * FIX 2026-10-03: كان الحد ثابتًا 20 يتجاهل RATE_LIMIT_AUTH_MAX رغم أن
+ * التعليق أعلاه يوثّق قابليته للضبط بالبيئة — الآن يُحترم المتغير (الافتراضي 20).
  */
 const authLimiter = createRateLimiter({
     ...DEFAULT_CONFIGS.auth,
-    maxRequests: 20,
+    maxRequests: envMax('RATE_LIMIT_AUTH_MAX', 20),
     keyGenerator: accountKeyGenerator, // per (IP + username) — not per router IP
     // Brute-force protection MUST count FAILED logins: wrong-password 401s
     // are precisely the attack signal. The factory default

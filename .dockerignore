@@ -51,6 +51,10 @@ coverage/
 .nyc_output
 
 # ─── Misc ───────────────────────────────────────────────────────
+# FIX 2026-10-03 (Enterprise R2): .env بأي شكل لا يدخل سياق البناء إطلاقًا
+.env
+.env.*
+!.env.example
 .env.local
 .env.example
 *.md
@@ -58,3 +62,4 @@ coverage/
 LICENSE
 .DS_Store
 Thumbs.db
+docker-deploy/

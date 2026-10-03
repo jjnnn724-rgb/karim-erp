@@ -2,7 +2,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const morgan = require('morgan');
+// const morgan = require('morgan'); // FIX 2026-10-03: أُزيل — تسجيل مكرر مع httpLogger (انظر أسفل ملف الإعداد)
 const compression = require('compression');
 const os = require('os');
 const bcrypt = require('./pw-crypto');
@@ -409,7 +409,10 @@ app.use('/api/inventory/import', express.json({ limit: '50mb' }));
 // حد عام مشدّد (2MB): يقطع هجمات الحشو مبكرًا بدل سحب الذاكرة على 50MB لكل طلب
 app.use(express.json({ limit: '2mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
-app.use(morgan('combined'));
+// FIX 2026-10-03 (اختبار ضغط): أُزيل morgan('combined') — كان يسجّل كل طلب
+// مرتين (httpLogger المنظم يغطي البداية والنهاية بتفاصيل أكبر)، والتحذير
+// للطلبات البطيئة موجود أصلًا في httpLogger (slowThresholdMs). العمل المكرر
+// كان يستهلك CPU وI/O على المسار الساخن تحت الضغط بلا أي قيمة تشغيلية.
 
 // ─── DB Constraints Validation Middleware ─────────────────
 // يتحقق من قيود قاعدة البيانات (UNIQUE, FK, NOT NULL, CHECK) قبل تنفيذ أي عملية كتابة
@@ -1251,24 +1254,41 @@ function ensureIdForEntity(entity, body) {
 
 /**
  * Task 19: التحقق من ربط حساب رئيس القسم بقسم صحيح عند إنشاء المستخدم.
+ * FIX 2026-10-03: الواجهة تعرض أقسام HR (hrDepartments) وتدعم اختيار أكثر من
+ * قسم (dept_code بفواصل)، وكان التحقق يقارن النص كاملًا ككود واحد في جدول
+ * departments التشغيلي فقط — فيفشل "القسم المختار غير موجود" لأغلب الأقسام.
+ * المقارنة الآن لكل كود على حدة في جدولي hrDepartments وdepartments معًا
+ * (نفس سلوك deptNameByCode في الواجهة)، بدون حساسية لحالة الأحرف.
  */
+function splitDeptCodes(raw) {
+    return String(raw || '').split(',').map(x => x.trim()).filter(Boolean);
+}
+
+async function assertDeptHeadCodesExist(deptList) {
+    const known = new Set(
+        (await pool.query('SELECT LOWER(code) AS code FROM departments UNION SELECT LOWER(code) FROM "hrDepartments"'))
+            .rows.map(r => String(r.code))
+    );
+    const unknown = deptList.filter(c => !known.has(c.toLowerCase()));
+    if (unknown.length) {
+        const error = new Error(`القسم المختار غير موجود: ${unknown.join(', ')}`);
+        error.statusCode = 422;
+        error.code = 'DEPT_NOT_FOUND';
+        throw error;
+    }
+}
+
 async function validateDeptHeadUserLink(entity, filtered) {
     if (entity !== 'users') {return;}
     if ('role' in filtered && filtered.role !== 'dept_head') {return;} // غير رئيس قسم: لا ربط مطلوب
-    const deptCode = String(filtered.dept_code || '').trim();
-    if (!deptCode) {
+    const deptList = splitDeptCodes(filtered.dept_code);
+    if (!deptList.length) {
         const error = new Error('حساب رئيس القسم يجب ربطه بقسم — اختر القسم من القائمة');
         error.statusCode = 422;
         error.code = 'DEPT_HEAD_DEPARTMENT_REQUIRED';
         throw error;
     }
-    const check = await pool.query('SELECT 1 FROM departments WHERE LOWER(code)=LOWER($1) LIMIT 1', [deptCode]);
-    if (!check.rows.length) {
-        const error = new Error(`القسم المختار غير موجود: ${deptCode}`);
-        error.statusCode = 422;
-        error.code = 'DEPT_NOT_FOUND';
-        throw error;
-    }
+    await assertDeptHeadCodesExist(deptList);
 }
 
 /**
@@ -1280,20 +1300,15 @@ async function validateDeptHeadUserUpdate(filtered, userId) {
     if (!existing) {return;} // لا يوجد مستخدم — يُعالج لاحقًا بـ 404
     const effectiveRole = 'role' in filtered ? filtered.role : existing.role;
     if (effectiveRole !== 'dept_head') {return;}
-    const effectiveDept = filtered.dept_code !== undefined ? String(filtered.dept_code || '').trim() : String(existing.dept_code || '').trim();
-    if (!effectiveDept) {
+    const effectiveDept = filtered.dept_code !== undefined ? String(filtered.dept_code || '') : String(existing.dept_code || '');
+    const deptList = splitDeptCodes(effectiveDept);
+    if (!deptList.length) {
         const error = new Error('حساب رئيس القسم يجب ربطه بقسم — اختر القسم من القائمة');
         error.statusCode = 422;
         error.code = 'DEPT_HEAD_DEPARTMENT_REQUIRED';
         throw error;
     }
-    const check = await pool.query('SELECT 1 FROM departments WHERE LOWER(code)=LOWER($1) LIMIT 1', [effectiveDept]);
-    if (!check.rows.length) {
-        const error = new Error(`القسم المختار غير موجود: ${effectiveDept}`);
-        error.statusCode = 422;
-        error.code = 'DEPT_NOT_FOUND';
-        throw error;
-    }
+    await assertDeptHeadCodesExist(deptList);
 }
 
 /**

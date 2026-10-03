@@ -20,11 +20,13 @@ RUN npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
 # ─── نسخ كود المشروع ─────────────────────────────────────────────
+# FIX 2026-10-03 (Enterprise R2): أُزيل `COPY .env ./` — كان يخبز الأسرار
+# الحقيقية داخل الصورة (أي من يملك الصورة يملك JWT/DB/WhatsApp). البيئة
+# تُمرر عبر docker-compose environment أو env_file وقت التشغيل فقط.
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY database/ ./database/
 COPY scripts/ ./scripts/
-COPY .env ./
 COPY docker-entrypoint.sh ./
 
 # ─── صلاحيات entrypoint ──────────────────────────────────────────
