@@ -1,1 +1,0 @@
-16:     const client = new ZKClient(dev.ipAddress, dev.port || 4370);
