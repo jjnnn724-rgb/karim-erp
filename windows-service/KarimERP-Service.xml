@@ -2,8 +2,10 @@
   <id>KarimERP-Server</id>
   <name>Karim ERP Server</name>
   <description>Karim ERP API + realtime server (starts with Windows)</description>
-  <!-- Portable: %BASE% = windows-service dir. Node resolved at install time. -->
-  <executable>%BASE%\..\node\node.exe</executable>
+  <!-- FIX 2026-10-03 (Enterprise): كان يشير إلى node محمّل غير موجود على هذا
+       الجهاز (%BASE%\..\node\node.exe) — المسار الآن node النظامي المثبت.
+       للتوزيع المحمول أعده إلى %BASE%\..\node\node.exe مع نسخ node محمول. -->
+  <executable>C:\Program Files\nodejs\node.exe</executable>
   <arguments>%BASE%\..\backend\server.js --service</arguments>
   <workingdirectory>%BASE%\..</workingdirectory>
   <logpath>%BASE%\..\logs</logpath>

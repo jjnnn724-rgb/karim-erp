@@ -13,6 +13,30 @@ const { log, MIGRATIONS_DIR, MIGRATION_LOCK, DATA_DIR, getEnv, psqlFile, shouldA
 const fs = require('fs');
 const path = require('path');
 
+// ─── FIX R5 (Enterprise 2026-10-03): التتبع المزدوج — ملف + جدول القاعدة ───
+// كان التتبع في ملف .migrations_applied فقط (خارج القاعدة) — استرجاع نسخة
+// على جهاز جديد يجعل المشغّل يظن كل شيء مطبقًا (دليل حي: drill 2026-10-03
+// فاتت 092/093 بصمت). الآن: backfill للجدول من الملف عند كل تشغيل + تسجيل
+// فوري في الجدول مع كل تطبيق (الملف يبقى للتوافق الخلفي).
+function recordAppliedInDb(dbName, files) {
+    const list = (files || []).filter(Boolean);
+    if (!list.length) { return true; }
+    const values = list.map(f => `('${String(f).replace(/'/g, "''")}')`).join(', ');
+    const sql = `INSERT INTO public.schema_migrations (version) VALUES ${values} ON CONFLICT (version) DO NOTHING;`;
+    const tmp = path.join(DATA_DIR, `.record-applied.tmp.sql`);
+    try {
+        fs.mkdirSync(path.dirname(tmp), { recursive: true });
+        fs.writeFileSync(tmp, sql, 'utf-8');
+        const r = psqlFile(tmp, dbName);
+        return r.status === 0;
+    } catch (e) {
+        log.warn(`[R5] تعذر تسجيل التتبع في القاعدة (غير قاتل): ${e.message}`);
+        return false;
+    } finally {
+        try { fs.unlinkSync(tmp); } catch (_) {}
+    }
+}
+
 function main() {
     log.header('PostgreSQL — Migrations');
 
@@ -22,6 +46,21 @@ function main() {
     }
 
     const dbName = getEnv('DB_NAME', 'karim_erp');
+
+    // Backfill: كل أسماء الملفات المسجلة بالملف تُكتب في جدول القاعدة (idempotent)
+    try {
+        if (fs.existsSync(MIGRATION_LOCK)) {
+            const fileApplied = JSON.parse(fs.readFileSync(MIGRATION_LOCK, 'utf-8'));
+            if (Array.isArray(fileApplied) && fileApplied.length) {
+                if (recordAppliedInDb(dbName, fileApplied)) {
+                    log.ok(`[R5] تتبع القاعدة متزامن مع الملف (${fileApplied.length} إدخالًا)`);
+                } else {
+                    log.warn('[R5] backfill تتبع القاعدة لم يكتمل — راجع schema_migrations');
+                }
+            }
+        }
+    } catch (_) { /* غير قاتل */ }
+
     const targetFile = process.argv[2];
 
     let pending;
@@ -73,6 +112,7 @@ function main() {
             if (!applied.includes(file)) applied.push(file);
             try { fs.mkdirSync(path.dirname(MIGRATION_LOCK), { recursive: true }); } catch (_) {}
             fs.writeFileSync(MIGRATION_LOCK, JSON.stringify(applied, null, 2), 'utf-8');
+            recordAppliedInDb(dbName, [file]); // FIX R5: تتبع مزدوج — القاعدة أيضًا
             log.ok(`✓ ${file}`);
             success++;
         } else {

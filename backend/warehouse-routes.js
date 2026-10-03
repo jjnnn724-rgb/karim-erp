@@ -911,6 +911,17 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRole(...RECEIVE_ROLES), a
                 catchWeightQty: received.receivedPackagingQty != null ? received.receivedPackagingQty : null,
                 catchWeightUnit: received.receivedPackagingQty != null ? (received.packagingUom || 'كرتون') : null });
             ledgerMovements.push({inventory_id:item.id,quantity:received.receivedDeltaQty,target_location:targetLocation.code,balance:inn.balanceAfter});
+            // FIX C5 (Enterprise 2026-10-03): الاستلام كان يكتب الدفتر فقط —
+            // صف "inventoryTx" الناقص جعل الاستلامات غير مرئية في شاشة سجل
+            // الحركات. نفس نمط اعتماد الصرف (type='in') بدون أي أثر رصيدي
+            // (الجدول تاريخي مجمد).
+            await client.query(
+                `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes, "dispatchId")
+                 VALUES ($1,$2,$3,$4,'in',$5,$6,$7,$8,$9)`,
+                [id(), item.id, item.name, received.receivedDeltaQty, dateOnly(dispatch.date),
+                 n(item.avgCost), n(received.receivedDeltaQty) * n(item.avgCost),
+                 `استلام مواد من إذن صرف #${dispatch.id} — ${targetLocation.name_ar || targetLocation.code}`,
+                 String(dispatch.id)]);
             // ملاحظة: قيد مصروف القسم يُقيَّد عند الاعتماد (adjustmentType='dispatch') —
             // لا يُقيَّد هنا عند الاستلام تجنّبًا للاحتساب المزدوج؛ الإرجاع يعكسه بمصروف سالب.
         }

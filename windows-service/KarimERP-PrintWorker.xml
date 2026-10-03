@@ -2,7 +2,8 @@
   <id>KarimERP-PrintWorker</id>
   <name>Karim ERP Print Worker</name>
   <description>Karim ERP thermal print queue worker (starts with Windows)</description>
-  <executable>%BASE%\..\node\node.exe</executable>
+  <!-- FIX 2026-10-03 (Enterprise): node النظامي بدل المحمّل غير الموجود (انظر KarimERP-Service.xml) -->
+  <executable>C:\Program Files\nodejs\node.exe</executable>
   <arguments>%BASE%\..\backend\cashier-module\print-worker.js --service</arguments>
   <workingdirectory>%BASE%\..</workingdirectory>
   <logpath>%BASE%\..\logs</logpath>
