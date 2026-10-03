@@ -1,0 +1,484 @@
+{
+  "phase": "phase-post-logger-fix.json",
+  "startedAt": "2026-10-03T12:50:56.058Z",
+  "serverBefore": null,
+  "scenarios": [
+    {
+      "label": "reads-c25",
+      "requests": 29405,
+      "rps": 1470.3,
+      "duration_s": 20,
+      "mb_transferred": 411,
+      "p50": 14.9,
+      "p90": 18.5,
+      "p95": 20,
+      "p99": 25.1,
+      "max": 62.8,
+      "byStatus": {
+        "200": 25207,
+        "302": 4198
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/attendance": {
+          "requests": 4202,
+          "rps": 210.1,
+          "p50": 15.2,
+          "p95": 20.5,
+          "byStatus": {
+            "200": 4202
+          }
+        },
+        "/api/employees": {
+          "requests": 4197,
+          "rps": 209.9,
+          "p50": 15.4,
+          "p95": 20.7,
+          "byStatus": {
+            "200": 4197
+          }
+        },
+        "/api/inventory": {
+          "requests": 4199,
+          "rps": 210,
+          "p50": 14.5,
+          "p95": 19.7,
+          "byStatus": {
+            "200": 4199
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 4204,
+          "rps": 210.2,
+          "p50": 14.6,
+          "p95": 19.7,
+          "byStatus": {
+            "200": 4204
+          }
+        },
+        "/api/users": {
+          "requests": 4203,
+          "rps": 210.2,
+          "p50": 15,
+          "p95": 20.2,
+          "byStatus": {
+            "200": 4203
+          }
+        },
+        "/api/departments": {
+          "requests": 4202,
+          "rps": 210.1,
+          "p50": 14.8,
+          "p95": 19.5,
+          "byStatus": {
+            "200": 4202
+          }
+        },
+        "/": {
+          "requests": 4198,
+          "rps": 209.9,
+          "p50": 14.7,
+          "p95": 19.9,
+          "byStatus": {
+            "302": 4198
+          }
+        }
+      }
+    },
+    {
+      "label": "reads-c50",
+      "requests": 26104,
+      "rps": 1305.2,
+      "duration_s": 20,
+      "mb_transferred": 365.2,
+      "p50": 32.2,
+      "p90": 48.3,
+      "p95": 54,
+      "p99": 68.1,
+      "max": 110.1,
+      "byStatus": {
+        "200": 22379,
+        "302": 3725
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/employees": {
+          "requests": 3730,
+          "rps": 186.5,
+          "p50": 32.2,
+          "p95": 53.8,
+          "byStatus": {
+            "200": 3730
+          }
+        },
+        "/api/inventory": {
+          "requests": 3729,
+          "rps": 186.5,
+          "p50": 31.7,
+          "p95": 53.1,
+          "byStatus": {
+            "200": 3729
+          }
+        },
+        "/api/departments": {
+          "requests": 3732,
+          "rps": 186.6,
+          "p50": 32.4,
+          "p95": 53.1,
+          "byStatus": {
+            "200": 3732
+          }
+        },
+        "/api/users": {
+          "requests": 3732,
+          "rps": 186.6,
+          "p50": 32.6,
+          "p95": 55.1,
+          "byStatus": {
+            "200": 3732
+          }
+        },
+        "/api/attendance": {
+          "requests": 3730,
+          "rps": 186.5,
+          "p50": 32.9,
+          "p95": 55.5,
+          "byStatus": {
+            "200": 3730
+          }
+        },
+        "/": {
+          "requests": 3725,
+          "rps": 186.3,
+          "p50": 31.3,
+          "p95": 53.8,
+          "byStatus": {
+            "302": 3725
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 3726,
+          "rps": 186.3,
+          "p50": 32,
+          "p95": 53,
+          "byStatus": {
+            "200": 3726
+          }
+        }
+      }
+    },
+    {
+      "label": "reads-c100",
+      "requests": 30322,
+      "rps": 1516.1,
+      "duration_s": 20,
+      "mb_transferred": 422.9,
+      "p50": 58.9,
+      "p90": 72.8,
+      "p95": 82.4,
+      "p99": 100.6,
+      "max": 152.9,
+      "byStatus": {
+        "200": 25999,
+        "302": 4323
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/users": {
+          "requests": 4331,
+          "rps": 216.6,
+          "p50": 59.7,
+          "p95": 83.4,
+          "byStatus": {
+            "200": 4331
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 4339,
+          "rps": 217,
+          "p50": 58.7,
+          "p95": 81.3,
+          "byStatus": {
+            "200": 4339
+          }
+        },
+        "/api/attendance": {
+          "requests": 4327,
+          "rps": 216.4,
+          "p50": 59.5,
+          "p95": 84.2,
+          "byStatus": {
+            "200": 4327
+          }
+        },
+        "/api/employees": {
+          "requests": 4314,
+          "rps": 215.7,
+          "p50": 58.7,
+          "p95": 83.1,
+          "byStatus": {
+            "200": 4314
+          }
+        },
+        "/api/departments": {
+          "requests": 4347,
+          "rps": 217.4,
+          "p50": 59.1,
+          "p95": 82,
+          "byStatus": {
+            "200": 4347
+          }
+        },
+        "/api/inventory": {
+          "requests": 4341,
+          "rps": 217.1,
+          "p50": 57.9,
+          "p95": 81.4,
+          "byStatus": {
+            "200": 4341
+          }
+        },
+        "/": {
+          "requests": 4323,
+          "rps": 216.2,
+          "p50": 58.1,
+          "p95": 82.5,
+          "byStatus": {
+            "302": 4323
+          }
+        }
+      }
+    },
+    {
+      "label": "login-storm-c10",
+      "requests": 199,
+      "rps": 13.3,
+      "duration_s": 15,
+      "mb_transferred": 0.1,
+      "p50": 713.2,
+      "p90": 838.3,
+      "p95": 857.1,
+      "p99": 1075,
+      "max": 1173.7,
+      "byStatus": {
+        "200": 199
+      },
+      "errors": {},
+      "perEndpoint": {
+        "POST /api/auth/login": {
+          "requests": 199,
+          "rps": 13.3,
+          "p50": 713.2,
+          "p95": 857.1,
+          "byStatus": {
+            "200": 199
+          }
+        }
+      }
+    },
+    {
+      "label": "writes-c20",
+      "requests": 4208,
+      "rps": 210.4,
+      "duration_s": 20,
+      "mb_transferred": 0.5,
+      "p50": 16.3,
+      "p90": 22.6,
+      "p95": 26.4,
+      "p99": 46,
+      "max": 2542.9,
+      "byStatus": {
+        "201": 4208
+      },
+      "errors": {},
+      "perEndpoint": {
+        "POST+DELETE hrDepartments": {
+          "requests": 4208,
+          "rps": 210.4,
+          "p50": 16.3,
+          "p95": 26.4,
+          "byStatus": {
+            "201": 4208
+          }
+        }
+      }
+    },
+    {
+      "label": "mixed-sustained-c50-60s",
+      "requests": 72822,
+      "rps": 1213.7,
+      "duration_s": 60,
+      "mb_transferred": 975.1,
+      "p50": 28.5,
+      "p90": 40.7,
+      "p95": 54.9,
+      "p99": 75,
+      "max": 243.6,
+      "byStatus": {
+        "200": 59238,
+        "201": 3674,
+        "302": 9910
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/users": {
+          "requests": 9849,
+          "rps": 164.2,
+          "p50": 28.4,
+          "p95": 41.7,
+          "byStatus": {
+            "200": 9849
+          }
+        },
+        "/api/employees": {
+          "requests": 9905,
+          "rps": 165.1,
+          "p50": 28.5,
+          "p95": 41.2,
+          "byStatus": {
+            "200": 9905
+          }
+        },
+        "/api/departments": {
+          "requests": 9841,
+          "rps": 164,
+          "p50": 28.1,
+          "p95": 41.2,
+          "byStatus": {
+            "200": 9841
+          }
+        },
+        "/": {
+          "requests": 9910,
+          "rps": 165.2,
+          "p50": 27.8,
+          "p95": 40.4,
+          "byStatus": {
+            "302": 9910
+          }
+        },
+        "POST+DELETE hrDepartments": {
+          "requests": 3674,
+          "rps": 61.2,
+          "p50": 56.7,
+          "p95": 79.9,
+          "byStatus": {
+            "201": 3674
+          }
+        },
+        "/api/inventory": {
+          "requests": 9902,
+          "rps": 165,
+          "p50": 27.9,
+          "p95": 40.6,
+          "byStatus": {
+            "200": 9902
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 9861,
+          "rps": 164.4,
+          "p50": 27.9,
+          "p95": 41.1,
+          "byStatus": {
+            "200": 9861
+          }
+        },
+        "/api/attendance": {
+          "requests": 9880,
+          "rps": 164.7,
+          "p50": 28.6,
+          "p95": 41.6,
+          "byStatus": {
+            "200": 9880
+          }
+        }
+      }
+    },
+    {
+      "label": "spike-c150",
+      "requests": 14754,
+      "rps": 1475.4,
+      "duration_s": 10,
+      "mb_transferred": 205.5,
+      "p50": 94.5,
+      "p90": 120.7,
+      "p95": 132,
+      "p99": 177.3,
+      "max": 1416.2,
+      "byStatus": {
+        "200": 12644,
+        "302": 2110
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/departments": {
+          "requests": 2112,
+          "rps": 211.2,
+          "p50": 95.3,
+          "p95": 132.1,
+          "byStatus": {
+            "200": 2112
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 2117,
+          "rps": 211.7,
+          "p50": 92.9,
+          "p95": 134.4,
+          "byStatus": {
+            "200": 2117
+          }
+        },
+        "/api/inventory": {
+          "requests": 2120,
+          "rps": 212,
+          "p50": 94.6,
+          "p95": 133.5,
+          "byStatus": {
+            "200": 2120
+          }
+        },
+        "/": {
+          "requests": 2110,
+          "rps": 211,
+          "p50": 92.9,
+          "p95": 131.4,
+          "byStatus": {
+            "302": 2110
+          }
+        },
+        "/api/users": {
+          "requests": 2099,
+          "rps": 209.9,
+          "p50": 95.3,
+          "p95": 131.8,
+          "byStatus": {
+            "200": 2099
+          }
+        },
+        "/api/employees": {
+          "requests": 2099,
+          "rps": 209.9,
+          "p50": 92.7,
+          "p95": 129.2,
+          "byStatus": {
+            "200": 2099
+          }
+        },
+        "/api/attendance": {
+          "requests": 2097,
+          "rps": 209.7,
+          "p50": 95.6,
+          "p95": 131.1,
+          "byStatus": {
+            "200": 2097
+          }
+        }
+      }
+    }
+  ],
+  "serverAfter": null,
+  "healthAfter": 200,
+  "totalMinutes": 3.1
+}

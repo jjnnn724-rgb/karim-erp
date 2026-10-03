@@ -17,4 +17,5 @@
   <stoptimeout>30 sec</stoptimeout>
   <hidewindow>true</hidewindow>
   <env name="KARIM_SERVICE" value="1" />
+  <!-- TEST MODE 2026-10-03 removed: حدود الاختبار المؤقتة أُزيلت بعد اكتمال القياس (production limits restored) -->
 </service>

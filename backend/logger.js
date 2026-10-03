@@ -36,8 +36,22 @@ function getTransport() {
         return { target: 'pino/file', options: { destination: nullDevice, sync: true } };
     }
     
-    // In development, use pretty printing
-    if (!isProduction && process.env.LOG_PRETTY !== 'false') {
+    // Default (production): JSON إلى ملف عبر worker-thread — FIX 2026-10-03
+    // (اختبار ضغط): كان pino يكتب مزامنةً على stdout، وتحت خدمة ويندوز (WinSW)
+    // أنبوب stdout غير مصروف → كل سطر لوج يحجب الحلقة → كومة 300MB وتوقف
+    // 3.6 ثانية وتجاوز مهلة الطلبات تحت الضغط (دليل: phase-post-all-fixes).
+    // pino/file يعمل في خيط منفصل ولا يحجب أبدًا، والسجل دائم على القرص.
+    if (isProduction) {
+        const logDir = require('path').join(__dirname, '..', 'logs');
+        try { require('fs').mkdirSync(logDir, { recursive: true }); } catch (_) {}
+        return {
+            target: 'pino/file',
+            options: { destination: require('path').join(logDir, 'app-out.log'), mkdir: true, sync: false },
+        };
+    }
+
+    // Development: pretty printing
+    if (process.env.LOG_PRETTY !== 'false') {
         return {
             target: 'pino-pretty',
             options: {
@@ -48,8 +62,8 @@ function getTransport() {
             },
         };
     }
-    
-    // Default: JSON to stdout
+
+    // Fallback: JSON to stdout
     return undefined; // Use pino defaults
 }
 
