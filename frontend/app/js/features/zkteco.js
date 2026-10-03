@@ -493,7 +493,7 @@ const to=document.getElementById('zkExpTo')?.value||'';
 showLoad();
 try{
 const q=new URLSearchParams({...(from?{from}:{}),...(to?{to}:{})}).toString();
-const headers={'Authorization':'Bearer '+window._jwt};
+const headers={'Authorization':'Bearer '+window._jwt,'x-api-key':window._appKey};
 const res=await fetch(API_BASE+'/zkteco/logs/export'+(q?'?'+q:''),{headers});
 if(!res.ok) {throw new Error(`فشل التصدير (${res.status})`);}
 const blob=await res.blob();

@@ -688,6 +688,13 @@ window.fetch = function(url, options = {}) {
         if (window._jwt && !url.includes('/api/auth/login')) {
             options.headers['Authorization'] = `Bearer ${window._jwt}`;
         }
+        // FIX 2026-10-03 (Enterprise): إضافة x-api-key آليًا لكل طلب /api/* يدوي —
+        // الـfetch اليدوي (تصدير البصمات، طباعة P&L، رفع الشعار، اعتماد الجرد،
+        // مزامنة /state) كان يُرفض 401 API_KEY_REQUIRED لأن المفتاح لا يُضاف
+        // إلا في apiFetch. بوابة واحدة هنا تصلح الفئة كلها.
+        if (window._appKey && !url.includes('/api/auth/login')) {
+            options.headers['x-api-key'] = window._appKey;
+        }
         if (socket && socket.connected) {
             options.headers['x-socket-id'] = socket.id || '';
         }

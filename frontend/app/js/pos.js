@@ -1344,7 +1344,7 @@ async function uploadCatalogImage() {
     try {
         const res = await fetch(`/api/pos/products/${id}/image`, {
             method: 'POST',
-            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+            headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(posAppKeyGet() ? { 'x-api-key': posAppKeyGet() } : {}) },
             body: form,
         });
         const data = await res.json().catch(() => ({}));
@@ -1553,7 +1553,7 @@ function kotReceiptHtml(result) {
 async function openKotHtml(orderId) {
     try {
         const res = await fetch(`/api/pos/kot/orders/${orderId}/html`, {
-            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+            headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(posAppKeyGet() ? { 'x-api-key': posAppKeyGet() } : {}) },
         });
         if (!res.ok) {throw new Error('تعذر فتح تذاكر المطبخ');}
         const html = await res.text();
