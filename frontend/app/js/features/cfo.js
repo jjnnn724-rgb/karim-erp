@@ -419,7 +419,7 @@ async function cfoVoidEntry(id){
   finally{ hideLoad(); }
 }
 function cfoPrintShell(title, body){
-  const w = window.open('', '_blank');
+  const w = (window.openInAppReport ? window.openInAppReport('قيد اليومية') : window.open('', '_blank'));
   if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
   w.document.write(`<!DOCTYPE html><html dir="${STATE.lang === 'en' ? 'ltr' : 'rtl'}"><head><meta charset="UTF-8"><title>${esc(title)}</title>
   <style>body{font-family:'Cairo',Arial,sans-serif;padding:28px;color:#1a1a1a}

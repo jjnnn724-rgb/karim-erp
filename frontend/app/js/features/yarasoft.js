@@ -217,7 +217,7 @@ tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none';
 });
 }
 function ysPrintReport(title, subtitle, summaryPairs, headCols, bodyRows){
-const win = window.open('', '_blank', 'width=1000,height=700');
+const win = (window.openInAppReport ? window.openInAppReport('معاينة فاتورة يارسوفت') : window.open('', '_blank'));
 if(!win){ toast('اسمح بالنوافذ المنبثقة للطباعة', 'error'); return; }
 const dateStr = new Date().toLocaleString('ar-EG');
 win.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${esc(title)}</title>

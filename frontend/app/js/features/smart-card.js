@@ -459,7 +459,7 @@ else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:70
 const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='portal' ? 'كاميرا التطبيق' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
 return `<tr><td>${esc(r.date||'')}</td><td style="color:#64748b">${scWeekday(r.date)}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
 }).join('') || '<tr><td colspan="7">لا توجد سجلات في الفترة المحددة</td></tr>';
-const win = existingWin || window.open('', '_blank');
+const win = existingWin || (window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!win){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
 const logoSrc = await printLogoDataUrl();
 const fromTo = s.from && s.to ? `${s.from} → ${s.to}` : '';
@@ -518,7 +518,7 @@ if (role && !['admin', 'hr', 'manager'].includes(role)) {
 const from=document.getElementById('attFrom')?.value||'';
 const month=(from||today()).slice(0,7);
 console.log('[printMonthlyAttendance] month:', month, 'attFrom exists:', !!document.getElementById('attFrom'));
-const printWin=window.open('', '_blank');
+const printWin=(window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير - تم منع النوافذ المنبثقة','warning'); console.log('[printMonthlyAttendance] popup blocked'); return; }
 try{
 console.log('[printMonthlyAttendance] fetching data for month:', month);
@@ -642,7 +642,7 @@ printWin.document.close();
 }
 }
 async function printLuxCard(empId){
-const printWin=window.open('', '_blank');
+const printWin=(window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة البطاقة','warning'); return; }
 try{
 const res=await fetch(API_BASE+`/hr/employees/${encodeURIComponent(empId)}/lux-card`,{headers:{'Authorization':'Bearer '+window._jwt, ...(window._appKey?{'x-api-key':window._appKey}:{})}});
@@ -656,7 +656,7 @@ printWin.document.close();
 }catch(e){ try{printWin.close();}catch(_){} toast(e.message||'تعذر توليد البطاقة','error'); }
 }
 async function printEmployeeAttendanceDay(empId, date = today()){
-const printWin=window.open('', '_blank');
+const printWin=(window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
 try{ const report = await fetchEmployeeAttendanceReport(empId, date, date); printAttendanceReport(report, `كشف حضور وانصراف يوم ${date}`, printWin); }
 catch(e){ toast(e.message||'تعذر تحميل كشف اليوم','error'); }
@@ -667,7 +667,7 @@ async function printEmployeeAttendanceMonth(empId, date = new Date()){
 const picked = document.getElementById('empAttMonth')?.value;
 if (picked && /^\d{4}-\d{2}$/.test(picked)) { const [y, m] = picked.split('-'); date = new Date(Number(y), Number(m) - 1, 1); }
 const range = reportDateRangeForMonth(date);
-const printWin=window.open('', '_blank');
+const printWin=(window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
 try{ const report = await fetchEmployeeAttendanceReport(empId, range.from, range.to); printAttendanceReport(report, `كشف حضور وانصراف الشهر ${range.from.slice(0,7)}`, printWin); }
 catch(e){ toast(e.message||'تعذر تحميل كشف الشهر','error'); }
@@ -741,7 +741,7 @@ const from=document.getElementById('empAttFrom')?.value||'';
 const to=document.getElementById('empAttTo')?.value||'';
 if(!from||!to){toast('اختر تاريخ البداية والنهاية أولًا','warning');return;}
 if(to<from){toast('تاريخ النهاية يسبق تاريخ البداية','warning');return;}
-const printWin=window.open('', '_blank');
+const printWin=(window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة التقرير','warning'); return; }
 try{
 const report=await fetchEmployeeAttendanceReport(empId,from,to);
@@ -761,7 +761,7 @@ toast('تم تجديد بطاقة QR وحفظها','success');
 }catch(e){toast(e.message||'تعذر تجديد بطاقة QR','error');}
 }
 async function printSmartCard(empId){
-const printWin = window.open('','_blank');
+const printWin = (window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة لطباعة البطاقة','warning'); return; }
 const emp = findEmployeeById(empId);
 if(!emp) {return;}

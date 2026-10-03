@@ -443,7 +443,7 @@ function printPR(id){
 const r=(STATE.purchaseRequests||[]).find(x=>String(x.id)===String(id)); if(!r) {return;}
 const items=Array.isArray(r.items)?r.items:[];
 const sigBlock=(label,who,at)=>`<div style="text-align:center;min-width:160px"><div style="height:44px"></div><div style="border-top:1px solid #333;padding-top:5px;font-size:12px;color:#444">${label}${who?`<br><b style="color:#222">${esc(who)}</b>${at?`<br><small>${esc(fDT(at))}</small>`:''}`:'<br>........'}</div></div>`;
-const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة','warning'); return; }
+const w=(window.openInAppReport ? window.openInAppReport('تقرير المطبخ') : window.open('', '_blank')); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة','warning'); return; }
 w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>طلب شراء ${esc(r.request_number||'')}</title><style>body{font-family:'Cairo',sans-serif;padding:40px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:8px;text-align:center}th{background:#f0f0f0}</style></head><body><h1 class="u-ta-c">${esc(STATE.settings.name)}</h1><h2 class="u-ta-c">طلب شراء نواقص — ${esc(r.request_number||('#'+r.id))}</h2><p><strong>الحالة:</strong> ${esc(prStatusLabel(r.status))} | <strong>التاريخ:</strong> ${esc(fD(r.created_at))} | <strong>القسم الطالب:</strong> القسم الطالب: ${esc(r.dept_name||r.dept_code||'—')} | <strong>المنشئ:</strong> ${esc(r.creator_name||'—')}</p><table><thead><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية المطلوبة</th></thead><tbody>${items.map((i,ix)=>`<tr><td>${ix+1}</td><td>${esc(i.itemName||i.name)}</td><td>${esc(i.unit||'')}</td><td>${fN(i.requestedQty??i.qty)}</td></tr>`).join('')}</tbody></table><p><strong>ملاحظات:</strong> ${esc(r.notes||'لا توجد')}</p>${r.rejection_reason?`<p><strong>سبب الرفض:</strong> ${esc(r.rejection_reason)} (${esc(r.rejected_name||'—')})</p>`:''}<div style="margin-top:48px"><div style="display:flex;justify-content:space-between;gap:16px">${sigBlock('توقيع أمين المخزن',r.creator_name,r.created_at)}${sigBlock('توقيع الشيف',r.chef_approved_name,r.chef_approved_at)}${sigBlock('اعتماد المدير العام',r.gm_approved_name,r.gm_approved_at)}${sigBlock('استلام المخزن',r.wh_received_name,r.wh_received_at)}</div></div></body></html>`);
 w.document.close();
 }
@@ -948,7 +948,7 @@ function printDispatchNote(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
 const dept=STATE.departments.find(x=>x.code===d.deptCode);
-const printWindow=window.open('','_blank');
+const printWindow=(window.openInAppReport ? window.openInAppReport('تقرير المطبخ') : window.open('', '_blank'));
 if(!printWindow){ toast('اسمح بالنوافذ المنبثقة لطباعة إذن الصرف','warning'); return; }
 const sigBlock=(label,dataUrl,who,at)=>`<div style="text-align:center;min-width:170px;flex:1">${dataUrl?`<img src="${dataUrl}" style="height:54px;object-fit:contain;margin-bottom:2px" alt="${label}">`:'<div style="height:54px"></div>'}<div style="border:1px solid #e5e7eb;border-top:3px solid #0f172a;border-radius:0 0 10px 10px;padding:8px 6px;font-size:12px;color:#444;background:#f8fafc"><b style="color:#0f172a">${label}</b>${who?`<br><b style="color:#111">${esc(who)}</b>`:''}${at?`<br><small>${esc(at)}</small>`:''}</div></div>`;
 const pItems=(d.approvedItems&&d.approvedItems.length?d.approvedItems:d.items)||[];
@@ -1230,7 +1230,7 @@ ${items?`<div class="tbl-scroll u-mt8"><table><thead><tr><th>الصنف المص
 function printCostCard(code){
 const c=(costCardsData?.cards||[]).find(x=>x.code===code);
 if(!c){toast('حمّل البطاقات أولًا','warning');return;}
-const win=window.open('','_blank');
+const win=(window.openInAppReport ? window.openInAppReport('تقرير المطبخ') : window.open('', '_blank'));
 if(!win){toast('اسمح بالنوافذ المنبثقة','warning');return;}
 const items=(c.consumption?.items||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${fN(x.qty)} ${esc(x.unit||'')}</td><td>${fC(x.cost)}</td><td>${fC(x.value)}</td><td>${esc(String(x.date||'').slice(0,10))}</td><td>#${esc(String(x.dispatch_no||''))}</td></tr>`).join('')||'<tr><td colspan="6">لا صرف</td></tr>';
 const prods=(c.production?.lines||[]).map(p=>`<tr><td>${esc(p.product_name||`دفعة #${p.batch_id}`)}</td><td>${fN(p.allocated_qty)}</td><td>${fC(p.batch_cost)}</td><td>${fC(p.cost)}</td><td>${esc(String(p.prod_date||'').slice(0,10))}</td></tr>`).join('')||'';

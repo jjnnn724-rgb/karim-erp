@@ -1558,7 +1558,7 @@ async function openKotHtml(orderId) {
         if (!res.ok) {throw new Error('تعذر فتح تذاكر المطبخ');}
         const html = await res.text();
         const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-        window.open(url, '_blank');
+        (window.openInAppReport ? window.openInAppReport('إيصال', url) : window.open(url, '_blank'));
         setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
         showToast(e.message || 'تعذر فتح تذاكر المطبخ', 'error');

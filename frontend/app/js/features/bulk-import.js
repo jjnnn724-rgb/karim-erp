@@ -497,7 +497,7 @@ toast('تم نسخ جميع البيانات','success');
 });
 }
 function bulkPrint(){
-const printWin = window.open('','_blank');
+const printWin = (window.openInAppReport ? window.openInAppReport('معاينة الاستيراد') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة للطباعة','warning'); return; }
 printWin.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>بيانات المستخدمين</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
@@ -541,7 +541,7 @@ setTimeout(() => printWin.focus(), 500);
 }
 // قصاصات فردية: ورقة لكل موظف (الاسم + اليوزر + الباسورد + رقم البصمة) للتوزيع
 function bulkPrintSlips(){
-const printWin = window.open('','_blank');
+const printWin = (window.openInAppReport ? window.openInAppReport('معاينة الاستيراد') : window.open('', '_blank'));
 if(!printWin){ toast('اسمح بالنوافذ المنبثقة للطباعة','warning'); return; }
 const slips = BULK_IMPORT_ROWS.map((u) => `
 <div class="slip">
