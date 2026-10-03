@@ -41,14 +41,15 @@ function req(method, path, { token, body } = {}) {
     const leftovers = depts.filter(d => /^HRD-(ST|MX)/.test(String(d.code || '')));
     check('لا بقايا أقسام اختبار ضغط', leftovers.length === 0, leftovers.length ? leftovers.map(d => d.code).join(',') : `${depts.length} قسم نظيف`);
 
-    // دليل صلاحية حدود الإنتاج: ترويسة X-RateLimit-Limit على قائمة محمية
+    // دليل صلاحية حدود الإنتاج: ترويسة X-RateLimit-Limit — بعنوان فريد يتجاوز
+    // الكاش (API cache لا يمرر محدد المعدل على HIT عمدًا — api-cache.js:20)
     const limited = await new Promise((resolve) => {
-        https.get(BASE + '/api/employees', {
+        https.get(BASE + '/api/employees?_sanity=' + Date.now(), {
             rejectUnauthorized: false,
             headers: { 'x-api-key': API_KEY, Authorization: 'Bearer ' + token },
-        }, x => { x.resume(); resolve({ limit: x.headers['x-ratelimit-limit'] }); });
+        }, x => { x.resume(); resolve({ limit: x.headers['x-ratelimit-limit'], cache: x.headers['x-cache'] }); });
     });
-    check('حدود الإنتاج الافتراضية مفعّلة', limited.limit === '100', 'X-RateLimit-Limit=' + limited.limit);
+    check('حدود الإنتاج الافتراضية مفعّلة', limited.limit === '100', 'X-RateLimit-Limit=' + limited.limit + ' X-Cache=' + limited.cache);
 
     console.log(fails === 0 ? 'FINAL_SANITY_OK' : 'FINAL_SANITY_FAILED');
     process.exit(fails === 0 ? 0 : 1);
