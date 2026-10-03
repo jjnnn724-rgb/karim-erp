@@ -5,7 +5,8 @@
  *   1. Idempotency-Key check (24h TTL, body-hash collision detection)
  *   2. Validates cashier has an OPEN pos_shift_sessions row
  *   3. INSERT pos_orders (status=draft) + pos_order_items (snapshots)
- *   4. SELECT ... FOR UPDATE on pos_products → atomic decrement
+ *   4. SELECT ... FOR UPDATE on pos_products (قفل تنافسي فقط — stock_quantity
+ *      عرض يدوي بالتصميم؛ الخصم الفعلي لمستويات المكونات عبر دفتر المخزون)
  *   5. INSERT pos_invoice_payments (split breakdown)
  *   6. UPDATE pos_orders.status='issued' → fires trg_pos_chain_invoice_hash (ZATCA)
  *   7. Compute ZATCA QR TLV payload (Base64) + ECDSA P-256 signature

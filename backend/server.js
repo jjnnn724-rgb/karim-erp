@@ -483,6 +483,17 @@ try {
 } catch (e) {
     logger.error('[SHIFT_ROLLOVER] scheduler failed to start:', e.message);
 }
+// R3 (قرار المالك 2026-10-03): كاسح جسر الإيراد اللحظي — يلتقط أي صف إيراد
+// يارسوفت فشل ترحيله اللحظي (سقوط/إعادة تشغيل). الحدث الأساسي داخل importer
+// بعد COMMIT؛ هذا مجرد صمام أمان كل 5 دقائق.
+try {
+    const { bridgeUnbridged } = require('./yarasoft/gl-bridge');
+    const yaraGlSweep = () => bridgeUnbridged(pool).catch(e => logger.warn('[YARA-GL] sweep failed:', e.message));
+    setTimeout(yaraGlSweep, 90_000);
+    setInterval(yaraGlSweep, 5 * 60_000);
+} catch (e) {
+    logger.error('[YARA-GL] sweep scheduler failed to start:', e.message);
+}
 // Leave approval workflow: employee → direct manager → operations manager → general manager → HR.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRouter);
 // البصمة الذاتية المقيدة جغرافيًا (SPEC-employee-pwa-attendance-geofence-v1) —

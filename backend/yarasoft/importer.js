@@ -458,6 +458,14 @@ async function processOneInvoice({ invoice, meta, filePath, config, importer, lo
 
         await client.query('COMMIT');
         logger.info(`[YARASOFT] ✓ فاتورة ${invoiceNumber} [${dev.sourceName}]: ${invoice.items.length} صنفًا، ${total} — التزام في ${duration}ms`);
+        // R3 (قرار المالك 2026-10-03): جسر الإيراد اللحظي للدفتر — بعد COMMIT
+        // حصرًا وبأثر غير قاتل؛ أي فشل يلتقطه sweep دوري (gl-bridge).
+        try {
+            const { bridgeRevenueToGl } = require('./gl-bridge');
+            await bridgeRevenueToGl(pool, { revenueId, source: dev.sourceName, amount: total, date });
+        } catch (glError) {
+            logger.warn(`[YARA-GL] تعذر الترحيل اللحظي لفاتورة ${invoiceNumber} (سيلتقطه sweep): ${glError.message}`);
+        }
         if (io) {io.emit('yarasoft:imported', { invoiceNumber, total, items: invoice.items.length, source: dev.sourceName });}
         return new ImportResult(STATUS.COMPLETED, { invoiceNumber, total, duration });
     } catch (error) {
