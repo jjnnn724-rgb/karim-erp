@@ -578,4 +578,94 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
     }
 });
 
+// ─── تغطية البصمات (Enterprise 2026-10-03): الحل الجذري لضمان بصمة كل موظف ──
+// لكل موظف نشط: وجوده على الجهاز، آخر بصمة خام، أيام الحضور، قالب الوجه،
+// وتشخيص عربي بالإجراء المطلوب. + مستخدمو الجهاز غير المربوطين الذين لهم
+// بصمات خام فعلية (تسريب بصمات يُعالج بالربط من تبويب ربط الموظفين).
+router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const days = Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 7));
+        const employees = (await pool.query(
+            `SELECT id, name, "employeeId", "deviceUserId", department
+               FROM employees WHERE status NOT IN ('منتهي','inactive','منتهي الخدمة')
+              ORDER BY name`
+        )).rows;
+        const rawByEmp = new Map((await pool.query(
+            `SELECT "employeeId", MAX("attendanceTime") AS last_at, COUNT(*)::int AS raw
+               FROM attendance_logs WHERE "employeeId" IS NOT NULL GROUP BY 1`
+        )).rows.map(r => [String(r.employeeId), r]));
+        const recentSet = new Set((await pool.query(
+            `SELECT DISTINCT "employeeId" FROM attendance_logs
+              WHERE "employeeId" IS NOT NULL
+                AND "attendanceTime" >= NOW() - ($1 || ' days')::interval`,
+            [String(days)]
+        )).rows.map(r => String(r.employeeId)));
+        const attDays = new Map((await pool.query(
+            `SELECT "employeeId", COUNT(DISTINCT date)::int AS days FROM attendance GROUP BY 1`
+        )).rows.map(r => [String(r.employeeId), r.days]));
+        const faceSet = new Set((await pool.query(
+            `SELECT DISTINCT t.user_id FROM punch_face_templates_v2 t
+              JOIN employees e ON e."userId" = t.user_id WHERE t.active = true`
+        )).rows.map(r => String(r.user_id)));
+        const deviceUsers = new Map((await pool.query(`SELECT "userId", name FROM zk_device_users`))
+            .rows.map(r => [String(r.userId).trim(), r.name]));
+
+        const norm = (v) => { const s = String(v ?? '').trim(); return /^\d+$/.test(s) ? String(Number(s)) : s; };
+        const problems = [];
+        const ok = [];
+        for (const e of employees) {
+            const devId = norm(e.deviceUserId);
+            const onDevice = devId ? deviceUsers.has(devId) : false;
+            const raw = rawByEmp.get(String(e.id));
+            const lastAt = raw?.last_at || null;
+            const recent = recentSet.has(String(e.id));
+            const face = faceSet.has(String(e.id));
+            let diagnosis, action;
+            if (!devId) {
+                diagnosis = 'لا يوجد ربط برقم جهاز'; action = 'عيّن رقم بصمة له من تبويب ربط الموظفين';
+            } else if (!onDevice) {
+                diagnosis = 'رقمه غير موجود على الجهاز'; action = 'أعد مزامنة مستخدمي الجهاز أو سجّله عليه';
+            } else if (!lastAt) {
+                diagnosis = 'موجود بالجهاز لكن بلا أي بصمة — الإصبع غير مسجل على الجهاز';
+                action = 'سجّل بصمته على الجهاز (وضع تسجيل المستخدم) أو فعّل بصمة الوجه من التطبيق';
+            } else if (!recent) {
+                const dDays = Math.floor((Date.now() - new Date(lastAt).getTime()) / 86400000);
+                diagnosis = `آخر بصمة قبل ${dDays} يوم (${String(lastAt).slice(0, 10)})`;
+                action = 'تأكد من حضوره — وأعد تسجيل بصمته إن توقفت عن العمل';
+            } else {
+                diagnosis = 'سليم';
+                action = '';
+            }
+            const row = { id: e.id, name: e.name, employeeId: e.employeeId, department: e.department,
+                deviceUserId: e.deviceUserId, on_device: onDevice, face_enrolled: face,
+                last_punch: lastAt, raw_punches: raw?.raw || 0,
+                attendance_days: attDays.get(String(e.id)) || 0, diagnosis, action };
+            if (diagnosis === 'سليم') { ok.push(row); } else { problems.push(row); }
+        }
+
+        const unmappedDeviceUsers = (await pool.query(
+            `SELECT l."deviceUserId", COUNT(*)::int AS raw, MAX(l."attendanceTime") AS last_at
+               FROM attendance_logs l WHERE l."employeeId" IS NULL GROUP BY 1 ORDER BY 2 DESC`
+        )).rows.map(r => ({ ...r, device_name: deviceUsers.get(norm(r.deviceUserId)) || null }));
+
+        res.json({
+            generated_at: new Date().toISOString(),
+            days,
+            summary: {
+                total_employees: employees.length,
+                ok: ok.length,
+                problems: problems.length,
+                face_enrolled: employees.filter(e => faceSet.has(String(e.id))).length,
+                unmapped_device_users: unmappedDeviceUsers.length,
+            },
+            problems,
+            ok,
+            unmapped_device_users: unmappedDeviceUsers,
+        });
+    } catch (error) {
+        logger.error('[ZKTECO] coverage failed:', error.message);
+        res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: error.message });
+    }
+});
+
 module.exports = { router };

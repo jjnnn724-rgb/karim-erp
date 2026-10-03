@@ -456,7 +456,7 @@ const short = shiftMin - minutes;
 if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDays++;}
 else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
 }
-const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
+const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='portal' ? 'كاميرا التطبيق' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
 return `<tr><td>${esc(r.date||'')}</td><td style="color:#64748b">${scWeekday(r.date)}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
 }).join('') || '<tr><td colspan="7">لا توجد سجلات في الفترة المحددة</td></tr>';
 const win = existingWin || window.open('', '_blank');

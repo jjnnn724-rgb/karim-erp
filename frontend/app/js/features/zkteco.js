@@ -41,6 +41,7 @@ ${canWrite?`<button class="btn btn-gold" onclick="zkAddDeviceModal()"><i class=j
 <button class="btn btn-sm ${ZKSTATE.tab==='devices'?'btn-gold':''}" onclick="zkSetTab('devices')"><i class=ji data-i=user-check></i> الأجهزة</button>
 <button class="btn btn-sm ${ZKSTATE.tab==='mappings'?'btn-gold':''}" onclick="zkSetTab('mappings')"><i class=ji data-i=users></i> ربط الموظفين</button>
 <button class="btn btn-sm ${ZKSTATE.tab==='logs'?'btn-gold':''}" onclick="zkSetTab('logs')"><i class=ji data-i=clipboard-list></i> سجل البصمات</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='coverage'?'btn-gold':''}" onclick="zkSetTab('coverage')"><i class=ji data-i=shield-check></i> تغطية البصمات</button>
 </div>
 <div id="zkBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>
 `;
@@ -60,13 +61,49 @@ const body=document.getElementById('zkBody');
 if(body) {body.innerHTML = `<div class="mcard u-empty">تعذر تحميل بيانات البصمة: ${esc(e.message)}</div>`;}
 }
 }
-function zkSetTab(tab){ ZKSTATE.tab = tab; const t=document.getElementById('zkTabs'); if(t){ t.querySelectorAll('button').forEach((b,i)=>{ const tabs=['devices','mappings','logs']; b.classList.toggle('btn-gold', tabs[i]===tab); }); } zkRenderBody(); }
+function zkSetTab(tab){ ZKSTATE.tab = tab; const t=document.getElementById('zkTabs'); if(t){ t.querySelectorAll('button').forEach((b,i)=>{ const tabs=['devices','mappings','logs','coverage']; b.classList.toggle('btn-gold', tabs[i]===tab); }); } zkRenderBody(); }
 function zkRenderBody(){
 const body = document.getElementById('zkBody');
 if(!body) {return;}
 if(ZKSTATE.tab==='devices') {zkRenderDevices(body);}
 else if(ZKSTATE.tab==='mappings') {zkLoadMappings(body);}
+else if(ZKSTATE.tab==='coverage') {zkLoadCoverage(body);}
 else {zkLoadLogs(body);}
+}
+// ─── تغطية البصمات (Enterprise 2026-10-03): من بلا بصمة ولماذا — فورًا ───
+async function zkLoadCoverage(el){
+el.innerHTML = '<div class="mcard u-empty"><div class="spinner"></div></div>';
+try{
+const r = await apiFetch('/zkteco/coverage?days=7');
+const s = r.summary || {};
+const diagBadge = (d) => d==='سليم' ? '<span class="badge bdg-green">سليم</span>' : d.startsWith('آخر بصمة') ? '<span class="badge bdg-gold">صمّت قديمًا</span>' : d.includes('غير مسجل') ? '<span class="badge bdg-red">بصمته غير مسجلة</span>' : d.includes('رقمه') ? '<span class="badge bdg-red">غير موجود بالجهاز</span>' : '<span class="badge bdg-red">بلا ربط</span>';
+const rowHtml = (e) => `<tr>
+<td class="fw-bold">${esc(e.name)}</td><td>${esc(e.department||'—')}</td>
+<td>${e.deviceUserId?esc(String(e.deviceUserId)):'<span class="badge bdg-red">—</span>'}</td>
+<td>${e.face_enrolled?'<span class="badge bdg-teal">وجه ✓</span>':'<span class="text-muted">—</span>'}</td>
+<td>${e.last_punch?`<span dir="ltr" class="u-faint">${esc(String(e.last_punch).slice(0,16))}</span>`:'<span class="badge bdg-red">أبدًا</span>'}</td>
+<td class="c">${e.attendance_days||0}</td>
+<td>${diagBadge(e.diagnosis)}</td>
+<td class="u-faint u-t12">${esc(e.action||'—')}</td></tr>`;
+el.innerHTML = `
+<div class="u-row-wrap" style="margin-bottom:12px">
+<span class="badge bdg-blue">إجمالي الموظفين: ${s.total_employees||0}</span>
+<span class="badge bdg-green">سليم: ${s.ok||0}</span>
+<span class="badge bdg-red">مشاكل: ${s.problems||0}</span>
+<span class="badge bdg-teal">بصمة وجه (تطبيق): ${s.face_enrolled||0}</span>
+<span class="badge bdg-gold">بصمات خام بلا موظف: ${s.unmapped_device_users||0}</span>
+<button class="btn btn-blue btn-sm" onclick="zkRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
+</div>
+${(r.unmapped_device_users||[]).length?`<div class="mcard" style="margin-bottom:14px;border:1px solid var(--gold,#c9a227)"><b><i class=ji data-i=alert-triangle></i> بصمات خام على الجهاز بلا موظف مربوط — اربطها من تبويب «ربط الموظفين»:</b><div class="u-row-wrap" style="margin-top:8px">${r.unmapped_device_users.map(u=>`<span class="badge bdg-gold">جهاز #${esc(String(u.deviceUserId))} — ${u.raw} بصمة خام</span>`).join(' ')}</div></div>`:''}
+<div class="tbl-wrap"><div class="tbl-hd"><h3>الموظفون الذين يحتاجون معالجة (${(r.problems||[]).length})</h3><small class="text-muted">آخر 7 أيام — بصمة الإصبع تُسجل بلمس الجهاز؛ وبصمة الوجه من التطبيق تصلح للجميع</small></div>
+<div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>القسم</th><th>رقم الجهاز</th><th>وجه (تطبيق)</th><th>آخر بصمة</th><th class="c">أيام حضور</th><th>التشخيص</th><th>الإجراء</th></tr></thead><tbody>
+${(r.problems||[]).map(rowHtml).join('') || '<tr><td colspan=8 class="u-empty">كل الموظفين سليمون — لا شيء يحتاج معالجة</td></tr>'}
+</tbody></table></div></div>
+<details style="margin-top:12px"><summary class="fw-bold" style="cursor:pointer">الموظفون السليمون (${(r.ok||[]).length})</summary>
+<div class="tbl-wrap" style="margin-top:8px"><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>القسم</th><th>رقم الجهاز</th><th>وجه (تطبيق)</th><th>آخر بصمة</th><th class="c">أيام حضور</th></tr></thead><tbody>
+${(r.ok||[]).map(e=>`<tr><td class="fw-bold">${esc(e.name)}</td><td>${esc(e.department||'—')}</td><td>${esc(String(e.deviceUserId||'—'))}</td><td>${e.face_enrolled?'<span class="badge bdg-teal">وجه ✓</span>':'<span class="text-muted">—</span>'}</td><td><span dir="ltr" class="u-faint">${esc(String(e.last_punch||'—').slice(0,16))}</span></td><td class="c">${e.attendance_days||0}</td></tr>`).join('')}
+</tbody></table></div></div></details>`;
+}catch(e){ el.innerHTML = `<div class="mcard u-empty"><i class=ji data-i=alert-triangle></i> تعذر تحميل التغطية: ${esc(e.message||String(e))}</div>`; }
 }
 function zkRenderDevices(el){
 const totals = ZKSTATE.status?.totals || {logs:0,unmapped:0,today:0};

@@ -184,7 +184,7 @@ return `<tr data-date="${record.date}" style="background:rgba(231,76,60,.06)">
 }
 const inferredBadge='<span class="badge bdg-orange" title="قيمة مستكملة تلقائيًا">~ تلقائي</span>';
 const krm=attRawHours(record);
-const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
+const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='portal'?'<span class="badge bdg-teal">كاميرا التطبيق</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
 return `<tr data-date="${record.date}">
 <td class="fw-bold">${esc(emp.name)}</td>
 <td class="text-muted">${fD(record.date)}</td>
@@ -535,7 +535,7 @@ const data=[['التاريخ','الموظف','الحضور','الانصراف','
 filtered.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:a.employeeId-b.employeeId).forEach(a=>{
 const emp=findEmployeeById(a.employeeId);
 const krm=attRawHours(a);
-const src=a.source==='device'?'بصمة':a.source==='qr'?'QR':a.source==='backfill'?'أرشيف':'يدوي';
+const src=a.source==='device'?'بصمة':a.source==='qr'?'QR':a.source==='portal'?'كاميرا التطبيق':a.source==='backfill'?'أرشيف':'يدوي';
 data.push([a.date,emp?.name||'',a.checkIn||'',a.checkOut||'',krm,src]);
 });
 const ws=XLSX.utils.aoa_to_sheet(data);
