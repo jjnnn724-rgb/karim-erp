@@ -2043,6 +2043,17 @@ entities.forEach(entity => {
                     return res.status(405).json({ error: 'LEAVE_WORKFLOW_REQUIRED', message: 'قرارات الإجازة عبر مسار الاعتماد المخصص (/hr/leave-workflow) — لا تعديل مباشر' });
                 }
             }
+            // ─── FIX C3 (Enterprise 2026-10-03): inventory.qty/avgCost إسقاط معلن
+            // يُعاد حسابه من inventory_location_balances بعد كل حركة (021:2-4) —
+            // الكتابة المباشرة عبر CRUD كانت تكسر الإسقاط بصمت. الإنشاء بكيمة
+            // افتتاحية مشروع ويبقى مسموحًا؛ التحديث يمر حصرًا عبر مسارات
+            // الاستلام/الجرد/الصرف التي تكتب صف دفتر متسق.
+            if (entity === 'inventory' && ('qty' in filtered || 'avgCost' in filtered)) {
+                return res.status(422).json({
+                    error: 'INVENTORY_PROJECTION_DIRECT_WRITE',
+                    message: 'qty/avgCost تُدار عبر مسارات الاستلام والجرد والصرف فقط — التعديل المباشر يكسر تطابق الرصيد مع دفتر المخزون',
+                });
+            }
             if (entity === 'users') {
                 // Empty/whitespace passwords must never overwrite a stored hash
                 if (filtered.password !== undefined && !String(filtered.password).trim()) {

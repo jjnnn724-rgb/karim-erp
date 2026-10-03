@@ -511,6 +511,22 @@ async function completeSale(req, res) {
             sessionId = ss.rows[0].id;
         }
 
+        // ── FIX R20 (Enterprise 2026-10-03): فحص الفترة المحاسبية قبل أي كتابة ──
+        // كان البيع في شهر مُقفل يكتب كل صفوفه ثم يُبتلع فشل قيده المحاسبي
+        // بصمت في post-commit (02_deep_dive §2.3). البيع يجري دائمًا بتاريخ
+        // الرياض الحالي (الوردية القديمة مرفوضة أعلاه) — فالفحص على اليوم.
+        try {
+            const bd = await client.query(
+                `SELECT TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD') AS d`);
+            await require('../accounting-periods').assertPeriodOpen(bd.rows[0].d);
+        } catch (periodError) {
+            await client.query('ROLLBACK;');
+            return res.status(periodError.statusCode || 423).json({
+                error: 'PERIOD_CLOSED',
+                message: periodError.message || 'الشهر المحاسبي مُقفل — لا يمكن البيع فيه',
+            });
+        }
+
         // ── Lock menu products + recipe ingredients ──────────────────────────
         // A restaurant menu item is not a supermarket SKU. Its availability is
         // derived from the ingredient BOM in pos_product_ingredients and the

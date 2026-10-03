@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { logger } = require('./logger');
 
 const ALLOWED_TYPES = new Set([
   'opening_balance', 'purchase_receipt', 'transfer_out', 'transfer_in',
@@ -67,7 +68,15 @@ async function postInventoryLedgerEntry(client, input = {}) {
   );
   const current = asNumber(balance.rows[0].on_hand);
   const next = Number((current + delta).toFixed(4));
-  if (next < 0 && location.rows[0].negative_stock_policy === 'deny') {
+  // FIX C6 (Enterprise 2026-10-03): القيمة 'approval' في 021 كانت قيمة ميتة —
+  // الكود يقارن 'deny' فقط فكانت approval تتصرف كـ allow (سالب بلا موافقة).
+  // حتى يُبنى مسار موافقة فعلي: approval = deny (الآمن) مع تحذير تشخيصي.
+  const policy = String(location.rows[0].negative_stock_policy || 'deny');
+  const blocksNegative = policy === 'deny' || policy === 'approval';
+  if (next < 0 && blocksNegative) {
+    if (policy === 'approval') {
+      logger.warn('[inventory-ledger] negative_stock_policy=approval يعامل مؤقتًا كـ deny — مسار الموافقة غير منفذ بعد', { inventoryId, locationId });
+    }
     const error = new Error('INSUFFICIENT_STOCK');
     error.code = 'INSUFFICIENT_STOCK';
     error.available = current;

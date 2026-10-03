@@ -170,7 +170,7 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
     throw Object.assign(new Error('تعذر ترحيل القيد بعد عدة محاولات'), { statusCode: 500 });
 }
 
-/** ترحيل فاتورة كاشير: نقدية/بنك ← إيراد + ضريبة (idempotent برقم الفاتورة) */
+/** ترحيل فاتورة كاشير: نقدية/بنك ← إيراد + ضريبة + COGS للمكونات (idempotent برقم الفاتورة) */
 async function postSaleToLedger(orderId) {
     const o = (await pool.query(
         `SELECT id, subtotal, discount_total, tax_total, total_amount, created_at FROM pos_orders WHERE id = $1 LIMIT 1`,
@@ -182,6 +182,15 @@ async function postSaleToLedger(orderId) {
     // non-cash بمبلغه، والنقدي = الإجمالي − غير النقدي.
     const pays = (await pool.query(
         `SELECT method, amount, direction FROM pos_invoice_payments WHERE order_id = $1`, [orderId])).rows;
+    // FIX C1 (Enterprise 2026-10-03): البيع POS كان يُرحّل الإيراد دون تكلفة
+    // المكونات — بينما الصرف المخزني يرحّل COGS. تكلفة البيع = مجموع total_cost
+    // لصفوف الاستهلاك الصادرة (total_cost يُخزّن بمقدار موجب حتى للصادر —
+    // الاتجاه تحدده quantity_delta) المرجعية لهذا الأمر (تُكتب قبل COMMIT).
+    const cogsRow = await pool.query(
+        `SELECT COALESCE(SUM(l.total_cost), 0) AS cogs
+           FROM inventory_ledger l
+          WHERE l.reference_type = 'pos_order' AND l.reference_id = $1 AND l.quantity_delta < 0`, [orderId]);
+    const cogs = round2(Number(cogsRow.rows[0]?.cogs || 0));
     const total = round2(o.total_amount);
     const tax = round2(o.tax_total);
     const revenue = round2(total - tax);
@@ -197,6 +206,10 @@ async function postSaleToLedger(orderId) {
         if (cashDebit > 0) {lines.push({ account_code: '1000', debit: cashDebit, credit: 0, memo: 'تحصيل نقدي' });}
     } else {
         lines.push({ account_code: '1000', debit: total, credit: 0, memo: 'تحصيل نقدي' });
+    }
+    if (cogs > 0) {
+        lines.push({ account_code: '5000', debit: cogs, credit: 0, memo: `تكلفة مكونات فاتورة #${orderId}` });
+        lines.push({ account_code: '1200', debit: 0, credit: cogs, memo: `تخفيض مخزون فاتورة #${orderId}` });
     }
     if (revenue > 0) {lines.push({ account_code: '4000', debit: 0, credit: revenue, memo: `مبيعات فاتورة #${orderId}` });}
     if (tax > 0) {lines.push({ account_code: '2100', debit: 0, credit: tax, memo: `ضريبة فاتورة #${orderId}` });}
