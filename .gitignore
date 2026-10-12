@@ -25,9 +25,21 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Electron packaging
+# Electron packaging — قنوات التحديث فقط (لا تعمم *.yml وإلا تُحجب CI وdocker-compose)
 *.blockmap
-*.yml
+/updates/*.yml
+/updates/*.exe
+/updates/*.blockmap
+
+# مجلدات النسخ الاحتياطي والتغطية — محلية دائمًا
+backups/
+coverage/
+
+# Playwright E2E — مخارج الاختبارات المحلية فقط
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # Token/session dumps (never commit)
 .admin-token-tmp

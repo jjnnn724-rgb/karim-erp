@@ -78,6 +78,9 @@ async function ensureUserSecurityColumns(client) {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;`);
     // Task 19: ربط رئيس القسم بقسمه (dept_code) — NULL لغير رؤساء الأقسام
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS dept_code VARCHAR(50);`);
+    // 102_branches transitional: العمود يُخلق مبكرًا بلا FK حتى لا تنهار
+    // قراءة المستخدم قبل تطبيق الـmigration — الـmigration تضيف بقية البنية.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INTEGER;`);
     _userSecColsEnsured = true;
 }
 
@@ -96,6 +99,7 @@ function signAccessToken(user) {
             role: user.role,
             name: user.name,
             dept_code: user.dept_code || null,
+            branch_id: user.branch_id ?? null,
             sid: user.session_id || null,
             pwd_change: Boolean(user.must_change_password),
         },
@@ -217,7 +221,7 @@ async function loginHandler(req, res) {
     try {
         await ensureUserSecurityColumns(client);
         const r = await client.query(
-            `SELECT id, username, password, role, name, active, must_change_password, dept_code FROM users WHERE LOWER(username) = LOWER($1);`,
+            `SELECT id, username, password, role, name, active, must_change_password, dept_code, branch_id FROM users WHERE LOWER(username) = LOWER($1);`,
             [username]
         );
         if (r.rows.length === 0 || !r.rows[0].active) {
@@ -311,7 +315,7 @@ async function changePasswordHandler(req, res) {
     try {
         await ensureUserSecurityColumns(client);
         const result = await client.query(
-            `SELECT id, username, password, role, name, active, must_change_password, dept_code FROM users WHERE id = $1 FOR UPDATE;`,
+            `SELECT id, username, password, role, name, active, must_change_password, dept_code, branch_id FROM users WHERE id = $1 FOR UPDATE;`,
             [req.user.id]
         );
         const user = result.rows[0];
@@ -373,6 +377,7 @@ function jwtAuth(req, res, next) {
         role: payload.role,
         name: payload.name,
         dept_code: payload.dept_code || null,
+        branch_id: payload.branch_id ?? null,
         session_id: payload.sid || null,
         must_change_password: Boolean(payload.pwd_change),
     };
@@ -424,11 +429,12 @@ async function refreshHandler(req, res) {
     try {
         const row = (await client.query(
             `SELECT rt.id, rt.user_id, rt.expires_at, u.id AS live_user_id, u.active, u.role, u.name, u.username,
-                    u.must_change_password, u.dept_code
+                    u.must_change_password, u.dept_code, u.branch_id
                FROM pos_refresh_tokens rt
                JOIN users u ON u.id = rt.user_id
               WHERE rt.token_hash = $1
-              LIMIT 1;`,
+              LIMIT 1
+              FOR UPDATE OF rt;`,
             [tokenHash]
         )).rows[0];
         if (!row) {return res.status(401).json({ error: 'REFRESH_TOKEN_INVALID', message: 'رمز التحديث غير صالح.' });}
@@ -444,7 +450,12 @@ async function refreshHandler(req, res) {
 
         // Rotation: consume the presented token, issue a fresh pair.
         await client.query('BEGIN');
-        await client.query('DELETE FROM pos_refresh_tokens WHERE id = $1;', [row.id]);
+        // FIX 2026-10-11: verify DELETE actually removed the row (rotation race guard)
+        const delResult = await client.query('DELETE FROM pos_refresh_tokens WHERE id = $1;', [row.id]);
+        if (delResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(401).json({ error: 'REFRESH_TOKEN_INVALID', message: 'رمز التحديث مستخدم بالفعل.' });
+        }
         const nextRaw = crypto.randomBytes(48).toString('hex');
         const nextHash = crypto.createHash('sha256').update(nextRaw).digest('hex');
         const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 86400_000);
@@ -458,6 +469,7 @@ async function refreshHandler(req, res) {
         const access = signAccessToken({
             id: row.user_id, role: row.role, name: row.name,
             dept_code: row.dept_code, must_change_password: row.must_change_password,
+            branch_id: row.branch_id,
         });
         logger.info({ userId: row.user_id, username: row.username }, '[auth] refresh token rotated');
         return res.json({

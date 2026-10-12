@@ -1,0 +1,439 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '20.x'
+  POSTGRES_VERSION: '16'
+  CACHE_DEPENDENCY_PATH: |
+    ~/.npm
+    node_modules
+  RETENTION_DAYS: 14
+
+jobs:
+  security-audit:
+    name: 🔒 Security Audit (npm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies (ci)
+        run: npm ci --ignore-scripts
+
+      - name: Run npm audit (low+)
+        id: audit
+        run: |
+          echo "=== NPM Audit Report ==="
+          set +e
+          npm audit --audit-level=low --json > npm-audit-report.json
+          AUDIT_EXIT=$?
+          set -e
+          echo "audit_exit_code=$AUDIT_EXIT" >> $GITHUB_OUTPUT
+          if [ $AUDIT_EXIT -ne 0 ]; then
+            echo "::warning::npm audit found issues. Review the uploaded artifact."
+            npm audit --audit-level=low || true
+          else
+            echo "✅ No vulnerabilities found at low level or above."
+          fi
+          exit 0
+
+      - name: Upload npm audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit-report.json
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Fail on moderate+ vulnerabilities
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "Checking for moderate+ vulnerabilities on main branch..."
+          npm audit --audit-level=moderate
+
+  lint-and-typecheck:
+    name: 🧹 Lint, Format & TypeCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [security-audit]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint (via package script)
+        run: npm run test:lint
+
+      - name: Run Prettier check (via package script)
+        run: npm run test:format
+
+      - name: Run TypeScript type check (via package script)
+        run: npm run test:type
+
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [lint-and-typecheck]
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_test
+      DB_POOL_MAX: 10
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-secret-32-chars-minimum-length-for-testing
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: error
+      LOG_PRETTY: 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            echo "PostgreSQL not ready, attempt $i..."
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Run Jest unit tests (coverage gate — jest.config.js thresholds)
+        run: npm run test:coverage -- --testPathIgnorePatterns="/node_modules/" --testPathIgnorePatterns="smoke|integration|workflow"
+
+      - name: Upload test coverage (if generated)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: |
+            coverage/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  smoke-test:
+    name: 🔥 Smoke Test (Startup + Health)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [unit-tests]
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_smoke
+      DB_POOL_MAX: 5
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-access-secret-32-chars-minimum-length-smoke
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length-smoke
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length-smoke
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: info
+      LOG_PRETTY: 'true'
+      HTTP_PORT: 3000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Run smoke test
+        id: smoke
+        run: |
+          set +e
+          npm run smoke 2>&1 | tee smoke-test.log
+          SMOKE_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "smoke_exit_code=$SMOKE_EXIT" >> $GITHUB_OUTPUT
+          exit $SMOKE_EXIT
+
+      - name: Upload smoke test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: |
+            smoke-test.log
+            logs/**
+            startup-report.json
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'pull_request'
+    needs: [smoke-test]
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_test
+      DB_POOL_MAX: 10
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-secret-32-chars-minimum-length-for-testing
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: error
+      LOG_PRETTY: 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Start backend server
+        run: |
+          node backend/server.js > integration-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "server_pid=$SERVER_PID" >> $GITHUB_ENV
+          sleep 8
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "Server failed to start. Logs:"
+            cat integration-server.log
+            exit 1
+          fi
+
+      - name: Run integration tests
+        run: npm run integration
+
+      - name: Run workflow tests
+        run: npm run workflow
+
+      - name: Upload integration logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            integration-server.log
+            logs/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  build-electron:
+    name: 📦 Build Electron App
+    runs-on: windows-latest
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [smoke-test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron (NSIS)
+        run: npm run electron:build:nsis
+        env:
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: KarimERP-Setup
+          path: release/*.exe
+          retention-days: 30
+
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-electron]
+    environment: production
+    steps:
+      - name: Deploy to aaPanel
+        run: |
+          echo "Deploy to production server via SSH"
+          # Add your deployment script here
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+
+  notify:
+    name: 📢 Notify (Status Summary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs:
+      - security-audit
+      - lint-and-typecheck
+      - unit-tests
+      - smoke-test
+      - integration-tests
+      - build-electron
+      - deploy-production
+    steps:
+      - name: Collect job statuses
+        id: status
+        run: |
+          echo "=== CI/CD Pipeline Summary ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          FAILED=0
+          SKIPPED=0
+          SUCCESS=0
+          for result in \
+            "security-audit:${{ needs.security-audit.result }}" \
+            "lint-and-typecheck:${{ needs.lint-and-typecheck.result }}" \
+            "unit-tests:${{ needs.unit-tests.result }}" \
+            "smoke-test:${{ needs.smoke-test.result }}" \
+            "integration-tests:${{ needs.integration-tests.result }}" \
+            "build-electron:${{ needs.build-electron.result }}" \
+            "deploy-production:${{ needs.deploy-production.result }}"; do
+            JOB=$(echo $result | cut -d: -f1)
+            RES=$(echo $result | cut -d: -f2-)
+            case "$RES" in
+              success) echo "  ✅ $JOB: success"; SUCCESS=$((SUCCESS+1)) ;;
+              skipped) echo "  ⏭️  $JOB: skipped"; SKIPPED=$((SKIPPED+1)) ;;
+              failure|cancelled) echo "  ❌ $JOB: $RES"; FAILED=$((FAILED+1)) ;;
+              *) echo "  ❓ $JOB: $RES" ;;
+            esac
+          done
+          echo ""
+          echo "Total: $SUCCESS succeeded, $SKIPPED skipped, $FAILED failed"
+          echo "failed_count=$FAILED" >> $GITHUB_OUTPUT
+
+      - name: Send failure notification
+        if: steps.status.outputs.failed_count > 0
+        run: |
+          echo "::error::Pipeline failed with ${{ steps.status.outputs.failed_count }} failed jobs. Check GitHub Actions for details."
+          exit 1

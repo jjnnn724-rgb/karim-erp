@@ -90,22 +90,25 @@ function parsePaginationParams(query, allowedSortColumns = ['id']) {
 /**
  * Build paginated SQL SELECT query with COUNT.
  * Returns both the data query and count query for total records.
- * 
+ *
  * @param {string} tableName - The table to query (must be validated beforehand)
  * @param {Object} params - Parsed pagination params from parsePaginationParams()
+ * @param {Object} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
  * @returns {{ dataQuery: string, countQuery: string, params: any[] }}
  */
-function buildPaginatedQuery(tableName, params) {
+function buildPaginatedQuery(tableName, params, options = {}) {
     const { limit, offset, sort, order } = params;
-    
+    const branchId = options.branchId != null ? Number(options.branchId) : null;
+
     // Note: tableName MUST come from trusted source (entities array), not user input
-    const dataQuery = `SELECT * FROM "${tableName}" ORDER BY "${sort}" ${order} LIMIT $1 OFFSET $2`;
-    const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"`;
-    
+    const where = branchId != null ? ' WHERE "branch_id" = $3' : '';
+    const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $1 OFFSET $2`;
+    const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"${where}`;
+
     return {
         dataQuery,
         countQuery,
-        params: [limit, offset],
+        params: branchId != null ? [limit, offset, branchId] : [limit, offset],
     };
 }
 

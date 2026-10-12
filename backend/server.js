@@ -10,6 +10,8 @@ const path = require('path');
 const crypto = require('crypto');
 // dotenv يجب أن يُحمَّل قبل أي وحدة تقرأ NODE_ENV أثناء التحميل (logger أولها)
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+// OpenTelemetry — صامت تمامًا ما لم OTEL_ENABLED=true (يجب أن يسبق express/pg)
+require('./otel');
 const { logger, httpLogger } = require("./logger");
 const { MEDIA_ROOT, ensureMediaDirs } = require('./media-storage');
 const { spawn } = require('child_process');
@@ -36,8 +38,10 @@ const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
 // ─── JWT Authentication Middleware ────────────────────
 const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
 const { requireRoleOrPerm, permForEntity } = require('./permissions');
+const { guardCreate } = require('./submit-guard');
 const { router: hrRouter } = require('./hr-routes');
-const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch } = require('./warehouse-routes');
+const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode, deptsMatch } = require('./warehouse-routes');
+const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
 const { router: stocktakingRouter, ensureStocktakingSchema } = require('./stocktaking-routes');
 const { router: inventoryTransferRouter } = require('./inventory-transfer-routes');
@@ -54,7 +58,12 @@ const { router: yarasoftRouter, ensureYarasoftSchema, yarasoftEngine } = require
 
 // ─── Schema Registry (Column Whitelist for Security) ──
 const { filterBody, entityExists, validateColumnName, getSortableColumns, getSchema, getEntityWriteRoles, isProtectedDeleteEntity, maskEmployeeRowForRole } = require('./schema-registry');
-const { encryptForVault, decryptFromVault, ensurePasswordVaultSchema } = require('./password-vault');
+const { encryptForVault, ensurePasswordVaultSchema } = require('./password-vault');
+// decryptFromVault يُستخدم الآن داخل ops-inspect-routes.js
+// ─── طبقة الفروع (migration 102) — تصفية CRUD الديناميكي حسب branch_id ───
+const branchCtx = require('./branch-context');
+// M20: riyadhToday for business dates
+const { riyadhToday } = require('./riyadh-date');
 
 // ─── Pagination Utilities ─────────────────────────────
 const { parsePaginationParams, buildPaginatedQuery } = require('./pagination');
@@ -64,7 +73,8 @@ const { generalLimiter, authLimiter, stateLimiter, crudLimiter } = require('./ra
 
 // ─── Graceful Shutdown Handler ──────────────────────
 const { initGracefulShutdown, rejectDuringShutdown, getShutdownStatus } = require('./graceful-shutdown');
-const { collectDailyReport, renderDailyReportHtml, sendDailyReport, startDailyReportScheduler, smtpConfigured } = require('./daily-report-service');
+// مسارات التقارير والإحاطة نُقلت إلى reports-routes.js — بقي هنا مجدول التقرير اليومي فقط
+const { startDailyReportScheduler } = require('./daily-report-service');
 
 // ─── API Response Cache (10s TTL for heavy GET endpoints) ──
 // Extracted to backend/api-cache.js (session-scoped key + invalidation).
@@ -113,8 +123,8 @@ const app = express();
 // HTTPS محلي (mkcert) عند توفر SSL_KEY/SSL_CERT — وإلا HTTP عادي
 let httpServer;
 let LAN_SCHEME = 'http'; // يُحدَّث تلقائيًا — يستخدمه إعلان LAN ليعرف العميل الصيغة الصحيحة
+const fs = require('fs'); // FIX 2026-10-11: moved to module scope — was block-scoped, broke /app/sw.js at line 2497+
 {
-    const fs = require('fs');
     const keyPath = process.env.SSL_KEY;
     const certPath = process.env.SSL_CERT;
     if (keyPath && certPath && fs.existsSync(keyPath) && fs.existsSync(certPath)) {
@@ -178,6 +188,13 @@ const io = new Server(httpServer, {
     cors: unifiedCorsOptions,
     pingTimeout: 30000,
     pingInterval: 10000,
+    connectTimeout: 20000,
+    // HARDENED 2026-10-08: استرداد حالة الاتصال — انقطاع لحظي (شبكة جوال)
+    // يستعيد الحزم الفائتة تلقائيًا بدل إعادة التحميل الكاملة
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 2 * 60 * 1000,
+        skipMiddlewares: true,
+    },
 });
 
 // ─── Real-time guard (TASK 4): optional handshake JWT + per-socket limits ───
@@ -383,6 +400,13 @@ function setStaticCacheHeaders(res, filePath) {
         res.setHeader('Cache-Control', NO_CACHE);
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
+        /* إجبار UTF-8 على كل HTML — يمنع المتصفح من تخمين ترميز غلط */
+        const ct = res.getHeader('Content-Type');
+        if (!ct || !/charset/i.test(ct)) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        } else if (!/charset=utf-?8/i.test(ct)) {
+            res.setHeader('Content-Type', ct.replace(/charset=[^;]+/i, 'charset=utf-8'));
+        }
     } else {
         res.setHeader('Cache-Control', `public, max-age=3600`);
     }
@@ -400,12 +424,13 @@ function setStaticCacheHeaders(res, filePath) {
         res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     }
 }
-app.use(apiCacheMiddleware); // أقل من 1KB لا يستحق الحساب
 
 // ─── Body Parsers (MUST be before apiKeyMiddleware so req.body is available) ───
 // استيراد الإكسل (مسار صفوف JSON) هو النقطة الوحيدة المسموح لها جسم كبير —
 // يُركّب قبل المحلل العام ليطالب الجسم نفسه ويمنع المحلل العام من رفضه.
-app.use('/api/inventory/import', express.json({ limit: '50mb' }));
+// FIX 2026-10-11 (C7): reduced from 50mb to 10mb — 50mb pre-auth was an
+// unauthenticated memory DoS vector. 10mb is enough for realistic Excel imports.
+app.use('/api/inventory/import', express.json({ limit: '10mb' }));
 // حد عام مشدّد (2MB): يقطع هجمات الحشو مبكرًا بدل سحب الذاكرة على 50MB لكل طلب
 app.use(express.json({ limit: '2mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
@@ -449,6 +474,15 @@ function apiKeyMiddleware(req, res, next) {
     if (req.path === '/hr/card/verify' || req.path.indexOf('/hr/card/v/') === 0) {
         return next();
     }
+    // شاشة منيو المول (Digital Signage): أسماء أصناف وأسعار — معلومات علنية
+    // بطبيعتها (معروضة على الشاشة أصلاً). جهاز العرض متصفح بلا تسجيل دخول.
+    if (req.path === '/menu-board/public' || req.path === '/menu-board/background' || req.path === '/buffet-menu') {
+        return next();
+    }
+    // إعداد اللغة/العملة العام للواجهات قبل تسجيل الدخول — بيانات عرض فقط
+    if (req.path === '/i18n/config') {
+        return next();
+    }
     // Auth endpoints stay open: they are credential/JWT-gated + rate-limited,
     // and the browser cannot know the app key before login. The key is handed
     // to the client inside login/refresh responses and required on all DATA
@@ -475,6 +509,11 @@ function apiKeyMiddleware(req, res, next) {
 }
 app.use('/api', apiKeyMiddleware);
 app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
+// FIX 2026-10-11 (C6): moved apiCacheMiddleware AFTER apiKeyMiddleware + rejectDuringShutdown
+// — was mounted at line 412 (before auth), so a cache HIT bypassed API-key check,
+// shutdown rejection, and rate limiting. Now cached responses are only served
+// after the request has passed the security perimeter.
+app.use(apiCacheMiddleware);
 
 // Real employee portal: signed QR cards, attendance actions, and printable reports.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, hrRouter);
@@ -522,6 +561,9 @@ require('./realtime/publisher').startOutboxPublisher({ io, pool, logger })
 // Kitchen production control: flexible/monitor/strict policies, kitchen transfers, production and exceptions.
 app.use('/api/kitchen', (req, res, next) => { req.io = io; next(); }, kitchenProductionRouter);
 ensureKitchenSchema().catch((error) => logger.error('[KITCHEN_SCHEMA] initialization failed:', error.message));
+// طلبات شراء الخضار: المطبخ (شيف/سو شيف) يبني الطلب من قايمة جاهزة → المخازن تستلم ويطبع الطرفان (2026-10-04)
+const vegRequestsRouter = require('./veg-requests-routes'); // module.exports = router
+app.use('/api/veg-requests', (req, res, next) => { req.io = io; next(); }, vegRequestsRouter);
 ensureLegacyKitchenReceiptLedger().catch((error) => logger.error('[KITCHEN_RECEIPT_LEDGER] initialization failed:', error.message));
 // Procurement center: suppliers directory, payments, statements, invoice payment status.
 app.use('/api/procurement', (req, res, next) => { req.io = io; next(); }, procurementRouter);
@@ -592,6 +634,8 @@ const oracleDataRouter = require('./yarasoft/oracle-data-routes');
 app.use('/api/oracle-data', oracleDataRouter);
 // ─── تقارير إيرادات الأقسام اليومية/الشهرية/السنوية (إغلاقات معتمدة) ────────
 app.use('/api/yara-reports', require('./yarasoft/yara-reports'));
+// ─── متابعة الكاشير للأونر (مرآة يارا سوفت 1/4/5/6/9 — قراءة فقط + بث حي) ──
+app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, require('./cashier-monitor-routes'));
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────
 const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
@@ -622,22 +666,8 @@ const asyncHandler = fn => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// Manager live briefing: cashiers + expenses + stock gaps + forecast + attendance + pending.
-app.get('/api/manager/briefing', jwtAuth, requireRole('admin', 'manager'), asyncHandler(async (req, res) => {
-    const { collectBriefing } = require('./manager-briefing');
-    res.json({ ok: true, ...(await collectBriefing(pool, req.query.date)) });
-}));
-
-// Daily management report: database-backed preview and optional SMTP delivery.
-app.get('/api/reports/daily', jwtAuth, requireRole('admin', 'manager', 'auditor'), asyncHandler(async (req, res) => {
-    const report = await collectDailyReport(pool, req.query.date || undefined);
-    res.type('html').send(renderDailyReportHtml(report));
-}));
-app.post('/api/reports/daily/send', jwtAuth, requireRole('admin', 'manager'), asyncHandler(async (req, res) => {
-    if (!smtpConfigured()) {return res.status(503).json({ error: 'REPORT_SMTP_NOT_CONFIGURED', message: 'أضف إعدادات SMTP ومستلمي التقرير في ملف البيئة على الخادم.' });}
-    const report = await sendDailyReport(pool, req.body?.date || undefined);
-    res.json({ status: 'sent', reportDate: report.reportDate, recipients: process.env.REPORT_EMAIL_TO });
-}));
+// Manager briefing + daily reports — مُستخلص إلى reports-routes.js
+require('./reports-routes').register(app, { pool });
 
 // -------------------------------------------------------
 // Socket.io — Connection Handling
@@ -766,112 +796,13 @@ io.on('connection', (socket) => {
     });
 });
 
-// ─── الشات الداخلي للأجهزة المتصلة ─────────────────────────────
-// رسائل بشرية بين الطاقم: حفظ دائم + بث لحظي + سجل. سياسة العرض في الواجهة.
-// جدول صغير يُنشأ كسولًا + تقليم أقدم من 7 أيام مع كل إرسال.
-let _chatSchemaReady = null;
-function ensureChatSchema() {
-    if (_chatSchemaReady) {return _chatSchemaReady;}
-    _chatSchemaReady = pool.query(`
-        CREATE TABLE IF NOT EXISTS internal_chat (
-            id BIGSERIAL PRIMARY KEY,
-            from_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-            from_name VARCHAR(120) NOT NULL DEFAULT '—',
-            from_device VARCHAR(160) NOT NULL DEFAULT '',
-            body TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_internal_chat_created ON internal_chat (created_at DESC);
-        ALTER TABLE internal_chat ADD COLUMN IF NOT EXISTS to_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
-        CREATE INDEX IF NOT EXISTS idx_internal_chat_pair ON internal_chat (from_user_id, to_user_id, id DESC);
-    `).catch((e) => { _chatSchemaReady = null; throw e; });
-    return _chatSchemaReady;
-}
-const _chatThrottle = new Map(); // userId -> last send timestamp (anti-spam)
-async function handleChatSend({ userId, toUserId, body }) {
-    // eslint-disable-next-line no-control-regex -- تعقيم مقصود: إزالة أحرف التحكم من مدخلات المحادثة
-    const text = String(body || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim().slice(0, 1000);
-    if (!text) {const e = new Error('EMPTY_MESSAGE'); e.statusCode = 422; throw e;}
-    const peer = Number(toUserId);
-    if (!Number.isInteger(peer) || peer <= 0) {const e = new Error('PEER_REQUIRED'); e.statusCode = 422; throw e;}
-    if (peer === Number(userId)) {const e = new Error('SELF_CHAT'); e.statusCode = 422; throw e;}
-    const now = Date.now();
-    if (now - (_chatThrottle.get(Number(userId)) || 0) < 2000) {
-        const e = new Error('TOO_FAST'); e.statusCode = 429; throw e;
-    }
-    _chatThrottle.set(Number(userId), now);
-    await ensureChatSchema();
-    const u = (await pool.query('SELECT id, username, name, role FROM users WHERE id = $1 AND active = true', [Number(userId)])).rows[0];
-    if (!u) {const e = new Error('UNKNOWN_USER'); e.statusCode = 401; throw e;}
-    const p = (await pool.query('SELECT id FROM users WHERE id = $1 AND active = true', [peer])).rows[0];
-    if (!p) {const e = new Error('PEER_NOT_FOUND'); e.statusCode = 404; throw e;}
-    const r = (await pool.query(
-        `INSERT INTO internal_chat (from_user_id, from_name, from_device, body, to_user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [u.id, u.name || u.username, '', text, peer]
-    )).rows[0];
-    pool.query(`DELETE FROM internal_chat WHERE created_at < NOW() - INTERVAL '7 days'`).catch(() => {});
-    return r;
-}
-
-// سجل محادثة خاصة مع موظف (أحدث 50) — ?with=<userId> إجباري (لا عام)
-app.get('/api/chat/history', jwtAuth, async (req, res) => {
-    try {
-        const peer = Number(req.query.with);
-        if (!Number.isInteger(peer) || peer <= 0) {
-            return res.status(422).json({ error: 'PEER_REQUIRED', message: 'حدد الموظف (with)' });
-        }
-        await ensureChatSchema();
-        const r = await pool.query(
-            `SELECT id, from_user_id, to_user_id, from_name, body, created_at FROM internal_chat
-              WHERE (from_user_id = $1 AND to_user_id = $2) OR (from_user_id = $2 AND to_user_id = $1)
-              ORDER BY id DESC LIMIT 50`,
-            [Number(req.user.id), peer]);
-        res.json({ ok: true, messages: r.rows.reverse() });
-    } catch (e) {
-        logger.error('[chat] history failed:', e.message);
-        res.status(500).json({ error: 'CHAT_HISTORY_FAILED', message: 'تعذر جلب سجل الشات' });
-    }
-});
-
-// قائمة موظفي الإدارة والمخازن للاختيار + المتصل منهم الآن
-app.get('/api/chat/users', jwtAuth, async (req, res) => {
-    try {
-        const r = await pool.query(
-            `SELECT id, username, name, role FROM users WHERE active = true AND role IN ('admin','manager','hr','warehouse') AND id <> $1 ORDER BY name LIMIT 200`,
-            [Number(req.user.id)]);
-        const online = new Set();
-        for (const c of connectedClients.values()) { if (c.userId) {online.add(Number(c.userId));} }
-        res.json({ ok: true, users: r.rows.map((u) => ({ ...u, online: online.has(Number(u.id)) })) });
-    } catch (e) {
-        logger.error('[chat] users failed:', e.message);
-        res.status(500).json({ error: 'CHAT_USERS_FAILED', message: 'تعذر جلب الموظفين' });
-    }
-});
-
-// إرسال رسالة خاصة — حفظ + توصيل للطرفين فقط عبر غرف user:<id>
-app.post('/api/chat/send', jwtAuth, async (req, res) => {
-    try {
-        const row = await handleChatSend({ userId: req.user.id, toUserId: req.body?.to_user_id, body: req.body?.body });
-        try {
-            io.to(`user:${row.from_user_id}`).emit('chat:new', row);
-            io.to(`user:${row.to_user_id}`).emit('chat:new', row);
-        } catch (_) {}
-        res.status(201).json({ ok: true, message: row });
-    } catch (e) {
-        const map = { EMPTY_MESSAGE: [422, 'الرسالة فارغة'], PEER_REQUIRED: [422, 'حدد الموظف'], SELF_CHAT: [422, 'لا تراسل نفسك'], PEER_NOT_FOUND: [404, 'الموظف غير موجود'], TOO_FAST: [429, 'تمهل ثانيتين بين الرسائل'] };
-        const pair = map[e.message] || [e.statusCode || 500, 'تعذر إرسال الرسالة'];
-        res.status(pair[0]).json({ error: e.message, message: pair[1] });
-    }
-});
+// ─── الشات الداخلي للأجهزة المتصلة — مُستخلص إلى internal-chat-routes.js ───
+require('./internal-chat-routes').register(app, { io, connectedClients });
 
 // -------------------------------------------------------
-// Routes
+// Root/menu redirects + legacy buffet-menu API — مُستخلص إلى menu-legacy-routes.js
 // -------------------------------------------------------
-
-// Root redirect
-app.get('/', (req, res) => {
-    res.redirect('/app/index.html');
-});
+require('./menu-legacy-routes').register(app, { io });
 
 // ─── Enterprise-grade Health Router (live / ready / startup / verbose) ───
 // Mounted BEFORE apiKeyMiddleware + rejectDuringShutdown — LB probes
@@ -978,112 +909,22 @@ app.use('/api', idempotency({
 }));
 ensureIdempotencySchema(pool).catch((e) => logger.warn('[idempotency] schema skipped:', e.message));
 
-// Network info — SECURITY: طوبولوجيا الشبكة (كل عناوين LAN) تُخفى خلف JWT.
-// كان يُقرأ بمفتاح التطبيق وحده، والمفتاح يوزع على كل عميل بعد تسجيل الدخول.
-// عميل الاكتشاف (EXE) يقرأ /server/info العامة — لا يحتاج هذا المسار.
-app.get('/api/network-info', jwtAuth, (req, res) => {
-    const nets = os.networkInterfaces();
-    const results = {};
-    for (const name of Object.keys(nets)) {
-        for (const net of nets[name]) {
-            if (net.family === 'IPv4' && !net.internal) {
-                if (!results[name]) {results[name] = [];}
-                results[name].push(net.address);
-            }
-        }
-    }
-    res.json({
-        ips: results,
-        port: PORT,
-        urls: Object.values(results).flat().map(ip => `http://${ip}:${PORT}`),
-        connectedClients: connectedClients.size,
-    });
-});
-
-// Connected clients list — SECURITY: كذلك خلف JWT (أسماء أجهزة + عناوين).
-app.get('/api/clients', jwtAuth, (req, res) => {
-    res.json({
-        count: connectedClients.size,
-        clients: Array.from(connectedClients.values()).map(c => ({
-            deviceName: c.deviceName,
-            ip: c.ip,
-            joinedAt: c.joinedAt,
-        })),
-    });
-});
+// Network info + connected clients — مُستخلص إلى network-routes.js (خلف JWT)
+require('./network-routes').register(app, { connectedClients, PORT });
 
 // ─── Runtime metrics (enterprise observability) ─────────────
 // لقطة حية: عدّادات الطلبات ومئينات زمن الاستجابة وتأخر حلقة الأحداث
 // وذاكرة العملية واستغلال مسبّح قاعدة البيانات — للمالك/المدير فقط.
 ensurePasswordVaultSchema().catch((e) => logger.warn('[pw-vault] schema skipped:', e.message));
 
-// خزنة كلمات المرور: عرض نسخة كلمة المرور المسجلة — للأدمن حصريًا (قرار المالك
-// لمساعدة الموظف النسي كلمته). بلا نسخة محفوظة ترجع available:false بدل فشل.
-app.get('/api/users/:id/password', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {return res.status(422).json({ error: 'USER_ID_INVALID', message: 'معرف المستخدم غير صالح' });}
-    try {
-        const r = await pool.query('SELECT password_vault FROM users WHERE id = $1', [id]);
-        if (!r.rows[0]) {return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' });}
-        res.set('Cache-Control', 'no-store');
-        const plain = decryptFromVault(r.rows[0].password_vault);
-        if (!plain) {return res.json({ ok: true, available: false, message: 'لا توجد نسخة محفوظة لهذا الحساب — أعد تعيين كلمة المرور من «تعديل الحساب» وستُسجَّل' });}
-        res.json({ ok: true, available: true, password: plain });
-    } catch (e) {
-        logger.error('[pw-vault] view failed:', e.message);
-        res.status(500).json({ error: 'VAULT_VIEW_FAILED', message: 'تعذر جلب كلمة المرور' });
-    }
-}));
+// Password vault view + runtime metrics + schema constraints — مُستخلص إلى ops-inspect-routes.js
+require('./ops-inspect-routes').register(app, { metrics });
 
-app.get('/api/metrics', jwtAuth, requireRole('admin', 'manager'), (req, res) => {
-    res.set('Cache-Control', 'no-store');
-    res.json(metrics.snapshot(pool));
-});
+// إدارة الفروع /api/branches — backend/branch-routes.js (migration 102_branches)
+require('./branch-routes').register(app);
 
-// ─── DB Constraints API (for client-side validation) ────────
-// يعرض قيود الجداول (NOT NULL, types, lengths, UNIQUE, FK, CHECK) للفرونت إند
-app.get('/api/schema/constraints', jwtAuth, asyncHandler(async (req, res) => {
-    const { loadConstraints } = require('./db-constraints');
-    const constraints = await loadConstraints();
-    
-    // تبسيط الاستجابة للعميل
-    const simplified = {};
-    for (const [tableName, table] of Object.entries(constraints)) {
-      simplified[tableName] = {
-        columns: {},
-        uniqueConstraints: table.constraints.filter(c => c.type === 'u').map(c => ({
-          name: c.name,
-          columns: c.def.match(/UNIQUE\s*\(([^)]+)\)/i)?.[1]?.split(',').map(s => s.trim().replace(/"/g, '')) || [],
-        })),
-        foreignKeys: table.constraints.filter(c => c.type === 'f').map(c => {
-          const match = c.def.match(/FOREIGN KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)/i);
-          return match ? {
-            name: c.name,
-            columns: match[1].split(',').map(s => s.trim().replace(/"/g, '')),
-            refTable: match[2],
-            refColumns: match[3].split(',').map(s => s.trim().replace(/"/g, '')),
-          } : null;
-        }).filter(Boolean),
-        checkConstraints: table.constraints.filter(c => c.type === 'c').map(c => ({
-          name: c.name,
-          def: c.def,
-        })),
-      };
-      
-      for (const [colName, col] of Object.entries(table.columns)) {
-        simplified[tableName].columns[colName] = {
-          type: col.type,
-          nullable: col.nullable,
-          default: col.default,
-          maxLength: col.maxLength,
-          precision: col.precision,
-          scale: col.scale,
-        };
-      }
-    }
-    
-    res.json(simplified);
-}));
+// إعداد اللغة/العملة العام — backend/i18n-routes.js
+require('./i18n-routes').register(app);
 
 
 // -------------------------------------------------------
@@ -1183,7 +1024,7 @@ async function postExpenseJournal(expenseRow) {
         const amt = Number(expenseRow?.amount) || 0;
         if (!(amt > 0)) {return;}
         const { postJournal } = require('./accounting-routes');
-        const day = /^\d{4}-\d{2}-\d{2}$/.test(String(expenseRow.date || '').slice(0, 10)) ? String(expenseRow.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+        const day = /^\d{4}-\d{2}-\d{2}$/.test(String(expenseRow.date || '').slice(0, 10)) ? String(expenseRow.date).slice(0, 10) : riyadhToday();
         await postJournal(pool, {
             date: day,
             memo: `مصروف ${expenseRow.category || ''} — ${String(expenseRow.notes || '').slice(0, 60)}`.trim(),
@@ -1244,7 +1085,9 @@ app.delete('/api/state', jwtAuth, requireRole('admin'), asyncHandler(async (req,
 // Milliseconds × 1000 + a crypto-random suffix keeps BIGINT headroom while
 // making same-millisecond collisions virtually impossible under bursts.
 function generateLegacyId() {
-    return Date.now() * 1000 + crypto.randomInt(0, 1000);
+    // FIX 2026-10-11 (L3): wider random range (0-999999) to further reduce
+    // collision probability under concurrent bursts.
+    return Date.now() * 1000 + crypto.randomInt(0, 999999);
 }
 function prepareDbValue(entity, key, value) {
     const schema = getSchema(entity);
@@ -1261,6 +1104,14 @@ function ensureIdForEntity(entity, body) {
     if (!isProtected) {return body;}
     if (body.id !== undefined) {return body;}
     return { ...body, id: generateLegacyId() };
+}
+
+// ختم branch_id عند الإنشاء للكيانات الواعية بالفروع (102_branches) — يُسقط
+// filterBody عمود branch_id لأنه غير معلن في المخطط، فالختم هنا بعد الترشيح.
+async function stampBranchOnCreate(entity, req, filtered) {
+    if (!branchCtx.BRANCH_AWARE_ENTITIES.has(entity)) {return filtered;}
+    const branchId = await branchCtx.stampForCreate(req, filtered.branch_id);
+    return { ...filtered, branch_id: branchId };
 }
 
 /**
@@ -1420,14 +1271,26 @@ async function ensureEmployeeUserLinkSchema() {
 }
 
 // ─── Dedicated attendance range endpoint (avoids 142-page pagination bottleneck) ───
-app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_ROLES, 'hr'], 'hr.view'), asyncHandler(async (req, res) => {
+// dept_head: يرى سجل حضور/انصراف موظفي قسمه حصرًا — نطاق rosterScope نفسه
+// (dept_code يقبل قائمة أقسام مفصولة بفواصل، والمقارنة غير حساسة لحالة الأحرف)
+app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_ROLES, 'hr', 'dept_head'], 'hr.view'), asyncHandler(async (req, res) => {
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     if (!from || !to) {return res.status(400).json({ error: 'MISSING_DATES', message: 'from and to params required (YYYY-MM-DD)' });}
     const limit = Math.min(parseInt(req.query.limit, 10) || 10000, 50000);
+    const params = [from, to, limit];
+    let deptFilter = '';
+    if (req.user?.role === 'dept_head') {
+        const depts = String(req.user.dept_code || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+        if (!depts.length) {
+            return res.status(403).json({ error: 'DEPT_HEAD_WITHOUT_DEPARTMENT', message: 'حساب رئيس القسم غير مرتبط بأي قسم — راجع مسؤول النظام' });
+        }
+        params.push(depts);
+        deptFilter = ` AND "employeeId" IN (SELECT id FROM employees WHERE LOWER(TRIM("department")) = ANY($${params.length}))`;
+    }
     const { rows } = await pool.query(
-        `SELECT * FROM attendance WHERE date >= $1 AND date <= $2 ORDER BY date DESC, "employeeId" ASC LIMIT $3`,
-        [from, to, limit]
+        `SELECT * FROM attendance WHERE date >= $1 AND date <= $2${deptFilter} ORDER BY date DESC, "employeeId" ASC LIMIT $3`,
+        params
     );
     res.json({ data: rows, total: rows.length, from, to });
 }));
@@ -1580,7 +1443,10 @@ async function payrollRowViolation(entity, id, extra) {
 entities.forEach(entity => {
     // Determine if this entity requires elevated role for write operations
     const requiresAdminRole = adminEntities.includes(entity);
-    const requiresElevatedRead = sensitiveReadEntities.includes(entity);
+    // FIX 2026-10-11: use ENTITY_READ_ROLES (7 entities) instead of sensitiveReadEntities (5)
+    // — salary_advances, payroll_adjustments, employee_contracts, employee_evaluations,
+    // payroll_runs were ungated because they were only in ENTITY_READ_ROLES
+    const requiresElevatedRead = sensitiveReadEntities.includes(entity) || entity in ENTITY_READ_ROLES;
 
     // GET all (authenticated + role-gated for sensitive entities + paginated + rate limited)
     const listMiddlewares = [jwtAuth, generalLimiter];
@@ -1597,14 +1463,17 @@ entities.forEach(entity => {
         if (offsetError) {
             return res.status(400).json({ error: 'INVALID_PAGINATION_PARAMS', message: offsetError });
         }
-        
+
+        // ─── تصفية الفرع: null = كل الفروع (سلوك ما قبل 102 حرفيًا) ───
+        const branchId = branchCtx.BRANCH_AWARE_ENTITIES.has(entity) ? await branchCtx.resolveBranch(req) : null;
+
         // Build safe paginated query
-        const { dataQuery, countQuery, params } = buildPaginatedQuery(entity, pagination);
-        
+        const { dataQuery, countQuery, params } = buildPaginatedQuery(entity, pagination, { branchId });
+
         // Execute both queries in parallel for performance
         const [dataResult, countResult] = await Promise.all([
             pool.query(dataQuery, params),
-            pool.query(countQuery),
+            pool.query(countQuery, params),
         ]);
         
         const total = parseInt(countResult.rows[0].total, 10);
@@ -1622,8 +1491,22 @@ entities.forEach(entity => {
         });
         
         // Return paginated response
+        // PERF 2026-10-08 (load test): قوائم الكيانات كانت تشحن صور التواقيع
+        // (base64 ~40KB لكل توقيع — قائمة الصرف 1.9MB!) فتخنق الجوال والشبكة.
+        // صور التواقيع تُجلب عند الطلب فقط عبر GET /:id (طباعة/تفاصيل).
+        const listRows = dataResult.rows.map(row => viewerSafeRow(entity, row, req));
+        if (entity === 'dispatches') {
+            for (const r of listRows) {
+                delete r.requestSignatureData;
+                delete r.warehouseApprovalSignatureData;
+                delete r.kitchenReceiptSignatureData;
+                delete r.chefApprovalSignatureData;
+                delete r.chefRejectionSignatureData;
+                delete r.warehouseRejectionSignatureData;
+            }
+        }
         return res.json({
-            data: dataResult.rows.map(row => viewerSafeRow(entity, row, req)),
+            data: listRows,
             pagination: {
                 page,
                 limit,
@@ -1647,13 +1530,20 @@ entities.forEach(entity => {
         const { id } = req.params;
         const result = await pool.query(`SELECT * FROM "${entity}" WHERE id = $1`, [id]);
         if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+        // تصفية الفرع على التفاصيل أيضًا — قائمة مقفولة بتفاصيل مفتوحة = IDOR بين الفروع
+        if (branchCtx.BRANCH_AWARE_ENTITIES.has(entity)) {
+            const branchId = await branchCtx.resolveBranch(req);
+            if (branchId != null && Number(result.rows[0].branch_id) !== branchId) {
+                return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });
+            }
+        }
         res.json(viewerSafeRow(entity, result.rows[0], req));
     }));
 
     // POST create (role-based auth for sensitive entities)
     if (requiresAdminRole || entity === 'dispatches') {
-        const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
-        app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
+        const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
+        app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist (CRITICAL FIX) ──
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
 
@@ -1698,17 +1588,97 @@ entities.forEach(entity => {
                         };
                         return res.status(403).json({ error: resolved.code, message: messages[resolved.code] || 'غير مصرح' });
                     }
-                    const deptRow = (await pool.query('SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) LIMIT 1', [resolved.deptCode])).rows[0];
+                    const canonCode = canonicalDeptCode(resolved.deptCode);
+                    const deptRow = (await pool.query('SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) OR LOWER(code)=LOWER($2) LIMIT 1', [resolved.deptCode, canonCode])).rows[0]
+                        || (await pool.query('SELECT code, name FROM "hrDepartments" WHERE LOWER(code)=LOWER($1) OR LOWER(code)=LOWER($2) LIMIT 1', [resolved.deptCode, canonCode])).rows[0];
                     if (!deptRow) {return res.status(422).json({ error: 'DEPT_NOT_FOUND', message: `القسم المرتبط بالحساب غير موجود: ${resolved.deptCode}` });}
                     requestFields.deptCode = deptRow.code;
                     requestFields.deptName = deptRow.name;
                     filtered = { ...requestFields, status: 'pending', createdBy: req.user.name || req.user.username || String(req.user.id), requestedAt: new Date().toISOString(), creatorRole: 'dept_head', needsChefApproval: true, creatorUserId: req.user.id };
                 } else {
+                    if (requestFields.deptCode) {
+                        const canonCode = canonicalDeptCode(requestFields.deptCode);
+                        const opDept = (await pool.query('SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) OR LOWER(code)=LOWER($2) LIMIT 1', [requestFields.deptCode, canonCode])).rows[0];
+                        if (opDept) {
+                            requestFields.deptCode = opDept.code;
+                            if (!requestFields.deptName || requestFields.deptName === 'قسم غير معروف') requestFields.deptName = opDept.name;
+                        }
+                    }
                     filtered = { ...requestFields, status: 'pending', createdBy: req.user.name || req.user.username || String(req.user.id), requestedAt: new Date().toISOString(), creatorRole: req.user?.role || null, needsChefApproval: false, creatorUserId: req.user.id };
                 }
+                // طلب المالك 2026-10-05: «لا يقبل أي إذن صرف ليس له رصيد في المخزن نهائيًا» —
+                // البوابة عند الإنشاء نفسه: طلب صنف غير موجود أو كميته فوق الرصيد يُرفض فورًا
+                // ولا يدور في سلسلة الاعتماد أصلًا (نفس معادلة الرصيد المستخدمة في الخصم الفعلي)
+                let gateItems = filtered.items;
+                if (typeof gateItems === 'string') { try { gateItems = JSON.parse(gateItems || '[]'); } catch (_) { gateItems = []; } }
+                if (Array.isArray(gateItems) && gateItems.length) {
+                    const stockGate = await dispatchStockGate(pool, gateItems);
+                    if (!stockGate.ok) {
+                        return res.status(409).json({
+                            error: 'INSUFFICIENT_STOCK',
+                            message: 'لا يمكن قبول إذن الصرف — الرصيد غير كافٍ في المخزن: ' + stockGate.shortages.map(s => s.message).join('، '),
+                            shortages: stockGate.shortages,
+                        });
+                    }
+                }
+                // HARDENED 2026-10-08: طلب صرف اتكرر 13 مرة بضغطات متتالية —
+                // نفس المنشئ + القسم + الأصناف (اسم+كمية+وحدة) خلال 10 دقائق = مكرر.
+                // المقارنة في جافاسكربت (تطبيع شامل) — بصمات SQL النصية غير موثوقة
+                // لاختلاف ترتيب المفاتيح في JSON.
+                // FIX 2026-10-11 (C11): removed broken `id > $3` clause — dispatch IDs
+                // are Date.now()*1000+rand, so `id > Date.now()-600000` was always true,
+                // collapsing the 10-minute window into "any matching dispatch today".
+                // The requestedAt interval alone correctly bounds the window.
+                {
+                    const normIt = (arr) => (Array.isArray(arr) ? arr : [])
+                        .map(r => `${String(r.itemName || r.name || '').trim().toLowerCase()}|${Number(r.approvedQty ?? r.qty ?? 0)}|${String(r.unit || '').trim()}`)
+                        .sort().join(';;');
+                    const newSig = normIt(gateItems);
+                    const whoDb = filtered.createdBy || null;
+                    const candRows = (await pool.query(
+                        `SELECT id, items FROM dispatches
+                          WHERE date = to_char(CURRENT_DATE, 'YYYY-MM-DD')
+                            AND ($1::text IS NULL OR "createdBy" = $1)
+                            AND "deptCode" = $2
+                            AND "requestedAt" >= NOW() - INTERVAL '10 minutes'
+                          ORDER BY id DESC LIMIT 20`,
+                        [whoDb, filtered.deptCode || null])).rows;
+                    const dupDisp = candRows.find(r => {
+                        try {
+                            const ex = typeof r.items === 'string' ? JSON.parse(r.items) : r.items;
+                            return normIt(ex) === newSig && newSig.length > 0;
+                        } catch (_) { return false; }
+                    });
+                    if (dupDisp) {
+                        return res.status(409).json({ ok: false, code: 'DUPLICATE_DISPATCH', message: 'طلب صرف مشابه أُنشئ قبل أقل من 10 دقائق — تم تجاهل الطلب المكرر', duplicateOf: { id: dupDisp.id } });
+                    }
+                }
+            }
+            // سستم حديد 2026-10-06: منع إنشاء صنف مكرر باختلافات شكلية في الاسم (مسافات/حالة) —
+            // نفس فئة الخلل التي أنتجت 12 صنفًا مكررًا بإعادة إدخال الافتتاحي
+            if (entity === 'inventory' && String(filtered.name || '').trim()) {
+                const nameKey = String(filtered.name).trim().toLowerCase().replace(/\s+/g, '');
+                const twin = (await pool.query(
+                    `SELECT id, name FROM inventory WHERE lower(regexp_replace(name, '\\s+', '', 'g')) = $1 LIMIT 1`,
+                    [nameKey])).rows[0];
+                if (twin) {
+                    return res.status(409).json({
+                        error: 'DUPLICATE_ITEM_NAME',
+                        message: `الصنف «${twin.name}» موجود في المخزن بالفعل — لا يُنشأ مكرر. عدّل الصنف الموجود أو راجع أداة دمج الأصناف`,
+                        existingId: twin.id,
+                    });
+                }
+            }
+            // Catch Weight: صنف لحوم/دواجن/أسماك مخزون بالوزن ⇒ وزن متغير تلقائيًا
+            // (طلب بالكرتون + صرف بالوزن الفعلي) — ما لم يحدد المرسل الحقل صراحةً
+            if (entity === 'inventory' && filtered.catch_weight_enabled == null) {
+                const suggested = require('./catch-weight-heuristic').suggestCatchWeight(filtered.name, filtered.unit);
+                if (suggested) {filtered = { ...filtered, ...suggested };}
             }
             // Auto-generate id for legacy tables that mark `id` as protected
             filtered = ensureIdForEntity(entity, filtered);
+            try { filtered = await stampBranchOnCreate(entity, req, filtered); }
+            catch (error) { if (error.statusCode) {return res.status(error.statusCode).json({ error: error.message });} throw error; }
             const periodBlockCreate = await payrollPeriodViolation(entity, filtered);
             if (periodBlockCreate) {return res.status(423).json(periodBlockCreate);}
             if (entity === 'users') {
@@ -1745,20 +1715,35 @@ entities.forEach(entity => {
             );
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
-            // ROOT FIX 2026-10-02: جلسات الجرد تُبنى من أرصدة المواقع — الصنف
-            // المنشأ عبر CRUD العام بلا صف رصيد كان يختفي من لقطة الجرد كليًا
-            // (EMPTY_AUDIT). يُضمن صف رصيد في المخزن الرئيسي عند إنشاء أي صنف.
+            // ROOT FIX 2026-10-02 + حديد 2026-10-06: الجداول تُبنى من أرصدة المواقع، والرصيد
+            // الافتتاحي للصنف الجديد يُقيَّد في الدفتر (opening_balance) — الرصيد والدفتر يولدان
+            // متطابقين بدل رصيد صامت بلا أي قيد
             if (entity === 'inventory') {
+                let c2;
                 try {
-                    const _mainLoc = (await pool.query(
+                    c2 = await pool.connect();
+                    await c2.query('BEGIN');
+                    const _mainLoc = (await c2.query(
                         `SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active = true LIMIT 1`)).rows[0];
                     if (_mainLoc) {
-                        await pool.query(
+                        await c2.query(
                             `INSERT INTO inventory_location_balances (inventory_id, location_id, on_hand)
-                             VALUES ($1, $2, GREATEST(0, $3::numeric)) ON CONFLICT (inventory_id, location_id) DO NOTHING`,
-                            [result.rows[0].id, _mainLoc.id, Number(result.rows[0].qty) || 0]);
+                             VALUES ($1, $2, 0) ON CONFLICT (inventory_id, location_id) DO NOTHING`,
+                            [result.rows[0].id, _mainLoc.id]);
+                        const _qty0 = Number(result.rows[0].qty) || 0;
+                        if (_qty0 > 0) {
+                            await postInventoryLedgerEntry(c2, {
+                                transactionType: 'opening_balance', inventoryId: result.rows[0].id, locationId: _mainLoc.id,
+                                quantityDelta: _qty0, unit: result.rows[0].unit || 'وحدة',
+                                unitCost: Number(result.rows[0].avgCost) || 0,
+                                referenceType: 'inventory_create', referenceId: String(result.rows[0].id),
+                                idempotencyKey: `inventory-create-opening:${result.rows[0].id}`,
+                                reason: 'رصيد افتتاحي عند إنشاء الصنف', metadata: { created_via: 'generic_crud' },
+                            });
+                        }
                     }
-                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); }
+                    await c2.query('COMMIT');
+                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); } finally { if (c2) {c2.release();} }
             }
             if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
             emitEntityChange(entity, 'create', publicRow, req);
@@ -1792,7 +1777,7 @@ entities.forEach(entity => {
         // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
         const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
-        app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
+        app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist ──
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
 
@@ -1808,6 +1793,8 @@ entities.forEach(entity => {
 
             // Auto-generate id for legacy tables that mark `id` as protected
             let filtered = ensureIdForEntity(entity, f0);
+            try { filtered = await stampBranchOnCreate(entity, req, filtered); }
+            catch (error) { if (error.statusCode) {return res.status(error.statusCode).json({ error: error.message });} throw error; }
             const periodBlockCreateOpen = await payrollPeriodViolation(entity, filtered);
             if (periodBlockCreateOpen) {return res.status(423).json(periodBlockCreateOpen);}
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered); }
@@ -1879,17 +1866,35 @@ entities.forEach(entity => {
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
             // نفس حرس الرصيد — المعالج الثاني للكيانات ذات الأدوار المفتوحة
+            // FIX 2026-10-11 (C12): handler B was seeding balances WITHOUT a
+            // ledger entry → on-hand vs ledger drift. Now posts opening_balance
+            // entry matching handler A.
             if (entity === 'inventory') {
+                let c3;
                 try {
-                    const _mainLoc = (await pool.query(
+                    c3 = await pool.connect();
+                    await c3.query('BEGIN');
+                    const _mainLoc = (await c3.query(
                         `SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active = true LIMIT 1`)).rows[0];
                     if (_mainLoc) {
-                        await pool.query(
+                        await c3.query(
                             `INSERT INTO inventory_location_balances (inventory_id, location_id, on_hand)
                              VALUES ($1, $2, GREATEST(0, $3::numeric)) ON CONFLICT (inventory_id, location_id) DO NOTHING`,
                             [result.rows[0].id, _mainLoc.id, Number(result.rows[0].qty) || 0]);
+                        const _qtyB = Number(result.rows[0].qty) || 0;
+                        if (_qtyB > 0) {
+                            await postInventoryLedgerEntry(c3, {
+                                transactionType: 'opening_balance', inventoryId: result.rows[0].id, locationId: _mainLoc.id,
+                                quantityDelta: _qtyB, unit: result.rows[0].unit || 'وحدة',
+                                unitCost: Number(result.rows[0].avgCost) || 0,
+                                referenceType: 'inventory_create', referenceId: String(result.rows[0].id),
+                                idempotencyKey: `inventory-create-opening:${result.rows[0].id}`,
+                                reason: 'رصيد افتتاحي عند إنشاء الصنف', metadata: { created_via: 'generic_crud_open_roles' },
+                            });
+                        }
                     }
-                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); }
+                    await c3.query('COMMIT');
+                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); await c3?.query('ROLLBACK').catch(() => {}); } finally { if (c3) {c3.release();} }
             }
             if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
             emitEntityChange(entity, 'create', publicRow, req);
@@ -2210,7 +2215,9 @@ entities.forEach(entity => {
         return out;
     }
     if (requiresAdminRole || entity === 'dispatches') {
-        const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse'] : ['admin', 'manager'];
+        // صاحب الإذن (kitchen/sous_chef/dept_head) أُضيف (طلب المالك 2026-10-04):
+        // يحذف طلبه المعلّق فقط — الفرض الفعلي داخل المعالج أدناه (creatorUserId + الحالة).
+        const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : ['admin', 'manager'];
         app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             if (entity === 'users') {await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);}
@@ -2220,21 +2227,28 @@ entities.forEach(entity => {
             // لا يُمحى عبر CRUD العام — الاعتماد يرحّل مصروفات وحركات دفتر وأحداث
             // موقّعة بسلسلة hash؛ حذفه يقطع السلسلة. المعلّق فقط يجوز حذفه (إلغاء طلب خاطئ).
             // استثناء الأدمن (2026-10-01): admin يحذف أي حالة — بتوثيق إجباري.
+            // صاحب الطلب (2026-10-04): يحذف طلبه المعلّق قبل وصوله للمخزن.
             if (entity === 'dispatches') {
-                const dispatchRow = (await pool.query('SELECT status FROM dispatches WHERE id = $1', [id])).rows[0];
+                const dispatchRow = (await pool.query('SELECT status, "creatorUserId" FROM dispatches WHERE id = $1', [id])).rows[0];
                 if (!dispatchRow) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
                 const isAdmin = req.user?.role === 'admin';
-                if (!isAdmin) {
+                const isCreator = dispatchRow.creatorUserId != null && Number(dispatchRow.creatorUserId) === Number(req.user?.id);
+                const isWarehouseSide = ['manager', 'warehouse'].includes(req.user?.role);
+                if (!isAdmin && !isWarehouseSide) {
+                    // صاحب الطلب: معلّق فقط
                     const deleteGuard = canDeleteDispatch(dispatchRow);
-                    if (!deleteGuard.ok) {
+                    if (!deleteGuard.ok || !isCreator) {
                         const deleteMessages = {
                             DISPATCH_ALREADY_APPROVED: 'لا يمكن حذف إذن صرف معتمد — مستند مالي موقّع مرحّل مصروفات وحركات مخزون',
                             DISPATCH_REJECTED: 'لا يمكن حذف إذن مرفوض — قرار الرفض موقّع وموثّق في سلسلة الأحداث',
                             DISPATCH_ALREADY_RECEIVED: 'لا يمكن حذف إذن تم استلامه — الاستلام موقّع ومرحّل للمخزون',
-                            DISPATCH_CHEF_DECIDED: 'لا يمكن حذف إذن اعتمده الشيف العمومي — قرار موقّع في السلسلة',
+                            DISPATCH_CHEF_DECIDED: 'لا يمكن حذف إذن اعتمده الشيف العمومي — قرار موقّع في السلسلة (يمكن تعديله بدلًا من حذفه)',
                             DISPATCH_INVALID_STATUS: 'حالة إذن الصرف لا تسمح بحذفه',
                         };
-                        return res.status(409).json({ error: deleteGuard.code, message: deleteMessages[deleteGuard.code] || 'حذف إذن الصرف غير مسموح في هذه الحالة — الأدمن فقط يستطيع الحذف النهائي (force)' });
+                        const message = !deleteGuard.ok
+                            ? (deleteMessages[deleteGuard.code] || 'حذف إذن الصرف غير مسموح في هذه الحالة — الأدمن فقط يستطيع الحذف النهائي (force)')
+                            : 'الحذف لصاحب الطلب المعلّق فقط قبل اعتماد الشيف — بعد اعتماد الشيف تواصل مع الإدارة';
+                        return res.status(deleteGuard.ok ? 403 : 409).json({ error: deleteGuard.ok ? 'NOT_CREATOR' : deleteGuard.code, message });
                     }
                 } else {
                     // حذف تتابعي بأمر المالك (2026-10-01): إذن الأدمن يحذف معه كل
@@ -2330,6 +2344,28 @@ const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING
 // Static Files (frontend/app/ — creative UI redesign)
 // -------------------------------------------------------
 ensureMediaDirs();
+// FIX 2026-10-11 (C8): /uploads was fully public — any unauthenticated user
+// could browse uploaded files. Now: image extensions (.png/.jpg/etc) stay
+// public (menu images, low sensitivity), but ALL other file types require
+// authentication. Signed-URLs remain a future option.
+app.use('/uploads', (req, res, next) => {
+    const ext = path.extname(req.path).toLowerCase();
+    const PUBLIC_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'];
+    if (PUBLIC_IMAGE_EXTS.includes(ext)) {return next();}
+    // Non-image files require auth
+    try {
+        const auth = String(req.headers.authorization || '');
+        if (auth.startsWith('Bearer ')) {
+            const jwt = require('jsonwebtoken');
+            jwt.verify(auth.slice(7), process.env.JWT_ACCESS_SECRET, (err) => {
+                if (err) {return res.status(401).json({ error: 'UNAUTHORIZED' });}
+                next();
+            });
+            return;
+        }
+        return res.status(401).json({ error: 'UNAUTHORIZED', message: 'يجب تسجيل الدخول للوصول لهذا الملف' });
+    } catch (_) { return res.status(401).json({ error: 'UNAUTHORIZED' }); }
+});
 app.use('/uploads', express.static(MEDIA_ROOT, {
     fallthrough: false,
     index: false,
@@ -2345,6 +2381,43 @@ app.use('/uploads', express.static(MEDIA_ROOT, {
 }));
 const VENDOR_DIR = path.join(__dirname, '..', 'frontend', 'app', 'js', 'vendor');
 const APP_DIR = path.join(__dirname, '..', 'frontend', 'app');
+// ─── Service Worker محقون بالإصدار (2026-10-10): sw.js يُبنى ديناميكيًا من ?v= الحالي —
+// أي رفع نسخة واجهة يغيّر بايتات sw.js تلقائيًا → كل المتصفحات تحدّث الكاش من أول زيارة.
+// يقضي على ظاهرة «لسه على القديم» نهائيًا (السبب: SW كان يجمّد ?v= قديمة منذ 10-05).
+function frontendVersion() {
+    try {
+        const html = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+        const m = html.match(/main\.js\?v=([\d.]+)/);
+        return m ? m[1] : '0.0.0';
+    } catch (_) { return '0.0.0'; }
+}
+app.get('/app/sw.js', (req, res) => {
+    try {
+        let js = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
+        const v = frontendVersion();
+        js = js.replace(/const CACHE_VERSION = '[^']*';/, `const CACHE_VERSION = '${v}';`);
+        js = js.replace(/\?v=[\d.]+/g, `?v=${v}`);
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store, must-revalidate');
+        res.setHeader('Service-Worker-Allowed', '/app/');
+        res.send(js);
+    } catch (e) { res.status(500).send('// sw unavailable'); }
+});
+// The live menu preview is embedded only by this same-origin dashboard.
+app.use('/app/menu-board.html', (req, res, next) => {
+    const policy = res.getHeader('Content-Security-Policy');
+    if (typeof policy !== 'string') {
+        logger.error('[MENU_PREVIEW_CSP] Content-Security-Policy header missing');
+        return next();
+    }
+    const sameOriginPolicy = policy.replace(/frame-ancestors\s+[^;]+/, "frame-ancestors 'self'");
+    if (sameOriginPolicy === policy) {
+        logger.error('[MENU_PREVIEW_CSP] frame-ancestors directive missing');
+        return next();
+    }
+    res.setHeader('Content-Security-Policy', sameOriginPolicy);
+    next();
+});
 app.use('/app/js/vendor', express.static(VENDOR_DIR, {
     maxAge: '365d',
     immutable: true,
@@ -2369,6 +2442,16 @@ try {
 } catch (err) {
     logger.error('[cashier-module] Failed to register (continuing without POS module):', err.message);
     logger.error('  → Run `npm install` to install new deps (bullmq, ioredis, uuid, qrcode, bcryptjs).');
+}
+
+// ─── شاشة منيو المول (Digital Signage Menu Board) ───
+// /api/menu-board/public (عام) + /api/menu-board/settings (admin/manager)
+// المنيو نفسه يُقرأ من pos_products — تعديلات المطبخ تصل الشاشة لحظيًا
+// عبر بث entity_changed (posProducts) الموجود في cashier-module.
+try {
+    require('./menu-board-routes').register(app, { io });
+} catch (err) {
+    logger.error('[menu-board] Failed to register (continuing without menu board):', err.message);
 }
 
 // ─── 404 catch-all (mounted AFTER all real routes) ───
@@ -2403,13 +2486,15 @@ installProcessShields({
 });
 
 // ─── Initialize Graceful Shutdown Handler ─────────────
+// FIX 2026-10-11 (M4): logger was passed in dependencies (ignored) — moved
+// to options where graceful-shutdown.js actually reads it.
 initGracefulShutdown({
     server: httpServer,
     io,
     pool,
-    logger,
 }, {
     timeout: 30_000, // 30 seconds for graceful shutdown
+    logger,
     onShutdown: async (signal) => {
         logger.info(`\n${'='.repeat(50)}`);
         logger.info(`🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -2529,5 +2614,3 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     }
     logger.info(`${'='.repeat(50)}\n`);
 });
-
-
