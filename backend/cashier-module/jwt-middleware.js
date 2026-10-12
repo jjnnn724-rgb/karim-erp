@@ -427,6 +427,10 @@ async function refreshHandler(req, res) {
 
     const client = await pool.connect();
     try {
+        // 102_branches: الاستعلام يقرأ u.branch_id — نفس حماية مساري الدخول
+        // (DDL مرة واحدة لكل عملية). بدونها: قاعدة لم تترحّل بعد + refresh
+        // قبل أي login = 500 (كشفها tests/security-rbac-hardening 2026-10-13).
+        await ensureUserSecurityColumns(client);
         const row = (await client.query(
             `SELECT rt.id, rt.user_id, rt.expires_at, u.id AS live_user_id, u.active, u.role, u.name, u.username,
                     u.must_change_password, u.dept_code, u.branch_id
