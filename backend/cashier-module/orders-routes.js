@@ -21,6 +21,7 @@ const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { parsePaginationParams, buildPaginatedQuery } = require('../pagination');
 const { generalLimiter, crudLimiter } = require('../rate-limiter');
+const { guardCreate } = require('../submit-guard');
 
 const router = express.Router();
 
@@ -149,7 +150,9 @@ router.get('/:id', jwtAuth, async (req, res) => {
  *     auto_create_inventory?: boolean  // if true, ad-hoc items create a new inventory row
  *   }
  */
-router.post('/', jwtAuth, crudLimiter, async (req, res) => {
+// guardCreate('posOrders', inflight): الطلبات المتزامنة المتطابقة = ضغط مزدوج
+// يُرفض فورًا؛ الطلبات المتتابعة المتطابقة (بيعان حقيقيان) تمر طبيعيًا.
+router.post('/', jwtAuth, crudLimiter, guardCreate('posOrders', { mode: 'inflight' }), async (req, res) => {
     const client = await pool.connect();
     try {
         const b = req.body || {};

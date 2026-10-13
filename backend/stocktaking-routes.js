@@ -112,6 +112,8 @@ function fmtMoney(value) {
 let schemaReady = null;
 async function ensureStocktakingSchema() {
     if (schemaReady) {return schemaReady;}
+    // FIX 2026-10-11 (M13): reset schemaReady on failure — was never reset,
+    // so one transient DB error permanently poisons the schema initializer.
     schemaReady = (async () => {
         await pool.query(`
             ALTER TABLE inventory_audits ADD COLUMN IF NOT EXISTS scope_filter JSONB NOT NULL DEFAULT '{}'::jsonb;
@@ -122,7 +124,7 @@ async function ensureStocktakingSchema() {
             ALTER TABLE inventory_audits ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
             ALTER TABLE inventory_audit_items ADD COLUMN IF NOT EXISTS counted_at TIMESTAMPTZ;
         `);
-    })();
+    })().catch((e) => { schemaReady = null; throw e; });
     return schemaReady;
 }
 

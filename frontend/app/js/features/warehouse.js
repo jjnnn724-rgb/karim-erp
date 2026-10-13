@@ -1,4 +1,4 @@
-/**
+﻿/**
  * features/warehouse.js — extracted verbatim from app.js (see docs/esm-migration/MIGRATION_CHANGE_LOG.md).
  * Bridge policy: all top-level bindings are mounted on window by js/main.js (see BRIDGE log).
  */
@@ -42,10 +42,68 @@ function whSelPage(checked, ids){
     });
     renderPage();
 }
+/* ─── طلب المالك 2026-10-05: البحث في المخزن كان يقفز بالصفحة لأعلى ───
+   السبب: whInvFetch كان يستدعي renderPage() (رسم كامل للصفحة) مرتين لكل بحث
+   فيُهدم مربع البحث ويعاد بناؤه فيفقد التركيز وتقفز الصفحة.
+   الحل: تحديث جزئي — tbody وعداد الفئات وشريط الترقيم فقط، ومربع البحث لا يُلمس
+   فيبقى التركيز وموضع المؤشر وموضع الصفحة كما هما أثناء الكتابة. */
+function whInvLocalItems(){
+    return (STATE.inventory||[])
+    .filter(i=>window.whCatFilter==='all'||String(i.category||'عام')===window.whCatFilter)
+    .sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'ar')||String(a.name||'').localeCompare(String(b.name||''),'ar'));
+}
+function whInvRowsHtml(items){
+    if(WHINV.loading) {return '<tr><td colspan="13" class="u-empty" aria-live="polite">جارٍ تحميل الأصناف...</td></tr>';}
+    if(WHINV.error && WHINV.results === null) {return `<tr><td colspan="13" class="u-empty">تعذر البحث: ${esc(WHINV.error)} — عرض محلي <button class="btn btn-sm" onclick="whInvFetch()">إعادة المحاولة</button></td></tr>`;}
+    return items.map(item=>{
+    // طلب المالك 2026-10-05: «إذن الصرف 4 يعني الباقي 4» — العمود الأساسي = رصيد المخزن
+    // الرئيسي، وما انتقل لمخازن الأقسام يظهر في عمود مستقل، والإجمالي في عمود القيمة
+    const mainQty = item.mainQty != null ? Number(item.mainQty) : Number(item.qty);
+    const deptQty = Math.max(0, Math.round((Number(item.qty) - mainQty) * 1000) / 1000);
+    const isLow = mainQty < Number(item.minQty);
+    const shelf = STATE.shelves.find(s=>s.id===item.shelfId);
+    return `<tr>
+    <td><input type="checkbox" class="wh-sel" value="${esc(String(item.id))}" ${window.whSelected.has(String(item.id))?'checked':''} onchange="whSelToggle('${esc(String(item.id))}',this.checked)" aria-label="تحديد ${esc(item.name||'صنف')}"></td>
+    <td class="fw-bold">${esc(item.name)}${item.barcode?`<div style="font-size:10px;color:var(--text3);font-family:monospace;font-weight:400">${esc(item.barcode)}</div>`:''}</td>
+    <td class="c-gold">${esc(item.category||'—')}</td>
+    <td>${item.unit}</td>
+    <td class="${isLow?'c-red fw-bold':''}">${fN(mainQty)}</td>
+    <td class="${deptQty>0?'c-gold':''}">${fN(deptQty)}</td>
+    <td class="c-teal">${fN(item.weight||0)}</td>
+    <td>${shelf?`<span class="badge bdg-purple">${esc(shelf.code)}</span>`:'<span class="text-muted">—</span>'}</td>
+    <td class="c-red">${fN(item.minQty)}</td>
+    <td class="c-gold">${fC(item.avgCost)}</td>
+    <td class="c-gold fw-bold">${fC(item.qty*item.avgCost)}</td>
+    <td><span class="badge ${isLow?'bdg-red':'bdg-green'}">${isLow?`<i class=ji data-i=alert-triangle></i> ${t('wh.lowSt')}`:`<i class=ji data-i=circle-check></i> ${t('wh.okSt')}`}</span></td>
+    <td style="display:flex;gap:4px"><button type="button" class="btn btn-sm" data-action="edit-inventory" data-id="${esc(String(item.id))}" onclick="editItem('${esc(String(item.id))}')"><i class=ji data-i=pencil></i> ${t('act.edit')}</button><button type="button" class="btn btn-red btn-sm" data-action="delete-inventory" data-id="${esc(String(item.id))}" onclick="deleteItem('${esc(String(item.id))}')"><i class=ji data-i=trash></i> ${t('act.delete')}</button></td>
+    </tr>`;
+    }).join('')||`<tr><td colspan="13" class="u-empty">${t('wh.noItems')}</td></tr>`;
+}
+function whInvPagerHtml(serverMode){
+    if(!serverMode) {return '';}
+    const pages = Math.max(1, Math.ceil((WHINV.total || 0) / (WHINV.limit || 50)));
+    const fuzzyNote = WHINV.fuzzy && (WHINV.q||'').trim() ? ` <span class="badge bdg-purple" title="بحثنا بتسامح الحروف المتشابهة (بازنجان = باذنجان)">نتائج مشابهة لكتابتك</span>` : '';
+    return `<div class="fr" style="padding:8px 14px;align-items:center" aria-live="polite">
+    <span class="u-t13 text-muted">الأصناف: ${fN(WHINV.total)} — صفحة ${fN(WHINV.page)} من ${fN(pages)} (50/صفحة)${fuzzyNote}</span>
+    <div class="fr"></div>
+    <button class="btn btn-sm" ${WHINV.page<=1?'disabled':''} onclick="whInvPage(-1)">السابق</button>
+    <button class="btn btn-sm" ${WHINV.page>=pages?'disabled':''} onclick="whInvPage(1)">التالي</button>
+    </div>`;
+}
+function whInvPartialRender(){
+    const body = document.getElementById('whInvBody');
+    if(!body) {renderPage(); return;} // الجدول غير موجود بعد → الرسم الكامل كالسابق
+    const serverMode = WHINV.results !== null;
+    body.innerHTML = whInvRowsHtml(serverMode ? WHINV.results : whInvLocalItems());
+    const pager = document.getElementById('whInvPager');
+    if(pager) {pager.innerHTML = whInvPagerHtml(serverMode);}
+    const catSel = document.getElementById('whInvCatSelect');
+    if(catSel && catSel.options.length) {catSel.options[0].textContent = `كل الفئات (${fN(serverMode?WHINV.total:STATE.inventory.length)})`;}
+}
 async function whInvFetch(){
     const myId = ++WHINV_REQ;
     WHINV.loading = true; WHINV.error = '';
-    if (STATE.page === 'warehouse') {renderPage();}
+    if (STATE.page === 'warehouse') {whInvPartialRender();}
     const params = new URLSearchParams({
         q: WHINV.q || '', category: WHINV.cat || 'all', stock: WHINV.stock || 'all',
         page: String(WHINV.page || 1), limit: String(WHINV.limit || 50),
@@ -55,6 +113,7 @@ async function whInvFetch(){
         if (myId !== WHINV_REQ) {return;} // stale — ignore
         WHINV.results = Array.isArray(res.data) ? res.data : [];
         WHINV.total = Number(res.pagination?.total || 0);
+        WHINV.fuzzy = Boolean(res.fuzzy);
         WHINV.page = Number(res.pagination?.page || 1);
         if (Array.isArray(res.categories)) {WHINV.cats = res.categories;}
         WHINV.loading = false;
@@ -64,7 +123,12 @@ async function whInvFetch(){
         WHINV.error = e.message || 'تعذر البحث';
         WHINV.results = null; // fallback: العرض المحلي الكامل
     }
-    if (STATE.page === 'warehouse') {renderPage();}
+    if (STATE.page === 'warehouse') {whInvPartialRender();}
+}
+function whInvClearSearch(){
+    WHINV.q = ''; WHINV.page = 1;
+    renderPage();
+    whInvFetch();
 }
 function whMetricsHtml(){
 const totalValue = STATE.inventory.reduce((s,i)=>s+(i.qty*i.avgCost),0);
@@ -82,38 +146,44 @@ return `
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=archive></i> ${t('wh.shelves')}</div><div class="mcard-val c-purple">${fN(STATE.shelves.length)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=chart></i> ${t('wh.cats')}</div><div class="mcard-val c-orange">${fN(new Set(STATE.inventory.map(i=>i.category)).size)}</div></div>
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=refresh></i> ${t('wh.lastMove')}</div><div class="mcard-val c-blue u-t14">${STATE.inventoryTx.length>0?fD(STATE.inventoryTx[STATE.inventoryTx.length-1].date):'—'}</div></div>
-</div>
-${whShortPanel()}`;
+</div>`;
 }
 
 // ─── صفحة الأصناف (المخزن) ───
+// طلب المالك 2026-10-05: «اجعل البحث في أول صفحة المخزن» — شريط بحث فوري لاصق
+// في أول الصفحة فوق كل شيء (لا يختفي مع النزول)، والنتائج تتحقق تحته جزئيًا بلا قفزة.
 function renderWarehouse(){
 if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
 if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); }
 if (WHINV.results === null && !WHINV.loading && !WHINV.error) { setTimeout(()=>whInvFetch(),0); }
 const serverMode = WHINV.results !== null;
+const whTopSearch = `
+<section aria-label="بحث المخزن السريع" style="margin-bottom:12px">
+<div style="position:sticky;top:0;z-index:35;background:var(--bg2);border:1px solid var(--border-gold,var(--border));border-radius:var(--r);padding:10px 14px;box-shadow:0 8px 22px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center">
+<i class=ji data-i=search style="color:var(--gold);font-size:18px;flex-shrink:0"></i>
+<input type="text" id="whTopSearch" class="inp" placeholder="بحث فوري: اسم / باركود / فئة..." aria-label="بحث الأصناف" value="${esc(WHINV.q)}" oninput="whInvSearchInput(this.value)" style="flex:1;border:none;background:transparent;font-size:16px;font-weight:700;color:var(--text);padding:4px 0;outline:none;box-shadow:none">
+${WHINV.q?`<button class="btn btn-red btn-sm" onclick="whInvClearSearch()" title="مسح البحث"><i class=ji data-i=x></i></button>`:''}
+</div>
+</section>`;
 const whCats = [...new Set((STATE.inventory||[]).map(i=>String(i.category||'عام')))].sort((a,b)=>a.localeCompare(b,'ar'));
 if(window.whCatFilter!=='all' && !whCats.includes(window.whCatFilter)) {window.whCatFilter='all';}
 if (WHINV.cat === 'all' && window.whCatFilter && window.whCatFilter !== 'all') {WHINV.cat = window.whCatFilter;}
 const catOpts = (WHINV.cats.length ? WHINV.cats : whCats).map(c=>`<option value="${esc(c)}" ${WHINV.cat===c?'selected':''}>${esc(c)}</option>`).join('');
-const whItems = serverMode ? WHINV.results : (STATE.inventory||[])
-.filter(i=>window.whCatFilter==='all'||String(i.category||'عام')===window.whCatFilter)
-.sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''),'ar')||String(a.name||'').localeCompare(String(b.name||''),'ar'));
+const whItems = serverMode ? WHINV.results : whInvLocalItems();
 const whPages = Math.max(1, Math.ceil((serverMode ? WHINV.total : whItems.length) / (WHINV.limit || 50)));
-return whMetricsHtml() + `
+return whTopSearch + whMetricsHtml() + `
 <section id="wh-sec-items" aria-label="أصناف المخزون">
 <div class="tbl-wrap">
 <div class="tbl-hd">
 <h3><i class=ji data-i=package></i> ${t('wh.invTitle')}</h3>
 <div class="u-row-wrap">
-<select class="inp" onchange="whInvFilterChange('cat',this.value)" style="max-width:160px" title="تصفية حسب الفئة" aria-label="تصفية حسب الفئة"><option value="all">كل الفئات (${fN(serverMode?WHINV.total:STATE.inventory.length)})</option>${catOpts}</select>
+<select class="inp" id="whInvCatSelect" onchange="whInvFilterChange('cat',this.value)" style="max-width:160px" title="تصفية حسب الفئة" aria-label="تصفية حسب الفئة"><option value="all">كل الفئات (${fN(serverMode?WHINV.total:STATE.inventory.length)})</option>${catOpts}</select>
 <select class="inp" onchange="whInvFilterChange('stock',this.value)" style="max-width:130px" aria-label="فلتر المخزون">
 <option value="all" ${WHINV.stock==='all'?'selected':''}>كل الحالات</option>
 <option value="low" ${WHINV.stock==='low'?'selected':''}>منخفض</option>
 <option value="out" ${WHINV.stock==='out'?'selected':''}>نافذ</option>
 <option value="ok" ${WHINV.stock==='ok'?'selected':''}>سليم</option>
 </select>
-<input type="text" class="inp" placeholder="بحث: اسم / باركود / فئة..." aria-label="بحث الأصناف" value="${esc(WHINV.q)}" oninput="whInvSearchInput(this.value)" style="max-width:240px">
 <span id="whSelCount" class="u-t13 text-muted">المحدد: ${fN(window.whSelected.size)}</span>
 ${window.whSelected.size?`<button class="btn btn-sm" onclick="whInvClearSel()">مسح التحديد</button>`:''}
 <button class="btn btn-blue btn-sm" onclick="whPrintInventory()"><i class=ji data-i=printer></i> طباعة</button>
@@ -126,64 +196,67 @@ ${window.whSelected.size?`<button class="btn btn-sm" onclick="whInvClearSel()">�
 <button class="btn btn-blue btn-sm" onclick="showBulkInventoryImportModal()"><i class=ji data-i=chart></i> ${t('wh.impStock')}</button>
 <button class="btn btn-red btn-sm" onclick="whBulkDelete()"><i class=ji data-i=trash></i> حذف المحدد</button>
 <button class="btn btn-purple btn-sm" onclick="showInventoryAuditModal()"><i class=ji data-i=clipboard-list></i> ${t('wh.audit')}</button><button class="btn btn-blue btn-sm" onclick="showFiscalYearModal()"><i class=ji data-i=calendar></i> ${t('wh.fyear')}</button>
+${STATE.currentUser?.role==='admin'?`<button class="btn btn-blue btn-sm" onclick="showSystemHealth()" title="تشخيص شامل بضغطة: سلامة الأرصدة والدفاتر وإحصائيات المخزن"><i class=ji data-i=clipboard-list></i> فحص النظام</button><button class="btn btn-orange btn-sm" onclick="showMergeDuplicatesModal()" title="اكتشاف الأصناف المكررة بالاسم ودمجها في صنف واحد"><i class=ji data-i=git-merge></i> دمج أصناف مكررة</button>`:''}
 </div></details>
 </div>
 </div>
 <div class="tbl-scroll">
 <table>
-<thead><tr><th><input type="checkbox" onchange="whSelPage(this.checked, (WHINV.results!==null?WHINV.results:whItems).map(i=>i.id))" title="تحديد الصفحة" aria-label="تحديد كل الصفحة"></th><th>${t('wh.item')}</th><th>${t('wh.cat')}</th><th>${t('wh.unit')}</th><th>${t('wh.qty')}</th><th>${t('wh.w8')}</th><th>${t('wh.shelf')}</th><th>${t('wh.min')}</th><th>${t('wh.avg')}</th><th>${t('wh.val')}</th><th>${t('wh.status')}</th><th>${t('wh.actions')}</th></tr></thead>
+<thead><tr><th><input type="checkbox" onchange="whSelPage(this.checked, (WHINV.results!==null?WHINV.results:whItems).map(i=>i.id))" title="تحديد الصفحة" aria-label="تحديد كل الصفحة"></th><th>${t('wh.item')}</th><th>${t('wh.cat')}</th><th>${t('wh.unit')}</th><th title="الرصيد الفعلي في المخزن الرئيسي — بعد خصم ما صُرف للأقسام">رصيد المخزن</th><th title="ما انتقل لمخازن الأقسام بأذون الصرف المستلمة">في الأقسام</th><th>${t('wh.w8')}</th><th>${t('wh.shelf')}</th><th>${t('wh.min')}</th><th>${t('wh.avg')}</th><th>${t('wh.val')}</th><th>${t('wh.status')}</th><th>${t('wh.actions')}</th></tr></thead>
 <tbody id="whInvBody">
-${WHINV.loading?'<tr><td colspan="12" class="u-empty" aria-live="polite">جارٍ تحميل الأصناف...</td></tr>':''}
-${WHINV.error&&!serverMode?`<tr><td colspan="12" class="u-empty">تعذر البحث: ${esc(WHINV.error)} — عرض محلي <button class="btn btn-sm" onclick="whInvFetch()">إعادة المحاولة</button></td></tr>`:''}
-${whItems.map(item=>{
-const isLow = Number(item.qty)<Number(item.minQty);
-const shelf = STATE.shelves.find(s=>s.id===item.shelfId);
-return `<tr>
-<td><input type="checkbox" class="wh-sel" value="${esc(String(item.id))}" ${window.whSelected.has(String(item.id))?'checked':''} onchange="whSelToggle('${esc(String(item.id))}',this.checked)" aria-label="تحديد ${esc(item.name||'صنف')}"></td>
-<td class="fw-bold">${esc(item.name)}${item.barcode?`<div style="font-size:10px;color:var(--text3);font-family:monospace;font-weight:400">${esc(item.barcode)}</div>`:''}</td>
-<td class="c-gold">${esc(item.category||'—')}</td>
-<td>${item.unit}</td>
-<td class="${isLow?'c-red fw-bold':''}">${fN(item.qty)}</td>
-<td class="c-teal">${fN(item.weight||0)}</td>
-<td>${shelf?`<span class="badge bdg-purple">${esc(shelf.code)}</span>`:'<span class="text-muted">—</span>'}</td>
-<td class="c-red">${fN(item.minQty)}</td>
-<td class="c-gold">${fC(item.avgCost)}</td>
-<td class="c-gold fw-bold">${fC(item.qty*item.avgCost)}</td>
-<td><span class="badge ${isLow?'bdg-red':'bdg-green'}">${isLow?`<i class=ji data-i=alert-triangle></i> ${t('wh.lowSt')}`:`<i class=ji data-i=circle-check></i> ${t('wh.okSt')}`}</span></td>
-<td style="display:flex;gap:4px"><button type="button" class="btn btn-sm" data-action="edit-inventory" data-id="${esc(String(item.id))}" onclick="editItem('${esc(String(item.id))}')"><i class=ji data-i=pencil></i> ${t('act.edit')}</button><button type="button" class="btn btn-red btn-sm" data-action="delete-inventory" data-id="${esc(String(item.id))}" onclick="deleteItem('${esc(String(item.id))}')"><i class=ji data-i=trash></i> ${t('act.delete')}</button></td>
-</tr>`;
-}).join('')||`<tr><td colspan="11" class="u-empty">${t('wh.noItems')}</td></tr>`}
+${whInvRowsHtml(whItems)}
 </tbody>
 </table>
 </div>
-${serverMode?`<div class="fr" style="padding:8px 14px;align-items:center" aria-live="polite">
-<span class="u-t13 text-muted">الأصناف: ${fN(WHINV.total)} — صفحة ${fN(WHINV.page)} من ${fN(whPages)} (50/صفحة)</span>
-<div class="fr"></div>
-<button class="btn btn-sm" ${WHINV.page<=1?'disabled':''} onclick="whInvPage(-1)">السابق</button>
-<button class="btn btn-sm" ${WHINV.page>=whPages?'disabled':''} onclick="whInvPage(1)">التالي</button>
-</div>`:''}
-</section>`;
+<div id="whInvPager">${whInvPagerHtml(serverMode)}</div>
+</section>
+${whShortPanel()}`;
 }
 
 // ─── صفحة فواتير الشراء (مستقلة) ───
+// الشهر الحالي افتراضيًا (طلب المالك 2026-10-08) — إفراغ التاريخ يعرض الكل
+if(window.whInvFrom===undefined&&window.whInvTo===undefined){const _m=today().slice(0,8)+'01';window.whInvFrom=_m;window.whInvTo=today();}
 function renderWhInvoices(){
 if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
 const allInvoices = (STATE.purchaseInvoices||[]).slice().reverse();
+const invoices = allInvoices.filter(i=>{const d=String(i.date||'').slice(0,10);if(window.whInvFrom&&d<window.whInvFrom){return false;}if(window.whInvTo&&d>window.whInvTo){return false;}return true;});
+const invTotal = invoices.reduce((s,i)=>s+Number(i.totalAmount||0),0);
+const monthFiltered = window.whInvFrom||window.whInvTo;
 return `
-<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(allInvoices.length)} فاتورة بإجمالي ${fC(allInvoices.reduce((s,i)=>s+Number(i.totalAmount||0),0))}</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button>${STATE.currentUser?.role==='admin'&&allInvoices.length?`<button class="btn btn-red btn-sm" onclick="showClearAllInvoicesModal()"><i class=ji data-i=trash></i> حذف كل الفواتير</button>`:''}</div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>${allInvoices.map((inv,ii)=>{const pay={cash:'نقدي',bank:'بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||esc(inv.paymentMethod||'—');const st={paid:['مدفوعة','bdg-green'],partial:['مسددة جزئياً','bdg-orange'],unpaid:['غير مسددة','bdg-red']}[inv.paymentStatus]||['غير محددة','bdg-gray'];return `<tr><td>${ii+1}</td><td class="fw-bold">${esc(inv.invoiceNumber||'—')}</td><td>${esc(inv.supplierName||'—')}</td><td class="text-muted">${fD(inv.date)}</td><td class="c-gold fw-bold">${fC(inv.totalAmount)}</td><td>${pay}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:nowrap;display:flex;gap:5px"><button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=eye></i> عرض</button><button class="btn btn-sm" onclick="printPurchaseInvoice('${esc(String(inv.id))}')" title="طباعة الفاتورة"><i class=ji data-i=printer></i> طباعة</button></td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير شراء بعد — أضف أول فاتورة من زر «فاتورة جديدة»</td></tr>'}</tbody></table></div></div>`;
+<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(invoices.length)} فاتورة بإجمالي ${fC(invTotal)}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="whInvListPrint()"><i class=ji data-i=printer></i> طباعة الكشف</button><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button>${STATE.currentUser?.role==='admin'&&invoices.length?`<button class="btn btn-red btn-sm" onclick="showClearAllInvoicesModal()"><i class=ji data-i=trash></i> حذف كل الفواتير</button>`:''}</div></div><div class="fr" style="align-items:end;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px"><div class="fg"><label>من</label><input type="date" value="${window.whInvFrom||''}" onchange="window.whInvFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.whInvTo||''}" onchange="window.whInvTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.whInvFrom='';window.whInvTo='';renderPage()"><i class=ji data-i=rotate-ccw></i> عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>${invoices.map((inv,ii)=>{const pay={cash:'نقدي',bank:'بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||esc(inv.paymentMethod||'—');const st={paid:['مدفوعة','bdg-green'],partial:['مسددة جزئياً','bdg-orange'],unpaid:['غير مسددة','bdg-red']}[inv.paymentStatus]||['غير محددة','bdg-gray'];return `<tr><td>${ii+1}</td><td class="fw-bold">${esc(inv.invoiceNumber||'—')}</td><td>${esc(inv.supplierName||'—')}</td><td class="text-muted">${fD(inv.date)}</td><td class="c-gold fw-bold">${fC(inv.totalAmount)}</td><td>${pay}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:nowrap;display:flex;gap:5px"><button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=eye></i> عرض</button><button class="btn btn-sm" onclick="printPurchaseInvoice('${esc(String(inv.id))}')" title="طباعة الفاتورة"><i class=ji data-i=printer></i> طباعة</button></td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير في الفترة — أفرغ التاريخ لعرض الكل</td></tr>'}</tbody></table></div></div>`;
 }
 
 // ─── صفحة حركات المخزون (مستقلة) ───
+// الشهر الحالي افتراضيًا (طلب المالك 2026-10-08) — إفراغ التاريخ يعرض الكل
+if(window.txFrom===undefined&&window.txTo===undefined){const _m=today().slice(0,8)+'01';window.txFrom=_m;window.txTo=today();}
+function whInvListPrint(){
+const invoices=(STATE.purchaseInvoices||[]).slice().reverse().filter(i=>{const d=String(i.date||'').slice(0,10);if(window.whInvFrom&&d<window.whInvFrom){return false;}if(window.whInvTo&&d>window.whInvTo){return false;}return true;});
+const body=invoices.map((i,n)=>`<tr><td>${invoices.length-n}</td><td>${esc(i.invoiceNumber||'—')}</td><td>${esc(i.supplierName||'—')}</td><td>${fC(i.totalAmount)}</td><td>${fD(i.date)}</td><td>${esc(i.status||'—')}</td></tr>`).join('');
+ysPrintReport('كشف فواتير الشراء', `${window.whInvFrom||window.whInvTo?`من ${window.whInvFrom||'البداية'} إلى ${window.whInvTo||'اليوم'}`:'كل الفواتير'}`,
+[['عدد الفواتير', fN(invoices.length)],['الإجمالي', fC(invoices.reduce((s,i)=>s+Number(i.totalAmount||0),0))]],
+['#','رقم الفاتورة','المورد','الإجمالي','التاريخ','الحالة'], body);
+}
+function whTxListPrint(){
+const txRows=(STATE.inventoryTx||[]).filter(t=>{const d=String(t.date||'').slice(0,10);if(window.txFrom&&d<window.txFrom){return false;}if(window.txTo&&d>window.txTo){return false;}return true;}).slice().reverse();
+const tName={in:'وارد',out:'صادر',return:'مرتجع'};
+const body=txRows.map((tx,n)=>`<tr><td>${txRows.length-n}</td><td>${fD(tx.date)}</td><td>${esc(tx.itemName)}</td><td>${tName[tx.type]||tx.type}</td><td>${fN(tx.qty)}</td><td>${tx.totalValue?fC(tx.totalValue):'—'}</td><td>${esc(tx.invoiceNumber||tx.dispatchId||tx.notes||'—')}</td></tr>`).join('');
+ysPrintReport('كشف حركات المخزون', `${window.txFrom||window.txTo?`من ${window.txFrom||'البداية'} إلى ${window.txTo||'اليوم'}`:'كل الفترة'}`,
+[['عدد الحركات', fN(txRows.length)]], ['#','التاريخ','الصنف','النوع','الكمية','القيمة','المرجع'], body);
+}
 function renderWhMoves(){
 if(!checkMenuAccessLocal('warehouse')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
+const txRows=(STATE.inventoryTx||[]).filter(t=>{const d=String(t.date||'').slice(0,10);if(window.txFrom&&d<window.txFrom){return false;}if(window.txTo&&d>window.txTo){return false;}return true;}).slice().reverse();
+const txShown=txRows.slice(0,300);
+const monthFiltered=window.txFrom||window.txTo;
 return `
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=chart></i> حركات المخزون</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=chart></i> حركات المخزون ${monthFiltered?'<span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="whTxListPrint()"><i class=ji data-i=printer></i> طباعة الكشف</button><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
+<div class="fr" style="padding:8px 14px;gap:8px;flex-wrap:wrap"><div class="fg"><label>من</label><input type="date" value="${window.txFrom||''}" onchange="window.txFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.txTo||''}" onchange="window.txTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.txFrom='';window.txTo='';renderPage()">عرض الكل (قديم + جديد)</button>`:''}<small class="text-muted">الأحدث أولًا (بحد أقصى 300 صف)</small></div>
 <div class="tbl-scroll">
 <table>
 <thead><tr><th>التاريخ</th><th>الصنف</th><th>النوع</th><th>الكمية</th><th>السعر</th><th>القيمة</th><th>المرجع</th></tr></thead>
 <tbody id="whTxBody">
-${(STATE.inventoryTx||[]).slice().reverse().slice(0,200).map(tx=>`<tr>
+${txShown.map(tx=>`<tr>
 <td>${fD(tx.date)}</td>
 <td class="fw-bold">${esc(tx.itemName)}</td>
 <td><span class="badge ${tx.type==='in'?'bdg-green':tx.type==='out'?'bdg-red':tx.type==='return'?'bdg-blue':'bdg-gold'}">${tx.type==='in'?'<i class=ji data-i=inbox></i> وارد':tx.type==='out'?'<i class=ji data-i=upload></i> صادر':tx.type==='return'?'<i class=ji data-i=undo></i> مرتجع':'<i class=ji data-i=flag></i> افتتاحي'}</span></td>
@@ -430,7 +503,7 @@ function pcmtSuppliersTab(suppliers){
         rows = (PCMT.suppResults || []).map(r => Object.assign({}, byId.get(String(r.id)) || {}, r));
     } else {
         const q = String(PCMT.suppSearch || '').trim().toLowerCase();
-        rows = (suppliers || []).filter(s => !q || String(s.name || '').toLowerCase().includes(q));
+        rows = (suppliers || []).filter(s => !q || String(s.name || '').toLowerCase().includes(q) || (window.arSearchIncludes?window.arSearchIncludes(s.name, q):false));
     }
     const pages = Math.max(1, Math.ceil((serverMode ? PCMT.suppTotal : rows.length) / (PCMT.suppLimit || 20)));
     const bodyHtml = PCMT.suppLoading
@@ -816,7 +889,7 @@ function stocktakScopeItems(){
     const {mode,category,search} = STOCK.scope;
     let items = STATE.inventory;
     if(mode==='category') {items = items.filter(i=>String(i.category||'')===String(category));}
-    else if(mode==='search'){ const q=search.trim(); if(q) {items = items.filter(i=>String(i.name||'').includes(q)||String(i.barcode||'').includes(q));} }
+    else if(mode==='search'){ const q=search.trim(); if(q) {const hit=(i)=>String(i.name||'').includes(q)||String(i.barcode||'').includes(q); items = items.filter(hit); if(!items.length){items = STATE.inventory.filter(i=>(String(i.category||'')===String(category)) && ((window.arSearchIncludes?window.arSearchIncludes(i.name,q):false)||String(i.barcode||'').includes(q)));}} }
     else if(mode==='in_stock') {items = items.filter(i=>Number(i.qty||0)>0);}
     return items;
 }
@@ -954,7 +1027,7 @@ function stocktakCountFilter(){
     const items = STOCK.detail?.items||[];
     const q = STOCK.search.trim();
     let out = items;
-    if(q) {out = out.filter(i=>String(i.item_name||'').includes(q)||String(i.barcode||'').includes(q)||String(i.category||'').includes(q));}
+    if(q) {const hit=(i)=>String(i.item_name||'').includes(q)||String(i.barcode||'').includes(q)||String(i.category||'').includes(q); out = out.filter(hit); if(!out.length){out = (STOCK.detail?.items||[]).filter(i=>(window.arSearchIncludes?window.arSearchIncludes(i.item_name,q):false)||String(i.barcode||'').includes(q)||(window.arSearchIncludes?window.arSearchIncludes(i.category,q):false));}}
     if(STOCK.diffsOnly) {out = out.filter(i=>i.is_counted&&i.variance_qty!==0);}
     return out;
 }
@@ -1309,9 +1382,21 @@ showModal(`<h3><i class=ji data-i=pencil></i> تعديل الصنف</h3>
 <div>الكمية الحالية: <strong class="c-gold">${fN(item.qty)} ${item.unit}</strong></div>
 <div>متوسط السعر: <strong class="c-gold">${fC(item.avgCost)}</strong></div>
 </div>
+${STATE.currentUser?.role === 'admin' ? `
+<div style="background:rgba(231,76,60,.06);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--red)">
+<strong style="font-size:13px;color:var(--red)"><i class=ji data-i=crown></i> صلاحية الأدمن المطلقة — تعديل مباشر</strong>
+<small class="text-muted" style="display:block;margin:4px 0 8px">تعديل الكمية والتكلفة مباشرة بقيد تسوية جرد موثق في الدفتر — يُسجَّل باسمك مع السبب.</small>
+<div class="fr">
+<div class="fg"><label>الكمية الجديدة</label><input type="number" id="eiAdminQty" value="${item.qty}" step="0.001" min="0"></div>
+<div class="fg"><label>متوسط التكلفة الجديد</label><input type="number" id="eiAdminCost" value="${item.avgCost}" step="0.01" min="0"></div>
+</div>
+<div class="fg"><label>سبب التعديل (يُوثَّق في الدفتر)</label><input type="text" id="eiAdminReason" placeholder="مثال: تسوية جرد فعلي / تصحيح إدخال"></div>
+<button type="button" class="btn btn-red btn-sm" onclick="adminDirectEdit('${esc(String(id))}')"><i class=ji data-i=save></i> حفظ التعديل المباشر</button>
+</div>` : ''}
 <div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--border)">
 <strong style="font-size:13px"><i class=ji data-i=repeat></i> وحدات طلب ثانوية</strong>
-<small class="text-muted" style="display:block;margin:4px 0 8px">لو الأقسام تطلب الصنف بوحدة مختلفة (شكارة، كرتون، شوال...) سجلها هنا مع محتواها — مثال: شكارة أرز = 50 كجم. عند طلب الصرف بالشكارة يتحوّل المبلغ تلقائيًا لوحدة المخزن.</small>
+<small class="text-muted" style="display:block;margin:4px 0 8px">لو الأقسام تطلب الصنف بوحدة مختلفة (شكارة، كرتون، صاع...) سجلها هنا مع محتواها — مثال: شكارة أرز = 50 كجم. عند طلب الصرف بالشكارة يتحوّل المبلغ تلقائيًا لوحدة المخزن.</small>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${['صاع','شكارة','كرتون','كيس','جوال','دزينة','علبة'].map(u=>`<button type="button" class="btn btn-sm" style="padding:3px 10px" onclick="addSecUnitPreset('${esc(u)}')">${esc(u)}</button>`).join('')}<small class="text-muted" style="align-self:center">اضغط لإضافة الوحدة بسرعة ثم اكتب محتواها</small></div>
 <div id="secUnitsRows"></div>
 <button type="button" class="btn btn-blue btn-sm" onclick="addSecUnitRow()"><i class=ji data-i=plus></i> إضافة وحدة</button>
 </div>
@@ -1334,10 +1419,16 @@ if(!box){return;}
 const div=document.createElement('div');
 div.className='fr sec-unit-row';
 div.style.cssText='align-items:end;margin-top:6px;gap:6px';
-div.innerHTML=`<div class="fg" style="flex:1"><label>اسم الوحدة</label><input type="text" class="sec-uom" value="${esc(String(uom||''))}" placeholder="شكارة، كرتون، شوال..."></div>
+div.innerHTML=`<div class="fg" style="flex:1"><label>اسم الوحدة</label><input type="text" class="sec-uom" value="${esc(String(uom||''))}" placeholder="شكارة، كرتون، صاع..."></div>
 <div class="fg" style="flex:1"><label>محتواها من الوحدة الأساسية</label><input type="number" class="sec-factor" value="${esc(String(factor||''))}" step="0.001" min="0.001" placeholder="50"></div>
 <button type="button" class="btn btn-red btn-sm" onclick="this.parentElement.remove()" title="حذف الوحدة"><i class=ji data-i=x></i></button>`;
 box.appendChild(div);
+return div;
+}
+// إضافة وحدة جاهزة بالضغط (صاع/شكارة/كرتون...) ثم التركيز على حقل المحتوى
+function addSecUnitPreset(uom){
+const row=addSecUnitRow(uom,'');
+if(row){row.querySelector('.sec-factor')?.focus();}
 }
 function collectSecUnits(){
 const rows=[...document.querySelectorAll('#secUnitsRows .sec-unit-row')];
@@ -1350,6 +1441,28 @@ out.push({uom,factor});
 }
 return out;
 }
+// ─── صلاحية الأدمن المطلقة: تعديل مباشر للكمية/التكلفة بقيد تسوية موثق ───
+async function adminDirectEdit(id){
+const qtyRaw=document.getElementById('eiAdminQty')?.value;
+const costRaw=document.getElementById('eiAdminCost')?.value;
+const reason=document.getElementById('eiAdminReason')?.value.trim()||'';
+const qty=parseFloat(qtyRaw), cost=parseFloat(costRaw);
+if(!Number.isFinite(qty)||qty<0){toast('اكتب كمية صحيحة ≥ صفر','error');return;}
+if(!Number.isFinite(cost)||cost<0){toast('اكتب تكلفة صحيحة ≥ صفر','error');return;}
+if(!reason){toast('اكتب سبب التعديل — يُوثَّق في الدفتر','error');return;}
+const item=STATE.inventory.find(i=>String(i.id)===String(id));
+if(!item){return;}
+if(!confirm(`تعديل مباشر لـ "${item.name}":\nالكمية ${fN(item.qty)} → ${fN(qty)}\nالتكلفة ${fC(item.avgCost)} → ${fC(cost)}\n\nسيُقيَّد الفرق في دفتر المخزون باسمك.`)){return;}
+try{
+showLoad();
+const saved=await apiFetch(`/warehouse/inventory/${encodeURIComponent(id)}/direct`,{method:'PUT',body:JSON.stringify({qty,avgCost:cost,reason})});
+Object.assign(item, saved.item||{});
+closeModal();renderPage();
+toast(`تم التعديل المباشر — الفرق ${fN(Math.abs(saved.delta||0))} ${item.unit} قُيِّد في الدفتر`,'success');
+}catch(e){ toast(e.message||'فشل التعديل المباشر','error'); }
+finally{ hideLoad(); }
+}
+
 async function updateInventoryItem(id){
 const item=STATE.inventory.find(i=>String(i.id)===String(id));
 if(!item){return;}
@@ -1397,6 +1510,7 @@ else {toast(m||'فشل الحذف من قاعدة البيانات','error');}
 }
 // Purchase Invoice
 let currentInvoiceItems = [];
+let currentEditingInvoiceId = null;
 let invoicePaidTouched = false; // لمس المستخدم حقل المسدد يدويًا؟ (لا → الخادم يحسم الشامل تلقائيًا)
 // ═══ حذف كل فواتير الشراء (أدمن فقط) — نافذة تحذير + تأكيد صريح ═══
 function showClearAllInvoicesModal(){
@@ -1418,20 +1532,36 @@ renderPage();
 toast(`تم حذف ${fN(result.deletedInvoices||0)} فاتورة وعكس ${fN(result.reversedLedgerRows||0)} قيد مخزون`,'success');
 }catch(e){ hideLoad(); toast(e.message||'تعذر حذف الفواتير','error'); }
 }
-function showAddPurchaseInvoiceModal(){
+function showAddPurchaseInvoiceModal(invoiceId){
+const editing=(STATE.purchaseInvoices||[]).find(inv=>String(inv.id)===String(invoiceId));
+if(invoiceId&&!editing){toast('الفاتورة غير موجودة','error');return;}
+if(editing&&Number(editing.paidAmount||0)>0){toast('لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا','error');return;}
+currentEditingInvoiceId=editing?String(editing.id):null;
 currentInvoiceItems = [];
 invoicePaidTouched = false;
+if(editing){
+let oldItems=editing.items;
+if(typeof oldItems==='string'){try{oldItems=JSON.parse(oldItems);}catch(_){oldItems=[];}}
+currentInvoiceItems=(Array.isArray(oldItems)?oldItems:[]).map(item=>({
+id:uid(),itemId:item.itemId||item.item_id||null,itemName:item.itemName||item.name||'',
+qty:Number(item.qty)||0,price:Number(item.price)||0,total:Number(item.total)||0,
+unit:item.unit||'وحدة',weight:item.weight??'',taxCategory:item.taxCategory||item.tax_category||'STANDARD',
+packagingQty:item.packagingQty??item.packaging_qty??null,packagingUom:item.packagingUom||item.packaging_uom||null,
+}));
+currentInvoiceItems.forEach(item=>{item.total=Math.round((item.qty*item.price+Number.EPSILON)*100)/100;});
+invoicePaidTouched=true;
+}
 renderInvoiceItemsList();
 showModal(`
 <h3><i class=ji data-i=file-text></i> فاتورة مشتريات جديدة</h3>
 <div class="fr">
-<div class="fg"><label>رقم الفاتورة</label><input type="text" id="invoiceNumber" placeholder="INV-001"></div>
-<div class="fg"><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate" value="${today()}"></div>
+<div class="fg"><label>رقم الفاتورة</label><input type="text" id="invoiceNumber" placeholder="INV-001" value="${esc(editing?.invoiceNumber||'')}"></div>
+<div class="fg"><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate" value="${esc(String(editing?.date||today()).slice(0,10))}"></div>
 </div>
 <div class="fr">
-<div class="fg"><label>المورد <small class="text-muted">(اختياري — يربط الفاتورة بالحساب)</small></label><select id="invoiceSupplierSel" onchange="pcmtInvoiceSupplierChanged()"><option value="">بدون ربط (اسم حر)</option>${(STATE.suppliers||[]).filter(s=>s.is_active).map(s=>`<option value="${esc(String(s.id))}">${esc(s.name)}</option>`).join('')}</select></div>
-<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName" oninput="pcmtSupplierLinkHint()"><small id="invoiceSupplierLinkHint" aria-live="polite"></small></div>
-<div class="fg" id="invoiceSupplierPhoneWrap" style="display:none"><label>رقم الهاتف</label><input type="text" id="supplierPhone"></div>
+<div class="fg"><label>المورد <small class="text-muted">(اختياري — يربط الفاتورة بالحساب)</small></label><select id="invoiceSupplierSel" onchange="pcmtInvoiceSupplierChanged()"><option value="">بدون ربط (اسم حر)</option>${(STATE.suppliers||[]).filter(s=>s.is_active||String(s.id)===String(editing?.supplierId)).map(s=>`<option value="${esc(String(s.id))}" ${String(s.id)===String(editing?.supplierId)?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName" oninput="pcmtSupplierLinkHint()" value="${esc(editing?.supplierName||'')}"><small id="invoiceSupplierLinkHint" aria-live="polite"></small></div>
+<div class="fg" id="invoiceSupplierPhoneWrap" style="display:none"><label>رقم الهاتف</label><input type="text" id="supplierPhone" value="${esc(editing?.supplierPhone||'')}"></div>
 </div>
 <div style="margin:16px 0">
 <div style="font-weight:700;margin-bottom:12px"><i class=ji data-i=package></i> الأصناف</div>
@@ -1439,16 +1569,18 @@ showModal(`
 <button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addInvoiceItemRow()"><i class=ji data-i=plus></i> إضافة صنف</button>
 </div>
 <div class="fr">
+<div class="fg"><label>خصم الفاتورة</label><div style="display:flex;gap:8px"><select id="invoiceDiscountType" class="u-input" onchange="updateInvoiceTotal()"><option value="none" ${!editing?.discount_type||editing.discount_type==='none'?'selected':''}>بدون خصم</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>نسبة مئوية %</option><option value="amount" ${editing?.discount_type==='amount'?'selected':''}>مبلغ ثابت</option></select><input type="number" id="invoiceDiscountValue" min="0" step="0.01" value="${Number(editing?.discount_value||0)}" placeholder="قيمة الخصم" oninput="updateInvoiceTotal()"></div><small id="invoiceDiscountHint" class="text-muted" aria-live="polite"></small></div>
 <div class="fg"><label>إجمالي الفاتورة <small class="text-muted">(محسوب تلقائيًا)</small></label><input type="number" id="invoiceTotal" readonly aria-readonly="true" title="يُحسب تلقائيًا من كمية وسعر كل صنف" onclick="focusInvoiceEntryField()" style="background:var(--gold-d);color:var(--gold);font-weight:800;cursor:pointer"><small id="invoiceVatHint" class="text-muted" aria-live="polite"></small></div>
-<div class="fg"><label>طريقة الدفع</label><select id="paymentMethod" onchange="pcmtInvoicePaidChanged()"><option value="cash">نقدي (مسدد)</option><option value="bank">تحويل بنكي (مسدد)</option><option value="credit">آجل (غير مسدد)</option></select></div>
+<div class="fg"><label>طريقة الدفع</label><select id="paymentMethod" onchange="pcmtInvoicePaidChanged()"><option value="cash" ${editing?.paymentMethod==='cash'?'selected':''}>نقدي (مسدد)</option><option value="bank" ${editing?.paymentMethod==='bank'?'selected':''}>تحويل بنكي (مسدد)</option><option value="credit" ${editing?.paymentMethod==='credit'?'selected':''}>آجل (غير مسدد)</option><option value="card" ${editing?.paymentMethod==='card'?'selected':''}>بطاقة</option><option value="cheque" ${editing?.paymentMethod==='cheque'?'selected':''}>شيك</option></select></div>
 </div>
 <div class="fr">
-<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="0" oninput="pcmtInvoicePaidChanged(true)"><small class="text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — عدّله فقط لدفعة جزئية</small></div>
+<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="${Number(editing?.paidAmount||0).toFixed(2)}" oninput="pcmtInvoicePaidChanged(true)"><small class="text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — يقبل الكسور حتى هللتين</small></div>
 <div class="fg"><label>حالة السداد المتوقعة</label><div id="invoiceStatusPreview"><span class="badge bdg-red">غير مسددة</span></div></div>
 </div>
-<div class="fg"><label>ملاحظات</label><textarea id="invoiceNotes" rows="2"></textarea></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="savePurchaseInvoice()"><i class=ji data-i=save></i> حفظ الفاتورة</button></div>
+<div class="fg"><label>ملاحظات</label><textarea id="invoiceNotes" rows="2">${esc(editing?.notes||'')}</textarea></div>
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="savePurchaseInvoice()"><i class=ji data-i=save></i> ${editing?'حفظ التعديلات':'حفظ الفاتورة'}</button></div>
 `);
+if(editing){pcmtInvoiceSupplierChanged();const paid=document.getElementById('invoicePaidAmount');if(paid){paid.value=Number(editing.paidAmount||0).toFixed(2);}pcmtInvoicePaidChanged(true);updateInvoiceTotal();}
 }
 function pcmtInvoiceSupplierChanged(){
     const sel=document.getElementById('invoiceSupplierSel'); if(!sel) {return;}
@@ -1485,7 +1617,7 @@ function pcmtInvoicePaidChanged(fromInput){
     if(!paidEl||!prev) {return;}
     if(fromInput){invoicePaidTouched=true;}
     const est=pcmtGrandEstimate();
-    if(!fromInput){
+    if(!fromInput&&!invoicePaidTouched){
         const method=document.getElementById('paymentMethod')?.value||'cash';
         paidEl.value=method==='credit'?'0':est.grand.toFixed(2);
     }
@@ -1505,16 +1637,27 @@ function pcmtGrandEstimate(){
     const sup=sel?(STATE.suppliers||[]).find(s=>String(s.id)===String(sel)):null;
     const registered=!!sup&&String(sup.tax_status||sup.tax_registration_status||'').toUpperCase()==='REGISTERED';
     let net=0, vat=0;
-    for(const it of (currentInvoiceItems||[])){
-        const n=r2(Number(it.total)||0); net=r2(net+n);
+    const grossLines=(currentInvoiceItems||[]).map(it=>r2((Number(it.qty)||0)*(Number(it.price)||0)));
+    const subtotal=r2(grossLines.reduce((sum,value)=>sum+value,0));
+    const discountType=document.getElementById('invoiceDiscountType')?.value||'none';
+    const discountValue=Number(document.getElementById('invoiceDiscountValue')?.value||0);
+    const discount=discountType==='percent'?r2(subtotal*Math.min(Math.max(discountValue,0),100)/100)
+        :discountType==='amount'?Math.min(subtotal,r2(Math.max(discountValue,0))):0;
+    let allocated=0;
+    grossLines.forEach((gross,index)=>{
+        const lineDiscount=index===grossLines.length-1?r2(discount-allocated)
+            :(subtotal>0?r2(discount*gross/subtotal):0);
+        allocated=r2(allocated+lineDiscount);
+        const n=r2(gross-lineDiscount); net=r2(net+n);
+        const it=currentInvoiceItems[index];
         const cat=String(it.taxCategory||'STANDARD').toUpperCase();
         const rate=(registered&&cat==='STANDARD')?15:0;
         vat=r2(vat+r2(n*rate/100));
-    }
-    return { net, vat, grand:r2(net+vat), registered };
+    });
+    return { net, vat, grand:r2(net+vat), registered, discount, subtotal };
 }
 function addInvoiceItemRow(){ currentInvoiceItems.push({id:uid(),itemName:'',itemId:null,qty:1,price:0,total:0,unit:'وحدة',weight:'',taxCategory:'STANDARD'}); renderInvoiceItemsList(); }
-function removeInvoiceItemRow(index){ currentInvoiceItems.splice(index,1); renderInvoiceItemsList(); }
+function removeInvoiceItemRow(index){ currentInvoiceItems.splice(index,1); renderInvoiceItemsList(); updateInvoiceTotal(); }
 function updateInvoiceItem(index,field,value){
 const item = currentInvoiceItems[index];
 if(field==='itemName'){
@@ -1526,20 +1669,22 @@ if(priceInput) {priceInput.value=invItem.avgCost;}
 const unitInput=document.getElementById(`item_unit_${index}`);
 if(unitInput) {unitInput.value=item.unit;}
 }else{ item.itemName=value; }
-}else if(field==='qty'){ item.qty=parseFloat(value)||0; }
+}else if(field==='qty'){ item.qty=value===''?0:Number(value); }
 else if(field==='unit'){ item.unit=String(value||'').trim()||'وحدة'; }
-else if(field==='price'){ item.price=parseFloat(value)||0; }
+else if(field==='price'){ item.price=value===''?0:Number(value); }
 else if(field==='taxCategory'){ item.taxCategory=['STANDARD','ZERO_RATED','EXEMPT','OUT_OF_SCOPE'].includes(value)?value:'STANDARD'; updateInvoiceTotal(); }
 else if(field==='weight'){ item.weight=String(value||'').trim()===''?'':(parseFloat(value)||0); }
-item.total = item.qty * item.price;
+item.total = Math.round((item.qty * item.price + Number.EPSILON) * 100) / 100;
 const totalEl=document.getElementById(`item_total_${index}`);
 if(totalEl) {totalEl.innerHTML=fC(item.total);}
 updateInvoiceTotal();
 }
 function updateInvoiceTotal(){
-const total = currentInvoiceItems.reduce((sum,item)=>sum+item.total,0);
 const totalInput=document.getElementById('invoiceTotal');
-if(totalInput) {totalInput.value=total.toFixed(2);}
+const estimate=pcmtGrandEstimate();
+if(totalInput) {totalInput.value=estimate.grand.toFixed(2);}
+const discountHint=document.getElementById('invoiceDiscountHint');
+if(discountHint) {discountHint.textContent=`قبل الخصم ${fC(estimate.subtotal)} · الخصم ${fC(estimate.discount)}`;}
 // تقدير ضريبي فوري (مرآة الخادم — هو المرجع عند الحفظ)
 const hint=document.getElementById('invoiceVatHint');
 if(hint){
@@ -1575,10 +1720,10 @@ function renderInvoiceItemsList(){
   const inventoryOptions=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">${esc(i.name)} (${esc(i.unit||'وحدة')}) — ${fN(i.avgCost)} ${STATE.settings.currency}</option>`).join('');
   return `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;flex-wrap:wrap">
   <div style="flex:2;min-width:180px;position:relative"><small style="display:block;margin-bottom:4px;color:var(--text3)">الصنف</small><input type="text" id="item_name_${idx}" value="${esc(item.itemName)}" placeholder="ابحث عن صنف..." class="u-input" onchange="updateInvoiceItem(${idx},'itemName',this.value)" list="inventoryList${idx}"><datalist id="inventoryList${idx}">${inventoryOptions}</datalist></div>
-  <div class="u-flex1" style="min-width:100px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الكمية</small><input type="number" id="item_qty_${idx}" value="${item.qty}" step="0.01" min="0" placeholder="الكمية" class="u-input" onchange="updateInvoiceItem(${idx},'qty',this.value)"></div>
+  <div class="u-flex1" style="min-width:100px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الكمية</small><input type="number" id="item_qty_${idx}" value="${item.qty}" step="0.001" min="0" placeholder="الكمية" class="u-input" oninput="updateInvoiceItem(${idx},'qty',this.value)"></div>
   <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوحدة</small><input type="text" id="item_unit_${idx}" value="${esc(item.unit||'وحدة')}" list="invoiceUnitOptions" placeholder="كجم / شوال / علبة" class="u-input" onchange="updateInvoiceItem(${idx},'unit',this.value)"></div>
-  <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوزن الإجمالي (كجم)</small><input type="number" id="item_weight_${idx}" value="${item.weight??''}" min="0" step="0.01" placeholder="اختياري" class="u-input" onchange="updateInvoiceItem(${idx},'weight',this.value)"></div>
-  <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">سعر الوحدة</small><input type="number" id="item_price_${idx}" value="${item.price}" min="0" step="0.01" placeholder="السعر" class="u-input" onchange="updateInvoiceItem(${idx},'price',this.value)"></div>
+  <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوزن الإجمالي (كجم)</small><input type="number" id="item_weight_${idx}" value="${item.weight??''}" min="0" step="0.001" placeholder="اختياري" class="u-input" oninput="updateInvoiceItem(${idx},'weight',this.value)"></div>
+  <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">سعر الوحدة</small><input type="number" id="item_price_${idx}" value="${item.price}" min="0" step="0.01" placeholder="السعر" class="u-input" oninput="updateInvoiceItem(${idx},'price',this.value)"></div>
   <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الفئة الضريبية</small><select class="u-input" aria-label="الفئة الضريبية للصنف" onchange="updateInvoiceItem(${idx},'taxCategory',this.value)">
   <option value="STANDARD" ${(item.taxCategory||'STANDARD')==='STANDARD'?'selected':''}>خاضع 15%</option>
   <option value="ZERO_RATED" ${item.taxCategory==='ZERO_RATED'?'selected':''}>صفري 0%</option>
@@ -1591,7 +1736,9 @@ function renderInvoiceItemsList(){
  }).join('');
  container.innerHTML=`<datalist id="invoiceUnitOptions">${unitOptions}</datalist><div class="text-muted" style="font-size:12px;margin-bottom:10px">الوحدة مرنة ويمكن كتابتها مثل: كجم، شوال، علبة أو كرتون. الوزن الإجمالي اختياري بالكيلوجرام.</div>${rows}`;
 }
+let _savingPurchaseInvoice = false;
 async function savePurchaseInvoice(){
+if(_savingPurchaseInvoice){ toast('جارٍ حفظ الفاتورة... انتظر','info'); return; }
 const invoiceNumber = document.getElementById('invoiceNumber')?.value.trim() || `INV-${uid()}`;
 const invoiceDate = document.getElementById('invoiceDate')?.value || today();
 const supplierName = document.getElementById('supplierName')?.value.trim() || '';
@@ -1602,30 +1749,77 @@ const paidAmountRaw = document.getElementById('invoicePaidAmount')?.value;
 const notes = document.getElementById('invoiceNotes')?.value.trim() || '';
 const validItems = currentInvoiceItems.filter(item=>item.itemName && item.qty>0 && item.price>=0);
 if(validItems.length===0){ toast('أضف صنفًا واحدًا على الأقل','error'); return; }
-try{
-const result=await apiFetch('/warehouse/purchase-invoices',{method:'POST',body:JSON.stringify({
+if(currentInvoiceItems.some(item=>item.itemName&&(!Number.isFinite(Number(item.qty))||!Number.isFinite(Number(item.price))||Number(item.qty)<0||Number(item.price)<0))){toast('تحقق من إدخال كمية وسعر صحيحين لكل صنف','error');return;}
+if(invoicePaidTouched&&paidAmountRaw!==''&&(!Number.isFinite(Number(paidAmountRaw))||Number(paidAmountRaw)<0)){toast('أدخل مبلغ سداد صحيحًا أو اتركه فارغًا','error');return;}
+const discountType=document.getElementById('invoiceDiscountType')?.value||'none';
+const discountValue=Number(document.getElementById('invoiceDiscountValue')?.value||0);
+if(!Number.isFinite(discountValue)||discountValue<0||(discountType==='percent'&&discountValue>100)){toast('قيمة الخصم غير صحيحة','error');return;}
+_savingPurchaseInvoice = true;
+const _payload = {
 invoiceNumber,date:invoiceDate,supplierName,supplierPhone,paymentMethod,notes,
 supplierId:supplierSel||null,
+discountType,discountValue,
 // أوتوماتيك: لم يلمس المستخدم المسدد → الخادم يسدد الشامل (نقدي) أو صفر (آجل)
 paidAmount:invoicePaidTouched&&(paidAmountRaw!==''&&paidAmountRaw!=null)?Number(paidAmountRaw):undefined,
 items:validItems.map(item=>({...item}))
-})});
+};
+try{
+const editingId=currentEditingInvoiceId;
+const result=await apiFetch(editingId?`/warehouse/purchase-invoices/${encodeURIComponent(editingId)}`:'/warehouse/purchase-invoices',{method:editingId?'PUT':'POST',body:JSON.stringify(_payload)});
 upsertStateEntity('purchaseInvoices',result.invoice);
 (result.inventory||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
-closeModal(); renderPage();
-let msg = `تم إضافة فاتورة شراء بقيمة ${fC(result.totalAmount||0)} وتحديث المخزون`;
-if(result.vatTotal > 0){ msg += ` (صافي ${fC(result.subtotalNet||0)} + ضريبة ${fC(result.vatTotal)})`; }
-if(result.invoice?.supplierId){ msg += ` — الحالة: ${(result.invoice.paymentStatus==='paid')?'مدفوعة':(result.invoice.paymentStatus==='partial')?'مسددة جزئياً':'غير مسددة'}`; await refreshProcurementData(); }
-if((result.createdNames||[]).length > 0){
-msg += ` — تم إنشاء ${result.createdNames.length} صنف جديد: ${result.createdNames.slice(0,3).join('،')}${result.createdNames.length>3?` (+${result.createdNames.length-3})`:''}`;
+closeModal();
+currentEditingInvoiceId=null;
+renderPage();
+toast(editingId?'تم تحديث الفاتورة والمخزون والحسابات':'تم حفظ الفاتورة','success');
+if(result.invoice?.supplierId){
+try{await refreshProcurementData();}
+catch(refreshError){toast('تم حفظ الفاتورة، لكن تعذر تحديث بيانات المورد الآن: '+String(refreshError.message||''),'warning');}
 }
-toast(msg,'success');
-}catch(e){ toast(e.message||'تعذر حفظ فاتورة الشراء','error'); }
+}catch(e){
+const m = String(e.message||'تعذر حفظ فاتورة الشراء');
+if(e.code==='DUPLICATE_INVOICE'||/مكرر|مشابهة|DUPLICATE/.test(m)){ toast('الفاتورة مسجلة بالفعل — لم تتكرر','info'); }
+else { toast('تعذر الحفظ: '+m,'error'); }
+}finally{ _savingPurchaseInvoice = false; }
 }
 // ═══ الرصيد الافتتاحي: إدخال سريع دفعة واحدة → فاتورة شراء آجلة على مورد الافتتاح ═══
 let openingRows=[];
 let openingImportPreview={rows:[],errors:[],fileName:''};
+/* طلب المالك 2026-10-05: «عايز يتخصم أذونات الصرف من الرصيد الجديد» — الوضع الصافي:
+   يكتب كمية بداية الفترة، والنظام يجيب المنصرف فعليًا من دفتر الصرف ويعين الرصيد الحالي = البداية − المنصرف */
+let openingNet={on:false,issued:new Map(),loaded:false};
+function openingNetEnabled(){return STATE.currentUser?.role==='admin';}
+function openingIssuedFor(name){
+return openingNet.on?(openingNet.issued.get(String(name||'').trim().toLowerCase())||0):0;
+}
+async function openingNetModeChanged(on){
+openingNet.on=!!on;
+if(openingNet.on&&!openingNet.loaded){
+try{
+const res=await apiFetch('/warehouse/issued-totals');
+openingNet.issued=new Map((res.items||[]).map(r=>[String(r.itemName||'').trim().toLowerCase(),Number(r.issued)||0]));
+openingNet.loaded=true;
+}catch(e){
+toast('تعذر حساب المنصرف من الدفتر: '+(e.message||''),'error');
+openingNet.on=false; const el=document.getElementById('openingNetMode'); if(el){el.checked=false;}
+return;
+}
+}
+renderOpeningRows(); updateOpeningTotal();
+const btn=document.getElementById('openingSaveBtn');
+if(btn){btn.innerHTML=openingNet.on?'<i class=ji data-i=save></i> تعيين الأرصدة (خصم المنصرف تلقائيًا)':'<i class=ji data-i=save></i> حفظ الرصيد الافتتاحي';}
+}
+function refreshOpeningNetCells(idx){
+if(!openingNet.on){return;}
+const r=openingRows[idx]; if(!r){return;}
+const issued=openingIssuedFor(r.name);
+const net=Math.round(((parseFloat(r.qty)||0)-issued)*1000)/1000;
+const iEl=document.getElementById(`openingIssued_${idx}`);
+const nEl=document.getElementById(`openingNetQty_${idx}`);
+if(iEl){iEl.textContent=fN(issued);}
+if(nEl){nEl.textContent=fN(net); nEl.className=(net<0?'c-red fw-bold':'c-green fw-bold');}
+}
 function openingSupplier(){
 return (STATE.suppliers||[]).find(s=>s.category==='افتتاحي'||/افتتاحي/.test(s.name||''))
 || { id:null, name:'رصيد افتتاحي - بداية الفترة' };
@@ -1635,23 +1829,80 @@ openingRows=[{name:'',qty:'',unit:'كجم',price:'',boxes:'',category:''}];
 renderOpeningRows();
 const sup=openingSupplier();
 showModal(`<h3><i class=ji data-i=flag></i> رصيد افتتاحي — بداية الفترة</h3>
-<div class="workflow-banner"><i class=ji data-i=info></i> أدخل جردك دفعة واحدة: <strong>الاسم + الكمية + الوحدة + سعر الشراء</strong> — واللحوم أضف <strong>عدد الكراتين</strong>. تُحفظ كفاتورة آجلة (مسدد 0) على المورد <strong>${esc(sup.name)}</strong> بلا حركة نقدية.</div>
+<div class="workflow-banner"><i class=ji data-i=info></i> ادخل الجدول مباشرة: <strong>اسم الصنف • الوحدة • كمية فعلية • سعر الشراء</strong> — مفتاح <strong>Enter</strong> ينقلك بين الخلايا، وآخر صف ينشئ صفًا جديدًا. اللحوم أضف <strong>عدد الكراتين</strong>. تُحفظ كفاتورة آجلة (مسدد 0) على المورد <strong>${esc(sup.name)}</strong> بلا حركة نقدية.</div>
+${openingNetEnabled()?`<label style="display:flex;gap:10px;align-items:center;margin-top:10px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><input type="checkbox" id="openingNetMode" onchange="openingNetModeChanged(this.checked)"><span class="u-t13"><strong>الوضع الصافي (لإعادة ضبط الجداول):</strong> اكتب كمية <strong>بداية الفترة</strong>، والنظام يجيب المنصرف فعليًا من دفتر الصرف، ويخصمه تلقائيًا ويعيّن الرصيد الحالي = <strong>البداية − المنصرف</strong></span></label>`:''}
+<div id="openingExisting" class="u-my8"></div>
 <div class="callout-blue u-my16"><div class="fw-bold"><i class=ji data-i=file-text></i> إدخال احترافي من Excel</div><div class="text-muted u-t12 u-my8">حمّل النموذج، املأ الأصناف، ثم ارفع الملف لمراجعته قبل إضافته للفاتورة.</div><div class="u-row-wrap"><button type="button" class="btn btn-blue btn-sm" onclick="downloadOpeningTemplate()"><i class=ji data-i=arrow-down></i> تحميل النموذج</button><label class="btn btn-green btn-sm" style="cursor:pointer"><i class=ji data-i=inbox></i> رفع شيت Excel<input type="file" id="openingExcelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewOpeningExcel(this.files[0])"></label></div><div id="openingImportPreview" class="u-mt8"></div></div>
 <div id="openingRows" style="margin-top:12px"></div>
-<button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addOpeningRow()"><i class=ji data-i=plus></i> إضافة صنف</button>
+<button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addOpeningRow()"><i class=ji data-i=plus></i> إضافة صف</button>
 <div class="callout-gold u-my16"><div class="fw-bold">إجمالي الرصيد الافتتاحي</div><div class="callout-value" id="openingTotal">${fC(0)}</div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="saveOpeningBalance()"><i class=ji data-i=save></i> حفظ الرصيد الافتتاحي</button></div>`);
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" id="openingSaveBtn" onclick="saveOpeningBalance()"><i class=ji data-i=save></i> حفظ الرصيد الافتتاحي</button></div>`);
 renderOpeningRows();
 updateOpeningTotal();
+loadOpeningExisting();
+}
+/* طلب المالك 2026-10-05: «أعيد الرصيد الافتتاحي مرة أخرى وأحذف القديم بس اخصم من الرصيد طلبات الصرف» —
+   عرض الأرصدة الافتتاحية المسجلة مع زر استبدال: إلغاء القديم (يعكس استلامه فقط — الصرف يبقى محسوبًا) ثم حفظ الجديد */
+async function loadOpeningExisting(){
+const box=document.getElementById('openingExisting'); if(!box) {return;}
+try{
+const res=await apiFetch('/warehouse/opening-balance/report');
+const invoices=Array.isArray(res.invoices)?res.invoices:[];
+if(!invoices.length){ box.innerHTML='<div class="u-t12 text-muted">لا يوجد رصيد افتتاحي مسجل بعد — أدخله في الجدول بالأسفل.</div>'; return; }
+box.innerHTML=`<div class="callout" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><div class="fw-bold u-t13"><i class=ji data-i=history></i> أرصدة افتتاحية مسجلة (${fN(invoices.length)})</div>${invoices.map(inv=>`<div class="u-row-between u-mt8" style="gap:8px;flex-wrap:wrap"><span class="u-t12"><strong>${esc(inv.invoiceNumber)}</strong> · ${esc(inv.date||'')} · ${fN(inv.items.length)} صنف · ${fC(inv.totalAmount)}</span><button type="button" class="btn btn-orange btn-sm" onclick="showOpeningBalanceReplaceGrid(${JSON.stringify(inv).replace(/"/g,'&quot;')})"><i class=ji data-i=rotate-ccw></i> استبدال وإعادة إدخال</button></div>`).join('')}<div class="u-t11 text-muted u-mt8">الاستبدال يلغي القديم ويعكس استلامه فقط — <strong>طلبات الصرف تبقى محسوبة</strong>، ثم تدخل الكميات الصحيحة.</div></div>`;
+}catch(e){ box.innerHTML=`<div class="u-t12 text-muted">تعذر تحميل الأرصدة المسجلة: ${esc(e.message||'')}</div>`; }
 }
 function downloadOpeningTemplate(){
-const data=[['اسم الصنف','الكمية','الوحدة','سعر الشراء','الكراتين','الفئة'],['دجاج','50','كجم','25','4','لحوم'],['مشروم','12','علبة','18','','معلبات'],['دقيق','20','كيس','3.5','','حبوب']];
+const data=[['اسم الصنف','الوحدة','كمية فعلية','سعر الشراء','الكراتين','الفئة'],['دجاج','50','كجم','25','4','لحوم'],['مشروم','12','علبة','18','','معلبات'],['دقيق','20','كيس','3.5','','حبوب']];
 const ws=XLSX.utils.aoa_to_sheet(data); ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:12},{wch:18}];
 const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'الرصيد الافتتاحي');
 XLSX.writeFile(wb,`نموذج_الرصيد_الافتتاحي_${today()}.xlsx`); toast('تم تحميل نموذج الرصيد الافتتاحي','success');
 }
 function openingHeaderKey(value){
-return String(value||'').trim().toLowerCase().replace(/[\s_()-]/g,'').replace(/[أإآ]/g,'ا');
+// تطبيع قوي: مسافات/شرطات + همزات + تاء مربوطة/هاء + ألف مقصورة — حتى يطابق «كمية فعلية» بأي كتابة
+return String(value||'').trim().toLowerCase().replace(/[\s_()\-\u00a0\t]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+}
+/* طلب المالك 2026-10-05: شيت Excel بأعمدة «اسم الصنف | الوحدة | كمية فعلية | سعر الشراء» كان يُرفض
+   لأن المدقق يدور على «الكمية» فقط — الآن: أسماء أعمدة متعددة (بما فيها كمية فعلية) + يجرب أول
+   3 صفوف كصف عناوين (لو في عنوان ورقة فوق الجدول) + رسالة الخطأ تطبع أعمدة الملف الفعلية */
+function parseOpeningSheetRows(data){
+const headersOf=(row)=> (row||[]).map(openingHeaderKey);
+let found=null;
+for(let h=0; h<Math.min(3, data.length); h++){
+const headers=headersOf(data[h]);
+const findHeader=names=>{const keys=names.map(openingHeaderKey); return headers.findIndex(x=>keys.includes(x));};
+const fuzzy=subs=>headers.findIndex(x=>subs.some(s=>String(x).includes(s)));
+const nameIdx=findHeader(['اسم الصنف','الصنف','اسم','item','name']);
+let qtyIdx=findHeader(['الكميه','كميه','كميهفيعليه','الكميهفيعليه','كميهفعليه','الكميهفعليه','qty','quantity']);
+if(qtyIdx<0){ qtyIdx=fuzzy(['كميه','كم','qty','quantity']); }
+const unitIdx=findHeader(['الوحده','وحده','unit','uom']);
+const priceIdx=findHeader(['سعر الشراء','سعر','التكلفه','price','cost']);
+const boxesIdx=findHeader(['الكراتين','كراتين','عدد الكراتين','boxes','cartons']);
+const categoryIdx=findHeader(['الفئه','التصنيف','فئه','category','cat']);
+if(nameIdx>=0&&qtyIdx>=0&&priceIdx>=0){ found={headerRow:h, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx}; break; }
+}
+if(!found){
+const seen=(data[0]||[]).map(x=>String(x).trim()).filter(Boolean).join(' ، ');
+return { rows:[], errors:[{line:'—', message:'لم أتعرف على أعمدة الملف. الأعمدة الموجودة: ' + (seen||'(فارغة)') + ' — المطلوب وجود: اسم الصنف، كمية فعلية، سعر الشراء'}], headerRow:-1 };
+}
+const {headerRow, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx}=found;
+const rows=[], errors=[];
+data.slice(headerRow+1).forEach((row,index)=>{
+const line=headerRow+2+index;
+const name=String(row[nameIdx]||'').trim(), qty=Number(row[qtyIdx]), price=Number(row[priceIdx]);
+const rawBoxes=boxesIdx>=0?String(row[boxesIdx]??'').trim():'';
+if(!name&&!rawBoxes&&!String(row[qtyIdx]??'').trim()&&!String(row[priceIdx]??'').trim()){return;}
+const rowErrors=[];
+if(!name){rowErrors.push('اسم الصنف مفقود');}
+if(!Number.isFinite(qty)||qty<=0){rowErrors.push('الكمية يجب أن تكون أكبر من صفر');}
+if(!Number.isFinite(price)||price<0){rowErrors.push('سعر الشراء غير صحيح');}
+let boxes=null;
+if(rawBoxes!==''){boxes=Number(rawBoxes); if(!Number.isInteger(boxes)||boxes<=0){rowErrors.push('الكراتين عدد صحيح أكبر من صفر');}}
+if(boxes!==null&&isOpeningMeatRow({name,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()})===false){rowErrors.push('الكراتين مسموحة لأصناف اللحوم فقط');}
+if(rowErrors.length){errors.push({line,message:rowErrors.join('،')}); return;}
+rows.push({name,qty,unit:String(unitIdx>=0?row[unitIdx]||'':'').trim()||'كجم',price,boxes,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()||'عام'});
+});
+return {rows, errors, headerRow};
 }
 function previewOpeningExcel(file){
 if(!file){return;}
@@ -1661,30 +1912,9 @@ try{
 const wb=XLSX.read(e.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
 const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 if(data.length<2){throw new Error('الملف لا يحتوي على صفوف بيانات بعد عناوين الأعمدة');}
-const headers=data[0].map(openingHeaderKey);
-const findHeader=names=>{const keys=names.map(openingHeaderKey); return headers.findIndex(h=>keys.includes(h));};
-const nameIdx=findHeader(['اسم الصنف','الصنف','اسم','item','name']);
-const qtyIdx=findHeader(['الكميةكجم','الكمية','كمية','qty','quantity']);
-const unitIdx=findHeader(['الوحدة','وحدة','unit','uom']);
-const priceIdx=findHeader(['سعر الشراء','سعر','التكلفة','price','cost']);
-const boxesIdx=findHeader(['الكراتين','كراتين','عدد الكراتين','boxes','cartons']);
-const categoryIdx=findHeader(['الفئة','التصنيف','category','cat']);
-if(nameIdx<0||qtyIdx<0||priceIdx<0){throw new Error('الأعمدة المطلوبة هي: اسم الصنف، الكمية، الوحدة، سعر الشراء');}
-const rows=[],errors=[];
-data.slice(1).forEach((row,index)=>{
-const line=index+2, name=String(row[nameIdx]||'').trim(), qty=Number(row[qtyIdx]), price=Number(row[priceIdx]), rawBoxes=boxesIdx>=0?String(row[boxesIdx]??'').trim():'';
-if(!name&&!rawBoxes&&!String(row[qtyIdx]??'').trim()&&!String(row[priceIdx]??'').trim()){return;}
-const rowErrors=[];
-if(!name){rowErrors.push('اسم الصنف مفقود');}
-if(!Number.isFinite(qty)||qty<=0){rowErrors.push('الكمية يجب أن تكون أكبر من صفر');}
-if(!Number.isFinite(price)||price<0){rowErrors.push('سعر الشراء غير صحيح');}
-let boxes=null;
-if(rawBoxes!==''){boxes=Number(rawBoxes); if(!Number.isInteger(boxes)||boxes<=0){rowErrors.push('الكراتين عدد صحيح أكبر من صفر');}}
-if(boxes!==null&&isOpeningMeatRow({name,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()} )===false){rowErrors.push('الكراتين مسموحة لأصناف اللحوم فقط');}
-if(rowErrors.length){errors.push({line,message:rowErrors.join('،')}); return;}
-rows.push({name,qty,unit:String(unitIdx>=0?row[unitIdx]||'':'').trim()||'كجم',price,boxes,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()||'عام'});
-});
-openingImportPreview={rows,errors,fileName:file.name}; renderOpeningImportPreview();
+const parsed=parseOpeningSheetRows(data);
+if(parsed.headerRow<0){throw new Error(parsed.errors[0].message);}
+openingImportPreview={rows:parsed.rows,errors:parsed.errors,fileName:file.name}; renderOpeningImportPreview();
 }catch(error){openingImportPreview={rows:[],errors:[{line:'—',message:error.message||'تعذر قراءة الملف'}],fileName:file.name}; renderOpeningImportPreview();}
 };
 reader.readAsArrayBuffer(file);
@@ -1701,30 +1931,59 @@ openingRows=openingRows.filter(r=>r.name||r.qty||r.price||r.category||r.boxes);
 openingRows.push(...openingImportPreview.rows); openingImportPreview={rows:[],errors:[],fileName:''};
 renderOpeningRows(); updateOpeningTotal(); renderOpeningImportPreview(); toast('تمت إضافة الصفوف الصحيحة إلى الجرد، راجعها قبل الحفظ','success');
 }
+/* طلب المالك 2026-10-05: «عايز اضبط قوائم الرصيد الافتتاحي مثل هذا أقدر أدخل الجدول» —
+   جدول إدخال حقيقي بأعمدة: اسم الصنف | الوحدة | كمية فعلية | سعر الشراء (كانت بطاقات حقول مكدسة)،
+   التنقل بين الخلايا بمفتاح Enter وآخر صف ينشئ صفًا جديدًا، وعمود الكراتين يظهر لأصناف اللحوم فقط.
+   إصلاح جانبي: دوال هذه الشاشة لم تكن تُصدَّر من الموديول فكان الزر معطولًا منذ ترحيل ESM. */
 function renderOpeningRows(){
 const c=document.getElementById('openingRows'); if(!c){return;}
 const invOpts=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">${esc(i.name)} (${esc(i.unit||'وحدة')})</option>`).join('');
-c.innerHTML=openingRows.map((r,idx)=>`<div style="background:var(--bg3);padding:10px;border-radius:var(--r);margin-bottom:8px;border:1px solid var(--border)">
-<div class="fr" style="align-items:flex-end">
-<div class="fg" style="flex:2;min-width:160px"><label>الصنف *</label><input type="text" class="u-input" value="${esc(r.name)}" placeholder="اسم الصنف" list="openingInvList" oninput="updateOpeningRow(${idx},'name',this.value)"></div>
-<div class="fg" style="flex:1;min-width:90px"><label>الكمية *</label><input type="number" class="u-input" value="${r.qty}" min="0" step="0.001" placeholder="0" style="font-weight:700" oninput="updateOpeningRow(${idx},'qty',this.value)"></div>
-<div class="fg" style="flex:1;min-width:90px"><label>الوحدة *</label><input type="text" id="openingUnit_${idx}" class="u-input" value="${esc(r.unit||'كجم')}" placeholder="كجم، علبة، كيس..." oninput="updateOpeningRow(${idx},'unit',this.value)"></div>
-<div class="fg" style="flex:1;min-width:90px"><label>سعر الشراء *</label><input type="number" class="u-input" value="${r.price}" min="0" step="0.01" placeholder="0" oninput="updateOpeningRow(${idx},'price',this.value)"></div>
-<div class="fg" id="openingBoxesField_${idx}" style="flex:1;min-width:80px;display:${isOpeningMeatRow(r)?'':'none'}"><label>كراتين (للحوم فقط)</label><input type="number" class="u-input" value="${r.boxes}" min="0" step="1" placeholder="—" oninput="updateOpeningRow(${idx},'boxes',this.value)"></div>
-<div class="fg" style="flex:1;min-width:90px"><label>الفئة</label><input type="text" id="openingCategory_${idx}" class="u-input" value="${esc(r.category)}" placeholder="لحوم، خضار، مشروبات..." oninput="updateOpeningRow(${idx},'category',this.value)"></div>
-<button type="button" class="btn btn-sm btn-red" onclick="removeOpeningRow(${idx})" title="حذف السطر"><i class=ji data-i=x></i></button>
-</div></div>`).join('')+`<datalist id="openingInvList">${invOpts}</datalist>`;
+const netCols=openingNet.on?`<th style="width:104px" title="مجموع ما صُرف فعليًا لهذا الصنف بأذون الصرف (من دفتر المخزون)">المنصرف فعليًا</th><th style="width:110px" title="الكمية التي ستُعتمد: بداية الفترة − المنصرف">الصافي المعتمد</th>`:'';
+c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:620px"><thead><tr><th>اسم الصنف</th><th style="width:110px">الوحدة</th><th style="width:120px">كمية فعلية</th><th style="width:120px">سعر الشراء</th>${netCols}<th style="width:104px" title="لأصناف اللحوم ذات الوزن المتغير فقط">كراتين</th><th style="width:44px"></th></tr></thead><tbody>
+${openingRows.map((r,idx)=>{
+const issued=openingNet.on?openingIssuedFor(r.name):0;
+const net=openingNet.on?Math.round(((parseFloat(r.qty)||0)-issued)*1000)/1000:null;
+const netCells=openingNet.on?`<td class="c-red" id="openingIssued_${idx}">${fN(issued)}</td><td class="${net<0?'c-red fw-bold':'c-green fw-bold'}" id="openingNetQty_${idx}">${fN(net)}</td>`:'';
+return `<tr>
+<td><input type="text" class="u-input" value="${esc(r.name)}" placeholder="اسم الصنف" list="openingInvList" oninput="updateOpeningRow(${idx},'name',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
+<td><input type="text" id="openingUnit_${idx}" class="u-input" value="${esc(r.unit||'')}" placeholder="كجم، علبة..." oninput="updateOpeningRow(${idx},'unit',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
+<td><input type="number" class="u-input" value="${r.qty}" min="0" step="0.001" placeholder="0" style="font-weight:700" oninput="updateOpeningRow(${idx},'qty',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
+<td><input type="number" class="u-input" value="${r.price}" min="0" step="0.01" placeholder="0" oninput="updateOpeningRow(${idx},'price',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
+${netCells}
+<td>${openingBoxCell(idx, r)}</td>
+<td><button type="button" class="btn btn-sm btn-red" onclick="removeOpeningRow(${idx})" title="حذف السطر"><i class=ji data-i=x></i></button></td>
+</tr>`;}).join('')}
+</tbody></table></div><datalist id="openingInvList">${invOpts}</datalist>`;
+}
+function openingBoxCell(idx, r){
+const meat=isOpeningMeatRow(r);
+return `<span class="text-muted" id="openingBoxDash_${idx}" style="display:${meat?'none':''}">—</span><input type="number" id="openingBoxes_${idx}" class="u-input" value="${r.boxes}" min="0" step="1" placeholder="—" oninput="updateOpeningRow(${idx},'boxes',this.value)" onkeydown="openingRowKey(event,${idx})" style="display:${meat?'':'none'}">`;
 }
 function isOpeningMeatRow(row){
-return /لحوم|لحم|لحمة|meat/i.test(String(row?.category||''));
+// اسم الصنف أو فئته يوحي باللحوم الطازجة ذات الوزن المتغير — دجاج وفراخ مشمولان
+return /لحوم|لحم|دجاج|فراخ|meat|chicken|beef/i.test(`${row?.name||''} ${row?.category||''}`);
+}
+function openingRowKey(e, idx){
+// Enter: الخلية التالية في الصف → أول خلية في الصف التالي → وآخر صف ينشئ صفًا جديدًا
+if(e.key!=='Enter'){return;}
+e.preventDefault();
+const rows=Array.from(document.querySelectorAll('#openingRows tbody tr'));
+const rowEl=rows[idx]; if(!rowEl){return;}
+const inputs=Array.from(rowEl.querySelectorAll('input')).filter(el=>el.style.display!=='none');
+const pos=inputs.indexOf(e.target);
+if(pos>-1&&pos<inputs.length-1){ inputs[pos+1].focus(); if(inputs[pos+1].select){inputs[pos+1].select();} return; }
+if(idx>=openingRows.length-1){ addOpeningRow(); }
+else { const first=rows[idx+1]?.querySelector('input'); if(first){first.focus(); if(first.select){first.select();}} }
 }
 function updateOpeningBoxesVisibility(idx){
 const row=openingRows[idx]; if(!row){return;}
-const field=document.getElementById(`openingBoxesField_${idx}`); const meat=isOpeningMeatRow(row);
-if(field){field.style.display=meat?'':'none';}
+const meat=isOpeningMeatRow(row);
+const input=document.getElementById(`openingBoxes_${idx}`); const dash=document.getElementById(`openingBoxDash_${idx}`);
+if(input){input.style.display=meat?'':'none';}
+if(dash){dash.style.display=meat?'none':'';}
 if(!meat&&row.boxes!==''){
 row.boxes='';
-const input=field?.querySelector('input'); if(input){input.value='';}
+if(input){input.value='';}
 }
 }
 function syncOpeningRowWithInventory(idx){
@@ -1735,7 +1994,12 @@ if(item.unit){row.unit=String(item.unit); const unitEl=document.getElementById(`
 if(item.category){row.category=String(item.category); const categoryEl=document.getElementById(`openingCategory_${idx}`); if(categoryEl){categoryEl.value=row.category;}}
 updateOpeningBoxesVisibility(idx);
 }
-function addOpeningRow(){ openingRows.push({name:'',qty:'',unit:'كجم',price:'',boxes:'',category:''}); renderOpeningRows(); }
+function addOpeningRow(){
+openingRows.push({name:'',qty:'',unit:'',price:'',boxes:'',category:''});
+renderOpeningRows(); updateOpeningTotal();
+const names=document.querySelectorAll('#openingRows tbody tr:last-child input[type="text"]');
+if(names.length){names[0].focus();}
+}
 function removeOpeningRow(idx){ if(openingRows.length<=1){ openingRows[0]={name:'',qty:'',unit:'كجم',price:'',boxes:'',category:''}; } else { openingRows.splice(idx,1); } renderOpeningRows(); updateOpeningTotal(); }
 function updateOpeningRow(idx,field,value){
 const r=openingRows[idx]; if(!r){return;}
@@ -1745,28 +2009,83 @@ else if(field==='price'){ r.price=value===''?'':(parseFloat(value)||0); }
 else if(field==='boxes'){ r.boxes=value===''?'':(parseInt(value)||0); }
 if(field==='name'){ syncOpeningRowWithInventory(idx); }
 if(field==='name'||field==='category'){ updateOpeningBoxesVisibility(idx); }
+refreshOpeningNetCells(idx);
 updateOpeningTotal();
 }
 function updateOpeningTotal(){
 const t=openingRows.reduce((s,r)=>s+((parseFloat(r.qty)||0)*(parseFloat(r.price)||0)),0);
 const el=document.getElementById('openingTotal'); if(el){el.innerHTML=fC(t);}
 }
-async function saveOpeningBalance(){
-const items=openingRows.map(r=>({name:String(r.name||'').trim(),qty:parseFloat(r.qty)||0,unit:String(r.unit||'').trim()||'كجم',price:parseFloat(r.price)||0,boxes:r.boxes===''||r.boxes==null?null:(parseInt(r.boxes)||0),category:String(r.category||'').trim()||'عام'}))
+/* تطبيع بنود الرصيد الافتتاحي — مشتركة بين الحفظ والاستبدال (نقية للاختبار) */
+function normalizeOpeningItems(rows){
+return (rows||[]).map(r=>({name:String(r.name||'').trim(),qty:parseFloat(r.qty)||0,unit:String(r.unit||'').trim()||'كجم',price:parseFloat(r.price)||0,boxes:r.boxes===''||r.boxes==null?null:(parseInt(r.boxes)||0),category:String(r.category||'').trim()||'عام'}))
 .filter(r=>r.name&&r.qty>0&&r.price>=0);
-if(!items.length){ toast('أدخل صنفًا واحدًا على الأقل: اسم + كمية + سعر','error'); return; }
-const bad=items.find(r=>r.boxes!==null&&!(r.boxes>0));
-if(bad){ toast(`عدد الكراتين للصنف "${bad.name}" يجب أن يكون أكبر من صفر أو اتركه فارغًا`,'error'); return; }
+}
+async function postOpeningInvoice(items){
 const sup=openingSupplier();
 const invoiceNumber=`OPEN-${today().replace(/-/g,'')}-${String(Math.floor(Math.random()*900)+100)}`;
-try{
-showLoad();
-const result=await apiFetch('/warehouse/purchase-invoices',{method:'POST',body:JSON.stringify({
+return await apiFetch('/warehouse/purchase-invoices',{method:'POST',body:JSON.stringify({
 invoiceNumber,date:today(),supplierName:sup.name,supplierPhone:'',paymentMethod:'credit',paidAmount:0,
 notes:'رصيد افتتاحي بداية الفترة',supplierId:sup.id||null,
 items:items.map(r=>({itemName:r.name,qty:r.qty,unit:r.unit,price:r.price,category:r.category,
 ...(r.boxes?{packagingQty:r.boxes,packagingUom:'كرتون'}:{})}))
 })});
+}
+/* حساب بنود الوضع الصافي: الصافي = البداية المعلنة − المنصرف فعليًا — يرفض البداية الأقل من المنصرف */
+function resolveOpeningNetItems(items){
+const resolved=[], negatives=[];
+for(const it of items){
+const issued=openingNet.issued.get(String(it.name||'').trim().toLowerCase())||0;
+const net=Math.round((it.qty-issued)*1000)/1000;
+if(net<0){ negatives.push({name:it.name,qty:it.qty,issued,net}); continue; }
+// طلب المالك 2026-10-06: المطابقة بمفتاح مطبع (مسافات/همزات/تاء مربوطة) —
+// كان الاسم بمسافة زايدة يفشل التطابق فيُنشأ صنف مكرر جديد بلا أي حركة
+const key=mergeItemKey(it.name);
+const invItem=(STATE.inventory||[]).find(i=>mergeItemKey(i.name)===key);
+resolved.push({...it, invId:invItem?invItem.id:null, issued, net});
+}
+return {resolved,negatives};
+}
+async function saveOpeningNet(){
+const items=normalizeOpeningItems(openingRows);
+if(!items.length){ toast('أدخل صنفًا واحدًا على الأقل: اسم + كمية + سعر','error'); return; }
+const {resolved,negatives}=resolveOpeningNetItems(items);
+if(negatives.length){
+toast(`المنصرف أكبر من البداية المعلنة لـ ${negatives.length} صنف (مثال: «${negatives[0].name}»: بداية ${fN(negatives[0].qty)} − منصرف ${fN(negatives[0].issued)}) — ارفع كمية البداية`,'error');
+return;
+}
+if(!resolved.length){ toast('لا توجد أصناف للتعيين','error'); return; }
+try{
+showLoad();
+let updated=0,created=0; const failed=[];
+for(const it of resolved){
+try{
+if(it.invId){
+// mainQty: الصافي يقع على المخزن الرئيسي تحديدًا — رصيد مخازن الأقسام يبقى كما هو
+await apiFetch(`/warehouse/inventory/${encodeURIComponent(it.invId)}/direct`,{method:'PUT',body:JSON.stringify({mainQty:it.net,avgCost:it.price,reason:`تعيين رصيد افتتاحي صافي — بداية ${it.qty}، منصرف ${it.issued}`})});
+updated++;
+}else{
+await persistCreate('inventory',(saved)=>STATE.inventory.push(saved),{id:uid(),name:it.name,category:it.category,unit:it.unit,qty:it.net,avgCost:it.price,minQty:0});
+created++;
+}
+}catch(e){ failed.push({name:it.name,message:e.message||''}); }
+}
+if(failed.length){ toast(`تعذر تعيين ${failed.length} صنف — أولها «${failed[0].name}»: ${failed[0].message}`,'error'); return; }
+closeModal(); renderPage();
+toast(`تم تعيين الرصيد الصافي: ${updated} صنفًا عُدل + ${created} جديد — المنصرف مخصوم تلقائيًا`,'success');
+addNotification('رصيد افتتاحي صافي',`تعيين ${resolved.length} صنف: البداية المعلنة − المنصرف الفعلي`,'success');
+}catch(e){ toast(e.message||'فشل تعيين الرصيد الصافي','error'); }
+finally{ hideLoad(); }
+}
+async function saveOpeningBalance(){
+if(openingNet.on){return saveOpeningNet();}
+const items=normalizeOpeningItems(openingRows);
+if(!items.length){ toast('أدخل صنفًا واحدًا على الأقل: اسم + كمية + سعر','error'); return; }
+const bad=items.find(r=>r.boxes!==null&&!(r.boxes>0));
+if(bad){ toast(`عدد الكراتين للصنف "${bad.name}" يجب أن يكون أكبر من صفر أو اتركه فارغًا`,'error'); return; }
+try{
+showLoad();
+const result=await postOpeningInvoice(items);
 upsertStateEntity('purchaseInvoices',result.invoice);
 (result.inventory||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
@@ -1776,8 +2095,160 @@ addNotification('رصيد افتتاحي',`تم إدخال ${items.length} صن�
 }catch(e){ toast(e.message||'تعذر حفظ الرصيد الافتتاحي','error'); }
 finally{ hideLoad(); }
 }
-function viewPurchaseInvoice(id){
-const inv = (STATE.purchaseInvoices||[]).find(x=>String(x.id)===String(id));
+// ─── معالج استبدال الرصيد الافتتاحي: إلغاء القديم (عكس الاستلام فقط) ثم حفظ الجديد ───
+let openingReplace={invoiceId:null,invoiceNumber:'',rows:[],oldVoided:false};
+function buildOpeningReplaceRows(inv){
+return (inv?.items||[]).map(it=>({name:it.itemName||'',qty:it.qty,unit:it.unit||'',price:it.price,
+boxes:it.packagingQty!=null?it.packagingQty:'',category:it.category||'',
+oldQty:it.qty,currentQty:it.currentQty,issuedSince:it.issuedSince,itemExists:!!it.itemExists}));
+}
+async function showOpeningBalanceReplaceGrid(inv){
+if(!inv||!inv.id){toast('فاتورة غير صالحة','error');return;}
+openingReplace={invoiceId:inv.id,invoiceNumber:inv.invoiceNumber||'',rows:buildOpeningReplaceRows(inv),oldVoided:false};
+if(!openingReplace.rows.length){toast('الفاتورة القديمة بلا بنود صالحة','error');return;}
+showModal(`<h3><i class=ji data-i=rotate-ccw></i> استبدال الرصيد الافتتاحي — ${esc(inv.invoiceNumber)}</h3>
+<div class="workflow-banner"><i class=ji data-i=info></i> عدّل <strong>الكمية الجديدة</strong> و<strong>السعر الجديد</strong> لكل صنف. عند الحفظ: يُلغى الرصيد القديم (يعكس استلامه <strong>فقط</strong> — طلبات الصرف تبقى محسوبة) ثم يُسجل الجديد مكانًا واحدًا.</div>
+<div id="openingReplaceMsg"></div>
+<div id="openingReplaceRows" style="margin-top:10px"></div>
+<div class="callout-gold u-my16"><div class="fw-bold">إجمالي الرصيد الجديد</div><div class="callout-value" id="openingReplaceTotal">${fC(0)}</div></div>
+<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="openingReplaceAck"> أفهم أن الرصيد القديم سيُلغى ويُعكس استلامه فقط — وطلبات الصرف تبقى محسوبة على الرصيد الجديد</label>
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" onclick="confirmOpeningReplace()"><i class=ji data-i=rotate-ccw></i> إلغاء القديم وحفظ الجديد</button></div>`);
+renderOpeningReplaceRows();
+updateOpeningReplaceTotal();
+}
+function renderOpeningReplaceRows(){
+const c=document.getElementById('openingReplaceRows'); if(!c){return;}
+c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:820px"><thead><tr><th>اسم الصنف</th><th style="width:90px">الوحدة</th><th style="width:95px">مدخل قديمًا</th><th style="width:95px">منصرف منذذك</th><th style="width:95px">الرصيد الحالي</th><th style="width:110px">كمية جديدة *</th><th style="width:110px">سعر جديد *</th><th style="width:95px">كراتين</th></tr></thead><tbody>
+${openingReplace.rows.map((r,idx)=>{
+const meat=isOpeningMeatRow(r);
+return `<tr${r.itemExists?'':' style="opacity:.6"'}>
+<td class="fw-bold">${esc(r.name)}${r.itemExists?'':' <span class="badge bdg-red" title="الصنف محذوف من المخزن — سيُعاد إنشاؤه بالحفظ">محذوف؟</span>'}</td>
+<td>${esc(r.unit||'—')}</td>
+<td class="c-gold">${fN(r.oldQty)}</td>
+<td class="${r.issuedSince>0?'c-red':''}">${fN(r.issuedSince)}</td>
+<td class="${(Number(r.currentQty)||0)<r.oldQty?'c-red':'c-green'}">${r.currentQty==null?'—':fN(r.currentQty)}</td>
+<td><input type="number" class="u-input" value="${r.qty}" min="0" step="0.001" style="font-weight:700" oninput="updateOpeningReplaceRow(${idx},'qty',this.value)"></td>
+<td><input type="number" class="u-input" value="${r.price}" min="0" step="0.01" oninput="updateOpeningReplaceRow(${idx},'price',this.value)"></td>
+<td>${meat?`<input type="number" class="u-input" value="${r.boxes}" min="0" step="1" placeholder="—" oninput="updateOpeningReplaceRow(${idx},'boxes',this.value)">`:'<span class="text-muted">—</span>'}</td>
+</tr>`;}).join('')}
+</tbody></table></div>`;
+}
+function updateOpeningReplaceRow(idx,field,value){
+const r=openingReplace.rows[idx]; if(!r){return;}
+if(field==='qty'||field==='price'){ r[field]=value===''?'':(parseFloat(value)||0); }
+else if(field==='boxes'){ r.boxes=value===''?'':(parseInt(value)||0); }
+const t=openingReplace.rows.reduce((s,r)=>s+((parseFloat(r.qty)||0)*(parseFloat(r.price)||0)),0);
+const el=document.getElementById('openingReplaceTotal'); if(el){el.innerHTML=fC(t);}
+}
+async function confirmOpeningReplace(){
+const items=normalizeOpeningItems(openingReplace.rows);
+if(!items.length){ toast('أدخل كمية وسعرًا صحيحين لصنف واحد على الأقل','error'); return; }
+const bad=items.find(r=>r.boxes!==null&&!(r.boxes>0));
+if(bad){ toast(`عدد الكراتين للصنف "${bad.name}" يجب أن يكون أكبر من صفر أو اتركه فارغًا`,'error'); return; }
+const ack=document.getElementById('openingReplaceAck')?.checked;
+if(!ack){ toast('فعّل مربع التأكيد أولًا — العملية تلغي الرصيد القديم','error'); return; }
+try{
+showLoad();
+// 1) إلغاء الرصيد القديم — يعكس استلامه فقط؛ لو أُلغي سلفًا نكمل عادي
+if(!openingReplace.oldVoided){
+try{
+await apiFetch(`/warehouse/purchase-invoices/${encodeURIComponent(openingReplace.invoiceId)}/void`,{method:'POST',body:JSON.stringify({})});
+openingReplace.oldVoided=true;
+}catch(e){
+if(!/غير موجودة|INVOICE_NOT_FOUND/i.test(String(e.message||''))){throw e;}
+openingReplace.oldVoided=true; // أُلغي في محاولة سابقة — نكمل الحفظ
+}
+}
+// 2) حفظ الرصيد الجديد
+const result=await postOpeningInvoice(items);
+upsertStateEntity('purchaseInvoices',result.invoice);
+(result.inventory||[]).forEach(row=>upsertStateEntity('inventory',row));
+(result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
+closeModal(); renderPage();
+toast(`تم استبدال الرصيد الافتتاحي: أُلغي ${openingReplace.invoiceNumber} وحُفظ ${items.length} صنفًا بقيمة ${fC(result.totalAmount||0)} — طلبات الصرف كما هي`,'success');
+addNotification('استبدال رصيد افتتاحي',`أُلغي ${openingReplace.invoiceNumber} وأُدخل رصيد جديد بـ ${items.length} صنفًا`,'success');
+}catch(e){
+const msg=document.getElementById('openingReplaceMsg');
+if(msg){msg.innerHTML=`<div class="badge bdg-red" style="padding:8px;line-height:1.6">${esc(e.message||'فشل الاستبدال')} — لو أُلغي القديم بالفعل اضغط «إلغاء القديم وحفظ الجديد» مرة أخرى (لن يتكرر الإلغاء)</div>`;}
+toast(e.message||'فشل استبدال الرصيد الافتتاحي','error');
+}finally{ hideLoad(); }
+}
+// ═══ فحص النظام الشامل (طلب المالك 2026-10-06: «سهل جدا وزكي جدا وقوي جدا») ═══
+// زر واحد = تشخيص فوري: سلامة كل الأرصدة (الرصيد = المخازن = الدفتر) + إحصائيات + صفر الرصيد
+async function showSystemHealth(){
+try{
+showLoad();
+const r=await apiFetch('/warehouse/system-health');
+const ok=!!r.ok;
+const anomalyRows=(r.anomalies||[]).map(a=>`<div style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--red,#d64545)">✗ <b>${esc(a.name)}</b> — ${esc(a.issue)}</div>`).join('');
+showModal(`<h3><i class=ji data-i=clipboard-list></i> فحص النظام</h3>
+<div class="workflow-banner" style="${ok?'':'color:var(--red,#d64545)'}"><i class=ji data-i=${ok?'clipboard-list':'alert-triangle'}></i> ${ok?'<strong>النظام سليم 100%</strong> — كل الأرصدة متطابقة مع المخازن والدفاتر، والمعادلة (البداية − المنصرف = رصيد الرئيسي) واقفة':'<strong>توجد ملاحظات تحتاج نظر</strong> — الأصناف الآتية رصيدها غير متطابق'}</div>
+<div class="fr">
+<div class="details-item"><strong>إجمالي الأصناف:</strong> ${fN(r.itemsTotal)}</div>
+<div class="details-item"><strong>سليمة:</strong> <span class="c-green">${fN(r.consistent)}</span></div>
+<div class="details-item"><strong>صفر الرصيد:</strong> ${fN(r.zeroStock)}</div>
+<div class="details-item"><strong>تحت الحد الأدنى:</strong> <span class="c-orange">${fN(r.lowStock)}</span></div>
+</div>
+${anomalyRows?`<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)">${anomalyRows}</div>`:''}
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+}catch(e){ toast(e.message||'تعذر الفحص','error'); } finally{ hideLoad(); }
+}
+// ─── دمج الأصناف المكررة (طلب المالك 2026-10-05: «في اصناف مثل كده عايز احذف المكرر») ───
+// مفتاح الكشف: إزالة كل المسافات + توحيد الهمزات/التاء المربوطة/الألف المقصورة —
+// التقاط متسامح عمدًا (أرز بسمتي20 مقابل أرز بسمتي 20) — الدمج نفسه بتأكيد بشري لكل مجموعة
+function mergeItemKey(name){
+return String(name||'').toLowerCase().replace(/[\s\u00a0\t]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+}
+function findDuplicateItemGroups(){
+const groups=new Map();
+(STATE.inventory||[]).forEach(i=>{
+const k=mergeItemKey(i.name); if(!k){return;}
+if(!groups.has(k)){groups.set(k,[]);}
+groups.get(k).push(i);
+});
+return [...groups.values()].filter(g=>g.length>1);
+}
+function showMergeDuplicatesModal(){
+if(STATE.currentUser?.role!=='admin'){toast('الدمج متاح للأدمن فقط','error');return;}
+const groups=findDuplicateItemGroups();
+if(!groups.length){showModal(`<h3><i class=ji data-i=git-merge></i> دمج أصناف مكررة</h3><div class="u-empty">ممتاز — لا توجد أصناف مكررة بالاسم نفسه حاليًا 👌</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);return;}
+const cards=groups.map((g,gi)=>{
+const keepIdx=g.reduce((best,i,idx)=>Number(i.qty)>Number(g[best].qty)?idx:best,0);
+return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px">
+<div class="fw-bold u-mb8"><i class=ji data-i=copy></i> «${esc(g[0].name)}» — ${fN(g.length)} نسخ</div>
+${g.map((i,idx)=>`<label style="display:flex;gap:8px;align-items:center;padding:6px;border-radius:8px;cursor:pointer;background:${idx===keepIdx?'rgba(212,168,67,.12)':'transparent'}">
+<input type="radio" name="mergeKeep_${gi}" value="${esc(String(i.id))}" ${idx===keepIdx?'checked':''}>
+<span class="u-t13">${idx===keepIdx?'<strong>':''}${esc(i.name)}${idx===keepIdx?'</strong>':''} — رصيد ${fN(i.qty)} ${esc(i.unit||'')}${Number(i.minQty)>0?` · حد أدنى ${fN(i.minQty)}`:''} <span class="text-muted">(id: ${esc(String(i.id))})</span></span>
+</label>`).join('')}
+<button type="button" class="btn btn-red btn-sm u-mt8" onclick="mergeDuplicateGroup(${gi})"><i class=ji data-i=git-merge></i> دمج في الصنف المحدد</button>
+</div>`;
+}).join('');
+showModal(`<h3><i class=ji data-i=git-merge></i> دمج أصناف مكررة</h3>
+<div class="workflow-banner"><i class=ji data-i=info></i> اختر النسخة التي <strong>تبقى</strong> في كل مجموعة ثم اضغط دمج — يتم نقل الرصيد والسجل التاريخي للمُبقي وحذف المكرر نهائيًا. <strong>لا تراجع بعد الدمج.</strong></div>
+${cards}
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+}
+async function mergeDuplicateGroup(gi){
+const groups=findDuplicateItemGroups();
+const g=groups[gi]; if(!g){return;}
+const keepEl=document.querySelector(`input[name="mergeKeep_${gi}"]:checked`);
+const keepId=keepEl?Number(keepEl.value):null;
+if(!keepId){toast('اختر النسخة التي تبقى','error');return;}
+const dupIds=g.filter(i=>Number(i.id)!==keepId).map(i=>Number(i.id));
+if(!dupIds.length){toast('اختر النسخة التي تبقى','error');return;}
+if(!confirm(`تأكيد الدمج: سيُنقل رصيد ${dupIds.length} صنفًا مكررًا («${g.filter(i=>Number(i.id)!==keepId).map(i=>i.name).join('، ')}») إلى النسخة المبقية ويُحذف نهائيًا مع إعادة توجيه السجل التاريخي. متابعة؟`)){return;}
+try{
+showLoad();
+const result=await apiFetch('/warehouse/inventory/merge',{method:'POST',body:JSON.stringify({keepId,dupIds})});
+STATE.inventory=STATE.inventory.filter(i=>!dupIds.includes(Number(i.id)));
+const ki=STATE.inventory.findIndex(i=>String(i.id)===String(keepId));
+if(ki>-1&&result.keeper){STATE.inventory[ki]=result.keeper;}
+showMergeDuplicatesModal();
+toast(`تم الدمج: ${result.mergedCount} مكرر حُذف ونُقل رصيده (${fN(result.movedQty)}) — حدث الصفحة لتحديث الكل`,'success');
+}catch(e){ toast(e.message||'فشل الدمج','error'); }
+finally{ hideLoad(); }
+}
+function viewPurchaseInvoice(id){const inv = (STATE.purchaseInvoices||[]).find(x=>String(x.id)===String(id));
 if(!inv){ toast('الفاتورة غير موجودة في قاعدة البيانات','warning'); return; }
 let invoiceItems=Array.isArray(inv.items)?inv.items:[];
 if(typeof inv.items==='string'){try{const parsed=JSON.parse(inv.items); if(Array.isArray(parsed)) {invoiceItems=parsed;}}catch(_){} }
@@ -1810,24 +2281,26 @@ ${invoiceItems.map(item=>`<tr><td class="fw-bold">${esc(item.itemName)}</td><td>
 </div>
 <div class="details-item"><strong>إجمالي الفاتورة:</strong><div class="c-gold fw-bold">${fC(inv.totalAmount)}</div></div>
 <div class="details-item"><strong>ملاحظات:</strong><div>${esc(inv.notes||'—')}</div></div>
-<div class="modal-footer"><button class="btn btn-blue" onclick="printPurchaseInvoice('${inv.id}')"><i class=ji data-i=printer></i> طباعة الفاتورة</button>${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-red" onclick="voidPurchaseInvoice('${inv.id}')"><i class=ji data-i=trash></i> حذف الفاتورة</button>`:''}<button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>
+<div class="details-item"><strong>الخصم:</strong><div>${inv.discount_type==='percent'?`${fN(inv.discount_value)}%`:inv.discount_type==='amount'?fC(inv.discount_amount):'بدون خصم'} ${Number(inv.discount_amount||0)>0?`(${fC(inv.discount_amount)})`:''}</div></div>
+${Number(inv.vat_total||0)>0?`<div class="details-item"><strong>ضريبة القيمة المضافة:</strong><div>${fC(inv.vat_total)}</div></div>`:''}
+<div class="modal-footer"><button class="btn btn-blue" onclick="printPurchaseInvoice('${inv.id}')"><i class=ji data-i=printer></i> طباعة الفاتورة</button>${['admin','manager','warehouse'].includes(STATE.currentUser?.role)&&Number(inv.paidAmount||0)===0?`<button class="btn btn-gold" onclick="closeModal();showAddPurchaseInvoiceModal('${esc(String(inv.id))}')"><i class=ji data-i=edit></i> تعديل الفاتورة</button>`:''}${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-red" onclick="voidPurchaseInvoice('${inv.id}')"><i class=ji data-i=trash></i> حذف الفاتورة</button>`:''}<button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>
 `);
 }
 async function voidPurchaseInvoice(id, force){
 const inv=(STATE.purchaseInvoices||[]).find(x=>String(x.id)===String(id));
 if(!inv){return;}
-if(!force && !confirm(`حذف فاتورة الشراء ${inv.invoiceNumber||''} (${fC(inv.totalAmount||0)})؟\nسيُعكس أثرها على المخزون تلقائيًا.\n${Number(inv.paidAmount||0)>0?'تحذير: عليها مبلغ مسدد — سيُرفض الحذف.':''}`)){return;}
+if(!force && !confirm(`حذف فاتورة الشراء ${inv.invoiceNumber||''} (${fC(inv.totalAmount||0)})؟\nسيُعكس أثرها على المخزون تلقائيًا.\n${Number(inv.paidAmount||0)>0?`عليها مبلغ مسدد ${fC(inv.paidAmount||0)} — إن كان من نوع «دفعة تلقائية مع تسجيل الفاتورة» سيُعكس مع الإلغاء.`:''}`)){return;}
 showLoad();
 try{
 const r=await apiFetch(`/warehouse/purchase-invoices/${encodeURIComponent(id)}/void`,{method:'POST',body:JSON.stringify(force?{force:true}:{})});
 STATE.purchaseInvoices=(STATE.purchaseInvoices||[]).filter(x=>String(x.id)!==String(id));
 await window.loadData().catch(()=>{});
 closeModal();renderPage();
-toast(`حُذفت الفاتورة ${r.invoiceNumber||''} وعُكس مخزون ${r.reversedItems||0} صنفًا${r.deletedPayments?` وحُذفت ${r.deletedPayments} دفعة مرتبطة`:''}`,'success');
+toast(`حُذفت الفاتورة ${r.invoiceNumber||''} وعُكس مخزون ${r.reversedItems||0} صنفًا${r.deletedPayments?` وعُكست ${r.deletedPayments} دفعة تلقائية مرتبطة`:''}`,'success');
 }catch(e){
 const m=String(e.message||'');
-if(!force&&(m.includes('مسدد')||m.includes('دفعات'))){
-if(confirm(`${m}\n\nهل تريد الحذف القسري؟ (سيُحذف المسدد/الدفعات المرتبطة بهذه الفاتورة نهائيًا — لا يمكن التراجع)`)) {return voidPurchaseInvoice(id,true);}
+if(!force&&(m.includes('يدوية')||m.includes('دفعات موردين'))){
+toast(`${m} — افتح «المشتريات › الدفعات» واعكس الدفعة يدويًا ثم أعد الإلغاء`,'warning');
 return;
 }
 toast(m||'تعذر حذف الفاتورة','error');
@@ -1838,14 +2311,17 @@ function printPurchaseInvoice(id){
  if(!inv){toast('الفاتورة غير موجودة في قاعدة البيانات','warning');return;}
  let items=Array.isArray(inv.items)?inv.items:[];
  if(typeof inv.items==='string'){try{const parsed=JSON.parse(inv.items);if(Array.isArray(parsed)){items=parsed;}}catch(_){} }
- const paymentLabel={cash:'نقدي',bank:'تحويل بنكي',credit:'آجل'}[inv.paymentMethod]||'—';
+ const paymentLabel={cash:'نقدي',bank:'تحويل بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||'—';
  const statusLabel={paid:'مدفوعة',partial:'مسددة جزئياً',unpaid:'غير مسددة'}[inv.paymentStatus]||'غير مسددة';
  const currency=esc(STATE.settings.currency||'SAR');
  const rows=items.map(item=>`<tr><td>${esc(item.itemName||'—')}</td><td>${esc(item.unit||'—')}</td><td>${fN(item.qty)}</td><td>${fN(item.weight||0)} كجم</td><td>${fN(item.price)} ${currency}</td><td>${fN(item.total||(Number(item.qty||0)*Number(item.price||0)))} ${currency}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد أصناف</td></tr>';
+ const subtotal=items.reduce((sum,item)=>sum+Number(item.grossTotal??(Number(item.qty||0)*Number(item.price||0))),0);
+ const discount=Number(inv.discount_amount||0);
+ const vat=Number(inv.vat_total||0);
  const win=(window.openInAppReport ? window.openInAppReport('تقرير المستودع') : window.open('', '_blank'));
  if(!win){toast('اسمح بالنوافذ المنبثقة لطباعة الفاتورة','warning');return;}
  win.document.open();
- win.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>فاتورة شراء ${esc(inv.invoiceNumber||'')}</title><style>body{font-family:Cairo,Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}.sheet{max-width:820px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:18px;margin-bottom:22px}.head h1{margin:0 0 8px;color:#b45309;font-size:26px}.head p{margin:4px 0;color:#555}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}.meta div{border:1px solid #ddd;border-radius:8px;padding:10px}.meta b{display:block;color:#555;font-size:12px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #ccc;padding:9px;text-align:right}th{background:#f7ead8;color:#7c3500}tfoot td{font-weight:700;background:#fafafa}.notes{margin-top:20px;border-top:1px solid #ddd;padding-top:12px;min-height:40px}.controls{text-align:center;margin-bottom:22px}.controls button{border:0;border-radius:7px;padding:10px 22px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}.controls button.secondary{background:#555}@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body><div class="controls"><button onclick="window.print()">طباعة</button><button class="secondary" onclick="window.close()">إغلاق</button></div><main class="sheet"><header class="head"><h1>${esc(STATE.settings.name||'مطاعم الشرفه العالمي')}</h1><p>فاتورة شراء</p><p>${esc(inv.invoiceNumber||'—')}</p></header><section class="meta"><div><b>التاريخ</b>${fD(inv.date)}</div><div><b>المورد</b>${esc(inv.supplierName||'—')}</div><div><b>الهاتف</b>${esc(inv.supplierPhone||'—')}</div><div><b>طريقة الدفع</b>${paymentLabel}</div><div><b>حالة السداد</b>${statusLabel}</div><div><b>المسدد / المتبقي</b>${fN(inv.paidAmount||0)} / ${fN(Math.max(0,Number(inv.totalAmount||0)-Number(inv.paidAmount||0)))} ${currency}</div></section><table><thead><tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>الوزن</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5">إجمالي الفاتورة</td><td>${fN(inv.totalAmount)} ${currency}</td></tr></tfoot></table><div class="notes"><b>ملاحظات:</b> ${esc(inv.notes||'—')}</div></main></body></html>`);
+ win.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>فاتورة شراء ${esc(inv.invoiceNumber||'')}</title><style>body{font-family:Cairo,Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}.sheet{max-width:820px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:18px;margin-bottom:22px}.head h1{margin:0 0 8px;color:#b45309;font-size:26px}.head p{margin:4px 0;color:#555}.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}.meta div{border:1px solid #ddd;border-radius:8px;padding:10px}.meta b{display:block;color:#555;font-size:12px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #ccc;padding:9px;text-align:right}th{background:#f7ead8;color:#7c3500}tfoot td{font-weight:700;background:#fafafa}.notes{margin-top:20px;border-top:1px solid #ddd;padding-top:12px;min-height:40px}.controls{text-align:center;margin-bottom:22px}.controls button{border:0;border-radius:7px;padding:10px 22px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}.controls button.secondary{background:#555}@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body><div class="controls"><button onclick="window.print()">طباعة</button><button class="secondary" onclick="window.close()">إغلاق</button></div><main class="sheet"><header class="head"><h1>${esc(STATE.settings.name||'مطاعم الشرفه العالمي')}</h1><p>فاتورة شراء</p><p>${esc(inv.invoiceNumber||'—')}</p></header><section class="meta"><div><b>التاريخ</b>${fD(inv.date)}</div><div><b>المورد</b>${esc(inv.supplierName||'—')}</div><div><b>الهاتف</b>${esc(inv.supplierPhone||'—')}</div><div><b>طريقة الدفع</b>${paymentLabel}</div><div><b>حالة السداد</b>${statusLabel}</div><div><b>المسدد / المتبقي</b>${fN(inv.paidAmount||0)} / ${fN(Math.max(0,Number(inv.totalAmount||0)-Number(inv.paidAmount||0)))} ${currency}</div></section><table><thead><tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>الوزن</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5">الإجمالي قبل الخصم</td><td>${fN(subtotal)} ${currency}</td></tr><tr><td colspan="5">الخصم</td><td>− ${fN(discount)} ${currency}</td></tr><tr><td colspan="5">ضريبة القيمة المضافة</td><td>${fN(vat)} ${currency}</td></tr><tr><td colspan="5">الإجمالي المستحق</td><td>${fN(inv.totalAmount)} ${currency}</td></tr></tfoot></table><div class="notes"><b>ملاحظات:</b> ${esc(inv.notes||'—')}</div></main></body></html>`);
  win.document.close();
  win.focus();
 }
@@ -2338,4 +2814,4 @@ renderPage();
 }
 
 function __dbgInvoiceState(){ return { len: currentInvoiceItems.length, items: currentInvoiceItems.map(i=>({n:i.itemName,q:i.qty,p:i.price,u:i.unit})) }; }
-export { __dbgInvoiceState, renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem, renderWhInvoices, renderWhMoves, renderWhReturns, renderWhPrs, showClearAllInvoicesModal, clearAllInvoices };
+export { adminDirectEdit, __dbgInvoiceState, renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whInvClearSearch, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, openingBoxCell, openingRowKey, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, parseOpeningSheetRows, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, normalizeOpeningItems, postOpeningInvoice, loadOpeningExisting, buildOpeningReplaceRows, showOpeningBalanceReplaceGrid, renderOpeningReplaceRows, updateOpeningReplaceRow, confirmOpeningReplace, openingNetModeChanged, openingNetEnabled, openingIssuedFor, refreshOpeningNetCells, resolveOpeningNetItems, saveOpeningNet, mergeItemKey, findDuplicateItemGroups, showMergeDuplicatesModal, mergeDuplicateGroup, showSystemHealth, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem, renderWhInvoices, renderWhMoves, whInvListPrint, whTxListPrint, renderWhReturns, renderWhPrs, showClearAllInvoicesModal, clearAllInvoices };

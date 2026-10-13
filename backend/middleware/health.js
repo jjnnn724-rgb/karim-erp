@@ -47,26 +47,33 @@ function getPackageInfo() {
 
 // ─── Disk usage helper (Windows-safe, native APIs only) ────
 function diskUsageSync(dir) {
-    try {
-        let free = 0, total = 0;
-        const stats = fs.statfsSync ? fs.statfsSync(dir) : null;
+    const measure = (d) => {
+        const stats = fs.statfsSync ? fs.statfsSync(d) : null;
         if (stats) {
-            total = BigInt(stats.blocks) * BigInt(stats.bsize);
-            free  = BigInt(stats.bavail) * BigInt(stats.bsize);
-        } else {
-            // Best-effort fallback via OS-specific commands (only read totals)
-            return { total: null, free: null, used: null, ok: true };
+            const total = BigInt(stats.blocks) * BigInt(stats.bsize);
+            const free  = BigInt(stats.bavail) * BigInt(stats.bsize);
+            const used = total - free;
+            return {
+                totalBytes: Number(total),
+                freeBytes:  Number(free),
+                usedBytes:  Number(used),
+                usedPct:    total > 0 ? Number(used) / Number(total) : 0,
+                ok:         true,
+            };
         }
-        const used = total - free;
-        return {
-            totalBytes: Number(total),
-            freeBytes:  Number(free),
-            usedBytes:  Number(used),
-            usedPct:    total > 0 ? Number(used) / Number(total) : 0,
-            ok:         true,
-        };
+        // Best-effort fallback via OS-specific commands (only read totals)
+        return { total: null, free: null, used: null, ok: true };
+    };
+    try {
+        return measure(dir);
     } catch (e) {
-        return { ok: false, error: e.message };
+        // The measured dir may legitimately be absent (moved/archived while the
+        // app runs) — the volume it lives on is what we actually report.
+        try {
+            return measure(path.parse(path.resolve(dir)).root);
+        } catch (e2) {
+            return { ok: false, error: e2.message };
+        }
     }
 }
 
@@ -157,7 +164,8 @@ function checkDisk(dataDir) {
             totalGB: du.totalBytes != null ? +(du.totalBytes / 1073741824).toFixed(2) : null,
             usedPct: du.usedPct    != null ? +(du.usedPct * 100).toFixed(1) : null,
         },
-        error: (status === 'warn' && du.usedPct != null && du.usedPct > 0.80) ? `Disk usage high: ${(du.usedPct*100).toFixed(1)}%` : null,
+        error: (status === 'warn' && du.usedPct != null && du.usedPct > 0.80) ? `Disk usage high: ${(du.usedPct*100).toFixed(1)}%`
+             : (du.ok === false ? `Disk check failed: ${du.error || 'statfs unavailable'}` : null),
     };
 }
 
@@ -336,8 +344,11 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
     // /health/verbose — admin-only full diagnostic
     // ──────────────────────────────────────────────────
     router.get('/verbose', async (req, res, next) => {
-        // Minimal guard: require either JWT admin OR localhost call OR internal token
-        const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.connection?.remoteAddress === '127.0.0.1';
+        // FIX 2026-10-11 (C9): use req.connection.remoteAddress (actual TCP peer)
+        // not req.ip — with trust proxy=1, req.ip is spoofable via X-Forwarded-For.
+        // Also accept ::ffff:127.0.0.1 (IPv4-mapped IPv6).
+        const peerAddr = req.connection?.remoteAddress || '';
+        const isLocal = peerAddr === '127.0.0.1' || peerAddr === '::1' || peerAddr === '::ffff:127.0.0.1';
         const tokenOk = req.headers['x-health-token'] && req.headers['x-health-token'] === (process.env.HEALTH_TOKEN || '');
         const adminRole = req.user?.role === 'admin' || req.user?.role === 'owner';
         if (!isLocal && !tokenOk && !adminRole) {

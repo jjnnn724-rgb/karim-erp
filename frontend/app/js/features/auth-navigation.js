@@ -279,9 +279,9 @@ const NAV_HIDDEN_PAGES = []; // احتياطي فقط — مصدر الإخفا�
 const NAV_GROUPS = [
  {id:'main', title:'nav.grp.main', keys:['dashboard']},
  {id:'finance', title:'nav.grp.finance', keys:['cfo','revenues','expenses','cost-analysis','pnl']},
-  {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','shelves','weight','kitchen','dispatch','recipes','procurement']},
+  {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','veg-requests','shelves','weight','kitchen','dispatch','recipes','procurement']},
  {id:'hr', title:'nav.grp.hr', keys:['hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal','roster','dept-employees']},
-  {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','permissions','yarasoft','oracle-data','whatsapp','query','professional']},
+  {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','branches','permissions','yarasoft','oracle-data','whatsapp','query','professional','sales-analyzer','received-analyzer','wh-vs-pos']},
 ];
 function userMenus(){
     // الفعالة = (الدور ∪ المنح) − المسحوب. السحب يغلب الدور والمنح معًا (عدا المدير).
@@ -300,16 +300,18 @@ const role = STATE.currentUser?.role || null;
 const on = (el, roles) => { if(el) {el.style.display = roles.includes(role) ? '' : 'none';} };
 // زر الكاشير POS: للإدارة العليا + مدير الحسابات + الكاشير فقط
 on(document.querySelector('a[href="/app/pos.html"]'), ['admin','accountant','cashier']);
+// زر شاشات المنيو: للإدارة والشيفات والمديرين
+on(document.getElementById('menuDashboardTopbarBtn'), ['admin','manager','kitchen','sous_chef']);
 // لمبتا الحالة (الخادم + قاعدة البيانات): للإدارة العامة فقط
 on(document.getElementById('rt-badge'), ['admin']);
 // قائمة الإجراءات السريعة (FAB): كل إجراء لدوره
 on(document.querySelector('.fab-action[aria-label="لوحة التحكم"]'), ['admin','manager','hr','accountant','dept_head']);
-on(document.querySelector('.fab-action[aria-label="طلب صرف"]'), ['admin','manager','kitchen','dept_head','warehouse']);
+on(document.querySelector('.fab-action[aria-label="طلب صرف"]'), ['admin','manager','kitchen','sous_chef','dept_head','warehouse']);
 on(document.querySelector('.fab-action[aria-label="إضافة إيراد"]'), ['admin','manager','accountant']);
 on(document.querySelector('.fab-action[aria-label="إضافة مصروف"]'), ['admin','manager','accountant']);
 // زر الـ FAB نفسه يختفي لو لم يتبقَّ أي إجراء متاح (موظف/كاشير)
-const anyFab = ['admin','manager','hr','accountant','dept_head','kitchen','warehouse'].includes(role);
-on(document.getElementById('fabBtn'), anyFab ? ['admin','manager','hr','accountant','dept_head','kitchen','warehouse'] : []);
+const anyFab = ['admin','manager','hr','accountant','dept_head','kitchen','sous_chef','warehouse'].includes(role);
+on(document.getElementById('fabBtn'), anyFab ? ['admin','manager','hr','accountant','dept_head','kitchen','sous_chef','warehouse'] : []);
 }
 
 function buildNav(){
@@ -325,9 +327,9 @@ dynamicHidden.delete('settings');
 const itemHtml = (key, name) => {
 let badge = '';
 if(key==='dispatch'){ // شارة الصرف: عدد الطلبات التي تنتظر إجراء من هذا الدور تحديدًا
-const r=STATE.currentUser?.role; const myDept=STATE.currentUser?.dept_code;
+const r=STATE.currentUser?.role; const myDepts=String(STATE.currentUser?.dept_code||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
 const actionable=STATE.dispatches.filter(d=>{
-  if(r==='dept_head') {return d.deptCode===myDept && ['pending','chef_approved'].includes(d.status);}
+  if(r==='dept_head') {return myDepts.includes(String(d.deptCode||'').trim().toLowerCase()) && ['pending','chef_approved'].includes(d.status);}
   if(r==='kitchen') {return d.status==='pending' && d.needsChefApproval;}
   if(['admin','manager'].includes(r)) {return d.status==='pending';}
   if(r==='warehouse') {return d.status==='chef_approved' || (d.status==='pending' && !d.needsChefApproval);}
@@ -369,7 +371,7 @@ if(!role || !role.menus.includes(page)){ toast('لا تملك صلاحية ال�
 STATE.page = page; destroyCharts();
 document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
 if(el) {el.classList.add('active');}
-const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),'wh-invoices':t('pg.wh-invoices'),'wh-moves':t('pg.wh-moves'),'wh-returns':t('pg.wh-returns'),'wh-prs':t('pg.wh-prs'),procurement:t('pg.procurement'),'roster':t('pg.roster'),'dept-employees':'موظفو قسمي',shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll'),permissions:t('pg.permissions')};
+const titles = {dashboard:t('pg.dashboard'),cfo:t('pg.cfo'),revenues:t('pg.revenues'),expenses:t('pg.expenses'),'cost-analysis':t('pg.cost-analysis'),pnl:t('pg.pnl'),departments:t('pg.departments'),warehouse:t('pg.warehouse'),'wh-invoices':t('pg.wh-invoices'),'wh-moves':t('pg.wh-moves'),'wh-returns':t('pg.wh-returns'),'wh-prs':t('pg.wh-prs'),procurement:t('pg.procurement'),'veg-requests':'طلب شراء خضار','roster':t('pg.roster'),'dept-employees':'موظفو قسمي',shelves:t('pg.shelves'),weight:t('pg.weight'),dispatch:t('pg.dispatch'),kitchen:t('pg.kitchen'),recipes:t('pg.recipes'),reports:t('pg.reports'),settings:t('pg.settings'),users:t('pg.users'),'hr-dashboard':t('pg.hr-dashboard'),employees:t('pg.employees'),leaves:t('pg.leaves'),attendance:t('pg.attendance'),zkteco:t('pg.zkteco'),yarasoft:t('pg.yarasoft'),'cashier-monitor':'متابعة الكاشير','sales-analyzer':'تحليل مبيعات الكاشيرية','received-analyzer':'استلام المخازن','wh-vs-pos':'مقارنة الصرف والمبيعات','oracle-data':t('pg.oracle-data'),'whatsapp':t('pg.whatsapp'),'employee-portal':t('pg.employee-portal'),'hr-departments':t('pg.hr-departments'),payroll:t('pg.payroll'),permissions:t('pg.permissions'),branches:t('pg.branches')};
 document.getElementById('pageTitle').textContent = titles[page]||page;
 renderPage();
 }
@@ -390,7 +392,8 @@ if(titleEl) {titleEl.textContent = t('pg.departmentDetail');}
 renderPage();
 }
 function toggleSidebar(){ const sidebar=document.getElementById('sidebar'); if(!sidebar) {return;} if(window.matchMedia('(max-width: 900px)').matches){ sidebar.classList.toggle('mobile-open'); } else { sidebar.classList.toggle('collapsed'); } }
-function toggleLang(){ STATE.lang = STATE.lang==='ar'?'en':'ar'; persistLangLocal(); if(['admin','manager'].includes(STATE.currentUser?.role)) {saveData();} applyLangAttrs(); buildNav(); renderPage(); }
+function toggleLang(){ STATE.lang = STATE.lang==='ar'?'en':'ar'; persistLangLocal(); if(['admin','manager'].includes(STATE.currentUser?.role)) {saveData();} applyLangAttrs(); buildNav(); renderPage(); // مرآة طبقة KarimI18n (js/karim-i18n.js): نفس مفتاح localStorage — إبقاؤها متزامنة كي تُعاد ترجمة عقد [data-i18n] ويظل money() باللغة الصحيحة
+try{ if(window.KarimI18n) {window.KarimI18n.setLang(STATE.lang);} }catch(_){} }
 function toggleTheme(){ STATE.theme = STATE.theme==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',STATE.theme); if(['admin','manager'].includes(STATE.currentUser?.role)) {saveData();} }
 function isOperatingExpense(e){ const t=String(e?.adjustmentType||e?.adjustment_type||'').toLowerCase(); return !['dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction'].includes(t); }
 function accountingExpenseAmount(e){ return isOperatingExpense(e) ? Number(e?.amount||0) : 0; }

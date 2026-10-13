@@ -63,6 +63,26 @@ content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderYarasoftPage();
 setTimeout(()=>{content.style.opacity='1';},30);
 return;
+case 'cashier-monitor':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderCashierMonitor();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'sales-analyzer':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderSalesAnalyzerPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'received-analyzer':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderReceivedAnalyzerPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'wh-vs-pos':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderWhVsPosPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
 case 'yara-daily-locks':
 content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderDailyLocksPage();
@@ -83,11 +103,29 @@ content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderEmployeePortal();
 setTimeout(()=>{content.style.opacity='1';},30);
 return;
+case 'veg-requests':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderVegRequestsPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'branches':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderBranchesPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
 case 'hr-departments': html=renderHRDepartmentsPage(); break;
 case 'payroll': html=renderPayroll(); break;
 case 'cfo':
 content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderCfoPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'menu-board':
+content.innerHTML = `
+  <div style="width:100%;height:calc(100vh - 80px);border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.4);border:1px solid rgba(255,190,11,0.2);">
+    <iframe src="/app/menu-admin.html" style="width:100%;height:100%;border:none;background:#0b0d14;" title="شاشات المنيو"></iframe>
+  </div>
+`;
 setTimeout(()=>{content.style.opacity='1';},30);
 return;
 default: html=renderDashboard();

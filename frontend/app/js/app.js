@@ -109,11 +109,53 @@ const adminForceRemove = (entity, id) => apiFetch(`/${entity}/${id}?force=1`, { 
 // hit the real DB endpoint first: only touch local STATE + re-render once
 // PostgreSQL confirms the write, so the UI never shows data that didn't
 // actually persist.
+
+// Double-submit guard (مرآة لحارس السيرفر): الضغط المتكرر لا يُرسل أصلًا.
+// قفل للطلبات الجارية + ذاكرة «أُنشئ للتو» 90 ثانية للكيانات المالية.
+const _createInflight = new Map();
+const _createRecent = new Map();
+const CREATE_RECENT_MS = 90_000;
+function _createSig(body) {
+    const norm = (v) => {
+        if (v === null || v === undefined) return '';
+        if (Array.isArray(v)) return v.map(norm);
+        if (typeof v === 'object') {
+            const out = {};
+            for (const k of Object.keys(v).sort()) {
+                if (['requestedAt','createdAt','updatedAt','id','requestId','timestamp','_t','clientId','nonce'].includes(k)) {continue;}
+                out[k] = norm(v[k]);
+            }
+            return out;
+        }
+        if (typeof v === 'string') {
+            const s = v.trim();
+            return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : s;
+        }
+        return v;
+    };
+    try { return JSON.stringify(norm(body ?? {})); } catch (_) { return String(Math.random()); }
+}
 async function persistCreate(entity, localArrayPush, body) {
     const { id, ...cleanBody } = body;   // strip id — server auto-generates it
-    const saved = await apiCreate(entity, cleanBody);
-    localArrayPush(saved);
-    return saved;
+    const guarded = ['dispatches','revenues','expenses','purchaseInvoices','inventoryTx','kitchenReturns','salary_advances','payroll_adjustments','weightReadings','recipes'].includes(entity);
+    let key = null;
+    if (guarded) {
+        const now = Date.now();
+        for (const [k, v] of _createRecent) { if (now - v.at > 120_000) {_createRecent.delete(k);} }
+        key = entity + '|' + _createSig(cleanBody);
+        if (_createInflight.has(key)) {throw new Error('نفس الطلب قيد التنفيذ الآن — انتظر النتيجة');}
+        const prev = _createRecent.get(key);
+        if (prev && now - prev.at < CREATE_RECENT_MS) {throw new Error('تم تسجيل هذا الطلب للتو — تحقق من القائمة قبل إعادة المحاولة');}
+        _createInflight.set(key, true);
+    }
+    try {
+        const saved = await apiCreate(entity, cleanBody);
+        if (key) {_createRecent.set(key, { at: Date.now(), id: saved?.id ?? null });}
+        localArrayPush(saved);
+        return saved;
+    } finally {
+        if (key) {_createInflight.delete(key);}
+    }
 }
 async function persistUpdate(entity, id, body) {
     return apiUpdate(entity, id, body);
@@ -163,15 +205,18 @@ menus: {
     dispatch: '<i class=ji data-i=clipboard-list></i>',
     recipes: '<i class=ji data-i=utensils></i>',
     procurement: '<i class=ji data-i=shopping-cart></i>',
+    'veg-requests': '<i class=ji data-i=shopping-cart></i>',
     reports: '<i class=ji data-i=chart></i>',
     settings: '<i class=ji data-i=settings></i>',
     users: '<i class=ji data-i=users></i>',
+    branches: '<i class=ji data-i=building></i>',
     'hr-dashboard': '<i class=ji data-i=users></i>',
     employees: '<i class=ji data-i=user></i>',
     leaves: '<i class=ji data-i=calendar></i>',
     attendance: '<i class=ji data-i=timer></i>',
     zkteco: '<i class=ji data-i=user-check></i>',
     yarasoft: '<i class=ji data-i=shopping-cart></i>',
+    'cashier-monitor': '<i class=ji data-i=chart></i>',
     'oracle-data': '<i class=ji data-i=database></i>',
     whatsapp: '<i class=ji data-i=send></i>',
     'employee-portal': '<i class=ji data-i=home></i>',
@@ -179,7 +224,11 @@ menus: {
     payroll: '<i class=ji data-i=banknote></i>',
     permissions: '<i class=ji data-i=key></i>',
     'query': '<i class=ji data-i=search></i>',
-    professional: '<i class=ji data-i=credit-card></i>'
+    professional: '<i class=ji data-i=credit-card></i>',
+    'sales-analyzer': '<i class=ji data-i=chart></i>',
+    'received-analyzer': '<i class=ji data-i=package></i>',
+    'wh-vs-pos': '<i class=ji data-i=bar-chart></i>',
+    'menu-board': '<i class=ji data-i=tv></i> شاشات المنيو'
 }
 };
 

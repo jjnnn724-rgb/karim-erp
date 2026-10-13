@@ -17,7 +17,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport } = require('./punch-portal-logic');
+const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction } = require('./punch-portal-logic');
 const { createRateLimiter } = require('./rate-limiter');
 
 const router = express.Router();
@@ -32,13 +32,24 @@ const punchLimiter = createRateLimiter({
 
 // ─── الإعدادات الحية (من punch_settings — التغيير ينعكس بلا إعادة تشغيل) ────
 
+// كاش قصير (3 ثوانٍ): قراءة الإعدادات تحدث في كل محاولة بصمة/حالة/تسعير —
+// الكاش يوفر استعلامًا في كل طلب مع بقاء انعكاس التغيير الإداري عمليًا فوريًا (≤3 ثوانٍ).
+let _punchSettingsCache = null;
+let _punchSettingsCacheAt = 0;
+const PUNCH_SETTINGS_CACHE_MS = 3000;
+
 async function loadPunchSettings() {
+    if (_punchSettingsCache && Date.now() - _punchSettingsCacheAt < PUNCH_SETTINGS_CACHE_MS) {
+        return _punchSettingsCache;
+    }
     try {
         const { rows } = await pool.query('SELECT key, value FROM punch_settings');
-        return resolvePunchSettings(rows, process.env);
+        _punchSettingsCache = resolvePunchSettings(rows, process.env);
+        _punchSettingsCacheAt = Date.now();
+        return _punchSettingsCache;
     } catch (e) {
         logger.error('[punch-portal] تعذر قراءة الإعدادات — الافتراضي: الميزة مغلقة:', e.message);
-        // fail-safe: أي خلل في الإعدادات = الميزة مغلقة
+        // fail-safe: أي خلل في الإعدادات = الميزة مغلقة (ولا يُسمَّم الكاش بقيم خاطئة)
         return resolvePunchSettings([], process.env);
     }
 }
@@ -137,7 +148,7 @@ router.get('/status', jwtAuth, async (req, res, next) => {
 
 // ─── البصمة الذاتية ─────────────────────────────────────────────────────────
 
-router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'warehouse', 'employee'), async (req, res, next) => {
+router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), async (req, res, next) => {
     try {
         const settings = await loadPunchSettings();
 
@@ -174,19 +185,39 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         };
 
         const settings2 = { ...settings };
-        // L4: جلب الجهاز المربوط (قبل الحكم حتى يُسجَّل في التفاصيل)
+        // L4: جلب الجهاز المربوط (قبل الحكم حتى يُسجَّل في التفاصيل).
+        // الربط الذاتي (2026-10-04): جهاز جديد لحساب مربوط = إعادة ربط فورية بدل
+        // الرفض الدائم — العطل الأصلي كان: أي reinstall/مسح بيانات/متصفح مختلف
+        // يولّد معرّفًا جديدًا فيُحبس الموظف على رسالة «تواصل مع HR» بلا أي أداة
+        // فك ربط في النظام. كل إعادة ربط تُوثَّق بإشارة DEVICE_REBOUND في السجل.
+        let reboundSignal = null;
+        let pendingDeviceRebind = false; // يُنفَّذ بعد اجتياز كل الطبقات (نقطة الربط الأصلية أدناه)
         const employee = await getEmployeeForUser(req.user.id);
         if (settings.deviceBinding) {
             const bound = employee ? await getBoundDevice(req.user.id) : null;
-            evaluateInput.boundDeviceId = bound;
+            const heal = resolveDeviceBindingAction(settings, deviceId, bound);
+            if (heal.action === 'rebind') {
+                // نؤجل الكتابة حتى اجتياز الجيوفانس/الوجه — المحاولة المرفوضة
+                // لا تغيّر الربط أبدًا (نفس دلالة «أول بصمة ناجحة تربط الجهاز»)
+                evaluateInput.boundDeviceId = deviceId; // أصبح مطابقًا — L4 يمر
+                pendingDeviceRebind = true;
+                reboundSignal = 'DEVICE_REBOUND';
+            } else if (heal.action === 'skip') {
+                // العميل بلا معرّف جهاز قابل للتخزين (localStorage محجوب) — ربط
+                // الجهاز لا معنى له هنا؛ بقية الطبقات (شبكة/موقع/وجه/تنقل) مفروضة
+                settings2.deviceBinding = false;
+                reboundSignal = 'DEVICE_ID_ABSENT';
+            } else {
+                evaluateInput.boundDeviceId = bound;
+            }
         }
 
         const verdict = evaluatePunch(settings2, evaluateInput);
 
         // الإشارات الموثقة: ناتج المحرك (تجميد/واقعية…) + إشارات الجهاز المفصولة
         const baseSignals = Array.isArray(verdict.details.trustSignals) ? verdict.details.trustSignals : [];
-        const mergedTrustSignals = (baseSignals.length || spoofSignals.length)
-            ? [...spoofSignals, ...baseSignals]
+        const mergedTrustSignals = (baseSignals.length || spoofSignals.length || reboundSignal)
+            ? [...spoofSignals, ...(reboundSignal ? [reboundSignal] : []), ...baseSignals]
             : null;
 
         const auditBase = {
@@ -236,7 +267,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                 PUNCH_LOCATION_WEAK: 'إشارة الموقع ضعيفة أو قديمة — انتظر لحظات وأعد المحاولة قرب نافذة مفتوحة',
                 PUNCH_OUT_OF_RANGE: 'أنت خارج نطاق المطعم — البصمة متاحة من داخل المطعم فقط',
                 PUNCH_DEVICE_REQUIRED: 'معرّف الجهاز مفقود — سجل الدخول من التطبيق من جديد',
-                PUNCH_DEVICE_MISMATCH: 'هذا الجهاز غير مربوط بحسابك — تواصل مع الموارد البشرية لفك الربط',
+                PUNCH_DEVICE_MISMATCH: 'هذا الجهاز غير مربوط بحسابك — فعّل «الربط التلقائي للجهاز» من إعدادات البصمة أو اطلب فك الربط من الإدارة',
             };
             const statusMap = {
                 PUNCH_OUT_OF_NETWORK: 403, PUNCH_OUT_OF_RANGE: 403,
@@ -315,8 +346,14 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                                 return res.status(403).json({ ok: false, error: 'PUNCH_FACE_MISMATCH', message: 'الوجه غير مطابق لصاحب الحساب — البصمة مرفوضة' });
                             }
                             faceDistance = Math.round((1 - sim) * 10000) / 10000;
+                        } else {
+                            // FIX 2026-10-11 (M17): v2 template exists but face not detected —
+                            // was silently falling through to v1 (bypass). Now reject when v2
+                            // is the active gate and no face is found in the image.
+                            faceV2Handled = true;
+                            await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: 'PUNCH_FACE_NO_FACE' });
+                            return res.status(403).json({ ok: false, error: 'PUNCH_FACE_NO_FACE', message: 'لم يتم رصد وجه في الصورة — أعد المحاولة بإضاءة جيدة' });
                         }
-                        // بلا وجه واضح في اللقطة (إضاءة/زاوية) → نسقط إلى v1 بدل الرفض
                     }
                 }
             } catch (_) { /* أي خلل في v2 يسقط إلى v1 — لا حجب تشغيلي */ }
@@ -346,14 +383,27 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             }
         }
 
-        // L4: أول بصمة ناجحة تربط الجهاز
+        // L4: أول بصمة ناجحة تربط الجهاز — وإعادة الربط الذاتي المؤجلة تنفَّذ هنا
+        // (بعد اجتياز الشبكة والجيوفانس والوجه) فالمرفوض لا يغيّر الربط أبدًا
         if (settings.deviceBinding && deviceId) {
             const bound = await getBoundDevice(req.user.id);
-            if (!bound) {
+            if (!bound || pendingDeviceRebind) {
+                if (pendingDeviceRebind && bound) {
+                    await pool.query(
+                        'UPDATE punch_devices SET active = FALSE WHERE user_id = $1 AND device_id <> $2 AND active = TRUE',
+                        [req.user.id, deviceId]
+                    );
+                    logger.info('[punch-portal] جهاز جديد رُبط تلقائيًا (self-heal)', {
+                        userId: req.user.id,
+                        username: req.user.username || null,
+                        from: String(bound || '').slice(0, 8),
+                        to: String(deviceId).slice(0, 8),
+                    });
+                }
                 await pool.query(
                     `INSERT INTO punch_devices (user_id, device_id, bound_ip)
                      VALUES ($1, $2, $3)
-                     ON CONFLICT (user_id, device_id) DO UPDATE SET active = TRUE, last_seen_at = NOW()`,
+                     ON CONFLICT (user_id, device_id) DO UPDATE SET active = TRUE, bound_ip = $3, last_seen_at = NOW()`,
                     [req.user.id, deviceId, remoteIp]
                 );
             }
@@ -371,7 +421,8 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             date: `${parts.year}-${parts.month}-${parts.day}`,
             hour: Number(parts.hour) % 24,
             minute: Number(parts.minute),
-            time: `${parts.hour}:${parts.minute}`,
+            // منتصف الليل بصيغة hour12:false يأتي "24" — يُطبَّع 00 وإلا انفجرت تقارير ::time
+            time: `${String(Number(parts.hour) % 24).padStart(2, '0')}:${parts.minute}`,
         };
 
         // القلب: نفس محرك الحضور الذكي القائم — لا منطق موازٍ إطلاقًا
@@ -421,7 +472,7 @@ const CLIENT_REJECT_CODES = new Set([
     'PUNCH_LOCATION_MOCKED_CLIENT',
     'PUNCH_LOCATION_UNAVAILABLE_CLIENT',
 ]);
-router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'warehouse', 'employee'), async (req, res, next) => {
+router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), async (req, res, next) => {
     try {
         const raw = String(req.body?.reason || '');
         const rejectCode = CLIENT_REJECT_CODES.has(raw) ? raw : 'PUNCH_CLIENT_REJECTED';
@@ -454,6 +505,7 @@ const PUNCH_SETTING_KEYS = {
     punch_portal_enabled:   { type: 'bool' },
     punch_geofence_enabled: { type: 'bool' },
     punch_device_binding:   { type: 'bool' },
+    punch_device_auto_rebind: { type: 'bool' },
     punch_selfie_enabled:   { type: 'bool' },
     punch_radius_meters:    { type: 'int', min: 50, max: 500 },
     punch_max_accuracy_m:   { type: 'int', min: 10, max: 200 },
@@ -521,6 +573,43 @@ router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
         }
         const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
         res.json({ ok: true, settings: rows });
+    } catch (e) { next(e); }
+});
+
+// ─── إدارة الأجهزة المربوطة (L4) — admin/hr ─────────────────────────────────
+// الرسالة القديمة كانت تقول «تواصل مع الموارد البشرية لفك الربط» بلا أي أداة
+// فعلية — هذه هي الأداة: قائمة الأجهزة + فك ربط بنقرة (البصمة التالية تربط تلقائيًا).
+
+// قائمة الأجهزة المربوطة النشطة
+router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT d.user_id, u.username, u.name, d.device_id, d.bound_ip, d.bound_at, d.last_seen_at
+              FROM punch_devices d LEFT JOIN users u ON u.id = d.user_id
+              WHERE d.active = TRUE
+              ORDER BY u.username NULLS LAST, d.bound_at DESC`
+        );
+        res.json({ ok: true, devices: rows });
+    } catch (e) { next(e); }
+});
+
+// فك ربط أجهزة مستخدم — البصمة التالية من أي جهاز تربطه من جديد تلقائيًا
+router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+    try {
+        const userId = Number(req.params.userId);
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(422).json({ ok: false, error: 'USER_ID_INVALID', message: 'معرّف مستخدم غير سليم' });
+        }
+        const r = await pool.query(
+            'UPDATE punch_devices SET active = FALSE WHERE user_id = $1 AND active = TRUE RETURNING device_id',
+            [userId]
+        );
+        logger.info('[punch-portal] فك ربط أجهزة مستخدم (إداري)', {
+            userId,
+            by: req.user.username || null,
+            unbound: r.rows.length,
+        });
+        res.json({ ok: true, unbound: r.rows.length });
     } catch (e) { next(e); }
 });
 

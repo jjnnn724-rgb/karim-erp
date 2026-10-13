@@ -1,4 +1,4 @@
-/**
+﻿/**
  * features/hr.js — extracted verbatim from app.js (see docs/esm-migration/MIGRATION_CHANGE_LOG.md).
  * Bridge policy: all top-level bindings are mounted on window by js/main.js (see BRIDGE log).
  */
@@ -67,8 +67,11 @@ STATE.charts.attendance = new Chart(ctx2,{type:'line',data:{labels:last7Days.map
 // ATTENDANCE
 // ============================================
 function renderAttendance(){
-const isAdmin=['admin','hr','manager'].includes(STATE.currentUser.role);
-if(!isAdmin){
+const role=STATE.currentUser.role;
+const isAdmin=['admin','hr','manager'].includes(role);
+const isDeptHead=role==='dept_head';
+// dept_head: جدول سجل حضور/انصراف موظفي قسمه (عرض فقط) — البيانات نفسها مقيدة على السيرفر
+if(!isAdmin && !isDeptHead){
 const emp=STATE.employees.find(e=>e.userId===STATE.currentUser.id);
 if(!emp) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لم يتم ربط حسابك بملف موظف</div>';}
 const todayRecord=STATE.attendance.find(a=>a.employeeId===emp.id&&a.date===today());
@@ -103,9 +106,12 @@ const presentCount=rangeRecords.filter(a=>a.checkIn).length;
 const totalDays=new Set(rangeRecords.map(a=>a.date)).size;
 // إجمالي الساعات من النصوص المعروضة أولًا (يمنع تضخم قيم شاذة كـ 25:43)
 const totalKarim=rangeRecords.reduce((s,a)=>{const m=attRawMinutes(a);return s+(m==null?(a.workMinutes?Number(a.workMinutes):0):m)/60;},0);
-const activeEmployees=STATE.employees.filter(e=>e.status==='active');
+// dept_head: قائمة الموظفين الظاهرة هي موظفو قسمه فقط (من /hr/dept-employees)
+const visibleEmployees=isDeptHead?(STATE.deptEmployees||[]):STATE.employees;
+if(isDeptHead){ensureDeptEmpsForAtt();}
+const activeEmployees=visibleEmployees.filter(e=>e.status==='active');
 // ─── ترقيم صفحات الجدول (100 صف/صفحة) + فهارس — يمنع تهنيج المتصفح ───
-const empMap=new Map((STATE.employees||[]).map(e=>[String(e.id),e]));
+const empMap=new Map((visibleEmployees||[]).map(e=>[String(e.id),e]));
 const attQ=String(STATE.attSearch||'').trim().toLowerCase();
 const normAr=s=>String(s||'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').toLowerCase();
 const nq=normAr(attQ);
@@ -154,12 +160,13 @@ return `
 </div>
 <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center">
 <input type="search" id="attSearch" placeholder="بحث بالاسم أو الكود أو القسم..." value="${esc(STATE.attSearch||'')}" oninput="attSearchFilter(this.value)" style="min-width:180px">
-<button class="btn btn-gold btn-sm" onclick="scanAttendanceKiosk()"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
-<button class="btn btn-blue btn-sm" onclick="openShiftsPanel()"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>
+${!isDeptHead?`<button class="btn btn-gold btn-sm" onclick="scanAttendanceKiosk()"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
+<button class="btn btn-blue btn-sm" onclick="openShiftsPanel()"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>`:''}
 <button class="btn btn-blue btn-sm" onclick="exportAttendanceExcel()"><i class=ji data-i=inbox></i> تصدير Excel</button>
-<button class="btn btn-green btn-sm" onclick="printMonthlyAttendance()"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
+${!isDeptHead?`<button class="btn btn-green btn-sm" onclick="printMonthlyAttendance()"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
 <button class="btn btn-blue btn-sm" onclick="runStrictAuditUI()"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
 <button class="btn btn-gold btn-sm" onclick="attGapsToggle()"><i class=ji data-i=alert-triangle></i> مراجعة نواقص الشهر</button>
+`:''}
 ${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" onclick="revertAllInferred()" title="إلغاء كل الاستكمال التلقائي"><i class=ji data-i=undo></i> إلغاء الاستكمال للكل</button>` : ''}
 <span class="text-muted" style="margin-inline-start:auto">صفحة ${fN(STATE.attPage)} من ${fN(attPages)} — ${fN(allRecs.length)} سجل (شامل الغياب)</span>
 <button class="btn btn-sm" ${STATE.attPage<=1?'disabled':''} onclick="attPageGo(-1)">السابق</button>
@@ -199,8 +206,18 @@ return `<tr data-date="${record.date}">
 </table>
 </div>
 </div>
-${attExceptionsBox()}
+${attExceptionsBox(visibleEmployees)}
 `;
+}
+// موظفو قسم رئيس القسم — تُحمّل مرة واحدة وتُستخدم لجدول الحضور المقيد
+function ensureDeptEmpsForAtt(){
+if(STATE._deptEmpsLoading || (STATE.deptEmployees||[]).length) {return;}
+STATE._deptEmpsLoading=true;
+apiFetch('/hr/dept-employees').then(d=>{
+STATE.deptEmployees=Array.isArray(d?.employees)?d.employees:[];
+STATE._deptEmpsLoading=false;
+renderPage();
+}).catch(()=>{STATE._deptEmpsLoading=false;});
 }
 async function attRangeChange(){
 const f=document.getElementById('attFrom')?.value;
@@ -244,10 +261,10 @@ return null;
 }
 function attRawHours(a){
 const m=attRawMinutes(a);
-return m==null?'—':(m/60).toFixed(1);
+return m==null?'—':(m/60).toFixed(2);
 }
 // ─── صندوق الاستثناءات: غياب/تأخير/انصراف مبكر/بصمة ناقصة في مكان واحد ───
-function attExceptionsBox(){
+function attExceptionsBox(emps){
   const d = today();
   const leaves = (STATE.leaveRequests || []).filter(l => l.status === 'approved' && String(l.startDate) <= d && d <= String(l.endDate));
   const excused = new Set(leaves.map(l => String(l.employeeId)));
@@ -258,7 +275,7 @@ function attExceptionsBox(){
     early: { label: 'انصراف مبكر', cls: 'bdg-orange' },
     missing: { label: 'بصمة ناقصة', cls: 'bdg-blue' },
   };
-  (STATE.employees || []).filter(e => e.status === 'active').forEach(emp => {
+  ((Array.isArray(emps) ? emps : STATE.employees) || []).filter(e => e.status === 'active').forEach(emp => {
     const rec = (STATE.attendance || []).find(a => String(a.employeeId) === String(emp.id) && a.date === d);
     let type = null, detail = '';
     if(!rec || (!rec.checkIn && !rec.checkOut)){ type = 'absent'; detail = 'لا بصمات اليوم'; }
@@ -282,7 +299,7 @@ function attExceptionsBox(){
     let b = toMin(r.rec.checkOut);
     if(b == null) {b = (r.rec.date || d) === d ? nowMin : a;} // بصمة ناقصة اليوم: حتى الآن
     let diff = b - a; if(diff < 0) {diff += 24 * 60;}
-    return (diff / 60).toFixed(1);
+    return (diff / 60).toFixed(2);
   };
   return `<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=siren></i> صندوق الاستثناءات — اليوم (${attWeekday(d)}) (${open} مفتوح)</h3></div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>النوع</th><th>التفاصيل</th><th>بصمة الحضور</th><th>بصمة الانصراف</th><th>ساعات العمل</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
@@ -385,7 +402,9 @@ function attCalcTimes(ci, co, shiftStart){
 const toMin=t=>{ const m=String(t).match(/^(\d{2}):(\d{2})/); return Number(m[1])*60+Number(m[2]); };
 let workMinutes=null;
 if(ci&&co){ let d=toMin(co)-toMin(ci); if(d<0) {d+=1440;} workMinutes=d; }
-const late=ci?toMin(ci)>toMin(shiftStart):false;
+// FIX 2026-10-11: add 15-min grace (same as shift-day.js + smart-card.js + backend)
+const GRACE_MIN = 15;
+const late=ci?toMin(ci)>toMin(shiftStart)+GRACE_MIN:false;
 return {workMinutes, late};
 }
 async function attResolveSave(empId, date, recordId){
@@ -483,7 +502,7 @@ let workMinutes=rec.workMinutes;
 if(ci&&co){ let d=toMin(co)-toMin(ci); if(d<0) {d+=1440;} workMinutes=d; }
 const emp=(STATE.employees||[]).find(e=>String(e.id)===String(rec.employeeId));
 const shiftStart=String(emp?.shift_start||'').match(/^\d{2}:\d{2}/)?emp.shift_start:String(STATE.settings?.workStartHour??9).padStart(2,'0')+':00';
-const late=ci?toMin(ci)>toMin(shiftStart):!!rec.late;
+const late=ci?toMin(ci)>toMin(shiftStart)+15:!!rec.late; // سماحية 15 دقيقة (قرار المالك 2026-10-10)
 const audit=`[تصحيح يدوي ${today()} بواسطة ${STATE.currentUser?.name||''}: ${reason}]`;
 const notes=[rec.notes, audit].filter(Boolean).join(' | ');
 showLoad();

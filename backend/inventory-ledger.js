@@ -110,7 +110,7 @@ async function postInventoryLedgerEntry(client, input = {}) {
         unitCost, Number((Math.abs(delta) * unitCost).toFixed(4)), input.batchId || null,
         input.lotNumber || null, input.expiryDate || null, input.sourceLocationId || null,
         input.destinationLocationId || null, input.referenceType || null, input.referenceId || null,
-        input.businessDate || new Date().toISOString().slice(0, 10), input.shiftId || null,
+        input.businessDate || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date()), input.shiftId || null,
         input.userId || null, correlationId, idempotencyKey, input.reason || transactionType, JSON.stringify(metadata),
         catchWeightQty, catchWeightUnit]
     );

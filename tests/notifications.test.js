@@ -133,9 +133,9 @@ describe('مسارات الإشعارات — أدوات نقية', () => {
 describe('نصوص سلسلة اعتماد طلبات الصرف', () => {
     const dispatch = { id: 77, deptName: 'قسم السلطات', creatorUserId: 4, createdBy: 'head_salads' };
 
-    test('تقديم رئيس قسم يوجَّه للشيف العمومي', () => {
+    test('تقديم رئيس قسم يوجَّه للشيف العمومي والسو شيف', () => {
         const spec = buildChainNotification(dispatch, 'created_pending_chef');
-        expect(spec.targetRoles).toEqual(['kitchen']);
+        expect(spec.targetRoles).toEqual(['kitchen', 'sous_chef']);
         expect(spec.title).toContain('طلب صرف جديد');
         expect(spec.message).toContain('قسم السلطات');
     });
@@ -160,13 +160,13 @@ describe('نصوص سلسلة اعتماد طلبات الصرف', () => {
 
     test('صرف المخازن يُشعِر مقدم الطلب والشيف', () => {
         const spec = buildChainNotification(dispatch, 'warehouse_approved');
-        expect(spec.targetRoles).toEqual(['kitchen']);
+        expect(spec.targetRoles).toEqual(['kitchen', 'sous_chef']);
         expect(spec.targetCreator).toBe(true);
     });
 
-    test('الاستلام والإرجاع يخاطبان المخازن والشيف', () => {
-        expect(buildChainNotification(dispatch, 'received').targetRoles.sort()).toEqual(['kitchen', 'warehouse']);
-        expect(buildChainNotification(dispatch, 'returned').targetRoles.sort()).toEqual(['kitchen', 'warehouse']);
+    test('الاستلام والإرجاع يخاطبان المخازن والشيف والسو شيف', () => {
+        expect(buildChainNotification(dispatch, 'received').targetRoles.sort()).toEqual(['kitchen', 'sous_chef', 'warehouse']);
+        expect(buildChainNotification(dispatch, 'returned').targetRoles.sort()).toEqual(['kitchen', 'sous_chef', 'warehouse']);
     });
 
     test('حدث مجهول يعيد null بلا أخطاء', () => {

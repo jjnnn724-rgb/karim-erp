@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 const http = require('http');
+const https = require('https');
 const { Client } = require('pg');
 const crypto = require('crypto');
 
 const BASE_HOST = process.env.TEST_HOST || '127.0.0.1';
 const BASE_PORT = Number(process.env.TEST_PORT || process.env.PORT || 5000);
+// TEST_PROTOCOL=https لاستهداف نسخة HTTPS معزولة (شهادة ذاتية التوقيع تُقبل دائمًا هنا)
+const TEST_PROTOCOL = String(process.env.TEST_PROTOCOL || 'http');
+const TEST_AGENT = TEST_PROTOCOL === 'https'
+  ? new https.Agent({ rejectUnauthorized: false, keepAlive: true })
+  : undefined;
 const TEST_DB_NAME = String(process.env.KARIM_TEST_DB_NAME || '');
 const DB_CONFIG = {
   host: process.env.DB_HOST || '127.0.0.1',
@@ -18,19 +24,23 @@ let pass = 0;
 let fail = 0;
 const failures = [];
 const created = { productId: null, sessionId: null, heldId: null };
+// مفتاح التطبيق يُسلَّم مع الاستجابة من /api/auth/login ويُلزم في كل نداء بيانات
+let APP_KEY = '';
 
 function request(method, path, body, token, extra = {}) {
   return new Promise((resolve) => {
     const data = body === undefined ? null : JSON.stringify(body);
-    const req = http.request({
+    const req = (TEST_PROTOCOL === 'https' ? https : http).request({
       host: BASE_HOST,
       port: BASE_PORT,
       path,
       method,
+      ...(TEST_AGENT ? { agent: TEST_AGENT } : {}),
       headers: {
         Accept: 'application/json',
         ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(APP_KEY ? { 'x-api-key': APP_KEY } : {}),
         ...extra,
       },
     }, (res) => {
@@ -111,6 +121,7 @@ async function main() {
     const login = await request('POST', '/api/auth/login', { username: 'admin', password: adminPassword });
     check('تسجيل الدخول', login.status === 200 && !!login.json?.access_token, `HTTP ${login.status}`);
     const token = login.json?.access_token;
+    APP_KEY = login.json?.app_key || login.json?.appKey || '';
     if (!token) {throw new Error('No token');}
 
     const departments = await request('GET', '/api/pos/departments', undefined, token);

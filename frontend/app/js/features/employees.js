@@ -401,7 +401,7 @@ ${attendanceRecords.length>0?`
 <tbody>
 ${attendanceRecords.map(a=>{
 const krmH = portalWorkHours(a);
-const krm = krmH != null ? krmH.toFixed(1) : '—';
+const krm = krmH != null ? krmH.toFixed(2) : '—';
 return `<tr><td>${fD(a.date)}</td><td class="c-green">${a.checkIn||'—'}</td><td class="c-red">${a.checkOut||'—'}</td><td class="c-gold">${krm} ساعة</td></tr>`;
 }).join('')}
 </tbody>

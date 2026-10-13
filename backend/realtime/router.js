@@ -47,10 +47,10 @@ async function authorizeEventForUser(event, user) {
         // TASK 9: أُضيفت purchase/inventory/hr/expense لمنتجي الوحدات الجدد.
         const permRoles = {
             'sale.view': ['admin', 'manager', 'auditor', 'cashier', 'accountant'],
-            'dispatch.view': ['admin', 'manager', 'auditor', 'warehouse', 'kitchen', 'dept_head'],
+            'dispatch.view': ['admin', 'manager', 'auditor', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'],
             'revenue.view': ['admin', 'manager', 'auditor', 'accountant', 'cashier'],
             'purchase.view': ['admin', 'manager', 'auditor', 'accountant', 'warehouse'],
-            'inventory.view': ['admin', 'manager', 'auditor', 'accountant', 'warehouse', 'kitchen'],
+            'inventory.view': ['admin', 'manager', 'auditor', 'accountant', 'warehouse', 'kitchen', 'sous_chef'],
             'hr.view': ['admin', 'manager', 'auditor', 'hr'],
             'expense.view': ['admin', 'manager', 'auditor', 'accountant'],
         };

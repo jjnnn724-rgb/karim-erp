@@ -30,21 +30,37 @@ function ownershipScope(userId) {
     return { clause: '(user_id = $1 OR user_id IS NULL)', params: [Number(userId)] };
 }
 
+// M21 (2026-10-11): effective-read predicate.
+// Personal notifications: read column on the row.
+// Public (user_id NULL): a row in notification_reads for this user.
+function effectiveReadSql(userId) {
+    return `(n.read = true OR (n.user_id IS NULL AND EXISTS (SELECT 1 FROM notification_reads nr WHERE nr.notification_id = n.id AND nr.user_id = $1)))`;
+}
+
 router.get('/', async (req, res) => {
     try {
         await ensureNotificationsSchema();
-        const scope = ownershipScope(req.user.id);
-        const rows = (await pool.query(
-            `SELECT id, title, message, type, date, read, user_id, entity, entity_id, link, created_at
-               FROM notifications WHERE ${scope.clause}
-              ORDER BY created_at DESC, id DESC LIMIT 50`,
-            scope.params
-        )).rows;
-        const unread = (await pool.query(
-            `SELECT COUNT(*)::int AS count FROM notifications WHERE ${scope.clause} AND read = false`,
-            scope.params
-        )).rows[0].count;
-        res.json({ notifications: rows, unread_count: Number(unread) });
+        const uid = Number(req.user.id);
+        // PERF-6: list + unread count are independent → run in parallel
+        const [listRes, unreadRes] = await Promise.all([
+            pool.query(
+                `SELECT n.id, n.title, n.message, n.type, n.date, n.user_id, n.entity, n.entity_id, n.link, n.created_at,
+                        (n.read = true OR (n.user_id IS NULL AND EXISTS (
+                            SELECT 1 FROM notification_reads nr WHERE nr.notification_id = n.id AND nr.user_id = $1
+                        ))) AS read
+                   FROM notifications n
+                  WHERE (n.user_id = $1 OR n.user_id IS NULL)
+                  ORDER BY n.created_at DESC, n.id DESC LIMIT 50`,
+                [uid]
+            ),
+            pool.query(
+                `SELECT COUNT(*)::int AS count FROM notifications n
+                  WHERE (n.user_id = $1 OR n.user_id IS NULL)
+                    AND NOT ${effectiveReadSql(uid)}`,
+                [uid]
+            ),
+        ]);
+        res.json({ notifications: listRes.rows, unread_count: Number(unreadRes.rows[0].count) });
     } catch (error) {
         logger.error('[notifications_list]', error);
         res.status(500).json({ error: 'NOTIFICATIONS_LIST_FAILED', message: 'تعذر تحميل الإشعارات' });
@@ -88,13 +104,22 @@ router.post('/read', async (req, res) => {
         await ensureNotificationsSchema();
         const ids = parseNotificationIds(req.body?.ids);
         if (!ids.length) {return fail(res, 422, 'NOTIFICATION_IDS_REQUIRED', 'قائمة معرفات الإشعارات مطلوبة');}
-        // $1 = صاحب الصندوق، $2 = المعرفات — ترتيب ثابت لتفادي تعارض المواضع
-        const updated = await pool.query(
+        const uid = Number(req.user.id);
+        // M21: personal → UPDATE read column; public → INSERT into notification_reads
+        const personal = await pool.query(
             `UPDATE notifications SET read = true, read_at = CURRENT_TIMESTAMP
-              WHERE (user_id = $1 OR user_id IS NULL) AND id = ANY($2::bigint[]) AND read = false RETURNING id`,
-            [Number(req.user.id), ids]
+              WHERE user_id = $1 AND id = ANY($2::bigint[]) AND read = false RETURNING id`,
+            [uid, ids]
         );
-        res.json({ updated: updated.rowCount });
+        const pub = await pool.query(
+            `INSERT INTO notification_reads (notification_id, user_id)
+             SELECT id, $1 FROM notifications
+              WHERE user_id IS NULL AND id = ANY($2::bigint[])
+             ON CONFLICT (notification_id, user_id) DO NOTHING
+             RETURNING notification_id`,
+            [uid, ids]
+        );
+        res.json({ updated: personal.rowCount + pub.rowCount });
     } catch (error) {
         logger.error('[notifications_read]', error);
         res.status(500).json({ error: 'NOTIFICATIONS_READ_FAILED', message: 'تعذر تعليم الإشعارات كمقروءة' });
@@ -104,13 +129,22 @@ router.post('/read', async (req, res) => {
 router.post('/read-all', async (req, res) => {
     try {
         await ensureNotificationsSchema();
-        const scope = ownershipScope(req.user.id);
-        const updated = await pool.query(
+        const uid = Number(req.user.id);
+        // M21: personal → UPDATE read column; public → INSERT into notification_reads
+        const personal = await pool.query(
             `UPDATE notifications SET read = true, read_at = CURRENT_TIMESTAMP
-              WHERE ${scope.clause} AND read = false`,
-            scope.params
+              WHERE user_id = $1 AND read = false`,
+            [uid]
         );
-        res.json({ updated: updated.rowCount });
+        const pub = await pool.query(
+            `INSERT INTO notification_reads (notification_id, user_id)
+             SELECT id, $1 FROM notifications
+              WHERE user_id IS NULL
+                AND NOT EXISTS (SELECT 1 FROM notification_reads nr WHERE nr.notification_id = notifications.id AND nr.user_id = $1)
+             ON CONFLICT (notification_id, user_id) DO NOTHING`,
+            [uid]
+        );
+        res.json({ updated: personal.rowCount + pub.rowCount });
     } catch (error) {
         logger.error('[notifications_read_all]', error);
         res.status(500).json({ error: 'NOTIFICATIONS_READ_ALL_FAILED', message: 'تعذر تعليم الإشعارات كمقروءة' });

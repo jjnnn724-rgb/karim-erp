@@ -98,14 +98,69 @@ window.toggleLoginPassword = toggleLoginPassword;
             showErr('فشل الاتصال بالخادم');
         }
     }
+    // ── ROOT FIX (2026-10-13) للضغطتين على زر الدخول ─────────────────
+    //
+    // التشخيص: main.js وحدة ES تحمّل عشرات الوحدات الفرعية قبل أن تصل
+    // `window.doLogin` (يُجسر في main.js:126). أي مستخدم يضغط قبل اكتمالها
+    // كان يقع في المسار الاحتياطي الذي ينفّذ location.reload() — فيعود إلى
+    // شاشة الدخول ويضطر للضغط مرة ثانية. وهذا نفسه سبب انطباع "التعليق":
+    // الزر يبدو ميتًا لثوانٍ أثناء تحميل الوحدات.
+    //
+    // الحل الجذري: نفرّق بين حالتين.
+    //   • التطبيق لم ينتهِ بعد → ننتظر حدث karim:bridges-ready ثم ننفّذ doLogin
+    //     الحقيقي (نفس المسار الطبيعي، بلا أي إعادة تحميل).
+    //   • التطبيق سقط فعلًا (اكتمل بلا doLogin) → الطوارئ القديمة.
+    //
+    // ملاحظة تقنية: main.js ينفّذ document.dispatchEvent(new Event(...)) بلا
+    // bubbles، لذا الاستماع على window لن يُنادَى أبدًا — نستمع على document.
+    const BRIDGES_TIMEOUT_MS = 20000;
+    let appWaitPending = false; // يمنع تسجيل انتظار مكرر (Enter + Click متتاليان)
+    function whenAppReady(cb) {
+        if (window.__karimBridgesReady) { cb(); return; }
+        let settled = false;
+        function finish() {
+            if (settled) { return; }
+            settled = true;
+            appWaitPending = false;
+            clearTimeout(timer);
+            document.removeEventListener('karim:bridges-ready', finish);
+            cb();
+        }
+        const timer = setTimeout(finish, BRIDGES_TIMEOUT_MS);
+        document.addEventListener('karim:bridges-ready', finish);
+    }
+    function setWaiting(on) {
+        const b = document.getElementById('loginBtn');
+        if (!b) { return; }
+        if (on) {
+            if (b.disabled) { return; }
+            b.dataset.waitHTML = b.innerHTML;
+            b.disabled = true;
+            b.setAttribute('aria-busy', 'true');
+            b.innerHTML = '<i class="ji" data-i="hourglass"></i> جارٍ تحميل النظام…';
+        } else {
+            b.disabled = false;
+            b.removeAttribute('aria-busy');
+            if (b.dataset.waitHTML) { b.innerHTML = b.dataset.waitHTML; delete b.dataset.waitHTML; }
+        }
+    }
     function onClick() {
-        if (typeof window.doLogin === 'function') {return;} // المسار الطبيعي يتولى
-        emergencyLogin();
+        if (typeof window.doLogin === 'function') { return; } // المسار الطبيعي يتولى
+        if (appWaitPending) { return; }                        // ضغطتان/Enter أثناء الانتظار = نداء واحد
+        if (!window.__karimBridgesReady) { appWaitPending = true; setWaiting(true); }
+        whenAppReady(function () {
+            setWaiting(false);
+            if (typeof window.doLogin === 'function') {
+                try { window.doLogin(); } catch { /* doLogin سقط — نترك الطوارئ تليها */ }
+                return;
+            }
+            emergencyLogin();
+        });
     }
     function onEnter(e) {
-        if (!e || e.key !== 'Enter') {return;}
-        if (typeof window.doLogin === 'function') { try { window.doLogin(); } catch (_) {} return; }
-        emergencyLogin();
+        if (!e || e.key !== 'Enter') { return; }
+        if (typeof window.doLogin === 'function') { try { window.doLogin(); } catch { /* doLogin سقط */ } return; }
+        onClick();
     }
     const btn = document.getElementById('loginBtn');
     if (btn && !btn.dataset.fallbackBound) { btn.addEventListener('click', onClick); btn.dataset.fallbackBound = 'true'; }
@@ -116,9 +171,12 @@ window.toggleLoginPassword = toggleLoginPassword;
 // ─── تسجيل الـ Service Worker ───
 // ملاحظة: isSecureContext = false حين يفتح الجوال الشبكة الداخلية بشهادة غير
 // موثوقة (تجاوز تحذير الشهادة) — عندها لا يسجل الـ SW ولا يظهر خيار تثبيت
-// الـ PWA؛ الحل بيئي: تثبيت شهادة الـ CA على الجوال أو الدخول عبر نطاق التونل.
+// الـ PWA؛ حل بيئي: تثبيت شهادة الـ CA على الجوال أو الدخول عبر نطاق التونل.
+// 2026-10-11: ?v= + update() عند كل تحميل — يجبر تحديث الكاش فورًا بعد أي رفع.
 if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
+        navigator.serviceWorker.register('/app/sw.js?v=4.9.75', { scope: '/app/' })
+            .then(function (reg) { try { reg.update(); } catch (_) {} })
+            .catch(function () {});
     });
 }

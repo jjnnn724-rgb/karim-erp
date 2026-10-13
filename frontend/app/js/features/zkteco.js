@@ -34,6 +34,7 @@ content.innerHTML = `
 <h3 class="u-gold-strong"><i class=ji data-i=user-check></i> أجهزة بصمة الحضور</h3>
 <div class="u-row-wrap">
 ${canWrite?`<button class="btn btn-gold" onclick="zkAddDeviceModal()"><i class=ji data-i=plus></i> إضافة جهاز</button>`:''}
+${canWrite?`<button class="btn btn-teal" onclick="zkScanNetwork()"><i class=ji data-i=search></i> مسح الشبكة</button>`:''}
 <button class="btn btn-blue btn-sm" onclick="zkRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
 </div>
@@ -59,6 +60,58 @@ zkRenderBody();
 }catch(e){
 const body=document.getElementById('zkBody');
 if(body) {body.innerHTML = `<div class="mcard u-empty">تعذر تحميل بيانات البصمة: ${esc(e.message)}</div>`;}
+}
+}
+// ─── مسح الشبكة لاكتشاف أجهزة ZKTeco (حل تغير عنوان IP / انقطاع الجهاز) ───
+async function zkScanNetwork(){
+showLoad();
+try{
+const r = await apiFetch('/zkteco/scan',{method:'POST',body:JSON.stringify({})});
+const found = Array.isArray(r.found)?r.found:[];
+const rows = found.map(d=>`
+<tr>
+<td><span class="badge bdg-blue">${esc(d.ip)}</span></td>
+<td>${esc(String(d.port))}</td>
+<td>${d.serial?`<span class="badge bdg-gray">${esc(d.serial)}</span>`:'<span class="text-muted">—</span>'}</td>
+<td>${d.deviceName?esc(d.deviceName):'<span class="text-muted">—</span>'}</td>
+<td>${d.firmware?esc(d.firmware):'<span class="text-muted">—</span>'}</td>
+<td><button class="btn btn-gold btn-sm" onclick="zkUseFoundDevice('${esc(d.ip)}',${d.port},'${esc(d.serial||'')}')"><i class=ji data-i=check></i> استخدام هذا الجهاز</button></td>
+</tr>`).join('');
+showModal(`
+<h3><i class=ji data-i=search></i> نتائج مسح الشبكة</h3>
+<div class="text-muted" style="font-size:12px;margin-bottom:10px">تم مسح الشبكات: ${esc((r.subnets||[]).join(', '))} على المنفذ ${esc(String(r.port))}</div>
+<div class="tbl-wrap">
+<div class="tbl-scroll"><table>
+<thead><tr><th>عنوان IP</th><th>المنفذ</th><th>الرقم التسلسلي</th><th>اسم الجهاز</th><th>الفيرموير</th><th></th></tr></thead>
+<tbody>${rows||'<tr><td colspan="6" class="u-empty-sm">لم يُعثر على أي جهاز بصمة ZKTeco على الشبكة.<br><small class="text-muted">تأكد من تشغيل الجهاز وتوصيله بالشبكة، ثم أعد المسح.</small></td></tr>'}</tbody>
+</table></div></div>
+<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>
+`,'modal-wide');
+}catch(e){ toast(e.message||'فشل مسح الشبكة','error'); }
+finally{ hideLoad(); }
+}
+// استخدام جهاز مكتشف: تحديث عنوان IP للجهاز الحالي أو إنشاء جهاز جديد
+async function zkUseFoundDevice(ip,port,serial){
+const devs = ZKSTATE.devices || [];
+// إذا كان هناك جهاز واحد غير متصل، حدّث عنوانه
+const offline = devs.find(d=>d.status!=='online');
+if(offline){
+if(!confirm(`هل تريد تحديث عنوان جهاز "${offline.name}" إلى ${ip}:${port}؟`)){return;}
+showLoad();
+try{
+await apiFetch(`/zkteco/devices/${offline.id}`,{method:'PUT',body:JSON.stringify({ipAddress:ip,port})});
+closeModal(); toast('تم تحديث عنوان الجهاز — جارٍ المزامنة','success');
+await zkRefresh();
+}catch(e){toast(e.message||'تعذر التحديث','error');}
+finally{hideLoad();}
+}else{
+// لا يوجد جهاز — أنشئ جديدًا
+zkAddDeviceModal();
+setTimeout(()=>{
+const ipInp=document.getElementById('zkIp'); if(ipInp){ipInp.value=ip;}
+const portInp=document.getElementById('zkPort'); if(portInp){portInp.value=port;}
+},100);
+closeModal();
 }
 }
 function zkSetTab(tab){ ZKSTATE.tab = tab; const t=document.getElementById('zkTabs'); if(t){ t.querySelectorAll('button').forEach((b,i)=>{ const tabs=['devices','mappings','logs','coverage']; b.classList.toggle('btn-gold', tabs[i]===tab); }); } zkRenderBody(); }
@@ -507,4 +560,4 @@ toast('تم تنزيل ملف البصمات (يفتح مباشرة في Excel �
 finally{ hideLoad(); }
 }
 
-export { ZKSTATE, renderZktecoPage, zkFmtTime, zkFmtDate, zkSetTab, zkRefresh, zkAddDeviceModal, zkAddDevice, zkEditDeviceModal, zkUpdateDevice, zkTestDevice, zkSyncNow, zkToggleEnabled, zkDeleteDevice, zkSaveMapping, zkAutoLink, zkMapDeviceUser, zkConfirmMapDeviceUser, zkImportPreview, zkConfirmImport, zkExportLogs };
+export { ZKSTATE, renderZktecoPage, zkFmtTime, zkFmtDate, zkSetTab, zkRefresh, zkScanNetwork, zkUseFoundDevice, zkAddDeviceModal, zkAddDevice, zkEditDeviceModal, zkUpdateDevice, zkTestDevice, zkSyncNow, zkToggleEnabled, zkDeleteDevice, zkSaveMapping, zkAutoLink, zkMapDeviceUser, zkConfirmMapDeviceUser, zkImportPreview, zkConfirmImport, zkExportLogs };

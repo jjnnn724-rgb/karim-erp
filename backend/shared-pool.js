@@ -40,36 +40,78 @@ function dbEnv(key, fallback) {
     return fallback;
 }
 
-const pool = new Pool({
+// FIX 2026-10-11 (M22): pool is now mutable — after DB restore, pg_terminate_backend
+// kills all connections but the Pool object still holds dead sockets. reinitPool()
+// creates a fresh Pool so the server doesn't need a full restart.
+let _pool = new Pool({
     user: dbEnv('DB_USER', 'postgres'),
     host: dbEnv('DB_HOST', 'localhost'),
     database: dbEnv('DB_NAME', 'karim_erp'),
     password: dbEnv('DB_PASSWORD', ''),
     port: parseInt(dbEnv('DB_PORT', '5432'), 10),
-    max: parseInt(process.env.DB_POOL_MAX || '60', 10),
-    min: 5,
+    // PERF-7: max reduced 60→20 — Postgres default max_connections=100;
+    // 60/process exhausts it under any concurrent load. 20 queues politely.
+    max: parseInt(process.env.DB_POOL_MAX || '20', 10),
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
     statement_timeout: 30000,
     query_timeout: 30000,
-    // حرس مؤسسي: أي معاملة تتركها شيفرة عالقة بلا عبارات تُقتل بعد 15 ثانية
-    // حتى لا تمسك الاتصال ولا تمنع autovacuum — الشيفرة لدينا لا تنتظر داخل
-    // المعاملات أبدًا (عبارات متتالية)، فالحد لا يمس المسار الطبيعي.
     idle_in_transaction_session_timeout: parseInt(dbEnv('DB_IDLE_TX_TIMEOUT_MS', '15000'), 10),
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
 });
 
-pool.on('connect', (client) => {
-    logger.info('[shared-pool] new DB connection established', { pid: client.processID });
-});
+function _attachPoolHandlers(p) {
+    p.on('connect', (client) => {
+        logger.info('[shared-pool] new DB connection established', { pid: client.processID });
+    });
+    p.on('remove', () => {
+        logger.warn('[shared-pool] DB connection removed from pool');
+    });
+    p.on('error', (err) => {
+        logger.error('[shared-pool] Unexpected error on idle client:', err.message);
+    });
+}
+_attachPoolHandlers(_pool);
 
-pool.on('remove', (client) => {
-    logger.warn('[shared-pool] DB connection removed from pool');
-});
+/** Re-initialize the pool (after DB restore). Returns when new pool is ready. */
+async function reinitPool() {
+    const old = _pool;
+    _pool = new Pool({
+        user: dbEnv('DB_USER', 'postgres'),
+        host: dbEnv('DB_HOST', 'localhost'),
+        database: dbEnv('DB_NAME', 'karim_erp'),
+        password: dbEnv('DB_PASSWORD', ''),
+        port: parseInt(dbEnv('DB_PORT', '5432'), 10),
+        max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        statement_timeout: 30000,
+        query_timeout: 30000,
+        idle_in_transaction_session_timeout: parseInt(dbEnv('DB_IDLE_TX_TIMEOUT_MS', '15000'), 10),
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
+    });
+    _attachPoolHandlers(_pool);
+    // Test the new pool
+    await _pool.query('SELECT 1');
+    // Drain old pool (best-effort)
+    try { await old.end(); } catch (_) {}
+    logger.info('[shared-pool] pool re-initialized after restore');
+    return _pool;
+}
 
-pool.on('error', (err) => {
-    logger.error('[shared-pool] Unexpected error on idle client:', err.message);
+// Proxy so all existing `pool.query(...)` calls transparently use the current pool
+const pool = new Proxy({}, {
+    get(_, prop) {
+        if (prop === 'query' || prop === 'connect' || prop === 'end' || prop === 'on') {
+            return _pool[prop].bind(_pool);
+        }
+        if (prop === 'totalCount' || prop === 'idleCount' || prop === 'waitingCount') {
+            return _pool[prop];
+        }
+        return _pool[prop];
+    },
 });
 
 // ─── Transient error codes (safe to retry) ─────────────────────────────────
@@ -89,7 +131,7 @@ async function safeQuery(text, params = [], retries = 2) {
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            return await pool.query(text, params);
+            return await _pool.query(text, params);
         } catch (err) {
             lastErr = err;
             const transient = TRANSIENT_CODES.has(err.code) || /connection terminated|socket hang up|server closed the connection/i.test(err.message || '');
@@ -102,4 +144,4 @@ async function safeQuery(text, params = [], retries = 2) {
     throw lastErr;
 }
 
-module.exports = { pool, safeQuery };
+module.exports = { pool, safeQuery, reinitPool };

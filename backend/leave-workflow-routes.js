@@ -1,6 +1,8 @@
 const express = require('express');
 const { pool } = require('./cashier-module/db-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+// M20: riyadhToday for business dates
+const { riyadhToday } = require('./riyadh-date');
 
 const router = express.Router();
 // سلسلة الاعتماد (2026-10-01 بطلب المالك): الموظف ← مديره المباشر (رئيس قسمه)
@@ -22,6 +24,8 @@ let schemaPromise;
 
 async function ensureLeaveWorkflowSchema() {
   if (schemaPromise) {return schemaPromise;}
+  // FIX 2026-10-11 (M12): reset schemaPromise on failure — was never reset,
+  // so one transient DB error permanently poisons the schema initializer.
   schemaPromise = (async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS leave_approval_workflows (
@@ -58,7 +62,7 @@ async function ensureLeaveWorkflowSchema() {
       UPDATE leave_approval_workflows SET current_stage='general_manager', updated_at=CURRENT_TIMESTAMP
        WHERE current_stage='operations_manager' AND status='in_progress';
     `);
-  })();
+  })().catch((e) => { schemaPromise = undefined; throw e; });
   return schemaPromise;
 }
 
@@ -99,9 +103,10 @@ router.get('/leave-workflow', jwtAuth, async (req, res) => {
     if (isPrivileged(req.user)) {
       filter = '';
     } else if (req.user?.role === 'dept_head' && req.user?.dept_code) {
-      // رئيس القسم يرى طلبات قسمه فقط (للموافقة عليها) — بطلب المالك 2026-10-01
-      params.push(String(req.user.dept_code).toLowerCase());
-      filter = `WHERE LOWER(COALESCE(dept_emp.department,''))=$${params.length}`;
+      // قوائم الأقسام: يرى إجازات أي قسم مرتبط به (إصلاح جذري 2026-10-10)
+      const codes = String(req.user.dept_code).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      params.push(codes);
+      filter = `WHERE LOWER(COALESCE(dept_emp.department,'')) = ANY($${params.length})`;
     } else if (employee) {
       params.push(employee.id); filter = `WHERE lr."employeeId"=$${params.length}`;
     } else { return res.json([]); }
@@ -131,7 +136,8 @@ router.get('/leave-workflow/:id', jwtAuth, async (req, res) => {
       let sameDept = false;
       if (req.user?.role === 'dept_head' && req.user?.dept_code) {
         const reqEmp = (await pool.query('SELECT department FROM employees WHERE id=$1 LIMIT 1', [row.employeeId])).rows[0];
-        sameDept = String(reqEmp?.department || '').toLowerCase() === String(req.user.dept_code).toLowerCase();
+        const mine = String(req.user.dept_code).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+        sameDept = mine.includes(String(reqEmp?.department || '').trim().toLowerCase());
       }
       if (!isOwner && !sameDept) {return fail(res, 403, 'LEAVE_FORBIDDEN', 'لا تملك صلاحية عرض هذا الطلب');}
     }
@@ -155,7 +161,7 @@ router.post('/leave-requests', jwtAuth, async (req, res) => {
     const leaveType = (await client.query('SELECT id,name FROM "leaveTypes" WHERE id=$1 LIMIT 1', [leaveTypeId])).rows[0];
     if (!employee || !leaveType) {return fail(res, 422, 'LEAVE_REFERENCE_NOT_FOUND', 'الموظف أو نوع الإجازة غير موجود');}
     await client.query('BEGIN');
-    const leave = (await client.query(`INSERT INTO "leaveRequests"("id","employeeId","leaveTypeId","startDate","endDate","status","reason","requestDate","requestedBy") VALUES($1,$2,$3,$4,$5,'pending',$6,$7,$8) RETURNING *`, [Date.now(), employeeId, leaveTypeId, startDate, endDate, reason || null, new Date().toISOString().slice(0,10), req.user.id])).rows[0];
+    const leave = (await client.query(`INSERT INTO "leaveRequests"("id","employeeId","leaveTypeId","startDate","endDate","status","reason","requestDate","requestedBy") VALUES($1,$2,$3,$4,$5,'pending',$6,$7,$8) RETURNING *`, [Date.now(), employeeId, leaveTypeId, startDate, endDate, reason || null, riyadhToday(), req.user.id])).rows[0];
     const workflow = (await client.query(`INSERT INTO leave_approval_workflows(leave_request_id,current_stage,status,current_note) VALUES($1,'direct_manager','in_progress',$2) RETURNING *`, [leave.id, reason || null])).rows[0];
     await client.query(`INSERT INTO leave_approval_events(workflow_id,stage,action,note,actor_user_id,actor_role) VALUES($1,'employee','submitted',$2,$3,$4)`, [workflow.id, reason || null, req.user.id, req.user.role]);
     await client.query('COMMIT');
@@ -211,7 +217,7 @@ router.post('/leave-workflow/:id/action', jwtAuth, async (req, res) => {
       else if (action === 'return') { nextStage = 'employee'; nextStatus = 'returned'; }
       await client.query(`UPDATE leave_approval_workflows SET current_stage=$2,status=$3,current_note=$4,updated_at=CURRENT_TIMESTAMP,completed_at=$5 WHERE id=$1`, [workflow.id, nextStage, nextStatus, note || null, completedAt]);
       const leaveUpdate = action === 'reject' ? `UPDATE "leaveRequests" SET status='rejected',"rejectionReason"=$2,"rejectedBy"=$3,"rejectedDate"=$4 WHERE id=$1` : action === 'return' ? `UPDATE "leaveRequests" SET status='returned',"rejectionReason"=$2 WHERE id=$1` : nextStatus === 'completed' ? `UPDATE "leaveRequests" SET status='approved',"approvedBy"=$2,"approvedDate"=$3 WHERE id=$1` : `UPDATE "leaveRequests" SET status='pending' WHERE id=$1`;
-      const leaveParams = action === 'reject' ? [leave.id,note || 'تم رفض الطلب',req.user.id,new Date().toISOString().slice(0,10)] : action === 'return' ? [leave.id,note || 'يرجى استكمال البيانات'] : nextStatus === 'completed' ? [leave.id,req.user.id,new Date().toISOString().slice(0,10)] : [leave.id];
+      const leaveParams = action === 'reject' ? [leave.id,note || 'تم رفض الطلب',req.user.id,riyadhToday()] : action === 'return' ? [leave.id,note || 'يرجى استكمال البيانات'] : nextStatus === 'completed' ? [leave.id,req.user.id,riyadhToday()] : [leave.id];
       await client.query(leaveUpdate, leaveParams);
       await client.query(`INSERT INTO leave_approval_events(workflow_id,stage,action,note,actor_user_id,actor_role) VALUES($1,$2,$3,$4,$5,$6)`, [workflow.id, workflow.current_stage, action, note || null, req.user.id, req.user.role]);
     }

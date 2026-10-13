@@ -369,6 +369,13 @@ describe('Phase 1.4 — XSS Protection & Error Handling', () => {
             expect(directive).toContain("'nonce-abc123'");
             expect(directive).toContain("script-src-attr 'unsafe-inline'");
         });
+
+        it('should allow the approved Google Fonts stylesheet and font hosts', () => {
+            const directive = buildCspDirectives({ reportOnly: false }, 'abc123');
+
+            expect(directive).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
+            expect(directive).toContain("font-src 'self' data: https://fonts.gstatic.com");
+        });
     });
     
     // We'll test the sanitizeHeader logic conceptually

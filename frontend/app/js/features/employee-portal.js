@@ -65,7 +65,7 @@ ${STATE.employees.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}
 <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th><th>المصدر</th><th>الحالة</th></tr></thead>
 <tbody>
 ${myAttendance.slice().reverse().map(a=>{
-const krm = a.checkIn&&a.checkOut?(portalWorkHours(a) ?? 0).toFixed(1):'—';
+const krm = a.checkIn&&a.checkOut?(portalWorkHours(a) ?? 0).toFixed(2):'—';
 const src = a.source==='device'?'<span class="badge bdg-blue"><i class=ji data-i=user-check></i> بصمة</span>':a.source==='qr'?'<span class="badge bdg-green">QR</span>':a.source==='portal'?'<span class="badge bdg-teal"><i class=ji data-i=camera></i> كاميرا التطبيق</span>':a.source==='backfill'?'<span class="badge bdg-gray">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>';
 const statusText = formatAttendanceStatus({
     checkIn: a.checkIn,

@@ -5,6 +5,14 @@
  */
 const { pool } = require('./shared-pool');
 
+// FIX 2026-10-11 (M9): grace minutes — was counting 1+ min late as FAIL,
+// but engine uses 15-min grace via graceMinutes() in shift-day.js.
+// Import the same logic to keep audit consistent with engine.
+function graceMinutes() {
+  const v = parseInt(process.env.ATTENDANCE_GRACE_MINUTES || '15', 10);
+  return Number.isFinite(v) && v >= 0 && v <= 120 ? v : 15;
+}
+
 function toMin(t) {
   const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
@@ -40,6 +48,7 @@ async function runStrictAudit(month) {
   const emps = (await pool.query(
     `SELECT id, "employeeId", shift_start, shift_karim FROM employees WHERE status = 'active'`)).rows;
   const bad = [];
+  const grace = graceMinutes();
   for (const e of emps) {
     const rows = (await pool.query(
       `SELECT "checkIn", "checkOut", "workMinutes" FROM attendance
@@ -51,7 +60,9 @@ async function runStrictAudit(month) {
     for (const r of rows) {
       if (!r.checkIn) {continue;}
       const inMin = toMin(r.checkIn);
-      const arrival = inMin == null ? 0 : Math.max(0, inMin - sMin);
+      // FIX 2026-10-11 (M9): apply grace — arrival beyond grace counts as late
+      const rawArrival = inMin == null ? 0 : Math.max(0, inMin - sMin);
+      const arrival = rawArrival > grace ? rawArrival - grace : 0;
       let early = 0;
       const outMin = toMin(r.checkOut);
       if (outMin != null && inMin != null) {

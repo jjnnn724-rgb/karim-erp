@@ -282,11 +282,15 @@ function idempotency(opts = {}) {
                 if (finalized) {return;}
                 finalized = true;
                 const statusCode = res.statusCode || capturedStatus;
-                const success = statusCode < 500;
+                // FIX 2026-10-11 (M1): only cache 2xx as completed — was caching
+                // 4xx (401 expired token, 409, 422) as completed and replaying
+                // them for 24h, so client retries returned stale errors even
+                // after fixing the cause.
+                const success = statusCode >= 200 && statusCode < 300;
                 const record = {
                     status: success ? 'completed' : 'failed',
                     statusCode,
-                    responseBody: success ? capturedBody : null, // don't cache 5xx
+                    responseBody: success ? capturedBody : null, // don't cache 4xx/5xx
                     requestHash: reqHash,
                 };
                 storeSet(redis, pool, safeKey, record, ttlMs).catch(() => {});

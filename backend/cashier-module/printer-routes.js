@@ -34,7 +34,7 @@ const {
 
 const router = express.Router();
 
-const READ_ROLES = ['admin', 'manager', 'kitchen', 'dept_head',
+const READ_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef', 'dept_head',
 'warehouse', 'accountant', 'auditor'];
 const WRITE_ROLES = ['admin', 'manager'];
 const PROBE_TIMEOUT_MS = 2500;

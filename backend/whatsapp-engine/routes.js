@@ -325,17 +325,30 @@ router.post('/automation/test', jwtAuth, requireRole('admin'), async (req, res) 
 // ═══════════════════════════════════════════════════════════════
 
 // ─── الاستعلامات الذكية للنظام ───
+// FIX 2026-10-11 (M10): was purging require.cache on EVERY request (CPU DoS
+// amplifier). Now caches the module and only invalidates every 5 minutes.
+let _sqCache = null;
+let _sqCacheAt = 0;
+const SQ_CACHE_TTL_MS = 5 * 60 * 1000;
+function getSystemQuery() {
+    if (!_sqCache || Date.now() - _sqCacheAt > SQ_CACHE_TTL_MS) {
+        delete require.cache[require.resolve('./system-query')];
+        _sqCache = require('./system-query');
+        _sqCacheAt = Date.now();
+    }
+    return _sqCache;
+}
 router.get('/query/categories', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
-    try { delete require.cache[require.resolve('./system-query')]; const sq = require('./system-query'); res.json({ ok: true, categories: sq.getCategories() }); }
+    try { const sq = getSystemQuery(); res.json({ ok: true, categories: sq.getCategories() }); }
     catch (e) { res.status(500).json({ ok: false, error: 'QUERY_CATEGORIES_FAILED' }); }
 });
 router.post('/query', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ windowMs: 60000, max: 20 }), async (req, res) => {
     try {
         const { question } = req.body || {};
-        delete require.cache[require.resolve('./system-query')]; const sq = require('./system-query');
+        const sq = getSystemQuery();
         const result = await sq.executeQuery(question);
         res.json({ ok: true, result, question });
-    } catch (e) { res.status(500).json({ ok: false, error: 'QUERY_FAILED', message: e.message.slice(0, 200) }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'QUERY_FAILED', message: 'تعذر تنفيذ الاستعلام — راجع سجل الخادم' }); }
 });
 
 // ─── AI Chatbot ───

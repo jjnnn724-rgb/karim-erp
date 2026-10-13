@@ -465,6 +465,11 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         await client.query(`DELETE FROM ora_table_meta`);
 
         // تعطيل مؤقت للـ triggers التي تمنع الحذف
+        // FIX 2026-10-11 (M15): DISABLE runs on client (inside txn), but the
+        // RE-ENABLE was on pool (separate connection). If COMMIT succeeds but
+        // process crashes before the pool-based RE-ENABLE, triggers stay
+        // disabled forever → all logins blocked. Now RE-ENABLE uses same client
+        // inside the transaction, and pool-based re-enable is a safety net only.
         try {
             await client.query(`SAVEPOINT sp_triggers`);
             await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER ALL`);
@@ -581,8 +586,14 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
             INSERT INTO pos_audit_logs (actor_user_id, actor_username, actor_role, action, table_name, row_pk, reason, metadata)
             VALUES ($1,$2,$3,'VOID','system_reset_audit',$4,$5,$6)
         `, [req.user.id || null, req.user.username || String(req.user.id), req.user.role || 'admin', String(reset.id), reason, json({ resetNumber, scope: snapshot.scope })]);
+        // FIX 2026-10-11 (M15): RE-ENABLE triggers INSIDE the transaction before
+        // COMMIT — if COMMIT succeeds and process crashes, triggers are already
+        // re-enabled in the same atomic unit.
+        try { await client.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) {}
+        try { await client.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) {}
         await client.query('COMMIT');
-        // إعادة تفعيل الـ triggers
+        // Safety net: re-enable on separate connection (in case DISABLE was
+        // done outside txn in an older code path)
         try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) {}
         try { await pool.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) {}
         ['users','employees','payroll','attendance','leaveRequests','revenues','expenses','dispatches','kitchenReturns','purchaseInvoices','inventoryTx','inventoryAudits','posProducts','posOrders','notifications'].forEach(entity => emit(req, entity, 'reset', { resetNumber }));

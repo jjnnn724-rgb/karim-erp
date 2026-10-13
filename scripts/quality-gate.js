@@ -17,7 +17,7 @@ const results = [];
 const gate = (name, pass, got) => { results.push({ name, pass, got: String(got).slice(0, 90) }); };
 
 // 1) Git
-let lastCommit = 'غير متاح';
+let lastCommit;
 try { lastCommit = execSync('git log -1 --format="%h %cd" --date=relative', { cwd: ROOT }).toString().trim(); gate('Git — تاريخ تغييرات موثق', true, lastCommit); }
 catch (e) { gate('Git — تاريخ تغييرات موثق', false, e.message); }
 

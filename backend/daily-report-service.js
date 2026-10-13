@@ -16,6 +16,11 @@ function number(value) { return Number(value || 0); }
 
 async function collectDailyReport(pool, reportDate = todayInTimezone()) {
     const tz = DEFAULT_TIMEZONE;
+    // PERF-2: convert the target Riyadh day into an absolute UTC half-open range ONCE,
+    // so every predicate is sargable (`created_at >= $x AND created_at < $y`) and can
+    // use idx_pos_orders_created_at instead of a full scan via `(created_at AT TIME ZONE $1)::date = ...`.
+    const dayStart = new Date(`${reportDate}T00:00:00+03:00`);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
     const [sales, departments, payments, products, expenses, attendance, lowStock] = await Promise.all([
         pool.query(`
             SELECT COUNT(*)::int AS invoice_count,
@@ -24,28 +29,28 @@ async function collectDailyReport(pool, reportDate = todayInTimezone()) {
                    COALESCE(SUM(tax_total),0)::numeric AS tax
               FROM pos_orders
              WHERE status IN ('issued','reported')
-               AND (created_at AT TIME ZONE $1)::date = $2::date`, [tz, reportDate]),
+               AND created_at >= $1 AND created_at < $2`, [dayStart, dayEnd]),
         pool.query(`
             SELECT d.name_ar, d.code, COUNT(o.id)::int AS invoice_count,
                    COALESCE(SUM(o.total_amount),0)::numeric AS revenue
               FROM pos_departments d
               LEFT JOIN pos_orders o ON o.department_id=d.id
                  AND o.status IN ('issued','reported')
-                 AND (o.created_at AT TIME ZONE $1)::date = $2::date
-             GROUP BY d.id, d.name_ar, d.code ORDER BY revenue DESC`, [tz, reportDate]),
+                 AND o.created_at >= $1 AND o.created_at < $2
+             GROUP BY d.id, d.name_ar, d.code ORDER BY revenue DESC`, [dayStart, dayEnd]),
         pool.query(`
             SELECT method, COALESCE(SUM(amount),0)::numeric AS amount, COUNT(*)::int AS payment_count
               FROM pos_invoice_payments p JOIN pos_orders o ON o.id=p.order_id
              WHERE p.direction='in' AND o.status IN ('issued','reported')
-               AND (o.created_at AT TIME ZONE $1)::date = $2::date
-             GROUP BY method ORDER BY amount DESC`, [tz, reportDate]),
+               AND o.created_at >= $1 AND o.created_at < $2
+             GROUP BY method ORDER BY amount DESC`, [dayStart, dayEnd]),
         pool.query(`
             SELECT i.product_name, SUM(i.quantity)::numeric AS quantity,
                    COALESCE(SUM(i.line_total),0)::numeric AS revenue
               FROM pos_order_items i JOIN pos_orders o ON o.id=i.order_id
              WHERE o.status IN ('issued','reported')
-               AND (o.created_at AT TIME ZONE $1)::date = $2::date
-             GROUP BY i.product_name ORDER BY quantity DESC LIMIT 20`, [tz, reportDate]),
+               AND o.created_at >= $1 AND o.created_at < $2
+             GROUP BY i.product_name ORDER BY quantity DESC LIMIT 20`, [dayStart, dayEnd]),
         pool.query(`
             SELECT COUNT(*)::int AS expense_count, COALESCE(SUM(amount),0)::numeric AS total
               FROM expenses WHERE LEFT(COALESCE(date,''),10) = $1 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [reportDate]),

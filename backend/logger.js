@@ -41,12 +41,36 @@ function getTransport() {
     // أنبوب stdout غير مصروف → كل سطر لوج يحجب الحلقة → كومة 300MB وتوقف
     // 3.6 ثانية وتجاوز مهلة الطلبات تحت الضغط (دليل: phase-post-all-fixes).
     // pino/file يعمل في خيط منفصل ولا يحجب أبدًا، والسجل دائم على القرص.
+    // FIX 2026-10-11 (M3): size-based rotation — log file was unrotated,
+    // growing unbounded on disk. Rotate at 50MB, keep 5 backups.
     if (isProduction) {
         const logDir = require('path').join(__dirname, '..', 'logs');
         try { require('fs').mkdirSync(logDir, { recursive: true }); } catch (_) {}
+        const logFile = require('path').join(logDir, 'app-out.log');
+        // Rotate if file exceeds 50MB
+        try {
+            const fs = require('fs');
+            const MAX_LOG_BYTES = 50 * 1024 * 1024; // 50MB
+            const MAX_LOG_BACKUPS = 5;
+            if (fs.existsSync(logFile)) {
+                const stat = fs.statSync(logFile);
+                if (stat.size > MAX_LOG_BYTES) {
+                    // Shift existing backups: .5 → delete, .4 → .5, ..., .log → .1
+                    for (let i = MAX_LOG_BACKUPS - 1; i >= 1; i--) {
+                        const src = `${logFile}.${i}`;
+                        const dst = `${logFile}.${i + 1}`;
+                        if (fs.existsSync(src)) {
+                            if (i + 1 > MAX_LOG_BACKUPS) { fs.unlinkSync(src); }
+                            else { fs.renameSync(src, dst); }
+                        }
+                    }
+                    fs.renameSync(logFile, `${logFile}.1`);
+                }
+            }
+        } catch (_) { /* rotation failure must not block logging */ }
         return {
             target: 'pino/file',
-            options: { destination: require('path').join(logDir, 'app-out.log'), mkdir: true, sync: false },
+            options: { destination: logFile, mkdir: true, sync: false },
         };
     }
 
@@ -194,24 +218,24 @@ function httpLogger(options = {}) {
                 // Determine log level based on status code
                 const statusCode = res.statusCode;
                 let event = 'response.success';
-                let logFn;
+                let level = 'info';
 
                 if (statusCode >= 500) {
-                    logFn = safeLog.error || safeLog.info;
+                    level = (typeof safeLog.error === 'function') ? 'error' : 'info';
                     event = 'response.error';
                 } else if (statusCode >= 400) {
-                    logFn = safeLog.warn || safeLog.info;
+                    level = (typeof safeLog.warn === 'function') ? 'warn' : 'info';
                     event = 'response.client_error';
                 } else if (duration > slowThresholdMs) {
-                    logFn = safeLog.warn || safeLog.info;
+                    level = (typeof safeLog.warn === 'function') ? 'warn' : 'info';
                     event = 'response.slow';
-                } else {
-                    logFn = safeLog.info;
                 }
 
-                // Log response (never let a logging failure crash the process)
-                if (typeof logFn === 'function') {
-                    logFn({
+                // Log response (never let a logging failure crash the process).
+                // Call through safeLog so `this` stays bound — pino level methods
+                // read instance symbols and throw when invoked detached.
+                if (typeof safeLog[level] === 'function') {
+                    safeLog[level]({
                         event,
                         statusCode,
                         durationMs: duration,

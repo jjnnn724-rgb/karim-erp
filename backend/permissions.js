@@ -64,6 +64,9 @@ const PERMISSIONS = [
       menus: ['yarasoft', 'oracle-data'], entitiesRead: [], entitiesWrite: [] },
     { key: 'zk.view', ar: 'عرض البصمة', group: 'التكامل',
       menus: ['zkteco'], entitiesRead: [], entitiesWrite: [] },
+    // متابعة الكاشير (مرآة يارا سوفت — الكاشير 1/4/5/6/9) — قراءة فقط، للأونر
+    { key: 'cashier-monitor.view', ar: 'متابعة الكاشير', group: 'التشغيل',
+      menus: ['cashier-monitor'], entitiesRead: [], entitiesWrite: [] },
     { key: 'whatsapp.use', ar: 'استخدام واتساب', group: 'التكامل',
       menus: ['whatsapp'], entitiesRead: [], entitiesWrite: [] },
     // النظام (عرض فقط — الكتابة الحساسة تبقى للأدوار)

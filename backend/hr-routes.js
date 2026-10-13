@@ -1,12 +1,14 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('./shared-pool');
+const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { generalLimiter } = require('./rate-limiter');
 const { buildMonthlyAttendanceSummaryQuery } = require('./monthly-attendance-query');
 const { shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, lockGraceMinutes, graceMinutes, calculateDelayParts } = require('./shift-day');
 const { calculateTotalLateMinutes, loadShiftHistoryMap, resolveShiftAt } = require('./attendance-engine');
+const { arFuzzyPattern } = require('./ar-search');
 
 const router = express.Router();
 const QR_SECRET = process.env.EMPLOYEE_QR_SECRET || process.env.JWT_SECRET;
@@ -252,7 +254,7 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
         workDayMinutes: empWorkDayMinutes,
     };
     summary.totalKarim = Number((summary.totalMinutes / 60).toFixed(2));
-    res.json({ employee: result.rows[0] ? { id: employeeId, name: result.rows[0].name, employeeId: result.rows[0].employeeId, position: result.rows[0].position, shift_start: empRow?.shift_start, shift_karim: empRow?.shift_karim } : null, records, summary });
+    res.json({ employee: result.rows[0] ? { id: employeeId, name: result.rows[0].name, employeeId: result.rows[0].employeeId, position: result.rows[0].position, shift_start: empRow?.shift_start, shift_karim: empRow?.shift_karim, day_off: empRow?.day_off } : null, records, summary });
     } catch (e) {
         logger.error('[hr_attendance_report]', e);
         res.status(500).json({ error: 'ATTENDANCE_REPORT_FAILED', message: 'تعذر جلب تقرير الحضور والانصراف' });
@@ -299,11 +301,20 @@ router.get('/employees/:id/lux-card', jwtAuth, async (req, res) => {
     if (!emp) {return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });}
     const fp = String(emp.deviceUserId || emp.employeeId || '').trim();
     if (!fp) {return res.status(422).json({ error: 'NO_FP_NUMBER', message: 'الموظف بلا رقم بصمة' });}
-    const { spawnSync } = require('child_process');
+    // FIX 2026-10-11 (C26): was spawnSync — blocked the entire Node event loop
+    // for up to 60s (frozen API for ALL users). Now async spawn.
+    const { spawn } = require('child_process');
     const path = require('path');
     const fs = require('fs');
     const gen = path.join(__dirname, '..', 'tools', 'employee-card', 'generate-card.js');
-    const r = spawnSync(process.execPath, [gen, '--fp', fp], { encoding: 'utf-8', timeout: 60000 });
+    const r = await new Promise((resolve) => {
+        const child = spawn(process.execPath, [gen, '--fp', fp], { timeout: 60000 });
+        let stdout = '', stderr = '';
+        child.stdout?.on('data', (d) => { stdout += d; });
+        child.stderr?.on('data', (d) => { stderr += d; });
+        child.on('error', (err) => resolve({ status: 1, stderr: String(err) }));
+        child.on('close', (code) => resolve({ status: code, stderr }));
+    });
     if (r.status !== 0) {
         logger.error('[lux_card] generate failed: ' + String(r.stderr || '').slice(0, 200));
         return res.status(500).json({ error: 'CARD_FAILED', message: 'تعذر توليد البطاقة' });
@@ -351,8 +362,9 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
         if (ci == null || co == null) { a.reviewDays += 1; continue; } // يوم مفتوح/بيانات ناقصة
         let worked = co - ci; if (co < ci) { worked += 1440; } // التفاف الوردية الليلية
         if (worked === 0) { a.reviewDays += 1; continue; } // بصمة مكررة → قيد المراجعة
-        if (worked >= required) { a.completeWorkDays += 1; }
-        else { a.shortDays += 1; a.deficitMinutes += (required - worked); }
+        // سماحية 15 دقيقة (قرار المالك 2026-10-10): إتمام الوردية ناقص السماحية = في الميعاد
+        if (worked + graceMinutes() >= required) { a.completeWorkDays += 1; }
+        else { a.shortDays += 1; a.deficitMinutes += (required - worked - graceMinutes()); }
     }
     const out = { month: m, employees: rows.map(r => {
         const a = agg.get(r.id) || { completeWorkDays: 0, shortDays: 0, deficitMinutes: 0, lateInDays: 0, reviewDays: 0 };
@@ -368,10 +380,23 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
     out.workDayMinutes = 600; // افتراضي 10 ساعات
     if (detail) {
         const det = await pool.query(
-            `SELECT a."employeeId", a.date, a."checkIn", a."checkOut", a."workMinutes", a.late, e.shift_start, e.shift_karim
+            `SELECT a."employeeId", a.date, a."checkIn", a."checkOut", a."workMinutes", a.late, a.on_leave, e.shift_start, e.shift_karim
                FROM attendance a JOIN employees e ON e.id = a."employeeId"
               WHERE e.status = 'active' AND a.date LIKE $1 || '-%' ORDER BY a.date, e.name`, [m]);
         out.days = det.rows.map(r => ({ ...r, workMinutes: calculateMinutes(r), ...calculateDelayParts(r, r) }));
+        // أيام الإجازات المعتمدة لكل موظف (للعرض «إجازة معتمدة» بدل «لا يبصم» — تعمل على الجوال أيضًا)
+        const lvs = await pool.query(
+            `SELECT "employeeId", "startDate", "endDate" FROM "leaveRequests"
+              WHERE status = 'approved' AND "startDate" <= ($1 || '-31') AND "endDate" >= ($1 || '-01')`, [m]);
+        const leaveDays = {};
+        for (const l of lvs.rows) {
+            const k = String(l.employeeId);
+            leaveDays[k] = leaveDays[k] || [];
+            for (const d of eachDate(new Date(`${l.startDate}T00:00:00Z`), new Date(`${l.endDate}T00:00:00Z`))) {
+                if (String(d).slice(0, 7) === m) {leaveDays[k].push(d);}
+            }
+        }
+        out.leaveDays = leaveDays;
     }
     res.json({ ok: true, ...out });
     } catch (e) {
@@ -426,6 +451,11 @@ router.post('/attendance/scan', jwtAuth, requireRole('admin', 'hr', 'manager'), 
         const shiftDate = shiftDateForEmployee(today, parts.hour, employee);
         const yesterday = prevDay(shiftDate);
         const lateFor = () => isLate(parts.hour, parts.minute, shiftStart, Number(process.env.WORK_START_HOUR || 9));
+        // FIX 2026-10-11 (C24): advisory lock serializes concurrent punches for the
+        // same employee+shiftDate — FOR UPDATE only locks existing rows, so the
+        // first punch of the day takes no lock and two simultaneous punches both
+        // see "no row" → duplicate check-in. Advisory lock fixes without schema change.
+        await client.query('SELECT pg_advisory_xact_lock($1, $2)', [employee.id, Number(shiftDate.replace(/-/g, ''))]);
         let existing = (await client.query(`SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2 FOR UPDATE`, [employee.id, shiftDate])).rows[0] || null;
         // لا صف مفتوح اليوم لكن أمس مفتوح → هذا انصراف وردية ليلية
         if (!existing || existing.checkOut) {
@@ -448,11 +478,26 @@ router.post('/attendance/scan', jwtAuth, requireRole('admin', 'hr', 'manager'), 
             }
         }
         if (!existing) {
-            record = (await client.query(
-                `INSERT INTO attendance (id, "employeeId", date, "checkIn", late, notes, "checkInAt", source, "operatorId")
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,'qr',$8) RETURNING *`,
-                [Date.now() + Math.floor(Math.random() * 9999), employee.id, shiftDate, time, lateFor(), 'تسجيل حضور عبر QR', now, req.user.id]
-            )).rows[0];
+            // FIX 2026-10-11 (C17): retry on PK collision — Date.now()+rand can
+            // collide under concurrent punches. Retry up to 3 times with new ID.
+            let record = null;
+            for (let attempt = 0; attempt < 3 && !record; attempt++) {
+                const id = Date.now() * 1000 + Math.floor(Math.random() * 999999);
+                try {
+                    record = (await client.query(
+                        `INSERT INTO attendance (id, "employeeId", date, "checkIn", late, notes, "checkInAt", source, "operatorId")
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,'qr',$8) RETURNING *`,
+                        [id, employee.id, shiftDate, time, lateFor(), 'تسجيل حضور عبر QR', now, req.user.id]
+                    )).rows[0];
+                } catch (pkErr) {
+                    if (pkErr && pkErr.code === '23505') {continue;}
+                    throw pkErr;
+                }
+            }
+            if (!record) {
+                await client.query('ROLLBACK');
+                return res.status(500).json({ error: 'ATTENDANCE_ID_COLLISION', message: 'تعذر تسجيل الحضور — أعد المحاولة' });
+            }
             action = 'check_in';
         } else if (!existing.checkOut) {
             const current = existing;
@@ -520,21 +565,38 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
     const [year, mon] = month.split('-').map(Number);
     if (mon < 1 || mon > 12) {return res.status(422).json({ error: 'PAYROLL_MONTH_INVALID', message: 'شهر غير صالح' });}
     // V6 Phase 3 (decision #7): إعادة توليد شهر مقفل ممنوعة — تحمي المسير المعتمد.
-    try {
-        const { isPeriodClosed } = require('./accounting-periods');
-        if (await isPeriodClosed(month)) {return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن إعادة توليد الرواتب (أعد فتح الفترة أولًا)` });}
-        // ROOT FIX 2026-10-02: إعادة توليد شهر مُرحّل محاسبيًا تكسر مطابقة
-        // المسير مع القيد — تُرفض (الترحيل idempotent ولا يُصحح تلقائيًا).
-        try {
-            const _je = (await pool.query(
-                "SELECT 1 FROM journal_entries WHERE source_type='payroll' AND source_id=$1 AND status='posted' LIMIT 1", [month])).rows[0];
-            if (_je) {return res.status(409).json({ error: 'PAYROLL_ALREADY_POSTED', message: `رواتب ${month} مُرحّلة محاسبيًا — إعادة التوليد ستبطل مطابقة القيد. راجع المالية أولًا.` });}
-        } catch (_) { /* controls down → fail-open */ }
-    } catch (_) { /* controls down → fail-open */ }
+    // FIX 2026-10-11 (C25): moved period-closed + already-posted checks INSIDE the
+    // transaction — were outside with fail-open catch, so a DB error on the control
+    // query let posted payroll be regenerated (TOCTOU + fail-open).
     const includeOvertime = req.body?.includeOvertime === true;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        // Period-closed check (inside txn, fail-closed)
+        try {
+            const { isPeriodClosed } = require('./accounting-periods');
+            const pc = await client.query(
+                "SELECT status FROM accounting_periods WHERE month = $1 LIMIT 1", [month]);
+            if (pc.rows[0]?.status === 'closed') {
+                await client.query('ROLLBACK');
+                return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن إعادة توليد الرواتب (أعد فتح الفترة أولًا)` });
+            }
+        } catch (periodErr) {
+            await client.query('ROLLBACK');
+            throw periodErr; // fail-closed: if we can't verify period status, refuse
+        }
+        // Already-posted check (inside txn, fail-closed)
+        try {
+            const _je = (await client.query(
+                "SELECT 1 FROM journal_entries WHERE source_type='payroll' AND source_id=$1 AND status='posted' LIMIT 1", [month])).rows[0];
+            if (_je) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: 'PAYROLL_ALREADY_POSTED', message: `رواتب ${month} مُرحّلة محاسبيًا — إعادة التوليد ستبطل مطابقة القيد. راجع المالية أولًا.` });
+            }
+        } catch (jeErr) {
+            await client.query('ROLLBACK');
+            throw jeErr; // fail-closed
+        }
         const emps = (await client.query(
             `SELECT id, name, salary, shift_start, shift_karim FROM employees WHERE status = 'active' ORDER BY id`)).rows;
         // تاريخ السريان لمرة واحدة: أوفرتايم كل يوم بساعاته السارية فيه
@@ -790,9 +852,11 @@ router.get('/employees/ledger', jwtAuth, requireRole('admin', 'hr', 'manager'), 
         const params = [];
                 let paramIndex = 0;
                 if (searchTerm) {
-                    query += ` WHERE e.name ILIKE $${paramIndex + 1} OR e."employeeId" ILIKE $${paramIndex + 1} OR e.phone ILIKE $${paramIndex + 1}`;
+                    // ذكاء البحث العربي 2026-10-06: الاسم بعائلات الحروف المتشابهة، والرقم/الهاتف حرفيًا
+                    params.push(arFuzzyPattern(searchTerm));
                     params.push(searchTerm);
-                    paramIndex += 1;
+                    query += ` WHERE (e.name ~* $${paramIndex + 1} OR e."employeeId" ILIKE $${paramIndex + 2} OR e.phone ILIKE $${paramIndex + 2})`;
+                    paramIndex += 2;
                 }
                 query += ` ORDER BY e.id ASC LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}`;
                 params.push(limit, offset);
@@ -1004,7 +1068,7 @@ router.post('/shifts/apply', jwtAuth, requireRole('admin', 'hr', 'manager'), asy
     try {
         const text = String(req.body && req.body.text || '').slice(0, 8000);
         if (!text.trim()) {return res.status(422).json({ error: 'EMPTY', message: 'اكتب الورديات أولاً' });}
-        const summary = await shiftsEngine.applyShiftText(text);
+        const summary = await shiftsEngine.applyShiftText(text, undefined, req.user?.id ?? null);
         res.json({ ok: true, ...summary });
     } catch (e) { res.status(500).json({ error: 'SHIFTS_APPLY_FAILED', message: e.message }); }
 });
@@ -1020,8 +1084,8 @@ router.post('/shifts/recompute', jwtAuth, requireRole('admin', 'hr', 'manager'),
 // النطاق: dept_head وأي حساب مربوط بقسم → قسمه إجباريًا. kitchen→KITCHEN و
 // warehouse→WAREHOUSE افتراضيًا. المخوّلون (admin/hr/manager/accountant بلا قسم)
 // يمررون القسم صراحة. الضم: الصف بلا قسم يُسند لقسم النطاق عند الحفظ.
-const ROSTER_ROLES = ['admin', 'hr', 'manager', 'dept_head', 'kitchen', 'warehouse', 'accountant'];
-const ROSTER_ROLE_DEPT = { kitchen: 'KITCHEN', warehouse: 'WAREHOUSE' };
+const ROSTER_ROLES = ['admin', 'hr', 'manager', 'dept_head', 'kitchen', 'sous_chef', 'warehouse', 'accountant'];
+const ROSTER_ROLE_DEPT = { kitchen: 'KITCHEN', sous_chef: 'KITCHEN', warehouse: 'WAREHOUSE' };
 const ROSTER_PRIVILEGED = ['admin', 'hr', 'manager'];
 
 function rosterScope(user, wantDept) {
@@ -1047,11 +1111,11 @@ async function rosterValidDepts() {
     try {
         const a = await pool.query('SELECT code FROM "hrDepartments"');
         a.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
-    } catch (_) {}
+    } catch (e) { logger.warn('[roster] فشل قراءة أقسام HR:', e.message); }
     try {
         const b = await pool.query('SELECT code FROM departments');
         b.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
-    } catch (_) {}
+    } catch (e) { logger.warn('[roster] فشل قراءة الأقسام:', e.message); }
     return codes;
 }
 
@@ -1086,7 +1150,7 @@ router.get('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, re
             return { ...e, todayIn: t?.checkIn || null, todayOut: t?.checkOut || null };
         };
         // المجدول مستقبلًا + آخر التغييرات (الشفافية الاحترافية) — fail-open
-        const todayStr = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        const todayStr = riyadhToday();
         let pendingFuture = [];
         let recentLog = [];
         try {
@@ -1116,7 +1180,7 @@ router.get('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, re
                 );
                 recentLog = rl.rows;
             }
-        } catch (_) {}
+        } catch (e) { logger.warn('[dept-roster] تعذر قراءة آخر تغييرات الدوام:', e.message); }
         res.json({
             ok: true, depts: scope.depts, fixed: scope.fixed,
             canSeeUnassigned,
@@ -1138,8 +1202,8 @@ router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, r
     if (!rows.length) {return res.status(422).json({ error: 'ROSTER_EMPTY', message: 'لا توجد صفوف للحفظ' });}
     if (rows.length > 500) {return res.status(422).json({ error: 'ROSTER_TOO_BIG', message: 'حد أقصى 500 صف في الحفظة الواحدة' });}
     // تاريخ السريان حر (اليوم = فوري، المستقبل = مجدول). الماضي مرفوض لحماية القديم.
-    const todayStr = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // Asia/Riyadh
-    const tomorrow = new Date(Date.now() + 3 * 3600 * 1000 + 86400000).toISOString().slice(0, 10);
+    const todayStr = riyadhToday(); // Asia/Riyadh
+    const tomorrow = (function(){const d=new Date(Date.now()+3*3600*1000+86400000);return d.toISOString().slice(0,10)})();
     const effRaw = String(req.body?.effective_from || tomorrow);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(effRaw)) {return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: 'تاريخ السريان YYYY-MM-DD' });}
     if (effRaw < todayStr) {return res.status(422).json({ error: 'ROSTER_PAST_DATE', message: 'تاريخ السريان لا يكون في الماضي — القديم محمي' });}
@@ -1246,7 +1310,7 @@ router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, r
                 entity: 'employees', entityName: 'الموظفون', action: 'update',
                 data: updates, changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString(),
             });
-        } catch (_) {}
+        } catch (e) { logger.debug('[dept-roster] تعذر بث entity_changed:', e.message); }
         res.json({ ok: true, updated: updates.length, rows: updates, effective_from: effRaw, appliedNow: applyNow });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
@@ -1256,6 +1320,335 @@ router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, r
         client.release();
     }
 });
+
+// ─── شبكة الدوامات الأسبوعية (موظف × يوم) — تحرير أي يوم مستقبلًا بفاعلية ───
+// البناء فوق employee_shift_history: كل خلية محفوظة = صف مجدول بتاريخ سريانه،
+// ووظيفة الـrollover (كل 5 دقائق) تطبّقه في أعمدة المحرك يومه. الماضي محمي.
+router.get('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (req, res) => {
+    try {
+        const scope = rosterScope(req.user, req.query.dept);
+        if (!scope.ok) {return res.status(403).json({ error: scope.code, message: scope.message });}
+        const todayStr = riyadhToday(); // Asia/Riyadh
+        const ws = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? String(req.query.week) : todayStr;
+        const w0 = new Date(ws + 'T12:00:00Z');
+        // بداية الأسبوع = السبت (طلب المالك 2026-10-04): (رقم اليوم + 1) % 7 = الأيام منذ السبت
+        w0.setUTCDate(w0.getUTCDate() - ((w0.getUTCDay() + 1) % 7));
+        const weekStart = w0.toISOString().slice(0, 10);
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(w0.getTime() + i * 86400000);
+            const iso = d.toISOString().slice(0, 10);
+            days.push({ date: iso, weekday: i, isPast: iso < todayStr, isToday: iso === todayStr });
+        }
+        const weekEnd = days[6].date;
+        const valid = await rosterValidDepts();
+        let approval = null;
+        try {
+            await ensureRosterApprovals();
+            approval = (await pool.query(
+                `SELECT requested_name, requested_at::text AS requested_at, approved_name, approved_at::text AS approved_at
+                   FROM roster_approvals WHERE dept_key=$1 AND week_start=$2::date LIMIT 1`,
+                [rosterApprovalKey(scope), weekStart])).rows[0] || null;
+        } catch (e) { logger.warn('[dept-roster-week] تعذر قراءة حالة الاعتماد:', e.message); }
+        const emps = (await pool.query(
+            `SELECT e.id, e.name, e."employeeId", e.position, e.department, e.shift_start, e.shift_karim, e.day_off, e.status
+               FROM employees e WHERE e.status = 'active' ORDER BY e.name`
+        )).rows;
+        const inScope = emps.filter((e) => String(e.department || '').trim() && (!scope.depts.length || inScopeDepts(scope.depts, e.department)));
+        const ids = inScope.map((e) => Number(e.id));
+        let hist = [];
+        let recentLog = [];
+        if (ids.length) {
+            hist = (await pool.query(
+                `SELECT h.employee_id, h.shift_start, h.shift_karim, h.day_off, h.effective_from::text AS effective_from
+                   FROM employee_shift_history h
+                  WHERE h.employee_id = ANY($1::bigint[]) AND h.effective_from <= $2::date
+                  ORDER BY h.employee_id, h.effective_from`,
+                [ids, weekEnd]
+            )).rows;
+            recentLog = (await pool.query(
+                `SELECT h.employee_id, e.name, e."employeeId" AS emp_no, h.shift_start, h.shift_karim,
+                        h.effective_from::text AS effective_from, h.created_at::text AS created_at, u.name AS by_name
+                   FROM employee_shift_history h
+                   JOIN employees e ON e.id = h.employee_id
+                   LEFT JOIN users u ON u.id = h.created_by
+                  WHERE h.employee_id = ANY($1::bigint[]) AND h.effective_from <> DATE '2000-01-01'
+                  ORDER BY h.created_at DESC LIMIT 15`,
+                [ids]
+            )).rows;
+        }
+        const histBy = new Map();
+        for (const h of hist) {
+            if (!histBy.has(Number(h.employee_id))) {histBy.set(Number(h.employee_id), []);}
+            histBy.get(Number(h.employee_id)).push(h);
+        }
+        // الإجازات المعتمدة المتقاطعة مع الأسبوع — تظهر واضحة في الشبكة والطباعة (طلب المالك 2026-10-04)
+        const leavesBy = new Map();
+        if (ids.length) {
+            try {
+                const lv = (await pool.query(
+                    `SELECT lr."employeeId" AS employee_id, lr."startDate" AS start_date, lr."endDate" AS end_date,
+                            COALESCE(lt.name, 'إجازة') AS type_name
+                       FROM "leaveRequests" lr
+                       LEFT JOIN "leaveTypes" lt ON lt.id = lr."leaveTypeId"
+                      WHERE lr.status = 'approved'
+                        AND lr."employeeId" = ANY($1::bigint[])
+                        AND lr."endDate" >= $2 AND lr."startDate" <= $3`,
+                    [ids, weekStart, weekEnd]
+                )).rows;
+                for (const l of lv) {
+                    const key = Number(l.employee_id);
+                    if (!leavesBy.has(key)) {leavesBy.set(key, []);}
+                    leavesBy.get(key).push(l);
+                }
+            } catch (_) { /* جدول إجازات قديم/بأعمدة مختلفة — الشبكة تعمل بلا طبقة الإجازات */ }
+        }
+        const leavesOn = (employeeId, date) => {
+            const list = leavesBy.get(Number(employeeId)) || [];
+            return list.find((l) => String(l.start_date) <= date && String(l.end_date) >= date) || null;
+        };
+        const grid = inScope.map((e) => {
+            const rows = histBy.get(Number(e.id)) || [];
+            const cells = [];
+            for (const day of days) {
+                const upto = rows.filter((r) => r.effective_from <= day.date);
+                const last = upto.length ? upto[upto.length - 1] : null;
+                const src = last || { shift_start: e.shift_start, shift_karim: e.shift_karim, day_off: e.day_off };
+                const lv = leavesOn(e.id, day.date);
+                cells.push({
+                    date: day.date,
+                    shift_start: String(src.shift_start || '09:00').slice(0, 5),
+                    shift_hours: Number(src.shift_karim) || 10,
+                    day_off: src.day_off == null ? null : Number(src.day_off),
+                    onLeave: Boolean(lv),
+                    leaveType: lv ? lv.type_name : null,
+                    explicit: rows.some((r) => r.effective_from === day.date),
+                    editable: day.date >= todayStr && !lv,
+                });
+            }
+            return {
+                id: e.id, name: e.name, employeeId: e.employeeId, position: e.position, department: e.department,
+                base: { shift_start: String(e.shift_start || '09:00').slice(0, 5), shift_hours: Number(e.shift_karim) || 10, day_off: e.day_off == null ? null : Number(e.day_off) },
+                cells,
+            };
+        });
+        res.json({
+            ok: true, weekStart, days, grid, depts: scope.depts, fixed: scope.fixed,
+            today: todayStr, validDepts: [...valid], recentLog, approval,
+        });
+    } catch (e) {
+        logger.error('[dept-roster-week list]', e);
+        res.status(500).json({ error: 'ROSTER_WEEK_FAILED', message: 'تعذر جلب شبكة الأسبوع' });
+    }
+});
+
+// ─── اعتماد طباعة الدوامات: رئيس القسم يطلب ← شؤون العاملين توقّع ← الطباعة معتمدة ───
+function rosterApprovalKey(scope) {
+    return ((scope.depts && scope.depts.length) ? scope.depts.join(',') : '*').toLowerCase();
+}
+async function ensureRosterApprovals() {
+    await pool.query(`CREATE TABLE IF NOT EXISTS roster_approvals (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        dept_key TEXT NOT NULL,
+        week_start DATE NOT NULL,
+        requested_by BIGINT, requested_name TEXT, requested_at TIMESTAMPTZ,
+        approved_by BIGINT, approved_name TEXT, approved_at TIMESTAMPTZ,
+        UNIQUE (dept_key, week_start))`);
+}
+router.post('/dept-roster-approval/request', jwtAuth, requireRole(...ROSTER_ROLES), async (req, res) => {
+    try {
+        await ensureRosterApprovals();
+        const scope = rosterScope(req.user, req.body?.dept);
+        if (!scope.ok) {return res.status(403).json({ error: scope.code, message: scope.message });}
+        const ws = String(req.body?.week_start || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ws)) {return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: 'بداية الأسبوع YYYY-MM-DD' });}
+        const name = req.user.name || req.user.username || String(req.user.id);
+        await pool.query(
+            `INSERT INTO roster_approvals (dept_key, week_start, requested_by, requested_name, requested_at)
+             VALUES ($1,$2::date,$3,$4,NOW())
+             ON CONFLICT (dept_key, week_start) DO UPDATE SET requested_by=$3, requested_name=$4, requested_at=NOW(),
+               approved_by=NULL, approved_name=NULL, approved_at=NULL`,
+            [rosterApprovalKey(scope), ws, req.user.id, name]
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        logger.error('[roster-approval request]', e);
+        res.status(500).json({ error: 'APPROVAL_REQUEST_FAILED', message: 'تعذر إرسال طلب الاعتماد' });
+    }
+});
+router.get('/dept-roster-approval/pending', jwtAuth, requireRole('hr', 'admin'), async (req, res) => {
+    try {
+        await ensureRosterApprovals();
+        const ws = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? String(req.query.week)
+            : riyadhToday();
+        const rows = (await pool.query(
+            `SELECT dept_key, week_start::text AS week_start, requested_name, requested_at::text AS requested_at
+               FROM roster_approvals
+              WHERE week_start = $1::date AND requested_at IS NOT NULL AND approved_at IS NULL
+              ORDER BY requested_at DESC`,
+            [ws]
+        )).rows;
+        res.json({ ok: true, week: ws, pending: rows });
+    } catch (e) {
+        logger.error('[roster-approval pending]', e);
+        res.status(500).json({ error: 'APPROVAL_PENDING_FAILED', message: 'تعذر جلب طلبات الاعتماد' });
+    }
+});
+router.post('/dept-roster-approval/approve', jwtAuth, requireRole('hr', 'admin'), async (req, res) => {
+    try {
+        await ensureRosterApprovals();
+        const ws = String(req.body?.week_start || '');
+        const deptKey = String(req.body?.dept_key || '').trim().toLowerCase();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ws) || !deptKey) {
+            return res.status(422).json({ error: 'APPROVAL_BAD_INPUT', message: 'الأسبوع والقسم مطلوبان' });
+        }
+        const name = req.user.name || req.user.username || String(req.user.id);
+        const r = await pool.query(
+            `UPDATE roster_approvals SET approved_by=$3, approved_name=$4, approved_at=NOW()
+              WHERE dept_key=$1 AND week_start=$2::date AND requested_at IS NOT NULL RETURNING *`,
+            [deptKey, ws, req.user.id, name]
+        );
+        if (!r.rows.length) {return res.status(422).json({ error: 'APPROVAL_NOT_FOUND', message: 'لا طلب اعتماد مفتوح لهذا القسم في هذا الأسبوع' });}
+        res.json({ ok: true, approval: { approved_name: r.rows[0].approved_name, approved_at: r.rows[0].approved_at } });
+    } catch (e) {
+        logger.error('[roster-approval approve]', e);
+        res.status(500).json({ error: 'APPROVAL_FAILED', message: 'تعذر اعتماد الدوامات' });
+    }
+});
+
+router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (req, res) => {
+    const cells = Array.isArray(req.body?.cells) ? req.body.cells : [];
+    if (!cells.length) {return res.status(422).json({ error: 'ROSTER_EMPTY', message: 'لا توجد خلايا للحفظ' });}
+    if (cells.length > 700) {return res.status(422).json({ error: 'ROSTER_TOO_BIG', message: 'حد أقصى 700 خلية في الحفظة الواحدة' });}
+    const todayStr = riyadhToday(); // Asia/Riyadh
+    const wsRaw = String(req.body?.week_start || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(wsRaw)) {return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: 'بداية الأسبوع YYYY-MM-DD' });}
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const scope = rosterScope(req.user, req.body?.dept);
+        if (!scope.ok) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: scope.code, message: scope.message });
+        }
+        const privileged = ROSTER_PRIVILEGED.includes(req.user?.role);
+        const valid = await rosterValidDepts();
+        // تنظيف وتحقق من كل خلية قبل أي كتابة
+        const clean = [];
+        for (const c of cells) {
+            const id = Number(c.id);
+            const date = String(c.date || '');
+            if (!Number.isInteger(id) || id <= 0) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_CELL', message: 'خلية بمعرف موظف غير صالح' });
+            }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: `تاريخ خلية غير صالح: ${date}` });
+            }
+            // الأسبوع 7 أيام: التاريخ لازم يكون بين بداية الأسبوع ونهايته
+            const dd = new Date(date + 'T12:00:00Z');
+            const diff = Math.round((dd - new Date(wsRaw + 'T12:00:00Z')) / 86400000);
+            if (diff < 0 || diff > 6) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_DATE', message: `تاريخ خلية خارج الأسبوع: ${date}` });
+            }
+            if (date < todayStr) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_PAST_DATE', message: `لا يمكن تعديل ماضٍ (${date}) — القديم محمي` });
+            }
+            const start = String(c.shift_start ?? '09:00').trim();
+            const sm = start.match(/^(\d{1,2}):(\d{2})$/);
+            if (!sm || Number(sm[1]) > 23 || Number(sm[2]) > 59) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_TIME', message: `وقت غير صالح (${date}) — الصيغة HH:MM` });
+            }
+            const hours = Number(c.shift_hours ?? 10);
+            if (!Number.isFinite(hours) || hours < 1 || hours > 24) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_Karim', message: `مدة الدوام 1-24 (${date})` });
+            }
+            let dayOff = c.day_off ?? null;
+            if (dayOff === '' || dayOff === undefined) {dayOff = null;}
+            if (dayOff !== null && !(Number.isInteger(Number(dayOff)) && Number(dayOff) >= 0 && Number(dayOff) <= 6)) {
+                await client.query('ROLLBACK');
+                return res.status(422).json({ error: 'ROSTER_BAD_DAYOFF', message: `يوم الراحة 0-6 (${date})` });
+            }
+            clean.push({
+                id, date,
+                shift_start: `${String(sm[1]).padStart(2, '0')}:${sm[2]}`,
+                shift_karim: hours,
+                day_off: dayOff === null ? null : Number(dayOff),
+            });
+        }
+        const ids = [...new Set(clean.map((c) => c.id))];
+        const cur = (await client.query(`SELECT * FROM employees WHERE id = ANY($1::bigint[]) FOR UPDATE`, [ids])).rows;
+        const byId = new Map(cur.map((e) => [Number(e.id), e]));
+        for (const c of clean) {
+            const emp = byId.get(c.id);
+            if (!emp) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: `الموظف ${c.id} غير موجود` });
+            }
+            const hasDept = !!String(emp.department || '').trim();
+            if (hasDept && !inScopeDepts(scope.depts, emp.department) && !(privileged && !scope.fixed)) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ error: 'ROSTER_OUT_OF_SCOPE', message: `الموظف «${emp.name}» ليس في قسمك` });
+            }
+            // أساس أول لمن لا أساس له — به يُحل الماضي دائمًا
+            await client.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 SELECT $1, e.shift_start, e.shift_karim, e.day_off, DATE '2000-01-01', $2 FROM employees e
+                  WHERE e.id = $1 AND NOT EXISTS (SELECT 1 FROM employee_shift_history h WHERE h.employee_id = $1)
+                 ON CONFLICT DO NOTHING`,
+                [c.id, req.user.id]
+            );
+        }
+        for (const c of clean) {
+            const emp = byId.get(c.id);
+            // ضم بلا قسم: للمخوّلين فقط عند حفظ خلاياه — يصبح من القسم
+            let dept = emp.department;
+            if (!hasDeptOf(emp) && privileged && scope.depts[0]) {
+                const claimTo = [...valid].find((x) => sameDept(x, scope.depts[0])) || scope.depts[0];
+                dept = claimTo;
+            }
+            await client.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 VALUES ($1,$2,$3,$4,$5::date,$6)
+                 ON CONFLICT (employee_id, effective_from)
+                 DO UPDATE SET shift_start=EXCLUDED.shift_start, shift_karim=EXCLUDED.shift_karim,
+                               day_off=EXCLUDED.day_off, created_by=EXCLUDED.created_by, created_at=NOW()`,
+                [c.id, c.shift_start, c.shift_karim, c.day_off, c.date, req.user.id]
+            );
+            if (c.date === todayStr) {
+                if (dept && dept !== emp.department) {
+                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4, department=$5 WHERE id=$1`, [c.id, c.shift_start, c.shift_karim, c.day_off, dept]);
+                } else {
+                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4 WHERE id=$1`, [c.id, c.shift_start, c.shift_karim, c.day_off]);
+                }
+            }
+        }
+        await client.query('COMMIT');
+        logger.info({ userId: req.user?.id, depts: scope.depts, cells: clean.length, week_start: wsRaw }, '[dept-roster-week] saved');
+        // أي تعديل على شبكة الأسبوع يلغي اعتماد شؤون العاملين السابق (السلامة أولًا)
+        try {
+            await ensureRosterApprovals();
+            await pool.query(`DELETE FROM roster_approvals WHERE dept_key=$1 AND week_start=$2::date`, [rosterApprovalKey(scope), wsRaw]);
+        } catch (e) { logger.warn('[dept-roster-week] تعذر تصفير الاعتمادات:', e.message); }
+        try {
+            req.io?.emit('entity_changed', { entity: 'employees', entityName: 'الموظفون', action: 'update', changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString() });
+        } catch (e) { logger.debug('[dept-roster-week] تعذر بث entity_changed:', e.message); }
+        res.json({ ok: true, updated: clean.length, week_start: wsRaw });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[dept-roster-week save]', e);
+        res.status(500).json({ error: 'ROSTER_WEEK_SAVE_FAILED', message: 'تعذر حفظ شبكة الأسبوع' });
+    } finally {
+        client.release();
+    }
+});
+
+function hasDeptOf(emp) {return !!String(emp?.department || '').trim();}
 
 // ─── الدوام المجدول لموظف واحد (شارة البطاقة): الحالي + القادم مستقبلًا ─────
 // نفس قواعد الرؤية: إدارة/شؤون عاملين، صاحب السجل، أو رئيس قسمه
@@ -1337,7 +1730,7 @@ function deptHeadEmpScope(user) {
 }
 const inEmpScope = (empRow, depts) => (depts || []).some((d) => String(empRow.department || '').trim().toLowerCase() === String(d).toLowerCase());
 
-router.get('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res) => {
+router.get('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res, next) => {
     try {
         const scope = deptHeadEmpScope(req.user);
         if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم — راجع الإدارة' });}
@@ -1350,7 +1743,7 @@ router.get('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res
     } catch (e) { next(e); }
 });
 
-router.post('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res) => {
+router.post('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, res, next) => {
     try {
         const scope = deptHeadEmpScope(req.user);
         if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}
@@ -1373,7 +1766,7 @@ router.post('/dept-employees', jwtAuth, requireRole('dept_head'), async (req, re
     } catch (e) { next(e); }
 });
 
-router.put('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res) => {
+router.put('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res, next) => {
     try {
         const scope = deptHeadEmpScope(req.user);
         if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}
@@ -1392,7 +1785,7 @@ router.put('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req,
     } catch (e) { next(e); }
 });
 
-router.delete('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res) => {
+router.delete('/dept-employees/:id', jwtAuth, requireRole('dept_head'), async (req, res, next) => {
     try {
         const scope = deptHeadEmpScope(req.user);
         if (!scope) {return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'حسابك غير مرتبط بقسم' });}

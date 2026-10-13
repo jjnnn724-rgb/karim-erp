@@ -107,7 +107,9 @@ CREATE TABLE IF NOT EXISTS device_sync_state (
 
 -- ربط كل موظف برقمه على جهاز البصمة (بوابة الموظف تعتمد عليه)
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS "deviceUserId" VARCHAR(64);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS "deviceUserIdAlt" VARCHAR(64);
 CREATE INDEX IF NOT EXISTS idx_employees_device_user ON employees("deviceUserId");
+CREATE INDEX IF NOT EXISTS idx_employees_device_user_alt ON employees("deviceUserIdAlt");
 
 -- مستخدمو الجهاز المخزنون (أسماء + أرقام للربط) — قراءة فقط من الجهاز
 CREATE TABLE IF NOT EXISTS zk_device_users (

@@ -10,6 +10,35 @@ function normalizeDepartmentIcon(value){const raw=String(value||'').trim();const
 function departmentIconOptions(selected){const key=normalizeDepartmentIcon(selected);return DEPARTMENT_ICON_OPTIONS.map(([value,label])=>`<option value="${value}" ${value===key?'selected':''}>${label}</option>`).join('');}
 function deptIcon(d){ return ico(normalizeDepartmentIcon(d&&d.icon)); }
 function deptIconMarkup(d){ return deptIcon(d); }
+/* ─── طلب المالك 2026-10-05: ربط كاشيرات يارا سوفت بأقسامها في بطاقات الأقسام ───
+   كاشير 1 → الكافيه • كاشير 4 و5 → البيع الخارجي • كاشير 9 → الأوبن بوفيه • كاشير 6 → العصير.
+   إيراد الكاشير يبقى مسجلًا تحت كوده الخام (ys_cc_N) كما هو — عرض إجمالي مُجمَّع على بطاقة القسم
+   بلا أي تحريك بيانات، فالتقارير المالية الرسمية (P&L ويارا سوفت) لا تتأثر إطلاقًا (صفر كسر). */
+const CASHIER_DEPT_MAP = {
+    '1': 'CAF',             // الكافيه
+    '4': 'external_sales',  // البيع الخارجي
+    '5': 'external_sales',  // البيع الخارجي
+    '6': 'G',               // العصير
+    '9': 'open_buffet',     // الأوبن بوفيه (البوفيه المفتوح)
+};
+function deptMappedCashiers(deptCode){
+    return Object.keys(CASHIER_DEPT_MAP).filter(no => String(CASHIER_DEPT_MAP[no]) === String(deptCode));
+}
+function cashierRevenueIn(revenues, cashierNos, fromDate, toDate){
+    const wanted = new Set((cashierNos || []).map(no => 'ys_cc_' + no));
+    const inRange = (r) => { if(!fromDate && !toDate) {return true;} const d = String(r.date || '').slice(0,10); if(!d) {return false;} if(fromDate && d < fromDate) {return false;} if(toDate && d > toDate) {return false;} return true; };
+    return (revenues || []).filter(r => wanted.has(String(r.deptId)) && inRange(r)).reduce((s, r) => s + Number(r.amount || 0), 0);
+}
+/* إيراد الكاشير المسند لقسم (يشمل أقسامه الفرعية — بطاقة المطبخ التجميعية تجمع كاشير أقسامها) */
+function deptCashierRevenue(deptCode, fromDate, toDate){
+    const codes = deptWithChildren(deptCode);
+    const nos = Object.keys(CASHIER_DEPT_MAP).filter(no => codes.has(String(CASHIER_DEPT_MAP[no])));
+    return cashierRevenueIn(STATE.revenues, nos, fromDate, toDate);
+}
+/* لون هوية القسم المسجل في القاعدة — يُستخدم في الشريط العلوي وميدالية الأيقونة وشارات البطاقة */
+function deptIdentityColor(d){
+    return /^#[0-9a-fA-F]{6}$/.test(String(d && d.color || '').trim()) ? String(d.color).trim() : '#D4A843';
+}
 /* بطاقة المطبخ العام — تجميعية: إيراد ومصروف المطبخ + كل أقسامه الفرعية
    (حلواني، سلطات، خباز، مطبخ ساخن، استيورد، صالة ساخنة...) في مكان واحد.
    كل إذن صرف لأي قسم فرعي يظهر مصروفًا في قسمه ومُجمَّعًا هنا تلقائيًا. */
@@ -17,17 +46,30 @@ function kitchenRollupCard(){
 const kitchen=(STATE.departments||[]).find(d=>String(d.code)==='kitchen');
 if(!kitchen) {return '';}
 const s=calcStats('kitchen');
-// إيراد البوفيه: مبيعات كاشير 9 مسجلة تحت ys_cc_9 (خارج شجرة المطبخ) — تُضم للبطاقة التجميعية
-s.rev+=(STATE.revenues||[]).filter(r=>String(r.deptId)==='ys_cc_9').reduce((a,r)=>a+Number(r.amount||0),0);
+s.rev+=deptCashierRevenue('kitchen');
 s.profit=s.rev-s.exp;
 s.costRatio=s.rev>0?(s.exp/s.rev)*100:0;
+// كوست الشهر الحالي لكل الأقسام التابعة (طلب المالك 2026-10-08)
+const _mStart=today().slice(0,8)+'01', _mToday=today();
+const sM=calcStats('kitchen',_mStart,_mToday);
+const mCashier=deptCashierRevenue('kitchen',_mStart,_mToday);
+const mRev=sM.rev+mCashier, mExp=sM.exp;
+const mRatio=mRev>0?(mExp/mRev*100):0;
 const kids=(STATE.departments||[]).filter(d=>String(d.parent_code||'')==='kitchen');
-const kidBadges=kids.map(k=>{const ks=calcStats(k.code);return `<span class="badge bdg-blue" title="مصروف ${fN(ks.exp)} SAR • إيراد ${fN(ks.rev)} SAR">${esc(k.icon||'•')} ${esc(k.name)}: ${fC(ks.exp)}</span>`;}).join(' ');
+const kidRows=kids.map(k=>{
+const bd=deptExpenseBreakdown(k.code,_mStart,_mToday);
+const ks=calcStats(k.code,_mStart,_mToday);
+const kRev=ks.rev+cashierRevenueIn(STATE.revenues,deptMappedCashiers(k.code),_mStart,_mToday);
+return {code:k.code,name:k.name,icon:k.icon||'•',cost:bd.materials,rev:kRev};
+}).sort((a,b)=>b.cost-a.cost);
+const mTotal=kidRows.reduce((t,k)=>t+k.cost,0);
+const maxCost=Math.max(1,...kidRows.map(k=>k.cost));
+const kidTable=kidRows.map(k=>`<tr><td class="fw-bold">${esc(k.icon||'•')} ${esc(k.name)}</td><td><div style="background:var(--bg3);border-radius:6px;height:10px;min-width:120px"><div style="height:10px;border-radius:6px;background:linear-gradient(90deg,var(--gold-d),var(--gold));width:${Math.round(k.cost/maxCost*100)}%"></div></div></td><td class="c-red fw-bold">${fC(k.cost)}</td><td class="text-muted">${fC(k.rev)}</td></tr>`).join('');
 return `<div class="dept-card u-mt16" style="grid-column:1/-1;border:2px solid var(--border-gold);background:var(--bg2);cursor:pointer" onclick="openDepartmentDetail('kitchen')">
-<div class="dept-hd"><span class="dept-ic" style="font-size:26px"><i class=ji data-i=chef-hat></i></span><div class="dept-info"><div class="dept-name" style="font-size:18px">المطبخ العام <span class="badge bdg-gold">بطاقة تجميعية</span></div><div class="dept-code">الإيراد من كاشير البوفيه (9) والمبيعات المباشرة • المصروف من أذون الصرف لكل الأقسام الفرعية</div></div>
-<div class="dept-badge">${t('dept.cost')} ${fN(s.costRatio.toFixed(1))}%</div></div>
-<div class="dept-stats"><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=banknote></i> إجمالي الإيراد</div><div class="dstat-val c-gold">${fC(s.rev)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=wallet></i> إجمالي المصروف (أذون الصرف)</div><div class="dstat-val c-red">${fC(s.exp)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=gem></i> الصافي</div><div class="dstat-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div>
-${kids.length?`<div class="u-mt8" style="font-size:12px;display:flex;flex-wrap:wrap;gap:6px">${kidBadges}</div>`:''}
+<div class="dept-hd"><span class="dept-ic" style="font-size:26px"><i class=ji data-i=chef-hat></i></span><div class="dept-info"><div class="dept-name" style="font-size:18px">المطبخ العام <span class="badge bdg-gold">بطاقة تجميعية</span> <span class="badge bdg-blue">كوست الشهر الحالي</span></div><div class="dept-code">الإيراد من كاشير البوفيه (9) والمبيعات المباشرة • المصروف من أذون الصرف لكل الأقسام الفرعية</div></div>
+<div class="dept-badge">${t('dept.cost')} ${fN(mRatio.toFixed(1))}% <small class="text-muted">الشهر</small></div></div>
+<div class="dept-stats"><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=banknote></i> إيراد الشهر</div><div class="dstat-val c-gold">${fC(mRev)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=wallet></i> كوست الشهر (صرف مخزون)</div><div class="dstat-val c-red">${fC(mTotal)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=gem></i> صافي الشهر</div><div class="dstat-val ${mRev-mTotal>=0?'c-green':'c-red'}">${fC(mRev-mTotal)}</div></div></div>
+<div class="tbl-wrap" style="margin:12px 16px 16px"><div class="tbl-hd"><h3><i class=ji data-i=chart></i> كوست الشهر لكل قسم تابع</h3><span class="badge bdg-blue">${fN(kidRows.length)} قسم</span></div><div class="tbl-scroll"><table><thead><tr><th>القسم</th><th>النسبة</th><th>الكوست</th><th>الإيراد</th></tr></thead><tbody>${kidTable||'<tr><td colspan="4" class="u-empty-sm">لا صرف هذا الشهر</td></tr>'}</tbody></table></div></div>
 </div>`;
 }
 function renderDepartments(){
@@ -42,7 +84,24 @@ if(el&&window._cashLiveAt){ const s=Math.max(0,Math.round((Date.now()-window._ca
 const clk=document.getElementById('cashLiveClock');
 if(clk){ try{ clk.textContent=new Intl.DateTimeFormat('ar-SA',{timeZone:'Asia/Riyadh',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}).format(new Date()); }catch(_){} }
 },1000);
-function deptCardHtml(d){const s=calcStats(d.code);const parent=STATE.departments.find(x=>x.code===d.parent_code);const kidCount=STATE.departments.filter(x=>x.parent_code===d.code).length;return `<div class="dept-card" onclick="openDepartmentDetail('${d.code}')"><div class="dept-hd"><span class="dept-ic">${deptIconMarkup(d)}</span><div class="dept-info"><div class="dept-name">${esc(d.name)}</div><div class="dept-code">${d.code}${parent?` · <span class="badge bdg-blue" title="مصروفات وإيرادات هذا القسم تُرحَّل إلى ${esc(parent.name)}">تابع: ${esc(parent.name)}</span>`:''}${kidCount?` · <span class="badge bdg-green" title="يشمل ${kidCount} قسم فرعي">+${kidCount} فرعي</span>`:''}</div></div><div class="dept-badge">${t('dept.cost')} ${fN(s.costRatio.toFixed(1))}%</div></div><div class="dept-stats"><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=banknote></i> ${t('dept.revenue')}</div><div class="dstat-val c-gold">${fC(s.rev)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=wallet></i> ${t('dept.expense')}</div><div class="dstat-val c-red">${fC(s.exp)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=gem></i> ${t('dept.profit')}</div><div class="dstat-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div><div class="u-footer-sep"><button class="btn btn-sm u-flex1" onclick="event.stopPropagation();editDepartment('${d.code}')"><i class=ji data-i=pencil></i> ${t('dept.edit')}</button><button class="btn btn-red btn-sm u-flex1" onclick="event.stopPropagation();deleteDepartment('${d.code}')"><i class=ji data-i=trash></i> ${t('dept.delete')}</button></div></div>`;}
+/* بطاقة القسم (طلب المالك 2026-10-05):
+   • إيراد الكاشير المسند للقسم (خريطة CASHIER_DEPT_MAP) يُجمع على بطاقته مع شارة لكل كاشير
+   • مصروف أذون الصرف للقسم (صرف المخزون صافي المرتجعات) يظهر بشارة على البطاقة
+   • هوية لونية لكل قسم من لونه المسجل في القاعدة: شريط علوي + ميدالية أيقونة — تمييز احترافي
+     دون تغيير أي بنية أو سلوك (نفس الأصناف والأزرار والأحداث) */
+function deptCardHtml(d){
+const s=calcStats(d.code);
+const mappedNos=deptMappedCashiers(d.code);
+const cashRev=mappedNos.length?cashierRevenueIn(STATE.revenues, mappedNos):0;
+if(cashRev>0){ s.rev+=cashRev; s.profit=s.rev-s.exp; s.costRatio=s.rev>0?(s.exp/s.rev)*100:0; }
+const parent=STATE.departments.find(x=>x.code===d.parent_code);
+const kidCount=STATE.departments.filter(x=>x.parent_code===d.code).length;
+const color=deptIdentityColor(d);
+const dispatchExp=deptExpenseBreakdown(d.code).materials;
+const revChips=mappedNos.map(no=>`<span class="badge" style="background:${color}1c;color:${color};border:1px solid ${color}66" title="إيراد كاشير ${esc(no)} المسند لهذا القسم"><i class=ji data-i=receipt></i> كاشير ${esc(no)}: ${fC(cashierRevenueIn(STATE.revenues, [no]))}</span>`).join(' ');
+const expChip=dispatchExp>0?`<span class="badge bdg-gold" title="قيمة ما صُرف للقسم من المخزن بأذون الصرف (صافي المرتجعات)"><i class=ji data-i=package></i> صرف مخزون: ${fC(dispatchExp)}</span>`:'';
+const chips=(revChips||expChip)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 8px 0;font-size:11.5px">${revChips}${expChip}</div>`:'';
+return `<div class="dept-card" style="border-top:3px solid ${color}" onclick="openDepartmentDetail('${d.code}')"><div class="dept-hd"><span class="dept-ic" style="background:${color}1f;border:1.5px solid ${color}55">${deptIconMarkup(d)}</span><div class="dept-info"><div class="dept-name">${esc(d.name)}</div><div class="dept-code">${d.code}${parent?` · <span class="badge bdg-blue" title="مصروفات وإيرادات هذا القسم تُرحَّل إلى ${esc(parent.name)}">تابع: ${esc(parent.name)}</span>`:''}${kidCount?` · <span class="badge bdg-green" title="يشمل ${kidCount} قسم فرعي">+${kidCount} فرعي</span>`:''}</div></div><div class="dept-badge">${t('dept.cost')} ${fN(s.costRatio.toFixed(1))}%</div></div><div class="dept-stats"><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=banknote></i> ${t('dept.revenue')}</div><div class="dstat-val c-gold">${fC(s.rev)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=wallet></i> ${t('dept.expense')}</div><div class="dstat-val c-red">${fC(s.exp)}</div></div><div class="dstat"><div class="dstat-lbl"><i class=ji data-i=gem></i> ${t('dept.profit')}</div><div class="dstat-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div>${chips}<div class="u-footer-sep"><button class="btn btn-sm u-flex1" onclick="event.stopPropagation();editDepartment('${d.code}')"><i class=ji data-i=pencil></i> ${t('dept.edit')}</button><button class="btn btn-red btn-sm u-flex1" onclick="event.stopPropagation();deleteDepartment('${d.code}')"><i class=ji data-i=trash></i> ${t('dept.delete')}</button></div></div>`;}
 /* تجميع احترافي لشبكة الأقسام: مبيعات | مطبخ وأقسامه (الخامل قابل للطي) | عامة */
 function deptGroupsHtml(){
 const visible=(STATE.departments||[]).filter(d=>!HIDDEN_DEPTS.includes(String(d.code)));
@@ -154,10 +213,14 @@ const idle=idleMin(c.last_at);
 const isIdle=idle!==null&&idle>=IDLE_MIN&&Number(c.today_invoices||0)>0;
 const prevT=window._cashPrevTot?window._cashPrevTot[String(c.cashier_no)]:undefined;
 const justSold=prevT!==undefined&&Number(c.today_total||0)!==Number(prevT);
-return `<div class="dept-card${justSold?' cash-new':''}" style="cursor:pointer;${best?'border:2px solid var(--gold)':''}${isIdle?';border:2px solid var(--red)':''}" onclick="openCashierLive('${esc(c.cashier_no)}')" title="اضغط لعرض أصناف وفواتير ${esc(c.name)} اليوم">
-<div class="dept-hd"><span class="dept-ic"><i class=ji data-i=${icon}></i></span>
+// طلب المالك 2026-10-05: بطاقة الكاشير تعرض القسم المسند إليه (إيراده يُجمع على بطاقة ذلك القسم)
+const mappedCode=CASHIER_DEPT_MAP[String(c.cashier_no)];
+const mappedDept=mappedCode?(STATE.departments||[]).find(x=>x.code===mappedCode):null;
+const mappedColor=mappedDept?deptIdentityColor(mappedDept):null;
+return `<div class="dept-card${justSold?' cash-new':''}" style="cursor:pointer;${best?'border:2px solid var(--gold)':''}${isIdle?';border:2px solid var(--red)':''}${(!best&&!isIdle&&mappedColor)?';border-top:3px solid '+mappedColor:''}" onclick="openCashierLive('${esc(c.cashier_no)}')" title="اضغط لعرض أصناف وفواتير ${esc(c.name)} اليوم">
+<div class="dept-hd"><span class="dept-ic"${mappedColor?` style="background:${mappedColor}1f;border:1.5px solid ${mappedColor}55"`:''}><i class=ji data-i=${icon}></i></span>
 <div class="dept-info"><div class="dept-name">${rankBadge(idx)}${esc(c.name)}</div>
-<div class="dept-code">كاشير ${esc(c.cashier_no)} · ${fN(c.today_invoices)} فاتورة · حصة ${share.toFixed(0)}%${live.shift?` · وردية ${esc(live.shift)}`:''}</div></div>
+<div class="dept-code">كاشير ${esc(c.cashier_no)} · ${fN(c.today_invoices)} فاتورة · حصة ${share.toFixed(0)}%${live.shift?` · وردية ${esc(live.shift)}`:''}${mappedDept?` · <span class="badge" style="background:${mappedColor}1c;color:${mappedColor};border:1px solid ${mappedColor}66" title="إيراد هذا الكاشير يُجمع في بطاقة قسم ${esc(mappedDept.name)}">→ ${esc(mappedDept.name)}</span>`:''}</div></div>
 <div class="dept-badge ${isNew?'c-gold':(up?'c-green':'c-red')}" title="مقابل إجمالي يوم أمس الكامل — ليست مقارنة عادلة أثناء اليوم">${isNew?'• جديد':`${up?'▲':'▼'} ${fN(Math.abs(Number(c.delta_pct)))}%`}</div></div>
 ${isIdle?`<div class="badge bdg-red" style="margin:4px 0"><i class=ji data-i=alert-triangle></i> ${idleTxt(idle)} — راجع الكاشير</div>`:''}
 <div class="dstat-val c-gold" style="font-size:26px;margin:6px 0">${fC(Number(c.today_total||0))}</div>
@@ -301,13 +364,22 @@ if(!dept) {return '<div class="mcard">القسم غير موجود</div>';}
 const from=deptDetailFrom||null,to=deptDetailTo||null;
 const s=calcStats(dept.code,from,to);
 const bd=deptExpenseBreakdown(dept.code,from,to);
+// طلب المالك 2026-10-05: توحيد الأرقام مع بطاقة القسم — إيراد الكاشير المسند يدخل تفاصيل القسم
+// FIX 2026-10-09: كان يطابق كود القسم نفسه فقط — كاشير 9 مربوط بـ open_buffet (ابن المطبخ)
+// فكانت تفاصيل المطبخ تصفر. الآن يشمل الأقسام الفرعية مثل البطاقة التجميعية.
+const detailMappedNos=Object.keys(CASHIER_DEPT_MAP).filter(no=>deptWithChildren(dept.code).has(String(CASHIER_DEPT_MAP[no])));
+const detailCashRev=detailMappedNos.length?cashierRevenueIn(STATE.revenues, detailMappedNos, from, to):0;
+if(detailCashRev>0){ s.rev+=detailCashRev; s.profit=s.rev-s.exp; s.costRatio=s.rev>0?(s.exp/s.rev)*100:0; }
+const detailColor=deptIdentityColor(dept);
+const detailChips=detailMappedNos.map(no=>`<span class="badge" style="background:${detailColor}1c;color:${detailColor};border:1px solid ${detailColor}66" title="إيراد كاشير ${esc(no)} المسند لهذا القسم"><i class=ji data-i=receipt></i> كاشير ${esc(no)}: ${fC(cashierRevenueIn(STATE.revenues, [no], from, to))}</span>`).join(' ');
 const inRangeRows=rows=>rows.filter(r=>{const d=String(r.date||'').slice(0,10);if(from&&d<from){return false;}if(to&&d>to){return false;}return true;});
 const deptCodes=deptWithChildren(dept.code);
 const revs=inRangeRows(STATE.revenues.filter(r=>deptCodes.has(String(r.deptId)))).slice().reverse().slice(0,10);
+const deptDisps=inRangeRows((STATE.dispatches||[]).filter(d=>deptCodes.has(String(d.deptCode)))).slice().reverse();
 const exps=bd.rows.slice().reverse().slice(0,10);
 const periodChip=(from||to)?`<span class="badge bdg-blue"><i class=ji data-i=calendar-days></i> ${from?'من '+fD(from):'كل الفترة'} ${to?'إلى '+fD(to):''}</span>`:'';
-return `<div style="background:var(--bg2);border-radius:var(--r2);padding:24px;margin-bottom:20px"><div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><span style="font-size:56px;background:${dept.color}20;padding:14px;border-radius:18px">${dept.icon}</span><div><div style="font-size:24px;font-weight:900">${esc(dept.name)}</div><div class="text-muted">${dept.code}</div></div><div class="dept-badge" style="font-size:13px;padding:8px 16px">نسبة التكلفة: ${fN(s.costRatio.toFixed(1))}%</div>${periodChip}</div><div class="fr u-mt12" style="align-items:end;max-width:520px"><div class="fg"><label><i class=ji data-i=calendar-days></i> من تاريخ</label><input type="date" id="deptDetailFromInput" value="${deptDetailFrom}" onchange="deptDetailFrom=this.value;renderPage()"></div><div class="fg"><label>إلى تاريخ</label><input type="date" id="deptDetailToInput" value="${deptDetailTo}" onchange="deptDetailTo=this.value;renderPage()"></div><button class="btn btn-sm" onclick="deptDetailFrom='';deptDetailTo='';renderPage()"><i class=ji data-i=rotate-ccw></i> كل الفترة</button></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> الإيرادات</div><div class="mcard-val c-gold">${fC(s.rev)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=wallet></i> التكلفة الإجمالية</div><div class="mcard-val c-red">${fC(s.exp)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=gem></i> صافي الربح</div><div class="mcard-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=package></i> صرف مخزون (صافي المرتجعات)</div><div class="mcard-val c-blue">${fC(bd.materials)}</div><small class="text-muted">كل ما صُرف للقسم من المخزن بقيمة المواد</small></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=clipboard-list></i> عجز / زيادة الجرد</div><div class="mcard-val ${bd.countAdj>0?'c-red':bd.countAdj<0?'c-green':''}">${fC(bd.countAdj)}</div><small class="text-muted">فروق الجرد على مخزن القسم — تُحمَّل على كلفته</small></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=pen-tool></i> مصروفات تشغيلية</div><div class="mcard-val c-orange">${fC(bd.operating)}</div><small class="text-muted">رواتب، تشغيل، مصروفات يدوية مسجلة على القسم</small></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> آخر الإيرادات</h3><button class="btn btn-green btn-sm" onclick="showAddRevenueModal('${dept.code}')"><i class=ji data-i=plus></i> إيراد</button></div><div class="tbl-scroll"><table><thead><tr><th>المصدر</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>${revs.map(r=>`<tr><td class="fw-bold">${esc(r.source)}</td><td class="c-gold">${fC(r.amount)}</td><td class="text-muted">${fD(r.date)}</td></tr>`).join('')||'<tr><td colspan="3" class="u-empty-xs">لا توجد بيانات</td></tr>'}</tbody></table></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=wallet></i> آخر بنود التكلفة</h3><button class="btn btn-red btn-sm" onclick="showAddExpenseModal('${dept.code}')"><i class=ji data-i=plus></i> مصروف</button></div><div class="tbl-scroll"><table><thead><tr><th>البيان</th><th>النوع</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>${exps.map(e=>{const neg=Number(e.amount||0)<0;const stock=isStockMovementExpense(e);const cnt=isCountCorrectionExpense(e);const label=cnt?'<i class=ji data-i=clipboard-list></i> فرق جرد':stock?'<i class=ji data-i=package></i> صرف مخزون':'<i class=ji data-i=pen-tool></i> يدوي';const badgeCls=cnt?'bdg-blue':stock?'bdg-gold':'bdg-orange';return `<tr><td class="fw-bold">${esc(e.desc)}</td><td><span class="badge ${badgeCls}">${label}</span></td><td class="${neg?'c-green':'c-red'} fw-bold">${fC(e.amount)}</td><td class="text-muted">${fD(e.date)}</td></tr>`;}).join('')||'<tr><td colspan="4" class="u-empty-xs">لا توجد بيانات</td></tr>'}</tbody></table></div></div>`;
+return `<div style="background:var(--bg2);border-radius:var(--r2);padding:24px;margin-bottom:20px"><div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><span style="font-size:56px;background:${detailColor}20;padding:14px;border-radius:18px;border:2px solid ${detailColor}55">${dept.icon}</span><div><div style="font-size:24px;font-weight:900">${esc(dept.name)}</div><div class="text-muted">${dept.code}</div></div><div class="dept-badge" style="font-size:13px;padding:8px 16px">نسبة التكلفة: ${fN(s.costRatio.toFixed(1))}%</div>${periodChip}${detailChips?`<div style="display:flex;flex-wrap:wrap;gap:6px">${detailChips}</div>`:''}</div><div class="fr u-mt12" style="align-items:end;max-width:520px"><div class="fg"><label><i class=ji data-i=calendar-days></i> من تاريخ</label><input type="date" id="deptDetailFromInput" value="${deptDetailFrom}" onchange="deptDetailFrom=this.value;renderPage()"></div><div class="fg"><label>إلى تاريخ</label><input type="date" id="deptDetailToInput" value="${deptDetailTo}" onchange="deptDetailTo=this.value;renderPage()"></div><button class="btn btn-sm" onclick="deptDetailFrom='';deptDetailTo='';renderPage()"><i class=ji data-i=rotate-ccw></i> كل الفترة</button></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> الإيرادات</div><div class="mcard-val c-gold">${fC(s.rev)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=wallet></i> التكلفة الإجمالية</div><div class="mcard-val c-red">${fC(s.exp)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=gem></i> صافي الربح</div><div class="mcard-val ${s.profit>=0?'c-green':'c-red'}">${fC(s.profit)}</div></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=package></i> صرف مخزون (صافي المرتجعات)</div><div class="mcard-val c-blue">${fC(bd.materials)}</div><small class="text-muted">كل ما صُرف للقسم من المخزن بقيمة المواد</small></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=clipboard-list></i> عجز / زيادة الجرد</div><div class="mcard-val ${bd.countAdj>0?'c-red':bd.countAdj<0?'c-green':''}">${fC(bd.countAdj)}</div><small class="text-muted">فروق الجرد على مخزن القسم — تُحمَّل على كلفته</small></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=pen-tool></i> مصروفات تشغيلية</div><div class="mcard-val c-orange">${fC(bd.operating)}</div><small class="text-muted">رواتب، تشغيل، مصروفات يدوية مسجلة على القسم</small></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> آخر الإيرادات</h3><button class="btn btn-green btn-sm" onclick="showAddRevenueModal('${dept.code}')"><i class=ji data-i=plus></i> إيراد</button></div><div class="tbl-scroll"><table><thead><tr><th>المصدر</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>${revs.map(r=>`<tr><td class="fw-bold">${esc(r.source)}</td><td class="c-gold">${fC(r.amount)}</td><td class="text-muted">${fD(r.date)}</td></tr>`).join('')||'<tr><td colspan="3" class="u-empty-xs">لا توجد بيانات</td></tr>'}</tbody></table></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=wallet></i> آخر بنود التكلفة</h3><button class="btn btn-red btn-sm" onclick="showAddExpenseModal('${dept.code}')"><i class=ji data-i=plus></i> مصروف</button></div><div class="tbl-scroll"><table><thead><tr><th>البيان</th><th>النوع</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>${exps.map(e=>{const neg=Number(e.amount||0)<0;const stock=isStockMovementExpense(e);const cnt=isCountCorrectionExpense(e);const label=cnt?'<i class=ji data-i=clipboard-list></i> فرق جرد':stock?'<i class=ji data-i=package></i> صرف مخزون':'<i class=ji data-i=pen-tool></i> يدوي';const badgeCls=cnt?'bdg-blue':stock?'bdg-gold':'bdg-orange';return `<tr><td class="fw-bold">${esc(e.desc)}</td><td><span class="badge ${badgeCls}">${label}</span></td><td class="${neg?'c-green':'c-red'} fw-bold">${fC(e.amount)}</td><td class="text-muted">${fD(e.date)}</td></tr>`;}).join('')||'<tr><td colspan="4" class="u-empty-xs">لا توجد بيانات</td></tr>'}<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> طلبات الصرف من المخزن</h3><span class="badge bdg-blue">${fN(deptDisps.length)} إذن</span></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>${deptDisps.map((d,di)=>`<tr><td>${di+1}</td><td>${(d.items||[]).map(x=>`${esc(x.itemName||x.name||"—")} (${fN(x.approvedQty??x.qty??0)})`).join(", ")||"—"}</td><td>${fD(d.date)}</td><td>${esc(d.status||"—")}</td></tr>`).join("")||'<tr><td colspan="4" class="u-empty-xs">لا توجد أذونات صرف في الفترة</td></tr>'}</tbody></table></div></div></tbody></table></div></div>`;
 }
 // عنقود الموارد البشرية (لوحة HR + الحضور + الإجازات + أقسام HR + الرواتب): نُقل إلى js/features/hr.js (يجسر عبر js/main.js — BRIDGE-015)
 
-export { DEPARTMENT_ICON_OPTIONS, normalizeDepartmentIcon, departmentIconOptions, deptIcon, deptIconMarkup, renderDepartments, CASHIER_ICONS, HIDDEN_CASHIERS, HIDDEN_DEPTS, CASH_LIVE_DATE, cashTodayStr, cashShiftDate, cashTime, cashNavDay, cashPickDay, cashBarsSVG, loadCashiersLive, openCashierLive, deptParentOptions, showAddDepartmentModal, addDepartment, editDepartment, updateDepartment, deleteDepartment, renderDepartmentDetail };
+export { DEPARTMENT_ICON_OPTIONS, normalizeDepartmentIcon, departmentIconOptions, deptIcon, deptIconMarkup, CASHIER_DEPT_MAP, deptMappedCashiers, cashierRevenueIn, deptCashierRevenue, deptIdentityColor, renderDepartments, CASHIER_ICONS, HIDDEN_CASHIERS, HIDDEN_DEPTS, CASH_LIVE_DATE, cashTodayStr, cashShiftDate, cashTime, cashNavDay, cashPickDay, cashBarsSVG, loadCashiersLive, openCashierLive, deptParentOptions, showAddDepartmentModal, addDepartment, editDepartment, updateDepartment, deleteDepartment, renderDepartmentDetail };

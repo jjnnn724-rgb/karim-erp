@@ -14,9 +14,9 @@
  *   • الجيولوكيشن يُقرأ لحظة الضغط فقط — لا تتبع خلفي (خصوصية §5.5)
  */
 
-const MOBILE_SHELL_ROLES = ['employee', 'cashier', 'kitchen', 'warehouse', 'dept_head', 'admin', 'manager', 'hr', 'accountant'];
+const MOBILE_SHELL_ROLES = ['employee', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'dept_head', 'admin', 'manager', 'hr', 'accountant', 'owner'];
 // أدوار الميدان: شاشتهم الأولى بوابة الموظف (البصمة) — أدوار الإدارة: لوحتهم التشغيلية
-const FIELD_ROLES = ['employee', 'cashier', 'kitchen', 'warehouse', 'dept_head'];
+const FIELD_ROLES = ['employee', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'dept_head'];
 const BACKOFFICE_NAV_CANDIDATES = [
     ['cfo', 'المالية', 'banknote'],
     ['employees', 'الموظفون', 'users'],

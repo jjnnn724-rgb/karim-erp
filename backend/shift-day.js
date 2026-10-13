@@ -142,7 +142,7 @@ function delayEngineEnabled() {
     return String(process.env.ATTENDANCE_DELAY_ENGINE ?? 'true').trim().toLowerCase() !== 'false';
 }
 
-/** متأخر؟ مقارنة ببداية الوردية — بدون أي سماح: أي دقيقة فعلية تُحتسب (GRACE_MINUTES مهمل = 0) */
+/** متأخر؟ مقارنة ببداية الوردية + سماحية 15 دقيقة (قرار المالك 2026-10-10) */
 function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = graceMinutes()) {
     if (!delayEngineEnabled()) {return false;}
     let sH = fallbackStart;
@@ -152,9 +152,9 @@ function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = 
     return (wallHour * 60 + wallMinute) > (sH * 60 + sM + graceMin);
 }
 
-/** فترة السماح بالدقائق — معطلة نهائيًا بقرار المالك: كل شيء فعلي (دائمًا 0) */
+/** فترة السماح بالدقائق — قرار المالك 2026-10-10: ربع ساعة سماح للدخول والانصراف */
 function graceMinutes() {
-    return 0;
+    return 15;
 }
 
 /** نافذة القفل بالدقائق بعد نهاية الوردية — LOCK_GRACE_MINUTES، افتراضي 10 */
@@ -184,7 +184,8 @@ function calculateDelayParts(row, employee) {
     if (!row) {return zero;}
     const checkInMin = parseTimeMinutes(row.checkIn);
     const shiftMin = getShiftStartMinutes(employee);
-    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin);
+    // سماحية 15 دقيقة (قرار المالك 2026-10-10): تأخير الدخول ضمنها = في الميعاد
+    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin - graceMinutes());
 
     let early = 0;
     // قرار المالك (2026-09): المعتمد = صافي العجز عن ساعات الوردية —
@@ -206,12 +207,13 @@ function calculateDelayParts(row, employee) {
         // بلا دخول مسجل لا يُحتسب تبكير: الخروج وحده لا يثبت شيئًا
         // (مقارنة رقم مع null في جافاسكربت تعطي true زائفة وتنتج دقائق وهمية)
         if (checkInMin != null && out >= shiftMin) {
-            early = Math.max(0, endRaw - out);
+            // سماحية 15 دقيقة للانصراف المبكر أيضًا
+            early = Math.max(0, endRaw - out - graceMinutes());
         }
         if (checkInMin != null) {
             const requiredMin = Math.round(karim * 60);
             const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
-            late = Math.max(0, requiredMin - workedMin);
+            late = Math.max(0, requiredMin - workedMin - graceMinutes());
         }
     }
 
@@ -226,7 +228,7 @@ function calculateLateMinutes(row, employee) {
     return calculateDelayParts(row, employee).lateMinutes;
 }
 
-/** انصراف مبكر؟ أي خروج قبل نهاية الوردية المتوقعة — بدون أي سماح */
+/** انصراف مبكر؟ خروج قبل نهاية الوردية بما يتجاوز السماحية (15 دقيقة) */
 function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = graceMinutes()) {
     if (!delayEngineEnabled()) {return false;}
     const m = String(shiftStart || '09:00').match(/^(\d{1,2}):(\d{2})$/);

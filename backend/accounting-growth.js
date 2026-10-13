@@ -97,7 +97,10 @@ router.get('/ap-aging', jwtAuth, requireRole(...READ_ROLES), async (req, res, ne
                 supplier: name, total: 0, current: 0, d30: 0, d60: 0, d90: 0, over90: 0,
             });
             b.total = r2(b.total + bal);
-            const k = age == null ? 'current' : age <= 30 ? 'd30' : age <= 60 ? 'd60' : age <= 90 ? 'd90' : 'over90';
+            // FIX 2026-10-11: AP aging buckets were wrong — 0-30 day invoices were
+            // bucketed as d30 instead of current. Standard aging: 0-30=current,
+            // 31-60=d30, 61-90=d60, 91+=d90, 120+=over90
+            const k = age == null ? 'current' : age <= 30 ? 'current' : age <= 60 ? 'd30' : age <= 90 ? 'd60' : age <= 120 ? 'd90' : 'over90';
             b[k] = r2(b[k] + bal);
         };
         const today = new Date();

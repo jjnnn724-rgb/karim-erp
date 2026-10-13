@@ -158,4 +158,21 @@ function syncHijriToGreg(prefix){
 }
 function fDT(d){ return d ? new Date(d).toLocaleString(STATE.lang==='en'?'en-US':'ar-EG') : ''; }
 
-export { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT };
+// ═══ ذكاء البحث العربي (طلب المالك 2026-10-06: «بكتب بازنجان مش جايبها») ═══
+// مفتاح بحث متسامح: يوحّد الهمزات والتاء والألف المقصورة ويطوي عائلات الحروف
+// المتشابهة بالنقاط (ز/ذ، ص/ض، ط/ظ، س/ش، ت/ث، ج/ح/خ، ف/ق، ع/غ) — فتجد الصنف
+// رغم الخطأ المطبعي الشائع في لمس النقاط على الكيبورد
+function arSearchKey(s){
+  return String(s||'').toLowerCase()
+    .replace(/[\u064B-\u065F\u0640]/g,'')
+    .replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/[ىئی]/g,'ي').replace(/ؤ/g,'و').replace(/ک/g,'ك')
+    .replace(/[ذز]/g,'ز').replace(/[ضص]/g,'ص').replace(/[ظط]/g,'ط').replace(/[شس]/g,'س')
+    .replace(/[ثت]/g,'ت').replace(/[خج]/g,'ح').replace(/[قف]/g,'ف').replace(/[غع]/g,'ع')
+    .replace(/\s+/g,' ').trim();
+}
+function arSearchIncludes(hay, q){
+  const h = arSearchKey(hay), n = arSearchKey(q);
+  return n.length > 0 && h.includes(n);
+}
+
+export { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT, arSearchKey, arSearchIncludes };

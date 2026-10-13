@@ -736,6 +736,7 @@ _punchAdminState.summary = aRes.summary||null;
 body.innerHTML = renderPunchAdminHTML();
 loadPunchAttemptsTable();
 renderPunchFacesList();
+loadPunchDevices();
 }catch(e){ body.innerHTML = `<div class="mcard u-empty">تعذر تحميل لوحة البصمة: ${esc(e.message)}</div>`; }
 }
 
@@ -752,6 +753,7 @@ return `
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchPortalEnabled" ${punchChecked('punch_portal_enabled')}> <b>تفعيل البصمة الذاتية للموظفين</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchGeofenceEnabled" ${punchChecked('punch_geofence_enabled')}> <b>قيد الموقع الجغرافي (Geofence)</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchDeviceBinding" ${punchChecked('punch_device_binding')}> <b>ربط جهاز واحد بكل موظف</b></label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchDeviceAutoRebind" ${punchChecked('punch_device_auto_rebind') || punchKv('punch_device_auto_rebind') == null ? 'checked' : ''}> <b>الربط التلقائي للجهاز الجديد</b> — أول بصمة ناجحة من جهاز جديد تربطه فورًا بلا رفض «جهاز غير مسجل» (موصى به)</label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchSelfieEnabled" ${punchChecked('punch_selfie_enabled')}> <b>لقطة تحقق مع البصمة</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchFaceEnabled" ${punchChecked('punch_face_enabled')}> <b>محرك الوجه الأساسي (v1 — يعمل مع أي كاميرا)</b></label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="punchFaceV2Enabled" ${punchChecked('punch_face_v2_enabled')}> <b>محرك الوجه المتقدم (ArcFace 512-d على السيرفر) — القوالب الجديدة تُسجَّل به تلقائيًا</b></label>
@@ -809,6 +811,15 @@ ${(STATE.employees||[]).filter(e=>e.userId).map(e=>`<option value="${e.userId}">
 <button class="btn btn-gold btn-sm" onclick="enrollPunchFace()"><i class=ji data-i=camera></i> تسجيل الوجه بالكاميرا</button>
 </div>
 <small class="text-muted" style="display:block;margin-top:8px">يُحسب متجه الوجه من كاميرا حية ويُخزن كأرقام فقط — لا تُحفظ أي صورة. الوجه المقيد جغرافيًا مثل بقية البصمة.</small>
+</div>
+</div>
+<div class="tbl-wrap" style="margin-top:18px">
+<div class="tbl-hd"><h3><i class=ji data-i=activity></i> الأجهزة المربوطة (ربط الجهاز L4)</h3>
+<div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="loadPunchDevices()"><i class=ji data-i=refresh></i> تحديث</button></div>
+</div>
+<div style="padding:16px 24px">
+<div id="punchDevicesList">جارٍ التحميل…</div>
+<small class="text-muted" style="display:block;margin-top:8px">«فك الربط» يسمح بالبصمة من جهاز جديد فورًا — والبصمة التالية تربط الجهاز الجديد تلقائيًا. لو «الربط التلقائي» مفعّل فالربط يتم وحده بلا تدخل.</small>
 </div>
 </div>
 <div class="tbl-wrap" style="margin-top:18px">
@@ -903,6 +914,7 @@ const body = {
 punch_portal_enabled: document.getElementById('punchPortalEnabled')?.checked || false,
 punch_geofence_enabled: document.getElementById('punchGeofenceEnabled')?.checked || false,
 punch_device_binding: document.getElementById('punchDeviceBinding')?.checked || false,
+punch_device_auto_rebind: document.getElementById('punchDeviceAutoRebind')?.checked ?? true,
 punch_selfie_enabled: document.getElementById('punchSelfieEnabled')?.checked || false,
 punch_face_enabled: document.getElementById('punchFaceEnabled')?.checked || false,
 punch_face_v2_enabled: document.getElementById('punchFaceV2Enabled')?.checked || false,
@@ -961,12 +973,42 @@ toast('فشل التسجيل: ' + (saved.v2Error || saved.v1Error || 'لا لق�
 }
 
 async function removePunchFace(userId){
-if(!confirm('إزالة قالب الوجه لهذا الموظف؟')){return;}
+if(!confirm('متأكد من إزالة بصمة الوجه لهذا الموظف؟')){return;}
 try{
 await apiFetch('/attendance/portal/face/enroll/'+userId, { method:'DELETE' });
-toast('تمت الإزالة','success');
+toast('تم إزالة الوجه','success');
 await refreshPunchFaces();
 }catch(e){ toast(e.message||'فشل','error'); }
 }
 
-export { saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts };
+async function loadPunchDevices(){
+const box = document.getElementById('punchDevicesList');
+if(!box){return;}
+try{
+const r = await apiFetch('/attendance/portal/punch-devices');
+const rows = r.devices||[];
+if(!rows.length){ box.innerHTML = '<div class="mcard u-empty">لا أجهزة مربوطة — أول بصمة من كل موظف تربط جهازه تلقائيًا</div>'; return; }
+box.innerHTML = `<div style="overflow-x:auto"><table class="keep-table" style="width:100%;font-size:13px">
+<thead><tr><th>المستخدم</th><th>الجهاز</th><th>IP الربط</th><th>آخر ظهور</th><th></th></tr></thead>
+<tbody>${rows.map(d=>{
+const when = d.last_seen_at || d.bound_at;
+const dt = when ? new Date(when).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'}) : '—';
+return `<tr style="border-top:1px solid var(--border)">
+<td><b>${esc(d.name||d.username||('مستخدم #'+d.user_id))}</b>${d.username?`<br><small class="text-muted">${esc(d.username)}</small>`:''}</td>
+<td><code>${esc(String(d.device_id||'').slice(0,12))}…</code></td>
+<td>${esc(d.bound_ip||'—')}</td>
+<td>${esc(dt)}</td>
+<td><button class="btn btn-red btn-sm" onclick="unbindPunchDevice(${Number(d.user_id)})"><i class=ji data-i=trash></i> فك الربط</button></td>
+</tr>`;}).join('')}</tbody></table></div>`;
+}catch(e){ box.innerHTML = `<div class="mcard u-empty">تعذر تحميل الأجهزة: ${esc(e.message)}</div>`; }
+}
+
+async function unbindPunchDevice(userId){
+if(!confirm('فك ربط أجهزة هذا المستخدم؟ البصمة التالية من أي جهاز ستُربط تلقائيًا.')){return;}
+try{
+const r = await apiFetch('/attendance/portal/punch-devices/'+userId, { method:'DELETE' });
+toast('تم فك الربط ('+(r.unbound||0)+' جهاز) — البصمة التالية تربط من جديد','success');
+await loadPunchDevices();
+}catch(e){ toast(e.message||'فشل فك الربط','error'); }
+}
+export { saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts, loadPunchDevices, unbindPunchDevice };

@@ -42,3 +42,24 @@ describe('validateChecks — IN مع casts', () => {
         expect((await validateChecks('unknown_table', { a: 1 }, fakeConstraints(PG_DEF))).ok).toBe(true);
     });
 });
+
+// ─── regression 2026-10-05 (اختبار ضغط الكاشير) ───
+// 1) $1::regclass كان يُخضّر الأسماء فيفشل على كل جدول camelCase
+// 2) مفيش dedup للتحميل المتزامن — كل نداء أثناء الفحص كان يشغّل فحصًا كاملًا
+const { loadConstraints } = require('../backend/db-constraints');
+
+describe('loadConstraints — camelCase + dedup (يحتاج قاعدة الاختبار)', () => {
+    test('جدول camelCase (purchaseInvoices) يُحمَّل بقيوده بلا فشل', async () => {
+        const constraints = await loadConstraints();
+        const inv = constraints['purchaseInvoices'];
+        expect(inv).toBeDefined();
+        expect(inv.constraints.length).toBeGreaterThan(0);
+        expect(Object.keys(inv.columns).length).toBeGreaterThan(0);
+    });
+
+    test('النداءات المتزامنة تتشارك نفس الفحص (dedup) وتُعيد نفس الكائن', async () => {
+        const [a, b, c] = await Promise.all([loadConstraints(), loadConstraints(), loadConstraints()]);
+        expect(a).toBe(b);
+        expect(b).toBe(c);
+    });
+});

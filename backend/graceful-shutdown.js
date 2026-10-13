@@ -93,7 +93,9 @@ function initGracefulShutdown(dependencies = {}, options = {}) {
  */
 async function gracefulShutdown(context = {}, options = {}) {
     const { signal, server, io, pool, redisClient, bullMQ } = context;
-    const { timeout, onShutdown, onCleanup, logger } = options;
+    // FIX 2026-10-11 (M4): logger had no default — direct gracefulShutdown()
+    // call without options.logger → undefined.info() crash during shutdown.
+    const { timeout = SHUTDOWN_TIMEOUT_MS, onShutdown, onCleanup, logger = console } = options;
     
     _isShuttingDown = true;
     shutdownStartTime = Date.now();

@@ -28,6 +28,8 @@ const WRITE_ROLES = ['admin', 'manager'];
 let schemaReady = null;
 function ensureKotSchema() {
     if (!schemaReady) {
+        // FIX 2026-10-11 (M13): reset schemaReady on failure — was never reset,
+        // so one transient DB error permanently poisons the schema initializer.
         schemaReady = (async () => {
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS pos_print_settings (
@@ -41,7 +43,7 @@ function ensureKotSchema() {
             await pool.query(`
                 INSERT INTO pos_print_settings (id) VALUES (1)
                 ON CONFLICT (id) DO NOTHING;`);
-        })();
+        })().catch((e) => { schemaReady = null; throw e; });
     }
     return schemaReady;
 }

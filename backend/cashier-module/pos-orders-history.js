@@ -78,23 +78,20 @@ router.get('/', jwtAuth, generalLimiter, async (req, res) => {
         }
         
         const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
-        
-        // Count query
-        const countRes = await pool.query(
-            `SELECT COUNT(*) as total
-             FROM pos_orders po
-             LEFT JOIN pos_departments pd ON po.department_id = pd.id
-             LEFT JOIN users u ON po.cashier_id = u.id
-             ${where}`,
-            params
-        );
-        const total = parseInt(countRes.rows[0].total, 10);
-        const totalPages = Math.ceil(total / limit);
-        
-        // Data query — rich with department name, cashier name, item count
+
+        // PERF-5: count + data are independent → run them in parallel (saves a full round-trip)
         const offset = (page - 1) * limit;
-        const dataRes = await pool.query(
-            `SELECT
+        const [countRes, dataRes] = await Promise.all([
+            pool.query(
+                `SELECT COUNT(*) as total
+                 FROM pos_orders po
+                 LEFT JOIN pos_departments pd ON po.department_id = pd.id
+                 LEFT JOIN users u ON po.cashier_id = u.id
+                 ${where}`,
+                params
+            ),
+            pool.query(
+                `SELECT
                 po.id, po.invoice_counter, po.invoice_uuid,
                 po.status, po.subtotal, po.discount_total, po.tax_total, po.total_amount,
                 po.currency_code, po.notes, po.void_reason,
@@ -110,8 +107,11 @@ router.get('/', jwtAuth, generalLimiter, async (req, res) => {
              ${where}
              ORDER BY po.${sort} ${order}
              LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
-            [...params, limit, offset]
-        );
+                [...params, limit, offset]
+            ),
+        ]);
+        const total = parseInt(countRes.rows[0].total, 10);
+        const totalPages = Math.ceil(total / limit);
         
         res.json({
             data: dataRes.rows,

@@ -344,11 +344,11 @@ result.innerHTML='<div class="mcard"><div class="spinner"></div>جارٍ الم�
 try{
 const d=await apiFetch('/whatsapp/query',{method:'POST',body:JSON.stringify({question})});
 if(d.ok && d.result){
-result.innerHTML=`<div class="mcard" style="border:2px solid var(--green);background:rgba(39,174,96,.06)"><b>الاستجابة:</b><div style="margin-top:8px;line-height:1.8">${d.result}</div></div>`;
+result.innerHTML=`<div class="mcard" style="border:2px solid var(--green);background:rgba(39,174,96,.06)"><b>الاستجابة:</b><div style="margin-top:8px;line-height:1.8">${esc(String(d.result))}</div></div>`;
 }else{
-result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)"><i class=ji data-i=circle-x></i> ${d.message||'فشل الاستعلام'}</b></div>`;
+result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)"><i class=ji data-i=circle-x></i> ${esc(String(d.message||'فشل الاستعلام'))}</b></div>`;
 }
-}catch(e){result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">خطأ: ${e.message}</b></div>`;}
+}catch(e){result.innerHTML=`<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">خطأ: ${esc(String(e.message||'خطأ غير معروف'))}</b></div>`;}
 }
 async function waLoadLogs(el){
 el.innerHTML='<div class="mcard u-empty"><div class="spinner"></div></div>';

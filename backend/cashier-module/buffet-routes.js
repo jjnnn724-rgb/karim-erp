@@ -26,7 +26,7 @@ const { logger } = require('../logger');
 
 const router = express.Router();
 const ADMIN_ROLES = ['manager', 'admin', 'accountant'];
-const SALE_ROLES = ['cashier', 'manager', 'admin', 'kitchen', 'warehouse'];
+const SALE_ROLES = ['cashier', 'manager', 'admin', 'kitchen', 'sous_chef', 'warehouse'];
 
 // Core tiers are immutable in set (can reprice only) — hospitality (ضيافة)
 // defaults to price 0 (complimentary), tracked separately in reports.

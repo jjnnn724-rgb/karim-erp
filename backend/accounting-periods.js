@@ -147,15 +147,27 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
         if (cur.status !== 'draft') {
             return res.status(422).json({ error: 'LEDGER_NOT_DRAFT', message: 'الاعتماد للمسودات فقط' });
         }
-        await assertPeriodOpen(cur.date);
+        // FIX 2026-10-11 (M11): assertPeriodOpen was outside the UPDATE — TOCTOU
+        // race (period closed between check and update). Now the period check is
+        // embedded in the UPDATE WHERE clause itself — atomic.
         const { rows } = await pool.query(
             `UPDATE journal_entries SET status = 'posted', approved_by = $2, approved_at = NOW()
-              WHERE id = $1 AND status = 'draft' RETURNING *`,
+              WHERE id = $1 AND status = 'draft'
+                AND NOT EXISTS (
+                    SELECT 1 FROM accounting_periods ap
+                    WHERE ap.month = to_char(journal_entries.date, 'YYYY-MM')
+                      AND ap.status = 'closed'
+                )
+              RETURNING *`,
             [id, req.user?.id || null]
         );
         if (!rows[0]) {
-            // سباق: طلب اعتماد آخر سبقنا — القيد لم يعد مسودة.
-            return res.status(409).json({ error: 'LEDGER_ALREADY_APPROVED', message: 'القيد اعتُمد للتو من جهاز آخر' });
+            // Check if it's a period lock or a concurrent approval
+            const still = (await pool.query('SELECT status FROM journal_entries WHERE id = $1', [id])).rows[0];
+            if (still?.status === 'posted') {
+                return res.status(409).json({ error: 'LEDGER_ALREADY_APPROVED', message: 'القيد اعتُمد للتو من جهاز آخر' });
+            }
+            return res.status(423).json({ error: 'PERIOD_LOCKED', message: 'الفترة المحاسبية مقفلة — لا يمكن اعتماد قيودها' });
         }
         logger.info(`[LEDGER] اعتُمد القيد ${rows[0].entry_no} بواسطة ${req.user?.name || req.user?.username || req.user?.id}`);
         if (req.io) {req.io.emit('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}

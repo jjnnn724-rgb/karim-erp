@@ -437,7 +437,19 @@ function initSocket() {
     socket.on('reconnect_attempt', (n) => {
         reconnectAttempts = n;
         // Refresh handshake JWT (rotates every 24h; stale token → anonymous fallback).
-        try { if (window._jwt) {socket.auth = { token: window._jwt };} } catch (_) {}
+        // HARDENED 2026-10-08: لو التوكن نفسه منتهي أثناء الانقطاع، جدده أولًا
+        try {
+            let expired = false;
+            if (window._jwt) {
+                try {
+                    const pay = JSON.parse(atob(String(window._jwt).split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                    expired = !pay.exp || (pay.exp * 1000) < Date.now() + 60000;
+                } catch (_) { expired = true; }
+            }
+            if (expired && typeof refreshSession === 'function') {
+                refreshSession().then(() => { try { if (window._jwt) {socket.auth = { token: window._jwt };} } catch (_) {} }).catch(() => {});
+            } else if (window._jwt) { socket.auth = { token: window._jwt }; }
+        } catch (_) {}
         setBadgeState('syncing', `إعادة الاتصال (${n})...`);
     });
 
@@ -535,6 +547,43 @@ function initSocket() {
                 }
             }, 150);
         }
+    });
+
+    // ── طلب شراء خضار جديد من المطبخ (المخازن والإدارة يسمعونه فورًا) ──
+    socket.on('veg_request:new', (data) => {
+        try {
+            const label = `طلب خضار جديد ${data.request_no || ''} من ${data.created_by_name || 'المطبخ'} (${data.items_count || 0} صنف)`;
+            showSyncToast(label, '<i class=ji data-i=shopping-cart></i>', 5000);
+            if (rtNotifAdmin() && window.toast) {toast(label, 'info');}
+            if (window.STATE?.page === 'veg-requests' && typeof window.loadVegRequestsLog === 'function') {
+                window.loadVegRequestsLog();
+            }
+        } catch (e) {}
+    });
+    // ── تحديث حالة طلب خضار (استلام/إلغاء) ──
+    socket.on('veg_request:update', () => {
+        try {
+            if (window.STATE?.page === 'veg-requests' && typeof window.loadVegRequestsLog === 'function') {
+                window.loadVegRequestsLog();
+            }
+        } catch (e) {}
+    });
+
+    // ── أوردر جديد من الزائر على كاشير يارسوفت — نغمة فورية عند الكاشير
+    // (بلاغ المالك 2026-10-06: «عايز نغمة صغيره لما بيضرب من الزاير الاوردر تفاعل مع الكاشير») ──
+    socket.on('yarasoft:new-orders', (data) => {
+        try {
+            AudioEngine.playSale();
+            const count = Number(data.count) || 0;
+            const first = (data.orders && data.orders[0]) || {};
+            const label = `أوردر جديد من الزائر${first.table ? ` — ترابيزة ${first.table}` : ''} ×${count}${first.total != null ? ` — ${Number(first.total).toFixed(2)} SAR` : ''}`;
+            showSyncToast(label, '<i class=ji data-i=banknote></i>', 6000);
+            if (window.toast) {toast(label, 'success');}
+            if (window.STATE?.page === 'cashier-monitor' && typeof window.renderCashierMonitor === 'function') {
+                clearTimeout(window.__ysNewOrdersRefresh);
+                window.__ysNewOrdersRefresh = setTimeout(() => {window.renderCashierMonitor().catch(() => {});}, 300);
+            }
+        } catch (e) {}
     });
 
     // ── Yarasoft revenue posted (مبيعات الكاشيرات تسمع في أقسامها مباشرة) ──

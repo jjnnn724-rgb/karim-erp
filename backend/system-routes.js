@@ -23,6 +23,41 @@ const { runSystemAudit, buildContext } = require('./audit-engine');
 
 const router = express.Router();
 
+// ─── مؤشر حالة الخادم (طلب المالك 2026-10-06: «أعرف أنا شغال على التحديث الجديد ولا القديم») ───
+// يُظهر منذ متى يعمل الخادم، وأحدث وقت تعديل لكود الخادم على القرص، وهل الكود المُشغَّل محدث أم قديم.
+const SERVER_INFO_STARTED_AT = new Date(Date.now() - process.uptime() * 1000);
+let _codeMtimeCache = { at: 0, value: null };
+function backendCodeMtime() {
+    if (Date.now() - _codeMtimeCache.at < 60 * 1000 && _codeMtimeCache.value) {return _codeMtimeCache.value;}
+    let latest = null;
+    const scan = (dir) => {
+        let entries;
+        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
+        for (const e of entries) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) {
+                if (e.name === 'node_modules' || e.name.startsWith('.')) {continue;}
+                scan(p);
+            } else if (e.name.endsWith('.js')) {
+                try { const m = fs.statSync(p).mtime; if (!latest || m > latest) {latest = m;} } catch (_) { /* ملف اختفى أثناء الفحص — يُتجاهل عمدًا */ }
+            }
+        }
+    };
+    scan(__dirname);
+    _codeMtimeCache = { at: Date.now(), value: latest };
+    return latest;
+}
+router.get('/server-info', jwtAuth, (req, res) => {
+    const codeMtime = backendCodeMtime();
+    const upToDate = !codeMtime || codeMtime <= SERVER_INFO_STARTED_AT;
+    res.json({
+        version: require('../package.json').version,
+        startedAt: SERVER_INFO_STARTED_AT.toISOString(),
+        codeMtime: codeMtime ? codeMtime.toISOString() : null,
+        upToDate,
+    });
+});
+
 function backupsDir() {
     return path.resolve(process.env.KARIM_BACKUP_DIR || path.join(__dirname, '..', 'database', 'backups'));
 }
@@ -114,7 +149,7 @@ function listBackups({ verify = false } = {}) {
             try {
                 const mf = `${full}.json`;
                 if (fs.existsSync(mf)) {manifest = JSON.parse(fs.readFileSync(mf, 'utf8'));}
-            } catch (_) {}
+            } catch (e) { logger.debug('[system/backups] manifest غير صالح:', e.message); }
             const hasSha = fs.existsSync(`${full}.sha256`);
             return { file: f, bytes: st.size, mtime: st.mtime, shaOk: null, hasSha, manifest, _full: full };
         })
@@ -209,7 +244,7 @@ router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
             logger.info(`[system/upload] ${base} by ${req.user?.name || req.user?.id}`);
             return res.status(201).json({ ok: true, file: base, ...listBackups() });
         } catch (e) {
-            try { if (req.file?.path && fs.existsSync(req.file.path)) {fs.unlinkSync(req.file.path);} } catch (_) {}
+            try { if (req.file?.path && fs.existsSync(req.file.path)) {fs.unlinkSync(req.file.path);} } catch (e) { logger.debug('[system/upload] تعذر حذف الملف المؤقت:', e.message); }
             logger.error('[system/upload]', e.message);
             return res.status(500).json({ error: 'UPLOAD_FAILED', message: 'فشل حفظ الملف' });
         }
@@ -236,9 +271,13 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         // فصل باقي اتصالات القاعدة حتى لا تعلق الاستعادة على الأقفال
         try {
             await pool.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`);
-        } catch (_) {}
+        } catch (e) { logger.warn('[system/restore] تعذر قطع اتصالات قاعدة البيانات النشطة:', e.message); }
         const r = await runNode(path.join(rootDir(), 'database', 'scripts', 'restore.js'), [full, '--yes'], 600000);
         if (!r.ok) {return res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة — نسخة الأمان موجودة', log: (r.err || r.out || '').slice(-800) });}
+        // FIX 2026-10-11 (M22): re-initialize the DB pool after restore —
+        // pg_terminate_backend killed all connections but the Pool object
+        // still held dead sockets. reinitPool() creates fresh connections.
+        try { await require('./shared-pool').reinitPool(); } catch (e) { logger.warn('[system/restore] pool reinit failed:', e.message); }
         // استعادة .env إن طُلبت (تتطلب إعادة تشغيل السيرفر لتُطبق)
         let envRestored = false;
         if (req.body?.restoreEnv === true && fs.existsSync(`${full}.env`)) {
@@ -248,7 +287,7 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
                 envRestored = true;
             } catch (e) { logger.warn('[system/restore] env restore skipped: ' + e.message); }
         }
-        try { if (req.io) {req.io.emit('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (_) {}
+        try { if (req.io) {req.io.emit('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (e) { logger.debug('[system/restore] تعذر البث:', e.message); }
         res.json({ ok: true, file, ms: Date.now() - t0, envRestored, restartNeeded: true, message: 'تمت الاستعادة — أعد تشغيل خدمة السيرفر' });
     } catch (e) { logger.error('[system/restore]', e.message); res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة' }); }
 });
@@ -274,7 +313,7 @@ router.post('/audit/fix', jwtAuth, requireRole('admin'), async (req, res) => {
         const dryRun = req.body?.dryRun === true;
         const domains = req.body?.domain ? String(req.body.domain).split(',').map((s) => s.trim()).filter(Boolean) : null;
         const result = await runSystemAudit({ fix: true, dryRun, domains, save: true, ctx: auditCtx() });
-        try { if (req.io) {req.io.emit('system:audited', { score: result.score, grade: result.grade, fix: true, dryRun, at: new Date().toISOString() });} } catch (_) {}
+        try { if (req.io) {req.io.emit('system:audited', { score: result.score, grade: result.grade, fix: true, dryRun, at: new Date().toISOString() });} } catch (e) { logger.debug('[system/audit] تعذر البث:', e.message); }
         res.json({ ok: true, ...result });
     } catch (e) {
         logger.error('[system/audit/fix]', e.message);

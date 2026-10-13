@@ -61,12 +61,15 @@ async function processQueueRow(rowId, io) {
         }
 
         // 60s sliding dedup per employee (the target-spec rule).
+        // FIX 2026-10-13: نفس عطب `$param - INTERVAL` في attendance-engine — المعامل untyped
+        // يُقيَّد interval فتهبط الدفعة كاملة إلى failed. نحسب الحدّ في JS ونمرّره لحظة صريحة.
         if (internalId) {
+            const dedupCutoff = new Date(punchTime.getTime() - DEDUP_WINDOW_SEC * 1000);
             const dup = await pool.query(
                 `SELECT id FROM attendance_logs
-                  WHERE "employeeId" = $1 AND "attendanceTime" > $2 - INTERVAL '1 second' * $3
+                  WHERE "employeeId" = $1 AND "attendanceTime" > $2
                   LIMIT 1`,
-                [internalId, punchTime.toISOString(), DEDUP_WINDOW_SEC]
+                [internalId, dedupCutoff]
             );
             if (dup.rows[0]) {
                 await pool.query(

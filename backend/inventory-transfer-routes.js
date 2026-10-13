@@ -3,7 +3,7 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const router = express.Router();
-const routerWriteRoles = ['admin', 'manager', 'warehouse', 'kitchen'];
+const routerWriteRoles = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef'];
 const approvalRoles = ['admin', 'manager', 'warehouse'];
 
 router.get('/intelligence/overview', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'auditor', 'accountant'), async (req, res) => {
@@ -66,7 +66,7 @@ async function event(client, transferId, fromStatus, toStatus, userId, reason, m
   );
 }
 
-router.get('/transfers', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'auditor', 'accountant'), async (req, res) => {
+router.get('/transfers', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'auditor', 'accountant'), async (req, res) => {
   try {
     const params = [];
     const where = [];

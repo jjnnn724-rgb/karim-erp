@@ -30,6 +30,18 @@ function ensureNotificationsSchema() {
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
             CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, read) WHERE read = false;
             CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC);
+            -- M21 (2026-10-11): per-user read tracking for PUBLIC notifications.
+            -- Public rows (user_id NULL) previously shared one global read flag:
+            -- user A marking one read hid it from user B. This table records
+            -- which user read which public notification; personal notifications
+            -- keep using the read column on the row itself.
+            CREATE TABLE IF NOT EXISTS notification_reads (
+                notification_id BIGINT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+                user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                read_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (notification_id, user_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_notification_reads_user ON notification_reads (user_id);
         `);
     })().catch(error => { schemaReady = null; throw error; });
     return schemaReady;
@@ -115,17 +127,31 @@ async function createNotifications(client, opts) {
     const rows = [];
     for (const target of targets) {
         const row = buildNotificationRow({
-            id: Date.now() + Math.floor(Math.random() * 8999) * 10 + rows.length,
+            // FIX 2026-10-11 (C17): wider random range — Date.now() + small rand
+            // collided under burst notifications. Use crypto for uniqueness.
+            id: require('crypto').randomInt(1, Number.MAX_SAFE_INTEGER),
             type, title, message, entity, entityId, link,
             userId: target.id,
         });
         if (!row) {return { rows: [], targets };}
-        await db.query(
-            `INSERT INTO notifications (id, title, message, type, date, read, user_id, entity, entity_id, link, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-            [row.id, row.title, row.message, row.type, row.date, row.read, row.user_id, row.entity, row.entity_id, row.link, row.created_at]
-        );
-        rows.push(row);
+        // FIX 2026-10-11 (M14): SAVEPOINT per INSERT — a failed notification
+        // INSERT was poisoning the caller's entire transaction (Postgres
+        // aborts the whole txn after any error). SAVEPOINT isolates the
+        // failure so the main business operation is never rolled back.
+        await db.query('SAVEPOINT notify_row').catch(() => {});
+        try {
+            await db.query(
+                `INSERT INTO notifications (id, title, message, type, date, read, user_id, entity, entity_id, link, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+                [row.id, row.title, row.message, row.type, row.date, row.read, row.user_id, row.entity, row.entity_id, row.link, row.created_at]
+            );
+            rows.push(row);
+        } catch (insertErr) {
+            await db.query('ROLLBACK TO SAVEPOINT notify_row').catch(() => {});
+            logger.warn('[notifications] INSERT failed for user', target.id, ':', insertErr.message);
+        } finally {
+            await db.query('RELEASE SAVEPOINT notify_row').catch(() => {});
+        }
     }
     return { rows, targets };
 }

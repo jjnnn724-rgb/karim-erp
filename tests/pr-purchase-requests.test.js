@@ -19,9 +19,8 @@ const {
 } = require('../backend/warehouse-routes');
 
 describe('أدوار طلبات الشراء — بيتها المخزن', () => {
-    test('الإنشاء من المخزن والإدارة فقط', () => {
-        expect(PR_CREATE_ROLES).toEqual(['admin', 'manager', 'warehouse']);
-        expect(PR_CREATE_ROLES).not.toContain('kitchen');
+    test('الإنشاء: الإدارة والمخزن والمطبخ والسو شيف (رئيس القسم مستثنى)', () => {
+        expect(PR_CREATE_ROLES).toEqual(['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef']);
         expect(PR_CREATE_ROLES).not.toContain('dept_head');
     });
     test('الإلغاء يشمل أصحاب الطلبات القديمة (ملكية تُفحص داخل المسار)', () => {

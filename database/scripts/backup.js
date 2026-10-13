@@ -110,6 +110,17 @@ function main() {
     log.ok(`تم النسخ الاحتياطي: ${sizeStr}`);
     log.info(`SHA-256: ${digest}`);
 
+    // ─── مرايا خارجية D/E (HARDENED 2026-10-07: لا سيناريو ضياع يتكرر) ───
+    // best-effort: فشل المرايا لا يُفشل النسخة الأساسية.
+    try {
+        const { mirrorFile } = require('../../scripts/backup-mirror');
+        const m = mirrorFile(outputFile, 'full');
+        if (m.mirrored.length) log.ok(`مرايا خارجية: ${m.mirrored.length} نسخة`);
+        m.errors.slice(0, 2).forEach(e => log.warn(`مرايا: ${e}`));
+    } catch (e) {
+        log.warn(`تعذر المرايا الخارجية (غير قاتل): ${e.message}`);
+    }
+
     // Clean old backups (keep last N) — في مجلد ملف الإخراج نفسه، والفشل هنا
     // غير قاتل (النسخة نفسها سليمة وموقعة).
     let retained = 1;

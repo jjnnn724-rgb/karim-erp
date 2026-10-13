@@ -41,7 +41,20 @@ module.exports = async function () {
             '-U', cfg.DB_USER || 'postgres', '-d', 'karim_erp_test',
             '--no-owner', '-j', '2', dump,
         ], { env, stdio: 'pipe' });
-        console.log('[test-db] ✓ قاعدة اختبار معزولة ومطابقة للإنتاج');
+        // FIX 2026-10-11 (C4): scrub PII + secrets from test DB after restore —
+        // was copying production passwords, vault entries, and employee PII
+        // into the test environment.
+        console.log('[test-db] تنظيف البيانات الحساسة...');
+        const scrub = [
+            'UPDATE users SET password = \'$2b$12$LJ3m4ys3Gz6FfpjL1rJ3e.qHx5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y\', password_vault = NULL',
+            'UPDATE employees SET phone = NULL, national_id = NULL, bank_account = NULL, address = NULL',
+            'DELETE FROM pos_refresh_tokens',
+            'DELETE FROM password_reset_codes',
+        ];
+        for (const sql of scrub) {
+            try { execFileSync(path.join(PG, 'psql.exe'), [...admin, '-d', 'karim_erp_test', '-c', sql], { env, stdio: 'pipe' }); } catch (_) {}
+        }
+        console.log('[test-db] ✓ قاعدة اختبار معزولة ونظيفة من بيانات الإنتاج');
     } else {
         console.warn('[test-db] ⚠ لا يوجد latest.dump — قاعدة اختبار فارغة (شغّل: node scripts/backup-nightly.js)');
     }

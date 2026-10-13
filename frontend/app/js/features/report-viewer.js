@@ -13,7 +13,7 @@
  *   w.document.write(html); w.document.close(); // يُعرض فورًا داخل التطبيق
  * وضع URL: window.openInAppReport('إيصال', url) — يعرض رابطًا جاهزًا.
  */
-import { esc } from '../core/utils.js?v=4.9.3';
+import { esc } from '../core/utils.js?v=4.9.13';
 
 let overlayEl = null;
 

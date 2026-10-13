@@ -1,4 +1,4 @@
-﻿# scripts/restart-server.ps1 — محرك إعادة تشغيل Karim ERP (مخفي بالكامل)
+# scripts/restart-server.ps1 — محرك إعادة تشغيل Karim ERP (مخفي بالكامل)
 # ────────────────────────────────────────────────────────────────────────────
 # يُستدعى من RESTART-KARIM.vbs (نافذة صفر) — لا يُشغَّل يدويًا من كونسول.
 # المراحل: قتل مستهدف (server.js + serve.js supervisor) → التأكد من تحرير
@@ -31,7 +31,7 @@ Log '========== بدء إعادة التشغيل =========='
 if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force | Out-Null }
 $nodeExe = $null
 try { $nodeExe = (Get-Command node.exe -ErrorAction Stop).Source } catch {}
-if (-not $nodeExe -or -not (Test-Path $nodeExe)) { $nodeExe = "$env:ProgramFiles\nodejs\node.exe" }
+if (-not $nodeExe -or -not (Test-Path $nodeExe)) { if (Test-Path "C:\nodejs\node.exe") { $nodeExe = "C:\nodejs\node.exe" } else { $nodeExe = "$env:ProgramFiles\nodejs\node.exe" } }
 if (-not (Test-Path $nodeExe)) {
     Log 'FATAL: node.exe غير موجود'
     Popup "فشلت إعادة التشغيل: Node.js غير مثبت أو غير موجود في PATH`nراجع السجل: $runLog" 0 48

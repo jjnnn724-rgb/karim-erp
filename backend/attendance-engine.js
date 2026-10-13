@@ -98,8 +98,18 @@ function toMin(hhmm) {
     return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
-function clockDistanceMinutes(a, b) {
-    const day = 24 * 60;
+/** تعقيم وقت الحائط النصي (درس 24:51): أي صيغة شاذة تُعاد لصيغة 00-23:00-59 وإلا null.
+ *  تُستدعى مركزيًا على أي وقت قادم من خارج المحرك قبل كتابته في attendance. */
+function safeWallTime(t) {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!m) {return null;}
+    let H = Number(m[1]);
+    const M = Number(m[2]);
+    if (!Number.isFinite(H) || !Number.isFinite(M) || M > 59) {return null;}
+    H = ((H % 24) + 24) % 24;
+    return `${String(H).padStart(2, '0')}:${String(M).padStart(2, '0')}`;
+}
+function clockDistanceMinutes(a, b) {    const day = 24 * 60;
     const diff = Math.abs((a - b + day) % day);
     return Math.min(diff, day - diff);
 }
@@ -289,7 +299,8 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
 
     const checkInMin = toMin(checkIn);
     const shiftMin = toMin(shiftStart) ?? 9 * 60;
-    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin);
+    // سماحية 15 دقيقة (قرار المالك 2026-10-10)
+    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin - graceMinutes());
     const lateFlag = arrival > 0;
 
     let early = 0;
@@ -315,13 +326,13 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
             if (endRaw > 24 * 60 && out < 12 * 60) { out += 24 * 60; }
             // بلا دخول مسجل لا يُحتسب تبكير: الخروج وحده لا يثبت شيئًا
             if (checkInMin != null && out >= shiftMin) {
-                early = Math.max(0, endRaw - out);
+                early = Math.max(0, endRaw - out - graceMinutes());
                 earlyFlag = early > 0;
             }
             if (checkInMin != null) {
                 const requiredMin = Math.round(karim * 60);
                 const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
-                totalLate = Math.max(0, requiredMin - workedMin);
+                totalLate = Math.max(0, requiredMin - workedMin - graceMinutes());
             }
         }
     }
@@ -413,6 +424,11 @@ async loadPattern(employeeId) {
     async processPunch({ employeeId, punchState, instant, wall, device, source = 'device' }) {
         const shift = await this.getEmployeeShift(employeeId);
         if (!shift) {return { action: null, error: 'Employee not found' };}
+        // تعقيم مركزي: لا يُكتب وقت حائط شاذ في attendance أبدًا (درس 24:51)
+        if (wall && typeof wall.time === 'string') {
+            const clean = safeWallTime(wall.time);
+            wall = clean ? { ...wall, time: clean } : { ...wall, time: null };
+        }
 
         const { shiftStart, shiftKarim, autoCheckout, autoLock } = shift;
         const shiftStartMin = toMin(shiftStart);
@@ -476,8 +492,41 @@ async loadPattern(employeeId) {
             }
             const effectiveHasOpenRow = hasOpenRow && !staleOpenRowId;
 
+            // ═══ حارس البصمة المستهلكة (2026-10-11) ═══
+            // مشكلة جذرية: بصمة خروج بعد منتصف الليل (01:01) تُغلق صف أمس، ثم
+            // يعيد المصنّف تصنيفها كدخول لليوم الجديد → صف شبح بساعات مجنونة.
+            // القاعدة: إذا كانت البصمة أُغلق بها صف مفتوح من يوم سابق (وليس اليوم)
+            // فلا يمكن أن تكون دخولًا لليوم الجديد — يجب أن تكون خروجًا فقط.
+            let closedPrevDayRow = false;
+            if (hasOpenRow && openCheck.rows.length > 0) {
+                const openRowInfo = openCheck.rows[0];
+                if (openRowInfo.checkInAt) {
+                    const openInDate = new Date(openRowInfo.checkInAt);
+                    // FIX 2026-10-11: use Riyadh timezone for BOTH date and hour —
+                    // was mixing UTC toISOString().slice(0,10) with local getHours(),
+                    // causing wrong day for 00:00-03:00 Riyadh punches
+                    const riyadhFmt = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'Asia/Riyadh',
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', hour12: false,
+                    });
+                    const parts = riyadhFmt.formatToParts(openInDate);
+                    const getPart = (type) => parts.find(p => p.type === type)?.value || '00';
+                    const openRiyadhDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+                    const openRiyadhHour = parseInt(getPart('hour'), 10);
+                    const openShiftDate = shiftDateForEmployee(
+                        openRiyadhDate,
+                        openRiyadhHour,
+                        { shift_start: shiftStart, shift_karim: shiftKarim }
+                    );
+                    if (openShiftDate !== shiftDate) {
+                        closedPrevDayRow = true;
+                    }
+                }
+            }
+
             // تصنيف ذكي — مع تجاوز الصف القديم الذي أُقفل مستنتجاً أعلاه
-            const verdict = classifyPunch({
+            let verdict = classifyPunch({
                 punchState,
                 wallMin,
                 shiftStartMin,
@@ -494,6 +543,33 @@ async loadPattern(employeeId) {
                 verdict.override = true;
                 verdict.reason = 'بعد قفل نسيان الخروج مستنتجاً — هذه البصمة دخول اليوم';
             }
+            // حارس البصمة المستهلكة: بصمة أُغلق بها صف من يوم سابق → خروج فقط
+            if (closedPrevDayRow && verdict.action === 'in') {
+                verdict.action = 'out';
+                verdict.override = true;
+                verdict.reason = 'بصمة أُغلق بها صف يوم سابق — لا يمكن أن تكون دخول لليوم الجديد';
+            }
+
+            // ═══ حديد 2026-10-06: حرس التكرار لا يثق بالذاكرة وحدها ═══
+            // بلاغ المالك (كريم عبد الحميد): بصمة وجه موثقة (ثقة 100) قُبلت ثم حُكم عليها
+            // «مكررة خلال 5 دقائق» من كاش راسب — القاعدة لا تعرف بصمة سابقة — ففُقدت بصمة
+            // الدخول بصمت. قبل أي تجاهل بسبب التكرار: يُتحقق من القاعدة نفسها، ولو لا
+            // بصمة فعلية داخل النافذة (دفتر الجهاز أو صف حضور) → الكاش راسب، يُمسح،
+            // ويُعاد التصنيف بلا lastPunch وتُسجل البصمة (fail-safe نحو التسجيل).
+            if (verdict.action === 'ignore' && String(verdict.reason || '').includes('مكررة')) {
+                const winStart = new Date(instant - 5 * 60000);
+                const dbPunch = (await client.query(
+                    `SELECT
+                       (SELECT COUNT(*)::int FROM attendance_logs WHERE "employeeId"=$1 AND "attendanceTime" BETWEEN $2 AND $3) AS logs,
+                       (SELECT COUNT(*)::int FROM attendance WHERE "employeeId"=$1
+                          AND ("checkInAt" BETWEEN $2 AND $3 OR "checkOutAt" BETWEEN $2 AND $3)) AS att`,
+                    [employeeId, winStart, instant])).rows[0];
+                if (!Number(dbPunch.logs) && !Number(dbPunch.att)) {
+                    this.lastPunches.delete(employeeId);
+                    verdict = classifyPunch({ punchState, wallMin, shiftStartMin, shiftEndMin, hasOpenRow: effectiveHasOpenRow, openRowCheckIn, lastPunch: null, pattern, dayLogs });
+                    logger.warn('[AttendanceEngine] حرس التكرار اعتمد على ذاكرة راسبة — أُعيد التصنيف وتُسجل البصمة:', employeeId, verdict.action, verdict.reason);
+                }
+            }
 
             // تسجيل القرارات المثيرة للمراجعة
             if (verdict.override || verdict.confidence < confidenceThreshold()) {
@@ -504,7 +580,9 @@ async loadPattern(employeeId) {
                 });
             }
 
-            this.lastPunches.set(employeeId, { min: wallMin, out: thisOut });
+            // حديد 2026-10-06: المرساة (lastPunches) لا تُحرَّك هنا قبل تنفيذ القرار —
+            // كانت تتحرك حتى للبصمات المُتجاهلة وتقبل تسمم الكاش قبل الكتابة، وتُحرَّك
+            // بعد COMMIT الناجح فقط (أسفل).
 
             // ── تنفيذ القرار ──
             let action = null;
@@ -518,7 +596,7 @@ async loadPattern(employeeId) {
             if (verdict.action === 'in' || verdict.action === 'fix_in') {
                 const result = await this.handleCheckIn({
                     client, employeeId, shiftDate, wall, instant,
-                    shiftStart, shiftKarim, verdict, source, device, onLeave,
+                    shiftStart, shiftKarim, autoLock, verdict, source, device, onLeave,
                 });
                 action = result.action; record = result.record;
             } else if (verdict.action === 'out' || verdict.action === 'fix_out') {
@@ -543,6 +621,12 @@ async loadPattern(employeeId) {
             }
             await client.query('COMMIT');
 
+            // حديد 2026-10-06: مرساة حرس التكرار تُثبت بعد نجاح الكتابة فقط، وللقرارات
+            // الفعلية (in/out) — البصمة المُتجاهلة لا تحرك المرساة، وفشل الكتابة لا يترك أثرًا
+            if (action === 'check_in' || action === 'check_out') {
+                this.lastPunches.set(employeeId, { min: wallMin, out: thisOut });
+            }
+
             if (action && this.io) {
                 this.io.emit('attendance:updated', { action, source, employee: { id: employeeId }, record });
             }
@@ -551,6 +635,9 @@ async loadPattern(employeeId) {
 
         } catch (error) {
             await client.query('ROLLBACK').catch(() => {});
+            // حديد 2026-10-06: فشل الكتابة → الكاش قد يحمل أثرًا لم يصل القاعدة — يُمسح
+            // ويعاد ترطيبه من القاعدة في البصمة التالية حتى لا يلتهم حرس التكرار بصمة حقيقية
+            this.lastPunches.delete(employeeId);
             logger.error('[AttendanceEngine] processPunch failed:', error.message);
             throw error;
         } finally {
@@ -562,7 +649,7 @@ async loadPattern(employeeId) {
     // معالج الدخول
     // ════════════════════════════════════════════════════════════════════════
 
-    async handleCheckIn({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, verdict, source, device, onLeave }) {
+    async handleCheckIn({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, autoLock, verdict, source, device, onLeave }) {
         const note = `تسجيل حضور عبر ${source}${device ? ` (${device.name || device.deviceName})` : ''}`;
         const lateFlag = isLate(wall.hour, wall.minute, shiftStart, Number(process.env.WORK_START_HOUR || 9));
 
@@ -575,12 +662,32 @@ async loadPattern(employeeId) {
         if (!existing.rows[0]) {
             // لا صف → إنشاء جديد
             const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-            const record = (await client.query(
-                `INSERT INTO attendance (id, "employeeId", date, "checkIn", late, notes, "checkInAt", source, on_leave)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-                [id, employeeId, shiftDate, wall.time, lateFlag, note, instant, source, onLeave]
-            )).rows[0];
-            return { action: 'check_in', record };
+            try {
+                const record = (await client.query(
+                    `INSERT INTO attendance (id, "employeeId", date, "checkIn", late, notes, "checkInAt", source, on_leave)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+                    [id, employeeId, shiftDate, wall.time, lateFlag, note, instant, source, onLeave]
+                )).rows[0];
+                return { action: 'check_in', record };
+            } catch (insertErr) {
+                // FIX 2026-10-11: catch 23505 (unique constraint uq_attendance_employee_date)
+                // — concurrent punch (device + portal) both saw "no row" → second INSERT
+                // hit the unique index. Re-select the existing row instead of failing.
+                if (insertErr && insertErr.code === '23505') {
+                    const raced = (await client.query(
+                        'SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2',
+                        [employeeId, shiftDate]
+                    )).rows[0];
+                    if (raced) {
+                        // Another punch already created the row — treat as update path
+                        existing.rows = [raced];
+                    } else {
+                        throw insertErr;
+                    }
+                } else {
+                    throw insertErr;
+                }
+            }
         }
 
         const row = existing.rows[0];
@@ -698,12 +805,18 @@ async loadPattern(employeeId) {
             Number(shiftDate.split('-')[2])
         ) - BUSINESS_TZ_OFFSET_MS);
         const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        // FIX 2026-10-13: الـ param كان يُترك untyped، فـ PostgreSQL تُحلّ `$4 - INTERVAL`
+        // كـ `interval - interval` (تُقيَّد $4 interval) ثم `timestamptz <= interval` → خطأ
+        // يُلقي processPunch بالكامل ويقطع دورة المزامنة، فتبقى البصمات عالقة في
+        // attendance_logs ولا تُكتب أبدًا (write-back يجري للسجلات المُدرجة في الدورة نفسها فقط).
+        // الحل: نحسب الحدّ في JS ونمرّره لحظة صريحة — لا مجال لالتباس نوع المعامل.
+        const cutoffInstant = new Date(instant.getTime() - 2 * 60 * 1000);
         const earlyPunches = await client.query(
             `SELECT "attendanceTime", "punchState" FROM attendance_logs
               WHERE "employeeId" = $1 AND "attendanceTime" >= $2 AND "attendanceTime" < $3
-                AND "attendanceTime" < $4
+                AND "attendanceTime" <= $4
               ORDER BY "attendanceTime" ASC`,
-            [employeeId, dayStart, dayEnd, instant]
+            [employeeId, dayStart, dayEnd, cutoffInstant]
         );
         if (earlyPunches.rows.length > 0) {
             // أول بصمة في اليوم = الدخول (حتى لو كانت حالة "خروج" بالجهاز)
@@ -1003,7 +1116,7 @@ async loadPattern(employeeId) {
 
     async loadEmployeeMapping() {
         const { rows } = await pool.query(
-            'SELECT id, name, "deviceUserId", "employeeId", shift_start, shift_karim, auto_checkout, auto_lock FROM employees'
+            'SELECT id, name, "deviceUserId", "deviceUserIdAlt", "employeeId", shift_start, shift_karim, auto_checkout, auto_lock FROM employees'
         );
         const byDeviceId = new Map();
         const byEmployeeNo = new Map();
@@ -1011,6 +1124,9 @@ async loadPattern(employeeId) {
         for (const row of rows) {
             const duid = row.deviceUserId != null ? String(row.deviceUserId).trim() : '';
             if (duid) {byDeviceId.set(duid, row.id);}
+            // المعرف البديل (uid مقابل userId في أجهزة ZKTeco — يمنع ضياع البصمات نهائيًا)
+            const alt = row.deviceUserIdAlt != null ? String(row.deviceUserIdAlt).trim() : '';
+            if (alt && !byDeviceId.has(alt)) {byDeviceId.set(alt, row.id);}
             const empNo = row.employeeId != null ? String(row.employeeId).trim() : '';
             if (empNo) {byEmployeeNo.set(empNo, row.id);}
             byId.set(row.id, {
@@ -1021,6 +1137,59 @@ async loadPattern(employeeId) {
             });
         }
         return { byDeviceId, byEmployeeNo, byId, employees: rows };
+    }
+
+    /** إغلاق النسيان المجدول (طلب المالك 2026-10-10): صف مفتوح تجاوز الوردية + ساعتين
+     *  يُقفل تلقائيًا حتى بلا بصمة جديدة. وقت الخروج = مدة الموظف المعتادة (نمطه
+     *  الشخصي) عند توفرها ضمن ±ساعتين من الوردية، وإلا نهاية الوردية. موسوم
+     *  checkout_inferred وقابل للتراجع من شاشة الحضور. */
+    async closeStaleOpenRows({ graceHours = 2, minSamples = 3 } = {}) {
+        const now = new Date();
+        const open = (await pool.query(
+            `SELECT a.id, a."employeeId", a."checkInAt", a.date FROM attendance a
+              WHERE a."checkOut" IS NULL AND a."checkInAt" IS NOT NULL
+              AND a."checkInAt" < NOW() - INTERVAL '1 hour' LIMIT 200`
+        )).rows;
+        if (!open.length) {return { closed: 0, details: [] };}
+        const mapping = await this.loadEmployeeMapping();
+        let closed = 0;
+        const details = [];
+        for (const row of open) {
+            const meta = mapping.byId.get(row.employeeId) ?? mapping.byId.get(String(row.employeeId));
+            const karim = Number(meta?.shiftKarim) > 0 ? Number(meta.shiftKarim) : 10;
+            const inAt = new Date(row.checkInAt);
+            if (!Number.isFinite(inAt.getTime())) {continue;}
+            if ((now - inAt) / 3600000 <= karim + graceHours) {continue;}
+            let outAt = new Date(inAt.getTime() + Math.round(karim * 3600000));
+            let source = 'shift';
+            try {
+                const pat = await this.loadPattern(row.employeeId);
+                const mIn = Number(pat?.medianIn), mOut = Number(pat?.medianOut), n = Number(pat?.samples ?? 0);
+                if (Number.isFinite(mIn) && Number.isFinite(mOut) && n >= minSamples) {
+                    let durMin = (mOut - mIn) % 1440;
+                    if (durMin <= 0) {durMin += 1440;}
+                    if (durMin >= karim * 60 - 120 && durMin <= karim * 60 + 120) {
+                        outAt = new Date(inAt.getTime() + Math.round(durMin * 60000));
+                        source = `pattern:${Math.round(durMin)}m`;
+                    }
+                }
+            } catch (_) {}
+            if (outAt > now) {continue;}
+            const wallOut = instantToWall(outAt);
+            const r = await pool.query(
+                `UPDATE attendance SET "checkOut" = $2, "checkOutAt" = $3, "workMinutes" = $4,
+                    checkout_inferred = true,
+                    notes = COALESCE(notes,'') || $5 WHERE id = $1 AND "checkOut" IS NULL`,
+                [row.id, wallOut.time, outAt, Math.round(karim * 60),
+                    ` | انصراف مستنتج تلقائيًا (${source}) — نسيان بصمة الخروج`]
+            );
+            if ((r.rowCount || 0) > 0) {
+                closed++;
+                details.push({ id: row.id, employeeId: row.employeeId, date: row.date, out: wallOut.time, source });
+            }
+        }
+        if (closed) {logger.warn('[AttendanceEngine] إغلاق نسيان تلقائي:', closed, details.slice(0, 5));}
+        return { closed, details };
     }
 
     async logDecision({ employeeId, date, decision, confidence, reason, punchState, deviceId }) {

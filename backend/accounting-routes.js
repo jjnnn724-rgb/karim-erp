@@ -26,8 +26,11 @@ const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
 const WRITE_ROLES = ['admin', 'accountant'];
 
-const uid = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
+const crypto = require('crypto');
+const uid = () => Date.now() * 1000 + crypto.randomInt(0, 999999);
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+// FIX 2026-10-11 (M20): use riyadhToday() instead of UTC toISOString()
+const { riyadhToday } = require('./riyadh-date');
 
 // مراكز التكلفة اختيارية على مستوى القاعدة: إن لم تُطبق migration 081 بعد،
 // يعمل الترحيل (يدوي وتلقائي) بدونها بدل أن يكسر البيع. يُكتشف مرة واحدة.
@@ -110,6 +113,33 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
     // فحص مسبق خارج المعاملة (التحقق داخل معاملة مُجهضة مستحيل في PostgreSQL)
     const pre = await findExisting();
     if (pre && source_id != null && String(source_id).trim() !== '') {return { entry: pre, replay: true };}
+
+    // HARDENED 2026-10-07: القيود اليدوية بلا مرجع كانت تأخذ مرجعًا عشوائيًا دائمًا —
+    // ضغطة مكررة على حفظ كانت ترحّل القيد مرتين. بصمة المحتوى (نفس المستخدم +
+    // نفس السطور + نفس البيان خلال 10 دقائق) تُعيد الموجود بدل التكرار.
+    if (source_id == null || String(source_id).trim() === '') {
+        if (created_by != null) {
+            const fpSig = clean.map(l => `${l.account_code}:${Number(l.debit).toFixed(2)}:${Number(l.credit).toFixed(2)}`).sort().join('|')
+                + '#' + String(memo || '').trim().slice(0, 200);
+            const cand = await db.query(
+                `SELECT id, memo FROM journal_entries
+                  WHERE source_type = 'manual' AND source_id LIKE 'manual:%'
+                    AND created_by = $1 AND date = $2
+                    AND created_at >= NOW() - INTERVAL '10 minutes'
+                  ORDER BY created_at DESC LIMIT 5`,
+                [created_by, day]);
+            for (const c of cand.rows) {
+                const ll = await db.query(
+                    `SELECT account_code, debit, credit FROM journal_lines WHERE entry_id = $1 ORDER BY account_code`, [c.id]);
+                const s2 = ll.rows.map(l => `${l.account_code}:${Number(l.debit).toFixed(2)}:${Number(l.credit).toFixed(2)}`).sort().join('|')
+                    + '#' + String(c.memo || '').trim().slice(0, 200);
+                if (s2 === fpSig) {
+                    const full = await db.query(`SELECT * FROM journal_entries WHERE id = $1`, [c.id]);
+                    return { entry: full.rows[0], replay: true };
+                }
+            }
+        }
+    }
 
     for (let attempt = 0; attempt < 3; attempt++) {
         const doRun = async (client) => {
@@ -243,7 +273,7 @@ async function postPurchaseToLedger(invoiceId) {
     if (gross <= 0) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
         ? String(inv.date).slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
+        : riyadhToday();
     const lines = [
         { account_code: '1200', debit: net, credit: 0, memo: `مخزون فاتورة شراء ${inv.invoiceNumber || invoiceId}` },
     ];
@@ -276,7 +306,7 @@ async function postOpeningToLedger(invoiceId) {
     if (gross <= 0) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
         ? String(inv.date).slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
+        : riyadhToday();
     const out = await postJournal(pool, {
         date: day,
         memo: `رصيد افتتاحي — ${inv.invoiceNumber || invoiceId}`,
@@ -318,7 +348,7 @@ async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } =
     const v = round2(totalValue);
     if (!(v > 0)) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
-        ? String(date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+        ? String(date).slice(0, 10) : riyadhToday();
     const out = await postJournal(pool, {
         date: day,
         memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
@@ -335,7 +365,7 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
     const v = round2(totalValue);
     if (!(v > 0)) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
-        ? String(date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+        ? String(date).slice(0, 10) : riyadhToday();
     const out = await postJournal(pool, {
         date: day,
         memo: `إرجاع مخزون — مرتجع #${returnId}${deptCode ? ` (${deptCode})` : ''}`,
@@ -553,7 +583,7 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
 router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const from = String(req.query.from || new Date().toISOString().slice(0, 8) + '01').slice(0, 10);
-        const to = String(req.query.to || new Date().toISOString().slice(0, 10)).slice(0, 10);
+        const to = String(req.query.to || riyadhToday()).slice(0, 10);
         const q = async (sql, p) => (await pool.query(sql, p)).rows[0];
         const rev = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM revenues WHERE date >= $1 AND date <= $2 AND "deptId" != 'ys_b4_ext'`, [from, to]);
         const exp = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM expenses

@@ -17,6 +17,7 @@
 
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
+const { riyadhToday } = require('./riyadh-date'); // M20
 
 function norm(s) {
     return String(s || '').replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase().trim().replace(/\s+/g, ' ');
@@ -101,18 +102,36 @@ async function resolveEmployee(token) {
 }
 
 /** تطبيق قائمة ورديات + إعادة حساب مشتقات الحضور */
-async function applyShiftText(text, month) {
+async function applyShiftText(text, month, actorId = null) {
     const { items, errors } = parseShiftLines(text);
     const applied = [], failed = [];
+    const todayStr = riyadhToday();
     for (const it of items) {
         try {
             const emp = await resolveEmployee(it.token);
             if (!emp) {failed.push(`${it.token}: لا يوجد موظف مطابق`); continue;}
+            const ns = it.start, nk = it.karim != null ? it.karim : emp.cur_karim;
+            // أثر تاريخي أولًا (ب القيم القديمة قبل التحديث): يحمي الماضي ويوثّق مَن غيّر
+            await pool.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 SELECT $1, e.shift_start, e.shift_karim, e.day_off, DATE '2000-01-01', $2 FROM employees e
+                  WHERE e.id = $1 AND NOT EXISTS (SELECT 1 FROM employee_shift_history h WHERE h.employee_id = $1)
+                 ON CONFLICT DO NOTHING`,
+                [emp.id, actorId]
+            );
             await pool.query(
                 `UPDATE employees SET "shift_start" = $1, "shift_karim" = $2 WHERE id = $3`,
-                [it.start, it.karim != null ? it.karim : emp.cur_karim, emp.id]
+                [ns, nk, emp.id]
             );
-            applied.push({ id: emp.id, name: emp.name, start: it.start, karim: it.karim != null ? it.karim : emp.cur_karim });
+            await pool.query(
+                `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
+                 VALUES ($1,$2,$3,(SELECT day_off FROM employees WHERE id = $1),$4,$5)
+                 ON CONFLICT (employee_id, effective_from)
+                 DO UPDATE SET shift_start=EXCLUDED.shift_start, shift_karim=EXCLUDED.shift_karim,
+                               created_by=EXCLUDED.created_by, created_at=NOW()`,
+                [emp.id, ns, nk, todayStr, actorId]
+            );
+            applied.push({ id: emp.id, name: emp.name, start: ns, karim: nk });
         } catch (e) {failed.push(`${it.token}: ${e.message.slice(0, 60)}`);}
     }
     const recompute = await recomputeDerived();
@@ -133,26 +152,35 @@ async function applyShiftText(text, month) {
 }
 
 /** إعادة حساب كل مشتقات الحضور من الورديات الحالية (يدوي + تلقائي بعد التطبيق) */
-async function recomputeDerived(graceMin = 0) {
+async function recomputeDerived(graceMin = 15, options = {}) {
+    // FIX 2026-10-11 (M7): filter by date range to avoid full-table UPDATE
+    // that locks the entire attendance table. Default: last 90 days.
+    const { fromDate, toDate } = options;
+    const dateFilter = fromDate
+        ? ` AND a.date >= '${fromDate}'${toDate ? ` AND a.date <= '${toDate}'` : ''}`
+        : ` AND a.date >= (CURRENT_DATE - INTERVAL '90 days')`;
+    // حارس الساعة الصحيحة: أي صف زمني شاذ يُتجاهل بدل ما يوقع الاستعلام كله (درس 24:51)
+    const CLOCK = `a."checkIn" ~ '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' AND e."shift_start" ~ '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'`;
     const before = (await pool.query(
         `SELECT count(*)::int AS late_days, COALESCE(SUM(GREATEST(0,
             (split_part(a."checkIn",':',1)::int*60 + split_part(a."checkIn",':',2)::int)
           - (split_part(e."shift_start",':',1)::int*60 + split_part(e."shift_start",':',2)::int))),0)::int AS late_min
-         FROM attendance a JOIN employees e ON e.id = a."employeeId" WHERE a.late AND a."checkIn" IS NOT NULL`
+         FROM attendance a JOIN employees e ON e.id = a."employeeId" WHERE a.late AND a."checkIn" IS NOT NULL AND ${CLOCK}${dateFilter}`
     )).rows[0];
     const upd = await pool.query(
         `UPDATE attendance a SET late = CASE
             WHEN a."checkIn" IS NULL THEN false
+            WHEN NOT (${CLOCK}) THEN a.late
             ELSE (split_part(a."checkIn",':',1)::int*60 + split_part(a."checkIn",':',2)::int)
                > (split_part(e."shift_start",':',1)::int*60 + split_part(e."shift_start",':',2)::int) + $1
          END
-         FROM employees e WHERE e.id = a."employeeId"`, [graceMin]
+         FROM employees e WHERE e.id = a."employeeId"${dateFilter}`, [graceMin]
     );
     const after = (await pool.query(
         `SELECT count(*)::int AS late_days, COALESCE(SUM(GREATEST(0,
             (split_part(a."checkIn",':',1)::int*60 + split_part(a."checkIn",':',2)::int)
           - (split_part(e."shift_start",':',1)::int*60 + split_part(e."shift_start",':',2)::int))),0)::int AS late_min
-         FROM attendance a JOIN employees e ON e.id = a."employeeId" WHERE a.late AND a."checkIn" IS NOT NULL`
+         FROM attendance a JOIN employees e ON e.id = a."employeeId" WHERE a.late AND a."checkIn" IS NOT NULL AND ${CLOCK}${dateFilter}`
     )).rows[0];
     return {
         rowsScanned: upd.rowCount,

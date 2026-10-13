@@ -13,10 +13,12 @@
 
 const express = require('express');
 const { pool } = require('./shared-pool');
+const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { normalizeVatNumber, validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
+const { arFuzzyPattern } = require('./ar-search');
 
 const router = express.Router();
 
@@ -308,6 +310,9 @@ async function ensureProcurementSchema() {
         ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS supplier_tax_status_snapshot VARCHAR(20);
         ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS zatca_uuid TEXT;
         ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS zatca_qr TEXT;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS discount_type VARCHAR(10) NOT NULL DEFAULT 'none';
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS discount_value NUMERIC(14,2) NOT NULL DEFAULT 0;
+        ALTER TABLE "purchaseInvoices" ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(14,2) NOT NULL DEFAULT 0;
         CREATE TABLE IF NOT EXISTS tax_config (
             id INT PRIMARY KEY CHECK (id = 1),
             standard_vat_rate NUMERIC(5,2) NOT NULL DEFAULT 15.00,
@@ -462,15 +467,18 @@ router.get('/suppliers/search', jwtAuth, requireRole(...READ_ROLES), async (req,
         if (q) {
             params.push(q);
             const qi = params.length;
+            // ذكاء البحث العربي 2026-10-06: اسم المورد بعائلات الحروف المتشابهة، وباقي الحقول حرفيًا
+            params.push(arFuzzyPattern(q));
+            const fi = params.length;
             const digits = q.replace(/\D/g, '');
             if (digits) {
                 params.push(digits);
                 const di = params.length;
-                clauses.push(`(s.name ILIKE '%' || $${qi} || '%' OR s.vat_number LIKE $${di} || '%'
+                clauses.push(`(s.name ~* $${fi} OR s.vat_number LIKE $${di} || '%'
                     OR s.commercial_register ILIKE '%' || $${qi} || '%'
                     OR COALESCE(s.name_en,'') ILIKE '%' || $${qi} || '%')`);
             } else {
-                clauses.push(`(s.name ILIKE '%' || $${qi} || '%' OR s.commercial_register ILIKE '%' || $${qi} || '%'
+                clauses.push(`(s.name ~* $${fi} OR s.commercial_register ILIKE '%' || $${qi} || '%'
                     OR COALESCE(s.name_en,'') ILIKE '%' || $${qi} || '%')`);
             }
         }
@@ -769,7 +777,7 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
             const { postJournal } = require('../accounting-routes');
             const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? '1000' : '1010';
             await postJournal(pool, {
-                date: v.clean.date || new Date().toISOString().slice(0, 10),
+                date: v.clean.date || riyadhToday(),
                 memo: `دفعة مورد ${supplier.name} (${v.clean.method})`,
                 source_type: 'supplier_payment', source_id: String(paymentId),
                 lines: [
@@ -804,7 +812,7 @@ router.post('/invoices/:id/pay', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), a
         if (!supplier) { await client.query('ROLLBACK'); return fail(res, 404, 'SUPPLIER_NOT_FOUND', 'مورد الفاتورة غير موجود'); }
         if (!supplier.is_active) { await client.query('ROLLBACK'); return fail(res, 409, 'SUPPLIER_INACTIVE', 'المورد موقوف — فعّله قبل التسديد'); }
         const method = PAYMENT_METHODS.has(String(req.body?.method)) ? String(req.body.method) : 'cash';
-        const date = DATE_RE.test(String(req.body?.date || '')) ? String(req.body.date) : new Date().toISOString().slice(0, 10);
+        const date = DATE_RE.test(String(req.body?.date || '')) ? String(req.body.date) : riyadhToday();
         const paymentId = id();
         const payment = (await client.query(
             `INSERT INTO supplier_payments (id, "supplierId", amount, method, date, "invoiceId", notes, "createdBy")

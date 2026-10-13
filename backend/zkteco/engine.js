@@ -64,15 +64,16 @@ class AttendanceSyncEngine {
 
     /**
      * التراجع الأسي للمحاولات: جهاز يفشل باستمرار يُعاد محاولته بتباعد
-     * بدل إغراق السجلات كل 5 ثوان. الحد الأقصى 10 دقائق بين المحاولات.
+     * بدل إغراق السجلات كل 5 ثوان. الحد الأقصى دقيقتان بين المحاولات
+     * (كان 10 دقائق — قُلّل ليُكتشف عودة الجهاز بسرعة).
      * @param {number} failures عدد الفشلات المتتالية
      * @returns {number} مهلة بالملي ثانية قبل المحاولة التالية
      */
     _backoffMs(failures) {
         if (failures <= 0) {return 0;}
-        // 30s → 1m → 2m → 4m → 8m → 10m (سقف)
-        const base = 30 * 1000;
-        const max = 10 * 60 * 1000;
+        // 15s → 30s → 1m → 2m (سقف)
+        const base = 15 * 1000;
+        const max = 2 * 60 * 1000;
         return Math.min(max, base * Math.pow(2, failures - 1));
     }
 
@@ -119,6 +120,21 @@ class AttendanceSyncEngine {
             });
         }
         return { running: this.running, devices };
+    }
+
+    /**
+     * إعادة ضبط حالة جهاز في الذاكرة (عند تعديل عنوان IP أو المنفذ)
+     * ليحاول المحرك الاتصال فورًا في الدورة التالية بدل انتظار التراجع الأسي.
+     */
+    resetDeviceState(deviceId) {
+        const st = this.states.get(deviceId);
+        if (st) {
+            st.consecutiveFailures = 0;
+            st.lastAttemptAt = 0;
+            st.lastError = null;
+            st.nextRetryAt = 0;
+            logger.info(`[ZKTECO_ENGINE] تم إعادة ضبط حالة الجهاز ${deviceId} — سيُحاول الاتصال فورًا`);
+        }
     }
 
     async _tick() {
@@ -239,7 +255,13 @@ class AttendanceSyncEngine {
             }
 
             // كتابة الحضور/الانصراف اليومي (fill-only) للسجلات الجديدة المرتبطة بموظفين
+            // FIX 2026-10-13: عزل خطأ كل بصمة. السجلات الخام مُرحّل أصلًا (committed منفصلًا)،
+            // فرمي خطأ من بصمة واحدة كان يُسقط الدورة كاملة → تُقفّز نقطة التفتيش → تُدرج
+            // الدورة التالية صفر صف → لا كتابة أبدًا لتلك البصمات (فجوة 2026-10-13: 69 بصمة عالقة).
+            // الآن الفشل مُسجَّل بصوت عالٍ ومعدود، والبقية تُكمل.
             let writeBacks = 0;
+            let writeBackFailures = 0;
+            const firstWriteBackError = [];
             const liveEvents = [];
             const brainCtx = { patterns: new Map(), last: new Map() };
             for (const row of insertedRows) {
@@ -252,15 +274,27 @@ class AttendanceSyncEngine {
                 }
                 const wallParts = this._wallParts(row.attendanceTime);
                 const empShift = mapping.byId.get(row.employeeId) || null;
-                const action = await this._writeBackDailyAttendance({
-                    employeeId: row.employeeId,
-                    punchState: row.punchState,
-                    instant: new Date(row.attendanceTime),
-                    wall: wallParts,
-                    device,
-                    shift: empShift,
-                    brain: brainCtx,
-                });
+                let action = null;
+                try {
+                    action = await this._writeBackDailyAttendance({
+                        employeeId: row.employeeId,
+                        punchState: row.punchState,
+                        instant: new Date(row.attendanceTime),
+                        wall: wallParts,
+                        device,
+                        shift: empShift,
+                        brain: brainCtx,
+                    });
+                } catch (wbErr) {
+                    writeBackFailures += 1;
+                    if (firstWriteBackError.length < 3) {
+                        firstWriteBackError.push(
+                            `emp=${row.employeeId} at=${new Date(row.attendanceTime).toISOString()}: ${wbErr.message}`);
+                    }
+                    logger.error('[ZKTECO_ENGINE] فشل ربط حضور بصمة واحدة (تُكمل البقية): ' +
+                        `emp=${row.employeeId} time=${new Date(row.attendanceTime).toISOString()} :: ${wbErr.message}`);
+                    continue;
+                }
                 if (action) {writeBacks += 1;}
                 liveEvents.push({
                     deviceId: device.id,
@@ -388,8 +422,11 @@ class AttendanceSyncEngine {
 
             st.lastResultAt = Date.now();
             st.consecutiveFailures = 0;
-            logger.info(`[ZKTECO_ENGINE] ${device.name} (${device.ipAddress}): قراءة ${records.length} — جديد ${inserted} — مستخدمون ${sizes.users} — ربط حضور ${writeBacks}`);
-            return { ok: true, read: records.length, inserted, writeBacks, users: sizes.users };
+            const failureNote = writeBackFailures
+                ? ` — تعذّر ربط ${writeBackFailures} بصمة (عالقة في السجل الخام، راجع الأخطاء أعلاه): ${firstWriteBackError.join(' ; ')}`
+                : '';
+            logger.info(`[ZKTECO_ENGINE] ${device.name} (${device.ipAddress}): قراءة ${records.length} — جديد ${inserted} — مستخدمون ${sizes.users} — ربط حضور ${writeBacks}${failureNote}`);
+            return { ok: true, read: records.length, inserted, writeBacks, writeBackFailures, users: sizes.users };
         } catch (error) {
             st.lastError = error.message;
             st.consecutiveFailures += 1;

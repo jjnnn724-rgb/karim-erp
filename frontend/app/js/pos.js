@@ -117,6 +117,10 @@ function fmtQty(n) {    return Number(n || 0).toLocaleString('en-US', {
 function isManagerRole() {
     return ['admin', 'manager'].includes(currentUser?.role);
 }
+// قرار المالك 2026-10-05: الشيف هو من يتحكم في المنيو (شاشة البوفيه)
+function canManageMenu() {
+    return ['admin', 'manager', 'kitchen', 'sous_chef'].includes(currentUser?.role);
+}
 
 function resetCartDiscount() {
     cartDiscount = { type: null, value: 0 };
@@ -134,6 +138,14 @@ function hideLoading() {
     $('#loading-overlay').classList.add('hidden');
 }
 
+// Double-submit guard: طلبا POST متطابقان (نفس المسار + الجسم) متزامنان =
+// ضغط مزدوج — الثاني ينتظر وعد الأول نفسه بدل إرسال بيعة/فاتورة مكررة.
+// المتتالي المتطابق يمر طبيعيًا (بيعان حقيقيان لنفس الصنف شائعان في الكاشير).
+const _posPostInflight = new Map();
+function _posPostKey(path, body) {
+    try { return path + '::' + JSON.stringify(body ?? {}); } catch (_) { return null; }
+}
+
 async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (accessToken) {headers.Authorization = `Bearer ${accessToken}`;}
@@ -147,6 +159,15 @@ async function api(path, opts = {}) {
         headers['x-device-name'] = 'POS (' + dev + (currentDepartment && currentDepartment.id ? ' dept-' + currentDepartment.id : '') + ')';
     } catch (_) {}
 
+    let mergeKey = null;
+    if ((opts.method || '').toUpperCase() === 'POST') {
+        mergeKey = _posPostKey(path, opts.body);
+        if (mergeKey && _posPostInflight.has(mergeKey)) {
+            return _posPostInflight.get(mergeKey);
+        }
+    }
+
+    const run = (async () => {
     const doFetch = async () => {
         const h = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
         if (accessToken) {h.Authorization = `Bearer ${accessToken}`;}
@@ -181,6 +202,13 @@ async function api(path, opts = {}) {
         });
     }
     return data;
+    })();
+
+    if (mergeKey) {
+        _posPostInflight.set(mergeKey, run);
+        run.finally(() => { _posPostInflight.delete(mergeKey); }).catch(() => {});
+    }
+    return run;
 }
 
 // ─── مفتاح التطبيق (x-api-key): يُسلَّم مع الدخول/التجديد ويُرفق بكل طلب ────
@@ -1032,7 +1060,7 @@ async function resumeActiveShift() {
     $('#pos-dept-name').textContent = currentDepartment.name;
     $('#pos-session-id').textContent = `وردية #${currentSession.session_id}`;
     const buffetModeResume = isOpenBuffetDepartment();
-    $('#catalog-btn').classList.toggle('hidden', !isManagerRole());
+    $('#catalog-btn').classList.toggle('hidden', !canManageMenu());
     $('#day-close-btn').classList.toggle('hidden', !isManagerRole());
     $('#buffet-prices-btn').classList.toggle('hidden', !(isManagerRole() && buffetModeResume));
     $('#buffet-invoices-btn').classList.toggle('hidden', !buffetModeResume);
@@ -1674,7 +1702,7 @@ async function openShift({ newSession = false } = {}) {
         $('#pos-dept-name').textContent = currentDepartment.name;
         $('#pos-session-id').textContent = `وردية #${result.session_id}`;
         const buffetModeOpen = isOpenBuffetDepartment();
-$('#catalog-btn').classList.toggle('hidden', !isManagerRole()); $('#day-close-btn').classList.toggle('hidden', !isManagerRole());
+$('#catalog-btn').classList.toggle('hidden', !canManageMenu()); $('#day-close-btn').classList.toggle('hidden', !isManagerRole());
         $('#buffet-prices-btn').classList.toggle('hidden', !(isManagerRole() && buffetModeOpen));
         $('#buffet-invoices-btn').classList.toggle('hidden', !buffetModeOpen);
         $('#buffet-report-btn').classList.toggle('hidden', !buffetModeOpen);
@@ -2061,7 +2089,7 @@ $('#product-search').addEventListener('keydown', (event) => {
 });
 
 $('#catalog-btn').addEventListener('click', async () => {
-    if (!isManagerRole()) {return;}
+    if (!canManageMenu()) {return;}
     showLoading('جارٍ تحميل كتالوج الأصناف...');
     try {
         await Promise.all([loadCatalogProducts(), loadInventoryIngredients()]);
@@ -2237,6 +2265,23 @@ function initPosRealtime() {
         else {socket.on('connect', markLive);}
         socket.on('disconnect', () => posRtSetLive(false));
         socket.on('reconnect_failed', () => posRtSetLive(false));
+        // HARDENED 2026-10-08: تجديد التوكن عند إعادة الاتصال (مثل القناة الرئيسية)
+        if (!useShared) {
+            socket.on('reconnect_attempt', () => {
+                try {
+                    let expired = false;
+                    if (window._jwt) {
+                        try {
+                            const pay = JSON.parse(atob(String(window._jwt).split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                            expired = !pay.exp || (pay.exp * 1000) < Date.now() + 60000;
+                        } catch (_) { expired = true; }
+                    }
+                    if (expired && typeof refreshSession === 'function') {
+                        refreshSession().then(() => { try { if (window._jwt) {socket.auth = { token: window._jwt };} } catch (_) {} }).catch(() => {});
+                    } else if (window._jwt) { socket.auth = { token: window._jwt }; }
+                } catch (_) {}
+            });
+        }
         socket.on('entity_changed', (data) => {
             if (data && data.entity && !POS_RT_ENTITIES.has(data.entity)) {return;}
             posRtSchedule();

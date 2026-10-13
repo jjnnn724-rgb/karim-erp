@@ -47,7 +47,7 @@ const entitySchemas = {
         allowedValues: {
             // Must match the roles defined in frontend/app/js/app.js (ROLES)
             // and the seed data in database/migrations/002_seed.sql.
-            role: ['admin', 'manager', 'cashier', 'auditor', 'warehouse', 'kitchen', 'hr', 'employee', 'accountant', 'dept_head'],
+            role: ['admin', 'manager', 'cashier', 'auditor', 'warehouse', 'kitchen', 'sous_chef', 'hr', 'employee', 'accountant', 'dept_head', 'owner'],
         },
         maxLength: {
             username: 100,
@@ -759,7 +759,12 @@ function getEntityNames() {
 function getSortableColumns(entityName) {
     const schema = getSchema(entityName);
     if (!schema) {return [];}
-    return [...(schema.writeable || []), 'id'];
+    // FIX 2026-10-11 (L4): blacklist sensitive columns from sort — writable
+    // columns include password/salary which enable info inference via sort
+    // order (e.g., sort by salary reveals pay hierarchy).
+    const SORT_BLACKLIST = new Set(['password', 'password_vault', 'salary', 'bank_account', 'national_id', 'token', 'secret']);
+    const cols = [...(schema.writeable || []), 'id'].filter(c => !SORT_BLACKLIST.has(String(c).toLowerCase()));
+    return cols;
 }
 
 // ─── Security audit (2026-09-03): write-role map for generic CRUD ────────────
@@ -783,9 +788,9 @@ const OPEN_ENTITY_WRITE_ROLES = Object.freeze({
     leaveTypes:      ['admin', 'manager', 'hr'],
     leaveRequests:   ['admin', 'manager', 'hr'], // الإرسال الفعلي عبر /api/hr/leave-requests
     departments:     ['admin', 'manager'],
-    recipes:         ['admin', 'manager', 'kitchen'],
-    kitchenReturns:  ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'],
-    weightReadings:  ['admin', 'manager', 'kitchen', 'warehouse'],
+recipes:         ['admin', 'manager', 'kitchen', 'sous_chef'],
+kitchenReturns:  ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'],
+weightReadings:  ['admin', 'manager', 'kitchen', 'sous_chef', 'warehouse'],
     salary_advances:      ['admin', 'manager', 'hr'],
     payroll_adjustments:  ['admin', 'manager', 'hr'],
     employee_contracts:   ['admin', 'manager', 'hr'],

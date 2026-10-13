@@ -26,6 +26,8 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+// M20: riyadhToday for business dates
+const { riyadhToday } = require('./riyadh-date');
 
 const router = express.Router();
 
@@ -547,7 +549,7 @@ function resolvePeriod(query) {
     let from = normalizeDay(query.from);
     let to = normalizeDay(query.to);
     if (!from && !to) {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = riyadhToday();
         from = `${today.slice(0, 7)}-01`;
         to = today;
     } else if (!from || !to) {
@@ -579,8 +581,8 @@ async function loadPnlInputs(from, to) {
               FROM pos_orders o
               JOIN pos_departments d ON d.id = o.department_id
              WHERE o.status IN ('issued','reported')
-               AND (o.created_at AT TIME ZONE 'UTC')::date >= $1::date
-               AND (o.created_at AT TIME ZONE 'UTC')::date <= $2::date
+                AND (o.created_at AT TIME ZONE 'Asia/Riyadh')::date >= $1::date
+                AND (o.created_at AT TIME ZONE 'Asia/Riyadh')::date <= $2::date
                AND o.total_amount IS NOT NULL`,
              [from, to]),
         pool.query(`

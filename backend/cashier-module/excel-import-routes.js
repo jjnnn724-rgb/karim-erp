@@ -337,9 +337,18 @@ router.post('/', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async (r
                 }
 
                 // Insert inventory item
+                // الوزن المتغير: صنف لحوم/دواجن/أسماك مخزون بالوزن ⇒ تفعيل تلقائي
+                // (على الإدخالات الجديدة فقط — الاستيراد لا يلغي تفعيلًا يدويًا سابقًا)
+                const cwDefaults = require('../catch-weight-heuristic').suggestCatchWeight(d.name, d.unit) || {
+                    catch_weight_enabled: false,
+                    inventory_uom: null,
+                    packaging_uom: null,
+                    catch_weight_uom: 'kg',
+                };
                 const itemRes = await client.query(`
-                    INSERT INTO inventory (name, category_id, unit, qty, "avgCost", min_qty, barcode, shelf_code, weight, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                    INSERT INTO inventory (name, category_id, unit, qty, "avgCost", min_qty, barcode, shelf_code, weight, created_at,
+                                           catch_weight_enabled, inventory_uom, packaging_uom, catch_weight_uom)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11, $12, $13)
                     ON CONFLICT (name) DO UPDATE SET
                         category_id = EXCLUDED.category_id,
                         unit = EXCLUDED.unit,
@@ -351,7 +360,8 @@ router.post('/', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async (r
                         weight = EXCLUDED.weight,
                         updated_at = NOW()
                     RETURNING id
-                `, [d.name, catId, d.unit, d.qty, d.avgCost, d.minQty, d.barcode, d.shelfCode, d.weight]);
+                `, [d.name, catId, d.unit, d.qty, d.avgCost, d.minQty, d.barcode, d.shelfCode, d.weight,
+                    cwDefaults.catch_weight_enabled, cwDefaults.inventory_uom, cwDefaults.packaging_uom, cwDefaults.catch_weight_uom]);
 
                 await logAudit(client, req.user.id, 'CREATE', 'inventory', itemRes.rows[0].id, null, d, { import: true });
                 await client.query(`RELEASE SAVEPOINT ${spName}`);

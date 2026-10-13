@@ -213,7 +213,7 @@ const q = String(inputEl?.value || '').trim().toLowerCase();
 const tb = document.getElementById(tbodyId);
 if(!tb) {return;}
 tb.querySelectorAll('tr').forEach(tr => {
-tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none';
+tr.style.display = (!q || tr.innerText.toLowerCase().includes(q) || (window.arSearchIncludes?window.arSearchIncludes(tr.innerText, q):false)) ? '' : 'none';
 });
 }
 function ysPrintReport(title, subtitle, summaryPairs, headCols, bodyRows){

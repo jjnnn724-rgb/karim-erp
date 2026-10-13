@@ -21,7 +21,7 @@ const NUM = (v) => {
 };
 
 async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHIERS, io = null } = {}) {
-    const out = { ok: true, headers: 0, upserted: 0, cashiers: {} };
+    const out = { ok: true, headers: 0, upserted: 0, cashiers: {}, newDocs: [] };
     try {
         // جلسة دائمة موسومة بهويتنا (تبقى حية حتى لو غيّروا الباسورد)
         const { getKeptConn } = require('./oracle-link');
@@ -43,6 +43,11 @@ async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHI
              ORDER BY DOC_DATE DESC, DOC_NO DESC`,
             binds)).rows || [];
         out.headers = heads.length;
+        // بلاغ المالك 2026-10-06: نغمة «أوردر جديد» عند الكاشير — upsert يعيد كل شيء
+        // كل دورة، فنميّز المُدرج جديدًا فعلًا: أي مستندات معروفة قبل الحلقة؟
+        const allDocs = heads.map((h) => String(h.DOC_NO ?? '').trim()).filter(Boolean);
+        const knownDocs = new Set(allDocs.length ? (await pool.query(
+            `SELECT doc_no FROM ys_mirror_orders WHERE doc_no = ANY($1::text[])`, [allDocs])).rows.map((r) => String(r.doc_no)) : []);
         for (const h of heads) {
             const doc = String(h.DOC_NO ?? '').trim();
             if (!doc) {continue;}
@@ -60,7 +65,13 @@ async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHI
             }));
             const vat = NUM(h.H_VAT) > 0 ? NUM(h.H_VAT)
                 : Math.round(items.reduce((s, x) => s + x.vat, 0) * 100) / 100;
-            const dd = h.DOC_DATE instanceof Date ? h.DOC_DATE.toISOString().slice(0, 10) : String(h.DOC_DATE || '').slice(0, 10);
+            // FIX 2026-10-03: toISOString كان بيرجع اليوم يومًا (UTC) — فواتير
+            // الجمعة كانت بتتخزن كخميس. الآن نستخرج مكوّنات التاريخ بتوقيت السيرفر.
+            const dd = (() => {
+                const d = h.DOC_DATE instanceof Date ? h.DOC_DATE : new Date(h.DOC_DATE);
+                if (Number.isNaN(d.getTime())) {return String(h.DOC_DATE || '').slice(0, 10);}
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })();
             const saler = items.length && items[0].saler != null ? String(items[0].saler).trim() || null : null;
             // DOC_TIME مثل " 10:59:38 Am" → "HH:MM" بترتيب صحيح
             let hhmm = null;
@@ -96,9 +107,19 @@ async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHI
                     h.PRNTD != null && String(h.PRNTD).trim() !== '' && String(h.PRNTD).trim() !== '0']);
             out.upserted++;
             out.cashiers[String(h.CSHR || '').trim()] = (out.cashiers[String(h.CSHR || '').trim()] || 0) + 1;
+            if (!knownDocs.has(doc)) {
+                out.newDocs.push({
+                    doc, cashier: String(h.CSHR || '').trim(), total: NUM(h.TOTAL_VAL),
+                    table: h.TABLE_NM != null ? String(h.TABLE_NM).trim() || null : null,
+                });
+            }
         }
         if (io && out.upserted > 0) {
             try { io.emit('yarasoft:mirror', { upserted: out.upserted, cashiers: out.cashiers, at: new Date().toISOString() }); } catch (_) {}
+        }
+        // أوردر جديد من الزائر → حدث فوري تسمعه نغمة الكاشير (realtime.js)
+        if (io && out.newDocs.length > 0) {
+            try { io.emit('yarasoft:new-orders', { count: out.newDocs.length, orders: out.newDocs.slice(0, 10), at: new Date().toISOString() }); } catch (_) {}
         }
         return out;
     } catch (e) {

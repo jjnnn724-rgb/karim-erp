@@ -235,7 +235,7 @@ router.get('/departments', jwtAuth, requireRole('cashier','manager','admin','aud
 });
 
 // ─── Products ───────────────────────────────────────────────────────────────
-router.get('/products', jwtAuth, requireRole('cashier','manager','admin','auditor','accountant','kitchen'), async (req, res) => {
+router.get('/products', jwtAuth, requireRole('cashier','manager','admin','auditor','accountant','kitchen','sous_chef'), async (req, res) => {
     const deptId = req.query.department_id ? parseInt(req.query.department_id, 10) : null;
     const includeInactive = String(req.query.include_inactive || '') === 'true' && canManageCatalog(req.user);
     const cacheKey = `${deptId || 'all'}:${includeInactive ? 'inactive' : 'active'}`;
@@ -335,7 +335,7 @@ router.get('/recipe-units', jwtAuth, requireRole('manager','admin','auditor'), (
     res.json(UNIT_DEFINITIONS.map(unit => ({ value: unit.value, label: unit.label, family: unit.family })));
 });
 
-router.get('/recipes/catalog', jwtAuth, requireRole('manager','admin','auditor','kitchen'), async (req, res) => {
+router.get('/recipes/catalog', jwtAuth, requireRole('manager','admin','auditor','kitchen','sous_chef'), async (req, res) => {
     try {
         const r = await pool.query(`
             SELECT r.id AS recipe_id, r.name, r."deptId", r."sellingPrice", r."totalCost", r."costRatio",
@@ -497,7 +497,7 @@ router.put('/products/:id/ingredients', jwtAuth, requireRole('manager','admin'),
     } finally { client.release(); }
 });
 
-router.post('/products', jwtAuth, requireRole('manager','admin'), async (req, res) => {
+router.post('/products', jwtAuth, requireRole('manager','admin','kitchen','sous_chef'), async (req, res) => {
     const payload = normalizeProductPayload(req.body);
     payload.department_id = payload.department_ids[0] ?? null;
     const errors = validateProductPayload(payload);
@@ -530,7 +530,7 @@ router.post('/products', jwtAuth, requireRole('manager','admin'), async (req, re
     }
 });
 
-router.put('/products/:id', jwtAuth, requireRole('manager','admin'), async (req, res) => {
+router.put('/products/:id', jwtAuth, requireRole('manager','admin','kitchen','sous_chef'), async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     if (!Number.isInteger(productId) || productId <= 0) {return res.status(422).json({ error: 'INVALID_PRODUCT_ID' });}
 
@@ -581,7 +581,7 @@ router.put('/products/:id', jwtAuth, requireRole('manager','admin'), async (req,
     }
 });
 
-router.delete('/products/:id', jwtAuth, requireRole('manager','admin'), async (req, res) => {
+router.delete('/products/:id', jwtAuth, requireRole('manager','admin','kitchen','sous_chef'), async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     if (!Number.isInteger(productId) || productId <= 0) {return res.status(422).json({ error: 'INVALID_PRODUCT_ID' });}
 

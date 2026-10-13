@@ -31,7 +31,7 @@ function buildChainNotification(dispatch, event, { reason = null, deptName = nul
     const dept = deptName || dispatch?.deptName || dispatch?.deptCode || 'قسم';
     switch (event) {
         case 'created_pending_chef':
-            return { type: 'info', targetRoles: ['kitchen'], title: 'طلب صرف جديد', message: `طلب صرف من ${dept} — بانتظار اعتماد الشيف العمومي` };
+            return { type: 'info', targetRoles: ['kitchen', 'sous_chef'], title: 'طلب صرف جديد', message: `طلب صرف من ${dept} — بانتظار اعتماد الشيف العمومي` };
         case 'created_direct':
             return { type: 'info', targetRoles: ['warehouse'], title: 'طلب صرف جديد', message: `طلب صرف من ${dept} — بانتظار اعتماد المخازن` };
         case 'chef_approved':
@@ -39,13 +39,13 @@ function buildChainNotification(dispatch, event, { reason = null, deptName = nul
         case 'chef_rejected':
             return { type: 'warning', targetCreator: true, title: 'رفض الشيف العمومي', message: `إذن #${id} من ${dept} مرفوض: ${reason || 'بدون سبب مسجل'}` };
         case 'warehouse_approved':
-            return { type: 'success', targetRoles: ['kitchen'], targetCreator: true, title: 'تم صرف الطلب', message: `إذن #${id} من ${dept} صُرف من المخازن — بانتظار استلام القسم` };
+            return { type: 'success', targetRoles: ['kitchen', 'sous_chef'], targetCreator: true, title: 'تم صرف الطلب', message: `إذن #${id} من ${dept} صُرف من المخازن — بانتظار استلام القسم` };
         case 'warehouse_rejected':
             return { type: 'warning', targetCreator: true, title: 'رفض المخازن', message: `إذن #${id} من ${dept} مرفوض: ${reason || 'بدون سبب مسجل'}` };
         case 'received':
-            return { type: 'success', targetRoles: ['warehouse', 'kitchen'], title: 'استلام القسم', message: `إذن #${id} من ${dept} تم استلامه وتوثيقه بالتوقيع` };
+            return { type: 'success', targetRoles: ['warehouse', 'kitchen', 'sous_chef'], title: 'استلام القسم', message: `إذن #${id} من ${dept} تم استلامه وتوثيقه بالتوقيع` };
         case 'returned':
-            return { type: 'info', targetRoles: ['warehouse', 'kitchen'], title: 'إرجاع للمخزن', message: `تم إرجاع أصناف من ${dept} على إذن #${id} وعكس مصروفها` };
+            return { type: 'info', targetRoles: ['warehouse', 'kitchen', 'sous_chef'], title: 'إرجاع للمخزن', message: `تم إرجاع أصناف من ${dept} على إذن #${id} وعكس مصروفها` };
         default:
             return null;
     }

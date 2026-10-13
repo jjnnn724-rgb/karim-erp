@@ -25,6 +25,11 @@ const PERSISTED_ENTITIES = [
 // (لوحة رئيس القسم لا تحتاج المستخدمين ولا مسيرات الرواتب — لصفحات الإدارة حصرًا)
 const ROLE_ENTITY_EXCLUSIONS = {
     dept_head: ['users', 'payroll'],
+    // المالك: شاشته متابعة الكاشير فقط — لا كيانات أعمال عند الإقلاع (منع ضجيج 403)
+    owner: ['users', 'departments', 'revenues', 'expenses', 'inventory', 'inventoryTx', 'dispatches', 'recipes',
+            'purchaseInvoices', 'kitchenReturns', 'employees', 'attendance', 'leaveRequests', 'hrDepartments',
+            'leaveTypes', 'payroll', 'shelves', 'weightReadings', 'salary_advances', 'payroll_adjustments',
+            'employee_contracts', 'employee_evaluations', 'payroll_runs'],
 };
 
 const STATE = {
@@ -36,6 +41,7 @@ currentUser: null,
 departments: [], revenues: [], expenses: [], inventory: [], inventoryTx: [], dispatches: [], recipes: [], purchaseInvoices: [], kitchenReturns: [], suppliers: [], supplierPayments: [],
 purchaseRequests: [], // طلبات شراء النواقص (مخزن → شيف → مدير عام) — من GET /api/warehouse/purchase-requests
 employees: [], attendance: [], leaveRequests: [], hrDepartments: [], leaveTypes: [], payroll: [],
+deptEmployees: [],   // موظفو قسم رئيس القسم — من GET /hr/dept-employees (جدول الحضور المقيد)
 salary_advances: [], payroll_adjustments: [], employee_contracts: [], employee_evaluations: [], payroll_runs: [],
 shelves: [], weightReadings: [],
 settings: { name:'مطاعم الشرفه العالمي', logo:'<i class=ji data-i=utensils></i>', logoB64:null, currency:'SAR', lowStockAlert:true, workStartHour:9 },

@@ -183,6 +183,13 @@ router.put('/devices/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res
         } else if (out.enabled === true) {
             await pool.query(`UPDATE attendance_devices SET status = 'unknown' WHERE id = $1 AND status = 'disabled'`, [id]);
         }
+        // عند تغيير عنوان IP أو المنفذ، أعد ضبط حالة المحرك ليحاول الاتصال فورًا
+        if (out.ipAddress || out.port) {
+            const engine = req.app.locals.attendanceEngine;
+            if (engine && typeof engine.resetDeviceState === 'function') {
+                engine.resetDeviceState(id);
+            }
+        }
         res.json(rows[0]);
     } catch (error) {
         logger.error('[zkteco/devices:update]', error);
@@ -665,6 +672,127 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
     } catch (error) {
         logger.error('[ZKTECO] coverage failed:', error.message);
         res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: error.message });
+    }
+});
+
+// ─── مسح الشبكة لاكتشاف أجهزة ZKTeco (حل تغير عنوان IP / انقطاع الجهاز) ────
+// يفحص الشبكة المحلية (الشبكة نفس الخادم) بحثًا عن أجهزة تستجيب على منفذ 4370
+// ويحاول مصافحة بروتوكول ZK للتأكد من أنها أجهزة بصمة حقيقية (لا أي جهاز يفتح المنفذ).
+// مفيد جدًا عندما يتغير عنوان IP للجهاز (DHCP) أو يختفي من الشبكة فجأة.
+const net = require('net');
+const os = require('os');
+
+function _checkTcpPort(host, port, timeoutMs) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) { return; }
+            settled = true;
+            socket.destroy();
+            resolve(false);
+        }, timeoutMs);
+        socket.once('connect', () => {
+            if (settled) { return; }
+            settled = true;
+            clearTimeout(timer);
+            socket.destroy();
+            resolve(true);
+        });
+        socket.once('error', () => {
+            if (settled) { return; }
+            settled = true;
+            clearTimeout(timer);
+            resolve(false);
+        });
+        socket.connect(port, host);
+    });
+}
+
+// محاولة مصافحة سريعة للتأكد من أن الجهاز ZKTeco (لا مجرد منفذ مفتوح)
+async function _probeZkteco(host, port, commKey = 0, timeoutMs = 3000) {
+    const { ZKClient } = require('./client');
+    const client = new ZKClient({ host, port, commKey, timeoutMs });
+    try {
+        await client.connect();
+        const identity = await client.readIdentity();
+        return { isZkteco: true, identity };
+    } catch (_) {
+        return { isZkteco: false };
+    } finally {
+        try { await client.disconnect(); } catch (_) { /* لا شيء */ }
+    }
+}
+
+// تحديد الشبكة المحلية للخادم (أول بطاقة شبكة IPv4 غير الحلقية)
+function _getLocalSubnets() {
+    const subnets = new Set();
+    const ifaces = os.networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+        for (const iface of ifaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                // اشتقاق شبكة /24 من العنوان (الأكثر شيوعًا في الشبكات المحلية)
+                const parts = iface.address.split('.');
+                if (parts.length === 4) {
+                    subnets.add(`${parts[0]}.${parts[1]}.${parts[2]}.`);
+                }
+            }
+        }
+    }
+    return [...subnets];
+}
+
+router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+    try {
+        const subnets = _getLocalSubnets();
+        const port = Number(req.body?.port) || 4370;
+        const timeoutMs = Math.min(5000, Math.max(500, Number(req.body?.timeoutMs) || 1200));
+        const onlyZkteco = req.body?.onlyZkteco !== false; // افتراضيًا نرجع فقط أجهزة ZK المؤكدة
+
+        // مسح جميع الشبكات المحلية بالتوازي (مع حد أقصى لتجنب إغراق النظام)
+        const found = [];
+        const CONCURRENCY = 32;
+        for (const subnet of subnets) {
+            const ips = [];
+            for (let i = 1; i <= 254; i++) { ips.push(`${subnet}${i}`); }
+            // فتح المنفذ بالتوازي
+            let idx = 0;
+            const workers = Array.from({ length: CONCURRENCY }, async () => {
+                while (idx < ips.length) {
+                    const ip = ips[idx++];
+                    if (await _checkTcpPort(ip, port, timeoutMs)) {
+                        let info = { ip, port, open: true };
+                        if (onlyZkteco) {
+                            const probe = await _probeZkteco(ip, port, 0, timeoutMs * 2);
+                            if (probe.isZkteco) {
+                                info.isZkteco = true;
+                                info.serial = probe.identity?.serial || null;
+                                info.deviceName = probe.identity?.deviceName || null;
+                                info.firmware = probe.identity?.firmware || null;
+                                found.push(info);
+                            }
+                            // إذا لم يكن ZK، نتجاهله (onlyZkteco=true)
+                        } else {
+                            found.push(info);
+                        }
+                    }
+                }
+            });
+            await Promise.all(workers);
+        }
+
+        res.json({
+            ok: true,
+            subnets,
+            port,
+            found,
+            message: found.length
+                ? `وُجد ${found.length} جهاز بصمة على الشبكة`
+                : 'لا توجد أجهزة بصمة ZKTeco على الشبكة — تأكد من تشغيل الجهاز وتوصيله بالشبكة',
+        });
+    } catch (error) {
+        logger.error('[zkteco/scan]', error);
+        res.status(500).json({ error: 'ZK_SCAN_FAILED', message: 'تعذر مسح الشبكة: ' + error.message });
     }
 });
 

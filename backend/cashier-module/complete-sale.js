@@ -548,7 +548,7 @@ async function completeSale(req, res) {
         const posLocationRes = await client.query(
             `SELECT COALESCE(kp.kitchen_location_id, pd.location_id, main.id) AS location_id,
                     COALESCE(kp.operation_mode, 'flexible') AS operation_mode,
-                    COALESCE(kp.allow_fallback, true) AS allow_fallback,
+                    COALESCE(kp.allow_fallback, false) AS allow_fallback,
                     main.id AS main_location_id
                FROM pos_departments pd
                LEFT JOIN inventory_locations main ON main.code = 'MAIN-WAREHOUSE'
@@ -561,7 +561,9 @@ async function completeSale(req, res) {
         const consumptionLocationId = Number(locationConfig.location_id || 0);
         const mainLocationId = Number(locationConfig.main_location_id || 0);
         const kitchenMode = String(locationConfig.operation_mode || 'flexible');
-        const allowKitchenFallback = Boolean(locationConfig.allow_fallback ?? true);
+        // قرار المالك 2026-10-07: السحب من الرئيسي في البيع ممنوع افتراضيًا —
+        // نفاد مخزن القسم يوقف البيع (يُفعَّل الاستثناء لكل قسم من شاشته فقط).
+        const allowKitchenFallback = locationConfig.allow_fallback === true || locationConfig.allow_fallback === 1 || String(locationConfig.allow_fallback).toLowerCase() === 'true';
         if (!consumptionLocationId) {
             await client.query('ROLLBACK;');
             return res.status(409).json({ error: 'INVENTORY_LOCATION_NOT_CONFIGURED' });
@@ -589,12 +591,14 @@ async function completeSale(req, res) {
                  UNION ALL
                  SELECT * FROM legacy_bom
              )
-             SELECT b.product_id, b.inventory_id, b.quantity_per_unit, b.waste_percent,
-                    i.name AS inventory_name, i.qty AS available_qty, i.unit AS inventory_unit, i.weight AS inventory_weight, b.unit
-               FROM selected_bom b
-               JOIN inventory i ON i.id = b.inventory_id
-              ORDER BY b.product_id, b.inventory_id;`,
-            [productIds]
+              SELECT b.product_id, b.inventory_id, b.quantity_per_unit, b.waste_percent,
+                     i.name AS inventory_name,
+                     COALESCE((SELECT GREATEST(0, on_hand - reserved) FROM inventory_location_balances WHERE inventory_id = i.id AND location_id = $2), 0) AS available_qty,
+                     i.unit AS inventory_unit, i.weight AS inventory_weight, b.unit
+                FROM selected_bom b
+                JOIN inventory i ON i.id = b.inventory_id
+               ORDER BY b.product_id, b.inventory_id;`,
+            [productIds, consumptionLocationId]
         );
         const ingredientsByProduct = new Map();
         for (const row of ingredientRes.rows) {

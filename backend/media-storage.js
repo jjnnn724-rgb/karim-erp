@@ -11,8 +11,10 @@ function ensureMediaDirs() {
 }
 
 function safeProductImageName(productId, extension) {
+    // FIX 2026-10-11: sanitize extension — was interpolated unsanitized → path traversal
+    const safeExt = String(extension || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
     const suffix = crypto.randomBytes(8).toString('hex');
-    return `product-${Number(productId)}-${Date.now()}-${suffix}.${extension}`;
+    return `product-${Number(productId)}-${Date.now()}-${suffix}.${safeExt}`;
 }
 
 function removeMenuImageByUrl(imageUrl) {

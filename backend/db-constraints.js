@@ -8,75 +8,98 @@ const { pool } = require('./shared-pool');
 /** كاش القيود */
 let constraintsCache = null;
 let cacheTime = 0;
-const CACHE_TTL = 60000;
+const CACHE_TTL = 600000; // PERF-9: 60s → 10min (constraints rarely change; 3 queries now)
+// FIX 2026-10-05 (اختبار ضغط الكاشير): dedup للتحميل المتزامن — كان كل طلب
+// يصل أثناء الفحص يشغّل فحصًا كاملًا آخر (عاصفة على ~300 استعلام لكل إقلاع شاشة)
+let loadInFlight = null;
 
 /** جلب القيود من information_schema */
 async function loadConstraints() {
   if (constraintsCache && Date.now() - cacheTime < CACHE_TTL) {
     return constraintsCache;
   }
+  if (loadInFlight) {
+    return loadInFlight;
+  }
+  loadInFlight = doLoadConstraints()
+    .then((constraints) => {
+      constraintsCache = constraints;
+      cacheTime = Date.now();
+      return constraints;
+    })
+    .finally(() => { loadInFlight = null; });
+  return loadInFlight;
+}
 
-  const tables = await pool.query(`
-    SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-  `);
+async function doLoadConstraints() {
+  // PERF-9 (2026-10-11): 3 bulk queries instead of 3 per table (~300 round-trips).
+  // Same output shape as the old per-table loop.
+  const [tables, allCols, allCons, allIdx] = await Promise.all([
+    pool.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    `),
+    pool.query(`
+      SELECT table_name, column_name, data_type, is_nullable, column_default,
+             character_maximum_length, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      ORDER BY table_name, ordinal_position
+    `),
+    pool.query(`
+      SELECT c.relname AS table_name, con.conname, con.contype,
+             pg_get_constraintdef(con.oid) AS def
+      FROM pg_constraint con
+      JOIN pg_class c ON c.oid = con.conrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+      ORDER BY c.relname, con.conname
+    `),
+    pool.query(`
+      SELECT tablename, indexname, indexdef
+      FROM pg_indexes
+      WHERE schemaname = 'public'
+      ORDER BY tablename, indexname
+    `),
+  ]);
 
   const constraints = {};
 
-  for (const t of tables.rows) {
-    const tableName = t.table_name;
-    
-    // الأعمدة
-    const cols = await pool.query(`
-      SELECT column_name, data_type, is_nullable, column_default, 
-             character_maximum_length, numeric_precision, numeric_scale
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = $1
-      ORDER BY ordinal_position
-    `, [tableName]);
-
-    // القيود - مع معالجة الأخطاء للقيود المكسورة
-    let cons = { rows: [] };
-    try {
-      cons = await pool.query(`
-        SELECT conname, contype, pg_get_constraintdef(oid) as def
-        FROM pg_constraint
-        WHERE conrelid = $1::regclass
-      `, [tableName]);
-    } catch (e) {
-      console.warn(`[db-constraints] Failed to load constraints for ${tableName}:`, e.message);
+  // هيكلة المخرجات بنفس شكل النسخة القديمة
+  const ensureTable = (name) => {
+    if (!constraints[name]) {
+      constraints[name] = { columns: {}, constraints: [], indexes: [] };
     }
+    return constraints[name];
+  };
+  // كل الجداول تظهر حتى لو كانت بلا أعمدة/قيود (يطابق سلوك الحلقة القديمة)
+  for (const t of tables.rows) { ensureTable(t.table_name); }
 
-    // فهارس فريدة
-    const indexes = await pool.query(`
-      SELECT indexname, indexdef
-      FROM pg_indexes
-      WHERE schemaname = 'public' AND tablename = $1
-    `, [tableName]);
-
-    constraints[tableName] = {
-      columns: cols.rows.reduce((acc, c) => {
-        acc[c.column_name] = {
-          name: c.column_name,
-          type: c.data_type,
-          nullable: c.is_nullable === 'YES',
-          default: c.column_default,
-          maxLength: c.character_maximum_length,
-          precision: c.numeric_precision,
-          scale: c.numeric_scale,
-        };
-        return acc;
-      }, {}),
-      constraints: cons.rows.map(c => ({
-        name: c.conname,
-        type: c.contype,
-        def: c.def,
-      })),
-      indexes: indexes.rows.map(i => ({
-        name: i.indexname,
-        def: i.indexdef,
-      })),
+  for (const c of allCols.rows) {
+    ensureTable(c.table_name).columns[c.column_name] = {
+      name: c.column_name,
+      type: c.data_type,
+      nullable: c.is_nullable === 'YES',
+      default: c.column_default,
+      maxLength: c.character_maximum_length,
+      precision: c.numeric_precision,
+      scale: c.numeric_scale,
     };
+  }
+
+  for (const c of allCons.rows) {
+    ensureTable(c.table_name).constraints.push({
+      name: c.conname,
+      type: c.contype,
+      def: c.def,
+    });
+  }
+
+  for (const i of allIdx.rows) {
+    ensureTable(i.tablename).indexes.push({
+      name: i.indexname,
+      def: i.indexdef,
+    });
   }
 
   constraintsCache = constraints;

@@ -16,7 +16,7 @@ describe('catalog integrity', () => {
         const keys = PERMISSIONS.map((p) => p.key);
         expect(new Set(keys).size).toBe(keys.length);
         for (const p of PERMISSIONS) {
-            expect(p.key).toMatch(/^[a-z_]+\.[a-z_]+$/);
+            expect(p.key).toMatch(/^[a-z0-9_-]+\.[a-z_]+$/); // شرطة مسموحة في الكيان (مثل cashier-monitor.view)
             expect(p.ar).toBeTruthy();
             expect(p.group).toBeTruthy();
         }

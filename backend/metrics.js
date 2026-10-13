@@ -19,10 +19,20 @@
 
 const { performance, monitorEventLoopDelay, PerformanceObserver } = require('perf_hooks');
 
-const RING_MAX = parseInt(process.env.METRICS_RING_MAX || '5000', 10);
-const SLOW_MS = parseFloat(process.env.SLOW_REQUEST_MS || '800');
+const RING_MAX = (() => {
+    // FIX 2026-10-11 (M8): validate env var — parseInt NaN → new Array(NaN) = RangeError boot crash
+    const n = parseInt(process.env.METRICS_RING_MAX || '5000', 10);
+    return Number.isFinite(n) && n > 0 && n <= 100000 ? n : 5000;
+})();
+const SLOW_MS = (() => {
+    const n = parseFloat(process.env.SLOW_REQUEST_MS || '800');
+    return Number.isFinite(n) && n > 0 ? n : 800;
+})();
 
 // ─── Route grouping (avoid cardinality explosion: no raw URLs) ─────────────
+// FIX 2026-10-11 (M8): cap byGroup cardinality — arbitrary path segments
+// (/api/x1, /api/<random>) each created a new group → unbounded map growth.
+const MAX_GROUPS = 500;
 function routeGroup(req) {
     const p = req.originalUrl || req.url || '';
     // Strip ids and query strings → /api/pos/orders/123/reprint → api.pos.orders
@@ -80,7 +90,15 @@ function middleware() {
                     else {counters.ok++;}
                     if (dur >= SLOW_MS) {counters.slow++;}
                     let g = counters.byGroup[group];
-                    if (!g) { g = counters.byGroup[group] = { total: 0, err: 0, sumMs: 0, maxMs: 0 }; }
+                    if (!g) {
+                        // FIX 2026-10-11 (M8): cap cardinality — don't create new
+                        // groups beyond MAX_GROUPS (unbounded map growth under probing)
+                        if (Object.keys(counters.byGroup).length >= MAX_GROUPS) {
+                            g = counters.byGroup['__other__'] || (counters.byGroup['__other__'] = { total: 0, err: 0, sumMs: 0, maxMs: 0 });
+                        } else {
+                            g = counters.byGroup[group] = { total: 0, err: 0, sumMs: 0, maxMs: 0 };
+                        }
+                    }
                     g.total++;
                     if (status >= 400) {g.err++;}
                     g.sumMs += dur;

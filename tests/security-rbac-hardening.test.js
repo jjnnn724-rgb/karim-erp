@@ -47,6 +47,7 @@ function makeReq(overrides = {}) {
 const ALL_SYSTEM_ROLES = new Set([
     'admin', 'manager', 'cashier', 'kitchen', 'warehouse',
     'dept_head', 'auditor', 'accountant', 'hr', 'employee',
+    'sous_chef', // دور نظامي معتمد (إشعارات المطبخ + وحدات المطبخ) — 2026-10
 ]);
 
 // ─── 1) خريطة أدوار الكتابة للكيانات العامة ────────────────────────────────

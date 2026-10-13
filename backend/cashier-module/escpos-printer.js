@@ -195,6 +195,12 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(textLine('شكراً لزيارتكم'));
     chunks.push(CMD.FEED(3));
     chunks.push(CMD.CUT_PAPER);
+    // ── درج النقدية (سؤال المالك 2026-10-06: «هل الكاشير يعمل بالدرج الفلوس؟») ──
+    // أي دفع كاش في الفاتورة → نبضة فتح الدرج بعد القطع (ESC p 0 = نبضة ~100ms
+    // على دبوس الدرج — قياسية في طابعات الحرارة). المدفوعات الشبكية لا تفتح الدرج.
+    const hasCashPayment = (Array.isArray(payments) ? payments : [])
+        .some((p) => /cash|نقد|كاش/i.test(String((p && p.method) ?? '')));
+    if (hasCashPayment) {chunks.push(Buffer.from([0x1B, 0x70, 0x00, 0x19, 0xFA]));}
     return Buffer.concat(chunks);
 }
 

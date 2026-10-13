@@ -97,6 +97,7 @@ function buildCspDirectives(opts, nonce) {
         'style-src': [
             self,
             "'unsafe-inline'",   // CSS-in-JS / dynamic styles in POS view
+            'https://fonts.googleapis.com',
         ],
         'img-src': [
             self,
@@ -107,6 +108,7 @@ function buildCspDirectives(opts, nonce) {
         'font-src': [
             self,
             dataImg,
+            'https://fonts.gstatic.com',
         ],
         'connect-src': [
             self,

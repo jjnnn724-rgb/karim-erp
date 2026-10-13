@@ -385,6 +385,21 @@ function wrapUnknown(raw, hint = '') {
         return new ClientError('حجم الملف يتجاوز الحد المسموح به', { statusCode: 413, code: 'FILE_TOO_LARGE' });
     }
 
+    // FIX 2026-10-11 (M5): pass through statusCode/status from wrapped errors —
+    // express.static file-not-found (404) and pg 22P02 (invalid input syntax)
+    // were falling through to generic ServerError → HTTP 500 instead of 404/400.
+    if (raw?.statusCode && raw.statusCode >= 400 && raw.statusCode < 500) {
+        return new ClientError(raw.message || 'طلب غير صالح', {
+            statusCode: raw.statusCode,
+            code: raw.code || 'CLIENT_ERROR',
+            isPublic: true,
+        });
+    }
+    // pg invalid input syntax (22P02) → 400 Bad Request
+    if (raw?.code === '22P02') {
+        return new ClientError('مُعرِّف غير صالح', { statusCode: 400, code: 'INVALID_INPUT_SYNTAX', isPublic: true });
+    }
+
     // ─── Generic fallthrough ──────────────────────────
     const message = raw?.message || String(raw) || 'خطأ غير معروف';
     return new ServerError(hint ? `${hint}: ${message}` : message, {

@@ -71,6 +71,7 @@ try {
  * @property {boolean} portalEnabled
  * @property {boolean} geofenceEnabled
  * @property {boolean} deviceBinding
+ * @property {boolean} deviceAutoRebind الربط الذاتي لأول بصمة من جهاز جديد (2026-10-04)
  * @property {boolean} selfieEnabled
  * @property {boolean} faceEnabled
  * @property {number} faceThreshold
@@ -105,7 +106,7 @@ try {
  * @typedef {Object} EvaluateResult
  * @property {'accepted'|'rejected'} decision
  * @property {string} [rejectCode]
- * @property {{networkOk: boolean, hasLocation: boolean, fixCount?: number, spreadM?: number, maxSpeedKmh?: number, trustScore?: number, trustSignals?: string[], bestLat?: number|null, bestLng?: number|null, distanceM: number|null, accuracyM: number|null, fixAgeS: number|null, deviceId: string|null}} details
+ * @property {{networkOk: boolean, hasLocation: boolean, fixCount?: number, singleFix?: boolean, spreadM?: number, maxSpeedKmh?: number, trustScore?: number, trustSignals?: string[], bestLat?: number|null, bestLng?: number|null, distanceM: number|null, accuracyM: number|null, fixAgeS: number|null, deviceId: string|null}} details
  */
 
 // ─── المسافات (geolib الاحترافية أولًا — Haversine احتياطيًا) ────────────────
@@ -237,6 +238,9 @@ function resolvePunchSettings(rows, env = {}) {
         portalEnabled: boolOr(kv.punch_portal_enabled, false),
         geofenceEnabled: boolOr(kv.punch_geofence_enabled, false),
         deviceBinding: boolOr(kv.punch_device_binding, true),
+        // الربط الذاتي (2026-10-04): أول بصمة من جهاز جديد تربطه تلقائيًا بدل
+        // الرفض الدائم «تواصل مع HR» — كل حدث يُوثَّق في punch_attempts (DEVICE_REBOUND)
+        deviceAutoRebind: boolOr(kv.punch_device_auto_rebind, true),
         selfieEnabled: boolOr(kv.punch_selfie_enabled, false),
         faceEnabled: boolOr(kv.punch_face_enabled, false),
         faceThreshold: /** @type {number} */ (numOr(kv.punch_face_threshold, 0.55)),
@@ -259,6 +263,8 @@ function resolvePunchSettings(rows, env = {}) {
 
 const MAX_FIX_SPEED_KMH = 300;   // انتقال أسرع من ذلك = تزوير
 const MAX_SESSION_SPREAD_M = 150; // تشتت القراءات داخل نفس الجلسة
+// FIX 2026-10-11 (M18): cap fixes array size — unbounded array = DoS vector
+const MAX_FIXES = 50;
 
 /**
  * يحوّل موقع الطلب إلى قائمة إصلاحات موحدة (متعدد أو قديم أحادي).
@@ -283,7 +289,10 @@ function normalizeFixes(loc) {
         };
     };
     if (Array.isArray(loc?.fixes) && loc.fixes.length) {
-        return loc.fixes
+        // FIX 2026-10-11 (M18): cap array size — client can send arbitrary
+        // count, causing quadratic speed/spread checks over large arrays.
+        const capped = loc.fixes.slice(0, MAX_FIXES);
+        return capped
             .map((f) => ({
                 lat: Number(f.lat),
                 lng: Number(f.lng),
@@ -501,6 +510,31 @@ function evaluateFaceMatch(candidate, stored, threshold) {
     return { ok: best <= thr, distance: Math.round(best * 10000) / 10000, threshold: thr, samples: samples.length };
 }
 
+// ─── الربط الذاتي للجهاز (L4 self-heal) — قرار نقي يُختبَر معزولًا ───────────
+
+/**
+ * ماذا تفعل بوابة البصمة مع ربط الجهاز لهذا الطلب؟ (نقي — بلا DB)
+ *   'rebind' : جهاز جديد لحساب مربوط — اربطه تلقائيًا ووثّق ذلك (الافتراضي)
+ *   'skip'   : العميل بلا معرّف جهاز قابل للتخزين — تُطبَّق بقية الطبقات وL4 يُتجاهل
+ *   'none'   : لا تدخل — اترك evaluatePunch يحكم (مطابق = مرور، مختلف = رفض)
+ * @param {Pick<PunchSettings, 'deviceBinding'|'deviceAutoRebind'>} settings
+ * @param {string|null} deviceId معرّف الجهاز القادم في الطلب
+ * @param {string|null} boundDeviceId الجهاز المربوط حاليًا في قاعدة البيانات
+ * @returns {{action: 'rebind'|'skip'|'none', from?: string}}
+ */
+function resolveDeviceBindingAction(settings, deviceId, boundDeviceId) {
+    if (!settings.deviceBinding) {return { action: 'none' };}
+    if (!deviceId) {
+        return settings.deviceAutoRebind ? { action: 'skip' } : { action: 'none' };
+    }
+    if (boundDeviceId && boundDeviceId !== deviceId) {
+        return settings.deviceAutoRebind
+            ? { action: 'rebind', from: boundDeviceId }
+            : { action: 'none' };
+    }
+    return { action: 'none' };
+}
+
 // ─── الحكم الموحّد ───────────────────────────────────────────────────────────
 
 /**
@@ -514,6 +548,7 @@ function evaluatePunch(settings, req) {
         networkOk: false,
         hasLocation: false,
         fixCount: /** @type {number|undefined} */ (undefined),
+        singleFix: /** @type {boolean|undefined} */ (undefined),
         spreadM: /** @type {number|undefined} */ (undefined),
         maxSpeedKmh: /** @type {number|undefined} */ (undefined),
         trustScore: /** @type {number|undefined} */ (undefined),
@@ -671,6 +706,7 @@ module.exports = {
     isValidFaceDescriptor,
     faceDistance,
     evaluateFaceMatch,
+    resolveDeviceBindingAction,
     evaluatePunch,
     FACE_DESCRIPTOR_LEN,
     MAX_SESSION_SPREAD_M,

@@ -66,10 +66,71 @@ el.innerHTML=`
 el.innerHTML=`<div class="mini-chart-header"><div><div class="u-sub-strong">بصمة الحضور — علامة الربط</div></div><div class="kpi-chip"><i class=ji data-i=user-check></i></div></div><div class="u-sub" style="color:var(--orange)">تعذر جلب حالة البصمة — راجع صفحة بصمة الحضور</div>`;
 }
 }
+// ─── لوحات تحكم حسب الدور (طلب المالك 2026-10-03): كل دور يشوف لوحته ───
+function renderAccountantDashboard(){
+const today=new Date();
+const startOfMonth=new Date(today.getFullYear(),today.getMonth(),1);
+const mRev=STATE.revenues.filter(r=>new Date(r.date)>=startOfMonth).reduce((s,r)=>s+Number(r.amount||0),0);
+const mExp=STATE.expenses.filter(e=>new Date(e.date)>=startOfMonth).reduce((s,e)=>s+Number(e.amount||0),0);
+const net=mRev-mExp;
+const revRows=[...STATE.revenues].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6).map(r=>`<tr><td class="fw-bold">${esc(r.source||r.name||'—')}</td><td class="text-muted">${esc(String(r.date||'').slice(0,10))}</td><td class="c-green">${fC(r.amount)}</td></tr>`).join('');
+const expRows=[...STATE.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6).map(e=>`<tr><td class="fw-bold">${esc(e.category||e.name||'—')}</td><td class="text-muted">${esc(String(e.date||'').slice(0,10))}</td><td class="c-red">${fC(e.amount)}</td></tr>`).join('');
+return `
+<div class="section-header"><div class="section-title"><i class=ji data-i=calculator></i> لوحة المدير المالي</div></div>
+<div class="stats-grid-premium kpi-grid-4">
+  <div class="metric-card-premium" onclick="go('revenues')"><div class="kpi-top"><span class="kpi-label">إيرادات الشهر</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(mRev)}</div><div class="trend">${fN(STATE.revenues.length)} عملية مسجلة</div></div>
+  <div class="metric-card-premium" onclick="go('expenses')"><div class="kpi-top"><span class="kpi-label">مصاريف الشهر</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div><div class="value">${fC(mExp)}</div><div class="trend">${fN(STATE.expenses.length)} عملية مسجلة</div></div>
+  <div class="metric-card-premium" onclick="go('pnl')"><div class="kpi-top"><span class="kpi-label">الصافي</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div><div class="value ${net<0?'c-red':''}">${fC(net)}</div><div class="trend">إيرادات − مصاريف</div></div>
+  <div class="metric-card-premium" onclick="go('reports')"><div class="kpi-top"><span class="kpi-label">التقارير</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div><div class="value">فتح</div><div class="trend">تقارير مالية مفصلة</div></div>
+</div>
+<div class="fr" style="gap:12px;margin-top:14px">
+<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث الإيرادات</h3><button class="btn btn-blue btn-sm" onclick="go('revenues')">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${revRows||'<tr><td class="u-empty-sm">لا إيرادات بعد</td></tr>'}</tbody></table></div>
+<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث المصاريف</h3><button class="btn btn-blue btn-sm" onclick="go('expenses')">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${expRows||'<tr><td class="u-empty-sm">لا مصاريف بعد</td></tr>'}</tbody></table></div>
+</div>`;
+}
+function renderHRDashboard(){
+const d=new Date().toISOString().split('T')[0];
+const totalEmp=STATE.employees.filter(e=>e.status==='active').length;
+const presentToday=STATE.attendance.filter(a=>a.date===d&&a.checkIn).length;
+const pendingLeaves=STATE.leaveRequests.filter(l=>l.status==='pending');
+const leaveRows=pendingLeaves.slice(0,6).map(l=>{const e=STATE.employees.find(x=>String(x.id)===String(l.employeeId));return `<tr><td class="fw-bold">${esc(e?e.name:'—')}</td><td class="text-muted">${esc(String(l.startDate||'').slice(0,10))} → ${esc(String(l.endDate||'').slice(0,10))}</td><td><span class="badge bdg-orange">معلق</span></td></tr>`;}).join('');
+return `
+<div class="section-header"><div class="section-title"><i class=ji data-i=users></i> لوحة الموارد البشرية</div></div>
+<div class="stats-grid-premium kpi-grid-4">
+  <div class="mini-chart-card" onclick="go('employees')"><div class="mini-chart-header"><div><div class="u-sub-strong">الموظفون النشطون</div></div><div class="kpi-chip"><i class=ji data-i=users></i></div></div><div class="u-panel-title">${fN(totalEmp)}</div><div class="u-sub">في النظام</div></div>
+  <div class="mini-chart-card" onclick="go('attendance')"><div class="mini-chart-header"><div><div class="u-sub-strong">الحاضرون اليوم</div></div><div class="kpi-chip"><i class=ji data-i=circle-check></i></div></div><div class="u-panel-title">${fN(presentToday)}</div><div class="u-sub">من ${fN(totalEmp)}</div></div>
+  <div class="mini-chart-card" onclick="go('leaves')"><div class="mini-chart-header"><div><div class="u-sub-strong">إجازات معلقة</div></div><div class="kpi-chip"><i class=ji data-i=hourglass></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingLeaves.length>0?'var(--orange)':'var(--text)'}">${fN(pendingLeaves.length)}</div><div class="u-sub">بانتظار اعتماد</div></div>
+  <div class="mini-chart-card" onclick="go('roster')"><div class="mini-chart-header"><div><div class="u-sub-strong">دوامات</div></div><div class="kpi-chip"><i class=ji data-i=calendar-clock></i></div></div><div class="u-panel-title">فتح</div><div class="u-sub">جدول الدوامات</div></div>
+</div>
+<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>طلبات إجازة بانتظار الاعتماد</h3><button class="btn btn-gold btn-sm" onclick="go('leaves')">إدارة الإجازات</button></div>
+<table style="width:100%"><thead><tr><th>الموظف</th><th>الفترة</th><th>الحالة</th></tr></thead><tbody>${leaveRows||'<tr><td colspan=3 style="text-align:center;padding:20px;color:var(--faint)">لا طلبات معلقة</td></tr>'}</tbody></table></div>`;
+}
+function renderWarehouseDashboard(){
+const d=new Date().toISOString().split('T')[0];
+const lowStock=STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty)).length;
+const outStock=STATE.inventory.filter(i=>Number(i.qty)<=0).length;
+const pendingDisp=STATE.dispatches.filter(x=>x.status==='pending').length;
+const pendingPR=(STATE.purchaseRequests||[]).filter(x=>x.status==='pending').length;
+const movesToday=(STATE.inventoryTx||[]).filter(x=>String(x.date||x.createdAt||'').slice(0,10)===d).length;
+const lowRows=STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty)).slice(0,6).map(i=>`<tr><td class="fw-bold">${esc(i.name)}</td><td class="c-red">${fN(i.qty)}</td><td class="text-muted">${fN(i.minQty)}</td></tr>`).join('');
+return `
+<div class="section-header"><div class="section-title"><i class=ji data-i=package></i> لوحة المخزن</div></div>
+<div class="stats-grid-premium kpi-grid-4">
+  <div class="mini-chart-card" onclick="go('warehouse')"><div class="mini-chart-header"><div><div class="u-sub-strong">أصناف تحت الحد</div></div><div class="kpi-chip"><i class=ji data-i=alert-triangle></i></div></div><div style="font-size:22px;font-weight:700;color:${lowStock>0?'var(--red)':'var(--text)'}">${fN(lowStock)}</div><div class="u-sub">نافذ: ${fN(outStock)}</div></div>
+  <div class="mini-chart-card" onclick="go('dispatch')"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات صرف معلقة</div></div><div class="kpi-chip"><i class=ji data-i=clipboard-list></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingDisp>0?'var(--orange)':'var(--text)'}">${fN(pendingDisp)}</div><div class="u-sub">بانتظار الإجراء</div></div>
+  <div class="mini-chart-card" onclick="go('wh-prs')"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات شراء</div></div><div class="kpi-chip"><i class=ji data-i=shopping-cart></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingPR>0?'var(--orange)':'var(--text)'}">${fN(pendingPR)}</div><div class="u-sub">معلقة</div></div>
+  <div class="mini-chart-card" onclick="go('wh-moves')"><div class="mini-chart-header"><div><div class="u-sub-strong">حركات اليوم</div></div><div class="kpi-chip"><i class=ji data-i=chart></i></div></div><div class="u-panel-title">${fN(movesToday)}</div><div class="u-sub">دخول/خروج اليوم</div></div>
+</div>
+<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>أكثر الأصناف نقصًا</h3><button class="btn btn-gold btn-sm" onclick="go('warehouse')">المخزن</button></div>
+<table style="width:100%"><thead><tr><th>الصنف</th><th>الكمية</th><th>الحد الأدنى</th></tr></thead><tbody>${lowRows||'<tr><td colspan=3 style="text-align:center;padding:20px;color:var(--faint)">المخزون في الحدود الآمنة</td></tr>'}</tbody></table></div>`;
+}
 function renderDashboard(){
 const role = STATE.currentUser?.role;
 if(role==='employee'){ return renderEmployeeDashboard(); }
 if(role==='dept_head'){ return renderDeptHeadDashboard(); }
+if(role==='accountant'){ return renderAccountantDashboard(); }
+if(role==='warehouse'){ return renderWarehouseDashboard(); }
+if(role==='hr'){ return renderHRDashboard(); }
 let totalRev=0,totalExp=0;
 const deptStats = STATE.departments.map(d=>{const s=calcStats(d.code);totalRev+=s.rev;totalExp+=s.exp;return{...d,...s};});
 const profit = totalRev-totalExp;
@@ -80,6 +141,9 @@ const today = new Date();
 const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 const monthlyRev = STATE.revenues.filter(r=>new Date(r.date)>=startOfMonth).reduce((s,r)=>s+Number(r.amount||0),0);
 const monthlyExp = STATE.expenses.filter(e=>new Date(e.date)>=startOfMonth && Number(e.amount||0)>0).reduce((s,e)=>s+Number(e.amount||0),0);
+// بطاقات الشهر أولًا (طلب المالك 2026-10-08): القيمة الأساسية = الشهر الحالي، والسطر الفرعي = الإجمالي الكلي
+const monthlyProfit = monthlyRev - monthlyExp;
+const monthlyRatio = monthlyRev>0?(monthlyExp/monthlyRev*100):0;
 const profitTrend = totalRev>0 ? Math.round(((profit/totalRev)*100)*10)/10 : 0;
 
 let html = '';
@@ -91,24 +155,24 @@ if(role!=='hr'){
 html += `
 <div class="stats-grid-premium kpi-grid-4">
   <div class="metric-card-premium" onclick="go('revenues')" data-tooltip="اضغط لعرض الإيرادات" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiRev')}">
-    <div class="kpi-top"><span class="kpi-label">${t('db.kpiRev')}</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div>
-    <div class="value">${fC(totalRev)}</div>
-    <div class="trend"><i class=ji data-i=calendar></i> ${t('db.thisMonth')}: ${fC(monthlyRev)}</div>
+    <div class="kpi-top"><span class="kpi-label">${t('db.kpiRev')} — الشهر</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div>
+    <div class="value">${fC(monthlyRev)}</div>
+    <div class="trend"><i class=ji data-i=calendar></i> الإجمالي: ${fC(totalRev)}</div>
   </div>
   <div class="metric-card-premium" onclick="go('expenses')" data-tooltip="اضغط لعرض المصاريف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiExp')}">
-    <div class="kpi-top"><span class="kpi-label">${t('db.kpiExp')}</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div>
-    <div class="value">${fC(totalExp)}</div>
-    <div class="trend"><i class=ji data-i=calendar></i> ${t('db.thisMonth')}: ${fC(monthlyExp)}</div>
+    <div class="kpi-top"><span class="kpi-label">تكلفة الشهر</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div>
+    <div class="value">${fC(monthlyExp)}</div>
+    <div class="trend"><i class=ji data-i=calendar></i> الإجمالي: ${fC(totalExp)}</div>
   </div>
   <div class="metric-card-premium" onclick="go('pnl')" data-tooltip="اضغط لعرض قائمة الأرباح والخسائر" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiProfit')}">
-    <div class="kpi-top"><span class="kpi-label">${t('db.kpiProfit')}</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div>
-    <div class="value ${profit<0?'c-red':''}">${fC(profit)}</div>
+    <div class="kpi-top"><span class="kpi-label">صافي الشهر</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div>
+    <div class="value ${monthlyProfit<0?'c-red':''}">${fC(monthlyProfit)}</div>
     <div class="trend ${profitTrend>=0?'trend-up':'trend-down'}">${profitTrend>=0?'<i class=ji data-i=trending-up></i>':'<i class=ji data-i=trending-down></i>'} ${t('db.margin')} ${fN(profitTrend)}%</div>
   </div>
   <div class="metric-card-premium" onclick="go('cost-analysis')" data-tooltip="اضغط لعرض تحليل التكاليف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiCost')}">
-    <div class="kpi-top"><span class="kpi-label">${t('db.kpiCost')}</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div>
-    <div class="value">${fN(costRatio.toFixed(1))}%</div>
-    <div class="progress-premium ${costRatio<=65?'is-ok':costRatio<=85?'is-warn':'is-bad'}" style="margin-top:10px"><div class="progress-premium-bar" style="width:${Math.min(costRatio,100)}%"></div></div>
+    <div class="kpi-top"><span class="kpi-label">نسبة تكلفة الشهر</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div>
+    <div class="value">${fN(monthlyRatio.toFixed(1))}%</div>
+    <div class="progress-premium ${monthlyRatio<=65?'is-ok':monthlyRatio<=85?'is-warn':'is-bad'}" style="margin-top:10px"><div class="progress-premium-bar" style="width:${Math.min(monthlyRatio,100)}%"></div></div>
   </div>
 </div>`;
 }
