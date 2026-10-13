@@ -14,17 +14,19 @@ describe('attendance delay engine', () => {
     // وخرج 00:30 (أكمل 10 ساعات) → صفر تأخير رغم الانصراف قبل نهاية الوردية.
     const completed = calculateDelayParts({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 });
     expect(completed.arrivalLateMinutes).toBe(0);
-    expect(completed.earlyLeaveMinutes).toBe(30);
+    // سماحية 15 دقيقة — قرار المالك 2026-10-10: تبكير/انصراف داخل الربع ساعة لا يُحاسب
+    expect(completed.earlyLeaveMinutes).toBe(15);
     expect(completed.lateMinutes).toBe(0);
     expect(calculateLateMinutes({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(0);
     // وتأخير الدخول مع تعويضه بالبقاء: وصل 15:30 وخرج 01:30 (10 ساعات) → صفر
     expect(calculateLateMinutes({ checkIn: '15:30', checkOut: '01:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(0);
-    // ونقص حقيقي: وصل 15:30 وخرج 00:30 (9 ساعات) → عجز 60 دقيقة
-    expect(calculateLateMinutes({ checkIn: '15:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(60);
-    expect(res.arrivalLateMinutes).toBe(1);
-    expect(res.earlyLeaveMinutes).toBe(9);
-    expect(res.lateMinutes).toBe(10);
-    expect(calculateLateMinutes({ checkIn: '15:01', checkOut: '00:51' }, { shift_start: '15:00', shift_karim: 10 })).toBe(10);
+    // ونقص حقيقي: وصل 15:30 وخرج 00:30 (9 ساعات) → عجز 60 − سماحية 15 = 45 دقيقة
+    expect(calculateLateMinutes({ checkIn: '15:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(45);
+    // سماحية 15 دقيقة — قرار المالك 2026-10-10: دقيقة واحدة هنا وهناك داخل الربع ساعة → صفر
+    expect(res.arrivalLateMinutes).toBe(0);
+    expect(res.earlyLeaveMinutes).toBe(0);
+    expect(res.lateMinutes).toBe(0);
+    expect(calculateLateMinutes({ checkIn: '15:01', checkOut: '00:51' }, { shift_start: '15:00', shift_karim: 10 })).toBe(0);
   });
 
   test('returns safe non-crashing values when check-in is absent or invalid', () => {
@@ -116,6 +118,10 @@ describe('ATTENDANCE_DELAY_ENGINE kill-switch (بصمة خام فقط)', () => {
   test('true: السلوك الأصلي محفوظ', () => {
     process.env.ATTENDANCE_DELAY_ENGINE = 'true';
     expect(delayEngineEnabled()).toBe(true);
-    expect(calculateTotalLateMinutes({ checkIn: '15:01', checkOut: '00:51', shiftStart: '15:00', shift_karim: 10 })).toBe(10);
+    // عجز 60 دقيقة − سماحية 15 (قرار المالك 2026-10-10) = 45 — حالة تتجاوز
+    // الربع ساعة حتى يميّز الاختبار فعلًا بين المحرك مفعّل/معطّل.
+    expect(calculateTotalLateMinutes({ checkIn: '15:30', checkOut: '00:30', shiftStart: '15:00', shift_karim: 10 })).toBe(45);
+    // وداخل السماحية → صفر رغم وجود بصمة متأخرة بدقيقة
+    expect(calculateTotalLateMinutes({ checkIn: '15:01', checkOut: '00:51', shiftStart: '15:00', shift_karim: 10 })).toBe(0);
   });
 });

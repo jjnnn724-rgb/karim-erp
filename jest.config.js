@@ -13,7 +13,8 @@ module.exports = {
   testMatch: ['**/*.test.js'],
   // ─── بوابة التغطية (coverage gate) — تُطبَّق فقط عند --coverage ───
   // الأرقام أرضية آمنة «مِصْعَد» (ratchet): ارفعها تدريجيًا مع كل مجموعة
-  // تختبرها، ولا تخفضها أبدًا. لقطة الحالية: شغّل npm run test:coverage.
+  // تختبرها، ولا تخفضها أبدًا. لقطة 2026-10-13: stmts 31.2٪ lines 32.5٪
+  // funcs 33.3٪ branches 25.9٪ — العتبات تُشدّ تحت المقياس بهامش أمان صغير.
   collectCoverageFrom: [
     'backend/**/*.js',
     '!backend/node_modules/**',
@@ -23,10 +24,10 @@ module.exports = {
   coverageReporters: ['text-summary', 'lcov', 'clover'],
   coverageThreshold: {
     global: {
-      statements: 20,
-      lines: 20,
-      functions: 20,
-      branches: 10,
+      statements: 28,
+      lines: 29,
+      functions: 30,
+      branches: 23,
     },
   },
 };

@@ -84,8 +84,9 @@ describe('تحصين الخادم ضد الضغط (server.js)', () => {
         expect(SERVER).not.toMatch(/express\.json\(\{\s*limit:\s*'50mb'\s*\}\);\s*\n\s*app\.use\(express\.urlencoded/);
     });
 
-    test('استثناء وحيد 50MB لاستيراد الإكسل، وركوبه قبل المحلل العام', () => {
-        expect(SERVER).toMatch(/app\.use\('\/api\/inventory\/import',\s*express\.json\(\{\s*limit:\s*'50mb'\s*\}\)\)/);
+    test('استثناء وحيد 10MB لاستيراد الإكسل، وركوبه قبل المحلل العام', () => {
+        // FIX C7 (2026-10-11): 50mb pre-auth كان ثغرة DoS — الحد الآن 10mb
+        expect(SERVER).toMatch(/app\.use\('\/api\/inventory\/import',\s*express\.json\(\{\s*limit:\s*'10mb'\s*\}\)\)/);
         const scopedIdx = SERVER.indexOf("/api/inventory/import', express.json");
         const globalIdx = SERVER.indexOf("express.json({ limit: '2mb'");
         expect(scopedIdx).toBeGreaterThan(-1);

@@ -45,7 +45,7 @@ describe('canAccessDeptPanel — بوابة الهوية والدور معًا',
     });
 
     test('خريطة الأدوار موقوفة عن التغيير ومتوافقة مع الواجهة', () => {
-        expect(DEPT_PANEL_ROLES).toEqual(['admin', 'manager', 'dept_head', 'kitchen', 'accountant']);
+        expect(DEPT_PANEL_ROLES).toEqual(['admin', 'manager', 'dept_head', 'kitchen', 'sous_chef', 'accountant']);
     });
 });
 
@@ -217,7 +217,7 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
         expect(chefRes.status).toBe(200);
         const chefBody = await chefRes.json();
         expect(chefBody.scope.deptCode).toBe('kitchen');
-        expect(chefBody.subDepartments.map(s => s.code).sort()).toEqual(['bakery', 'butcher', 'fnb', 'hot_hall', 'hot_kitchen', 'kstore', 'open_buffet', 'salads', 'storeroom', 'sweets']);
+        expect(chefBody.subDepartments.map(s => s.code).sort()).toEqual(['bakery', 'butcher', 'external_sales', 'fnb', 'hot_hall', 'hot_kitchen', 'kstore', 'open_buffet', 'salads', 'storeroom', 'sweets']);
         const adminRes = await fetch(baseUrl + '/dept-panel?dept=sweets', { headers: { Authorization: `Bearer ${adminToken}` } });
         expect(adminRes.status).toBe(200);
         expect((await adminRes.json()).department.code).toBe('sweets');

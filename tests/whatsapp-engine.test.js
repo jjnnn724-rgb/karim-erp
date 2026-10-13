@@ -171,14 +171,15 @@ describe('employee normalization and delay logic', () => {
     });
 
     test('counts only the net shortfall of the shift hours (قرار المالك: الإتمام هو المعيار)', () => {
-        // دوام 09:00 + 8 ساعات: وصل 09:35 (تأخير 35د) وخرج 17:30 (بعد النهاية 30د)
-        // → أكمل 7:55 من 8 ساعات → العجز الصافي 5 دقائق فقط (تأخير − تعويض بالبقاء)
+        // دوام 09:00 + 8 ساعات: وصل 09:35 وخرج 17:30 (بعد النهاية 30د)
+        // → أكمل 7:55 من 8 ساعات → عجز 5د يبتلعه ربع الساعة سماحية (قرار المالك 2026-10-10) → صفر
         const row = { checkIn: '09:35', checkOut: '17:30' };
         const employee = { shift_start: '09:00', shift_karim: 8 };
         const parts = calculateDelayParts(row, employee);
-        expect(parts.arrivalLateMinutes).toBe(35);
+        // 35 − 15 سماحية = 20
+        expect(parts.arrivalLateMinutes).toBe(20);
         expect(parts.earlyLeaveMinutes).toBe(0);
-        expect(parts.lateMinutes).toBe(5);
+        expect(parts.lateMinutes).toBe(0);
     });
 });
 
