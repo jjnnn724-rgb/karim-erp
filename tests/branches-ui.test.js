@@ -56,13 +56,17 @@ function build(STATE, box) {
 }
 
 describe('أسلاك التثبيت: karim-i18n + صفحة الفروع', () => {
+  // العقد الحقيقي هو «إصدار كاش واحد لكل الأصول» لا رقم بعينه — كان الاختبار
+  // يتقصف عند كل رفعة ?v (Cloudflare يخدم الأصول 4 ساعات بلا رفعة = واجهة قديمة).
+  const VER = (INDEX.match(/js\/main\.js\?v=([\d.]+)/) || [])[1];
   test('index.html يحمّل karim-i18n.js قبل main.js بنفس إصدار الكاش', () => {
-    expect(INDEX).toMatch(/<script src="js\/karim-i18n\.js\?v=4\.9\.76" defer><\/script>/);
-    expect(INDEX.indexOf('karim-i18n.js')).toBeLessThan(INDEX.indexOf('js/main.js?v=4.9.76'));
+    expect(VER).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(INDEX).toContain(`<script src="js/karim-i18n.js?v=${VER}" defer></script>`);
+    expect(INDEX.indexOf('karim-i18n.js')).toBeLessThan(INDEX.indexOf('js/main.js?v='));
   });
 
   test('main.js يجسر features/branches.js عبر safeBridge', () => {
-    expect(MAIN).toMatch(/safeBridge\('\.\/features\/branches\.js\?v=4\.9\.76', 'BRIDGE-BR'\)/);
+    expect(MAIN).toContain(`safeBridge('./features/branches.js?v=${VER}', 'BRIDGE-BR')`);
   });
 
   test('page-router: حالة branches ترسم الصفحة اللاتزامنية بلا ترك شفافية', () => {
@@ -97,8 +101,8 @@ describe('أسلاك التثبيت: karim-i18n + صفحة الفروع', () => 
   });
 
   test('service worker: مسح مسبق للكارين-آي١٨ن والفروع + رفعة إصدار الكاش', () => {
-    expect(SW).toContain("'/app/js/karim-i18n.js?v=4.9.76'");
-    expect(SW).toContain("'/app/js/features/branches.js?v=4.9.76'");
+    expect(SW).toContain(`'/app/js/karim-i18n.js?v=${VER}'`);
+    expect(SW).toContain(`'/app/js/features/branches.js?v=${VER}'`);
     expect(SW).toMatch(/CACHE_VERSION='4\.25\.5[2-9]'/);
   });
 
