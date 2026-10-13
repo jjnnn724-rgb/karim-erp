@@ -129,14 +129,24 @@ function makeRules() {
 
 // ─── Dev-only secret fallback (never used in production) ────
 function fallbackDevSecret() {
-    if (process.env.NODE_ENV === 'production') {return '';}
-    // Deterministic-ish but unique-per-machine dev secret
+    // FIX 2026-10-11: never derive a predictable secret — require a real one in
+    // every environment. The old hostname+ram+cpu derivation was guessable.
+    // Generate a random one and persist it so restarts keep working.
     try {
-        const hostId = os.hostname() + os.totalmem() + os.cpus().length;
-        const h = require('crypto').createHash('sha256').update(hostId).digest('hex');
-        return `karim-dev-secret-${h.slice(0, 24)}`;
+        const crypto = require('crypto');
+        const fs = require('fs');
+        const path = require('path');
+        const secretFile = path.join(__dirname, '..', '.dev-jwt-secret');
+        if (fs.existsSync(secretFile)) {
+            const existing = fs.readFileSync(secretFile, 'utf8').trim();
+            if (existing.length >= 32) {return existing;}
+        }
+        const secret = `karim-dev-${crypto.randomBytes(32).toString('hex')}`;
+        fs.writeFileSync(secretFile, secret, { mode: 0o600 });
+        return secret;
     } catch {
-        return 'karim-dev-secret-change-me-please-000000000000';
+        // Last resort: throw rather than use a guessable secret
+        throw new Error('JWT_ACCESS_SECRET is not set and a dev secret could not be generated. Set JWT_ACCESS_SECRET in .env');
     }
 }
 
@@ -248,7 +258,17 @@ function validateEnv() {
         }
 
         // ── Specific: أسرار JWT في الإنتاج ────────
-        if ((key === 'JWT_ACCESS_SECRET' || key === 'JWT_REFRESH_SECRET' || key === 'JWT_SECRET') && process.env.NODE_ENV === 'production' && /dev|changeme|00000/i.test(String(value))) {
+        // 2026-10-13: أُزيل JWT_SECRET من هذا الفحص (سطر واحد).
+        // السبب الجذري: JWT_SECRET "متغير قديم احتياطي لتوقيع QR فقط" (انظر
+        // قاعدته في الأعلى: required:false + default). هذا الافتراضي
+        // fallbackDevSecret() هو نفسه مصدر الصيانة الوحيد له، لأن
+        // password-vault.js و hr-routes.js يقرأانه من process.env مباشرة
+        // وليسان من config. أي تغيير في مصدره يقطع فك التشفير للبيانات
+        // القديمة. فحصه هنا كان ينتج INSECURE_SECRET كاذبًا في كل إقلاع
+        // إنتاجي (startup-report.json ok:false)، ومُراقَب أصلًا من
+        // audit-engine/checks/security.js الذي يعلّمه تنبيهًا لا خطأً.
+        // بقي JWT_ACCESS_SECRET و JWT_REFRESH_SECRET — وهما فعلاً يوقّعان الجلسات.
+        if ((key === 'JWT_ACCESS_SECRET' || key === 'JWT_REFRESH_SECRET') && process.env.NODE_ENV === 'production' && /dev|changeme|00000/i.test(String(value))) {
             errors.push({ key, code: 'INSECURE_SECRET', message: `كلمة سر ${key} في الإنتاج ضعيفة جداً. ضع مفتاحاً عشوائياً بطول 64 حرفاً.` });
             continue;
         }
@@ -354,28 +374,26 @@ async function runAll({ pool, failFast = true } = {}) {
         logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         logger.info(`✅ تم الإقلاع بنجاح (${elapsed}ms)  —  التحذيرات: ${allWarnings.length}`);
         if (allWarnings.length) {
-            for (const w of allWarnings) {logger.warn('  ⚠️ ', w.message || w.code);}
+            for (const w of allWarnings) {logger.warn(`  ⚠️ ${w.message || w.code}`);}
         }
         logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        writeStartupReport({ ok: true, fatalErrors: [], allWarnings });
         return { ok: true, warnings: allWarnings, results, config: results.env.config };
     }
 
     // ── Fail ────────────────────────────────────────
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     logger.error('❌ فشل التحقق قبل الإقلاع — الأخطاء:');
-    for (const e of fatalErrors) {logger.error('   ❌', `[${e.key || e.code}]`, e.message);}
+    // pino يستعمل الوسيط الأول فقط كنص للرسالة — المرات المتعددة كانت تُبتلع،
+    // فيظهر "❌" وحده في app-out.log والسبب محبوس في startup-report.json.
+    for (const e of fatalErrors) {logger.error(`   ❌ [${e.key || e.code}] ${e.message}`);}
     if (allWarnings.length) {
-        for (const w of allWarnings) {logger.warn('   ⚠️', w.message || w.code);}
+        for (const w of allWarnings) {logger.warn(`   ⚠️ ${w.message || w.code}`);}
     }
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Emit a machine-readable file for installers / services
-    try {
-        fs.writeFileSync(
-            path.join(__dirname, '..', 'logs', 'startup-report.json'),
-            JSON.stringify({ ok: false, fatalErrors, allWarnings, at: new Date().toISOString() }, null, 2)
-        );
-    } catch {/* ignore */}
+    writeStartupReport({ ok: false, fatalErrors, allWarnings });
 
     if (failFast) {
         throw new ConfigurationError('BOOT_VALIDATION_FAILED', fatalErrors.map(e => e.message).join(' | '));
@@ -386,6 +404,17 @@ async function runAll({ pool, failFast = true } = {}) {
 function logStep(name, r) {
     const tag = r.ok ? '✅' : '❌';
     logger.info(`  ${tag} ${name}: ${r.errors.length} أخطاء / ${r.warnings.length} تحذيرات`);
+}
+
+// يُكتب في الحالتين: تقرير قديم بـ ok:false كان يبقى على القرص بعد إصلاح
+// السبب، فيُقرأ كأن الإنتاج ما زال مكسورًا.
+function writeStartupReport(payload) {
+    try {
+        fs.writeFileSync(
+            path.join(__dirname, '..', 'logs', 'startup-report.json'),
+            JSON.stringify({ ...payload, at: new Date().toISOString() }, null, 2)
+        );
+    } catch {/* ignore */}
 }
 
 function validateDiskOnce(dir) {

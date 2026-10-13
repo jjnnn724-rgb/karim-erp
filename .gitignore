@@ -11,6 +11,8 @@ logs/
 # Runtime / secrets (never commit)
 .env
 .env.backup-before-karim-rebrand
+.dev-jwt-secret
+*.secret
 *.dump
 
 # Database runtime + archives (local only)
