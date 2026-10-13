@@ -460,7 +460,10 @@ const { testConnection, discoverTables, pullItems, oracleEngine } = require('./o
 
 // ─── الربط المباشر Oracle: حالة + فحص + اكتشاف جداول ───
 router.get('/oracle/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
-    try { res.json({ ok: true, oracle: oracleEngine.status() }); }
+    try {
+        const { oracleBreakerStatus } = require('./oracle-link');
+        res.json({ ok: true, oracle: oracleEngine.status(), breaker: oracleBreakerStatus() });
+    }
     catch (error) { logger.error('[yarasoft/oracle-status]', error); res.status(500).json({ error: 'ORACLE_STATUS_FAILED', message: 'تعذر جلب حالة الربط المباشر' }); }
 });
 router.post('/oracle/test', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
@@ -812,14 +815,17 @@ router.get('/sections/invoice-detail', jwtAuth, requireRole(...READ_ROLES), asyn
             `SELECT id, "deptId" AS dept_code, source, amount::float AS amount, date, notes, external_ref
                FROM revenues WHERE external_ref = $1 LIMIT 1`, [ref])).rows[0] || null;
         if (table === 'CC') {
-            const { loadOracleConfig, oraExecute } = require('./oracle-link');
+            const { loadOracleConfig, oraExecute, oracleConnect } = require('./oracle-link');
             const oracledb = require('oracledb');
             const cfg = loadOracleConfig();
-            const conn = await oracledb.getConnection({
+            // مهلة + كسر دائرة: بلا connectTimeout كان الافتراضي 60 ثانية تعليقًا
+            // عندما يكون جهاز اليارسوفت مطفأ (اللوج: شاشات تتجمد بالكامل).
+            const conn = await oracleConnect(() => oracledb.getConnection({
                 user: (process.env.YARASOFT_ORACLE_USER || '').trim(),
                 password: process.env.YARASOFT_ORACLE_PASSWORD || '',
                 connectString: `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${cfg.host})(PORT=${cfg.port}))(CONNECT_DATA=(SERVICE_NAME=${cfg.service})))`,
-            });
+                connectTimeout: 8,
+            }));
             try {
                 const h = await oraExecute(conn,
                     `SELECT DOC_NO, TRIM(CSHR_NO) AS CSHR, DOC_DATE, NET_VAL, TOTAL_VAL, DSCNT_VL, SHFT_NO, PAYED, NOTES

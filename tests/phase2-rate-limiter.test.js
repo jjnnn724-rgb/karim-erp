@@ -265,9 +265,9 @@ describe('Phase 2.3: Rate Limiting System', () => {
     // 4. DEFAULT CONFIGURATIONS
     // ============================================================
     describe('4. Default Configurations', () => {
-        test('general config should allow 100 requests per minute', () => {
+        test('general config allows the boot burst (600 requests per minute)', () => {
             expect(DEFAULT_CONFIGS.general.windowMs).toBe(60 * 1000);
-            expect(DEFAULT_CONFIGS.general.maxRequests).toBe(100);
+            expect(DEFAULT_CONFIGS.general.maxRequests).toBe(600);
         });
         
         test('auth config should be stricter (10 per 15 min)', () => {

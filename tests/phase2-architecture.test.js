@@ -234,8 +234,11 @@ describe('Phase 2.3 — Rate Limiting System', () => {
             expect(DEFAULT_CONFIGS.state.windowMs).toBe(60000);
         });
 
-        it('should have CRUD limits higher than general', () => {
-            expect(DEFAULT_CONFIGS.crud.maxRequests).toBeGreaterThan(DEFAULT_CONFIGS.general.maxRequests);
+        it('should keep writes capped below the read budget', () => {
+            // 2026-10-13: القراءة هي التي تنفجر عند الإقلاع (~24 كيانًا × صفحات) فميزانيتها
+            // أوسع؛ الكتابة تبقى محدودة أقل منها كحماية من إساءة الاستخدام.
+            expect(DEFAULT_CONFIGS.crud.maxRequests).toBeLessThan(DEFAULT_CONFIGS.general.maxRequests);
+            expect(DEFAULT_CONFIGS.crud.maxRequests).toBeGreaterThanOrEqual(200);
         });
     });
 

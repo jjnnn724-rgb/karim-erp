@@ -254,6 +254,43 @@ describe('Phase 2.2: Pagination & Sorting System', () => {
             expect(dataQuery).toContain('"inventory_items"');
             expect(countQuery).toContain('"inventory_items"');
         });
+
+        // REGRESSION 2026-10-13: كان العدّ يُنفَّذ ببارامترات الصفحة (limit/offset) وهو
+        // بلا $ → PostgreSQL يرفض البروتوكول (08P01) فتعود كل القوائم 500 وتبدو البيانات
+        // «محذوفة». القاعدة: عدد البارامترات يجب أن يطابق عدد المعاملات في كل استعلام.
+        test('count query carries only its own placeholders (PG 08P01 guard)', () => {
+            const maxPh = sql => Math.max(0, ...[...String(sql).matchAll(/\$(\d+)/g)].map(m => Number(m[1])));
+            const cases = [
+                { tbl: 'departments', branchId: null },
+                { tbl: 'employees', branchId: null },
+                { tbl: 'employees', branchId: 1 },
+                { tbl: 'users', branchId: 7 },
+            ];
+            for (const { tbl, branchId } of cases) {
+                const q = buildPaginatedQuery(tbl, { page: 2, limit: 20, offset: 20, sort: 'id', order: 'ASC' }, { branchId });
+                expect(q.params).toHaveLength(maxPh(q.dataQuery));
+                expect(q.countParams).toHaveLength(maxPh(q.countQuery));
+                if (branchId == null) {
+                    expect(q.countParams).toEqual([]);
+                    expect(q.countQuery).not.toMatch(/\$\d/);
+                } else {
+                    expect(q.countParams).toEqual([branchId]);
+                }
+            }
+        });
+
+        test('branch filter is first placeholder so PG can infer types (42P18 guard)', () => {
+            const q = buildPaginatedQuery('employees', { page: 1, limit: 50, offset: 0, sort: 'id', order: 'ASC' }, { branchId: 1 });
+            expect(q.dataQuery).toContain('WHERE "branch_id" = $1');
+            expect(q.dataQuery).toContain('LIMIT $2 OFFSET $3');
+            expect(q.params).toEqual([1, 50, 0]);
+        });
+
+        test('non-branch entities never receive a branch predicate', () => {
+            const q = buildPaginatedQuery('departments', { page: 1, limit: 10, offset: 0, sort: 'id', order: 'ASC' }, {});
+            expect(q.dataQuery).not.toContain('branch_id');
+            expect(q.countQuery).not.toContain('branch_id');
+        });
     });
 
     // ============================================================

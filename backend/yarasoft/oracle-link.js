@@ -53,6 +53,78 @@ function sanitizeError(msg) {
     return s.slice(0, 400);
 }
 
+// ─── كسر الدائرة: مضيف يارا ميت كان يعلّق كل شاشة 15 ثانية ──────────────────
+// القياس من لوج الإنتاج 2026-10-13: /api/yara-reports/cashiers-today p50 = 15008ms
+// لأن كل طلب ينتظر طابور اتصال Oracle كاملًا بينما الجهاز مطفأ. بعد ثلاثة إخفاقات
+// متتالية تُفتح الدائرة فيُرفض فورًا بـ ORACLE_UNREACHABLE، وبعد فترة الاستعادة
+// تُسمح محاولة واحدة (نصف مفتوحة) فتعود الخدمة تلقائيًا حين يعود الجهاز.
+const ORACLE_BREAKER_THRESHOLD = 3;
+const ORACLE_BREAKER_COOLDOWN_MS = 45000;
+const oracleBreaker = { failures: 0, openedAt: 0, openedAtIso: null, lastError: '' };
+
+function guardOracle() {
+    if (!oracleBreaker.openedAt) {return;}
+    if (Date.now() - oracleBreaker.openedAt >= ORACLE_BREAKER_COOLDOWN_MS) {
+        oracleBreaker.openedAt = 0;
+        oracleBreaker.failures = ORACLE_BREAKER_THRESHOLD - 1;
+        return;
+    }
+    const err = new Error(`ORACLE_UNREACHABLE: قاعدة يارا سوفت غير متاحة الآن (${oracleBreaker.lastError || 'آخر فشل غير مسجّل'})`);
+    err.code = 'ORACLE_UNREACHABLE';
+    err.oracleCircuitOpen = true;
+    throw err;
+}
+
+function noteOracleSuccess() {
+    oracleBreaker.failures = 0;
+    oracleBreaker.openedAt = 0;
+    oracleBreaker.openedAtIso = null;
+    oracleBreaker.lastError = '';
+}
+
+function isOracleDownError(e) {
+    const m = String((e && e.message) || e || '');
+    // طابور المجمع ممتلئ = القاعدة حيّة والطلبات مصطفّة؛ إغلاق الدائرة عندها
+    // يحرم الشاشات من بياناتها بلا سبب حقيقي.
+    if (/NJS-040|NJS-044|queueTimeout|queue length/i.test(m)) {return false;}
+    return /NJS-500|NJS-501|NJS-502|NJS-503|NJS-509|ORA-12541|ORA-12154|ORA-12170|ORA-12537|ORA-12571|ORA-03113|ORA-03114|ORA-03135|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH/i.test(m);
+}
+
+function noteOracleFailure(e) {
+    if (e && e.oracleCircuitOpen) {return;} // رفض الدائرة المفتوحة ليس إخفاقًا جديدًا
+    if (!isOracleDownError(e)) {return;}    // ازدحام أو خطأ استعلام: لا يُغلق الدائرة
+    oracleBreaker.failures += 1;
+    oracleBreaker.lastError = sanitizeError((e && e.message) || String(e));
+    if (oracleBreaker.failures >= ORACLE_BREAKER_THRESHOLD) {
+        oracleBreaker.openedAt = Date.now();
+        oracleBreaker.openedAtIso = new Date().toISOString();
+    }
+}
+
+function oracleBreakerStatus() {
+    return {
+        open: oracleBreaker.openedAt > 0 && Date.now() - oracleBreaker.openedAt < ORACLE_BREAKER_COOLDOWN_MS,
+        failures: oracleBreaker.failures,
+        lastError: oracleBreaker.lastError,
+        openedAt: oracleBreaker.openedAtIso,
+        threshold: ORACLE_BREAKER_THRESHOLD,
+        cooldownMs: ORACLE_BREAKER_COOLDOWN_MS,
+    };
+}
+
+/** تنفيذ استحواذ اتصال محروس بالدائرة: نجاح → إغلاق، فشل → تسجيل وعدّ */
+async function oracleConnect(acquire) {
+    guardOracle();
+    try {
+        const conn = await acquire();
+        noteOracleSuccess();
+        return conn;
+    } catch (e) {
+        noteOracleFailure(e);
+        throw e;
+    }
+}
+
 // ─── حارس القراءة فقط على قاعدة يارا سوفت (أمر مالك النظام) ───
 // أي SQL لا يبدأ بـ SELECT أو WITH يُرفض قبل الوصول للشبكة.
 // تُستخدم عبر oraExecute() بدل conn.execute() المباشر في كل ملفات yarasoft/.
@@ -212,6 +284,9 @@ async function testConnection() {
     const cfg = loadOracleConfig();
     const started = Date.now();
     let conn = null;
+    // الفحص الصريح من المسؤول يتجاوز الدائرة المفتوحة: الغرض منه التحقق الآن
+    // بعد إرجاع الجهاز أو تغيير الـ IP، لا انتظار فترة الاستعادة.
+    noteOracleSuccess();
     try {
         conn = await connectOnce(8);
         let version = '';
@@ -382,4 +457,5 @@ const engine = {
 
 module.exports = { loadOracleConfig, getDriver, testConnection, discoverTables, pullItems,
     oracleEngine: engine, sanitizeError, assertOracleReadOnly, oraExecute, credentialSets, credentialStatus,
-    sessionIdentity, tagSession, getKeptConn, closeKeptConn };
+    sessionIdentity, tagSession, getKeptConn, closeKeptConn,
+    guardOracle, oracleConnect, noteOracleSuccess, noteOracleFailure, oracleBreakerStatus, isOracleDownError };

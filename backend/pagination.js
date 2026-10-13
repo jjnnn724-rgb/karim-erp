@@ -94,21 +94,27 @@ function parsePaginationParams(query, allowedSortColumns = ['id']) {
  * @param {string} tableName - The table to query (must be validated beforehand)
  * @param {Object} params - Parsed pagination params from parsePaginationParams()
  * @param {Object} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
- * @returns {{ dataQuery: string, countQuery: string, params: any[] }}
+ * @returns {{ dataQuery: string, countQuery: string, params: any[], countParams: any[] }}
  */
 function buildPaginatedQuery(tableName, params, options = {}) {
     const { limit, offset, sort, order } = params;
     const branchId = options.branchId != null ? Number(options.branchId) : null;
 
     // Note: tableName MUST come from trusted source (entities array), not user input
-    const where = branchId != null ? ' WHERE "branch_id" = $3' : '';
-    const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $1 OFFSET $2`;
+    // الفرع يأخذ $1 حتى يبقى الاستعلام قابلًا للاستدلال على الأنواع (42P18)
+    // في نسختي البيانات والعدّ معًا.
+    const where = branchId != null ? ' WHERE "branch_id" = $1' : '';
+    const limitPh = branchId != null ? 2 : 1;
+    const offsetPh = branchId != null ? 3 : 2;
+    const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
     const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"${where}`;
 
     return {
         dataQuery,
         countQuery,
-        params: branchId != null ? [limit, offset, branchId] : [limit, offset],
+        params: branchId != null ? [branchId, limit, offset] : [limit, offset],
+        // العدّ لا يحمل LIMIT/OFFSET: إرسالهما يُلغي البروتوكول (PG 08P01).
+        countParams: branchId != null ? [branchId] : [],
     };
 }
 

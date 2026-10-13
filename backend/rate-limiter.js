@@ -145,7 +145,11 @@ const DEFAULT_CONFIGS = {
     // General API limits
     general: {
         windowMs: 60 * 1000,      // 1 minute
-        maxRequests: envMax('RATE_LIMIT_GENERAL_MAX', 100), // 100 requests per minute
+        // 2026-10-13: كانت 100/دقيقة فأصبح إقلاع التطبيق موجة 429 (1606 رفضًا في
+        // يوم): ~24 كيانًا × صفحات + إشعارات + حالة من نفس الـ IP، والعميل ينتظر حتى
+        // 15 ثانية عند كل رفض — هذا كان «التهنّج» الذي شكا منه المالك. الميزانية
+        // للمستخدم المصادَق مرفوعة إلى 600/دقيقة (قابلة للضبط من .env).
+        maxRequests: envMax('RATE_LIMIT_GENERAL_MAX', 600),
         message: 'Too many requests, please slow down',
     },
 
@@ -246,9 +250,11 @@ function createRateLimiter(options = {}) {
 
 /**
  * Default key generator: uses IP address + user ID if authenticated.
+ * FIX 2026-10-11 (M2): use req.connection.remoteAddress (actual TCP peer)
+ * not req.ip (spoofable via X-Forwarded-For when trust proxy=1).
  */
 function defaultKeyGenerator(req) {
-    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const ip = req.connection?.remoteAddress || req.ip || 'unknown';
     const userId = req.user?.id || 'anonymous';
     return `${ip}:${userId}`;
 }
@@ -257,7 +263,7 @@ function defaultKeyGenerator(req) {
  * IP-only key generator (for unauthenticated routes).
  */
 function ipKeyGenerator(req) {
-    return req.ip || req.connection?.remoteAddress || 'unknown';
+    return req.connection?.remoteAddress || req.ip || 'unknown';
 }
 /**
  * User-only key generator (ignores IP, useful for per-user limits).
@@ -276,7 +282,8 @@ function userKeyGenerator(req) {
  * فيبقى هجوم التخمين مقيدًا بالحساب المستهدف دون إجهاض بقية الموظفين.
  */
 function accountKeyGenerator(req) {
-    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    // FIX 2026-10-11 (M2): use req.connection.remoteAddress not req.ip
+    const ip = req.connection?.remoteAddress || req.ip || 'unknown';
     const username = String(req.body?.username || '').trim().toLowerCase().slice(0, 64) || 'anonymous';
     return `${ip}:${username}`;
 }

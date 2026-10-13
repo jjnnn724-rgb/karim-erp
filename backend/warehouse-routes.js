@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('./shared-pool');
+const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
@@ -12,20 +13,75 @@ const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-no
 const router = express.Router();
 const WRITE_ROLES = ['admin', 'manager', 'warehouse'];
 // المرتجع يُنشئه المطبخ/القسم فعليًا ويستلمه المخزن — نفس خريطة schema-registry
-const RETURN_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'];
+const RETURN_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
 const APPROVAL_ROLES = WRITE_ROLES;
-const RECEIVE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'];
+const RECEIVE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
 // Task 19: الشيف العمومي (دور kitchen) يعتمد طلبات رؤساء الأقسام قبل وصولها للمخازن
-const CHEF_APPROVAL_ROLES = ['admin', 'manager', 'kitchen'];
+const CHEF_APPROVAL_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
+
+// ─── حارس العملية اللحظية على إذن واحد ─────────────────────────────────────
+// القياس (لوج الإنتاج 2026-10-13): 88 طلب اعتماد لنفس الإذن خلال دقيقتين لأن
+// الواجهة لا تعطي رد فعل أثناء التنفيذ — كل طلب يصطف خلف قفل الصف FOR UPDATE
+// حتى 20 ثانية، فتتجمد المعاملات المخزنية كلها. الرفض الفوري يحمي الخصم من
+// الازدواج ويظهر للمستخدم سببًا واضحًا بدل التعليق.
+const _dispatchOpInFlight = new Set();
+function beginDispatchOp(id, kind) {
+    const key = `${kind}:${id}`;
+    if (_dispatchOpInFlight.has(key)) {return false;}
+    _dispatchOpInFlight.add(key);
+    return true;
+}
+function endDispatchOp(id, kind) { _dispatchOpInFlight.delete(`${kind}:${id}`); }
+
+// خريطة الربط المعياري بين أكواد أقسام التشغيل/المخزن وأكواد الموارد البشرية
+// لتوحيد الربط ومنع أخطاء عدم تطابق الأقسام عند إنشاء أو استلام طلبات الصرف
+const DEPT_CODE_ALIASES = Object.freeze({
+    'shop': 'CAF',               // الكوفي شوب (HR) = كافيهshop / الكافيه (مخزن/تشغيل)
+    'caf': 'CAF',
+    'ca1': 'NAS',                // كافيه ناصر الدور الرابع (HR) = كافيه ناصر (مخزن/تشغيل)
+    'nas': 'NAS',
+    'juice': 'G',                // العصير (HR) = العصير (مخزن/تشغيل)
+    'g': 'G',
+    'service': 'hot_hall',        // الصاله (HR) = الصالة (مخزن/تشغيل)
+    'hot_hall': 'hot_hall',
+    'kitchen': 'kitchen',        // المطبخ
+    'storeroom': 'storeroom',    // الاستيورد
+    'external_sales': 'external_sales', // البيع الخارجي
+    'salads': 'salads',
+    'sweets': 'sweets',
+    'bakery': 'bakery',
+    'hot_kitchen': 'hot_kitchen',
+    'butcher': 'butcher',
+    'fnb': 'fnb',
+    'open_buffet': 'open_buffet',
+    'kstore': 'kstore',
+});
+
+function canonicalDeptCode(code) {
+    if (!code) return '';
+    const clean = String(code).trim().toLowerCase();
+    return DEPT_CODE_ALIASES[clean] || String(code).trim();
+}
+
+function deptsMatch(codeA, codeB) {
+    if (!codeA || !codeB) return false;
+    const cleanA = String(codeA).trim().toLowerCase();
+    const cleanB = String(codeB).trim().toLowerCase();
+    if (cleanA === cleanB) return true;
+    const canA = canonicalDeptCode(cleanA).toLowerCase();
+    const canB = canonicalDeptCode(cleanB).toLowerCase();
+    return canA === canB || cleanA === canB || cleanB === canA;
+}
 
 // ═══ بوابة استلام رئيس القسم: يستلم إذن قسمه هو فقط ═══
 function canReceiveDispatch(user, dispatch) {
     if (!user || !dispatch) {return { ok: false, code: 'INVALID_INPUT' };}
     if (user.role === 'dept_head') {
-        const u = String(user.dept_code || '').trim().toLowerCase();
-        const d = String(dispatch.deptCode || '').trim().toLowerCase();
-        if (!u) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
-        if (u !== d) {return { ok: false, code: 'DEPT_MISMATCH' };}
+        const rawList = String(user.dept_code || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const d = String(dispatch.deptCode || '').trim();
+        if (!rawList.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
+        const matches = rawList.some((c) => deptsMatch(c, d));
+        if (!matches) {return { ok: false, code: 'DEPT_MISMATCH' };}
     }
     return { ok: true };
 }
@@ -85,11 +141,15 @@ function canChefDecide(dispatch) {
  * المقارنة غير حساسة لحالة الأحرف، والكود المعاد هو الكود المخزّن على الحساب (المرجع).
  */
 function resolveDeptHeadDispatch(user, requestedDeptCode) {
-    const deptCode = String(user?.dept_code || '').trim();
-    if (!deptCode) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
+    const rawList = String(user?.dept_code || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!rawList.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
     const requested = String(requestedDeptCode || '').trim();
-    if (requested && requested.toLowerCase() !== deptCode.toLowerCase()) {return { ok: false, code: 'DEPT_MISMATCH' };}
-    return { ok: true, deptCode };
+    if (requested) {
+        const match = rawList.find((c) => deptsMatch(c, requested));
+        if (!match) {return { ok: false, code: 'DEPT_MISMATCH' };}
+        return { ok: true, deptCode: match };
+    }
+    return { ok: true, deptCode: rawList[0] };
 }
 
 /**
@@ -110,7 +170,7 @@ function canDeleteDispatch(dispatch) {
 
 // ═══ Task 28: لوحة رئيس القسم (dept-panel) — بوابات وتجميعات نقية ═══
 // المحاسب (accountant) يرى اللوحات للقراءة — تكاليف الأقسام من صميم عمله.
-const DEPT_PANEL_ROLES = ['admin', 'manager', 'dept_head', 'kitchen', 'accountant'];
+const DEPT_PANEL_ROLES = ['admin', 'manager', 'dept_head', 'kitchen', 'sous_chef', 'accountant'];
 const EXPENSE_SOURCE_LABELS = Object.freeze({
     dispatch: 'صرف مخزني',
     dispatch_return: 'عكس صرف (مرتجع)',
@@ -138,19 +198,15 @@ function canAccessDeptPanel(user) {
  */
 function resolvePanelDept(user, requestedDeptCode) {
     const role = String(user?.role || '');
-    const own = String(user?.dept_code || '').trim().toLowerCase();
-    const requested = String(requestedDeptCode || '').trim().toLowerCase();
+    const requested = String(requestedDeptCode || '').trim();
     if (role === 'dept_head') {
-        // UPGRADE 2026-10-01: dept_code يقبل قائمة أقسام بفواصل (نفس rosterScope).
-        // المقارنة بلا حساسية حالة، لكن الإرجاع بالكود الأصلي كما في القاعدة —
-        // لأن بحث القسم في SQL حساس لحالة الأحرف (SERVICE ≠ service).
         const ownRaw = String(user?.dept_code || '').split(',').map((x) => x.trim()).filter(Boolean);
         if (!ownRaw.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
-        const match = requested ? ownRaw.find((c) => c.toLowerCase() === requested) : null;
+        const match = requested ? ownRaw.find((c) => deptsMatch(c, requested)) : null;
         if (requested && !match) {return { ok: false, code: 'DEPT_MISMATCH' };}
         return { ok: true, deptCode: match || ownRaw[0] };
     }
-    if (role === 'kitchen') {return { ok: true, deptCode: requested || 'kitchen' };}
+    if (role === 'kitchen' || role === 'sous_chef') {return { ok: true, deptCode: requested || 'kitchen' };}
     return { ok: true, deptCode: requested || null };
 }
 
@@ -202,6 +258,16 @@ function aggregatePanelExpenses(rows) {
 function id() {
     return Date.now() + Math.floor(Math.random() * 9999);
 }
+// مفتاح مطابقة أسماء الأصناف: بلا مسافات + توحيد الهمزات/التاء المربوطة/الألف المقصورة —
+// يمنع فئة كاملة من الأخطاء: تكرار الأصناف أو فشل المطابقة باختلافات شكلية في الاسم
+// (بلاغ المالك 2026-10-06: «سستم حديد» — بعد ظهور 12 صنفًا مكررًا بمسافات زايدة)
+function normItemName(value) {
+    return String(value || '').toLowerCase()
+        .replace(/[\s\u00a0\t]/g, '')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي');
+}
 function n(value, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -210,12 +276,35 @@ function round(value, decimals = 3) {
     const factor = 10 ** decimals;
     return Math.round(n(value) * factor) / factor;
 }
+function allocatePurchaseDiscount(items, type, value) {
+    const subtotal = round(items.reduce((sum, item) => sum + item.qty * item.price, 0), 2);
+    if (!['none', 'amount', 'percent'].includes(type) || !Number.isFinite(value) || value < 0 ||
+        (type === 'percent' && value > 100) || (type === 'amount' && value > subtotal) ||
+        (type === 'none' && value !== 0)) {
+        throw Object.assign(new Error('قيمة الخصم غير صحيحة أو أكبر من قيمة الأصناف'), { code: 'INVALID_INVOICE_DISCOUNT' });
+    }
+    const discountAmount = round(type === 'percent'
+        ? subtotal * value / 100
+        : type === 'amount' ? value : 0, 2);
+    let allocated = 0;
+    const discountedItems = items.map((item, index) => {
+        const grossTotal = round(item.qty * item.price, 2);
+        const lineDiscount = index === items.length - 1
+            ? round(discountAmount - allocated, 2)
+            : (subtotal > 0 ? round(discountAmount * grossTotal / subtotal, 2) : 0);
+        allocated = round(allocated + lineDiscount, 2);
+        const total = round(grossTotal - lineDiscount, 2);
+        return { ...item, grossTotal, discountAmount: lineDiscount, total,
+            effectivePrice: item.qty > 0 ? round(total / item.qty, 4) : item.price };
+    });
+    return { subtotal, discountAmount, items: discountedItems };
+}
 function dateOnly(value) {
     if (value instanceof Date) {return value.toISOString().slice(0, 10);}
     const raw = String(value || '').trim();
     if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {return raw.slice(0, 10);}
     const parsed = raw ? new Date(raw) : new Date();
-    return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10);
+    return Number.isNaN(parsed.getTime()) ? riyadhToday() : parsed.toISOString().slice(0, 10);
 }
 function cleanName(value) {
     return String(value || '').trim();
@@ -336,6 +425,45 @@ function normalizeRequestedItems(items) {
     }));
 }
 
+// ─── طلب المالك 2026-10-05: «لا يقبل أي إذن صرف ليس له رصيد في المخزن نهائيًا» ───
+// بوابة رصيد موحّدة تُفرض في كل نقاط قبول إذن الصرف (الإنشاء + اعتماد الشيف + التعديل)
+// — القاعدة (طلب المالك 2026-10-06): المتاح لإذن الصرف = رصيد المخزن الرئيسي فقط،
+// لأن الصرف يخصم من الرئيسي؛ ما وصل لمخازن الأقسام ملك لها ولا يُعاد صرفه.
+// أصناف الوزن المتغير تُوزن فعليًا على الميزان لحظة الصرف — يكفي أن يكون لها رصيد بالرئيسي.
+async function dispatchStockGate(db, items) {
+    let normalized = Array.isArray(items) ? items : [];
+    if (!Array.isArray(items) && items != null) {
+        try { const parsed = JSON.parse(items); if (Array.isArray(parsed)) {normalized = parsed;} } catch (_) {}
+    }
+    const shortages = [];
+    for (const item of normalizeRequestedItems(normalized)) {
+        const inv = (await db.query(
+            'SELECT id, name, catch_weight_enabled FROM inventory WHERE LOWER(name)=LOWER($1) LIMIT 1',
+            [item.itemName])).rows[0];
+        if (!inv) {
+            shortages.push({ itemName: item.itemName, requested: item.qty, available: 0,
+                code: 'INVENTORY_ITEM_NOT_FOUND',
+                message: `الصنف غير موجود في المخزن: ${item.itemName}` });
+            continue;
+        }
+        const available = n((await db.query(
+            `SELECT COALESCE(SUM(GREATEST(0, b.on_hand - b.reserved)), 0) AS main_available
+             FROM inventory_location_balances b
+             WHERE b.inventory_id = $1
+               AND b.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)`,
+            [inv.id])).rows[0]?.main_available);
+        const isCatchWeight = Boolean(inv.catch_weight_enabled);
+        const insufficient = isCatchWeight ? !(available > 0) : available < item.qty;
+        if (insufficient) {
+            shortages.push({ itemName: inv.name, requested: item.qty, available, code: 'INSUFFICIENT_STOCK',
+                message: isCatchWeight
+                    ? `${inv.name}: لا يوجد له أي رصيد في المخزن الرئيسي`
+                    : `${inv.name}: المتاح بالرئيسي ${available} والمطلوب ${item.qty}` });
+        }
+    }
+    return { ok: shortages.length === 0, shortages };
+}
+
 async function getWarehouseLocation(client, code, nameAr, type, ownerDeptCode = null) {
     const existing = (await client.query('SELECT id, code, name_ar, dept_code FROM inventory_locations WHERE code=$1 AND active=true LIMIT 1', [code])).rows[0];
     if (existing) {
@@ -393,6 +521,16 @@ async function ensureLegacyKitchenReceiptLedger() {
                         ? (await client.query('SELECT id,name,unit,"avgCost" FROM inventory WHERE id=$1', [raw.itemId])).rows[0]
                         : (await client.query('SELECT id,name,unit,"avgCost" FROM inventory WHERE LOWER(name)=LOWER($1)', [raw.itemName])).rows[0];
                     if (!item) {continue;}
+                    // 2026-10-05 (بلاغ المالك: «أذونات الصرف زادت المنتجات مش قلته»): حراسة ضد التكرار —
+                    // الاستلام الحي (نقطة /receive) يسجل قيده الخاص بنفس الإذن والصنف؛ لو موجود
+                    // التسوية القديمة تتخطى — كانت تضيف الكمية مرة ثانية فتضخم الرصيد +المستلم
+                    const liveReceipt = (await client.query(
+                        `SELECT 1 FROM inventory_ledger
+                          WHERE reference_type='dispatch_receipt' AND reference_id=$1
+                            AND inventory_id=$2 AND transaction_type='transfer_in'
+                            AND COALESCE(metadata->>'legacy_backfill','false') <> 'true'
+                          LIMIT 1`, [String(dispatch.id), item.id])).rows[0];
+                    if (liveReceipt) {continue;}
                     await ensureLocationBalance(client, item.id, main.id, n(item.qty));
                     const base = `dispatch:${dispatch.id}:legacy-receipt:${item.id}`;
                     await postInventoryLedgerEntry(client, { transactionType:'transfer_in', inventoryId:item.id, locationId:kitchen.id, quantityDelta:qty, unit:item.unit||raw.unit||'وحدة', unitCost:n(item.avgCost), sourceLocationId:main.id, destinationLocationId:kitchen.id, referenceType:'dispatch_receipt', referenceId:String(dispatch.id), idempotencyKey:`${base}:in`, reason:`تسوية استلام إذن صرف سابق #${dispatch.id}`, metadata:{dispatch_id:dispatch.id, legacy_backfill:true, source_already_decreased:true} });
@@ -483,9 +621,16 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
 router.post('/dispatches/:id/approve', jwtAuth, requireRole(...APPROVAL_ROLES), async (req, res) => {
     const approvalSignature = requireSignature(req, res);
     if (!approvalSignature) {return;}
-    const client = await pool.connect();
+    if (!beginDispatchOp(req.params.id, 'approve')) {
+        return fail(res, 409, 'DISPATCH_APPROVE_IN_PROGRESS', 'اعتماد هذا الإذن قيد التنفيذ الآن — انتظر النتيجة ولا تُكرر الضغط');
+    }
+    let client = null;
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
+        // حدّ الانتظار على القفل: تعامل متزامن على نفس الأصناف يظل معقولًا، لكن
+        // الاصطفاف الطويل هو ما كان يجمّد الشاشة كلها (كان 20 ثانية في اللوج).
+        await client.query("SET LOCAL lock_timeout = '8000'");
         const dispatchResult = await client.query('SELECT * FROM dispatches WHERE id = $1 FOR UPDATE', [req.params.id]);
         const dispatch = dispatchResult.rows[0];
         if (!dispatch) {
@@ -544,16 +689,17 @@ let totalValue = 0;
             }
             // الكمية المؤثرة مخزنيًا ومحاسبيًا: الوزن الفعلي لأصناف CW، والكمية العادية لغيرها
             const effectiveQty = isCatchWeight ? round(actualWeight, 3) : requestedItem.qty;
-            // تحقق من إجمالي المتاح في كل المواقع (مش بس المخزن الرئيسي)
-            const totalAvailableResult = await client.query(
-                `SELECT COALESCE(SUM(GREATEST(0, on_hand - reserved)), 0) AS total_available
+            // قرار المالك 2026-10-07: مخزن رئيسي واحد فقط للخصم — الفروع للمطبخ لا تُمس.
+            // التحقق من رصيد الرئيسي فقط، وأي عجز = رفض (لا سحب تلقائي من الفروع).
+            const mainAvailableResult = await client.query(
+                `SELECT COALESCE(GREATEST(0, on_hand - reserved), 0) AS main_available
                  FROM inventory_location_balances
-                 WHERE inventory_id = $1`,
-                [inv.id]);
-            const totalAvailable = n(totalAvailableResult.rows[0]?.total_available);
+                 WHERE inventory_id = $1 AND location_id = $2`,
+                [inv.id, mainLocation.id]);
+            const totalAvailable = n(mainAvailableResult.rows[0]?.main_available);
             if (effectiveQty > totalAvailable) {
                 await client.query('ROLLBACK');
-                return fail(res, 409, 'INSUFFICIENT_STOCK', `الرصيد الكلي غير كافٍ من ${inv.name} في كل المخازن`, {
+                return fail(res, 409, 'INSUFFICIENT_STOCK', `الرصيد غير كافٍ من ${inv.name} في المخزن الرئيسي (الفروع لا تُمس)`, {
                     itemName: inv.name, requested: effectiveQty, available: totalAvailable,
                 });
             }
@@ -561,46 +707,27 @@ let totalValue = 0;
             const value = round(effectiveQty * n(inv.avgCost), 2);
             const dispatchRef = `DIS-${dispatch.id}`;
 
-// خصم الكمية من المواقع المتعددة (تبدأ بالمخزن الرئيسي ثم باقي المواقع) — دائمًا بالكيلو
+// الخصم من المخزن الرئيسي فقط — مباشرة وبدون توزيع على الفروع
             const unitForLedger = isCatchWeight ? catchUom : (inv.unit || requestedItem.unit || 'وحدة');
 
-            let remainingQty = effectiveQty;
-            const balanceLocations = await client.query(
-                `SELECT location_id, on_hand FROM inventory_location_balances
-                 WHERE inventory_id = $1 AND on_hand > 0
-                 ORDER BY CASE WHEN location_id = $2 THEN 0 ELSE 1 END, on_hand DESC`,
-                [inv.id, mainLocation.id]
-            );
-            for (const loc of balanceLocations.rows) {
-                if (remainingQty <= 0) {break;}
-                const take = Math.min(n(loc.on_hand), remainingQty);
-                if (take <= 0) {continue;}
-                // توزيع عدد الكراتين على المواقع بنسبة المسحوب (معلومة موازية — الرصيد يبقى بالكيلو)
-                const locBoxes = isCatchWeight && effectiveQty > 0 ? round((packagingQty * take) / effectiveQty, 3) : null;
-                await postInventoryLedgerEntry(client, {
-                    transactionType: 'transfer_out',
-                    inventoryId: Number(inv.id),
-                    locationId: loc.location_id,
-                    quantityDelta: -take,
-                    unit: unitForLedger,
-                    unitCost: n(inv.avgCost),
-                    sourceLocationId: loc.location_id,
-                    referenceType: 'dispatch',
-                    referenceId: dispatchRef,
-                    userId: req.user.id,
-                    idempotencyKey: `dispatch:${dispatch.id}:approve:${inv.id}:${loc.location_id}`,
-                    reason: `اعتماد صرف ${inv.name} من ${loc.location_id === mainLocation.id ? 'المخزن الرئيسي' : 'مخزن فرعي'}`,
-                    metadata: { dispatch_id: dispatch.id, location_id: loc.location_id,
-                        ...(isCatchWeight ? { packaging_qty: locBoxes, packaging_uom: packagingUom } : {}) },
-                    catchWeightQty: locBoxes,
-                    catchWeightUnit: isCatchWeight ? packagingUom : null,
-                });
-                remainingQty -= take;
-            }
-            if (remainingQty > 0) {
-                await client.query('ROLLBACK');
-                return fail(res, 409, 'INSUFFICIENT_STOCK', `الرصيد الكلي غير كافٍ من ${inv.name} في كل المخازن`);
-            }
+            await postInventoryLedgerEntry(client, {
+                transactionType: 'transfer_out',
+                inventoryId: Number(inv.id),
+                locationId: mainLocation.id,
+                quantityDelta: -effectiveQty,
+                unit: unitForLedger,
+                unitCost: n(inv.avgCost),
+                sourceLocationId: mainLocation.id,
+                referenceType: 'dispatch',
+                referenceId: dispatchRef,
+                userId: req.user.id,
+                idempotencyKey: `dispatch:${dispatch.id}:approve:${inv.id}:${mainLocation.id}`,
+                reason: `اعتماد صرف ${inv.name} من المخزن الرئيسي`,
+                metadata: { dispatch_id: dispatch.id, location_id: mainLocation.id,
+                    ...(isCatchWeight ? { packaging_qty: packagingQty, packaging_uom: packagingUom } : {}) },
+                catchWeightQty: isCatchWeight ? packagingQty : null,
+                catchWeightUnit: isCatchWeight ? packagingUom : null,
+            });
 
         // للـ inventoryTx: الكمية الأساسية = الوزن الفعلي (kg)، وحقول Catch = عدد الكراتين
             const tx = (await client.query(
@@ -683,13 +810,17 @@ let totalValue = 0;
         for (const expense of expenses) {emit(req, 'expenses', 'create', expense);}
         res.json({ dispatch: updatedDispatch, stockChanges, transactions, expenses, totalValue: round(totalValue, 2) });
     } catch (error) {
-        await client.query('ROLLBACK').catch(() => {});
+        if (client) {await client.query('ROLLBACK').catch(() => {});}
         logger.error('[warehouse_dispatch_approve]', error);
+        if (error.code === '55P03') {
+            return fail(res, 409, 'DISPATCH_STOCK_BUSY', 'الصنف مستخدم في عملية صرف أخرى الآن — أعد المحاولة بعد ثانية');
+        }
         const status = error.code === 'INSUFFICIENT_STOCK' ? 409 : 500;
         const message = error.code === 'INSUFFICIENT_STOCK' ? 'الرصيد غير كافٍ في المخزن الرئيسي لاعتماد إذن الصرف' : 'تعذر اعتماد طلب الصرف بشكل ذري';
         res.status(status).json({ error: error.code || 'DISPATCH_APPROVE_FAILED', message });
     } finally {
-        client.release();
+        endDispatchOp(req.params.id, 'approve');
+        if (client) {client.release();}
     }
 });
 
@@ -698,8 +829,12 @@ let totalValue = 0;
 router.post('/dispatches/:id/chef-approve', jwtAuth, requireRole(...CHEF_APPROVAL_ROLES), async (req, res) => {
     const chefSignature = requireSignature(req, res);
     if (!chefSignature) {return;}
-    const client = await pool.connect();
+    if (!beginDispatchOp(req.params.id, 'chef-approve')) {
+        return fail(res, 409, 'DISPATCH_CHEF_APPROVE_IN_PROGRESS', 'اعتماد الشيف العمومي لهذا الإذن قيد التنفيذ الآن — انتظر النتيجة');
+    }
+    let client = null;
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
         const dispatch = (await client.query('SELECT * FROM dispatches WHERE id=$1 FOR UPDATE', [req.params.id])).rows[0];
         if (!dispatch) { await client.query('ROLLBACK'); return fail(res, 404, 'DISPATCH_NOT_FOUND', 'طلب الصرف غير موجود'); }
@@ -712,14 +847,16 @@ router.post('/dispatches/:id/chef-approve', jwtAuth, requireRole(...CHEF_APPROVA
             };
             return fail(res, 409, guard.code, messages[guard.code] || 'لا يمكن اعتماد الطلب حاليًا');
         }
-        // تنبيه كمية: لو الصنف غير موجود في المخزن أو رصيده أقل من المطلوب
-        // نُعلِم الشيف في الرد لكن لا نمنع الاعتماد — قرار الكميات النهائي للمخازن
-        const availabilityWarnings = [];
-        for (const item of normalizeRequestedItems(dispatch.items)) {
-            const inv = (await client.query('SELECT name, qty FROM inventory WHERE LOWER(name)=LOWER($1)', [item.itemName])).rows[0];
-            if (!inv) {availabilityWarnings.push({ itemName: item.itemName, available: 0, requested: item.qty, message: `الصنف غير موجود في المخزن: ${item.itemName}` });}
-            else if (n(inv.qty) < item.qty) {availabilityWarnings.push({ itemName: inv.name, available: n(inv.qty), requested: item.qty, message: `المتاح من ${inv.name} (${n(inv.qty)}) أقل من المطلوب (${item.qty})` });}
+        // طلب المالك 2026-10-05: المنع قاطع — لا يُعتمد إذن صرف صنفه بلا رصيد كافٍ
+        // (كان مجرد تنبيه في الرد ثم رفض متأخر عند المخازن، فيعلق الإذن في السلسلة)
+        const stockGate = await dispatchStockGate(client, dispatch.items);
+        if (!stockGate.ok) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'INSUFFICIENT_STOCK',
+                'لا يمكن اعتماد إذن الصرف — الرصيد غير كافٍ في المخزن: ' + stockGate.shortages.map(s => s.message).join('، '),
+                { shortages: stockGate.shortages });
         }
+        const availabilityWarnings = [];
         const chefApprovedAt = new Date().toISOString();
         const chefName = req.user.name || req.user.username || String(req.user.id);
         const updated = (await client.query(`UPDATE dispatches SET status='chef_approved',
@@ -737,11 +874,11 @@ router.post('/dispatches/:id/chef-approve', jwtAuth, requireRole(...CHEF_APPROVA
         notifyChainEvent(req, dispatch, 'chef_approved', { io: req.io });
         res.json({ dispatch: updated, availabilityWarnings });
     } catch (error) {
-        await client.query('ROLLBACK').catch(() => {});
+        if (client) {await client.query('ROLLBACK').catch(() => {});}
         logger.error('[pr_create]', error);
         logger.error('[chef_dispatch_approve]', error);
         res.status(500).json({ error: 'CHEF_APPROVE_FAILED', message: 'تعذر اعتماد الطلب من الشيف العمومي بشكل موثق' });
-    } finally { client.release(); }
+    } finally { endDispatchOp(req.params.id, 'chef-approve'); if (client) {client.release();} }
 });
 
 // ═══ Task 19: رفض الشيف العمومي لطلب رئيس القسم ═══
@@ -784,6 +921,118 @@ router.post('/dispatches/:id/chef-reject', jwtAuth, requireRole(...CHEF_APPROVAL
         logger.error('[pr_create]', error);
         logger.error('[chef_dispatch_reject]', error);
         res.status(500).json({ error: 'CHEF_REJECT_FAILED', message: 'تعذر رفض الطلب من الشيف العمومي بشكل موثق' });
+    } finally { client.release(); }
+});
+
+// ─── تعديل إذن الصرف قبل وصوله للمخزن (طلب المالك 2026-10-04) ────────────────
+// من يعدل: صاحب الإذن، أو الشيف/السو شيف، أو admin/manager.
+// متى: فقط وهو 'pending' أو 'chef_approved' (قبل اعتماد المخازن).
+// الأثر: لو كان معتمدًا من الشيف يُلغى اعتماده وتُمسح تواقيعه ويرجع «قيد الانتظار»
+// ليُعتمد من جديد على الأرقام الجديدة. كل تعديل يُوثَّق في سلسلة أحداث الإذن.
+router.put('/dispatches/:id/edit', jwtAuth, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const dispatch = (await client.query('SELECT * FROM dispatches WHERE id=$1 FOR UPDATE', [req.params.id])).rows[0];
+        if (!dispatch) { await client.query('ROLLBACK'); return fail(res, 404, 'DISPATCH_NOT_FOUND', 'طلب الصرف غير موجود'); }
+        if (!['pending', 'chef_approved'].includes(dispatch.status)) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'DISPATCH_NOT_EDITABLE', `لا يمكن تعديل الطلب في حالته الحالية (${dispatch.status}) — التعديل متاح قبل اعتماد المخازن فقط`);
+        }
+        const isCreator = dispatch.creatorUserId != null && Number(dispatch.creatorUserId) === Number(req.user.id);
+        const isChef = ['kitchen', 'sous_chef'].includes(req.user.role);
+        const isBoss = ['admin', 'manager'].includes(req.user.role);
+        // قرار المالك 2026-10-09: رئيس القسم يعدّل أذونات قسمه قبل الاعتماد
+        const myDepts = String(req.user?.dept_code || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        const isDeptHeadOfDept = req.user?.role === 'dept_head' && myDepts.includes(String(dispatch.deptCode || '').trim().toLowerCase());
+        if (!isCreator && !isChef && !isBoss && !isDeptHeadOfDept) {
+            await client.query('ROLLBACK');
+            return fail(res, 403, 'EDIT_FORBIDDEN', 'التعديل متاح لصاحب الطلب أو رئيس القسم أو للشيف أو للإدارة فقط');
+        }
+        // نفس تحققات بناء الطلب: أصناف صالحة فقط
+        const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+        const items = rawItems
+            .map((r) => ({
+                itemName: cleanName(r.itemName || r.name).slice(0, 200),
+                qty: n(r.qty),
+                unit: (cleanName(r.unit) || 'وحدة').slice(0, 50),
+            }))
+            .filter((i) => i.itemName && i.qty > 0 && i.qty <= 999999999);
+        if (!items.length) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'NO_VALID_ITEMS', 'لا توجد أصناف صالحة — كل صنف يحتاج اسمًا وكمية أكبر من صفر');
+        }
+        if (items.length > 200) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'TOO_MANY_ITEMS', 'الحد الأقصى 200 صنف في الإذن');
+        }
+        // طلب المالك 2026-10-05: التعديل لا يتجاوز بوابة الرصيد — لا يُقبل إذن بلا رصيد كافٍ
+        const editStockGate = await dispatchStockGate(client, items);
+        if (!editStockGate.ok) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'INSUFFICIENT_STOCK',
+                'لا يمكن تعديل إذن الصرف — الرصيد غير كافٍ في المخزن: ' + editStockGate.shortages.map(s => s.message).join('، '),
+                { shortages: editStockGate.shortages });
+        }
+        const reason = cleanName(req.body?.reason).slice(0, 200) || 'تعديل قبل الاعتماد';
+        // تعديل القسم الطالب (طلب المالك 2026-10-04): رئيس القسم مُجبر على قسمه دائمًا،
+        // والشيف/الإدارة قد ينقلان الطلب لقسم آخر موجود في دليل الأقسام.
+        let deptCode = dispatch.deptCode;
+        let deptName = dispatch.deptName;
+        let deptChanged = false;
+        const newDeptRaw = req.body?.deptCode !== undefined && req.body?.deptCode !== null ? cleanName(req.body.deptCode).slice(0, 50) : '';
+        if (newDeptRaw && newDeptRaw.toLowerCase() !== String(dispatch.deptCode || '').toLowerCase()) {
+            if (req.user.role === 'dept_head') {
+                const forced = resolveDeptHeadDispatch(req.user, newDeptRaw);
+                if (!forced.ok) {
+                    await client.query('ROLLBACK');
+                    return fail(res, 403, forced.code, 'رئيس القسم يعدل في قسمه فقط');
+                }
+                deptCode = forced.deptCode;
+            } else {
+                const dep = (await client.query(
+                    'SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) LIMIT 1',
+                    [newDeptRaw]
+                )).rows[0] || (await client.query(
+                    'SELECT code, name AS name FROM "hrDepartments" WHERE LOWER(code)=LOWER($1) LIMIT 1',
+                    [newDeptRaw]
+                )).rows[0];
+                if (!dep) {
+                    await client.query('ROLLBACK');
+                    return fail(res, 422, 'DEPT_NOT_FOUND', `القسم المختار غير موجود: ${newDeptRaw}`);
+                }
+                deptCode = dep.code;
+                deptName = dep.name;
+            }
+            deptChanged = String(deptCode).toLowerCase() !== String(dispatch.deptCode || '').toLowerCase();
+        }
+        const wasChefApproved = dispatch.status === 'chef_approved';
+        const updated = (await client.query(
+            `UPDATE dispatches SET items=$1, status='pending',
+               "deptCode"=$2, "deptName"=$3,
+               notes = COALESCE(NULLIF($4,''), notes),
+               "chefApprovedAt"=NULL, "chefApprovedBy"=NULL,
+               "chefApprovalSignatureData"=NULL, "chefApprovalSignatureHash"=NULL
+             WHERE id=$5 RETURNING *`,
+            [JSON.stringify(items), deptCode, deptName, wasChefApproved ? `عدّل المحتوى ${req.user.name || req.user.username}: ${reason}` : '', dispatch.id]
+        )).rows[0];
+        await appendDispatchEvent(client, dispatch.id, 'edited', dispatch.status, 'pending', req, null, {
+            reason,
+            chefApprovalReset: wasChefApproved,
+            deptChanged,
+            oldDept: dispatch.deptCode,
+            newDept: deptCode,
+            oldItems: Array.isArray(dispatch.items) ? dispatch.items : (() => { try { return JSON.parse(dispatch.items || '[]'); } catch (_) { return []; } })(),
+            newItems: items,
+        });
+        await client.query('COMMIT');
+        emit(req, 'dispatches', 'update', updated);
+        logger.info(`[dispatch_edit] ${req.user?.username} عدّل إذن الصرف ${dispatch.id} (${items.length} صنفًا) — ${reason}${deptChanged ? ` — القسم: ${dispatch.deptCode} → ${deptCode}` : ''}${wasChefApproved ? ' — اعتماد الشيف أُلغي لإعادة المراجعة' : ''}`);
+        res.json({ ok: true, dispatch: updated, chefApprovalReset: wasChefApproved, deptChanged });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[dispatch_edit]', error);
+        res.status(500).json({ error: 'DISPATCH_EDIT_FAILED', message: 'تعذر تعديل إذن الصرف' });
     } finally { client.release(); }
 });
 
@@ -1398,16 +1647,22 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
         const inventory = [], transactions = [];
         const batchId = `BULK-${id()}`;
-        // PERF: جلب مجمع واحد لكل الأسماء الموجودة بأقفالها بدل استعلام لكل صنف
-        // (349 صنفًا × 154ms كان = ~54 ثانية). السلوك والأقفال مطابقة تمامًا،
-        // والأصناف الجديدة تُضاف للخريطة حتى تتصرّف أسماء الملف المكررة كتحديث.
-        const existingRows = await client.query(
-            'SELECT * FROM inventory WHERE LOWER(name) = ANY($1) FOR UPDATE',
-            [items.map(i => i.name.toLowerCase())]
-        );
-        const existingByName = new Map(existingRows.rows.map(r => [String(r.name).toLowerCase(), r]));
+        // إصلاح جذري 2026-10-04 (من اختبار استيراد 329 صنفًا): id() العام = مللي ثانية +
+        // عشوائي صغير — الإدخالات المتتالية السريعة تصطدم بمفتاح أساسي → تراجع كامل → 500.
+        // مولّد محلي رتيب للدفعة يضمن التفرد داخل الحلقة بلا أي تغيير على باقي النظام.
+        let _bulkSeq = 0;
+        const bulkId = () => Date.now() * 1000 + (_bulkSeq++);
+        // PERF + حديد: جلب واحد لكل الأسماء والمطابقة بالمفتاح المطبع — الأسماء المتشابهة
+        // شكلًا (مسافات زايدة/همزات) تطابق الصنف الموجود بدل إنشاء مكرر، والأقفال لكل صف
+        // مطابق عند لمسه (نفس دلالات FOR UPDATE الأصلية)
+        const allRows = await client.query('SELECT id, name FROM inventory');
+        const existingByKey = new Map(allRows.rows.map(r => [normItemName(r.name), Number(r.id)]));
         for (const item of items) {
-            let inv = existingByName.get(item.name.toLowerCase());
+            const matchKey = normItemName(item.name);
+            const matchedId = existingByKey.get(matchKey);
+            let inv = matchedId
+                ? (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [matchedId])).rows[0]
+                : null;
             if (inv && String(inv.unit || 'قطعة').trim().toLowerCase() !== item.unit.trim().toLowerCase()) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'UNIT_MISMATCH', `الصنف «${inv.name}» مسجل بوحدة «${inv.unit || 'قطعة'}» وليس «${item.unit}»`);
@@ -1420,9 +1675,9 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
                 inv = (await client.query(
                     `INSERT INTO inventory (id,name,category,unit,qty,"avgCost","minQty",weight)
                      VALUES ($1,$2,$3,$4,0,$5,$6,0) RETURNING *`,
-                    [id(), item.name, item.category, item.unit, nextCost, item.minQty]
+                    [bulkId(), item.name, item.category, item.unit, nextCost, item.minQty]
                 )).rows[0];
-                existingByName.set(String(inv.name).toLowerCase(), inv);
+                existingByKey.set(matchKey, Number(inv.id));
             } else {
                 inv = (await client.query(
                     `UPDATE inventory SET "avgCost"=$2, category=COALESCE(NULLIF($3,''),category), "minQty"=$4 WHERE id=$1 RETURNING *`,
@@ -1440,7 +1695,7 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
             const tx = (await client.query(
                 `INSERT INTO "inventoryTx" (id,"itemId","itemName",qty,type,date,cost,"totalValue",notes)
                  VALUES ($1,$2,$3,$4,'in',$5,$6,$7,$8) RETURNING *`,
-                [id(), inv.id, inv.name, round(item.qty), dateOnly(new Date()), item.price, round(item.qty * item.price, 2), 'استيراد مخزون دفعي من Excel']
+                [bulkId(), inv.id, inv.name, round(item.qty), dateOnly(new Date()), item.price, round(item.qty * item.price, 2), 'استيراد مخزون دفعي من Excel']
             )).rows[0];
             inventory.push(inv); transactions.push(tx);
         }
@@ -1457,6 +1712,11 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
 });
 
 // ─── Smart inventory search: GET /warehouse/inventory/search ────────────────
+// ─── ذكاء البحث العربي (طلب المالك 2026-10-06: «بكتب بازنجان مش جايبها اكتب باذنجان يجيبها») ───
+// كل حرف من استعلام المستخدم يتوسع لعائلة الحروف المتشابهة بالنقاط — فتجد الصنف رغم الخطأ المطبعي
+// (المنطق في ar-search.js — مشترك بين كل مسارات البحث بالخادم)
+const { arFuzzyPattern } = require('./ar-search');
+
 // q → name (partial, trgm) OR barcode OR category · category exact · stock
 // filter (all|low|out|ok) server-side · always paginated · parameterized.
 router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant'), async (req, res) => {
@@ -1474,27 +1734,57 @@ router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'wareho
         limit = Math.min(limit, 200);
         const offset = (page - 1) * limit;
 
-        const clauses = [];
-        const params = [];
-        if (q) {
-            params.push(q);
-            const i = params.length;
-            clauses.push(`(i.name ILIKE '%' || $${i} || '%' OR COALESCE(i.barcode,'') ILIKE '%' || $${i} || '%' OR COALESCE(i.category,'') ILIKE '%' || $${i} || '%')`);
-        }
-        if (category && category !== 'all') {
-            params.push(category);
-            clauses.push(`i.category = $${params.length}`);
-        }
-        if (stock === 'out') {clauses.push(`COALESCE(i.qty,0) <= 0`);}
-        else if (stock === 'low') {clauses.push(`COALESCE(i.qty,0) > 0 AND COALESCE(i.qty,0) <= COALESCE(i."minQty",0)`);}
-        else if (stock === 'ok') {clauses.push(`COALESCE(i.qty,0) > COALESCE(i."minQty",0)`);}
-        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-        const total = Number((await pool.query(
+        const buildClauses = (term) => {
+            const cl = []; const ps = [];
+            if (term) {
+                ps.push(term);
+                const i = ps.length;
+                cl.push(`(i.name ILIKE '%' || $${i} || '%' OR COALESCE(i.barcode,'') ILIKE '%' || $${i} || '%' OR COALESCE(i.category,'') ILIKE '%' || $${i} || '%')`);
+            }
+            if (category && category !== 'all') {
+                ps.push(category);
+                cl.push(`i.category = $${ps.length}`);
+            }
+            if (stock === 'out') {cl.push(`COALESCE(i.qty,0) <= 0`);}
+            else if (stock === 'low') {cl.push(`COALESCE(i.qty,0) > 0 AND COALESCE(i.qty,0) <= COALESCE(i."minQty",0)`);}
+            else if (stock === 'ok') {cl.push(`COALESCE(i.qty,0) > COALESCE(i."minQty",0)`);}
+            return { cl, ps };
+        };
+
+        let { cl: clauses, ps: params } = buildClauses(q || '');
+        let where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        let total = Number((await pool.query(
             `SELECT COUNT(*)::int AS c FROM inventory i ${where}`, params)).rows[0].c);
+
+        // طبقة التسامح: لا نتائج بالبحث الحرفي → البحث بعائلات الحروف (بازنجان تجد باذنجان)
+        let fuzzyUsed = false;
+        if (q && total === 0) {
+            const pattern = arFuzzyPattern(q);
+            if (pattern) {
+                const f = buildClauses('');
+                f.ps.push(pattern);
+                f.cl.unshift(`i.name ~* $1`);
+                const fWhere = f.cl.length ? `WHERE ${f.cl.join(' AND ')}` : '';
+                total = Number((await pool.query(
+                    `SELECT COUNT(*)::int AS c FROM inventory i ${fWhere}`, f.ps)).rows[0].c);
+                if (total > 0) {
+                    fuzzyUsed = true;
+                    clauses = f.cl; params = f.ps; where = fWhere;
+                }
+            }
+        }
+
+        // 2026-10-05 (طلب المالك): «إذن صرف 4 يعني الباقي 4» — العمود الأساسي يعرض
+        // رصيد المخزن الرئيسي، وما ذهب لمخازن الأقسام في عمود مستقل، والإجمالي كما هو
         const rows = (await pool.query(
             `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
-                    i.weight, i.barcode, i."shelfId"
-             FROM inventory i ${where}
+                    i.weight, i.barcode, i."shelfId",
+                    COALESCE(mb.on_hand, 0) AS "mainQty"
+             FROM inventory i
+             LEFT JOIN inventory_location_balances mb
+                    ON mb.inventory_id = i.id
+                   AND mb.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)
+             ${where}
              ORDER BY i.category NULLS LAST, i.name ASC
              LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
             [...params, limit, offset])).rows;
@@ -1502,7 +1792,7 @@ router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'wareho
             `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`)).rows
             .map(r => r.category);
         const pages = total === 0 ? 0 : Math.ceil(total / limit);
-        res.json({ data: rows, pagination: { page, limit, total, pages }, categories });
+        res.json({ data: rows, pagination: { page, limit, total, pages }, categories, fuzzy: fuzzyUsed });
     } catch (error) {
         logger.error('[warehouse_inventory_search]', error);
         fail(res, 500, 'INVENTORY_SEARCH_FAILED', 'تعذر البحث في الأصناف');
@@ -1544,8 +1834,8 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 category: cleanName(raw.category) || 'عام',
                 unit: cleanName(raw.unit) || 'وحدة',
                 unitProvided: raw.unit !== undefined && raw.unit !== null && cleanName(raw.unit) !== '',
-                qty: n(raw.qty),
-                price: n(raw.price),
+                qty: round(n(raw.qty), 3),
+                price: round(n(raw.price), 2),
                 taxCategory: String(raw.tax_category ?? raw.taxCategory ?? 'STANDARD').trim().toUpperCase(),
                 weight: Math.max(0, n(raw.weight)),
                 packagingQty: pkgQty !== null && Number.isFinite(pkgQty) && pkgQty >= 0 ? pkgQty : null,
@@ -1556,6 +1846,22 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             await client.query('ROLLBACK');
             return fail(res, 422, 'EMPTY_INVOICE_ITEMS', 'أضف صنفاً واحداً على الأقل بكمية صحيحة');
         }
+        if (validItems.some(item => !Number.isFinite(item.qty) || !Number.isFinite(item.price) ||
+            item.qty <= 0 || item.price < 0 || !['STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE'].includes(item.taxCategory))) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_INVOICE_ITEM', 'تحقق من الكمية والسعر والفئة الضريبية لكل صنف');
+        }
+        const discountType = String(req.body?.discountType || 'none').toLowerCase();
+        const discountValue = Number(req.body?.discountValue || 0);
+        let discount;
+        try {
+            discount = allocatePurchaseDiscount(validItems, discountType, discountValue);
+        } catch (error) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, error.code || 'INVALID_INVOICE_DISCOUNT', error.message);
+        }
+        const discountAmount = discount.discountAmount;
+        validItems.splice(0, validItems.length, ...discount.items);
 
         const inventoryRows = [];
         const transactions = [];
@@ -1566,13 +1872,15 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
         // PERF: جلب مجمع واحد لكل الأسماء بأقفالها — نفس إصلاح bulk-receipt:
         // LOWER(name) بلا فهرس كان = مسح كامل للجدول لكل صنف (349 صنفًا = انقطاع مهلة 30 ثانية).
-        const existingRows = await client.query(
-            'SELECT * FROM inventory WHERE LOWER(name) = ANY($1) FOR UPDATE',
-            [validItems.map(i => i.itemName.toLowerCase())]
-        );
-        const existingByName = new Map(existingRows.rows.map(r => [String(r.name).toLowerCase(), r]));
+        // PERF + حديد: مطابقة بالمفتاح المطبع — الأسماء المتشابهة شكلًا تطابق الموجود بدل إنشاء مكرر
+        const allRows = await client.query('SELECT id, name FROM inventory');
+        const existingByKey = new Map(allRows.rows.map(r => [normItemName(r.name), Number(r.id)]));
         for (const item of validItems) {
-            let inv = existingByName.get(item.itemName.toLowerCase());
+            const matchKey = normItemName(item.itemName);
+            const matchedId = existingByKey.get(matchKey);
+            let inv = matchedId
+                ? (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [matchedId])).rows[0]
+                : null;
             if (inv && item.unitProvided && String(item.unit).trim().toLowerCase() !== String(inv.unit || 'وحدة').trim().toLowerCase()) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'UNIT_MISMATCH', `الصنف «${inv.name}» مسجل بوحدة «${inv.unit || 'وحدة'}» وليس «${item.unit}»`);
@@ -1582,14 +1890,14 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 inv = (await client.query(
                     `INSERT INTO inventory (id, name, category, unit, qty, "avgCost", "minQty", weight)
                      VALUES ($1,$2,$3,$4,0,$5,0,$6) RETURNING *`,
-                    [id(), item.itemName, item.category, item.unit, round(item.price, 2), round(item.weight)]
+                    [id(), item.itemName, item.category, item.unit, item.effectivePrice, round(item.weight)]
                 )).rows[0];
                 createdNames.push(inv.name);
-                existingByName.set(String(inv.name).toLowerCase(), inv);
+                existingByKey.set(matchKey, Number(inv.id));
             } else {
                 const oldQty = n(inv.qty);
                 const nextQty = round(oldQty + item.qty);
-                const nextCost = nextQty > 0 ? round(((oldQty * n(inv.avgCost)) + (item.qty * item.price)) / nextQty, 2) : round(item.price, 2);
+                const nextCost = nextQty > 0 ? round(((oldQty * n(inv.avgCost)) + (item.qty * item.effectivePrice)) / nextQty, 2) : round(item.effectivePrice, 2);
                 // qty itself is maintained by the inventory ledger (recomputed from location balances)
                 inv = (await client.query(
                     `UPDATE inventory SET "avgCost"=$2, weight=COALESCE(weight,0)+$3 WHERE id=$1 RETURNING *`,
@@ -1601,7 +1909,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             await ensureLocationBalance(client, inv.id, mainLocation.id, n(inv.qty));
             await postInventoryLedgerEntry(client, {
                 transactionType: 'purchase_receipt', inventoryId: Number(inv.id), locationId: mainLocation.id,
-                quantityDelta: round(item.qty), unit: inv.unit || item.unit || 'وحدة', unitCost: item.price,
+                quantityDelta: round(item.qty), unit: inv.unit || item.unit || 'وحدة', unitCost: item.effectivePrice,
                 referenceType: 'purchase_invoice', referenceId: String(invoiceId), userId: req.user.id,
                 idempotencyKey: `purchase:${invoiceId}:${inv.id}`,
                 reason: `استلام فاتورة شراء ${req.body?.invoiceNumber || invoiceId}`.trim(),
@@ -1609,12 +1917,12 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                     ...(item.packagingQty !== null ? { packaging_qty: item.packagingQty, packaging_uom: item.packagingUom || inv.packaging_uom || 'كرتون' } : {}) },
                 catchWeightQty: item.packagingQty, catchWeightUnit: item.packagingQty !== null ? (item.packagingUom || inv.packaging_uom || 'كرتون') : null,
             });
-            const lineTotal = round(item.qty * item.price, 2);
+            const lineTotal = item.total;
             totalAmount += lineTotal;
             const tx = (await client.query(
                 `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes, "invoiceNumber", "supplierName", weight, catch_weight_qty, catch_weight_unit)
                  VALUES ($1,$2,$3,$4,'in',$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-                [id(), inv.id, inv.name, round(item.qty), dateOnly(req.body?.date), item.price, lineTotal,
+                [id(), inv.id, inv.name, round(item.qty), dateOnly(req.body?.date), item.effectivePrice, lineTotal,
                     `استلام فاتورة شراء ${req.body?.invoiceNumber || ''}`.trim(), req.body?.invoiceNumber || null,
                     req.body?.supplierName || null, round(item.weight), item.packagingQty, item.packagingQty !== null ? (item.packagingUom || inv.packaging_uom || 'كرتون') : null]
             )).rows[0];
@@ -1698,7 +2006,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             vatCalc = computeInvoiceVat(
                 invoiceItems.map((it) => ({ net: it.total, taxCategory: it.taxCategory || 'STANDARD' })),
                 supplierProfile,
-                { transactionDate: dateOnly(requestedDate) || new Date().toISOString().slice(0, 10), standardRate }
+                { transactionDate: dateOnly(requestedDate) || riyadhToday(), standardRate }
             );
         } catch (taxErr) {
             await client.query('ROLLBACK');
@@ -1707,19 +2015,27 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const invoiceNet = vatCalc.subtotalNet;
         const invoiceVat = vatCalc.vatTotal;
         const invoiceTotal = vatCalc.grandTotal;
-        // ─── منع الإضافة المكررة (نفس المستخدم + مورد + مبلغ خلال 10 ثواني) ───
+        // ─── منع الإضافة المكررة (نفس المستخدم + مورد + مبلغ خلال 10 دقائق) ───
         // FIX: كانت هذه الكتلة داخل منطق المورد أعلاه وتقرأ invoiceTotal قبل
         // تعريفه → ReferenceError 500 لأي فاتورة بمورد. مكانها الصحيح هنا.
-        if (supplierId && invoiceTotal > 0 && req.user?.id) {
+        // HARDENED 2026-10-07: النافذة كانت 10 ثوانٍ فقط فتسرّبت 5 نسخ متطابقة
+        // بفارق 20-60 ثانية (ضغطات مكررة على حفظ). الآن 10 دقائق + مطابقة باسم
+        // المورد أيضًا عند غياب supplierId (اسم حر غير مربوط).
+        if (invoiceTotal > 0 && req.user?.id) {
+            const dupName = cleanName(supplierRow ? supplierRow.name : req.body?.supplierName);
+            const dupWho = [String(req.user.id), req.user.username ? String(req.user.username) : null].filter(Boolean);
             const dupCheck = await client.query(
                 `SELECT id, "invoiceNumber" FROM "purchaseInvoices"
-                 WHERE "createdBy" = $1 AND "supplierId" = $2 AND "totalAmount" = $3
-                   AND "createdAt"::timestamp >= NOW() - INTERVAL '10 seconds'
+                 WHERE "totalAmount" = $1
+                   AND "createdAt"::timestamptz >= NOW() - INTERVAL '10 minutes'
+                   AND "createdBy" = ANY($2)
+                   AND (($3::bigint IS NOT NULL AND "supplierId" = $3)
+                        OR ($3::bigint IS NULL AND $4 <> '' AND LOWER(COALESCE("supplierName",'')) = LOWER($4)))
                  ORDER BY "createdAt" DESC LIMIT 1`,
-                [req.user.id, supplierId, invoiceTotal]);
+                [invoiceTotal, dupWho, supplierId, dupName || '']);
             if (dupCheck.rows.length > 0) {
                 await client.query('ROLLBACK');
-                return res.status(409).json({ ok: false, code: 'DUPLICATE_INVOICE', message: 'فاتورة مشابهة تم إنشاؤها قبل أقل من 10 ثوانٍ — تم تجاهل الطلب المكرر', duplicateOf: dupCheck.rows[0] });
+                return res.status(409).json({ ok: false, code: 'DUPLICATE_INVOICE', message: 'فاتورة مشابهة تم إنشاؤها قبل أقل من 10 دقائق — تم تجاهل الطلب المكرر', duplicateOf: dupCheck.rows[0] });
             }
         }
         const headerRate = vatCalc.lines.reduce((m, l) => Math.max(m, l.rate), 0);
@@ -1741,8 +2057,8 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             `INSERT INTO "purchaseInvoices" (id, "invoiceNumber", date, "supplierName", "supplierPhone", items, "totalAmount", "paymentMethod", notes, "createdAt", "createdBy", "supplierId", "paidAmount", "paymentStatus",
                 subtotal_net, vat_total, tax_rate_snapshot, tax_rule_code_snapshot,
                 supplier_name_snapshot, supplier_vat_number_snapshot, supplier_cr_snapshot,
-                supplier_tax_status_snapshot, zatca_uuid)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+                supplier_tax_status_snapshot, zatca_uuid, discount_type, discount_value, discount_amount)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`,
             [invoiceId, requestedInvoiceNumber || `INV-${id()}`, dateOnly(requestedDate), invoiceSupplierName,
                 req.body?.supplierPhone || null, json(invoiceItems), invoiceTotal, paymentMethod,
                 req.body?.notes || null, new Date().toISOString(), req.user.username || String(req.user.id),
@@ -1752,7 +2068,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 supplierRow ? (supplierRow.vat_number || null) : null,
                 supplierRow ? (supplierRow.commercial_register || null) : null,
                 supplierRow ? (supplierRow.tax_registration_status || 'NOT_REGISTERED') : 'NOT_REGISTERED',
-                crypto.randomUUID()]
+                crypto.randomUUID(), discountType, discountValue, discountAmount]
         )).rows[0];
         if (supplierId !== null && paidAmount > 0) {
             await client.query(
@@ -1792,6 +2108,310 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         logger.error('[pr_create]', error);
         logger.error('[warehouse_purchase_invoice]', error);
         res.status(500).json({ error: 'PURCHASE_INVOICE_FAILED', message: 'تعذر حفظ فاتورة الشراء وتحديث المخزن', detail: error?.message || String(error) });
+    } finally {
+        client.release();
+    }
+});
+
+router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const invoiceId = Number(req.params.id);
+        if (!Number.isSafeInteger(invoiceId) || invoiceId <= 0) {return fail(res, 422, 'INVALID_ID', 'معرف الفاتورة غير صحيح');}
+        await client.query('BEGIN');
+        const oldInvoice = (await client.query('SELECT * FROM "purchaseInvoices" WHERE id=$1 FOR UPDATE', [invoiceId])).rows[0];
+        if (!oldInvoice) {
+            await client.query('ROLLBACK');
+            return fail(res, 404, 'INVOICE_NOT_FOUND', 'الفاتورة غير موجودة');
+        }
+        const payments = (await client.query(
+            'SELECT COUNT(*)::int AS count FROM supplier_payments WHERE "invoiceId"=$1', [invoiceId]
+        )).rows[0];
+        if (Number(oldInvoice.paidAmount || 0) > 0 || Number(payments?.count || 0) > 0) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'INVOICE_HAS_PAYMENTS', 'لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
+        }
+
+        const requestedDate = req.body?.date || oldInvoice.date;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(requestedDate || '')) ||
+            Number.isNaN(new Date(`${requestedDate}T00:00:00Z`).getTime())) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_INVOICE_DATE', 'تاريخ الفاتورة غير صحيح');
+        }
+        const paymentMethod = cleanName(req.body?.paymentMethod || oldInvoice.paymentMethod || 'cash').toLowerCase();
+        const allowedPaymentMethods = new Set(['cash', 'bank', 'card', 'cheque', 'credit']);
+        if (!allowedPaymentMethods.has(paymentMethod)) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_PAYMENT_METHOD', 'طريقة الدفع غير معتمدة');
+        }
+        const requestedInvoiceNumber = cleanName(req.body?.invoiceNumber || oldInvoice.invoiceNumber);
+        if (requestedInvoiceNumber) {
+            const duplicate = await client.query(
+                'SELECT id FROM "purchaseInvoices" WHERE "invoiceNumber"=$1 AND id<>$2 LIMIT 1',
+                [requestedInvoiceNumber, invoiceId]);
+            if (duplicate.rows.length) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'DUPLICATE_INVOICE_NUMBER', 'رقم الفاتورة مستخدم من قبل');
+            }
+        }
+
+        const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+        const items = rawItems.map(raw => {
+            const pkg = raw.packagingQty ?? raw.packaging_qty ?? raw.catch_weight_qty ?? null;
+            const pkgQty = pkg === null || pkg === undefined || pkg === '' ? null : n(pkg);
+            return {
+                itemName: cleanName(raw.itemName || raw.name),
+                category: cleanName(raw.category) || 'عام',
+                unit: cleanName(raw.unit) || 'وحدة',
+                unitProvided: raw.unit !== undefined && raw.unit !== null && cleanName(raw.unit) !== '',
+                qty: round(n(raw.qty), 3),
+                price: round(n(raw.price), 2),
+                taxCategory: String(raw.tax_category ?? raw.taxCategory ?? 'STANDARD').trim().toUpperCase(),
+                weight: Math.max(0, n(raw.weight)),
+                packagingQty: pkgQty !== null && Number.isFinite(pkgQty) && pkgQty >= 0 ? pkgQty : null,
+                packagingUom: cleanName(raw.packagingUom || raw.packaging_uom || raw.catch_weight_unit) || null,
+            };
+        }).filter(item => item.itemName && item.qty > 0 && item.price >= 0);
+        if (!items.length || items.some(item => !Number.isFinite(item.qty) || !Number.isFinite(item.price) ||
+            item.qty <= 0 || item.price < 0 || !['STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE'].includes(item.taxCategory))) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_INVOICE_ITEM', 'تحقق من وجود صنف واحد على الأقل وصحة الكمية والسعر والفئة الضريبية');
+        }
+        const discountType = String(req.body?.discountType || 'none').toLowerCase();
+        const discountValue = Number(req.body?.discountValue ?? 0);
+        let discount;
+        try {
+            discount = allocatePurchaseDiscount(items, discountType, discountValue);
+        } catch (error) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, error.code || 'INVALID_INVOICE_DISCOUNT', error.message);
+        }
+        const discountAmount = discount.discountAmount;
+        items.splice(0, items.length, ...discount.items);
+
+        let supplierId = req.body?.supplierId !== undefined && req.body?.supplierId !== null && req.body?.supplierId !== ''
+            ? Number(req.body.supplierId) : null;
+        let supplierRow = null;
+        const supplierName = cleanName(req.body?.supplierName);
+        if (supplierId === null && supplierName) {
+            const matched = (await client.query(
+                'SELECT id FROM suppliers WHERE LOWER(name)=LOWER($1) LIMIT 1', [supplierName])).rows[0];
+            if (matched) {supplierId = Number(matched.id);}
+        }
+        if (supplierId !== null) {
+            if (!Number.isSafeInteger(supplierId)) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'INVALID_SUPPLIER', 'معرف المورد غير صحيح');
+            }
+            supplierRow = (await client.query(
+                `SELECT id, name, is_active, tax_registration_status, vat_number, commercial_register
+                   FROM suppliers WHERE id=$1`, [supplierId])).rows[0];
+            if (!supplierRow) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'SUPPLIER_NOT_FOUND', 'المورد المحدد غير موجود');
+            }
+            if (!supplierRow.is_active && Number(oldInvoice.supplierId) !== supplierId) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'SUPPLIER_INACTIVE', `المورد «${supplierRow.name}» موقوف — فعّله قبل ربط الفاتورة`);
+            }
+        }
+        const standardRate = await loadStandardRate(pool);
+        const supplierProfile = supplierRow
+            ? { status: supplierRow.tax_registration_status || 'NOT_REGISTERED', vat_number: supplierRow.vat_number || null, country: 'SA' }
+            : { status: 'NOT_REGISTERED', vat_number: null, country: 'SA' };
+        let vatCalc;
+        try {
+            vatCalc = computeInvoiceVat(
+                items.map(item => ({ net: item.total, taxCategory: item.taxCategory })),
+                supplierProfile, { transactionDate: dateOnly(requestedDate) || riyadhToday(), standardRate });
+        } catch (taxError) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, 'INVALID_TAX_CATEGORY', String(taxError.message).slice(0, 200));
+        }
+        const invoiceNet = vatCalc.subtotalNet;
+        const invoiceVat = vatCalc.vatTotal;
+        const invoiceTotal = vatCalc.grandTotal;
+        let paidAmount = 0;
+        if (req.body?.paidAmount !== undefined && req.body?.paidAmount !== null && req.body?.paidAmount !== '') {
+            const rawPaid = Number(req.body.paidAmount);
+            if (!Number.isFinite(rawPaid) || rawPaid < 0 || rawPaid > invoiceTotal) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'INVALID_PAID_AMOUNT', 'المبلغ المسدد يجب أن يكون بين صفر وإجمالي الفاتورة');
+            }
+            paidAmount = round(rawPaid, 2);
+        } else if (paymentMethod !== 'credit') {
+            paidAmount = invoiceTotal;
+        }
+        const paymentStatus = computeInvoicePaymentStatus(invoiceTotal, paidAmount);
+        const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+        let oldItems = oldInvoice.items;
+        if (typeof oldItems === 'string') {try {oldItems = JSON.parse(oldItems);} catch (_) {oldItems = [];} }
+        if (!Array.isArray(oldItems)) {oldItems = [];}
+        const revision = id();
+        const inventoryRows = [];
+        const transactions = [];
+        for (let index = 0; index < oldItems.length; index++) {
+            const old = oldItems[index];
+            const inventoryId = Number(old.itemId || old.item_id);
+            const qty = round(n(old.qty), 3);
+            if (!Number.isSafeInteger(inventoryId) || qty <= 0) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'EDIT_ITEM_INVALID', 'تعذر عكس بند قديم غير صالح؛ راجع بيانات الفاتورة قبل تعديلها');
+            }
+            const row = (await client.query(
+                'SELECT id,name,unit,qty,"avgCost",COALESCE(weight,0) AS weight FROM inventory WHERE id=$1 FOR UPDATE', [inventoryId]
+            )).rows[0];
+            if (!row) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'EDIT_ITEM_MISSING', `الصنف «${old.itemName || old.name || inventoryId}» غير موجود بالمخزون`);
+            }
+            const oldUnitCost = n(old.effectivePrice ?? old.price);
+            const oldWeight = Math.max(0, n(old.weight));
+            const boxes = old.packagingQty ?? old.packaging_qty ?? old.catch_weight_qty ?? null;
+            const boxesUnit = old.packagingUom || old.packaging_uom || old.catch_weight_unit || null;
+            const reversal = await postInventoryLedgerEntry(client, {
+                transactionType: 'reversal', inventoryId, locationId: mainLocation.id, quantityDelta: -qty,
+                unit: row.unit || old.unit || 'وحدة', unitCost: oldUnitCost,
+                referenceType: 'purchase_invoice_edit_reversal', referenceId: String(invoiceId), userId: req.user.id,
+                idempotencyKey: `purchase-edit-reversal:${invoiceId}:${revision}:${index}`,
+                reason: `عكس بند فاتورة شراء ${oldInvoice.invoiceNumber || invoiceId} قبل التعديل`,
+                metadata: { invoice_id: invoiceId, revision },
+                catchWeightQty: boxes === null ? null : n(boxes), catchWeightUnit: boxes === null ? null : boxesUnit,
+            });
+            if (reversal.replay) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'EDIT_REVERSAL_EXISTS', 'وجد قيد عكس سابق لهذا التعديل؛ راجع دفتر المخزون');
+            }
+            const tx = (await client.query(
+                `INSERT INTO "inventoryTx" (id,"itemId","itemName",qty,type,date,cost,"totalValue",notes,"invoiceNumber","supplierName",weight,catch_weight_qty,catch_weight_unit)
+                 VALUES ($1,$2,$3,$4,'out',$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+                [id(), inventoryId, row.name, qty, dateOnly(new Date()), oldUnitCost, round(qty * oldUnitCost, 2),
+                    `عكس فاتورة شراء ${oldInvoice.invoiceNumber || invoiceId} قبل التعديل`, oldInvoice.invoiceNumber,
+                    oldInvoice.supplierName, -oldWeight, boxes, boxes === null ? null : boxesUnit]
+            )).rows[0];
+            transactions.push(tx);
+            const remaining = n((await client.query(
+                'SELECT COALESCE(SUM(on_hand),0) AS q FROM inventory_location_balances WHERE inventory_id=$1', [inventoryId]
+            )).rows[0]?.q);
+            if (remaining > 0) {
+                const nextAvg = Math.max(0, round(((n(row.avgCost) * (remaining + qty)) - (oldUnitCost * qty)) / remaining, 2));
+                await client.query(
+                    'UPDATE inventory SET "avgCost"=$2,weight=GREATEST(0,COALESCE(weight,0)-$3) WHERE id=$1',
+                    [inventoryId, nextAvg, oldWeight]);
+            } else {
+                await client.query('UPDATE inventory SET weight=GREATEST(0,COALESCE(weight,0)-$2) WHERE id=$1', [inventoryId, oldWeight]);
+            }
+        }
+
+        const existingRows = await client.query('SELECT id,name FROM inventory');
+        const existingByKey = new Map(existingRows.rows.map(row => [normItemName(row.name), Number(row.id)]));
+        const updatedItems = [];
+        for (const item of items) {
+            const matchedId = existingByKey.get(normItemName(item.itemName));
+            let inv = matchedId
+                ? (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [matchedId])).rows[0]
+                : null;
+            if (inv && item.unitProvided && String(item.unit).trim().toLowerCase() !== String(inv.unit || 'وحدة').trim().toLowerCase()) {
+                await client.query('ROLLBACK');
+                return fail(res, 422, 'UNIT_MISMATCH', `الصنف «${inv.name}» مسجل بوحدة «${inv.unit || 'وحدة'}» وليس «${item.unit}»`);
+            }
+            if (!inv) {
+                inv = (await client.query(
+                    `INSERT INTO inventory (id,name,category,unit,qty,"avgCost","minQty",weight)
+                     VALUES ($1,$2,$3,$4,0,$5,0,0) RETURNING *`,
+                    [id(), item.itemName, item.category, item.unit, item.effectivePrice]
+                )).rows[0];
+                existingByKey.set(normItemName(item.itemName), Number(inv.id));
+            } else {
+                const oldQty = n(inv.qty);
+                const nextQty = round(oldQty + item.qty, 3);
+                const nextCost = nextQty > 0
+                    ? round(((oldQty * n(inv.avgCost)) + (item.qty * item.effectivePrice)) / nextQty, 2)
+                    : round(item.effectivePrice, 2);
+                inv = (await client.query(
+                    'UPDATE inventory SET "avgCost"=$2,weight=COALESCE(weight,0)+$3 WHERE id=$1 RETURNING *',
+                    [inv.id, nextCost, round(item.weight, 3)]
+                )).rows[0];
+            }
+            await ensureLocationBalance(client, inv.id, mainLocation.id, n(inv.qty));
+            const receipt = await postInventoryLedgerEntry(client, {
+                transactionType: 'purchase_receipt', inventoryId: Number(inv.id), locationId: mainLocation.id,
+                quantityDelta: item.qty, unit: inv.unit || item.unit || 'وحدة', unitCost: item.effectivePrice,
+                referenceType: 'purchase_invoice_edit', referenceId: String(invoiceId), userId: req.user.id,
+                idempotencyKey: `purchase-edit:${invoiceId}:${revision}:${inv.id}`,
+                reason: `تعديل استلام فاتورة شراء ${requestedInvoiceNumber || invoiceId}`,
+                metadata: { invoice_id: invoiceId, invoice_number: requestedInvoiceNumber, revision },
+                catchWeightQty: item.packagingQty,
+                catchWeightUnit: item.packagingQty !== null ? (item.packagingUom || inv.packaging_uom || 'كرتون') : null,
+            });
+            if (receipt.replay) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'EDIT_RECEIPT_EXISTS', 'وجد قيد استلام سابق لهذا التعديل؛ راجع دفتر المخزون');
+            }
+            const tx = (await client.query(
+                `INSERT INTO "inventoryTx" (id,"itemId","itemName",qty,type,date,cost,"totalValue",notes,"invoiceNumber","supplierName",weight,catch_weight_qty,catch_weight_unit)
+                 VALUES ($1,$2,$3,$4,'in',$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+                [id(), inv.id, inv.name, item.qty, dateOnly(requestedDate), item.effectivePrice, item.total,
+                    `استلام فاتورة شراء معدلة ${requestedInvoiceNumber || ''}`.trim(), requestedInvoiceNumber,
+                    supplierRow?.name || supplierName || null, round(item.weight, 3), item.packagingQty,
+                    item.packagingQty !== null ? (item.packagingUom || inv.packaging_uom || 'كرتون') : null]
+            )).rows[0];
+            inventoryRows.push(Number(inv.id));
+            transactions.push(tx);
+            updatedItems.push({ ...item, itemId: Number(inv.id), itemName: inv.name });
+        }
+        const headerRate = vatCalc.lines.reduce((max, line) => Math.max(max, line.rate), 0);
+        const updated = (await client.query(
+            `UPDATE "purchaseInvoices" SET "invoiceNumber"=$2,date=$3,"supplierName"=$4,"supplierPhone"=$5,
+             items=$6,"totalAmount"=$7,"paymentMethod"=$8,notes=$9,"supplierId"=$10,"paidAmount"=$11,"paymentStatus"=$12,
+             subtotal_net=$13,vat_total=$14,tax_rate_snapshot=$15,tax_rule_code_snapshot=$16,
+             supplier_name_snapshot=$17,supplier_vat_number_snapshot=$18,supplier_cr_snapshot=$19,
+             supplier_tax_status_snapshot=$20,zatca_uuid=$21,zatca_qr=NULL,discount_type=$22,discount_value=$23,discount_amount=$24
+             WHERE id=$1 RETURNING *`,
+            [invoiceId, requestedInvoiceNumber, dateOnly(requestedDate), supplierRow?.name || supplierName || null,
+                req.body?.supplierPhone || null, json(updatedItems), invoiceTotal, paymentMethod, req.body?.notes || null,
+                supplierId, paidAmount, paymentStatus, invoiceNet, invoiceVat, headerRate, vatCalc.ruleCode,
+                supplierRow?.name || supplierName || null, supplierRow?.vat_number || null,
+                supplierRow?.commercial_register || null, supplierRow?.tax_registration_status || 'NOT_REGISTERED',
+                crypto.randomUUID(), discountType, discountValue, discountAmount]
+        )).rows[0];
+        if (supplierId !== null && paidAmount > 0) {
+            await client.query(
+                `INSERT INTO supplier_payments (id,"supplierId",amount,method,date,"invoiceId",notes,"createdBy")
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                [id(), supplierId, paidAmount, paymentMethod === 'credit' ? 'cash' : paymentMethod,
+                    dateOnly(requestedDate), invoiceId, 'دفعة تلقائية مع تعديل فاتورة الشراء',
+                    req.user.username || String(req.user.id)]);
+        }
+        await client.query(
+            `UPDATE journal_entries SET status='void',source_type='purchase_invoice_edit_void',source_id=$2
+              WHERE source_type='purchase_invoice' AND source_id=$1 AND status='posted'`,
+            [String(invoiceId), `${invoiceId}:revision:${revision}`]);
+        await emitDomainEvent(pool, client, 'PURCHASE', {
+            eventType: 'PURCHASE_UPDATED', aggregateType: 'purchase_invoice', aggregateId: invoiceId,
+            payload: { invoice_id: invoiceId, number: updated.invoiceNumber, total: invoiceTotal, revision },
+        });
+        await client.query('COMMIT');
+
+        try {
+            await require('./accounting-routes').postPurchaseToLedger(invoiceId);
+        } catch (ledgerError) {
+            logger.warn('[purchase_edit_ledger] best-effort posting skipped:', ledgerError.message);
+        }
+        const freshInventory = inventoryRows.length
+            ? (await pool.query('SELECT * FROM inventory WHERE id=ANY($1::bigint[]) ORDER BY id', [inventoryRows])).rows
+            : [];
+        emit(req, 'purchaseInvoices', 'update', updated);
+        for (const row of freshInventory) {emit(req, 'inventory', 'update', row);}
+        for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
+        res.json({ invoice: updated, inventory: freshInventory, transactions });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[warehouse_purchase_invoice_edit]', error);
+        if (error.code === 'INSUFFICIENT_STOCK') {
+            return fail(res, 409, 'EDIT_INSUFFICIENT_STOCK', 'لا يمكن تعديل الفاتورة لأن بعض كمياتها صُرفت بالفعل؛ راجع رصيد المخزون قبل التعديل');
+        }
+        res.status(500).json({ error: 'PURCHASE_INVOICE_EDIT_FAILED', message: 'تعذر تعديل فاتورة الشراء وتحديث المخزون', detail: error?.message || String(error) });
     } finally {
         client.release();
     }
@@ -1854,8 +2474,214 @@ router.delete('/inventory/:id/force', jwtAuth, requireRole('admin', 'warehouse')
 // ─── إلغاء فاتورة شراء مع عكس أثرها المخزني (قرار المالك) ───
 // الشروط: بلا مدفوعات (paidAmount=0 وبلا supplier_payments مرتبطة) — المال المتحرك لا يُمحى.
 // يعكس الاستلام في الدفتر (حركة عكسية موثقة) ويحذف حركات الـ in ثم الفاتورة — كله في معاملة واحدة.
-router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async (req, res) => {
+// ─── صلاحية الأدمن المطلقة: تعديل مباشر للكمية/متوسط التكلفة بقيد تسوية موثق ──
+// (طلب المالك 2026-10-04) — أدمن فقط. الفرق يُقيَّد count_correction في الدفتر
+// ويُسجَّل في inventoryTx مع السبب — لا تعديل صامت أبدًا.
+router.put('/inventory/:id/direct', jwtAuth, requireRole('admin'), async (req, res) => {
     const client = await pool.connect();
+    try {
+        const itemId = Number(req.params.id);
+        const newCost = Number(req.body?.avgCost);
+        const reason = cleanName(req.body?.reason).slice(0, 200) || 'تعديل مباشر بواسطة الأدمن';
+        // طلب المالك 2026-10-06: «الرصيد ناقص أذونات الصرف يظهر قدامي الرقم الفعلي في المخزن» —
+        // mainQty يجعل الصافي يقع على المخزن الرئيسي تحديدًا ورصيد مخازن الأقسام يبقى كما هو،
+        // بدل إجبار الإجمالي = الصافي الذي كان يبعثر أرصدة الرئيسي عند وجود مخزون بأقسام أخرى.
+        const hasMainQty = req.body?.mainQty !== undefined && req.body?.mainQty !== null && String(req.body.mainQty).trim() !== '';
+        const newMainQty = hasMainQty ? Number(req.body.mainQty) : null;
+        const newQty = hasMainQty ? null : Number(req.body?.qty);
+        if (!Number.isInteger(itemId) || itemId <= 0) {return fail(res, 422, 'INVALID_ID', 'معرف الصنف غير صحيح');}
+        if (hasMainQty) {
+            if (!Number.isFinite(newMainQty) || newMainQty < 0) {return fail(res, 422, 'INVALID_QTY', 'رصيد المخزن الرئيسي يجب أن يكون رقمًا ≥ صفر');}
+        } else if (!Number.isFinite(newQty) || newQty < 0) {return fail(res, 422, 'INVALID_QTY', 'الكمية يجب أن تكون رقمًا ≥ صفر');}
+        if (!Number.isFinite(newCost) || newCost < 0) {return fail(res, 422, 'INVALID_COST', 'التكلفة يجب أن تكون رقمًا ≥ صفر');}
+        await client.query('BEGIN');
+        const item = (await client.query('SELECT * FROM inventory WHERE id = $1 FOR UPDATE', [itemId])).rows[0];
+        if (!item) { await client.query('ROLLBACK'); return fail(res, 404, 'ITEM_NOT_FOUND', 'الصنف غير موجود'); }
+        const oldQty = n(item.qty);
+        const oldCost = n(item.avgCost);
+        const location = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+        await ensureLocationBalance(client, itemId, location.id, oldQty);
+        let delta;
+        if (hasMainQty) {
+            const curMain = n((await client.query(
+                'SELECT on_hand FROM inventory_location_balances WHERE inventory_id=$1 AND location_id=$2 FOR UPDATE',
+                [itemId, location.id])).rows[0]?.on_hand);
+            delta = round(newMainQty - curMain, 3);
+        } else {
+            delta = round(newQty - oldQty, 4);
+        }
+        if (delta !== 0) {
+            await postInventoryLedgerEntry(client, {
+                transactionType: 'count_correction', inventoryId: itemId, locationId: location.id,
+                quantityDelta: delta, unit: item.unit || 'وحدة',
+                unitCost: newCost, referenceType: 'admin_direct_edit', referenceId: String(itemId),
+                userId: req.user.id, idempotencyKey: `admin-direct:${itemId}:${Date.now()}`,
+                reason, metadata: { admin_direct: true, old_qty: oldQty, new_qty: hasMainQty ? null : newQty, old_cost: oldCost, new_cost: newCost, ...(hasMainQty ? { main_qty_target: newMainQty } : {}) },
+            });
+            await client.query(
+                `INSERT INTO "inventoryTx" (id,"itemId","itemName",qty,type,date,cost,"totalValue",notes)
+                 VALUES ($1,$2,$3,$4,'adjust',$5,$6,$7,$8)`,
+                [id(), itemId, item.name, round(Math.abs(delta)), dateOnly(new Date()), newCost,
+                 round(Math.abs(delta) * newCost, 2), reason]
+            );
+        }
+        const upd = hasMainQty
+            ? (await client.query('UPDATE inventory SET "avgCost"=$2 WHERE id=$1 RETURNING *', [itemId, newCost])).rows[0]
+            : (await client.query('UPDATE inventory SET qty=$2, "avgCost"=$3 WHERE id=$1 RETURNING *', [itemId, newQty, newCost])).rows[0];
+        await client.query('COMMIT');
+        emit(req, 'inventory', 'update', upd);
+        logger.warn(`[inventory_direct_edit] ${req.user?.username} عدّل مباشرة «${item.name}»: qty ${oldQty}→${newQty}, avgCost ${oldCost}→${newCost} — ${reason}`);
+        res.json({ ok: true, item: upd, delta });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[inventory_direct_edit]', error);
+        return fail(res, 500, 'DIRECT_EDIT_FAILED', 'تعذر التعديل المباشر: ' + String(error.message).slice(0, 160));
+    } finally { client.release(); }
+});
+
+// ─── طلب المالك 2026-10-05: «في اصناف مثل كده عايز احذف المكرر» — دمج أصناف مكررة في صنف واحد ───
+// ينقل رصيد المكرر (كل المواقع) للمُبقي، يعيد توجيه كل المراجع (دفتر المخزون/سجل الحركات/أي جدول مرجعي)،
+// يوازن متوسط التكلفة، يورّث الحد الأدنى/الباركود/الفئة/الرف، ثم يحذف الصنف المكرر — معاملة واحدة موثقة.
+router.post('/inventory/merge', jwtAuth, requireRole('admin'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const keepId = Number(req.body?.keepId);
+        const dupIds = [...new Set((Array.isArray(req.body?.dupIds) ? req.body.dupIds : []).map(Number).filter(Number.isInteger))];
+        if (!Number.isInteger(keepId) || keepId <= 0) {return fail(res, 422, 'INVALID_KEEP_ID', 'الصنف المُبقي غير محدد');}
+        if (!dupIds.length) {return fail(res, 422, 'NO_DUPLICATES', 'لا توجد أصناف مكررة محددة للدمج');}
+        if (dupIds.includes(keepId)) {return fail(res, 422, 'SAME_ITEM', 'لا يمكن دمج الصنف مع نفسه');}
+        await client.query('BEGIN');
+        const keeper = (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [keepId])).rows[0];
+        if (!keeper) {await client.query('ROLLBACK'); return fail(res, 404, 'KEEPER_NOT_FOUND', 'الصنف المُبقي غير موجود');}
+        const dups = [];
+        for (const dupId of dupIds) {
+            const d = (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [dupId])).rows[0];
+            if (!d) {await client.query('ROLLBACK'); return fail(res, 404, 'DUPLICATE_NOT_FOUND', `الصنف المكرر غير موجود: ${dupId}`);}
+            dups.push(d);
+        }
+        // 1) نقل الأرصدة من كل مخزن المكرر إلى المُبقي (نفس المواقع)
+        let movedQty = 0;
+        let keeperLoc; // موقع الصنف المُبقي — لالتقاط أي رصيد «شبح» في عمود qty بلا صفوف مواقع
+        for (const dup of dups) {
+            const dupBalances = (await client.query('SELECT location_id, COALESCE(on_hand,0) AS on_hand FROM inventory_location_balances WHERE inventory_id=$1', [dup.id])).rows;
+            let dupBalSum = 0;
+            for (const b of dupBalances) {
+                dupBalSum += Number(b.on_hand) || 0;
+                if (!(Number(b.on_hand) !== 0)) {continue;}
+                await ensureLocationBalance(client, keepId, b.location_id, 0);
+                await client.query(
+                    'UPDATE inventory_location_balances SET on_hand = COALESCE(on_hand,0) + $2, updated_at=CURRENT_TIMESTAMP WHERE inventory_id=$1 AND location_id=$3',
+                    [keepId, Number(b.on_hand), b.location_id]);
+                movedQty += Number(b.on_hand);
+            }
+            await client.query('DELETE FROM inventory_location_balances WHERE inventory_id=$1', [dup.id]);
+            // رصيد موجود في عمود qty دون صف مواقع: يُنقل لموقع المُبقي حتى لا يضيع عند مزامنة qty من الأرصدة
+            const phantom = round(n(dup.qty) - dupBalSum, 3);
+            if (phantom > 0) {
+                if (keeperLoc == null) {
+                    keeperLoc = (await client.query('SELECT location_id FROM inventory_location_balances WHERE inventory_id=$1 ORDER BY on_hand DESC LIMIT 1', [keepId])).rows[0]?.location_id
+                        ?? (await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse')).id;
+                }
+                await ensureLocationBalance(client, keepId, keeperLoc, 0);
+                await client.query(
+                    'UPDATE inventory_location_balances SET on_hand = COALESCE(on_hand,0) + $2, updated_at=CURRENT_TIMESTAMP WHERE inventory_id=$1 AND location_id=$3',
+                    [keepId, phantom, keeperLoc]);
+                movedQty += phantom;
+            }
+        }
+        // 2) إعادة توجيه كل الجداول المرجعية للصنف المكرر → الصنف المُبقي
+        const refCols = (await client.query(`
+            SELECT c.table_name, c.column_name, c.data_type
+            FROM information_schema.columns c
+            WHERE c.table_schema='public' AND c.column_name IN ('itemId','inventory_id','item_id')
+              AND c.table_name <> 'inventory_location_balances'
+              AND c.table_name <> 'inventory'`)).rows;
+        const sweptTables = [];
+        for (const dup of dups) {
+            for (const c of refCols) {
+                const tbl = `"${c.table_name}"`, col = `"${c.column_name}"`;
+                await client.query('SAVEPOINT merge_sweep');
+                try {
+                    const r = await client.query(`UPDATE ${tbl} SET ${col}=$1 WHERE ${col}=$2`, [String(keepId), String(dup.id)]);
+                    if (r.rowCount > 0) {sweptTables.push(`${c.table_name}.${c.column_name}(${r.rowCount})`);}
+                    await client.query('RELEASE SAVEPOINT merge_sweep');
+                } catch (e) {
+                    await client.query('ROLLBACK TO SAVEPOINT merge_sweep');
+                    logger.warn(`[inventory_merge] تخطي ${c.table_name}.${c.column_name}: ${e.message}`);
+                }
+            }
+        }
+        // 3) وراثة الإعدادات + موازنة متوسط التكلفة الموزون + إعادة حساب الإجمالي
+        // المقام هو الرصيد الفعلي بعد الدمج (finalQty) — كمية المكرر داخل فيه أصلًا، وجمعها مجددًا يحسبها مرتين
+        const kQty = n(keeper.qty);
+        let totalCost = kQty * n(keeper.avgCost);
+        for (const dup of dups) {
+            const dQty = n(dup.qty);
+            if (dQty > 0) { totalCost += dQty * n(dup.avgCost); }
+        }
+        const finalQty = n((await client.query(
+            'SELECT COALESCE(SUM(on_hand),0) AS q FROM inventory_location_balances WHERE inventory_id=$1', [keepId])).rows[0].q);
+        const newCost = finalQty > 0
+            ? Math.max(0, round(totalCost / finalQty, 2))
+            : n(keeper.avgCost);
+        const primary = dups[0];
+        const updated = (await client.query(
+            `UPDATE inventory SET
+                "minQty" = CASE WHEN COALESCE("minQty",0) > 0 THEN "minQty" ELSE COALESCE($2,0) END,
+                barcode = COALESCE(NULLIF(barcode,''), NULLIF($3,'')),
+                category = CASE WHEN COALESCE(category,'') IN ('','عام') THEN COALESCE(NULLIF($4,''), category) ELSE category END,
+                "shelfId" = COALESCE("shelfId", $5),
+                "avgCost" = $6,
+                qty = $7
+             WHERE id=$1 RETURNING *`,
+            [keepId, n(primary.minQty) || 0, keeper.barcode || primary.barcode || '',
+             (keeper.category && keeper.category !== 'عام') ? keeper.category : (primary.category || 'عام'),
+             keeper.shelfId || primary.shelfId || null, newCost, finalQty])).rows[0];
+        // 4) توثيق الحركة في سجل الحركات لكل مكرر مدموج
+        for (const dup of dups) {
+            const dQty = n(dup.qty);
+            await client.query(
+                `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes)
+                 VALUES ($1,$2,$3,$4,'adjust',$5,$6,$7,$8)`,
+                [id(), keepId, keeper.name, round(dQty, 3), dateOnly(new Date()), n(dup.avgCost),
+                 round(dQty * n(dup.avgCost), 2), `دمج صنف مكرر «${dup.name}» (#${dup.id}) — نقل الرصيد والسجل إلى «${keeper.name}»`]);
+        }
+        // 5) حذف المكرر (كل مراجعه أعيد توجيهها)
+        await client.query('DELETE FROM inventory WHERE id = ANY($1::bigint[])', [dupIds]);
+        await emitDomainEvent(pool, client, 'INVENTORY', {
+            eventType: 'INVENTORY_MERGED', aggregateType: 'inventory', aggregateId: keepId,
+            payload: { keeper_id: keepId, merged_ids: dupIds, moved_qty: round(movedQty, 3) },
+        });
+        await client.query('COMMIT');
+        emit(req, 'inventory', 'update', updated);
+        for (const dup of dups) { emit(req, 'inventory', 'delete', { id: dup.id, mergedInto: keepId }); }
+        logger.warn(`[inventory_merge] ${req.user?.username} دمج ${dups.length} صنفًا مكررًا في «${keeper.name}» (${keepId}) — رصيد منقول ${round(movedQty, 3)}، جداول أعيد توجيهها: ${sweptTables.length}`);
+        res.json({ ok: true, keeper: updated, movedQty: round(movedQty, 3), sweptTables, mergedCount: dups.length });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[inventory_merge]', error);
+        return fail(res, 500, 'INVENTORY_MERGE_FAILED', 'تعذر دمج الأصناف: ' + String(error.message).slice(0, 160));
+    } finally { client.release(); }
+});
+
+// الدفعة التي يولّدها النظام تلقائيًا لحظة تسجيل/تعديل الفاتورة (نفس المعاملة، نفس
+// السطر) ليست «مالًا متحركًا» مستقلًا — هي حالة سداد الفاتورة نفسها. لذا تُعكس معها
+// عند الإلغاء. أما الدفعة اليدية (من شاشة الدفعات) فتُرفض: لها قصة أخرى ومالك النظام
+// هو من يُلغيها. (طلب المالك 2026-10-13 بعد فاتورة INV-1791896153117)
+const AUTO_PAYMENT_NOTE_RE = /^دفعة تلقائية مع (تسجيل|تعديل) فاتورة الشراء/;
+function classifyInvoicePaymentsForVoid(payRows) {
+    const list = Array.isArray(payRows) ? payRows : [];
+    const auto = list.filter(p => AUTO_PAYMENT_NOTE_RE.test(String(p.notes || '').trim()));
+    const manual = list.filter(p => !AUTO_PAYMENT_NOTE_RE.test(String(p.notes || '').trim()));
+    return {
+        auto, manual,
+        total: round(list.reduce((s, p) => s + Number(p.amount || 0), 0), 2),
+        autoTotal: round(auto.reduce((s, p) => s + Number(p.amount || 0), 0), 2),
+        autoOnly: list.length > 0 && manual.length === 0,
+    };
+}
+
+router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async (req, res) => {    const client = await pool.connect();
     try {
         const invoiceId = Number(req.params.id);
         if (!Number.isFinite(invoiceId)) {return fail(res, 422, 'INVALID_ID', 'معرف الفاتورة غير صحيح');}
@@ -1867,16 +2693,37 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
             await client.query('ROLLBACK');
             return fail(res, 409, 'FORCE_VOID_FORBIDDEN', 'لا يجوز حذف دفعات أو مستند مالي قسريًا — استخدم قيد عكسي موثق');
         }
-        if (!force && Number(inv.paidAmount || 0) > 0) {
+        const payRows = (await client.query('SELECT id, amount, notes FROM supplier_payments WHERE "invoiceId" = $1 FOR UPDATE', [invoiceId])).rows;
+        const payClass = classifyInvoicePaymentsForVoid(payRows);
+        const payRef = { c: payRows.length, t: payClass.total };
+        const isOpeningBalance = /^OPEN-/i.test(String(inv.invoiceNumber || ''))
+            || /^رصيد افتتاحي(?:\s|$)/.test(String(inv.supplierName || ''))
+            || /^رصيد افتتاحي(?:\s|$)/.test(String(inv.notes || ''));
+        const paidOpeningWithoutPayment = isOpeningBalance
+            && Number(inv.paidAmount || 0) > 0
+            && payRows.length === 0;
+        if (Number(inv.paidAmount || 0) > 0 && !(paidOpeningWithoutPayment || payClass.autoOnly)) {
             await client.query('ROLLBACK');
-            return fail(res, 409, 'INVOICE_PAID', 'الفاتورة مسدد منها مبلغ — لا يمكن إلغاؤها بعد تحرك المال', { paidAmount: Number(inv.paidAmount) });
+            return fail(res, 409, 'INVOICE_PAID', 'الفاتورة مسدد منها بدفعة يدوية — اعكس الدفعة من شاشة الدفعات أولًا', { paidAmount: Number(inv.paidAmount) });
         }
-        const payRef = (await client.query('SELECT COUNT(*)::int AS c, COALESCE(SUM(amount),0)::float AS t FROM supplier_payments WHERE "invoiceId" = $1', [invoiceId])).rows[0] || { c: 0, t: 0 };
-        if (!force && payRef.c > 0) {
+        if (payClass.manual.length > 0) {
             await client.query('ROLLBACK');
-            return fail(res, 409, 'INVOICE_HAS_PAYMENTS', 'الفاتورة مرتبطة بدفعات موردين — احذف الدفعات أولًا', { payments: payRef.c, total: payRef.t });
+            return fail(res, 409, 'INVOICE_HAS_PAYMENTS', 'الفاتورة مرتبطة بدفعات موردين يدوية — لا يمكن إلغاؤها قبل عكس الدفعة محاسبيًا', { payments: payClass.manual.length, total: round(payClass.manual.reduce((s, p) => s + Number(p.amount || 0), 0), 2) });
         }
-        const deletedPayments = 0;
+        // دفعات آلية حصرًا: تُعكس مع الفاتورة داخل نفس المعاملة (سطر الدفعة + قيدها في الدفتر).
+        let deletedPayments = 0;
+        if (payClass.autoOnly) {
+            const payIds = payClass.auto.map(p => String(p.id));
+            await client.query('DELETE FROM supplier_payments WHERE id = ANY($1::bigint[])', [payClass.auto.map(p => Number(p.id))]);
+            await client.query(
+                `DELETE FROM journal_lines WHERE entry_id IN (
+                    SELECT id FROM journal_entries WHERE source_type='supplier_payment' AND source_id = ANY($1::text[]))`,
+                [payIds]);
+            await client.query(
+                `DELETE FROM journal_entries WHERE source_type='supplier_payment' AND source_id = ANY($1::text[])`,
+                [payIds]);
+            deletedPayments = payClass.auto.length;
+        }
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
         let items = inv.items;
         if (typeof items === 'string') { try { items = JSON.parse(items); } catch (_) { items = []; } }
@@ -1941,11 +2788,14 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
         // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
         await emitDomainEvent(pool, client, 'PURCHASE', {
             eventType: 'PURCHASE_VOIDED', aggregateType: 'purchase_invoice', aggregateId: invoiceId,
-            payload: { invoice_id: invoiceId, number: inv.invoiceNumber, reversed_items: reversed },
+            payload: {
+                invoice_id: invoiceId, number: inv.invoiceNumber, reversed_items: reversed,
+                paid_flag_without_payment: paidOpeningWithoutPayment,
+            },
         });
         await client.query('COMMIT');
         emit(req, 'purchaseInvoices', 'delete', { id: invoiceId, invoiceNumber: inv.invoiceNumber, void: true, force: !!force });
-        logger.warn(`[purchase_invoice_void] ${req.user?.username} ألغى الفاتورة ${inv.invoiceNumber} (${invoiceId})${force ? ' قسريًا' : ''} مع عكس ${reversed} صنفًا وحذف ${deletedPayments} دفعة`);
+        logger.warn(`[purchase_invoice_void] ${req.user?.username} ألغى الفاتورة ${inv.invoiceNumber} (${invoiceId})${paidOpeningWithoutPayment ? ' — حالة السداد كانت بالخطأ دون دفعة مسجلة' : ''}${force ? ' قسريًا' : ''} مع عكس ${reversed} صنفًا وحذف ${deletedPayments} دفعة`);
         res.json({ ok: true, invoiceNumber: inv.invoiceNumber, reversedItems: reversed, deletedPayments, force: !!force });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -1953,6 +2803,133 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
         logger.error('[purchase_invoice_void]', error);
         res.status(500).json({ error: 'INVOICE_VOID_FAILED', message: 'تعذر إلغاء الفاتورة: ' + String(error.message).slice(0, 160) });
     } finally { client.release(); }
+});
+
+// ═══ طلب المالك 2026-10-05: «أعيد الرصيد الافتتاحي مرة أخرى وأحذف القديم — بس اخصم من الرصيد طلبات الصرف» ═══
+// تقرير الأرصدة الافتتاحية المسجلة (فواتير OPEN-*): كل فاتورة وبنودها:
+// المدخل قديمًا • المنصرف منذذك (مجموع قيود الصرف من دفتر المخزون) • الرصيد الحالي.
+// إلغاء الرصيد القديم (PUT void) يعكس استلامه فقط — حركات الصرف تبقى محسوبة —
+// ثم يُدخل الرصيد الجديد من شاشة الرصيد الافتتاحي فيعود الرصيد = الجديد − المنصرف.
+function parseInvoiceItems(inv) {
+    let items = inv?.items;
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch (_) { items = []; } }
+    return Array.isArray(items) ? items : [];
+}
+router.get('/opening-balance/report', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+    try {
+        const invoices = (await pool.query(
+            `SELECT id, "invoiceNumber", date, "totalAmount", notes, items
+             FROM "purchaseInvoices"
+             WHERE "invoiceNumber" LIKE 'OPEN-%' OR notes LIKE 'رصيد افتتاحي%'
+             ORDER BY date DESC, id DESC`)).rows;
+        const out = [];
+        for (const inv of invoices) {
+            const detailed = [];
+            for (const it of parseInvoiceItems(inv)) {
+                const invId = Number(it.itemId || it.item_id) || null;
+                let currentQty = null, issuedSince = 0, itemExists = false;
+                if (invId) {
+                    const row = (await pool.query('SELECT qty FROM inventory WHERE id=$1', [invId])).rows[0];
+                    if (row) { itemExists = true; currentQty = n(row.qty); }
+                    issuedSince = round(n((await pool.query(
+                        `SELECT COALESCE(SUM(-quantity_delta),0)::float AS q
+                         FROM inventory_ledger
+                         WHERE inventory_id=$1 AND reference_type='dispatch' AND business_date >= $2`,
+                        [invId, String(inv.date || '').slice(0, 10)])).rows[0]?.q), 3);
+                }
+                detailed.push({ itemId: invId, itemName: it.itemName || it.name || '', qty: n(it.qty),
+                    unit: it.unit || '', price: n(it.price), category: it.category || '',
+                    packagingQty: it.packagingQty != null ? n(it.packagingQty) : null,
+                    currentQty, issuedSince, itemExists });
+            }
+            out.push({ id: inv.id, invoiceNumber: inv.invoiceNumber, date: inv.date,
+                totalAmount: n(inv.totalAmount), notes: inv.notes || '', items: detailed });
+        }
+        res.json({ invoices: out });
+    } catch (error) {
+        logger.error('[opening_balance_report]', error);
+        return fail(res, 500, 'OPENING_REPORT_FAILED', 'تعذر تقرير الأرصدة الافتتاحية');
+    }
+});
+
+// الرصيد الفعلي بالمخزن الرئيسي لكل صنف — أساس عرض «المتاح» في طلبات الصرف
+// (طلب المالك 2026-10-06: المتاح لإذن الصرف = رصيد الرئيسي، وما في مخازن الأقسام لا يُعاد صرفه)
+router.get('/main-availability', jwtAuth, async (req, res) => {
+    try {
+        const rows = (await pool.query(
+            `SELECT b.inventory_id AS id, COALESCE(b.on_hand,0)::float AS on_hand
+             FROM inventory_location_balances b
+             JOIN inventory_locations l ON l.id = b.location_id
+             WHERE l.code='MAIN-WAREHOUSE' AND l.active=true`)).rows;
+        res.json({ items: rows.map(r => ({ id: Number(r.id), on_hand: n(r.on_hand) })) });
+    } catch (error) {
+        logger.error('[main_availability]', error);
+        return fail(res, 500, 'MAIN_AVAILABILITY_FAILED', 'تعذر حساب أرصدة المخزن الرئيسي');
+    }
+});
+
+// ─── فحص النظام الشامل (طلب المالك 2026-10-06: «سهل جدا وزكي جدا وقوي جدا») ───
+// تشخيص فوري بضغطة زر: كل صنف — الرصيد = مجموع المخازن = صافي الدفتر —
+// وأي خلل يظهر بالاسم ليقرره المالك فورًا بدل البحث اليدوي.
+router.get('/system-health', jwtAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const anomalies = [];
+        const items = (await pool.query('SELECT id, name, qty, unit FROM inventory ORDER BY id')).rows;
+        const balRows = (await pool.query('SELECT inventory_id, SUM(on_hand) AS s FROM inventory_location_balances GROUP BY inventory_id')).rows;
+        const balMap = new Map(balRows.map(b => [Number(b.inventory_id), Number(b.s)]));
+        const ledRows = (await pool.query('SELECT inventory_id, SUM(quantity_delta) AS net, COUNT(*)::int AS c FROM inventory_ledger GROUP BY inventory_id')).rows;
+        const ledMap = new Map(ledRows.map(l => [Number(l.inventory_id), l]));
+        let consistent = 0;
+        for (const it of items) {
+            const id = Number(it.id);
+            const qty = n(it.qty);
+            const bal = balMap.get(id) ?? 0;
+            if (Math.abs(qty - bal) > 0.001) {
+                anomalies.push({ name: it.name, issue: `الرصيد ${round(qty, 3)} ≠ مجموع المخازن ${round(bal, 3)}` });
+                continue;
+            }
+            const led = ledMap.get(id);
+            if (led && Number(led.c) > 0 && Math.abs(Number(led.net) - qty) > 0.001) {
+                anomalies.push({ name: it.name, issue: `صافي الدفتر ${round(led.net, 3)} ≠ الرصيد ${round(qty, 3)}` });
+                continue;
+            }
+            consistent++;
+        }
+        const zeroStock = items.filter(i => n(i.qty) <= 0).length;
+        const lowStock = Number((await pool.query(
+            'SELECT COUNT(*)::int AS c FROM inventory WHERE qty > 0 AND qty <= COALESCE("minQty",0)')).rows[0].c);
+        res.json({
+            ok: anomalies.length === 0,
+            itemsTotal: items.length,
+            consistent,
+            anomaliesCount: anomalies.length,
+            anomalies: anomalies.slice(0, 30),
+            zeroStock,
+            lowStock,
+        });
+    } catch (error) {
+        logger.error('[system_health]', error);
+        return fail(res, 500, 'SYSTEM_HEALTH_FAILED', 'تعذر فحص النظام: ' + String(error.message).slice(0, 120));
+    }
+});
+
+// إجمالي المنصرف لكل صنف (قيود أذون الصرف من الدفتر) — لوضع «الرصيد الصافي» في شاشة الافتتاحي
+router.get('/issued-totals', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+    try {
+        const rows = (await pool.query(
+            `SELECT l.inventory_id AS "itemId", COALESCE(i.name,'(محذوف)') AS "itemName", COALESCE(i.unit,'') AS unit,
+                    COALESCE(SUM(-l.quantity_delta),0)::float AS issued
+             FROM inventory_ledger l
+             LEFT JOIN inventory i ON i.id = l.inventory_id
+             WHERE l.reference_type='dispatch'
+             GROUP BY l.inventory_id, i.name, i.unit
+             HAVING COALESCE(SUM(-l.quantity_delta),0) > 0
+             ORDER BY issued DESC`)).rows;
+        res.json({ items: rows });
+    } catch (error) {
+        logger.error('[issued_totals]', error);
+        return fail(res, 500, 'ISSUED_TOTALS_FAILED', 'تعذر حساب إجمالي المنصرف');
+    }
 });
 
 // ═══ حذف كل فواتير الشراء (أدمن فقط) — يعكس أثرها على كميات المخزون ═══
@@ -2017,14 +2994,16 @@ router.post('/purchase-invoices/clear-all', jwtAuth, requireRole('admin'), async
 // ═══ طلبات شراء النواقص: بيتها المخزن — أمين المخزن ينشئ (تلقائي من الحد الأدنى + يدوي) → الشيف يوقّع → المدير العام يعتمد نهائيًا → المخزن يستلم ═══
 // طلب فقط (لا يولّد فاتورة ولا يحرك مخزونًا) — التوثيق بتوقيع صاحب الحساب عبر requireSignature.
 // (2026-10-01 بطلب المالك: الإنشاء من المخزن حصرًا — kitchen/dept_head كانا ينشئان سابقًا)
-const PR_CREATE_ROLES = ['admin', 'manager', 'warehouse'];
+const PR_CREATE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef'];
 // الإلغاء أوسع عمدًا: أصحاب الطلبات القديمة (مطبخ/رئيس قسم) يلغون ما أنشأوه — الفحص الحقيقي ملكية داخل المسار
-const PR_CANCEL_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'dept_head'];
-const PR_CHEF_ROLES = ['admin', 'manager', 'kitchen'];
+const PR_CANCEL_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
+const PR_CHEF_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
 const PR_GM_ROLES = ['admin', 'manager'];
 // استلام المخزن للبضاعة بعد الاعتماد النهائي (توقيع أمين المخزن + دخول مخزني)
 const PR_WH_ROLES = ['admin', 'manager', 'warehouse'];
-const PR_READ_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'accountant'];
+const PR_READ_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'accountant'];
+// UPGRADE 2026-10-04 (طلب المالك): المطبخ ينشئ طلب شراء موقّع من الشيف يروح للمخزن مباشرة
+const PR_CHEF_CREATE_ROLES = ['kitchen', 'sous_chef'];
 
 /**
  * نقية: تطبيع أصناف طلب الشراء ودمج المكرر بالاسم (التلقائي + اليدوي معًا).
@@ -2097,7 +3076,7 @@ function canPRGMDecide(pr, user) {
 }
 
 function prRequestNumber() {
-    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const day = riyadhToday().replace(/-/g, '');
     return `PR-${day}-${String(Date.now()).slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
 }
 
@@ -2243,6 +3222,14 @@ router.get('/purchase-requests', jwtAuth, requireRole(...PR_READ_ROLES), async (
 
 // إنشاء أمين المخزن: أصناف تلقائية + يدوية مدمجة — يبدأ pending بانتظار الشيف
 router.post('/purchase-requests', jwtAuth, requireRole(...PR_CREATE_ROLES), async (req, res) => {
+    // الشيف (kitchen/sous_chef) ينشئ الطلب موقّعًا من نفسه — يدخل للمخزن مباشرة
+    // بحالة chef_approved بدل انتظار توقيع شيف آخر. بقية الأدوار كما كانت (pending).
+    const isChefCreator = PR_CHEF_CREATE_ROLES.includes(req.user.role);
+    let chefSignature = null;
+    if (isChefCreator) {
+        chefSignature = requireSignature(req, res);
+        if (!chefSignature) {return;}
+    }
     const client = await pool.connect();
     try {
         await ensurePurchaseRequestSchema();
@@ -2277,10 +3264,22 @@ router.post('/purchase-requests', jwtAuth, requireRole(...PR_CREATE_ROLES), asyn
             }
             deptCode = dep.code; deptName = dep.name;
         }
-        const inserted = (await client.query(`INSERT INTO purchase_requests(request_number,items,notes,status,created_by,creator_name,creator_role,dept_code,dept_name)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [prRequestNumber(),json(items),cleanName(req.body?.notes)||null,'pending',req.user.id,actorName,req.user.role,deptCode,deptName])).rows[0];
-        // القسم الطالب: الشيف يوقّع → المدير العام يعتمد → يروح للمشتريات بدون تدخل أقسام
-        await appendPREvent(client, inserted.id, 'created', null, 'pending', req, null, { items, notes: req.body?.notes || null });
+        const chefAt = new Date().toISOString();
+        // UPGRADE 2026-10-04 (أمر المالك): طلب المطبخ الموقّع من الشيف = نهائي
+        // (status='approved') — يروح المخزن مباشرة بدون مرحلة المدير العام.
+        const inserted = (await client.query(`INSERT INTO purchase_requests(request_number,items,notes,status,created_by,creator_name,creator_role,dept_code,dept_name,
+          chef_approved_by, chef_approved_name, chef_approved_at, chef_signature_data, chef_signature_hash, chef_notes)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+          [prRequestNumber(), json(items), cleanName(req.body?.notes) || null,
+           isChefCreator ? 'approved' : 'pending',
+           req.user.id, actorName, req.user.role, deptCode, deptName,
+           isChefCreator ? req.user.id : null,
+           isChefCreator ? actorName : null,
+           isChefCreator ? chefAt : null,
+           isChefCreator ? chefSignature : null,
+           isChefCreator ? signatureHash(chefSignature) : null,
+           isChefCreator ? (cleanName(req.body?.notes) || null) : null])).rows[0];
+        await appendPREvent(client, inserted.id, isChefCreator ? 'chef_approved' : 'created', null, inserted.status, req, isChefCreator ? chefSignature : null, { items, notes: req.body?.notes || null, chefCreated: isChefCreator, chefFinal: isChefCreator });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'create', inserted);
         res.status(201).json(inserted);
@@ -2691,6 +3690,10 @@ router.delete('/purchase-requests/:id', jwtAuth, requireRole(...PR_GM_ROLES), as
 module.exports = {
     router,
     ensureLegacyKitchenReceiptLedger,
+    AUTO_PAYMENT_NOTE_RE,
+    classifyInvoicePaymentsForVoid,
+    beginDispatchOp,
+    endDispatchOp,
     // Task 19: دوال نقية لاختبارات سلسلة اعتماد طلبات الصرف
     DEPT_STORES,
     resolveDispatchTargetStore,
@@ -2699,9 +3702,11 @@ module.exports = {
     resolveDeptHeadDispatch,
     canReceiveDispatch,
     canDeleteDispatch,
+    dispatchStockGate,
     normalizeSignerName,
     signerMatchesAccount,
     accountDisplayName,
+    allocatePurchaseDiscount,
     // طلبات شراء النواقص — دوال نقية للاختبارات
     normalizePRItems,
     prShortageSuggestion,
@@ -2713,6 +3718,10 @@ module.exports = {
     PR_GM_ROLES,
     PR_WH_ROLES,
     PR_READ_ROLES,
+    // ربط الأقسام المشترك
+    DEPT_CODE_ALIASES,
+    canonicalDeptCode,
+    deptsMatch,
     // Task 28: دوال نقية لوحة رئيس القسم (dept-panel)
     canAccessDeptPanel,
     resolvePanelDept,

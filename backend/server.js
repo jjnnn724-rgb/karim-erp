@@ -1468,12 +1468,12 @@ entities.forEach(entity => {
         const branchId = branchCtx.BRANCH_AWARE_ENTITIES.has(entity) ? await branchCtx.resolveBranch(req) : null;
 
         // Build safe paginated query
-        const { dataQuery, countQuery, params } = buildPaginatedQuery(entity, pagination, { branchId });
+        const { dataQuery, countQuery, params, countParams } = buildPaginatedQuery(entity, pagination, { branchId });
 
         // Execute both queries in parallel for performance
         const [dataResult, countResult] = await Promise.all([
             pool.query(dataQuery, params),
-            pool.query(countQuery, params),
+            pool.query(countQuery, countParams),
         ]);
         
         const total = parseInt(countResult.rows[0].total, 10);
