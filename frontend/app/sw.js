@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = '4.24.3';
+const CACHE_VERSION='4.25.55'; // 2026-10-13: فشل سريع (Oracle/اعتماد متكرر) + توازي الإقلاع
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -21,7 +21,7 @@ const STATIC_ASSETS = [
     '/app/index.html',
     '/app/pos.html',
     '/app/manifest.json',
-    '/app/js/main.js?v=4.9.1',
+    '/app/js/main.js?v=4.9.75',
     '/app/js/core/pwa.js',
     '/app/js/core/i18n.js',
     '/app/js/core/utils.js',
@@ -38,32 +38,35 @@ const STATIC_ASSETS = [
     '/app/js/features/whatsapp.js',
     '/app/js/features/departments.js',
     '/app/js/features/reports.js',
-    '/app/js/features/settings-users.js?v=4.9.1',
-    '/app/js/features/cfo.js?v=4.9.1',
+    '/app/js/features/settings-users.js?v=4.9.75',
+    '/app/js/features/veg-requests.js?v=4.9.75',
+    '/app/js/features/cfo.js?v=4.9.75',
     '/app/js/ui/enhancement.js',
     '/app/js/features/page-router.js',
-    '/app/js/features/auth-navigation.js?v=4.9.1',
+    '/app/js/features/auth-navigation.js?v=4.9.75',
     '/app/js/core/storage.js',
     '/app/js/features/employee-portal.js',
     '/app/js/features/dashboard.js',
     '/app/js/features/zkteco.js',
-    '/app/js/app.js?v=4.9.1',
-    '/app/js/pos.js?v=4.9.1',
+    '/app/js/app.js?v=4.9.75',
+    '/app/js/pos.js?v=4.9.75',
     '/app/js/features/smart-item-search.js?v=2.0.0', // SMART-SEARCH-TRIAL: احذف هذا السطر لإزالة التجربة
     '/app/js/pos-orders.js',
     '/app/js/db-constraints-client.js',
     '/app/js/icons.js',
     '/app/js/scanner.js',
-    '/app/js/realtime.js?v=4.9.1',
-    '/app/js/vendor/qrcode.min.js?v=4.9.1',
-    '/app/vendor/chart.umd.min.js?v=4.9.1',
-    '/app/vendor/xlsx.full.min.js?v=4.9.1',
-    '/app/vendor/html5-qrcode.min.js?v=4.9.1',
+    '/app/js/realtime.js?v=4.9.75',
+    '/app/js/vendor/qrcode.min.js?v=4.9.75',
+    '/app/vendor/chart.umd.min.js?v=4.9.75',
+    '/app/vendor/xlsx.full.min.js?v=4.9.75',
+    '/app/vendor/html5-qrcode.min.js?v=4.9.75',
     '/app/css/mobile.css',
     '/app/css/design-tokens.css',
     '/app/css/styles.css',
     '/app/js/core/i18n-auto-catalog.js',
     '/app/js/core/i18n-auto.js',
+    '/app/js/karim-i18n.js?v=4.9.76',
+    '/app/js/features/branches.js?v=4.9.76',
     '/app/css/realtime.css',
     '/app/css/scanner.css',
     '/app/css/offline-fonts.css',
@@ -99,6 +102,10 @@ self.addEventListener('activate', (event) => {
                     .map((k) => caches.delete(k))
             ))
             .then(() => self.clients.claim())
+            // تحديث تلقائي: أبلغ الصفحات المفتوحة بنسخة جديدة كي تعيد التحميل مرة واحدة
+            .then(() => self.clients.matchAll({ type: 'window' }).then((clients) => {
+                for (const c of clients) {c.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION });}
+            }))
     );
 });
 

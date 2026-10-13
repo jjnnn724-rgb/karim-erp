@@ -144,7 +144,42 @@ async function loadData() {
     const bootExclusions = ROLE_ENTITY_EXCLUSIONS[STATE.currentUser?.role] || [];
     const bootEntities = PERSISTED_ENTITIES.filter(e => !bootExclusions.includes(e));
     const nonAttendance = bootEntities.filter(e => e !== 'attendance');
-    const results = await Promise.allSettled(nonAttendance.map(e => apiList(e)));
+    // الذيل كان أربعة استدعاءات متسلسلة بعد دفعة الكيانات (حضور + كتالوج + مطبخ +
+    // مشتريات) — كل منها ثانية انتظار على شبكة الجوال. كلها مستقلة عن الكيانات،
+    // فتُطلق بالتوازي مع الدفعة وتُنتظر معها مرة واحدة.
+    const entitiesBatch = Promise.allSettled(nonAttendance.map(e => apiList(e)));
+    const tailBatch = Promise.allSettled([
+        (async () => {
+            // Attendance: load from month start (old history was purged on owner request)
+            const d1 = new Date(); d1.setDate(1);
+            const attFrom = STATE.attFrom || d1.toISOString().slice(0, 10);
+            const attTo = STATE.attTo || today();
+            try {
+                const attRes = await apiFetch(`/attendance/range?from=${attFrom}&to=${attTo}&limit=30000`);
+                STATE.attendance = Array.isArray(attRes?.data) ? attRes.data : [];
+                return true;
+            } catch (e) {
+                console.warn('Could not load attendance range:', e.message);
+                try { STATE.attendance = await apiList('attendance'); return true; } catch (_) { STATE.attendance = []; return false; }
+            }
+        })(),
+        (async () => {
+            try {
+                const catalog = await apiFetch('/pos/recipes/catalog');
+                STATE.recipeCatalog = Object.fromEntries((Array.isArray(catalog) ? catalog : []).map(row => [String(row.recipe_id), row]));
+            } catch (e) {
+                console.warn('Could not load recipe catalog:', e.message);
+            }
+        })(),
+        (async () => {
+            try { STATE.kitchenOps = await apiFetch('/kitchen/overview'); } catch (e) { console.warn('Could not load kitchen overview:', e.message); }
+        })(),
+        (async () => {
+            try { await refreshProcurementData(); } catch (e) { console.warn('Could not load procurement data:', e.message); }
+        })(),
+    ]);
+    const results = await entitiesBatch;
+    const tail = await tailBatch;
     let anyLoaded = false;
     nonAttendance.forEach((entity, i) => {
         const r = results[i];
@@ -162,26 +197,8 @@ async function loadData() {
             console.error(`<i class=ji data-i=alert-triangle></i> Failed to load "${entity}" from PostgreSQL:`, r.reason?.message || r.reason);
         }
     });
-    // Attendance: load from month start (old history was purged on owner request)
-    try {
-        const d1 = new Date(); d1.setDate(1);
-        const attFrom = STATE.attFrom || d1.toISOString().slice(0, 10);
-        const attTo = STATE.attTo || today();
-        const attRes = await apiFetch(`/attendance/range?from=${attFrom}&to=${attTo}&limit=30000`);
-        STATE.attendance = Array.isArray(attRes?.data) ? attRes.data : [];
-        anyLoaded = true;
-    } catch (e) {
-        console.warn('Could not load attendance range:', e.message);
-        try { STATE.attendance = await apiList('attendance'); } catch (_) { STATE.attendance = []; }
-    }
-    try {
-        const catalog = await apiFetch('/pos/recipes/catalog');
-        STATE.recipeCatalog = Object.fromEntries((Array.isArray(catalog) ? catalog : []).map(row => [String(row.recipe_id), row]));
-    } catch (e) {
-        console.warn('Could not load recipe catalog:', e.message);
-    }
-    try { STATE.kitchenOps = await apiFetch('/kitchen/overview'); } catch (e) { console.warn('Could not load kitchen overview:', e.message); }
-    await refreshProcurementData();
+    // الحضور يُحمَّل في الذيل المتوازي — كان سابقًا سببًا آخر لـ anyLoaded
+    if (tail[0] && tail[0].status === 'fulfilled' && tail[0].value) {anyLoaded = true;}
     return anyLoaded;
 }
 // Production mode: no client-side seed data. All business entities are loaded from PostgreSQL above.

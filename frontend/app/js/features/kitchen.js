@@ -124,14 +124,23 @@ async function submitKitchenStockReceive(){
  try{showLoad();const result=await apiFetch('/kitchen/transfers/receive',{method:'POST',body:JSON.stringify({source_location_id:kitchenTransferStock.source.id,destination_location_id:kitchenTransferStock.destination.id,reference:`KITCHEN-${uid()}`,notes:document.getElementById('kitchenTransferNotes')?.value.trim()||'',items})});closeModal();await refreshKitchenOverview();await refreshKitchenGovernance();toast(`تم استلام ${fN(result.items?.length||items.length)} صنف في مخزن المطبخ`,'success');}catch(e){toast(e.message||'تعذر استلام مواد المطبخ؛ تحقق من رصيد المخزن الرئيسي','error')}finally{hideLoad();}
 }
 function renderKitchenDispatchRegister(){
+    // أذونات المطبخ + كل الأقسام التابعة له (parent_code=kitchen) — طلب المالك 2026-10-05
+    // الشهر الحالي افتراضيًا (طلب المالك 2026-10-08) — إفراغ التاريخ يعرض الكل
+    if(window.dispRegFrom===undefined&&window.dispRegTo===undefined){const _m=today().slice(0,8)+'01';window.dispRegFrom=_m;window.dispRegTo=today();}
+    const kitchenChildCodes=new Set((STATE.departments||[]).filter(d=>String(d.parent_code||'').toLowerCase()==='kitchen').map(d=>String(d.code||'').toLowerCase()));
     const rows=(STATE.dispatches||[]).filter(d=>{
         const code=String(d.deptCode||d.departmentCode||'').toLowerCase();
         const name=String(d.deptName||d.departmentName||'').toLowerCase();
-        return code==='kitchen'||code==='مطبخ'||name.includes('مطبخ')||name.includes('kitchen');
+        if(!(code==='kitchen'||code==='مطبخ'||name.includes('مطبخ')||name.includes('kitchen')||kitchenChildCodes.has(code))){return false;}
+        const dd=String(d.date||'').slice(0,10);
+        if(window.dispRegFrom&&dd<window.dispRegFrom){return false;}
+        if(window.dispRegTo&&dd>window.dispRegTo){return false;}
+        return true;
     }).slice().reverse();
+    const monthFiltered=window.dispRegFrom||window.dispRegTo;
     const statusLabel={pending:'بانتظار اعتماد المخزن',approved:'معتمد — بانتظار استلام المطبخ',partially_received:'مستلم جزئيًا',received:'مستلم ومغلق',rejected:'مرفوض من الإدارة'};
     const statusClass={pending:'bdg-orange',approved:'bdg-green',partially_received:'bdg-blue',received:'bdg-green',rejected:'bdg-red'};
-    return `<div class="tbl-wrap kitchen-dispatch-register"><div class="tbl-hd"><div><h3><i class=ji data-i=clipboard-list></i> أذونات الصرف الواردة للمطبخ</h3><small class="text-muted">بعد اعتماد المخزن: راجع الكميات، ثم سجّل الاستلام بتوقيع مسؤول المطبخ.</small></div><span class="badge bdg-blue">${fN(rows.length)} إذن</span></div><div class="tbl-scroll"><table><thead><tr><th>الإذن</th><th>الأصناف والكميات</th><th>التاريخ</th><th>الحالة</th><th>إجراء المطبخ</th></tr></thead><tbody>${rows.map(d=>`<tr><td class="fw-bold">#${esc(String(d.id))}</td><td>${(d.items||[]).map(i=>{const cw=i.catchWeightEnabled||i.actualWeight;return `${esc(i.itemName||i.name||'—')} (${fN(i.approvedQty??i.qty)}${cw&&i.packagingQty?` ${esc(i.catchWeightUom||'كجم')} / ${fN(i.packagingQty)} ${esc(i.packagingUom||'كرتون')}`:''})`;}).join('، ')||'—'}</td><td>${fD(d.date)}</td><td><span class="badge ${statusClass[d.status]||'bdg-orange'}">${statusLabel[d.status]||esc(d.status||'غير محدد')}</span>${d.kitchenReceivedBy?`<small class="text-muted" style="display:block;margin-top:4px"><i class=ji data-i=signature></i> ${esc(d.kitchenReceivedBy)}</small>`:''}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${d.status==='approved'&&['admin','manager','kitchen'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${['approved','partially_received','received'].includes(d.status)?`<button class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" class="u-empty-sm">لا توجد أذونات صرف مسجلة للمطبخ بعد</td></tr>'}</tbody></table></div></div>`;
+    return `<div class="tbl-wrap kitchen-dispatch-register"><div class="tbl-hd"><div><h3><i class=ji data-i=clipboard-list></i> أذونات الصرف الواردة للمطبخ والأقسام التابعة له</h3><small class="text-muted">أذونات المطبخ وأقسامه الفرعية بعد اعتماد المخزن: راجع الكميات، ثم سجّل الاستلام بتوقيع مسؤول القسم.${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</small></div><span class="badge bdg-blue">${fN(rows.length)} إذن</span></div><div class="fr" style="padding:8px 14px;gap:8px;flex-wrap:wrap"><div class="fg"><label>من</label><input type="date" value="${window.dispRegFrom||''}" onchange="window.dispRegFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispRegTo||''}" onchange="window.dispRegTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.dispRegFrom='';window.dispRegTo='';renderPage()">عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>الإذن</th><th>القسم</th><th>الأصناف والكميات</th><th>التاريخ</th><th>الحالة</th><th>إجراء المطبخ</th></tr></thead><tbody>${rows.map(d=>`<tr><td class="fw-bold">#${esc(String(d.id))}</td><td><span class="badge bdg-purple">${esc(d.deptName||d.departmentName||'—')}</span></td><td>${(d.items||[]).map(i=>{const cw=i.catchWeightEnabled||i.actualWeight;return `${esc(i.itemName||i.name||'—')} (${fN(i.approvedQty??i.qty)}${cw&&i.packagingQty?` ${esc(i.catchWeightUom||'كجم')} / ${fN(i.packagingQty)} ${esc(i.packagingUom||'كرتون')}`:''})`;}).join('، ')||'—'}</td><td>${fD(d.date)}</td><td><span class="badge ${statusClass[d.status]||'bdg-orange'}">${statusLabel[d.status]||esc(d.status||'غير محدد')}</span>${d.kitchenReceivedBy?`<small class="text-muted" style="display:block;margin-top:4px"><i class=ji data-i=signature></i> ${esc(d.kitchenReceivedBy)}</small>`:''}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${d.status==='approved'&&['admin','manager','kitchen'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${['approved','partially_received','received'].includes(d.status)?`<button class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد أذونات صرف مسجلة للمطبخ وأقسامه بعد</td></tr>'}</tbody></table></div></div>`;
 }
 function renderKitchenDistributionRegister(){
  const rows=(STATE.kitchenOps?.distributions||[]).slice();
@@ -145,7 +154,7 @@ function renderKitchen(){
  const policy=ops.policies?.[0]; const modeLabel={flexible:'مرن',monitor:'مراقب',strict:'صارم'}[policy?.operation_mode||'monitor'];
  const pending=STATE.dispatches.filter(d=>d.status==='pending');
  if(!STATE.kitchenOps&&!kitchenOverviewLoading) {setTimeout(refreshKitchenOverview,0);} if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); } if(!kitchenGovernance.audits&&!kitchenGovernanceLoading) {setTimeout(refreshKitchenGovernance,0);}
-   return `<div class="kitchen-page"><div class="kitchen-page-head"><div><div class="eyebrow">KITCHEN PRODUCTION CONTROL</div><h3><i class=ji data-i=chef-hat></i> ${t('kit.title')}</h3><p>${t('kit.sub')}</p></div><div class="kitchen-actions"><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('kit.req')}</button><button class="btn btn-blue" onclick="showKitchenProductionModal()"><i class=ji data-i=cooking-pot></i> ${t('kit.prod')}</button><button class="btn" onclick="refreshKitchenOverview()"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button></div></div><div class="metrics-grid kitchen-kpis"><div class="mcard"><div class="mcard-label">${t('kit.policy')}</div><div class="mcard-val c-gold" style="font-size:20px">${modeLabel}</div><small class="text-muted">${t('kit.flexNote')}</small></div><div class="mcard"><div class="mcard-label">${t('kit.openProd')}</div><div class="mcard-val c-blue">${fN((ops.batches||[]).filter(b=>['draft','open'].includes(b.status)).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.exceptions')}</div><div class="mcard-val c-orange">${fN((ops.exceptions||[]).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.pendingReq')}</div><div class="mcard-val c-purple">${fN(pending.length)}</div></div></div><nav class="wh-secnav" aria-label="أقسام صفحة المطبخ">
+   return `<div class="kitchen-page"><div class="kitchen-page-head"><div><div class="eyebrow">KITCHEN PRODUCTION CONTROL</div><h3><i class=ji data-i=chef-hat></i> ${t('kit.title')}</h3><p>${t('kit.sub')}</p></div><div class="kitchen-actions"><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('kit.req')}</button><button class="btn btn-blue" onclick="showKitchenProductionModal()"><i class=ji data-i=cooking-pot></i> ${t('kit.prod')}</button>${['admin','manager','kitchen','sous_chef'].includes(STATE.currentUser?.role)?`<button class="btn btn-blue" onclick="window.open('/app/menu-admin.html','_blank')" title="الشيف يتحكم في شاشة منيو البوفيه"><i class=ji data-i=settings></i> تحكم شاشة البوفيه</button><button class="btn" onclick="window.open('/app/menu-board.html','_blank')" title="عرض شاشة المنيو على التلفاز"><i class=ji data-i=eye></i> عرض شاشة المنيو</button>`:''}<button class="btn" onclick="refreshKitchenOverview()"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button></div></div><div class="metrics-grid kitchen-kpis"><div class="mcard"><div class="mcard-label">${t('kit.policy')}</div><div class="mcard-val c-gold" style="font-size:20px">${modeLabel}</div><small class="text-muted">${t('kit.flexNote')}</small></div><div class="mcard"><div class="mcard-label">${t('kit.openProd')}</div><div class="mcard-val c-blue">${fN((ops.batches||[]).filter(b=>['draft','open'].includes(b.status)).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.exceptions')}</div><div class="mcard-val c-orange">${fN((ops.exceptions||[]).length)}</div></div><div class="mcard"><div class="mcard-label">${t('kit.pendingReq')}</div><div class="mcard-val c-purple">${fN(pending.length)}</div></div></div><nav class="wh-secnav" aria-label="أقسام صفحة المطبخ">
 <button type="button" class="btn btn-sm" data-sec="kit-sec-prod" onclick="kitGoSec('kit-sec-prod')"><i class=ji data-i=cooking-pot></i> الإنتاج</button>
 <button type="button" class="btn btn-sm" data-sec="kit-sec-dist" onclick="kitGoSec('kit-sec-dist')"><i class=ji data-i=split></i> التوزيع</button>
 <button type="button" class="btn btn-sm" data-sec="kit-sec-cost" onclick="kitGoSec('kit-sec-cost')"><i class=ji data-i=chart></i> التكلفة</button>
@@ -177,13 +186,36 @@ function kitGoSec(id){
         b.classList.toggle('btn-gold', b.dataset.sec === id);
     });
 }
+const DEPT_CODE_ALIASES = Object.freeze({
+    'shop': 'CAF',               // الكوفي شوب (HR) = كافيهshop / الكافيه (مخزن/تشغيل)
+    'caf': 'CAF',
+    'ca1': 'NAS',                // كافيه ناصر الدور الرابع (HR) = كافيه ناصر (مخزن/تشغيل)
+    'nas': 'NAS',
+    'juice': 'G',                // العصير (HR) = العصير (مخزن/تشغيل)
+    'g': 'G',
+    'service': 'hot_hall',        // الصاله (HR) = الصالة (مخزن/تشغيل)
+    'hot_hall': 'hot_hall',
+    'kitchen': 'kitchen',
+    'storeroom': 'storeroom',
+    'external_sales': 'external_sales',
+});
+function canonicalDeptCode(code) {
+    if (!code) return '';
+    const clean = String(code).trim().toLowerCase();
+    return DEPT_CODE_ALIASES[clean] || String(code).trim();
+}
 function myDeptCode(){ return STATE.currentUser?.dept_code || null; }
 function isDeptHead(){ return STATE.currentUser?.role==='dept_head'; }
 function deptNameByCode(code){
-// UPGRADE 2026-10-01: يقبل قائمة أقسام بفواصل (dept_code متعدد) ويعرض أسماءها
+// UPGRADE 2026-10-01 + 2026-10-10: يقبل قائمة أقسام بفواصل والأكواد المتطابقة ويعرض أسماءها
 const list=String(code||'').split(',').map(x=>x.trim()).filter(Boolean);
 if(!list.length){return '—';}
-return list.map(c=>{const d=(STATE.hrDepartments||[]).find(x=>String(x.code)===c)||(STATE.departments||[]).find(x=>String(x.code)===c);return d?d.name:c;}).join(' + ');
+return list.map(c=>{
+    const canon=canonicalDeptCode(c);
+    const d=(STATE.departments||[]).find(x=>String(x.code).toLowerCase()===canon.toLowerCase()||String(x.code).toLowerCase()===c.toLowerCase())
+         ||(STATE.hrDepartments||[]).find(x=>String(x.code).toLowerCase()===c.toLowerCase()||String(x.code).toLowerCase()===canon.toLowerCase());
+    return d?d.name:c;
+}).join(' + ');
 }
 function dispatchChainStage(d){
 // المرحلة الحالية من السلسلة لعرضها في الواجهة
@@ -200,13 +232,16 @@ const my=myDeptCode();
 // Task 28: لوحة القسم الحية — تُجلب مرة واحدة وتُعرض فوق الملخص المحلي فور وصولها
 if(STATE.currentUser?.role==='dept_head' && !STATE.deptPanel) {loadDeptPanel();}
 const panel=STATE.deptPanel;
-const mine=STATE.dispatches.filter(d=>String(d.deptCode)===String(my));
+const mine=STATE.dispatches.filter(d=>{const codes=String(my||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);return codes.length?codes.includes(String(d.deptCode||'').trim().toLowerCase()):String(d.deptCode)===String(my);});
 const pending=mine.filter(d=>d.status==='pending').length;
 const chefOk=mine.filter(d=>d.status==='chef_approved').length;
 const awaitingReceive=mine.filter(d=>['approved','partially_received'].includes(d.status)).length;
 const received=mine.filter(d=>['received','partially_received'].includes(d.status)).length;
 const myCost=deptExpenseBreakdown(my).total;
 const myDeptName=deptNameByCode(my)||'قسمك';
+// طلبات القسم كاملة بلا قص (طلب المالك 2026-10-08): الشهر الحالي افتراضيًا، والكل بزر واحد
+if(window.myDispFrom===undefined&&window.myDispTo===undefined&&!window.myDispAll){const _m=today().slice(0,8)+'01';window.myDispFrom=_m;window.myDispTo=today();}
+const myShown=window.myDispAll?mine.slice().reverse():mine.filter(d=>{const dd=String(d.date||'').slice(0,10);if(window.myDispFrom&&dd<window.myDispFrom){return false;}if(window.myDispTo&&dd>window.myDispTo){return false;}return true;}).slice().reverse();
 // Task 28: بطاقات مصادر الكلفة من الخادم الحي (صرف مخزني / عكس صرف / فروق جرد / يدوي)
 let panelHtml='';
 if(panel && panel.scope && String(panel.scope.deptCode||'')===String(my||'')){
@@ -230,8 +265,9 @@ return `
   <div class="metric-card-premium" onclick="go('dispatch')"><div class="kpi-top"><span class="kpi-label">كلفة قسمي (الإجمالي)</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(myCost)}</div><div class="trend"><i class=ji data-i=chart></i> مستلمة: ${received} طلب</div></div>
 </div>
 ${panelHtml}
-<div class="u-row-between" style="margin-top:22px"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> آخر طلبات ${esc(myDeptName)}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=plus></i> طلب صرف جديد</button></div>
-<div class="tbl-wrap"><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>المرحلة</th><th>الحالة</th></tr></thead><tbody>${mine.slice(-8).reverse().map(d=>`<tr><td>${esc(String(d.id)).slice(-6)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join('، ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td></tr>`).join('')||'<tr><td colspan="5" class="u-empty">لا توجد طلبات بعد — أنشئ طلبك الأول</td></tr>'}</tbody></table></div></div>`;
+<div class="u-row-between" style="margin-top:22px"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> طلبات ${esc(myDeptName)}${window.myDispAll?' <span class="badge bdg-blue">الكل</span>':' <span class="badge bdg-blue">الشهر الحالي</span>'}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=plus></i> طلب صرف جديد</button></div>
+<div class="fr" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><div class="fg"><label>من</label><input type="date" value="${window.myDispFrom||''}" onchange="window.myDispFrom=this.value;window.myDispAll=false;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.myDispTo||''}" onchange="window.myDispTo=this.value;window.myDispAll=false;renderPage()"></div>${window.myDispAll?`<button class="btn btn-sm" onclick="window.myDispAll=false;window.myDispFrom=today().slice(0,8)+'01';window.myDispTo=today();renderPage()">الشهر الحالي فقط</button>`:`<button class="btn btn-sm" onclick="window.myDispFrom='';window.myDispTo='';window.myDispAll=true;renderPage()">عرض الكل (قديم + جديد)</button>`}<span class="badge bdg-blue">${fN(myShown.length)} طلب</span></div>
+<div class="tbl-wrap"><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>المرحلة</th><th>الحالة</th></tr></thead><tbody>${myShown.map(d=>`<tr><td>${esc(String(d.id)).slice(-6)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join('، ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td></tr>`).join('')||'<tr><td colspan="5" class="u-empty">لا توجد طلبات في الفترة — أفرغ التاريخ لعرض الكل أو أنشئ طلبك الأول</td></tr>'}</tbody></table></div></div>`;
 }
 // Task 28: جلب لوحة القسم الحية — صامتة عند الفشل (اللوحة تعمل بالبيانات المحلية)
 async function loadDeptPanel(){
@@ -244,24 +280,35 @@ function renderDispatch(){
 if(!checkMenuAccessLocal('dispatch')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
 if(prCanSee()&&!STATE._prLoaded&&!STATE._prLoading){ STATE._prLoading=true; setTimeout(()=>refreshPurchaseRequests().finally(()=>{ STATE._prLoading=false; }),0); }
 const role=STATE.currentUser?.role; const my=myDeptCode();
+// الشهر الحالي افتراضيًا (طلب المالك 2026-10-08) — إفراغ التاريخ يعرض الكل
+if(window.dispFrom===undefined&&window.dispTo===undefined){const _m=today().slice(0,8)+'01';window.dispFrom=_m;window.dispTo=today();}
 // رئيس القسم يرى طلبات قسمه فقط — باقي الأدوار ترى الكل
-const dispatches = [...STATE.dispatches].reverse().filter(d=>isDeptHead()?String(d.deptCode)===String(my):true);
+const dispatches = [...STATE.dispatches].reverse().filter(d=>{if(!isDeptHead()){return true;}const codes=String(my||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);return codes.length?codes.includes(String(d.deptCode||'').trim().toLowerCase()):String(d.deptCode)===String(my);}).filter(d=>{const dd=String(d.date||'').slice(0,10);if(window.dispFrom&&dd<window.dispFrom){return false;}if(window.dispTo&&dd>window.dispTo){return false;}return true;});
+const monthFiltered=window.dispFrom||window.dispTo;
 const chefQueue=dispatches.filter(d=>d.status==='pending'&&d.needsChefApproval).length;
 const warehouseQueue=dispatches.filter(d=>d.status==='chef_approved'||(d.status==='pending'&&!d.needsChefApproval)).length;
 const chainBanner=!isDeptHead()?`<div class="workflow-banner" style="margin-bottom:14px"><i class=ji data-i=clipboard-list></i> سلسلة الاعتماد: <strong>رئيس القسم</strong> ينشئ الطلب ← <strong>الشيف العمومي</strong> يعتمده ← <strong>المخازن</strong> تصرف وتخصم ← القسم يستلم من مخزنه الخاص.</div>`:'';
-const canDecideChef=['admin','manager','kitchen'].includes(role);
+const canDecideChef=['admin','manager','kitchen','sous_chef'].includes(role);
 const canDecideWarehouse=['admin','manager','warehouse'].includes(role);
-const canReceive=['admin','manager','kitchen'].includes(role);
-return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{const canWarehouse=d.status==='pending'&&!d.needsChefApproval||d.status==='chef_approved';return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${d.status==='pending'&&d.needsChefApproval&&canDecideChef?`<button class="btn btn-green btn-sm" onclick="openChefApproveModal('${esc(String(d.id))}')"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" onclick="openChefRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canWarehouse&&canDecideWarehouse&&!['rejected'].includes(d.status)?`<button class="btn btn-green btn-sm" onclick="openApproveModal('${esc(String(d.id))}')"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" onclick="openRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${((d.status==='pending'&&canDecideWarehouse)||role==='admin')?`<button type="button" class="btn btn-sm ${role==='admin'&&d.status!=='pending'?'btn-red':''}" onclick="deleteDispatch('${esc(String(d.id))}','${esc(String(d.status))}')" title="${role==='admin'?'حذف نهائي للأدمن (أي حالة — موثّق باسمك)':'حذف طلب معلّق لم يُعتمد بعد'}"><i class=ji data-i=trash></i> ${role==='admin'&&d.status!=='pending'?'حذف نهائي (أدمن)':'حذف'}</button>`:''}${d.status==='approved'&&(canReceive||(isDeptHead()&&String(d.deptCode)===String(my)))?`<button type="button" class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}<button type="button" class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received'].includes(d.status)?`<button type="button" class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}`;
+const canReceive=['admin','manager','kitchen','sous_chef'].includes(role);
+return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}<div class="fr" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><div class="fg"><label>من</label><input type="date" value="${window.dispFrom||''}" onchange="window.dispFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispTo||''}" onchange="window.dispTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.dispFrom='';window.dispTo='';renderPage()">عرض الكل (قديم + جديد)</button>`:''}</div>${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="dispPrintList()"><i class=ji data-i=printer></i> طباعة الكشف</button></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{const canWarehouse=d.status==='pending'&&!d.needsChefApproval||d.status==='chef_approved';return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${d.status==='pending'&&d.needsChefApproval&&canDecideChef?`<button class="btn btn-green btn-sm" onclick="openChefApproveModal('${esc(String(d.id))}')"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" onclick="openChefRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canWarehouse&&canDecideWarehouse&&!['rejected'].includes(d.status)?`<button class="btn btn-green btn-sm" onclick="openApproveModal('${esc(String(d.id))}')"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" onclick="openRejectModal('${esc(String(d.id))}')"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${((d.status==='pending'&&canDecideWarehouse)||role==='admin')?`<button type="button" class="btn btn-sm ${role==='admin'&&d.status!=='pending'?'btn-red':''}" onclick="deleteDispatch('${esc(String(d.id))}','${esc(String(d.status))}')" title="${role==='admin'?'حذف نهائي للأدمن (أي حالة — موثّق باسمك)':'حذف طلب معلّق لم يُعتمد بعد'}"><i class=ji data-i=trash></i> ${role==='admin'&&d.status!=='pending'?'حذف نهائي (أدمن)':'حذف'}</button>`:''}${d.status==='approved'&&(canReceive||(isDeptHead()&&String(d.deptCode)===String(my)))?`<button type="button" class="btn btn-gold btn-sm" onclick="openReceiveModal('${esc(String(d.id))}')"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${canEditDispatch(d)?`<button type="button" class="btn btn-blue btn-sm" onclick="openDispatchEditModal('${esc(String(d.id))}')"><i class=ji data-i=pencil></i> تعديل</button>`:''}<button type="button" class="btn btn-blue btn-sm" onclick="viewDispatchDetails('${esc(String(d.id))}')"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received'].includes(d.status)?`<button type="button" class="btn btn-sm" onclick="printDispatchNote('${esc(String(d.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}`;
 }
 // ═══ طلبات شراء النواقص: بيتها المخزن — أمين المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد ← المخزن يستلم ═══
 // (2026-10-01 بطلب المالك: الإنشاء من المخزن حصرًا — kitchen/dept_head للعرض والاعتماد فقط)
-function prCanSee(){ return ['admin','manager','warehouse','kitchen','accountant'].includes(STATE.currentUser?.role); }
-function prCanCreate(){ return ['admin','manager','warehouse'].includes(STATE.currentUser?.role); }
+function dispPrintList(){
+const rows=(STATE.dispatches||[]).filter(d=>{const dd=String(d.date||'').slice(0,10);if(window.dispFrom&&dd<window.dispFrom){return false;}if(window.dispTo&&dd>window.dispTo){return false;}return true;}).slice().reverse();
+const body=rows.map((d,i)=>`<tr><td>${rows.length-i}</td><td>${esc(d.deptName||'—')}</td><td>${(d.items||[]).map(x=>`${esc(x.itemName)} (${fN(x.approvedQty??x.qty)})`).join('، ')}</td><td>${fD(d.date)}</td><td>${esc(d.status||'—')}</td></tr>`).join('');
+ysPrintReport('كشف أذونات الصرف', `${window.dispFrom||window.dispTo?`من ${window.dispFrom||'البداية'} إلى ${window.dispTo||'اليوم'}`:'كل الفترة'}`,
+[['عدد الأذون', fN(rows.length)]], ['#','القسم','الأصناف','التاريخ','الحالة'], body);
+}
+function prCanSee(){ return ['admin','manager','warehouse','kitchen','sous_chef','accountant'].includes(STATE.currentUser?.role); }
+function prCanCreate(){ return ['admin','manager','warehouse','kitchen','sous_chef'].includes(STATE.currentUser?.role); }
+// الشيف ينشئ الطلب موقّعًا من نفسه — يدخل المخزن مباشرة دون مرحلة توقيع شيف آخر
+function prIsChefCreator(){ return ['kitchen','sous_chef'].includes(STATE.currentUser?.role); }
 function prCanReceive(){ return ['admin','manager','warehouse'].includes(STATE.currentUser?.role); }
-function prCanChef(){ return ['admin','manager','kitchen'].includes(STATE.currentUser?.role); }
+function prCanChef(){ return ['admin','manager','kitchen','sous_chef'].includes(STATE.currentUser?.role); }
 function prCanGM(){ return ['admin','manager'].includes(STATE.currentUser?.role); }
-function prCanCancel(){ return ['admin','manager','warehouse','kitchen'].includes(STATE.currentUser?.role); }
+function prCanCancel(){ return ['admin','manager','warehouse','kitchen','sous_chef'].includes(STATE.currentUser?.role); }
 function prCanDelete(){ return ['admin','manager'].includes(STATE.currentUser?.role); }
 async function deletePR(id){
 if(!prCanDelete()){ toast('حذف طلبات الشراء للإدارة فقط','error'); return; }
@@ -275,7 +322,9 @@ finally{ hideLoad(); }
 }
 async function deleteDispatch(id, forceStatus){
 const role = STATE.currentUser?.role;
-if(!['admin','manager','warehouse'].includes(role)){ toast('حذف أذونات الصرف للمخازن والإدارة فقط','error'); return; }
+const dSelf=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));
+const isCreatorPending = dSelf && String(dSelf.creatorUserId||'')===String(STATE.currentUser?.id||'') && dSelf.status==='pending';
+if(!['admin','manager','warehouse'].includes(role) && !isCreatorPending){ toast('الحذف للمخازن والإدارة أو صاحب الطلب المعلّق','error'); return; }
 const isAdmin = role === 'admin';
 const isSigned = forceStatus && forceStatus !== 'pending';
 if(isAdmin && isSigned){
@@ -290,6 +339,147 @@ closeModal(); renderPage(); toast(isAdmin && isSigned ? 'حُذف إذن الص�
 }catch(e){ toast(e.message||'تعذر حذف طلب الصرف','error'); }
 finally{ hideLoad(); }
 }
+// ─── تعديل إذن الصرف قبل اعتماد المخازن (طلب المالك 2026-10-04) ───
+function canEditDispatch(d){
+if(!d||!['pending','chef_approved'].includes(d.status)){return false;}
+const role=STATE.currentUser?.role;
+if(['kitchen','sous_chef','admin','manager'].includes(role)){return true;}
+// قرار المالك 2026-10-09: رئيس القسم يعدّل أذونات قسمه (تظهر في حسابه)
+if(role==='dept_head'){
+const myDepts=String(STATE.currentUser?.dept_code||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+if(myDepts.includes(String(d.deptCode||'').trim().toLowerCase())){return true;}
+}
+return String(d.creatorUserId||'')===String(STATE.currentUser?.id||'');
+}
+// ─── تعديل إذن الصرف قبل اعتماد المخازن (طلب المالك 2026-10-04) ───
+// نفس شاشة الإنشاء بالضبط: بحث فوري من المخزن + الإضافة بتصنيفه ووحداته + عرض المتاح.
+function dispatchEditRowHtml(){ return dispRowHtml(); }
+function prefillDispatchEditRow(row, it){
+if(!row){return;}
+const inv=(STATE.inventory||[]).find(i=>String(i.name||'').toLowerCase()===String(it.itemName||'').toLowerCase());
+if(inv){
+// نفس مصدر شاشة الإنشاء: رصيد الرئيسي المؤكد أولًا، ثم الإجمالي كاحتياطي
+const confirmedMax = dispatchMainAvail ? (dispatchMainAvail.get(Number(inv.id)) ?? 0) : (inv.qty ?? 0);
+const synthetic=document.createElement('div');
+synthetic.setAttribute('data-name', inv.name||it.itemName);
+synthetic.setAttribute('data-unit', inv.unit||'قطعة');
+synthetic.setAttribute('data-max', confirmedMax);
+synthetic.setAttribute('data-catch', inv.catch_weight_enabled?1:0);
+synthetic.setAttribute('data-pkguom', inv.packaging_uom||'كرتون');
+synthetic.setAttribute('data-avgbox', inv.packaging_qty_per_base??'');
+synthetic.setAttribute('data-secunits', esc(JSON.stringify(Array.isArray(inv.secondary_units)?inv.secondary_units.filter(u=>u&&u.uom&&Number(u.factor)>0):[])));
+
+const nameBanner=document.createElement('div');
+nameBanner.style.cssText='font-size:15px;font-weight:900;margin-bottom:8px;color:var(--text);display:flex;align-items:center;gap:6px';
+nameBanner.innerHTML='<i class=ji data-i=package></i> '+esc(it.itemName||'');
+row.insertBefore(nameBanner, row.firstChild);
+row.querySelector('.dispatch-item-list').appendChild(synthetic);
+dispPickItem(synthetic);
+synthetic.remove();
+}else{
+// الصنف لم يعد موجودًا في المخزن — يبقى نصًا مع تنبيه واضح بدل إسقاطه
+row.querySelector('.dispatch-item-search').value=it.itemName||'';
+row.querySelector('.dispatch-item-name').value=it.itemName||'';
+row.querySelector('.row-unit').textContent=it.unit||'وحدة';
+const av=row.querySelector('.row-avail'); if(av){av.textContent='⚠ الصنف غير موجود في المخزن حاليًا';}
+}
+const isCw=row.querySelector('.dispatch-item-catch')?.value==='1';
+if(isCw){
+const pkg=row.querySelector('.dispatch-item-pkg'); if(pkg){pkg.value=it.packagingQty??it.qty??'';}
+const qty=row.querySelector('.dispatch-item-qty'); if(qty&&it.estWeightKg){qty.value=it.estWeightKg;}
+}else{
+const qty=row.querySelector('.dispatch-item-qty'); if(qty){qty.value=it.requestedQty??it.qty??'';}
+const uomSel=row.querySelector('.dispatch-item-uom');
+if(uomSel&&it.requestedUom){ const opt=[...uomSel.options].find(o=>o.value===it.requestedUom); if(opt){uomSel.value=it.requestedUom;} }
+}
+}
+function openDispatchEditModal(id){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));
+if(!d){toast('الطلب غير موجود','error');return;}
+if(!canEditDispatch(d)){toast('التعديل متاح قبل اعتماد المخازن فقط','error');return;}
+// تحميل أرصدة الرئيسي أولًا (كانت مفقودة في التعديل — البحث والمتاح كانا مكسورين)
+showModal(`<h3><i class=ji data-i=pencil></i> تعديل إذن الصرف — ${esc(d.deptName||'')}</h3><div class="text-muted u-p8">جارٍ حساب أرصدة المخزن الرئيسي...</div>`);
+loadDispatchMainAvailability().then((ok)=>{
+if(!ok){
+showModal(`<h3><i class=ji data-i=pencil></i> تعديل إذن الصرف — ${esc(d.deptName||'')}</h3><div class="workflow-banner" style="color:var(--red,#d64545)"><i class=ji data-i=alert-triangle></i> <strong>تعذر جلب أرصدة المخزن الرئيسي</strong> — سيُعرض المتاح من البيانات المحلية، والبحث عن أصناف جديدة قد لا يعمل. حدّث الصفحة لو تكرر.</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="openDispatchEditModal('${esc(String(d.id))}')"><i class=ji data-i=refresh></i> إعادة المحاولة</button></div>`);
+return;
+}
+openDispatchEditModalReady(d);
+});
+}
+function openDispatchEditModalReady(d){
+const isDeptHeadEditor=STATE.currentUser?.role==='dept_head';
+const deptOptions=getDispatchDepartments().map((dep)=>`<option value="${esc(dep.code)}" ${String(dep.code).toLowerCase()===String(d.deptCode||'').toLowerCase()?'selected':''}>${esc(dep.name||dep.name_ar||dep.code)}</option>`).join('');
+const deptField=isDeptHeadEditor
+ ? `<div class="fg"><label>القسم الطالب</label><input type="text" value="${esc(deptNameByCode(d.deptCode)||d.deptCode||'')}" readonly disabled></div>`
+ : `<div class="fg"><label>القسم الطالب (يمكن نقله لقسم آخر)</label><select id="deDept">${deptOptions}</select></div>`;
+showModal(`<h3><i class=ji data-i=pencil></i> تعديل إذن الصرف — ${esc(d.deptName||'')}</h3>
+${deptField}
+<style>#dispatchItemsContainer .dispatch-item{display:block}#dispatchItemsContainer .dispatch-item .fr{flex-wrap:wrap;align-items:center;gap:8px}#dispatchItemsContainer .dispatch-item .fr>.fg{flex:1;min-width:110px}#dispatchItemsContainer .dispatch-item input.dispatch-item-search{font-weight:700;color:var(--text);font-size:14px}#dispatchItemsContainer .dispatch-item .row-avail{font-weight:700;color:var(--gold)}</style>
+<div class="workflow-banner"><i class=ji data-i=info></i> نفس شاشة الإنشاء: ابحث عن الصنف من المخزن وعدّل الكمية — <strong>المتاح</strong> يظهر تحت كل صنف.</div>
+<label style="margin-top:10px;display:block">الأصناف <span class="badge bdg-blue" id="dispCount">${(d.items||[]).length}</span></label>
+<div id="dispatchItemsContainer"></div>
+<button type="button" class="btn btn-blue btn-sm" onclick="addDispatchItemField()"><i class=ji data-i=plus></i> إضافة صنف من المخزن</button>
+<div class="callout-gold u-my16"><div class="fw-bold"><i class=ji data-i=clipboard-list></i> ملخص الطلب بعد التعديل</div><div class="callout-value u-t14" id="dispSummary">—</div></div>
+${d.status==='chef_approved'?`<div class="workflow-banner" style="border-right:4px solid var(--red)">⚠ هذا الطلب معتمد من الشيف — الحفظ <b>يلغي الاعتماد</b> ويرجعه للمراجعة على الأرقام الجديدة</div>`:''}
+<div class="fg" style="margin-top:10px"><label>سبب التعديل (يُوثَّق في سجل الطلب)</label><input type="text" id="deReason" placeholder="مثال: تعديل كميات بعد الجرد"></div>
+<div class="modal-footer"><button type="button" class="btn" onclick="closeModal()">إلغاء</button><button type="button" class="btn btn-gold" onclick="submitDispatchEdit('${esc(String(d.id))}')"><i class=ji data-i=save></i> حفظ التعديل</button></div>`);
+const container=document.getElementById('dispatchItemsContainer');
+(d.items||[]).forEach(it=>{
+const wrap=document.createElement('div');
+wrap.innerHTML=dispatchEditRowHtml();
+const row=wrap.firstElementChild;
+container.appendChild(row);
+prefillDispatchEditRow(row,it);
+});
+updateDispSummary();
+}
+
+/** تجميع الأصناف من صفوف الشاشة — نفس منطق الإنشاء حرفيًا (تحويل الوحدات الثانوية + الوزن المتغير) */
+function collectDispatchItems(){
+const items=[];
+document.querySelectorAll('.dispatch-item').forEach(row=>{
+const name=row.querySelector('.dispatch-item-name')?.value?.trim();
+const isCw=row.querySelector('.dispatch-item-catch')?.value==='1';
+const pkgUom=row.querySelector('.dispatch-item-pkguom')?.value||'كرتون';
+if(isCw){
+const boxes=parseInt(row.querySelector('.dispatch-item-pkg')?.value)||0;
+const avgBox=parseFloat(row.querySelector('.dispatch-item-avgbox')?.value)||0;
+const estKg=avgBox>0?Math.round(boxes*avgBox*1000)/1000:0;
+if(name&&boxes>0) {items.push({itemName:name,qty:boxes,unit:pkgUom,packagingQty:boxes,packagingUom:pkgUom,estWeightKg:estKg||null});}
+}else{
+const qty=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
+const uomSel=row.querySelector('.dispatch-item-uom');
+const uomOpt=uomSel?.selectedOptions?.[0]||null;
+const baseUnit=uomSel?.options?.[0]?.value||row.querySelector('.row-unit')?.textContent?.trim()||'قطعة';
+if(name&&qty>0){
+if(uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
+const factor=Number(uomOpt.dataset.factor);
+const baseQty=Math.round(qty*factor*1000)/1000;
+items.push({itemName:name,qty:baseQty,unit:baseUnit,requestedQty:qty,requestedUom:uomOpt.value});
+}else{
+items.push({itemName:name,qty,unit:baseUnit});
+}
+}
+}
+});
+return items;
+}
+async function submitDispatchEdit(id){
+const items=collectDispatchItems();
+if(!items.length){toast('اكتب صنفًا واحدًا على الأقل باسم وكمية صحيحة','error');return;}
+const reason=document.getElementById('deReason')?.value.trim()||'';
+try{
+showLoad();
+const res=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/edit`,{method:'PUT',body:JSON.stringify({items,deptCode:(document.getElementById('deDept')?.value)||undefined,reason})});
+const i=(STATE.dispatches||[]).findIndex(x=>String(x.id)===String(id));
+if(i>-1&&res.dispatch){STATE.dispatches[i]=res.dispatch;}
+closeModal();renderPage();
+toast(res.chefApprovalReset?'تم التعديل — أُلغي اعتماد الشيف وأُعيد الطلب للمراجعة':'تم تعديل الإذن بنجاح','success');
+}catch(e){ toast(e.message||'فشل تعديل الإذن','error'); }
+finally{ hideLoad(); }
+}
+
 function prStatusLabel(s){ return ({pending:'بانتظار الشيف',chef_approved:'اعتمدها الشيف — بانتظار المدير العام',approved:'معتمدة نهائيًا — مغلق',partially_fulfilled:'مستلم جزئيًا (قديم)',fulfilled:'مستلم ومغلق (قديم)',rejected:'مرفوضة',cancelled:'ملغاة'})[s]||s||'—'; }
 function prStatusClass(s){ return (s==='approved'||s==='partially_fulfilled')?'bdg-green':s==='fulfilled'?'bdg-teal':s==='chef_approved'?'bdg-blue':s==='pending'?'bdg-orange':s==='rejected'?'bdg-red':'bdg-purple'; }
 async function refreshPurchaseRequests(){
@@ -302,17 +492,17 @@ if(!prCanSee()) {return '';}
 const rows=(STATE.purchaseRequests||[]).slice().reverse();
 const pendChef=rows.filter(r=>r.status==='pending').length;
 const pendGM=rows.filter(r=>r.status==='chef_approved').length;
-return `<div class="tbl-wrap" style="margin-top:18px"><div class="tbl-hd"><div><h3><i class=ji data-i=shopping-cart></i> طلبات شراء النواقص</h3><small class="text-muted">المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات).</small></div><div class="u-row-wrap">${prCanCreate()?`<button class="btn btn-gold btn-sm" onclick="openPRCreateModal()"><i class=ji data-i=plus></i> طلب شراء جديد</button>`:''}<button class="btn btn-blue btn-sm" onclick="refreshPurchaseRequests()"><i class=ji data-i=refresh></i> تحديث</button><span class="badge bdg-orange">بانتظار الشيف: ${fN(pendChef)}</span><span class="badge bdg-blue">بانتظار المدير: ${fN(pendGM)}</span></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الرقم</th><th>الأصناف</th><th>الحالة</th><th>المنشئ</th><th>توقيع الشيف</th><th>اعتماد المدير</th><th>استلام المخزن</th><th>إجراءات</th></tr></thead><tbody>${rows.map((r,idx)=>{const items=Array.isArray(r.items)?r.items:[];return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(r.request_number||('#'+r.id))}</td><td>${items.map(i=>`${esc(i.itemName||i.name||'—')} (${fN(i.requestedQty??i.qty)})`).join('، ')||'—'}</td><td><span class="badge ${prStatusClass(r.status)}">${prStatusLabel(r.status)}</span></td><td>${esc(r.creator_name||'—')}</td><td>${r.chef_approved_name?`<span class="badge bdg-blue">${esc(r.chef_approved_name)}</span>`:'—'}</td><td>${r.gm_approved_name?`<span class="badge bdg-green">${esc(r.gm_approved_name)}</span>`:'—'}</td><td>${r.wh_received_name?`<span class="badge bdg-teal">${esc(r.wh_received_name)}</span>`:'—'}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewPRDetails('${esc(String(r.id))}')"><i class=ji data-i=eye></i> عرض</button>${r.status==='pending'&&prCanChef()?`<button class="btn btn-green btn-sm" onclick="openPRChefApproveModal('${esc(String(r.id))}')"><i class=ji data-i=chef-hat></i> توقيع الشيف</button><button class="btn btn-red btn-sm" onclick="openPRChefRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='chef_approved'&&prCanGM()?`<button class="btn btn-gold btn-sm" onclick="openPRGMApproveModal('${esc(String(r.id))}')"><i class=ji data-i=circle-check></i> اعتماد المدير العام</button><button class="btn btn-red btn-sm" onclick="openPRGMRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='pending'&&prCanCreate()||r.status==='chef_approved'&&prCanCancel()?`<button class="btn btn-red btn-sm" onclick="cancelPR('${esc(String(r.id))}')"><i class=ji data-i=x-circle></i> إلغاء</button>`:''}${prCanDelete()&&!['approved','fulfilled'].includes(r.status)?`<button class="btn btn-red btn-sm" onclick="deletePR('${esc(String(r.id))}')"><i class=ji data-i=trash></i> حذف نهائي</button>`:''}${['approved','chef_approved','pending','fulfilled'].includes(r.status)?`<button class="btn btn-sm" onclick="printPR('${esc(String(r.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="u-empty-sm">لا توجد طلبات شراء بعد — أنشئ طلبًا من نواقص المخزن</td></tr>'}</tbody></table></div></div>`;
+return `<div class="tbl-wrap" style="margin-top:18px"><div class="tbl-hd"><div><h3><i class=ji data-i=shopping-cart></i> طلبات شراء النواقص</h3><small class="text-muted">المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات). طلبات المطبخ الموقّعة من الشيف: <b>نهائية وتدخل المخزن مباشرة</b>.</small></div><div class="u-row-wrap">${prCanCreate()?`<button class="btn btn-gold btn-sm" onclick="openPRCreateModal()"><i class=ji data-i=plus></i> طلب شراء جديد</button>`:''}<button class="btn btn-blue btn-sm" onclick="refreshPurchaseRequests()"><i class=ji data-i=refresh></i> تحديث</button><span class="badge bdg-orange">بانتظار الشيف: ${fN(pendChef)}</span><span class="badge bdg-blue">بانتظار المدير: ${fN(pendGM)}</span></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الرقم</th><th>الأصناف</th><th>الحالة</th><th>المنشئ</th><th>توقيع الشيف</th><th>اعتماد المدير</th><th>استلام المخزن</th><th>إجراءات</th></tr></thead><tbody>${rows.map((r,idx)=>{const items=Array.isArray(r.items)?r.items:[];return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(r.request_number||('#'+r.id))}</td><td>${items.map(i=>`${esc(i.itemName||i.name||'—')} (${fN(i.requestedQty??i.qty)})`).join('، ')||'—'}</td><td><span class="badge ${prStatusClass(r.status)}">${prStatusLabel(r.status)}</span></td><td>${esc(r.creator_name||'—')}</td><td>${r.chef_approved_name?`<span class="badge bdg-blue">${esc(r.chef_approved_name)}</span>`:'—'}</td><td>${r.gm_approved_name?`<span class="badge bdg-green">${esc(r.gm_approved_name)}</span>`:'—'}</td><td>${r.wh_received_name?`<span class="badge bdg-teal">${esc(r.wh_received_name)}</span>`:'—'}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" onclick="viewPRDetails('${esc(String(r.id))}')"><i class=ji data-i=eye></i> عرض</button>${r.status==='pending'&&prCanChef()?`<button class="btn btn-green btn-sm" onclick="openPRChefApproveModal('${esc(String(r.id))}')"><i class=ji data-i=chef-hat></i> توقيع الشيف</button><button class="btn btn-red btn-sm" onclick="openPRChefRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='chef_approved'&&prCanGM()?`<button class="btn btn-gold btn-sm" onclick="openPRGMApproveModal('${esc(String(r.id))}')"><i class=ji data-i=circle-check></i> اعتماد المدير العام</button><button class="btn btn-red btn-sm" onclick="openPRGMRejectModal('${esc(String(r.id))}')"><i class=ji data-i=circle-x></i> رفض</button>`:''}${r.status==='pending'&&prCanCreate()||r.status==='chef_approved'&&prCanCancel()?`<button class="btn btn-red btn-sm" onclick="cancelPR('${esc(String(r.id))}')"><i class=ji data-i=x-circle></i> إلغاء</button>`:''}${prCanDelete()&&!['approved','fulfilled'].includes(r.status)?`<button class="btn btn-red btn-sm" onclick="deletePR('${esc(String(r.id))}')"><i class=ji data-i=trash></i> حذف نهائي</button>`:''}${['approved','chef_approved','pending','fulfilled'].includes(r.status)?`<button class="btn btn-sm" onclick="printPR('${esc(String(r.id))}')"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="9" class="u-empty-sm">لا توجد طلبات شراء بعد — أنشئ طلبًا من نواقص المخزن</td></tr>'}</tbody></table></div></div>`;
 }
 async function openPRCreateModal(){
-if(!prCanCreate()){ toast('إنشاء طلبات الشراء من المخزن والإدارة فقط','error'); return; }
+if(!prCanCreate()){ toast('إنشاء طلبات الشراء للمطبخ (الشيف) والمخزن والإدارة فقط','error'); return; }
 try{
 showLoad();
 const shortages=await apiFetch('/warehouse/purchase-requests/shortages');
 const invNames=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">`).join('');
 const rowsHtml=(shortages||[]).map((s,idx)=>`<tr><td><input type="checkbox" class="pr-sel" data-idx="${idx}" checked></td><td class="fw-bold">${esc(s.itemName)}</td><td>${esc(s.unit||'')}</td><td class="c-red">${fN(s.currentQty)}</td><td>${fN(s.minQty)}</td><td><input type="number" class="pr-qty" data-idx="${idx}" data-item-id="${s.itemId}" data-name="${esc(s.itemName)}" data-unit="${esc(s.unit||'وحدة')}" min="0" step="0.001" value="${Number(s.suggestedQty||0)}" style="max-width:110px"></td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد نواقص حاليًا (كل الأصناف فوق الحد الأدنى) — أضف يدويًا بالأسفل</td></tr>';
-PR_SHORT_CACHE=shortages||[];
-showModal(`<h3><i class=ji data-i=shopping-cart></i> طلب شراء نواقص جديد</h3><div class="workflow-banner">علّم على أصناف النواقص وعدّل الكمية المطلوبة، أو أضف أصنافًا يدويًا (خضار وغيرها) — بعد الإنشاء يوقّع <strong>الشيف</strong> ثم يعتمد <strong>المدير العام</strong> نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات).</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص المخزن (${fN((shortages||[]).length)})</h3></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th><input type="checkbox" checked onchange="document.querySelectorAll('.pr-sel').forEach(c=>c.checked=this.checked)"></th><th>الصنف</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>المطلوب شراؤه</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div><div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=plus></i> إضافة يدوية</h3><button type="button" class="btn btn-blue btn-sm" onclick="prAddManualRow()"><i class=ji data-i=plus></i> صف جديد</button></div><div id="prManualRows"></div><datalist id="prInvNames">${invNames}</datalist></div><div class="fg"><label>القسم الطالب (تُحسب عليه التكلفة عند التسليم المباشر)</label><select id="prDept">${(STATE.departments||[]).filter(d=>!String(d.code||'').startsWith('ys_') && d.code !== 'kitchen' && d.code !== 'external_sales' && d.parent_code !== 'kitchen').map((d,i)=>`<option value="${esc(d.code)}" ${i===0?'selected':''}>${esc(d.name||d.code)}</option>`).join('')}</select></div><div class="fg u-mt12"><label>ملاحظات الطلب (اختياري)</label><textarea id="prNotes" rows="2" placeholder="مثال: أولوية للسلطات قبل نهاية الأسبوع"></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmPRCreate()"><i class=ji data-i=shopping-cart></i> إنشاء الطلب</button></div>`);
+showModal(`<h3><i class=ji data-i=shopping-cart></i> طلب شراء نواقص جديد</h3><div class="workflow-banner">${prIsChefCreator()?'توقيعك على الطلب يجعله <strong>نهائيًا</strong> ويوصله <strong>للمخزن مباشرة</strong> — أمين المخزن يطبعه وينفذه فورًا (بدون مرحلة المدير العام).':'علّم على أصناف النواقص وعدّل الكمية المطلوبة، أو أضف أصنافًا يدويًا (خضار وغيرها) — بعد الإنشاء يوقّع <strong>الشيف</strong> ثم يعتمد <strong>المدير العام</strong> نهائيًا (مغلق — البضاعة تدخل بفواتير المشتريات).'}</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص المخزن (${fN((shortages||[]).length)})</h3></div><div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th><input type="checkbox" checked onchange="document.querySelectorAll('.pr-sel').forEach(c=>c.checked=this.checked)"></th><th>الصنف</th><th>الوحدة</th><th>الرصيد</th><th>الحد الأدنى</th><th>المطلوب شراؤه</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div><div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=plus></i> إضافة يدوية</h3><button type="button" class="btn btn-blue btn-sm" onclick="prAddManualRow()"><i class=ji data-i=plus></i> صف جديد</button></div><div id="prManualRows"></div><datalist id="prInvNames">${invNames}</datalist></div><div class="fg"><label>القسم الطالب (تُحسب عليه التكلفة عند التسليم المباشر)</label><select id="prDept">${(STATE.departments||[]).filter(d=>!String(d.code||'').startsWith('ys_') && d.code !== 'kitchen' && d.code !== 'external_sales' && d.parent_code !== 'kitchen').map((d,i)=>`<option value="${esc(d.code)}" ${i===0?'selected':''}>${esc(d.name||d.code)}</option>`).join('')}</select></div><div class="fg u-mt12"><label>ملاحظات الطلب (اختياري)</label><textarea id="prNotes" rows="2" placeholder="مثال: أولوية للسلطات قبل نهاية الأسبوع"></textarea></div>${prIsChefCreator()?signaturePadMarkup('prCreateSignature','توقيع الشيف على الطلب — '+esc(accountSignatureName())):''}<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmPRCreate()"><i class=ji data-i=shopping-cart></i> ${prIsChefCreator()?'توقيع وإرسال للمخزن':'إنشاء الطلب'}</button></div>`);
+if(prIsChefCreator()){afterModalSignatureInit('prCreateSignature');}
 }catch(e){ toast(e.message||'تعذر جلب النواقص','error'); }
 finally{ hideLoad(); }
 }
@@ -336,12 +526,18 @@ const unit=row.querySelector('.pr-m-unit')?.value.trim()||'وحدة';
 if(name&&Number.isFinite(qty)&&qty>0) {items.push({itemName:name,unit,requestedQty:qty});}
 });
 if(!items.length){ toast('اختر صنفًا واحدًا على الأقل بكمية موجبة','error'); return; }
+const isChef=prIsChefCreator();
+let signatureData=null, signerName=null;
+if(isChef){
+signatureData=readSignaturePad('prCreateSignature'); if(!signatureData) {return;}
+signerName=readSignerName('prCreateSignature'); if(!signerName) {return;}
+}
 try{
 showLoad();
-const saved=await apiFetch('/warehouse/purchase-requests',{method:'POST',body:JSON.stringify({items,notes:document.getElementById('prNotes')?.value.trim()||'',deptCode:document.getElementById('prDept')?.value||''})});
+const saved=await apiFetch('/warehouse/purchase-requests',{method:'POST',body:JSON.stringify({items,notes:document.getElementById('prNotes')?.value.trim()||'',deptCode:document.getElementById('prDept')?.value||'',signatureData,signerName})});
 upsertStateEntity('purchaseRequests',saved); closeModal(); renderPage();
-toast(`أُنشئ طلب الشراء ${saved.request_number} — بانتظار توقيع الشيف`,'success');
-addNotification('طلب شراء نواقص',`${saved.request_number} بانتظار توقيع الشيف`,'info');
+toast(isChef?`أُنشئ طلب الشراء ${saved.request_number} موقّعًا منك — نهائي ولدى المخزن مباشرة`:`أُنشئ طلب الشراء ${saved.request_number} — بانتظار توقيع الشيف`,'success');
+addNotification('طلب شراء نواقص',isChef?`${saved.request_number} موقّع من الشيف — نهائي لدى المخزن`:`${saved.request_number} بانتظار توقيع الشيف`,'info');
 }catch(e){ toast(e.message||'تعذر إنشاء طلب الشراء','error'); }
 finally{ hideLoad(); }
 }
@@ -451,7 +647,7 @@ function renderKitchenReturnsSection(){
 // رئيس القسم يرى مرتجعات قسمه فقط
 const returns = (STATE.kitchenReturns||[]).slice().reverse().filter(r=>isDeptHead()?String(r.deptCode)===String(myDeptCode()):true);
 const totalValue = returns.reduce((sum,item)=>sum+(parseFloat(item.totalValue)||0),0);
-const canReturn=['admin','manager','warehouse','kitchen','dept_head'].includes(STATE.currentUser?.role);
+const canReturn=['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(STATE.currentUser?.role);
 const canDelete=['admin','manager','warehouse'].includes(STATE.currentUser?.role);
 return `
 <div class="tbl-wrap" style="margin-top:18px">
@@ -503,11 +699,46 @@ return departments;
 function showDispatchRequestModal(){
 const dispatchDepartments=getDispatchDepartments();
  // رئيس القسم: قسمه فقط وطلب يمر إجباريًا بالشيف العمومي
+ // متعدد الأقسام (CAF,SERVICE): قائمة منسدلة بأقسامه فقط — إصلاح جذري 2026-10-10
+ // (الحقل المخفي كان يرسل "CAF,SERVICE" خامًا فيُرفض)
+const rawCodes=String(myDeptCode()||'').split(',').map(s=>s.trim()).filter(Boolean);
+const canonCodes=[...new Set(rawCodes.map(c=>canonicalDeptCode(c)).filter(Boolean))];
+const myCodes=canonCodes.length?canonCodes:rawCodes;
 const deptField=isDeptHead()
- ? `<input type="hidden" id="dispatchDept" value="${esc(myDeptCode()||'')}"><div class="fg"><label>القسم الطالب</label><input type="text" value="${esc(deptNameByCode(myDeptCode()))}" readonly disabled></div><div class="workflow-banner"><i class=ji data-i=chef-hat></i> سيُرسل طلبك إلى <strong>الشيف العمومي</strong> للاعتماد أولًا، ثم إلى <strong>المخازن</strong> للصرف، ويستلمه قسمك من مخزنه الخاص.</div>`
+ ? (myCodes.length > 1
+  ? `<div class="fg"><label>القسم الطالب</label><select id="dispatchDept">${myCodes.map((c,i)=>`<option value="${esc(c)}" ${i===0?'selected':''}>${esc(deptNameByCode(c)||c)}</option>`).join('')}</select></div><div class="workflow-banner"><i class=ji data-i=chef-hat></i> سيُرسل طلبك إلى <strong>الشيف العمومي</strong> للاعتماد أولًا، ثم إلى <strong>المخازن</strong> للصرف، ويستلمه قسمك من مخزنه الخاص.</div>`
+  : `<input type="hidden" id="dispatchDept" value="${esc(myCodes[0]||myDeptCode()||'')}"><div class="fg"><label>القسم الطالب</label><input type="text" value="${esc(deptNameByCode(myCodes[0]||myDeptCode()))}" readonly disabled></div><div class="workflow-banner"><i class=ji data-i=chef-hat></i> سيُرسل طلبك إلى <strong>الشيف العمومي</strong> للاعتماد أولًا، ثم إلى <strong>المخازن</strong> للصرف، ويستلمه قسمك من مخزنه الخاص.</div>`)
  : `<div class="fg"><label>القسم الطالب</label><select id="dispatchDept">${dispatchDepartments.map((d,i)=>`<option value="${d.code}" ${i===0?'selected':''}>${esc(d.name||d.name_ar||d.code)}</option>`).join('')}</select></div>`;
- showModal(`<h3><i class=ji data-i=package></i> طلب صرف جديد</h3>${deptField}<div class="workflow-banner"><i class=ji data-i=info></i> ابحث عن الصنف وحدد الكمية — أصناف <strong>الوزن المتغير</strong> تُطلب <strong>بالكرتون</strong> ويُحدد وزنها عند الصرف.</div><label style="margin-top:10px">الأصناف المطلوبة <span class="badge bdg-blue" id="dispCount">1</span></label><div id="dispatchItemsContainer">${dispRowHtml()}</div><button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addDispatchItemField()"><i class=ji data-i=plus></i> إضافة صنف</button><div class="callout-gold u-my16"><div class="fw-bold"><i class=ji data-i=clipboard-list></i> ملخص الطلب</div><div class="callout-value u-t14" id="dispSummary">—</div></div><div class="fg u-mt8"><label>ملاحظات</label><textarea id="dispNotes" rows="2" placeholder="ملاحظة للمخزن (اختياري)"></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="submitDispatchRequest()"><i class=ji data-i=upload></i> إرسال الطلب</button></div>`);
+// طلب المالك 2026-10-06: «المتاح» في طلب الصرف = رصيد المخزن الرئيسي فعليًا،
+// و«الصنف صفر لا يظهر نهائيًا» — بلا أرصدة رئيسية مؤكدة لا تُعرض أصناف أصلًا
+// (لا رجوع للإجمالي الكلي الذي كان يعرض أصنافًا غير متاحة)
+showModal(`<h3><i class=ji data-i=package></i> طلب صرف جديد</h3><div class="text-muted u-p8">جارٍ حساب أرصدة المخزن الرئيسي...</div>`);
+loadDispatchMainAvailability().then((ok)=>{
+if(!ok){
+showModal(`<h3><i class=ji data-i=package></i> طلب صرف جديد</h3><div class="workflow-banner" style="color:var(--red,#d64545)"><i class=ji data-i=alert-triangle></i> <strong>تعذر جلب أرصدة المخزن الرئيسي</strong> — لن تُعرض الأصناف حتى يتأكد الرصيد الفعلي (قاعدة: الصنف صفر لا يُعرض أصلًا). لو تكررت: أعد تشغيل خدمة الخادم ثم حدّث الصفحة.</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="showDispatchRequestModal()"><i class=ji data-i=refresh></i> إعادة المحاولة</button></div>`);
+return;
+}
+showModal(`<h3><i class=ji data-i=package></i> طلب صرف جديد</h3>${deptField}<div class="workflow-banner"><i class=ji data-i=info></i> ابحث عن الصنف وحدد الكمية — <strong>المتاح يظهر برصيد المخزن الرئيسي</strong>، والأصناف صفر الرصيد <strong>لا تظهر نهائيًا</strong>. أصناف <strong>الوزن المتغير</strong> تُطلب <strong>بالكرتون</strong> ويُحدد وزنها عند الصرف.</div><label style="margin-top:10px">الأصناف المطلوبة <span class="badge bdg-blue" id="dispCount">1</span></label><div id="dispatchItemsContainer">${dispRowHtml()}</div><button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addDispatchItemField()"><i class=ji data-i=plus></i> إضافة صنف</button><div class="callout-gold u-my16"><div class="fw-bold"><i class=ji data-i=clipboard-list></i> ملخص الطلب</div><div class="callout-value u-t14" id="dispSummary">—</div></div><div class="fg u-mt8"><label>ملاحظات</label><textarea id="dispNotes" rows="2" placeholder="ملاحظة للمخزن (اختياري)"></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="submitDispatchRequest()"><i class=ji data-i=upload></i> إرسال الطلب</button></div>`);
 updateDispSummary();
+});
+}
+// خريطة رصيد المخزن الرئيسي لكل صنف — تُجلب لحظة فتح طلب الصرف (أحدث رقم فعلي)
+let dispatchMainAvail=null;
+async function loadDispatchMainAvailability(){
+for(let attempt=0;attempt<2;attempt++){
+try{
+const res=await apiFetch('/warehouse/main-availability');
+dispatchMainAvail=new Map((res.items||[]).map(i=>[Number(i.id),Number(i.on_hand)]));
+return true;
+}catch(e){ if(String(e&&e.message)==='UNAUTHORIZED'){ break; } if(attempt===0){ await new Promise(r=>setTimeout(r,800)); } }
+}
+dispatchMainAvail=null;
+return false;
+}
+function mainAvailFor(item){
+// بلا بيانات مؤكدة → صفر (قاعدة المالك: الصنف غير المؤكد لا يُعرض متاحًا أبدًا)
+if(dispatchMainAvail){ return dispatchMainAvail.get(Number(item.id)) ?? 0; }
+return 0;
 }
 // صف صنف ببحث فوري (اسم/باركود) بدل القائمة المنسدلة — يعمل مع آلاف الأصناف
 function dispRowHtml(){
@@ -515,8 +746,10 @@ return `<div class="dispatch-item" style="background:var(--bg3);padding:12px;bor
 <div style="position:relative;margin-bottom:8px">
 <input type="text" class="dispatch-item-search u-input-f2" placeholder="ابحث: اسم الصنف أو الباركود..." autocomplete="off" oninput="dispFilterItems(this)" onfocus="dispFilterItems(this)" onblur="setTimeout(()=>dispHideList(this),200)" style="width:100%;font-size:15px;padding:10px 12px">
 <input type="hidden" class="dispatch-item-name" value="">
+<input type="hidden" class="dispatch-item-max" value="">
 <input type="hidden" class="dispatch-item-catch" value="">
 <input type="hidden" class="dispatch-item-pkguom" value="">
+<input type="hidden" class="dispatch-item-avgbox" value="">
 <div class="dispatch-item-list" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.35)"></div>
 </div>
 <div class="fr" style="align-items:flex-end">
@@ -539,7 +772,8 @@ const isCw=row.querySelector('.dispatch-item-catch')?.value==='1';
 if(isCw){
 const boxes=parseInt(row.querySelector('.dispatch-item-pkg')?.value)||0;
 const uom=row.querySelector('.dispatch-item-pkguom')?.value||'كرتون';
-if(boxes>0) {parts.push(`${name}: ${fN(boxes)} ${uom}`);}
+const avgBox=parseFloat(row.querySelector('.dispatch-item-avgbox')?.value)||0;
+if(boxes>0) {parts.push(avgBox>0?`${name}: ${fN(boxes)} ${uom} (تقديري ~${fN(Math.round(boxes*avgBox*1000)/1000)} كجم)`:`${name}: ${fN(boxes)} ${uom}`);}
 }else{
 const qty=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
 const uomSel=row.querySelector('.dispatch-item-uom');
@@ -565,18 +799,28 @@ function dispFilterItems(input){
 const row=input?.closest('.dispatch-item'); if(!row) {return;}
 const list=row.querySelector('.dispatch-item-list'); if(!list) {return;}
 const q=String(input.value||'').trim().toLowerCase();
-const matches=(STATE.inventory||[]).filter(i=>!q||String(i.name||'').toLowerCase().includes(q)||(i.barcode&&String(i.barcode).includes(q))).slice(0,30);
-list.innerHTML=matches.map(i=>{const cw=i.catch_weight_enabled?1:0;const sec=Array.isArray(i.secondary_units)?i.secondary_units.filter(u=>u&&u.uom&&Number(u.factor)>0):[];return `<div onmousedown="dispPickItem(this)" data-name="${esc(i.name)}" data-unit="${esc(i.unit||'قطعة')}" data-max="${i.qty}" data-catch="${cw}" data-pkguom="${esc(i.packaging_uom||'كرتون')}" data-avgbox="${i.packaging_qty_per_base||''}" data-secunits="${esc(JSON.stringify(sec))}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border)"><b>${esc(i.name)}</b>${cw?' <span class="badge bdg-blue">وزن متغير</span>':''}${sec.length?` <span class="badge bdg-purple" title="وحدات طلب: ${esc(sec.map(u=>u.uom).join('، '))}">وحدات: ${esc(sec.map(u=>u.uom).join('، '))}</span>`:''}${i.barcode?` <small class="text-muted">${esc(i.barcode)}</small>`:''}<div class="text-muted" style="font-size:11px">متاح: ${fN(i.qty)} ${esc(i.unit||'')}</div></div>`;}).join('')||'<div class="text-muted" style="padding:8px">لا نتائج مطابقة</div>';
+const withAvail=(STATE.inventory||[]).filter(i=>mainAvailFor(i)>0);
+const hit=(i)=>String(i.name||'').toLowerCase().includes(q)||(i.barcode&&String(i.barcode).includes(q));
+const hitFuzzy=(i)=>(window.arSearchIncludes?window.arSearchIncludes(i.name,q):false)||(i.barcode&&String(i.barcode).includes(q));
+// ذكاء البحث (طلب المالك 2026-10-06): «بازنجان» تجد «باذنجان» — الحرفي أولًا ثم المطبعي
+let matches;
+if(!q){ matches=withAvail; } else { matches=withAvail.filter(hit); if(!matches.length){ matches=withAvail.filter(hitFuzzy); } }
+matches=matches.slice(0,30);
+// طلب المالك 2026-10-06: أصناف صفر الرصيد لا تظهر في طلب الصرف نهائيًا — لا قائمة ولا عدّاد
+list.innerHTML=matches.map(i=>{const avail=mainAvailFor(i);const cw=i.catch_weight_enabled?1:0;const sec=Array.isArray(i.secondary_units)?i.secondary_units.filter(u=>u&&u.uom&&Number(u.factor)>0):[];return `<div onmousedown="dispPickItem(this)" data-name="${esc(i.name)}" data-unit="${esc(i.unit||'قطعة')}" data-max="${avail}" data-catch="${cw}" data-pkguom="${esc(i.packaging_uom||'كرتون')}" data-avgbox="${i.packaging_qty_per_base||''}" data-secunits="${esc(JSON.stringify(sec))}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border)"><b>${esc(i.name)}</b>${cw?' <span class="badge bdg-blue">وزن متغير</span>':''}${sec.length?` <span class="badge bdg-purple" title="وحدات طلب: ${esc(sec.map(u=>u.uom).join('، '))}">وحدات: ${esc(sec.map(u=>u.uom).join('، '))}</span>`:''}${i.barcode?` <small class="text-muted">${esc(i.barcode)}</small>`:''}<div class="text-muted" style="font-size:11px">متاح بالرئيسي: ${fN(avail)} ${esc(i.unit||'')}</div></div>`;}).join('')+(matches.length?'':`<div class="text-muted" style="padding:8px">لا نتائج${q?' — الأصناف صفر الرصيد لا تُعرض في طلب الصرف':''}</div>`);
 list.style.display='';
 }
 function dispHideList(input){ const l=input?.closest('.dispatch-item')?.querySelector('.dispatch-item-list'); if(l) {l.style.display='none';} }
 function dispPickItem(el){
 const row=el?.closest('.dispatch-item'); if(!row) {return;}
 const isCw=el.dataset.catch==='1';
+const avgBox=parseFloat(el.dataset.avgbox)||0;
 row.querySelector('.dispatch-item-name').value=el.dataset.name||'';
 row.querySelector('.dispatch-item-search').value=el.dataset.name||'';
+const maxEl=row.querySelector('.dispatch-item-max'); if(maxEl){maxEl.value=el.dataset.max||'0';}
 row.querySelector('.dispatch-item-catch').value=isCw?'1':'';
 row.querySelector('.dispatch-item-pkguom').value=el.dataset.pkguom||'كرتون';
+const avgBoxEl=row.querySelector('.dispatch-item-avgbox'); if(avgBoxEl) {avgBoxEl.value=avgBox>0?String(avgBox):'';}
 const qtyInput=row.querySelector('.dispatch-item-qty');
 const pkgInput=row.querySelector('.dispatch-item-pkg');
 const pkgWrap=row.querySelector('.pkg-wrap');
@@ -585,7 +829,7 @@ if(isCw){
 row.querySelector('.row-unit').textContent=el.dataset.pkguom||'كرتون';
 if(qtyInput){qtyInput.placeholder='ملاحظة للمخزن (اختياري)';qtyInput.min='0';qtyInput.style.display='none';}
 if(pkgWrap){pkgWrap.style.display='';}
-if(cwNote){cwNote.style.display='';cwNote.textContent='الوزن يُحدد على الميزان عند الصرف';}
+if(cwNote){cwNote.style.display='';cwNote.textContent=avgBox>0?`الوزن يُحدد على الميزان عند الصرف — التقديري: ~${fN(avgBox)} كجم/${el.dataset.pkguom||'كرتون'}`:'الوزن يُحدد على الميزان عند الصرف';}
 }else{
 row.querySelector('.row-unit').textContent=el.dataset.unit||'قطعة';
 if(qtyInput){qtyInput.placeholder='الكمية';qtyInput.min='0.001';}
@@ -630,40 +874,63 @@ updateDispSummary();
 }
 function syncDispatchRowUnit(select){ const row=select?.closest('.dispatch-item'); const unit=select?.options?.[select.selectedIndex]?.dataset?.unit||'قطعة'; if(row) {row.querySelector('.row-unit').textContent=unit;} }
 function removeDispatchItem(btn){ const row=btn?.closest('.dispatch-item'); if(!row){return;} const container=row.parentElement; if(container.querySelectorAll('.dispatch-item').length<=1){ row.querySelector('.dispatch-item-qty').value=''; const p=row.querySelector('.dispatch-item-pkg'); if(p){p.value='';} updateDispSummary(); return; } row.remove(); updateDispSummary(); }
+let _submittingDispatch = false;
 async function submitDispatchRequest(){
+if(_submittingDispatch){ toast('جارٍ إرسال الطلب... انتظر','info'); return; }
 const deptCode=document.getElementById('dispatchDept')?.value;
 if(!deptCode){ toast('حدد القسم الطالب','error'); return; }
 const dept=getDispatchDepartments().find(d=>d.code===deptCode) || {code:deptCode,name:deptNameByCode(deptCode)};
 const items=[];
 const notes=document.getElementById('dispNotes')?.value.trim();
-document.querySelectorAll('.dispatch-item').forEach(row=>{
+// طلب المالك 2026-10-05: لا يُرسل طلب صرف بلا رصيد — التحقق هنا قبل الإرسال والخادم يحسم
+for(const row of document.querySelectorAll('.dispatch-item')){
 const name=row.querySelector('.dispatch-item-name')?.value?.trim();
 const isCw=row.querySelector('.dispatch-item-catch')?.value==='1';
 const pkgUom=row.querySelector('.dispatch-item-pkguom')?.value||'كرتون';
+const max=parseFloat(row.querySelector('.dispatch-item-max')?.value)||0;
 if(isCw){
 const boxes=parseInt(row.querySelector('.dispatch-item-pkg')?.value)||0;
-const estKg=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
-if(name&&boxes>0) {items.push({itemName:name,qty:boxes,unit:pkgUom,packagingQty:boxes,packagingUom:pkgUom,estWeightKg:estKg||null});}
+const avgBox=parseFloat(row.querySelector('.dispatch-item-avgbox')?.value)||0;
+const estKg=avgBox>0?Math.round(boxes*avgBox*1000)/1000:0;
+if(name&&boxes>0){
+if(!(max>0)){ toast(`لا يوجد أي رصيد من "${name}" في المخزن — لا يُقبل في طلب صرف`,'error'); return; }
+items.push({itemName:name,qty:boxes,unit:pkgUom,packagingQty:boxes,packagingUom:pkgUom,estWeightKg:estKg||null});
+}
 }else{
 const qty=parseFloat(row.querySelector('.dispatch-item-qty')?.value)||0;
 const uomSel=row.querySelector('.dispatch-item-uom');
 const uomOpt=uomSel?.selectedOptions?.[0]||null;
 const baseUnit=uomSel?.options?.[0]?.value||row.querySelector('.row-unit')?.textContent?.trim()||'قطعة';
 if(name&&qty>0){
+let baseQty=qty;
 if(uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
 // طلب بوحدة ثانوية (شكارة/كرتون...) → يُحوَّل فورًا لوحدة المخزن الأساسية
+baseQty=Math.round(qty*Number(uomOpt.dataset.factor)*1000)/1000;
+}
+if(baseQty>max+1e-6){ toast(`الرصيد غير كافٍ من "${name}": المتاح ${fN(max)} فقط ولا يمكن طلب ${fN(baseQty)}`,'error'); return; }
+if(uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
 const factor=Number(uomOpt.dataset.factor);
-const baseQty=Math.round(qty*factor*1000)/1000;
 items.push({itemName:name,qty:baseQty,unit:baseUnit,requestedQty:qty,requestedUom:uomOpt.value});
 }else{
 items.push({itemName:name,qty,unit:baseUnit});
 }
 }
 }
-});
+}
 if(items.length===0){ toast('أضف صنفًا واحدًا على الأقل','error'); return; }
+_submittingDispatch = true;
 const disp = {id:uid(),deptCode,deptName:dept?.name||'قسم غير معروف',items,status:'pending',date:today(),createdBy:STATE.currentUser?.username||'unknown',notes};
+// طلب المالك 2026-10-05: رفض الخادم (رصيد ناقص) يُعرض فورًا — كان يمر رفضًا صامتًا بلا أي رسالة
+try{
 await persistCreate('dispatches', (saved)=>STATE.dispatches.push(saved), disp);
+}catch(e){
+_submittingDispatch = false;
+const m=String(e.message||'');
+if(e.code==='DUPLICATE_DISPATCH'||/مكرر|مشابه|DUPLICATE/.test(m)){ toast('الطلب مسجل بالفعل — لم يتكرر','info'); }
+else { toast(m||'تعذر إرسال طلب الصرف — راجع أرصدة المخزن','error'); }
+return;
+}
+_submittingDispatch = false;
 closeModal(); renderPage(); buildNav();
 toast(isDeptHead()?'تم إرسال طلب الصرف — بانتظار اعتماد الشيف العمومي':'تم إرسال طلب الصرف');
 addNotification('طلب صرف جديد',`طلب صرف من ${dept?.name||'قسم'}${isDeptHead()?' — بانتظار اعتماد الشيف العمومي':''}`,'info');
@@ -672,9 +939,11 @@ addNotification('طلب صرف جديد',`طلب صرف من ${dept?.name||'قس
 function openChefApproveModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
-const warnings=(d.items||[]).map(item=>{const inv=STATE.inventory.find(i=>i.name===item.itemName);const avail=inv?Number(inv.qty):0;const isCw=Boolean(inv?.catch_weight_enabled);const req=Number(item.qty)||0;return {item,avail,req,short:isCw?false:avail<req,isCw};});
-const itemsHtml=warnings.map(w=>`<div style="background:var(--bg3);padding:12px;border-radius:var(--r);margin-bottom:8px"><div class="u-row-between"><strong>${esc(w.item.itemName)}</strong>${w.isCw?' <span class="badge bdg-blue">وزن متغير</span>':''}<span class="badge ${w.short?'bdg-red':'bdg-green'}">المتاح: ${fN(w.avail)} كجم</span></div><div class="text-muted" style="margin-top:4px">المطلوب: ${fN(w.req)} ${esc(w.item.unit||'')}${w.isCw?` — الوزن الفعلي من الميزان عند الصرف`:''}</div>${w.short?'<div style="color:var(--orange);margin-top:4px"><i class=ji data-i=alert-triangle></i> الرصيد أقل من المطلوب — المخازن ستقرر الكمية المعتمدة عند الصرف</div>':''}</div>`).join('');
-showModal(`<h3><i class=ji data-i=chef-hat></i> اعتماد الشيف العمومي — ${esc(d.deptName)}</h3><div class="workflow-banner">اعتمادك ينقل الطلب إلى <strong>المخازن</strong> للصرف والخصم — لا يُخصم أي مخزون بهذه الخطوة.</div><div>${itemsHtml}</div><div class="fg u-mt12"><label>ملاحظات الشيف (اختياري)</label><textarea id="chefNotes" rows="2"></textarea></div>${signaturePadMarkup('chefApprovalSignature','توقيع الشيف العمومي')}<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmChefApprove('${esc(String(id))}')"><i class=ji data-i=circle-check></i> اعتماد وإحالة للمخازن</button></div>`);
+const warnings=(d.items||[]).map(item=>{const inv=STATE.inventory.find(i=>i.name===item.itemName);const avail=inv?Number(inv.qty):0;const isCw=Boolean(inv?.catch_weight_enabled);const req=Number(item.qty)||0;return {item,avail,req,short:isCw?!(avail>0):avail<req,isCw};});
+// طلب المالك 2026-10-05: الاعتماد محجوب نهائيًا لو صنف بلا رصيد — والخادم يحسم كذلك
+const stockBlocked=warnings.some(w=>w.short);
+const itemsHtml=warnings.map(w=>`<div style="background:var(--bg3);padding:12px;border-radius:var(--r);margin-bottom:8px"><div class="u-row-between"><strong>${esc(w.item.itemName)}</strong>${w.isCw?' <span class="badge bdg-blue">وزن متغير</span>':''}<span class="badge ${w.short?'bdg-red':'bdg-green'}">المتاح: ${fN(w.avail)} كجم</span></div><div class="text-muted" style="margin-top:4px">المطلوب: ${fN(w.req)} ${esc(w.item.unit||'')}${w.isCw?` — الوزن الفعلي من الميزان عند الصرف`:''}</div>${w.short?'<div style="color:var(--red);margin-top:4px"><i class=ji data-i=alert-triangle></i> الرصيد غير كافٍ — لا يمكن اعتماد الإذن، عدِّل الكمية أو جهّز المخزون أولًا</div>':''}</div>`).join('');
+showModal(`<h3><i class=ji data-i=chef-hat></i> اعتماد الشيف العمومي — ${esc(d.deptName)}</h3><div class="workflow-banner">اعتمادك ينقل الطلب إلى <strong>المخازن</strong> للصرف والخصم — لا يُخصم أي مخزون بهذه الخطوة.</div><div>${itemsHtml}</div>${stockBlocked?`<div class="callout" style="background:rgba(220,53,69,.12);border:1px solid var(--red);color:var(--red);border-radius:var(--r);padding:12px;margin-top:8px"><i class=ji data-i=ban></i> <strong>لا يمكن الاعتماد:</strong> يوجد أصناف بلا رصيد كافٍ في المخزن — لا يُقبل إذن صرف بلا رصيد نهائيًا. عدِّل الكميات أو جهّز المخزون.</div>`:''}<div class="fg u-mt12"><label>ملاحظات الشيف (اختياري)</label><textarea id="chefNotes" rows="2"></textarea></div>${signaturePadMarkup('chefApprovalSignature','توقيع الشيف العمومي')}<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" ${stockBlocked?'disabled style="opacity:.5;cursor:not-allowed" title="يوجد أصناف بلا رصيد كافٍ"':''} onclick="confirmChefApprove('${esc(String(id))}')"><i class=ji data-i=circle-check></i> اعتماد وإحالة للمخازن</button></div>`);
 afterModalSignatureInit('chefApprovalSignature');
 }
 async function confirmChefApprove(id){
@@ -819,7 +1088,7 @@ itemsHtml+=`<div style="background:var(--bg3);padding:15px;border-radius:var(--r
 <div class="fg"><label>عدد الكراتين المصروفة *</label><input type="number" id="apPkgQty_${idx}" value="${reqBoxes||''}" step="1" min="1" placeholder="عدد الكراتين" oninput="updateApproveTotal()"></div>
 <div class="fg"><label>الوزن الفعلي بالكيلو (الميزان) *</label><input type="number" id="apWeight_${idx}" step="0.001" min="0.001" max="${maxQty}" placeholder="أوزن الكراتين وأدخل الوزن" oninput="updateApproveTotal()"></div>
 <div class="fg"><label>القيمة (على الفعلي)</label><div id="apVal_${idx}" class="c-gold fw-bold">${fC(0)}</div></div></div>
-<div class="text-muted" id="apAvg_${idx}" style="font-size:12px"></div></div>`;
+<div class="text-muted" id="apEst_${idx}" style="font-size:12px"></div><div class="text-muted" id="apAvg_${idx}" style="font-size:12px"></div></div>`;
 });
 showModal(`<h3><i class=ji data-i=circle-check></i> الموافقة على طلب صرف - ${esc(d.deptName)}</h3><div class="workflow-banner">اعتماد المخزن يخصم الكمية من المخزون ويسجل تكلفة القسم في نفس المعاملة.</div><div id="approveItems">${itemsHtml}</div><div class="callout-gold u-my16"><div class="fw-bold"><i class=ji data-i=banknote></i> القيمة الإجمالية</div><div class="callout-value" id="approveTotal">${fC(total)}</div></div><div class="fg"><label>ملاحظات</label><textarea id="approveNotes" rows="2"></textarea></div>${signaturePadMarkup('warehouseApprovalSignature','توقيع أمين المخزن المعتمد')}<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmApprove('${esc(String(id))}')"><i class=ji data-i=circle-check></i> تأكيد الموافقة</button></div>`);
 window.updateApproveTotal=function(){
@@ -838,6 +1107,16 @@ const valEl=document.getElementById(`apVal_${idx}`);
 if(valEl) {valEl.innerHTML=fC(val);}
 const avgEl=document.getElementById(`apAvg_${idx}`);
 if(avgEl) {avgEl.textContent=(weight>0&&boxes>0)?`متوسط الكرتون المحسوب: ${fN(weight/boxes)} كجم`:'';}
+// الوزن التقديري المتوقع (عدد الكراتين × متوسط وزن الكرتون المسجل) + فرق الميزان
+const estEl=document.getElementById(`apEst_${idx}`);
+const est=boxes*(Number(inv?.packaging_qty_per_base)||0);
+if(estEl){
+if(est>0&&boxes>0){
+const diff=weight>0?Math.round((weight-est)*1000)/1000:null;
+const diffPct=diff!=null&&est>0?Math.round(diff/est*1000)/10:null;
+estEl.textContent=`الوزن التقديري المتوقع: ~${fN(Math.round(est*1000)/1000)} كجم${diff!=null?` — فرق الميزان: ${diff>=0?'+':''}${fN(diff)} كجم (${diffPct>0?'+':''}${diffPct}%)`:''}`;
+}else{estEl.textContent='';}
+}
 return;
 }
 const qty=parseFloat(document.getElementById(`apQty_${idx}`)?.value)||0;
@@ -851,7 +1130,13 @@ if(totalEl) {totalEl.innerHTML=fC(t);}
 };
 afterModalSignatureInit('warehouseApprovalSignature');
 }
+let _approvingDispatch = false;
 async function confirmApprove(id){
+// حارس النقر المتكرر (لوج الإنتاج: 88 طلب اعتماد لنفس الإذن في دقيقتين — لا رد فعل
+// أثناء التنفيذ فيعيد المستخدم الضغط، وتصطف الطلبات خلف قفل الصف 20 ثانية)
+if(_approvingDispatch){ toast('اعتماد الإذن قيد التنفيذ... انتظر النتيجة','info'); return; }
+_approvingDispatch = true;
+showLoad();
 try{
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){toast('تعذر العثور على طلب الصرف — حدّث الصفحة وحاول مجددًا','error');return;}
@@ -893,8 +1178,9 @@ upsertStateEntity('dispatches',result.dispatch);
 closeModal(); renderPage();
 toast(`تمت الموافقة وحُسبت مصاريف القسم بقيمة ${fC(result.totalValue||0)}`,'success');
 addNotification('تمت الموافقة',`تم اعتماد طلب الصرف من ${d.deptName} وتسجيل تكلفته على القسم`,'success');
-}catch(e){ toast(e.message||'تعذر اعتماد طلب الصرف','error'); }
+}catch(e){ if(e && e.code==='DISPATCH_APPROVE_IN_PROGRESS'){ toast('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا','warning'); return; } toast(e.message||'تعذر اعتماد طلب الصرف','error'); }
 }catch(err){ console.error('[confirmApprove]',err); toast('خطأ غير متوقع أثناء الاعتماد: '+(err?.message||err),'error'); }
+finally{ _approvingDispatch=false; hideLoad(); }
 }
 function openRejectModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
@@ -944,9 +1230,14 @@ const receiptAudit=d.kitchenReceivedAt?`<div class="workflow-banner" style="marg
 const chefAudit=d.chefApprovedAt?`<div class="workflow-banner" style="margin-top:14px"><i class=ji data-i=chef-hat></i> اعتمد <strong>الشيف العمومي</strong> الطلب بواسطة <strong>${esc(d.chefApprovedBy||'—')}</strong> بتاريخ ${esc(fDT(d.chefApprovedAt))} وأحاله إلى المخازن.</div>`:(d.needsChefApproval?`<div class="workflow-banner" style="margin-top:14px"><i class=ji data-i=hourglass></i> الطلب مقدم من <strong>رئيس القسم</strong> — بانتظار اعتماد الشيف العمومي قبل وصوله للمخازن.</div>`:'');
 showModal(`<h3><i class=ji data-i=clipboard-list></i> تفاصيل طلب الصرف #${d.id}</h3><div class="fr"><div class="details-item"><strong>القسم:</strong><div>${esc(d.deptName)}</div></div><div class="details-item"><strong>الحالة:</strong><div>${statusLabel}</div></div></div><div class="fr"><div class="details-item"><strong>التاريخ:</strong><div>${fD(d.date)}</div></div><div class="details-item"><strong>الطالب:</strong><div>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</div></div></div><div class="details-list" style="margin-top:10px"><div class="details-item"><strong>المرحلة الحالية:</strong><div>${esc(dispatchChainStage(d))}</div></div></div><div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=package></i> التفاصيل</h3></div><div class="tbl-scroll"><table><thead><tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>القيمة</th></tr></thead><tbody>${sourceItems.map(item=>{const cw=item.catchWeightEnabled||item.actualWeight;const q=cw&&item.packagingQty?`${fN(item.approvedQty||item.qty||0)} ${esc(item.catchWeightUom||item.unit||'كجم')} <small class="text-muted">(${fN(item.packagingQty)} ${esc(item.packagingUom||'كرتون')})</small>`:`${fN(item.approvedQty||item.qty||0)}`;return `<tr><td class="fw-bold">${esc(item.itemName||item.name)}${cw?' <span class="badge bdg-blue">وزن متغير</span>':''}</td><td>${esc(item.unit||'—')}</td><td>${q}</td><td class="c-gold">${item.approvedValue?fC(item.approvedValue):'—'}</td></tr>`;}).join('')}</tbody></table></div></div><div class="details-list"><div class="details-item"><strong>ملاحظات الطلب:</strong><div>${esc(d.notes||'—')}</div></div>${d.approveNotes?`<div class="details-item"><strong>ملاحظات الاعتماد:</strong><div>${esc(d.approveNotes)}</div></div>`:''}${d.rejectionReason?`<div class="details-item"><strong>سبب الرفض:</strong><div>${esc(d.rejectionReason)}</div></div>`:''}</div>${chefAudit}${receiptAudit}<div class="modal-footer"><button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>`);
 }
-function printDispatchNote(id){
-const d=STATE.dispatches.find(x=>String(x.id)===String(id));
+async function printDispatchNote(id){
+let d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+// PERF 2026-10-08: القائمة بلا صور تواقيع — جلب الصف الكامل للطباعة
+try{
+const full=await apiFetch(`/dispatches/${encodeURIComponent(id)}`);
+if(full&&(full.id||full.data)){ d=full.data||full; }
+}catch(_){ /* fallback للصف المحلي */ }
 const dept=STATE.departments.find(x=>x.code===d.deptCode);
 const printWindow=(window.openInAppReport ? window.openInAppReport('تقرير المطبخ') : window.open('', '_blank'));
 if(!printWindow){ toast('اسمح بالنوافذ المنبثقة لطباعة إذن الصرف','warning'); return; }
@@ -1255,4 +1546,4 @@ ${prods?`<h3>أوامر الإنتاج الموزعة على الجهة</h3><tab
 win.document.close();
 }
 
-export { kitchenOverviewLoading, refreshKitchenOverview, kitGoSec, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, syncKitchenProduct, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, renderKitchen, renderCostCardsSection, loadCostCards, printCostCard, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, deleteDispatch, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, deleteKitchenReturn, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, dispUomChanged, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe };
+export { canEditDispatch, openDispatchEditModal, submitDispatchEdit, dispatchEditRowHtml, prefillDispatchEditRow, collectDispatchItems, kitchenOverviewLoading, refreshKitchenOverview, kitGoSec, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, syncKitchenProduct, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, dispPrintList, renderKitchen, renderCostCardsSection, loadCostCards, printCostCard, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, deleteDispatch, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, deleteKitchenReturn, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, dispUomChanged, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe };
