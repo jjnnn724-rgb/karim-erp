@@ -1,0 +1,149 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Base (scoped reset, typography, RTL/LTR, focus)
+   ═══════════════════════════════════════════════════════════════════════
+   EVERYTHING HERE IS SCOOPED TO `.erp-v2`.
+
+   The legacy app ships 98KB of global CSS with no @layer and no scoping, and
+   selectors like `tbody tr`, `.btn`, `table` are global. This file therefore
+   never uses a bare element selector outside `.erp-v2` — V2 cannot leak into
+   legacy, and legacy cannot be restyled from here.
+
+   RTL is the DEFAULT (this is an Arabic-first product); LTR is the opt-out.
+   All directionality uses CSS logical properties, so no rule is duplicated
+   per direction and no directional icon needs a second rule.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-v2,
+.erp-v2 *,
+.erp-v2 *::before,
+.erp-v2 *::after {
+  box-sizing: border-box;
+}
+
+.erp-v2 {
+  /* ── Typography ───────────────────────────────────────────────────── */
+  font-family: var(--erp-font-sans);
+  font-size: var(--erp-text-base);
+  line-height: var(--erp-leading-base);
+  color: var(--erp-text-primary);
+  background: var(--erp-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Arabic shaping must never be synthesised away. */
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+}
+
+.erp-v2 h1, .erp-v2 h2, .erp-v2 h3,
+.erp-v2 h4, .erp-v2 h5, .erp-v2 h6 {
+  margin: 0;
+  font-weight: var(--erp-fw-semibold);
+  line-height: var(--erp-leading-tight);
+  color: var(--erp-text-primary);
+}
+
+.erp-v2 h1 { font-size: var(--erp-text-2xl); }
+.erp-v2 h2 { font-size: var(--erp-text-xl); }
+.erp-v2 h3 { font-size: var(--erp-text-lg); }
+.erp-v2 h4 { font-size: var(--erp-text-md); }
+
+.erp-v2 p { margin: 0; }
+
+.erp-v2 a {
+  color: var(--erp-brand);
+  text-decoration: none;
+}
+.erp-v2 a:hover { text-decoration: underline; }
+
+/* Numbers, IDs, serials, times and money must not shift width while
+   re-sorting or ticking. Applied as a utility so it can be opted out of
+   (Arabic prose looks wrong with tabular figures). */
+.erp-v2 .erp-tnum,
+.erp-v2 .erp-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--erp-tnum);
+}
+
+.erp-v2 .erp-mono { font-family: var(--erp-font-mono); }
+
+/* ── Colour helpers (text only — never the sole status cue) ─────────── */
+.erp-v2 .erp-text-secondary { color: var(--erp-text-secondary); }
+.erp-v2 .erp-text-muted    { color: var(--erp-text-muted); }
+.erp-v2 .erp-text-faint    { color: var(--erp-text-faint); }
+
+/* ── Layout primitives ──────────────────────────────────────────────── */
+.erp-v2 .erp-stack   { display: flex; flex-direction: column; gap: var(--erp-space-3); }
+.erp-v2 .erp-row     { display: flex; align-items: center; gap: var(--erp-space-2); }
+.erp-v2 .erp-row-wrap{ display: flex; align-items: center; gap: var(--erp-space-2); flex-wrap: wrap; }
+.erp-v2 .erp-grow    { flex: 1 1 auto; min-width: 0; }
+.erp-v2 .erp-truncate{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Focus (WCAG 2.2: visible, never removed) ───────────────────────── */
+.erp-v2 :focus { outline: none; }
+
+.erp-v2 :focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--erp-radius-sm);
+}
+
+/* Keyboard users must be able to skip the shell chrome (WCAG 2.4.1). */
+.erp-v2 .erp-skip-link {
+  position: absolute;
+  inset-inline-start: var(--erp-space-2);
+  inset-block-start: calc(-1 * var(--erp-space-10));
+  z-index: var(--erp-z-tooltip);
+  padding: var(--erp-space-2) var(--erp-space-4);
+  background: var(--erp-brand);
+  color: var(--erp-text-inverse);
+  border-radius: var(--erp-radius-md);
+  font-weight: var(--erp-fw-semibold);
+  transition: inset-block-start var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-skip-link:focus {
+  inset-block-start: var(--erp-space-2);
+}
+
+/* Visually hidden but announced by screen readers. */
+.erp-v2 .erp-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Selection & scrollbars ─────────────────────────────────────────── */
+.erp-v2 ::selection {
+  background: var(--erp-brand-soft);
+  color: var(--erp-text-primary);
+}
+
+.erp-v2 * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--erp-border-strong) transparent;
+}
+
+.erp-v2 ::-webkit-scrollbar { width: 10px; height: 10px; }
+.erp-v2 ::-webkit-scrollbar-track { background: transparent; }
+.erp-v2 ::-webkit-scrollbar-thumb {
+  background: var(--erp-border-strong);
+  border-radius: var(--erp-radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.erp-v2 ::-webkit-scrollbar-thumb:hover { background-color: var(--erp-text-faint); }
+
+/* ── Placeholder ────────────────────────────────────────────────────── */
+.erp-v2 ::placeholder {
+  color: var(--erp-text-faint);
+  opacity: 1;
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+@media print {
+  .erp-v2 { font-size: 11pt; }
+  .erp-v2 a[href]::after { content: ""; }
+}

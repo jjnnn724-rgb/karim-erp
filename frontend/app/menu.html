@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>شاشة بوفيه الشرفة العالمي - Totem Menu Screen</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Amiri, Cinzel, Tajawal, Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,700;1,700&family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Socket.io for Realtime Server Sync -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    :root {
+      --gold-primary: #f5c842;
+      --gold-light: #fff0a6;
+      --gold-dark: #b8860b;
+      --gold-gradient: linear-gradient(135deg, #fff3b0 0%, #ffd700 35%, #d4af37 70%, #996515 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #05060b;
+      color: #f8fafc;
+      font-family: 'Tajawal', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Gold Shimmer Animations */
+    @keyframes goldGlow {
+      0%, 100% { filter: drop-shadow(0 0 12px rgba(245, 200, 66, 0.45)); }
+      50% { filter: drop-shadow(0 0 25px rgba(245, 200, 66, 0.8)); }
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+
+    @keyframes marqueeFlow {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Royal Frosted Glass Panel */
+    .royal-glass {
+      background: linear-gradient(180deg, rgba(16, 20, 36, 0.82) 0%, rgba(9, 12, 24, 0.92) 100%);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(245, 200, 66, 0.35);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .royal-glass::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245, 200, 66, 0.8), transparent);
+    }
+
+    /* Gold Metallic Gradients */
+    .text-gold-gradient {
+      background: linear-gradient(135deg, #fff7cc 0%, #ffd700 40%, #e6b800 70%, #b8860b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-gold {
+      background: linear-gradient(135deg, #ffea85 0%, #f5c842 50%, #c49216 100%);
+      color: #0c0b05;
+      font-weight: 900;
+      box-shadow: 0 0 18px rgba(245, 200, 66, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+
+    .badge-royal {
+      background: linear-gradient(135deg, rgba(245, 200, 66, 0.18) 0%, rgba(184, 134, 11, 0.3) 100%);
+      border: 1px solid rgba(245, 200, 66, 0.55);
+      color: #ffea85;
+      box-shadow: 0 0 12px rgba(245, 200, 66, 0.25);
+    }
+
+    .divider-gold-dots {
+      border-bottom: 1px dashed rgba(245, 200, 66, 0.22);
+    }
+
+    .animate-marquee {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marqueeFlow 30s linear infinite;
+    }
+    .animate-marquee:hover {
+      animation-play-state: paused;
+    }
+
+    /* Islamic Corner Decors */
+    .corner-decor {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-color: rgba(245, 200, 66, 0.6);
+      pointer-events: none;
+    }
+    .corner-tl { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; }
+    .corner-tr { top: 6px; right: 6px; border-top: 2px solid; border-right: 2px solid; }
+    .corner-bl { bottom: 6px; left: 6px; border-bottom: 2px solid; border-left: 2px solid; }
+    .corner-br { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; }
+
+    /* Custom Scrollbar for Long Menus */
+    .menu-scroll::-webkit-scrollbar { width: 4px; }
+    .menu-scroll::-webkit-scrollbar-track { background: transparent; }
+    .menu-scroll::-webkit-scrollbar-thumb { background: rgba(245, 200, 66, 0.4); border-radius: 4px; }
+  </style>
+</head>
+
+<body class="bg-[#05060b] text-slate-100 min-h-screen flex items-center justify-center p-0 md:p-3 select-none">
+
+  <!-- ========================================== -->
+  <!-- MAIN TOTEM DISPLAY CONTAINER               -->
+  <!-- Optimized for vertical screens (1080x1920) -->
+  <!-- ========================================== -->
+  <main id="totemContainer" class="w-full max-w-[620px] lg:max-w-[720px] min-h-screen sm:min-h-[96vh] sm:rounded-3xl bg-gradient-to-b from-[#090b16] via-[#070913] to-[#04050a] border-2 border-amber-400/40 relative flex flex-col justify-between overflow-hidden shadow-[0_0_80px_rgba(245,200,66,0.18)] p-3 sm:p-5">
+
+    <!-- Subtle Ambient Background Lighting -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
+      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-amber-500/20 blur-[100px] rounded-full"></div>
+      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 w-[450px] h-[250px] bg-amber-600/15 blur-[90px] rounded-full"></div>
+      <!-- Islamic Geometry Motif Watermark -->
+      <div class="absolute inset-0 bg-[radial-gradient(rgba(245,200,66,0.1)_1px,transparent_1px)] [background-size:24px_24px] opacity-30"></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TOP HEADER: RESTAURANT & BUFFET IDENTITY   -->
+    <!-- ========================================== -->
+    <header class="relative z-10 w-full flex flex-col items-center text-center pb-2 border-b border-amber-400/20">
+
+      <!-- Live Sync Status & Screen Controls -->
+      <div class="w-full flex items-center justify-between mb-1 text-[11px] font-bold text-amber-200/80 px-1" dir="ltr">
+        <!-- Live Clock & Status Indicator -->
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#00ff87] animate-pulse"></span>
+          <span id="screenClock" class="font-mono text-xs font-bold text-amber-300">14:00</span>
+          <span class="opacity-40">•</span>
+          <span id="liveStatusText" class="text-[10px] tracking-wider text-amber-400 uppercase font-black">LIVE SYNC</span>
+        </div>
+
+        <!-- Fullscreen Button -->
+        <div class="flex items-center gap-1.5">
+          <button id="toggleFullscreenBtn" title="ملء الشاشة" class="px-2 py-0.5 rounded-lg bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-[10px] flex items-center gap-1 transition">
+            <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            <span>شاشة كاملة</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Royal Logo / Emblem -->
+      <div class="my-1 flex items-center justify-center">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 flex items-center justify-center text-slate-950 font-black shadow-[0_0_25px_rgba(245,200,66,0.5)] border border-amber-200">
+          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+            <path d="M12 2l2.6 6.8H22l-5.6 4.3 2.1 6.9L12 15.8 5.5 20l2.1-6.9L2 8.8h7.4z"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Restaurant Grand Title -->
+      <h1 id="restaurantNameAr" class="text-xl sm:text-2xl font-black text-gold-gradient tracking-wide drop-shadow-[0_2px_12px_rgba(245,200,66,0.35)]" style="font-family: 'Amiri', serif;">
+        مطاعم الشرفة العالمي
+      </h1>
+      <p id="restaurantNameEn" class="text-[11px] sm:text-xs uppercase font-extrabold tracking-[0.22em] text-amber-200/90 drop-shadow mt-0.5" style="font-family: 'Cinzel', serif;">
+        AL-SHURFA ROYAL OPEN BUFFET
+      </p>
+
+      <!-- Royal Ornamental Divider -->
+      <div class="flex items-center justify-center gap-3 my-2 w-full max-w-xs">
+        <span class="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-400/60 to-amber-300"></span>
+        <span class="text-amber-300 text-xs drop-shadow-[0_0_6px_#f5c842]">❖</span>
+        <span class="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-400/60 to-amber-300"></span>
+      </div>
+
+      <!-- Active Day & Active Meal Badges -->
+      <div class="w-full flex items-center justify-between gap-2 px-1">
+        <!-- Meal Type Selector -->
+        <div class="flex items-center gap-1 p-0.5 rounded-full bg-slate-950/70 border border-amber-400/30" dir="ltr">
+          <button onclick="setMeal('breakfast')" id="mealBtn-breakfast" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">إفطار</button>
+          <button onclick="setMeal('lunch')" id="mealBtn-lunch" class="badge-gold px-3.5 py-1 rounded-full text-slate-950 font-black text-[10.5px] uppercase transition shadow">غداء</button>
+          <button onclick="setMeal('dinner')" id="mealBtn-dinner" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">عشاء</button>
+        </div>
+
+        <!-- Today Day Pill -->
+        <div class="badge-royal px-3.5 py-1 rounded-full flex items-center gap-1.5 font-bold text-xs">
+          <span id="activeDayEn" class="font-cinzel text-[10px] uppercase tracking-wider text-amber-200">SUNDAY</span>
+          <span class="text-amber-400 text-xs">❖</span>
+          <span id="activeDayAr" class="text-amber-100 font-extrabold">الأحد</span>
+        </div>
+
+        <!-- Active Meal Arabic Title -->
+        <div class="badge-gold px-3 py-1 rounded-full text-xs font-black">
+          <span id="activeMealArabic">بوفيه الغداء</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- DYNAMIC MENU BODY: DISHES & CATEGORIES     -->
+    <!-- Rendered via JavaScript                    -->
+    <!-- ========================================== -->
+    <div id="menuCategoriesContainer" class="flex-1 flex flex-col gap-2.5 py-2.5 overflow-y-auto menu-scroll z-10">
+      <!-- Injected by renderScreen() -->
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FOOTER: COLD BUFFET, TICKER & PRICE BADGE  -->
+    <!-- ========================================== -->
+    <footer class="relative z-10 w-full pt-1.5 border-t border-amber-400/20">
+
+      <!-- COLD BUFFET & DESSERT SUMMARY SECTION -->
+      <div class="royal-glass rounded-2xl p-2.5 px-3 mb-2">
+        <div class="corner-decor corner-tl"></div>
+        <div class="corner-decor corner-tr"></div>
+        <div class="corner-decor corner-bl"></div>
+        <div class="corner-decor corner-br"></div>
+
+        <div class="flex items-center justify-center gap-2 mb-1.5">
+          <span class="w-8 h-[1px] bg-gradient-to-r from-transparent to-amber-400"></span>
+          <span class="text-[11px] font-black text-amber-300 tracking-wider font-cinzel">COLD BUFFET &amp; DESSERTS</span>
+          <span class="text-amber-400 text-xs">✦</span>
+          <span class="text-xs font-bold text-amber-200">البوفيه البارد والحلويات الملكية</span>
+          <span class="w-8 h-[1px] bg-gradient-to-l from-transparent to-amber-400"></span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-center text-xs">
+          <div class="text-right space-y-0.5 text-amber-100/90 font-medium text-[11px]">
+            <p class="flex items-center gap-1.5"><span class="text-amber-400">▪</span> سلطات ومقبلات شرقية وغربية طازجة</p>
+            <p class="flex items-center gap-1.5"><span class="text-amber-400">▪</span> ركن الحلويات الشرقية والغربية الفاخرة</p>
+          </div>
+          <div class="text-right space-y-0.5 text-amber-100/90 font-medium text-[11px]">
+            <p class="flex items-center gap-1.5"><span class="text-amber-400">▪</span> عصائر طبيعية مشكلة ومشروبات طازجة</p>
+            <p class="flex items-center gap-1.5"><span class="text-amber-400">▪</span> تشكيلة المخبوزات والمعجنات الساخنة</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RUNNING TICKER WITH BUFFET PRICE BADGE -->
+      <div class="w-full bg-slate-950/90 border border-amber-400/50 rounded-xl py-1.5 px-3 flex items-center gap-3 shadow-[0_0_20px_rgba(245,200,66,0.2)]">
+        <!-- Prominent Buffet Price Medallion -->
+        <div id="priceBadgeContainer" class="badge-gold px-3 py-1 rounded-lg shrink-0 flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,200,66,0.5)]">
+          <span class="text-[10px] font-black uppercase tracking-wider">سعر البوفيه</span>
+          <span id="tickerPriceDisplay" class="text-base font-black font-mono leading-none">149</span>
+          <span class="text-[10px] font-bold">ر.س</span>
+        </div>
+
+        <!-- Marquee Ticker -->
+        <div class="overflow-hidden w-full whitespace-nowrap flex items-center">
+          <span class="text-amber-400 text-xs ml-2 animate-pulse shrink-0">✦</span>
+          <p id="tickerText" class="animate-marquee inline-block text-[11.5px] font-bold text-amber-200 tracking-wide drop-shadow">
+            أهلاً بكم في بوفيه الشرفة العالمي • السعر شامل البوفيه المفتوح الكامل والحلويات والمشروبات والضريبة • خدمة وضيافة ملكية فاخرة
+          </p>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT: DATA ARCHITECTURE & SYNC LOGIC -->
+  <!-- ========================================== -->
+  <script>
+    // DEFAULT LUXURY BUFFET DATA
+    const DEFAULT_DATA = {
+      restaurant: {
+        nameAr: "مطاعم الشرفة العالمي",
+        nameEn: "AL-SHURFA ROYAL OPEN BUFFET",
+        ticker: "أهلاً بكم في بوفيه الشرفة العالمي • السعر شامل البوفيه المفتوح الكامل والحلويات والمشروبات والضريبة • خدمة وضيافة ملكية فاخرة",
+        buffetPrice: 149,
+        showPriceBadge: true
+      },
+      currentMeal: "lunch",
+      currentDay: { en: "SUNDAY", ar: "الأحد" },
+      autoRotate: false,
+      rotationIntervalSec: 25,
+      categories: [
+        {
+          id: "soups",
+          nameEn: "SOUPS & APPETIZERS",
+          nameAr: "الشوربة والمقبلات الساخنة",
+          theme: "gold",
+          icon: `<path d="M19 7H5c-1.1 0-2 .9-2 2v2c0 3.86 3.14 7 7 7h4c3.86 0 7-3.14 7-7V9c0-1.1-.9-2-2-2zm-1 4c0 2.76-2.24 5-5 5h-2c-2.76 0-5-2.24-5-5V9h12v2zm3-4H3V5h18v2zM9 3h6v2H9V3z"/>`,
+          items: [
+            { id: "s1", nameEn: "LENTIL SOUP WITH CUMIN", nameAr: "شوربة عدس بالكمون والليمون", meal: ["breakfast", "lunch", "dinner"], available: true },
+            { id: "s2", nameEn: "ORZO CHICKEN SOUP", nameAr: "شوربة لسان عصفور بالدجاج", meal: ["lunch", "dinner"], available: true },
+            { id: "s3", nameEn: "CRISPY SAMBUSA SELECTION", nameAr: "سمبوسك لحم وجبن مقرمشة", meal: ["breakfast", "lunch", "dinner"], available: true }
+          ]
+        },
+        {
+          id: "carving",
+          nameEn: "CARVING & CHEF'S STATION",
+          nameAr: "محطة الكارڤينج والشواء الفاخر",
+          theme: "gold",
+          icon: `<path d="M19.5 3c-.28 0-.53.11-.71.29l-3.08 3.09-1.42-1.42c-.39-.39-1.02-.39-1.41 0l-2.12 2.12c-.39.39-.39 1.02 0 1.41l1.41 1.42L3.29 18.79c-.39.39-.39 1.02 0 1.41l1.51 1.51c.39.39 1.02.39 1.41 0l9.88-9.88 1.42 1.41c.39.39 1.02.39 1.41 0l2.12-2.12c.39-.39.39-1.02 0-1.41l-1.41-1.42 3.09-3.08c.38-.38.38-1.02 0-1.41L20.21 3.3c-.18-.19-.43-.3-.71-.3z"/>`,
+          items: [
+            { id: "c1", nameEn: "PRIME MEAT KABSA WITH SAFFRON", nameAr: "كبسة لحم حاشي بلدي بالزعفران", meal: ["lunch", "dinner"], available: true },
+            { id: "c2", nameEn: "TRADITIONAL SMOKED MANDI CHICKEN", nameAr: "دجاج مندي مدخن على الطريقة الأصلية", meal: ["lunch", "dinner"], available: true },
+            { id: "c3", nameEn: "ROYAL MIXED CHARCOAL GRILL", nameAr: "مشاوي مشكلة فاخرة على الفحم", meal: ["lunch", "dinner"], available: true }
+          ]
+        },
+        {
+          id: "hot_dishes",
+          nameEn: "ROYAL HOT BUFFET",
+          nameAr: "أطباق البوفيه الساخن الملكي",
+          theme: "gold",
+          icon: `<path d="M12 23c-4.97 0-9-3.95-9-8.83 0-3.37 2.06-6.4 4.58-8.73.65-.6 1.7-.1 1.63.79-.18 2.22.75 4.34 2.45 5.56.24.18.59.04.66-.25.4-1.74 1.48-3.76 3.12-5.07.72-.57 1.79-.1 1.75.82-.12 2.68.82 5.3 2.53 7.15 1.57 1.7 2.28 3.5 2.28 5.56 0 4.88-4.03 8.83-9 8.83z"/>`,
+          items: [
+            { id: "h1", nameEn: "GRILLED HAMOUR WITH SAFFRON SAUCE", nameAr: "سمك هامور مشوي بصلصة الزعفران والليمون", meal: ["lunch", "dinner"], available: true },
+            { id: "h2", nameEn: "TRADITIONAL ROYAL JAREESH", nameAr: "جريش قصيمي بالسمن البري والمسمنة", meal: ["breakfast", "lunch", "dinner"], available: true },
+            { id: "h3", nameEn: "PESHAWAR RICE WITH NUTS & CARDAMOM", nameAr: "أرز بشاور فاخر بالهيل والمكسرات", meal: ["lunch", "dinner"], available: true },
+            { id: "h4", nameEn: "OKRA STEW WITH TENDER VEAL", nameAr: "إيدام بامية بلحم العجل الطازج", meal: ["lunch", "dinner"], available: true },
+            { id: "h5", nameEn: "FETTUCCINE ALFREDO WITH CHICKEN", nameAr: "مكرونة فوتوتشيني ألفريدو بالدجاج والفطر", meal: ["lunch", "dinner"], available: true },
+            { id: "h6", nameEn: "ROYAL STUFFED VINE LEAVES & VEGGIES", nameAr: "محاشي مشكلة ملكية بدبس الرمان", meal: ["lunch", "dinner"], available: true }
+          ]
+        }
+      ]
+    };
+
+    // Load initial data from localStorage with DEFAULT fallback
+    let menuData = null;
+    try {
+      const stored = localStorage.getItem('alShurfaMenuData');
+      if (stored) {
+        menuData = JSON.parse(stored);
+      }
+    } catch(e) {}
+    if (!menuData || !menuData.categories || menuData.categories.length === 0) {
+      menuData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    }
+
+    // BroadcastChannel for instant same-browser sync
+    let syncChannel = null;
+    try {
+      syncChannel = new BroadcastChannel('al_shurfa_menu_sync');
+      syncChannel.onmessage = (event) => {
+        if (event.data && event.data.type === 'MENU_UPDATED' && event.data.payload) {
+          applyMenuUpdate(event.data.payload);
+        }
+      };
+    } catch(e) {}
+
+    // Cross-tab storage event
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'alShurfaMenuData' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          applyMenuUpdate(updated);
+        } catch(_) {}
+      }
+    });
+
+    // Socket.io Realtime Sync with Karim ERP Backend
+    try {
+      if (typeof io !== 'undefined') {
+        const socket = io({ reconnectionAttempts: 10, timeout: 5000 });
+        socket.on('connect', () => {
+          console.log('[Menu] Socket connected to Karim ERP');
+        });
+        socket.on('buffet_menu_updated', (payload) => {
+          if (payload) applyMenuUpdate(payload);
+        });
+        socket.on('entity_changed', () => {
+          fetchBuffetData();
+        });
+        socket.on('menu_board_changed', () => {
+          fetchBuffetData();
+        });
+      }
+    } catch(err) {
+      console.warn("Socket connect fallback:", err);
+    }
+
+    // Fetch live buffet data from backend
+    async function fetchBuffetData() {
+      try {
+        const res = await fetch('/api/buffet-menu', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.ok && json.data) {
+            applyMenuUpdate(json.data);
+            return;
+          }
+        }
+      } catch(_) {}
+
+      // Fallback check to menu-board settings for ticker/title
+      try {
+        const res2 = await fetch('/api/menu-board/public', { cache: 'no-store' });
+        if (res2.ok) {
+          const d2 = await res2.json();
+          if (d2 && d2.settings) {
+            if (d2.settings.title) menuData.restaurant.nameAr = d2.settings.title;
+            if (d2.settings.footer_text) menuData.restaurant.ticker = d2.settings.footer_text;
+            renderScreen();
+          }
+        }
+      } catch(_) {}
+    }
+
+    // Apply update safely without breaking categories
+    function applyMenuUpdate(newPayload) {
+      if (!newPayload) return;
+      if (newPayload.restaurant) {
+        menuData.restaurant = Object.assign({}, menuData.restaurant, newPayload.restaurant);
+      }
+      if (newPayload.currentMeal) menuData.currentMeal = newPayload.currentMeal;
+      if (newPayload.currentDay) menuData.currentDay = newPayload.currentDay;
+      if (typeof newPayload.autoRotate === 'boolean') menuData.autoRotate = newPayload.autoRotate;
+
+      // Only update categories if they contain non-empty data
+      if (Array.isArray(newPayload.categories) && newPayload.categories.length > 0) {
+        menuData.categories = newPayload.categories;
+      }
+
+      localStorage.setItem('alShurfaMenuData', JSON.stringify(menuData));
+      renderScreen(true);
+      triggerLiveFlash();
+    }
+
+    function triggerLiveFlash() {
+      const el = document.getElementById('liveStatusText');
+      if (el) {
+        el.textContent = "تم التحديث!";
+        el.classList.add('text-emerald-300');
+        setTimeout(() => {
+          el.textContent = "LIVE SYNC";
+          el.classList.remove('text-emerald-300');
+        }, 2000);
+      }
+    }
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const clockEl = document.getElementById('screenClock');
+      if (clockEl) clockEl.textContent = `${hrs}:${mins}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Meal Switcher
+    function setMeal(meal) {
+      menuData.currentMeal = meal;
+      renderScreen();
+      if (syncChannel) {
+        syncChannel.postMessage({ type: 'MENU_UPDATED', payload: menuData });
+      }
+      localStorage.setItem('alShurfaMenuData', JSON.stringify(menuData));
+    }
+
+    // Fullscreen Toggle
+    const fsBtn = document.getElementById('toggleFullscreenBtn');
+    if (fsBtn) {
+      fsBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+    }
+
+    // Auto-rotation timer
+    let rotateTimer = null;
+    function checkAutoRotate() {
+      if (rotateTimer) clearInterval(rotateTimer);
+      if (menuData.autoRotate) {
+        const meals = ['breakfast', 'lunch', 'dinner'];
+        rotateTimer = setInterval(() => {
+          const curIdx = meals.indexOf(menuData.currentMeal);
+          const nextIdx = (curIdx + 1) % meals.length;
+          setMeal(meals[nextIdx]);
+        }, (menuData.rotationIntervalSec || 25) * 1000);
+      }
+    }
+
+    const mealNamesAr = {
+      breakfast: "بوفيه الإفطار الملكي",
+      lunch: "بوفيه الغداء الملكي",
+      dinner: "بوفيه العشاء الملكي"
+    };
+
+    // Main Render Function
+    function renderScreen(isUpdate = false) {
+      // Identity & Ticker
+      document.getElementById('restaurantNameAr').textContent = menuData.restaurant.nameAr || "مطاعم الشرفة العالمي";
+      document.getElementById('restaurantNameEn').textContent = menuData.restaurant.nameEn || "AL-SHURFA ROYAL OPEN BUFFET";
+      document.getElementById('tickerText').textContent = menuData.restaurant.ticker || "";
+
+      // Price Medallion
+      const priceDisplay = document.getElementById('tickerPriceDisplay');
+      const priceContainer = document.getElementById('priceBadgeContainer');
+      if (priceDisplay && priceContainer) {
+        if (menuData.restaurant.buffetPrice !== undefined && menuData.restaurant.buffetPrice !== null && menuData.restaurant.buffetPrice !== "") {
+          priceDisplay.textContent = menuData.restaurant.buffetPrice;
+          priceContainer.style.display = 'flex';
+        } else {
+          priceContainer.style.display = 'none';
+        }
+      }
+
+      // Active Meal
+      const activeMeal = menuData.currentMeal || "lunch";
+      ['breakfast', 'lunch', 'dinner'].forEach(m => {
+        const btn = document.getElementById(`mealBtn-${m}`);
+        if (!btn) return;
+        if (m === activeMeal) {
+          btn.className = "badge-gold px-3.5 py-1 rounded-full text-slate-950 font-black text-[10.5px] uppercase shadow";
+        } else {
+          btn.className = "px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white";
+        }
+      });
+
+      document.getElementById('activeMealArabic').textContent = mealNamesAr[activeMeal] || "بوفيه مفتوح فاخر";
+
+      // Active Day
+      if (menuData.currentDay) {
+        document.getElementById('activeDayEn').textContent = menuData.currentDay.en || "SUNDAY";
+        document.getElementById('activeDayAr').textContent = menuData.currentDay.ar || "الأحد";
+      }
+
+      // Render Categories & Dishes
+      const container = document.getElementById('menuCategoriesContainer');
+      container.innerHTML = "";
+
+      // Fallback categories if empty
+      const categoriesToRender = (menuData.categories && menuData.categories.length > 0) 
+        ? menuData.categories 
+        : DEFAULT_DATA.categories;
+
+      categoriesToRender.forEach((cat, index) => {
+        // Filter by availability and meal
+        const visibleItems = (cat.items || []).filter(item => {
+          if (item.available === false) return false;
+          if (!item.meal || item.meal.length === 0) return true;
+          return item.meal.includes(activeMeal);
+        });
+
+        // Even if 0 visible items in meal, show category with default items if desired
+        const displayItems = visibleItems.length > 0 ? visibleItems : (cat.items || []);
+        if (displayItems.length === 0) return;
+
+        let itemsHtml = displayItems.map((item, itemIdx) => {
+          const isNotLast = itemIdx < displayItems.length - 1;
+          const divider = isNotLast ? "divider-gold-dots" : "";
+
+          return `
+            <div class="flex items-center justify-between py-1.5 ${divider} transition hover:bg-white/[0.02] px-1 rounded">
+              <!-- Arabic Dish Name (Primary in Right-to-Left) -->
+              <div class="w-7/12 text-right">
+                <h3 class="text-xs sm:text-[13.5px] font-extrabold text-[#fff5cc] drop-shadow" style="font-family: 'Tajawal', sans-serif;">
+                  ${item.nameAr}
+                </h3>
+              </div>
+              <!-- English Dish Name -->
+              <div class="w-5/12 text-left" dir="ltr">
+                <p class="text-[10px] sm:text-[11px] font-bold text-amber-300/80 uppercase tracking-wide truncate" style="font-family: 'Outfit', sans-serif;">
+                  ${item.nameEn || ''}
+                </p>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const catHtml = `
+          <section class="royal-glass rounded-2xl p-3 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+            <div class="corner-decor corner-tl"></div>
+            <div class="corner-decor corner-tr"></div>
+            
+            <!-- Category Header -->
+            <div class="flex items-center justify-between pb-2 mb-1 border-b border-amber-400/20">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-400/15 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow">
+                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    ${cat.icon || DEFAULT_DATA.categories[0].icon}
+                  </svg>
+                </div>
+                <h2 class="text-sm sm:text-base font-black text-gold-gradient" style="font-family: 'Tajawal', sans-serif;">
+                  ${cat.nameAr}
+                </h2>
+              </div>
+              <div dir="ltr">
+                <span class="text-[10px] sm:text-[11px] font-extrabold text-amber-200/70 uppercase tracking-wider font-cinzel">
+                  ${cat.nameEn}
+                </span>
+              </div>
+            </div>
+
+            <!-- Items List -->
+            <div class="space-y-0.5">
+              ${itemsHtml}
+            </div>
+          </section>
+        `;
+
+        container.insertAdjacentHTML('beforeend', catHtml);
+      });
+    }
+
+    // Initial render & sync
+    renderScreen();
+    checkAutoRotate();
+    fetchBuffetData();
+
+    // Auto-poll every 30 seconds to keep updated
+    setInterval(fetchBuffetData, 30000);
+  </script>
+</body>
+</html>

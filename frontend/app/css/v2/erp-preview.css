@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   V2 preview page chrome  —  ONLY referenced by v2.html
+   ═══════════════════════════════════════════════════════════════════════
+   This file is deliberately outside the shipped design system:
+
+     • it must never be reachable from a production shell
+     • it disappears with v2.html, which is the rollback contract
+
+   It lives here rather than in a <style> block so the preview page carries
+   zero inline markup. The app's Content-Security-Policy serves a per-response
+   nonce, which makes 'unsafe-inline' inert for scripts; keeping *all*
+   presentation external means the page keeps working if that policy is ever
+   tightened to cover styles too.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--karim-bg, #f4f5f7);
+  color: var(--karim-text, #101828);
+  font-family: var(--karim-font, "IBM Plex Sans Arabic", system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Preview banner ───────────────────────────────────────────────────
+   States out loud that this is a preview with sample data, and offers the
+   way back to the running system. Not part of the V2 shell. */
+.erp-preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 9px 18px;
+  background: #101828;
+  color: #e4e7ec;
+  font-size: 12.5px;
+  border-block-end: 1px solid rgba(255, 255, 255, .12);
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 9999;
+}
+
+.erp-preview-banner strong {
+  background: #b45309;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.erp-preview-banner span {
+  flex: 1 1 320px;
+  line-height: 1.5;
+}
+
+.erp-preview-banner em {
+  color: #fdb022;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.erp-preview-banner a {
+  color: #7cb8ff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.erp-preview-banner a:hover { text-decoration: underline; }
+
+.erp-preview-banner a:focus-visible {
+  outline: 2px solid #7cb8ff;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@media (max-width: 640px) {
+  .erp-preview-banner { padding: 8px 12px; font-size: 12px; }
+}

@@ -1,0 +1,1047 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — Menu Board · ISLAMIC MASTERPIECE v1.0
+   ─────────────────────────────────────────────────────────────────
+   طبقة تصميم «فن إسلامي / شكل مئذنة» — خطوط ثنائية اللغة عالمية،
+   ألوان زاهية مبهرة فخمة، أقواس محراب، زخارف نجمية ثمانية،
+   هالات ذهبية. تُحمَّل بعد menu-board.css فتُغلب الافتراضيات،
+   وتعمل فقط عندما يكون data-background="noir" (يعني: عكسي 100%).
+   المسرح: 1080×1920.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── لوحة الألوان: زاهية ومبهّرة على قاعدة كحلية عميقة ─── */
+#stage[data-background="noir"] {
+    --i-bg-0: #04121c;
+    --i-bg-1: #072430;
+    --i-bg-2: #061a2a;
+    --i-gold: #ffd469;
+    --i-gold-2: #e8a91b;
+    --i-gold-3: #b8760a;
+    --i-gold-lt: #fff1c2;
+    --i-cream: #fff8e6;
+    --i-muted: #a7b9c9;
+    --i-cyan: #3fd7f5;      /* الشوربات */
+    --i-emerald: #2ee6a0;   /* ركن الشواء */
+    --i-amber: #ffab2e;     /* الأطباق الرئيسية */
+    --i-rose: #ff7ab8;      /* الحلويات */
+    --i-violet: #b98cff;    /* المقبلات */
+    --i-lime: #b6e63c;      /* السلطات */
+    --i-arch: rgba(255, 212, 105, .16);
+}
+
+/* ═══ ١. الخلفية: نجوم ثمانية زخرفية + هالات جوهرية ═══ */
+#stage[data-background="noir"]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    /* شبكة نجمة ثمانية إسلامية */
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(255, 212, 105, .16) 1.6px, transparent 1.9px),
+        radial-gradient(circle at 0% 0%, rgba(63, 215, 245, .13) 1.4px, transparent 1.8px),
+        radial-gradient(circle at 100% 100%, rgba(46, 230, 160, .13) 1.4px, transparent 1.8px),
+        linear-gradient(45deg, transparent 47.6%, rgba(255, 212, 105, .07) 48%, rgba(255, 212, 105, .07) 52%, transparent 52.4%),
+        linear-gradient(-45deg, transparent 47.6%, rgba(255, 212, 105, .07) 48%, rgba(255, 212, 105, .07) 52%, transparent 52.4%);
+    background-size: 74px 74px, 148px 148px, 148px 148px, 74px 74px, 74px 74px;
+    opacity: .5;
+    mask-image: radial-gradient(ellipse 96% 90% at 50% 44%, #000 32%, transparent 92%);
+    -webkit-mask-image: radial-gradient(ellipse 96% 90% at 50% 44%, #000 32%, transparent 92%);
+}
+/* هالات جوهرية زاهية */
+#stage[data-background="noir"] .bg-base {
+    background:
+        radial-gradient(900px 640px at 74% 4%, rgba(255, 171, 46, .2), transparent 58%),
+        radial-gradient(780px 620px at 4% 22%, rgba(63, 215, 245, .17), transparent 56%),
+        radial-gradient(860px 660px at 96% 78%, rgba(46, 230, 160, .16), transparent 56%),
+        radial-gradient(700px 560px at 50% 104%, rgba(185, 140, 255, .15), transparent 58%),
+        linear-gradient(168deg, #072430 0%, #061a2a 46%, #04121c 100%);
+}
+
+/* ═══ ١-ب. تبديل ألوان الخلفية تلقائيًا بانتقال ناعم (طلب المالك 2026-10-12) ═══
+   طبقتان متعاكستان (A/B) فوق القاعدة الكحلية الثابتة — تبدّلان شفافية
+   خلال 3 ثوانٍ فيبدو التبديل كتنفّس جوهری لا كقطع مفاجئ.
+   الإطار الذهبي وألوان الأقسام تبقى ثابتة تمامًا: تتغير «الخلفية فقط». */
+#stage[data-background="noir"] .bg-base::before,
+#stage[data-background="noir"] .bg-base::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 3s ease-in-out;
+}
+#stage[data-background="noir"] .bg-base::before { background: var(--i-tint-a, none); }
+#stage[data-background="noir"] .bg-base::after  { background: var(--i-tint-b, none); }
+#stage[data-tint-side="a"][data-background="noir"] .bg-base::before { opacity: 1; }
+#stage[data-tint-side="b"][data-background="noir"] .bg-base::after  { opacity: 1; }
+
+/* ═══ ٢. الإطار المذهّب + زوايا مئذنية ═══ */
+#stage[data-background="noir"] .bg-frame {
+    inset: 20px;
+    border: 2px solid rgba(255, 212, 105, .5);
+    border-radius: 30px;
+    box-shadow:
+        0 0 0 1px rgba(255, 212, 105, .22),
+        inset 0 0 70px rgba(255, 171, 46, .07),
+        0 0 60px rgba(255, 212, 105, .14);
+}
+#stage[data-background="noir"] .bg-frame::after {
+    content: '';
+    position: absolute;
+    inset: 9px;
+    border: 1px dashed rgba(255, 212, 105, .3);
+    border-radius: 22px;
+    pointer-events: none;
+}
+#stage[data-background="noir"] .bg-frame .corner { border-color: var(--i-gold); }
+#stage[data-background="noir"] .bg-frame .corner::after {
+    width: 12px; height: 12px;
+    background: linear-gradient(135deg, var(--i-gold-lt), var(--i-gold-2));
+    box-shadow: 0 0 16px var(--i-gold), 0 0 34px rgba(255, 212, 105, .5);
+    transform: rotate(45deg);
+}
+
+/* ═══ ٣. الترويسة: شعار بهالة + عنوان ثنائي اللغة ═══ */
+#stage[data-background="noir"] .brand-logo {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    border: 3px solid var(--i-gold);
+    box-shadow:
+        0 0 0 6px rgba(255, 212, 105, .14),
+        0 0 46px rgba(255, 212, 105, .48),
+        0 14px 34px rgba(0, 0, 0, .6),
+        inset 0 3px 8px rgba(255, 255, 255, .18);
+}
+#stage[data-background="noir"] #brandTitle {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 60px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    background: linear-gradient(100deg, var(--i-gold-lt) 5%, var(--i-gold) 42%, var(--i-gold-3) 78%, var(--i-gold-lt) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 3px 16px rgba(255, 212, 105, .42));
+    text-shadow: none;
+}
+#stage[data-background="noir"] #brandSub {
+    font: 700 21px 'Cinzel', serif;
+    letter-spacing: 8px;
+    color: var(--i-cyan);
+    text-shadow: 0 0 18px rgba(63, 215, 245, .55);
+}
+/* إزالة سارية المئذنة/النجمة أعلى الشعار — طلب المالك 2026-10-12 */
+#stage[data-background="noir"] .mb-header::before {
+    content: none;
+    display: none;
+    position: absolute;
+    top: -4px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    color: var(--i-gold);
+    text-shadow: 0 0 18px var(--i-gold), 0 0 36px rgba(255, 212, 105, .6);
+    animation: islamic-pulse 3.2s ease-in-out infinite;
+    z-index: 3;
+}
+@keyframes islamic-pulse {
+    0%, 100% { opacity: .68; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.28); }
+}
+
+/* ═══ ٤. شريط الحالة (LIVE · الساعة · اللغة) ═══ */
+#stage[data-background="noir"] .status-bar { color: var(--i-muted); }
+#stage[data-background="noir"] .conn {
+    color: #04121c;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--i-emerald), #12b981);
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 20px;
+    letter-spacing: 1px;
+    box-shadow: 0 0 26px rgba(46, 230, 160, .55), inset 0 1px 3px rgba(255, 255, 255, .45);
+}
+#stage[data-background="noir"] .conn.off {
+    color: #fff;
+    background: linear-gradient(135deg, #f0554d, #b3231c);
+    box-shadow: 0 0 22px rgba(240, 85, 77, .45);
+}
+#stage[data-background="noir"] .clock-time {
+    font: 700 42px 'Outfit', sans-serif;
+    letter-spacing: 2px;
+    color: var(--i-gold-lt);
+    text-shadow: 0 0 24px rgba(255, 212, 105, .6), 0 3px 12px rgba(0, 0, 0, .6);
+}
+#stage[data-background="noir"] .clock-date { color: var(--i-cyan); font-weight: 700; }
+#stage[data-background="noir"] .language-toggle,
+#stage[data-background="noir"] .status-brand {
+    color: var(--i-gold);
+    border-color: rgba(255, 212, 105, .45);
+    background: linear-gradient(150deg, rgba(6, 26, 42, .9), rgba(4, 18, 28, .95));
+    letter-spacing: 3px;
+    text-shadow: 0 0 16px rgba(255, 212, 105, .45);
+}
+
+/* ═══ ٥. شريط فترات الوجبات — أقواس محراب ═══ */
+#stage[data-background="noir"] .period-strip { gap: 16px; }
+#stage[data-background="noir"] .period {
+    position: relative;
+    color: var(--i-cream);
+    border: 1.5px solid rgba(255, 212, 105, .34);
+    /* قوس محراب إسلامي */
+    border-radius: 44px 44px 12px 12px;
+    background: linear-gradient(160deg, rgba(7, 36, 48, .95), rgba(4, 18, 28, .97));
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .5), inset 0 2px 5px rgba(255, 255, 255, .07);
+    padding-top: 12px;
+    overflow: visible;
+}
+/* إزالة الهلال/النجمة بالكامل من الصفحة — طلب المالك 2026-10-12 */
+#stage[data-background="noir"] .period::before { content: none; display: none; }
+#stage[data-background="noir"] .period-name {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    color: var(--i-gold);
+    font-size: 34px;
+    letter-spacing: 0;
+}
+#stage[data-background="noir"] .period-hours {
+    font: 600 17px 'Outfit', sans-serif;
+    color: var(--i-muted);
+    letter-spacing: 1px;
+}
+#stage[data-background="noir"] .period.current {
+    background: linear-gradient(160deg, #ffe08a, var(--i-gold) 44%, var(--i-gold-3));
+    border-color: var(--i-gold-lt);
+    color: #1a1204;
+    padding-top: 12px;
+    box-shadow:
+        0 10px 0 rgba(120, 84, 8, .85),
+        0 18px 44px rgba(255, 212, 105, .55),
+        inset 0 2px 4px rgba(255, 255, 255, .6);
+    animation: none;
+}
+#stage[data-background="noir"] .period.current .period-name { color: #1a1204; text-shadow: 0 1px 0 rgba(255, 255, 255, .3); }
+#stage[data-background="noir"] .period.current .period-hours { color: rgba(26, 18, 4, .8); }
+#stage[data-background="noir"] .period-sep {
+    color: var(--i-gold);
+    font-size: 26px;
+    text-shadow: 0 0 16px rgba(255, 212, 105, .7);
+}
+
+/* ═══ ٦. الفاصل الذهبي المزخرف ═══ */
+#stage[data-background="noir"] .gold-rule { opacity: .9; }
+#stage[data-background="noir"] .gold-rule::after {
+    background: linear-gradient(90deg, transparent, var(--i-gold) 22%, var(--i-gold-lt) 50%, var(--i-gold) 78%, transparent);
+    box-shadow: 0 0 22px rgba(255, 212, 105, .65);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ٧. صفحة البوفيه — التصميم الإسلامي الفخم (الشكل المطلوب)
+   الترتيب: شوربات ← ركن الشواء (اسم متغير) ← 10 أطباق رئيسية ←
+            حلويات شرقية وغربية ⟷ قبليات وسلطات محلية وعالمية
+   ═══════════════════════════════════════════════════════════════ */
+#stage[data-background="noir"] .buffet-page {
+    border: 2px solid rgba(255, 212, 105, .55);
+    background:
+        radial-gradient(660px 420px at 82% 6%, rgba(255, 171, 46, .14), transparent 62%),
+        radial-gradient(620px 460px at 6% 62%, rgba(63, 215, 245, .1), transparent 60%),
+        linear-gradient(160deg, rgba(7, 36, 48, .9), rgba(4, 18, 28, .96));
+    border-radius: 30px;
+    box-shadow:
+        inset 0 0 0 5px rgba(255, 212, 105, .1),
+        0 20px 54px rgba(0, 0, 0, .62),
+        0 0 70px rgba(255, 212, 105, .13);
+}
+
+/* ─── لوحة قسم: زجاجية داكنة بحدّ ذهبي ─── */
+#stage[data-background="noir"] .buffet-panel {
+    position: relative;
+    border: 1.5px solid rgba(255, 212, 105, .4);
+    border-radius: 22px;
+    background: linear-gradient(158deg, rgba(11, 44, 58, .72), rgba(5, 22, 34, .8));
+    box-shadow:
+        inset 0 2px 7px rgba(255, 255, 255, .05),
+        0 10px 26px rgba(0, 0, 0, .42),
+        0 0 26px rgba(255, 212, 105, .06);
+    overflow: hidden;
+}
+/* نقش نجمي خفيف داخل كل لوحة */
+#stage[data-background="noir"] .buffet-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(255, 212, 105, .1) 1.3px, transparent 1.7px);
+    background-size: 46px 46px;
+    opacity: .55;
+}
+
+/* ─── عنوان القسم على هيئة قوس محراب + سارية مئذنة ─── */
+#stage[data-background="noir"] .buffet-section-heading {
+    position: relative;
+    z-index: 2;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-height: 54px;
+    padding: 9px 16px 8px;
+    margin: 7px 8px 6px;
+    border: 1.5px solid rgba(255, 212, 105, .5);
+    border-bottom: 0;
+    /* قوس المحراب */
+    border-radius: 50% 50% 6px 6px / 66% 66% 6px 6px;
+    background: linear-gradient(180deg, rgba(255, 212, 105, .22), rgba(255, 171, 46, .06) 72%, transparent);
+    box-shadow: inset 0 3px 12px rgba(255, 212, 105, .12);
+}
+/* إزالة الهلال والنجمة أعلى القوس — طلب المالك 2026-10-12 */
+#stage[data-background="noir"] .buffet-section-heading::before {
+    content: none;
+    display: none;
+    position: absolute;
+    top: -17px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    line-height: 1;
+    color: var(--i-gold);
+    background: #072430;
+    padding: 1px 9px;
+    border: 1.5px solid rgba(255, 212, 105, .55);
+    border-radius: 999px;
+    box-shadow: 0 0 20px rgba(255, 212, 105, .7);
+    text-shadow: 0 0 12px rgba(255, 212, 105, .9);
+}
+/* الاسم العربي — خط رقعة فخم */
+#stage[data-background="noir"] .buffet-section-heading b {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1.15;
+    background: linear-gradient(100deg, var(--i-gold-lt), var(--i-gold) 55%, var(--i-gold-2));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 12px rgba(255, 212, 105, .45));
+}
+/* الاسم الإنجليزي — خط عالمي متباعد */
+#stage[data-background="noir"] .buffet-section-heading span {
+    font: 700 15.5px 'Cinzel', serif;
+    letter-spacing: 5px;
+    color: var(--i-cyan);
+    text-shadow: 0 0 16px rgba(63, 215, 245, .55);
+    direction: ltr;
+}
+
+/* ─── ألوان مميّزة لكل قسم (زاهية مبهّرة) ─── */
+#stage[data-background="noir"] .buffet-soups .buffet-section-heading span   { color: var(--i-cyan);    text-shadow: 0 0 16px rgba(63, 215, 245, .6); }
+#stage[data-background="noir"] .buffet-soups .buffet-section-heading       { border-color: rgba(63, 215, 245, .6); background: linear-gradient(180deg, rgba(63, 215, 245, .24), rgba(63, 215, 245, .05) 72%, transparent); }
+#stage[data-background="noir"] .buffet-soups .buffet-section-heading::before { box-shadow: 0 0 20px rgba(63, 215, 245, .8); border-color: rgba(63, 215, 245, .7); color: var(--i-cyan); }
+
+#stage[data-background="noir"] .buffet-carving .buffet-section-heading span { color: var(--i-emerald);  text-shadow: 0 0 16px rgba(46, 230, 160, .6); }
+#stage[data-background="noir"] .buffet-carving .buffet-section-heading     { border-color: rgba(46, 230, 160, .6); background: linear-gradient(180deg, rgba(46, 230, 160, .24), rgba(46, 230, 160, .05) 72%, transparent); }
+#stage[data-background="noir"] .buffet-carving .buffet-section-heading::before { box-shadow: 0 0 20px rgba(46, 230, 160, .8); border-color: rgba(46, 230, 160, .7); color: var(--i-emerald); }
+
+#stage[data-background="noir"] .buffet-mains .buffet-section-heading span { color: var(--i-amber);     text-shadow: 0 0 16px rgba(255, 171, 46, .6); }
+#stage[data-background="noir"] .buffet-mains .buffet-section-heading      { border-color: rgba(255, 171, 46, .62); background: linear-gradient(180deg, rgba(255, 171, 46, .26), rgba(255, 171, 46, .05) 72%, transparent); }
+#stage[data-background="noir"] .buffet-mains .buffet-section-heading::before { box-shadow: 0 0 20px rgba(255, 171, 46, .8); border-color: rgba(255, 171, 46, .7); color: var(--i-amber); }
+
+#stage[data-background="noir"] .buffet-desserts .buffet-section-heading span { color: var(--i-rose);    text-shadow: 0 0 16px rgba(255, 122, 184, .6); }
+#stage[data-background="noir"] .buffet-desserts .buffet-section-heading     { border-color: rgba(255, 122, 184, .58); background: linear-gradient(180deg, rgba(255, 122, 184, .24), rgba(255, 122, 184, .05) 72%, transparent); }
+#stage[data-background="noir"] .buffet-desserts .buffet-section-heading::before { box-shadow: 0 0 20px rgba(255, 122, 184, .8); border-color: rgba(255, 122, 184, .7); color: var(--i-rose); }
+
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(1) .buffet-section-heading span { color: var(--i-violet); text-shadow: 0 0 16px rgba(185, 140, 255, .6); }
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(1) .buffet-section-heading { border-color: rgba(185, 140, 255, .58); background: linear-gradient(180deg, rgba(185, 140, 255, .24), rgba(185, 140, 255, .05) 72%, transparent); }
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(1) .buffet-section-heading::before { box-shadow: 0 0 20px rgba(185, 140, 255, .8); border-color: rgba(185, 140, 255, .7); color: var(--i-violet); }
+
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(2) .buffet-section-heading span { color: var(--i-lime); text-shadow: 0 0 16px rgba(182, 230, 60, .55); }
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(2) .buffet-section-heading { border-color: rgba(182, 230, 60, .55); background: linear-gradient(180deg, rgba(182, 230, 60, .2), rgba(182, 230, 60, .04) 72%, transparent); }
+#stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(2) .buffet-section-heading::before { box-shadow: 0 0 20px rgba(182, 230, 60, .75); border-color: rgba(182, 230, 60, .65); color: var(--i-lime); }
+
+/* ─── أصناف الشوربات (نوعان) — بطاقات مضيئة ─── */
+#stage[data-background="noir"] .buffet-soup-grid { gap: 16px; }
+#stage[data-background="noir"] .buffet-soup-item {
+    position: relative;
+    z-index: 1;
+    justify-content: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1.5px solid rgba(63, 215, 245, .5);
+    background: linear-gradient(120deg, rgba(63, 215, 245, .2), rgba(7, 36, 48, .85) 62%);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .42), inset 0 1px 4px rgba(255, 255, 255, .1), 0 0 22px rgba(63, 215, 245, .16);
+}
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-name {
+    color: var(--i-cream);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 34px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .6);
+    white-space: normal;
+    text-align: center;
+}
+#stage[data-background="noir"] .buffet-soup-item .buffet-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--i-gold-lt), var(--i-gold-2));
+    color: #04121c; font: 800 17px 'Outfit', sans-serif;
+    box-shadow: 0 0 18px rgba(255, 212, 105, .6);
+}
+
+/* ─── الأطباق الرئيسية (10 أصناف) — ذهبي/عنبري ─── */
+#stage[data-background="noir"] .buffet-main-grid { column-gap: 22px; }
+#stage[data-background="noir"] .buffet-main-item {
+    position: relative;
+    z-index: 1;
+    align-items: center;
+    gap: 14px;
+    padding: 5px 12px;
+    border-bottom: 1px dashed rgba(255, 212, 105, .3);
+}
+#stage[data-background="noir"] .buffet-main-item:nth-last-child(-n+2) { border-bottom: 0; }
+#stage[data-background="noir"] .buffet-main-item::before {
+    content: '❊';
+    flex: 0 0 auto;
+    font-size: 15px;
+    color: var(--i-amber);
+    text-shadow: 0 0 14px rgba(255, 171, 46, .8);
+}
+#stage[data-background="noir"] .buffet-main-item .buffet-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 34px; height: 34px; padding: 0 8px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, rgba(255, 171, 46, .9), rgba(184, 118, 10, .9));
+    color: #140c02; font: 800 16px 'Outfit', sans-serif;
+    box-shadow: 0 0 16px rgba(255, 171, 46, .45);
+}
+#stage[data-background="noir"] .buffet-main-item .buffet-item-name {
+    color: var(--i-cream);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 33px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .55);
+}
+#stage[data-background="noir"] .buffet-main-item:hover {
+    background: rgba(255, 171, 46, .12);
+    border-radius: 10px;
+    box-shadow: 0 0 24px rgba(255, 171, 46, .2);
+}
+
+/* ─── ركن الشواء (اسم متغير حسب اليوم والفترة) — زمرّد ─── */
+#stage[data-background="noir"] .buffet-carving {
+    background: linear-gradient(120deg, rgba(46, 230, 160, .2), rgba(7, 36, 48, .86) 56%, rgba(5, 22, 34, .92));
+    border-color: rgba(46, 230, 160, .55);
+    box-shadow: inset 0 2px 7px rgba(255, 255, 255, .06), 0 10px 26px rgba(0, 0, 0, .45), 0 0 30px rgba(46, 230, 160, .14);
+}
+#stage[data-background="noir"] .carving-current .buffet-item-name {
+    color: var(--i-emerald);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 46px;
+    font-weight: 700;
+    text-align: center;
+    text-shadow: 0 0 26px rgba(46, 230, 160, .6), 0 4px 16px rgba(0, 0, 0, .6);
+    white-space: normal;
+}
+#stage[data-background="noir"] .carving-current .buffet-item-name small { color: #ffb3b3; }
+#stage[data-background="noir"] .buffet-empty {
+    color: var(--i-muted);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 28px;
+    font-style: italic;
+    letter-spacing: .5px;
+}
+
+/* ─── الحلويات / المقبلات / السلطات — بطاقات صغيرة زاهية ─── */
+#stage[data-background="noir"] .buffet-desserts {
+    background: linear-gradient(150deg, rgba(255, 122, 184, .16), rgba(7, 36, 48, .84) 62%);
+    border-color: rgba(255, 122, 184, .45);
+}
+#stage[data-background="noir"] .buffet-small-item {
+    position: relative;
+    z-index: 1;
+    align-items: center;
+    gap: 9px;
+    padding: 3px 9px;
+    border-bottom: 1px dotted rgba(255, 212, 105, .26);
+}
+#stage[data-background="noir"] .buffet-small-item .buffet-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 241, 194, .95), rgba(232, 169, 27, .95));
+    color: #140c02; font: 800 13px 'Outfit', sans-serif;
+    box-shadow: 0 0 14px rgba(255, 212, 105, .5);
+}
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name {
+    color: var(--i-cream);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 30px;
+    font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, .55);
+}
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name small { color: #ffb0b0; }
+
+/* ═══ ٨. وضع التصنيفات (لو البوفيه مقفول) — نفس الروح ═══ */
+#stage[data-background="noir"] .page {
+    border: 2px solid rgba(255, 212, 105, .5);
+    border-radius: 26px;
+    background:
+        radial-gradient(620px 420px at 84% 4%, rgba(255, 171, 46, .13), transparent 62%),
+        linear-gradient(160deg, rgba(7, 36, 48, .92), rgba(4, 18, 28, .97));
+    box-shadow: inset 0 0 0 5px rgba(255, 212, 105, .1), 0 18px 48px rgba(0, 0, 0, .6);
+    overflow: hidden;
+}
+#stage[data-background="noir"] .page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 50% 50%, rgba(255, 212, 105, .1) 1.3px, transparent 1.7px);
+    background-size: 46px 46px;
+    opacity: .5;
+}
+#stage[data-background="noir"] .cat-header {
+    position: relative;
+    z-index: 2;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 20px 12px;
+    margin: 8px 12px 4px;
+    border: 1.5px solid rgba(255, 212, 105, .5);
+    border-bottom: 0;
+    border-radius: 50% 50% 6px 6px / 66% 66% 6px 6px;
+    background: linear-gradient(180deg, rgba(255, 212, 105, .2), rgba(255, 171, 46, .05) 72%, transparent);
+}
+#stage[data-background="noir"] .cat-title {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 36px;
+    background: linear-gradient(100deg, var(--i-gold-lt), var(--i-gold) 55%, var(--i-gold-2));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 14px rgba(255, 212, 105, .45));
+}
+#stage[data-background="noir"] .cat-en {
+    font: 700 17px 'Cinzel', serif;
+    letter-spacing: 5px;
+    color: var(--i-cyan);
+    text-shadow: 0 0 16px rgba(63, 215, 245, .55);
+    direction: ltr;
+}
+#stage[data-background="noir"] .item {
+    position: relative;
+    z-index: 1;
+    border: 1.5px solid rgba(255, 212, 105, .36);
+    border-radius: 16px;
+    background: linear-gradient(150deg, rgba(11, 44, 58, .78), rgba(5, 22, 34, .85));
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .44), inset 0 1px 4px rgba(255, 255, 255, .06);
+}
+#stage[data-background="noir"] .item:hover {
+    border-color: var(--i-gold);
+    box-shadow: 0 0 32px rgba(255, 212, 105, .3), 0 12px 30px rgba(0, 0, 0, .5);
+}
+#stage[data-background="noir"] .item-name {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 32px;
+    color: var(--i-cream);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .55);
+}
+#stage[data-background="noir"] .item-en {
+    font: 600 19px 'Outfit', sans-serif;
+    letter-spacing: 1px;
+    color: var(--i-muted);
+    direction: ltr;
+}
+#stage[data-background="noir"] .item-bullet {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--i-gold-lt), var(--i-gold-2));
+    color: #04121c; font: 800 15px 'Outfit', sans-serif;
+    box-shadow: 0 0 20px rgba(255, 212, 105, .55);
+}
+#stage[data-background="noir"] .now-ribbon {
+    background: linear-gradient(135deg, #ffe08a, var(--i-gold-2));
+    color: #1a1204;
+    box-shadow: 0 6px 20px rgba(255, 212, 105, .5);
+}
+
+/* ═══ ٩. التذييل — شريط ذهبي متحرك ═══ */
+#stage[data-background="noir"] .ticker {
+    border: 1.5px solid rgba(255, 212, 105, .5);
+    background: linear-gradient(135deg, rgba(255, 171, 46, .2), rgba(7, 36, 48, .96) 50%, rgba(4, 18, 28, .98));
+    box-shadow: 0 8px 0 rgba(120, 84, 8, .55), 0 16px 32px rgba(0, 0, 0, .55), inset 0 2px 5px rgba(255, 255, 255, .14);
+    border-radius: 999px;
+}
+#stage[data-background="noir"] .ticker-text {
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 28px;
+    color: var(--i-gold);
+    text-shadow: 0 0 20px rgba(255, 212, 105, .55);
+}
+#stage[data-background="noir"] .ticker-star {
+    color: var(--i-gold-lt);
+    text-shadow: 0 0 20px rgba(255, 212, 105, .9);
+}
+#stage[data-background="noir"] .foot-brand { color: var(--i-gold); letter-spacing: 4px; }
+#stage[data-background="noir"] .footer-meta { color: var(--i-muted); }
+
+/* ═══ ١٠. مؤشرات الصفحات ═══ */
+#stage[data-background="noir"] .page-dots i {
+    background: rgba(255, 212, 105, .3);
+    box-shadow: 0 0 8px rgba(255, 212, 105, .25);
+}
+#stage[data-background="noir"] .page-dots i.active {
+    background: linear-gradient(135deg, var(--i-gold-lt), var(--i-gold-2));
+    box-shadow: 0 0 20px rgba(255, 212, 105, .75);
+    transform: scale(1.25);
+}
+
+/* ═══ ١١. احترام تقليل الحركة ═══ */
+@media (prefers-reduced-motion: reduce) {
+    #stage[data-background="noir"] .mb-header::before { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ١٢. تصحيحات التدفق — منع التقطيع والتكديس
+   ─────────────────────────────────────────────────────────────────
+   CSS الأساسي يفرض على أسماء الأصناف nowrap+ellipsis، فترى
+   «دجاجة مشوية كاملة مع الأرز» مقطوعة بـ «……». هنا نسمح بالالتفاف،
+   ونفكّ تزاحم لوحة ركن الشواء، ونمنح المساحة للأقسام الحقيقية.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── الأسماء تلتف بدل أن تُقطَّع ─── */
+#stage[data-background="noir"] .buffet-item-name,
+#stage[data-background="noir"] .buffet-main-item .buffet-item-name,
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name,
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.28;
+}
+
+/* ─── ركن الشواء: الاسم فوق والوصف تحت (لا تراكب) ─── */
+#stage[data-background="noir"] .buffet-carving { justify-content: flex-start; }
+#stage[data-background="noir"] .buffet-carving .carving-current {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 16px 8px;
+}
+#stage[data-background="noir"] .buffet-carving .carving-current .buffet-item-name {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+}
+
+/* ─── عنوان القسم: ارتفاع أقل ليمنح مساحة أكبر للمحتوى ─── */
+#stage[data-background="noir"] .buffet-section-heading {
+    min-height: 0;
+    padding: 7px 14px 6px;
+    margin: 6px 8px 5px;
+}
+#stage[data-background="noir"] .buffet-section-heading b { font-size: 29px; line-height: 1.12; }
+#stage[data-background="noir"] .buffet-section-heading span { font-size: 12.5px; letter-spacing: 3.5px; }
+
+/* ─── الشوربات: بطاقتان بارزتان لا حبّات صغيرة ─── */
+#stage[data-background="noir"] .buffet-soup-grid {
+    align-items: stretch;
+    padding: 2px 14px 14px;
+    gap: 18px;
+}
+#stage[data-background="noir"] .buffet-soup-item {
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    padding: 14px 14px;
+    min-height: 96px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .45), inset 0 1px 5px rgba(255, 255, 255, .12), 0 0 28px rgba(63, 215, 245, .22);
+}
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-name {
+    color: var(--i-cream);
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 34px;
+    font-weight: 700;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .6);
+    white-space: normal;
+    text-align: center;
+}
+#stage[data-background="noir"] .buffet-soup-item .buffet-number {
+    width: 42px; height: 42px;
+    font-size: 17px;
+}
+/* سطر السعر/الوصف الصغير أسفل اسم الصنف إن وُجد */
+#stage[data-background="noir"] .buffet-item-name small {
+    display: block;
+    margin: 2px 0 0;
+    font: 700 15px 'Outfit', sans-serif;
+    color: var(--i-cyan);
+    letter-spacing: 1.4px;
+    text-shadow: 0 0 12px rgba(63, 215, 245, .4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ١٥. السطر الإنجليزي ثنائي اللغة تحت كل صنف
+   ─────────────────────────────────────────────────────────────────
+   الاسم العربي بالخط الرقعة الفخم فوق، والاسم الإنجليزي بخط
+   Outfit متباعد ذهبي/سماوي تحته — قراءة ثنائية اللغة أنيقة.
+   ═══════════════════════════════════════════════════════════════════ */
+#stage[data-background="noir"] .buffet-item-en {
+    display: block;
+    margin: 1px 0 0;
+    font: 600 16px 'Outfit', sans-serif;
+    font-style: normal;
+    letter-spacing: 1.6px;
+    color: var(--i-gold);
+    opacity: .9;
+    text-shadow: 0 0 14px rgba(255, 212, 105, .35);
+    direction: ltr;
+    unicode-bidi: isolate;
+    line-height: 1.2;
+}
+/* قسم الشوربات: الإنجليزي بلون السماوي لتناسق اللوحة */
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-en { color: var(--i-cyan); text-shadow: 0 0 14px rgba(63, 215, 245, .4); }
+/* ركن الشواء: إنجليزي أوضح لأنه العنوان البطل */
+#stage[data-background="noir"] .buffet-carving .buffet-item-en {
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--i-gold-lt);
+    text-shadow: 0 0 18px rgba(255, 212, 105, .55);
+}
+/* الأقسام الصغيرة: سطر أصغر ليتّسع داخل البطاقة */
+#stage[data-background="noir"] .buffet-small-item .buffet-item-en { font-size: 14px; letter-spacing: 1.1px; }
+/* نفدت الكمية: يبقى أحمر تحت الاسمين */
+#stage[data-background="noir"] .buffet-item-name small { color: #ff9b9b; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ١٦. شارات الترقيم (01 · 02 · 03 …)
+   ─────────────────────────────────────────────────────────────────
+   طلب المالك 2026-10-12 (نهائي): أرقام أنيقة مضيئة بدل الشعار.
+   قاعدة موحّدة تُغلب ستايلات الأقسام بفضل تسلسل الظهور.
+   ═══════════════════════════════════════════════════════════════════ */
+#stage[data-background="noir"] .buffet-panel .buffet-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 34px;
+    width: 34px;
+    height: 34px;
+    padding: 0 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffe9b0, #e8a91b 60%, #b8760a);
+    border: 1.5px solid rgba(255, 241, 194, .8);
+    box-shadow: 0 0 16px rgba(255, 212, 105, .55), inset 0 1px 3px rgba(255, 255, 255, .5);
+    font: 800 14px 'Outfit', sans-serif;
+    color: #1a1204;
+    overflow: hidden;
+}
+/* قياسات خاصة بكل قسم حسب مساحة البطاقة */
+#stage[data-background="noir"] .buffet-soup-item .buffet-number { width: 44px; height: 44px; min-width: 44px; font-size: 16px; }
+#stage[data-background="noir"] .buffet-small-item .buffet-number { width: 28px; height: 28px; min-width: 28px; font-size: 12px; }
+/* ركن الشواء: بلا شارة — هو عنوان بطل بلا ترقيم */
+/* وضع التصنيفات (احتياطي): ترقيم أنيق */
+#stage[data-background="noir"] .item-bullet {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; min-width: 30px;
+    padding: 0 5px; border-radius: 9px; overflow: hidden;
+    background: linear-gradient(135deg, #ffe9b0, #e8a91b 60%, #b8760a);
+    border: 1.5px solid rgba(255, 241, 194, .8);
+    box-shadow: 0 0 16px rgba(255, 212, 105, .5);
+    font: 800 13px 'Outfit', sans-serif; color: #1a1204;
+}
+
+/* ─── الأطباق الرئيسية: مساحة أوسع + ترقيم أنيق ─── */
+#stage[data-background="noir"] .buffet-mains { overflow: hidden; }
+#stage[data-background="noir"] .buffet-main-grid {
+    padding: 0 14px 12px;
+    column-gap: 26px;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+#stage[data-background="noir"] .buffet-main-item {
+    padding: 4px 8px;
+    gap: 11px;
+    align-items: center;
+}
+#stage[data-background="noir"] .buffet-main-item .buffet-item-name { font-size: 27px; }
+
+/* ─── الأقسام الصغيرة: صفّان متساويان لا صفوف فارغة ─── */
+#stage[data-background="noir"] .buffet-small-grid {
+    padding: 0 12px 11px;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    align-content: center;
+    row-gap: 4px;
+}
+#stage[data-background="noir"] .buffet-small-item { padding: 5px 8px; }
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name { font-size: 24px; }
+
+/* ─── تنعيم الانزلاق عند ظهور/اختفاء الأقسام ─── */
+#stage[data-background="noir"] .buffet-page { transition: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ١٤. جملة متحرّكة للأقسام الفارغة
+   ─────────────────────────────────────────────────────────────────
+   بدل قسم فارغ بلا معنى: شريط جملة ينزلق ببطء يوضّح أن هناك
+   تشكيلة متنوّعة تُقدَّم يوميًا (سلطات شرقية وعالمية، حلويات
+   شرقية وغربية، قبليات). تظهر فقط عندما لا توجد أصناف مُسندة.
+   ═══════════════════════════════════════════════════════════════════ */
+#stage[data-background="noir"] .buffet-note {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    padding: 0 10px 8px;
+    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+#stage[data-background="noir"] .buffet-note-track {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 74px;
+    white-space: nowrap;
+    animation: buffet-scroll 26s linear infinite;
+    will-change: transform;
+}
+#stage[data-background="noir"] .buffet-note-text {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-family: 'Aref Ruqaa', 'Amiri', serif;
+    font-size: 25px;
+    font-weight: 700;
+    color: var(--i-cream);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .55);
+}
+#stage[data-background="noir"] .buffet-note-text::before {
+    content: '❖';
+    margin-inline-end: 12px;
+    color: var(--i-gold);
+    font-size: 18px;
+    text-shadow: 0 0 16px rgba(255, 212, 105, .8);
+    align-self: center;
+}
+#stage[data-background="noir"] .buffet-note-text em {
+    font: 600 14px 'Outfit', sans-serif;
+    font-style: normal;
+    letter-spacing: 2.6px;
+    color: var(--i-gold);
+    opacity: .92;
+    text-shadow: 0 0 14px rgba(255, 212, 105, .4);
+    direction: ltr;
+}
+/* ألوان مميّزة لكل قسم */
+#stage[data-background="noir"] .buffet-desserts .buffet-note-text   { color: #ffe4f1; }
+#stage[data-background="noir"] .buffet-desserts .buffet-note-text::before { color: var(--i-rose);    text-shadow: 0 0 16px rgba(255, 122, 184, .85); }
+#stage[data-background="noir"] .buffet-desserts .buffet-note-text em { color: var(--i-rose); }
+#stage[data-background="noir"] .buffet-salads .buffet-note-text    { color: #f2ffd8; }
+#stage[data-background="noir"] .buffet-salads .buffet-note-text::before { color: var(--i-lime);     text-shadow: 0 0 16px rgba(182, 230, 60, .8); }
+#stage[data-background="noir"] .buffet-salads .buffet-note-text em { color: var(--i-lime); }
+#stage[data-background="noir"] .buffet-appetizers .buffet-note-text::before { color: var(--i-violet); text-shadow: 0 0 16px rgba(185, 140, 255, .85); }
+#stage[data-background="noir"] .buffet-appetizers .buffet-note-text em { color: var(--i-violet); }
+@keyframes buffet-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+#stage[data-language="en"] .buffet-note-track { animation-direction: reverse; }
+@media (prefers-reduced-motion: reduce) {
+    #stage[data-background="noir"] .buffet-note-track { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ١٣. ترويسة مضغوطة — استعادة مساحة المحتوى
+   ─────────────────────────────────────────────────────────────────
+   الترويسة الأصلية تاكل ~35% من الطول وتُخفي الشوربات. هنا نضغط
+   الشريط العلوي والشعار وشريط الفترات إلى نصف ارتفاعها تقريبًا
+   مع الحفاظ على الفخامة (هالات + ذهبي + قوس محراب).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── شريط الحالة: ساعة أصغر + حشو أدنى + مركز فارغ للشعار ─── */
+#stage[data-background="noir"] .status-bar { padding: 5px 42px 2px 116px; }
+/* إخفاء النص اللاتيني المكرر (موجود أسفل الصفحة) — يفسح مركز الصف للشعار */
+#stage[data-background="noir"] .status-brand { display: none; }
+#stage[data-background="noir"] .clock-time { font-size: 21px; letter-spacing: .5px; }
+#stage[data-background="noir"] .clock-date { font-size: 11px; }
+#stage[data-background="noir"] .conn { padding: 3px 12px; font-size: 12px; }
+#stage[data-background="noir"] .status-brand { font-size: 10.5px; letter-spacing: 1.8px; }
+#stage[data-background="noir"] .language-toggle { padding: 4px 11px; font-size: 11.5px; border-radius: 9px; }
+
+/* ─── الترويسة: الشعار مضيء في مركز شريط الحالة (فجوة English↔الساعة) ───
+   قياسات فعلية 1080×1920: شريط الحالة y=8..61، زر اللغة 395..479،
+   الساعة 766..1030 → المركز x=540 فاضي تمامًا. نصفح .arch ليبقى
+   الشعار وحده بلا إطار/خلفية كريمية، ويستقر داخل الشريط بلا تداخل
+   مع شريط الفترات (y=61). — طلب المالك 2026-10-12 */
+/* ─── الترويسة: الشعار بجوار مؤشر «مباشر» (أنيق من المنتصف) ───
+   نموضع الشعار مطلقًا داخل ترويسة تمتد على كامل العرض، فلا يعتمد
+   على نص/عرض .arch → إحداثيات ثابتة x=18..72 ويبدأ «● مباشر» عند
+   x=100 (padding-left 92px) → فجوة 28px بلا تداخل. ─── */
+#stage[data-background="noir"] .mb-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 61px;
+    transform: none;
+    padding: 0;
+    z-index: 26;
+    pointer-events: none;
+}
+#stage[data-background="noir"] .mb-header .arch {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    max-width: none;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    overflow: visible;
+    line-height: 0;
+    text-align: left;
+}
+#stage[data-background="noir"] .mb-header .arch::before { content: none; display: none; }
+#stage[data-background="noir"] .mb-header .arch-flare { display: none; }
+/* إزالة الهلال/النجمة فوق الترويسة — طلب المالك 2026-10-12 */
+#stage[data-background="noir"] .mb-header::before { content: none; display: none; }
+#stage[data-background="noir"] .brand-logo {
+    position: absolute;
+    top: 8px;
+    left: 36px;
+    width: 48px; height: 48px;
+    margin: 0; padding: 2px;
+    border-width: 2px;
+    box-shadow:
+        0 0 0 4px rgba(255, 212, 105, .18),
+        0 0 26px rgba(255, 212, 105, .7),
+        0 0 54px rgba(255, 171, 46, .42),
+        0 0 88px rgba(255, 212, 105, .22),
+        0 8px 20px rgba(0, 0, 0, .55),
+        inset 0 2px 6px rgba(255, 255, 255, .22);
+    animation: crest-glow 3.4s ease-in-out infinite;
+}
+@keyframes crest-glow {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255, 212, 105, .18), 0 0 26px rgba(255, 212, 105, .65), 0 0 54px rgba(255, 171, 46, .38), 0 0 88px rgba(255, 212, 105, .2), 0 8px 20px rgba(0, 0, 0, .55), inset 0 2px 6px rgba(255, 255, 255, .22); }
+    50%      { box-shadow: 0 0 0 5px rgba(255, 212, 105, .28), 0 0 38px rgba(255, 212, 105, .95), 0 0 76px rgba(255, 171, 46, .6), 0 0 120px rgba(255, 212, 105, .34), 0 8px 20px rgba(0, 0, 0, .55), inset 0 2px 6px rgba(255, 255, 255, .28); }
+}
+
+/* ─── شريط الفترات: أقواس أصغر وحشو أقل ─── */
+#stage[data-background="noir"] .period-strip { gap: 10px; padding: 6px 42px 5px; }
+#stage[data-background="noir"] .period {
+    padding: 9px 12px 6px;
+    border-radius: 26px 26px 8px 8px;
+}
+#stage[data-background="noir"] .period.current { padding: 9px 12px 6px; }
+#stage[data-background="noir"] .period::before { top: -7px; font-size: 13px; padding: 0 5px; }
+#stage[data-background="noir"] .period-name { font-size: 19px; }
+#stage[data-background="noir"] .period-hours { font-size: 11px; letter-spacing: .3px; }
+#stage[data-background="noir"] .period-sep { font-size: 15px; }
+
+/* ─── الفاصل الذهبي: خط رفيع بهامش أدنى ─── */
+#stage[data-background="noir"] .gold-rule { margin: 0 42px 1px; height: 2px; }
+
+/* ─── منطقة المحتوى: تستعيد كل المساحة الموفَّرة ─── */
+#stage[data-background="noir"] #pageHost { margin: 6px 36px 3px; }
+#stage[data-background="noir"] .page-dots { margin: 0 36px 1px; padding: 3px 0 6px; }
+#stage[data-background="noir"] .mb-footer { padding: 3px 40px 18px; }
+#stage[data-background="noir"] .ticker { padding: 6px 16px; }
+#stage[data-background="noir"] .ticker-text { font-size: 23px; }
+
+/* خط عربي أوضح للأطباق مع زيادة خفيفة تناسب الشاشة الطولية */
+#stage[data-background="noir"] .buffet-item-name,
+#stage[data-background="noir"] .buffet-main-item .buffet-item-name,
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name,
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-name,
+#stage[data-background="noir"] .item-name {
+    font-family: 'Amiri', 'Aref Ruqaa', serif;
+}
+#stage[data-background="noir"] .buffet-main-item .buffet-item-name { font-size: 29px; }
+#stage[data-background="noir"] .buffet-small-item .buffet-item-name { font-size: 26px; }
+#stage[data-background="noir"] .buffet-soup-item .buffet-item-name { font-size: 35px; }
+#stage[data-background="noir"] .buffet-section-heading b { font-size: 30px; }
+#stage[data-background="noir"] .item-name { font-size: 34px; }
+#stage[data-background="noir"] .item-en { font-size: 20px; }
+#stage[data-background="noir"] .period-name { font-size: 20px; }
+
+html.tv-performance #stage {
+    border-radius: 0;
+    box-shadow: none;
+    background: linear-gradient(145deg, #092432, #04121c) !important;
+}
+html.tv-performance #stage .orb,
+html.tv-performance #stage .specks,
+html.tv-performance #stage .bg-grid,
+html.tv-performance #stage .bg-lattice,
+html.tv-performance #stage .bg-arabesque,
+html.tv-performance #stage .bg-noise,
+html.tv-performance #stage .bg-vignette,
+html.tv-performance #stage .bg-base {
+    display: none !important;
+}
+html.tv-performance #stage[data-background="noir"]::before {
+    display: none !important;
+}
+html.tv-performance #stage .bg-frame {
+    box-shadow: none !important;
+}
+html.tv-performance #stage .brand-logo {
+    animation: none !important;
+    box-shadow: 0 0 0 3px rgba(255, 212, 105, .2), 0 4px 12px rgba(0, 0, 0, .4);
+}
+html.tv-performance #stage .page {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+html.tv-performance #stage *,
+html.tv-performance #stage *::before,
+html.tv-performance #stage *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+html.tv-performance #stage .item {
+    opacity: 1 !important;
+    transform: none !important;
+}
+html.tv-performance #stage .ticker-marquee {
+    width: 100% !important;
+    transform: none !important;
+}
+html.tv-performance #stage .ticker-text[aria-hidden="true"],
+html.tv-performance #stage .buffet-note-text[aria-hidden="true"] {
+    display: none !important;
+}
+html.tv-performance #stage .buffet-note {
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+html.tv-performance #stage .buffet-note-track {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+}
+html.tv-performance #stage .page.active {
+    transform: none !important;
+}
+html.tv-performance #stage .buffet-panel {
+    box-shadow: none !important;
+}
+html.tv-performance #stage .cat-title,
+html.tv-performance #stage .buffet-section-heading b,
+html.tv-performance #stage .item-name,
+html.tv-performance #stage .buffet-item-name,
+html.tv-performance #stage .buffet-number,
+html.tv-performance #stage .item-bullet {
+    filter: none !important;
+    text-shadow: none !important;
+}

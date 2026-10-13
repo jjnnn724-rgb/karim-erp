@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — pro-theme.css · طبقة التلميع الاحترافية
+   ─────────────────────────────────────────────────────────────────
+   قواعد الطبقة:
+   1) CSS نقي فقط — بلا أي لمس لـ HTML أو JavaScript، وبلا إعادة ترتيب
+      لأي عناصر (لا widths/heights مواقعية تغير منطق الواجهة).
+   2) تُحمَّل أخيرًا فتتغلب بقاعدة واحدة على نفس المحدد — وكل قاعدة هنا
+      قابلة للحذف الفردي بالتعليق دون انهيار.
+   3) محايدة للثيمين: كل قيمة لونية إما متغير من design-tokens.css أو
+      لها مقابل [data-theme="dark"] صريح.
+   4) الطباعة محمية: ما يشبه الظلال والضباب يُسقط في @media print.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1) الأرقام أولاً: محاذاة جدولية لكل مكان فيه بيانات ──
+   الأرقام العربية/اللاتينية بمحاذاة ثابتة تجعل الجداول والأعمدة
+   تبدو مضبوطة كالماكينة — أقوى فرق إدراكي في شاشات العمليات. */
+table,
+td,
+th,
+.mcard-val,
+.kpi-val,
+.dstat-val,
+.badge,
+.callout-value,
+.sidebar-date,
+.page-title {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ── 2) الشارات تصبح كبسولات ──
+   الشكل الكبسولي الموحد للشارات = لغة بصرية حديثة ومعيار الأنظمة
+   الاحترافية، مع نفس الألوان والأحجام (لا فرق مساحي يذكر). */
+.badge,
+.bdg-green, .bdg-red, .bdg-gold, .bdg-orange,
+.bdg-blue, .bdg-purple, .bdg-teal {
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.04);
+}
+[data-theme="dark"] .badge,
+[data-theme="dark"] .bdg-green, [data-theme="dark"] .bdg-red,
+[data-theme="dark"] .bdg-gold, [data-theme="dark"] .bdg-orange,
+[data-theme="dark"] .bdg-blue, [data-theme="dark"] .bdg-purple,
+[data-theme="dark"] .bdg-teal {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ── 3) الجداول: ترويسة أهدأ + تنفس الصفوف + حد سفلي نظيف ──
+   ملاحظة خصوصية: .kitchen-page table th و .report-table th لهما قواعد
+   خلفية خاصة في styles.css — تُطابق هنا بنفس الخصوصية لتفوز بالترتيب. */
+th,
+.kitchen-page table th,
+.report-table th {
+  background: var(--bg1);
+  color: var(--text2);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border-bottom-color: var(--border-strong);
+}
+tbody tr:nth-child(even) td { background: rgba(16, 24, 40, 0.013); }
+[data-theme="dark"] tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
+tbody tr:hover td { background: var(--karim-surface-hover); }
+[data-theme="dark"] tbody tr:hover td { background: var(--bg3); }
+tbody tr:last-child td { border-bottom: none; }
+tfoot td { border-top: 1px solid var(--border-strong); }
+td { color: var(--text2); }
+
+/* ترويسة الجدول اللاصقة تأخذ خلفية صلبة لا تسمح بمرور الصفوف تحتها */
+.tbl-scroll th,
+.tbl-scroll thead th:first-child { background: var(--bg1); }
+
+/* ── 4) الأزرار: عمق هادئ موحد ── */
+.btn {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  border-radius: 8px;
+}
+.btn:disabled { box-shadow: none; }
+.btn-sm { border-radius: 8px; }
+.btn-gold { box-shadow: 0 1px 2px rgba(180, 83, 9, 0.18); }
+.btn-green { box-shadow: 0 1px 2px rgba(8, 135, 92, 0.16); }
+
+/* حلقة تركيز واضحة لكل ما ينقر — احترافية + وصولية */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── 5) الشرائح العلوية (شريط الأدوات): فصل شعري هادئ ── */
+.topbar {
+  box-shadow: 0 1px 0 var(--border), 0 2px 8px rgba(16, 24, 40, 0.03);
+}
+[data-theme="dark"] .topbar {
+  box-shadow: 0 1px 0 var(--border), 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.topbar-btn { border-radius: 8px; }
+
+/* ── 6) الشريط الجانبي: مؤشر فعالية بإبرة ذهبية جانبية ── */
+.sidebar { scrollbar-width: thin; }
+.nav-item.active {
+  box-shadow: inset 0 0 0 1px rgba(233, 162, 59, 0.18),
+              inset -3px 0 0 var(--gold);
+  border-radius: 9px;
+}
+.nav-item { border-radius: 9px; }
+
+/* ── 7) البطاقات والقيم: أرقام KPI أثقل قليلًا ── */
+.mcard-val { letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mcard { border-radius: var(--r2); }
+
+/* ── 8) النوافذ المنبثقة: عمق أوضح وزوايا أوسع ── */
+.modal {
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(16, 24, 40, 0.22), 0 4px 16px rgba(16, 24, 40, 0.08);
+}
+[data-theme="dark"] .modal {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+/* ── 9) أشرطة التمرير: نحيفة مرتبة في كل مكان ── */
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--text3); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* ── 10) حقول الإدخال: خلفية بيضاء دائمًا في الفاتح وتباين في الداكن ── */
+.fg input, .fg select, .fg textarea { border-radius: 8px; }
+
+/* ── 11) الرسائل الفارغة: نبرة أهدأ ── */
+.u-empty, .u-empty-sm, .u-empty-xs, .u-empty-grid {
+  color: var(--text3);
+  letter-spacing: 0.1px;
+}
+
+/* ── 13) الكاشير POS — لمسات مركزة (يستخدم متغيرات --pos-* الخاصة به) ── */
+.stat-chip { border-radius: 999px; }
+.product-card { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+.product-card:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); }
+.btn-complete { box-shadow: 0 2px 14px rgba(180, 83, 9, 0.30); }
+.icon-btn { border-radius: 8px; }
+.quick-cash-btn { border-radius: 8px; }
+
+/* ── 12) حماية الطباعة: ما هو شاشة فقط يسقط عند الطباعة ── */
+@media print {
+  .btn, .mcard, .modal, .topbar, .badge { box-shadow: none !important; }
+  .modal-overlay, #modalBackdrop { backdrop-filter: none !important; }
+  tbody tr:nth-child(even) td { background: transparent !important; }
+}

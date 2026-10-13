@@ -1,0 +1,282 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Shared Components (status badge, buttons, inputs)
+   ═══════════════════════════════════════════════════════════════════════
+   The status badge is the presentation half of js/v2/status.js.
+
+   ACCESSIBILITY CONTRACT
+   ──────────────────────
+   Colour is NEVER the only cue. Every badge carries:
+     • a text label  (the human-readable value)
+     • a glyph        (decorative, aria-hidden)
+     • a data-tone    (styling only)
+   so the state survives greyscale, colour blindness and forced-colors.
+
+   The badge renders a value the adapter recognised; an unrecognised value
+   falls back to neutral with the RAW stored string shown — it is never
+   silently relabelled or hidden (see status.js `resolveStatus`).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Status badge ────────────────────────────────────────────────────── */
+.erp-v2 .erp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--erp-radius-full);
+  border: 1px solid transparent;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  line-height: 1.45;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.erp-v2 .erp-badge svg,
+.erp-v2 .erp-badge .ji {
+  width: var(--erp-icon-sm);
+  height: var(--erp-icon-sm);
+  flex-shrink: 0;
+}
+
+.erp-v2 .erp-badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tones — background tint + tone-specific text (contrast measured, see
+   erp-tokens.css). Border gives a second non-colour cue at low tint. */
+.erp-v2 .erp-badge[data-tone="success"] {
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+  border-color: color-mix(in srgb, var(--erp-success) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="warning"] {
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  border-color: color-mix(in srgb, var(--erp-warning) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="danger"] {
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+  border-color: color-mix(in srgb, var(--erp-danger) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="info"] {
+  background: var(--erp-info-soft);
+  color: var(--erp-info-text);
+  border-color: color-mix(in srgb, var(--erp-info) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="brand"] {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  border-color: color-mix(in srgb, var(--erp-brand) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="neutral"] {
+  background: var(--erp-neutral-soft);
+  color: var(--erp-neutral-text);
+  border-color: color-mix(in srgb, var(--erp-neutral) 34%, transparent);
+}
+
+/* Unknown-value marker: dashed border signals "not a recognised state". */
+.erp-v2 .erp-badge[data-unknown="true"] {
+  border-style: dashed;
+}
+
+/* Fallback for browsers without color-mix: keep a visible hairline. */
+@supports not (color-mix(in srgb, red 10%, transparent)) {
+  .erp-v2 .erp-badge { border-color: currentColor; opacity: .95; }
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.erp-v2 .erp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  min-height: var(--erp-control-md);
+  padding-inline: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-family: inherit;
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--erp-duration-fast) var(--erp-ease-out),
+    border-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-v2 .erp-btn:hover:not(:disabled) { background: var(--erp-surface-hover); }
+.erp-v2 .erp-btn:active:not(:disabled) { background: var(--erp-surface-active); }
+.erp-v2 .erp-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.erp-v2 .erp-btn svg,
+.erp-v2 .erp-btn .ji { width: var(--erp-icon-sm); height: var(--erp-icon-sm); flex-shrink: 0; }
+
+.erp-v2 .erp-btn--primary {
+  background: var(--erp-brand);
+  border-color: var(--erp-brand);
+  color: var(--erp-text-inverse);
+}
+.erp-v2 .erp-btn--primary:hover:not(:disabled) {
+  background: var(--erp-brand-hover);
+  border-color: var(--erp-brand-hover);
+}
+
+.erp-v2 .erp-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.erp-v2 .erp-btn--ghost:hover:not(:disabled) { background: var(--erp-surface-hover); }
+
+.erp-v2 .erp-btn--sm {
+  min-height: var(--erp-control-sm);
+  padding-inline: var(--erp-space-3);
+  font-size: var(--erp-text-sm);
+}
+
+/* Square icon-only action. Accessible name MUST come from aria-label. */
+.erp-v2 .erp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--erp-control-md);
+  height: var(--erp-control-md);
+  padding: 0;
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-icon-btn:hover { background: var(--erp-surface-hover); color: var(--erp-text-primary); }
+.erp-v2 .erp-icon-btn svg,
+.erp-v2 .erp-icon-btn .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+.erp-v2 .erp-input,
+.erp-v2 .erp-select {
+  min-height: var(--erp-control-md);
+  padding-inline: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-family: inherit;
+  font-size: var(--erp-text-base);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+/* Latin codes/serials inside an RTL form must not mirror — forces LTR
+   rendering and start-alignment for identifiers, emails and numbers. */
+.erp-v2 .erp-input--ltr,
+.erp-v2 input[type="email"],
+.erp-v2 input[type="tel"],
+.erp-v2 .erp-addr {
+  direction: ltr;
+  text-align: start;
+}
+
+.erp-v2 .erp-input:hover,
+.erp-v2 .erp-select:hover { border-color: var(--erp-text-faint); }
+
+.erp-v2 .erp-input[aria-invalid="true"] {
+  border-color: var(--erp-danger);
+}
+
+.erp-v2 .erp-field { display: flex; flex-direction: column; gap: var(--erp-space-1); }
+
+.erp-v2 .erp-label {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-secondary);
+}
+
+.erp-v2 .erp-error {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-danger-text);
+}
+
+/* ── Theme control (segmented radio group) ───────────────────────────── */
+.erp-v2 .erp-theme-control {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--erp-surface-sunken);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2 .erp-theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--erp-control-sm);
+  padding-inline: var(--erp-space-3);
+  border: 0;
+  border-radius: var(--erp-radius-sm);
+  background: transparent;
+  color: var(--erp-text-muted);
+  font-family: inherit;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-v2 .erp-theme-option:hover { color: var(--erp-text-primary); }
+
+/* Selected state uses fill + weight + aria-checked, not colour alone. */
+.erp-v2 .erp-theme-option.is-active {
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-semibold);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.erp-v2 .erp-theme-option svg,
+.erp-v2 .erp-theme-option .ji { width: var(--erp-icon-sm); height: var(--erp-icon-sm); }
+
+/* ── Card ────────────────────────────────────────────────────────────── */
+.erp-v2 .erp-card {
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.erp-v2 .erp-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4);
+  border-block-end: 1px solid var(--erp-border);
+}
+
+.erp-v2 .erp-card__title {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-v2 .erp-card__body { padding: var(--erp-space-4); }
+
+/* ── Empty / loading states (explicit, never a blank region) ─────────── */
+.erp-v2 .erp-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-8) var(--erp-space-4);
+  text-align: center;
+  color: var(--erp-text-muted);
+}
+
+.erp-v2 .erp-state__icon { font-size: var(--erp-text-2xl); line-height: 1; }
+.erp-v2 .erp-state__title { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }

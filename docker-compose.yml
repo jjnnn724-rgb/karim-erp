@@ -1,0 +1,118 @@
+# ════════════════════════════════════════════════════════════════
+# Karim ERP v4.7.0 — Docker Compose
+# مطاعم الشرفه العالمي — نظام إدارة المطاعم المتكامل
+# ════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose up -d          # تشغيل في الخلفية
+#   docker compose logs -f app    # متابعة سجلات السيرفر
+#   docker compose down           # إيقاف وحذف الحاويات
+# ════════════════════════════════════════════════════════════════
+
+services:
+  # ─── PostgreSQL 18 ──────────────────────────────────────────────
+  db:
+    image: postgres:18-alpine
+    container_name: karim-erp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-karim_erp}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must come from .env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-karim_erp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - karim-net
+
+  # ─── Redis 7 (optional queue layer for spikes) ────────────────────
+  # Offline-safe: app keeps working with SKIP_BULLMQ=true (SQL fallback).
+  # For push spikes set SKIP_BULLMQ=false in .env.
+  redis:
+    image: redis:7-alpine
+    container_name: karim-erp-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    networks:
+      - karim-net
+
+  # ─── Karim ERP App (Node.js + Express + Socket.io) ──────────────
+  app:
+    image: ${KARIM_IMAGE:-karim-erp:portable}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karim-erp-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      HOST: 0.0.0.0
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-karim_erp}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must come from .env}
+      DB_MODE: system
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required in .env}
+      EMPLOYEE_QR_SECRET: ${EMPLOYEE_QR_SECRET:?EMPLOYEE_QR_SECRET is required in .env}
+      SKIP_BULLMQ: ${SKIP_BULLMQ:-true}
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: info
+      LOG_PRETTY: "true"
+      WORK_START_HOUR: "9"
+      ATTENDANCE_AUTO_COMPLETE: "false"
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+      WHATSAPP_SESSION_DIR: /app/data/whatsapp-sessions
+      WHATSAPP_BACKUP_DIR: /app/data/whatsapp-backups
+      WHATSAPP_MEDIA_DIR: /app/data/whatsapp-media
+      YARASOFT_ENABLED: ${YARASOFT_ENABLED:-false}
+      YARASOFT_SHARE: /app/data/yarasoft
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5000}
+    ports:
+      - "5000:5000"
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+      - whatsapp_sessions:/app/data/whatsapp-sessions
+      - whatsapp_backups:/app/data/whatsapp-backups
+      - whatsapp_media:/app/data/whatsapp-media
+      - yarasoft_data:/app/data/yarasoft
+    networks:
+      - karim-net
+
+# ─── Volumes ─────────────────────────────────────────────────────
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+  app_logs:
+    driver: local
+  app_uploads:
+    driver: local
+  whatsapp_sessions:
+    driver: local
+  whatsapp_backups:
+    driver: local
+  whatsapp_media:
+    driver: local
+  yarasoft_data:
+    driver: local
+
+# ─── Networks ─────────────────────────────────────────────────────
+networks:
+  karim-net:
+    driver: bridge
