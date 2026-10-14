@@ -1040,10 +1040,16 @@ async loadPattern(employeeId) {
                 // حرس الاستخدام المزدوج (درس 2026-10-14): بصمة يستعملها سطر آخر بالفعل
                 // (خلال 60 ثانية) لا تُستَرد «دخولًا» لهذا السطر — وإلا أعادت المطابقة تصنيع
                 // الاستخدام المزدوج بعد كل ترميم (انصراف الأمس صار دخول اليوم → وردية 23 ساعة).
+                // وكذلك بصمة خروج السطر نفسه: اقترانها بدخوله ينتج يومًا بصفر دقيقة
+                // (سطر 12/10 لمازن: البصمة بحالة «دخول» على الجهاز فمرّت من فلتر الحالات).
                 // مسار الانصراف لا يُمنع: علاجه نقل الختام لوردية أمسه، لا منع الدليل.
-                const consumedElsewhere = (l) => empRows.some((o) => o.id !== row.id
-                    && [o.checkInAt, o.checkOutAt].some(
-                        (v) => v && Math.abs(new Date(v).getTime() - new Date(l.attendanceTime).getTime()) <= 60000));
+                const consumedElsewhere = (l) => {
+                    const t = new Date(l.attendanceTime).getTime();
+                    if (row.checkOutAt && Math.abs(t - new Date(row.checkOutAt).getTime()) <= 60000) {return true;}
+                    return empRows.some((o) => o.id !== row.id
+                        && [o.checkInAt, o.checkOutAt].some(
+                            (v) => v && Math.abs(new Date(v).getTime() - t) <= 60000));
+                };
                 const freeIns = ins.filter((l) => !consumedElsewhere(l));
                 const freeDayLogs = dayLogs.filter((l) => !consumedElsewhere(l));
 

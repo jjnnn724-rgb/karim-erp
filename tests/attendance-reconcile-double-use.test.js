@@ -140,6 +140,23 @@ describe('reconcileAttendance — حالة (أ): الدخول لا يُستَر�
         expect(w.params[1]).toBe('17:05');
     });
 
+    it('بصمة خروج السطر نفسه بحالة «دخول» على الجهاز ⇒ لا تُقرَن بدخوله (يوم بصفر دقيقة)', async () => {
+        wire({
+            rows: baseRows,
+            // 05:09 هي انصراف سطر 12/10 المسجّل، لكن الجهاز وسَمَها بحالة دخول (0):
+            // بلا حرس الاقتران الذاتي تصبح «دخولًا» للسطر نفسه ⇒ 05:09→05:09 و 0 دقيقة.
+            logs: () => ([
+                { deviceUserId: '77', attendanceTime: new Date(at(PREV, '17:00')), punchState: 0 },
+                { deviceUserId: '77', attendanceTime: STOLEN, punchState: 1 },
+                { deviceUserId: '77', attendanceTime: new Date(at(TODAY, '05:09')), punchState: 0 },
+            ]),
+        });
+        const res = await engine.reconcileAttendance({ sinceDays: 30 });
+        expect(entryWrite(102)).toBeUndefined();
+        expect(api.writes.some((w) => /SET "checkIn" = \$2.*WHERE id = \$1/.test(w.sql) && Number(w.params[0]) === 102)).toBe(false);
+        expect(res.fixedRows).toBe(0);
+    });
+
     it('مسار الانصراف: ترقية مستنتَج ببصمة هي دخول سطر تالٍ تبقى ممكنة (لا منع هنا)', async () => {
         const realOut = new Date(at(CUR, '04:30'));
         wire({
