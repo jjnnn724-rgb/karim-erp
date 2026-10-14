@@ -22,10 +22,18 @@ describe('حرس التكرار في محرك الحضور — لا يلتهم �
         expect(ENGINE).toContain('أُعيد التصنيف وتُسجل البصمة');
     });
 
+    test('نافذة التحقق تستثني البصمة نفسها (وإلّا كان العدّاد ≥1 دائمًا)', () => {
+        // درس 2026-10-14: البصمة تُدرج في attendance_logs قبل الكتابة، فاستعلام
+        // BETWEEN winStart AND instant كان يعدّ البصمة الحالية «دليلًا» على تكرارها
+        // ولا يمسح الكاش الراسب أبدًا — فابتُلع دخول المساء لليوم كامل.
+        expect(ENGINE).toContain('const winEnd = new Date(instant - 1000);');
+        expect(ENGINE).toContain('[employeeId, winStart, winEnd]');
+    });
+
     test('مرساة الكاش تُثبت بعد COMMIT الناجح وللقرارات الفعلية فقط', () => {
         const execMark = ENGINE.indexOf('// ── تنفيذ القرار ──');
         const commitMark = ENGINE.indexOf("await client.query('COMMIT');", execMark);
-        const setMark = ENGINE.indexOf('this.lastPunches.set(employeeId, { min: wallMin, out: thisOut });');
+        const setMark = ENGINE.indexOf('this.lastPunches.set(employeeId, { min: wallMin, out: thisOut, at: instant.getTime() });');
         expect(execMark).toBeGreaterThan(-1);
         expect(commitMark).toBeGreaterThan(execMark);
         expect(setMark).toBeGreaterThan(commitMark); // بعد الـ COMMIT — لا تثبيت قبل الكتابة
@@ -35,7 +43,7 @@ describe('حرس التكرار في محرك الحضور — لا يلتهم �
 
     test('البصمة المُتجاهلة لا تحرك المرساة، وفشل الكتابة يمسح الكاش', () => {
         // سطر المرساة بصيغته الكاملة يظهر مرة واحدة: بعد COMMIT وللقرارات الفعلية فقط
-        const anchorWrites = (ENGINE.match(/this\.lastPunches\.set\(employeeId, \{ min: wallMin, out: thisOut \}\)/g) || []).length;
+        const anchorWrites = (ENGINE.match(/this\.lastPunches\.set\(employeeId, \{ min: wallMin, out: thisOut, at: instant\.getTime\(\) \}\)/g) || []).length;
         expect(anchorWrites).toBe(1);
         // مسار الفشل في processPunch: مسح الكاش قبل إعادة رفع الخطأ
         const failMark = ENGINE.indexOf("logger.error('[AttendanceEngine] processPunch failed:'");

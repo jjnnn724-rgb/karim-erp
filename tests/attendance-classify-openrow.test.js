@@ -58,13 +58,23 @@ describe('classifyPunch — صف مفتوح (hasOpenRow:true) لا يرمي وي
         expect(v.override).toBe(true);
     });
 
-    it('بلا openRowCheckIn ولا lastPunch → لا يرمي، والفجوة غير معروفة → الخروج يُقبل', () => {
-        // الحد الدفاعي: fجوة 999 دقيقة خارج حرس الارتداد
+    it('بلا openRowCheckIn بلا lastPunch حديثة → البصمة تملأ الدخول الناقص', () => {
+        // الحد الدفاعي: فجوة 999 دقيقة خارج حرس الارتداد
         const out = classifyPunch({ ...BASE, punchState: 1, hasOpenRow: true, openRowCheckIn: null });
         expect(out.action).toBe('out');
+        // درس 14/10: سطر مفتوح بلا دخول — مرساة الأمس لا تُطعم «دخولًا للتو»،
+        // فبصمة النهار (state دخول) هي دخوله لا «ضغط مزدوج».
         const inn = classifyPunch({ ...BASE, punchState: 0, hasOpenRow: true, openRowCheckIn: null, wallMin: 12 * 60 });
-        // بلا فجوة معروفة لا يطبق حرس الزر المنسي ولا ضغط الارتداد الزمني
-        expect(['ignore', 'out']).toContain(inn.action);
+        expect(inn.action).toBe('in');
+    });
+
+    it('بلا openRowCheckIn لكن lastPunch حديثة (≤ ساعة) تُعتبر الدخول → حرس الضغط المزدوج يعمل', () => {
+        const at = 17 * 60 * 60 * 1000;
+        const v = classifyPunch({
+            ...BASE, punchState: 0, hasOpenRow: true, openRowCheckIn: null, wallMin: 9 * 60 + 20, punchAt: at,
+            lastPunch: { min: 9 * 60 + 20, out: false, at: at - 20 * 60 * 1000 },
+        });
+        expect(v.action).toBe('ignore');
     });
 
     it('بصمة مكررة بنفس الاتجاه خلال 5 دقائق → تجاهل (حتى مع صف مفتوح)', () => {
@@ -93,10 +103,10 @@ describe('classifyPunch — بلا صف مفتوح (regression للسلوك ال
 });
 
 describe('lastPunchFromRow — ترطيب كاش التكرار من القاعدة (بعد إعادة التشغيل)', () => {
-    it('صف سليم → دقائق بتوقيت الرياض + اتجاه صحيح', () => {
+    it('صف سليم → دقائق بتوقيت الرياض + اتجاه صحيح + لحظة مطلقة', () => {
         // 06:45 UTC = 09:45 الرياض → min = 585
         const v = lastPunchFromRow({ attendanceTime: '2026-10-02T06:45:00.000Z', punchState: 0 });
-        expect(v).toEqual({ min: 585, out: false });
+        expect(v).toEqual({ min: 585, out: false, at: new Date('2026-10-02T06:45:00.000Z').getTime() });
     });
 
     it('punchState خروج (1/3/5) → out:true، ودخول (0/2/4) → out:false', () => {

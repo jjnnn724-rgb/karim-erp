@@ -83,12 +83,16 @@ function shiftDateFor(wallDate, wallHour, cutoff = nightCutoffHour()) {
  * يوم الوردية حسب وردية الموظف: الترحيل لليوم السابق (بصمات الفجر)
  * يُطبق فقط على الورديات العابرة لمنتصف الليل. ورديات النهار
  * تُنسب دائمًا لتاريخها الميلادي حتى لا تُقرن مساءً بفجر اليوم التالي.
+ * ساعة الفصل هي نهاية وردية الموظف نفسها لا رقمًا أصمّ: وردية 17:00+12h
+ * تنتشر 05:00 فجرًا فبصمة 05:01 ختامُها، وتُنسب لليوم السابق.
  */
 function shiftDateForEmployee(wallDate, wallHour, employee, cutoff = nightCutoffHour()) {
     if (cutoff == null) {return wallDate;}
     const karim = Number(employee?.shift_karim) > 0 ? Number(employee.shift_karim) : 10;
-    if (!crossesMidnight(employee?.shift_start || '09:00', karim)) {return wallDate;}
-    if (Number(wallHour) < cutoff) {return prevDay(wallDate);}
+    const start = employee?.shift_start || '09:00';
+    if (!crossesMidnight(start, karim)) {return wallDate;}
+    const dawnHour = Math.max(cutoff, morningEndHour(start, karim));
+    if (Number(wallHour) <= dawnHour) {return prevDay(wallDate);}
     return wallDate;
 }
 
@@ -121,10 +125,18 @@ function normalizeShiftKarim(value) {
     return Math.round(n * 100) / 100;
 }
 
-/** هل يعبر الموظف منتصف الليل؟ (بداية + مدة > 24) */
+/** هل يعبر الموظف منتصف الليل؟ (بداية + مدة ≥ 24 — وردية 12:00+12h تنتهي عند
+ *  الفجر تمامًا فختامها بصمة بعد منتصف الليل، وهي عابرة بلا شك) */
 function crossesMidnight(shiftStart, shiftKarim) {
     const [h, m] = String(shiftStart || '09:00').split(':').map(Number);
-    return (h || 0) * 60 + (m || 0) + Number(shiftKarim || 10) * 60 > 24 * 60;
+    return (h || 0) * 60 + (m || 0) + Number(shiftKarim || 10) * 60 >= 24 * 60;
+}
+
+/** ساعة نهاية الوردية بعد منتصف الليل (17:00+12h → 5، 22:00+12h → 10، 12:00+12h → 0) */
+function morningEndHour(shiftStart, shiftKarim) {
+    const [h, m] = String(shiftStart || '09:00').split(':').map(Number);
+    const endMin = (h || 0) * 60 + (m || 0) + Math.round(Number(shiftKarim || 10) * 60);
+    return endMin >= 24 * 60 ? Math.floor((endMin - 24 * 60) / 60) : 0;
 }
 
 /** وقت الانصراف المتوقع HH:MM من البداية والمدة */
@@ -253,6 +265,7 @@ module.exports = {
     normalizeShiftStart,
     normalizeShiftKarim,
     crossesMidnight,
+    morningEndHour,
     expectedEndTime,
     isLate,
     isEarlyLeave,

@@ -142,7 +142,7 @@ function lastPunchFromRow(row) {
     if (Number.isNaN(t.getTime())) {return null;}
     const wall = instantToWall(t);
     const state = Number(row.punchState);
-    return { min: wall.hour * 60 + wall.minute, out: OUT_STATES.has(state) && !IN_STATES.has(state) };
+    return { min: wall.hour * 60 + wall.minute, out: OUT_STATES.has(state) && !IN_STATES.has(state), at: t.getTime() };
 }
 
 /** آخر بصمة خام للموظف قبض البصمة الحالية مباشرة — fail-open دائمًا */
@@ -217,11 +217,12 @@ async function learnPattern(employeeId, days = 30) {
 function classifyPunch({
     punchState,
     wallMin,           // دقائق من منتصف الليل (ساعة الحائط)
+    punchAt,           // لحظة البصمة مطلقة (epoch ms) — تمايز التكرار عبر الأيام
     shiftStartMin,     // بداية الوردية بالدقائق
     shiftEndMin,       // نهاية الوردية بالدقائق (قد > 1440 للوردية الليلية)
     hasOpenRow,        // هل يوجد صف مفتوح (بلا خروج) لليوم
     openRowCheckIn,    // ساعة دخول الصف المفتوح ('HH:MM' أو null) — حرس الارتداد
-    lastPunch,         // { min, out } آخر بصمة معالجة
+    lastPunch,         // { min, out, at? } آخر بصمة معالجة (at = لحظة مطلقة)
     pattern,           // { medianIn, medianOut, samples }
     dayLogs,           // جميع بصمات اليوم مصنفة: { in: [], out: [] }
 }) {
@@ -229,18 +230,33 @@ function classifyPunch({
     const deviceOut = OUT_STATES.has(Number(punchState));
     const thisOut = deviceOut && !deviceIn;
 
-    // 1. بصمة مكررة بنفس الاتجاه خلال 5 دقائق → تجاهل
-    if (lastPunch && lastPunch.out === thisOut && Math.abs(wallMin - lastPunch.min) <= 5) {
+    // 1. بصمة مكررة بنفس الاتجاه خلال 5 دقائق → تجاهل.
+    //    التشابه بدقائق الساعة وحده لا يكفي: بصمة أمس 16:51 كانت تبتلع دخول
+    //    النهاردة 16:55 (درس 2026-10-14). إن وُجدت لحظة البصمة والمرساة، يُطلب
+    //    أيضًا قربٌ مطلق ≤ 5 دقائق. بلا punchAt → السلوك القديم (اختبارات قديمة).
+    const dupAbs = lastPunch && lastPunch.at != null && punchAt != null
+        ? Math.abs(punchAt - lastPunch.at) <= 5 * 60000 : true;
+    if (lastPunch && lastPunch.out === thisOut && dupAbs && Math.abs(wallMin - lastPunch.min) <= 5) {
         return { action: 'ignore', confidence: 0.95, reason: 'بصمة مكررة بنفس الاتجاه خلال 5 دقائق', override: false };
     }
 
     // 2. صف مفتوح موجود → أي بصمة تالية تُغلقه (زر الجهاز يُتجاهل تماماً:
     //    التبديل بين دخول/انصراف على الجهاز سبب شائع للخطأ، والتسلسل هو المرجع)
     if (hasOpenRow) {
+        // ساعة دخول الصف المفتوح: إن جهلناها لا نقبل «آخر بصمة» بديلًا إلا إن كانت
+        // لحظتها قريبة فعلًا — وإلّا أطعمنا الأمس «دخولًا للتو» وردَّ دخول النهار
+        // بحجة الضغط المزدوج (درس 14/10: رفعت 16:51 أمس ← 16:55 النهاردة رُفض).
+        const lastIsFresh = lastPunch && lastPunch.min != null && punchAt != null
+            && lastPunch.at != null && Math.abs(punchAt - lastPunch.at) <= 60 * 60000;
+        const openMin = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastIsFresh ? lastPunch.min : null);
+        if (openMin == null) {
+            // صف مفتوح بلا دخول ولا وصول حديث: هذه البصمة هي دخول هذا السطر
+            return { action: deviceOut ? 'out' : 'in', confidence: 0.9,
+                reason: deviceOut ? 'صف مفتوح بلا دخول + حالة خروج' : 'صف مفتوح بلا دخول — البصمة دخوله', override: false };
+        }
         if (deviceOut) {
             // حرس الارتداد: «خروج» خلال ساعة من الدخول = ضغط مزدوج عند الوصول — يُتجاهل
-            const openMin = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastPunch ? lastPunch.min : null);
-            const arrivedGap = openMin != null ? ((wallMin - openMin) + 24 * 60) % (24 * 60) : 999;
+            const arrivedGap = ((wallMin - openMin) + 24 * 60) % (24 * 60);
             if (arrivedGap <= 60) {
                 return { action: 'ignore', confidence: 0.9, reason: 'بصمة خروج خلال ساعة من الدخول — ضغط مزدوج عند الوصول', override: false };
             }
@@ -248,10 +264,9 @@ function classifyPunch({
         }
         // زر «دخول» والصف مفتوح: الزر المنسي عند الخروج (فجوة طويلة منذ الدخول أو
         // قرب موعد الانصراف المعتاد) — مقابل الضغط المزدوج عند الوصول (يُتجاهل)
-        const openMin2 = openRowCheckIn != null ? toMin(openRowCheckIn) : (lastPunch ? lastPunch.min : null);
-        const gap2 = openMin2 != null ? ((wallMin - openMin2) + 24 * 60) % (24 * 60) : null;
+        const gap2 = ((wallMin - openMin) + 24 * 60) % (24 * 60);
         const patOut2 = pattern?.medianOut != null ? pattern.medianOut % (24 * 60) : null;
-        if (gap2 != null && (gap2 >= WRONG_BUTTON_GAP_MIN || (patOut2 != null && Math.abs(wallMin - patOut2) <= 90))) {
+        if (gap2 >= WRONG_BUTTON_GAP_MIN || (patOut2 != null && Math.abs(wallMin - patOut2) <= 90)) {
             return { action: 'out', confidence: 0.85, reason: ('زر دخول بالخطأ عند الخروج — فجوة ' + Math.floor(gap2 / 60) + 'س' + (gap2 % 60) + 'د منذ الدخول'), override: true };
         }
         return { action: 'ignore', confidence: 0.9, reason: 'صف مفتوح + زر دخول بعد قليل — ضغط مزدوج عند الوصول', override: false };
@@ -458,10 +473,13 @@ async loadPattern(employeeId) {
 
             // هل يوجد صف مفتوح؟ (يوم الوردية أو اليوم السابق للورديات الليلية)
             // يُقرأ قبل التصنيف حتى يتجاهل المصنف زر الجهاز ويعتمد التسلسل.
+            // «مفتوح» = له دخول بلا انصراف. السطر الفارغ (لا دخول ولا انصراف) ليس
+            // مفتوحًا: صفّه كذلك كان يجعل بصمة فجر تُقفل سطر يوم لم يبدأ بعد، فيُكتب
+            // انصراف بلا دخول ويسدّ باب دخول النهار (درس 14/10).
             const openCheck = await client.query(
                 `SELECT id, "checkIn", "checkInAt" FROM attendance
-                  WHERE "employeeId" = $1 AND "checkOut" IS NULL AND date IN ($2, $3)
-                  LIMIT 1`,
+                  WHERE "employeeId" = $1 AND "checkIn" IS NOT NULL AND "checkOut" IS NULL AND date IN ($2, $3)
+                  ORDER BY date DESC LIMIT 1`,
                 [employeeId, shiftDate, prevDay(shiftDate)]
             );
             const hasOpenRow = openCheck.rows.length > 0;
@@ -529,6 +547,7 @@ async loadPattern(employeeId) {
             let verdict = classifyPunch({
                 punchState,
                 wallMin,
+                punchAt: instant.getTime(),
                 shiftStartMin,
                 shiftEndMin,
                 hasOpenRow: effectiveHasOpenRow,
@@ -558,15 +577,18 @@ async loadPattern(employeeId) {
             // ويُعاد التصنيف بلا lastPunch وتُسجل البصمة (fail-safe نحو التسجيل).
             if (verdict.action === 'ignore' && String(verdict.reason || '').includes('مكررة')) {
                 const winStart = new Date(instant - 5 * 60000);
+                // النافذة تستثني البصمة نفسها (المدرجة في attendance_logs قبل هذه
+                // المعالجة) — وإلّا كان العدّاد ≥1 دائمًا فلم يعمل الأمان قطّ.
+                const winEnd = new Date(instant - 1000);
                 const dbPunch = (await client.query(
                     `SELECT
                        (SELECT COUNT(*)::int FROM attendance_logs WHERE "employeeId"=$1 AND "attendanceTime" BETWEEN $2 AND $3) AS logs,
                        (SELECT COUNT(*)::int FROM attendance WHERE "employeeId"=$1
                           AND ("checkInAt" BETWEEN $2 AND $3 OR "checkOutAt" BETWEEN $2 AND $3)) AS att`,
-                    [employeeId, winStart, instant])).rows[0];
+                    [employeeId, winStart, winEnd])).rows[0];
                 if (!Number(dbPunch.logs) && !Number(dbPunch.att)) {
                     this.lastPunches.delete(employeeId);
-                    verdict = classifyPunch({ punchState, wallMin, shiftStartMin, shiftEndMin, hasOpenRow: effectiveHasOpenRow, openRowCheckIn, lastPunch: null, pattern, dayLogs });
+                    verdict = classifyPunch({ punchState, wallMin, punchAt: instant.getTime(), shiftStartMin, shiftEndMin, hasOpenRow: effectiveHasOpenRow, openRowCheckIn, lastPunch: null, pattern, dayLogs });
                     logger.warn('[AttendanceEngine] حرس التكرار اعتمد على ذاكرة راسبة — أُعيد التصنيف وتُسجل البصمة:', employeeId, verdict.action, verdict.reason);
                 }
             }
@@ -624,7 +646,7 @@ async loadPattern(employeeId) {
             // حديد 2026-10-06: مرساة حرس التكرار تُثبت بعد نجاح الكتابة فقط، وللقرارات
             // الفعلية (in/out) — البصمة المُتجاهلة لا تحرك المرساة، وفشل الكتابة لا يترك أثرًا
             if (action === 'check_in' || action === 'check_out') {
-                this.lastPunches.set(employeeId, { min: wallMin, out: thisOut });
+                this.lastPunches.set(employeeId, { min: wallMin, out: thisOut, at: instant.getTime() });
             }
 
             if (action && this.io) {
@@ -701,10 +723,21 @@ async loadPattern(employeeId) {
             // التحقق: لا دخول بعد انصراف مسجل
             const checkOutAt = row.checkOutAt ? new Date(row.checkOutAt) : null;
             if (checkOutAt && instant > checkOutAt) {
-                return { action: null, record: null }; // دخول بعد انصراف — تجاهل
+                // انصراف يسبق هذا الدخول ولا دخول في السطر أصلًا = انصراف يتيم من
+                // ليلة الأمس لا ختام اليوم؛ رفضه كان يهدر دخول النهار كله (14/10).
+                if (row.checkIn) {return { action: null, record: null };}
+                const moved = await this.relocateLoneCheckout({ client, employeeId, row, checkOutAt, shiftDate });
+                if (!moved) {
+                    await client.query(
+                        `UPDATE attendance SET "checkOut" = NULL, "checkOutAt" = NULL, "workMinutes" = NULL,
+                            checkout_inferred = false,
+                            notes = COALESCE(notes, '') || ' | انصراف يتيم بلا صف يُغلقه — أُزيل ليسجّل الدخول (موجود في سجل البصمات)'
+                         WHERE id = $1`, [row.id]);
+                    row.checkOut = null; row.checkOutAt = null;
+                }
             }
 
-            const mins = checkOutAt ? Math.max(0, Math.round((checkOutAt - instant) / 60000)) : null;
+            const mins = row.checkOutAt ? Math.max(0, Math.round((new Date(row.checkOutAt) - instant) / 60000)) : null;
             const record = (await client.query(
                 `UPDATE attendance SET "checkIn" = $2, "checkInAt" = $3, late = $4,
                     checkin_inferred = false, "workMinutes" = COALESCE($6, "workMinutes"),
@@ -720,6 +753,33 @@ async loadPattern(employeeId) {
         return { action: null, record: null };
     }
 
+    /**
+     * انصراف بلا دخول في سطره ويسبق أول دخول حقيقي له: ليس ختام هذا اليوم بل
+     * ختام وردية الأمس. يُنقل إلى سطر الأمس إن كان مفتوحًا أو منصرفًا استنتاجًا؛
+     * وإلا يُرجع false فيتولّىcaller مسحه (البصمة تبقى في attendance_logs).
+     */
+    async relocateLoneCheckout({ client, employeeId, row, checkOutAt, shiftDate }) {
+        const prev = (await client.query(
+            `SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2 LIMIT 1 FOR UPDATE`,
+            [employeeId, prevDay(shiftDate)]
+        )).rows[0];
+        if (!prev || !prev.checkInAt) {return false;}
+        const prevInAt = new Date(prev.checkInAt);
+        if (checkOutAt <= prevInAt) {return false;}
+        if (prev.checkOut && !prev.checkout_inferred) {return false;} // الأمس مقفول ببصمة حقيقية
+        const wall = instantToWall(checkOutAt);
+        const minutes = Math.max(0, Math.round((checkOutAt - prevInAt) / 60000));
+        await client.query(
+            `UPDATE attendance SET "checkOut" = $2, "checkOutAt" = $3, "workMinutes" = $4, checkout_inferred = false,
+                notes = COALESCE(notes, '') || ' | انصراف حقيقي أُعيد من سطر اليوم التالي'
+             WHERE id = $1`, [prev.id, wall.time, checkOutAt, minutes]);
+        await client.query(
+            `UPDATE attendance SET "checkOut" = NULL, "checkOutAt" = NULL, "workMinutes" = NULL, checkout_inferred = false,
+                notes = COALESCE(notes, '') || ' | انصراف الفجر أُسند لوردية الأمس'
+             WHERE id = $1`, [row.id]);
+        return true;
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // معالج الخروج (الأذكى)
     // ════════════════════════════════════════════════════════════════════════
@@ -729,9 +789,11 @@ async loadPattern(employeeId) {
         const earlyFlag = isEarlyLeave(wall.hour, wall.minute, shiftStart, shiftKarim);
 
         // 1. أحدث صف مفتوح من يوم الوردية أو اليوم السابق (وردية ليلية)
+        //    «مفتوح» يستلزم دخولًا: السطر الفارغ لا يُقفل بانصراف، وإلا صار انصراف
+        //    الفجر ختامًا ليومٍ لم يبدأ (درس 14/10).
         const open = await client.query(
             `SELECT * FROM attendance
-              WHERE "employeeId" = $1 AND "checkOut" IS NULL AND date IN ($2, $3)
+              WHERE "employeeId" = $1 AND "checkIn" IS NOT NULL AND "checkOut" IS NULL AND date IN ($2, $3)
               ORDER BY date DESC LIMIT 1 FOR UPDATE`,
             [employeeId, shiftDate, prevDay(shiftDate)]
         );
@@ -777,6 +839,34 @@ async loadPattern(employeeId) {
                         notes = COALESCE(notes, '') || ' | انصراف عبر ' || $5
                      WHERE id = $1 RETURNING *`,
                     [inf.id, wall.time, instant, minutes, note, earlyFlag]
+                )).rows[0];
+                return { action: 'check_out', record };
+            }
+        }
+
+        // 2b. انصراف حقيقي بعد منتصف الليل يُصلح انصراف الأمس المستنتَج ولا يصنع
+        //     صفًا بخروج بلا دخول. درس 14/10: بصمة 01:03 كُتبت خروجًا لسطر 14/10
+        //     فحُرمت وردية 13/10 من ختامها الحقيقي، وسدّ باب دخول النهار (12:56)
+        //     لأن «لا دخول بعد انصراف». النافذة ±6 ساعات من الانصراف المستنتَج.
+        const prevInferred = await client.query(
+            `SELECT * FROM attendance
+             WHERE "employeeId" = $1 AND date = $2 AND checkout_inferred = true AND "checkInAt" IS NOT NULL
+             LIMIT 1 FOR UPDATE`,
+            [employeeId, prevDay(shiftDate)]
+        );
+        const pinf = prevInferred.rows[0];
+        if (pinf) {
+            const infOutAt = pinf.checkOutAt ? new Date(pinf.checkOutAt) : null;
+            const pInAt = new Date(pinf.checkInAt);
+            const near = infOutAt && Math.abs(instant - infOutAt) <= 6 * 3600000;
+            if (instant > pInAt && near) {
+                const minutes = Math.max(0, Math.round((instant - pInAt) / 60000));
+                const record = (await client.query(
+                    `UPDATE attendance SET "checkOut" = $2, "checkOutAt" = $3, "workMinutes" = $4,
+                        checkout_inferred = false, early_leave = $6,
+                        notes = COALESCE(notes, '') || ' | انصراف حقيقي حلّ محل المستنتَج عبر ' || $5
+                     WHERE id = $1 RETURNING *`,
+                    [pinf.id, wall.time, instant, minutes, note, earlyFlag]
                 )).rows[0];
                 return { action: 'check_out', record };
             }
@@ -829,17 +919,37 @@ async loadPattern(employeeId) {
         }
 
         const delay = calculateDelayDetail({ checkIn: recoveredCheckIn, checkOut: wall.time, shiftStart, shiftKarim });
-        const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-        const record = (await client.query(
-            `INSERT INTO attendance
-                (id, "employeeId", date, "checkIn", late, notes, "checkOut", "checkOutAt", source, early_leave, "workMinutes", "checkInAt")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-            [id, employeeId, shiftDate,
-             recoveredCheckIn, recoveredLateFlag,
-             recoveredCheckIn ? `دخول مسترد من سجل البصمات + ${note}` : `دخول مفقود — ${note}`,
-             wall.time, instant, source, delay.earlyLeaveMinutes > 0,
-             recoveredMinutes, recoveredCheckInAt]
+        // سطر فارغ (لا دخول ولا انصراف) موجود أصلًا لهذا اليوم؟ هو مقصود بالبصمة،
+        // وليس صفًا جديدًا — INSERT عليه كان يرمي uq_attendance_employee_date.
+        const blank = (await client.query(
+            `SELECT * FROM attendance
+              WHERE "employeeId" = $1 AND date = $2 AND "checkIn" IS NULL AND "checkOut" IS NULL
+              LIMIT 1 FOR UPDATE`,
+            [employeeId, shiftDate]
         )).rows[0];
+        const noteText = recoveredCheckIn ? `دخول مسترد من سجل البصمات + ${note}` : `دخول مفقود — ${note}`;
+        let record;
+        if (blank) {
+            record = (await client.query(
+                `UPDATE attendance SET "checkIn" = COALESCE($2, "checkIn"), late = $3, "checkInAt" = COALESCE($4, "checkInAt"),
+                    "checkOut" = $5, "checkOutAt" = $6, source = $7, early_leave = $8, "workMinutes" = $9, on_leave = $10,
+                    notes = COALESCE(notes, '') || ' | ' || $11
+                 WHERE id = $1 RETURNING *`,
+                [blank.id, recoveredCheckIn, recoveredLateFlag, recoveredCheckInAt,
+                 wall.time, instant, source, delay.earlyLeaveMinutes > 0, recoveredMinutes, onLeave, noteText]
+            )).rows[0];
+        } else {
+            const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+            record = (await client.query(
+                `INSERT INTO attendance
+                    (id, "employeeId", date, "checkIn", late, notes, "checkOut", "checkOutAt", source, early_leave, "workMinutes", "checkInAt", on_leave)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+                [id, employeeId, shiftDate,
+                 recoveredCheckIn, recoveredLateFlag, noteText,
+                 wall.time, instant, source, delay.earlyLeaveMinutes > 0,
+                 recoveredMinutes, recoveredCheckInAt, onLeave]
+            )).rows[0];
+        }
 
         // تسجيل قرار للمراجعة
         await this.logDecision({
