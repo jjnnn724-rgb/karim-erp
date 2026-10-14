@@ -77,10 +77,14 @@ const baseLogs = () => ([
     { deviceUserId: '77', attendanceTime: new Date(at(TODAY, '05:09')), punchState: 1 },
 ]);
 
-function wire({ rows, logs }) {
+function wire({ rows, logs, claims }) {
     api.reset();
+    const claimRows = claims || rows;
     api.responder = (sql) => {
         if (sql.includes('FROM attendance WHERE date >= $1')) return { rows: rows() };
+        if (/FROM attendance WHERE "employeeId" = \$1 AND \("checkInAt"/.test(sql)) return {
+            rows: claimRows().map((r) => ({ id: r.id, ci: r.checkInAt, co: r.checkOutAt })),
+        };
         if (sql.includes('attendance_logs WHERE "employeeId" IS NULL')) return { rows: [] };
         if (sql.includes('FROM attendance_logs')) return { rows: logs() };
         if (sql.includes('FROM employees')) return { rows: [SHIFT] };
@@ -182,5 +186,23 @@ describe('reconcileAttendance — حالة (أ): الدخول لا يُستَر�
         const w = rowWritesTo(201).find((x) => /checkout_inferred = \$9/.test(x.sql));
         expect(w).toBeDefined();
         expect(w.params[4]).toBe('04:30');
+    });
+
+    it('سطر الأمس خارج النافذة المحمّلة: الحرس يقرأ الادّعاءات من الجدول كله (درس 2026-10-15)', async () => {
+        // محاكاة نافذة 3 أيام: سطر 11/10 خارج empRows المحمّلة، وبصمته 06:14 ما زالت
+        // انصرافه المسجّل. الحرس المبني على empRows يكون أعمى هنا فيعيد 06:14 دخولًا
+        // لسطر 12/10 ⇒ وردية 1375 دقيقة وهمية (مازن، 2026-10-12).
+        wire({
+            rows: () => [baseRows()[1]],
+            claims: baseRows,
+            logs: () => ([
+                { deviceUserId: '77', attendanceTime: STOLEN, punchState: 0 },
+                { deviceUserId: '77', attendanceTime: new Date(at(TODAY, '05:09')), punchState: 1 },
+            ]),
+        });
+        const res = await engine.reconcileAttendance({ sinceDays: 3 });
+        expect(entryWrite(102)).toBeUndefined();
+        expect(rowWritesTo(102)).toHaveLength(0);
+        expect(res.fixedRows).toBe(0);
     });
 });

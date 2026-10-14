@@ -1023,6 +1023,20 @@ async loadPattern(employeeId) {
                 [empId, sinceStr]
             )).rows.map(l => ({ ...l, wall: instantToWall(new Date(l.attendanceTime)) }));
 
+            // الحرس لا يُبنى من سطور النافذة (درس 2026-10-15): بمحاكاة نافذة 3 أيام عاد
+            // انصراف مازن «06:14» فصار دخولًا لسطر 12/10 = 1375 دقيقة وهمية، لأن سطر 11/10
+            // لم يكن ضمن empRows المحمّلة. الادّعاءات تُقرأ من الجدول كله لنفس الموظف.
+            const claimsRaw = (await pool.query(
+                `SELECT id, "checkInAt" AS ci, "checkOutAt" AS co FROM attendance
+                  WHERE "employeeId" = $1 AND ("checkInAt" IS NOT NULL OR "checkOutAt" IS NOT NULL)`,
+                [empId]
+            )).rows;
+            const claims = [];
+            for (const c of claimsRaw) {
+                if (c.ci) {claims.push({ id: c.id, t: new Date(c.ci).getTime() });}
+                if (c.co) {claims.push({ id: c.id, t: new Date(c.co).getTime() });}
+            }
+
             const logsOf = (day) => logs.filter(l => shiftDateForEmployee(l.wall.date, l.wall.hour, { shift_start: sStart, shift_karim: sHours }) === day);
             const minsBetween = (inT, outT) => {
                 const [ih, im] = inT.split(':').map(Number);
@@ -1046,9 +1060,7 @@ async loadPattern(employeeId) {
                 const consumedElsewhere = (l) => {
                     const t = new Date(l.attendanceTime).getTime();
                     if (row.checkOutAt && Math.abs(t - new Date(row.checkOutAt).getTime()) <= 60000) {return true;}
-                    return empRows.some((o) => o.id !== row.id
-                        && [o.checkInAt, o.checkOutAt].some(
-                            (v) => v && Math.abs(new Date(v).getTime() - t) <= 60000));
+                    return claims.some((c) => c.id !== row.id && Math.abs(c.t - t) <= 60000);
                 };
                 const freeIns = ins.filter((l) => !consumedElsewhere(l));
                 const freeDayLogs = dayLogs.filter((l) => !consumedElsewhere(l));
