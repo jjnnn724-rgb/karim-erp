@@ -1,4 +1,4 @@
-# keep-awake.ps1 — يمنع نوم الويندوز أثناء عمل سيرفر karim ERP
+﻿# keep-awake.ps1 — يمنع نوم الويندوز أثناء عمل سيرفر karim ERP
 # يعمل بدون صلاحيات مدير (طلب تنفيذ مستمر يمنع النوم التلقائي للخمول)
 Add-Type -TypeDefinition @'
 using System;
