@@ -1037,6 +1037,15 @@ async loadPattern(employeeId) {
                 const dayLogs = logsOf(row.date);
                 const ins = dayLogs.filter(l => IN_STATES.has(Number(l.punchState))).sort((a, b) => new Date(a.attendanceTime) - new Date(b.attendanceTime));
                 const outs = dayLogs.filter(l => OUT_STATES.has(Number(l.punchState))).sort((a, b) => new Date(a.attendanceTime) - new Date(b.attendanceTime));
+                // حرس الاستخدام المزدوج (درس 2026-10-14): بصمة يستعملها سطر آخر بالفعل
+                // (خلال 60 ثانية) لا تُستَرد «دخولًا» لهذا السطر — وإلا أعادت المطابقة تصنيع
+                // الاستخدام المزدوج بعد كل ترميم (انصراف الأمس صار دخول اليوم → وردية 23 ساعة).
+                // مسار الانصراف لا يُمنع: علاجه نقل الختام لوردية أمسه، لا منع الدليل.
+                const consumedElsewhere = (l) => empRows.some((o) => o.id !== row.id
+                    && [o.checkInAt, o.checkOutAt].some(
+                        (v) => v && Math.abs(new Date(v).getTime() - new Date(l.attendanceTime).getTime()) <= 60000));
+                const freeIns = ins.filter((l) => !consumedElsewhere(l));
+                const freeDayLogs = dayLogs.filter((l) => !consumedElsewhere(l));
 
                 // ── أ0: زوج معكوس (الانصراف لحظيًا قبل الدخول — غالبًا بصمة ليلية نُسبت خطأ):
                 // اقلب الدخول/الخروج وأعد الحساب (أيام مغلقة فقط).
@@ -1061,8 +1070,8 @@ async loadPattern(employeeId) {
 
                 // ── أ: دخول مفقود (يوجد خروج، لا دخول، يوم مغلق) ──
                 if (!row.checkIn && row.checkOut && !isToday) {
-                    if (ins.length) {
-                        const f = ins[0];
+                    if (freeIns.length) {
+                        const f = freeIns[0];
                         const late = isLate(f.wall.hour, f.wall.minute, sStart, Number(process.env.WORK_START_HOUR || 9));
                         const mins = row.checkInAt ? Math.max(0, Math.round((new Date(row.checkOutAt) - new Date(f.attendanceTime)) / 60000))
                             : minutesBetween(f.wall.time, row.checkOut, row.date);
@@ -1072,11 +1081,11 @@ async loadPattern(employeeId) {
                                 notes = COALESCE(notes, '') || ' | دخول مسترد من سجل البصمات'
                              WHERE id = $1`, [row.id, f.wall.time, new Date(f.attendanceTime), late, mins]);
                         fixedRows++;
-                    } else if (dayLogs.length) {
+                    } else if (freeDayLogs.length) {
                         // لا توجد بصمة دخول صريحة (كل البصمات بحالة خروج — شائع في الورديات الليلية):
                         // استخدم أقدم بصمة *قبل* لحظة الخروج فقط — أما بصمة الخروج نفسها
                         // فلا تُستخدم دخولًا أبدًا (كانت تُنتج أزواجًا صفرية الدقائق).
-                        const ordered = [...dayLogs].sort((a, b) => new Date(a.attendanceTime) - new Date(b.attendanceTime));
+                        const ordered = [...freeDayLogs].sort((a, b) => new Date(a.attendanceTime) - new Date(b.attendanceTime));
                         const coAt = row.checkOutAt ? new Date(row.checkOutAt) : null;
                         const f = ordered.find(o => !coAt || new Date(o.attendanceTime).getTime() < coAt.getTime());
                         if (!f) {
@@ -1152,8 +1161,8 @@ async loadPattern(employeeId) {
                         let co = row.checkOut, coAt = row.checkOutAt ? new Date(row.checkOutAt) : null;
                         let ciInf = !!row.checkin_inferred, coInf = !!row.checkout_inferred;
 
-                        if (row.checkin_inferred && ins.length) {
-                            const f = ins[0];
+                        if (row.checkin_inferred && freeIns.length) {
+                            const f = freeIns[0];
                             if (!coAt || new Date(f.attendanceTime) <= coAt) {
                                 ci = f.wall.time; ciAt = new Date(f.attendanceTime); ciInf = false; changed = true;
                             }
