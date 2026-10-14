@@ -901,11 +901,19 @@ async loadPattern(employeeId) {
         // attendance_logs ولا تُكتب أبدًا (write-back يجري للسجلات المُدرجة في الدورة نفسها فقط).
         // الحل: نحسب الحدّ في JS ونمرّره لحظة صريحة — لا مجال لالتباس نوع المعامل.
         const cutoffInstant = new Date(instant.getTime() - 2 * 60 * 1000);
+        // الدخول المسترد يجب أن يكون بصمة غير مستهلكة: أقدم بصمة في اليوم الميلادي
+        // للعامل الليلي هي انصراف أمسه (بصمة 06:14 لمازن 12/10)؛ اعتبارها دخولًا
+        // يصنع سطرًا يقرض ختام أمس فيبدأ به، بدقائق تقارب 24 ساعة.
         const earlyPunches = await client.query(
-            `SELECT "attendanceTime", "punchState" FROM attendance_logs
-              WHERE "employeeId" = $1 AND "attendanceTime" >= $2 AND "attendanceTime" < $3
-                AND "attendanceTime" <= $4
-              ORDER BY "attendanceTime" ASC`,
+            `SELECT l."attendanceTime", l."punchState" FROM attendance_logs l
+              WHERE l."employeeId" = $1 AND l."attendanceTime" >= $2 AND l."attendanceTime" < $3
+                AND l."attendanceTime" <= $4
+                AND NOT EXISTS (
+                    SELECT 1 FROM attendance a
+                     WHERE a."employeeId" = l."employeeId"
+                       AND (abs(extract(epoch FROM a."checkInAt" - l."attendanceTime")) <= 60
+                         OR abs(extract(epoch FROM a."checkOutAt" - l."attendanceTime")) <= 60))
+              ORDER BY l."attendanceTime" ASC`,
             [employeeId, dayStart, dayEnd, cutoffInstant]
         );
         if (earlyPunches.rows.length > 0) {

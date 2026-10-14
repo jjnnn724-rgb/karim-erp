@@ -18,11 +18,14 @@ const at = (dateStr, time) => {
 /** عميل SQL وهمي: يردّ على الاستعلامات بالمحدَّدة له ويسجّل كل كتابة */
 function fakeClient(responses) {
     const writes = [];
+    const reads = [];
     return {
         writes,
+        reads,
         async query(sql, params) {
             const isWrite = /^\s*(INSERT|UPDATE|DELETE)/i.test(sql);
             if (isWrite) writes.push({ sql: sql.trim().split('\n')[0], params });
+            else reads.push(sql);
             for (const [match, rows] of responses) {
                 if (sql.includes(match)) return { rows: typeof rows === 'function' ? rows(params) : rows };
             }
@@ -158,5 +161,50 @@ describe('handleCheckIn — الانصراف اليتيم لم يعد يسدّ �
             wall: wallOf('2026-10-14', '18:00'), instant: new Date(at('2026-10-14', '18:00')) });
         expect(r.action).toBeNull();
         expect(c.writes).toHaveLength(0);
+    });
+});
+
+describe('handleCheckOut 4 — الدخول المسترد لا يستهلك ختام الأمس', () => {
+    // درس 12/10 لمازن (17:00+12h): انصراف 06:14 قُفل به سطر 11/10 ثم التقطته
+    // «استعادة الدخول» كدخولٍ لسطر 12/10 → سطر يبدأ بانصراف أمه بدقائق 24 ساعة.
+    const base = {
+        employeeId: 8, shiftStart: '17:00', shiftKarim: 12, autoLock: false, source: 'device',
+        device: { name: 'بصمه العمل' }, onLeave: false, verdict: { action: 'out' }, punchState: 0,
+    };
+
+    it('البحث عن الدخول يستبعد كل بصمة مرسةً لدخول أو انصراف في أي سطر', async () => {
+        const c = fakeClient([['FROM attendance_logs', []], ['"checkIn" IS NULL AND "checkOut" IS NULL', [{ id: 5 }]]]);
+        await engine.handleCheckOut({ ...base, client: c, shiftDate: '2026-10-12',
+            wall: wallOf('2026-10-12', '05:09'), instant: new Date(at('2026-10-12', '05:09')) });
+        const logsSql = c.reads.find((s) => s.includes('FROM attendance_logs'));
+        expect(logsSql).toContain('NOT EXISTS');
+        expect(logsSql).toContain('a."checkOutAt" - l."attendanceTime"');
+    });
+
+    it('لا بصمة غير مستهلكة → السطر يُكتب بانصراف فقط وبملاحظة «دخول مفقود»', async () => {
+        const c = fakeClient([
+            ['FROM attendance_logs', []],
+            ['"checkIn" IS NULL AND "checkOut" IS NULL', [{ id: 5 }]],
+            ['UPDATE attendance SET "checkIn" = COALESCE', [{ id: 5 }]],
+        ]);
+        const r = await engine.handleCheckOut({ ...base, client: c, shiftDate: '2026-10-12',
+            wall: wallOf('2026-10-12', '05:09'), instant: new Date(at('2026-10-12', '05:09')) });
+        expect(r.action).toBe('check_out');
+        expect(c.writes[0].params[1]).toBeNull();      // recoveredCheckIn
+        expect(c.writes[0].params[8]).toBeNull();      // recoveredMinutes
+        expect(c.writes[0].params[10]).toContain('دخول مفقود');
+    });
+
+    it('بصمة دخول غير مستهلكة موجودة → تُسترد وتُحسب الدقائق منها', async () => {
+        const c = fakeClient([
+            ['FROM attendance_logs', [{ attendanceTime: new Date(at('2026-10-12', '04:55')), punchState: 1 }]],
+            ['"checkIn" IS NULL AND "checkOut" IS NULL', [{ id: 5 }]],
+            ['UPDATE attendance SET "checkIn" = COALESCE', [{ id: 5 }]],
+        ]);
+        await engine.handleCheckOut({ ...base, client: c, shiftDate: '2026-10-12',
+            wall: wallOf('2026-10-12', '05:09'), instant: new Date(at('2026-10-12', '05:09')) });
+        expect(c.writes[0].params[1]).toBe('04:55');
+        expect(c.writes[0].params[8]).toBe(14);
+        expect(c.writes[0].params[10]).toContain('دخول مسترد');
     });
 });
