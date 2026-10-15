@@ -9,6 +9,9 @@
  *     (middleware/health.js — انظر التعليق :7-17)
  *   POST /api/auth/change-password {current_password, new_password}
  *     (auth-navigation.js:13/:45 — نفس أسماء الحقول)
+ *   GET  /permissions/me → { grants, denies, menus, deniedMenus }
+ *     (permission-routes.js:133 — jwtAuth وحدها، بلا requireRole؛ أي جلسة
+ *     تقرأ صلاحياتها. legacy يستدعيها بعد الدخول مباشرة auth-navigation.js:198)
  */
 
 import { apiFetch } from '../../core/api.js?v=4.9.130';
@@ -33,6 +36,29 @@ export async function markAllNotificationsRead() {
 
 export async function clearNotifications() {
     return apiFetch('/notifications', { method: 'DELETE' });
+}
+
+/**
+ * الصلاحيات الفعلية للجلسة الحالية.
+ *
+ * لا ترمي أبدًا: مثل legacy (auth-navigation.js:200) الفشل يعني قوائم الدور
+ * فقط بلا منح إضافية — وهو الوضع الآمن (خصم، لا إضافة).
+ *
+ * @returns {Promise<{grants:string[],denies:string[],menus:string[],deniedMenus:string[]}>}
+ */
+export async function fetchMyPermissions() {
+    const arr = (v) => Array.isArray(v) ? v : [];
+    try {
+        const me = await apiFetch('/permissions/me');
+        return {
+            grants: arr(me && me.grants),
+            denies: arr(me && me.denies),
+            menus: arr(me && me.menus),
+            deniedMenus: arr(me && me.deniedMenus),
+        };
+    } catch {
+        return { grants: [], denies: [], menus: [], deniedMenus: [] };
+    }
 }
 
 export async function fetchHealth() {

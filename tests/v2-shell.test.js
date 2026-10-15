@@ -77,6 +77,52 @@ describe('القشرة — الأبواب', () => {
         expect(h.ok).toBe(false);
         expect(h.server).toBe(false);
     });
+
+    test('صلاحيات الجلسة تُقرأ من بابه — بنفس رد الخادم', async () => {
+        const { apiFetch, calls } = repoStub(() => ({
+            grants: ['payroll.view'], denies: ['shelves'],
+            menus: ['payroll'], deniedMenus: ['shelves'],
+        }));
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchMyPermissions']);
+        const p = await ctx.fetchMyPermissions();
+        expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['GET /permissions/me']);
+        expect(p).toEqual({
+            grants: ['payroll.view'], denies: ['shelves'],
+            menus: ['payroll'], deniedMenus: ['shelves'],
+        });
+    });
+
+    test('باب الصلاحيات لا يرمي — الفشل يرجع لأدوار الدور وحدها', async () => {
+        const { apiFetch } = repoStub(() => { throw new Error('500'); });
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchMyPermissions']);
+        await expect(ctx.fetchMyPermissions()).resolves.toEqual({
+            grants: [], denies: [], menus: [], deniedMenus: [],
+        });
+    });
+});
+
+describe('القشرة — صلاحيات القائمة موصولة بالمضيف', () => {
+    const host = () => read(HOST);
+
+    test('المنح والمسحوب يكتبان STATE.permissions التي يقرأها nav-model', () => {
+        const h = host();
+        expect(h).toMatch(/import \{ fetchMyPermissions \} from '\.\/data\/shell-repo\.js\?v=/);
+        expect(h).toMatch(/window\.STATE\.permissions = await fetchMyPermissions\(\)/);
+        expect(h).toMatch(/async function applyMyPermissions\(\)/);
+        expect(h).toMatch(/if \(!isLive\(\)\) \{return;\}/);
+    });
+
+    test('تُطلب عند كل جلسة جاهزة — وبلا انتظار يُعطّل أول رسم', () => {
+        const h = host();
+        expect(h.match(/void applyMyPermissions\(\)/g) || []).toHaveLength(2);
+        expect(h).not.toMatch(/^\s*await applyMyPermissions/m);
+    });
+
+    test('منح مستخدم سابق لا يبقى بعد خروجه', () => {
+        const h = host();
+        const logout = h.slice(h.indexOf('function doV2Logout()'), h.indexOf('function refreshProfileSlot()'));
+        expect(logout).toMatch(/window\.STATE\.permissions = \{ menus: \[\], deniedMenus: \[\] \}/);
+    });
 });
 
 describe('القشرة — عقد الوحدة', () => {

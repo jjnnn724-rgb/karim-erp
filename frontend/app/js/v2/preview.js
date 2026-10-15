@@ -37,6 +37,7 @@ import { mountAppLayout } from './layout/app-layout.js?v=4.9.130';
 import { mountShellExtras } from './layout/shell-extras.js?v=4.9.130';
 import { createDataTable } from './data-display/data-table.js?v=4.9.130';
 import { ensureSession } from './session.js?v=4.9.130';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.130';
 import { mountBranchesScreen } from './screens/branches.js?v=4.9.130';
 import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.130';
 import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.130';
@@ -184,6 +185,10 @@ const shell = mountAppLayout(root, {
             },
         },
         { label: 'تصدير', icon: 'download', onClick: () => console.info('[V2 preview] export is a boundary, not implemented') },
+        // The door in index.html opens V2 in a new tab; this is the way back
+        // out of that tab. Relative on purpose — it must resolve under the
+        // /app static mount, a LAN origin, and the Electron shell alike.
+        { label: 'الواجهة القديمة', icon: 'monitor', onClick: () => { window.location.assign('index.html'); } },
     ],
     onNavigate(key) {
         navStatus.current = key;
@@ -195,6 +200,25 @@ const shell = mountAppLayout(root, {
         renderScreen(key);
     },
 });
+
+/* ── 4b. Real nav permissions — GET /permissions/me ───────────────────
+   nav-model.allowedMenus() is a faithful mirror of legacy userMenus()
+   (auth-navigation.js:286-294), but a mirror of an empty room: V2 never
+   fetched the grants, so `permissions.menus` stayed [] and
+   `permissions.deniedMenus` stayed [] too. The consequences were not
+   cosmetic — a revocation (deniedMenus) is subtracted from the ROLE's own
+   menus, so an un-fetched door meant V2 showed a manager a menu the admin
+   had explicitly withdrawn, while legacy hid it. Two shells, two different
+   answers to the same question, and the wrong one looked fine.
+   fetchMyPermissions() never throws; on failure we keep role menus with no
+   grants and no revocations applied, which is legacy's own fallback
+   (auth-navigation.js:200). Only ever called with a live session — the
+   fixture mode below still makes zero requests. */
+async function applyMyPermissions() {
+    if (!isLive()) {return;}
+    window.STATE.permissions = await fetchMyPermissions();
+    shell.refreshNav();
+}
 
 /* ── 5. Live mode: resolve the browser's own session, then repaint ──────
    No top-level await (see §4) — this promise settles later and re-renders
@@ -212,7 +236,11 @@ let sessionPromise = LIVE
             // The real role replaces the fixture; the backend stays the
             // authority for every request either way.
             window.STATE.currentUser = { role: s.role || null, name: (s.user && s.user.name) || '' };
-            shell.refreshNav();
+            // Fire, never await: the first paint must not block on the grants
+            // round-trip, and applyMyPermissions() repaints the nav itself
+            // when it lands. (`void`, because a line-initial await trips the
+            // no-top-level-await guard in tests/v2-branches.test.js.)
+            void applyMyPermissions();
             try {shellExtras.refresh();} catch { /* extras are additive */ }
         }
         renderScreen(navStatus.current);
@@ -265,6 +293,7 @@ function onSessionReady(info) {
         window.STATE.currentUser = { role: (info && info.role) || null, name: user.name || '' };
     }
     shell.refreshNav();
+    void applyMyPermissions();
     refreshProfileSlot();
     try {shellExtras.refresh();} catch { /* extras are additive */ }
     const back = loginReturnKey && loginReturnKey !== 'login' ? loginReturnKey : 'dashboard';
@@ -278,7 +307,11 @@ function doV2Logout() {
     // out of index.html too, so it is deliberately left alone.
     try { window._jwt = null; } catch { /* private mode */ }
     try { window._appKey = null; } catch { /* private mode */ }
-    if (window.STATE && typeof window.STATE === 'object') {window.STATE.currentUser = null;}
+    if (window.STATE && typeof window.STATE === 'object') {
+        window.STATE.currentUser = null;
+        // The previous user's grants are not this user's menus.
+        window.STATE.permissions = { menus: [], deniedMenus: [] };
+    }
     sessionState.status = 'off';
     sessionState.info = null;
     sessionPromise = Promise.resolve(null);

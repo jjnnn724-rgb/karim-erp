@@ -302,6 +302,9 @@ const on = (el, roles) => { if(el) {el.style.display = roles.includes(role) ? ''
 on(document.querySelector('a[href="/app/pos.html"]'), ['admin','accountant','cashier']);
 // زر شاشات المنيو: للإدارة والشيفات والمديرين
 on(document.getElementById('menuDashboardTopbarBtn'), ['admin','manager','kitchen','sous_chef']);
+// بوابة الواجهة الجديدة V2: الإدارة العليا والمدير فقط أثناء بناء التكافؤ
+// (V2 يغطي 224 من 341 نقطة نهاية = 66%) — لا تظهر لبقية الأدوار قبل اكتمالها.
+on(document.getElementById('v2ShellTopbarBtn'), ['admin','manager']);
 // لمبتا الحالة (الخادم + قاعدة البيانات): للإدارة العامة فقط
 on(document.getElementById('rt-badge'), ['admin']);
 // قائمة الإجراءات السريعة (FAB): كل إجراء لدوره
