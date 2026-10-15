@@ -69,7 +69,9 @@
 | المرحلة | البنود | حالة |
 |---|---|---|
 | **P0** | ١ `GET /permissions/me` · ٢ نقطة دخول من `index.html` | ✅ `7b7fa0b` / tag `v2-p0-2026-10-16` |
-| | ٣ hash routing + toast + غطاء | ▶️ جاري (٣a → ٣b → ٣c) |
+| | ٣a hash routing | ✅ تمّ — `?v2routing=1`، مغلق افتراضيًا |
+| | ٣b toast حقيقي + توحيد `notifyTo` | ▶️ جاري |
+| | ٣c غطاء تحميل (عدّاد fetch) | ⏳ |
 | | ٤ `attWriteVisible`/`validatePunchForm` | معلّق |
 | **P1** | دورة الوصفات · `revenues`/`expenses` PUT+DELETE (+`FIN_WRITE_ROLES` لـ accountant) · CRUD الأقسام · فواتير الشراء | معلّق |
 | **P2** | أجهزة البصمة (14 بابًا) · بوابة البصمة الذاتية · السنوات المالية/الرصيد الافتتاحي/صحة المخزن · `shelves`+`weight` · الرسوم | قرار |
@@ -92,6 +94,13 @@
 **الشاشات لا تستدعي `apiFetch` أبدًا — الطبقة الوحيدة المتصلة بالخادم هي
 `data/*-repo.js`.** لذا سطح CRUD لأي شاشة = دوال مستودعها الذي تستورده. أي خرق
 لهذا يفسد منهجية الجرد بأكملها.
+
+**بوابة التوجيه = المسحوب الصريح، لا قائمة الدور.** `allowedMenus()` ليست قائمة
+بيضاء: `ROLES.admin.menus` نفسها لا تحمل ٧ شاشات يصلها المدير من روابط داخل
+الشاشات (`dept-employees`, `received-analyzer`, `wh-vs-pos`, `pos`,
+`cashier-monitor`, `procurement-invoices`, `procurement-payments`)، والقديم لا
+يبوّب التنقّل عند العميل إطلاقًا. تبويب الهاش على قائمة الدور كان يطرد المالك من
+شاشاته الفرعية — وهو الكسر الممنوع. المقيَّد هو `permissions.deniedMenus` فقط.
 
 **ترتيب تنصيب الـ toast شرط صحّة لا تفصيل:** `session.js:106-107` يسجّل
 `window.toast = console.info` فقط `if typeof window.toast !== 'function'`.تنصيب

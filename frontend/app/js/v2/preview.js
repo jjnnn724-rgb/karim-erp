@@ -38,6 +38,8 @@ import { mountShellExtras } from './layout/shell-extras.js?v=4.9.130';
 import { createDataTable } from './data-display/data-table.js?v=4.9.130';
 import { ensureSession } from './session.js?v=4.9.130';
 import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.130';
+import { readNavGroups } from './layout/nav-model.js?v=4.9.130';
+import { DASH_KEY, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.130';
 import { mountBranchesScreen } from './screens/branches.js?v=4.9.130';
 import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.130';
 import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.130';
@@ -144,6 +146,28 @@ window.STATE = {
     theme: currentTheme(),
 };
 
+/* ── 2b. Hash routing — `#/key` (flag OFF by default) ─────────────────
+   Read routing.js first: the gate is the explicit REVOCATIONS
+   (permissions.deniedMenus), never the role menu, because a menu is not a
+   whitelist and seven real screens appear in none of them.
+   `?v2routing=1` turns it on; `karim_v2_routing` in localStorage keeps it on
+   across reloads for staging, and `?v2routing=0` overrides that. With the
+   flag off nothing below runs and the page behaves exactly as before. */
+let storedRoutingFlag = '';
+try {storedRoutingFlag = localStorage.getItem('karim_v2_routing');} catch { /* private mode */ }
+const ROUTING = routingEnabled(window.location.search, storedRoutingFlag);
+const ROUTE_KNOWN = knownKeys(readNavGroups());
+
+/** Live until GET /permissions/me lands — see §4b. */
+let routeSettled = !LIVE;
+
+function currentDenied() {
+    const state = window.STATE;
+    if (state && state.currentUser && state.currentUser.role === 'admin') {return new Set();}
+    const list = (state && state.permissions && state.permissions.deniedMenus) || [];
+    return new Set(Array.isArray(list) ? list : []);
+}
+
 /* ── 3. Boot theme ──────────────────────────────────────────────────── */
 initTheme();
 
@@ -168,6 +192,19 @@ const root = document.getElementById('erp-v2-root');
 
 const navStatus = { current: 'dashboard' };
 
+/* One place where a screen becomes visible: state, sidebar highlight,
+   breadcrumbs, render — then the URL, and only when routing is on. */
+function applyKey(key) {
+    navStatus.current = key;
+    shell.setPage(key);
+    shell.setBreadcrumbs({ trail: [
+        { label: 'الرئيسية', key: 'dashboard' },
+        { label: menuLabel(key) },
+    ] });
+    renderScreen(key);
+    if (ROUTING) {syncHash(key);}
+}
+
 const shell = mountAppLayout(root, {
     appName: 'مطاعم الشرفه العالمي',
     appSubtitle: 'نظام إدارة المطاعم المتكامل · معاينة V2',
@@ -191,15 +228,33 @@ const shell = mountAppLayout(root, {
         { label: 'الواجهة القديمة', icon: 'monitor', onClick: () => { window.location.assign('index.html'); } },
     ],
     onNavigate(key) {
-        navStatus.current = key;
-        shell.setPage(key);
-        shell.setBreadcrumbs({ trail: [
-            { label: 'الرئيسية', key: 'dashboard' },
-            { label: menuLabel(key) },
-        ] });
-        renderScreen(key);
+        applyKey(key);
     },
 });
+
+/* `location.hash` (not replaceState) so Back/Forward walk the screens the
+   user actually visited. Idempotent: writing the hash that is already there
+   would otherwise re-enter through the hashchange listener. */
+function syncHash(key) {
+    const target = hashFor(key);
+    if (window.location.hash !== target) {window.location.hash = target;}
+}
+
+function applyRouteFromHash() {
+    if (!ROUTING) {return;}
+    const res = resolveRouteKey(window.location.hash, {
+        known: ROUTE_KNOWN,
+        denied: routeSettled ? currentDenied() : null,
+    });
+    // A deep link is not destroyed by an unfinished permissions round-trip:
+    // hold it, paint the dashboard, and resolve again the moment §4b lands.
+    if (!routeSettled && res.key !== DASH_KEY) {return;}
+    if (res.key === navStatus.current && window.location.hash === hashFor(res.key)) {return;}
+    if (res.reason) {console.info('[V2 routing] fallback:', res.reason);}
+    applyKey(res.key);
+}
+
+if (ROUTING) {window.addEventListener('hashchange', applyRouteFromHash);}
 
 /* ── 4b. Real nav permissions — GET /permissions/me ───────────────────
    nav-model.allowedMenus() is a faithful mirror of legacy userMenus()
@@ -218,6 +273,9 @@ async function applyMyPermissions() {
     if (!isLive()) {return;}
     window.STATE.permissions = await fetchMyPermissions();
     shell.refreshNav();
+    // The held deep link (if any) can be judged for real only now.
+    routeSettled = true;
+    applyRouteFromHash();
 }
 
 /* ── 5. Live mode: resolve the browser's own session, then repaint ──────
@@ -298,7 +356,10 @@ function onSessionReady(info) {
     try {shellExtras.refresh();} catch { /* extras are additive */ }
     const back = loginReturnKey && loginReturnKey !== 'login' ? loginReturnKey : 'dashboard';
     loginReturnKey = 'dashboard';
-    renderScreen(back);
+    // applyKey() also records the screen in navStatus; renderScreen() alone
+    // left navStatus pointing at `login` and the next hash resolution
+    // would have re-rendered the sign-in over the page just signed into.
+    if (ROUTING) {applyKey(back);} else {renderScreen(back);}
 }
 
 function doV2Logout() {
@@ -2208,7 +2269,7 @@ function renderScreen(key) {
     shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
 }
 
-renderScreen('dashboard');
+if (ROUTING) {applyRouteFromHash();} else {renderScreen('dashboard');}
 hydrateStatusNodes(document);
 
 console.info('[V2 preview] ready — reversible route, sample data, no live integration.');
