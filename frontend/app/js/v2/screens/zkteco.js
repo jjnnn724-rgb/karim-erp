@@ -8,13 +8,13 @@
  * device state on each call. Import/user mapping stays a separate screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { statusBadge } from '../status.js?v=4.9.130';
-import { canWrite } from '../session.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { statusBadge } from '../status.js?v=4.9.131';
+import { canWrite } from '../session.js?v=4.9.131';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     ZK_WRITE_ROLES, testDevice, syncDevice,
-} from '../data/zkteco-repo.js?v=4.9.130';
+} from '../data/zkteco-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

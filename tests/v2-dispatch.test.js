@@ -637,7 +637,7 @@ describe('شاشة 13 — السجل المشترك والمضيف والطبق�
         expect(h).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\),/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(h).toMatch(/deptCode: String\(u\.dept_code \|\| ''\),/);
-        expect(h).toMatch(/notify: \(message\) => \{ note\.textContent = message; \},/);
+        expect(h).toMatch(/notify: notifyTo\(note\),/);
         expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
     });
 

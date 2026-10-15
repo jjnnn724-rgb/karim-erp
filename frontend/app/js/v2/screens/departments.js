@@ -8,14 +8,14 @@
  * الحمولات (finance.js:129/:210). زر التفاصيل في كل صف؛ رجوع للسجل.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.130';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.130';
-import { canWrite } from '../session.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.131';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+import { canWrite } from '../session.js?v=4.9.131';
 import {
     cashierRevenueIn,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.130';
+} from '../data/dept-detail.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -457,7 +457,7 @@ describe('شاشة 20 — المضيف والطبقة', () => {
         expect(h).toMatch(/deptCode: String\(u\.dept_code \|\| ''\),/);
         expect(h).toMatch(/role: session\.role,/);
         expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
-        expect(h).toMatch(/notify: \(message\) => \{ note\.textContent = message; \},/);
+        expect(h).toMatch(/notify: notifyTo\(note\),/);
     });
 
     test('المغادرة تُتلف الشاشة — لا شبح يكتب على DOM بعد التنقّل', () => {

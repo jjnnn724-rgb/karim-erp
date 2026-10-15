@@ -6,12 +6,12 @@
  * كل باب من yara-reports-repo، والصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { formatInt } from '../data/reports-repo.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { formatInt } from '../data/reports-repo.js?v=4.9.131';
 import {
     fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow, rangeError,
     analysisLabel, RECEIVED_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.130';
+} from '../data/yara-reports-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -215,7 +215,7 @@ export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
             const [d, it, ofl] = await Promise.allSettled([
                 fetchReceivedDispatches(f), fetchReceivedItems({ ...f, group }),
                 fetchItemOutflow({ from: f.from, to: f.to, item: f.item }),
-                import('../data/reports-repo.js?v=4.9.130').then((m) => m.fetchCurrency()).catch(() => ''),
+                import('../data/reports-repo.js?v=4.9.131').then((m) => m.fetchCurrency()).catch(() => ''),
             ]);
             if (!el.isConnected) {return;}
             if (d.status === 'fulfilled') {dispatches = d.value.dispatches || d.value.rows || [];}

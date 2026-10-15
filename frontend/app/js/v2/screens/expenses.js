@@ -15,12 +15,12 @@
  *   finance.edit doors — wave 2, not here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
     EXPENSE_KIND_AR, EXPENSE_KIND_TONE, isoDay, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.130';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.130';
+} from '../data/finance-repo.js?v=4.9.131';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

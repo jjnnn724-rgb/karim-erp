@@ -29,63 +29,64 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.130';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.130';
-import { initTheme, currentTheme } from './theme.js?v=4.9.130';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.130';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.130';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.130';
-import { createDataTable } from './data-display/data-table.js?v=4.9.130';
-import { ensureSession } from './session.js?v=4.9.130';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.130';
-import { readNavGroups } from './layout/nav-model.js?v=4.9.130';
-import { DASH_KEY, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.130';
-import { mountBranchesScreen } from './screens/branches.js?v=4.9.130';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.130';
-import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.130';
-import { mountEmployeesScreen } from './screens/employees.js?v=4.9.130';
-import { mountLoginScreen } from './screens/login.js?v=4.9.130';
-import { mountBriefingScreen } from './screens/briefing.js?v=4.9.130';
-import { mountCfoScreen } from './screens/cfo.js?v=4.9.130';
-import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.130';
-import { mountReportsScreen } from './screens/reports.js?v=4.9.130';
-import { mountProcurementScreen } from './screens/procurement.js?v=4.9.130';
-import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.130';
-import { mountPaymentsScreen } from './screens/payments.js?v=4.9.130';
-import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.130';
-import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.130';
-import { mountLeavesScreen } from './screens/leaves.js?v=4.9.130';
-import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.130';
-import { mountVegScreen } from './screens/veg-requests.js?v=4.9.130';
-import { mountRosterScreen } from './screens/roster.js?v=4.9.130';
-import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.130';
-import { mountSettingsScreen } from './screens/settings.js?v=4.9.130';
-import { mountUsersScreen } from './screens/users.js?v=4.9.130';
-import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.130';
-import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.130';
-import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.130';
-import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.130';
-import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.130';
-import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.130';
-import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.130';
-import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.130';
-import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.130';
-import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.130';
-import { mountPayrollScreen } from './screens/payroll.js?v=4.9.130';
-import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.130';
-import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.130';
-import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.130';
-import { mountRecipesScreen } from './screens/recipes.js?v=4.9.130';
-import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.130';
-import { mountExpensesScreen } from './screens/expenses.js?v=4.9.130';
-import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.130';
-import { mountPnlScreen } from './screens/pnl.js?v=4.9.130';
-import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.130';
-import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.130';
-import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.130';
-import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.130';
-import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.130';
-import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.130';
+import { ROLES } from '../core/config.js?v=4.9.131';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.131';
+import { initTheme, currentTheme } from './theme.js?v=4.9.131';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.131';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.131';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.131';
+import { createDataTable } from './data-display/data-table.js?v=4.9.131';
+import { ensureSession } from './session.js?v=4.9.131';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.131';
+import { readNavGroups } from './layout/nav-model.js?v=4.9.131';
+import { DASH_KEY, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.131';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.131';
+import { mountBranchesScreen } from './screens/branches.js?v=4.9.131';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.131';
+import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.131';
+import { mountEmployeesScreen } from './screens/employees.js?v=4.9.131';
+import { mountLoginScreen } from './screens/login.js?v=4.9.131';
+import { mountBriefingScreen } from './screens/briefing.js?v=4.9.131';
+import { mountCfoScreen } from './screens/cfo.js?v=4.9.131';
+import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.131';
+import { mountReportsScreen } from './screens/reports.js?v=4.9.131';
+import { mountProcurementScreen } from './screens/procurement.js?v=4.9.131';
+import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.131';
+import { mountPaymentsScreen } from './screens/payments.js?v=4.9.131';
+import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.131';
+import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.131';
+import { mountLeavesScreen } from './screens/leaves.js?v=4.9.131';
+import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.131';
+import { mountVegScreen } from './screens/veg-requests.js?v=4.9.131';
+import { mountRosterScreen } from './screens/roster.js?v=4.9.131';
+import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.131';
+import { mountSettingsScreen } from './screens/settings.js?v=4.9.131';
+import { mountUsersScreen } from './screens/users.js?v=4.9.131';
+import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.131';
+import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.131';
+import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.131';
+import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.131';
+import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.131';
+import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.131';
+import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.131';
+import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.131';
+import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.131';
+import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.131';
+import { mountPayrollScreen } from './screens/payroll.js?v=4.9.131';
+import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.131';
+import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.131';
+import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.131';
+import { mountRecipesScreen } from './screens/recipes.js?v=4.9.131';
+import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.131';
+import { mountExpensesScreen } from './screens/expenses.js?v=4.9.131';
+import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.131';
+import { mountPnlScreen } from './screens/pnl.js?v=4.9.131';
+import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.131';
+import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.131';
+import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.131';
+import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.131';
+import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.131';
+import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.131';
 
 /* ── 1. Publish the real configuration the adapters read ────────────── */
 
@@ -167,6 +168,19 @@ function currentDenied() {
     const list = (state && state.permissions && state.permissions.deniedMenus) || [];
     return new Set(Array.isArray(list) ? list : []);
 }
+
+/* ── 2c. Toast — `window.toast` for real (flag OFF by default) ────────
+   THE ORDER IS THE FEATURE. session.js:106-107 installs a silent
+   `console.info` fallback ONLY when `typeof window.toast !== 'function'`,
+   and it runs inside ensureSession() (§5, line ~291) and again from
+   screens/login.js. So this call must precede both: install late and the
+   stub wins, the page still shows nothing, and the work looks done.
+   With `?v2toast` off, installToast() touches no global at all — the
+   silence is exactly the pre-P0-3b behaviour, which is the rollback. */
+let storedToastFlag = '';
+try {storedToastFlag = localStorage.getItem('karim_v2_toast');} catch { /* private mode */ }
+const TOAST = toastEnabled(window.location.search, storedToastFlag);
+installToast(window, { enabled: TOAST });
 
 /* ── 3. Boot theme ──────────────────────────────────────────────────── */
 initTheme();
@@ -863,7 +877,7 @@ function renderBranchesScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         branchesScreen = mountBranchesScreen(shell.main.querySelector('[data-v2-branches-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         });
     });
 }
@@ -929,7 +943,7 @@ function renderAttendanceScreen() {
             role: session.role,
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -989,7 +1003,7 @@ function renderEmployeesScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         employeesScreen = mountEmployeesScreen(shell.main.querySelector('[data-v2-employees-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -1054,7 +1068,7 @@ function renderWarehouseScreen() {
         warehouseScreen = mountWarehouseScreen(shell.main.querySelector('[data-v2-warehouse-host]'), {
             role: session.role,
             userName: String(u.name || u.username || ''),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -1112,7 +1126,7 @@ function renderReportsScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         reportsScreen = mountReportsScreen(shell.main.querySelector('[data-v2-reports-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         });
     });
 }
@@ -1173,7 +1187,7 @@ function renderBriefingScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         briefingScreen = mountBriefingScreen(shell.main.querySelector('[data-v2-briefing-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         });
     });
 }
@@ -1225,7 +1239,7 @@ function renderProcurementScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         procurementScreen = mountProcurementScreen(shell.main.querySelector('[data-v2-procurement-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
         });
     });
@@ -1277,7 +1291,7 @@ function renderInvoicesScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         invoicesScreen = mountInvoicesScreen(shell.main.querySelector('[data-v2-invoices-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
         });
     });
@@ -1327,7 +1341,7 @@ function renderPaymentsScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         paymentsScreen = mountPaymentsScreen(shell.main.querySelector('[data-v2-payments-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
         });
     });
@@ -1379,7 +1393,7 @@ function renderWhInvoicesScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         whInvoicesScreen = mountWhInvoicesScreen(shell.main.querySelector('[data-v2-whinvoices-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
         });
     });
@@ -1437,7 +1451,7 @@ function renderKitchenScreen() {
         kitchenScreen = mountKitchenScreen(shell.main.querySelector('[data-v2-kitchen-host]'), {
             role: session.role,
             userName: String(u.name || u.username || ''),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -1489,7 +1503,7 @@ function renderLeavesScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         leavesScreen = mountLeavesScreen(shell.main.querySelector('[data-v2-leaves-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         });
     });
 }
@@ -1541,7 +1555,7 @@ function renderZktecoScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         zktecoScreen = mountZktecoScreen(shell.main.querySelector('[data-v2-zkteco-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         });
     });
 }
@@ -1594,7 +1608,7 @@ function renderHrDashboardScreen() {
         const note = shell.main.querySelector('[data-v2-note]');
         hrDashboardScreen = mountHrDashboardScreen(shell.main.querySelector('[data-v2-hrdash-host]'), {
             role: session.role,
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
         });
     });
@@ -1654,7 +1668,7 @@ function renderDispatchScreen() {
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
             deptCode: String(u.dept_code || ''),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -1713,7 +1727,7 @@ function renderVegScreen() {
             role: session.role,
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
             confirmFn: (message) => window.confirm(message),
         });
     });
@@ -1775,7 +1789,7 @@ function renderLiveRegisterScreen({ key, title, mount, assign }) {
             userName: String(u.name || u.username || ''),
             deptCode: String(u.dept_code || ''),
             confirmFn: (message) => window.confirm(message),
-            notify: (message) => { note.textContent = message; },
+            notify: notifyTo(note),
         }));
     });
 }
@@ -2207,7 +2221,7 @@ function renderScreen(key) {
             const note = shell.main.querySelector('[data-v2-note]');
             briefingScreen = mountBriefingScreen(shell.main.querySelector('[data-v2-dashboard-host]'), {
                 role: session.role,
-                notify: (message) => { note.textContent = message; },
+                notify: notifyTo(note),
             });
         });
         return;

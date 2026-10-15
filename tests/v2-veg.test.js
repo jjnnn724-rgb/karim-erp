@@ -657,7 +657,7 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
         expect(h).toMatch(/role: session\.role,/);
         expect(h).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\),/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
-        expect(h).toMatch(/notify: \(message\) => \{ note\.textContent = message; \},/);
+        expect(h).toMatch(/notify: notifyTo\(note\),/);
         expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
         expect(h).toMatch(/if \(navStatus\.current !== 'veg-requests'\) \{return;\}/);
     });

@@ -14,7 +14,7 @@
  *     تقرأ صلاحياتها. legacy يستدعيها بعد الدخول مباشرة auth-navigation.js:198)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.130';
+import { apiFetch } from '../../core/api.js?v=4.9.131';
 
 export const NOTIF_ADMIN_ROLES = ['admin'];
 

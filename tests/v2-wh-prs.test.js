@@ -715,7 +715,7 @@ describe('شاشة 21 — السجل المشترك والمضيف والطبق�
         expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-prs', title: 'طلبات شراء النواقص', mount: mountWhPrsScreen, assign: \(s\) => \{ whPrsScreen = s; \} \}\);/);
         expect(h).toMatch(/const u = session\.user \|\| \{\};/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
-        expect(h).toMatch(/notify: \(message\) => \{ note\.textContent = message; \},/);
+        expect(h).toMatch(/notify: notifyTo\(note\),/);
         expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
         expect(h).toMatch(/if \(navStatus\.current !== key\) \{return;\}/);
     });

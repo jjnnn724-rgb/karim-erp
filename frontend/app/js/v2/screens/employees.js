@@ -61,8 +61,8 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.131';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, formatInt,
@@ -71,11 +71,11 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.130';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.130';
-import { fetchAttendanceReport, todayIso } from '../data/attendance-repo.js?v=4.9.130';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.130';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.130';
+} from '../data/employees-repo.js?v=4.9.131';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.131';
+import { fetchAttendanceReport, todayIso } from '../data/attendance-repo.js?v=4.9.131';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.131';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

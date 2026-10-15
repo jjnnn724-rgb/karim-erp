@@ -25,7 +25,7 @@
  * legacy/other screens; this repo never adds another POST door.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.130';
+import { apiFetch } from '../../core/api.js?v=4.9.131';
 
 /** @returns {Promise<{running:boolean,devices:any[],totals:object}>} */
 export async function fetchZkStatus() {

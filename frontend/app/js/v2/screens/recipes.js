@@ -2,10 +2,10 @@
  * V2 - Recipes screen (reading only)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.130';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.130';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.131';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return '<span class="erp-num" dir="ltr">' + m.amount + '</span>' + (m.hasUnit ? ' <span class="erp-text-sm erp-text-muted">' + esc(m.unit) + '</span>' : ''); };

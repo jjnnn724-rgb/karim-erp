@@ -969,7 +969,7 @@ describe('preview.js — المضيف: لا نموذجيات وتلفيدٌ نظ
         expect(fn()).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(fn()).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
         expect(fn()).toMatch(/const u = session\.user \|\| \{\};/);
-        expect(fn()).toMatch(/notify: \(message\) => \{ note\.textContent = message; \},/);
+        expect(fn()).toMatch(/notify: notifyTo\(note\),/);
         // والشاشة لا تسأل بنفسها خارج fallback المضيف الواحد
         expect(source(SCREEN).match(/window\.confirm\(/g)).toHaveLength(1);
     });

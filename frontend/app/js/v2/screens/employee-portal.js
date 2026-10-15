@@ -12,11 +12,11 @@
  * Print layout is V2's own (same content, not pixel-parity).
  */
 
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.130';
-import { fetchMyPunches } from '../data/portal-repo.js?v=4.9.130';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.130';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.130';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.130';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+import { fetchMyPunches } from '../data/portal-repo.js?v=4.9.131';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.131';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.131';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
