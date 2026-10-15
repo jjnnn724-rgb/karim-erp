@@ -52,7 +52,7 @@ if (data.refresh_token) {KARIM_RTset(data.refresh_token);}
 if (data.user && STATE.currentUser) {STATE.currentUser.name = data.user.name || STATE.currentUser.name;}
 closeModal();
 toast('تم تغيير كلمة المرور بنجاح','success');
-}catch(e){ cpFail('تعذر الاتصال بالخادم — حاول مرة أخرى'); }
+}catch(_){ cpFail('تعذر الاتصال بالخادم — حاول مرة أخرى'); }
 finally { if(btn){ btn.disabled=false; } }
 }
 
@@ -80,7 +80,7 @@ const data=await r.json().catch(()=>({}));
 if(!r.ok){ fpFail(serverMessage(data, 'تعذر تغيير كلمة المرور — تحقق من الرمز')); return; }
 closeModal();
 toast('تم تغيير كلمة المرور بنجاح — سجّل الدخول بكلمة المرور الجديدة','success');
-}catch(e){ fpFail('تعذر الاتصال بالخادم — حاول مرة أخرى'); }
+}catch(_){ fpFail('تعذر الاتصال بالخادم — حاول مرة أخرى'); }
 }
 async function issueResetCode(userId){
 const u=STATE.users.find(x=>String(x.id)===String(userId));
@@ -90,7 +90,7 @@ const r=await fetch(API_BASE+'/auth/forgot-password/request-code',{method:'POST'
 const data=await r.json().catch(()=>({}));
 if(!r.ok){ toast(serverMessage(data, 'تعذر إصدار رمز الاستعادة'),'error'); return; }
 showModal(`<h3><i class=ji data-i=key></i> رمز استعادة لكلمة المرور</h3><div class="workflow-banner">أعطِ هذا الرمز للموظف <strong>${esc(data.user_name||u.name)}</strong> (@${esc(data.username)}) ليغيّر كلمة مروره بنفسه من شاشة الدخول عبر زر «نسيت كلمة المرور؟».</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:40px;letter-spacing:10px;font-weight:bold;color:var(--gold,#c9a227)">${esc(data.code)}</div><small class="text-muted">صالح 10 دقائق · استخدام واحد فقط · إصدار رمز جديد يُبطل هذا الرمز</small></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="copyResetCode('${esc(data.code)}')"><i class=ji data-i=copy></i> نسخ الرمز</button></div>`);
-}catch(e){ toast('تعذر الاتصال بالخادم','error'); }
+}catch(_){ toast('تعذر الاتصال بالخادم','error'); }
 }
 function copyResetCode(code){
 if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(code).then(()=>toast('نُسخ الرمز','success')).catch(()=>{}); }
