@@ -1,0 +1,254 @@
+/**
+ * V2 — طبقة تصميم «السَنَد» لشاشة موجز المدير
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * الفكرة: شاشة تنفيذية بهدوء SAP Fiori (سطح أبيض + لون واحد + رماديات)،
+ * portlets كعدد محدود (٦ + شريط قرار)، وجهاز بصري واحد لا أكثر: بطاقة
+ * «أحدث الفواتير» تُرندَق كورق فاتورة حرارية — حافة سفلية مسنّنة، أرقام
+ * monospace، ونقاط-قاطعة بين القسم والمبلغ. الفاتورة الملغاة تُختم بختم
+ * أفقي مائل لأن الإلغاء في المحاسبة يُختم فعلًا.
+ *
+ * كل الألوان من `--erp-*` (التي تورّث `--karim-*`) — لا قيمة_hex جديدة،
+ * فيظل الوضع الداكن والمطبوعة يعملان بلا تعديل.
+ *
+ * الخطوط مستضافة محليًا في `../../fonts/menu/` (نفس ملفات لوحة المنيو):
+ *   Amiri 700   — عنوان الشاشة فقط (هوية المطعم المكتوبة، ليست افتراضًا).
+ *   Aref Ruqaa 700 — كلمة الختم فقط.
+ *   IBM Plex Sans Arabic — كل النص. ui-monospace — كل الأرقام.
+ *
+ * النطاق: `.erp-v2` فقط، وأغلب القواعد تحت `[data-v2-briefing]` حتى لا
+ * تلمس شاشة النموذج في erp-dashboard.css.
+ */
+
+/* ── الخطوط ───────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../../fonts/menu/amiri-normal-700-arabic.woff2) format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../../fonts/menu/amiri-normal-700-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Aref Ruqaa';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../../fonts/menu/arefruqaa-normal-700-arabic.woff2) format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+
+/* ── ترويسة الشاشة: Amiri مرة واحدة فقط ───────────────────────────────── */
+.erp-v2 .erp-brief__lock {
+  display: flex;
+  align-items: baseline;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4) var(--erp-space-4) var(--erp-space-3);
+  margin-block-end: var(--erp-space-4);
+  border-block-end: 1px solid var(--erp-border-subtle);
+}
+.erp-v2 .erp-brief__lock::before {
+  content: '';
+  flex: none;
+  inline-size: 6px;
+  block-size: 22px;
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-brand);
+  align-self: center;
+}
+.erp-v2 .erp-brief__name {
+  font-family: 'Amiri', var(--erp-font-sans);
+  font-weight: 700;
+  font-size: var(--erp-text-2xl);
+  line-height: var(--erp-leading-tight);
+  color: var(--erp-text-primary);
+  letter-spacing: 0;
+}
+.erp-v2 .erp-brief__when {
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-brief__lock .erp-btn { align-self: center; }
+
+/* ── شريط القرار: كامل العرض تحت الست ─────────────────────────────────── */
+.erp-v2 .erp-brief__decisions { margin-block-start: var(--erp-space-4); }
+.erp-v2 .erp-brief__decisions .erp-minis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  column-gap: var(--erp-space-6);
+}
+.erp-v2 .erp-brief__decisions .erp-mini { border-block-end: 0; }
+
+/* ── السَنَد: بطاقة بورق حراري ────────────────────────────────────────── */
+.erp-v2 .erp-sand {
+  position: relative;
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border-subtle);
+  border-block-start: 3px solid var(--erp-brand);
+  /* الحافة السفلية ورقٌ مقطوع، فلا خط مستقيم يغلقها. */
+  border-block-end: 0;
+  border-radius: var(--erp-radius-lg) var(--erp-radius-lg) 0 0;
+  box-shadow: none;
+  /* الورق أقصر من زميلاته في الشبكة: يبدأ من أعلى الصف ويترك للّسان مساحة
+     للنَّفَس بدل أن يتمدد إليه. */
+  align-self: start;
+  margin-block-end: var(--erp-space-2);
+  overflow: visible;
+}
+/* الحافة السفلية المسنّنة تُرسم بـ SVG: أضلاع مثلثية ثابتة مهما عرض البطاقة. */
+.erp-v2 .erp-sand__tear {
+  display: block;
+  inline-size: 100%;
+  block-size: 9px;
+  fill: var(--erp-surface);
+  stroke: var(--erp-border-subtle);
+  stroke-width: 1;
+}
+/* رأس السَنَد: عنوان كبقية البطاقات + التاريخ بعدد غربي، وتحته خط متقطع
+   كما يطبع الكاشير. */
+.erp-v2 .erp-sand__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  padding-block: var(--erp-space-3) var(--erp-space-2);
+  padding-inline: var(--erp-space-4);
+  border-block-end: 1px dashed var(--erp-border-strong);
+}
+.erp-v2 .erp-sand__day {
+  flex: none;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  letter-spacing: 0.06em;
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-sand__rows {
+  list-style: none;
+  margin: 0;
+  padding: var(--erp-space-1) var(--erp-space-4) var(--erp-space-3);
+}
+.erp-v2 .erp-sand__row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  padding-block: var(--erp-space-2);
+  border-block-end: 1px dashed var(--erp-border-subtle);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2 .erp-sand__row:last-child { border-block-end: 0; }
+.erp-v2 .erp-sand__no {
+  flex: none;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  /* رقم الفاتورة معلومة لا زينة: muted وليس faint، حتى يقرأ في الشمس. */
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-sand__dept {
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-inline-size: 45%;
+}
+/* النقاط القاطعة: التفصيلة اللي تجعل السطر سطر فاتورة لا صف جدول. */
+.erp-v2 .erp-sand__leader {
+  flex: 1 1 auto;
+  min-inline-size: var(--erp-space-4);
+  block-size: 0;
+  border-block-end: 1px dotted var(--erp-border-strong);
+  transform: translateY(-3px);
+}
+.erp-v2 .erp-sand__amt {
+  flex: none;
+  font-family: var(--erp-font-mono);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-sand__amt small {
+  font-weight: var(--erp-fw-normal);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+/* سطر ثانٍ كما في الفاتورة: الكاشير والوقت، والحالة في آخر السطر مصغّرة —
+   حتى يبقى سطر المبلغ وحده هو سطر الفاتورة. */
+.erp-v2 .erp-sand__sub {
+  order: 9;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+/* على الورق لا سجنَ ملوّنًا خلف الحالة: حبرٌ فقط — تضاد أعلى وأقرب إلى سطر مطبوع. */
+.erp-v2 .erp-sand__sub .erp-badge {
+  margin-inline-start: auto;
+  font-size: var(--erp-text-xs);
+  background: transparent;
+  padding: 0;
+}
+.erp-v2 .erp-sand__sub .erp-badge .ji { font-size: 11px; }
+
+/* ── ختم الإلغاء: أوقف الحساب، لا توقف السطر ──────────────────────────── */
+.erp-v2 .erp-sand__stamp {
+  position: absolute;
+  inset-inline-start: 26%;
+  inset-block-start: 50%;
+  transform: translateY(-50%) rotate(-8deg);
+  font-family: 'Aref Ruqaa', 'Amiri', var(--erp-font-sans);
+  font-weight: 700;
+  font-size: var(--erp-text-lg);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  padding-inline: var(--erp-space-3);
+  padding-block: var(--erp-space-1);
+  border: 2px solid var(--erp-danger);
+  border-radius: var(--erp-radius-sm);
+  color: var(--erp-danger-text);
+  opacity: 0.86;
+  pointer-events: none;
+}
+
+/* ── الحركة: ظهور متتابع عند أول رسم فقط ───────────────────────────────── */
+@keyframes erp-brief-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.erp-v2 .erp-brief--in .erp-kpi,
+.erp-v2 .erp-brief--in .erp-card {
+  animation: erp-brief-rise var(--erp-duration-slow) var(--erp-ease-out) both;
+  animation-delay: calc(var(--erp-rise-i, 0) * 45ms);
+}
+
+/* ── الاستجابة والوصولية ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .erp-v2 .erp-brief__name { font-size: var(--erp-text-xl); }
+  .erp-v2 .erp-sand__dept { max-inline-size: 38%; }
+  .erp-v2 .erp-sand__stamp { inset-inline-start: 30%; font-size: var(--erp-text-sm); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 .erp-brief--in .erp-kpi,
+  .erp-v2 .erp-brief--in .erp-card { animation: none; }
+  .erp-v2 .erp-sand__stamp { transform: translateY(-50%); }
+}
+@media print {
+  .erp-v2 .erp-sand { border-color: var(--erp-border-strong); }
+  .erp-v2 .erp-sand__tear { display: none; }
+  .erp-v2 .erp-brief--in .erp-kpi,
+  .erp-v2 .erp-brief--in .erp-card { animation: none; }
+}

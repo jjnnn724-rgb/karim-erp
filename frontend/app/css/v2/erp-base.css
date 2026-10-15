@@ -70,6 +70,10 @@
 .erp-v2 .erp-text-secondary { color: var(--erp-text-secondary); }
 .erp-v2 .erp-text-muted    { color: var(--erp-text-muted); }
 .erp-v2 .erp-text-faint    { color: var(--erp-text-faint); }
+/* Status-text helpers use the measured AA tokens (erp-tokens.css), not the
+   raw status colours — the same values the badges carry. */
+.erp-v2 .erp-text-success  { color: var(--erp-success-text); }
+.erp-v2 .erp-text-danger   { color: var(--erp-danger-text); }
 
 /* ── Layout primitives ──────────────────────────────────────────────── */
 .erp-v2 .erp-stack   { display: flex; flex-direction: column; gap: var(--erp-space-3); }

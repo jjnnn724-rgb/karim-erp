@@ -1,0 +1,80 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Motion Layer
+   ═══════════════════════════════════════════════════════════════════════
+   WHAT MOVES AND WHY (SAP Fiori "purposeful motion" rule: every animation
+   must communicate structure — never decorate):
+     1. Screen entrance — one fade+rise on the top-level screen container,
+       once per navigation. Communicates "a new page arrived".
+     2. State transitions — hover/active on interactive surfaces. The ONLY
+       continuously-alive layer, kept to color/shadow (compositor-friendly).
+
+   WHAT NEVER MOVES
+   ────────────────
+   Data values. Tables, KPI numbers and badges do NOT animate their content:
+   these hosts repaint on every filter change (screens call paint() with
+   fresh innerHTML), so animating children would re-fire the animation on
+   every keystroke — motion as noise, exactly what Fiori forbids.
+
+   Reduced motion is already collapsed globally in erp-themes.css; the
+   no-preference guard below is a second belt so a user agent that honors
+   the media query late never sees movement at all.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ── 1. Screen entrance — once per navigation ─────────────────────── */
+  @keyframes erp-screen-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .erp-v2 .erp-shell__content > * {
+    animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-standard) both;
+  }
+
+  /* ── 2. Interactive state transitions ─────────────────────────────── */
+  .erp-v2 .erp-btn,
+  .erp-v2 .erp-nav-item,
+  .erp-v2 .erp-theme-option,
+  .erp-v2 .erp-density-option,
+  .erp-v2 .erp-seg button,
+  .erp-v2 .erp-crumb-btn {
+    transition:
+      background-color var(--erp-duration-fast) var(--erp-ease-out),
+      border-color     var(--erp-duration-fast) var(--erp-ease-out),
+      color            var(--erp-duration-fast) var(--erp-ease-out),
+      box-shadow       var(--erp-duration-fast) var(--erp-ease-out);
+  }
+
+  .erp-v2 .erp-tr { transition: background-color var(--erp-duration-instant) var(--erp-ease-out); }
+
+  /* Buttons get one elevation step on hover — a press metaphor, not glow. */
+  .erp-v2 .erp-btn--primary {
+    transition:
+      background-color var(--erp-duration-fast) var(--erp-ease-out),
+      box-shadow       var(--erp-duration-fast) var(--erp-ease-out),
+      transform        var(--erp-duration-instant) var(--erp-ease-out);
+  }
+  .erp-v2 .erp-btn--primary:not(:disabled):hover {
+    box-shadow: var(--erp-shadow-sm);
+  }
+  .erp-v2 .erp-btn--primary:not(:disabled):active { transform: translateY(1px); }
+
+  /* Inputs respond on focus — border first (cheap), shadow second. */
+  .erp-v2 .erp-input,
+  .erp-v2 .erp-select {
+    transition:
+      border-color var(--erp-duration-fast) var(--erp-ease-out),
+      box-shadow   var(--erp-duration-fast) var(--erp-ease-out);
+  }
+
+  /* Drawer/scrim already transition via erp-shell.css grid + opacity. */
+
+  /* Bars (punches by day, sales by day): grow on mount of the container
+     level only — the bar nodes themselves are repainted on filter changes
+     and must NOT re-animate (see WHAT NEVER MOVES). */
+  @keyframes erp-bars-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .erp-v2 .erp-bars { animation: erp-bars-in var(--erp-duration-slow) var(--erp-ease-standard) both; }
+}

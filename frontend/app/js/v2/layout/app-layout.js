@@ -21,8 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js';
+import { mountThemeControl } from '../theme.js?v=4.9.130';
+import { mountDensityControl } from '../density.js?v=4.9.130';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.130';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -110,6 +111,8 @@ export function mountAppLayout(container, options = {}) {
             ${Object.keys(BOUNDARIES).map((name) => boundaryMarkup(name)).join('')}
             <span class="erp-shell__sep" aria-hidden="true"></span>
             <span data-erp-theme-slot></span>
+            <span class="erp-shell__sep" aria-hidden="true"></span>
+            <span data-erp-density-slot></span>
           </div>
         </header>
 
@@ -130,6 +133,7 @@ export function mountAppLayout(container, options = {}) {
         main:      root.querySelector('#erp-main'),
         role:      root.querySelector('[data-erp-role]'),
         themeSlot: root.querySelector('[data-erp-theme-slot]'),
+        densitySlot: root.querySelector('[data-erp-density-slot]'),
         brandText: root.querySelector('.erp-shell__brand-text strong'),
         brandSub:  root.querySelector('.erp-shell__brand-text small'),
         drawerOpenBtn: root.querySelector('[data-erp-open-drawer]'),
@@ -307,6 +311,9 @@ export function mountAppLayout(container, options = {}) {
     /* ── Theme control ──────────────────────────────────────────────── */
     state.themeControl = mountThemeControl(el.themeSlot);
 
+    /* ── Density control (cozy/dense — css/v2/erp-density.css) ──────── */
+    state.densityControl = mountDensityControl(el.densitySlot, root);
+
     /* ── Public surface ─────────────────────────────────────────────── */
     function navigate(key) {
         if (!key) {return;}
@@ -331,6 +338,7 @@ export function mountAppLayout(container, options = {}) {
         destroy() {
             state.disposers.forEach((fn) => { try { fn(); } catch { /* listener may already be detached */ } });
             state.themeControl?.destroy?.();
+            state.densityControl?.destroy?.();
             root.remove();
         },
     };

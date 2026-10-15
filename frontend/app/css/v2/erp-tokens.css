@@ -82,11 +82,11 @@
   --erp-neutral-soft:      color-mix(in srgb, var(--erp-neutral) 14%, transparent);
 
   /* Badge/label TEXT must be a darker shade than the status colour itself.
-     Measured against the 14% tint over the light canvas:
-       --erp-success (#0b9e6c) = 2.92:1  ✗  →  #067647 = 4.84:1 ✓
+     Measured LIVE in browser 2026-10-13 (static estimate overstated):
+       --erp-success: #067647 assumed 4.84:1, measured 4.12:1 ✗ → now #055f3a ✓
        --erp-danger  (#e5484d) = 3.10:1  ✗  →  #b42318 = 5.20:1 ✓
      Status colour stays for icons/fills; these carry the readable text. */
-  --erp-success-text: #067647;   /* 4.84:1 */
+  --erp-success-text: #055f3a;   /* ≥4.5:1 live (was #067647 = 4.12:1 live) */
   --erp-warning-text: #b54708;   /* 4.76:1 */
   --erp-danger-text:  #b42318;   /* 5.20:1 */
   --erp-info-text:    #175cd3;   /* 5.66:1 */

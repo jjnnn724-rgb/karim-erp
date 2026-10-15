@@ -346,6 +346,27 @@
   .erp-shell__brand-text small { display: none; }
   .erp-crumbs { display: none; }   /* breadcrumb trail is redundant on phones */
   .erp-shell__content { padding: var(--erp-space-3) var(--erp-space-3); }
+
+  /* ── Header actions: measured fix (MIGRATION.md «رأس AppLayout يتجاوز
+     العرض عند الموبايل»: actions 408px داخل هيدر 289px عند 320) ──
+     الضغط أولاً (أيقونات بلا نصوص، فجوات أضيق)، والتمرير الداخلي المخفي
+     ضمانٌ أخير: المستند لا يتجاوز أبدًا مهما أضاف مضيفٌ إلى الأحداث. */
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-2); padding-inline: var(--erp-space-2); }
+  .erp-v2 .erp-shell__actions {
+    min-width: 0;
+    gap: var(--erp-space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .erp-v2 .erp-shell__actions::-webkit-scrollbar { display: none; }
+  .erp-v2 .erp-shell__actions .erp-shell__sep { display: none; }
+  /* الثيم أيقونات فقط (اللون يقول فاتح/داكن — والأيقونة تكفي بلمس) */
+  .erp-v2 .erp-theme-option span { display: none; }
+  .erp-v2 .erp-theme-option { padding: 0 var(--erp-space-2); }
+  /* الكثافة نصّها هو الأيقونة — تُضغط لا تُخفى */
+  .erp-v2 .erp-density-option { padding: 0 6px; font-size: var(--erp-text-xs); }
+  .erp-v2 .erp-boundary { padding: 0 var(--erp-space-1); }
 }
 
 /* Touch targets ≥ 44px on coarse pointers (WCAG 2.5.8). */

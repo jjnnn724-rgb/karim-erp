@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Auth layer (Gate C) · v1.0.0
+   ─────────────────────────────────────────────────────────────────────
+   Formal centered sign-in, same frozen language: erp-card, erp-field,
+   erp-btn, bilingual eyebrows. All colours --erp-* (dark mode inherited).
+   ═══════════════════════════════════════════════════════════════════════ */
+.erp-v2 .erp-login-wrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--erp-space-7) var(--erp-space-3);
+}
+.erp-v2 .erp-login-card { inline-size: 100%; max-inline-size: 430px; }
+.erp-v2 .erp-login-brand { display: flex; justify-content: center; }
+.erp-v2 .erp-login-mark {
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--erp-brand-soft);
+  color: var(--erp-dash-accent-text, var(--erp-brand-text));
+  box-shadow: var(--erp-shadow-sm);
+}
+.erp-v2 .erp-login-mark .ji { font-size: 26px; }
+.erp-v2 .erp-login-title {
+  margin: 0;
+  text-align: center;
+  font-size: var(--erp-text-xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-login-title .erp-eyebrow { margin-block-start: 2px; }
+.erp-v2 .erp-login-center { text-align: center; }
+.erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
+.erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
+.erp-v2 .erp-login-submit {
+  inline-size: 100%;
+  justify-content: center;
+  min-block-size: 44px;
+}
+.erp-v2 .erp-login-sep {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  color: var(--erp-text-faint);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2 .erp-login-sep::before,
+.erp-v2 .erp-login-sep::after {
+  content: "";
+  flex: 1 1 auto;
+  block-size: 1px;
+  background: var(--erp-border);
+}
+.erp-v2 .erp-login-sep > span { padding-inline: var(--erp-space-1); }

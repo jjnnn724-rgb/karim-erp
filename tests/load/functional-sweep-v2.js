@@ -9,7 +9,6 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
 
 const BASE = 'https://127.0.0.1:5000';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -54,7 +53,7 @@ async function dbQuery(sql, params) {
     // ─── 1) الصحة النظامية ───
     const health = await request('GET', '/api/health', { token });
     let healthOk = false, healthDetail;
-    try { const j = JSON.parse(health.text); const comps = Array.isArray(j.components) ? j.components : []; const db = comps.find((c) => c.component === 'database'); healthOk = j.status === 'ok' && db?.status === 'ok'; healthDetail = 'status=' + j.status + ' db=' + db?.status + ' ver=' + j.app?.version; } catch (e) { healthDetail = health.text.slice(0, 100); }
+    try { const j = JSON.parse(health.text); const comps = Array.isArray(j.components) ? j.components : []; const db = comps.find((c) => c.component === 'database'); healthOk = j.status === 'ok' && db?.status === 'ok'; healthDetail = 'status=' + j.status + ' db=' + db?.status + ' ver=' + j.app?.version; } catch (_) { healthDetail = health.text.slice(0, 100); }
     check('health + database', healthOk, healthDetail);
 
     // ─── 2) دورة طلبات الخضار الكاملة مع رفض صنف ───

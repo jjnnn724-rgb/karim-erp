@@ -1,5 +1,5 @@
 /**
- * V2 — Preview host (reversible route)
+ * V2 — Preview host
  * ═══════════════════════════════════════════════════════════════════════
  *
  * THIS FILE EXISTS ONLY FOR v2.html.
@@ -16,18 +16,73 @@
  *                        documented mirror is used.
  *   • Status values    — every badge below uses a value that exists in the
  *                        production database or in legacy rendering code.
+ *   • LIVE DATA        — only with `?live=1` AND a session this browser
+ *                        already owns. The branches screen then reads
+ *                        /api/branches for real (see screens/branches.js).
+ *                        Without that flag nothing in this page issues a
+ *                        request, so the default preview cannot touch the
+ *                        owner's live session or database.
  *
  * WHAT IS SAMPLE (stated on the page itself)
- *   The session and the table rows are fixtures for design review. No API is
- *   called, no record is read, and nothing here implies a live integration.
+ *   The session and the table rows are fixtures for design review. Outside
+ *   live mode no API is called, no record is read, and nothing here implies
+ *   a live integration.
  */
 
-import { ROLES } from '../core/config.js';
-import { MENU_STRINGS, t } from '../core/i18n.js';
-import { initTheme, currentTheme } from './theme.js';
-import { statusBadge, hydrateStatusNodes } from './status.js';
-import { mountAppLayout } from './layout/app-layout.js';
-import { createDataTable } from './data-display/data-table.js';
+import { ROLES } from '../core/config.js?v=4.9.130';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.130';
+import { initTheme, currentTheme } from './theme.js?v=4.9.130';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.130';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.130';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.130';
+import { createDataTable } from './data-display/data-table.js?v=4.9.130';
+import { ensureSession } from './session.js?v=4.9.130';
+import { mountBranchesScreen } from './screens/branches.js?v=4.9.130';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.130';
+import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.130';
+import { mountEmployeesScreen } from './screens/employees.js?v=4.9.130';
+import { mountLoginScreen } from './screens/login.js?v=4.9.130';
+import { mountBriefingScreen } from './screens/briefing.js?v=4.9.130';
+import { mountCfoScreen } from './screens/cfo.js?v=4.9.130';
+import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.130';
+import { mountReportsScreen } from './screens/reports.js?v=4.9.130';
+import { mountProcurementScreen } from './screens/procurement.js?v=4.9.130';
+import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.130';
+import { mountPaymentsScreen } from './screens/payments.js?v=4.9.130';
+import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.130';
+import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.130';
+import { mountLeavesScreen } from './screens/leaves.js?v=4.9.130';
+import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.130';
+import { mountVegScreen } from './screens/veg-requests.js?v=4.9.130';
+import { mountRosterScreen } from './screens/roster.js?v=4.9.130';
+import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.130';
+import { mountSettingsScreen } from './screens/settings.js?v=4.9.130';
+import { mountUsersScreen } from './screens/users.js?v=4.9.130';
+import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.130';
+import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.130';
+import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.130';
+import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.130';
+import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.130';
+import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.130';
+import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.130';
+import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.130';
+import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.130';
+import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.130';
+import { mountPayrollScreen } from './screens/payroll.js?v=4.9.130';
+import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.130';
+import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.130';
+import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.130';
+import { mountRecipesScreen } from './screens/recipes.js?v=4.9.130';
+import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.130';
+import { mountExpensesScreen } from './screens/expenses.js?v=4.9.130';
+import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.130';
+import { mountPnlScreen } from './screens/pnl.js?v=4.9.130';
+import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.130';
+import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.130';
+import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.130';
+import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.130';
+import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.130';
+import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.130';
 
 /* ── 1. Publish the real configuration the adapters read ────────────── */
 
@@ -69,9 +124,20 @@ function pageTitle(key) {
     return translated === `pg.${key}` ? menuLabel(key) : translated;
 }
 
-/* ── 2. Sample session (explicitly labelled on the page) ────────────── */
+/* ── 2. Session ─────────────────────────────────────────────────────────
+   Two modes, and the difference is stated on the page:
+
+     default  — `window.STATE` is a fixture whose only job is to let the
+                shell render a full menu for design review. Nothing reads
+                the network.
+     ?live=1  — the fixture is removed (`role: null` until the server
+                answers) and the page tries the browser's own session. A
+                role is never assumed here; if it cannot be resolved, every
+                screen says so. */
+const LIVE = new URLSearchParams(window.location.search).get('live') === '1';
+
 window.STATE = {
-    currentUser: { role: 'admin', name: 'مدير النظام' },
+    currentUser: LIVE ? { role: null, name: '' } : { role: 'admin', name: 'مدير النظام' },
     permissions: { menus: [], deniedMenus: [] },
     settings: { hidden_nav_pages: '' },
     theme: currentTheme(),
@@ -107,7 +173,16 @@ const shell = mountAppLayout(root, {
     page: navStatus.current,
     breadcrumbs: { trail: [{ label: 'الرئيسية', key: 'dashboard' }, { label: 'لوحة التحكم' }] },
     toolbar: [
-        { label: 'تحديث', icon: 'refresh', onClick: () => reloadTable() },
+        {
+            label: 'تحديث',
+            icon: 'refresh',
+            onClick: () => {
+                // Whichever live screen is mounted owns its own refresh; the
+                // sample table is the fallback for every other screen.
+                const live = briefingScreen || branchesScreen || attendanceScreen || employeesScreen || warehouseScreen || reportsScreen;
+                if (live) {live.reload();} else {reloadTable();}
+            },
+        },
         { label: 'تصدير', icon: 'download', onClick: () => console.info('[V2 preview] export is a boundary, not implemented') },
     ],
     onNavigate(key) {
@@ -120,6 +195,132 @@ const shell = mountAppLayout(root, {
         renderScreen(key);
     },
 });
+
+/* ── 5. Live mode: resolve the browser's own session, then repaint ──────
+   No top-level await (see §4) — this promise settles later and re-renders
+   whatever screen is on screen at that moment. `rotate: true` is the ONLY
+   place V2 is allowed to spend a shared credential, and only because
+   ?live=1 was asked for explicitly. Without that flag the page makes no
+   request at all. */
+const sessionState = { status: LIVE ? 'pending' : 'off', info: null };
+
+let sessionPromise = LIVE
+    ? ensureSession({ rotate: true }).then((s) => {
+        sessionState.status = s ? 'ready' : 'none';
+        sessionState.info = s;
+        if (s) {
+            // The real role replaces the fixture; the backend stays the
+            // authority for every request either way.
+            window.STATE.currentUser = { role: s.role || null, name: (s.user && s.user.name) || '' };
+            shell.refreshNav();
+            try {shellExtras.refresh();} catch { /* extras are additive */ }
+        }
+        renderScreen(navStatus.current);
+        return s;
+    })
+    : Promise.resolve(null);
+
+/* ── 5b. Command palette — REAL search over the live nav tree ─────────
+   Mounted once into the shell's `search` boundary slot (mountBoundary
+   replaces the inert placeholder, keeping its data-erp-boundary name).
+   The overlay lives on <body> so screen swaps never strand it. */
+mountCommandPalette(shell);
+
+/* ── 5b2. Shell extras (W5): bell, lamps, language, quick actions, FAB,
+   password change, offline bar — all additive, all server-gated. */
+const shellExtras = mountShellExtras(shell, {
+    getRole: () => (sessionState.info && sessionState.info.role)
+        || (window.STATE && window.STATE.currentUser && window.STATE.currentUser.role) || null,
+    getUserName: () => {
+        const u = (sessionState.info && sessionState.info.user) || {};
+        return String(u.name || u.username || '');
+    },
+    isLive: () => isLive(),
+    onToast: (m) => { try {toast(m);} catch { console.info('[V2]', m); } },
+});
+
+/* ── 5c. Auth — Gate C: the V2 sign-in (real /api/auth/login) ─────────
+   The profile boundary slot (inert until now) becomes the sign-in/out
+   door; the login screen is an internal route. A signed-in session flips
+   isLive() so every screen reads its live door with zero edits to the
+   screens themselves — and ?live=1 keeps working exactly as before. */
+function isLive() {
+    return LIVE || (typeof sessionState !== 'undefined' && sessionState.status === 'ready');
+}
+
+let loginReturnKey = 'dashboard';
+
+function navigateLogin(returnKey) {
+    loginReturnKey = returnKey && returnKey !== 'login' ? returnKey : 'dashboard';
+    shell.navigate('login');
+}
+
+function onSessionReady(info) {
+    sessionState.status = 'ready';
+    sessionState.info = info || null;
+    sessionPromise = Promise.resolve(sessionState.info);
+    // Mirror the ?live=1 boot (same shape STATE carries in production).
+    if (window.STATE && typeof window.STATE === 'object') {
+        const user = (info && info.user) || {};
+        window.STATE.currentUser = { role: (info && info.role) || null, name: user.name || '' };
+    }
+    shell.refreshNav();
+    refreshProfileSlot();
+    try {shellExtras.refresh();} catch { /* extras are additive */ }
+    const back = loginReturnKey && loginReturnKey !== 'login' ? loginReturnKey : 'dashboard';
+    loginReturnKey = 'dashboard';
+    renderScreen(back);
+}
+
+function doV2Logout() {
+    // Memory session only. The stored refresh token is SHARED with the
+    // production app on this origin — clearing it here would log the user
+    // out of index.html too, so it is deliberately left alone.
+    try { window._jwt = null; } catch { /* private mode */ }
+    try { window._appKey = null; } catch { /* private mode */ }
+    if (window.STATE && typeof window.STATE === 'object') {window.STATE.currentUser = null;}
+    sessionState.status = 'off';
+    sessionState.info = null;
+    sessionPromise = Promise.resolve(null);
+    shell.refreshNav();
+    refreshProfileSlot();
+    try {shellExtras.refresh();} catch { /* extras are additive */ }
+    shell.navigate('dashboard');
+}
+
+function refreshProfileSlot() {
+    const logged = sessionState.status === 'ready';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'erp-btn erp-btn--sm';
+    if (logged) {
+        btn.innerHTML = `<i class="ji" data-i="user" aria-hidden="true"></i><span>خروج</span>`;
+        btn.setAttribute('aria-label', 'تسجيل الخروج من المعاينة (تبقى جلسة النظام الحالي)');
+    } else {
+        btn.innerHTML = `<i class="ji" data-i="lock" aria-hidden="true"></i><span>دخول</span>`;
+        btn.setAttribute('aria-label', 'تسجيل الدخول');
+    }
+    btn.addEventListener('click', () => {
+        if (sessionState.status === 'ready') {doV2Logout();}
+        else {navigateLogin(navStatus.current);}
+    });
+    shell.mountBoundary('profile', btn);
+}
+
+function renderLoginScreen() {
+    shell.setBreadcrumbs({ trail: [
+        { label: 'الرئيسية', key: 'dashboard' },
+        { label: 'تسجيل الدخول' },
+    ] });
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <div style="margin-block-start:var(--erp-space-4)" data-v2-login-host></div>`;
+    mountLoginScreen(shell.main.querySelector('[data-v2-login-host]'), {
+        onSuccess: onSessionReady,
+    });
+}
+
+refreshProfileSlot();
 
 /* ── 6. Status adapter showcase (real persisted values) ────────────── */
 const STATUS_SAMPLES = [
@@ -213,11 +414,1715 @@ function reloadTable() {
 }
 
 /* ── 8. Screens ─────────────────────────────────────────────────────── */
+
+const esc = (v) => String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/** The live screens V2 has mounted — one instance each, destroyed on nav. */
+let branchesScreen = null;
+let attendanceScreen = null;
+let employeesScreen = null;
+let briefingScreen = null;
+let cfoScreen = null;
+let warehouseScreen = null;
+let reportsScreen = null;
+let procurementScreen = null;
+let invoicesScreen = null;
+let paymentsScreen = null;
+let whInvoicesScreen = null;
+let kitchenScreen = null;
+let leavesScreen = null;
+let dispatchScreen = null;
+let vegScreen = null;
+let whMovesScreen = null;
+let whReturnsScreen = null;
+let whPrsScreen = null;
+let departmentsScreen = null;
+let hrDepartmentsScreen = null;
+let payrollScreen = null;
+let revenuesScreen = null;
+let expensesScreen = null;
+let costAnalysisScreen = null;
+let pnlScreen = null;
+let hrDashboardScreen = null;
+let zktecoScreen = null;
+let deptEmpScreen = null;
+let salesAnalyzerScreen = null;
+let receivedAnalyzerScreen = null;
+let whVsPosScreen = null;
+let recipesScreen = null;
+let rosterScreen = null;
+let employeePortalScreen = null;
+let settingsScreen = null;
+let usersScreen = null;
+let yarasoftScreen = null;
+let whatsappScreen = null;
+let permissionsScreen = null;
+let cashierMonitorScreen = null;
+let oracleDataScreen = null;
+let dailyLocksScreen = null;
+let menuBoardScreen = null;
+let posEntryScreen = null;
+
+function teardownBranchesScreen() {
+    if (branchesScreen) {
+        branchesScreen.destroy();
+        branchesScreen = null;
+    }
+}
+
+function teardownAttendanceScreen() {
+    if (attendanceScreen) {
+        attendanceScreen.destroy();
+        attendanceScreen = null;
+    }
+}
+
+function teardownEmployeesScreen() {
+    if (employeesScreen) {
+        employeesScreen.destroy();
+        employeesScreen = null;
+    }
+}
+
+function teardownBriefingScreen() {
+    if (briefingScreen) {
+        briefingScreen.destroy();
+        briefingScreen = null;
+    }
+}
+
+function teardownCfoScreen() {
+    if (cfoScreen) {
+        cfoScreen.destroy();
+        cfoScreen = null;
+    }
+}
+
+function teardownWarehouseScreen() {
+    if (warehouseScreen) {
+        warehouseScreen.destroy();
+        warehouseScreen = null;
+    }
+}
+
+function teardownReportsScreen() {
+    if (reportsScreen) {
+        reportsScreen.destroy();
+        reportsScreen = null;
+    }
+}
+
+function teardownProcurementScreen() {
+    if (procurementScreen) {
+        procurementScreen.destroy();
+        procurementScreen = null;
+    }
+}
+
+function teardownInvoicesScreen() {
+    if (invoicesScreen) {
+        invoicesScreen.destroy();
+        invoicesScreen = null;
+    }
+}
+
+function teardownPaymentsScreen() {
+    if (paymentsScreen) {
+        paymentsScreen.destroy();
+        paymentsScreen = null;
+    }
+}
+
+function teardownWhInvoicesScreen() {
+    if (whInvoicesScreen) {
+        whInvoicesScreen.destroy();
+        whInvoicesScreen = null;
+    }
+}
+
+function teardownKitchenScreen() {
+    if (kitchenScreen) {
+        kitchenScreen.destroy();
+        kitchenScreen = null;
+    }
+}
+
+function teardownLeavesScreen() {
+    if (leavesScreen) {
+        leavesScreen.destroy();
+        leavesScreen = null;
+    }
+}
+
+function teardownDispatchScreen() {
+    if (dispatchScreen) {
+        dispatchScreen.destroy();
+        dispatchScreen = null;
+    }
+}
+
+function teardownVegScreen() {
+    if (vegScreen) {
+        vegScreen.destroy();
+        vegScreen = null;
+    }
+}
+
+function teardownWhMovesScreen() {
+    if (whMovesScreen) { whMovesScreen.destroy(); whMovesScreen = null; }
+}
+
+function teardownWhReturnsScreen() {
+    if (whReturnsScreen) { whReturnsScreen.destroy(); whReturnsScreen = null; }
+}
+
+function teardownWhPrsScreen() {
+    if (whPrsScreen) { whPrsScreen.destroy(); whPrsScreen = null; }
+}
+
+function teardownRecipesScreen() {
+ if (recipesScreen) { recipesScreen.destroy(); recipesScreen = null; }
+}
+
+function teardownRosterScreen() { if (rosterScreen) { rosterScreen.destroy(); rosterScreen = null; } }
+function teardownEmployeePortalScreen() { if (employeePortalScreen) { employeePortalScreen.destroy(); employeePortalScreen = null; } }
+function teardownSettingsScreen() { if (settingsScreen) { settingsScreen.destroy(); settingsScreen = null; } }
+function teardownUsersScreen() { if (usersScreen) { usersScreen.destroy(); usersScreen = null; } }
+function teardownYarasoftScreen() { if (yarasoftScreen) { yarasoftScreen.destroy(); yarasoftScreen = null; } }
+function teardownWhatsappScreen() { if (whatsappScreen) { whatsappScreen.destroy(); whatsappScreen = null; } }
+function teardownPermissionsScreen() { if (permissionsScreen) { permissionsScreen.destroy(); permissionsScreen = null; } }
+function teardownCashierMonitorScreen() { if (cashierMonitorScreen) { cashierMonitorScreen.destroy(); cashierMonitorScreen = null; } }
+function teardownOracleDataScreen() { if (oracleDataScreen) { oracleDataScreen.destroy(); oracleDataScreen = null; } }
+function teardownDailyLocksScreen() { if (dailyLocksScreen) { dailyLocksScreen.destroy(); dailyLocksScreen = null; } }
+function teardownMenuBoardScreen() { if (menuBoardScreen) { menuBoardScreen.destroy(); menuBoardScreen = null; } }
+function teardownPosEntryScreen() { if (posEntryScreen) { posEntryScreen.destroy(); posEntryScreen = null; } }
+
+function teardownDepartmentsScreen() {
+    if (departmentsScreen) { departmentsScreen.destroy(); departmentsScreen = null; }
+}
+
+function teardownHrDepartmentsScreen() {
+    if (hrDepartmentsScreen) { hrDepartmentsScreen.destroy(); hrDepartmentsScreen = null; }
+}
+
+function teardownPayrollScreen() {
+    if (payrollScreen) { payrollScreen.destroy(); payrollScreen = null; }
+}
+
+function teardownRevenuesScreen() {
+    if (revenuesScreen) {
+        revenuesScreen.destroy();
+        revenuesScreen = null;
+    }
+}
+
+function teardownExpensesScreen() {
+    if (expensesScreen) {
+        expensesScreen.destroy();
+        expensesScreen = null;
+    }
+}
+
+function teardownCostAnalysisScreen() {
+    if (costAnalysisScreen) {
+        costAnalysisScreen.destroy();
+        costAnalysisScreen = null;
+    }
+}
+
+function teardownPnlScreen() {
+    if (pnlScreen) {
+        pnlScreen.destroy();
+        pnlScreen = null;
+    }
+}
+
+function teardownHrDashboardScreen() {
+    if (hrDashboardScreen) {
+        hrDashboardScreen.destroy();
+        hrDashboardScreen = null;
+    }
+}
+
+function teardownZktecoScreen() {
+    if (zktecoScreen) {
+        zktecoScreen.destroy();
+        zktecoScreen = null;
+    }
+}
+
+function teardownDeptEmployeesScreen() {
+    if (deptEmpScreen) {
+        deptEmpScreen.destroy();
+        deptEmpScreen = null;
+    }
+}
+
+function teardownSalesAnalyzerScreen() {
+    if (salesAnalyzerScreen) { salesAnalyzerScreen.destroy(); salesAnalyzerScreen = null; }
+}
+
+function teardownReceivedAnalyzerScreen() {
+    if (receivedAnalyzerScreen) { receivedAnalyzerScreen.destroy(); receivedAnalyzerScreen = null; }
+}
+
+function teardownWhVsPosScreen() {
+    if (whVsPosScreen) { whVsPosScreen.destroy(); whVsPosScreen = null; }
+}
+
+/**
+ * Says out loud which mode the page is in. A preview that quietly switches
+ * between sample and real data is worse than one that states both.
+ *
+ * Built from the primitives the shell already ships (erp-card + erp-stack +
+ * erp-text-sm) — no new CSS class, so the strip cannot drift from the
+ * stylesheet it is supposed to match.
+ */
+function strip(body, role) {
+    return `
+      <section class="erp-card"${role ? ` role="${role}"` : ''}>
+        <div class="erp-card__body erp-stack">
+          ${body}
+        </div>
+      </section>`;
+}
+
+function liveModeStrip() {
+    // Three states, stated out loud: logged-out preview (no requests at
+    // all), ?live=1 resolving/failed, and a real session — whether it came
+    // from ?live=1 rotation or from the Gate C sign-in form below.
+    if (!LIVE && sessionState.status !== 'ready') {
+        return strip(`
+          <h3 class="erp-card__title">وضع المعاينة — بيانات نموذجية</h3>
+          <p class="erp-text-sm erp-text-muted">
+            لا يُطلب أي شيء من الشبكة في هذا الوضع. لقراءة بيانات حقيقية بالجلسة
+            المسجّلة في هذا المتصفح: <a href="v2.html?live=1">v2.html?live=1</a>
+            — الوضع يبدّل مصدر البيانات فقط، ولا يُنشئ جلسة ولا يغيّر كلمة مرور.
+          </p>`);
+    }
+    if (sessionState.status === 'pending') {
+        return strip(`
+          <h3 class="erp-card__title">جارٍ التحقق من الجلسة…</h3>
+          <p class="erp-text-sm erp-text-muted">وضع البيانات الحية (‎?live=1‎).</p>`,
+        'status');
+    }
+    if (sessionState.status === 'none') {
+        return strip(`
+          <h3 class="erp-card__title">لا توجد جلسة في هذا المتصفح</h3>
+          <p class="erp-text-sm erp-text-muted">
+            الوضع الحيّ لا يُنشئ جلسة — لا توجد وسيلة آمنة لتسجيل الدخول من هنا.
+            سجّل الدخول في النظام الحالي ثم أعد فتح
+            <a href="v2.html?live=1">v2.html?live=1</a>.
+          </p>
+          <a class="erp-btn erp-btn--sm" href="index.html">الذهاب لتسجيل الدخول</a>`,
+        'alert');
+    }
+    const info = sessionState.info || {};
+    return strip(`
+      <h3 class="erp-card__title">وضع البيانات الحية</h3>
+      <p class="erp-text-sm erp-text-muted">
+        جلسة حقيقية (مصدر: ${esc(info.source || 'غير معروف')}) بدور
+        <strong>${esc(info.role || 'غير معروف')}</strong> — القيم المعروضة تُقرأ من
+        نفس واجهات النظام الحالي، والصلاحية قررها للخادم وحده.
+      </p>`,
+    'status');
+}
+
+/** Live read of /api/branches — or an honest statement of why there is none. */
+function renderBranchesScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          ${branchShowcaseSection()}`;
+        const host = shell.main.querySelector('[data-v2-sample-host]');
+        if (!table) {buildTable();}
+        host.appendChild(table.el);
+        reloadTable();
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'branches') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState();
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-branches-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        branchesScreen = mountBranchesScreen(shell.main.querySelector('[data-v2-branches-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+        });
+    });
+}
+
+/** Live read of /api/attendance/range — or an honest statement of why there is none.
+ *  Screen 01 in js/v2/MIGRATION.md. W2-3: the screen carries the write cycle
+ *  (buttons hide by role, the server re-checks every write); the host hands
+ *  it the session identity and the confirm function. The non-live branch
+ *  shows no fixtures — the dashboard below already carries the labelled
+ *  attendance sample. */
+function renderAttendanceScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">شاشة الحضور — أول شاشة تُنقل في V2</span>
+                <span>في وضع المعاينة ترى نموذج سجل الحضور في لوحة التحكم. البيانات الحية
+                تتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'attendance') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + `
+              <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+                <div class="erp-card__body">
+                  <div class="erp-state">
+                    <span class="erp-state__title">لا جلسة — لا بيانات عرض</span>
+                    <span>هذه الشاشة لا تعرض صفوفًا نموذجية تحت اسم «الحضور» في الوضع الحيّ.</span>
+                  </div>
+                </div>
+              </section>`;
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-attendance-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        const u = session.user || {};
+        attendanceScreen = mountAttendanceScreen(shell.main.querySelector('[data-v2-attendance-host]'), {
+            role: session.role,
+            userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
+            userName: String(u.name || u.username || ''),
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/** Live read of /api/employees — screen 02 in js/v2/MIGRATION.md.
+ *  Same honesty rule as attendance: no fixtures under the screen's name. */
+function renderEmployeesScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">شاشة الموظفون — ثاني شاشة تُنقل في V2</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'employees') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + `
+              <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+                <div class="erp-card__body">
+                  <div class="erp-state">
+                    <span class="erp-state__title">لا جلسة — لا بيانات عرض</span>
+                    <span>هذه الشاشة لا تعرض صفوفًا نموذجية تحت اسم «الموظفون» في الوضع الحيّ.</span>
+                  </div>
+                </div>
+              </section>`;
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-employees-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        employeesScreen = mountEmployeesScreen(shell.main.querySelector('[data-v2-employees-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/**
+ * Live read of /api/warehouse/inventory/search — screen 03 in js/v2/MIGRATION.md.
+ * Keyed to `warehouse` because that is the nav key the role menus already use
+ * for the warehouse page (layout/nav-model.js:39). Its filters are the
+ * server's own (q/category/stock), which is why the non-live branch shows an
+ * empty statement instead of fixture rows: a fake register would pretend that
+ * the server answered, and it did not.
+ */
+function renderWarehouseScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">شاشة المخزون — ثالث شاشة تُنقل في V2</span>
+                <span>فلاترها (الحالة والفئة والبحث المتسامح) تُسأل الخادم نفسه، فلا
+                نموذج يُعرض بدلها. البيانات الحية تتطلب
+                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'warehouse') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('المخزون');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-warehouse-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        // W1-6: الشاشة صارت تحمل كتابات المخزون الستة — تأكيدات الحذف النهائي
+        // والوارد تمر بـ confirmFn من المضيف (CSP يمنع window.confirm داخل V2).
+        // W1-6c: واستوديو الجرد يقفل توقيعه باسم الحساب (والخادم يعيد الفحص)
+        // — نفس قاعدة شاشة المطبخ: عدة أشكال للجلسة، والتطبيع هنا مرة واحدة.
+        const u = session.user || {};
+        warehouseScreen = mountWarehouseScreen(shell.main.querySelector('[data-v2-warehouse-host]'), {
+            role: session.role,
+            userName: String(u.name || u.username || ''),
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/**
+ * Live read of /api/pos/reports/sales — screen 04 in js/v2/MIGRATION.md.
+ * Keyed to `reports` because that is the nav key the role menus already carry
+ * (layout/nav-model.js:41; roles admin|manager|accountant in core/config.js).
+ * Period and grouping are answered in SQL by the server, so the non-live
+ * branch states what the screen will read instead of showing invented totals.
+ */
+function renderReportsScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">شاشة التقارير — رابع شاشة تُنقل في V2</span>
+                <span>الفترة والتجميع يُحسبان في SQL على الخادم، فلا رقم نموذجي يُعرض
+                بدلها. الأرقام الحية تتطلب
+                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن تقرير من الفترة نفسها.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'reports') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('التقارير');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-reports-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        reportsScreen = mountReportsScreen(shell.main.querySelector('[data-v2-reports-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+        });
+    });
+}
+
+/**
+ * Live executive dashboard on /api/manager/briefing + /api/pos/orders/stats/today.
+ * Keyed to `cfo` because that is the role menu the backend already treats as
+ * the executive view — V2 does not invent a nav key to fit its own demo.
+ * The briefing endpoint is requireRole('admin','manager'); any other role
+ * gets its 403 shown as text, not a silently empty grid.
+ *
+ * محفوظة بقصد ولا تُحذف: عقد المضيف في tests/v2-briefing.test.js:397 يثبّت
+ * الاسم نصًّا (`renderBriefingScreen()`)، والمضيف الحيّ للوحة اليوم يستدعي
+ * mountBriefingScreen عبر الكتلة أسفل الراوتر. حذفها يكسر العقد بلا مكسب.
+ */
+// eslint-disable-next-line no-unused-vars -- محفوظة لعقد v2-briefing.test.js:397
+function renderBriefingScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">موجز المدير — شاشة بأرقام حية</span>
+                <span>لوحة التحكم هنا تعرض نموذجًا للقياس؛ الأرقام الحقيقية تُقرأ من
+                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'cfo') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('الموجز');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-briefing-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        briefingScreen = mountBriefingScreen(shell.main.querySelector('[data-v2-briefing-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+        });
+    });
+}
+
+/** Live read of /api/procurement/* — screen 05 in js/v2/MIGRATION.md.
+ *  Keyed to `procurement` (role menus, core/config.js). Scope v1 is the
+ *  suppliers directory + summary; invoices/payments are screens 06/07. */
+function renderProcurementScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">شاشة الموردون — خامس شاشة تُنقل في V2</span>
+                <span>الدليل والملخص يُقرآن من الخادم، فلا نموذج يُعرض بدلها. البيانات
+                الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'procurement') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('الموردون');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-procurement-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        procurementScreen = mountProcurementScreen(shell.main.querySelector('[data-v2-procurement-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            navigate: (k) => shell.navigate(k),
+        });
+    });
+}
+
+/** Live reads for the procurement hub tabs (06/07) — same honesty rule:
+ *  no fixtures under the screens' names, in either mode. */
+function renderInvoicesScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">فواتير الموردين — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'procurement-invoices') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('فواتير الموردين');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-invoices-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        invoicesScreen = mountInvoicesScreen(shell.main.querySelector('[data-v2-invoices-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            navigate: (k) => shell.navigate(k),
+        });
+    });
+}
+
+function renderPaymentsScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">مدفوعات الموردين — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'procurement-payments') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('مدفوعات الموردين');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-payments-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        paymentsScreen = mountPaymentsScreen(shell.main.querySelector('[data-v2-payments-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            navigate: (k) => shell.navigate(k),
+        });
+    });
+}
+
+/** Live read of /api/purchaseInvoices through the warehouse month lens —
+ *  screen 08 in js/v2/MIGRATION.md. Same honesty rule: no fixtures. */
+function renderWhInvoicesScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">فواتير الشراء — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'wh-invoices') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('فواتير الشراء');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-whinvoices-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        whInvoicesScreen = mountWhInvoicesScreen(shell.main.querySelector('[data-v2-whinvoices-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            navigate: (k) => shell.navigate(k),
+        });
+    });
+}
+
+/** Live read of /api/kitchen/overview — screen 09 in js/v2/MIGRATION.md.
+ *  First operational door the sous_chef role may read. Same honesty rule. */
+function renderKitchenScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">المطبخ — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'kitchen') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('المطبخ');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-kitchen-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        // W1-2: الدورة الكاملة صارت كتابةً — اسم الحساب يقفل التواقيع ويرسمها
+        // (والخادم يعيد الفحص), والاعتماد يسأل قبل ترحيل فروقات الجرد.
+        // User may be JWT claims ({sub,name}) or the refresh shape
+        // ({id,name,username}) — normalise once, here (same fix as dispatch).
+        const u = session.user || {};
+        kitchenScreen = mountKitchenScreen(shell.main.querySelector('[data-v2-kitchen-host]'), {
+            role: session.role,
+            userName: String(u.name || u.username || ''),
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/** Live read of /api/leaveRequests — screen 10 in js/v2/MIGRATION.md.
+ *  Same honesty rule: no fixtures under the screen's name, in either mode. */
+function renderLeavesScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">طلبات الإجازات — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'leaves') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('الإجازات');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-leaves-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        leavesScreen = mountLeavesScreen(shell.main.querySelector('[data-v2-leaves-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+        });
+    });
+}
+
+/** Live read of /api/zkteco/* — screen 11 in js/v2/MIGRATION.md.
+ *  Completes the attendance triangle (records + leaves + devices).
+ *  Same honesty rule: no fixtures under the screen's name, in either mode. */
+function renderZktecoScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">أجهزة البصمة — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'zkteco') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('أجهزة البصمة');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-zkteco-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        zktecoScreen = mountZktecoScreen(shell.main.querySelector('[data-v2-zkteco-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+        });
+    });
+}
+
+/** Live HR overview — screen 12 in js/v2/MIGRATION.md. Composes proven
+ *  doors only (employees + today attendance + leaves + departments +
+ *  currency); each may fail independently and is named when it does.
+ *  Same honesty rule: no fixtures under the screen's name, in either mode. */
+function renderHrDashboardScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">لوحة الموارد البشرية — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'hr-dashboard') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('لوحة الموارد');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-hrdash-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        hrDashboardScreen = mountHrDashboardScreen(shell.main.querySelector('[data-v2-hrdash-host]'), {
+            role: session.role,
+            notify: (message) => { note.textContent = message; },
+            navigate: (k) => shell.navigate(k),
+        });
+    });
+}
+
+/** Live read of /api/dispatches — screen 13 in js/v2/MIGRATION.md.
+ *  Same honesty rule: no fixtures under the screen's name, in either mode. */
+function renderDispatchScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">أذون الصرف — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'dispatch') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('أذون الصرف');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-dispatch-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        // W1-1: الهوية كاملة للشاشة — اسم الحساب يقفل التواقيع (يسجّلها الخادم
+        // باسمه)، والقسم يحكم نطاق dept_head، والمعرّف يُرسل مع الإنشاء.
+        // User may be JWT claims ({sub,name,dept_code}) or the refresh shape
+        // ({id,name,role,username,dept_code}) — normalise both once, here.
+        const u = session.user || {};
+        dispatchScreen = mountDispatchScreen(shell.main.querySelector('[data-v2-dispatch-host]'), {
+            role: session.role,
+            userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
+            userName: String(u.name || u.username || ''),
+            deptCode: String(u.dept_code || ''),
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/** Live read of /api/veg-requests — screen 14 in js/v2/MIGRATION.md.
+ *  Same honesty rule: no fixtures under the screen's name, in either mode. */
+function renderVegScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">طلبات شراء الخضار — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'veg-requests') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('طلبات الخضار');
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-veg-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        // W1-4: الهوية كاملة للشاشة — اسم الحساب يطبع على ورقة الطلب،
+        // والمعرّف يحكم بوابتي التعديل والإلغاء (صاحب الطلب)، وconfirmFn
+        // لتأكيد رفض كل الأصناف. User may be JWT claims ({sub,name,dept_code})
+        // or the refresh shape ({id,name,role,username,dept_code}).
+        const u = session.user || {};
+        vegScreen = mountVegScreen(shell.main.querySelector('[data-v2-veg-host]'), {
+            role: session.role,
+            userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
+            userName: String(u.name || u.username || ''),
+            notify: (message) => { note.textContent = message; },
+            confirmFn: (message) => window.confirm(message),
+        });
+    });
+}
+
+/**
+ * Shared live-gate painter for the read-only finance registers (screens
+ * 15-18). Same contract as every render*Screen above: preview mode never
+ * touches the network, live mode needs a signed-in session, and the
+ * screen instance is handed back through `assign` so each teardown can
+ * reach its own module-level variable.
+ */
+function renderLiveRegisterScreen({ key, title, mount, assign }) {
+    if (!isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state">
+                <span class="erp-state__title">${esc(title)} — تُقرأ من الخادم</span>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                بجلسة مسجلة في هذا المتصفح.</span>
+                <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
+              </div>
+            </div>
+          </section>`;
+        shell.main.querySelector('[data-go-dash]')?.addEventListener('click', () => shell.navigate('dashboard'));
+        return;
+    }
+
+    shell.main.innerHTML = `
+      ${liveModeStrip()}
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state" role="status" aria-live="polite">
+            <span class="erp-state__title">جارٍ تجهيز الشاشة…</span>
+            <span>لا تُعرض بيانات نموذجية في الوضع الحيّ — لا بديل عن السجل الحقيقي.</span>
+          </div>
+        </div>
+      </section>`;
+
+    sessionPromise.then((session) => {
+        if (navStatus.current !== key) {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState(title);
+            return;
+        }
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+            <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+            <div data-v2-register-host></div>
+          </div>`;
+        const note = shell.main.querySelector('[data-v2-note]');
+        const u = session.user || {};
+        assign(mount(shell.main.querySelector('[data-v2-register-host]'), {
+            role: session.role,
+            userId: u.id != null ? u.id : null,
+            userName: String(u.name || u.username || ''),
+            deptCode: String(u.dept_code || ''),
+            confirmFn: (message) => window.confirm(message),
+            notify: (message) => { note.textContent = message; },
+        }));
+    });
+}
+
+function renderCfoScreen() { renderLiveRegisterScreen({ key: 'cfo', title: 'المدير المالي', mount: mountCfoScreen, assign: (s) => { cfoScreen = s; } }); }
+
+function renderRevenuesScreen() {
+    renderLiveRegisterScreen({
+        key: 'revenues', title: 'الإيرادات', mount: mountRevenuesScreen,
+        assign: (s) => { revenuesScreen = s; },
+    });
+}
+
+function renderExpensesScreen() {
+    renderLiveRegisterScreen({
+        key: 'expenses', title: 'المصروفات', mount: mountExpensesScreen,
+        assign: (s) => { expensesScreen = s; },
+    });
+}
+
+function renderCostAnalysisScreen() {
+    renderLiveRegisterScreen({
+        key: 'cost-analysis', title: 'تحليل التكاليف', mount: mountCostAnalysisScreen,
+        assign: (s) => { costAnalysisScreen = s; },
+    });
+}
+
+function renderPnlScreen() {
+    renderLiveRegisterScreen({
+        key: 'pnl', title: 'قائمة الدخل', mount: mountPnlScreen,
+        assign: (s) => { pnlScreen = s; },
+    });
+}
+
+function renderWhMovesScreen() {
+    renderLiveRegisterScreen({ key: 'wh-moves', title: 'حركات المخزون', mount: mountWhMovesScreen, assign: (s) => { whMovesScreen = s; } });
+}
+
+function renderWhReturnsScreen() {
+    renderLiveRegisterScreen({ key: 'wh-returns', title: 'مرتجعات المطبخ', mount: mountWhReturnsScreen, assign: (s) => { whReturnsScreen = s; } });
+}
+
+function renderWhPrsScreen() {
+    renderLiveRegisterScreen({ key: 'wh-prs', title: 'طلبات شراء النواقص', mount: mountWhPrsScreen, assign: (s) => { whPrsScreen = s; } });
+}
+
+function renderRecipesScreen() {
+    renderLiveRegisterScreen({ key: 'recipes', title: 'الوصفات', mount: mountRecipesScreen, assign: (s) => { recipesScreen = s; } });
+}
+
+function renderDepartmentsScreen() {
+    renderLiveRegisterScreen({ key: 'departments', title: 'الأقسام', mount: mountDepartmentsScreen, assign: (s) => { departmentsScreen = s; } });
+}
+
+function renderHrDepartmentsScreen() {
+    renderLiveRegisterScreen({ key: 'hr-departments', title: 'أقسام HR', mount: mountHrDepartmentsScreen, assign: (s) => { hrDepartmentsScreen = s; } });
+}
+
+function renderPayrollScreen() {
+    renderLiveRegisterScreen({ key: 'payroll', title: 'مسيرات الرواتب', mount: mountPayrollScreen, assign: (s) => { payrollScreen = s; } });
+}
+
+function renderRosterScreen() { renderLiveRegisterScreen({ key: 'roster', title: 'الدوام', mount: mountRosterScreen, assign: (s) => { rosterScreen = s; } }); }
+
+function renderEmployeePortalScreen() { renderLiveRegisterScreen({ key: 'employee-portal', title: 'البصمات (ذاتي)', mount: mountEmployeePortalScreen, assign: (s) => { employeePortalScreen = s; } }); }
+
+function renderSettingsScreen() { renderLiveRegisterScreen({ key: 'settings', title: 'الإعدادات', mount: mountSettingsScreen, assign: (s) => { settingsScreen = s; } }); }
+
+function renderUsersScreen() { renderLiveRegisterScreen({ key: 'users', title: 'المستخدمون', mount: mountUsersScreen, assign: (s) => { usersScreen = s; } }); }
+
+function renderYarasoftScreen() { renderLiveRegisterScreen({ key: 'yarasoft', title: 'Yarasoft', mount: mountYarasoftScreen, assign: (s) => { yarasoftScreen = s; } }); }
+
+function renderWhatsappScreen() { renderLiveRegisterScreen({ key: 'whatsapp', title: 'WhatsApp', mount: mountWhatsappScreen, assign: (s) => { whatsappScreen = s; } }); }
+
+function renderPermissionsScreen() { renderLiveRegisterScreen({ key: 'permissions', title: 'الصلاحيات', mount: mountPermissionsScreen, assign: (s) => { permissionsScreen = s; } }); }
+
+function renderCashierMonitorScreen() { renderLiveRegisterScreen({ key: 'cashier-monitor', title: 'متابعة الكاشير', mount: mountCashierMonitorScreen, assign: (s) => { cashierMonitorScreen = s; } }); }
+
+function renderOracleDataScreen() { renderLiveRegisterScreen({ key: 'oracle-data', title: 'بيانات Oracle', mount: mountOracleDataScreen, assign: (s) => { oracleDataScreen = s; } }); }
+
+function renderDailyLocksScreen() { renderLiveRegisterScreen({ key: 'yara-daily-locks', title: 'التقفيل اليومي', mount: mountDailyLocksScreen, assign: (s) => { dailyLocksScreen = s; } }); }
+
+function renderPosEntryScreen() { renderLiveRegisterScreen({ key: 'pos', title: 'الكاشير', mount: mountPosEntryScreen, assign: (s) => { posEntryScreen = s; } }); }
+
+function renderMenuBoardScreen() {
+    if (!isLive()) {
+        shell.main.innerHTML = `${liveModeStrip()}<section class="erp-card" style="margin-block-start:var(--erp-space-4)"><div class="erp-card__body"><div class="erp-state"><span class="erp-state__title">شاشات المنيو — تُعرض من الخادم</span><span>العرض الحي يتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span></div></div></section>`;
+        return;
+    }
+    sessionPromise.then((session) => {
+        if (navStatus.current !== 'menu-board') {return;}
+        if (!session) {
+            shell.main.innerHTML = liveModeStrip() + noSessionState('شاشات المنيو');
+            return;
+        }
+        shell.main.innerHTML = `${liveModeStrip()}<div class="erp-stack" style="margin-block-start:var(--erp-space-4)"><div data-v2-register-host></div></div>`;
+        menuBoardScreen = mountMenuBoardScreen(shell.main.querySelector('[data-v2-register-host]'), {
+            notify: (_message) => {},
+        });
+    });
+}
+
+function renderDeptEmployeesScreen() { renderLiveRegisterScreen({ key: 'dept-employees', title: 'موظفو القسم', mount: mountDeptEmployeesScreen, assign: (s) => { deptEmpScreen = s; } }); }
+
+function renderSalesAnalyzerScreen() { renderLiveRegisterScreen({ key: 'sales-analyzer', title: 'تحليل المبيعات', mount: mountSalesAnalyzerScreen, assign: (s) => { salesAnalyzerScreen = s; } }); }
+
+function renderReceivedAnalyzerScreen() { renderLiveRegisterScreen({ key: 'received-analyzer', title: 'المستلم من المخزن', mount: mountReceivedAnalyzerScreen, assign: (s) => { receivedAnalyzerScreen = s; } }); }
+
+function renderWhVsPosScreen() { renderLiveRegisterScreen({ key: 'wh-vs-pos', title: 'المخزن مع الكاشيرية', mount: mountWhVsPosScreen, assign: (s) => { whVsPosScreen = s; } }); }
+
+function noSessionState(entity = 'الفروع') {
+    return `
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__body">
+          <div class="erp-state">
+            <span class="erp-state__title">لا جلسة — لا بيانات عرض</span>
+            <span>هذه الشاشة لا تعرض صفوفًا نموذجية تحت اسم «${entity}» في الوضع الحيّ.</span>
+          </div>
+        </div>
+      </section>`;
+}
+
+/** The same table component, fed with fixtures, used to judge the design. */
+function branchShowcaseSection() {
+    return `
+      <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+        <div class="erp-card__head">
+          <h3 class="erp-card__title">EnterpriseDataTable — نموذج الفروع</h3>
+          <span class="erp-text-muted" style="text-align:end">بيانات نموذجية · نفس المكوّن الذي تقرأ به الشاشة الحية</span>
+        </div>
+        <div class="erp-card__body"><div data-v2-sample-host></div></div>
+      </section>`;
+}
+
 function renderScreen(key) {
+    teardownBranchesScreen();
+    teardownAttendanceScreen();
+    teardownEmployeesScreen();
+    teardownBriefingScreen();
+    teardownCfoScreen();
+    teardownWarehouseScreen();
+    teardownReportsScreen();
+    teardownProcurementScreen();
+    teardownInvoicesScreen();
+    teardownPaymentsScreen();
+    teardownWhInvoicesScreen();
+    teardownKitchenScreen();
+    teardownLeavesScreen();
+    teardownDispatchScreen();
+    teardownVegScreen();
+    teardownWhMovesScreen();
+    teardownWhReturnsScreen();
+    teardownWhPrsScreen();
+    teardownRecipesScreen();
+    teardownRosterScreen();
+    teardownEmployeePortalScreen();
+    teardownSettingsScreen();
+    teardownUsersScreen();
+    teardownYarasoftScreen();
+    teardownWhatsappScreen();
+    teardownPermissionsScreen();
+    teardownCashierMonitorScreen();
+    teardownOracleDataScreen();
+    teardownDailyLocksScreen();
+    teardownMenuBoardScreen();
+    teardownPosEntryScreen();
+    teardownDepartmentsScreen();
+    teardownHrDepartmentsScreen();
+    teardownPayrollScreen();
+    teardownRevenuesScreen();
+    teardownExpensesScreen();
+    teardownCostAnalysisScreen();
+    teardownPnlScreen();
+    teardownHrDashboardScreen();
+    teardownZktecoScreen();
+    teardownDeptEmployeesScreen();
+    teardownSalesAnalyzerScreen();
+    teardownReceivedAnalyzerScreen();
+    teardownWhVsPosScreen();
+
+    if (key === 'branches') {
+        renderBranchesScreen();
+        return;
+    }
+
+    if (key === 'login') {
+        renderLoginScreen();
+        return;
+    }
+
+    if (key === 'cfo') {
+        renderCfoScreen();
+        return;
+    }
+
+    if (key === 'attendance') {
+        renderAttendanceScreen();
+        return;
+    }
+
+    if (key === 'employees') {
+        renderEmployeesScreen();
+        return;
+    }
+
+    if (key === 'warehouse') {
+        renderWarehouseScreen();
+        return;
+    }
+
+    if (key === 'reports') {
+        renderReportsScreen();
+        return;
+    }
+
+    if (key === 'procurement') {
+        renderProcurementScreen();
+        return;
+    }
+
+    if (key === 'procurement-invoices') {
+        renderInvoicesScreen();
+        return;
+    }
+
+    if (key === 'procurement-payments') {
+        renderPaymentsScreen();
+        return;
+    }
+
+    if (key === 'wh-invoices') {
+        renderWhInvoicesScreen();
+        return;
+    }
+
+    if (key === 'kitchen') {
+        renderKitchenScreen();
+        return;
+    }
+
+    if (key === 'leaves') {
+        renderLeavesScreen();
+        return;
+    }
+
+    if (key === 'dispatch') {
+        renderDispatchScreen();
+        return;
+    }
+
+    if (key === 'veg-requests') {
+        renderVegScreen();
+        return;
+    }
+
+    if (key === 'wh-moves') {
+        renderWhMovesScreen();
+        return;
+    }
+
+    if (key === 'wh-returns') {
+        renderWhReturnsScreen();
+        return;
+    }
+
+    if (key === 'wh-prs') {
+        renderWhPrsScreen();
+        return;
+    }
+
+    if (key === 'recipes') {
+        renderRecipesScreen();
+        return;
+    }
+
+    if (key === 'roster') {
+        renderRosterScreen();
+        return;
+    }
+
+    if (key === 'employee-portal') {
+        renderEmployeePortalScreen();
+        return;
+    }
+
+    if (key === 'settings') {
+        renderSettingsScreen();
+        return;
+    }
+
+    if (key === 'users') {
+        renderUsersScreen();
+        return;
+    }
+
+    if (key === 'yarasoft') {
+        renderYarasoftScreen();
+        return;
+    }
+
+    if (key === 'whatsapp') {
+        renderWhatsappScreen();
+        return;
+    }
+
+    if (key === 'permissions') {
+        renderPermissionsScreen();
+        return;
+    }
+
+    if (key === 'cashier-monitor') {
+        renderCashierMonitorScreen();
+        return;
+    }
+
+    if (key === 'oracle-data') {
+        renderOracleDataScreen();
+        return;
+    }
+
+    if (key === 'yara-daily-locks') {
+        renderDailyLocksScreen();
+        return;
+    }
+
+    if (key === 'menu-board') {
+        renderMenuBoardScreen();
+        return;
+    }
+
+    if (key === 'pos') {
+        renderPosEntryScreen();
+        return;
+    }
+
+    if (key === 'departments') {
+        renderDepartmentsScreen();
+        return;
+    }
+
+    if (key === 'hr-departments') {
+        renderHrDepartmentsScreen();
+        return;
+    }
+
+    if (key === 'payroll') {
+        renderPayrollScreen();
+        return;
+    }
+
+    if (key === 'revenues') {
+        renderRevenuesScreen();
+        return;
+    }
+
+    if (key === 'expenses') {
+        renderExpensesScreen();
+        return;
+    }
+
+    if (key === 'cost-analysis') {
+        renderCostAnalysisScreen();
+        return;
+    }
+
+    if (key === 'pnl') {
+        renderPnlScreen();
+        return;
+    }
+
+    if (key === 'hr-dashboard') {
+        renderHrDashboardScreen();
+        return;
+    }
+
+    if (key === 'zkteco') {
+        renderZktecoScreen();
+        return;
+    }
+
+    if (key === 'dept-employees') {
+        renderDeptEmployeesScreen();
+        return;
+    }
+
+    if (key === 'sales-analyzer') {
+        renderSalesAnalyzerScreen();
+        return;
+    }
+
+    if (key === 'received-analyzer') {
+        renderReceivedAnalyzerScreen();
+        return;
+    }
+
+    if (key === 'wh-vs-pos') {
+        renderWhVsPosScreen();
+        return;
+    }
+
     const isDashboard = !key || key === 'dashboard';
+
+    // Gate D: a signed-in dashboard reads the live executive view (the same
+    // tested component the `cfo` route mounts) instead of fixtures. Logged-out
+    // visitors keep the labelled preview below, unchanged.
+    if (isDashboard && isLive()) {
+        shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <section class="erp-card" style="margin-block-start:var(--erp-space-4)">
+            <div class="erp-card__body">
+              <div class="erp-state" role="status" aria-live="polite">
+                <span class="erp-state__title">جارٍ قراءة أرقام اليوم…</span>
+                <span>اللوحة الحية لا تعرض نموذجًا — لا بديل عن السجل الحقيقي.</span>
+              </div>
+            </div>
+          </section>`;
+        sessionPromise.then((session) => {
+            if (navStatus.current !== 'dashboard') {return;}
+            if (!session) {
+                shell.main.innerHTML = liveModeStrip() + noSessionState('اللوحة');
+                return;
+            }
+            shell.main.innerHTML = `
+              ${liveModeStrip()}
+              <div class="erp-stack" style="margin-block-start:var(--erp-space-4)">
+                <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite"></p>
+                <div data-v2-dashboard-host></div>
+              </div>`;
+            const note = shell.main.querySelector('[data-v2-note]');
+            briefingScreen = mountBriefingScreen(shell.main.querySelector('[data-v2-dashboard-host]'), {
+                role: session.role,
+                notify: (message) => { note.textContent = message; },
+            });
+        });
+        return;
+    }
 
     if (isDashboard) {
         shell.main.innerHTML = `
+          ${liveModeStrip()}
+          <div data-erp-dash></div>
           <section class="erp-card">
             <div class="erp-card__head">
               <h3 class="erp-card__title">طبقة الحالة — Status Adapter</h3>
@@ -246,6 +2151,9 @@ function renderScreen(key) {
             </div>
           </section>`;
         const host = shell.main.querySelector('[data-erp-table-host]');
+        // "المكس الساحر" dashboard renders first (fixtures, labelled); the
+        // Gate B status showcase + table demo follow unchanged below it.
+        renderDashboard(shell.main.querySelector('[data-erp-dash]'), { statusBadge });
         if (!table) {buildTable();}
         host.appendChild(table.el);
         reloadTable();
