@@ -42,7 +42,14 @@ body {
   border-block-end: 1px solid rgba(255, 255, 255, .12);
   position: sticky;
   inset-block-start: 0;
-  z-index: 9999;
+  /* Local token, deliberately NOT --erp-z-*: this banner is a child of <body>
+     in v2.html:93, outside #erp-v2-root, so no --erp-* name resolves for it
+     and `z-index: var(--erp-z-…)` would compute to auto. It must clear the
+     sticky shell header it shares the top edge with (--erp-z-sticky = 100,
+     later in DOM order) and stay below the drawer tier (600); 150 is that
+     slot. The old 9999 floated page chrome above open modals and toasts. */
+  --v2-preview-z-banner: 150;
+  z-index: var(--v2-preview-z-banner);
 }
 
 .erp-preview-banner strong {

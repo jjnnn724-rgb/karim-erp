@@ -186,6 +186,13 @@
   /* ── Z-index layers (single ordered scale) ────────────────────────── */
   --erp-z-base:     0;
   --erp-z-sticky:   100;
+  /* Floating quick-action tier. The sidebar is sticky at --erp-z-sticky,
+     opaque, --erp-sidebar-width wide, on the SAME inline-start edge the FAB
+     anchors to (RTL: right). Measured in a fixture with exactly those values:
+     the FAB host at its old literal 60 lost document.elementFromPoint under
+     the sidebar to the sidebar itself; at 200 it wins and still yields to
+     dropdowns (300), the drawer (600) and every modal above it. */
+  --erp-z-fab:      200;
   --erp-z-dropdown: 300;
   --erp-z-drawer:   600;
   --erp-z-overlay:  800;

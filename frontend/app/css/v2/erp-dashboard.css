@@ -164,7 +164,10 @@
 
 /* ── Command palette (the "pro feel": Ctrl+K) ─────────────────────────── */
 .erp-pal-backdrop {
-  position: fixed; inset: 0; z-index: var(--erp-z-modal, 900);
+  /* no `, 900` fallback: the host is listed in erp-tokens.css since البند ١١, so
+     the name always resolves — and a fallback is a silent second scale factor
+     that would keep painting at 900 after any future rename. */
+  position: fixed; inset: 0; z-index: var(--erp-z-modal);
   background: var(--erp-scrim);
   display: flex; justify-content: center; align-items: flex-start;
   padding: 12vh 16px 16px;

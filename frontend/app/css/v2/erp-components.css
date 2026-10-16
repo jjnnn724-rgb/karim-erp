@@ -289,7 +289,7 @@
 .erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
 .erp-v2 .erp-shell__bell { position: relative; display: inline-flex; }
 .erp-v2 .erp-shell__bell .erp-badge { position: absolute; top: -6px; inset-inline-end: -6px; }
-.erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 12px; z-index: 60; }
+.erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 12px; z-index: var(--erp-z-dropdown); }
 .erp-v2 .erp-notif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .erp-v2 .erp-notif-list { display: flex; flex-direction: column; gap: 8px; }
 .erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
@@ -297,8 +297,13 @@
 /* Bare on purpose: js/v2/layout/shell-extras.js mounts this host on
    document.body, so a `.erp-v2 ` ancestor prefix never matches. Measured before
    this change: the host was `position: static` and sat at the bottom of the
-   document (y≈2767), invisible until you scrolled past the whole page. */
-.erp-fab-host { position: fixed; bottom: 20px; inset-inline-start: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+   document (y≈2767), invisible until you scrolled past the whole page.
+   z-index lives on --erp-z-fab, not a literal: #erp-v2-root is static/auto
+   (measured), so the host competes in the ROOT context against the opaque
+   sticky sidebar at --erp-z-sticky=100 on this same inline-start edge — at the
+   old 60 the sidebar won the point under the button, i.e. the FAB was
+   unclickable at every viewport above the 1024px drawer breakpoint. */
+.erp-fab-host { position: fixed; bottom: 20px; inset-inline-start: 20px; z-index: var(--erp-z-fab); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: 26px; line-height: 1; cursor: pointer; }
 .erp-fab-host .erp-fab-menu { display: flex; flex-direction: column; gap: 8px; }
 /* `[hidden]` was losing to the rule above (UA `[hidden]{display:none}` is a
@@ -307,11 +312,19 @@
    the FAB actually paints, the menu has to obey its own closed state. */
 .erp-fab-host .erp-fab-menu[hidden] { display: none; }
 .erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font: inherit; }
+/* Left alone on purpose (tests/v2-zindex.test.js carries it as a declared
+   exception): js/v2/layout/shell-extras.js:255 appends the wrapper to
+   document.body, so this `.erp-v2 ` ancestor selector never matches and neither
+   the 70 nor any other declaration in this rule is live. Fixing the mount is a
+   JS change to a file another author has in flight — separate item. */
 .erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: 70; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
 /* #b91c1c was an off-palette red (the token is #b42318 light / #f87171 dark).
    Both readings stay AA-safe with the inverse ink: 6.57:1 light, 6.82:1 dark.
-   The z-index and the hand-written 13px are separate debts. */
-.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: 9999; background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
+   z-index was 9999 — above the whole scale, so the strip painted over open
+   modals and the toast layer. --erp-z-toast keeps it visible above dialogs
+   (900) but inside the system, yielding only to tooltips (1100). The
+   hand-written 13px is a separate debt. */
+.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: var(--erp-z-toast); background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
 @media (max-width: 640px) {
   .erp-v2 .erp-shell__extras { flex-wrap: wrap; }
   .erp-fab-host .erp-fab { width: 44px; height: 44px; }
