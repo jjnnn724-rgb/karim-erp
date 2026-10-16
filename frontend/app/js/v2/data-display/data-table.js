@@ -69,6 +69,11 @@ const esc = (v) => String(v ?? '')
  * @property {string} [emptyMessage]
  * @property {string} [emptyHint]
  * @property {boolean} [stickyHeader]  Default true.
+ * @property {boolean} [search]        Default true — the table's own "بحث…"
+ *             box. A host that owns a smarter search (employees.js filters
+ *             the roster before rows are handed over, in both table and cards
+ *             views) passes false so the screen never shows two boxes with
+ *             two different rules.
  */
 
 /** @returns {HTMLDivElement} */
@@ -78,6 +83,7 @@ export function createDataTable(options = {}) {
         pageSize: 25,
         selectable: false,
         stickyHeader: true,
+        search: true,
         ...options,
     };
 
@@ -116,12 +122,12 @@ export function createDataTable(options = {}) {
     root.className = 'erp-table';
     root.innerHTML = `
       <div class="erp-table__bar erp-no-print">
-        <label class="erp-table__search">
+        ${opts.search === false ? '' : `<label class="erp-table__search">
           <i class="ji" data-i="search" aria-hidden="true"></i>
           <span class="erp-sr-only">بحث داخل الجدول</span>
           <input type="search" class="erp-input erp-grow" data-erp-search
                  placeholder="بحث…" autocomplete="off">
-        </label>
+        </label>`}
         <div class="erp-table__bar-actions">
           <button type="button" class="erp-btn erp-btn--sm" data-erp-cols-toggle
                   aria-expanded="false" aria-controls="erp-cols-menu">
@@ -550,16 +556,18 @@ export function createDataTable(options = {}) {
 
     /* ── Global search + column menu wiring ──────────────────────────── */
     let searchTimer = null;
-    el.search.addEventListener('input', () => {
-        // Debounced: a per-keystroke filter on a large client list is jank.
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-            state.query = el.search.value;
-            state.page = 1;
-            emitServerState();
-            render();
-        }, 160);
-    });
+    if (el.search) {
+        el.search.addEventListener('input', () => {
+            // Debounced: a per-keystroke filter on a large client list is jank.
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                state.query = el.search.value;
+                state.page = 1;
+                emitServerState();
+                render();
+            }, 160);
+        });
+    }
 
     el.colsBtn.addEventListener('click', () => {
         const open = el.colsMenu.hidden;
@@ -603,7 +611,12 @@ export function createDataTable(options = {}) {
             state.page = 1;
             render();
         },
-        setQuery(q) { el.search.value = q || ''; state.query = q || ''; state.page = 1; render(); },
+        setQuery(q) {
+            if (el.search) {el.search.value = q || '';}
+            state.query = q || '';
+            state.page = 1;
+            render();
+        },
         setPage(p) { state.page = Math.max(1, p | 0); render(); },
 
         getSelection() {

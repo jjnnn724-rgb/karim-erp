@@ -17,11 +17,24 @@ const FINANCE = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'j
 const VEG = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'veg-requests.js'), 'utf8');
 const YARASOFT = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'yarasoft.js'), 'utf8');
 
+// طبقة V2 لا تستورد core/utils (طبقة البيانات لا تلمس طبقة العرض)، فجدول
+// الحروف منسوخٌ عندها مرتين: dispatch-repo و employees-repo. النسخة تُمزّق
+// هنا بسلوكها لا بشكلها — لو باعد أحدهما الجدول يسقط الاختبار.
+const V2_ELS = path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'data', 'employees-repo.js');
+const V2_DSP = path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'data', 'dispatch-repo.js');
+
 function loadArSearchKey() {
     const start = UTILS.indexOf('function arSearchKey');
     const end = UTILS.indexOf('\n}', start);
     const src = UTILS.slice(start, end + 2);
     return new Function(src + '\nreturn arSearchKey;')();
+}
+function loadArSearchKeyFrom(file) {
+    const src = fs.readFileSync(file, 'utf8');
+    const start = src.indexOf('function arSearchKey');
+    if (start === -1) {throw new Error(`arSearchKey missing from ${path.basename(file)}`);}
+    const body = src.slice(start, src.indexOf('\n}', start) + 2);
+    return new Function(`${body}\nreturn arSearchKey;`)();
 }
 const arSearchKey = loadArSearchKey();
 // نفس تعريف utils — يُعاد بناؤه هنا من المفتاح المحمّل (واختبار التصدير يغطي الوiring)
@@ -81,5 +94,33 @@ describe('التوصيل في كل واجهات البحث', () => {
     });
     test('utils يصدّر المفتاح والدالة (الجسر إلى window)', () => {
         expect(UTILS).toContain('arSearchKey, arSearchIncludes');
+    });
+});
+
+describe('نسخ طبقة البيانات من الجدول لا تتباعد عن utils', () => {
+    // متجهاتٌ تغطي كلَّ حرفٍ في الجدول: الهمزات، ة/ه، ى/ي، عائلات النقاط،
+    // التشكيل، والتطبيع — أيُّ نسخةٍ تُسقط سطرًا تسقط هنا.
+    const VECTORS = ['باذنجان', 'بازنجان', 'أحمد', 'احمد', 'إبراهيم', 'آدم', 'ٱسم', 'مكرونة', 'مكرونه',
+        'شاي', 'شاى', 'ئام', 'ييء', 'ؤدم', 'کوردی', 'سكر أبيض', '  مسافات   كثيرة ', 'خيار', 'حيار',
+        'جبن', 'حبن', 'قلف', 'فلف', 'توفیق', 'ضغط', 'صغط', 'بظري', 'بطري', 'طه', 'ته', 'ثامر', 'تامر',
+        'حرفٌ مُشكَّلٌ', 'Élan', '123', '', '   '];
+
+    test.each([['employees-repo (W2-6)', V2_ELS], ['dispatch-repo', V2_DSP]])(
+        '%s: مفتاحٌ يطابق مفتاح utils في كل متجه', (_name, file) => {
+            const copy = loadArSearchKeyFrom(file);
+            for (const v of VECTORS) {
+                expect(copy(v)).toBe(arSearchKey(v));
+            }
+        });
+
+    test('نطاقُ التشكيل ضيِّقٌ لا بلوكُ العربية: حرفٌ مشكَّلٌ يبقى حرفًا', () => {
+        // خطأٌ واقعيٌّ حدث أثناء كتابة النسخة: صار النطاق كلَّ كتلة العربية
+        // فمسح كلَّ حرفٍ عربيٍّ، وصار البحث بلا نتائج بلا أن يشتكي أحد.
+        for (const file of [V2_ELS, V2_DSP]) {
+            const copy = loadArSearchKeyFrom(file);
+            expect(copy('محمدٌ')).toBe('محمد');
+            expect(copy('كريم')).not.toBe('');
+            expect(copy('موظف')).toBe('موطف');   // التطبيع يعمل، لا المسح
+        }
     });
 });

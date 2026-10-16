@@ -73,7 +73,7 @@ import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
 import { resolveStatus, statusBadge } from '../status.js?v=4.9.131';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
-    buildEmployeeKpis, deptCounts, applyEmployeeFilters, formatInt,
+    buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
     cardExtrasMap, initialsOf, validPhotoSrc, shiftSummary,
     empWriteVisible, validateEmployeeForm, buildEmployeePayload,
     createEmployee, updateEmployee, deleteEmployee,
@@ -209,6 +209,11 @@ function template() {
           </div>
           <div class="erp-dash-controls">
             <span class="erp-filterbar erp-no-print">
+              <label class="erp-text-sm erp-text-muted" for="v2emp-q">بحث</label>
+              <input type="search" class="erp-input" id="v2emp-q" data-v2-q
+                     autocomplete="off" spellcheck="false"
+                     aria-describedby="v2emp-qhint"
+                     placeholder="اسم أو كود أو وظيفة أو تليفون أو رقم بصمة">
               <label class="erp-text-sm erp-text-muted" for="v2emp-dept">القسم</label>
               <select class="erp-select" id="v2emp-dept" data-v2-dept>
                 <option value="all">كل الأقسام</option>
@@ -218,6 +223,7 @@ function template() {
                 <option value="all">كل الحالات</option>
               </select>
             </span>
+            <span class="erp-text-sm erp-text-muted erp-no-print" id="v2emp-qhint" data-v2-qhint role="status" aria-live="polite"></span>
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--sm erp-no-print" data-v2-clear aria-label="مسح التصفية" hidden>
               <i class="ji" data-i="x" aria-hidden="true"></i><span>مسح</span>
             </button>
@@ -336,10 +342,16 @@ export function mountEmployeesScreen(host, ctx = {}) {
     const viewSegHost = q('[data-v2-viewseg]');
     const curNote = q('[data-v2-curnote]');
     const panelEl = q('[data-v2-panel]');
+    const searchEl = q('[data-v2-q]');
+    const qHint = q('[data-v2-qhint]');
 
     let extrasById = new Map();
     let currency = '';
     const expandedIds = new Set();
+
+    /* البحث (W2-6) — الصندوق هنا، والدرجات والمطابقة في الباب. */
+    let searchQuery = '';
+    let searchTimer = null;
 
     /* ── Panel state (W2-2) — one panel element, three kinds ──────────── */
     let panelSeq = 0;        // invalidates in-flight fills when the panel changes
@@ -386,6 +398,9 @@ export function mountEmployeesScreen(host, ctx = {}) {
         mode: 'client',
         pageSize: 20,
         stickyHeader: true,
+        // البحث هنا أذكى من مرشّح الجدول: يطوي الهمزات وحروف النقاط ويوازن
+        // «007» بـ«7». صندوق الجدول كان يصير ثاني بحث في نفس الشاشة.
+        search: false,
         emptyMessage: 'لا يوجد موظفون',
         emptyHint: 'تحقق من صلاحية العرض أو من التصفية الحالية.',
         rowKey: (row) => row.id,
@@ -480,10 +495,27 @@ export function mountEmployeesScreen(host, ctx = {}) {
         const named = (sel, prefix) => (sel.value && sel.value !== 'all'
             ? [`${prefix}: ${sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value}`]
             : []);
-        return [...named(q('[data-v2-dept]'), 'قسم'), ...named(q('[data-v2-status]'), 'الحالة')];
+        const term = searchQuery.trim();
+        return [
+            ...(term ? [`بحث: ${term}`] : []),
+            ...named(q('[data-v2-dept]'), 'قسم'),
+            ...named(q('[data-v2-status]'), 'الحالة'),
+        ];
     }
 
     /* ── Paint ────────────────────────────────────────────────────────── */
+    /** ما فعله التطبيع يجب أن يُقال، لا يُخفى: وإلا صار البحث الذكي خطأً
+     *  صامتًا يظن صاحبه أن «احمد» لم توجد. العدّ هنا على الدليل كله قبل
+     *  القسم والحالة، لأن الباب يعمل أولًا. */
+    function searchNote(res) {
+        if (!res.matched) {return '';}
+        if (!res.hits) {return `لا نتيجة لـ«${searchQuery.trim()}» — جرّب جزءًا من الاسم أو رقم البصمة.`;}
+        const bits = [`${formatInt(res.hits)} مطابقة في الدليل`];
+        if (res.exact) {bits.push(`${formatInt(res.exact)} مطابقة تامّة لرقم موظف أو بصمة`);}
+        if (res.folded) {bits.push('بعض النتائج بعد تطبيع الحروف (أ/ا، ة/ه، س/ش…)');}
+        return bits.join(' · ');
+    }
+
     function salaryText(sal) {
         if (sal === null || sal === undefined) {return `<span class="erp-text-muted">—</span>`;}
         const m = formatMoney(sal, currency);
@@ -551,9 +583,10 @@ export function mountEmployeesScreen(host, ctx = {}) {
 
     function paint() {
         const f = filters();
+        const searched = searchEmployees(allRows, searchQuery, extrasById);
         const active = activeFilters();
         const on = active.length > 0;
-        rows = on ? applyEmployeeFilters(allRows, f) : allRows;
+        rows = on ? applyEmployeeFilters(searched.rows, f) : searched.rows;
 
         const scope = on ? 'النتيجة المصفّاة' : 'الدليل كله';
         scopeLine.textContent = on
@@ -586,6 +619,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
         if (on) {
             filterNote.textContent = `التصفية نشطة (${active.join(' · ')}) — المؤشرات والتوزيع محسوبة على ${formatInt(rows.length)} من ${formatInt(allRows.length)} موظفًا.`;
         }
+        qHint.textContent = searchNote(searched);
         printNote.textContent = view === 'cards'
             ? `بطاقات الموظفين — ${formatInt(rows.length)} بطاقة. المطبوعة تعرض البطاقات الظاهرة.`
             : `دليل الموظفين — ${formatInt(rows.length)} موظفًا. المطبوعة تعرض الصفحة الحالية من الجدول، لا الدليل كاملًا.`;
@@ -1538,6 +1572,8 @@ export function mountEmployeesScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-clear]')) {
+            searchEl.value = '';
+            searchQuery = '';
             q('[data-v2-dept]').value = 'all';
             q('[data-v2-status]').value = 'all';
             paint();
@@ -1603,6 +1639,47 @@ export function mountEmployeesScreen(host, ctx = {}) {
             handleImportFile(event.target.files && event.target.files[0]);
         }
     });
+    /* البحث محليٌّ على الدليل المحمَّل، فالتأخير حمايةٌ من إعادة الرسم لكل
+     * حرفٍ لا توفيرٌ لشبكة. ١٦٠ مللي ثانية: أسرع من أن يحسّها كاتبٌ وأبطأ
+     * من أن يرسم معه. زر «مسح» الصغير في نوع="search" يطلق input وحده.
+     * «/» محجوزٌ لـ«لوحة الأوامر» (ui/enhancement.js:150) فلا يُخترَع اختصارُ
+     * تركيزٍ ينافسها؛ Escape يُفرغ الصندوق ثم يتركه. */
+    el.addEventListener('input', (event) => {
+        const box = event.target;
+        if (!box.matches || !box.matches('[data-v2-q]')) {return;}
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            searchQuery = box.value;
+            paint();
+        }, 160);
+    });
+    el.addEventListener('keydown', (event) => {
+        const box = event.target;
+        if (!box.matches || !box.matches('[data-v2-q]')) {return;}
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            clearTimeout(searchTimer);
+            searchQuery = box.value;
+            paint();
+            const term = searchQuery.trim();
+            if (!term) {return;}
+            if (!rows.length) {notify(`لا نتيجة لـ«${term}» — جرّب جزءًا من الاسم أو رقم البصمة.`); return;}
+            // نتيجة واحدة = القصد موظفٌ بعينه: تُفتح بطاقته كما كان يفعل القديم.
+            if (rows.length === 1) {openFilePanel(rows[0]);}
+            return;
+        }
+        if (event.key === 'Escape') {
+            if (box.value) {
+                event.preventDefault();
+                clearTimeout(searchTimer);
+                box.value = '';
+                searchQuery = '';
+                paint();
+            } else {
+                box.blur();
+            }
+        }
+    });
 
     q('[data-v2-tools]').innerHTML = toolsSeg();
     paint();
@@ -1613,6 +1690,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
         reload,
         getRows: () => rows,
         destroy() {
+            clearTimeout(searchTimer);
             table.destroy();
             el.remove();
         },

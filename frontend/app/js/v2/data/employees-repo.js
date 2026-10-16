@@ -305,6 +305,109 @@ export function applyEmployeeFilters(rows = [], { dept = '', status = '' } = {})
         && (s === null || String((r && r.status) ?? '') === s));
 }
 
+/* ── البحث (W2-6) ───────────────────────────────────────────────────────
+ * الدليل كله محمَّل في الذاكرة (fetchPaged أعلى: 5 × 1000)، فالباب بحثٌ
+ * محليٌّ لا شبكة فيه — والقديم كان يبحث هكذا فعلًا
+ * (features/employees.js:172-181 للاسم/الكود/الوظيفة، و:107-129 لرقم
+ * الموظف والبصمة بعدادلةٍ رقمية). الناقص في V2 كان التطبيع نفسه.
+ */
+
+/** جدول الحروف نفسه في core/utils.js:165-172 — نسخةٌ هنا لأن طبقة البيانات
+ *  لا تستورد طبقة العرض، وهو نفس ما صنعه dispatch-repo.js:253. الاختبار
+ *  يقرأ الملفين معًا ويثبّت أن الجدولين لم يتباعدا. */
+export function arSearchKey(s) {
+    return String(s || '').toLowerCase()
+        .replace(/[\u064B-\u065F\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ىئی]/g, 'ي').replace(/ؤ/g, 'و').replace(/ک/g, 'ك')
+        .replace(/[ذز]/g, 'ز').replace(/[ضص]/g, 'ص').replace(/[ظط]/g, 'ط').replace(/[شس]/g, 'س')
+        .replace(/[ثت]/g, 'ت').replace(/[خج]/g, 'ح').replace(/[قف]/g, 'ف').replace(/[غع]/g, 'ع')
+        .replace(/\s+/g, ' ').trim();
+}
+
+/** «007» و«7» رقمٌ واحد — نفس معادلة القديم (features/employees.js:115). */
+function digitForm(v) {
+    const s = String(v ?? '').trim();
+    return /^\d+$/.test(s) ? String(Number(s)) : '';
+}
+
+/** حقول السطر التي يجوز أن يُبحث فيها — لا شيء غير ما تعرضه الشاشة أصلًا،
+ *  فالحقل الذي لا يراه الموظف لا يُبحث فيه. */
+function searchFields(row, extrasById) {
+    const ex = extrasById.get(String(row && row.id)) || {};
+    const pick = (v) => (v === undefined || v === null ? '' : String(v));
+    return {
+        name: pick(row && row.name),
+        code: pick(row && row.code),
+        position: pick(row && row.position),
+        dept: pick(row && row.dept),
+        phone: pick(row && row.phone),
+        fp: pick(ex.deviceUserId),
+    };
+}
+
+/** درجة كلمةٍ واحدة في سطر: 3 معادلةُ رقمٍ مخزَّن، 2 الاسم، 1 ما عداه، 0 لا. */
+function tokenScore(tok, v) {
+    const raw = tok.toLowerCase();
+    const key = arSearchKey(tok);
+    if (/^\d+$/.test(raw)) {
+        const d = digitForm(raw);
+        if (d && (digitForm(v.code) === d || digitForm(v.fp) === d)) {return { score: 3, folded: false };}
+    }
+    if (raw && (v.code.toLowerCase() === raw || v.fp.toLowerCase() === raw)) {return { score: 3, folded: false };}
+    if (raw && v.name.toLowerCase().includes(raw)) {return { score: 2, folded: false };}
+    if (key && arSearchKey(v.name).includes(key)) {return { score: 2, folded: true };}
+    for (const f of ['code', 'position', 'dept', 'phone', 'fp']) {
+        if (raw && v[f].toLowerCase().includes(raw)) {return { score: 1, folded: false };}
+        if (key && arSearchKey(v[f]).includes(key)) {return { score: 1, folded: true };}
+    }
+    // تليفونٌ مكتوبٌ بأرقامٍ وحدها: «1001234» يلاقي «+20 100 123 4567».
+    if (/^\d{3,}$/.test(raw)) {
+        const digits = raw.replace(/\D/g, '');
+        if (v.phone.replace(/\D/g, '').includes(digits) || v.code.replace(/\D/g, '').includes(digits)) {
+            return { score: 1, folded: false };
+        }
+    }
+    return { score: 0, folded: false };
+}
+
+/**
+ * بحثٌ مطبَّع بدرجاتٍ معلنة: كلُّ كلمة في الكتابة لازم تلاقي موضعًا في السطر
+ * (AND)، ودرجةُ السطر أدنىُ درجات كلماته — فيأتي «كريم شيف» لسطرٍ فيه
+ * الاثنتان ولا يأتي سطرٌ فيه إحداهما. الترتيب بعدَها بالأولوية، ومرتبُ
+ * الدليل محفوظٌ داخل كل أولوية (فرزٌ مستقر).
+ *
+ * @returns {{rows:Array<object>, matched:boolean, exact:number, folded:boolean, hits:number}}
+ *   `exact`  عدُّ المطابقات التامة لرقم موظف أو بصمة (درجة 3)
+ *   `folded` نتيجةٌ واحدة على الأقل لم تأتِ إلا بعد التطبيع — تقولها الشاشة
+ *            ولا تُخفيها، وإلا صار البحث الذكيُّ خطأً صامتًا.
+ */
+export function searchEmployees(rows = [], query = '', extrasById = new Map()) {
+    const raw = String(query ?? '').trim();
+    if (!raw) {return { rows, matched: false, exact: 0, folded: false, hits: rows.length };}
+    const tokens = raw.split(/\s+/).filter(Boolean);
+    const scored = [];
+    for (const row of rows) {
+        const v = searchFields(row, extrasById);
+        let score = 3;
+        let folded = false;
+        for (const tok of tokens) {
+            const t = tokenScore(tok, v);
+            if (t.score === 0) {score = 0; break;}
+            if (t.score < score) {score = t.score;}
+            if (t.folded) {folded = true;}
+        }
+        if (score > 0) {scored.push({ row, score, folded });}
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return {
+        rows: scored.map((x) => x.row),
+        matched: true,
+        exact: scored.filter((x) => x.score === 3).length,
+        folded: scored.some((x) => x.folded),
+        hits: scored.length,
+    };
+}
+
 /**
  * The chips on top of the roster. One per status the rows actually contain
  * (a brand-new enum value therefore gets its own chip instead of hiding

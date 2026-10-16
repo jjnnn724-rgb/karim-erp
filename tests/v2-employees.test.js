@@ -350,7 +350,7 @@ describe('V2 employees screen + layer (source contract)', () => {
         const s = screen();
         expect(s).toMatch(/if \(loading\) \{return;\}/);
         expect(s.split('el.isConnected').length - 1).toBeGreaterThanOrEqual(2);
-        expect(s).toMatch(/destroy\(\) \{\s*table\.destroy\(\);/);
+        expect(s).toMatch(/destroy\(\) \{\s*clearTimeout\(searchTimer\);\s*table\.destroy\(\);/);
     });
 
     test('no sample figures on the live screen', () => {
@@ -796,5 +796,207 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
         expect(m).toMatch(/الموظفون \(W2-2/);                       // the gates section entry
         expect(m).not.toMatch(/مؤجل بتصميم[^\n]*تعديل\s*\n?\s*الموظفين/);  // no longer deferred
         expect(m).toMatch(/tests\/v2-employees\.test\.js/);
+    });
+});
+
+/* ═══ W2-6 — البحث في الموظفين ══════════════════════════════════════════
+ * الطلب: «عايز البحث في الموظفين… دقيق». الدليل كله محمَّل في الذاكرة،
+ * فالبحث بابٌ محليٌّ بلا شبكة — والذكورُ فيه ثلاثُ خصائص لا يراها أحد في
+ * الاختبار اليدوي: التطبيع، معادلةُ الأرقام الصفرية، ودرجاتُ الأولوية.
+ * ═══════════════════════════════════════════════════════════════════════ */
+describe('V2 employees search door (W2-6)', () => {
+    function searchRepo() {
+        return repoHarness(null, ['searchEmployees', 'cardExtrasMap', 'employeeToRow', 'departmentMap']).repo;
+    }
+
+    /** roster() minus the fixture's quirks: codes and fingerprints a real
+     *  ZKTeco file would carry. */
+    function book(repo) {
+        const raw = [
+            { id: 1, employeeId: 'E1', name: 'محمود سيد', department: 'KIT', position: 'شيف', phone: '01001234567', status: 'active', deviceUserId: '1001' },
+            { id: 2, employeeId: '007', name: 'أحمد حسن', department: 'KIT', position: 'كاشير', phone: '', status: 'active', deviceUserId: '7' },
+            { id: 3, employeeId: 'E3', name: 'ياسر إبراهيم', department: 'HALL', position: 'نادل', phone: '0112223334', status: 'suspended', deviceUserId: '' },
+            { id: 4, employeeId: 'E4', name: 'كريم الله', department: 'HALL', position: 'شيف', phone: '01099998888', status: 'active', deviceUserId: '4004' },
+        ];
+        const depts = repo.departmentMap([{ code: 'KIT', name: 'المطبخ' }, { code: 'HALL', name: 'الصالة' }]);
+        return {
+            rows: raw.map((e) => repo.employeeToRow(e, depts)),
+            extras: repo.cardExtrasMap(raw),
+        };
+    }
+
+    const ids = (res) => res.rows.map((r) => r.id);
+
+    test('an empty query is a passthrough, not a re-sort: same array, matched:false', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        for (const q of ['', '   ', null, undefined]) {
+            const res = repo.searchEmployees(rows, q, extras);
+            expect(res.matched).toBe(false);
+            expect(res.rows).toBe(rows);       // لا فرز، لا نسخة
+            expect(res.hits).toBe(rows.length);
+        }
+    });
+
+    test('التطبيع يجيب المكتوب بخطأ المطبعي — والمطابقُ الحرفيُّ لا يُخفى', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        const folded = repo.searchEmployees(rows, 'احمد', extras);   // بدون همزة
+        expect(ids(folded)).toEqual([2]);
+        expect(folded.folded).toBe(true);      // الشاشة تقولها، لا تبتلعها
+        const literal = repo.searchEmployees(rows, 'أحمد', extras);
+        expect(ids(literal)).toEqual([2]);
+        expect(literal.folded).toBe(false);
+    });
+
+    test('«007» و«7» رقمٌ واحد — مطابقةٌ تامّة بدرجة 3 على الكود والبصمة', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        const byCode = repo.searchEmployees(rows, '007', extras);
+        expect(ids(byCode)).toEqual([2]);
+        expect(byCode.exact).toBe(1);
+        expect(byCode.folded).toBe(false);
+        // نفس الرقم بصمةً: 7 هو كودٌ (007) وبصمة (7) في السطر نفسه
+        expect(repo.searchEmployees(rows, '7', extras).exact).toBe(1);
+    });
+
+    test('التليفون يُمسك من أرقامه وحدها، مع فواصل أو بلا الدولة', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        expect(ids(repo.searchEmployees(rows, '1234567', extras))).toEqual([1]);
+        expect(ids(repo.searchEmployees(rows, '9999 8888', extras))).toEqual([4]);
+    });
+
+    test('الأولوية: الاسم قبل القسم والمسمى، والمرتب مستقرٌّ داخل الدرجة', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        const res = repo.searchEmployees(rows, 'شيف', extras);
+        // E1 و E4 مسمّاهما «شيف» (درجة 1)، ولا اسمٍ فيه «شيف» — فلا درجة 2
+        expect(res.rows.every((r) => r.position === 'شيف')).toBe(true);
+        expect(ids(res)).toEqual([1, 4]);     // ترتيب الدليل محفوظ
+        expect(res.exact).toBe(0);
+    });
+
+    test('كلمتان = شرطٌ واحد (AND): «كريم شيف» لا تجيب من فيه إحداهما', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        const both = repo.searchEmployees(rows, 'كريم شيف', extras);
+        expect(ids(both)).toEqual([4]);
+        const none = repo.searchEmployees(rows, 'كريم نادل', extras);
+        expect(none.hits).toBe(0);
+        expect(none.rows).toEqual([]);
+        expect(none.folded).toBe(false);
+    });
+
+    test('رقم البصمة حقْلُ بحثٍ حقيقية لأنه يُعرض على البطاقة', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        expect(ids(repo.searchEmployees(rows, '1001', extras))).toEqual([1]);
+        expect(repo.searchEmployees(rows, '4004', extras).exact).toBe(1);
+    });
+
+    test('القسم بحقوله المعروضة: الاسم المحلول يُبحث، والكود الذي لم يُحلّ كذلك', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        expect(ids(repo.searchEmployees(rows, 'الصالة', extras))).toEqual([3, 4]);
+        expect(ids(repo.searchEmployees(rows, 'المطبخ', extras))).toEqual([1, 2]);
+        // الكود المخزَّن ليس حقلاً معروضًا حين ينجح الحلّ — والصندوق يبحث فيما
+        // تراه الشاشة فقط (لهذا «HALL» لا يجيب هنا، ويطابق حين يفشل الحلّ).
+        expect(repo.searchEmployees(rows, 'HALL', extras).hits).toBe(0);
+        const unresolved = [repo.employeeToRow({ id: 9, employeeId: 'E9', name: 'رجب', department: 'HALL' }, repo.departmentMap([]))];
+        expect(ids(repo.searchEmployees(unresolved, 'HALL'))).toEqual([9]);
+    });
+
+    test('بلا extras لا ينكشف: الاسم والكود والمسمى تعمل وحدها', () => {
+        const repo = searchRepo();
+        const { rows } = book(repo);
+        const res = repo.searchEmployees(rows, 'ياسر');
+        expect(ids(res)).toEqual([3]);
+        expect(() => repo.searchEmployees(rows, 'بلا', new Map())).not.toThrow();
+    });
+
+    test('حقول لا تُقرأ سرية: الراتب وتوكن QR والبصمة الخام ليست في الحقول', () => {
+        const repo = searchRepo();
+        const raw = [{ id: 1, employeeId: 'E1', name: 'كريم', salary: 9000, qrToken: 'tok', fingerprintTemplate: 'Zm9v', deviceUserId: '1001' }];
+        const rows = raw.map((e) => repo.employeeToRow(e, repo.departmentMap([])));
+        const extras = repo.cardExtrasMap(raw);
+        for (const q of ['9000', 'tok', 'Zm9v']) {
+            expect(repo.searchEmployees(rows, q, extras).hits).toBe(0);
+        }
+    });
+
+    test('the door never mutates the roster it was handed', () => {
+        const repo = searchRepo();
+        const { rows, extras } = book(repo);
+        const before = rows.map((r) => r.id).join(',');
+        repo.searchEmployees(rows, 'ك', extras);
+        expect(rows.map((r) => r.id).join(',')).toBe(before);
+        expect(rows).toHaveLength(4);
+    });
+});
+
+describe('V2 employees screen — the search box (W2-6 source contract)', () => {
+    const screen = () => fs.readFileSync(SCREEN, 'utf8');
+    const table = () => fs.readFileSync(path.join(V2, 'data-display', 'data-table.js'), 'utf8');
+
+    test('the folding lives in the door, not in the screen', () => {
+        const s = screen();
+        expect(s).not.toMatch(/arSearchKey|normalizeAr|\\u064B/);
+        expect(s).toMatch(/searchEmployees\(allRows, searchQuery, extrasById\)/);
+    });
+
+    test('search runs before dept/status, so KPIs and the cards follow it', () => {
+        const body = screen().slice(screen().indexOf('function paint()'));
+        const paint = body.slice(0, body.indexOf('\n    }'));
+        expect(paint.indexOf('searchEmployees')).toBeLessThan(paint.indexOf('applyEmployeeFilters'));
+        expect(paint).toMatch(/applyEmployeeFilters\(searched\.rows, f\)/);
+    });
+
+    test('a search is a named filter: it shows in the scope line and arms «مسح»', () => {
+        const s = screen();
+        expect(s).toContain('...(term ? [`بحث: ${term}`] : [])');
+        expect(s).toMatch(/clearBtn\.hidden = !on;/);
+    });
+
+    test('one search box per screen: the table primitive keeps its own for others', () => {
+        expect(screen()).toMatch(/search: false,/);
+        const t = table();
+        expect(t).toMatch(/search: true,/);                     // default unchanged
+        expect(t).toMatch(/opts\.search === false \? '' : /);   // opt-out is markup-level
+        expect(t).toMatch(/if \(el\.search\)/);                 // and every use is guarded
+    });
+
+    test('the box is labelled, described by the live hint, and typed as search', () => {
+        const s = screen();
+        expect(s).toMatch(/<label class="erp-text-sm erp-text-muted" for="v2emp-q">بحث<\/label>/);
+        expect(s).toMatch(/id="v2emp-q" data-v2-q[\s\S]{0,160}aria-describedby="v2emp-qhint"/);
+        expect(s).toMatch(/id="v2emp-qhint" data-v2-qhint role="status" aria-live="polite"/);
+        expect(s).toMatch(/spellcheck="false"/);
+    });
+
+    test('debounced, and the timer dies with the screen', () => {
+        const s = screen();
+        expect(s).toMatch(/matches\('\[data-v2-q\]'\)[\s\S]{0,120}setTimeout\(\(\) => \{[\s\S]{0,120}\}, 160\);/);
+        expect(s).toMatch(/destroy\(\) \{\s*clearTimeout\(searchTimer\);/);
+    });
+
+    test('Enter opens the single hit; zero hits says so; Escape clears', () => {
+        const s = screen();
+        expect(s).toMatch(/if \(event\.key === 'Enter'\)[\s\S]{0,700}if \(rows\.length === 1\) \{openFilePanel\(rows\[0\]\);\}/);
+        expect(s).toContain('لا نتيجة لـ«${term}»');
+        expect(s).toMatch(/if \(event\.key === 'Escape'\)[\s\S]{0,300}box\.value = '';/);
+    });
+
+    test('the hint never hides a folded result, and an untouched box stays silent', () => {
+        const s = screen();
+        expect(s).toMatch(/if \(!res\.matched\) \{return '';\}/);
+        expect(s).toMatch(/بعض النتائج بعد تطبيع الحروف/);
+        expect(s).toMatch(/qHint\.textContent = searchNote\(searched\);/);
+    });
+
+    test('«/» stays with the command palette — no competing shortcut', () => {
+        expect(screen()).not.toMatch(/event\.key === '\/'/);
+        expect(fs.readFileSync(path.join(APP, 'js', 'ui', 'enhancement.js'), 'utf8'))
+            .toMatch(/if\(e\.key === '\/' && !e\.ctrlKey\)\{/);
     });
 });
