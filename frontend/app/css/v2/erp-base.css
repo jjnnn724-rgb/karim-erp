@@ -73,7 +73,20 @@
 /* Status-text helpers use the measured AA tokens (erp-tokens.css), not the
    raw status colours — the same values the badges carry. */
 .erp-v2 .erp-text-success  { color: var(--erp-success-text); }
+.erp-v2 .erp-text-warning  { color: var(--erp-warning-text); }
 .erp-v2 .erp-text-danger   { color: var(--erp-danger-text); }
+
+/* ── Size helpers ─────────────────────────────────────────────────────── */
+/* The screens already carry these names (erp-text-sm: 587 uses, erp-text-xs:
+   5), but nothing defined them, so the class was decoration. Measured on three
+   real surfaces (dashboard · warehouse table · goods-scan, 95 elements): 91
+   rendered at the inherited 13px and 4 at 11px/14px — one intent, three sizes.
+   These rules wire the names to the --erp-text-* scale, so they now render
+   12px/11px everywhere except where a component sizes its own text on purpose
+   (same specificity .erp-v2 .x, declared *before* the component files in
+   v2.html, so the component still wins). No px written by hand here. */
+.erp-v2 .erp-text-xs  { font-size: var(--erp-text-xs); }
+.erp-v2 .erp-text-sm  { font-size: var(--erp-text-sm); }
 
 /* ── Layout primitives ──────────────────────────────────────────────── */
 .erp-v2 .erp-stack   { display: flex; flex-direction: column; gap: var(--erp-space-3); }

@@ -22,6 +22,9 @@ const TOKENS_SRC = read(path.join(APP, 'css', 'v2', 'erp-tokens.css'));
 const HOST_SRC = read(path.join(APP, 'js', 'v2', 'preview.js'));
 const ROUTING_SRC = read(path.join(APP, 'js', 'v2', 'routing.js'));
 const HTML_SRC = read(path.join(APP, 'v2.html'));
+// المراجعة تُقرأ من الصفحة، لا تُكتب باليد: أي رفعٍ موحّد للنسخة يجب أن يترك
+// هذا الاختبار أخضر (نفس ما يفعله v2-toast/v2-overlay عبر pageRevision()).
+const REV = (HTML_SRC.match(/js\/v2\/preview\.js\?v=([\d.]+)/) || [])[1];
 
 /** تجريد الوحدات ثم تمرير الأبواب كدمى: المعرّفات الحرّة تصير وسائط الدالة. */
 function loadRepo(apiFetch, fetchInventory) {
@@ -368,7 +371,7 @@ describe('9. عقود المصدر والتوصيل', () => {
     });
 
     test('التوصيل: استيراد + مُوزِّع + teardown + مسار فرعي + ورقة أنماط', () => {
-        expect(HOST_SRC).toMatch(/import \{ mountGoodsScanScreen \} from '\.\/screens\/goods-scan\.js\?v=4\.9\.134';/);
+        expect(HOST_SRC).toContain(`import { mountGoodsScanScreen } from './screens/goods-scan.js?v=${REV}';`);
         expect(HOST_SRC).toMatch(/if \(key === 'goods-scan'\) \{\n\s*renderGoodsScanScreen\(\);/);
         expect(HOST_SRC).toMatch(/function renderGoodsScanScreen\(\) \{\n\s*renderLiveRegisterScreen\(\{ key: 'goods-scan'/);
         expect(HOST_SRC).toMatch(/teardownGoodsScanScreen\(\);/);
@@ -376,7 +379,7 @@ describe('9. عقود المصدر والتوصيل', () => {
         // عدّاد التغطية يقرأ من صفوفٍ قديمة بعد أي ربط.
         expect(HOST_SRC).toMatch(/reportsScreen \|\| goodsScanScreen/);
         expect(ROUTING_SRC).toMatch(/'goods-scan',/);
-        expect(HTML_SRC).toMatch(/<link rel="stylesheet" href="css\/v2\/erp-scan\.css\?v=4\.9\.134">/);
+        expect(HTML_SRC).toContain(`<link rel="stylesheet" href="css/v2/erp-scan.css?v=${REV}">`);
     });
 
     test('CSS: كل متغيّرٍ مُعرَّف، وكلّ قاعدةٍ مقيّدة بجذر الشاشة', () => {
