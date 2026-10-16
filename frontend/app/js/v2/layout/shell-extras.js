@@ -243,7 +243,14 @@ export function mountShellExtras(shell, ctx = {}) {
     pwBtn.className = 'erp-btn erp-btn--sm';
     pwBtn.innerHTML = '<i class="ji" data-i="key" aria-hidden="true"></i><span>تغيير كلمة المرور</span>';
     pwBtn.setAttribute('aria-label', 'تغيير كلمة المرور');
+    /* `.erp-v2 .erp-pop` only matches through an ancestor carrying .erp-v2, and
+       this host is appended to document.body — outside #erp-v2-root. Without the
+       class the rule is dead and the panel paints as unstyled HTML at the bottom
+       of the document (same scope defect, same remedy as toast.js:108 and
+       overlay.js:114). .erp-v2 paints --erp-background, but the host stays
+       zero-height here: its only child is position:fixed. */
     const pwPanelHost = document.createElement('div');
+    pwPanelHost.className = 'erp-v2';
     on(pwBtn, 'click', () => {
         if (pwPanelHost.isConnected) {pwPanelHost.remove(); return;}
         pwPanelHost.innerHTML = `<div class="erp-pop"><h4>تغيير كلمة المرور</h4>`

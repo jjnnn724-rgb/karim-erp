@@ -27,6 +27,8 @@
  *   ٤) طبقاتُ الـbody الحاملةِ لـ --erp-z- معلَنةٌ في قائمة التوكنز، وإلا صار
  *      الرقْمُ auto.
  *   ٥) لا 9999 ولا تسرّبَ للمقياس خارج css/v2.
+ *   ٦) البند ١٣: الطبقةُ الصحيحة على عنصرٍ خارج النطاق = صفرُ فائدة، فالحراسةُ
+ *      على التركيب نفسه (غلافُ لوحة كلمة المرور يحمل .erp-v2).
  */
 const fs = require('fs');
 const path = require('path');
@@ -40,15 +42,13 @@ const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace
 /* الاستثناءات مغلقةٌ بالملف والمحدِّد والقيمة — لا بقائمةِ ملفاتٍ عامة.
    · .erp-pipe__dot          رفعٌ محليٌّ (نقطةُ مسارٍ فوق خطَّها) داخل سياقٍ
                              طبقيٍّ واحد؛ لا مكانُها في مقياسٍ عالمي.
-   · .erp-pop                القاعدةُ لا تُطابَق: js/v2/layout/shell-extras.js:255
-                             يُلحِّف الغلافَ بdocument.body، فـ`.erp-v2 .erp-pop`
-                             ميّتةٌ وكلُ قيمها—including 70 — غيرُ حيّة. إصلاحُ
-                             التركيب سطرٌ JS في ملفٍ عليه شغلٌ جارٍ لغيري: بندٌ مستقل.
    · .erp-preview-banner     كروم v2.html خارج `#erp-v2-root`، فلا تُحلُّ أسماءُ
-                             المقياس عنده؛ يتغيّر إلى متغيّرٍ محليّ. */
+                             المقياس عنده؛ يتغيّر إلى متغيّرٍ محليّ.
+   البند ١٣ حذفَ الاستثناءَ الثالث (.erp-pop): الغلافُ صار يحمل .erp-v2، فالقاعدة
+   حيّةٌ ورقمُها على المقياس — وانظر الحراسةَ في الأسفل: استثناءٌ يُحذَف بلا
+   إصلاحِ التركيب يترك لوحةً بلا أيِّ تنسيق. */
 const EXCEPTIONS = [
     { file: 'erp-dashboard.css', sel: '.erp-v2 .erp-pipe__dot', value: '1' },
-    { file: 'erp-components.css', sel: '.erp-v2 .erp-pop', value: '70' },
     { file: 'erp-preview.css', sel: '.erp-preview-banner', value: 'var(--v2-preview-z-banner)' },
 ];
 
@@ -123,7 +123,7 @@ const ruleBody = (file, sel) => {
     return hit ? hit.body : '';
 };
 
-describe('البند ١٢ — مقياس الطبقات في V2', () => {
+describe('مقياسُ الطبقات في V2 — البندان ١٢ و١٣', () => {
     test('لا رقمَ z-indexٍ خارج المقياس في css/v2', () => {
         const offenders = zDecls().filter((r) => !r.ok).map((r) => `${r.file} · ${r.sel} · z-index: ${r.value}`);
         expect({ offenders }).toEqual({ offenders: [] });
@@ -132,7 +132,6 @@ describe('البند ١٢ — مقياس الطبقات في V2', () => {
     test('قائمةُ الاستثناء مغلقةٌ ولا تُنتَسَح سرًّا', () => {
         expect({ exempt: EXCEPTIONS.map((e) => `${e.file}|${e.sel}|${e.value}`).sort() }).toEqual({
             exempt: [
-                'erp-components.css|.erp-v2 .erp-pop|70',
                 'erp-dashboard.css|.erp-v2 .erp-pipe__dot|1',
                 'erp-preview.css|.erp-preview-banner|var(--v2-preview-z-banner)',
             ].sort(),
@@ -202,6 +201,30 @@ describe('البند ١٢ — مقياس الطبقات في V2', () => {
     test('شريطُ عدم الاتصال على طبقة الـtoast، لا فوق كلِّ شيء', () => {
         expect(ruleBody('erp-components.css', '.erp-offline-bar')).toMatch(/z-index:\s*var\(--erp-z-toast\)/);
         expect(valueOf('toast') >= valueOf('modal')).toBe(true);
+    });
+
+    test('لوحةُ كلمة المرور تُركَّب داخل النطاق — وإلا فالمقياسُ كلُّه ميّت', () => {
+        /* أخطرُ من الرقمِ نفسه، ولا يراه أيُّ فحصِ CSS: محقِّقُ z-indexٍ يقرا
+           `var(--erp-z-dropdown)` فيرضى، بينما القاعدةُ لا تُطابَق أصلًا لأن
+           الغلافَ ملحقٌ بdocument.body خارج #erp-v2-root. قيمةٌ صحيحةٌ على
+           عنصرٍ لا يُرسَم = صفرُ فائدة. */
+        const js = read(path.join(APP, 'js', 'v2', 'layout', 'shell-extras.js'));
+        expect({ mounted: /pwPanelHost\.className\s*=\s*'erp-v2'/.test(js) }).toEqual({ mounted: true });
+        expect(ruleBody('erp-components.css', '.erp-v2 .erp-pop')).toMatch(/z-index:\s*var\(--erp-z-dropdown\)/);
+        // المستخدِمُ الوحيدُ للوحةٍ في js/v2 كلِّه هو هذه اللوحة؛ لا تُترك استثناءً صامتًا.
+        const users = [];
+        const walk = (dir) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const p = path.join(dir, entry.name);
+                if (entry.isDirectory()) {walk(p); continue;}
+                if (!entry.name.endsWith('.js')) {continue;}
+                if (/class=["']erp-pop/.test(read(p))) {users.push(path.relative(APP, p));}
+            }
+        };
+        walk(path.join(APP, 'js', 'v2'));
+        expect({ users: users.map((u) => u.split(path.sep).join('/')) }).toEqual({
+            users: ['js/v2/layout/shell-extras.js'],
+        });
     });
 
     test('لا 9999 في css/v2، ولا مقياسَ يتسرّب للقديم', () => {

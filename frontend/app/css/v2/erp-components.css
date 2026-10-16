@@ -312,12 +312,16 @@
    the FAB actually paints, the menu has to obey its own closed state. */
 .erp-fab-host .erp-fab-menu[hidden] { display: none; }
 .erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font: inherit; }
-/* Left alone on purpose (tests/v2-zindex.test.js carries it as a declared
-   exception): js/v2/layout/shell-extras.js:255 appends the wrapper to
-   document.body, so this `.erp-v2 ` ancestor selector never matches and neither
-   the 70 nor any other declaration in this rule is live. Fixing the mount is a
-   JS change to a file another author has in flight — separate item. */
-.erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: 70; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
+/* Revived by البند ١٣: js/v2/layout/shell-extras.js gives the body-mounted host
+   the .erp-v2 class, so this rule matches and its declarations became live —
+   the z-index included, which moves onto the scale beside the notification
+   dropdown above. Measured at 671×613 (preview banner 94px tall, sticky header
+   94–150 at scrollY 0): the panel's fixed band is 64–250, so it overlaps the
+   header, and document.elementFromPoint in the overlap gave the header's own
+   button at the old 70 and the panel at 300. `top: 64px` clearing the 56px
+   header is a separate debt — it only holds while nothing taller than 8px
+   rides above the header. */
+.erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: var(--erp-z-dropdown); background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
 /* #b91c1c was an off-palette red (the token is #b42318 light / #f87171 dark).
    Both readings stay AA-safe with the inverse ink: 6.57:1 light, 6.82:1 dark.
    z-index was 9999 — above the whole scale, so the strip painted over open
