@@ -70,7 +70,8 @@ import {
     updateAttendance, createAttendance, createApprovedLeave,
     buildExcusePayload, buildAttendanceCreate,
     calcPunchTimes, shiftStartFor, fetchWorkStartHour,
-    auditNote, joinNotes, TIME_INPUT_RE,
+    auditNote, joinNotes, validateReason,
+    attWriteVisible, validatePunchForm, buildTodayExceptions,
     validateShiftsText, suggestShiftLines, withSuggestedLines, formatShiftsResult,
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
@@ -139,6 +140,50 @@ function employeeCell(row) {
 function deptCell(row) {
     if (row.deptResolved || row.dept === '—') {return esc(row.dept);}
     return `<span class="erp-text-muted" title="كود القسم كما هو في السجل">${esc(row.dept)}</span>`;
+}
+
+/**
+ * صندوق استثناءات اليوم (W2): غياب/تأخير/انصراف مبكر/بصمة ناقصة في مكان
+ * واحد، من دالة العقد `buildTodayExceptions` ونصوصها نفسها (hr.js:281-303).
+ * صفر لون خام: الشارات بسمة `data-tone` وحدها، والصندوق يستعمل أصناف
+ * `erp-card`/`erp-table__grid` القائمة — لا CSS جديد لهذه الإضافة.
+ * @param {{rows:any[],date:string,weekday:string,open:number,excused:number}} data
+ * @param {{withAction?:boolean, deptByCode?:Map<string,any>}} [opts]
+ * @returns {string}
+ */
+function todayBlock(data, opts = {}) {
+    const rows = Array.isArray(data && data.rows) ? data.rows : [];
+    const deptByCode = opts.deptByCode instanceof Map ? opts.deptByCode : new Map();
+    const deptOf = (emp) => {
+        const code = String((emp && emp.department) ?? '');
+        const d = deptByCode.get(code);
+        return (d && d.name) ? String(d.name) : (code || '—');
+    };
+    const head = `<div class="erp-card__head">`
+        + `<h3 class="erp-card__title">استثناءات اليوم <span class="erp-eyebrow" dir="ltr" lang="en">Today</span>`
+        + `<span class="erp-text-muted erp-text-sm">${esc((data && data.weekday) || '')} · <span dir="ltr">${esc((data && data.date) || '')}</span></span></h3>`
+        + `<span class="erp-grow"></span>`
+        + `<span class="erp-text-sm erp-text-muted">مفتوح <b class="erp-tnum">${formatInt((data && data.open) || 0)}</b>`
+        + ` · معذور <b class="erp-tnum">${formatInt((data && data.excused) || 0)}</b></span>`
+        + `</div>`;
+    if (!rows.length) {
+        return `<section class="erp-card erp-no-print" data-v2-today-card>${head}`
+            + `<div class="erp-card__body"><p class="erp-text-sm erp-text-muted">لا استثناءات اليوم — البصمات مكتملة.</p></div></section>`;
+    }
+    const body = `<div class="erp-table__scroll" style="max-height:280px;overflow:auto">`
+        + `<table class="erp-table__grid"><thead><tr>`
+        + `<th>الموظف</th><th>القسم</th><th>النوع</th><th>التفصيل</th><th>الساعات</th>${opts.withAction ? '<th></th>' : ''}`
+        + `</tr></thead><tbody>`
+        + rows.map((r) => `<tr${r.type === 'absent' ? ' class="erp-tr--danger"' : ''}>`
+            + `<td class="erp-td"><b>${esc((r.emp && r.emp.name) || '')}</b>${r.excused ? ' <span class="erp-text-muted">(معذور)</span>' : ''}</td>`
+            + `<td class="erp-td erp-text-muted">${esc(deptOf(r.emp))}</td>`
+            + `<td class="erp-td"><span class="erp-badge" data-tone="${esc(r.tone || 'neutral')}">${esc(r.label || '')}</span></td>`
+            + `<td class="erp-td erp-text-muted" dir="ltr">${esc(r.detail || '')}</td>`
+            + `<td class="erp-td erp-tnum" dir="ltr">${esc(r.hours || '—')}</td>`
+            + `${opts.withAction ? `<td class="erp-td">${r.excused ? '' : `<button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-resolve="${esc(String((r.emp && r.emp.id) ?? ''))}|${esc((data && data.date) || '')}" aria-label="معالجة ${esc((r.emp && r.emp.name) || '')}">معالجة</button>`}</td>` : ''}`
+            + `</tr>`).join('')
+        + `</tbody></table></div>`;
+    return `<section class="erp-card erp-no-print" data-v2-today-card>${head}<div class="erp-card__body">${body}</div></section>`;
 }
 
 /** One chip: number, what it counts, and the share it belongs to. */
@@ -242,6 +287,8 @@ function template(from, to) {
 
         <div data-v2-kpis></div>
 
+        <div data-v2-today></div>
+
         <section class="erp-card">
           <div class="erp-card__head">
             <h3 class="erp-card__title">بصمات الأيام
@@ -321,6 +368,10 @@ export function mountAttendanceScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 attendance]', m);
     const tools = attToolsFor(ctx.role);
     const canResolve = tools.some((t) => t.id === 'gaps');
+    /* الأدوار الثلاثة التي يقبلها الخادم كتابةً (server.js:1778) — هي مرجع
+       الأزرار الكتابية، و`canResolve` يشترط أن أداة النواقص ظاهرة أصلًا.
+       الاثنان يتفقان على كل دور مُشحون، فالربط يوثّق المصدر ولا يغيّر سلوكًا. */
+    const canWrite = canResolve && attWriteVisible(ctx.role);
 
     let allRows = [];
     let rows = [];
@@ -373,7 +424,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
                 value: (row) => ATTENDANCE_STATE_AR[row.state] || row.state,
                 render: (row) => stateCell(row),
             },
-            ...(canResolve ? [{
+            ...(canWrite ? [{
                 key: 'actions', header: 'تصحيح', width: '110px',
                 render: (row) => (row.id === undefined || row.id === null ? '—'
                     : `<button type="button" class="erp-btn erp-btn--sm" data-v2-correct="${esc(String(row.id))}" aria-label="تصحيح سجل ${esc(row.date)}">تصحيح</button>`),
@@ -430,6 +481,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
                 .filter(Boolean).join(' · ')}) — المؤشرات والأشرطة محسوبة على ${formatInt(rows.length)} من ${formatInt(allRows.length)} سجلًا.`;
         }
         printNote.textContent = `الحضور ${arabicRange(from, to)} — المطبوعة تعرض الصفحة الحالية من الجدول (${formatInt(rows.length)} سجلًا في الإجمالي).`;
+        paintTodayLeaves();
     }
 
     /* ── Load ─────────────────────────────────────────────────────────── */
@@ -476,6 +528,8 @@ export function mountAttendanceScreen(host, ctx = {}) {
             table.setRows([]);
             kpisHost.innerHTML = '';
             barsHost.innerHTML = '';
+            const todayHost = q('[data-v2-today]');
+            if (todayHost) {todayHost.innerHTML = '';}
             countEl.textContent = '';
             table.setError(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
@@ -517,7 +571,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
     q('[data-v2-tools]').innerHTML = tools.map((t) =>
         `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-tool="${esc(t.id)}" aria-label="${esc(t.label)}">`
         + `<i class="ji" data-i="${esc(t.icon)}" aria-hidden="true"></i><span>${esc(t.label)}</span></button>`).join('')
-        + (canResolve ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-excuse-new aria-label="عذر إداري جديد"><i class="ji" data-i="file-text" aria-hidden="true"></i><span>عذر إداري</span></button>` : '');
+        + (canWrite ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-excuse-new aria-label="عذر إداري جديد"><i class="ji" data-i="file-text" aria-hidden="true"></i><span>عذر إداري</span></button>` : '');
 
     el.addEventListener('input', (event) => {
         if (event.target.matches('[data-v2-gaps-q]')) {
@@ -557,7 +611,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
                 + `<td class="erp-td"><span class="erp-badge" data-tone="${esc(g.tone || 'neutral')}">${esc(g.label || '')}</span></td>`
                 + `<td class="erp-td erp-mono" dir="ltr">${esc((g.rec && g.rec.checkIn) || '—')}</td>`
                 + `<td class="erp-td erp-mono" dir="ltr">${esc((g.rec && g.rec.checkOut) || '—')}</td>`
-                + `<td class="erp-td">${canResolve ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-resolve="${esc(String((g.emp && g.emp.id) ?? ''))}|${esc(g.date)}">معالجة</button>` : ''}</td></tr>`).join('')
+                + `<td class="erp-td">${canWrite ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-resolve="${esc(String((g.emp && g.emp.id) ?? ''))}|${esc(g.date)}">معالجة</button>` : ''}</td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="7">لا نواقص — الفترة مقفلة</td></tr>')
             + `</tbody></table></div>`;
     }
@@ -581,6 +635,47 @@ export function mountAttendanceScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}
             q('[data-v2-gaps]').innerHTML = `<p class="erp-text-sm erp-text-muted">تعذّر حساب النواقص: ${esc((e && e.message) || 'خطأ')}</p>`;
         }
+    }
+
+    /* ── استثناءات اليوم ────────────────────────────────────────────────
+     *  صندوق واحد يجمع غياب/تأخير/انصراف مبكر/بصمة ناقصة لليوم الجاري من
+     *  دالة العقد `buildTodayExceptions`. لا يُرسم إلا إذا كانت الفترة
+     *  المحمّلة تشمل اليوم — وإلا لبدا كل موظف «غائبًا» عن يومٍ لم نجلبه. */
+    let leavesRequested = false;
+
+    function paintToday() {
+        const host = q('[data-v2-today]');
+        if (!host) {return;}
+        const today = todayIso();
+        const from = q('#v2att-from').value;
+        const to = q('#v2att-to').value;
+        if (today < from || today > to) {
+            host.innerHTML = `<section class="erp-card erp-no-print"><div class="erp-card__body">`
+                + `<p class="erp-text-sm erp-text-muted">استثناءات اليوم خارج الفترة المختارة (<span dir="ltr">${esc(today)}</span>) — وسّع الفترة لتشمل اليوم لعرضها.</p>`
+                + `</div></section>`;
+            return;
+        }
+        const now = new Date();
+        const data = buildTodayExceptions({
+            records: rawRows, employees: employeesList(), leaves: leavesCache || [],
+            todayStr: today, full: seesFullPeriod(ctx.role),
+            // «حتى الآن» في عمود الساعات لا تعمل بلا الساعة: بغيابها تُقرأ
+            // البصمة الناقصة صفرًا بينما صاحبها في دوامه.
+            nowMinutes: now.getHours() * 60 + now.getMinutes(),
+        });
+        host.innerHTML = todayBlock(data, { withAction: canWrite, deptByCode });
+    }
+
+    /** الأعذار تُطلب مرة واحدة: العذر يحوّل استثناءً إلى «معذور»، وإلا
+     *  عُرض رغم اعتماده. نفس باب الشاشة السابقة (leave-workflow) والمخزّن
+     *  مشترك مع صندوق النواقص، فلا نداء ثانٍ. */
+    function paintTodayLeaves() {
+        paintToday();
+        if (leavesCache || leavesRequested) {return;}
+        leavesRequested = true;
+        ensureLeaves().then(() => {
+            if (el.isConnected) {paintToday();}
+        }).catch(() => { /* ensureLeaves لا ترفض أصلًا — حزام أمان */ });
     }
 
     /* الكاميرا ملك اللوحة: أي فتح أو إغلاق يُطفئ الجلسة السابقة، فلا تبقى
@@ -645,13 +740,23 @@ export function mountAttendanceScreen(host, ctx = {}) {
         if (!reason) {panelMsg('اكتب السبب'); return;}
         const who = ctx.userName || '';
         const emp = empById.get(String(empId));
+        /* تحقق النموذج من دالة العقد وحدها (validatePunchForm) بنفس رسائل
+           الشاشة الحالية — بصمة واحدة على الأقل وصيغة HH:MM. الفحص قبل
+           الشبكة، فلا طلب يُرسل بنموذج مرفوض. */
+        let punch = null;
+        if (type === 'fill') {
+            punch = validatePunchForm({
+                checkIn: el.querySelector('[data-v2-res-in]')?.value || '',
+                checkOut: el.querySelector('[data-v2-res-out]')?.value || '',
+                reason,
+            });
+            if (!punch.ok) {panelMsg(punch.message); return;}
+        }
         saving = true;
         try {
             if (type === 'fill') {
-                const ci = (el.querySelector('[data-v2-res-in]')?.value || '').trim();
-                const co = (el.querySelector('[data-v2-res-out]')?.value || '').trim();
-                if (!ci && !co) {panelMsg('أدخل بصمة واحدة على الأقل'); saving = false; return;}
-                if ((ci && !TIME_INPUT_RE.test(ci)) || (co && !TIME_INPUT_RE.test(co))) {panelMsg('صيغة الوقت HH:MM'); saving = false; return;}
+                const ci = punch.checkIn;
+                const co = punch.checkOut;
                 const { hour } = await fetchWorkStartHour();
                 const calc = calcPunchTimes({ checkIn: ci, checkOut: co, shiftStart: shiftStartFor(emp, hour) });
                 const note = auditNote('fill', { who, reason, date });
@@ -727,10 +832,14 @@ export function mountAttendanceScreen(host, ctx = {}) {
         const date = el.querySelector('[data-v2-exc-date]')?.value || todayIso();
         const reason = (el.querySelector('[data-v2-exc-reason]')?.value || '').trim();
         if (!empId) {panelMsg('حدّد الموظف'); return;}
+        /* السبب إجباري على كل إجراء كتابي (نص الشاشة نفسه) — نفس تحقق
+           hr.js:465 عبر validateReason، فلا عذر بلا سبب. */
+        const check = validateReason(reason, 'اكتب سبب العذر');
+        if (!check.ok) {panelMsg(check.message); return;}
         saving = true;
         try {
             await createApprovedLeave(buildExcusePayload({
-                employeeId: empId, date, reason, kind: 'admin',
+                employeeId: empId, date, reason: check.reason, kind: 'admin',
                 userId: ctx.userId ?? null, todayStr: todayIso(),
             }));
             if (!el.isConnected) {return;}
@@ -770,12 +879,15 @@ export function mountAttendanceScreen(host, ctx = {}) {
     async function submitCorrect() {
         if (saving || !resolveTarget || !resolveTarget.rec) {return;}
         const { rec } = resolveTarget;
-        const ci = (el.querySelector('[data-v2-cor-in]')?.value || '').trim();
-        const co = (el.querySelector('[data-v2-cor-out]')?.value || '').trim();
         const reason = (el.querySelector('[data-v2-cor-reason]')?.value || '').trim();
-        if (!ci && !co) {panelMsg('أدخل بصمة واحدة على الأقل'); return;}
-        if ((ci && !TIME_INPUT_RE.test(ci)) || (co && !TIME_INPUT_RE.test(co))) {panelMsg('صيغة الوقت HH:MM'); return;}
-        if (!reason) {panelMsg('اكتب سبب التصحيح'); return;}
+        const punch = validatePunchForm({
+            checkIn: el.querySelector('[data-v2-cor-in]')?.value || '',
+            checkOut: el.querySelector('[data-v2-cor-out]')?.value || '',
+            reason, reasonLabel: 'اكتب سبب التصحيح',
+        });
+        if (!punch.ok) {panelMsg(punch.message); return;}
+        const ci = punch.checkIn;
+        const co = punch.checkOut;
         saving = true;
         try {
             const emp = empById.get(String(rec.employeeId));

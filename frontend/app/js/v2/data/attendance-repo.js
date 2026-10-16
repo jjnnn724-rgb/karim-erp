@@ -958,9 +958,15 @@ export function workedHoursText(rec, { todayStr = '', nowMinutes = null } = {}) 
     const a = toMinutes(rec.checkIn);
     if (a === null) {return '—';}                 // انصراف بلا حضور: لا يُحسب
     let b = toMinutes(rec.checkOut);
-    if (b === null) {b = String(rec.date || today) === today && nowMinutes !== null ? Number(nowMinutes) : a;}
+    let fromClock = false;
+    if (b === null) {
+        // «حتى الآن» مشروطةٌ بتمرير الساعة: غيابها يعني صفرًا لا «حتى الآن».
+        const live = String(rec.date || today) === today && nowMinutes !== null;
+        if (live) {b = Number(nowMinutes); fromClock = true;} else {b = a;}
+    }
+    if (fromClock && b < a) {return '—';}         // الساعة قبل البصمة: لا نهاية بعد
     let diff = b - a;
-    if (diff < 0) {diff += 1440;}
+    if (diff < 0) {diff += 1440;}                 // ورديةٌ تعبر منتصف الليل
     return (diff / 60).toFixed(2);
 }
 
