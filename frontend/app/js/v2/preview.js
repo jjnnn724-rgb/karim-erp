@@ -29,64 +29,65 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.131';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.131';
-import { initTheme, currentTheme } from './theme.js?v=4.9.131';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.131';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.131';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.131';
-import { createDataTable } from './data-display/data-table.js?v=4.9.131';
-import { ensureSession } from './session.js?v=4.9.131';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.131';
-import { readNavGroups } from './layout/nav-model.js?v=4.9.131';
-import { DASH_KEY, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.131';
-import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.131';
-import { mountBranchesScreen } from './screens/branches.js?v=4.9.131';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.131';
-import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.131';
-import { mountEmployeesScreen } from './screens/employees.js?v=4.9.131';
-import { mountLoginScreen } from './screens/login.js?v=4.9.131';
-import { mountBriefingScreen } from './screens/briefing.js?v=4.9.131';
-import { mountCfoScreen } from './screens/cfo.js?v=4.9.131';
-import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.131';
-import { mountReportsScreen } from './screens/reports.js?v=4.9.131';
-import { mountProcurementScreen } from './screens/procurement.js?v=4.9.131';
-import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.131';
-import { mountPaymentsScreen } from './screens/payments.js?v=4.9.131';
-import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.131';
-import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.131';
-import { mountLeavesScreen } from './screens/leaves.js?v=4.9.131';
-import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.131';
-import { mountVegScreen } from './screens/veg-requests.js?v=4.9.131';
-import { mountRosterScreen } from './screens/roster.js?v=4.9.131';
-import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.131';
-import { mountSettingsScreen } from './screens/settings.js?v=4.9.131';
-import { mountUsersScreen } from './screens/users.js?v=4.9.131';
-import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.131';
-import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.131';
-import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.131';
-import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.131';
-import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.131';
-import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.131';
-import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.131';
-import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.131';
-import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.131';
-import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.131';
-import { mountPayrollScreen } from './screens/payroll.js?v=4.9.131';
-import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.131';
-import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.131';
-import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.131';
-import { mountRecipesScreen } from './screens/recipes.js?v=4.9.131';
-import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.131';
-import { mountExpensesScreen } from './screens/expenses.js?v=4.9.131';
-import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.131';
-import { mountPnlScreen } from './screens/pnl.js?v=4.9.131';
-import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.131';
-import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.131';
-import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.131';
-import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.131';
-import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.131';
-import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.131';
+import { ROLES } from '../core/config.js?v=4.9.134';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.134';
+import { initTheme, currentTheme } from './theme.js?v=4.9.134';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.134';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.134';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.134';
+import { createDataTable } from './data-display/data-table.js?v=4.9.134';
+import { ensureSession } from './session.js?v=4.9.134';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.134';
+import { readNavGroups } from './layout/nav-model.js?v=4.9.134';
+import { DASH_KEY, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.134';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.134';
+import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.134';
+import { mountBranchesScreen } from './screens/branches.js?v=4.9.134';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.134';
+import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.134';
+import { mountEmployeesScreen } from './screens/employees.js?v=4.9.134';
+import { mountLoginScreen } from './screens/login.js?v=4.9.134';
+import { mountBriefingScreen } from './screens/briefing.js?v=4.9.134';
+import { mountCfoScreen } from './screens/cfo.js?v=4.9.134';
+import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.134';
+import { mountReportsScreen } from './screens/reports.js?v=4.9.134';
+import { mountProcurementScreen } from './screens/procurement.js?v=4.9.134';
+import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.134';
+import { mountPaymentsScreen } from './screens/payments.js?v=4.9.134';
+import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.134';
+import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.134';
+import { mountLeavesScreen } from './screens/leaves.js?v=4.9.134';
+import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.134';
+import { mountVegScreen } from './screens/veg-requests.js?v=4.9.134';
+import { mountRosterScreen } from './screens/roster.js?v=4.9.134';
+import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.134';
+import { mountSettingsScreen } from './screens/settings.js?v=4.9.134';
+import { mountUsersScreen } from './screens/users.js?v=4.9.134';
+import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.134';
+import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.134';
+import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.134';
+import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.134';
+import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.134';
+import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.134';
+import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.134';
+import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.134';
+import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.134';
+import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.134';
+import { mountPayrollScreen } from './screens/payroll.js?v=4.9.134';
+import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.134';
+import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.134';
+import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.134';
+import { mountRecipesScreen } from './screens/recipes.js?v=4.9.134';
+import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.134';
+import { mountExpensesScreen } from './screens/expenses.js?v=4.9.134';
+import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.134';
+import { mountPnlScreen } from './screens/pnl.js?v=4.9.134';
+import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.134';
+import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.134';
+import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.134';
+import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.134';
+import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.134';
+import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.134';
 
 /* ── 1. Publish the real configuration the adapters read ────────────── */
 
@@ -181,6 +182,16 @@ let storedToastFlag = '';
 try {storedToastFlag = localStorage.getItem('karim_v2_toast');} catch { /* private mode */ }
 const TOAST = toastEnabled(window.location.search, storedToastFlag);
 installToast(window, { enabled: TOAST });
+
+/* ── 2d. غطاء التحميل — عدّاد على `window.fetch` (العلم OFF افتراضيًا) ──
+   يُغلّف fetch مرة واحدة عند الـboot قبل أن يركّب أي شاشة، فتقع كل طلبات
+   الشاشات داخل العدّاد. مع `?v2overlay` مطفأ لا يلمس `window.fetch` أصلًا
+   ولا يُنشئ عقدة — وهو مستوى التراجع الأول (إطفاء فوري بلا git). القرار ٢
+   في عقد V2: عتبة 400ms، استثناء /notifications و/health، عدّاد متوازن. */
+let storedOverlayFlag = '';
+try {storedOverlayFlag = localStorage.getItem('karim_v2_overlay');} catch { /* private mode */ }
+const OVERLAY = overlayEnabled(window.location.search, storedOverlayFlag);
+installOverlay(window, { enabled: OVERLAY });
 
 /* ── 3. Boot theme ──────────────────────────────────────────────────── */
 initTheme();
