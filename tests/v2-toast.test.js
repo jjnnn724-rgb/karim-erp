@@ -352,8 +352,14 @@ describe('7b. الطبقة داخل نطاق `.erp-v2` — وإلا كان كل 
     });
 
     test('السبب ما زال قائمًا: التوكنات على .erp-v2 لا على :root', () => {
-        expect(code(path.join(APP, 'css', 'v2', 'erp-tokens.css'))).toMatch(/^\.erp-v2\s*\{/m);
-        expect(code(path.join(APP, 'css', 'v2', 'erp-themes.css'))).toMatch(/\[data-theme="dark"\] \.erp-v2\s*\{/);
+        /* المحظور هو :root، لا تعددُ المحدِّدات: طبقتان ملحقَتان ب<body>
+           (erp-fab-host · erp-offline-bar) صارتا تُعرَّفان مع .erp-v2 لأن
+           var(--erp-*) لا يحلّ عندهما بدونهما — والقياس الحيّ: بدون ذلك يرسم
+           الـFAB بخلفية rgba(0,0,0,0) وحرفٍ أبيض على #f4f5f7. */
+        const tokens = code(path.join(APP, 'css', 'v2', 'erp-tokens.css'));
+        expect(tokens).toMatch(/^\.erp-v2[,\s]/m);
+        expect(tokens).not.toMatch(/:root\s*\{[^}]*--erp-/);
+        expect(code(path.join(APP, 'css', 'v2', 'erp-themes.css'))).toMatch(/\[data-theme="dark"\] \.erp-v2[,\s]/);
     });
 
     test('erp-toast.css يبطل خلفية .erp-v2 على الطبقة (لا شريط خلف البطاقات)', () => {

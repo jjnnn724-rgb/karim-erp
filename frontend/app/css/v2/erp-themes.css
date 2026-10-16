@@ -23,7 +23,14 @@
   color-scheme: light;
 }
 
-[data-theme="dark"] .erp-v2 {
+/* Mirrors the selector list in erp-tokens.css: the layers mounted on
+   document.body sit outside .erp-v2, so the dark flip has to reach them by
+   name too. Values are identical to the .erp-v2 rule, so an element that
+   matches both (a layer nested inside the root) cannot disagree. */
+[data-theme="dark"] .erp-v2,
+[data-theme="dark"] .erp-fab-host,
+[data-theme="dark"] .erp-offline-bar,
+[data-theme="dark"] .erp-pal-backdrop {
   color-scheme: dark;
 
   /* Elevation must be legible in dark: raised reads lighter than the canvas,
@@ -36,6 +43,12 @@
      (styles.css: `.btn-gold { color:#131926 }`) — match that contract so
      V2 never ships white-on-gold in dark. */
   --erp-text-inverse: #0c111d;
+
+  /* The veil carries its own rgba, so it cannot inherit either. A #0c111d
+     canvas is already near black, so a black veil caps out at 1.17:1 here —
+     .60 is where the dimming becomes visible (palette backdrop measured
+     1.03:1 as rgba(16,24,40,.5), Δ2 of 255) without crushing the page. */
+  --erp-scrim: rgba(0, 0, 0, .6);
 
   /* Shadows carry a hardcoded rgba, so they do not inherit either.
      Dark surfaces need a deeper, more opaque drop to separate from canvas. */

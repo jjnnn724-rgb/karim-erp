@@ -287,11 +287,13 @@
 .erp-shell__content:focus { outline: none; }
 
 /* ── Drawer scrim (mobile) ───────────────────────────────────────────── */
+/* One veil for the whole system (see --erp-scrim). The element lives inside the
+   .erp-v2 shell root, so the token resolves without the host being listed. */
 .erp-shell__scrim {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, .45);
+  background: var(--erp-scrim);
   z-index: var(--erp-z-drawer);
 }
 .erp-shell__scrim[hidden] { display: none !important; }

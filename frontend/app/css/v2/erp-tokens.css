@@ -15,15 +15,29 @@
 
    ISOLATION
    ─────────
-   Every token is declared on `.erp-v2`. Legacy pages never see these
-   names, and V2 never touches a legacy selector. Removing the .erp-v2
+   Every token is declared on `.erp-v2` (plus the two body-mounted layer hosts
+   listed at the rule itself, which sit outside it). Legacy pages never see
+   these names, and V2 never touches a legacy selector. Removing the .erp-v2
    wrapper removes the entire design system — that is the rollback.
 
    RULE: presentation reads --erp-*. Domain values are NEVER renamed —
    see js/v2/status.js for the persisted-value → presentation adapter.
    ═══════════════════════════════════════════════════════════════════════ */
 
-.erp-v2 {
+/* .erp-fab-host, .erp-offline-bar and .erp-pal-backdrop can be appended to
+   document.body, i.e. they live OUTSIDE the .erp-v2 subtree, so none of these
+   names resolve for them. Measured live on the running page before this rule
+   existed: the FAB painted `background: rgba(0,0,0,0)` with a white glyph on
+   the #f4f5f7 canvas (≈1.0:1) and its four quick-action pills had no background
+   and no border. js/v2/screens/dashboard.js:392 mounts the palette on
+   `shell.root || document.body`, so the backdrop needs the same treatment on
+   that fallback path. Listing the hosts here ships them the token layer only —
+   custom properties are inert until read, so no typography, background or box
+   rule reaches these elements. */
+.erp-v2,
+.erp-fab-host,
+.erp-offline-bar,
+.erp-pal-backdrop {
   /* ── Surfaces ─────────────────────────────────────────────────────── */
   --erp-background:        var(--karim-bg,       #f4f5f7);
   --erp-surface:           var(--karim-surface,  #ffffff);
@@ -142,6 +156,18 @@
   --erp-shadow-md: var(--karim-shadow-md, 0 4px 12px rgba(16, 24, 40, .08));
   --erp-shadow-lg: var(--karim-shadow-lg, 0 12px 32px rgba(16, 24, 40, .12));
   --erp-shadow-xl: 0 24px 56px rgba(16, 24, 40, .16);
+
+  /* ── Scrim (modal / drawer veil) ──────────────────────────────────── */
+  /* One veil for every overlay, measured live rather than assumed. Before this
+     token, two literals disagreed: the drawer used rgba(0,0,0,.45) and the
+     command palette rgba(16,24,40,.5). On the light canvas both dim to ≈3.3:1,
+     so unifying them is invisible; in dark the navy one resolved to 1.03:1
+     (Δ2 of 255 per channel — literally no dimming) and the black one to
+     1.10:1. Dark therefore carries a heavier alpha: .60 lifts the palette to
+     1.15:1 (Δ-card 37 → 49). The ceiling is 1.17 with any black veil, because
+     a #0c111d canvas is already near black — panel separation in dark is
+     carried by --erp-shadow-*, not by the scrim. */
+  --erp-scrim: rgba(0, 0, 0, .45);
 
   /* ── Control sizing ───────────────────────────────────────────────── */
   --erp-control-sm: 30px;

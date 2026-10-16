@@ -463,7 +463,10 @@ describe('9. CSS: توكنات فقط ولا لون خام', () => {
     });
 
     test('الطبقة على <body> تحمل نطاق .erp-v2 وخلفيتها تغلب خلفية .erp-v2', () => {
-        expect(code(path.join(APP, 'css', 'v2', 'erp-tokens.css'))).toMatch(/^\.erp-v2\s*\{/m);
+        /* المحظور :root لا تعددُ المحدِّدات — انظر v2-toast.test.js: طبقتا
+           erp-fab-host وerp-offline-bar صارتا تُعرَّفان مع .erp-v2. */
+        expect(code(path.join(APP, 'css', 'v2', 'erp-tokens.css'))).toMatch(/^\.erp-v2[,\s]/m);
+        expect(code(path.join(APP, 'css', 'v2', 'erp-tokens.css'))).not.toMatch(/:root\s*\{[^}]*--erp-/);
         // الشريط يغلب خلفية .erp-v2 من erp-base.css:23 بترتيب الأوراق في v2.html
         const page = read(PAGE);
         const base = page.indexOf('css/v2/erp-base.css');

@@ -294,12 +294,24 @@
 .erp-v2 .erp-notif-list { display: flex; flex-direction: column; gap: 8px; }
 .erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
 .erp-v2 .erp-notif--unread { border-color: var(--erp-brand-text); }
-.erp-v2 .erp-fab-host { position: fixed; bottom: 20px; inset-inline-start: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; }
+/* Bare on purpose: js/v2/layout/shell-extras.js mounts this host on
+   document.body, so a `.erp-v2 ` ancestor prefix never matches. Measured before
+   this change: the host was `position: static` and sat at the bottom of the
+   document (y≈2767), invisible until you scrolled past the whole page. */
+.erp-fab-host { position: fixed; bottom: 20px; inset-inline-start: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: 26px; line-height: 1; cursor: pointer; }
 .erp-fab-host .erp-fab-menu { display: flex; flex-direction: column; gap: 8px; }
+/* `[hidden]` was losing to the rule above (UA `[hidden]{display:none}` is a
+   lower-priority element rule), so all four quick-action pills rendered even
+   with aria-expanded="false". Harmless while the host was invisible; now that
+   the FAB actually paints, the menu has to obey its own closed state. */
+.erp-fab-host .erp-fab-menu[hidden] { display: none; }
 .erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font: inherit; }
 .erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: 70; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
-.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: 9999; background: #b91c1c; color: #fff; text-align: center; padding: 8px; font-size: 13px; }
+/* #b91c1c was an off-palette red (the token is #b42318 light / #f87171 dark).
+   Both readings stay AA-safe with the inverse ink: 6.57:1 light, 6.82:1 dark.
+   The z-index and the hand-written 13px are separate debts. */
+.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: 9999; background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
 @media (max-width: 640px) {
   .erp-v2 .erp-shell__extras { flex-wrap: wrap; }
   .erp-fab-host .erp-fab { width: 44px; height: 44px; }

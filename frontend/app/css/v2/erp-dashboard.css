@@ -165,7 +165,7 @@
 /* ── Command palette (the "pro feel": Ctrl+K) ─────────────────────────── */
 .erp-pal-backdrop {
   position: fixed; inset: 0; z-index: var(--erp-z-modal, 900);
-  background: rgba(16, 24, 40, .5);
+  background: var(--erp-scrim);
   display: flex; justify-content: center; align-items: flex-start;
   padding: 12vh 16px 16px;
 }
