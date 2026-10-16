@@ -17,6 +17,7 @@ const APPJS = APP('js/app.js');
 const I18N = APP('js/core/i18n.js');
 const NAV = APP('js/features/auth-navigation.js');
 const SW = APP('sw.js');
+const { makeSw, repoReader } = require('./sw-precache-harness');
 const BR_RAW = APP('js/features/branches.js');
 const BR_SRC = BR_RAW.replace(/export\s*\{[^}]*\};?/, '');
 
@@ -100,9 +101,14 @@ describe('أسلاك التثبيت: karim-i18n + صفحة الفروع', () => 
     expect(toggle).toContain('KarimI18n.setLang(STATE.lang)');
   });
 
-  test('service worker: مسح مسبق للكارين-آي١٨ن والفروع + رفعة إصدار الكاش', () => {
-    expect(SW).toContain(`'/app/js/karim-i18n.js?v=${VER}'`);
-    expect(SW).toContain(`'/app/js/features/branches.js?v=${VER}'`);
+  test('service worker: الكاش المُسبق يغطي الكارين-آي١٨ن والفروع بنفس إصدار الكاش', async () => {
+    // المفتاحُ لم يعد سطرًا في قائمةٍ يدوية: يُشتقّ من وسوم index.html ثم من استيرادات
+    // main.js. الضمانُ إذن أن الآلية تُنتجه — لا أن أحدًا كتبه يومًا.
+    const sw = makeSw({ files: repoReader() });
+    await sw.fire('install');
+    const keys = (await sw.stored()).map((s) => s.key);
+    expect(keys).toContain(`/app/js/karim-i18n.js?v=${VER}`);
+    expect(keys).toContain(`/app/js/features/branches.js?v=${VER}`);
     expect(SW).toMatch(/CACHE_VERSION='4\.25\.5[2-9]'/);
   });
 

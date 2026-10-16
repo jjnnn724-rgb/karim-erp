@@ -1,5 +1,5 @@
 /* Karim ERP Service Worker v4.7.2 — Professional PWA Caching
- * - App shell caching with versioning
+ * - App shell precache: derived from the pages' own src/href, never hand-listed
  * - API/socket.io/uploads: bypassed entirely (never cached — user data stays private)
  * - Static assets: cache-first with stale-while-revalidate
  * - Images: cache-first, long TTL
@@ -10,89 +10,152 @@
  */
 'use strict';
 
-const CACHE_VERSION='4.25.55'; // 2026-10-13: فشل سريع (Oracle/اعتماد متكرر) + توازي الإقلاع
+const CACHE_VERSION='4.25.56'; // 2026-10-16: كاش مُشتقّ من الصفحات + تخزين مفرد + تقليم المراجعات
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
 const IMAGE_CACHE = `karim-images-${CACHE_VERSION}`;
 const FONT_CACHE = `karim-fonts-${CACHE_VERSION}`;
 
-const STATIC_ASSETS = [
+/* الكاش المُسبق صار مُشتقًّا لا مُؤلَّفًا: الصفحة نفسها تُخبرنا بما تطلبه.
+ * القائمة اليدوية القديمة كانت ٦١ مفتاحًا تُنزَّل مرّتين (كاشَين) = ٨٬٤١٢٬١٢٠ بايتًا،
+ * ٢٨ منها لا يطابق أي طلبٍ حقيقي (مسارٌ بلا ?v= لوحداتٍ تُستدعى دائمًا بـ ?v=، أو مراجعةٌ
+ * قديمة مثل pos.js?v=4.9.77 بينما الصفحة تطلب 4.9.33) = ٢٬٦٤٩٬٤٦٦ بايتًا لا تُقرأ أبدًا؛
+ * وفي المقابل ١٢٥ أصلًا تطلبه الصفحات فعليًا لم يكن مخزَّنًا إطلاقًا. المصدر الآن:
+ * وسوم src/href في الصفحات + ما تستورده وحداتُها.
+ */
+const SHELL_PAGES = [
     '/app/index.html',
     '/app/pos.html',
+    '/app/v2.html',
+    '/app/menu-board.html',
+    '/app/menu-totem-dashboard.html',
+    '/app/menu-admin.html',
+];
+// أيقوناتٌ يطلبها نظام التشغيل عبر manifest.json لا أي صفحة: لا يشتقها مسح الـ HTML.
+const MANIFEST_ASSETS = [
     '/app/manifest.json',
-    '/app/js/main.js?v=4.9.77',
-    '/app/js/core/pwa.js',
-    '/app/js/core/i18n.js',
-    '/app/js/core/utils.js',
-    '/app/js/ui/toast.js',
-    '/app/js/core/state.js',
-    '/app/js/core/api.js',
-    '/app/js/core/config.js',
-    '/app/js/features/smart-card.js',
-    '/app/js/features/bulk-import.js',
-    '/app/js/features/kitchen.js',
-    '/app/js/features/finance.js',
-    '/app/js/features/hr.js',
-    '/app/js/features/yarasoft.js',
-    '/app/js/features/whatsapp.js',
-    '/app/js/features/departments.js',
-    '/app/js/features/reports.js',
-    '/app/js/features/settings-users.js?v=4.9.77',
-    '/app/js/features/veg-requests.js?v=4.9.77',
-    '/app/js/features/cfo.js?v=4.9.77',
-    '/app/js/ui/enhancement.js',
-    '/app/js/features/page-router.js',
-    '/app/js/features/auth-navigation.js?v=4.9.77',
-    '/app/js/core/storage.js',
-    '/app/js/features/employee-portal.js',
-    '/app/js/features/dashboard.js',
-    '/app/js/features/zkteco.js',
-    '/app/js/app.js?v=4.9.77',
-    '/app/js/pos.js?v=4.9.77',
-    '/app/js/features/smart-item-search.js?v=2.0.0', // SMART-SEARCH-TRIAL: احذف هذا السطر لإزالة التجربة
-    '/app/js/pos-orders.js',
-    '/app/js/db-constraints-client.js',
-    '/app/js/icons.js',
-    '/app/js/scanner.js',
-    '/app/js/realtime.js?v=4.9.77',
-    '/app/js/vendor/qrcode.min.js?v=4.9.77',
-    '/app/vendor/chart.umd.min.js?v=4.9.77',
-    '/app/vendor/xlsx.full.min.js?v=4.9.77',
-    '/app/vendor/html5-qrcode.min.js?v=4.9.77',
-    '/app/css/mobile.css',
-    '/app/css/design-tokens.css',
-    '/app/css/styles.css',
-    '/app/js/core/i18n-auto-catalog.js',
-    '/app/js/core/i18n-auto.js',
-    '/app/js/karim-i18n.js?v=4.9.77',
-    '/app/js/features/branches.js?v=4.9.77',
-    '/app/css/realtime.css',
-    '/app/css/scanner.css',
-    '/app/css/offline-fonts.css',
-    '/app/css/pos.css',
     '/app/assets/icon-192.png',
     '/app/assets/icon-512.png',
     '/app/assets/icon-192-maskable.png',
     '/app/assets/icon-512-maskable.png',
-    '/app/assets/karim-logo.png',
-    '/app/assets/karim-logo.ico',
-    '/app/assets/horus-logo.png',
-    '/app/assets/horus-logo.ico',
 ];
+const ASSET_RE = /\.(css|js|mjs|html|json|png|jpg|jpeg|webp|svg|gif|ico|bmp|woff2?|ttf|eot|otf)$/;
+const MODULE_SPEC_RE = /['"](\.[^'"]*?\.(?:js|css|mjs|json)(?:\?v=[0-9.]+)?)['"]/g;
+const PRECACHE_LIMIT = 200;
+const MAX_REVISIONS_PER_PATH = 2;
 
 const OFFLINE_FALLBACKS = ['/app/index.html', '/app/pos.html'];
 // API_TTL أُزيل: بيانات /api/ لا تُخزَّن في الكاش إطلاقًا (سياسة bypass).
 const STATIC_TTL = 30 * 24 * 60 * 60 * 1000;
 
+function assetKey(raw, baseUrl) {
+    if (!raw || /^(data:|blob:|about:|#|javascript:|mailto:|tel:)/i.test(raw)) {return null;}
+    let url;
+    try { url = new URL(raw, baseUrl); } catch (_) {return null;}
+    if (url.origin !== self.location.origin) {return null;}
+    if (!url.pathname.startsWith('/app/')) {return null;}
+    if (!ASSET_RE.test(url.pathname)) {return null;}
+    // مفتاحُ الطلب هو المسارُ ومراجعةُ الكاش وحدها: استعلامٌ آخر («?live=1») لا يُطلب
+    // بهذا الشكل، فاشتقاقه كان يخلق مفتاحًا ميتًا جديدًا بدل القديم.
+    const rev = url.searchParams.get('v');
+    return rev && /^\d[\w.-]*$/.test(rev) ? `${url.pathname}?v=${rev}` : url.pathname;
+}
+
+function refsInHtml(html, baseUrl) {
+    const keys = [];
+    for (const m of html.matchAll(/\b(?:src|href)="([^"]*)"/g)) {
+        const key = assetKey(m[1], baseUrl);
+        if (key) {keys.push(key);}
+    }
+    return keys;
+}
+
+function refsInModule(jsText, baseUrl) {
+    const keys = [];
+    for (const m of jsText.matchAll(MODULE_SPEC_RE)) {
+        const key = assetKey(m[1], baseUrl);
+        if (key) {keys.push(key);}
+    }
+    return keys;
+}
+
+function isVendored(pathname) {
+    return pathname.includes('/vendor/') || pathname.endsWith('.min.js');
+}
+
+function hrefOf(key) {
+    return new URL(key, self.location.origin).href;
+}
+
+function isImportedModule(key) {
+    const path = key.split('?')[0];
+    return path.endsWith('.js') && !isVendored(path);
+}
+
+/* الكاش المُسبق بمسحتين وطلبٍ واحد لكل أصل: الصفحةُ تُخزَّن وتُقرأ في رحلتها، ثم
+   تُقرأ وحداتُها فيُضاف ما تستورده. لا addAll (رفضٌ واحد بأول مسارٍ كان يُسقط كل
+   الكاش في صمتٍ لأن الـ catch يبتلعه)، ولا قائمة يدوية (كل مراجعة ?v= تترك خلفها
+   مفتاحًا ميتًا لا يطابق أي طلب). */
+async function precacheAll() {
+    const stored = new Set();
+
+    async function take(key, wantText) {
+        const url = hrefOf(key);
+        let res;
+        try { res = await fetch(url, { cache: 'no-store' }); } catch (_) {return '';}
+        if (!res || !res.ok) {return '';}
+        try {
+            // تخزينٌ مفرد: كل أصلٍ في كاشٍ واحد بحسب نوعه — القائمة القديمة خزَّنت
+            // كل ملفٍ مرتين (STATIC_CACHE و CACHE) فتضاعف حجمُ التثبيت.
+            const cache = await caches.open(getCacheName(new URL(url)));
+            await cache.put(url, res.clone());
+            stored.add(key);
+        } catch (_) {/* تعذَّر التخزينُ؛ القراءةُ للمشتَقّ لا تزال ممكنة */}
+        if (!wantText) {return '';}
+        return res.text().catch(() => '');
+    }
+
+    const shellTexts = await Promise.all(SHELL_PAGES.map((page) => take(page, true)));
+    const pageRefs = [];
+    shellTexts.forEach((html, i) => {pageRefs.push(...refsInHtml(html, hrefOf(SHELL_PAGES[i])));});
+
+    // الطبقة التالية: ما تستورده وحداتُ الصفحات مباشرةً. مكتبات البائع مستثناة:
+    // نصُّها المصغَّر فيه سلاسلُ تشبه المسارات لكنها لا تُطلب أبدًا.
+    const walkable = [...new Set(pageRefs)].filter((k) => isImportedModule(k) && !stored.has(k));
+    const moduleTexts = await Promise.all(walkable.map((key) => take(key, true)));
+    const importedRefs = [];
+    moduleTexts.forEach((js, i) => {importedRefs.push(...refsInModule(js, hrefOf(walkable[i])));});
+
+    const pending = [...new Set([...pageRefs, ...MANIFEST_ASSETS, ...importedRefs])]
+        .sort()
+        .filter((key) => !stored.has(key))
+        .slice(0, Math.max(PRECACHE_LIMIT - stored.size, 0));
+    await Promise.allSettled(pending.map((key) => take(key, false)));
+    return [...stored];
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        Promise.all([
-            caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => undefined)),
-            caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => undefined)),
-        ]).then(() => self.skipWaiting())
+        precacheAll().catch(() => undefined).then(() => self.skipWaiting())
     );
 });
+
+async function pruneOldRevisions() {
+    for (const name of [STATIC_CACHE, CACHE]) {
+        const cache = await caches.open(name);
+        const requests = await cache.keys();   // بترتيب الإضافة: الأحدثُ آخرًا
+        const seen = new Map();
+        for (let i = requests.length - 1; i >= 0; i--) {
+            let url;
+            try { url = new URL(requests[i].url); } catch (_) {continue;}
+            if (!url.searchParams.get('v')) {continue;}   // مفتاحٌ بلا مراجعة = أصلي
+            const n = (seen.get(url.pathname) || 0) + 1;
+            seen.set(url.pathname, n);
+            if (n > MAX_REVISIONS_PER_PATH) {await cache.delete(requests[i]);}
+        }
+    }
+}
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
@@ -101,6 +164,9 @@ self.addEventListener('activate', (event) => {
                 keys.filter((k) => ![CACHE, STATIC_CACHE, API_CACHE, IMAGE_CACHE, FONT_CACHE].includes(k))
                     .map((k) => caches.delete(k))
             ))
+            // تقليم المراجعات: كان كل ?v= جديدةٍ تترك نسخةً كاملة من الوحدة خلفها إلى
+            // أبدِها؛ الآن مادتان أخيران لكل مسار، والأقدم تُحذف عند التنشيط.
+            .then(() => pruneOldRevisions().catch(() => undefined))
             .then(() => self.clients.claim())
             // تحديث تلقائي: أبلغ الصفحات المفتوحة بنسخة جديدة كي تعيد التحميل مرة واحدة
             .then(() => self.clients.matchAll({ type: 'window' }).then((clients) => {
