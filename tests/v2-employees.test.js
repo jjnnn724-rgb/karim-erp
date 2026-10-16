@@ -654,12 +654,16 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
     test('one print call serves both the sheet and the QR card', () => {
         const s = screen();
         expect((s.match(/window\.print\(\)/g) || []).length).toBe(1);
+        // الشارة تُلبَس من طبّاعٍ واحد مشترك، وتمسح أختها قبلها: نقرُ زرّين
+        // لا يركّب ورقتين فوق بعضهما.
+        const mode = s.match(/function printMode\(cls\) \{[\s\S]*?\n {4}\}/)[0];
+        expect(mode).toMatch(/PRINT_MODES\.forEach\(\(c\) => document\.body\.classList\.remove\(c\)\)/);
+        expect(mode).toMatch(/document\.body\.classList\.add\(cls\)/);
+        expect(mode).toMatch(/afterprint/);
+        expect(mode).toMatch(/setTimeout\(cleanup, 3000\)/);
+        expect(mode).toMatch(/printNow\(\)/);
         const pq = s.match(/function printQrCard\(\) \{[\s\S]*?\n {4}\}/)[0];
-        expect(pq).toMatch(/document\.body\.classList\.add\('erp-v2-print-card'\)/);
-        expect(pq).toMatch(/document\.body\.classList\.remove\('erp-v2-print-card'\)/);
-        expect(pq).toMatch(/afterprint/);
-        expect(pq).toMatch(/setTimeout\(cleanup, 3000\)/);
-        expect(pq).toMatch(/printNow\(\)/);
+        expect(pq).toMatch(/printMode\('erp-v2-print-card'\)/);
     });
 
     test('the panel is born outside both cards, so it shows in cards view too', () => {

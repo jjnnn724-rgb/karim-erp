@@ -132,7 +132,12 @@ export function cardExtrasMap(employees = []) {
     const map = new Map();
     for (const e of employees) {
         if (e && e.id !== undefined && e.id !== null) {
-            const salary = Number(e.salary);
+            // عمود الراتب يجوز أن يكون NULL في القاعدة، و Number(null) هو 0:
+            // بطاقةٌ تطبع «الراتب الأساسي: 0.00» لموظفٍ لا راتب مسجّلًا له
+            // تكذب، والخصم التقديري يُبنى فوقها. القاعدة نفسها مطبَّقة في
+            // مسار التصدير أدناه (:686)، فتركها هنا كان سهوًا لا قرارًا.
+            const salary = e.salary === null || e.salary === undefined || e.salary === ''
+                ? null : Number(e.salary);
             map.set(String(e.id), {
                 salary: Number.isFinite(salary) ? salary : null,
                 photo: e.photo ? String(e.photo) : '',

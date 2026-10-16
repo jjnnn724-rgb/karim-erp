@@ -319,6 +319,47 @@
 }
 
 @media print {
+  /* طباعة البطاقة الكاملة: الرأس والمؤشرات والبطاقات خارج الورقة، ويبقى
+     الكشف وحده — الحساب والأداء والراتب والرمزين على ورقة واحدة. نفس نداء
+     الطباعة الوحيد، وبشارة body أخرى (employees.js printEmpCard). */
+  body.erp-v2-print-empcard .erp-v2-employees .erp-dash-head,
+  body.erp-v2-print-empcard .erp-v2-employees [data-v2-kpis],
+  body.erp-v2-print-empcard .erp-v2-employees .erp-card { display: none !important; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__btns { display: none !important; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-rate { break-inside: avoid; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__one { break-inside: avoid; }
+}
+
+@media print {
+  /* طباعة كشف اليوم/الفترة وحده: الرأس والمؤشرات والبطاقات وشريط النطاق خارج
+     الورقة، ويبقى الجدول وملخّصه — ونفس رفع سقف التمرير الذي يستخدمه الكشف
+     الشهري، ليطبع المدى كله لا صفحةً واحدة. نفس نداء الطباعة الوحيد، وبشارة
+     body ثالثة (employees.js printAttRange) تُنزع على afterprint. */
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-dash-head,
+  body.erp-v2-print-dayrange .erp-v2-employees [data-v2-kpis],
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-card,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__head,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__actions,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__body > :not([data-v2-file-range]) { display: none !important; }
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-att__scroll {
+    max-block-size: none;
+    overflow: visible;
+  }
+}
+
+@media print {
   /* طباعة الكشف الشهري وحده — نفس حركة بطاقة QR في الموظفين (W2-2): الزر
      يضع شارةً على body قبل نداء الطباعة الوحيد وينزعها بعده. الورقة تُخفي
      كل ما في شاشة الحضور غير لوحة الأداة (والكشف داخلها)، وتُخرج من
@@ -732,7 +773,8 @@
 }
 
 /* بطاقة QR: الرمز أصلًا 320px — يُعرض بحجمه على الورق، وبما لا يفيض
-   على الشاشة الضيقة. */
+   على الشاشة الضيقة. الرمزان جنبًا إلى جنب حين يتّسع المكان وحده،
+   وسطرٌ تحت كل رمز يقول لمن يخصّه: النظام للكشك، والبيانات للجوال. */
 .erp-v2-employees .erp-emp-qr-card {
   display: flex;
   flex-direction: column;
@@ -742,7 +784,24 @@
   border: thin solid var(--erp-border);
   border-radius: var(--erp-radius-md);
   background: var(--erp-surface);
-  max-inline-size: 380px;
+  max-inline-size: min(100%, 700px);
+}
+.erp-v2-employees .erp-emp-qr__pair {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-qr__one {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+.erp-v2-employees .erp-emp-qr__cap {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  text-align: center;
 }
 .erp-v2-employees .erp-emp-qr__img { inline-size: min(320px, 100%); block-size: auto; }
 .erp-v2-employees .erp-emp-qr__meta {
@@ -757,6 +816,48 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--erp-space-1);
+}
+
+/* شريط نسبة الانتظام: <progress> أصلي بألوان النظام — لا عرضٌ سطري ولا
+   لونٌ خام، والدلالة يقرأها قارئ الشاشة من العنصر نفسه. */
+.erp-v2-employees .erp-emp-rate {
+  inline-size: min(320px, 100%);
+  block-size: var(--erp-space-2);
+  border: none;
+  border-radius: var(--erp-radius-full);
+  overflow: hidden;
+  background-color: var(--erp-surface-sunken);
+  appearance: none;
+}
+.erp-v2-employees .erp-emp-rate::-webkit-progress-bar {
+  background-color: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-full);
+}
+.erp-v2-employees .erp-emp-rate::-webkit-progress-value {
+  background-color: var(--erp-brand);
+  border-radius: var(--erp-radius-full);
+}
+.erp-v2-employees .erp-emp-rate::-moz-progress-bar {
+  background-color: var(--erp-brand);
+  border-radius: var(--erp-radius-full);
+}
+
+/* شارة الدوام المجدول: انتباه لا خطر — تعديلٌ لم يبدأ بعد. */
+.erp-v2-employees .erp-emp-sched {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding: 2px var(--erp-space-2);
+  border: thin solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2-employees .erp-emp-sched .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  flex-shrink: 0;
 }
 
 /* تنبيه الاستيراد: نصٌّ يُقرأ قبل الالتزام — تحذيرٌ بألوان التحذير. */
@@ -792,6 +893,23 @@
   font-size: var(--erp-text-sm);
 }
 .erp-v2-employees .erp-emp-import-row:last-child { border-block-end: none; }
+
+/* كشف يوم/فترة داخل البطاقة: شريط النطاق أزرارُ تحرير (.erp-no-print)،
+   والجدول صفٌّ لكل يوم — بما فيه أيام الغياب، فلا يختفي نصف المعلومة. */
+.erp-v2-employees .erp-emp-att {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2-employees .erp-emp-att__f {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2-employees .erp-emp-att__scroll { max-block-size: 380px; }
 
 /* ═══════════════ موظفو القسم (dept-employees) — طبقة الشاشة ═══════════════
    نفس أنماط لوحة الموظفين (W2-2) — النطاق محصور بالشاشة، صفر لمس للأساس. */

@@ -29,6 +29,9 @@
  *     the server returned it) + current-month attendance summary +
  *     آخر 5 إجازات + بطاقة QR (render, save PNG, print, regenerate) — every
  *     piece fetched from its own server door and shown as it arrived.
+ *   • (W2-5) كشف يوم/فترة داخل البطاقة (نطاقٌ صريح، صفٌّ لكل يوم بما فيه
+ *     الغياب والراحة الأسبوعية، والحالة من حقل الخادم لا من حساب وردية في
+ *     الواجهة) + «البطاقة الرسمية للطباعة» (صفحة HTML كاملة يولّدها الخادم).
  *   • (W2-2) استيراد/تصدير Excel عبر XLSX المحمّل عند الطلب (v2/vendor.js):
  *     the legacy template columns verbatim, the legacy preflight rules and
  *     words, and an export that follows the same 12 columns but never
@@ -39,6 +42,11 @@
  *   • Never a printed window.print from anywhere but the user's click; the
  *     QR card print routes through the same single call with a body class
  *     that narrows what the paper shows.
+ *   • Never a second print path: the QR card, the full card and the day/range
+ *     sheet all ride that one print call behind a body class. The luxury
+ *     card is the screen's only window.open — it is a whole HTML page the
+ *     SERVER generates (tools/employee-card), which this page's print
+ *     stylesheet cannot dress.
  *   • Never guesses an employee_id for a door: the كشف panel passes the id
  *     it was opened on, and the server's role scope decides the rest.
  *
@@ -73,8 +81,13 @@ import {
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
 } from '../data/employees-repo.js?v=4.9.131';
 import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.131';
-import { fetchAttendanceReport, todayIso } from '../data/attendance-repo.js?v=4.9.131';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.134';
 import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.131';
+import {
+    fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
+    systemQrText, humanQrText,
+    fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
+} from '../data/employee-card-repo.js?v=4.9.134';
 import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
@@ -144,6 +157,45 @@ function topsBlock(depts, total) {
         }).join('')
         + `</ul>`;
 }
+
+/**
+ * كشف يوم/فترة من داخل البطاقة (القديم: smart-card.js:716-748). نطاقٌ صريح
+ * وشريطٌ واحد، والنتيجة تُبنى في لوحة الكشف نفسها — لا نافذة منبثقة — وتُطبع
+ * من نفس نداء الطباعة الوحيد بشارة body أضيق. المدى الافتراضي أول الشهر حتى
+ * اليوم، وأزرار النطاق .erp-no-print فلا تدخل الورقة.
+ */
+function attRangeBlock() {
+    const today = todayIso();
+    return `<div data-v2-file-range>
+          <h4 class="erp-emp-sec">كشف يوم/فترة</h4>
+          <div class="erp-emp-att erp-no-print">
+            <label class="erp-emp-att__f"><span>من</span>
+              <input type="date" class="erp-input erp-input--ltr" data-v2-att-from max="${esc(today)}" value="${esc(`${today.slice(0, 7)}-01`)}"></label>
+            <label class="erp-emp-att__f"><span>إلى</span>
+              <input type="date" class="erp-input erp-input--ltr" data-v2-att-to max="${esc(today)}" value="${esc(today)}"></label>
+            <span class="erp-grow"></span>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-att="day">
+              <i class="ji" data-i="calendar-days" aria-hidden="true"></i><span>كشف اليوم</span></button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-att="range">
+              <i class="ji" data-i="search" aria-hidden="true"></i><span>كشف الفترة</span></button>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-att="print" disabled>
+              <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة الكشف</span></button>
+          </div>
+          <div data-v2-att-result></div>
+        </div>`;
+}
+
+/** حالات صفّ الكشف: مفاتيح لا نصوص — النصّ واللون هنا، والحالة تأتي من حقول
+ *  الخادم وحدها (data/employee-card-repo.js rangeReportRows). */
+const ATT_STATE = {
+    absent: { label: 'لم يحضر', tone: 'danger' },
+    'day-off': { label: 'راحة أسبوعية', tone: 'neutral' },
+    review: { label: 'يحتاج مراجعة', tone: 'warning' },
+    'no-in': { label: 'بلا حضور', tone: 'warning' },
+    'no-out': { label: 'بلا انصراف', tone: 'warning' },
+    late: { label: 'تأخير', tone: 'danger' },
+    'in-time': { label: 'في الموعد', tone: 'success' },
+};
 
 function template() {
     return `
@@ -862,6 +914,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
               <span class="erp-text-sm erp-text-muted"><span class="erp-mono" dir="ltr">${esc(row.code)}</span></span>
             </div>
             ${statusBadge('employees', row.status)}
+            <span data-v2-file-badge></span>
           </div>
           <div class="erp-emp-grid">
             <div class="erp-emp-fact"><i class="ji" data-i="building" aria-hidden="true"></i><span>القسم: ${deptCell(row)}</span></div>
@@ -877,12 +930,19 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${expiryLine('انتهاء التثقيف الصحي', raw.healthEduExpiry)}
           </div>
           <div class="erp-person__meta">${shiftBits(ex)}</div>
+          <div class="erp-person__meta" data-v2-file-sched></div>
           ${hasSalary ? `<div class="erp-emp-fact"><i class="ji" data-i="banknote" aria-hidden="true"></i><span>الراتب الأساسي: ${salaryText(ex.salary)}</span></div>` : ''}
+          <div data-v2-file-kpis></div>
           <div data-v2-file-att></div>
+          ${attRangeBlock()}
           <div data-v2-file-leaves></div>
           <div data-v2-file-qr></div>
           <div class="erp-emp-panel__actions">
             <span class="erp-grow"></span>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-print="card">
+              <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة البطاقة الكاملة</span></button>
+            ${canWrite ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-lux>
+              <i class="ji" data-i="id-card" aria-hidden="true"></i><span>البطاقة الرسمية للطباعة</span></button>` : ''}
             ${canWrite ? `<button type="button" class="erp-btn" data-v2-act="edit" data-id="${esc(String(row.id))}">
               <i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span></button>` : ''}
             ${canWrite ? `<button type="button" class="erp-btn erp-btn--danger" data-v2-act="delete" data-id="${esc(String(row.id))}">
@@ -890,6 +950,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             <button type="button" class="erp-btn" data-v2-panel-close>إغلاق</button>
           </div>`));
         fillAttendance(row, seq);
+        fillSchedule(row, seq);
         fillLeaves(row, seq);
         fillQr(row, seq);
     }
@@ -916,6 +977,77 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${Number(s.reviewDays) > 0 ? stat('قيد المراجعة', formatInt(s.reviewDays)) : ''}
           </div>
           <p class="erp-text-sm erp-text-muted">الشهر الحالي — النطاق افتراضي من الخادم؛ الكشف الكامل والطباعة في شاشة الحضور.</p>`;
+        paintCardSummary(row, s);
+    }
+
+    /**
+     * شارة الأداء ومؤشراته والراتب التقديري — من نفس ملخّص التقرير، بلا بابٍ
+     * ثانٍ. البطاقة القديمة (smart-card.js:181-198) كانت تعيد حساب التأخير من
+     * أوقات البصمة في الواجهة؛ V2 يقرأ رقم الخادم نفسه الذي تعرضه شاشة الحضور،
+     * فلا يمكن للبطاقة أن تقول شيئًا تخالفه الشاشة.
+     */
+    function paintCardSummary(row, s) {
+        const k = cardKpis(s);
+        const badgeHost = panelEl.querySelector('[data-v2-file-badge]');
+        if (badgeHost) {
+            badgeHost.innerHTML = k.badge
+                ? `<span class="erp-badge" data-tone="${k.badgeTone}">${esc(k.badge)}</span>`
+                : '';
+        }
+        const kpiHost = panelEl.querySelector('[data-v2-file-kpis]');
+        if (!kpiHost) {return;}
+        const raw = (label, html) => `<span class="erp-emp-stat"><span class="erp-emp-stat__v">${html}</span>`
+            + `<span class="erp-emp-stat__l">${esc(label)}</span></span>`;
+        const stat = (label, value) => raw(label, `<span class="erp-num" dir="ltr">${esc(value)}</span>`);
+        if (k.workDays <= 0) {
+            kpiHost.innerHTML = `<h4 class="erp-emp-sec">الأداء</h4>
+              <p class="erp-text-sm erp-text-muted">لا أيام حضور مسجّلة هذا الشهر — لا نسبة تُحسب ولا خصم يُقدَّر.</p>`;
+            return;
+        }
+        const ex = extrasById.get(String(row.id)) || {};
+        const pr = cardPayroll({ salary: ex.salary, lateMinutes: k.lateMinutes, workDays: k.workDays });
+        kpiHost.innerHTML = `
+          <h4 class="erp-emp-sec">الأداء</h4>
+          <div class="erp-emp-stats">
+            ${stat('نسبة الانتظام', `${k.rate}%`)}
+            ${stat('أيام حضور', formatInt(k.workDays))}
+            ${stat('أيام تأخير', formatInt(k.lateDays))}
+            ${stat('ساعات تأخير', String(k.lateHours))}
+            ${k.reviewDays > 0 ? stat('قيد المراجعة', formatInt(k.reviewDays)) : ''}
+          </div>
+          <progress class="erp-emp-rate" max="100" value="${esc(String(k.rate))}"
+                    aria-label="نسبة الانتظام ${esc(String(k.rate))} بالمئة"></progress>
+          ${pr ? `<h4 class="erp-emp-sec">الراتب التقديري</h4>
+          <div class="erp-emp-stats">
+            ${raw('الأساسي', salaryText(pr.basic))}
+            ${raw(`خصم تأخير (${formatInt(pr.deductionHours)} س)`, salaryText(pr.deduction))}
+            ${raw('صافي تقديري', salaryText(pr.net))}
+          </div>
+          <p class="erp-text-sm erp-text-muted">تقديري — الخصم المعتمد يُحتسب في كشف الرواتب.</p>` : ''}`;
+    }
+
+    /**
+     * الدوام المجدول القادم — hr-routes.js:1639. التعديل بتاريخ مستقبلي لا
+     * يُسمَع في البطاقة فورًا، فالشارة تقول «مجدول من…» بدل أن توهم بدوامٍ
+     * لم يبدأ (تفسير smart-card.js:30-32 نفسه). موظفٌ بلا تعديلٍ مستقبلي لا
+     * شارة له — وهذا صمتٌ مقصود، لا خطأ مخفيّ.
+     */
+    async function fillSchedule(row, seq) {
+        const host = panelEl.querySelector('[data-v2-file-sched]');
+        if (!host) {return;}
+        let res;
+        try { res = await fetchEmployeeSchedule(row.id); }
+        catch (_) {return;}
+        if (!el.isConnected || seq !== panelSeq || panelKind !== 'file' || !host.isConnected) {return;}
+        const n = scheduleNotice(res);
+        if (!n) {return;}
+        const extra = n.extra > 0 ? ` <span class="erp-text-muted">(+${formatInt(n.extra)})</span>` : '';
+        /* «(12س)» و«: 16:00» يحذفان كاملَين حين لا قيمة: العمودان يجوز أن
+           يكونا null، و«()س» أو «: » يوهمان بقراءةٍ ناقصة بينما لم تُكتب. */
+        const time = n.start ? `: <span class="erp-num" dir="ltr">${esc(n.start)}</span>` : '';
+        const hours = n.hours ? ` (${esc(n.hours)}س)` : '';
+        host.innerHTML = `<span class="erp-emp-sched"><i class="ji" data-i="calendar-days" aria-hidden="true"></i>`
+            + `<span>مجدول من <span class="erp-num" dir="ltr">${esc(n.effectiveFrom)}</span>${time}${hours}${extra}</span></span>`;
     }
 
     async function fillLeaves(row, seq) {
@@ -968,26 +1100,51 @@ export function mountEmployeesScreen(host, ctx = {}) {
             return;
         }
         const ready = await ensureQrCode();
+        const systemText = systemQrText(card);
         let qrUrl = '';
-        if (ready) {
-            try { qrUrl = await window.QRCode.toDataURL(JSON.stringify(card.qrPayload), { margin: 1, width: 320 }); }
+        if (ready && systemText) {
+            try { qrUrl = await window.QRCode.toDataURL(systemText, { margin: 1, width: 320 }); }
             catch (_) { qrUrl = ''; }
         }
+        // رمز البيانات: نصٌّ مقروء يمسحه الجوال — لا يُقدَّم لكشك الحضور أبدًا.
+        const humanText = humanQrText({
+            employeeName: row.name,
+            employeeCode: row.code,
+            deptName: row.deptResolved ? row.dept : '',
+            position: row.position !== '—' ? row.position : '',
+            deviceUserId: (extrasById.get(String(row.id)) || {}).deviceUserId,
+            cardId: (card.qrPayload || {}).cardId,
+        });
+        let humanUrl = '';
+        if (ready) {
+            try { humanUrl = await window.QRCode.toDataURL(humanText, { margin: 1, width: 320 }); }
+            catch (_) { humanUrl = ''; }
+        }
         if (!el.isConnected || seq !== panelSeq || panelKind !== 'file' || !host.isConnected) {return;}
-        if (panelData) {panelData.qrUrl = qrUrl;}
+        if (panelData) {panelData.qrUrl = qrUrl; panelData.humanQrUrl = humanUrl;}
         const payload = card.qrPayload || {};
         host.innerHTML = `<h4 class="erp-emp-sec">بطاقة QR</h4>
           <div class="erp-emp-qr-card">
-            ${qrUrl
-                ? `<img class="erp-emp-qr__img" src="${esc(qrUrl)}" alt="رمز QR للموظف ${esc(row.name)}">`
-                : `<p class="erp-text-sm erp-text-muted">تعذر تحميل مولّد الرموز — أعد فتح الكشف للمحاولة مرة أخرى.</p>`}
+            <div class="erp-emp-qr__pair">
+              <div class="erp-emp-qr__one">
+                ${qrUrl
+                    ? `<img class="erp-emp-qr__img" src="${esc(qrUrl)}" alt="رمز QR للموظف ${esc(row.name)}">`
+                    : `<p class="erp-text-sm erp-text-muted">تعذر تحميل مولّد الرموز — أعد فتح الكشف للمحاولة مرة أخرى.</p>`}
+                <span class="erp-emp-qr__cap">رمز النظام — يمسحه كشك الحضور</span>
+              </div>
+              ${humanUrl ? `<div class="erp-emp-qr__one">
+                <img class="erp-emp-qr__img" src="${esc(humanUrl)}" alt="رمز بيانات الموظف ${esc(row.name)} للقراءة فقط">
+                <span class="erp-emp-qr__cap">رمز البيانات — يمسحه الجوال للقراءة</span>
+              </div>` : ''}
+            </div>
             <div class="erp-emp-qr__meta">
               <span class="erp-text-sm">رقم البطاقة: <span class="erp-num" dir="ltr">${esc(payload.cardId || '')}</span></span>
               <span class="erp-text-sm erp-text-muted">إصدار <span class="erp-num" dir="ltr">${esc(String(payload.qrVersion ?? ''))}</span> — المسح يتحقق عبر بوابة الخادم</span>
             </div>
             <div class="erp-emp-qr__btns erp-no-print">
-              ${qrUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="save"><i class="ji" data-i="download" aria-hidden="true"></i><span>حفظ PNG</span></button>` : ''}
-              ${qrUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="print"><i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة البطاقة</span></button>` : ''}
+              ${qrUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="save"><i class="ji" data-i="download" aria-hidden="true"></i><span>حفظ رمز النظام</span></button>` : ''}
+              ${humanUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="save-human"><i class="ji" data-i="download" aria-hidden="true"></i><span>حفظ رمز البيانات</span></button>` : ''}
+              ${qrUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="print"><i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة رمز QR</span></button>` : ''}
               ${regenBtn}
             </div>
           </div>`;
@@ -1009,6 +1166,109 @@ export function mountEmployeesScreen(host, ctx = {}) {
         if (panelKind === 'file' && panelRow) {await fillQr(panelRow, panelSeq);}
     }
 
+    /* ── كشف يوم/فترة (W2-5) ─────────────────────────────────────────── */
+
+    function attRangeReady(on) {
+        const btn = panelEl.querySelector('[data-v2-att="print"]');
+        if (btn) {btn.disabled = !on;}
+    }
+
+    /** كشف يوم أو فترة من داخل البطاقة: نفس باب تقرير الموظف بنطاقٍ صريح.
+     *  المُرسَل هو id الصفّ الذي فُتحت عليه اللوحة، والخادم وحده يقرّر النطاق
+     *  المسموح — ولا يُعاد اشتقاق حالة يوم في المتصفح. */
+    async function loadAttRange(kind) {
+        if (!panelRow || panelKind !== 'file') {return;}
+        const fromEl = panelEl.querySelector('[data-v2-att-from]');
+        const toEl = panelEl.querySelector('[data-v2-att-to]');
+        const today = todayIso();
+        let from = today;
+        let to = today;
+        if (kind !== 'day') {
+            from = (fromEl && fromEl.value) || '';
+            to = (toEl && toEl.value) || '';
+            if (!from || !to) {notify('اختر تاريخ البداية والنهاية'); return;}
+            if (to < from) {notify('تاريخ النهاية يسبق تاريخ البداية'); return;}
+        }
+        if (fromEl) {fromEl.value = from;}
+        if (toEl) {toEl.value = to;}
+        const seq = panelSeq;
+        const host = panelEl.querySelector('[data-v2-att-result]');
+        if (!host) {return;}
+        attRangeReady(false);
+        host.innerHTML = `<p class="erp-text-sm erp-text-muted">جارٍ قراءة الكشف…</p>`;
+        let res = null; let err = '';
+        try { res = await fetchAttendanceReport({ employeeId: panelRow.id, from, to }); }
+        catch (e) { err = (e && e.message) || 'خطأ'; }
+        if (!el.isConnected || seq !== panelSeq || panelKind !== 'file' || !host.isConnected) {return;}
+        if (err) {host.innerHTML = `<p class="erp-text-sm erp-emp-bad">تعذر قراءة الكشف: ${esc(err)}</p>`; return;}
+        host.innerHTML = attRangeHtml(rangeReportRows(res));
+        attRangeReady(true);
+    }
+
+    /** ورقة الكشف: المؤشرات من ملخّص الخادم، وحالة اليوم من `lateMinutes`
+     *  و`needsReview` لسجله — لا حساب وردية في المتصفح. أيام الغياب تظهر
+     *  صفوفًا («لم يحضر») فلا يخفي الجدول نصف المعلومة. */
+    function attRangeHtml(model) {
+        const s = model.summary;
+        const who = model.employee && model.employee.name ? String(model.employee.name) : '';
+        const stat = (label, value) => `<span class="erp-emp-stat"><span class="erp-emp-stat__v erp-num" dir="ltr">${esc(value)}</span>`
+            + `<span class="erp-emp-stat__l">${esc(label)}</span></span>`;
+        const body = model.rows.map((r) => {
+            // السقوط إلى «يحتاج مراجعة» لا إلى «لم يحضر»: حالةٌ لا يعرفها
+            // القاموس تستدعي عينًا بشرية، لا تهمة غياب.
+            const st = ATT_STATE[r.state] || ATT_STATE.review;
+            const late = r.state === 'late' ? ` ${minutesToHM(r.lateMinutes)}` : '';
+            return `<tr>
+              <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.date)}</span></td>
+              <td class="erp-td erp-text-muted">${esc(weekdayAr(r.date))}</td>
+              <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.checkIn || '—')}</span></td>
+              <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.checkOut || '—')}</span></td>
+              <td class="erp-td"><span class="erp-num" dir="ltr">${esc(minutesToHM(r.minutes))}</span></td>
+              <td class="erp-td"><span class="erp-badge" data-tone="${esc(st.tone)}">${esc(st.label)}${esc(late)}</span></td>
+            </tr>`;
+        }).join('') || `<tr><td class="erp-td" colspan="6">لا أيام في هذه الفترة</td></tr>`;
+        const offDays = model.rows.filter((r) => r.state === 'day-off').length;
+        const notes = [
+            model.truncated ? `عرض أول ${formatInt(MAX_RANGE_DAYS)} يومًا من الفترة — ضيّق النطاق لرؤية الباقي.` : '',
+            s.reviewDays > 0 ? `قيد المراجعة: ${formatInt(s.reviewDays)} يومًا (${minutesToHM(s.reviewMinutes)}) لا تدخل الإجمالي.` : '',
+            offDays > 0 ? `راحة أسبوعية مجدولة: ${formatInt(offDays)} يومًا في هذه الفترة — بترميز اليوم المخزّن، لا تُعدّ غيابًا.` : '',
+            'الحالة من حقل التأخير الذي يحسبه الخادم نفسه — نفس رقم شاشة الحضور.',
+        ].filter(Boolean);
+        return `<h4 class="erp-emp-sec">كشف <span class="erp-num" dir="ltr">${esc(s.from)}</span> — <span class="erp-num" dir="ltr">${esc(s.to)}</span>${who ? ` · ${esc(who)}` : ''}</h4>
+          <div class="erp-emp-stats">
+            ${stat('أيام حضور', formatInt(s.daysPresent))}
+            ${stat('أيام مكتملة', formatInt(s.completeDays))}
+            ${stat('أيام في الموعد', formatInt(s.onTimeDays))}
+            ${stat('أيام تأخير', formatInt(s.lateDays))}
+            ${stat('إجمالي التأخير', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
+            ${stat('إجمالي الساعات', String(s.totalKarim))}
+          </div>
+          <div class="erp-table__scroll erp-emp-att__scroll">
+            <table class="erp-table__grid">
+              <thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+          <p class="erp-text-sm erp-text-muted">${notes.map((n) => esc(n)).join(' ')}</p>`;
+    }
+
+    /** البطاقة الرسمية (lux): يولّدها الخادم صفحةً مستقلّة، فتُكتب في نافذة
+     *  فارغة تُفتح داخل نقرة المستخدم نفسها — وإلا حجبها المتصفح. نفس خطاف
+     *  printLuxCard القديم (smart-card.js:702-714) حرفًا. */
+    async function printLux() {
+        if (!panelRow || panelKind !== 'file') {return;}
+        const win = window.open('', '_blank');
+        if (!win) {notify('اسمح بالنوافذ المنبثقة لطباعة البطاقة'); return;}
+        try {
+            const html = await fetchLuxCardHtml(panelRow.id);
+            win.document.write(html);
+            win.document.close();
+        } catch (e) {
+            try { win.close(); } catch (_) { /* أُغلقت */ }
+            notify((e && e.message) || 'تعذر توليد البطاقة');
+        }
+    }
+
     /** The single print call of this screen. The QR card print narrows the
      *  paper with a body class and cleans it on afterprint (plus a timer,
      *  because Safari fires no afterprint for class-triggered prints). */
@@ -1016,12 +1276,35 @@ export function mountEmployeesScreen(host, ctx = {}) {
         window.print();
     }
 
-    function printQrCard() {
-        const cleanup = () => document.body.classList.remove('erp-v2-print-card');
-        document.body.classList.add('erp-v2-print-card');
+    /**
+     * شارة واحدة = ورقة واحدة. النقر على زري طباعة مختلفين قبل أن يعمل المؤقّت
+     * كان يركّب الشارات فوق بعضها — unionٌ لم يحدّده أحد ويخفي ما لا ينبغي.
+     * لكل نداءٍ طباعةٍ واحد تمسح أختَيها أولًا، فلا تصل الورقة إلا بشارةٍ واحدة.
+     */
+    const PRINT_MODES = ['erp-v2-print-card', 'erp-v2-print-empcard', 'erp-v2-print-dayrange'];
+    function printMode(cls) {
+        PRINT_MODES.forEach((c) => document.body.classList.remove(c));
+        const cleanup = () => document.body.classList.remove(cls);
+        document.body.classList.add(cls);
         window.addEventListener('afterprint', cleanup, { once: true });
         setTimeout(cleanup, 3000);
         printNow();
+    }
+
+    function printQrCard() {
+        printMode('erp-v2-print-card');
+    }
+
+    /** طباعة البطاقة كاملة: الأداء والراتب والرمزين معًا — نفس نداء الطباعة
+     *  الوحيد، وشارةُ body أوسع تقول للورقة ما تُبقيه. */
+    function printEmpCard() {
+        printMode('erp-v2-print-empcard');
+    }
+
+    /** طباعة كشف اليوم/الفترة وحده: الورقة تحمل الجدول والملخّص بلا رأسٍ
+     *  ولا مؤشرات — نفس نداء الطباعة الوحيد وشارة body ثالثة. */
+    function printAttRange() {
+        printMode('erp-v2-print-dayrange');
     }
 
     /* ── Import panel (W2-2) ──────────────────────────────────────────── */
@@ -1248,7 +1531,12 @@ export function mountEmployeesScreen(host, ctx = {}) {
         const viewBtn = event.target.closest('[data-v2-view]');
         if (viewBtn) {setView(viewBtn.dataset.v2View); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
-        if (event.target.closest('[data-v2-print]')) {printNow(); return;}
+        if (event.target.closest('[data-v2-print]')) {
+            const printBtn = event.target.closest('[data-v2-print]');
+            if (printBtn.getAttribute('data-v2-print') === 'card') {printEmpCard(); return;}
+            printNow();
+            return;
+        }
         if (event.target.closest('[data-v2-clear]')) {
             q('[data-v2-dept]').value = 'all';
             q('[data-v2-status]').value = 'all';
@@ -1281,11 +1569,14 @@ export function mountEmployeesScreen(host, ctx = {}) {
         const qrBtn = event.target.closest('[data-v2-qr]');
         if (qrBtn) {
             const kind = qrBtn.getAttribute('data-v2-qr');
-            if (kind === 'save') {
-                if (panelData && panelData.qrUrl) {
+            if (kind === 'save' || kind === 'save-human') {
+                const url = kind === 'save'
+                    ? (panelData && panelData.qrUrl)
+                    : (panelData && panelData.humanQrUrl);
+                if (url) {
                     const a = document.createElement('a');
-                    a.href = panelData.qrUrl;
-                    a.download = `employee-qr-${panelRow ? panelRow.code : ''}.png`;
+                    a.href = url;
+                    a.download = `employee-${kind === 'save' ? 'qr' : 'data'}-${panelRow ? panelRow.code : ''}.png`;
                     a.click();
                 }
                 return;
@@ -1294,6 +1585,14 @@ export function mountEmployeesScreen(host, ctx = {}) {
             if (kind === 'regen') {regenQr(); return;}
             return;
         }
+        const attBtn = event.target.closest('[data-v2-att]');
+        if (attBtn) {
+            const kind = attBtn.getAttribute('data-v2-att');
+            if (kind === 'print') {printAttRange(); return;}
+            loadAttRange(kind);
+            return;
+        }
+        if (event.target.closest('[data-v2-lux]')) {printLux(); return;}
         if (event.target.closest('[data-v2-template]')) {downloadTemplate(); return;}
         if (event.target.closest('[data-v2-import-run]')) {runImport();}
     });
