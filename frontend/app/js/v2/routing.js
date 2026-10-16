@@ -54,6 +54,7 @@ export const SUB_ROUTES = [
     'yara-daily-locks',
     'procurement-invoices',
     'procurement-payments',
+    'goods-scan',
 ];
 
 /** Shape of a real nav key — lowercase letters, digits, hyphens. Anything

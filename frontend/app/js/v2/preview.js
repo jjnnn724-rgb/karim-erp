@@ -77,6 +77,7 @@ import { mountPayrollScreen } from './screens/payroll.js?v=4.9.134';
 import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.134';
 import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.134';
 import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.134';
+import { mountGoodsScanScreen } from './screens/goods-scan.js?v=4.9.134';
 import { mountRecipesScreen } from './screens/recipes.js?v=4.9.134';
 import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.134';
 import { mountExpensesScreen } from './screens/expenses.js?v=4.9.134';
@@ -242,7 +243,7 @@ const shell = mountAppLayout(root, {
             onClick: () => {
                 // Whichever live screen is mounted owns its own refresh; the
                 // sample table is the fallback for every other screen.
-                const live = briefingScreen || branchesScreen || attendanceScreen || employeesScreen || warehouseScreen || reportsScreen;
+                const live = briefingScreen || branchesScreen || attendanceScreen || employeesScreen || warehouseScreen || reportsScreen || goodsScanScreen;
                 if (live) {live.reload();} else {reloadTable();}
             },
         },
@@ -555,6 +556,7 @@ let leavesScreen = null;
 let dispatchScreen = null;
 let vegScreen = null;
 let whMovesScreen = null;
+let goodsScanScreen = null;
 let whReturnsScreen = null;
 let whPrsScreen = null;
 let departmentsScreen = null;
@@ -691,6 +693,10 @@ function teardownVegScreen() {
 
 function teardownWhMovesScreen() {
     if (whMovesScreen) { whMovesScreen.destroy(); whMovesScreen = null; }
+}
+
+function teardownGoodsScanScreen() {
+    if (goodsScanScreen) { goodsScanScreen.destroy(); goodsScanScreen = null; }
 }
 
 function teardownWhReturnsScreen() {
@@ -1839,6 +1845,12 @@ function renderWhMovesScreen() {
     renderLiveRegisterScreen({ key: 'wh-moves', title: 'حركات المخزون', mount: mountWhMovesScreen, assign: (s) => { whMovesScreen = s; } });
 }
 
+/* البند ٩: مسح الباركود — مسارٌ فرعي (#goods-scan) لا بطاقة في القائمة،
+   والشاشة نفسها تقرأ ?v2scan وتطفئ كل شيء بدونه (screens/goods-scan.js). */
+function renderGoodsScanScreen() {
+    renderLiveRegisterScreen({ key: 'goods-scan', title: 'مسح الباركود', mount: mountGoodsScanScreen, assign: (s) => { goodsScanScreen = s; } });
+}
+
 function renderWhReturnsScreen() {
     renderLiveRegisterScreen({ key: 'wh-returns', title: 'مرتجعات المطبخ', mount: mountWhReturnsScreen, assign: (s) => { whReturnsScreen = s; } });
 }
@@ -1952,6 +1964,7 @@ function renderScreen(key) {
     teardownDispatchScreen();
     teardownVegScreen();
     teardownWhMovesScreen();
+    teardownGoodsScanScreen();
     teardownWhReturnsScreen();
     teardownWhPrsScreen();
     teardownRecipesScreen();
@@ -2058,6 +2071,13 @@ function renderScreen(key) {
 
     if (key === 'wh-moves') {
         renderWhMovesScreen();
+        return;
+    }
+
+    /* البند ٩: #goods-scan — لا يفتح إلا إذا قرأت الشاشة نفسها ?v2scan=1،
+       وبدونه تعرض بطاقة الإطفاء ولا تلمس الشبكة (screens/goods-scan.js). */
+    if (key === 'goods-scan') {
+        renderGoodsScanScreen();
         return;
     }
 
