@@ -1,21 +1,33 @@
 /**
- * V2 — Revenues screen · شاشة 15 في سجل الترحيل (قراءة فقط)
+ * V2 — Revenues screen · شاشة 15 (قراءة + تعديل/حذف finance.edit)
  * ═══════════════════════════════════════════════════════════════════════
  *
- * Same per-screen contract as 01-14: read-only by construction, one
- * network door (v2/data/finance-repo.js), delegated listeners on a
- * per-mount root, loading guards, isConnected checks, destroy() on nav.
+ * Same per-screen contract as 01-14: delegated listeners on a per-mount
+ * root, loading guards, isConnected checks, destroy() on nav — وبابان
+ * بدل واحد: القراءة من finance-repo.js والكتابة من finance-write-repo.js
+ * (لا fetch ولا apiFetch في نص الشاشة أصلًا).
  *
- * LEGACY PARITY (features/finance.js:9-32)
+ * LEGACY PARITY (features/finance.js:9-32 · :135-164)
  *   Default lens = current month (owner request 2026-10-08, finance.js:35);
  *   filters: dept (code), from, to, free search; net-shown total card;
  *   print. Newest first. The walk cap (newest 8,000 rows) is stated in
- *   the UI. Add/edit/delete are finance.edit doors — wave 2, not here.
+ *   the UI. التعديل والحذف ببوابة finance.edit (أدناه)، والإنشاء ليس هنا.
+ *
+ * P1-2 (عقد الإكمال بند ٢ — «4 كتابات + تصحيح أدوار»):
+ *   عمود إجراءات يُرسم فقط لدور FINANCE_WRITE_ROLES =
+ *   admin|manager|accountant (مرآة schema-registry:772-773، الخادم يعيد
+ *   الفحص على app.put/app.delete). الحذف يسأل confirmFn أولًا (مرآة
+ *   legacy confirm في finance.js:157) والرفض لا يرسل نداءً. الإضافة
+ *   ليست في هذا الملف: POST /revenues بابه dept-detail.js (زر «إيراد +»
+ *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { fetchRevenues, fetchDepartments, isoDay, firstOfMonth } from '../data/finance-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { fetchRevenues, fetchDepartments, isoDay, firstOfMonth } from '../data/finance-repo.js?v=4.9.145';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.145';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.145';
+import { canWrite } from '../session.js?v=4.9.145';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -60,12 +72,15 @@ function template(from, to) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
-            قراءة فقط — سجل الإيرادات (<span class="erp-addr" dir="ltr">/api/revenues</span>)،
-            والصلاحية قررها الخادم وحده. الافتراضي الشهر الحالي؛ إفراغ
-            التاريخين يعرض الكل. يُقرأ الأحدث حتى 8,000 حركة ثم تُطبَّق
-            الفرزات محليًا. الإضافة والتعديل حماية
-            <span class="erp-addr" dir="ltr">finance.edit</span> — موجة ثانية.
+            سجل الإيرادات (<span class="erp-addr" dir="ltr">/api/revenues</span>) —
+            والصلاحية قررها الخادم وحده. عمود الإجراءات (تعديل/حذف) لا يُرسم
+            إلا لدور <span class="erp-addr" dir="ltr">finance.edit</span>
+            (admin|manager|accountant) والخادم يعيد فحص كل نداء؛ الإضافة من
+            زر «إيراد +» في تفاصيل القسم (10) لأن إنشاء الإيراد بابٌ آخر.
+            الافتراضي الشهر الحالي؛ إفراغ التاريخين يعرض الكل. يُقرأ الأحدث
+            حتى 8,000 حركة ثم تُطبَّق الفرزات محليًا.
           </p>
+          <div data-v2-form hidden></div>
           <div data-v2-table></div>
         </div>
       </section>`;
@@ -73,15 +88,25 @@ function template(from, to) {
 
 /**
  * @param {ParentNode} host where the screen is inserted
- * @param {{role?: string|null, notify?: (message:string, kind?:string)=>void}} [ctx]
+ * @param {{role?: string|null, confirmFn?: (message:string)=>boolean, notify?: (message:string, kind?:string)=>void}} [ctx]
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getRows: ()=>any[], destroy: ()=>void}}
  */
-export function mountRevenuesScreen(host, _ctx = {}) {
+export function mountRevenuesScreen(host, ctx = {}) {
+    const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 revenues]', m);
+    const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
+        : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
+    /* P1-2 والعقد: الرسم يحتاج الدور **وعلم الكتابة** (OFF افتراضيًا)،
+       والخادم يبقى الحاكم في كل PUT/DELETE. */
+    const writable = canWrite(ctx.role, FINANCE_WRITE_ROLES) && financeWriteEnabled();
+
     let allRows = [];
     let depts = [];
     let currency = '';
     let loading = false;
+    let queued = false;          // a refresh asked for while one was running
     let deptCode = 'all';
+    let saving = false;
+    let editing = null;          // raw row whose form is open (null when closed)
 
     host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0)));
     const el = host.lastElementChild;
@@ -90,6 +115,7 @@ export function mountRevenuesScreen(host, _ctx = {}) {
     const summaryEl = q('[data-v2-summary]');
     const clearBtn = q('[data-v2-clear]');
     const searchEl = q('#v2rev-search');
+    const formHost = q('[data-v2-form]');
 
     const table = createDataTable({
         caption: 'سجل الإيرادات — بيانات حية',
@@ -118,6 +144,22 @@ export function mountRevenuesScreen(host, _ctx = {}) {
                 key: 'notes', header: 'ملاحظات',
                 render: (row) => (row.notes ? esc(row.notes) : `<span class="erp-text-muted">—</span>`),
             },
+            ...(writable ? [{
+                key: 'actions',
+                header: 'إجراءات',
+                width: '170px',
+                align: 'end',
+                value: () => '',
+                render: (row) => `
+                  <span class="erp-row-wrap">
+                    <button type="button" class="erp-btn erp-btn--sm" data-v2-act="edit" data-id="${esc(row.id)}" data-name="${esc(row.source || '')}">
+                      <i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span>
+                    </button>
+                    <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-act="delete" data-id="${esc(row.id)}" data-name="${esc(row.source || '')}">
+                      <i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف</span>
+                    </button>
+                  </span>`,
+            }] : []),
         ],
     });
 
@@ -155,7 +197,7 @@ export function mountRevenuesScreen(host, _ctx = {}) {
     }
 
     async function reload() {
-        if (loading) {return;}
+        if (loading) {queued = true; return;}
         loading = true;
         table.setLoading(true);
         try {
@@ -188,6 +230,150 @@ export function mountRevenuesScreen(host, _ctx = {}) {
                     : `تعذّر تحميل الإيرادات: ${(e && e.message) || 'خطأ'}`));
         } finally {
             loading = false;
+            if (queued && el.isConnected) {
+                queued = false;
+                reload();                            // the newest read wins
+            }
+        }
+    }
+
+    /* ── Form (in-card edit panel — no legacy modal, no inline handler) ─ */
+    const REV_FIELDS = ['source', 'deptId', 'amount', 'date', 'notes'];
+
+    /** قسم غائب من الدليل (محذوف أو رمز غريب) يُعرض كما هو — لا يُخترع اسم بديل. */
+    function deptOptions(selected) {
+        const cur = String(selected ?? '');
+        const known = depts.map((d) => `<option value="${esc(d.code)}"${String(d.code) === cur ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
+        if (cur && depts.some((d) => String(d.code) === cur)) {return known;}
+        return (cur ? '' : '<option value="" selected>— بلا قسم —</option>')
+            + known + (cur ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : '');
+    }
+
+    function formHtml() {
+        const row = editing || {};
+        const val = (k) => (row[k] !== undefined && row[k] !== null ? String(row[k]) : '');
+        return `
+          <form class="erp-stack" data-v2-form-el novalidate>
+            <h4 class="erp-card__title">تعديل إيراد</h4>
+            <div class="erp-field">
+              <label class="erp-label" for="v2rev-f-source">المصدر *</label>
+              <input class="erp-input" id="v2rev-f-source" name="source" value="${esc(val('source'))}">
+            </div>
+            <div class="erp-row-wrap">
+              <div class="erp-grow">
+                <label class="erp-label" for="v2rev-f-dept">القسم *</label>
+                <select class="erp-select" id="v2rev-f-dept" name="deptId">${deptOptions(val('deptId'))}</select>
+              </div>
+              <div class="erp-grow">
+                <label class="erp-label" for="v2rev-f-amount">المبلغ *</label>
+                <input class="erp-input erp-input--ltr" id="v2rev-f-amount" name="amount" type="number" step="0.01" value="${esc(val('amount'))}">
+              </div>
+            </div>
+            <div class="erp-field">
+              <label class="erp-label" for="v2rev-f-date">التاريخ *</label>
+              <input class="erp-input erp-input--ltr" id="v2rev-f-date" name="date" type="date" value="${esc(val('date'))}">
+            </div>
+            <div class="erp-field">
+              <label class="erp-label" for="v2rev-f-notes">ملاحظات</label>
+              <input class="erp-input" id="v2rev-f-notes" name="notes" value="${esc(val('notes'))}">
+            </div>
+            <p class="erp-text-sm erp-text-muted">التعديل يمسّ سجلًا ماليًا حقيقيًا؛ حقول خارج قائمة الكتابة لا تُرسل أصلًا، ورفض الخادم يظهر حرفيًا هنا.</p>
+            <div class="erp-error" data-v2-form-error role="alert"></div>
+            <div class="erp-row-wrap">
+              <span class="erp-grow"></span>
+              <button type="button" class="erp-btn" data-v2-form-cancel>إلغاء</button>
+              <button type="submit" class="erp-btn erp-btn--primary" data-v2-form-save>
+                <i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ</span>
+              </button>
+            </div>
+          </form>`;
+    }
+
+    function openForm(id) {
+        if (!writable) {return;}
+        const row = allRows.find((r) => String(r.id) === String(id));   // raw record
+        if (!row) {return;}
+        editing = { ...row };
+        formHost.innerHTML = formHtml();
+        formHost.hidden = false;
+        formHost.querySelector('[name="source"]')?.focus();
+    }
+
+    function closeForm() {
+        editing = null;
+        formHost.hidden = true;
+        formHost.innerHTML = '';
+    }
+
+    function readForm() {
+        const out = {};
+        const form = formHost.querySelector('[data-v2-form-el]');
+        if (!form) {return out;}
+        for (const key of REV_FIELDS) {
+            const input = form.querySelector(`[name="${key}"]`);
+            out[key] = input ? input.value : '';
+        }
+        return out;
+    }
+
+    function showFormErrors(errors) {
+        const box = formHost.querySelector('[data-v2-form-error]');
+        if (!box) {return;}
+        box.textContent = errors.map((e) => e.message).join(' · ');
+        const form = formHost.querySelector('[data-v2-form-el]');
+        if (!form) {return;}
+        for (const key of REV_FIELDS) {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) {input.setAttribute('aria-invalid', errors.some((e) => e.field === key) ? 'true' : 'false');}
+        }
+    }
+
+    async function submitForm(event) {
+        event.preventDefault();
+        if (saving || !editing || editing.id == null) {return;}
+        const form = readForm();
+        const errors = validateRevenueForm(form);
+        if (errors.length) {
+            showFormErrors(errors);
+            return;
+        }
+        showFormErrors([]);
+        saving = true;
+        const saveBtn = formHost.querySelector('[data-v2-form-save]');
+        if (saveBtn) {saveBtn.disabled = true;}
+        try {
+            await updateRevenue(editing.id, form);
+            if (!el.isConnected) {return;}           // navigated away mid-save
+            notify(`تم تعديل إيراد «${String(form.source).trim()}»`);
+            closeForm();
+            await reload();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            // The server's sentence stays verbatim — refusal is the operator's
+            // to fix, not ours to re-word.
+            showFormErrors([{ field: '', message: (e && e.message) || 'فشل الحفظ' }]);
+        } finally {
+            saving = false;
+            const btn = formHost.querySelector('[data-v2-form-save]');
+            if (btn) {btn.disabled = false;}
+        }
+    }
+
+    /** الحذف يسأل أولًا (مرآة legacy finance.js:157) — الرفض لا يرسل نداءً. */
+    async function runDelete(id, name) {
+        if (saving) {return;}
+        if (!confirmFn(`حذف إيراد «${name || `#${id}`}»؟ لا رجعة بعد الحذف.`)) {return;}
+        saving = true;
+        try {
+            await deleteRevenue(id);
+            if (!el.isConnected) {return;}           // navigated away mid-write
+            notify(`تم حذف إيراد «${name || `#${id}`}»`);
+            await reload();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            notify(`فشلت العملية: ${(e && e.message) || 'خطأ'}`, 'error');
+        } finally {
+            saving = false;
         }
     }
 
@@ -204,6 +390,14 @@ export function mountRevenuesScreen(host, _ctx = {}) {
         }
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-form-cancel]')) {closeForm(); return;}
+        const actBtn = event.target.closest('[data-v2-act]');
+        if (actBtn) {
+            if (actBtn.disabled) {return;}
+            if (actBtn.dataset.v2Act === 'edit') {openForm(actBtn.dataset.id); return;}
+            runDelete(actBtn.dataset.id, actBtn.dataset.name || '');
+            return;
+        }
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
     el.addEventListener('change', (event) => {
@@ -213,6 +407,8 @@ export function mountRevenuesScreen(host, _ctx = {}) {
     el.addEventListener('input', (event) => {
         if (event.target.id === 'v2rev-search') {paint();}
     });
+
+    formHost.addEventListener('submit', submitForm);
 
     reload();
 

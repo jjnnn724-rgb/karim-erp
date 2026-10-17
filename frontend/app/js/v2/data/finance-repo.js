@@ -36,7 +36,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.131';
+import { apiFetch } from '../../core/api.js?v=4.9.145';
 
 /** Walk cap: newest 8,000 rows per register (documented in every screen). */
 export const WALK_PAGES = 8;
@@ -58,6 +58,15 @@ export async function fetchEntityNewest(entity) {
 export const fetchRevenues = () => fetchEntityNewest('revenues');
 export const fetchExpenses = () => fetchEntityNewest('expenses');
 export const fetchDepartments = () => fetchEntityNewest('departments');
+
+/** Newest rows of one register — one page, for dashboards that show a short
+ *  "latest" list. Not a walk: the caller must not total these rows. */
+export async function fetchNewest(entity, limit = 6) {
+    const size = Math.max(1, Math.min(Number(limit) || 6, 100));
+    const res = await apiFetch(`/${entity}?page=1&limit=${size}&sort=id&order=desc`);
+    return res && Array.isArray(res.data) ? res.data
+        : (Array.isArray(res) ? res : []);
+}
 
 /** GET /finance/pnl — both dates or neither (server 400 on a lone one). */
 export async function fetchPnl(from, to) {
