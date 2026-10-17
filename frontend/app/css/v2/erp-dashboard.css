@@ -13,6 +13,18 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── KPI strip (NetSuite density: 6 tiles, each with a delta) ─────────── */
+/* Six tiles only afford a divisor of six — 6 · 3 · 2 · 1 — and nothing in
+   between: every other count ends on an orphan row. `auto-fit` alone did
+   exactly that, measured on the running page (dense/comfortable): six tiles
+   split 5+1 at 1024–1420 and 4+2 at 900, the tiles squeezed to their 172px
+   floor while the sixth sat alone underneath.
+   So the count is pinned rather than guessed, and only the widest band keeps
+   the free `auto-fit`: six tiles fit one row down to a 1425px viewport in
+   comfortable density (6×172 + 5×12 gaps), which is the wider of the two, so
+   the breakpoint sits just below that.
+   `minmax(0, 1fr)` rather than `1fr`: a bare `1fr` track still refuses to go
+   under its content's min-content width, and that is how a strip starts
+   scrolling sideways. */
 .erp-v2 .erp-kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
@@ -20,6 +32,9 @@
   margin: 0 0 var(--erp-space-4);
   padding: 0;
   list-style: none;
+}
+@media (max-width: 1439px) {
+  .erp-v2 .erp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .erp-v2 .erp-kpi {
   background: var(--erp-surface);
@@ -223,6 +238,21 @@
   .erp-v2 .erp-pipe { overflow-x: auto; }
   .erp-v2 .erp-pipe__step { min-inline-size: 108px; }
   .erp-v2 .erp-top__name { min-inline-size: 92px; }
+}
+
+/* Two tiles per row stop paying off under ~380px: measured at 340 and 320 the
+   tile's own content (icon · label · value) had begun to overflow its
+   126–136px box — 2px in dense density and 16px in comfortable — while the
+   label was cut mid-word by its ellipsis. One tile per row removes that
+   overflow and lets the label read whole. (The 4px the document still scrolls
+   at 320px is not this strip: it is the data table, which is 709px wide inside
+   its own scroll box and stays 4px over below a 360px viewport.) */
+@media (max-width: 380px) {
+  .erp-v2 .erp-kpis { grid-template-columns: minmax(0, 1fr); }
+  /* The grid's 300px column floor cannot fit a ~280px card body: it pushed
+     the card 4px past the viewport. The floor only sizes columns, so folding
+     to one column below the same 380px tier removes the overflow. */
+  .erp-v2 .erp-dash-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── Reduced motion: no shimmer/pulse above 3Hz concerns, kill slides ──── */

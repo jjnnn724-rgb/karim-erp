@@ -47,10 +47,19 @@
   --erp-surface-active:    var(--karim-surface-active, #e9ecf1);
 
   /* ── Text ─────────────────────────────────────────────────────────── */
+  /* The fallbacks deliberately mirror the live light values in
+     design-tokens.css (--karim-text-2/-muted/-faint): they are what would
+     render if that sheet were ever missing, and the older literals sat one
+     step lighter than the audited ladder — `#98a2b3` measures 2.6:1 on white,
+     under AA. Measured on the real surfaces now (card #ffffff, page #f4f5f7):
+     primary 12.6–17.8:1, secondary 9.6–10.5:1, muted 7.7:1, faint 4.56–4.97:1
+     — the whole ladder clears 4.5:1 and keeps its order (see
+     tests/v2-contrast.test.js). Dark mode reaches 15.26 / 11.46 / 7.07 / 5.57
+     against #131926. */
   --erp-text-primary:      var(--karim-text,      #101828);
-  --erp-text-secondary:    var(--karim-text-2,    #475467);
-  --erp-text-muted:        var(--karim-text-muted,#667085);
-  --erp-text-faint:        var(--karim-text-faint,#98a2b3);
+  --erp-text-secondary:    var(--karim-text-2,    #344054);
+  --erp-text-muted:        var(--karim-text-muted,#475467);
+  --erp-text-faint:        var(--karim-text-faint,#667085);
   --erp-text-inverse:      #ffffff;   /* on strong fills (brand/danger) */
 
   /* ── Borders ──────────────────────────────────────────────────────── */
@@ -129,7 +138,16 @@
   --erp-radius-full: var(--karim-radius-full, 999px);
 
   /* ── Typography ───────────────────────────────────────────────────── */
-  --erp-font-sans:  var(--karim-font, "IBM Plex Sans Arabic", "Cairo", "Tajawal", system-ui, sans-serif);
+  /* "Tajawal" stands FIRST, ahead of the inherited --karim-font chain,
+     because it is the only family in that chain that actually ships as a
+     file: css/v2/erp-fonts.css self-hosts it from app/fonts/menu/.
+     "IBM Plex Sans Arabic" and "Cairo" precede it in the legacy token but no
+     file in this repository provides either, so leaving the chain untouched
+     made the painted face a property of whichever machine rendered the page
+     (Tajawal on the build box, an OS Arabic face on a fresh client). The
+     chain is preserved verbatim behind Tajawal as the fallback: if the
+     sheet ever fails to load, V2 degrades to exactly today's behaviour. */
+  --erp-font-sans:  "Tajawal", var(--karim-font, "IBM Plex Sans Arabic", "Cairo", system-ui, sans-serif);
   --erp-font-mono:  var(--karim-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
 
   --erp-text-xs:   11px;
