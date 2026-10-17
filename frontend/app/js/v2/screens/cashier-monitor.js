@@ -12,12 +12,12 @@
  * (window.socket 'yarasoft:mirror' when present, released on destroy).
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.147';
-import { ensureXlsx } from '../vendor.js?v=4.9.147';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.148';
+import { ensureXlsx } from '../vendor.js?v=4.9.148';
 import {
     mirrorToday, fetchMonitorSummary, fetchMonitorOrders, fetchMonitorOrder,
     summarizeCashiers, mirrorFreshness,
-} from '../data/cashier-monitor-repo.js?v=4.9.147';
+} from '../data/cashier-monitor-repo.js?v=4.9.148';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

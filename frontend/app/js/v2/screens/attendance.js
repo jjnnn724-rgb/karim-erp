@@ -56,9 +56,9 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
-import { statusBadge } from '../status.js?v=4.9.147';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.147';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
+import { statusBadge } from '../status.js?v=4.9.148';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.148';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -76,9 +76,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.147';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.147';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.147';
+} from '../data/attendance-repo.js?v=4.9.148';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.148';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.148';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

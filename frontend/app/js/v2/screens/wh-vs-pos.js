@@ -6,9 +6,9 @@
  * لاقتراحات الأصناف عبر /item-suggest. الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
-import { formatInt } from '../data/reports-repo.js?v=4.9.147';
-import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.147';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
+import { formatInt } from '../data/reports-repo.js?v=4.9.148';
+import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.148';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -138,7 +138,7 @@ export function mountWhVsPosScreen(host, _ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.147').then((m) => m.fetchCurrency()).catch(() => '')]);
+            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.148').then((m) => m.fetchCurrency()).catch(() => '')]);
             if (!el.isConnected) {return;}
             const raw = data.status === 'fulfilled' ? (data.value.rows || data.value.comparison || []) : [];
             rows = raw.map((r) => ({

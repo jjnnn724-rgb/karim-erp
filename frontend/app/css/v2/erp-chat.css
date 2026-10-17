@@ -1,0 +1,209 @@
+/**
+ * V2 — Staff chat surfaces (tokens only; no hex, no new font/shadow)
+ * Mirrors the legacy FAB geometry (app.js:352-365): 52px circle at the
+ * physical left edge, 360px panel above it, 55vh cap on the message list.
+ * Logical colours come from --erp-* so dark/light themes follow the shell.
+ */
+
+.erp-chat-host {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: var(--erp-z-fab);
+    font-family: var(--erp-font-sans);
+}
+
+.erp-chat-host[hidden] { display: none; }
+
+.erp-chat-fab {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--erp-radius-full);
+    border: 2px solid var(--erp-brand);
+    background: var(--erp-surface);
+    color: var(--erp-brand);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: var(--erp-shadow-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.erp-chat-fab:hover { background: var(--erp-brand-soft); }
+.erp-chat-fab:focus-visible { outline: var(--erp-focus-ring-width, 2px) solid var(--erp-focus-ring, var(--erp-brand)); outline-offset: 2px; }
+.erp-chat-fab[hidden] { display: none; }
+
+.erp-chat-fab__badge {
+    position: absolute;
+    top: calc(-1 * var(--erp-space-1));
+    left: calc(-1 * var(--erp-space-1));
+    min-width: 20px;
+    height: 20px;
+    padding: 0 var(--erp-space-1);
+    border-radius: var(--erp-radius-full);
+    background: var(--erp-danger);
+    color: var(--erp-text-inverse);
+    font-size: var(--erp-text-xs);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.erp-chat-fab__badge[hidden] { display: none; }
+
+.erp-chat-panel {
+    position: absolute;
+    left: 0;
+    bottom: calc(52px + var(--erp-space-4));
+    width: min(360px, 92vw);
+    max-height: 55vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-lg);
+    box-shadow: var(--erp-shadow-lg);
+}
+
+.erp-chat-panel[hidden] { display: none; }
+
+.erp-chat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--erp-space-2);
+    padding: var(--erp-space-2) var(--erp-space-3);
+    border-bottom: 1px solid var(--erp-border);
+    background: var(--erp-surface-sunken);
+}
+
+.erp-chat-title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--erp-space-1);
+    color: var(--erp-text-primary);
+    font-size: var(--erp-text-sm);
+}
+
+.erp-chat-head__actions {
+    display: inline-flex;
+    gap: var(--erp-space-1);
+}
+
+/* .erp-btn sets display:inline-flex, which would otherwise override the UA
+   rule for [hidden] and leave the back button visible on the picker. */
+.erp-chat-host .erp-btn[hidden] { display: none; }
+
+.erp-chat-box {
+    flex: 1;
+    min-height: 180px;
+    overflow-y: auto;
+    padding: var(--erp-space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--erp-space-2);
+}
+
+.erp-chat-empty {
+    margin: 0;
+    padding: var(--erp-space-4) var(--erp-space-2);
+    color: var(--erp-text-muted);
+    font-size: var(--erp-text-sm);
+    text-align: center;
+}
+
+.erp-chat-msg {
+    align-self: flex-end;
+    max-width: 85%;
+    padding: var(--erp-space-2) var(--erp-space-3);
+    border-radius: var(--erp-radius-lg);
+    background: var(--erp-surface-sunken);
+    color: var(--erp-text-primary);
+}
+
+.erp-chat-msg--mine {
+    align-self: flex-start;
+    background: var(--erp-brand);
+    color: var(--erp-text-inverse);
+}
+
+.erp-chat-msg__meta {
+    font-size: var(--erp-text-xs);
+    opacity: .75;
+    margin-bottom: 2px;
+}
+
+.erp-chat-msg__body {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: var(--erp-text-sm);
+}
+
+.erp-chat-user {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--erp-space-2);
+    width: 100%;
+    padding: var(--erp-space-2);
+    border: 1px solid transparent;
+    border-radius: var(--erp-radius-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.erp-chat-user:hover { background: var(--erp-surface-hover); border-color: var(--erp-border); }
+.erp-chat-user:focus-visible { outline: 2px solid var(--erp-brand); outline-offset: 1px; }
+
+.erp-chat-user__dot {
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+    border-radius: var(--erp-radius-full);
+    background: var(--erp-danger);
+    flex: none;
+}
+
+.erp-chat-user__dot[data-online="1"] { background: var(--erp-success); }
+
+.erp-chat-user__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.erp-chat-user__name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--erp-space-1);
+    color: var(--erp-text-primary);
+    font-size: var(--erp-text-sm);
+}
+
+.erp-chat-user__meta {
+    color: var(--erp-text-muted);
+    font-size: var(--erp-text-xs);
+}
+
+.erp-chat-input {
+    display: flex;
+    gap: var(--erp-space-1);
+    padding: var(--erp-space-2) var(--erp-space-3);
+    border-top: 1px solid var(--erp-border);
+}
+
+.erp-chat-input[hidden] { display: none; }
+.erp-chat-input .erp-input { flex: 1; }
+
+@media (max-width: 480px) {
+    .erp-chat-host { left: var(--erp-space-3); bottom: var(--erp-space-3); }
+    .erp-chat-panel { max-height: 60vh; }
+}
