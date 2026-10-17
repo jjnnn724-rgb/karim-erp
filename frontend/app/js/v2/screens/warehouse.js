@@ -86,7 +86,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -103,12 +103,13 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.131';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+} from '../data/inventory-repo.js?v=4.9.145';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.145';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.145';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.131';
+} from '../signature.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -285,6 +286,9 @@ function template(stock, can) {
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--sm erp-no-print" data-v2-clear aria-label="مسح الفلاتر" hidden>
               <i class="ji" data-i="x" aria-hidden="true"></i><span>مسح</span>
             </button>
+            ${can.gov ? `<button type="button" class="erp-btn erp-btn--ghost erp-btn--sm erp-no-print" data-v2-gov aria-label="حوكمة المخزن — سنوات مالية ورصيد افتتاحي وفحص نظام">
+              <i class="ji" data-i="calendar" aria-hidden="true"></i><span>حوكمة المخزن</span>
+            </button>` : ''}
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-reload aria-label="تحديث">
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
             </button>
@@ -388,6 +392,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
     const canForce = invForceVisible(role);
     const canAuditRead = auditReadVisible(role);
     const canAuditWrite = auditWriteVisible(role);
+    const navigate = typeof ctx.navigate === 'function' ? ctx.navigate : null;
+    const canGov = !!navigate && hasGovernanceRead(role);
 
     let allRows = [];
     let registerTotal = 0;
@@ -404,7 +410,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
     let panelData = null;
     let studio = null;
 
-    host.insertAdjacentHTML('beforeend', template('all', { write: canWrite, merge: canMerge, audit: canAuditRead }));
+    host.insertAdjacentHTML('beforeend', template('all', { write: canWrite, merge: canMerge, audit: canAuditRead, gov: canGov }));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const scopeLine = q('[data-v2-scope-line]');
@@ -1624,6 +1630,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
     el.addEventListener('click', (event) => {
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
+        if (event.target.closest('[data-v2-gov]')) {if (navigate) {navigate('warehouse-gov');} return;}
         if (event.target.closest('[data-v2-clear]')) {
             qInput.value = '';
             q('[data-v2-cat]').value = 'all';
