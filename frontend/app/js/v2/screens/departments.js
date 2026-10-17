@@ -14,19 +14,19 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.146';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.146';
-import { canWrite } from '../session.js?v=4.9.146';
-import { departmentWriteEnabled } from '../write-flags.js?v=4.9.146';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.147';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.147';
+import { canWrite } from '../session.js?v=4.9.147';
+import { departmentWriteEnabled } from '../write-flags.js?v=4.9.147';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
-} from '../data/departments-write-repo.js?v=4.9.146';
+} from '../data/departments-write-repo.js?v=4.9.147';
 import {
     cashierRevenueIn,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.146';
+} from '../data/dept-detail.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

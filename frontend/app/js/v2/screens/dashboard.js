@@ -26,9 +26,9 @@
  *   live wiring is Gate D — deliberately not faked here.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.146';
-import { setPref } from '../theme.js?v=4.9.146';
-import { hydrateStatusNodes } from '../status.js?v=4.9.146';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.147';
+import { setPref } from '../theme.js?v=4.9.147';
+import { hydrateStatusNodes } from '../status.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

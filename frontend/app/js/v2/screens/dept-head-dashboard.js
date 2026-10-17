@@ -15,10 +15,10 @@
  * screen, with its signatures and server gates.
  */
 
-import { donutChart } from '../charts.js?v=4.9.146';
-import { statusBadge } from '../status.js?v=4.9.146';
-import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.146';
-import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.146';
+import { donutChart } from '../charts.js?v=4.9.147';
+import { statusBadge } from '../status.js?v=4.9.147';
+import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.147';
+import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.147';
 
 function template() {
     return `

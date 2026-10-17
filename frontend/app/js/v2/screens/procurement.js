@@ -13,15 +13,15 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
-import { statusBadge } from '../status.js?v=4.9.146';
-import { canWrite } from '../session.js?v=4.9.146';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
+import { statusBadge } from '../status.js?v=4.9.147';
+import { canWrite } from '../session.js?v=4.9.147';
 import {
     fetchProcurementSummary, fetchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
     deleteSupplier, fetchSupplierStatement,
-} from '../data/procurement-repo.js?v=4.9.146';
+} from '../data/procurement-repo.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

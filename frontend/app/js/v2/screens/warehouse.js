@@ -86,7 +86,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -103,13 +103,13 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.146';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.146';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.146';
+} from '../data/inventory-repo.js?v=4.9.147';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.147';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.147';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.146';
+} from '../signature.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

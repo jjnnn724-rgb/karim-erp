@@ -29,10 +29,10 @@
  * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
-import { lineChart, barChart } from '../charts.js?v=4.9.146';
-import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.146';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.146';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
+import { lineChart, barChart } from '../charts.js?v=4.9.147';
+import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.147';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

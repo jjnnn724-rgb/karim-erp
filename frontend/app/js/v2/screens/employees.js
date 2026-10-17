@@ -69,8 +69,8 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.146';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.147';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.147';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -79,16 +79,16 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.146';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.146';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.146';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.146';
+} from '../data/employees-repo.js?v=4.9.147';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.147';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.147';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.147';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.146';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.146';
+} from '../data/employee-card-repo.js?v=4.9.147';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.147';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

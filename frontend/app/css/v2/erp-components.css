@@ -112,6 +112,8 @@
 .erp-v2 .erp-btn:hover:not(:disabled) { background: var(--erp-surface-hover); }
 .erp-v2 .erp-btn:active:not(:disabled) { background: var(--erp-surface-active); }
 .erp-v2 .erp-btn:disabled { opacity: .5; cursor: not-allowed; }
+.erp-v2 a.erp-btn,
+.erp-v2 a.erp-btn:hover { text-decoration: none; }
 
 .erp-v2 .erp-btn svg,
 .erp-v2 .erp-btn .ji { width: var(--erp-icon-sm); height: var(--erp-icon-sm); flex-shrink: 0; }
