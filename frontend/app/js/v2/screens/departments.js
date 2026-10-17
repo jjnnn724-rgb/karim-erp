@@ -1,27 +1,42 @@
 /**
- * V2 — Departments screen · السجل + تفاصيل القسم (قراءة + إيراد/مصروف)
+ * V2 — Departments screen · السجل + تفاصيل القسم + CRUD (P1-3)
  * ═══════════════════════════════════════════════════════════════════════
  * Register mirrors /api/departments. Detail mirrors renderDepartmentDetail
  * (features/departments.js:361-382, read fully): الترويسة بالهوية + KPIs
  * (إيراد/تكلفة/صافي + تفكيك صرف/فروق/تشغيلي) + إيراد الكاشير المسند مع
  * الفروع + آخر 10 إيرادات/مصاريف + كل أذون الفترة + زر إيراد/مصروف بنفس
  * الحمولات (finance.js:129/:210). زر التفاصيل في كل صف؛ رجوع للسجل.
+ *
+ * P1-3: إنشاء/تعديل/حذف الأقسام عبر الباب العام القائم (server.js) —
+ * خلف علم v2deptwrite OFF افتراضيًا، وبحمولات legacy حرفًا
+ * (features/departments.js:317/:334 + الحذف المتتابع :340). الحذف هنا
+ * يمرّ بتأكيدين كما في القديم (confirm ثم كتابة «حذف») لأن PostgreSQL
+ * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.131';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.145';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.145';
+import { canWrite } from '../session.js?v=4.9.145';
+import { departmentWriteEnabled } from '../write-flags.js?v=4.9.145';
+import {
+    DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
+    validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
+} from '../data/departments-write-repo.js?v=4.9.145';
 import {
     cashierRevenueIn,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.131';
+} from '../data/dept-detail.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-const FIN_WRITE_ROLES = ['admin', 'manager'];
+// مرآة الخادم: openWriteRoles على revenues/expenses = admin|manager|accountant
+// (backend/schema-registry.js:772-773 — getEntityWriteRoles في server.js:1769/2021/2264).
+// accountant كان ناقصًا هنا فتُحجب زرّا «إيراد +/مصروف +» وهو يملكهما عند
+// الخادم فعلًا — P1-2 «تصحيح أدوار» = مواءمة الزرّ لا تغيير قاعدة.
+const FIN_WRITE_ROLES = ['admin', 'manager', 'accountant'];
 
 function fD(v) {
     if (!v) {return '—';}
@@ -35,33 +50,40 @@ function money(v, cur) {
     return `<span class="erp-num" dir="ltr">${esc(m.amount)}</span>${m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''}`;
 }
 
-function template() {
-    return '<section class="erp-card erp-v2-departments">'
+function template(canManage) {
+    return '<div class="erp-v2-departments-wrap">'
+        + '<section class="erp-card erp-v2-departments">'
         + '<div class="erp-card__head"><h3 class="erp-card__title">الأقسام <span class="erp-eyebrow" dir="ltr" lang="en">Departments</span> <span class="erp-text-muted erp-text-sm" data-v2-count></span></h3>'
         + '<span class="erp-grow"></span>'
+        + (canManage ? '<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-dept-add><i class="ji" data-i="plus" aria-hidden="true"></i><span>إضافة قسم</span></button>' : '')
         + '<button type="button" class="erp-btn erp-btn--sm" data-v2-print><i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span></button>'
         + '<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload><i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span></button>'
         + '</div>'
         + '<div class="erp-card__body erp-stack">'
         + '<p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>'
+        + '<div data-v2-dept-form></div>'
         + '<div data-v2-table></div></div></section>'
-        + '<div data-v2-detail></div>';
+        + '<div data-v2-detail></div></div>';
 }
 
 export function mountDepartmentsScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 departments]', m);
+    const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
+        : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const canPost = canWrite(ctx.role, FIN_WRITE_ROLES);
+    const canManage = canWrite(ctx.role, DEPARTMENT_WRITE_ROLES) && departmentWriteEnabled();
 
     let rows = [];
     let loading = false;
     let saving = false;
+    let editingDept = null;
     let bundle = null;
     let detailCode = null;
     let detailFrom = '';
     let detailTo = '';
     let currency = '';
 
-    host.insertAdjacentHTML('beforeend', template());
+    host.insertAdjacentHTML('beforeend', template(canManage));
     const el = host.lastElementChild;
     const q = (s) => el.querySelector(s);
     const countEl = q('[data-v2-count]');
@@ -88,6 +110,13 @@ export function mountDepartmentsScreen(host, ctx = {}) {
                 key: 'detail', header: 'تفاصيل', width: '120px',
                 render: (r) => `<button type="button" class="erp-btn erp-btn--sm" data-v2-detail="${esc(String(r.code))}">تفاصيل</button>`,
             },
+            ...(canManage ? [{
+                key: 'actions', header: 'إجراءات', width: '190px', align: 'center', className: 'erp-no-print',
+                render: (r) => '<span class="erp-row-wrap">'
+                    + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-dept-edit="${esc(String(r.id))}"><i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span></button>`
+                    + `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-dept-del="${esc(String(r.id))}"><i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف</span></button>`
+                    + '</span>',
+            }] : []),
         ],
     });
     q('[data-v2-table]').appendChild(table.el);
@@ -122,6 +151,92 @@ export function mountDepartmentsScreen(host, ctx = {}) {
                 : (e && e.code === 'FORBIDDEN' ? 'لا صلاحية لعرض الأقسام — القرار للخادم وحده.'
                     : 'تعذّر تحميل الأقسام: ' + ((e && e.message) || 'خطأ')));
         } finally {loading = false;}
+    }
+
+    /* ── P1-3: نموذج القسم (حمولات legacy) ─────────────────────────── */
+    function openDeptForm(row) {
+        editingDept = row || null;
+        const holder = q('[data-v2-dept-form]');
+        if (!holder) {return;}
+        const currentIcon = row && row.icon ? String(row.icon) : 'building';
+        const iconOpts = DEPARTMENT_ICON_OPTIONS.slice();
+        if (!iconOpts.some(([v]) => v === currentIcon)) {iconOpts.push([currentIcon, currentIcon]);}
+        const parents = rows
+            .filter((d) => !row || String(d.code) !== String(row.code))
+            .map((d) => `<option value="${esc(d.code)}" ${row && String(row.parent_code) === String(d.code) ? 'selected' : ''}>${esc(d.name)} (${esc(d.code)})</option>`)
+            .join('');
+        holder.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
+            + `<h4 class="erp-card__title">${row ? 'تعديل قسم — ' + esc(row.name) : 'إضافة قسم'}</h4></div>`
+            + `<div class="erp-card__body erp-stack"><div class="erp-dash-controls">`
+            + `<label class="erp-text-sm erp-text-muted">اسم القسم<input class="erp-input" data-v2-d-name maxlength="255" value="${row ? esc(row.name) : ''}"></label>`
+            + (row
+                ? `<span class="erp-badge" data-tone="neutral">الكود: <span class="erp-mono" dir="ltr">${esc(row.code)}</span></span>`
+                : '<label class="erp-text-sm erp-text-muted">الكود (3 أحرف)<input class="erp-input erp-input--ltr" data-v2-d-code maxlength="3" value=""></label>')
+            + `<label class="erp-text-sm erp-text-muted">الأيقونة<select class="erp-select" data-v2-d-icon>`
+            + iconOpts.map(([v, label]) => `<option value="${esc(v)}" ${v === currentIcon ? 'selected' : ''}>${esc(label)}</option>`).join('')
+            + `</select></label>`
+            + (row ? '' : `<label class="erp-text-sm erp-text-muted">اللون<input class="erp-input erp-input--ltr" type="color" data-v2-d-color value="#009688"></label>`)
+            + `<label class="erp-text-sm erp-text-muted">القسم الأب<select class="erp-select" data-v2-d-parent><option value="">— قسم رئيسي (بلا أب) —</option>${parents}</select></label>`
+            + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-d-go>حفظ</button>`
+            + `<button type="button" class="erp-btn erp-btn--sm" data-v2-d-x>إلغاء</button>`
+            + `</div><div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-d-err role="alert"></div></div></section>`;
+        holder.scrollIntoView({ block: 'nearest' });
+    }
+
+    function closeDeptForm() {
+        editingDept = null;
+        const holder = q('[data-v2-dept-form]');
+        if (holder) {holder.innerHTML = '';}
+    }
+
+    function saveDept() {
+        if (saving) {return;}
+        const val = (n) => (q(`[data-v2-d-${n}]`)?.value ?? '');
+        const v = validateDepartmentForm({
+            name: val('name'), code: val('code'), icon: val('icon'),
+            color: val('color'), parent_code: val('parent'),
+        }, editingDept);
+        const errBox = q('[data-v2-d-err]');
+        const fail = (t) => { if (errBox) {errBox.textContent = t;} notify(t); };
+        if (!v.ok) {fail(v.message); return;}
+        if (!editingDept && rows.some((d) => String(d.code) === String(v.payload.code))) {
+            fail('الكود موجود بالفعل');
+            return;
+        }
+        saving = true;
+        const call = editingDept ? updateDepartment(editingDept.id, v.payload) : createDepartment(v.payload);
+        call.then(() => {
+            if (!el.isConnected) {return;}
+            notify(editingDept ? 'تم تحديث القسم' : 'تم إضافة القسم');
+            closeDeptForm();
+            bundle = null;
+            reload();
+        }).catch((e) => {
+            if (el.isConnected) {fail((e && e.message) || 'فشل حفظ القسم في قاعدة البيانات');}
+        }).finally(() => {saving = false;});
+    }
+
+    function removeDept(id) {
+        const row = rows.find((r) => String(r.id) === String(id));
+        if (!row || saving) {return;}
+        const ok = confirmFn(`حذف القسم «${row.name}»؟ PostgreSQL سيحذف إيرادات ومصاريف هذا القسم معه تتابعيًا — لا رجعة.`);
+        if (!ok) {return;}
+        let typed = '';
+        try {typed = typeof window !== 'undefined' && window.prompt ? (window.prompt('للتأكيد النهائي، اكتب: حذف') || '') : '';} catch { /* deny on blocked prompt */ }
+        if (typed !== 'حذف') {notify('أُلغي الحذف'); return;}
+        saving = true;
+        deleteDepartment(row.id).then(() => {
+            if (!el.isConnected) {return;}
+            notify('تم حذف القسم');
+            if (String(detailCode) === String(row.code)) {
+                detailCode = '';
+                q('[data-v2-detail]').innerHTML = '';
+            }
+            bundle = null;
+            reload();
+        }).catch((e) => {
+            if (el.isConnected) {notify((e && e.message) || 'فشل حذف القسم من قاعدة البيانات');}
+        }).finally(() => {saving = false;});
     }
 
     async function openDetail(code, scroll = true) {
@@ -231,8 +346,19 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             reload();
             return;
         }
+        if (ev.target.closest('[data-v2-dept-add]')) {openDeptForm(null); return;}
+        const editBtn = ev.target.closest('[data-v2-dept-edit]');
+        if (editBtn) {
+            const row = rows.find((r) => String(r.id) === String(editBtn.dataset.v2DeptEdit));
+            if (row) {openDeptForm(row);}
+            return;
+        }
+        const delBtn = ev.target.closest('[data-v2-dept-del]');
+        if (delBtn) {removeDept(delBtn.dataset.v2DeptDel); return;}
+        if (ev.target.closest('[data-v2-d-x]')) {closeDeptForm(); return;}
+        if (ev.target.closest('[data-v2-d-go]')) {saveDept(); return;}
         const det = ev.target.closest('[data-v2-detail]');
-        if (det) {openDetail(det.dataset.v2Detail); return;}
+        if (det && det.dataset.v2Detail) {openDetail(det.dataset.v2Detail); return;}
         if (ev.target.closest('[data-v2-detail-x]')) {
             detailCode = '';
             detailFrom = '';
