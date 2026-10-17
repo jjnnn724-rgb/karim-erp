@@ -576,6 +576,20 @@
     min-block-size: var(--erp-space-8);
     min-inline-size: var(--erp-space-8);
   }
+
+  /* P2-5 — الرفوف والميزان: نصوص أزرار الرأس تختفي وتبقى الرموز، وأزرار
+     الميزان والرفوف أهداف أصابع. مدمجة هنا (لا كتلة وسائط جديدة — نفس عقد
+     W1-3/W1-4/W1-5/W1-6). */
+  .erp-v2-shelves .erp-dash-controls .erp-btn > span,
+  .erp-v2-weight .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-shelves .erp-shelf__actions .erp-btn,
+  .erp-v2-shelves .erp-shelf-form__actions .erp-btn,
+  .erp-v2-weight .erp-scale__steps .erp-btn,
+  .erp-v2-weight .erp-scale__actions .erp-btn,
+  .erp-v2-weight .erp-scale__item-form .erp-btn {
+    min-block-size: var(--erp-space-8);
+    min-inline-size: var(--erp-space-8);
+  }
 }
 
 @media print {
@@ -1324,3 +1338,204 @@
 .erp-v2-ra .erp-emp-stat__v { font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); }
 /* قواعد الشاشات الضيقة للعائلة مدمجة في كتلة الوسائط الأخيرة أعلاه —
    لا كتلة بعدها (عقد W1-6 نفسه: «الوسائط الأخيرة» باب الامتداد الوحيد). */
+
+/* ═══════════════ P2-5 — الرفوف (shelves) والميزان (weight) ═══════════════
+   طبقة ترتيب فوق اللغة المجمّدة: كل قيمة من `--erp-*`، ولا مكوّن مشترك
+   يُعدَّل. قواعد الأساس تلحق آخر الملف (سابقة W1-3…W1-6)؛ ووسائط الضيق
+   لهاتين الشاشتين مدمجة في كتلة الوسائط الأخيرة أعلاه عمدًا. */
+
+/* ── الرفوف: شبكة بطاقات + رأس + إحصاءات + أصناف + إجراءات ── */
+.erp-v2-shelves .erp-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(28ch, 100%), 1fr));
+  gap: var(--erp-space-3);
+  margin-block-start: var(--erp-space-4);
+}
+
+.erp-v2-shelves .erp-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4);
+  min-inline-size: 0;
+}
+
+.erp-v2-shelves .erp-shelf__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-shelves .erp-shelf__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: var(--erp-space-8);
+  block-size: var(--erp-space-8);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+
+.erp-v2-shelves .erp-shelf__title { flex: 1 1 auto; min-inline-size: 0; }
+.erp-v2-shelves .erp-shelf__title .erp-card__title { margin: 0; overflow-wrap: anywhere; }
+
+.erp-v2-shelves .erp-shelf__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  margin: 0;
+}
+.erp-v2-shelves .erp-shelf__stats > div {
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+  min-inline-size: 0;
+}
+.erp-v2-shelves .erp-shelf__stats dt {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+.erp-v2-shelves .erp-shelf__stats dd {
+  margin: 0;
+  font-weight: var(--erp-fw-bold);
+  overflow-wrap: anywhere;
+}
+
+.erp-v2-shelves .erp-shelf__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-block-start: thin solid var(--erp-border);
+  padding-block-start: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2-shelves .erp-shelf__items > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+}
+.erp-v2-shelves .erp-shelf__items > li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-v2-shelves .erp-shelf__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  margin-block-start: auto;
+}
+
+.erp-v2-shelves .erp-shelf-form { margin-block: var(--erp-space-4); }
+.erp-v2-shelves .erp-shelf-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22ch, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2-shelves .erp-shelf-form__actions { margin-block-start: var(--erp-space-3); }
+
+/* ── الميزان: شاشة القراءة + السجل ── */
+.erp-v2-weight .erp-weight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(36ch, 100%), 1fr));
+  gap: var(--erp-space-4);
+  margin-block-start: var(--erp-space-4);
+  align-items: start;
+}
+.erp-v2-weight .erp-card__head { flex-wrap: wrap; row-gap: var(--erp-space-1); }
+
+.erp-v2-weight .erp-scale__display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-6) var(--erp-space-4);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-weight .erp-scale__value {
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-primary);
+}
+.erp-v2-weight .erp-scale__unit {
+  font-size: var(--erp-text-lg);
+  color: var(--erp-text-muted);
+}
+
+.erp-v2-weight .erp-scale__steps,
+.erp-v2-weight .erp-scale__units {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  margin-block-start: var(--erp-space-3);
+}
+
+.erp-v2-weight .erp-scale__unit-btn {
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  font: inherit;
+  cursor: pointer;
+}
+.erp-v2-weight .erp-scale__unit-btn:hover { background: var(--erp-surface-hover); }
+.erp-v2-weight .erp-scale__unit-btn.is-active {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-v2-weight .erp-scale__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  margin-block-start: var(--erp-space-4);
+}
+.erp-v2-weight .erp-scale__notes { max-inline-size: 42ch; }
+
+.erp-v2-weight .erp-scale__item-form {
+  margin-block-start: var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-weight .erp-scale__item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20ch, 100%), 1fr));
+  gap: var(--erp-space-2);
+}
+.erp-v2-weight .erp-scale__item-form .erp-row { margin-block-start: var(--erp-space-2); }
+
+.erp-v2-weight .erp-weight-log__scroll { overflow-x: auto; }
+.erp-v2-weight .erp-weight-log__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+.erp-v2-weight .erp-weight-log__table th,
+.erp-v2-weight .erp-weight-log__table td {
+  border-block-end: thin solid var(--erp-border);
+  padding: var(--erp-space-2);
+  text-align: start;
+  vertical-align: middle;
+}
+.erp-v2-weight .erp-weight-log__table thead th {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+.erp-v2-weight .erp-weight-log__table tbody tr:last-child td { border-block-end: 0; }
