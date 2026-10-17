@@ -6,9 +6,9 @@
  * + مزامنة. نفس المسارات والحمولات — والخادم يحسم الصلاحية.
  */
 
-import { formatInt } from '../data/reports-repo.js?v=4.9.149';
-import { openInAppReport } from '../report-viewer.js?v=4.9.149';
-import { fetchOraTables, refreshOraTables, fetchOraTable } from '../data/oracle-repo.js?v=4.9.149';
+import { formatInt } from '../data/reports-repo.js?v=4.9.150';
+import { openInAppReport } from '../report-viewer.js?v=4.9.150';
+import { fetchOraTables, refreshOraTables, fetchOraTable } from '../data/oracle-repo.js?v=4.9.150';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

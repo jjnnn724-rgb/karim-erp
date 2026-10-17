@@ -115,6 +115,10 @@ describe('عائلة يارا — مرآة الخادم', () => {
         expect(ctx.analysisLabel({ item_name: 'أرز' }, 'item')).toBe('أرز');
         expect(ctx.analysisLabel({ cashier_name: 'كاشير 4' }, 'cashier')).toBe('كاشير 4');
         expect(ctx.analysisLabel({ doc_date: '2026-10-15' }, 'day')).toBe('2026-10-15');
+        // received-items يعيد deptName/date كما هي من PostgreSQL (:722-724)
+        expect(ctx.analysisLabel({ deptName: 'CAF' }, 'dept')).toBe('CAF');
+        expect(ctx.analysisLabel({ dept_name: 'SERVICE' }, 'dept')).toBe('SERVICE');
+        expect(ctx.analysisLabel({ date: '2026-10-15' }, 'day')).toBe('2026-10-15');
         expect(ctx.analysisLabel({}, 'item')).toBe('—');
     });
 });

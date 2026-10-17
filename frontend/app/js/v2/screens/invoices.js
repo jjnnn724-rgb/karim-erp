@@ -24,20 +24,20 @@
  * Creating invoices stays in legacy — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
-import { statusBadge } from '../status.js?v=4.9.149';
-import { canWrite } from '../session.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { statusBadge } from '../status.js?v=4.9.150';
+import { canWrite } from '../session.js?v=4.9.150';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.149';
+} from '../data/purchase-invoices-repo.js?v=4.9.150';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.149';
+} from '../data/procurement-repo.js?v=4.9.150';
 import {
     voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.149';
-import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.149';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.150';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.150';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

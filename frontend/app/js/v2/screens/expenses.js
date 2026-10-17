@@ -22,15 +22,15 @@
  *   (زر «مصروف +» في تفاصيل القسم — شاشة 10).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
     EXPENSE_KIND_AR, EXPENSE_KIND_TONE, isoDay, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.149';
-import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.149';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.149';
-import { canWrite } from '../session.js?v=4.9.149';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.149';
+} from '../data/finance-repo.js?v=4.9.150';
+import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.150';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.150';
+import { canWrite } from '../session.js?v=4.9.150';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.150';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

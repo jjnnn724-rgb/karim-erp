@@ -15,15 +15,15 @@
  * feature — needs a dedicated screen, not a button to nowhere).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
-import { canWrite } from '../session.js?v=4.9.149';
-import { formatInt } from '../data/reports-repo.js?v=4.9.149';
-import { ROLES } from '../../core/config.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { canWrite } from '../session.js?v=4.9.150';
+import { formatInt } from '../data/reports-repo.js?v=4.9.150';
+import { ROLES } from '../../core/config.js?v=4.9.150';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
     linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.149';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.149';
+} from '../data/users-repo.js?v=4.9.150';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.150';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.149';
+import { apiFetch } from '../../core/api.js?v=4.9.150';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];
@@ -110,7 +110,8 @@ export async function fetchWhVsPos({ from, to } = {}) {
 /** صف تحليل مجمّع: التسمية حسب التجميع كما يبنيها القديم (sales-analyzer.js). */
 export function analysisLabel(row = {}, group = 'item') {
     if (group === 'cashier') {return String(row.cashier_name || row.cashier_no || '—');}
-    if (group === 'day') {return String(row.doc_date || row.day || '—');}
+    if (group === 'dept') {return String(row.dept_name || row.deptName || '—');}
+    if (group === 'day') {return String(row.doc_date || row.day || row.date || '—');}
     return String(row.item_name || row.name || '—');
 }
 

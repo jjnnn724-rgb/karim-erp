@@ -1,17 +1,19 @@
 /**
  * V2 — Sales analyzer screen · تحليل مبيعات الكاشيرية (قراءة فقط)
  * ═══════════════════════════════════════════════════════════════════════
- * تبويبان: تحليل مجمّع (بصنف/كاشير/يوم) + الأوردرات المفصّلة بترقيم.
- * باب واحد لكل تبويب من yara-reports-repo، والمدى المعكوس/الواسع بوابة
- * محلية قبل أي طلب (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
+ * تبويبان: تحليل مجمّع (بصنف/كاشير/يوم) + الأوردرات المفصّلة بترقيم،
+ * وتصدير Excel للتبويب النشط بأعمدة القديم. باب واحد لكل تبويب من
+ * yara-reports-repo، والمدى المعكوس/الواسع بوابة محلية قبل أي طلب
+ * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.150';
 import {
     fetchItemSales, fetchYaraOrders, rangeError, analysisLabel, safeTotals,
     SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.149';
+} from '../data/yara-reports-repo.js?v=4.9.150';
+import { ensureXlsx } from '../vendor.js?v=4.9.150';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -43,6 +45,9 @@ function template(from, to) {
             <div class="erp-dash-sub" data-v2-scope-line role="status" aria-live="polite"></div>
           </div>
           <div class="erp-dash-controls">
+            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-excel>
+              <i class="ji" data-i="inbox" aria-hidden="true"></i><span>Excel</span>
+            </button>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-print>
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
             </button>
@@ -88,7 +93,7 @@ function template(from, to) {
       </div>`;
 }
 
-export function mountSalesAnalyzerScreen(host, _ctx = {}) {
+export function mountSalesAnalyzerScreen(host, ctx = {}) {
     let tab = 'analysis';
     let rows = [];
     let orders = [];
@@ -96,6 +101,8 @@ export function mountSalesAnalyzerScreen(host, _ctx = {}) {
     let ordersPage = 0;
     const currency = '';
     let loading = false;
+    let exporting = false;
+    const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 sales-analyzer]', m);
 
     host.insertAdjacentHTML('beforeend', template(todayIso(-29), todayIso(0)));
     const el = host.lastElementChild;
@@ -203,6 +210,44 @@ export function mountSalesAnalyzerScreen(host, _ctx = {}) {
                 .map(([no, name]) => `<option value="${esc(no)}"${no === keep ? ' selected' : ''}>${esc(name)}</option>`).join('');
     }
 
+    /** تصدير تبويب القديم نفسه: أوردرات أم تحليل مجمّع (features/sales-analyzer.js:366). */
+    async function exportExcel() {
+        if (exporting) {return;}
+        exporting = true;
+        try {
+            const ready = await ensureXlsx();
+            if (!ready || typeof window.XLSX === 'undefined') {
+                notify('مكتبة Excel غير محمّلة — حدّث الصفحة');
+                return;
+            }
+            const f = filters();
+            const wb = window.XLSX.utils.book_new();
+            if (tab === 'orders') {
+                const data = [['الفاتورة', 'الكاشير', 'التاريخ', 'الوقت', 'الوردية', 'الصافي', 'الإجمالي',
+                    'الخصم', 'الضريبة', 'مدفوع', 'نقدًا', 'شبكة', 'الأصناف', 'المنطقة']];
+                orders.forEach((o) => data.push([
+                    o.doc_no, o.cashier_name || o.cashier_no, o.doc_date,
+                    String(o.doc_time || '').slice(0, 5), o.shift_no || '',
+                    o.net, o.total, o.discount, o.vat, o.payed, o.pay_cash, o.pay_network,
+                    o.lines_count, o.zone_name || o.table_name || '',
+                ]));
+                window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(data), 'الأوردرات');
+                window.XLSX.writeFile(wb, `orders_${f.from}_${f.to}.xlsx`);
+            } else {
+                const grpLabel = { item: 'الصنف', cashier: 'الكاشير', day: 'اليوم' }[f.group];
+                const data = [[grpLabel, 'فواتير', 'الكمية', 'الصافي', 'الضريبة', 'الإجمالي']];
+                rows.forEach((r) => data.push([
+                    r.label, r.invoices, r.qty, r.net, r.vat, Number(r.net) + Number(r.vat),
+                ]));
+                window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(data), 'تحليل المبيعات');
+                window.XLSX.writeFile(wb, `item-sales_${f.from}_${f.to}.xlsx`);
+            }
+            notify('تم تصدير Excel');
+        } finally {
+            exporting = false;
+        }
+    }
+
     async function reload({ pageShift = 0 } = {}) {
         if (loading) {return;}
         const f = filters();
@@ -265,6 +310,7 @@ export function mountSalesAnalyzerScreen(host, _ctx = {}) {
         if (event.target.closest('[data-v2-next]')) {reload({ pageShift: 1 }); return;}
         if (event.target.closest('[data-v2-prev]')) {reload({ pageShift: -1 }); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-excel]')) {exportExcel(); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });

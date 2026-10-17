@@ -2,16 +2,21 @@
  * V2 — Received analyzer screen · ما استلمته الأقسام (قراءة فقط)
  * ═══════════════════════════════════════════════════════════════════════
  * سجلان: أذون الصرف المستلمة (قائمة) + الأصناف المستلمة مجمّعة
- * (بصنف/قسم/يوم)، وتحليل استهلاك ذكي (item-outflow) بملاحظاته وتنبيهاته.
- * كل باب من yara-reports-repo، والصلاحية قرار الخادم.
+ * (بصنف/قسم/يوم)، وتحليل استهلاك ذكي (item-outflow) بملاحظاته وتنبيهاته،
+ * وتصدير Excel بثلاث أوراق بأعمدة القديم. كل باب من yara-reports-repo،
+ * والصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
-import { formatInt } from '../data/reports-repo.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { formatInt } from '../data/reports-repo.js?v=4.9.150';
 import {
     fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow, rangeError,
     analysisLabel, RECEIVED_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.149';
+} from '../data/yara-reports-repo.js?v=4.9.150';
+import { ensureXlsx } from '../vendor.js?v=4.9.150';
+
+/** أسماء حالات الاستهلاك كما في تصدير القديم (features/received-analyzer.js:550). */
+const OUTFLOW_ALERT_AR = { negative: 'سالب', depleted: 'صفر', low: 'منخفض', ok: 'سليم' };
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -35,6 +40,9 @@ function template(from, to) {
             <div class="erp-dash-sub" data-v2-scope-line role="status" aria-live="polite"></div>
           </div>
           <div class="erp-dash-controls">
+            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-excel>
+              <i class="ji" data-i="inbox" aria-hidden="true"></i><span>Excel</span>
+            </button>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-print>
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
             </button>
@@ -95,12 +103,15 @@ function template(from, to) {
       </div>`;
 }
 
-export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
+export function mountReceivedAnalyzerScreen(host, ctx = {}) {
     let dispatches = [];
     let itemRows = [];
     let outflow = null;
+    let outflowRows = [];
     let group = 'item';
     let loading = false;
+    let exporting = false;
+    const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 received-analyzer]', m);
 
     host.insertAdjacentHTML('beforeend', template(todayIso(-29), todayIso(0)));
     const el = host.lastElementChild;
@@ -198,13 +209,57 @@ export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
         };
     }
 
+    /** ثلاثة أوراق بأعمدة تصدير القديم الثلاثة — مكتبة Excel تُحمَّل عند أول تصدير. */
+    async function exportExcel() {
+        if (exporting) {return;}
+        exporting = true;
+        try {
+            const ready = await ensureXlsx();
+            if (!ready || typeof window.XLSX === 'undefined') {
+                notify('مكتبة Excel غير محمّلة — حدّث الصفحة');
+                return;
+            }
+            const f = filters();
+            const wb = window.XLSX.utils.book_new();
+
+            const outflowData = [['الصنف', 'وارد بالفترة', 'مصروف بالفترة', 'الرصيد الكلي',
+                'متوسط يومي', 'الحالة', 'أول حركة', 'آخر حركة']];
+            outflowRows.forEach((r) => outflowData.push([
+                r.item_name || '', r.qty_in, r.qty_out, r.balance, r.period_avg_daily,
+                OUTFLOW_ALERT_AR[r.alert] || r.alert || '', r.first_date || '', r.last_date || '',
+            ]));
+            window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(outflowData), 'المصروفات');
+
+            const dispatchData = [['الإذن', 'القسم', 'التاريخ', 'وقت الاستلام', 'المستلم',
+                'أصناف', 'إجمالي الكمية', 'ملاحظات']];
+            dispatches.forEach((d) => dispatchData.push([
+                d.doc_no ?? d.id, d.dept_name || '', d.date,
+                String(d.received_at || '').slice(0, 16).replace('T', ' '),
+                d.received_by || '', d.items_count, d.total_qty, d.notes || '',
+            ]));
+            window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(dispatchData), 'أذونات الصرف');
+
+            const grpLabel = { item: 'الصنف', dept: 'القسم', day: 'اليوم' }[group];
+            const itemData = [[grpLabel, 'أذونات', 'كمية مستلمة', 'كمية معتمدة', 'الفرق']];
+            itemRows.forEach((r) => itemData.push([
+                r.label, r.dispatches, r.qty, r.approved_qty, r.variance_qty,
+            ]));
+            window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(itemData), 'الأصناف المستلمة');
+
+            window.XLSX.writeFile(wb, `received_${f.from}_${f.to}.xlsx`);
+            notify('تم تصدير Excel');
+        } finally {
+            exporting = false;
+        }
+    }
+
     async function reload() {
         if (loading) {return;}
         const f = filters();
         const gate = rangeError(f.from, f.to);
         if (!gate.ok) {
             dispatchTable.setRows([]); itemsTable.setRows([]);
-            kpisHost.innerHTML = ''; outflow = null;
+            kpisHost.innerHTML = ''; outflow = null; outflowRows = [];
             scopeLine.textContent = gate.message;
             dispatchTable.setError(gate.message);
             return;
@@ -215,7 +270,7 @@ export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
             const [d, it, ofl] = await Promise.allSettled([
                 fetchReceivedDispatches(f), fetchReceivedItems({ ...f, group }),
                 fetchItemOutflow({ from: f.from, to: f.to, item: f.item }),
-                import('../data/reports-repo.js?v=4.9.149').then((m) => m.fetchCurrency()).catch(() => ''),
+                import('../data/reports-repo.js?v=4.9.150').then((m) => m.fetchCurrency()).catch(() => ''),
             ]);
             if (!el.isConnected) {return;}
             if (d.status === 'fulfilled') {dispatches = d.value.dispatches || d.value.rows || [];}
@@ -224,17 +279,21 @@ export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
                 const raw = it.value.rows || it.value.items || [];
                 itemRows = raw.map((r) => ({
                     label: analysisLabel(r, group),
-                    code: group === 'item' && r.item_code ? String(r.item_code) : '',
+                    code: group === 'item' && (r.item_code || r.code) ? String(r.item_code || r.code) : '',
                     qty: Number(r.qty) || 0,
                     dispatches: Number(r.dispatch_count ?? r.dispatches) || 0,
                     last_date: r.last_date ? String(r.last_date).slice(0, 10) : '—',
+                    // عمودا تصدير القديم (features/received-analyzer.js:562) — يُحفظان ولا يُعرضان
+                    approved_qty: Number(r.approved_qty) || 0,
+                    variance_qty: Number(r.variance_qty) || 0,
                 }));
             } else {itemRows = []; itemsTable.setError(`تعذّر الأصناف: ${(it.reason && it.reason.message) || 'خطأ'}`);}
             outflow = ofl.status === 'fulfilled' ? ofl.value : null;
+            outflowRows = outflow && Array.isArray(outflow.rows) ? outflow.rows : [];
             paint();
         } catch (e) {
             if (!el.isConnected) {return;}
-            dispatches = []; itemRows = []; outflow = null;
+            dispatches = []; itemRows = []; outflow = null; outflowRows = [];
             dispatchTable.setError(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : `تعذّر التحميل: ${(e && e.message) || 'خطأ'}`);
@@ -247,6 +306,7 @@ export function mountReceivedAnalyzerScreen(host, _ctx = {}) {
         const g = event.target.closest('[data-v2-group]');
         if (g) {group = g.dataset.v2Group; paintGroupSeg(); reload(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-excel]')) {exportExcel(); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });

@@ -2,13 +2,21 @@
  * V2 — Warehouse vs POS screen · مطابقة المخزن مع الكاشيرية (قراءة فقط)
  * ═══════════════════════════════════════════════════════════════════════
  * يطابق ما صرفه المخزن مع ما بيعت به الكاشيرية بالاسم — فروقات ونسب
- * وتنبيهات كما يحسبها الخادم (/yara-reports/wh-vs-pos). البحث الجزئي
- * لاقتراحات الأصناف عبر /item-suggest. الصلاحية قرار الخادم.
+ * وتنبيهات كما يحسبها الخادم (/yara-reports/wh-vs-pos) + تصدير Excel
+ * بأعمدة القديم. البحث الجزئي لاقتراحات الأصناف عبر /item-suggest.
+ * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
-import { formatInt } from '../data/reports-repo.js?v=4.9.149';
-import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.149';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { formatInt } from '../data/reports-repo.js?v=4.9.150';
+import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.150';
+import { ensureXlsx } from '../vendor.js?v=4.9.150';
+
+/** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
+const STATUS_AR = {
+    match: 'متطابق', sold_more: 'المبيع أكثر', issued_more: 'المصروف أكثر',
+    pos_only: 'مباع فقط', wh_only: 'مصروف فقط',
+};
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -32,6 +40,9 @@ function template(from, to) {
             <div class="erp-dash-sub" data-v2-scope-line role="status" aria-live="polite"></div>
           </div>
           <div class="erp-dash-controls">
+            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-excel>
+              <i class="ji" data-i="inbox" aria-hidden="true"></i><span>Excel</span>
+            </button>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-print>
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
             </button>
@@ -70,10 +81,12 @@ function template(from, to) {
       </div>`;
 }
 
-export function mountWhVsPosScreen(host, _ctx = {}) {
+export function mountWhVsPosScreen(host, ctx = {}) {
     let rows = [];
     let loading = false;
+    let exporting = false;
     const suggestTimer = null;
+    const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 wh-vs-pos]', m);
 
     host.insertAdjacentHTML('beforeend', template(todayIso(-7), todayIso(0)));
     const el = host.lastElementChild;
@@ -125,6 +138,33 @@ export function mountWhVsPosScreen(host, _ctx = {}) {
         return { from: q('#v2wv-from').value, to: q('#v2wv-to').value };
     }
 
+    /** نفس أعمدة وأسماء ملف القديم — تُحمَّل المكتبة عند أول تصدير فقط. */
+    async function exportExcel() {
+        if (exporting) {return;}
+        exporting = true;
+        try {
+            const ready = await ensureXlsx();
+            if (!ready || typeof window.XLSX === 'undefined') {
+                notify('مكتبة Excel غير محمّلة — حدّث الصفحة');
+                return;
+            }
+            const f = filters();
+            const data = [['الصنف', 'مصروف من المخزن', 'مبيع بالكاشيرية', 'الفرق', 'النسبة %',
+                'قيمة المبيع الصافي', 'قيمة المبيع الإجمالي', 'عدد الأذونات', 'عدد الفواتير', 'القسم', 'الحالة']];
+            rows.forEach((r) => data.push([
+                r.label, r.wh_qty, r.pos_qty, r.diff, r.pct == null ? '' : r.pct,
+                r.pos_net, r.pos_gross, r.wh_docs, r.pos_invoices, r.dept, STATUS_AR[r.status] || r.status,
+            ]));
+            const ws = window.XLSX.utils.aoa_to_sheet(data);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, 'المقارنة');
+            window.XLSX.writeFile(wb, `wh-vs-pos_${f.from}_${f.to}.xlsx`);
+            notify('تم تصدير Excel');
+        } finally {
+            exporting = false;
+        }
+    }
+
     async function reload() {
         if (loading) {return;}
         const f = filters();
@@ -138,17 +178,24 @@ export function mountWhVsPosScreen(host, _ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.149').then((m) => m.fetchCurrency()).catch(() => '')]);
+            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.150').then((m) => m.fetchCurrency()).catch(() => '')]);
             if (!el.isConnected) {return;}
             const raw = data.status === 'fulfilled' ? (data.value.rows || data.value.comparison || []) : [];
             rows = raw.map((r) => ({
-                label: String(r.item_name || r.name || '—'),
+                label: String(r.item_name || r.name || r.name_ar || '—'),
                 code: r.item_code ? String(r.item_code) : '',
                 wh_qty: Number(r.wh_qty ?? r.warehouse_qty) || 0,
                 pos_qty: Number(r.pos_qty ?? r.sales_qty) || 0,
                 diff: Number(r.diff ?? r.difference) || 0,
                 pct: r.pct == null ? null : Number(r.pct),
                 alert: r.alert || r.severity_label || '',
+                // حقول تصدير القديم (features/wh-vs-pos.js:299) — تُحفظ ولا تُعرض
+                status: r.status ? String(r.status) : '',
+                pos_net: Number(r.pos_net) || 0,
+                pos_gross: Number(r.pos_gross) || 0,
+                wh_docs: Number(r.wh_docs) || 0,
+                pos_invoices: Number(r.pos_invoices) || 0,
+                dept: r.dept ? String(r.dept) : '',
             }));
             if (data.status === 'rejected') {throw data.reason;}
             // بوصمة الطزاجة كما يعلنها الخادم (3 دقائق)
@@ -172,6 +219,7 @@ export function mountWhVsPosScreen(host, _ctx = {}) {
 
     el.addEventListener('click', (event) => {
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-excel]')) {exportExcel(); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
