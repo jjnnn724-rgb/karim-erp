@@ -55,7 +55,7 @@
 | `departments` | ◐ | CRUD + تفكيك + تفاصيل داخلية ✅ (`screens/departments.js:29`) — **ناقص**: لوحة الكاشيرية الحية (`features/departments.js:162` على `/yara-reports/cashiers-live` و`cashiers-today`) وبطاقة ترحيل المطبخ (`:45`) → #31 |
 | `departmentDetail` | ✅ | لم تُبنَ صفحة مستقلة؛ التفاصيل داخل شاشة الأقسام بنفس الحقول (`screens/departments.js:231-282`). المفتاح القديم يبقى عنوانًا فقط. |
 | `warehouse` | ◐ | سجل المخزون + وارد/استيراد يدوي + حذف (`screens/warehouse.js`)، واستيراد Excel جزئي (شبكة يدوية بدل ملف `.xlsx`) — **ناقص**: الرصيد الافتتاحي السريع ووضع «الصافي بعد المنصرف» (`features/warehouse.js:1785-1805`، الباب `/warehouse/issued-totals`) → #31 |
-| `wh-invoices` | ✅ | `screens/wh-invoices.js` + `data/purchase-invoices-repo.js` (قراءة) + `purchase-invoices-write-repo.js` (كتابة خلف علم) |
+| `wh-invoices` | ✅ | `screens/wh-invoices.js` + `data/purchase-invoices-repo.js` (قراءة) + `purchase-invoices-write-repo.js` (كتابة خلف علم): إنشاء/تعديل في نفس الصفحة خلف `v2invoicecreate`، وتسديد كامل؛ الإلغاء والحذف الجماعي في شاشة ٠٦ خلف `v2invoicevoid` |
 | `wh-moves` | ✅ | `screens/wh-moves.js` |
 | `wh-returns` | ✅ | `screens/wh-returns.js` + `warehouse-repo.js:244-249` |
 | `wh-prs` | ✅ | `screens/wh-prs.js` + `data/pr-repo.js` (11 بابًا: إنشاء/إلغاء/اعتماد شيف/مدير) |
@@ -105,7 +105,7 @@
 | الاستيراد الجماعي للموظفين/المستخدمين | `bulk-import.js` (معاينة، توليد يوزر/كلمة مرور، بصمات، تصدير، طباعة) | لا شيء | ⬜ | #26 |
 | استيراد المخزون من Excel | `warehouse.js:2396-2567` (ملف `.xlsx` + قائمة أصناف) | زر «استيراد Excel» + «كتالوج الأصناف» بجانب «إدخال يدوي» (`screens/warehouse.js`) | ✅ | مغلق — `ad01b05` · `v2-warehouse-excel-2026-10-17` · 16 اختبارًا ودليل 1180/360 |
 | شريط الجوال السفلي | `mobile-shell.js` — `mobileNavItems()`، يظهر ≤900px، أدوار محددة | لا شيء (البصمة الذاتية ✅ داخل `employee-portal`) | ⬜ | #26 |
-| بحث الأصناف الذكي | `smart-item-search.js` — تطبيع عربي/همزات، تنقل ↑↓، يعبّئ الوحدة والسعر | لا شيء في إنشاء فاتورة الشراء V2 | ⬜ | #26 |
+| بحث الأصناف الذكي | `smart-item-search.js` — تطبيع عربي/همزات، تنقل ↑↓، يعبّئ الوحدة والسعر | `item-search.js` + `invoice-editor.js` داخل شاشة ٠٨ خلف `v2invoicecreate` — التطبيع والترتيب والتنقل ↑↓/Enter/Esc وتعبئة الوحدة/السعر نفسها | ✅ | مغلق — `9b4ff17` · `v2-invoice-create-2026-10-17` · 32 اختبارًا ودليل 1180/360 |
 | بطاقة الموظف وQR | `smart-card.js` | `employee-card-repo.js` + شاشة الموظفين (P0‑5) | ✅ | — |
 | شارة حالة الخادم | `main.js:204` (`/system/server-info`، محدّث/قديم) | مصابيح صحة فقط (`/health`) | ⬜ | #31 |
 | قيود قاعدة البيانات للعميل | `db-constraints-client.js` (`/api/schema/constraints`) | لا شيء | ⬜ | تحقق عميل استرشادي؛ الخادم يبقى الحكم → #31 |
