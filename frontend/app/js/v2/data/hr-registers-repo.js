@@ -3,7 +3,7 @@
  *  - read-only registers, one door per entity.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.131';
+import { apiFetch } from '../../core/api.js?v=4.9.145';
 
 export const WALK_PAGES = 8;
 
@@ -34,15 +34,15 @@ export function hrDeptToRow(d = {}) {
     return {
         id: d.id,
         code: d.code ? String(d.code) : '',
-        name: d.name ? String(d.name) : 'â€”',
-        manager: d.manager ? String(d.manager) : 'â€”',
+        name: d.name ? String(d.name) : '—',
+        manager: d.manager ? String(d.manager) : '—',
     };
 }
 
 export function payrollToRow(p = {}) {
     return {
         id: p.id,
-        employee: p.employeeName ? String(p.employeeName) : (p.employeeId ? `#${p.employeeId}` : 'â€”'),
+        employee: p.employeeName ? String(p.employeeName) : (p.employeeId ? `#${p.employeeId}` : '—'),
         employeeId: p.employeeId || null,
         month: p.month ? String(p.month) : '',
         basic: num(p.basic ?? p.basicSalary ?? p.salary),
