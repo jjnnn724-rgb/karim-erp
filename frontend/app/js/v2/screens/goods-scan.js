@@ -23,11 +23,11 @@
 
 import { resolveScan, assignDecision, coverage, unassignedRows, scanEnabledModel,
     normalizeCode, codeFamily, bumpLine, setLineQty, setLinePrice, dropLine,
-    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.153';
+    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.154';
 import { inventoryToRow, receiveInventoryItem, receiptPayload,
-    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.153';
-import { createDataTable } from '../data-display/data-table.js?v=4.9.153';
-import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.153';
+    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.154';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.154';
+import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 

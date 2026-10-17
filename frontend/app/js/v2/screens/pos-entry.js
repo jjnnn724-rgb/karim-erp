@@ -12,8 +12,8 @@
  * is a real noopener link like the legacy anchor, never a popup script.
  */
 
-import { fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.153';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.153';
+import { fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.154';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

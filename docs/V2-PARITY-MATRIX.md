@@ -69,10 +69,10 @@
 | `recipes` | ✅ | `screens/recipes.js` — BOM، مكوّنات المنتج، الوحدات، مزامنة الكاشير، تكلفة السطر (`data/recipes-repo.js` + `recipes-edit-repo.js`) |
 | `reports` | ◐ | `screens/reports.js` — تقارير المبيعات/الأقسام/الكاشير/المطبخ/المرتجعات/المخزن/HR + Yara departments/cashier-items + طباعة الصفحة الحالية. **ناقص**: عارض التقرير داخل التطبيق (WebView) + تصدير Excel في بعض الشاشات → #26 |
 | `settings` | ✅ | `screens/settings.js` — يغطي أبواب `settings-users.js` (23) عبر `settings-repo.js` و`users-repo.js`: ZATCA (طابور/retry/CSR/تفعيل)، KOT، البوابة (أجهزة/محاولات/وجوه)، نسخ واستعادة، reset-all. |
-| `users` | ◐ | CRUD + كلمة مرور + ربط موظف + صلاحيات ✅ — **ناقص**: معالج الاستيراد الجماعي (`features/bulk-import.js`، زر `settings-users.js:621`) → #26 |
+| `users` | ✅ | CRUD + كلمة مرور + ربط موظف + صلاحيات + معالج الاستيراد الجماعي خلف `v2bulkimport` (`c3556d9`) |
 | `permissions` | ✅ | `screens/permissions.js` + `data/permissions-repo.js` (كتالوج + حفظ مستخدم) |
 | `hr-dashboard` | ✅ | `screens/hr-dashboard.js` |
-| `employees` | ◐ | CRUD + بطاقة الموظف الكاملة (P0‑5) ✅ — **ناقص**: الاستيراد الجماعي (`features/employees.js:28`) → #26 |
+| `employees` | ✅ | CRUD + بطاقة الموظف الكاملة + معالج الاستيراد الجماعي خلف `v2bulkimport` (`c3556d9`) |
 | `leaves` | ✅ | `screens/leaves.js` |
 | `attendance` | ✅ | `screens/attendance.js` + `data/attendance-repo.js` (فترة/مسح/تجاوزات/تحليلات شيفتات) |
 | `zkteco` | ✅ | `screens/zkteco.js` + `data/zkteco-repo.js` (16 نداءً — تغطية P2‑2) |
@@ -84,7 +84,7 @@
 | `yara-daily-locks` | ✅ | `screens/daily-locks.js` + `data/oracle-repo.js:48` |
 | `oracle-data` | ✅ | `screens/oracle-data.js` + `data/oracle-repo.js` |
 | `whatsapp` | ◐ | `screens/whatsapp.js` — الحالة + الرسائل فقط. القديم يستدعي **19 بابًا** (QR/إقران/قواعد/حملات/outbox/قوالب/query…) → #29 |
-| `employee-portal` | ✅ | `screens/employee-portal.js` — البصمة الذاتية وGPS والوجه (منطق `mobile-shell.js` نفسه) — انظر فجوة الشريط السفلي في §٣ |
+| `employee-portal` | ✅ | `screens/employee-portal.js` — البصمة الذاتية وGPS والوجه وشريط الجوال السفلي المتجاوب |
 | `veg-requests` | ✅ | `screens/veg-requests.js` + `data/veg-repo.js` (طلب/تسعير/طباعة/استلام/إلغاء/كتالوج) |
 | `branches` | ✅ | `screens/branches.js` + `data/branches-repo.js` |
 | `hr-departments` | ✅ | `screens/hr-departments.js` |
@@ -102,9 +102,9 @@
 |---|---|---|---|---|
 | الشات الداخلي | `app.js:332-466` | `chat.js` + `chat-repo.js` + `realtime.js` خلف `?v2chat` | ✅ | مغلق — `76edd2e` · `v2-parity-chat-2026-10-17` · 15 اختبارًا |
 | عارض التقارير داخل التطبيق | `report-viewer.js` (`openInAppReport` → iframe `srcdoc`) مستخدم في 13 وحدة | `report-viewer.js` + 10 شاشات طباعة + `erp-report-viewer.css`، حوار Escape/تركيز، خلف لا شيء لأنه عرض فقط | ✅ | مغلق — `350bc3e` · `v2-report-viewer-2026-10-17` · 20 اختبارًا ودليل 1180/360 |
-| الاستيراد الجماعي للموظفين/المستخدمين | `bulk-import.js` (معاينة، توليد يوزر/كلمة مرور، بصمات، تصدير، طباعة) | لا شيء | ⬜ | #26 |
+| الاستيراد الجماعي للموظفين/المستخدمين | `bulk-import.js` (معاينة، توليد يوزر/كلمة مرور، بصمات، تصدير، طباعة) | `bulk-import-wizard.js` + `bulk-import.js` + `bulk-import-repo.js` خلف `?v2bulkimport` | ✅ | مغلق — `c3556d9` · 20 اختبارًا ودليل 1180/360 |
 | استيراد المخزون من Excel | `warehouse.js:2396-2567` (ملف `.xlsx` + قائمة أصناف) | زر «استيراد Excel» + «كتالوج الأصناف» بجانب «إدخال يدوي» (`screens/warehouse.js`) | ✅ | مغلق — `ad01b05` · `v2-warehouse-excel-2026-10-17` · 16 اختبارًا ودليل 1180/360 |
-| شريط الجوال السفلي | `mobile-shell.js` — `mobileNavItems()`، يظهر ≤900px، أدوار محددة | لا شيء (البصمة الذاتية ✅ داخل `employee-portal`) | ⬜ | #26 |
+| شريط الجوال السفلي | `mobile-shell.js` — `mobileNavItems()`، يظهر ≤900px، أدوار محددة | `mobile-shell.js` + `erp-mobile-shell.css` (شريط 5 أزرار، بصمتي، والمزيد) | ✅ | مغلق — `v2-mobile-shell` · 9 اختبارات ودليل 360/900 |
 | بحث الأصناف الذكي | `smart-item-search.js` — تطبيع عربي/همزات، تنقل ↑↓، يعبّئ الوحدة والسعر | `item-search.js` + `invoice-editor.js` داخل شاشة ٠٨ خلف `v2invoicecreate` — التطبيع والترتيب والتنقل ↑↓/Enter/Esc وتعبئة الوحدة/السعر نفسها | ✅ | مغلق — `9b4ff17` · `v2-invoice-create-2026-10-17` · 32 اختبارًا ودليل 1180/360 |
 | بطاقة الموظف وQR | `smart-card.js` | `employee-card-repo.js` + شاشة الموظفين (P0‑5) | ✅ | — |
 | شارة حالة الخادم | `main.js:204` (`/system/server-info`، محدّث/قديم) | مصابيح صحة فقط (`/health`) | ⬜ | #31 |
@@ -151,7 +151,7 @@
 
 | المهمة | المحتوى | تُغلق عندما |
 |---|---|---|
-| #26 الأسطح المشتركة | عارض تقارير V2 + تصدير Excel (wh-vs-pos والتحليلان) + استيراد المخزون وكتالوج الأصناف + معالج الاستيراد الجماعي للموظفين/المستخدمين + بحث الأصناف الذكي + شريط الجوال السفلي | كل صفّ ◐/⬜ في §٣ له تنفيذ + اختبار + دليل متصفح |
+| #26 الأسطح المشتركة | عارض تقارير V2 + تصدير Excel (wh-vs-pos والتحليلان) + استيراد المخزون وكتالوج الأصناف + معالج الاستيراد الجماعي للموظفين/المستخدمين + بحث الأصناف الذكي + شريط الجوال السفلي | ✅ مغلق بالكامل — 6/6 سطوح منفّذة ومختبرة ومطابقة (`c3556d9` + `v2-mobile-shell`) |
 | #27 تقارير Yara | الأبواب الأربعة الناقصة + فرز 23 بابًا: مستهلك/غير مستهلك | 14/14 مما يستدعيه القديم + قرار موثّق للباقي |
 | #28 YaraSoft | 29 بابًا خلف واجهة V2، قراءة أولًا ثم كتابات بأعلام مستقلة | 32/32 + اختبارات + دليل |
 | #29 WhatsApp | 17 بابًا + QR/إقران + كتابات بأعلام مستقلة | 19/19 + دليل بمقبس/جلسة حيّة أو تصريح بما لم يُختبر |
