@@ -1,28 +1,47 @@
 /**
- * V2 — Employee portal screen · بوابة الموظف — البطاقة الذكية (قراءة)
+ * V2 — Employee portal screen · بوابة الموظف — البطاقة الذكية
  * ═══════════════════════════════════════════════════════════════════════
- * Behavior mirror of features/employee-portal.js:19-109 (read fully):
+ * Behavior mirror of features/employee-portal.js:19-109 + mobile-shell.js
+ * (punch card :127-188, punch flow :717-912, face camera :350-555):
  * ربط الحساب بموظف (إداري: أوّل موظف + مبدّل، غيره: موظف userId نفسه،
  * وبلا ربط = رسالة HR) · مؤشرات الراتب/الساعات/الأيام/الإجازات ·
  * سجل الحضور + طباعة يوم/شهر · سجل الإجازات · لوحة بصمات اليوم.
  *
- * Data doors (all read-only, server-scoped): employees + attendance report
- * + leave workflow/types + my punches. Bounded deviation: attendance window
- * is year-to-date (legacy read the whole in-memory STATE).
- * Print layout is V2's own (same content, not pixel-parity).
+ * P2-3 — الأبواب الأربعة الناقصة على الخادم صارت هنا:
+ *   POST /attendance/portal/punch              → punchPortal
+ *   POST /attendance/portal/punch/client-reject → reportClientReject
+ *   POST /attendance/portal/face/enroll         → enrollFaceV1
+ *   POST /attendance/portal/face/enroll-v2      → enrollFaceV2
+ * البصمة كلها وراء دور الخادم + علم v2portalwrite، وقوالب الوجه وراء
+ * admin/hr + علم v2facewrite. العلمان OFF افتراضيًا، والخادم يبقى الحاكم.
+ *
+ * Data doors (read): employees + attendance report + leave workflow/types
+ * + my punches + portal status. Bounded deviation: attendance window is
+ * year-to-date (legacy read the whole in-memory STATE). Print layout is
+ * V2's own (same content, not pixel-parity).
  */
 
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
-import { fetchMyPunches } from '../data/portal-repo.js?v=4.9.131';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.131';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.131';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.131';
+import { canWrite } from '../session.js?v=4.9.145';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.145';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.145';
+import {
+    fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
+    faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
+    reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
+} from '../data/portal-repo.js?v=4.9.145';
+import { captureFace } from '../portal-face.js?v=4.9.145';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.145';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.145';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const ADMIN_ROLES = ['admin', 'hr', 'manager'];
+
+const GEO_TARGET = 6;
+const GEO_SESSION_MS = 9000;
 
 /** ساعات العمل مع الالتفاف الليلي — مرآة portalWorkHours (employee-portal.js:7). */
 export function portalWorkHours(a = {}) {
@@ -48,6 +67,79 @@ function fD(v) {
 
 function todayIso() {
     return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * 6 قراءات GPS خلال ~9 ثوانٍ — نفس تحصين القديم (mobile-shell.js:669):
+ * السيرفر يحلل التجميد/الانتقال/التشتت/الدقة الثابتة. محاولة ثانية فقط عند
+ * الفشل التام (هوائيات داخلية بطيئة)، لا عند النجاح الجزئي.
+ * @param {(done:number,total:number,accuracy:number|null)=>void} [onFix]
+ * @returns {Promise<Array|null>}
+ */
+function collectLocationFixes(onFix) {
+    const once = () => new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        const fixes = [];
+        const sendTime = Date.now();
+        let settled = false;
+        let watchId = null;
+        let timer = null;
+        const done = (value) => {
+            if (settled) { return; }
+            settled = true;
+            if (watchId != null) { try { navigator.geolocation.clearWatch(watchId); } catch (_) { /* متجاهَل عمدًا */ } }
+            if (timer != null) { clearTimeout(timer); }
+            resolve(value);
+        };
+        const numOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+        try {
+            watchId = navigator.geolocation.watchPosition((pos) => {
+                const c = pos.coords || {};
+                fixes.push({
+                    lat: c.latitude,
+                    lng: c.longitude,
+                    accuracy: numOrNull(c.accuracy) ?? 999,
+                    fixAgeS: Math.max(0, Math.round((sendTime - (pos.timestamp || Date.now())) / 1000)),
+                    alt: numOrNull(c.altitude),
+                    altAcc: numOrNull(c.altitudeAccuracy),
+                    heading: numOrNull(c.heading),
+                    speed: numOrNull(c.speed),
+                    t: Number(pos.timestamp) || Date.now(),
+                });
+                try { onFix?.(fixes.length, GEO_TARGET, numOrNull(c.accuracy)); } catch (_) { /* متجاهَل عمدًا */ }
+                if (fixes.length >= GEO_TARGET) { done(fixes); }
+            }, () => done(fixes.length ? fixes : null), {
+                enableHighAccuracy: true, maximumAge: 0, timeout: GEO_SESSION_MS,
+            });
+        } catch (_) { done(null); return; }
+        timer = setTimeout(() => done(fixes.length ? fixes : null), GEO_SESSION_MS + 500);
+    });
+    return (async () => {
+        let fixes = await once();
+        if (!fixes) { fixes = await once(); }
+        return fixes;
+    })();
+}
+
+/** إشارات تزييف الجهاز الأصلية (Android فقط) — null على الويب/PWA. */
+async function nativeMockSignals() {
+    try {
+        const plugin = globalThis.Capacitor?.Plugins?.MockLocationDetector;
+        if (!plugin || typeof plugin.isMockLocation !== 'function') { return null; }
+        const result = await Promise.race([
+            plugin.isMockLocation(),
+            new Promise((res) => setTimeout(() => res(null), GEO_SESSION_MS)),
+        ]);
+        return result && typeof result.mocked === 'boolean' ? result : null;
+    } catch (_) { return null; }
+}
+
+/** رسالة موحدة لنتيجة التسجيل المزدوج — نص القديم نفسه (mobile-shell.js:558). */
+function faceEnrollMessage(saved) {
+    if (saved.v2 && saved.v1) { return 'تم تسجيل الوجه بالمحركين — البصمة جاهزة من أي كاميرا'; }
+    if (saved.v2) { return 'تم تسجيل الوجه بالمحرك المتقدم' + (saved.v1Error ? ' (الأساسي: ' + saved.v1Error + ')' : ''); }
+    if (saved.v1) { return 'تم تسجيل الوجه بالمحرك الأساسي' + (saved.v2Error ? ' (المتقدم: ' + saved.v2Error + ')' : ''); }
+    return 'فشل التسجيل: ' + (saved.v2Error || saved.v1Error || 'لا لقطة صالحة');
 }
 
 function template() {
@@ -89,6 +181,15 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
     let punches = null;
     let currency = '';
     let loading = false;
+    const punchRole = canWrite(ctx.role, PUNCH_ROLES);
+    const canPunch = canWrite(ctx.role, PUNCH_ROLES) && portalWriteEnabled();
+    const canFace = canWrite(ctx.role, FACE_ENROLL_ROLES) && faceWriteEnabled();
+    let portalStatus = null;
+    let punchBusy = false;
+    let faceBusy = false;
+    let faceUserId = '';
+    let lastPunch = null;
+    let faceResult = null;
 
     host.insertAdjacentHTML('beforeend', template());
     const el = host.lastElementChild;
@@ -96,6 +197,84 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
     const noteEl = q('[data-v2-note]');
 
     const say = (m) => { if (noteEl) {noteEl.textContent = m;} notify(m); };
+
+    function resultClass(result) {
+        if (!result) { return 'erp-text-muted'; }
+        if (result.kind === 'ok') { return 'erp-text-success'; }
+        if (result.kind === 'error') { return 'erp-text-danger'; }
+        return 'erp-text-muted';
+    }
+
+    function punchCardHtml() {
+        if (!punchRole) { return ''; }
+        const s = portalStatus || {};
+        const loaded = portalStatus !== null;
+        const faceBlocked = Boolean(s.faceEnabled) && s.faceEnrolled === false;
+        let chip = '<span class="erp-badge" data-tone="neutral">الحالة غير معروفة</span>';
+        if (loaded) {
+            if (!s.enabled) { chip = '<span class="erp-badge" data-tone="neutral">غير مفعّلة إداريًا</span>'; }
+            else if (s.hasEmployeeProfile === false) { chip = '<span class="erp-badge" data-tone="warning">بلا ربط موظف</span>'; }
+            else if (faceBlocked) { chip = '<span class="erp-badge" data-tone="warning">الوجه غير مسجّل</span>'; }
+            else { chip = '<span class="erp-badge" data-tone="success">مفعّلة</span>'; }
+        }
+        let action;
+        if (!canPunch) {
+            action = '<p class="erp-text-sm erp-text-muted">البصمة الذاتية للقراءة فقط — الكتابة مغلقة بعلم التفعيل.</p>';
+        } else if (!loaded) {
+            action = '<p class="erp-text-sm erp-text-danger">تعذر قراءة حالة البوابة — أعد التحديث.</p>';
+        } else if (!s.enabled) {
+            action = '<p class="erp-text-sm erp-text-muted">البصمة الذاتية غير مفعّلة من الإدارة بعد.</p>';
+        } else if (s.hasEmployeeProfile === false) {
+            action = '<p class="erp-text-sm erp-text-muted">لم يتم ربط حسابك بملف موظف — تواصل مع الموارد البشرية.</p>';
+        } else if (faceBlocked) {
+            action = '<p class="erp-text-sm erp-text-warning">لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيله.</p>';
+        } else {
+            action = `<div class="erp-portal-punch__row">
+              <button type="button" class="erp-btn erp-btn--primary" data-v2-punch${punchBusy ? ' disabled' : ''}>${punchBusy ? 'جارٍ تسجيل البصمة…' : 'تسجيل البصمة الآن'}</button>
+              <span class="erp-text-sm erp-text-muted">${s.faceEnabled
+        ? 'سيُطلب تأكيد الوجه ثم الموقع — الوقت من ساعة الخادم.'
+        : 'سيُقرأ موقعك لحظة البصمة فقط — الوقت من ساعة الخادم.'}</span>
+            </div>`;
+        }
+        return `<section class="erp-card erp-portal-punch">
+          <div class="erp-card__head">
+            <h3 class="erp-card__title">البصمة الذاتية</h3>
+            <span class="erp-grow"></span>
+            ${canPunch && isAdmin ? '<span class="erp-text-xs erp-text-muted">تُسجَّل لصاحب الحساب الحالي</span>' : ''}
+            ${chip}
+          </div>
+          <div class="erp-card__body erp-stack">
+            ${action}
+            <p class="erp-text-sm ${resultClass(lastPunch)}" data-v2-punch-result role="status" aria-live="polite">${lastPunch ? esc(lastPunch.text) : ''}</p>
+          </div>
+        </section>`;
+    }
+
+    function faceCardHtml() {
+        if (!canFace) { return ''; }
+        const targets = employees.filter((e) => e.userId != null && String(e.userId) !== '');
+        const picker = targets.length
+            ? `<label class="erp-field"><span class="erp-text-sm erp-text-muted">الموظف</span>
+                <select class="erp-select" data-v2-face-user>
+                  <option value="">— اختر الموظف —</option>
+                  ${targets.map((e) => `<option value="${esc(String(e.userId))}"${String(e.userId) === faceUserId ? ' selected' : ''}>${esc(e.name)} — ${esc(e.employeeId || '')}</option>`).join('')}
+                </select></label>
+              <button type="button" class="erp-btn erp-btn--primary" data-v2-face-enroll${faceBusy ? ' disabled' : ''}>تسجيل الوجه</button>
+              <button type="button" class="erp-btn erp-btn--sm" data-v2-face-remove${faceBusy ? ' disabled' : ''}>إزالة القالب</button>`
+            : '<p class="erp-text-sm erp-text-muted">لا يوجد موظفون مرتبطون بحسابات مستخدمين — اربط الحساب أولًا.</p>';
+        return `<section class="erp-card erp-portal-face">
+          <div class="erp-card__head">
+            <h3 class="erp-card__title">تسجيل وجوه الموظفين</h3>
+            <span class="erp-grow"></span>
+            <span class="erp-badge" data-tone="info">إدارة / موارد بشرية</span>
+          </div>
+          <div class="erp-card__body erp-stack">
+            <div class="erp-portal-face__actions">${picker}</div>
+            <p class="erp-text-sm ${resultClass(faceResult)}" data-v2-face-result role="status" aria-live="polite">${faceResult ? esc(faceResult.text) : ''}</p>
+            <p class="erp-text-xs erp-text-muted">تُجمع حتى 5 لقطات للقالب. الصور لا تُخزَّن على الخادم — تُستهلك لاستخراج البصمة ثم تُهمل.</p>
+          </div>
+        </section>`;
+    }
 
     function money(v) {
         const m = formatMoney(v, currency);
@@ -124,7 +303,8 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
         if (!emp) {
             const sw = q('[data-v2-switch]');
             if (sw) {sw.innerHTML = '';}
-            body.innerHTML = `<section class="erp-card"><div class="erp-card__body" style="text-align:center;padding:60px 20px">`
+            body.innerHTML = punchCardHtml() + faceCardHtml()
+                + `<section class="erp-card"><div class="erp-card__body" style="text-align:center;padding:60px 20px">`
                 + `<h3>لم يتم ربط حسابك بملف موظف</h3><p class="erp-text-sm erp-text-muted">تواصل مع مدير الموارد البشرية لربط حسابك</p></div></section>`;
             return;
         }
@@ -141,7 +321,8 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             const t = (leaveTypes || []).find((x) => String(x.id) === String(id));
             return t ? t.name : '—';
         };
-        body.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
+        body.innerHTML = punchCardHtml() + faceCardHtml()
+            + `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title">${esc(emp.name)} <span class="erp-text-muted erp-text-sm erp-mono" dir="ltr">${esc(emp.employeeId || '')}</span></h3>`
             + `<span class="erp-grow"></span><span class="erp-text-sm erp-text-muted">${esc(emp.position || '')} · ${esc(emp.department || '')}</span>`
             + `</div></section>`
@@ -159,7 +340,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             + ((punches.punches || []).map((p) => `<span class="erp-badge" data-tone="${p.punchState === 0 ? 'success' : 'danger'}">${p.punchState === 0 ? 'حضور' : 'انصراف'} · <span dir="ltr">${esc(String(p.attendanceTime || ''))}</span> · ${esc(p.deviceName || '')}</span>`).join(' ')
                 || '<span class="erp-text-muted">لا توجد بصمات مسجلة لك اليوم</span>')
             + `</p></div></section>` : '')
-            + `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">سجل الحضور والانصراف</h3><span class="erp-grow"></span>`
+            + `<section class="erp-card"><div class="erp-card__head erp-portal-report__head"><h3 class="erp-card__title">سجل الحضور والانصراف</h3><span class="erp-grow"></span>`
             + `<input class="erp-input erp-input--ltr" type="month" data-v2-month value="${todayIso().slice(0, 7)}" aria-label="شهر الكشف">`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-print-day>اليوم</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-print-month>الشهر كامل</button></div>`
@@ -225,16 +406,196 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
         }
     }
 
+    /**
+     * بصمة ذاتية واحدة — كاميرا الوجه (إن كانت مفعّلة) ثم 6 قراءات موقع ثم
+     * الخادم. كل الرفض المحلي يُوثَّق عبر client-reject فلا رفض صامت.
+     */
+    async function doPunch() {
+        if (!canPunch || punchBusy) { return; }
+        const s = portalStatus || {};
+        if (s.enabled !== true) {
+            lastPunch = {kind: 'error', text: 'البصمة الذاتية غير مفعّلة إداريًا'};
+            paint();
+            return;
+        }
+        if (s.hasEmployeeProfile === false) {
+            lastPunch = {kind: 'error', text: 'لم يتم ربط حسابك بملف موظف'};
+            paint();
+            return;
+        }
+        if (s.faceEnabled && s.faceEnrolled === false) {
+            lastPunch = {kind: 'error', text: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية'};
+            paint();
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            lastPunch = {kind: 'error', text: 'لا يوجد اتصال بالشبكة — اتصل بشبكة المطعم وأعد المحاولة'};
+            paint();
+            return;
+        }
+
+        punchBusy = true;
+        lastPunch = null;
+        paint();
+        try {
+            let face = null;
+            if (s.faceEnabled) {
+                face = await captureFace({
+                    title: 'تأكيد البصمة بالوجه',
+                    target: 1,
+                    wantDescriptors: true,
+                    requireDescriptor: faceV1Required(s),
+                });
+                if (!el.isConnected) { return; }
+            }
+
+            let fixes = null;
+            let mockSignals = null;
+            if (s.geofence) {
+                const [collected, signals] = await Promise.all([
+                    collectLocationFixes((done, total, accuracy) => {
+                        const btn = q('[data-v2-punch]');
+                        if (!btn) { return; }
+                        btn.textContent = accuracy != null
+                            ? `تحديد الموقع ${done}/${total} — الدقة ${Math.round(accuracy)}م`
+                            : `تحديد الموقع ${done}/${total}…`;
+                    }),
+                    nativeMockSignals(),
+                ]);
+                fixes = collected;
+                mockSignals = signals;
+                if (!el.isConnected) { return; }
+                if (mockSignals && mockSignals.mocked === true) {
+                    reportClientReject('PUNCH_LOCATION_MOCKED_CLIENT', mockSignals.detail).catch(() => {});
+                    lastPunch = {kind: 'error', text: '✋ قراءة الموقع على جهازك معلَّمة كموقع مزيف — أوقف تطبيقات تغيير الموقع ثم أعد المحاولة'};
+                    return;
+                }
+                if (!fixes) {
+                    reportClientReject('PUNCH_LOCATION_UNAVAILABLE_CLIENT', mockSignals && mockSignals.detail).catch(() => {});
+                    lastPunch = {kind: 'error', text: '✋ تعذر تحديد موقعك — شغّل خدمة الموقع وانتظر إشارة أفضل ثم أعد المحاولة'};
+                    return;
+                }
+                if (mockSignals) {
+                    for (const fix of fixes) { fix.mocked = false; }
+                }
+            }
+
+            const payload = {
+                deviceId: portalDeviceId(),
+                location: s.geofence
+                    ? {fixes, mocked: false, spoofSignals: mockSignals && mockSignals.mockAppSelected === true ? ['MOCK_APP_SELECTED'] : []}
+                    : null,
+            };
+            if (face && face.descriptors.length) { payload.faceDescriptor = face.descriptors[0]; }
+            if (face && face.images.length) { payload.faceImage = face.images[0]; }
+            const res = await punchPortal(payload);
+            if (!el.isConnected) { return; }
+            lastPunch = {kind: 'ok', text: punchActionLabel(res && res.action)};
+            await reload();
+            if (el.isConnected) { say(lastPunch.text); }
+        } catch (e) {
+            if (!el.isConnected) { return; }
+            if (e && e.message === 'FACE_CANCELLED') {
+                lastPunch = {kind: 'neutral', text: 'أُلغيت البصمة — لم يُسجَّل شيء'};
+            } else {
+                lastPunch = {kind: 'error', text: '✋ ' + ((e && e.message) || 'تعذر تسجيل البصمة')};
+            }
+        } finally {
+            punchBusy = false;
+            if (el.isConnected) { paint(); }
+        }
+    }
+
+    function selectedFaceUser() {
+        const raw = q('[data-v2-face-user]')?.value ?? faceUserId;
+        const id = Number(raw);
+        const row = employees.find((e) => String(e.userId) === String(raw)) || null;
+        return {id, row, raw: String(raw || '')};
+    }
+
+    async function enrollSelectedFace() {
+        if (!canFace || faceBusy) { return; }
+        const target = selectedFaceUser();
+        if (!target.id) {
+            faceResult = {kind: 'error', text: 'اختر الموظف أولًا'};
+            paint();
+            return;
+        }
+        faceBusy = true;
+        faceResult = null;
+        paint();
+        try {
+            const face = await captureFace({
+                title: `تسجيل وجه: ${target.row ? target.row.name : ''}`,
+                target: 5,
+                wantDescriptors: true,
+                requireDescriptor: false,
+            });
+            if (!el.isConnected) { return; }
+            const saved = {v2: false, v1: false};
+            if (face.images.length) {
+                try { await enrollFaceV2(target.id, face.images); saved.v2 = true; }
+                catch (e) { saved.v2Error = (e && e.message) || 'فشل المحرك المتقدم'; }
+            }
+            if (!el.isConnected) { return; }
+            if (face.descriptors.length) {
+                try { await enrollFaceV1(target.id, face.descriptors); saved.v1 = true; }
+                catch (e) { saved.v1Error = (e && e.message) || 'فشل المحرك الأساسي'; }
+            }
+            if (!el.isConnected) { return; }
+            faceResult = saved.v2 || saved.v1
+                ? {kind: 'ok', text: faceEnrollMessage(saved)}
+                : {kind: 'error', text: 'فشل التسجيل: ' + (saved.v2Error || saved.v1Error || 'لا لقطة صالحة')};
+        } catch (e) {
+            if (!el.isConnected) { return; }
+            if (!e || e.message !== 'FACE_CANCELLED') {
+                faceResult = {kind: 'error', text: (e && e.message) || 'فشل التسجيل'};
+            }
+        } finally {
+            faceBusy = false;
+            if (el.isConnected) { paint(); }
+        }
+    }
+
+    async function removeSelectedFace() {
+        if (!canFace || faceBusy) { return; }
+        const target = selectedFaceUser();
+        if (!target.id) {
+            faceResult = {kind: 'error', text: 'اختر الموظف أولًا'};
+            paint();
+            return;
+        }
+        if (!window.confirm('إزالة قالب الوجه لهذا الموظف؟')) { return; }
+        faceBusy = true;
+        faceResult = null;
+        paint();
+        try {
+            const res = await removeFaceEnrollment(target.id);
+            if (!el.isConnected) { return; }
+            const removed = Number((res && res.removed) || 0) + Number((res && res.removedV2) || 0);
+            faceResult = removed > 0
+                ? {kind: 'ok', text: 'تمت إزالة القالب'}
+                : {kind: 'neutral', text: 'لا يوجد قالب نشط لهذا الموظف — لم يتغيّر شيء'};
+        } catch (e) {
+            if (!el.isConnected) { return; }
+            faceResult = {kind: 'error', text: (e && e.message) || 'فشلت الإزالة'};
+        } finally {
+            faceBusy = false;
+            if (el.isConnected) { paint(); }
+        }
+    }
+
     async function reload() {
         if (loading) {return;}
         loading = true;
         try {
-            const [emps, lv, lt, pu, cur] = await Promise.all([
+            const [emps, lv, lt, pu, cur, st] = await Promise.all([
                 fetchEmployees().catch(() => []),
                 fetchLeaveWorkflow().catch(() => []),
                 fetchLeaveTypes().catch(() => []),
                 fetchMyPunches().catch(() => null),
                 fetchCurrency().catch(() => ''),
+                fetchPortalStatus().catch(() => null),
             ]);
             if (!el.isConnected) {return;}
             employees = Array.isArray(emps) ? emps : [];
@@ -243,6 +604,10 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             leaveTypes = ltArr;
             punches = pu;
             currency = String(cur ?? '');
+            portalStatus = st && typeof st === 'object' ? st : null;
+            if (faceUserId && !employees.some((e) => String(e.userId) === faceUserId)) {
+                faceUserId = '';
+            }
             if (isAdmin) {
                 emp = employees.find((e) => emp && String(e.id) === String(emp.id))
                     || employees.find((e) => selfUserId !== null && String(e.userId) === selfUserId)
@@ -281,11 +646,18 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
                 emp = next;
                 reload();
             }
+            return;
+        }
+        if (event.target.matches('[data-v2-face-user]')) {
+            faceUserId = String(event.target.value || '');
         }
     });
 
     el.addEventListener('click', (event) => {
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-punch]')) {doPunch(); return;}
+        if (event.target.closest('[data-v2-face-enroll]')) {enrollSelectedFace(); return;}
+        if (event.target.closest('[data-v2-face-remove]')) {removeSelectedFace(); return;}
         if (event.target.closest('[data-v2-print-day]')) {printRange(todayIso(), todayIso(), `كشف حضور وانصراف يوم ${todayIso()}`); return;}
         if (event.target.closest('[data-v2-print-month]')) {
             const m = el.querySelector('[data-v2-month]')?.value || todayIso().slice(0, 7);

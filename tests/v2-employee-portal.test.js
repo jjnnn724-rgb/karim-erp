@@ -18,10 +18,9 @@ const REV = (fs.readFileSync(V2_HTML, 'utf8').match(/js\/v2\/preview\.js\?v=([0-
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 function loadEsm(file, injections = {}, collect = []) {
+    // الاستيراد قد يمتد على عدّة أسطر (P2-3) — يُنزع كاملًا حتى آخر `;`.
     const stripped = read(file)
-        .split('\n')
-        .filter((line) => !/^\s*import\b|^\s*from\s*'[^']*';?\s*$/.test(line))
-        .join('\n')
+        .replace(/^\s*import\b[\s\S]*?;\s*$/gm, '')
         .replace(/^export\s+/gm, '');
     const src = collect.length
         ? `${stripped}\n;Object.assign(globalThis, {${collect.join(', ')}});`
