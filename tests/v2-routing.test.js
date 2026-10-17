@@ -56,8 +56,9 @@ const esm = () => loadEsm(ROUTING, {}, [
 const navGroups = () => loadEsm(NAVMODEL, {}, ['readNavGroups']).readNavGroups();
 
 /* الشاشات التي لا تستورد شاشة كاملة وتقع على فرع المعاينة الهيكلية في
-   preview.js (بطاقة 🚧). أي مفتاح قائمة ليس هنا يجب أن يكون له مسار. */
-const STUB_KEYS = ['shelves', 'weight', 'query', 'professional'];
+   preview.js (بطاقة 🚧). أي مفتاح قائمة ليس هنا يجب أن يكون له مسار.
+   shelves/weight خرجا من القائمة حين صار لهما مسار حقيقي في P2-5. */
+const STUB_KEYS = ['query', 'professional'];
 
 describe('التوجيه — تحليل الهاش', () => {
     test('الأشكال كلها تُفهم، والخاطئ لا يمر', () => {

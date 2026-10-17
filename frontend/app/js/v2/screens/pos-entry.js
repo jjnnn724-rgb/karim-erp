@@ -11,8 +11,8 @@
  * Doors reused from cfo-repo (same /pos/shifts/open contract).
  */
 
-import { fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.131';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+import { fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.145';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

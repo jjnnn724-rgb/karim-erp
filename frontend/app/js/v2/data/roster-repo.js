@@ -30,7 +30,7 @@
  * warns in the confirm sentence before the click, not after.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.131';
+import { apiFetch } from '../../core/api.js?v=4.9.145';
 
 export const ROSTER_ROLES = ['admin', 'hr', 'manager', 'dept_head', 'kitchen', 'sous_chef', 'warehouse', 'accountant'];
 export const ROSTER_PRIVILEGED = ['admin', 'hr', 'manager'];

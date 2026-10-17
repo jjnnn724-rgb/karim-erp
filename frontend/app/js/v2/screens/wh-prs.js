@@ -22,9 +22,9 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.131';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.145';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.145';
 import {
     PR_CREATE_ROLES,
     fetchPurchaseRequests, fetchShortages, fetchPRDepartments, fetchPRInventoryNames,
@@ -33,11 +33,11 @@ import {
     collectPRItems, prCreateError, prReasonError,
     prCreatePayload, prNotesPayload, prRejectPayload,
     createPR, chefApprovePR, chefRejectPR, gmApprovePR, gmRejectPR, cancelPR, deletePR,
-} from '../data/pr-repo.js?v=4.9.131';
+} from '../data/pr-repo.js?v=4.9.145';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.131';
+} from '../signature.js?v=4.9.145';
 
 const SIG_IDS = {
     prCreate: 'v2pr-create-sig',

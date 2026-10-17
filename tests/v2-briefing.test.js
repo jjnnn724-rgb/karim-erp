@@ -397,7 +397,8 @@ describe('V2 briefing screen + host (source contract)', () => {
         expect(p).toMatch(/key === 'cfo'/);
         expect(p).toMatch(/renderBriefingScreen\(\)/);
         expect(p).toMatch(/teardownBriefingScreen\(\)/);
-        expect(p).toMatch(/briefingScreen \|\| branchesScreen/);
+        expect(p).toMatch(/briefingScreen \|\| hrDashboardScreen/);
+        expect(p).toMatch(/deptHeadDashScreen\s*\|\|\s*branchesScreen/);
         expect(p).toMatch(/noSessionState\('الموجز'\)/);
     });
 

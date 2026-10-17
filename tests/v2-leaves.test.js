@@ -646,9 +646,11 @@ describe('شاشة 10 — السجل المشترك والمضيف والطبق�
         expect(css.slice(css.indexOf('شاشة 10'))).not.toMatch(/#[0-9a-f]{3,6}\b/i);
     });
 
-    test('erp-hr.css مربوط بالمراجعة نفسها، وأول كتلة 640px ما زالت الأولى', () => {
+    test('erp-hr.css مربوطة بوسمها الخاص (per-file)، وأول كتلة 640px ما زالت الأولى', () => {
         const html = source(V2_HTML);
-        expect(html).toMatch(new RegExp(`erp-hr\\.css\\?v=${REV}`));
+        // v2.html تحولت إلى وسم لكل ملف — نطالبه بوسم erp-hr الرقمي الحاضر
+        const hrVer = (html.match(/css\/v2\/erp-hr\.css\?v=([0-9.]+)/) || [])[1];
+        expect(hrVer).toMatch(/^\d+\.\d+\.\d+$/);
         const css = source(HR_CSS);
         const first = css.indexOf('@media (max-width: 640px)');
         const leaves = css.indexOf('.erp-v2-leaves .erp-dash-head');

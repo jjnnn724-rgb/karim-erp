@@ -405,6 +405,24 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(s).not.toMatch(/data-v2-period="(hour|quarter|all)"/);
     });
 
+    test('every report type is offered — the three POS dimensions included', () => {
+        const s = screen();
+        const values = [...s.matchAll(/<option value="([a-z-]+)">/g)].map((m) => m[1]);
+        expect(new Set(values)).toEqual(new Set([
+            'pos-department', 'pos-cashier', 'pos-item', 'general', 'department', 'kitchen',
+            'returns', 'warehouse', 'hr', 'dept-specific', 'yara-departments', 'yara-cashiers',
+        ]));
+        // A POS type is a dimension change asked of the server, not a relabel:
+        // it rewrites groupBy, rebuilds the header set and reloads.
+        const setType = s.slice(s.indexOf('function setType(v)'), s.indexOf('function printDoc'));
+        expect(setType).toMatch(/v\.startsWith\('pos-'\)/);
+        expect(setType).toMatch(/const g = v\.slice\(4\);/);
+        expect(setType).toMatch(/groupBy = g;/);
+        expect(setType).toMatch(/mountTable\(\);/);
+        expect(setType).toMatch(/setPosVisible\(true\)/);
+        expect(setType).toMatch(/reload\(\);/);
+    });
+
     test('only allowlisted fields reach the table columns', () => {
         const keys = [...screen().matchAll(/\bkey: '([a-zA-Z]+)'/g)].map((m) => m[1]);
         expect(new Set(keys)).toEqual(new Set(['dimensionName', 'departmentName', 'invoiceCount',
@@ -604,8 +622,12 @@ describe('V2 reports screen + layer (source contract)', () => {
 
     test('the page loads the layer, versioned (Cloudflare caches CSS for 4h)', () => {
         const page = fs.readFileSync(V2_HTML, 'utf8');
+        // v2.html تحولت إلى وسم لكل ملف: نقرأ وسم erp-hr نفسه، ويُطالَب بحضوره
+        // ومطابقته لصفحة الطباعة لا لـ preview REV الموحّد القديم.
+        const hrVer = (page.match(/css\/v2\/erp-hr\.css\?v=([0-9.]+)/) || [])[1];
+        expect(hrVer).toMatch(/^\d+\.\d+\.\d+$/);   // وسم رقمي حاضر لا فارغ
+        expect(page).toMatch(`<link rel="stylesheet" href="css/v2/erp-hr.css?v=${hrVer}">`);
         const ver = page.match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(page).toMatch(`css/v2/erp-hr.css?v=${ver}`);
         expect(page).toMatch(`js/v2/preview.js?v=${ver}`);
     });
 
@@ -618,7 +640,7 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(p).toMatch(/navStatus\.current !== 'reports'/);
         expect(p).toMatch(/noSessionState\('التقارير'\)/);
         // The toolbar refresh must reach the new screen too.
-        expect(p).toMatch(/warehouseScreen \|\| reportsScreen/);
+        expect(p).toMatch(/warehouseScreen\s*\|\|\s*reportsScreen/);
         // Non-live does not fake totals: the period is answered in SQL.
         expect(p).toMatch(/الفترة والتجميع يُحسبان في SQL/);
     });

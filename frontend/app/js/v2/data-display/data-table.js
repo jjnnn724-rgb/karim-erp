@@ -226,7 +226,7 @@ export function createDataTable(options = {}) {
 
     function pageCount(total) {
         if (opts.mode === 'server') {
-            return Math.max(1, Math.ceil((state.totalRecords ?? rows.length) / state.pageSize));
+            return Math.max(1, Math.ceil((state.totalRecords ?? state.rows.length) / state.pageSize));
         }
         return Math.max(1, Math.ceil(total / state.pageSize));
     }

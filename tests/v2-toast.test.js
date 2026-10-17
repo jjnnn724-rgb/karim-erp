@@ -367,10 +367,10 @@ describe('7b. الطبقة داخل نطاق `.erp-v2` — وإلا كان كل 
     });
 });
 
-describe('8. التوحيد: notifyTo بدل ثماني عشرة حرفية', () => {
-    test('preview.js: ثمانية عشر notifyTo ولا حرفية قديمة', () => {
+describe('8. التوحيد: notifyTo بدل تسع عشرة حرفية', () => {
+    test('preview.js: تسعة عشر notifyTo ولا حرفية قديمة', () => {
         const src = code(HOST);
-        expect(src.match(/notify: notifyTo\(note\),/g)).toHaveLength(18);
+        expect(src.match(/notify: notifyTo\(note\),/g)).toHaveLength(19);
         expect(src).not.toMatch(/notify: \(message\) => \{ note\.textContent = message; \}/);
         expect(read(HOST)).toMatch(/from '\.\/toast\.js\?v=\d+\.\d+\.\d+'/);
     });

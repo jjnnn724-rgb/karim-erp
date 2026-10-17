@@ -10,14 +10,14 @@
  * department and accounts belong to hr/admin (legacy header, verbatim).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
-import { formatInt } from '../data/reports-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { statusBadge } from '../status.js?v=4.9.145';
+import { canWrite } from '../session.js?v=4.9.145';
+import { formatInt } from '../data/reports-repo.js?v=4.9.145';
 import {
     fetchDeptEmployees, deptEmpToRow, deptScopeLabel, validateDeptEmpForm,
     DEPT_EMP_WRITE_ROLES, createDeptEmployee, updateDeptEmployee, deactivateDeptEmployee,
-} from '../data/dept-employees-repo.js?v=4.9.131';
+} from '../data/dept-employees-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

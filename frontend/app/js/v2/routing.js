@@ -55,6 +55,7 @@ export const SUB_ROUTES = [
     'procurement-invoices',
     'procurement-payments',
     'goods-scan',
+    'warehouse-gov',
 ];
 
 /** Shape of a real nav key — lowercase letters, digits, hyphens. Anything
