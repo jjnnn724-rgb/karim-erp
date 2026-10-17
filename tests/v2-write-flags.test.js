@@ -30,7 +30,7 @@ const throwingStore = { getItem: () => { throw new Error('denied'); } };
 describe('write-flags — الافتراضي مغلق', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام الاثني عشر', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام الثلاثة عشر', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
         expect(ctx.recipeWriteEnabled('', null)).toBe(false);
         expect(ctx.departmentWriteEnabled('', null)).toBe(false);
@@ -43,6 +43,7 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.fiscalWriteEnabled('', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('', null)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('', null)).toBe(false);
+        expect(ctx.bulkImportWriteEnabled('', null)).toBe(false);
         expect(ctx.financeWriteEnabled(undefined, null)).toBe(false);
     });
 
@@ -63,6 +64,9 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.invoiceCreateWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.invoiceCreateWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('', throwingStore)).toBe(false);
+        expect(ctx.bulkImportWriteEnabled('', store('1'))).toBe(true);
+        expect(ctx.bulkImportWriteEnabled('', store('0'))).toBe(false);
+        expect(ctx.bulkImportWriteEnabled('', throwingStore)).toBe(false);
         expect(ctx.financeWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.portalWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.faceWriteEnabled('', store('0'))).toBe(false);
@@ -99,6 +103,8 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.invoiceVoidWriteEnabled('?v2invoicevoid=0', store('1'))).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('?v2invoicecreate=1', null)).toBe(true);
         expect(ctx.invoiceCreateWriteEnabled('?v2invoicecreate=0', store('1'))).toBe(false);
+        expect(ctx.bulkImportWriteEnabled('?v2bulkimport=1', null)).toBe(true);
+        expect(ctx.bulkImportWriteEnabled('?v2bulkimport=0', store('1'))).toBe(false);
     });
 
     test('كل علم لا يفتح الآخر', () => {
@@ -114,6 +120,8 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
+        expect(ctx.bulkImportWriteEnabled('?v2invoicecreate=1&v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('?v2bulkimport=1', null)).toBe(false);
     });
 });
 
@@ -182,8 +190,22 @@ describe('الشاشات — الدور والعلم معًا', () => {
         expect(gov).toMatch(/canWrite\(role, FISCAL_CLOSE_ROLES\) && fiscalWrite/);
     });
 
+    test('26د: الاستيراد الجماعي — العلم والدور معًا في الشاشتين', () => {
+        const users = read(path.join(V2, 'screens', 'users.js'));
+        expect(users).toMatch(/import \{ bulkImportWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
+        expect(users).toMatch(/const canBulk = canAdmin && bulkImportWriteEnabled\(\)/);
+        expect(users).toMatch(/data-v2-bulk/);
+        expect(users).toMatch(/mountBulkImportWizard/);
+
+        const employees = read(path.join(V2, 'screens', 'employees.js'));
+        expect(employees).toMatch(/import \{ bulkImportWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
+        expect(employees).toMatch(/const canBulkImport = isAdmin && bulkImportWriteEnabled\(\)/);
+        expect(employees).toMatch(/kind === 'bulk' && canBulkImport/);
+        expect(employees).toMatch(/mountBulkImportWizard/);
+    });
+
     test('لا نسخة ثانية من منطق العلم داخل الشاشات', () => {
-        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov', 'invoices', 'wh-invoices']
+        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov', 'invoices', 'wh-invoices', 'users', 'employees']
             .map((f) => path.join(V2, 'screens', `${f}.js`)));
         for (const f of all) {
             const s = read(f);

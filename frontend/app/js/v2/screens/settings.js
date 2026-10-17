@@ -12,9 +12,9 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.152';
-import { formatInt } from '../data/reports-repo.js?v=4.9.152';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.152';
+import { canWrite } from '../session.js?v=4.9.153';
+import { formatInt } from '../data/reports-repo.js?v=4.9.153';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.153';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -25,7 +25,7 @@ import {
     removePunchFace, fetchPunchDevices, unbindPunchDevice,
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
-} from '../data/settings-repo.js?v=4.9.152';
+} from '../data/settings-repo.js?v=4.9.153';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

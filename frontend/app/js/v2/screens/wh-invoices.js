@@ -34,22 +34,22 @@
  *     The print button calls window.print() like screens 03/04.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { statusBadge } from '../status.js?v=4.9.152';
-import { canWrite } from '../session.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.153';
+import { statusBadge } from '../status.js?v=4.9.153';
+import { canWrite } from '../session.js?v=4.9.153';
 import {
     fetchPurchaseInvoices, invoiceToRow, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.152';
+} from '../data/purchase-invoices-repo.js?v=4.9.153';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, rangeError,
-} from '../data/procurement-repo.js?v=4.9.152';
-import { fetchInventory } from '../data/inventory-repo.js?v=4.9.152';
+} from '../data/procurement-repo.js?v=4.9.153';
+import { fetchInventory } from '../data/inventory-repo.js?v=4.9.153';
 import {
     INVOICE_CREATE_ROLES, EDIT_LOCKED_MESSAGE, invoiceEditable,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.152';
-import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.152';
-import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.152';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.153';
+import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.153';
+import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.153';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

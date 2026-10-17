@@ -11,25 +11,27 @@
  *
  * World-class deltas (no behavior change): EnterpriseDataTable instead of
  * cards (search/sort built in) · inline panels instead of modals · no
- * blocking dialogs. Deferred with reason: bulk import (its own 586-line
- * feature — needs a dedicated screen, not a button to nowhere).
+ * blocking dialogs · bulk import (26د) mounted inline behind the admin role
+ * and the independent `v2bulkimport` flag (OFF by default).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { canWrite } from '../session.js?v=4.9.152';
-import { formatInt } from '../data/reports-repo.js?v=4.9.152';
-import { ROLES } from '../../core/config.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.153';
+import { canWrite } from '../session.js?v=4.9.153';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.153';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.153';
+import { formatInt } from '../data/reports-repo.js?v=4.9.153';
+import { ROLES } from '../../core/config.js?v=4.9.153';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
     linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.152';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.152';
+} from '../data/users-repo.js?v=4.9.153';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.153';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-function template(canAdmin) {
+function template(canAdmin, canBulk) {
     return `
       <div class="erp-v2-users">
         <div class="erp-dash-head">
@@ -42,6 +44,9 @@ function template(canAdmin) {
           <div class="erp-dash-controls">
             ${canAdmin ? `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm erp-no-print" data-v2-add>
               <i class="ji" data-i="plus" aria-hidden="true"></i><span>مستخدم جديد</span>
+            </button>` : ''}
+            ${canBulk ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-bulk>
+              <i class="ji" data-i="users" aria-hidden="true"></i><span>استيراد جماعي</span>
             </button>` : ''}
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-reload aria-label="تحديث">
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
@@ -62,6 +67,7 @@ export function mountUsersScreen(host, ctx = {}) {
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
         : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const canAdmin = canWrite(ctx.role, USERS_WRITE_ROLES) && ctx.role === 'admin';
+    const canBulk = canAdmin && bulkImportWriteEnabled();
     const selfId = ctx.userId !== null && ctx.userId !== undefined ? String(ctx.userId) : null;
 
     let rows = [];
@@ -70,14 +76,15 @@ export function mountUsersScreen(host, ctx = {}) {
     let loading = false;
     let saving = false;
     let panelUser = null; // null = إضافة، صف = تعديل
+    let bulkWizard = null;
 
-    host.insertAdjacentHTML('beforeend', template(canAdmin));
+    host.insertAdjacentHTML('beforeend', template(canAdmin, canBulk));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const body = q('[data-v2-body]');
     const noteEl = q('[data-v2-note]');
 
-    const say = (m) => { if (noteEl) {noteEl.textContent = m;} notify(m); };
+    const say = (m, kind) => { if (noteEl) {noteEl.textContent = m;} notify(m, kind); };
 
     const table = createDataTable({
         caption: 'المستخدمون — بيانات حية', mode: 'client', pageSize: 50,
@@ -147,7 +154,40 @@ export function mountUsersScreen(host, ctx = {}) {
         return e ? `${e.name} — ${e.employeeId || ''}` : '';
     }
 
+    function closeBulkPanel() {
+        if (bulkWizard && typeof bulkWizard.destroy === 'function') {bulkWizard.destroy();}
+        bulkWizard = null;
+    }
+
+    /** معالج الاستيراد الجماعي داخل البطاقة نفسها — لا شاشة جديدة ولا تنقّل. */
+    function openBulkPanel() {
+        if (!canBulk) {return;}
+        if (loading) {say('جارٍ تحميل البيانات — انتظر لحظة ثم أعد فتح الاستيراد'); return;}
+        let holder = body.querySelector('[data-v2-panel]');
+        if (!holder) {paintShell(); holder = body.querySelector('[data-v2-panel]');}
+        if (!holder) {say('تعذّر فتح معالج الاستيراد — أعد تحميل الشاشة'); return;}
+        closeBulkPanel();
+        holder.innerHTML = '';
+        const mount = document.createElement('div');
+        holder.appendChild(mount);
+        bulkWizard = mountBulkImportWizard(mount, {
+            notify: say,
+            confirmFn,
+            onDone: async () => {
+                closeBulkPanel();
+                holder.innerHTML = '';
+                if (el.isConnected) {await reload();}
+            },
+            onCancel: () => {
+                closeBulkPanel();
+                holder.innerHTML = '';
+            },
+        });
+        holder.scrollIntoView({ block: 'nearest' });
+    }
+
     function openPanel(user) {
+        closeBulkPanel();
         panelUser = user || null;
         const holder = body.querySelector('[data-v2-panel]');
         const isEdit = !!user;
@@ -286,6 +326,7 @@ export function mountUsersScreen(host, ctx = {}) {
     }
 
     function showSecret(title, sub, value, copyLabel) {
+        closeBulkPanel();
         const holder = body.querySelector('[data-v2-panel]');
         holder.innerHTML = `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">${esc(title)}</h3>`
             + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
@@ -326,6 +367,7 @@ export function mountUsersScreen(host, ctx = {}) {
 
     async function reload() {
         if (loading) {return;}
+        closeBulkPanel();
         if (!paintShellGate()) {return;}
         loading = true;
         try {
@@ -364,6 +406,7 @@ export function mountUsersScreen(host, ctx = {}) {
 
     el.addEventListener('click', async (event) => {
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-bulk]')) {openBulkPanel(); return;}
         if (event.target.closest('[data-v2-add]')) {openPanel(null); return;}
         if (event.target.closest('[data-v2-panel-x]')) {closePanel(); return;}
         if (event.target.closest('[data-v2-save]')) {savePanel(); return;}

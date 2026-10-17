@@ -1,0 +1,414 @@
+/**
+ * V2 — معالج الاستيراد الجماعي للموظفين/المستخدمين (26د)
+ * ═══════════════════════════════════════════════════════════════════════
+ * الطبقة تُكمل لغة V2 المجمّدة: كل قيمة رمزٌ من --erp-*؛ لا لون خام ولا
+ * قاعدة تمس مكوّنًا مشتركًا. حصرها في `.erp-bulk` يضمن أن حذف المعالج
+ * يومًا ما حذفُ ملفه وحده. تعمل داخل بطاقة الشاشة (users) وداخل لوحة
+ * الموظفين (employees) بلا تعديل على أي منهما.
+ */
+
+/* `hidden` على عنصر يلبس صنفًا هنا يخسر أمام قاعدة الصنف — تُعاد معناه. */
+.erp-v2 .erp-bulk [hidden] { display: none !important; }
+
+.erp-v2 .erp-bulk { display: block; }
+
+.erp-v2 .erp-bulk__shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+  padding: var(--erp-space-4);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-xl);
+  background: var(--erp-surface);
+}
+
+.erp-v2 .erp-bulk__head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding-block-end: var(--erp-space-3);
+  border-block-end: thin solid var(--erp-border-subtle);
+}
+.erp-v2 .erp-bulk__head--slim { align-items: center; }
+.erp-v2 .erp-bulk__title {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-bulk__intro {
+  flex: 1 1 20rem;
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-bulk__head [data-v2-bulk-close] { margin-inline-start: auto; }
+
+/* ── الخطوات ───────────────────────────────────────────────────────── */
+.erp-v2 .erp-bulk__steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-v2 .erp-bulk__step {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  min-block-size: var(--erp-space-8);
+  padding-inline: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-bulk__step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-space-6);
+  block-size: var(--erp-space-6);
+  flex: none;
+  border: thin solid currentColor;
+  border-radius: var(--erp-radius-full);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+}
+.erp-v2 .erp-bulk__step.is-active {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+.erp-v2 .erp-bulk__step.is-completed {
+  border-color: var(--erp-success);
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+}
+
+/* ── الخطوة 1: الإدخال والملف ──────────────────────────────────────── */
+.erp-v2 .erp-bulk__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  min-inline-size: 0;
+}
+
+.erp-v2 .erp-bulk__dropwrap { display: block; }
+.erp-v2 .erp-bulk__drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+  min-block-size: 11rem;
+  padding: var(--erp-space-5) var(--erp-space-3);
+  border: dashed medium var(--erp-border-strong);
+  border-radius: var(--erp-radius-xl);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.erp-v2 .erp-bulk__drop:hover,
+.erp-v2 .erp-bulk__drop.is-dragover {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+.erp-v2 .erp-bulk__drop-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-space-8);
+  block-size: var(--erp-space-8);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface);
+  border: thin solid var(--erp-border);
+  color: var(--erp-brand-text);
+  font-size: var(--erp-text-lg);
+}
+.erp-v2 .erp-bulk__drop strong { font-size: var(--erp-text-md); font-weight: var(--erp-fw-bold); }
+.erp-v2 .erp-bulk__drop-sub { font-size: var(--erp-text-sm); color: var(--erp-text-muted); }
+.erp-v2 .erp-bulk__formats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-bulk__formats > span {
+  padding: 2px var(--erp-space-2);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface);
+  color: var(--erp-text-faint);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: .04em;
+}
+
+.erp-v2 .erp-bulk__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  color: var(--erp-text-faint);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2 .erp-bulk__divider::before,
+.erp-v2 .erp-bulk__divider::after {
+  content: "";
+  flex: 1;
+  block-size: 0;
+  border-block-start: thin solid var(--erp-border);
+}
+
+.erp-v2 .erp-bulk__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-bulk__field textarea { min-block-size: 9rem; resize: vertical; }
+
+/* ── الخطوة 2: الخيارات ────────────────────────────────────────────── */
+.erp-v2 .erp-bulk__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-bulk__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-bulk__card--wide { grid-column: 1 / -1; }
+.erp-v2 .erp-bulk__card legend { padding-inline: var(--erp-space-1); }
+.erp-v2 .erp-bulk__card small { font-weight: var(--erp-fw-normal); line-height: 1.6; }
+.erp-v2 .erp-bulk__fixed { justify-content: space-between; }
+.erp-v2 .erp-bulk__callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2 .erp-bulk__callout b { color: var(--erp-text-primary); }
+.erp-v2 .erp-bulk__callout small { color: var(--erp-text-muted); }
+
+.erp-v2 .erp-bulk__fmts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+  gap: var(--erp-space-2);
+  margin-block-start: var(--erp-space-1);
+}
+.erp-v2 .erp-bulk__fmt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-block-size: var(--erp-space-8);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  text-align: start;
+  cursor: pointer;
+}
+.erp-v2 .erp-bulk__fmt small { color: var(--erp-text-muted); font-weight: var(--erp-fw-normal); }
+.erp-v2 .erp-bulk__fmt:hover { border-color: var(--erp-brand); }
+.erp-v2 .erp-bulk__fmt.is-selected {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+
+/* ── الخطوة 3: الإحصاءات والصفوف ───────────────────────────────────── */
+.erp-v2 .erp-bulk__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-bulk__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--erp-space-2);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  text-align: center;
+}
+.erp-v2 .erp-bulk__stat b {
+  font-size: var(--erp-text-xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+
+.erp-v2 .erp-bulk__scroll {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+}
+.erp-v2 .erp-bulk__table {
+  inline-size: 100%;
+  min-inline-size: 44rem;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+.erp-v2 .erp-bulk__table th,
+.erp-v2 .erp-bulk__table td {
+  padding: var(--erp-space-2);
+  border-block-end: thin solid var(--erp-border-subtle);
+  text-align: start;
+  vertical-align: middle;
+}
+.erp-v2 .erp-bulk__table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  white-space: nowrap;
+}
+.erp-v2 .erp-bulk__table tbody tr:hover { background: var(--erp-surface-hover); }
+.erp-v2 .erp-bulk__table td[dir="ltr"] { text-align: start; }
+.erp-v2 .erp-bulk__pass {
+  display: inline-block;
+  padding: 2px var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: .06em;
+}
+
+.erp-v2 .erp-bulk__progress {
+  margin: 0;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-info-soft);
+  color: var(--erp-info-text);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+}
+
+/* ── الخطوة 4: النتائج ─────────────────────────────────────────────── */
+.erp-v2 .erp-bulk__result-title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-bulk__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-warning);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-sm);
+  line-height: 1.7;
+}
+.erp-v2 .erp-bulk__warn i { flex: none; margin-block-start: 2px; }
+.erp-v2 .erp-bulk__errors {
+  margin: 0;
+  padding: var(--erp-space-2) var(--erp-space-5);
+  border: thin solid var(--erp-danger);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2 .erp-bulk__errors li + li { margin-block-start: var(--erp-space-1); }
+
+.erp-v2 .erp-bulk__exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-bulk__exports .erp-btn { min-block-size: var(--erp-space-8); }
+
+/* ── الملاحظات والتذييل ────────────────────────────────────────────── */
+.erp-v2 .erp-bulk__note {
+  margin: 0;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-inline-start: thick solid var(--erp-info);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-info-soft);
+  color: var(--erp-info-text);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2 .erp-bulk__note[data-tone="success"] { border-color: var(--erp-success); background: var(--erp-success-soft); color: var(--erp-success-text); }
+.erp-v2 .erp-bulk__note[data-tone="warning"] { border-color: var(--erp-warning); background: var(--erp-warning-soft); color: var(--erp-warning-text); }
+.erp-v2 .erp-bulk__note[data-tone="error"] { border-color: var(--erp-danger); background: var(--erp-danger-soft); color: var(--erp-danger-text); }
+
+.erp-v2 .erp-bulk__loaderr {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-danger);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2 .erp-bulk__loaderr span { flex: 1 1 14rem; }
+
+.erp-v2 .erp-bulk__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: thin solid var(--erp-border-subtle);
+}
+.erp-v2 .erp-bulk__actions .erp-btn { min-block-size: var(--erp-space-8); }
+
+.erp-v2 .erp-bulk :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-bulk__shell { padding: var(--erp-space-3); gap: var(--erp-space-3); }
+  .erp-v2 .erp-bulk__steps { grid-template-columns: 1fr; }
+  .erp-v2 .erp-bulk__step { min-block-size: var(--erp-space-7); }
+  .erp-v2 .erp-bulk__drop { min-block-size: 9rem; padding: var(--erp-space-4) var(--erp-space-2); }
+  .erp-v2 .erp-bulk__stats { grid-template-columns: 1fr 1fr; }
+  .erp-v2 .erp-bulk__exports .erp-btn { flex: 1 1 46%; justify-content: center; }
+  .erp-v2 .erp-bulk__actions .erp-btn { min-block-size: var(--erp-space-8); }
+  .erp-v2 .erp-bulk__table { min-inline-size: 38rem; }
+  .erp-v2 .erp-bulk :is(button, input:not([type="file"]), select) { min-block-size: var(--erp-space-8); }
+}

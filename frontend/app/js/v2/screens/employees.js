@@ -68,9 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { openInAppReport } from '../report-viewer.js?v=4.9.152';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.153';
+import { openInAppReport } from '../report-viewer.js?v=4.9.153';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.153';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.153';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.153';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -79,16 +81,16 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.152';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.152';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.152';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.152';
+} from '../data/employees-repo.js?v=4.9.153';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.153';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.153';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.153';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.152';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.152';
+} from '../data/employee-card-repo.js?v=4.9.153';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.153';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -314,6 +316,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
     const role = ctx.role ? String(ctx.role) : '';
     const canWrite = empWriteVisible(role);
     const isAdmin = role === 'admin';
+    const canBulkImport = isAdmin && bulkImportWriteEnabled();
 
     let allRows = [];
     let rows = [];
@@ -355,9 +358,10 @@ export function mountEmployeesScreen(host, ctx = {}) {
 
     /* ── Panel state (W2-2) — one panel element, three kinds ──────────── */
     let panelSeq = 0;        // invalidates in-flight fills when the panel changes
-    let panelKind = null;    // 'form' | 'file' | 'import'
+    let panelKind = null;    // 'form' | 'file' | 'import' | 'bulk'
     let panelRow = null;     // the roster row the panel was opened on
     let panelData = null;    // per-kind scratch (form photo, file fetches, import model)
+    let bulkWizard = null;
 
     /* ── View: cards (legacy parity default) or table. Browser-only
        preference, like the theme pref — never a server field. */
@@ -389,6 +393,8 @@ export function mountEmployeesScreen(host, ctx = {}) {
               <i class="ji" data-i="plus" aria-hidden="true"></i><span>إضافة موظف</span></button>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="import">
               <i class="ji" data-i="upload" aria-hidden="true"></i><span>استيراد Excel</span></button>` : '')
+            + (canBulkImport ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="bulk">
+              <i class="ji" data-i="users" aria-hidden="true"></i><span>استيراد جماعي</span></button>` : '')
             + `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-export>
               <i class="ji" data-i="download" aria-hidden="true"></i><span>تصدير Excel</span></button>`;
     }
@@ -693,13 +699,20 @@ export function mountEmployeesScreen(host, ctx = {}) {
           </div>`;
     }
 
+    function dropBulkWizard() {
+        if (bulkWizard && typeof bulkWizard.destroy === 'function') {bulkWizard.destroy();}
+        bulkWizard = null;
+    }
+
     function setPanel(html) {
+        dropBulkWizard();
         panelEl.innerHTML = html;
         panelEl.hidden = false;
         panelEl.scrollIntoView({ block: 'nearest' });
     }
 
     function closePanel() {
+        dropBulkWizard();
         panelSeq += 1;
         panelKind = null;
         panelRow = null;
@@ -1372,6 +1385,25 @@ export function mountEmployeesScreen(host, ctx = {}) {
           </div>`));
     }
 
+    /* ── Bulk wizard (26د) — users + employees in one pass ────────────── */
+    function openBulkImportPanel() {
+        if (!canBulkImport) {return;}
+        panelSeq += 1;
+        panelKind = 'bulk';
+        panelRow = null;
+        panelData = null;
+        setPanel(panelShell('الاستيراد الجماعي للموظفين والمستخدمين', 'users', '<div data-v2-bulk-mount></div>'));
+        const mount = panelEl.querySelector('[data-v2-bulk-mount]');
+        if (!mount) {return;}
+        bulkWizard = mountBulkImportWizard(mount, {
+            showHeader: false,
+            notify,
+            confirmFn,
+            onDone: () => { closePanel(); reload(); },
+            onCancel: () => { closePanel(); },
+        });
+    }
+
     async function downloadTemplate() {
         panelMsg('');
         const ready = await ensureXlsx();
@@ -1597,6 +1629,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             const kind = newBtn.getAttribute('data-v2-new');
             if (kind === 'add' && canWrite) {openFormPanel(null); return;}
             if (kind === 'import' && canWrite) {openImportPanel(); return;}
+            if (kind === 'bulk' && canBulkImport) {openBulkImportPanel(); return;}
             return;
         }
         if (event.target.closest('[data-v2-export]')) {exportRowsToXlsx(); return;}

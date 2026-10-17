@@ -7,10 +7,10 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { formatInt } from '../data/reports-repo.js?v=4.9.152';
-import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.152';
-import { ensureXlsx } from '../vendor.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.153';
+import { formatInt } from '../data/reports-repo.js?v=4.9.153';
+import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.153';
+import { ensureXlsx } from '../vendor.js?v=4.9.153';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {
@@ -178,7 +178,7 @@ export function mountWhVsPosScreen(host, ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.152').then((m) => m.fetchCurrency()).catch(() => '')]);
+            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.153').then((m) => m.fetchCurrency()).catch(() => '')]);
             if (!el.isConnected) {return;}
             const raw = data.status === 'fulfilled' ? (data.value.rows || data.value.comparison || []) : [];
             rows = raw.map((r) => ({
