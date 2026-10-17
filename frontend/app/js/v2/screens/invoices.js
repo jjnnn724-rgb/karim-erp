@@ -10,22 +10,26 @@
  * cross-screen coupling); switching tabs navigates via ctx.navigate.
  *
  * ONE WRITE DOOR (owner approval): full-pay of the remaining balance, via
- * procurement-repo.payInvoiceFull → POST /procurement/invoices/:id/pay.
+ * procurement-repo.payInvoiceFull → POST /procurement/invoices/:id/pay,
+ * plus a partial payment linked to an invoice via
+ * procurement-repo.payInvoicePartial → POST /procurement/payments
+ * (server re-checks amount ≤ remaining and recomputes paymentStatus;
+ * reversible through the payments screen's admin-only reversal).
  * Everything else on this screen is a read; the register itself is not
  * edited here (no create, no void, no delete-all — those stay in the
  * legacy warehouse page until their own approved wave).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { statusBadge } from '../status.js?v=4.9.145';
+import { canWrite } from '../session.js?v=4.9.145';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.131';
+} from '../data/purchase-invoices-repo.js?v=4.9.145';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
-    payInvoiceFull,
-} from '../data/procurement-repo.js?v=4.9.131';
+    payInvoiceFull, payInvoicePartial,
+} from '../data/procurement-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -72,13 +76,16 @@ function template() {
           <p class="erp-text-sm erp-text-muted">
             السجل يُقرأ من وجه الخادم الحالي
             (<span class="erp-addr" dir="ltr">/api/purchaseInvoices</span>)،
-            والصلاحية قررها الخادم وحده. الكتابة الوحيدة هنا تسديد كامل
-            المتبقي بفاتورة، بتأكيد يعرض المبلغ — والإنشاء والإلغاء والحذف
-            الجماعي باقٍ في صفحته القديمة حتى موجته. المتبقي = الإجمالي −
-            المسدد (بحد صفر، قاعدة النظام القديم). حالة السداد المحفوظة
-            تُعرض بعدّتها، والغائب يُقرأ «غير مسددة» كما في القديم.
+            والصلاحية قررها الخادم وحده. الكتابة هنا: تسديد كامل المتبقي، أو
+            دفعة جزئية مرتبطة بالفاتورة (الخادم يرفض ما يتجاوز المتبقي ويعيد
+            حساب حالة السداد؛ والعكس متاح لاحقًا من شاشة المدفوعات لحساب
+            الأدمن). الإنشاء والإلغاء والحذف الجماعي باقٍ في صفحته القديمة
+            حتى موجته. المتبقي = الإجمالي − المسدد (بحد صفر، قاعدة النظام
+            القديم). حالة السداد المحفوظة تُعرض بعدّتها، والغائب يُقرأ «غير
+            مسددة» كما في القديم.
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
+          <div data-v2-pay-form></div>
           <div data-v2-table></div>
         </div>
       </section>`;
@@ -101,6 +108,7 @@ export function mountInvoicesScreen(host, ctx = {}) {
     let loading = false;
     let queued = false;          // a refresh asked for while one was running
     let saving = false;
+    let payingInvoice = null;    // partial-payment form target
 
     host.insertAdjacentHTML('beforeend', template());
     const el = host.lastElementChild;
@@ -150,14 +158,21 @@ export function mountInvoicesScreen(host, ctx = {}) {
             ...(writable ? [{
                 key: 'actions',
                 header: 'إجراء',
-                width: '150px',
+                width: '270px',
                 align: 'end',
                 value: () => '',
-                render: (row) => (row.remaining > 0
-                    ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
+                render: (row) => {
+                    if (!(row.remaining > 0)) {return `<span class="erp-text-muted">—</span>`;}
+                    const full = `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
                         <i class="ji" data-i="banknote" aria-hidden="true"></i><span>تسديد الكل</span>
-                      </button>`
-                    : `<span class="erp-text-muted">—</span>`),
+                      </button>`;
+                    const part = row.supplierId
+                        ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay-part" data-id="${esc(row.id)}">
+                            <i class="ji" data-i="coins" aria-hidden="true"></i><span>جزئي</span>
+                          </button>`
+                        : '';
+                    return `<span class="erp-row-wrap">${part}${full}</span>`;
+                },
             }] : []),
         ],
     });
@@ -191,6 +206,81 @@ export function mountInvoicesScreen(host, ctx = {}) {
         } catch (e) {
             if (!el.isConnected) {return;}
             notify(`فشل التسديد: ${(e && e.message) || 'خطأ'}`, 'error');
+        } finally {
+            saving = false;
+        }
+    }
+
+    /** Local YYYY-MM-DD (device calendar — same basis as the legacy today()). */
+    function isoToday() {
+        const d = new Date();
+        const p = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
+
+    function closePayForm() {
+        payingInvoice = null;
+        const holder = q('[data-v2-pay-form]');
+        if (holder) {holder.innerHTML = '';}
+    }
+
+    /** Inline partial payment linked to this invoice. The server recomputes
+     *  the remainder and paymentStatus; the client only refuses what the
+     *  operator can already see (≤ 0 or above the displayed remainder). */
+    function openPayForm(row) {
+        if (!row || !(row.remaining > 0) || !row.supplierId) {return;}
+        payingInvoice = row;
+        const holder = q('[data-v2-pay-form]');
+        if (!holder) {return;}
+        const rem = `${formatMoney(row.remaining, currency).amount}${currency ? ` ${currency}` : ''}`;
+        holder.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
+            + `<h4 class="erp-card__title">دفعة جزئية — ${esc(row.number)} <span class="erp-text-muted erp-text-sm">${esc(row.supplier)}</span></h4>`
+            + `<span class="erp-grow"></span><span class="erp-badge" data-tone="info">المتبقي ${esc(rem)}</span></div>`
+            + `<div class="erp-card__body erp-stack"><div class="erp-dash-controls">`
+            + `<label class="erp-text-sm erp-text-muted">المبلغ<input class="erp-input erp-input--ltr" data-v2-pp-amount type="number" min="0.01" step="0.01" max="${esc(String(row.remaining))}"></label>`
+            + `<label class="erp-text-sm erp-text-muted">طريقة الدفع<select class="erp-select" data-v2-pp-method>`
+            + `<option value="cash">نقدي</option><option value="bank">تحويل بنكي</option><option value="card">بطاقة</option><option value="cheque">شيك</option>`
+            + `</select></label>`
+            + `<label class="erp-text-sm erp-text-muted">التاريخ<input class="erp-input erp-input--ltr" data-v2-pp-date type="date" value="${esc(isoToday())}"></label>`
+            + `<label class="erp-text-sm erp-text-muted">ملاحظات<input class="erp-input" data-v2-pp-notes maxlength="255"></label>`
+            + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-pp-go>حفظ الدفعة</button>`
+            + `<button type="button" class="erp-btn erp-btn--sm" data-v2-pp-x>إلغاء</button>`
+            + `</div><div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-pp-err role="alert"></div></div></section>`;
+        holder.scrollIntoView({block: 'nearest'});
+    }
+
+    async function submitPartial() {
+        if (saving || !payingInvoice) {return;}
+        const row = payingInvoice;
+        const val = (n) => (q(`[data-v2-pp-${n}]`)?.value ?? '');
+        const errBox = q('[data-v2-pp-err]');
+        const fail = (t) => { if (errBox) {errBox.textContent = t;} notify(t, 'error'); };
+        const amount = Number(val('amount'));
+        const method = val('method') || 'cash';
+        const date = val('date') || isoToday();
+        const notes = String(val('notes') || '').trim();
+        if (!Number.isFinite(amount) || amount <= 0) {fail('أدخل مبلغًا أكبر من صفر'); return;}
+        if (amount > row.remaining + 0.005) {
+            fail(`المبلغ يتجاوز المتبقي (${formatMoney(row.remaining, currency).amount})`);
+            return;
+        }
+        const shown = `${formatMoney(amount, currency).amount}${currency ? ` ${currency}` : ''}`;
+        if (!confirmFn(`تسجيل دفعة ${shown} على الفاتورة ${row.number}؟`)) {return;}
+        saving = true;
+        try {
+            const res = await payInvoicePartial(row.id, {
+                supplierId: row.supplierId, amount, method, date, notes,
+            });
+            if (!el.isConnected) {return;}
+            const due = res && res.supplierDueTotal !== undefined && res.supplierDueTotal !== null
+                ? ` — رصيد المورد الآن ${formatMoney(res.supplierDueTotal, currency).amount}${currency ? ` ${currency}` : ''}`
+                : '';
+            notify(`تم تسجيل دفعة ${shown} على الفاتورة ${row.number}${due}`);
+            closePayForm();
+            await reload();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            fail((e && e.message) || 'فشل تسجيل الدفعة');
         } finally {
             saving = false;
         }
@@ -240,10 +330,18 @@ export function mountInvoicesScreen(host, ctx = {}) {
             if (!hubBtn.classList.contains('is-active')) {navigate(hubBtn.dataset.v2Hub);}
             return;
         }
+        if (event.target.closest('[data-v2-pp-go]')) {submitPartial(); return;}
+        if (event.target.closest('[data-v2-pp-x]')) {closePayForm(); return;}
         const actBtn = event.target.closest('[data-v2-act]');
         if (actBtn) {
             if (actBtn.disabled) {return;}
-            runPay(actBtn.dataset.id);
+            const id = actBtn.dataset.id;
+            if (actBtn.dataset.v2Act === 'pay-part') {
+                const row = rows.find((r) => String(r.id) === String(id));
+                if (row) {openPayForm(row);}
+            } else {
+                runPay(id);
+            }
             return;
         }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}

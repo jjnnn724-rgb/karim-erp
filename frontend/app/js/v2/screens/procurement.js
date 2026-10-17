@@ -13,15 +13,15 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { statusBadge } from '../status.js?v=4.9.145';
+import { canWrite } from '../session.js?v=4.9.145';
 import {
     fetchProcurementSummary, fetchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
-    deleteSupplier,
-} from '../data/procurement-repo.js?v=4.9.131';
+    deleteSupplier, fetchSupplierStatement,
+} from '../data/procurement-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -127,6 +127,8 @@ export function mountProcurementScreen(host, ctx = {}) {
     let saving = false;
     let editing = null;          // row being edited; null while creating
     let rawById = new Map();     // raw API records for truthful editing
+    let statementPop = null;     // نافذة كشف الحساب المنбряقة (تُغلَق عند التنقل)
+    let statementOutside = null; // معالج النقر خارج اللوحة (يُفكَّك معها)
 
     host.insertAdjacentHTML('beforeend', template(writable));
     const el = host.lastElementChild;
@@ -200,6 +202,9 @@ export function mountProcurementScreen(host, ctx = {}) {
                           </button>`}
                     <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-act="delete" data-id="${esc(row.id)}" data-name="${esc(row.name)}">
                       <i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف</span>
+                    </button>
+                    <button type="button" class="erp-btn erp-btn--sm" data-v2-act="statement" data-id="${esc(row.id)}" data-name="${esc(row.name)}">
+                      <i class="ji" data-i="receipt" aria-hidden="true"></i><span>كشف حساب</span>
                     </button>
                   </span>`,
             }] : []),
@@ -412,6 +417,75 @@ export function mountProcurementScreen(host, ctx = {}) {
         }
     }
 
+    /** إغلاق كشف الحساب: يفكك معالج النقر خارج ثم يزيل اللوحة. */
+    function closeStatement() {
+        if (statementOutside) {
+            document.removeEventListener('click', statementOutside, true);
+            statementOutside = null;
+        }
+        if (statementPop) { statementPop.remove(); statementPop = null; }
+    }
+
+    async function openStatement(id) {
+        closeStatement();
+        const row = rows.find((r) => String(r.id) === String(id));
+        if (!row) {return;}
+        statementPop = document.createElement('section');
+        statementPop.className = 'erp-card erp-statement-pop';
+        statementPop.innerHTML = `
+          <div class="erp-statement-pop__head">
+            <h4 class="erp-statement-pop__title">كشف حساب — ${esc(row.name)}</h4>
+            <button type="button" class="erp-statement-pop__close" aria-label="إغلاق كشف الحساب">
+              <i class="ji" data-i="x" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="erp-statement-pop__meta">
+            <b>المستحق:</b> <span class="erp-statement-pop__amt">${formatMoney(row.dueTotal, currency).amount}</span>
+            <b>المشتريات:</b> <span class="erp-statement-pop__amt">${formatMoney(row.purchasesTotal, currency).amount}</span>
+            <b>المدفوعات:</b> <span class="erp-statement-pop__amt">${formatMoney(row.paymentsTotal, currency).amount}</span>
+          </div>
+          <div class="erp-statement-pop__table" data-v2-st-body>
+            <div class="erp-statement-pop__row"><span>جارٍ التحميل…</span></div>
+          </div>
+        `;
+        el.appendChild(statementPop);
+        statementPop.querySelector('.erp-statement-pop__close').addEventListener('click', closeStatement);
+        // النقر خارج اللوحة يغلقها — بحصاد capture لنقرات الزر نفسه (يفتحها) بعد this phase.
+        statementOutside = (ev) => {
+            const t = ev.target;
+            if (statementPop && t && typeof t.closest === 'function'
+                && !statementPop.contains(t) && !t.closest('[data-v2-act="statement"]')) { closeStatement(); }
+        };
+        document.addEventListener('click', statementOutside, true);
+        try {
+            const data = await fetchSupplierStatement(row.id);
+            const body = statementPop.querySelector('[data-v2-st-body]');
+            if (!data || !body) {return;}
+            const st = data.statement || { rows: [], totals: {}, openingBalance: 0 };
+            const m = (v) => formatMoney(v, currency).amount;
+            body.innerHTML = st.rows.map((r) => `
+              <div class="erp-statement-pop__row ${r.debit > 0 ? 'debit' : r.credit > 0 ? 'credit' : ''}">
+                <span class="erp-statement-pop__date">${r.date || '—'}</span>
+                <span title="${esc(r.ref || '')}">${esc(r.ref || '—')}</span>
+                <span title="${esc(r.description || '')}">${esc(r.description || '')}</span>
+                <span class="erp-statement-pop__amt erp-statement-pop__debit">${r.debit > 0 ? m(r.debit) : ''}</span>
+                <span class="erp-statement-pop__amt erp-statement-pop__credit">${r.credit > 0 ? m(r.credit) : ''}</span>
+                <span class="erp-statement-pop__amt">${m(r.balance)}</span>
+              </div>`).join('') || `<div class="erp-statement-pop__empty">لا حركات في المدى المختار.</div>`;
+            const foot = document.createElement('div');
+            foot.className = 'erp-statement-pop__row total';
+            foot.innerHTML = `
+              <span>المجموع</span><span></span><span>${st.totals.debit ? m(st.totals.debit) : ''}</span>
+              <span class="erp-statement-pop__amt">${st.totals.credit ? m(st.totals.credit) : ''}</span>
+              <span class="erp-statement-pop__amt">${m(st.totals.closing)}</span>
+            `;
+            body.appendChild(foot);
+        } catch (e) {
+            const body = statementPop.querySelector('[data-v2-st-body]');
+            if (body) { body.innerHTML = `<div class="erp-statement-pop__empty">تعذّر تحميل الكشف: ${(e && e.message) || 'خطأ'}</div>`; }
+        }
+    }
+
     async function reload() {
         if (loading) {queued = true; return;}
         loading = true;
@@ -464,6 +538,10 @@ export function mountProcurementScreen(host, ctx = {}) {
         const actBtn = event.target.closest('[data-v2-act]');
         if (actBtn) {
             if (actBtn.disabled) {return;}
+            if (actBtn.dataset.v2Act === 'statement') {
+                openStatement(actBtn.dataset.id);
+                return;
+            }
             runAction(actBtn.dataset.v2Act, actBtn.dataset.id, actBtn.dataset.name || '');
             return;
         }
@@ -479,6 +557,7 @@ export function mountProcurementScreen(host, ctx = {}) {
         reload,
         getRows: () => rows,
         destroy() {
+            closeStatement();
             closeForm();
             table.destroy();
             el.remove();

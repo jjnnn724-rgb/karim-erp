@@ -63,7 +63,8 @@ const EXPORTS = ['fetchProcurementSummary', 'fetchSuppliers', 'PAYMENT_METHOD_AR
     'fetchSupplierPayments', 'rangeError', 'paymentToRow', 'supplierToRow',
     'validateSupplierForm',
     'normalizeSupplierForm', 'createSupplier', 'updateSupplier', 'toggleSupplier',
-    'deleteSupplier', 'payInvoiceFull', 'deletePayment'];
+    'deleteSupplier', 'payInvoiceFull', 'payInvoicePartial', 'fetchSupplierStatement',
+    'deletePayment'];
 
 function repoStub(impl) {
     const calls = [];
@@ -475,5 +476,106 @@ describe('الرسوم والثوابت — لا انفجار تخزيني ول�
 
     test('05 تقول صراحةً إن فواتير 06 ومدفوعات 07 شاشتان مستقلتان — لا طيّ صامت', () => {
         expect(screenSrc['procurement.js']).toMatch(/شاشتان مستقلتان \(06\/07\)/);
+    });
+});
+
+describe('P1-4 — كشف الحساب والدفعة الجزئية: البابان مطابقان للراوتر', () => {
+    test('fetchSupplierStatement: GET /suppliers/:id/statement — نفس الباب :678 و READ_ROLES', async () => {
+        const { calls, repo } = repoStub({ statement: { rows: [], totals: {} } });
+        await repo.fetchSupplierStatement(7, { from: '2026-10-01', to: '2026-10-14' });
+        expect(calls[0].p).toBe('/procurement/suppliers/7/statement?from=2026-10-01&to=2026-10-14');
+        expect(calls[0].opts && calls[0].opts.method).toBeUndefined();   // GET عادي
+        expect(serverSrc).toContain('router.get(\'/suppliers/:id/statement\'');
+        expect(serverSrc).toMatch(/router\.get\('\/suppliers\/:id\/statement', jwtAuth, requireRole\(\.\.\.READ_ROLES\)/);
+    });
+
+    test('المدى الخاطئ يُهمل لا يُرسل — البوابتان تتساقطان مع normalizeDay في الخادم :62-66', async () => {
+        const { calls, repo } = repoStub({});
+        await repo.fetchSupplierStatement(7, { from: '14/10/2026', to: 'yesterday' });
+        expect(calls[0].p).toBe('/procurement/suppliers/7/statement');   // بلا query أصلًا
+        expect(serverSrc).toContain('function normalizeDay(value)');
+    });
+
+    test('payInvoicePartial: POST /payments — الجسد أرقام ومفاتيح مشروطة، والباب :722 هو صاحبه', async () => {
+        const { calls, repo } = repoStub({});
+        await repo.payInvoicePartial(9, { supplierId: '7', amount: '40.5', method: 'bank', date: '2026-10-17' });
+        expect(calls[0].p).toBe('/procurement/payments');
+        expect(calls[0].opts.method).toBe('POST');
+        expect(JSON.parse(calls[0].opts.body)).toEqual({
+            supplierId: 7, amount: 40.5, method: 'bank', date: '2026-10-17', invoiceId: 9,
+        });
+        // دفعة على الحساب: بلا فاتورة ولا ملاحظات — المفتاح الغائب لا يُرسل أصلًا
+        await repo.payInvoicePartial(null, { supplierId: 7, amount: 10, date: '2026-10-17' });
+        expect(JSON.parse(calls[1].opts.body)).toEqual({
+            supplierId: 7, amount: 10, method: 'cash', date: '2026-10-17',
+        });
+        expect(serverSrc).toMatch(/router\.post\('\/payments', jwtAuth, requireRole\(\.\.\.PAYMENT_WRITE_ROLES\)/);
+    });
+
+    test('الخادم وحده يحكم المتبقي: AMOUNT_EXCEEDS_REMAINING 422 — الباب لا يحسم ولا يتجاوز', () => {
+        expect(serverSrc).toContain('AMOUNT_EXCEEDS_REMAINING');
+        expect(serverSrc).toMatch(/if \(v\.clean\.amount > remaining\)/);
+        // المستودع لا يحسب متبقيًا ولا يرفض مبلغًا محليًا — الرفض قرار الخادم وحده
+        const repoSrc = read(REPO);
+        expect(repoSrc).not.toContain('AMOUNT_EXCEEDS_REMAINING');
+        expect(repoSrc).not.toMatch(/totalAmount\s*-|-\s*Number\(.*paidAmount/);
+    });
+
+    test('شاشة 06 تسدّد جزئيًا: نموذج مربوط بالفاتورة، وحارس المتبقي للمشغّل، والخادم يبقى الحاكم', () => {
+        const s = screenSrc['invoices.js'];
+        expect(s).toMatch(/import \{[\s\S]*?payInvoiceFull, payInvoicePartial,[\s\S]*?\} from '\.\.\/data\/procurement-repo\.js\?v=/);
+        expect(s).toMatch(/data-v2-act="pay-part"/);
+        expect(s).toMatch(/actBtn\.dataset\.v2Act === 'pay-part'/);
+        // لا يظهر الزر لفاتورة بلا مورد (الخادم يرفضها 422) ولا لمتبقٍ صفر
+        expect(s).toMatch(/row\.supplierId\s*\? `<button[^`]*data-v2-act="pay-part"/);
+        // الحارس المحلي يمنع ما يراه المشغّل فقط؛ الخادم يعيد الحساب دائمًا
+        expect(s).toMatch(/amount > row\.remaining \+ 0\.005/);
+        expect(s).toMatch(/payInvoicePartial\(row\.id, \{/);
+        expect(s).toMatch(/supplierId: row\.supplierId, amount, method, date, notes/);
+        expect(s).toMatch(/confirmFn\(`تسجيل دفعة/);
+        expect(s).toMatch(/const res = await payInvoicePartial/);
+    });
+
+    test('شاشة 05: زر الكشف في صفّ المورد، والمعالج يفتحه قبل الإجراءات الأخرى', () => {
+        const src = screenSrc['procurement.js'];
+        expect(src).toMatch(/data-v2-act="statement" data-id=/);
+        expect(src).toMatch(/if \(actBtn\.dataset\.v2Act === 'statement'\) \{\s*openStatement\(actBtn\.dataset\.id\);/);
+        expect(src).toMatch(/from '.*procurement-repo\.js\?v=[0-9.]+'/);
+    });
+
+    test('اللوحة تُغلق عند التنقل: closeStatement تفكك النقر خارج ثم تزيل — ولا تعلّق عقدة ميتة', () => {
+        const src = screenSrc['procurement.js'];
+        // الدالة الموحّدة: تفكّك المعالج ثم تزيل اللوحة، وتُستدعى من destroy
+        const fn = src.slice(src.indexOf('function closeStatement()'), src.indexOf('async function openStatement'));
+        expect(fn).toMatch(/document\.removeEventListener\('click', statementOutside, true\);/);
+        expect(fn).toMatch(/statementPop\.remove\(\); statementPop = null;/);
+        expect(fn.indexOf('removeEventListener')).toBeLessThan(fn.indexOf('statementPop.remove'));
+        const destroy = src.slice(src.indexOf('destroy() {'), src.indexOf('},', src.indexOf('destroy() {')));
+        expect(destroy).toMatch(/closeStatement\(\);/);
+        expect(destroy.indexOf('closeStatement')).toBeLessThan(destroy.indexOf('el.remove()'));
+    });
+
+    test('النقر خارج اللوحة يغلقها — بحصاد capture، ويستثنى زر الكشف نفسه', () => {
+        const src = screenSrc['procurement.js'];
+        expect(src).toMatch(/statementOutside = \(ev\) => \{/);
+        expect(src).toMatch(/document\.addEventListener\('click', statementOutside, true\);/);
+        expect(src).toMatch(/!t\.closest\('\[data-v2-act="statement"\]'\)/);
+        // إغلاق الزر يستدعي الدالة الموحّدة لا معالجًا مجمّعًا آخر
+        expect(src).toMatch(/\.erp-statement-pop__close'\)\.addEventListener\('click', closeStatement\);/);
+    });
+
+    test('قراءة متأخرة بعد الإغلاق لا تسقط: body مفقود = صمت لا استثناء (لا null.replace)', () => {
+        const src = screenSrc['procurement.js'];
+        expect(src).toMatch(/const data = await fetchSupplierStatement\(row\.id\);\s*const body = statementPop\.querySelector\('\[data-v2-st-body\]'\);\s*if \(!data \|\| !body\) \{return;\}/);
+    });
+
+    test('طبقة erp-hr.css: اللوحة كاملة داخل .erp-v2 وبرموز tokens فقط — لا hex ولا rgba', () => {
+        const css = read(HR_CSS);
+        expect(css).toMatch(/\.erp-v2 \.erp-statement-pop \{/);
+        expect(css).toMatch(/\.erp-v2 \.erp-statement-pop__row\.total \{/);
+        const block = css.slice(css.indexOf('.erp-v2 .erp-statement-pop {'), css.indexOf('.erp-v2 .erp-statement-pop__date'));
+        expect(block).toMatch(/var\(--erp-/);
+        expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(block).not.toMatch(/rgba?\(/);
     });
 });

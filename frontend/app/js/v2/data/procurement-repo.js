@@ -31,8 +31,8 @@
  * re-checks every call, so a gate here is button hygiene, never security.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.131';
+import { apiFetch } from '../../core/api.js?v=4.9.145';
+import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.145';
 
 export { fetchCurrency, formatMoney, formatInt };
 
@@ -274,6 +274,37 @@ export async function payInvoiceFull(id, { method = 'cash' } = {}) {
     return apiFetch(`/procurement/invoices/${encodeURIComponent(id)}/pay`, {
         method: 'POST', body: JSON.stringify({ method }),
     });
+}
+
+/** Partial payment of an invoice (or an unlinked payment on account).
+ *  POST /payments with an explicit amount — the server re-checks
+ *  `amount <= remaining` and recomputes `paymentStatus`
+ *  (paid | partial | unpaid). Returns { payment, invoice, supplierDueTotal }.
+ */
+export async function payInvoicePartial(invoiceId, { supplierId, amount, method = 'cash', date, notes = '' } = {}) {
+    return apiFetch('/procurement/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+            supplierId: Number(supplierId),
+            amount: Number(amount),
+            method,
+            date,
+            ...(invoiceId ? { invoiceId: Number(invoiceId) } : {}),
+            ...(notes ? { notes } : {}),
+        }),
+    });
+}
+
+/** كشف حساب مورد: الفواتير والدفعات في تسلسل زمني مع رصيد متسلسل.
+ *  GET /suppliers/:id/statement. يقبل من/إلى اختياريان لتصفية الفترة.
+ *  يُعالج التاريخ الخاطئ بصمت (يُهمل) ولا يرسله للسرفر.
+ */
+export async function fetchSupplierStatement(supplierId, { from = '', to = '' } = {}) {
+    const params = new URLSearchParams();
+    if (DATE_RE.test(String(from))) { params.set('from', String(from)); }
+    if (DATE_RE.test(String(to))) { params.set('to', String(to)); }
+    const qs = params.toString();
+    return apiFetch(`/procurement/suppliers/${encodeURIComponent(supplierId)}/statement${qs ? `?${qs}` : ''}`);
 }
 
 /** Hard delete + invoice recalc + domain event, admin only server-side.

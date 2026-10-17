@@ -1010,3 +1010,122 @@
   background: var(--erp-danger-soft);
   color: var(--erp-danger-text);
 }
+
+/* ═══ لوحة كشف حساب المورد (P1-4) ═══
+   منبثقة على يمين الشاشة، أوسع من .erp-pop لأن سطور الكشف تحمل تاريخاً
+   ومرجعاً وبياناً ومديناً ودائناً ورصيداً متسلسلاً. تفتح من شاشة 05 عبر
+   زر «كشف حساب» في سطر كل مورد، وتُغلق بزر الإغلاق أو النقر خارجها. */
+.erp-v2 .erp-statement-pop {
+  position: fixed;
+  top: 64px;
+  inset-inline-end: 16px;
+  z-index: var(--erp-z-dropdown);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  padding: var(--erp-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  /* اللوحة تملأ بين الحافتين بحدّ أقصى — لا 100vw لأنها تحسب شريط التمرير
+     المضمن فيتجاوز اللوح 15px عند العروض الضيقة (قياس 480→320). */
+  inset-inline-start: 16px;
+  max-width: 560px;
+  max-height: 75vh;
+  overflow: auto;
+}
+.erp-v2 .erp-statement-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  margin-bottom: var(--erp-space-1);
+}
+.erp-v2 .erp-statement-pop__title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-statement-pop__close {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--erp-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.erp-v2 .erp-statement-pop__close:hover { color: var(--erp-text-primary); }
+.erp-v2 .erp-statement-pop__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2) var(--erp-space-4);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  margin-bottom: var(--erp-space-2);
+}
+.erp-v2 .erp-statement-pop__meta b { color: var(--erp-text-primary); }
+.erp-v2 .erp-statement-pop__table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-statement-pop__row {
+  display: grid;
+  /* أعمدة مرنة: الحدود الصغرى تكفي العروض المتوسطة دون تمرير أفقي،
+     والحد الأعلى يحافظ على مقاس المكتب المقاس (88/112/68/68/80). */
+  grid-template-columns: minmax(64px, 88px) minmax(72px, 112px) minmax(0, 1fr) minmax(48px, 68px) minmax(48px, 68px) minmax(56px, 80px);
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  border-bottom: 1px solid var(--erp-border-subtle);
+  padding-block: 3px;
+  align-items: baseline;
+}
+.erp-v2 .erp-statement-pop__row.debit .erp-statement-pop__debit {
+  color: var(--erp-danger-text);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-statement-pop__row.credit .erp-statement-pop__credit {
+  color: var(--erp-success-text);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-statement-pop__row.total {
+  border-top: 2px solid var(--erp-border);
+  padding-top: var(--erp-space-1);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-statement-pop__empty {
+  text-align: center;
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  padding: var(--erp-space-4);
+}
+.erp-v2 .erp-statement-pop__amt { text-align: end; direction: ltr; }
+.erp-v2 .erp-statement-pop__date { direction: ltr; white-space: nowrap; }
+/* الهاتف (≤480): كل سطر كشف سطران — التاريخ/المرجع/الرصيد فوق،
+   والبيان/المدين/الدائن تحت. قيس: ستة أعمدة في سطر واحد تتمرّر
+   125px داخل اللوح عند 320. */
+@media (max-width: 480px) {
+  .erp-v2 .erp-statement-pop__row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+  .erp-v2 .erp-statement-pop__row > :nth-child(1) { grid-area: 1 / 1; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(2) { grid-area: 1 / 2; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(6) { grid-area: 1 / 4; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(3) { grid-area: 2 / 1 / 3 / 3; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(4) { grid-area: 2 / 3; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(5) { grid-area: 2 / 4; }
+  /* صف المجموع خمس خانات (لا خانة بيان): الفارغة تُطوى والأربعة في سطر */
+  .erp-v2 .erp-statement-pop__row.total {
+    grid-template-columns: auto auto auto auto;
+  }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(2) { display: none; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(1) { grid-area: 1 / 1; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(3) { grid-area: 1 / 2; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(4) { grid-area: 1 / 3; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(5) { grid-area: 1 / 4; }
+}
