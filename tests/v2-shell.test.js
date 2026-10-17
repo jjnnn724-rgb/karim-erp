@@ -146,6 +146,24 @@ describe('القشرة — عقد الوحدة', () => {
         expect(s.match(/\son[a-z]+\s*=\s*["']/g) || []).toHaveLength(0);
     });
 
+    test('وضع fixture لا يشغّل شبكة: isLive يحكم الجرس والصحة ومؤقتاتهما', () => {
+        const s = src();
+        expect(s).toMatch(/const live = typeof ctx\.isLive === 'function'/);
+        const block = (start, end) => s.slice(s.indexOf(start), s.indexOf(end, s.indexOf(start)));
+        const health = block('async function paintHealth()', 'const healthTimer');
+        expect(health).toMatch(/if \(!live\(\)\) \{return;\}/);
+        const bell = block('async function paintBell()', 'async function openNotifPanel');
+        expect(bell).toMatch(/if \(!live\(\) \|\| !isAdmin\)/);
+        const poll = block('function startNotifPoll()', '/* ── Quick buttons');
+        expect(poll).toMatch(/if \(!live\(\)\) \{return;\}/);
+        const refresh = block('function refresh()', 'refresh();');
+        const guard = refresh.indexOf('if (!live())');
+        expect(guard).toBeGreaterThan(-1);
+        expect(refresh.indexOf('paintBell()')).toBeGreaterThan(guard);
+        expect(refresh.indexOf('paintHealth()')).toBeGreaterThan(guard);
+        expect(refresh.indexOf('startNotifPoll()')).toBeGreaterThan(guard);
+    });
+
     test('المضيف يركّب الإضافات ويحدّثها مع الجلسة', () => {
         const h = read(HOST);
         expect(h).toMatch(/import \{ mountShellExtras \} from '\.\/layout\/shell-extras\.js\?v=/);

@@ -14,7 +14,7 @@
 import {
     NOTIF_ADMIN_ROLES, fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, changePassword,
-} from '../data/shell-repo.js?v=4.9.131';
+} from '../data/shell-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -43,6 +43,11 @@ function currentLang() {
 export function mountShellExtras(shell, ctx = {}) {
     const getRole = typeof ctx.getRole === 'function' ? ctx.getRole : () => null;
     const toast = typeof ctx.onToast === 'function' ? ctx.onToast : (m) => console.info('[V2 shell]', m);
+    /* Fixture mode (v2.html without ?live=1) must issue no request at all —
+       contract line 77. Every network-backed extra (bell, health lamps and
+       their timers) reads this door; the sign-in flips isLive() and the host
+       calls refresh() again, so the same mount becomes live without remount. */
+    const live = typeof ctx.isLive === 'function' ? ctx.isLive : () => false;
 
     const disposers = [];
     const on = (target, ev, fn) => {
@@ -77,6 +82,7 @@ export function mountShellExtras(shell, ctx = {}) {
     lamps.setAttribute('aria-label', 'حالة الخادم وقاعدة البيانات');
     const dot = (ok, label) => `<span class="erp-lamp" data-ok="${ok === true ? '1' : (ok === false ? '0' : 'x')}" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
     async function paintHealth() {
+        if (!live()) {return;}
         try {
             const h = await fetchHealth();
             lamps.innerHTML = `${dot(true, 'الخادم يعمل')}${dot(h.db, h.db === true ? 'قاعدة البيانات متصلة' : (h.db === false ? 'قاعدة البيانات لا تستجيب' : 'حالة القاعدة غير معلنة'))}`
@@ -86,7 +92,7 @@ export function mountShellExtras(shell, ctx = {}) {
         }
     }
     const healthTimer = setInterval(() => {
-        if (document.hidden) {return;}
+        if (!live() || document.hidden) {return;}
         paintHealth();
     }, HEALTH_MS);
     disposers.push(() => clearInterval(healthTimer));
@@ -106,7 +112,7 @@ export function mountShellExtras(shell, ctx = {}) {
 
     async function paintBell() {
         const isAdmin = NOTIF_ADMIN_ROLES.includes(String(getRole() || ''));
-        if (!isAdmin) {bellWrap.innerHTML = ''; return;}
+        if (!live() || !isAdmin) {bellWrap.innerHTML = ''; return;}
         let unread = 0;
         try {
             const n = await fetchNotifications();
@@ -182,7 +188,8 @@ export function mountShellExtras(shell, ctx = {}) {
     });
 
     function startNotifPoll() {
-        if (notifTimer) {clearInterval(notifTimer);}
+        if (notifTimer) {clearInterval(notifTimer); notifTimer = null;}
+        if (!live()) {return;}
         notifTimer = setInterval(() => {
             if (document.hidden || notifOpen) {return;}
             paintBell();
@@ -313,6 +320,12 @@ export function mountShellExtras(shell, ctx = {}) {
         paintLang();
         paintQuick();
         paintFab();
+        if (!live()) {
+            bellWrap.innerHTML = '';
+            lamps.innerHTML = '';
+            startNotifPoll();
+            return;
+        }
         paintBell();
         paintHealth();
         startNotifPoll();
