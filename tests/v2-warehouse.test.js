@@ -329,15 +329,17 @@ describe('V2 inventory repository — the server rule, the allowlist, the bounds
         const { calls, repo: r2 } = inventoryStub({ total: 0 });
         await r2.fetchInventory({});
         expect(calls.every((p) => p.startsWith('/warehouse/inventory/search?'))).toBe(true);
-        // W1-6 بأمر المالك: الكتابة فُتحت — لكن حصرًا من الأبواب الستة المعلنة.
+        // W1-6 بأمر المالك: الكتابة فُتحت — لكن حصرًا من الأبواب المعلنة.
         // كل نداء write في المستودع يجب أن يطابق (ميثود + شكل مسار) من القائمة،
         // والقائمة نفسها تُقارن كمجموعة كاملة — لا باب زائد ولا ناقص.
+        // 26c أضاف الباب السابع: إنشاء صنف الكتالوج من الـCRUD العام.
         const src = fs.readFileSync(REPO, 'utf8');
         const writeCalls = [...src.matchAll(/apiFetch\((['`])([^'`]+)['`]\s*,\s*\{\s*method:\s*'([A-Z]+)'/g)]
             .map((m) => `${m[3]} ${m[2].replace(/\$\{[^}]+\}/g, '{}')}`);
         expect(new Set(writeCalls)).toEqual(new Set([
             'POST /warehouse/inventory/{}/receipt',                       // وارد سريع (:1584)
             'POST /warehouse/inventory/bulk-receipt',                     // استيراد دفعي (:1637)
+            'POST /inventory',                                            // كتالوج الأصناف (features/warehouse.js:2384)
             'DELETE /inventory/{}',                                       // حذف عادي (server.js:2286)
             'DELETE /warehouse/inventory/{}/force',                       // حذف نهائي (:2423)
             'PUT /warehouse/inventory/{}/direct',                         // تعديل مباشر (:2480)

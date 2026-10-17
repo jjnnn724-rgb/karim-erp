@@ -1132,6 +1132,7 @@
    بعد الجدول وهو مقفول — نفس داء شاشة 10 وعلاجه (erp-hr.css:265):
    القاعدة تُعاد في طبقة الشاشة لا في الأساس. */
 .erp-v2-warehouse [data-v2-panel][hidden] { display: none; }
+.erp-v2-warehouse [data-v2-excel-progress][hidden] { display: none; }
 
 /* ── اللوحة: غلاف الكتابة والاستوديو معًا ── */
 .erp-v2-warehouse .erp-wh-panel {
@@ -1257,6 +1258,14 @@
   block-size: 100%;
   border-radius: inherit;
   background: var(--erp-brand);
+}
+
+/* سطر عبارة المرحلة والنسبة فوق شريط تقدم الاستيراد */
+.erp-v2-warehouse .erp-wh-import-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  font-weight: 700;
 }
 
 .erp-v2-warehouse .erp-wh-chips {

@@ -52,7 +52,7 @@
  *   own screen decides.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.150';
+import { apiFetch } from '../../core/api.js?v=4.9.151';
 
 /** Server caps for the reference walk, copied from pagination.js:17-18. */
 export const LEAVES_TYPE_PAGE = 1000;

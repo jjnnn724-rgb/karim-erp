@@ -29,14 +29,16 @@
  *   Cost stays out until the owner asks for a value view with the currency
  *   resolved. Everything the row carries is listed in `rowFields` below.
  *
- * THIS FILE WRITES ONLY THROUGH THE SIX NAMED DOORS (W1-6, below).
+ * THIS FILE WRITES ONLY THROUGH THE NAMED DOORS BELOW (W1-6, plus catalog).
  * Until W1-6 it was read-only by construction; the owner's wave order opened
  * the six write paths, and every one of them is mirrored here verbatim —
- * door for door, role for role. Nothing else in this file may POST/PUT/DELETE.
+ * door for door, role for role. The catalog import (26c) adds the seventh:
+ * POST /inventory, the generic entity CRUD the legacy catalog used
+ * (features/warehouse.js:2384). Nothing else may POST/PUT/DELETE.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.150';
-import { formatMoney } from './reports-repo.js?v=4.9.150';
+import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { formatMoney } from './reports-repo.js?v=4.9.151';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];
@@ -421,6 +423,108 @@ export async function bulkReceiveInventory(items) {
         method: 'POST',
         body: JSON.stringify({ items: Array.isArray(items) ? items : [] }),
     });
+}
+
+/* ── ملف Excel لاستيراد المخزون + كتالوج الأصناف ───────────────────────────
+   القديم (features/warehouse.js:2420-2471 و:2350-2391) يقرأ الورقة الأولى
+   بنفس المكتبة المحلية (xlsx.full.min.js) ويقبل .xlsx/.xls/.csv. التحليل هنا
+   نقي: الورقة تصل صفوفًا، والملف نفسه يقرؤه الغلاف في الشاشة. القواعد
+   منسوخة حرفيًا: رأس اختياري، «عام»/«قطعة»/5 افتراضات، وأرقام عربية/فواصل. */
+
+/** خلية ملف: BOM يُزال، والفراغ يُقص — parseInventoryImportCell :2420 */
+export function importCell(value) {
+    if (value === null || value === undefined) {return '';}
+    return String(value).replace(/\uFEFF/g, '').trim();
+}
+
+/** رقم من خلية قد تحمل فواصل أو أرقامًا عربية — parseInventoryImportNumber :2424 */
+export function importNumber(value, fallback = 0) {
+    if (value === null || value === undefined || value === '') {return fallback;}
+    const raw = importCell(value).replace(/[,\s]/g, '');
+    const normalized = raw.replace(/[٠-٩]/g, (ch) => '٠١٢٣٤٥٦٧٨٩'.indexOf(ch));
+    const num = Number(normalized.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(num) ? num : fallback;
+}
+
+/**
+ * صفوف المخزون من الورقة — inventoryImportRowsFromSheet :2454.
+ * الصف الأول رأس إن حمل أي خلية بأحد أسماء العمود؛ ولا يُشترط وجوده.
+ * @param {any[][]} rows
+ * @returns {Array<{name:string,category:string,unit:string,qty:number,price:number,minQty:number}>}
+ */
+export function inventoryImportRowsFromSheet(rows) {
+    const list = Array.isArray(rows) ? rows.filter((row) => Array.isArray(row)) : [];
+    if (!list.length) {return [];}
+    const headerRow = list[0].map((cell) => importCell(cell).toLowerCase());
+    const headerHasNames = headerRow.some((cell) => /^(اسم|اسم\s*الصنف|item|product|name)$/.test(cell));
+    const startIndex = headerHasNames ? 1 : 0;
+    return list.slice(startIndex).map((row) => {
+        const item = Array.isArray(row) ? row : [row];
+        const category = importCell(item[1] || '');
+        return {
+            name: importCell(item[0]),
+            category: category || 'عام',
+            unit: importCell(item[2] || ''),
+            qty: importNumber(item[3], 0),
+            price: importNumber(item[4], 0),
+            minQty: importNumber(item[5], 5),
+        };
+    }).filter((row) => row.name && row.qty >= 0 && row.price >= 0);
+}
+
+/** الحمولة الفعلية للاستيراد — نفس فلتر old :2513-2520 (qty>0). */
+export function inventoryImportPayload(rows = []) {
+    return (Array.isArray(rows) ? rows : []).map((row) => ({
+        name: String(row?.name || '').trim(),
+        category: String(row?.category || 'عام').trim() || 'عام',
+        unit: String(row?.unit || 'قطعة').trim() || 'قطعة',
+        qty: Number(row?.qty) || 0,
+        price: Number(row?.price) || 0,
+        minQty: Number(row?.minQty) || 5,
+    })).filter((row) => row.name && row.qty > 0 && row.price >= 0);
+}
+
+/** صفوف كتالوج الأصناف — القديم :2359 يقرأ من الصف الثاني ويشترط الاسم. */
+export function catalogRowsFromSheet(rows) {
+    return (Array.isArray(rows) ? rows : [])
+        .filter((row, index) => index > 0 && Array.isArray(row) && String(row[0] || '').trim())
+        .map((row) => {
+            const min = Number.parseFloat(row[3]);
+            return {
+                name: String(row[0]).trim(),
+                category: String(row[1] || '').trim() || 'عام',
+                unit: String(row[2] || '').trim() || 'قطعة',
+                minQty: Number.isFinite(min) && min > 0 ? min : 5,
+            };
+        });
+}
+
+/** حمولة إنشاء صنف كتالوج — القديم :2383 بحقول الخادم المسموحة نفسها. */
+export function catalogItemPayload(row = {}) {
+    return {
+        name: String(row.name || '').trim(),
+        category: String(row.category || '').trim() || 'عام',
+        unit: String(row.unit || '').trim() || 'قطعة',
+        qty: 0,
+        avgCost: 0,
+        minQty: Number(row.minQty) || 5,
+        weight: 0,
+        shelfId: null,
+    };
+}
+
+/** POST /inventory — بوابة CRUD العامة، أدوار الكتابة نفسها (schema-registry:780). */
+export async function createInventoryItem(payload) {
+    return apiFetch('/inventory', {
+        method: 'POST',
+        body: JSON.stringify(catalogItemPayload(payload)),
+    });
+}
+
+/** الخادم يرد 409 بـ`error` لا `code` (server.js:1657) — الفحص على الاثنين. */
+export function duplicateNameError(e) {
+    return !!(e && (e.code === 'DUPLICATE_ITEM_NAME'
+        || /موجود في المخزن بالفعل/.test(String(e.message || ''))));
 }
 
 /* ── الباب 3: حذف عادي + حذف نهائي ────────────────────────────────────────

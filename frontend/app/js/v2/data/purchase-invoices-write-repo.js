@@ -20,7 +20,7 @@
  * authority on roles, balances and the confirmation phrase.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.150';
+import { apiFetch } from '../../core/api.js?v=4.9.151';
 
 /** Mirrors requireRole('admin') on both doors — not a client invention. */
 export const INVOICE_VOID_ROLES = ['admin'];

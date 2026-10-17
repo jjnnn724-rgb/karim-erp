@@ -15,12 +15,20 @@
  *     zero price would silently falsify the weighted average, and legacy never
  *     sent one (parseFloat('0') returning the stored cost). 'أدخل كمية صحيحة'
  *     :1330 and the success sentence :1342 kept as written.
- *   • استيراد المخزون (toolbar): legacy.js:2488-2567 — same 20-item chunking
+ *   • استيراد المخزون (toolbar): legacy.js:2394-2565 — the Excel/CSV file is
+ *     read with the same xlsx.full.min.js the legacy page loaded, now through
+ *     vendor.js on demand; same template rows/sheet/filename, same optional
+ *     header, same Arabic-digit/comma parsing, same 20-item chunking
  *     (BULK_CHUNK), same progress texts, same failure list and the
- *     partial-success banner. Deviation (أ): a hand-typed grid replaces the
- *     Excel file (xlsx is not loaded by v2.html); the row mapping is the
- *     repository's bulkReceiptRows, copied from :2515-2522. The
- *     new/updated split is judged against the LOADED window and says so.
+ *     partial-success banner. The hand-typed grid from W1-6 stays beside it as
+ *     «إدخال يدوي» — the only deviation left there is the new/updated split,
+ *     which is judged against the LOADED window and says so. File-reader APIs
+ *     are modern (readAsArrayBuffer + type:'array'; CSV stays UTF-8 text)
+ *     instead of the deprecated readAsBinaryString, with the same workbook
+ *     result. Catalog import (legacy.js:2326-2391): exact-name skip against
+ *     the loaded window, and a server 409 DUPLICATE_ITEM_NAME is counted as a
+ *     skipped duplicate instead of failing the row — the server normalizes
+ *     spaces/case, so it knows twins the window may not.
  *   • تعديل مباشر (row action, admin): legacy.js:1445-1464 — validation
  *     texts and the ledger-delta toast verbatim. Deviation (د): the confirm
  *     cannot print the old cost (not on this screen); it prints the new
@@ -86,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.150';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -94,6 +102,8 @@ import {
     invWriteVisible, invForceVisible, invDirectVisible, invMergeVisible,
     receiptPayload, receiveInventoryItem,
     bulkReceiptRows, bulkReceiveInventory, BULK_CHUNK,
+    importCell, inventoryImportRowsFromSheet, inventoryImportPayload,
+    catalogRowsFromSheet, createInventoryItem, duplicateNameError,
     deleteInventoryItem, forceDeleteInventoryItem, hasMovementsError,
     directEditError, directEditPayload, directEditInventoryItem,
     duplicateGroups, mergeInventoryItems,
@@ -103,13 +113,14 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.150';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.150';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.150';
+} from '../data/inventory-repo.js?v=4.9.151';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.151';
+import { ensureXlsx } from '../vendor.js?v=4.9.151';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.150';
+} from '../signature.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -336,8 +347,12 @@ function template(stock, can) {
             <span class="erp-v2-warehouse__tools">
               ${can.audit ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="audit">
                 <i class="ji" data-i="clipboard-list" aria-hidden="true"></i><span>جرد المخزون</span></button>` : ''}
+              ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="excel">
+                <i class="ji" data-i="upload" aria-hidden="true"></i><span>استيراد Excel</span></button>` : ''}
               ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="bulk">
-                <i class="ji" data-i="upload" aria-hidden="true"></i><span>استيراد المخزون</span></button>` : ''}
+                <i class="ji" data-i="pencil" aria-hidden="true"></i><span>إدخال يدوي</span></button>` : ''}
+              ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="catalog">
+                <i class="ji" data-i="inbox" aria-hidden="true"></i><span>كتالوج الأصناف</span></button>` : ''}
               ${can.merge ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="merge">
                 <i class="ji" data-i="copy" aria-hidden="true"></i><span>دمج أصناف مكررة</span></button>` : ''}
             </span>
@@ -623,8 +638,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
             : `حكم «جديد/محدَّث» محسوب على السجل المحمّل (${formatInt(allRows.length)} صنفًا).`;
         return panelShell('استيراد المخزون', 'upload',
             `<div class="erp-flow-note" data-tone="info">
-               في V2 تُكتب الأصناف في هذه الشبكة يدويًا بدل ملف Excel: الفئة الفارغة «عام»،
-               والوحدة الفارغة «قطعة»، والحد الأدنى الفارغ 5 — نفس افتراضات الخادم.
+               إدخال يدوي سريع — للاستيراد من ملف استخدم زر «استيراد Excel».
+               الفئة الفارغة «عام»، والوحدة الفارغة «قطعة»، والحد الأدنى الفارغ 5 — نفس افتراضات الخادم.
                الأسماء تُطابق بتطبيع الخادم، فالاسم المتشابه شكلًا يحدّث الصنف القائم بدل إنشاء مكرر.
              </div>
              <div class="erp-stack" data-v2-bulk-rows>
@@ -638,6 +653,336 @@ export function mountWarehouseScreen(host, ctx = {}) {
                ${esc(windowNote)}
              </p>
              ${panelActions('استيراد المخزون', 'upload')}`);
+    }
+
+    /* ── ملف Excel: المخزون والكتالوج — القديم :2326-2391 و:2394-2565 ──── */
+
+    async function readSheetRows(file) {
+        if (!(await ensureXlsx())) {
+            throw new Error('تعذّر تحميل محرر Excel (xlsx.full.min.js) — تحقق من الاتصال وأعد المحاولة');
+        }
+        const isCsv = /\.csv$/i.test(file.name || '');
+        const result = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target && e.target.result);
+            reader.onerror = () => reject(new Error('FILE_READ_FAILED'));
+            if (isCsv) {reader.readAsText(file, 'UTF-8');}
+            else {reader.readAsArrayBuffer(file);}
+        });
+        const book = window.XLSX.read(isCsv ? result : new Uint8Array(result), { type: isCsv ? 'string' : 'array' });
+        const sheet = book.Sheets[book.SheetNames[0]];
+        const all = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        return Array.isArray(all) ? all.filter((row) => (Array.isArray(row)
+            ? row.some((cell) => importCell(cell) !== '')
+            : importCell(row) !== '')) : [];
+    }
+
+    function readErrorText(e) {
+        return e && e.message && e.message !== 'FILE_READ_FAILED'
+            ? e.message
+            : 'خطأ في قراءة الملف';
+    }
+
+    async function downloadTemplate(kind) {
+        if (!(await ensureXlsx())) {
+            notify('تعذّر تحميل محرر Excel — تحقق من الاتصال وأعد المحاولة', 'error');
+            return;
+        }
+        const X = window.XLSX;
+        const isCatalog = kind === 'catalog';
+        const rows = isCatalog
+            ? [['اسم الصنف', 'الفئة', 'الوحدة', 'الحد الأدنى'],
+                ['دجاج', 'لحوم', 'كجم', 5], ['أرز', 'حبوب', 'كيس', 10], ['زيت', 'زيوت', 'لتر', 3]]
+            : [['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى'],
+                ['دجاج', 'لحوم', 'كجم', 50, 25, 10], ['أرز', 'حبوب', 'كيس', 100, 3.5, 20],
+                ['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5]];
+        const ws = X.utils.aoa_to_sheet(rows);
+        ws['!cols'] = isCatalog
+            ? [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 12 }]
+            : [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+        const wb = X.utils.book_new();
+        X.utils.book_append_sheet(wb, ws, isCatalog ? 'الأصناف' : 'المخزون');
+        X.writeFile(wb, isCatalog ? 'نموذج_قائمة_الأصناف.xlsx' : 'نموذج_استيراد_المخزون.xlsx');
+    }
+
+    function importMoneyText(v, currency) {
+        const m = formatMoney(v, currency);
+        return m.hasUnit ? `${m.amount} ${m.unit}` : m.amount;
+    }
+
+    function excelImportHtml() {
+        const windowNote = truncated
+            ? `حكم «جديد/محدَّث» محسوب على ${formatInt(allRows.length)} صنفًا محمّلًا من ${formatInt(registerTotal)} في السجل — خارج النافذة قد يكون الاسم موجودًا فيُحدَّث لا يُنشأ.`
+            : `حكم «جديد/محدَّث» محسوب على السجل المحمّل (${formatInt(allRows.length)} صنفًا).`;
+        return panelShell('استيراد المخزون من Excel', 'upload',
+            `<div class="erp-flow-note" data-tone="info">
+               <strong>صيغة الملف:</strong> الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى
+             </div>
+             <div class="erp-flow-note" data-tone="warning">
+               <strong>تنبيه:</strong> إذا كان الصنف موجودًا مسبقًا، سيتم تحديث كميته وسعره فقط.
+             </div>
+             <div><button type="button" class="erp-btn erp-btn--sm" data-v2-template="inventory">
+               <i class="ji" data-i="download" aria-hidden="true"></i><span>تحميل نموذج Excel</span></button></div>
+             <label class="erp-field"><span class="erp-label">اختر ملف Excel أو CSV</span>
+               <input class="erp-input" type="file" accept=".xlsx,.xls,.csv" data-v2-excel-file></label>
+             <div class="erp-stack" data-v2-excel-progress hidden>
+               <div class="erp-wh-import-head">
+                 <span class="erp-text-sm" data-v2-excel-phase></span>
+                 <span class="erp-text-sm erp-num" dir="ltr" data-v2-excel-pct>0%</span>
+               </div>
+               <div class="erp-wh-progress"><span data-v2-excel-bar style="inline-size:0%"></span></div>
+             </div>
+             <div class="erp-stack" data-v2-excel-preview></div>
+             <p class="erp-text-sm erp-text-muted">${esc(windowNote)}</p>
+             ${panelActions('استيراد المخزون', 'upload')}`);
+    }
+
+    function excelPreviewHtml(list, currency) {
+        const total = list.reduce((sum, r) => sum + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
+        const rowHtml = list.slice(0, 6).map((r) => `<tr>
+            <td>${esc(r.name)}</td>
+            <td>${formatQty(r.qty)} ${esc(r.unit || '')}</td>
+            <td>${esc(importMoneyText(r.price, currency))}</td>
+            <td>${esc(importMoneyText((Number(r.qty) || 0) * (Number(r.price) || 0), currency))}</td>
+          </tr>`).join('');
+        return `<div class="erp-text-sm">
+            <strong>معاينة: ${formatInt(list.length)} صنف</strong> | إجمالي القيمة: ${esc(importMoneyText(total, currency))}
+          </div>
+          <div class="erp-wh-audit-scroll">
+            <table class="erp-wh-audit-table">
+              <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th></tr></thead>
+              <tbody>${rowHtml}</tbody>
+            </table>
+          </div>
+          ${list.length > 6 ? `<div class="erp-text-sm erp-text-muted">... و${formatInt(list.length - 6)} أصناف أخرى</div>` : ''}`;
+    }
+
+    async function previewExcelFile(file) {
+        const box = panelEl.querySelector('[data-v2-excel-preview]');
+        if (!box) {return;}
+        if (!file) {box.innerHTML = ''; return;}
+        const seq = panelSeq;
+        try {
+            const rows = await readSheetRows(file);
+            if (!panelAlive(seq)) {return;}
+            const list = inventoryImportRowsFromSheet(rows);
+            if (!list.length) {
+                box.innerHTML = '<div class="erp-flow-note" data-tone="danger">لا توجد بيانات صالحة</div>';
+                return;
+            }
+            let currency = '';
+            try {currency = await fetchCurrency();} catch {currency = '';}
+            if (!panelAlive(seq)) {return;}
+            box.innerHTML = excelPreviewHtml(list, currency);
+        } catch (e) {
+            if (!panelAlive(seq)) {return;}
+            box.innerHTML = `<div class="erp-flow-note" data-tone="danger">${esc(readErrorText(e))}</div>`;
+        }
+    }
+
+    function catalogImportHtml() {
+        const windowNote = truncated
+            ? `القائمة المحمّلة ${formatInt(allRows.length)} من ${formatInt(registerTotal)} — تُتجاهل الأسماء الظاهرة فيها، والخادم يرفض أي مكرر خارجها بالاسم المطابق بعد تطبيع المسافات والحالة.`
+            : 'تُنشأ الأصناف برصيد صفر وتكلفة صفر — الكمية تأتي من «استيراد Excel» أو الوارد لاحقًا، والاسم الموجود مسبقًا يُتجاهل.';
+        return panelShell('استيراد قائمة الأصناف من Excel', 'inbox',
+            `<div class="erp-flow-note" data-tone="info">
+               <strong>صيغة الملف:</strong> الأعمدة: اسم الصنف، الفئة، الوحدة، الحد الأدنى
+             </div>
+             <div><button type="button" class="erp-btn erp-btn--sm" data-v2-template="catalog">
+               <i class="ji" data-i="download" aria-hidden="true"></i><span>تحميل نموذج Excel</span></button></div>
+             <label class="erp-field"><span class="erp-label">اختر ملف Excel أو CSV</span>
+               <input class="erp-input" type="file" accept=".xlsx,.xls,.csv" data-v2-catalog-file></label>
+             <div class="erp-stack" data-v2-catalog-preview></div>
+             <p class="erp-text-sm erp-text-muted">${esc(windowNote)}</p>
+             ${panelActions('استيراد', 'inbox')}`);
+    }
+
+    function catalogPreviewHtml(list) {
+        return `<div class="erp-text-sm"><strong>معاينة: ${formatInt(list.length)} صنف</strong></div>
+          <div class="erp-stack">${list.slice(0, 5).map((r) => `<div class="erp-text-sm">
+            <i class="ji" data-i="package" aria-hidden="true"></i>
+            ${esc(r.name)} | ${esc(r.category)} | ${esc(r.unit)} | حد أدنى: ${formatQty(r.minQty)}
+          </div>`).join('')}</div>
+          ${list.length > 5 ? `<div class="erp-text-sm erp-text-muted">... و${formatInt(list.length - 5)} أصناف أخرى</div>` : ''}`;
+    }
+
+    async function previewCatalogFile(file) {
+        const box = panelEl.querySelector('[data-v2-catalog-preview]');
+        if (!box) {return;}
+        if (!file) {box.innerHTML = ''; return;}
+        const seq = panelSeq;
+        try {
+            const rows = await readSheetRows(file);
+            if (!panelAlive(seq)) {return;}
+            const list = catalogRowsFromSheet(rows);
+            box.innerHTML = list.length
+                ? catalogPreviewHtml(list)
+                : '<div class="erp-flow-note" data-tone="danger">لا توجد بيانات</div>';
+        } catch (e) {
+            if (!panelAlive(seq)) {return;}
+            box.innerHTML = `<div class="erp-flow-note" data-tone="danger">${esc(readErrorText(e))}</div>`;
+        }
+    }
+
+    async function submitExcel() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        const fileInput = panelEl.querySelector('[data-v2-excel-file]');
+        const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+        if (!file) {notify('اختر ملف Excel أولاً', 'error'); return;}
+        const seq = panelSeq;
+        let items;
+        try {
+            const rows = await readSheetRows(file);
+            items = inventoryImportPayload(inventoryImportRowsFromSheet(rows));
+        } catch (e) {
+            notify(readErrorText(e), 'error');
+            return;
+        }
+        if (!panelAlive(seq)) {return;}
+        if (!items.length) {notify('لا توجد صفوف صالحة للاستيراد', 'error'); return;}
+
+        const chunks = [];
+        for (let i = 0; i < items.length; i += BULK_CHUNK) {chunks.push(items.slice(i, i + BULK_CHUNK));}
+        const existingNames = new Set(allRows.map((i) => String(i.name || '').toLowerCase()));
+        const progWrap = panelEl.querySelector('[data-v2-excel-progress]');
+        const phaseEl = panelEl.querySelector('[data-v2-excel-phase]');
+        const pctEl = panelEl.querySelector('[data-v2-excel-pct]');
+        const barEl = panelEl.querySelector('[data-v2-excel-bar]');
+        const previewBox = panelEl.querySelector('[data-v2-excel-preview]');
+        const submitBtn = panelEl.querySelector('[data-v2-submit]');
+        const submitLabel = submitBtn ? submitBtn.querySelector('span') : null;
+        const setProgress = (done, total, label) => {
+            if (progWrap) {progWrap.hidden = false;}
+            const pct = Math.round((done / Math.max(total, 1)) * 100);
+            if (phaseEl && label) {phaseEl.textContent = label;}
+            if (pctEl) {pctEl.textContent = `${pct}%`;}
+            if (barEl) {barEl.style.inlineSize = `${pct}%`;}
+        };
+        const setFormBusy = (on) => {
+            if (submitBtn) {submitBtn.disabled = on;}
+            if (fileInput) {fileInput.disabled = on;}
+            if (submitLabel) {submitLabel.textContent = on ? 'جارٍ الاستيراد...' : 'استيراد المخزون';}
+        };
+        const failures = [];
+        const importedNames = new Set();
+        let added = 0;
+        let updated = 0;
+        busy = true;
+        setFormBusy(true);
+        try {
+            setProgress(0, chunks.length + 1, `جارٍ استيراد ${formatInt(items.length)} صنف في ${formatInt(chunks.length)} دفعة — لا تغلق اللوحة`);
+            for (let ci = 0; ci < chunks.length; ci += 1) {
+                if (!panelAlive(seq)) {return;}
+                setProgress(ci, chunks.length,
+                    `جارٍ الاستيراد: ${formatInt(Math.min(ci * BULK_CHUNK, items.length))}/${formatInt(items.length)} صنف`);
+                try {
+                    await bulkReceiveInventory(chunks[ci]);
+                    chunks[ci].forEach((item) => {
+                        if (importedNames.has(item.name.toLowerCase())) {return;}   // مكرر داخل الملف — عُدّ مرة
+                        importedNames.add(item.name.toLowerCase());
+                        if (existingNames.has(item.name.toLowerCase())) {updated += 1;} else {added += 1;}
+                    });
+                } catch (err) {
+                    failures.push({
+                        chunk: ci + 1,
+                        names: chunks[ci].map((x) => x.name).slice(0, 4).join('، '),
+                        message: (err && err.message) || 'فشل غير معروف',
+                    });
+                }
+            }
+            if (!panelAlive(seq)) {return;}
+            setProgress(chunks.length, chunks.length, 'اكتمل');
+            if (failures.length) {
+                if (previewBox) {
+                    previewBox.innerHTML = `<div class="erp-flow-note" data-tone="danger">
+                        <div>استُورد ${formatInt(added + updated)} صنف من ${formatInt(items.length)} — فشلت ${formatInt(failures.length)} دفعة:</div>
+                        ${failures.map((f) => `<div>• الدفعة ${formatInt(f.chunk)} (${esc(f.names)}...): ${esc(f.message)}</div>`).join('')}
+                        <div class="erp-text-sm">صحّح الخطأ في ملف Excel (غالبًا تعارض وحدة مع صنف موجود) وأعد رفع الملف — الأصناف الناجحة ستتحدث كمياتها، فاحذفها من الملف قبل الإعادة.</div>
+                      </div>`;
+                }
+                notify(`اكتمل جزئيًا: ${formatInt(added + updated)} نجح، ${formatInt(failures.length)} دفعة فشلت — التفاصيل في اللوحة`, 'warning');
+                await reload();                        // الناجح يُرى في الجدول حتى مع فشل دفعة
+                return;                                // اللوحة تبقى — التفاصيل معروضة
+            }
+            closePanel();
+            notify(`تم الاستيراد: ${formatInt(added)} صنف جديد، ${formatInt(updated)} صنف محدَّث`, 'success');
+            await reload();
+        } finally {
+            busy = false;
+            if (panelAlive(seq)) {setFormBusy(false);}
+        }
+    }
+
+    async function submitCatalog() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        const fileInput = panelEl.querySelector('[data-v2-catalog-file]');
+        const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+        if (!file) {notify('اختر ملف Excel أولاً', 'error'); return;}
+        const seq = panelSeq;
+        let list;
+        try {
+            list = catalogRowsFromSheet(await readSheetRows(file));
+        } catch (e) {
+            notify(readErrorText(e) === 'خطأ في قراءة الملف' ? 'خطأ في معالجة الملف' : readErrorText(e), 'error');
+            return;
+        }
+        if (!panelAlive(seq)) {return;}
+        if (!list.length) {notify('لا توجد بيانات', 'error'); return;}
+
+        const seen = new Set(allRows.filter((r) => r.nameResolved).map((r) => r.name));
+        const previewBox = panelEl.querySelector('[data-v2-catalog-preview]');
+        const msgBox = panelEl.querySelector('[data-v2-panel-msg]');
+        const submitBtn = panelEl.querySelector('[data-v2-submit]');
+        const submitLabel = submitBtn ? submitBtn.querySelector('span') : null;
+        const failures = [];
+        let added = 0;
+        let skipped = 0;
+        busy = true;
+        if (submitBtn) {submitBtn.disabled = true;}
+        if (fileInput) {fileInput.disabled = true;}
+        if (submitLabel) {submitLabel.textContent = 'جارٍ الاستيراد...';}
+        try {
+            for (let i = 0; i < list.length; i += 1) {
+                if (!panelAlive(seq)) {return;}
+                const row = list[i];
+                if (seen.has(row.name)) {skipped += 1; continue;}
+                try {
+                    await createInventoryItem(row);
+                    added += 1;
+                    seen.add(row.name);
+                } catch (err) {
+                    if (duplicateNameError(err)) {skipped += 1; seen.add(row.name);}
+                    else {failures.push({ name: row.name, message: (err && err.message) || 'فشل غير معروف' });}
+                }
+                if (msgBox && (i + 1) % 5 === 0) {
+                    msgBox.textContent = `جارٍ الإنشاء: ${formatInt(i + 1)}/${formatInt(list.length)} — أُضيف ${formatInt(added)}، تُجوهل ${formatInt(skipped)}`;
+                }
+            }
+            if (!panelAlive(seq)) {return;}
+            if (msgBox) {msgBox.textContent = '';}
+            if (failures.length) {
+                if (previewBox) {
+                    previewBox.innerHTML = `<div class="erp-flow-note" data-tone="danger">
+                        <div>أُضيف ${formatInt(added)} صنف، تُجوهل ${formatInt(skipped)} مكرر — فشل ${formatInt(failures.length)} صف:</div>
+                        ${failures.map((f) => `<div>• ${esc(f.name)}: ${esc(f.message)}</div>`).join('')}
+                        <div class="erp-text-sm">رتّب الصفوف الفاشلة وأعد المحاولة — الأصناف المضافة لا تُكرَّر، والخادم سيتجاهل أسماءها.</div>
+                      </div>`;
+                }
+                notify(`اكتمل جزئيًا: ${formatInt(added)} صنف جديد، ${formatInt(skipped)} مكرر، ${formatInt(failures.length)} فشل — التفاصيل في اللوحة`, 'warning');
+                await reload();
+                return;
+            }
+            closePanel();
+            notify(`تم استيراد ${formatInt(added)} صنف جديد${skipped > 0 ? ` (${formatInt(skipped)} مكرر تم تجاهله)` : ''}`, 'success');
+            await reload();
+        } finally {
+            busy = false;
+            if (panelAlive(seq)) {
+                if (submitBtn) {submitBtn.disabled = false;}
+                if (fileInput) {fileInput.disabled = false;}
+                if (submitLabel) {submitLabel.textContent = 'استيراد';}
+            }
+        }
     }
 
     /* ── الباب 5: دمج المكرر (أدمن) — النصوص من :2211-2250 ──────────────── */
@@ -690,14 +1035,17 @@ export function mountWarehouseScreen(host, ctx = {}) {
         const gate = kind === 'direct' ? canDirect : (kind === 'merge' ? canMerge : canWrite);
         if (!gate) {
             notify(kind === 'merge' ? 'الدمج متاح للأدمن فقط'
-                : (kind === 'direct' ? 'التعديل المباشر للأدمن فقط' : 'وارد المخزون للمخزن والمدير والإدارة فقط'));
+                : (kind === 'direct' ? 'التعديل المباشر للأدمن فقط'
+                    : 'وارد المخزون واستيراده للمخزن والمدير والإدارة فقط'));
             return;
         }
         panelSeq += 1;
         panelKind = kind;
         panelData = data || null;
         if (kind === 'receipt') {setPanel(receiptHtml(data)); return;}
+        if (kind === 'excel') {setPanel(excelImportHtml()); return;}
         if (kind === 'bulk') {setPanel(bulkHtml()); return;}
+        if (kind === 'catalog') {setPanel(catalogImportHtml()); return;}
         if (kind === 'direct') {setPanel(directHtml(data)); return;}
         if (kind === 'merge') {setPanel(mergeHtml());}
     }
@@ -706,7 +1054,9 @@ export function mountWarehouseScreen(host, ctx = {}) {
 
     function submitPanel() {
         if (panelKind === 'receipt') {submitReceipt();}
+        else if (panelKind === 'excel') {submitExcel();}
         else if (panelKind === 'bulk') {submitBulk();}
+        else if (panelKind === 'catalog') {submitCatalog();}
         else if (panelKind === 'direct') {submitDirect();}
     }
 
@@ -1656,6 +2006,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
         }
         const opener = event.target.closest('[data-v2-new]');
         if (opener) {openPanel(opener.getAttribute('data-v2-new')); return;}
+        const tpl = event.target.closest('[data-v2-template]');
+        if (tpl) {downloadTemplate(tpl.getAttribute('data-v2-template')); return;}
         if (event.target.closest('[data-v2-audit-open]')) {openAuditStudio(); return;}
         // ── استوديو الجرد: كل زر يعود إلى ملفه بعقد الـ repo ──
         const stab = event.target.closest('[data-v2-stab]');
@@ -1707,6 +2059,14 @@ export function mountWarehouseScreen(host, ctx = {}) {
 
     el.addEventListener('change', (event) => {
         if (event.target.matches('[data-v2-cat]')) {reload(); return;}
+        if (event.target.matches('[data-v2-excel-file]')) {
+            previewExcelFile(event.target.files && event.target.files[0]);
+            return;
+        }
+        if (event.target.matches('[data-v2-catalog-file]')) {
+            previewCatalogFile(event.target.files && event.target.files[0]);
+            return;
+        }
         if (!studio) {return;}
         // ── استوديو الجرد: تغييرات النموذج تعيش في حالة الاستوديو ──
         if (event.target.matches('[data-v2-speriod]')) {studio.periodType = event.target.value; return;}
