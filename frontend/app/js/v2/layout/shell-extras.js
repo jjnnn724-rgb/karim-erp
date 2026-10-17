@@ -14,7 +14,7 @@
 import {
     NOTIF_ADMIN_ROLES, fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, changePassword,
-} from '../data/shell-repo.js?v=4.9.151';
+} from '../data/shell-repo.js?v=4.9.152';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

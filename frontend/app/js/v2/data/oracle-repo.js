@@ -13,7 +13,7 @@
  *     refunds}] } (yara-reports.js:477)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { apiFetch } from '../../core/api.js?v=4.9.152';
 
 export const ORA_READ_ROLES = ['admin', 'manager', 'accountant', 'auditor', 'hr'];
 

@@ -17,6 +17,7 @@
  *   ?v2facewrite=1 | 0      → تسجيل قوالب الوجه وإزالتها (P2-3)
  *   ?v2fiscalwrite=1 | 0    → السنوات المالية: إنشاء/إقفال/السنة التالية (P2-4)
  *   ?v2invoicevoid=1 | 0    → إلغاء فاتورة شراء فردي وحذف جماعي (ذيل P1-4)
+ *   ?v2invoicecreate=1 | 0  → إنشاء/تعديل فاتورة شراء (26c-2)
  *   ?v2chat=1 | 0           → الشات الداخلي (إرسال رسالة = كتابة، 2026-10-17)
  * وغياب الاثنين = OFF. المخزّن يبقى للـstaging كما في الأعلام الأخرى،
  * ولا يُكتب من هنا إطلاقًا؛ و`=0` في الـURL يغلب المخزّن دائمًا.
@@ -49,6 +50,7 @@ export const PORTAL_WRITE_FLAG = 'v2portalwrite';
 export const FACE_WRITE_FLAG = 'v2facewrite';
 export const FISCAL_WRITE_FLAG = 'v2fiscalwrite';
 export const INVOICE_VOID_WRITE_FLAG = 'v2invoicevoid';
+export const INVOICE_CREATE_WRITE_FLAG = 'v2invoicecreate';
 export const CHAT_WRITE_FLAG = 'v2chat';
 
 export function financeWriteEnabled(search, storage) {
@@ -93,6 +95,10 @@ export function fiscalWriteEnabled(search, storage) {
 
 export function invoiceVoidWriteEnabled(search, storage) {
     return readFlag(INVOICE_VOID_WRITE_FLAG, 'karim_v2_invoice_void_write', search, storage);
+}
+
+export function invoiceCreateWriteEnabled(search, storage) {
+    return readFlag(INVOICE_CREATE_WRITE_FLAG, 'karim_v2_invoice_create_write', search, storage);
 }
 
 export function chatWriteEnabled(search, storage) {

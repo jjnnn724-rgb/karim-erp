@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
-import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
+import { openInAppReport } from '../report-viewer.js?v=4.9.152';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.151';
+} from '../data/reports-repo.js?v=4.9.152';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.151';
+} from '../data/reports-extra.js?v=4.9.152';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

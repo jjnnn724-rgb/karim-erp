@@ -1,0 +1,269 @@
+/**
+ * V2 — محرر فاتورة الشراء والبحث الذكي (26c-2)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * الطبقة تُكمل لغة V2 المجمّدة: كل قيمة رمزٌ من --erp-*؛ لا لون خام،
+ * ولا قاعدة تمس مكوّنًا مشتركًا. حصرها `.erp-vi` يضمن ألا تتسرّب إلى أي
+ * شاشة أخرى، ويجعل حذف المحرر يومًا ما حذفَ ملفه وحده.
+ *
+ * قائمة الاقتراح تطفو فوق الصف التالي (position:absolute داخل حاوي الحقل
+ * النسبي) ولا تدفع الجدول — نفس سلوك قائمة القديم في
+ * features/smart-item-search.js، لكن بألوان ومسافات V2.
+ */
+
+/* `hidden` على عنصر يلبس `.erp-field` يخسر أمام قاعدة المؤلف
+   (`.erp-v2 .erp-field { display:flex }`) — تُعاد هنا معناه داخل المحرر فقط. */
+.erp-v2 .erp-vi [hidden] { display: none !important; }
+
+.erp-v2 .erp-vi { border-color: var(--erp-border-strong); }
+.erp-v2 .erp-vi .erp-card__head { flex-wrap: wrap; }
+
+.erp-v2 .erp-vi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: var(--erp-space-2) var(--erp-space-3);
+}
+
+.erp-v2 .erp-vi-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: thin solid var(--erp-border);
+}
+
+.erp-v2 .erp-vi-items-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+
+/* زر التجربة: الحالة تُقرأ من النص وaria-pressed لا من اللون وحده. */
+.erp-v2 .erp-vi-smart {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  min-block-size: var(--erp-space-7);
+  padding-inline: var(--erp-space-3);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary);
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-bold);
+  cursor: pointer;
+}
+.erp-v2 .erp-vi-smart .erp-vi-dot {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-text-faint);
+}
+.erp-v2 .erp-vi-smart.is-on {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+.erp-v2 .erp-vi-smart.is-on .erp-vi-dot { background: var(--erp-brand); }
+.erp-v2 .erp-vi-smart:hover { border-color: var(--erp-brand); }
+
+.erp-v2 .erp-vi-row {
+  display: grid;
+  grid-template-columns:
+    minmax(14rem, 2.2fr)
+    minmax(6rem, 1fr)
+    minmax(6rem, 1fr)
+    minmax(6.5rem, 1fr)
+    minmax(6rem, 1fr)
+    minmax(8rem, 1.1fr)
+    minmax(7rem, 0.9fr)
+    auto;
+  gap: var(--erp-space-2);
+  align-items: end;
+  padding-block-end: var(--erp-space-2);
+  border-block-end: thin solid var(--erp-border-subtle);
+}
+
+.erp-v2 .erp-vi-name { position: relative; }
+
+.erp-v2 .erp-vi-line-total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-vi-line-total > span {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-vi-line-total > strong {
+  min-block-size: var(--erp-control-md);
+  display: flex;
+  align-items: center;
+  color: var(--erp-brand-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-v2 .erp-vi-remove { align-self: end; }
+
+.erp-v2 .erp-vi-discount {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(7rem, 1fr);
+  gap: var(--erp-space-2);
+}
+
+.erp-v2 .erp-vi-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-2);
+}
+
+.erp-v2 .erp-vi-supplier-hint {
+  min-block-size: var(--erp-space-6);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-vi-supplier-hint:empty { min-block-size: 0; }
+
+.erp-v2 .erp-vi-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-5);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+}
+
+.erp-v2 .erp-vi input[readonly] {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-bold);
+  cursor: pointer;
+}
+
+/* ── قائمة الاقتراح ─────────────────────────────────────────────────────── */
+.erp-v2 .erp-vi-dd {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: calc(100% + var(--erp-space-1));
+  z-index: var(--erp-z-dropdown);
+  max-block-size: min(55vh, 24rem);
+  overflow-y: auto;
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-lg);
+}
+
+.erp-v2 .erp-vi-dd-head {
+  position: sticky;
+  inset-block-start: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border-block-end: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-raised);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-faint);
+}
+
+.erp-v2 .erp-vi-dd-empty {
+  padding: var(--erp-space-4);
+  text-align: center;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.erp-v2 .erp-vi-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  min-block-size: 44px;
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border-block-end: thin solid var(--erp-border-subtle);
+  cursor: pointer;
+}
+.erp-v2 .erp-vi-opt:last-child { border-block-end: 0; }
+.erp-v2 .erp-vi-opt:hover,
+.erp-v2 .erp-vi-opt.is-active {
+  background: var(--erp-brand-soft);
+  box-shadow: inset 3px 0 0 var(--erp-brand);
+}
+
+.erp-v2 .erp-vi-opt-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-vi-opt-name mark {
+  border-radius: var(--erp-radius-sm);
+  padding-inline: 1px;
+  background: var(--erp-warning-soft);
+  color: inherit;
+}
+
+.erp-v2 .erp-vi-opt-meta {
+  padding-inline: var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+
+.erp-v2 .erp-vi-opt-stock {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-faint);
+  white-space: nowrap;
+}
+.erp-v2 .erp-vi-opt-stock.is-low { color: var(--erp-warning-text); }
+
+.erp-v2 .erp-vi-opt-price {
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-brand-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── ١٢٠٠px: عمودان للاسم والمجاميع، والصفّ يصير شبكة أربعة أعمدة ────────── */
+@media (max-width: 1200px) {
+  .erp-v2 .erp-vi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .erp-v2 .erp-vi-name { grid-column: span 2; }
+  .erp-v2 .erp-vi-line-total,
+  .erp-v2 .erp-vi-remove { justify-self: start; }
+}
+
+/* ── ٦٤٠px: الحقول عمودان، والاسم سطر كامل، وأهداف اللمس ٤٠ ─────────────── */
+@media (max-width: 640px) {
+  .erp-v2 .erp-vi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-vi-name { grid-column: 1 / -1; }
+  .erp-v2 .erp-vi-grid,
+  .erp-v2 .erp-vi-discount { grid-template-columns: minmax(0, 1fr); }
+  .erp-v2 .erp-vi-actions .erp-btn,
+  .erp-v2 .erp-vi [data-vi-add],
+  .erp-v2 .erp-vi-smart,
+  .erp-v2 .erp-vi-remove,
+  .erp-v2 .erp-vi .erp-card__head .erp-btn { min-block-size: var(--erp-space-8); min-inline-size: var(--erp-space-8); }
+  .erp-v2 .erp-vi-actions .erp-btn { flex: 1 1 auto; }
+}
+
+@media print {
+  /* النموذج أداة تحرير لا معلومة كشف: لا يُطبع مع السجل. */
+  .erp-v2 .erp-vi { display: none; }
+}

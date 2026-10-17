@@ -21,23 +21,24 @@
  * for admin AND the independent v2invoicevoid flag (OFF by default). The
  * void button carries the server's refusals (manual payments, force) and
  * the clear-all panel demands the same checkbox the legacy page demanded.
- * Creating invoices stays in legacy — no door here.
+ * Creating/editing invoices lives on screen 08 (the legacy form's own page)
+ * behind the independent v2invoicecreate flag — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
-import { statusBadge } from '../status.js?v=4.9.151';
-import { canWrite } from '../session.js?v=4.9.151';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
+import { statusBadge } from '../status.js?v=4.9.152';
+import { canWrite } from '../session.js?v=4.9.152';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.151';
+} from '../data/purchase-invoices-repo.js?v=4.9.152';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.151';
+} from '../data/procurement-repo.js?v=4.9.152';
 import {
     voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.151';
-import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.151';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.152';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.152';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -87,8 +88,9 @@ function template() {
             والصلاحية قررها الخادم وحده. الكتابة هنا: تسديد كامل المتبقي، أو
             دفعة جزئية مرتبطة بالفاتورة (الخادم يرفض ما يتجاوز المتبقي ويعيد
             حساب حالة السداد؛ والعكس متاح لاحقًا من شاشة المدفوعات لحساب
-            الأدمن). الإنشاء باقٍ في صفحته القديمة؛ والإلغاء الفردي والحذف
-            الجماعي للأدمن وحده وخلف العلم المستقل
+            الأدمن). الإنشاء والتعديل في صفحة فواتير الشراء (08) خلف العلم
+            المستقل <span class="erp-addr" dir="ltr">v2invoicecreate</span>؛
+            والإلغاء الفردي والحذف الجماعي للأدمن وحده وخلف العلم المستقل
             <span class="erp-addr" dir="ltr">v2invoicevoid</span> (OFF افتراضيًا)،
             والخادم يعيد فحص الدور وعبارة التأكيد. المتبقي = الإجمالي − المسدد
             (بحد صفر، قاعدة النظام القديم). حالة السداد المحفوظة تُعرض بعدّتها،

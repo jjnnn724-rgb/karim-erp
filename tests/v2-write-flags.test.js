@@ -30,7 +30,7 @@ const throwingStore = { getItem: () => { throw new Error('denied'); } };
 describe('write-flags — الافتراضي مغلق', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام الأحد عشر', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام الاثني عشر', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
         expect(ctx.recipeWriteEnabled('', null)).toBe(false);
         expect(ctx.departmentWriteEnabled('', null)).toBe(false);
@@ -42,6 +42,7 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.faceWriteEnabled('', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('', null)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('', null)).toBe(false);
         expect(ctx.financeWriteEnabled(undefined, null)).toBe(false);
     });
 
@@ -59,6 +60,9 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.invoiceVoidWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.invoiceVoidWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('', throwingStore)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('', store('1'))).toBe(true);
+        expect(ctx.invoiceCreateWriteEnabled('', store('0'))).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('', throwingStore)).toBe(false);
         expect(ctx.financeWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.portalWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.faceWriteEnabled('', store('0'))).toBe(false);
@@ -93,6 +97,8 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.fiscalWriteEnabled('?v2fiscalwrite=0', store('1'))).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2invoicevoid=1', null)).toBe(true);
         expect(ctx.invoiceVoidWriteEnabled('?v2invoicevoid=0', store('1'))).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('?v2invoicecreate=1', null)).toBe(true);
+        expect(ctx.invoiceCreateWriteEnabled('?v2invoicecreate=0', store('1'))).toBe(false);
     });
 
     test('كل علم لا يفتح الآخر', () => {
@@ -107,6 +113,7 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.faceWriteEnabled('?v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
     });
 });
 
@@ -159,6 +166,14 @@ describe('الشاشات — الدور والعلم معًا', () => {
         expect(inv).toMatch(/canWrite\(ctx\.role, INVOICE_VOID_ROLES\) && invoiceVoidWriteEnabled\(\)/);
     });
 
+    test('26c-2: إنشاء/تعديل فاتورة الشراء بدورها + علم مستقل ثانٍ', () => {
+        const whi = read(path.join(V2, 'screens', 'wh-invoices.js'));
+        expect(whi).toMatch(/import \{ invoiceCreateWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
+        expect(whi).toMatch(/canWrite\(ctx\.role, INVOICE_CREATE_ROLES\) && invoiceCreateWriteEnabled\(\)/);
+        // العلمان لا يفتح أحدهما الآخر (اختبار الدالة أعلاه)، ولا يُقرأ أحدهما يدويًا هنا.
+        expect(whi).not.toMatch(/invoiceVoidWriteEnabled/);
+    });
+
     test('P2-4: حوكمة المخزن — الإنشاء والإقفال وراء العلم والدور', () => {
         const gov = read(path.join(V2, 'screens', 'warehouse-gov.js'));
         expect(gov).toMatch(/import \{ fiscalWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
@@ -168,7 +183,7 @@ describe('الشاشات — الدور والعلم معًا', () => {
     });
 
     test('لا نسخة ثانية من منطق العلم داخل الشاشات', () => {
-        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov', 'invoices']
+        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov', 'invoices', 'wh-invoices']
             .map((f) => path.join(V2, 'screens', `${f}.js`)));
         for (const f of all) {
             const s = read(f);

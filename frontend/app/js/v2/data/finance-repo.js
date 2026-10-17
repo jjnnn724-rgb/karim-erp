@@ -36,7 +36,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { apiFetch } from '../../core/api.js?v=4.9.152';
 
 /** Walk cap: newest 8,000 rows per register (documented in every screen). */
 export const WALK_PAGES = 8;

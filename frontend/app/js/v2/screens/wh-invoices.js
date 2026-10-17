@@ -24,22 +24,32 @@
  *   • Unknown paymentStatus: legacy prints «غير محددة». V2 is stricter —
  *     the adapter shows the stored key dashed-raw instead of guessing a
  *     label for it.
- *   • The only write here is the full-pay door shared with screen 06
- *     (payInvoiceFull, same roles). Creating invoices, deleting one and
- *     the bulk delete stay in legacy — this screen has no door to them.
+ *   • The pay door is shared with screen 06 (payInvoiceFull, same roles).
+ *     Create/edit (26c-2) live here because this is the legacy form's own
+ *     page (features/warehouse.js:1532-1783): POST/PUT
+ *     /warehouse/purchase-invoices, admin|manager|warehouse, behind the
+ *     independent `v2invoicecreate` flag (OFF by default). Edit is offered
+ *     only while paidAmount = 0 — the server re-checks supplier_payments.
+ *     Delete/bulk-delete stay on screen 06 behind v2invoicevoid.
  *     The print button calls window.print() like screens 03/04.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
-import { statusBadge } from '../status.js?v=4.9.151';
-import { canWrite } from '../session.js?v=4.9.151';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
+import { statusBadge } from '../status.js?v=4.9.152';
+import { canWrite } from '../session.js?v=4.9.152';
 import {
     fetchPurchaseInvoices, invoiceToRow, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.151';
+} from '../data/purchase-invoices-repo.js?v=4.9.152';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, rangeError,
-} from '../data/procurement-repo.js?v=4.9.151';
+} from '../data/procurement-repo.js?v=4.9.152';
+import { fetchInventory } from '../data/inventory-repo.js?v=4.9.152';
+import {
+    INVOICE_CREATE_ROLES, EDIT_LOCKED_MESSAGE, invoiceEditable,
+} from '../data/purchase-invoices-write-repo.js?v=4.9.152';
+import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.152';
+import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.152';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -73,7 +83,7 @@ function moneyCell(v, currency, opts = {}) {
     return opts.title ? `<span title="${esc(opts.title)}">${body}</span>` : body;
 }
 
-function template(from, to) {
+function template(from, to, canCreate) {
     return `
       <section class="erp-card erp-v2-whinvoices">
         <div class="erp-card__head">
@@ -93,20 +103,27 @@ function template(from, to) {
           <button type="button" class="erp-btn erp-btn--sm" data-v2-hub title="دليل الموردين وملخص المشتريات">
             <i class="ji" data-i="users" aria-hidden="true"></i><span>الموردون</span>
           </button>
+          ${canCreate ? `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-new>
+            <i class="ji" data-i="plus" aria-hidden="true"></i><span>فاتورة شراء جديدة</span>
+          </button>` : ''}
           <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span>
           </button>
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
+          <div data-v2-editor-host></div>
           <p class="erp-text-sm erp-text-muted">
             سجل فواتير الشراء
             (<span class="erp-addr" dir="ltr">/api/purchaseInvoices</span>)،
             والصلاحية قررها الخادم وحده. الافتراضي الشهر الحالي بطلب سابق؛
-            إفراغ التاريخين يعرض الكل. الكتابة الوحيدة هنا تسديد كامل
-            للفاتورة، للحساب الذي يملك ذلك عند الخادم؛ الإنشاء والحذف يبقيان
-            في النظام الحالي. شاشة فواتير الموردين (06) تقرأ نفس السجل بعدسة
-            المورد لا الشهر، ودليل الموردين هو شاشة (05).
+            إفراغ التاريخين يعرض الكل. هنا نموذج القديم نفسه: إنشاء فاتورة
+            وتعديلها (قبل أي دفعة مسجلة) للأدوار الثلاثة وخلف العلم المستقل
+            <span class="erp-addr" dir="ltr">v2invoicecreate</span> (OFF
+            افتراضيًا)، مع البحث الذكي الذي يعبّئ الوحدة والسعر من المخزون.
+            تسديد الكامل متاح لحساب المشتريات/المحاسبة عند الخادم.
+            شاشة فواتير الموردين (06) تقرأ نفس السجل بعدسة المورد لا الشهر، وفيها
+            الإلغاء والحذف الجماعي؛ ودليل الموردين هو شاشة (05).
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
           <div data-v2-table></div>
@@ -126,14 +143,20 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
         : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const writable = canWrite(ctx.role, PAYMENT_WRITE_ROLES);
+    const canCreate = canWrite(ctx.role, INVOICE_CREATE_ROLES) && invoiceCreateWriteEnabled();
 
     let allRows = [];
+    let rawById = new Map();
+    let suppliersCache = [];
+    let inventoryCache = null;
+    let editor = null;
+    let editorLoading = false;
     let currency = '';
     let loading = false;
     let queued = false;          // a refresh asked for while one was running
     let saving = false;
 
-    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0)));
+    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0), canCreate));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const countEl = q('[data-v2-count]');
@@ -174,17 +197,26 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
                 value: (row) => row.status,
                 render: (row) => statusBadge('payment', row.status),
             },
-            ...(writable ? [{
+            ...((writable || canCreate) ? [{
                 key: 'actions',
-                header: 'تسديد',
-                width: '150px',
+                header: 'إجراءات',
+                width: writable && canCreate ? '240px' : '160px',
                 align: 'end',
                 value: () => '',
-                render: (row) => (row.remaining > 0
-                    ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
-                        <i class="ji" data-i="banknote" aria-hidden="true"></i><span>تسديد الكل</span>
-                      </button>`
-                    : `<span class="erp-text-muted">—</span>`),
+                render: (row) => {
+                    const acts = [];
+                    if (canCreate && row.paid <= 0) {
+                        acts.push(`<button type="button" class="erp-btn erp-btn--sm" data-v2-act="edit" data-id="${esc(row.id)}">
+                            <i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span>
+                          </button>`);
+                    }
+                    if (writable && row.remaining > 0) {
+                        acts.push(`<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
+                            <i class="ji" data-i="banknote" aria-hidden="true"></i><span>تسديد الكل</span>
+                          </button>`);
+                    }
+                    return acts.length ? acts.join(' ') : '<span class="erp-text-muted">—</span>';
+                },
             }] : []),
         ],
     });
@@ -256,6 +288,68 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
         }
     }
 
+    function closeEditor() {
+        if (!editor) {return;}
+        editor.destroy();
+        editor = null;
+    }
+
+    /** The legacy form lived in a modal over this same register
+     *  (features/warehouse.js:1532). V2 mounts it as a panel at the top of
+     *  the screen, but keeps both entry rules verbatim: «الفاتورة غير
+     *  موجودة» and paidAmount > 0 → EDIT_LOCKED_MESSAGE. The server still
+     *  re-checks supplier_payments, so the client rule is only button
+     *  hygiene. */
+    async function openEditor(raw) {
+        if (editorLoading) {return;}
+        closeEditor();
+        editorLoading = true;
+        try {
+            if (!inventoryCache) {
+                const inventory = await fetchInventory();
+                inventoryCache = inventory.rows;
+            }
+            if (!el.isConnected) {return;}
+            editor = mountPurchaseInvoiceEditor(q('[data-v2-editor-host]'), {
+                invoice: raw || null,
+                inventory: inventoryCache,
+                suppliers: suppliersCache,
+                currency,
+                notify,
+                onSaved(_result, { editing }) {
+                    closeEditor();
+                    inventoryCache = null;      // receipt changed stock/cost
+                    notify(editing
+                        ? 'تم تحديث الفاتورة والمخزون والحسابات'
+                        : 'تم حفظ الفاتورة');
+                    reload();
+                },
+                onCancel: closeEditor,
+            });
+            if (editor && typeof editor.el.scrollIntoView === 'function') {
+                editor.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            notify(`تعذّر فتح نموذج الفاتورة: ${(e && e.message) || 'خطأ'}`, 'error');
+        } finally {
+            editorLoading = false;
+        }
+    }
+
+    function openEdit(id) {
+        const raw = rawById.get(String(id));
+        if (!raw) {
+            notify('الفاتورة غير موجودة', 'error');
+            return;
+        }
+        if (!invoiceEditable(raw)) {
+            notify(EDIT_LOCKED_MESSAGE, 'error');
+            return;
+        }
+        openEditor(raw);
+    }
+
     async function reload() {
         if (loading) {queued = true; return;}
         loading = true;
@@ -269,6 +363,8 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}          // destroyed while in flight
             currency = String(cur ?? '');
             currencyNote.hidden = !!currency;
+            suppliersCache = suppliers;
+            rawById = new Map(invoices.map((inv) => [String(inv.id), inv]));
             const byId = supplierIdMap(suppliers);
             allRows = invoices.map((inv) => {
                 const row = invoiceToRow(inv, byId);
@@ -305,9 +401,11 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
         }
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-v2-hub]')) {navigate('procurement'); return;}
+        if (event.target.closest('[data-v2-new]')) {openEditor(null); return;}
         const actBtn = event.target.closest('[data-v2-act]');
         if (actBtn) {
             if (actBtn.disabled) {return;}
+            if (actBtn.dataset.v2Act === 'edit') {openEdit(actBtn.dataset.id); return;}
             runPay(actBtn.dataset.id);
             return;
         }
@@ -333,6 +431,7 @@ export function mountWhInvoicesScreen(host, ctx = {}) {
             return true;
         }),
         destroy() {
+            closeEditor();
             table.destroy();
             el.remove();
         },
