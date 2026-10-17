@@ -1,0 +1,161 @@
+/**
+ * V2 — Charts (SVG) · رسوم P2-6
+ * ═══════════════════════════════════════════════════════════════════════
+ * Only the figures produced by js/v2/charts.js. Every colour and size is a
+ * token, so the same markup is legible in both themes and both brands.
+ */
+
+.erp-v2 .erp-v2-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(28ch, 100%), 1fr));
+  gap: var(--erp-space-4);
+  margin-block-start: var(--erp-space-4);
+}
+
+.erp-v2 .erp-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  margin: 0;
+  min-inline-size: 0;
+  padding: var(--erp-space-4);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+}
+
+.erp-v2 .erp-chart__title {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+.erp-v2 .erp-chart__plot {
+  min-inline-size: 0;
+  container-type: inline-size;
+}
+
+.erp-v2 .erp-chart__plot svg { display: block; inline-size: 100%; block-size: auto; }
+
+/* SVG text scales with the viewBox, so a narrow card would shrink 12px to
+   ~6px. The container tiers raise the *unit* size exactly where the plot is
+   narrow, keeping rendered labels >= ~10px from 320 up. */
+.erp-v2 .erp-chart__plot text {
+  fill: var(--erp-text-faint);
+  font-family: var(--erp-font-sans);
+  font-size: var(--erp-text-xs);
+}
+
+@container (max-width: 420px) {
+  .erp-v2 .erp-chart__plot text { font-size: var(--erp-text-md); }
+}
+
+@container (max-width: 320px) {
+  .erp-v2 .erp-chart__plot text { font-size: var(--erp-text-lg); }
+}
+
+.erp-v2 .erp-chart__grid {
+  stroke: var(--erp-border-subtle);
+  stroke-width: 1;
+}
+
+.erp-v2 .erp-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1) var(--erp-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.erp-v2 .erp-chart__legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+
+.erp-v2 .erp-chart__dot {
+  inline-size: var(--erp-space-2);
+  block-size: var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  flex: none;
+}
+
+.erp-v2 .erp-chart__empty {
+  margin: 0;
+  padding: var(--erp-space-6) var(--erp-space-2);
+  text-align: center;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  background: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2 .erp-chart__donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-5);
+  flex-wrap: wrap;
+}
+
+.erp-v2 .erp-chart__donut {
+  position: relative;
+  flex: none;
+  inline-size: calc(var(--erp-space-7) * 4);
+  block-size: calc(var(--erp-space-7) * 4);
+}
+
+.erp-v2 .erp-chart__donut svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.erp-v2 .erp-chart__donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-0);
+  pointer-events: none;
+}
+
+.erp-v2 .erp-chart__donut-total {
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-primary);
+}
+
+.erp-v2 .erp-chart__donut-cap {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.erp-v2 .erp-chart__legend--rows {
+  flex: 1 1 12ch;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: var(--erp-space-1);
+}
+
+.erp-v2 .erp-chart__legend--rows > li { inline-size: 100%; }
+.erp-v2 .erp-chart__legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.erp-v2 .erp-chart__legend-val {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-muted);
+}
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-chart { padding: var(--erp-space-3); }
+  .erp-v2 .erp-chart__donut-wrap { justify-content: center; }
+}

@@ -6,17 +6,21 @@
  * composing door (v2/data/hr-dashboard-repo.js — no new endpoint, the
  * same four sources the legacy HR dashboard reads), delegated listeners
  * on a per-mount root, loading guards, isConnected checks, destroy() on
- * nav. Charts need a chart library (Gate E) — the register states that
- * instead of drawing with divs. Quick links navigate to migrated HR
- * screens only (employees/attendance/leaves).
+ * nav. Charts (department mix + weekly attendance) are drawn by
+ * js/v2/charts.js as SVG — no chart library, no CSP change. The weekly
+ * window is the same seven days the repo now fetches; today's KPI still
+ * counts only today.
+ * Quick links navigate to migrated HR screens only (employees/attendance/leaves).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { statusBadge } from '../status.js?v=4.9.145';
+import { donutChart, lineChart } from '../charts.js?v=4.9.145';
 import {
     fetchHrSnapshot, buildHrKpis, pendingLeaveRows,
-} from '../data/hr-dashboard-repo.js?v=4.9.131';
-import { employeeMap } from '../data/employees-repo.js?v=4.9.131';
+    departmentDistribution, weeklyAttendance,
+} from '../data/hr-dashboard-repo.js?v=4.9.145';
+import { employeeMap } from '../data/employees-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -62,6 +66,7 @@ function template(_day) {
               <i class="ji" data-i="calendar" aria-hidden="true"></i><span>الإجازات</span>
             </button>
           </div>
+          <div class="erp-v2-chart-grid" data-v2-charts></div>
           <div class="erp-error" data-v2-failures role="alert" hidden></div>
         </div>
       </section>
@@ -93,6 +98,7 @@ export function mountHrDashboardScreen(host, ctx = {}) {
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const kpisHost = q('[data-v2-kpis]');
+    const chartsEl = q('[data-v2-charts]');
     const countEl = q('[data-v2-count]');
     const failuresBox = q('[data-v2-failures]');
 
@@ -127,6 +133,23 @@ export function mountHrDashboardScreen(host, ctx = {}) {
             const snap = await fetchHrSnapshot();
             if (!el.isConnected) {return;}          // destroyed while in flight
             kpisHost.innerHTML = kpiStrip(buildHrKpis(snap));
+            const week = weeklyAttendance(snap.attendance, snap.day);
+            chartsEl.innerHTML = [
+                donutChart({
+                    title: 'توزيع الموظفين حسب القسم',
+                    ariaLabel: 'رسم دائري لعدد الموظفين في كل قسم',
+                    slices: departmentDistribution(snap.employees, snap.departments),
+                    centerLabel: 'موظف',
+                    emptyText: 'لا موظفين مسجلين',
+                }),
+                lineChart({
+                    title: 'الحضور آخر 7 أيام',
+                    ariaLabel: 'خط عدد الحاضرين في كل يوم من آخر سبعة أيام',
+                    labels: week.map((d) => d.date.slice(5)),
+                    series: [{ label: 'الحاضرون', tone: 'brand', values: week.map((d) => d.present), fill: true }],
+                    emptyText: 'لا حضور مسجل في آخر 7 أيام',
+                }),
+            ].join('');
             q('[data-v2-day]').textContent = snap.day || '';
             pending = pendingLeaveRows(snap.leaves, employeeMap(snap.employees));
             table.setRows(pending);
@@ -143,6 +166,7 @@ export function mountHrDashboardScreen(host, ctx = {}) {
             pending = [];
             table.setRows([]);
             kpisHost.innerHTML = '';
+            chartsEl.innerHTML = '';
             countEl.textContent = '';
             table.setError(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'

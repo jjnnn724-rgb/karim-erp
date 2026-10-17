@@ -24,12 +24,15 @@
  *   No POST/PUT/DELETE — pure statement. Print = GET /finance/pnl/print
  *   (server-rendered HTML, same gate) opens in a new tab.
  *
- * Charts (trend + department bar) need a chart library — Gate E, deferred.
+ * Charts (trend + department bar) are drawn by js/v2/charts.js as SVG —
+ * no Chart.js, no vendor file, no CSP change. The figures read the same
+ * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { lineChart, barChart } from '../charts.js?v=4.9.145';
+import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.145';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -101,6 +104,7 @@ function template() {
             الخادم يبني القائمة من 6 جداول × فترتين، والواجهة تعرض ولا تعيد الحساب.
           </p>
           <ul class="erp-kpis" data-v2-kpis></ul>
+          <div class="erp-v2-chart-grid" data-v2-charts></div>
           <div class="erp-stack" data-v2-detail></div>
         </div>
       </section>`;
@@ -122,6 +126,7 @@ export function mountPnlScreen(host, _ctx = {}) {
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
+    const chartsEl = q('[data-v2-charts]');
     const detailEl = q('[data-v2-detail]');
     const noteEl = q('[data-v2-note]');
     const fromEl = q('#v2pnl-from');
@@ -225,6 +230,38 @@ export function mountPnlScreen(host, _ctx = {}) {
                 `${formatInt(pr.count)} قيدًا · ${(pr.months || []).join('، ')} ${cmpChip(cmp, 'payroll', 'رواتب', false, currency)}`),
         ].join('');
 
+        const daily = Array.isArray(st.daily_series) ? st.daily_series : [];
+        const depts = Array.isArray(st.by_department) ? st.by_department : [];
+        const moneyText = (v) => {
+            const m = formatMoney(v, currency);
+            return `${m.amount}${m.hasUnit ? ` ${m.unit}` : ''}`;
+        };
+        chartsEl.innerHTML = [
+            lineChart({
+                title: 'اتجاه الإيرادات والتكاليف',
+                ariaLabel: 'خط الإيرادات وتكلفة المواد والمصاريف التشغيلية حسب اليوم',
+                labels: daily.map((d) => String((d && d.date) || '').slice(5)),
+                series: [
+                    { label: 'الإيرادات', tone: 'success', values: daily.map((d) => d && d.revenue), fill: true },
+                    { label: 'تكلفة المواد', tone: 'danger', values: daily.map((d) => d && d.cogs) },
+                    { label: 'تكاليف أخرى', tone: 'warning', values: daily.map((d) => d && d.opex) },
+                ],
+                formatValue: moneyText,
+                emptyText: 'لا حركات يومية في هذه الفترة',
+            }),
+            barChart({
+                title: 'ربحية الأقسام',
+                ariaLabel: 'أعمدة الإيرادات وتكلفة المواد وصافي الربح لكل قسم',
+                labels: depts.map((d) => String((d && d.name) || '—')),
+                series: [
+                    { label: 'الإيرادات', tone: 'success', values: depts.map((d) => d && d.revenue) },
+                    { label: 'تكلفة المواد', tone: 'danger', values: depts.map((d) => d && d.cogs) },
+                    { label: 'الصافي', tone: 'brand', values: depts.map((d) => d && d.net) },
+                ],
+                formatValue: moneyText,
+                emptyText: 'لا حركات أقسام في هذه الفترة',
+            }),
+        ].join('');
         const period = data.period || {};
         const prev = data.previous_period || {};
         detailEl.innerHTML = `
@@ -263,6 +300,7 @@ export function mountPnlScreen(host, _ctx = {}) {
             if (!el.isConnected) {return;}
             data = null;
             kpisEl.innerHTML = '';
+            chartsEl.innerHTML = '';
             detailEl.innerHTML = '';
             deptTable.setRows([]);
             noteEl.textContent = e && e.message === 'UNAUTHORIZED'

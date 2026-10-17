@@ -4,7 +4,8 @@
  *
  * NO NEW ENDPOINT. This door composes four proven doors — the same sources
  * the legacy HR dashboard reads (features/hr.js:8-18 renderHRDashboard):
- *   employees (directory) + attendance range (today) + the leave approval
+ *   employees (directory) + attendance range (last 7 days: the KPI counts
+ *   today, the weekly chart counts the same window) + the leave approval
  *   chain + hrDepartments, via their own repo modules. Each source is
  *   optional: allSettled, and the screen names what answered.
  *   The leave source is /hr/leave-workflow, NOT the generic leaveRequests
@@ -19,10 +20,10 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { fetchEmployees, fetchDepartments } from './employees-repo.js?v=4.9.131';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.131';
-import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.131';
+import { fetchEmployees, fetchDepartments } from './employees-repo.js?v=4.9.145';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.145';
+import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.145';
+import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.145';
 
 export { formatMoney, formatInt };
 
@@ -38,6 +39,20 @@ export function todayLocal(d = new Date()) {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
 
+/** Day arithmetic on the calendar day, noon-anchored so DST cannot shift it. */
+export function shiftDay(day, delta) {
+    const d = new Date(`${String(day).slice(0, 10)}T12:00:00`);
+    if (Number.isNaN(d.getTime())) {return String(day || '').slice(0, 10);}
+    d.setDate(d.getDate() + Number(delta || 0));
+    return todayLocal(d);
+}
+
+/** Oldest→newest inclusive window, ending at `day`. */
+export function lastNDays(day, n = 7) {
+    const count = Math.max(1, Math.floor(Number(n) || 7));
+    return Array.from({ length: count }, (_, i) => shiftDay(day, i - (count - 1)));
+}
+
 /**
  * @returns {Promise<{employees:any[],attendance:any[],leaves:any[],departments:any[],currency:string,day:string,failures:string[]}>}
  */
@@ -45,7 +60,7 @@ export async function fetchHrSnapshot() {
     const day = todayLocal();
     const settled = await Promise.allSettled([
         fetchEmployees(),
-        fetchAttendanceRange({ from: day, to: day }),
+        fetchAttendanceRange({ from: shiftDay(day, -6), to: day }),
         fetchLeaveWorkflow(),
         fetchDepartments().catch(() => []),
         fetchCurrency().catch(() => ''),
@@ -92,8 +107,36 @@ export function buildHrKpis({ employees = [], attendance = [], leaves = [], depa
     ];
 }
 
-/** Pending leaves with employee names, newest 6 — mirrors the legacy table.
- *  The joined name from the door is preferred; the directory map is the
+/**
+ * Employee count per department name — the legacy doughnut counted
+ * `STATE.employees` by `department` against `STATE.hrDepartments`.
+ * Unknown codes stay visible as the code rather than being dropped.
+ * @returns {{label:string,value:number}[]} largest first
+ */
+export function departmentDistribution(employees = [], departments = []) {
+    const names = new Map((Array.isArray(departments) ? departments : [])
+        .map((d) => [String((d && d.code) ?? ''), String((d && d.name) || (d && d.code) || '')]));
+    const counts = new Map();
+    (Array.isArray(employees) ? employees : []).forEach((e) => {
+        const code = e && e.department != null ? String(e.department).trim() : '';
+        const label = code ? (names.get(code) || code) : 'بدون قسم';
+        counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    return [...counts.entries()]
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+}
+
+/** Present count per day for the same 7-day window the snapshot fetched. */
+export function weeklyAttendance(attendance = [], day = '') {
+    const rows = Array.isArray(attendance) ? attendance : [];
+    return lastNDays(day, 7).map((date) => ({
+        date,
+        present: rows.filter((a) => a && String(a.date || '').slice(0, 10) === date && a.checkIn).length,
+    }));
+}
+
+/** Pending leaves with employee names, newest 6 — mirrors the legacy table. *  The joined name from the door is preferred; the directory map is the
  *  fallback, because the door is what actually answered. */
 export function pendingLeaveRows(leaves = [], empById = new Map(), limit = 6) {
     return leaves

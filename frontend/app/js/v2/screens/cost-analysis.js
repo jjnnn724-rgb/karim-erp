@@ -12,24 +12,31 @@
  *   the Math.max(0, …) legacy rule) / فرق جرد (count_correction) /
  *   تشغيلية (the rest). KPI thresholds: <50 green, <75 orange, else red
  *   (finance.js:273).
- *   Charts (bar + pie) need a chart library — Gate E, documented deferred.
+ *   Charts (bar + pie) are drawn by js/v2/charts.js as SVG — no external
+ *   library, no CSP change. The bar reads the same rows the table shows;
+ *   the pie folds the same categories the legacy screen counted.
  *   Read gate on the sources: admin|manager|accountant|auditor.
  *
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
+import { barChart, donutChart } from '../charts.js?v=4.9.145';
 import {
     fetchRevenues, fetchExpenses, fetchDepartments,
     buildCostRows, isoDay, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+} from '../data/finance-repo.js?v=4.9.145';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.145';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const round1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
+const num = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+};
 
 /** Legacy KPI threshold coloring (finance.js:273): <50 green, <75 orange. */
 function costTone(pct) {
@@ -83,9 +90,10 @@ function template(from, to) {
             <span class="erp-addr" dir="ltr">/api/expenses</span> +
             <span class="erp-addr" dir="ltr">/api/departments</span>)،
             بنفس قواعد التصنيف القديمة (شجرة الأقسام + صافي المرتجعات).
-            لا يُطلب أي شيء من مسار كتابة. الرسوم البيانية مؤجّلة (Gate E).
+            لا يُطلب أي شيء من مسار كتابة. الرسوم SVG محلية بلا مكتبة خارجية.
           </p>
           <ul class="erp-kpis" data-v2-kpis></ul>
+          <div class="erp-v2-chart-grid" data-v2-charts></div>
           <div data-v2-summary role="status" aria-live="polite" class="erp-text-sm erp-text-muted"></div>
           <div data-v2-table></div>
         </div>
@@ -109,6 +117,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
+    const chartsEl = q('[data-v2-charts]');
     const summaryEl = q('[data-v2-summary]');
 
     const table = createDataTable({
@@ -173,6 +182,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         if (!departments.length) {
             summaryEl.textContent = 'لا توجد أقسام مسجلة.';
             kpisEl.innerHTML = '';
+            chartsEl.innerHTML = '';
             table.setRows([]);
             return;
         }
@@ -181,6 +191,46 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         const { rows, totals: t } = buildCostRows(revenues, expenses, departments, from, to);
         totals = t;
         paintKpis(t);
+
+        const inPeriod = (e) => {
+            const d = String((e && e.date) || '').slice(0, 10);
+            if (!d) {return false;}
+            if (from && d < from) {return false;}
+            if (to && d > to) {return false;}
+            return true;
+        };
+        const categories = new Map();
+        expenses.filter(inPeriod).forEach((e) => {
+            const label = e && e.category ? String(e.category) : 'أخرى';
+            categories.set(label, (categories.get(label) || 0) + num(e && e.amount));
+        });
+        const moneyText = (v) => {
+            const m = formatMoney(v, currency);
+            return `${m.amount}${m.hasUnit ? ` ${m.unit}` : ''}`;
+        };
+        chartsEl.innerHTML = [
+            barChart({
+                title: 'الإيرادات مقابل التكلفة حسب القسم',
+                ariaLabel: 'أعمدة الإيرادات والتكلفة الإجمالية لكل قسم',
+                labels: rows.map((r) => r.name),
+                series: [
+                    { label: 'الإيرادات', tone: 'success', values: rows.map((r) => r.rev) },
+                    { label: 'التكلفة الإجمالية', tone: 'danger', values: rows.map((r) => r.exp) },
+                ],
+                formatValue: moneyText,
+                emptyText: 'لا أقسام في هذه الفترة',
+            }),
+            donutChart({
+                title: 'توزيع بنود التكلفة بالتصنيف',
+                ariaLabel: 'رسم دائري لنسب تصنيفات المصروفات في الفترة',
+                slices: [...categories.entries()].map(([label, value]) => ({ label, value })),
+                centerLabel: 'إجمالي المصروفات',
+                formatValue: moneyText,
+                maxSlices: 8,
+                emptyText: 'لا مصروفات في هذه الفترة',
+            }),
+        ].join('');
+
         summaryEl.textContent = `${formatInt(rows.length)} قسمًا`
             + `${from || to ? ` · الفترة ${from || 'البداية'} → ${to || 'اليوم'}` : ' · كل الفترات'}`
             + ' · الحساب محلي من الحركات المسجّلة فقط';
@@ -207,6 +257,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             if (!el.isConnected) {return;}
             totals = null;
             kpisEl.innerHTML = '';
+            chartsEl.innerHTML = '';
             table.setRows([]);
             summaryEl.textContent = '';
             table.setError(e && e.message === 'UNAUTHORIZED'
