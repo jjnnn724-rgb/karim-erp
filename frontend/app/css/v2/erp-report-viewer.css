@@ -1,0 +1,61 @@
+/* ═══════════════════════════════════════════════════════════════════
+   V2 — In-app document viewer · js/v2/report-viewer.js
+   ───────────────────────────────────────────────────────────────────
+   صفر hex: كل سطح وحدّ ومسافة وحجم من --erp-*. الطبقة تحمل .erp-v2
+   بنفسها لأنها تُركّب على body خارج شجرة التطبيق، فتحتاج نطاق التوكنات
+   (نفس علة طبقة التنبيهات في toast.js:97-104).
+
+   الإطار أبيض دائمًا عمدًا: مستندات الطباعة تولّد ورقة بيضاء بحبر داكن
+   ولا تعرف الثيم؛ فرضُ خلفية داكنة خلفها يجعل الحواف الرمادية غير مقروءة.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.erp-report-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--erp-background);
+  color: var(--erp-text-primary);
+  font-family: var(--erp-font-sans);
+}
+
+.erp-report-viewer__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: none;
+  padding-block: var(--erp-space-2);
+  padding-inline: var(--erp-space-4);
+  border-block-end: 1px solid var(--erp-border);
+  background: var(--erp-surface-raised);
+}
+
+.erp-report-viewer__title {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-bold);
+}
+
+.erp-report-viewer__frame {
+  flex: 1;
+  inline-size: 100%;
+  min-block-size: 0;
+  border: 0;
+  background: var(--erp-surface);
+}
+
+html.erp-report-viewer-open,
+html.erp-report-viewer-open body {
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .erp-report-viewer__bar {
+    padding-inline: var(--erp-space-3);
+  }
+}

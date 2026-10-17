@@ -637,11 +637,11 @@ describe('شاشة 21 — العقد المصدَّر من المصدر', () => 
         expect(s).toMatch(/capNoteEl\.hidden = !\(rawRows\.length >= PR_LIST_CAP\);/);
     });
 
-    test('الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة ورقة القديم', () => {
+    test('الطباعة: العارض الداخلي يُفتح مباشرة قبل الجلب، والورقة ورقة القديم', () => {
         const s = src();
         const note = s.slice(s.indexOf('async function printNote'), s.indexOf('/* ── القراءة والرسم'));
-        expect(note.indexOf("window.open('', '_blank')")).toBeGreaterThan(-1);
-        expect(note.indexOf("window.open('', '_blank')")).toBeLessThan(note.indexOf('await ensureSettings()'));
+        expect(note.indexOf('openInAppReport(')).toBeGreaterThan(-1);
+        expect(note.indexOf('openInAppReport(')).toBeLessThan(note.indexOf('await ensureSettings()'));
         expect(note).toContain('جارٍ تجهيز طلب الشراء…');
         expect(note).toContain('طلب شراء نواقص — ');
         expect(note).toContain('#c9a227');

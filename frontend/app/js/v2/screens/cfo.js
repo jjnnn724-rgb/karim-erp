@@ -14,10 +14,11 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { canWrite } from '../session.js?v=4.9.148';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.148';
-import { ensureXlsx } from '../vendor.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { canWrite } from '../session.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.149';
+import { ensureXlsx } from '../vendor.js?v=4.9.149';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -27,7 +28,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.148';
+} from '../data/cfo-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -289,8 +290,7 @@ export function mountCfoScreen(host, ctx = {}) {
     /* ── الطباعة: نفس ورقة القديم (cfo.js:421) بلا معالج سطري ──────────── */
 
     function printDoc(title, bodyHtml, period) {
-        const w = window.open('', '_blank');
-        if (!w) {say('اسمح بالنوافذ المنبثقة للطباعة'); return;}
+        const w = openInAppReport(title);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`
             + `<style>body{font-family:'Cairo',Arial,sans-serif;padding:28px;color:#1a1a1a;direction:rtl}`
             + `.hd{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:18px}`

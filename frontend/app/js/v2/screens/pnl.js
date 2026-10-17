@@ -29,10 +29,11 @@
  * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { lineChart, barChart } from '../charts.js?v=4.9.148';
-import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.148';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { lineChart, barChart } from '../charts.js?v=4.9.149';
+import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.149';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -328,7 +329,7 @@ export function mountPnlScreen(host, _ctx = {}) {
             const p = new URLSearchParams();
             if (fromEl.value) {p.set('from', fromEl.value);}
             if (toEl.value) {p.set('to', toEl.value);}
-            window.open(`/api/finance/pnl/print?${p.toString()}`, '_blank', 'noopener');
+            openInAppReport('قائمة الأرباح والخسائر', `/api/finance/pnl/print?${p.toString()}`);
             return;
         }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}

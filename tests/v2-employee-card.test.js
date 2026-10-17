@@ -485,15 +485,15 @@ describe('V2 employees screen — the card the كشف now paints', () => {
         expect((s.match(/window\.print\(\)/g) || []).length).toBe(1);
     });
 
-    test('the luxury card is a server page written into a user-gesture window, drawn only where the server admits', () => {
+    test('the luxury card is a server page shown in the in-app viewer, drawn only where the server admits', () => {
         const s = screen();
-        expect((s.match(/window\.open\(/g) || []).length).toBe(1);   // the screen's only popup
+        expect((s.match(/window\.open\(/g) || []).length).toBe(0);   // popups are blocked in the Android WebView
         const lx = s.match(/async function printLux\(\) \{[\s\S]*?\n {4}\}/)[0];
-        expect(lx).toMatch(/window\.open\('', '_blank'\)/);          // opened before the request, inside the click
+        expect(lx).toMatch(/openInAppReport\('بطاقة الموظف'\)/);    // opened before the request, inside the click
         expect(lx).toMatch(/fetchLuxCardHtml\(panelRow\.id\)/);
         expect(lx).toMatch(/win\.document\.write\(html\)/);
         expect(lx).toMatch(/win\.close\(\)/);
-        expect(lx).toMatch(/اسمح بالنوافذ المنبثقة لطباعة البطاقة/);
+        expect(lx).not.toMatch(/اسمح بالنوافذ المنبثقة/);
         // ADMIN_ROLES (hr-routes.js:15) is exactly empWriteVisible — no button
         // is painted for a role the server would answer 403 to.
         expect(s).toMatch(/\$\{canWrite \? `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-lux>/);

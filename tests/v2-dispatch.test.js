@@ -522,11 +522,11 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا');
     });
 
-    test('الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة ورقة القديم', () => {
+    test('الطباعة: العارض الداخلي يُفتح مباشرة قبل الجلب، والورقة ورقة القديم', () => {
         const s = src();
         const note = s.slice(s.indexOf('async function printNote'), s.indexOf('/* ── القراءة والرسم'));
-        expect(note.indexOf("window.open('', '_blank')")).toBeGreaterThan(-1);
-        expect(note.indexOf("window.open('', '_blank')")).toBeLessThan(note.indexOf('fetchDispatchFull'));
+        expect(note.indexOf('openInAppReport(')).toBeGreaterThan(-1);
+        expect(note.indexOf('openInAppReport(')).toBeLessThan(note.indexOf('fetchDispatchFull'));
         expect(note).toContain('جارٍ تجهيز إذن الصرف…');
         expect(note).toContain('إذن صرف مخزن');
         expect(note).toContain('#c9a227');

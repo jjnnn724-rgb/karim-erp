@@ -22,12 +22,12 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { fetchRevenues, fetchDepartments, isoDay, firstOfMonth } from '../data/finance-repo.js?v=4.9.148';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.148';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.148';
-import { canWrite } from '../session.js?v=4.9.148';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { fetchRevenues, fetchDepartments, isoDay, firstOfMonth } from '../data/finance-repo.js?v=4.9.149';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.149';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.149';
+import { canWrite } from '../session.js?v=4.9.149';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

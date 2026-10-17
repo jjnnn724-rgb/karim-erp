@@ -571,13 +571,13 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('إضافة أصناف جديدة مرفوضة — طلب جديد لها');
     });
 
-    test('الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة ورقة القديم بحرفها', () => {
+    test('الطباعة: العارض الداخلي يُفتح مباشرة قبل الجلب، والورقة ورقة القديم بحرفها', () => {
         const s = src();
         const note = s.slice(s.indexOf('function printVeg'), s.indexOf('/* ── القراءة والرسم'));
-        expect(note.indexOf("window.open('', '_blank')")).toBeGreaterThan(-1);
-        expect(note.indexOf("window.open('', '_blank')")).toBeLessThan(note.indexOf('await fetchVegRequestById(raw.id)'));
+        expect(note.indexOf('openInAppReport(')).toBeGreaterThan(-1);
+        expect(note.indexOf('openInAppReport(')).toBeLessThan(note.indexOf('await fetchVegRequestById(raw.id)'));
         expect(note).toContain('جارٍ تجهيز طلب الخضار…');
-        expect(note).toContain('اسمح بالنوافذ المنبثقة لطباعة طلب الخضار');
+        expect(note).not.toContain('اسمح بالنوافذ المنبثقة لطباعة طلب الخضار');
         expect(note).toContain('buildVegPrintHtml(full, userName)');
         expect(s.match(/fetchVegRequestById\(/g)).toHaveLength(1);   // القراءة الطازجة مرة واحدة
         // الورقة من vegBuildPrintHtml :582-680 — بنتها الذهبية وخاناتها

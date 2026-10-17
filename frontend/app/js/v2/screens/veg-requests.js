@@ -22,16 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { statusBadge } from '../status.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { statusBadge } from '../status.js?v=4.9.149';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
     vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
     createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.148';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.148';
+} from '../data/veg-repo.js?v=4.9.149';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -777,8 +778,7 @@ export function mountVegScreen(host, ctx = {}) {
     /* ── الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب ───────────────── */
 
     function printVeg(raw) {
-        const w = window.open('', '_blank');
-        if (!w) {notify('اسمح بالنوافذ المنبثقة لطباعة طلب الخضار'); return;}
+        const w = openInAppReport(`طلب شراء خضار #${raw.id}`);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب شراء خضار #${esc(raw.id)}</title></head><body style="font-family:'Segoe UI',Tahoma,sans-serif;padding:24px">جارٍ تجهيز طلب الخضار…</body></html>`);
         (async () => {
             let full = raw;

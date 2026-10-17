@@ -21,18 +21,19 @@
  * V2's own (same content, not pixel-parity).
  */
 
-import { canWrite } from '../session.js?v=4.9.148';
-import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.148';
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.148';
+import { canWrite } from '../session.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.149';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.149';
 import {
     fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
     faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
     reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
-} from '../data/portal-repo.js?v=4.9.148';
-import { captureFace } from '../portal-face.js?v=4.9.148';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.148';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.148';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.148';
+} from '../data/portal-repo.js?v=4.9.149';
+import { captureFace } from '../portal-face.js?v=4.9.149';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.149';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.149';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -367,8 +368,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
     }
 
     function printDoc(title, rowsHtml, summaryHtml) {
-        const w = window.open('', '_blank');
-        if (!w) {say('اسمح بالنوافذ المنبثقة للطباعة'); return;}
+        const w = openInAppReport(title);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`
             + `<style>body{font-family:'Cairo',Tahoma,sans-serif;padding:28px;color:#1a1a1a;direction:rtl}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#f4ead2}`
             + `.controls{text-align:center;margin-bottom:14px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}`

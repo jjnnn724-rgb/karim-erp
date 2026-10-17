@@ -44,9 +44,8 @@
  *     that narrows what the paper shows.
  *   • Never a second print path: the QR card, the full card and the day/range
  *     sheet all ride that one print call behind a body class. The luxury
- *     card is the screen's only window.open — it is a whole HTML page the
- *     SERVER generates (tools/employee-card), which this page's print
- *     stylesheet cannot dress.
+ *     card is a whole HTML page the SERVER generates (tools/employee-card),
+ *     so it goes through the in-app document viewer, not window.open.
  *   • Never guesses an employee_id for a door: the كشف panel passes the id
  *     it was opened on, and the server's role scope decides the rest.
  *
@@ -69,8 +68,9 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.149';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -79,16 +79,16 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.148';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.148';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.148';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.148';
+} from '../data/employees-repo.js?v=4.9.149';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.149';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.149';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.149';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.148';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.148';
+} from '../data/employee-card-repo.js?v=4.9.149';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1286,13 +1286,13 @@ export function mountEmployeesScreen(host, ctx = {}) {
           <p class="erp-text-sm erp-text-muted">${notes.map((n) => esc(n)).join(' ')}</p>`;
     }
 
-    /** البطاقة الرسمية (lux): يولّدها الخادم صفحةً مستقلّة، فتُكتب في نافذة
-     *  فارغة تُفتح داخل نقرة المستخدم نفسها — وإلا حجبها المتصفح. نفس خطاف
-     *  printLuxCard القديم (smart-card.js:702-714) حرفًا. */
+    /** البطاقة الرسمية (lux) يولّدها الخادم صفحةً مستقلّة، فتُعرض في عارض
+     *  المستندات داخل التطبيق بدل نافذة منبثقة يحجبها WebView. */
     async function printLux() {
         if (!panelRow || panelKind !== 'file') {return;}
-        const win = window.open('', '_blank');
-        if (!win) {notify('اسمح بالنوافذ المنبثقة لطباعة البطاقة'); return;}
+        const win = openInAppReport('بطاقة الموظف');
+        win.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقة الموظف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز البطاقة…</body></html>');
+        win.document.close();
         try {
             const html = await fetchLuxCardHtml(panelRow.id);
             win.document.write(html);

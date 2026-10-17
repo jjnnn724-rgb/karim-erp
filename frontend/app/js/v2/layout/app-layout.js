@@ -21,9 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.148';
-import { mountDensityControl } from '../density.js?v=4.9.148';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.148';
+import { mountThemeControl } from '../theme.js?v=4.9.149';
+import { mountDensityControl } from '../density.js?v=4.9.149';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

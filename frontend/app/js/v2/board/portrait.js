@@ -25,7 +25,7 @@ import {
     bilingual, buildPages, buildWeeklyPages, catEn, catTitleEn, cyclePlan, dominantIndex,
     isBuffetEnabled, buffetPage, BUFFET_SECTIONS, periodAtMinute, scheduleStarts, aspectBand, columnsForBand,
     capacityForBox, comfortRowHeight, rowsForBox, buffetPriceParts,
-} from './board-data.js?v=4.9.148';
+} from './board-data.js?v=4.9.149';
 
 const ITEM_PROBE = 'صنف تجريبي للقياس';
 const PROBE_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';

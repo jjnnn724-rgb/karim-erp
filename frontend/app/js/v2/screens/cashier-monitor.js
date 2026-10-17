@@ -12,12 +12,13 @@
  * (window.socket 'yarasoft:mirror' when present, released on destroy).
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.148';
-import { ensureXlsx } from '../vendor.js?v=4.9.148';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { ensureXlsx } from '../vendor.js?v=4.9.149';
 import {
     mirrorToday, fetchMonitorSummary, fetchMonitorOrders, fetchMonitorOrder,
     summarizeCashiers, mirrorFreshness,
-} from '../data/cashier-monitor-repo.js?v=4.9.148';
+} from '../data/cashier-monitor-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -292,8 +293,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
         const rows = reportRows();
         const totN = rows.reduce((s, r) => s + r.invoices, 0);
         const totR = rows.reduce((s, r) => s + r.revenue, 0);
-        const w = window.open('', '_blank');
-        if (!w) {say('اسمح بالنوافذ المنبثقة للطباعة'); return;}
+        const w = openInAppReport('تقرير إيرادات الكاشيرية');
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير إيرادات الكاشيرية — ${esc(date)}</title>`
             + `<style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#1a1a1a;direction:rtl}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:15px;margin-bottom:18px}`
             + `table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e}tfoot td{font-weight:800;background:#f3ecd9}`

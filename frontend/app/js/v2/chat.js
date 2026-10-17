@@ -13,9 +13,9 @@
  * session is not live; it never fabricates a local session.
  */
 
-import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.148';
-import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.148';
-import { chatWriteEnabled } from './write-flags.js?v=4.9.148';
+import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.149';
+import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.149';
+import { chatWriteEnabled } from './write-flags.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

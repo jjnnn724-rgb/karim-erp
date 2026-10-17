@@ -22,9 +22,10 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.148';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.149';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.149';
 import {
     PR_CREATE_ROLES,
     fetchPurchaseRequests, fetchShortages, fetchPRDepartments, fetchPRInventoryNames,
@@ -33,11 +34,11 @@ import {
     collectPRItems, prCreateError, prReasonError,
     prCreatePayload, prNotesPayload, prRejectPayload,
     createPR, chefApprovePR, chefRejectPR, gmApprovePR, gmRejectPR, cancelPR, deletePR,
-} from '../data/pr-repo.js?v=4.9.148';
+} from '../data/pr-repo.js?v=4.9.149';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.148';
+} from '../signature.js?v=4.9.149';
 
 const SIG_IDS = {
     prCreate: 'v2pr-create-sig',
@@ -713,9 +714,7 @@ export function mountWhPrsScreen(host, ctx = {}) {
     }
 
     async function printNote(raw) {
-        // النافذة تُفتح داخل إيماءة النقر نفسها فلا يحجبها المتصفح.
-        const w = window.open('', '_blank');
-        if (!w) {notify('اسمح بالنوافذ المنبثقة للطباعة'); return;}
+        const w = openInAppReport(`طلب شراء ${raw.request_number || ('#' + raw.id)}`);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب شراء ${esc(raw.request_number || '')}</title></head><body style="font-family:'Cairo',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز طلب الشراء…</body></html>`);
         const settings = await ensureSettings();
         const items = Array.isArray(raw.items) ? raw.items : [];

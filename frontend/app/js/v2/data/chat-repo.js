@@ -12,7 +12,7 @@
  * `internal_chat` table and vanish after the server's 7-day prune.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.148';
+import { apiFetch } from '../../core/api.js?v=4.9.149';
 
 export const CHAT_PEER_ROLES = ['admin', 'manager', 'hr', 'warehouse'];
 export const CHAT_MAX_BODY = 1000;

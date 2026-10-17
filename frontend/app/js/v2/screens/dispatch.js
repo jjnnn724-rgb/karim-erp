@@ -24,10 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.148';
-import { formatInt } from '../data/employees-repo.js?v=4.9.148';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.149';
+import { formatInt } from '../data/employees-repo.js?v=4.9.149';
+import { openInAppReport } from '../report-viewer.js?v=4.9.149';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.149';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     CREATE_ROLES, chainStage, deptCodesOf,
@@ -37,11 +38,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.148';
+} from '../data/dispatch-repo.js?v=4.9.149';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.148';
+} from '../signature.js?v=4.9.149';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -1190,10 +1191,8 @@ export function mountDispatchScreen(host, ctx = {}) {
     }
 
     async function printNote(raw) {
-        // النافذة تُفتح داخل إيماءة النقر نفسها فلا يحجبها المتصفح — القديم
-        // كان يفتحها بعد الجلب فيسقط أحيانًا في fallback «اسمح بالنوافذ».
-        const w = window.open('', '_blank');
-        if (!w) {notify('اسمح بالنوافذ المنبثقة لطباعة إذن الصرف'); return;}
+        // العارض داخلي فلا نافذة منبثقة تُحجب، ويُعرض «جارٍ التجهيز» فورًا.
+        const w = openInAppReport(`إذن صرف #${raw.id}`);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(raw.id)}</title></head><body style="font-family:'Cairo',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز إذن الصرف…</body></html>`);
         let d = raw;
         try {
@@ -1237,8 +1236,7 @@ export function mountDispatchScreen(host, ctx = {}) {
      *  تُفتح داخل إيماءة النقر حتى لا يحجبها المتصفح. */
 
     async function printList() {
-        const w = window.open('', '_blank');
-        if (!w) {notify('اسمح بالنوافذ المنبثقة لطباعة الكشف'); return;}
+        const w = openInAppReport('كشف أذونات الصرف');
         w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
         const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
         const { rows } = inRange(view);

@@ -6,12 +6,12 @@
  * محلية قبل أي طلب (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.148';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.148';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.149';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.149';
 import {
     fetchItemSales, fetchYaraOrders, rangeError, analysisLabel, safeTotals,
     SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.148';
+} from '../data/yara-reports-repo.js?v=4.9.149';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
