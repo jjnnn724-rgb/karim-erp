@@ -9,27 +9,35 @@
  * below is shared with 05/07 (local copy, documented pattern — no
  * cross-screen coupling); switching tabs navigates via ctx.navigate.
  *
- * ONE WRITE DOOR (owner approval): full-pay of the remaining balance, via
+ * PAYMENT DOORS (owner approval): full-pay of the remaining balance, via
  * procurement-repo.payInvoiceFull → POST /procurement/invoices/:id/pay,
  * plus a partial payment linked to an invoice via
  * procurement-repo.payInvoicePartial → POST /procurement/payments
  * (server re-checks amount ≤ remaining and recomputes paymentStatus;
  * reversible through the payments screen's admin-only reversal).
- * Everything else on this screen is a read; the register itself is not
- * edited here (no create, no void, no delete-all — those stay in the
- * legacy warehouse page until their own approved wave).
+ *
+ * DESTRUCTIVE TAIL (P1-4, separate wave): void one invoice and clear all.
+ * Both server doors are requireRole('admin'); this screen draws them only
+ * for admin AND the independent v2invoicevoid flag (OFF by default). The
+ * void button carries the server's refusals (manual payments, force) and
+ * the clear-all panel demands the same checkbox the legacy page demanded.
+ * Creating invoices stays in legacy — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.145';
-import { statusBadge } from '../status.js?v=4.9.145';
-import { canWrite } from '../session.js?v=4.9.145';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.146';
+import { statusBadge } from '../status.js?v=4.9.146';
+import { canWrite } from '../session.js?v=4.9.146';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.145';
+} from '../data/purchase-invoices-repo.js?v=4.9.146';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.145';
+} from '../data/procurement-repo.js?v=4.9.146';
+import {
+    voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
+} from '../data/purchase-invoices-write-repo.js?v=4.9.146';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.146';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -79,14 +87,17 @@ function template() {
             والصلاحية قررها الخادم وحده. الكتابة هنا: تسديد كامل المتبقي، أو
             دفعة جزئية مرتبطة بالفاتورة (الخادم يرفض ما يتجاوز المتبقي ويعيد
             حساب حالة السداد؛ والعكس متاح لاحقًا من شاشة المدفوعات لحساب
-            الأدمن). الإنشاء والإلغاء والحذف الجماعي باقٍ في صفحته القديمة
-            حتى موجته. المتبقي = الإجمالي − المسدد (بحد صفر، قاعدة النظام
-            القديم). حالة السداد المحفوظة تُعرض بعدّتها، والغائب يُقرأ «غير
-            مسددة» كما في القديم.
+            الأدمن). الإنشاء باقٍ في صفحته القديمة؛ والإلغاء الفردي والحذف
+            الجماعي للأدمن وحده وخلف العلم المستقل
+            <span class="erp-addr" dir="ltr">v2invoicevoid</span> (OFF افتراضيًا)،
+            والخادم يعيد فحص الدور وعبارة التأكيد. المتبقي = الإجمالي − المسدد
+            (بحد صفر، قاعدة النظام القديم). حالة السداد المحفوظة تُعرض بعدّتها،
+            والغائب يُقرأ «غير مسددة» كما في القديم.
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
           <div data-v2-pay-form></div>
           <div data-v2-table></div>
+          <div data-v2-danger></div>
         </div>
       </section>`;
 }
@@ -102,6 +113,7 @@ export function mountInvoicesScreen(host, ctx = {}) {
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
         : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const writable = canWrite(ctx.role, PAYMENT_WRITE_ROLES);
+    const canVoid = canWrite(ctx.role, INVOICE_VOID_ROLES) && invoiceVoidWriteEnabled();
 
     let rows = [];
     let currency = '';
@@ -155,23 +167,30 @@ export function mountInvoicesScreen(host, ctx = {}) {
                 value: (row) => row.status,
                 render: (row) => statusBadge('payment', row.status),
             },
-            ...(writable ? [{
+            ...((writable || canVoid) ? [{
                 key: 'actions',
                 header: 'إجراء',
-                width: '270px',
+                width: '320px',
                 align: 'end',
                 value: () => '',
                 render: (row) => {
-                    if (!(row.remaining > 0)) {return `<span class="erp-text-muted">—</span>`;}
-                    const full = `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
-                        <i class="ji" data-i="banknote" aria-hidden="true"></i><span>تسديد الكل</span>
-                      </button>`;
-                    const part = row.supplierId
-                        ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay-part" data-id="${esc(row.id)}">
-                            <i class="ji" data-i="coins" aria-hidden="true"></i><span>جزئي</span>
+                    const pay = row.remaining > 0
+                        ? (row.supplierId
+                            ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay-part" data-id="${esc(row.id)}">
+                                <i class="ji" data-i="coins" aria-hidden="true"></i><span>جزئي</span>
+                              </button>`
+                            : '')
+                          + `<button type="button" class="erp-btn erp-btn--sm" data-v2-act="pay" data-id="${esc(row.id)}">
+                            <i class="ji" data-i="banknote" aria-hidden="true"></i><span>تسديد الكل</span>
                           </button>`
                         : '';
-                    return `<span class="erp-row-wrap">${part}${full}</span>`;
+                    const del = canVoid
+                        ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-act="void" data-id="${esc(row.id)}" aria-label="حذف الفاتورة ${esc(row.number)}">
+                            <i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف</span>
+                          </button>`
+                        : '';
+                    if (!pay && !del) {return `<span class="erp-text-muted">—</span>`;}
+                    return `<span class="erp-row-wrap">${pay}${del}</span>`;
                 },
             }] : []),
         ],
@@ -206,6 +225,98 @@ export function mountInvoicesScreen(host, ctx = {}) {
         } catch (e) {
             if (!el.isConnected) {return;}
             notify(`فشل التسديد: ${(e && e.message) || 'خطأ'}`, 'error');
+        } finally {
+            saving = false;
+        }
+    }
+
+    /** Void one invoice — server reverses stock, voids the journal, deletes
+     *  auto payments, then deletes the row. Manual payments stay a 409 with
+     *  the server's own sentence; the screen only adds where to reverse it. */
+    async function runVoid(id) {
+        if (saving || !canVoid) {return;}
+        const row = rows.find((r) => String(r.id) === String(id));
+        if (!row) {return;}
+        const total = `${formatMoney(row.total, currency).amount}${currency ? ` ${currency}` : ''}`;
+        const paid = row.paid > 0
+            ? `\nعليها مبلغ مسدد ${formatMoney(row.paid, currency).amount}${currency ? ` ${currency}` : ''} — إن كانت دفعة تلقائية ستُعكس مع الإلغاء.`
+            : '';
+        if (!confirmFn(`حذف فاتورة الشراء ${row.number} (${total})؟\nسيُعكس أثرها على المخزون تلقائيًا.${paid}`)) {return;}
+        saving = true;
+        try {
+            const res = await voidPurchaseInvoice(row.id);
+            if (!el.isConnected) {return;}
+            const auto = res && res.deletedPayments
+                ? ` وعُكست ${formatInt(res.deletedPayments)} دفعة تلقائية مرتبطة`
+                : '';
+            notify(`حُذفت الفاتورة ${(res && res.invoiceNumber) || row.number} وعُكس مخزون ${formatInt((res && res.reversedItems) || 0)} صنفًا${auto}`);
+            await reload();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            const msg = String((e && e.message) || 'تعذر حذف الفاتورة');
+            const guide = /يدوية|دفعات موردين/.test(msg)
+                ? ' — افتح «المشتريات › المدفوعات» واعكس الدفعة يدويًا ثم أعد الإلغاء'
+                : '';
+            notify(`${msg}${guide}`, 'error');
+        } finally {
+            saving = false;
+        }
+    }
+
+    /** Danger zone — only admin + v2invoicevoid. The server still demands
+     *  the literal phrase, so the checkbox is a second deliberate step. */
+    function paintDanger() {
+        const holder = q('[data-v2-danger]');
+        if (!holder) {return;}
+        if (!canVoid || rows.length === 0) {holder.innerHTML = ''; return;}
+        holder.innerHTML = `<section class="erp-card" data-v2-danger-card>
+            <div class="erp-card__head">
+              <h4 class="erp-card__title">منطقة الخطر
+                <span class="erp-badge" data-tone="danger">إلغاء نهائي</span>
+              </h4>
+            </div>
+            <div class="erp-card__body erp-stack">
+              <p class="erp-text-sm erp-text-muted">
+                حذف كل فواتير الشراء نهائي ولا يمكن التراجع: تُعكس كمياتها من
+                المخزون، وتُحذف حركات المخزون المرتبطة بها، وتُبطَّل قيودها
+                المحاسبية. خذ نسخة احتياطية أولًا.
+              </p>
+              <div class="erp-dash-controls">
+                <label class="erp-text-sm">
+                  <input type="checkbox" data-v2-clear-ok>
+                  أفهم أن هذه العملية نهائية وتعكس كميات المخزون
+                </label>
+                <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-clear-go disabled>
+                  <i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف كل الفواتير نهائيًا</span>
+                </button>
+              </div>
+              <div class="erp-text-sm erp-text-warning" data-v2-danger-err role="alert"></div>
+            </div>
+          </section>`;
+    }
+
+    async function runClearAll() {
+        if (saving || !canVoid) {return;}
+        const ok = q('[data-v2-clear-ok]');
+        const err = q('[data-v2-danger-err]');
+        if (!ok || !ok.checked) {
+            if (err) {err.textContent = 'فعّل مربع التأكيد أولًا.';}
+            return;
+        }
+        if (rows.length === 0) {return;}
+        if (!confirmFn(`حذف كل فواتير الشراء (${formatInt(rows.length)}) نهائيًا؟\nستُعكس كمياتها من المخزون ولا يمكن التراجع.`)) {return;}
+        saving = true;
+        if (err) {err.textContent = '';}
+        try {
+            const res = await clearAllPurchaseInvoices();
+            if (!el.isConnected) {return;}
+            notify(`تم حذف ${formatInt((res && res.deletedInvoices) || 0)} فاتورة وعكس ${formatInt((res && res.reversedLedgerRows) || 0)} قيد مخزون`);
+            await reload();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            const msg = String((e && e.message) || 'تعذر حذف الفواتير');
+            if (err) {err.textContent = msg;}
+            notify(msg, 'error');
         } finally {
             saving = false;
         }
@@ -303,12 +414,14 @@ export function mountInvoicesScreen(host, ctx = {}) {
             rows = invoices.map((inv) => invoiceToRow(inv, byId));
             table.setRows(rows);
             paintSummary();
+            paintDanger();
         } catch (e) {
             if (!el.isConnected) {return;}
             rows = [];
             table.setRows([]);
             summaryEl.textContent = '';
             countEl.textContent = '';
+            paintDanger();
             table.setError(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && e.code === 'FORBIDDEN'
@@ -332,6 +445,7 @@ export function mountInvoicesScreen(host, ctx = {}) {
         }
         if (event.target.closest('[data-v2-pp-go]')) {submitPartial(); return;}
         if (event.target.closest('[data-v2-pp-x]')) {closePayForm(); return;}
+        if (event.target.closest('[data-v2-clear-go]')) {runClearAll(); return;}
         const actBtn = event.target.closest('[data-v2-act]');
         if (actBtn) {
             if (actBtn.disabled) {return;}
@@ -339,6 +453,8 @@ export function mountInvoicesScreen(host, ctx = {}) {
             if (actBtn.dataset.v2Act === 'pay-part') {
                 const row = rows.find((r) => String(r.id) === String(id));
                 if (row) {openPayForm(row);}
+            } else if (actBtn.dataset.v2Act === 'void') {
+                runVoid(id);
             } else {
                 runPay(id);
             }
@@ -346,6 +462,13 @@ export function mountInvoicesScreen(host, ctx = {}) {
         }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
+    });
+
+    el.addEventListener('change', (event) => {
+        const ok = event.target.closest('[data-v2-clear-ok]');
+        if (!ok) {return;}
+        const btn = q('[data-v2-clear-go]');
+        if (btn) {btn.disabled = !ok.checked;}
     });
 
     reload();

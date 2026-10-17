@@ -35,8 +35,8 @@
  * door for door, role for role. Nothing else in this file may POST/PUT/DELETE.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.145';
-import { formatMoney } from './reports-repo.js?v=4.9.145';
+import { apiFetch } from '../../core/api.js?v=4.9.146';
+import { formatMoney } from './reports-repo.js?v=4.9.146';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];

@@ -30,7 +30,7 @@ const throwingStore = { getItem: () => { throw new Error('denied'); } };
 describe('write-flags — الافتراضي مغلق', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام العشرة', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام الأحد عشر', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
         expect(ctx.recipeWriteEnabled('', null)).toBe(false);
         expect(ctx.departmentWriteEnabled('', null)).toBe(false);
@@ -41,6 +41,7 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.portalWriteEnabled('', null)).toBe(false);
         expect(ctx.faceWriteEnabled('', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('', null)).toBe(false);
+        expect(ctx.invoiceVoidWriteEnabled('', null)).toBe(false);
         expect(ctx.financeWriteEnabled(undefined, null)).toBe(false);
     });
 
@@ -55,6 +56,9 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.portalWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.faceWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.fiscalWriteEnabled('', store('1'))).toBe(true);
+        expect(ctx.invoiceVoidWriteEnabled('', store('1'))).toBe(true);
+        expect(ctx.invoiceVoidWriteEnabled('', store('0'))).toBe(false);
+        expect(ctx.invoiceVoidWriteEnabled('', throwingStore)).toBe(false);
         expect(ctx.financeWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.portalWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.faceWriteEnabled('', store('0'))).toBe(false);
@@ -87,6 +91,8 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.faceWriteEnabled('?v2facewrite=0', store('1'))).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2fiscalwrite=1', null)).toBe(true);
         expect(ctx.fiscalWriteEnabled('?v2fiscalwrite=0', store('1'))).toBe(false);
+        expect(ctx.invoiceVoidWriteEnabled('?v2invoicevoid=1', null)).toBe(true);
+        expect(ctx.invoiceVoidWriteEnabled('?v2invoicevoid=0', store('1'))).toBe(false);
     });
 
     test('كل علم لا يفتح الآخر', () => {
@@ -100,6 +106,7 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.portalWriteEnabled('?v2facewrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.faceWriteEnabled('?v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
+        expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
     });
 });
 
@@ -146,6 +153,12 @@ describe('الشاشات — الدور والعلم معًا', () => {
         expect(portal).toMatch(/canWrite\(ctx\.role, FACE_ENROLL_ROLES\) && faceWriteEnabled\(\)/);
     });
 
+    test('ذيل P1-4: إلغاء فاتورة الشراء لأدمن + علم مستقل', () => {
+        const inv = read(path.join(V2, 'screens', 'invoices.js'));
+        expect(inv).toMatch(/import \{ invoiceVoidWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
+        expect(inv).toMatch(/canWrite\(ctx\.role, INVOICE_VOID_ROLES\) && invoiceVoidWriteEnabled\(\)/);
+    });
+
     test('P2-4: حوكمة المخزن — الإنشاء والإقفال وراء العلم والدور', () => {
         const gov = read(path.join(V2, 'screens', 'warehouse-gov.js'));
         expect(gov).toMatch(/import \{ fiscalWriteEnabled \} from '\.\.\/write-flags\.js\?v=/);
@@ -155,7 +168,7 @@ describe('الشاشات — الدور والعلم معًا', () => {
     });
 
     test('لا نسخة ثانية من منطق العلم داخل الشاشات', () => {
-        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov']
+        const all = SCREENS.concat(['departments', 'hr-departments', 'shelves', 'weight', 'zkteco', 'employee-portal', 'warehouse-gov', 'invoices']
             .map((f) => path.join(V2, 'screens', `${f}.js`)));
         for (const f of all) {
             const s = read(f);

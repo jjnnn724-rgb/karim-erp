@@ -42,7 +42,7 @@
  *   features/kitchen.js:1444. لذلك costRatioPercent هنا يردّ نسبة مئوية.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.145';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.146';
 
 /** مرآة OPEN_ENTITY_WRITE_ROLES.recipes (schema-registry.js:791). */
 export const RECIPE_WRITE_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
