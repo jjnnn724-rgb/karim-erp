@@ -78,9 +78,9 @@
 | `zkteco` | ✅ | `screens/zkteco.js` + `data/zkteco-repo.js` (16 نداءً — تغطية P2‑2) |
 | `yarasoft` | ◐ | `screens/yarasoft.js` **قراءة فقط**: الحالة + سجل الاستيراد (`portal-repo.js`). القديم يستدعي **32 بابًا** (مزامنة Oracle، مرايا، أقسام، quarantines، reprocess) → #28 |
 | `cashier-monitor` | ✅ | `screens/cashier-monitor.js` — مرآة كاملة لـ`features/cashier-monitor.js` (ملخص/أوردرات/تفاصيل/تصدير) |
-| `sales-analyzer` | ◐ | `screens/sales-analyzer.js` — جدول + طباعة. **ناقص**: بحث عربي متسامح، تصدير Excel، تفاصيل/طباعة أوردر (`/yara-reports/order-detail/:docNo`) → #26/#27 |
-| `received-analyzer` | ◐ | `screens/received-analyzer.js` — جدول + طباعة. **ناقص**: تصدير Excel وتفاصيل/طباعة إذن صرف (`/yara-reports/received-dispatch-detail/:id`) → #26/#27 |
-| `wh-vs-pos` | ◐ | `screens/wh-vs-pos.js` — جدول + طباعة. **ناقص**: تصدير Excel (`features/wh-vs-pos.js:297`) → #26 |
+| `sales-analyzer` | ◐ | `screens/sales-analyzer.js` — جدول + طباعة + تصدير Excel للتبويب النشط بأعمدة القديم (`9438a9b`). **ناقص**: بحث عربي متسامح، تفاصيل/طباعة أوردر (`/yara-reports/order-detail/:docNo`) → #27 |
+| `received-analyzer` | ◐ | `screens/received-analyzer.js` — جدولان + طباعة + مصنف Excel بثلاث أوراق بأعمدة القديم (`9438a9b`). **ناقص**: جدول صفوف الاستهلاك (الخادم يعيدها وV2 يعرض ملخصًا فقط)، تفاصيل/طباعة إذن صرف (`/yara-reports/received-dispatch-detail/:id`) → #27 |
+| `wh-vs-pos` | ◐ | `screens/wh-vs-pos.js` — جدول + طباعة + Excel بأعمدة القديم (`9438a9b`). **ناقص**: فترات جاهزة، بحث صنف باقتراحات + «المختلفة فقط»، تحديث تلقائي 60 ثانية، ملخص/تنبيهات/رسم القديم → #27 |
 | `yara-daily-locks` | ✅ | `screens/daily-locks.js` + `data/oracle-repo.js:48` |
 | `oracle-data` | ✅ | `screens/oracle-data.js` + `data/oracle-repo.js` |
 | `whatsapp` | ◐ | `screens/whatsapp.js` — الحالة + الرسائل فقط. القديم يستدعي **19 بابًا** (QR/إقران/قواعد/حملات/outbox/قوالب/query…) → #29 |
