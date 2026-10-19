@@ -345,7 +345,7 @@ export function createDataTable(options = {}) {
                     ${col.filterable
                         ? `<input type="search" class="erp-input erp-input--sm" data-cfilter="${esc(col.key)}"
                                   value="${esc(state.columnFilters[col.key] || '')}"
-                                  placeholder="تصفية…" aria-label="تصفية عمود ${esc(col.header)}">`
+                                  placeholder="تصفية ${esc(col.header)}…" aria-label="تصفية عمود ${esc(col.header)}">`
                         : ''}
                   </td>`).join('')}</tr>`
             : '';

@@ -40,6 +40,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "test:lint": "npx eslint . --ext .js,.mjs",
+    "test:v2-revision": "node scripts/v2-revision.js --check",
     "test:format": "npx prettier --check . --ignore-path .prettierignore",
     "test:type": "npm run typecheck && npm run typecheck:strict",
     "test:type:gate": "node scripts/type-gate.js",
