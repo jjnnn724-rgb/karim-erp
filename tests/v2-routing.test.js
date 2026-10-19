@@ -55,10 +55,10 @@ const esm = () => loadEsm(ROUTING, {}, [
 /** مجموعة NAV_GROUPS_FALLBACK الحقيقية — لا نسخة مكتوبة في الاختبار. */
 const navGroups = () => loadEsm(NAVMODEL, {}, ['readNavGroups']).readNavGroups();
 
-/* الشاشات التي لا تستورد شاشة كاملة وتقع على فرع المعاينة الهيكلية في
-   preview.js (بطاقة 🚧). أي مفتاح قائمة ليس هنا يجب أن يكون له مسار.
-   shelves/weight خرجا من القائمة حين صار لهما مسار حقيقي في P2-5. */
-const STUB_KEYS = ['query', 'professional'];
+/* لا شاشة اليوم تقع على فرع المعاينة الهيكلية في preview.js (بطاقة 🚧):
+   shelves/weight خرجا في P2-5، وquery/professional صار لهما مسار حقيقي.
+   أي مفتاح قائمة يجب أن يكون له مسار — والقائمة تُبقي الحارس صريحًا. */
+const STUB_KEYS = [];
 
 describe('التوجيه — تحليل الهاش', () => {
     test('الأشكال كلها تُفهم، والخاطئ لا يمر', () => {
@@ -219,13 +219,13 @@ describe('التوجيه — حارس الانحراف مع preview.js', () => {
         }
     });
 
-    test('قائمة المعاينات الهيكلية ما زالت صحيحة (لا مفتاح ميت)', () => {
+    test('محرك الاستعلامات والبطاقة الفاخرة لهما مسار حقيقي (لا بطاقة 🚧)', () => {
         const m = esm();
         const known = m.knownKeys(navGroups());
-        for (const key of STUB_KEYS) {
-            expect(known.has(key)).toBe(true);
-            expect(routedKeys.has(key)).toBe(false);
+        for (const key of [ 'query', 'professional' ]) {
+            expect({ key, known: known.has(key), routed: routedKeys.has(key) }).toEqual({ key, known: true, routed: true });
         }
+        expect(STUB_KEYS).toEqual([]);
     });
 });
 

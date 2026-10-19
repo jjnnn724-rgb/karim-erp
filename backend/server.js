@@ -635,6 +635,8 @@ const oracleDataRouter = require('./yarasoft/oracle-data-routes');
 app.use('/api/oracle-data', oracleDataRouter);
 // ─── تقارير إيرادات الأقسام اليومية/الشهرية/السنوية (إغلاقات معتمدة) ────────
 app.use('/api/yara-reports', require('./yarasoft/yara-reports'));
+// ─── محرك استعلامات المخزون (قراءة فقط — الدفتر هو المرجع، للمدير والسو-شيف) ──
+app.use('/api/inventory-inquiry', require('./inventory-inquiry').router);
 // ─── متابعة الكاشير للأونر (مرآة يارا سوفت 1/4/5/6/9 — قراءة فقط + بث حي) ──
 app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, require('./cashier-monitor-routes'));
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────

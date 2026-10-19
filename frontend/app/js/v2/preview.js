@@ -92,6 +92,8 @@ import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.169'
 import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.169';
 import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.169';
 import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.169';
+import { mountQueryScreen } from './screens/inventory-inquiry.js?v=4.9.169';
+import { mountProfessionalScreen } from './screens/inventory-inquiry-pro.js?v=4.9.169';
 import { mountShelvesScreen } from './screens/shelves.js?v=4.9.169';
 import { mountWeightScreen } from './screens/weight.js?v=4.9.169';
 import { mountAccountantDashboardScreen } from './screens/accountant-dashboard.js?v=4.9.169';
@@ -624,6 +626,8 @@ let deptEmpScreen = null;
 let salesAnalyzerScreen = null;
 let receivedAnalyzerScreen = null;
 let whVsPosScreen = null;
+let queryScreen = null;
+let professionalScreen = null;
 let recipesScreen = null;
 let rosterScreen = null;
 let employeePortalScreen = null;
@@ -867,6 +871,14 @@ function teardownReceivedAnalyzerScreen() {
 
 function teardownWhVsPosScreen() {
     if (whVsPosScreen) { whVsPosScreen.destroy(); whVsPosScreen = null; }
+}
+
+function teardownQueryScreen() {
+    if (queryScreen) { queryScreen.destroy(); queryScreen = null; }
+}
+
+function teardownProfessionalScreen() {
+    if (professionalScreen) { professionalScreen.destroy(); professionalScreen = null; }
 }
 
 /**
@@ -2052,6 +2064,10 @@ function renderReceivedAnalyzerScreen() { renderLiveRegisterScreen({ key: 'recei
 
 function renderWhVsPosScreen() { renderLiveRegisterScreen({ key: 'wh-vs-pos', title: 'المخزن مع الكاشيرية', mount: mountWhVsPosScreen, assign: (s) => { whVsPosScreen = s; } }); }
 
+function renderQueryScreen() { renderLiveRegisterScreen({ key: 'query', title: 'محرك الاستعلامات', mount: mountQueryScreen, assign: (s) => { queryScreen = s; } }); }
+
+function renderProfessionalScreen() { renderLiveRegisterScreen({ key: 'professional', title: 'البطاقة الفاخرة', mount: mountProfessionalScreen, assign: (s) => { professionalScreen = s; } }); }
+
 function renderShelvesScreen() { renderLiveRegisterScreen({ key: 'shelves', title: 'الرفوف', mount: mountShelvesScreen, assign: (s) => { shelvesScreen = s; } }); }
 
 function renderWeightScreen() { renderLiveRegisterScreen({ key: 'weight', title: 'الميزان', mount: mountWeightScreen, assign: (s) => { weightScreen = s; } }); }
@@ -2127,6 +2143,8 @@ function renderScreen(key) {
     teardownSalesAnalyzerScreen();
     teardownReceivedAnalyzerScreen();
     teardownWhVsPosScreen();
+    teardownQueryScreen();
+    teardownProfessionalScreen();
     teardownShelvesScreen();
     teardownWeightScreen();
     teardownAccountantScreen();
@@ -2362,6 +2380,16 @@ function renderScreen(key) {
 
     if (key === 'wh-vs-pos') {
         renderWhVsPosScreen();
+        return;
+    }
+
+    if (key === 'query') {
+        renderQueryScreen();
+        return;
+    }
+
+    if (key === 'professional') {
+        renderProfessionalScreen();
         return;
     }
 

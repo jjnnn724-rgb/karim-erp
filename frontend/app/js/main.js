@@ -144,6 +144,7 @@ await safeBridge('./features/cashier-monitor.js?v=4.9.77', 'BRIDGE-027');
 await safeBridge('./features/sales-analyzer.js?v=4.9.77', 'BRIDGE-SA');
 await safeBridge('./features/received-analyzer.js?v=4.9.77', 'BRIDGE-RA');
 await safeBridge('./features/wh-vs-pos.js?v=4.9.77', 'BRIDGE-WV');
+await safeBridge('./features/inventory-inquiry.js?v=4.9.77', 'BRIDGE-INQ');
 
 await safeBridge('./features/whatsapp.js?v=4.9.77', 'BRIDGE-017');
 

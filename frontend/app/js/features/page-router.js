@@ -83,6 +83,16 @@ content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderWhVsPosPage();
 setTimeout(()=>{content.style.opacity='1';},30);
 return;
+case 'query':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderInventoryQueryPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
+case 'professional':
+content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
+await renderItemCardPage();
+setTimeout(()=>{content.style.opacity='1';},30);
+return;
 case 'yara-daily-locks':
 content.innerHTML = '<div class="u-empty"><div class="spinner"></div></div>';
 await renderDailyLocksPage();

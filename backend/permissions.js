@@ -35,6 +35,9 @@ const PERMISSIONS = [
     { key: 'inventory.edit', ar: 'إدارة المخزون', group: 'المخزون',
       menus: ['warehouse', 'shelves'], entitiesRead: ['inventory', 'inventoryTx', 'shelves', 'weightReadings'],
       entitiesWrite: ['inventory', 'shelves', 'weightReadings'] },
+    // استعلامات المخزون (قراءة فقط — محرك الاستعلامات وبطاقة الصنف)
+    { key: 'inventory-inquiry.view', ar: 'استعلامات المخزون', group: 'المخزون',
+      menus: ['query', 'professional'], entitiesRead: [], entitiesWrite: [] },
     // المشتريات
     { key: 'purchasing.view', ar: 'عرض المشتريات والموردين', group: 'المشتريات',
       menus: ['procurement'], entitiesRead: ['purchaseInvoices'], entitiesWrite: [] },
