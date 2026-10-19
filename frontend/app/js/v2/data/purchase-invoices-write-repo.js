@@ -6,23 +6,24 @@
  * This file owns every purchase-invoice write door, copied from the server:
  *
  *   POST /warehouse/purchase-invoices
- *     backend/warehouse-routes.js:1802 — jwtAuth + requireRole('admin',
+ *     backend/warehouse-routes.js:1831 — jwtAuth + requireRole('admin',
  *     'manager', 'warehouse'). The server matches items by normalized name,
- *     recomputes discount/VAT/payment status, and refuses duplicate numbers
+ *     recomputes discount/VAT/payment status, refuses duplicate numbers
  *     (409 DUPLICATE_INVOICE_NUMBER) and same-user/supplier/amount repeats
- *     within ten minutes (409 DUPLICATE_INVOICE).
+ *     within ten minutes (409 DUPLICATE_INVOICE), and rejects any line
+ *     without a valid expiry date (422 EXPIRY_DATE_REQUIRED — سياسة 2026-10-19).
  *   PUT /warehouse/purchase-invoices/:id
- *     backend/warehouse-routes.js:2114 — same roles. Refuses any invoice
+ *     backend/warehouse-routes.js:2155 — same roles. Refuses any invoice
  *     with a recorded payment (409 INVOICE_HAS_PAYMENTS); the UI never
  *     offers edit for paid rows, but the server remains the authority.
  *   POST /warehouse/purchase-invoices/:id/void
- *     backend/warehouse-routes.js:2682 — jwtAuth + requireRole('admin').
+ *     backend/warehouse-routes.js:2735 — jwtAuth + requireRole('admin').
  *     Reverses stock, voids the journal entry, deletes auto payments made
  *     with the invoice itself, then deletes the invoice row. Manual
  *     supplier payments refuse with 409 INVOICE_HAS_PAYMENTS; `force` is
  *     refused with 409 FORCE_VOID_FORBIDDEN — so this repo never sends it.
  *   POST /warehouse/purchase-invoices/clear-all
- *     backend/warehouse-routes.js:2935 — jwtAuth + requireRole('admin').
+ *     backend/warehouse-routes.js:2988 — jwtAuth + requireRole('admin').
  *     Requires the literal phrase `حذف كل الفواتير`; reverses every
  *     invoice's ledger rows and voids its posted journals.
  *
@@ -31,12 +32,13 @@
  */
 
 import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.169';
 
 /** Mirrors requireRole('admin','manager','warehouse') on POST/PUT. */
 export const INVOICE_CREATE_ROLES = ['admin', 'manager', 'warehouse'];
 /** Server tax enum — the same four the legacy select offers. */
 export const TAX_CATEGORIES = ['STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE'];
-/** Server sentence (warehouse-routes.js:2126) — shown before opening. */
+/** Server sentence (warehouse-routes.js:2171) — shown before opening. */
 export const EDIT_LOCKED_MESSAGE = 'لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا';
 
 const num = (v) => {
@@ -62,6 +64,7 @@ export function invoiceItemsFromRow(inv = {}) {
         taxCategory: item.taxCategory || item.tax_category || 'STANDARD',
         packagingQty: item.packagingQty ?? item.packaging_qty ?? null,
         packagingUom: item.packagingUom || item.packaging_uom || null,
+        expiryDate: normalizeExpiryDate(item.expiryDate ?? item.expiry_date) || '',
     }));
 }
 
@@ -88,8 +91,9 @@ export function invoiceEditable(inv = {}) {
     return !(num(inv.paidAmount) > 0);
 }
 
-/** Form model → POST/PUT body. Same fields and defaults the legacy form sent;
- *  invalid lines are dropped exactly where the legacy save dropped them. */
+/** Form model → POST/PUT body. Same fields and defaults the legacy form sent,
+ *  plus the mandatory per-line expiry date; invalid lines are dropped exactly
+ *  where the legacy save dropped them. */
 export function purchaseInvoicePayload(form = {}) {
     const items = (Array.isArray(form.items) ? form.items : [])
         .filter((item) => str(item && item.itemName) && Number(item.qty) > 0 && Number(item.price) >= 0)
@@ -104,6 +108,7 @@ export function purchaseInvoicePayload(form = {}) {
                 weight: item.weight === '' || item.weight === undefined || item.weight === null
                     ? 0 : num(item.weight),
                 taxCategory: TAX_CATEGORIES.includes(tax) ? tax : 'STANDARD',
+                expiryDate: normalizeExpiryDate(readExpiryField(item)),
             };
             if (item.packagingQty !== undefined && item.packagingQty !== null && item.packagingQty !== '') {
                 line.packagingQty = num(item.packagingQty);

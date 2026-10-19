@@ -22,7 +22,7 @@ function build(issuedMap, apiCalls) {
     const doc = { getElementById: (id) => els[id] || null, querySelectorAll: () => [] };
     const factory = new Function('STATE', 'window', 'document', 'renderPage', 'esc', 'fN', 'fC', 'fD', 't',
         'apiFetch', 'persistCreate', 'uid', 'toast', 'showLoad', 'hideLoad', 'closeModal', 'addNotification', 'today',
-        SRC + '\nreturn { openingNet, openingRows, openingNetEnabled, openingIssuedFor, resolveOpeningNetItems, saveOpeningNet, renderOpeningRows, normalizeOpeningItems };');
+        SRC + '\nreturn { openingNet, openingRows, openingNetEnabled, openingIssuedFor, resolveOpeningNetItems, saveOpeningNet, renderOpeningRows, normalizeOpeningItems, openingExpiryError };');
     const m = factory(
         { page: 'warehouse', inventory: INVENTORY, shelves: [], purchaseInvoices: [], inventoryTx: [], suppliers: [], currentUser: { role: 'admin' } },
         { whSelected: new Set(), whCatFilter: 'all' },
@@ -82,8 +82,8 @@ describe('الوضع الصافي: «يتخصم أذونات الصرف من ا�
         const { m } = build(new Map([['دجاج بلدي', 30]]), calls);
         m.openingNet.on = true;
         m.openingRows.splice(0, m.openingRows.length,
-            { name: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, boxes: '', category: 'لحوم' },
-            { name: 'أرز بسمتي', qty: 20, unit: 'شكارة', price: 90, boxes: '', category: 'بقالة' });
+            { name: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, boxes: '', category: 'لحوم', expiry: '2026-11-30' },
+            { name: 'أرز بسمتي', qty: 20, unit: 'شكارة', price: 90, boxes: '', category: 'بقالة', expiry: '2027-04-15' });
         await m.saveOpeningNet();
         expect(calls).toHaveLength(2);
         expect(calls[0].url).toContain('/inventory/11/direct');
@@ -92,6 +92,24 @@ describe('الوضع الصافي: «يتخصم أذونات الصرف من ا�
         expect(calls[0].body.reason).toContain('بداية 100');
         expect(calls[0].body.reason).toContain('منصرف 30');
         expect(calls[1].url).toContain('/inventory'); // إنشاء الصنف الجديد
+        // سياسة المالك 2026-10-19: الصنف الجديد يدخل المخزن برصيد — فلا يدخل بلا صلاحيته
+        expect(calls[1].body.expiryDate).toBe('2027-04-15');
+    });
+
+    test('سياسة الصلاحية: بندٌ بلا تاريخ يمنع الحفظ قبل أي نداء شبكة', async () => {
+        const calls = [];
+        const { m } = build(new Map([['دجاج بلدي', 30]]), calls);
+        m.openingNet.on = true;
+        m.openingRows.splice(0, m.openingRows.length,
+            { name: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, boxes: '', category: 'لحوم', expiry: '' });
+        await m.saveOpeningNet();
+        expect(calls).toHaveLength(0);
+        expect(m.openingExpiryError([{ name: 'دجاج بلدي', qty: 5, expiry: '' }]))
+            .toBe('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف دجاج بلدي');
+        expect(m.openingExpiryError([{ name: 'دجاج بلدي', qty: 5, expiry: '2026-11-30' }])).toBeNull();
+        // لا تاريخ يُخترع: الصيغة الخاطئة تُذكر كفسادٍ لا كنقص — وبنصّ الخادم نفسه
+        expect(m.openingExpiryError([{ name: 'لبن', qty: 5, expiry: '30/11/2026' }]))
+            .toBe('تاريخ الصلاحية غير صحيح للصنف لبن — الصيغة المطلوبة YYYY-MM-DD');
     });
 
     test('مفتاح الوضع الصافي للأدمن فقط، وعمودا المنصرف/الصافي يظهران في الجدول عند التفعيل', () => {

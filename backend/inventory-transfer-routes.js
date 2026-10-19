@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
+const { latestExpiryFor } = require('./expiry-policy');
 const router = express.Router();
 const routerWriteRoles = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef'];
 const approvalRoles = ['admin', 'manager', 'warehouse'];
@@ -250,7 +251,7 @@ router.post('/transfers/:id/receive', jwtAuth, requireRole(...routerWriteRoles),
       const dispPkg = item.dispatched_packaging_qty !== null && item.dispatched_packaging_qty !== undefined ? Number(item.dispatched_packaging_qty) : null;
       const pkgVariance = (recvPkg !== null && dispPkg !== null) ? Number((recvPkg - dispPkg).toFixed(3)) : null;
       if (variance !== 0 || (pkgVariance !== null && pkgVariance !== 0)) {hasVariance = true;}
-      await postInventoryLedgerEntry(client, { transactionType: 'transfer_in', inventoryId: item.inventory_id, locationId: transfer.destination_location_id, quantityDelta: qty, sourceLocationId: transfer.source_location_id, destinationLocationId: transfer.destination_location_id, referenceType: 'inventory_transfer', referenceId: transfer.id, userId: req.user.id, idempotencyKey: `transfer:${transfer.id}:in:${item.inventory_id}`, reason: variance ? 'استلام تحويل مع فرق' : 'استلام تحويل مخزني', metadata: { transfer_id: transfer.id, variance_qty: variance, dispatched_packaging_qty: dispPkg, received_packaging_qty: recvPkg, packaging_variance_qty: pkgVariance },
+      await postInventoryLedgerEntry(client, { transactionType: 'transfer_in', inventoryId: item.inventory_id, locationId: transfer.destination_location_id, quantityDelta: qty, sourceLocationId: transfer.source_location_id, destinationLocationId: transfer.destination_location_id, referenceType: 'inventory_transfer', referenceId: transfer.id, userId: req.user.id, idempotencyKey: `transfer:${transfer.id}:in:${item.inventory_id}`, expiryDate: await latestExpiryFor(client, item.inventory_id), reason: variance ? 'استلام تحويل مع فرق' : 'استلام تحويل مخزني', metadata: { transfer_id: transfer.id, variance_qty: variance, dispatched_packaging_qty: dispPkg, received_packaging_qty: recvPkg, packaging_variance_qty: pkgVariance },
         catchWeightQty: recvPkg, catchWeightUnit: item.packaging_uom || null });
       // in_transit was incremented at the DESTINATION on dispatch — clear it there too
       await client.query(`UPDATE inventory_location_balances SET in_transit=GREATEST(0,in_transit-$3), updated_at=CURRENT_TIMESTAMP WHERE inventory_id=$1 AND location_id=$2`, [item.inventory_id, transfer.destination_location_id, Number(item.dispatched_qty)]);

@@ -42,8 +42,8 @@ function build(apiCalls) {
 const REPORT_INVOICE = {
     id: 501, invoiceNumber: 'OPEN-20261001-123', date: '2026-10-01', totalAmount: 800,
     items: [
-        { itemId: 1, itemName: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, category: 'لحوم', packagingQty: 10, currentQty: 70, issuedSince: 30, itemExists: true },
-        { itemId: 2, itemName: 'طماطم', qty: 20, unit: 'كجم', price: 4, category: 'خضار', currentQty: null, issuedSince: 0, itemExists: false },
+        { itemId: 1, itemName: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, category: 'لحوم', packagingQty: 10, expiryDate: '2026-12-31', currentQty: 70, issuedSince: 30, itemExists: true },
+        { itemId: 2, itemName: 'طماطم', qty: 20, unit: 'كجم', price: 4, category: 'خضار', expiry_date: '2027-01-20', currentQty: null, issuedSince: 0, itemExists: false },
     ],
 };
 
@@ -54,6 +54,9 @@ describe('استبدال الرصيد الافتتاحي — إلغاء القد
         expect(rows).toHaveLength(2);
         expect(rows[0]).toMatchObject({ name: 'دجاج بلدي', qty: 100, price: 30, oldQty: 100, issuedSince: 30, currentQty: 70, itemExists: true, boxes: 10 });
         expect(rows[1].itemExists).toBe(false); // صنف محذوف من المخزن — يظهر بتنبيه
+        // الصلاحية تُحمَّل من السطر القديم (camelCase وsnake_case) حتى لا يُعاد كتابتها عند الاستبدال
+        expect(rows[0].expiry).toBe('2026-12-31');
+        expect(rows[1].expiry).toBe('2027-01-20');
     });
 
     test('updateOpeningReplaceRow يحسب إجمالي الرصيد الجديد', () => {
@@ -78,6 +81,20 @@ describe('استبدال الرصيد الافتتاحي — إلغاء القد
         expect(calls[1].body.items[0].qty).toBe(90);
         expect(calls[1].body.paidAmount).toBe(0);
         expect(calls[1].body.items[0].packagingQty).toBe(10); // كراتين اللحوم تُحفظ
+        expect(calls[1].body.items[0].expiryDate).toBe('2026-12-31'); // الصلاحية تُحمل مع البند
+        expect(calls[1].body.items[1].expiryDate).toBe('2027-01-20');
+    });
+
+    test('سياسة الصلاحية: بندٌ بلا تاريخ يوقف الاستبدال قبل إلغاء القديم', async () => {
+        const calls = [];
+        const { m } = build(calls);
+        m.openingReplace.invoiceId = 501;
+        m.openingReplace.rows = m.buildOpeningReplaceRows(REPORT_INVOICE);
+        m.openingReplace.rows[1].expiry = '';
+        await m.confirmOpeningReplace();
+        // لا نداء شبكة إطلاقًا: الرصيد القديم يبقى سليمًا حتى تُستكمل الصلاحية
+        expect(calls).toHaveLength(0);
+        expect(m.openingReplace.oldVoided).toBe(false);
     });
 
     test('لو الإلغاء فشل لأن القديم أُلغي سلفًا → يكمل الحفظ عادي (إعادة محاولة آمنة)', async () => {

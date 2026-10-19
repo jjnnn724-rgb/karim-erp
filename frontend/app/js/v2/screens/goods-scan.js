@@ -22,8 +22,9 @@
  */
 
 import { resolveScan, assignDecision, coverage, unassignedRows, scanEnabledModel,
-    normalizeCode, codeFamily, bumpLine, setLineQty, setLinePrice, dropLine,
+    normalizeCode, codeFamily, bumpLine, setLineQty, setLinePrice, setLineExpiry, dropLine,
     sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.169';
+import { checkExpiryOnLines } from '../data/expiry-policy.js?v=4.9.169';
 import { inventoryToRow, receiveInventoryItem, receiptPayload,
     invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.169';
 import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
@@ -379,15 +380,19 @@ export function mountGoodsScanScreen(host, ctx = {}) {
               <td><input class="erp-input erp-input--ltr" type="number" min="0" step="0.01"
                          value="${l.price == null ? '' : esc(String(l.price))}" placeholder="فارغ = متوسط التكلفة"
                          data-v2-price="${esc(l.key)}"></td>
+              <td><input class="erp-input erp-input--ltr" type="date" value="${esc(l.expiryDate || '')}"
+                         aria-label="تاريخ الصلاحية" aria-required="true" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن"
+                         data-v2-expiry="${esc(l.key)}"></td>
               <td><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-drop="${esc(l.key)}">حذف</button></td>
             </tr>`;
-        }).join('') : '<tr><td colspan="5" class="erp-text-sm erp-text-muted">امسح كارتونةً واحدة أو أكثر — كل مسحٍ لنفس الكود يزيد عدَّه لا يضيف صنفًا.</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="erp-text-sm erp-text-muted">امسح كارتونةً واحدة أو أكثر — كل مسحٍ لنفس الكود يزيد عدَّه لا يضيف صنفًا.</td></tr>';
         panel('in').innerHTML = `
           <div class="gs-box">
             <p class="erp-text-sm erp-text-muted">الوارد يمرّ بدفتر المخزون نفسه الذي يستعمله النظام القديم
               (<span class="erp-addr" dir="ltr">POST /warehouse/inventory/:id/receipt</span>) — لا كتابة مباشرة على
-              <span class="erp-addr" dir="ltr">inventory.qty</span>، فالإسقاط يُعاد حسابه من الأرصدة.</p>
-            <table class="gs-table"><thead><tr><th>الصنف</th><th>المسح</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>
+inventory.qty</span>، فالإسقاط يُعاد حسابه من الأرصدة.
+              <strong>تاريخ الصلاحية إلزامي لكل صنف</strong> — بلا صلاحيته يرفض الخادم الوارد.</p>
+            <table class="gs-table"><thead><tr><th>الصنف</th><th>المسح</th><th>الكمية</th><th>سعر الوحدة</th><th>تاريخ الصلاحية *</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>
             <p class="erp-text-sm">${esc(`${totals.lines} صنفًا · ${totals.scans} مسحة · ${totals.qty} وحدة`)}</p>
             <div class="gs-actions">
               <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-post ${canWrite && lines.length ? '' : 'disabled'}>تسجيل الوارد</button>
@@ -411,13 +416,19 @@ export function mountGoodsScanScreen(host, ctx = {}) {
     async function postSession() {
         if (!canWrite) {say('لا صلاحية تسجيل وارد لهذا الحساب.'); return;}
         if (!lines.length) {say('لا أصناف في الجلسة.'); return;}
+        // حارس الصلاحية (سياسة المالك 2026-10-19) — رسالة الخادم قبل أن يرفض دورةً لكل صنف.
+        const inGate = checkExpiryOnLines(lines.map((l) => ({
+            name: (rows.find((r) => String(r.id) === l.key) || {}).name || l.key,
+            expiryDate: l.expiryDate,
+        })));
+        if (!inGate.ok) {say(`توقف: ${inGate.message}`); return;}
         busy = true;
         const results = [];
         for (const l of lines) {
             const raw = rows.find((r) => String(r.id) === l.key);
             if (!raw) {results.push({ key: l.key, ok: false, message: 'الصنف غير موجود في النتيجة' }); continue;}
             try {
-                await receiveInventoryItem(raw.id, receiptPayload(raw, l.qty, l.price == null ? '' : l.price));
+                await receiveInventoryItem(raw.id, receiptPayload(raw, l.qty, l.price == null ? '' : l.price, l.expiryDate));
                 results.push({ key: l.key, ok: true, name: raw.name, qty: l.qty });
             } catch (e) {
                 results.push({ key: l.key, ok: false, name: raw.name, message: (e && e.message) || 'رفض الخادم' });
@@ -566,6 +577,13 @@ export function mountGoodsScanScreen(host, ctx = {}) {
             // كانت ستُفرّغ الحقل وتُسجّل الوارد بمتوسط التكلفة بدل سعر المورد.
             lines = setLinePrice(lines, price.getAttribute('data-v2-price'), price.value);
         }
+const expiry = ev.target.closest('[data-v2-expiry]');
+        if (expiry) {
+            // مثل السعر: على السطر وبلا إعادة رسم — الصلاحية إلزامية عند التسجيل.
+            lines = setLineExpiry(lines, expiry.getAttribute('data-v2-expiry'), expiry.value);
+            return;
+        }
+        /* — وضع الصرف — */
     });
 
     codeInput.addEventListener('keydown', (ev) => {

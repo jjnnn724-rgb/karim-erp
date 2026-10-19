@@ -21,6 +21,11 @@
  *   - Full audit logging
  *   - Preview mode (dry-run)
  *   - CSV/JSON input support
+ *   - Expiry policy: كل صف يدخل المخزون برصيد (qty > 0) يجب أن يحمل تاريخ صلاحية
+ *     صحيحًا بصيغة YYYY-MM-DD وإلا يُرفض الصف. الاستيراد يكتب inventory.qty مباشرة
+ *     ولا يمر بمخزون inventory_ledger، لذلك يُحفظ تاريخ الصلاحية في سجل التدقيق
+ *     (audit_log.new_data) وفي نتيجة المعاينة فقط — ربط الاستيراد بدفتر المخزون
+ *     بند مستقل يحتاج موافقة المالك لأنه يغيّر طريقة احتساب الكميات.
  */
 const express = require('express');
 const crypto = require('crypto');
@@ -28,6 +33,7 @@ const { logger } = require('../logger');
 const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { crudLimiter } = require('../rate-limiter');
+const { normalizeExpiryDate } = require('../expiry-policy');
 
 const router = express.Router();
 
@@ -49,6 +55,7 @@ const COLUMN_ALIASES = {
     barcode:     ['barcode', 'الباركود', 'رمز'],
     shelfCode:   ['shelfCode', 'shelf', 'الرف', 'رف'],
     weight:      ['weight', 'الوزن', 'وزن'],
+    expiryDate:  ['expiryDate', 'expiry_date', 'تاريخ الصلاحية', 'الصلاحية', 'bestBefore', 'best_before', 'expiry'],
 };
 
 function pick(row, aliases) {
@@ -131,6 +138,25 @@ function validateRow(row, rowIndex, existingNames, existingBarcodes, categoryCac
     const weight = toNumber(pick(row, COLUMN_ALIASES.weight), 0);
     if (weight < 0) { errors.push({ field: 'weight', message: 'الوزن لا يمكن أن يكون سالباً' }); }
 
+    // ─── Expiry (policy: كل صنف يدخل المخزن برصيد يجب أن يحمل تاريخ صلاحية) ───
+    const expiryRaw = pick(row, COLUMN_ALIASES.expiryDate);
+    let expiryDate = null;
+    if (qty > 0) {
+        if (expiryRaw === undefined || expiryRaw === null || String(expiryRaw).trim() === '') {
+            errors.push({ field: 'expiryDate', message: 'تاريخ الصلاحية مطلوب لكل صنف يدخل المخزن برصيد — الصيغة YYYY-MM-DD (مثال 2026-12-31)' });
+        } else {
+            expiryDate = normalizeExpiryDate(expiryRaw);
+            if (!expiryDate) {
+                errors.push({ field: 'expiryDate', message: `تاريخ الصلاحية غير صحيح (${String(expiryRaw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` });
+            }
+        }
+    } else if (expiryRaw !== undefined && expiryRaw !== null && String(expiryRaw).trim() !== '') {
+        expiryDate = normalizeExpiryDate(expiryRaw);
+        if (!expiryDate) {
+            errors.push({ field: 'expiryDate', message: `تاريخ الصلاحية غير صحيح (${String(expiryRaw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` });
+        }
+    }
+
     // ─── Shelf code ───
     const shelfCodeRaw = pick(row, COLUMN_ALIASES.shelfCode);
     const shelfCode = shelfCodeRaw ? String(shelfCodeRaw).trim() : null;
@@ -177,6 +203,7 @@ function validateRow(row, rowIndex, existingNames, existingBarcodes, categoryCac
             shelfCode,
             shelfId,
             weight: weightVal,
+            expiryDate,
         },
     };
 }
@@ -392,10 +419,10 @@ router.post('/', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async (r
 
 // ─── TEMPLATE ENDPOINT ───
 router.get('/template', jwtAuth, async (req, res) => {
-    const csv = `name,category,unit,qty,avgCost,minQty,barcode,shelfCode,weight
-دجاج طازج,بروتين,كجم,50,25,10,,MEAT,0
-أرز بسمتي,حبوب,كيس,80,15,10,,DRY,0
-بصل,خضار,كجم,100,3,20,,VEG,0`;
+    const csv = `name,category,unit,qty,avgCost,minQty,barcode,shelfCode,weight,expiryDate
+دجاج طازج,بروتين,كجم,50,25,10,,MEAT,0,2026-11-30
+أرز بسمتي,حبوب,كيس,80,15,10,,DRY,0,2027-06-30
+بصل,خضار,كجم,100,3,20,,VEG,0,2026-10-31`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="inventory-import-template.csv"');

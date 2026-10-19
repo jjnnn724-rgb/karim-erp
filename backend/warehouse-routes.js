@@ -9,6 +9,8 @@ const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
+// إلزام تاريخ الصلاحية عند دخول البضاعة للمخزن (طلب المالك 2026-10-19)
+const { normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor } = require('./expiry-policy');
 
 const router = express.Router();
 const WRITE_ROLES = ['admin', 'manager', 'warehouse'];
@@ -533,7 +535,7 @@ async function ensureLegacyKitchenReceiptLedger() {
                     if (liveReceipt) {continue;}
                     await ensureLocationBalance(client, item.id, main.id, n(item.qty));
                     const base = `dispatch:${dispatch.id}:legacy-receipt:${item.id}`;
-                    await postInventoryLedgerEntry(client, { transactionType:'transfer_in', inventoryId:item.id, locationId:kitchen.id, quantityDelta:qty, unit:item.unit||raw.unit||'وحدة', unitCost:n(item.avgCost), sourceLocationId:main.id, destinationLocationId:kitchen.id, referenceType:'dispatch_receipt', referenceId:String(dispatch.id), idempotencyKey:`${base}:in`, reason:`تسوية استلام إذن صرف سابق #${dispatch.id}`, metadata:{dispatch_id:dispatch.id, legacy_backfill:true, source_already_decreased:true} });
+                    await postInventoryLedgerEntry(client, { transactionType:'transfer_in', inventoryId:item.id, locationId:kitchen.id, quantityDelta:qty, unit:item.unit||raw.unit||'وحدة', unitCost:n(item.avgCost), sourceLocationId:main.id, destinationLocationId:kitchen.id, referenceType:'dispatch_receipt', referenceId:String(dispatch.id), idempotencyKey:`${base}:in`, expiryDate: await latestExpiryFor(client, item.id), reason:`تسوية استلام إذن صرف سابق #${dispatch.id}`, metadata:{dispatch_id:dispatch.id, legacy_backfill:true, source_already_decreased:true} });
                 }
             }
             await client.query('COMMIT');
@@ -1155,7 +1157,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRole(...RECEIVE_ROLES), a
             received.unit = item.unit || received.unit || 'وحدة';
             const base = `dispatch:${dispatch.id}:receipt:${item.id}`;
             const receiptKey = signatureHash(receiptSignature);
-            const inn = await postInventoryLedgerEntry(client, { transactionType:'transfer_in', inventoryId:item.id, locationId:targetLocation.id, quantityDelta:received.receivedDeltaQty, unit:received.unit, unitCost:n(item.avgCost), destinationLocationId:targetLocation.id, referenceType:'dispatch_receipt', referenceId:String(dispatch.id), userId:req.user.id, idempotencyKey:`${base}:${receiptKey}:in`, reason:`استلام مواد في ${targetLocation.name_ar} من إذن #${dispatch.id}`, metadata:{dispatch_id:dispatch.id, receipt_signature_hash:receiptKey, target_location:targetLocation.code,
+            const inn = await postInventoryLedgerEntry(client, { transactionType:'transfer_in', inventoryId:item.id, locationId:targetLocation.id, quantityDelta:received.receivedDeltaQty, unit:received.unit, unitCost:n(item.avgCost), destinationLocationId:targetLocation.id, referenceType:'dispatch_receipt', referenceId:String(dispatch.id), userId:req.user.id, idempotencyKey:`${base}:${receiptKey}:in`, expiryDate: await latestExpiryFor(client, item.id), reason:`استلام مواد في ${targetLocation.name_ar} من إذن #${dispatch.id}`, metadata:{dispatch_id:dispatch.id, receipt_signature_hash:receiptKey, target_location:targetLocation.code,
                 ...(received.receivedPackagingQty != null ? { received_packaging_qty: received.receivedPackagingQty, packaging_uom: received.packagingUom || 'كرتون' } : {}) },
                 catchWeightQty: received.receivedPackagingQty != null ? received.receivedPackagingQty : null,
                 catchWeightUnit: received.receivedPackagingQty != null ? (received.packagingUom || 'كرتون') : null });
@@ -1251,6 +1253,7 @@ async function directReturn(client, req, res) {
                 destinationLocationId: mainLocation.id,
                 referenceType: 'direct_return', referenceId: String(returnId), userId: req.user.id,
                 idempotencyKey: `direct-return:${returnId}:${inv.id}`,
+                expiryDate: await latestExpiryFor(client, inv.id),
                 reason: `إرجاع مباشر من ${dept.name} — ${req.body?.reason || 'فائض'}`,
                 metadata: { return_id: returnId, dept_code: dept.code, direct: true },
                 catchWeightQty: drBoxes, catchWeightUnit: drBoxes !== null ? drPackUom : null,
@@ -1402,6 +1405,10 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             // الرئيسي فعليًا — يكفي إرجاعها لرصيده مباشرة.
             const retBoxes = requestedItem.packagingQty ? n(requestedItem.packagingQty) : null;
             const retPackUom = requestedItem.packagingUom || inv.packaging_uom || null;
+            // حركة داخلية: الصنف دخل النظام من قبل — يُحمل تاريخ دُفعته المسجل في
+            // الدفتر. لا تاريخ يُخترع ولا إرجاع يُرفض: الرفض هنا كان يعطّل المرتجعات
+            // بلا فائدة، والتاريخ الأصلي يبقى مقيَّدًا في كل قيد.
+            const carriedExpiry = await latestExpiryFor(client, inv.id);
             if (receivedByName.size) {
                 await postInventoryLedgerEntry(client, {
                     transactionType: 'transfer_out', inventoryId: Number(inv.id), locationId: deptLocation.id,
@@ -1409,6 +1416,7 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                     sourceLocationId: deptLocation.id, destinationLocationId: mainLocation.id,
                     referenceType: 'kitchen_return', referenceId: String(dispatch.id), userId: req.user.id,
                     idempotencyKey: `dispatch-return:${returnId}:${inv.id}:out`,
+                    expiryDate: carriedExpiry,
                     reason: `خروج المرتجع من مخزن القسم ${dispatch.deptName || dispatch.deptCode} — إذن #${dispatch.id}`,
                     metadata: { dispatch_id: dispatch.id, return_id: returnId, note: 'returned_from_department_store' },
                     catchWeightQty: retBoxes, catchWeightUnit: retBoxes !== null ? retPackUom : null,
@@ -1420,6 +1428,7 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                 sourceLocationId: deptLocation.id, destinationLocationId: mainLocation.id,
                 referenceType: 'kitchen_return', referenceId: String(dispatch.id), userId: req.user.id,
                 idempotencyKey: `dispatch-return:${returnId}:${inv.id}`,
+                expiryDate: carriedExpiry,
                 reason: `إرجاع من القسم ${dispatch.deptName || dispatch.deptCode} — إذن #${dispatch.id}`,
                 metadata: { dispatch_id: dispatch.id, return_id: returnId, note: 'returned_to_main_warehouse' },
                 catchWeightQty: retBoxes, catchWeightUnit: retBoxes !== null ? retPackUom : null,
@@ -1532,12 +1541,15 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
                 return res.status(409).json({ error: 'RETURN_NOT_REVERSIBLE', message: `سجل قديم بلا بيانات ربط كافية للصنف ${raw.itemName || raw.name || '؟'} — عالجه يدويًا بقيد تسوية` });
             }
             const hasLinkage = raw.txId != null;
+            // حركة داخلية: تاريخ الدُفعة المسجل يُحمل ولا يُخترع (سياسة الصلاحية)
+            const voidExpiry = await latestExpiryFor(client, itemId);
             // عكس أثر المرتجع: سحب ما أُضيف للمخزن الرئيسي، وإعادة ما خُصم من مخزن القسم
             await postInventoryLedgerEntry(client, {
                 transactionType: 'reversal', inventoryId: itemId, locationId: mainLocation.id,
                 quantityDelta: -qty, unit: raw.unit || 'وحدة', unitCost: n(raw.avgCost),
                 referenceType: 'kitchen_return_void', referenceId: String(returnId), userId: req.user.id,
                 idempotencyKey: `return-void:${returnId}:${itemId}:main`,
+                expiryDate: voidExpiry,
                 reason: `إلغاء مرتجع #${returnId} — عكس الإضافة للمخزن الرئيسي`,
                 metadata: { return_id: returnId },
                 catchWeightQty: raw.packagingQty != null ? n(raw.packagingQty) : null,
@@ -1550,6 +1562,7 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
                     sourceLocationId: mainLocation.id, destinationLocationId: deptLocation.id,
                     referenceType: 'kitchen_return_void', referenceId: String(returnId), userId: req.user.id,
                     idempotencyKey: `return-void:${returnId}:${itemId}:dept`,
+                    expiryDate: voidExpiry,
                     reason: `إلغاء مرتجع #${returnId} — إعادة الكمية لمخزن القسم`,
                     metadata: { return_id: returnId },
                     catchWeightQty: raw.packagingQty != null ? n(raw.packagingQty) : null,
@@ -1590,6 +1603,15 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
         if (!Number.isInteger(inventoryId) || inventoryId <= 0 || !(qty > 0) || price < 0) {
             return fail(res, 422, 'INVALID_RECEIPT', 'أدخل صنفًا وكمية وسعرًا صحيحين');
         }
+        // لا كمية تدخل المخزن بلا تاريخ صلاحية (طلب المالك 2026-10-19)
+        const rawReceiptExpiry = readExpiryField(req.body || {});
+        const receiptExpiry = normalizeExpiryDate(rawReceiptExpiry);
+        if (!receiptExpiry) {
+            return fail(res, 422, rawReceiptExpiry ? 'INVALID_EXPIRY_DATE' : 'EXPIRY_DATE_REQUIRED',
+                rawReceiptExpiry
+                    ? 'تاريخ الصلاحية غير صحيح — الصيغة المطلوبة YYYY-MM-DD'
+                    : 'تاريخ الصلاحية إلزامي عند إضافة كمية إلى المخزن');
+        }
         await client.query('BEGIN');
         const item = (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [inventoryId])).rows[0];
         if (!item) {
@@ -1614,6 +1636,7 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
             quantityDelta: round(qty), unit: item.unit || requestedUnit, unitCost: price,
             referenceType: 'manual_receipt', referenceId, userId: req.user.id,
             idempotencyKey: `manual-receipt:${referenceId}`,
+            expiryDate: receiptExpiry,
             reason: 'إضافة مخزون يدوية عبر المسح', metadata: { manual_receipt: true },
         });
         const tx = (await client.query(
@@ -1638,9 +1661,14 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
     const client = await pool.connect();
     try {
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+        // استيراد دفعي = بضاعة تدخل المخزن: كل صنف يحتاج تاريخ صلاحية (المالك 2026-10-19)
+        const bulkExpiry = checkExpiryOnLines(rawItems.filter(raw => raw && cleanName(raw.name || raw.itemName)
+            && n(raw.qty) > 0 && n(raw.price) >= 0), (raw) => cleanName(raw.name || raw.itemName));
+        if (!bulkExpiry.ok) {return fail(res, 422, bulkExpiry.code, bulkExpiry.message, { missing: bulkExpiry.missing, invalid: bulkExpiry.invalid });}
         const items = rawItems.map(raw => ({
             name: cleanName(raw.name || raw.itemName), category: cleanName(raw.category) || 'عام',
             unit: cleanName(raw.unit) || 'قطعة', qty: n(raw.qty), price: n(raw.price), minQty: Math.max(0, n(raw.minQty, 5)),
+            expiryDate: normalizeExpiryDate(readExpiryField(raw)),
         })).filter(item => item.name && item.qty > 0 && item.price >= 0);
         if (!items.length) {return fail(res, 422, 'EMPTY_BULK_RECEIPT', 'لا توجد أصناف صالحة للاستيراد');}
         await client.query('BEGIN');
@@ -1689,6 +1717,7 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
                 transactionType: 'purchase_receipt', inventoryId: Number(inv.id), locationId: mainLocation.id,
                 quantityDelta: round(item.qty), unit: inv.unit || item.unit, unitCost: item.price,
                 referenceType: 'bulk_receipt', referenceId: batchId, userId: req.user.id,
+                expiryDate: item.expiryDate || null,
                 idempotencyKey: `bulk-receipt:${batchId}:${inv.id}`, reason: 'استيراد مخزون دفعي من Excel',
                 metadata: { bulk_receipt: true, batch_id: batchId },
             });
@@ -1825,6 +1854,16 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         }
 
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+        // سطر صنف حقيقي — نفس المعيار في التطبيع وفي حرس الصلاحية (لا ازدواج).
+        const isInvoiceLine = (raw) => Boolean(raw) && cleanName(raw.itemName || raw.name) !== ''
+            && n(raw.qty) > 0 && n(raw.price) >= 0;
+        // لا بضاعة تدخل المخزن بلا تاريخ صلاحية (طلب المالك 2026-10-19): كل صنف
+        // في الفاتورة يحتاج تاريخًا صحيحًا، وإلا تُرفض الفاتورة كلها 422.
+        const expiryGate = checkExpiryOnLines(rawItems.filter(isInvoiceLine));
+        if (!expiryGate.ok) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, expiryGate.code, expiryGate.message, { missing: expiryGate.missing, invalid: expiryGate.invalid });
+        }
         const validItems = rawItems.map(raw => {
             const pkg = raw.packagingQty ?? raw.packaging_qty ?? raw.catch_weight_qty ?? null;
             const pkgQty = pkg === null || pkg === undefined || pkg === '' ? null : n(pkg);
@@ -1840,6 +1879,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 weight: Math.max(0, n(raw.weight)),
                 packagingQty: pkgQty !== null && Number.isFinite(pkgQty) && pkgQty >= 0 ? pkgQty : null,
                 packagingUom: cleanName(raw.packagingUom || raw.packaging_uom || raw.catch_weight_unit) || null,
+                expiryDate: normalizeExpiryDate(readExpiryField(raw)),
             };
         }).filter(item => item.itemName && item.qty > 0 && item.price >= 0);
         if (!validItems.length) {
@@ -1912,6 +1952,7 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 quantityDelta: round(item.qty), unit: inv.unit || item.unit || 'وحدة', unitCost: item.effectivePrice,
                 referenceType: 'purchase_invoice', referenceId: String(invoiceId), userId: req.user.id,
                 idempotencyKey: `purchase:${invoiceId}:${inv.id}`,
+                expiryDate: item.expiryDate || null,
                 reason: `استلام فاتورة شراء ${req.body?.invoiceNumber || invoiceId}`.trim(),
                 metadata: { invoice_id: invoiceId, invoice_number: req.body?.invoiceNumber || null, supplier_name: req.body?.supplierName || null,
                     ...(item.packagingQty !== null ? { packaging_qty: item.packagingQty, packaging_uom: item.packagingUom || inv.packaging_uom || 'كرتون' } : {}) },
@@ -2156,6 +2197,14 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         }
 
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+        // التعديل يعيد الاستلام فعليًا — نفس حرس الإنشاء: لا صنف يدخل المخزن بلا
+        // تاريخ صلاحية (طلب المالك 2026-10-19).
+        const expiryGateEdit = checkExpiryOnLines(rawItems.filter(raw => raw
+            && cleanName(raw.itemName || raw.name) !== '' && n(raw.qty) > 0 && n(raw.price) >= 0));
+        if (!expiryGateEdit.ok) {
+            await client.query('ROLLBACK');
+            return fail(res, 422, expiryGateEdit.code, expiryGateEdit.message, { missing: expiryGateEdit.missing, invalid: expiryGateEdit.invalid });
+        }
         const items = rawItems.map(raw => {
             const pkg = raw.packagingQty ?? raw.packaging_qty ?? raw.catch_weight_qty ?? null;
             const pkgQty = pkg === null || pkg === undefined || pkg === '' ? null : n(pkg);
@@ -2170,6 +2219,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
                 weight: Math.max(0, n(raw.weight)),
                 packagingQty: pkgQty !== null && Number.isFinite(pkgQty) && pkgQty >= 0 ? pkgQty : null,
                 packagingUom: cleanName(raw.packagingUom || raw.packaging_uom || raw.catch_weight_unit) || null,
+                expiryDate: normalizeExpiryDate(readExpiryField(raw)),
             };
         }).filter(item => item.itemName && item.qty > 0 && item.price >= 0);
         if (!items.length || items.some(item => !Number.isFinite(item.qty) || !Number.isFinite(item.price) ||
@@ -2339,6 +2389,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
                 quantityDelta: item.qty, unit: inv.unit || item.unit || 'وحدة', unitCost: item.effectivePrice,
                 referenceType: 'purchase_invoice_edit', referenceId: String(invoiceId), userId: req.user.id,
                 idempotencyKey: `purchase-edit:${invoiceId}:${revision}:${inv.id}`,
+                expiryDate: item.expiryDate || null,
                 reason: `تعديل استلام فاتورة شراء ${requestedInvoiceNumber || invoiceId}`,
                 metadata: { invoice_id: invoiceId, invoice_number: requestedInvoiceNumber, revision },
                 catchWeightQty: item.packagingQty,
@@ -2516,6 +2567,8 @@ router.put('/inventory/:id/direct', jwtAuth, requireRole('admin'), async (req, r
                 quantityDelta: delta, unit: item.unit || 'وحدة',
                 unitCost: newCost, referenceType: 'admin_direct_edit', referenceId: String(itemId),
                 userId: req.user.id, idempotencyKey: `admin-direct:${itemId}:${Date.now()}`,
+                // تصحيح جرد: تاريخ صريح من الطلب وإلا تاريخ الدُفعة المسجل — لا يُخترع تاريخ
+                expiryDate: normalizeExpiryDate(readExpiryField(req.body || {})) || await latestExpiryFor(client, itemId),
                 reason, metadata: { admin_direct: true, old_qty: oldQty, new_qty: hasMainQty ? null : newQty, old_cost: oldCost, new_cost: newCost, ...(hasMainQty ? { main_qty_target: newMainQty } : {}) },
             });
             await client.query(

@@ -39,6 +39,7 @@
 
 import { apiFetch } from '../../core/api.js?v=4.9.169';
 import { formatMoney } from './reports-repo.js?v=4.9.169';
+import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.169';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];
@@ -381,13 +382,15 @@ export function auditReadVisible(role) {return roleIn(role, AUDIT_READ_ROLES);}
 /* ── الباب 1: وارد سريع ───────────────────────────────────────────────────
    القديم (warehouse.js:1324-1345): الكمية من الحقل، والسعر الفارغ/غير الصالح
    (أو صفرًا) يرجع إلى متوسط التكلفة الحالي — `parseFloat(x) || item.avgCost`.
-   الخادم يعيد فحص qty>0 و price>=0 ووحدة الصنف (UNIT_MISMATCH :1602). */
+   الخادم يعيد فحص qty>0 و price>=0 ووحدة الصنف (UNIT_MISMATCH :1602).
+   سياسة الصلاحية 2026-10-19: الخادم يرفض 422 بلا تاريخ صلاحية — الحقل رابع
+   في الباني وتصل null حين يغيب فيقول الخادم رسالته ولا يُخترع تاريخ. */
 
-export function receiptPayload(item = {}, qtyRaw, priceRaw) {
+export function receiptPayload(item = {}, qtyRaw, priceRaw, expiryRaw) {
     const qty = Number(qtyRaw) || 0;
     const parsedPrice = Number(priceRaw);
     const price = parsedPrice || (Number(item.avgCost) || 0);
-    return { qty, price, unit: String(item.unit || '') };
+    return { qty, price, unit: String(item.unit || ''), expiryDate: normalizeExpiryDate(expiryRaw) };
 }
 
 export async function receiveInventoryItem(id, payload) {
@@ -397,6 +400,7 @@ export async function receiveInventoryItem(id, payload) {
             qty: Number(payload?.qty) || 0,
             price: Number(payload?.price) || 0,
             unit: String(payload?.unit || ''),
+            expiryDate: payload?.expiryDate || null,
         }),
     });
 }
@@ -415,6 +419,7 @@ export function bulkReceiptRows(rows = []) {
         qty: Number(row?.qty) || 0,
         price: Number(row?.price) || 0,
         minQty: Number(row?.minQty) || 5,
+        expiryDate: normalizeExpiryDate(row?.expiryDate),
     })).filter((row) => row.name && row.qty > 0 && row.price >= 0);
 }
 
@@ -447,10 +452,28 @@ export function importNumber(value, fallback = 0) {
 }
 
 /**
+ * خلية صلاحية من الورقة: نص ISO أو Date أو رقمٌ تسلسلي — XLSX.read بلا cellDates
+ * يُعيد التواريخ أرقامًا (أيام منذ 1900-01-01 بنظام 1900)، فبدل هذا التحويل كان
+ * العمود السابع السليم يُقرأ «غير تاريخ» ويُرفض الاستيراد برسالةٍ لا ذنب للصنف فيها.
+ * لا تاريخ يُخترع: كل صورة غير مفهومة تعود null.
+ */
+export function sheetExpiryCell(value) {
+    if (value instanceof Date) {return value;}
+    if (typeof value === 'number' && Number.isFinite(value) && value > 20 && value < 60000) {
+        // تسلسل Excel تاريخٌ تقويمي بلا منطقة زمنية: يُقرأ من UTC وإلا اختلف اليوم
+        // باختلاف توقيت الجهاز — نفس قرار القديم (openingExpiryCell).
+        return normalizeExpiryDate(new Date(Math.round((value - 25569) * 86400000)).toISOString());
+    }
+    return normalizeExpiryDate(importCell(value)) || null;
+}
+
+/**
  * صفوف المخزون من الورقة — inventoryImportRowsFromSheet :2454.
  * الصف الأول رأس إن حمل أي خلية بأحد أسماء العمود؛ ولا يُشترط وجوده.
+ * العمود السابع (ف) تاريخ الصلاحية — اختياري في الورقة، وتُطبق سياسة
+ * المالك 2026-10-19 عبر applySheetExpiry بالورقة كلها قبل الإرسال.
  * @param {any[][]} rows
- * @returns {Array<{name:string,category:string,unit:string,qty:number,price:number,minQty:number}>}
+ * @returns {Array<{name:string,category:string,unit:string,qty:number,price:number,minQty:number,expiryDate:(string|Date|null)}>}
  */
 export function inventoryImportRowsFromSheet(rows) {
     const list = Array.isArray(rows) ? rows.filter((row) => Array.isArray(row)) : [];
@@ -461,6 +484,7 @@ export function inventoryImportRowsFromSheet(rows) {
     return list.slice(startIndex).map((row) => {
         const item = Array.isArray(row) ? row : [row];
         const category = importCell(item[1] || '');
+        const expiryCell = item[6];
         return {
             name: importCell(item[0]),
             category: category || 'عام',
@@ -468,8 +492,19 @@ export function inventoryImportRowsFromSheet(rows) {
             qty: importNumber(item[3], 0),
             price: importNumber(item[4], 0),
             minQty: importNumber(item[5], 5),
+            expiryDate: sheetExpiryCell(expiryCell),
         };
     }).filter((row) => row.name && row.qty >= 0 && row.price >= 0);
+}
+
+/**
+ * استيراد بلا خلية صلاحية لا يُرفض بصمت: العامل يعطي تاريخًا للورقة كلها،
+ * فيُطبَّق على الصفوف الناقصة فقط. لا تاريخ يُخترع — غياب الاثنين يمنع الإرسال.
+ */
+export function applySheetExpiry(items = [], sheetExpiryRaw) {
+    const fallback = normalizeExpiryDate(sheetExpiryRaw);
+    return (Array.isArray(items) ? items : [])
+        .map((row) => (row && row.expiryDate ? row : { ...(row || {}), expiryDate: fallback }));
 }
 
 /** الحمولة الفعلية للاستيراد — نفس فلتر old :2513-2520 (qty>0). */
@@ -481,6 +516,7 @@ export function inventoryImportPayload(rows = []) {
         qty: Number(row?.qty) || 0,
         price: Number(row?.price) || 0,
         minQty: Number(row?.minQty) || 5,
+        expiryDate: normalizeExpiryDate(row?.expiryDate),
     })).filter((row) => row.name && row.qty > 0 && row.price >= 0);
 }
 

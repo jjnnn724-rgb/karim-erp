@@ -1277,13 +1277,31 @@ async function stocktakHtmlHistory(){
 }
 
 function inventoryUnitOptions(selected='كجم'){ const opts=[['kg','كجم'],['g','جرام'],['l','لتر'],['ml','مل'],['piece','قطعة/وحدة']]; const aliases={كجم:'kg',كيلو:'kg',جرام:'g',غرام:'g',لتر:'l',مل:'ml',وحدة:'piece',قطعة:'piece',حبة:'piece'}; const current=aliases[String(selected||'').trim()]||selected; return opts.map(([value,label])=>`<option value="${value}" ${current===value?'selected':''}>${label}</option>`).join(''); }
+
+// ─── سياسة المالك 2026-10-19: لا يدخل المخزن صنفٌ بلا تاريخ صلاحية ───────────
+// الخادم هو الحكم (422 EXPIRY_DATE_REQUIRED / INVALID_EXPIRY_DATE على كل مداخل
+// المخزون)، وهذه الطبقة تعطي العامل الرسالة العربية نفسها قبل دورة الشبكة.
+// لا تاريخ يُخترع: صيغة YYYY-MM-DD وحدها مقبولة، والمنتهي/الكسور تُرفض.
+const EXPIRY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+function normExpiryDate(value){ if(value instanceof Date){ if(Number.isNaN(value.getTime())) {return null;} const p=(n)=>String(n).padStart(2,'0'); return `${value.getFullYear()}-${p(value.getMonth()+1)}-${p(value.getDate())}`; } const s=String(value ?? '').trim().slice(0,10); const m=EXPIRY_DATE_RE.exec(s); if(!m) {return null;} const y=Number(m[1]),mo=Number(m[2]),d=Number(m[3]); if(y<1900||mo<1||mo>12) {return null;} const probe=new Date(Date.UTC(y,mo-1,d)); if(probe.getUTCFullYear()!==y||probe.getUTCMonth()!==mo-1||probe.getUTCDate()!==d) {return null;} return s; }
+/** @returns {string|null} التاريخ الصحيح أو null — مع تنبيه العامل عند النقص أو الفساد */
+function requireExpiryDate(raw, qty, itemName){
+    if(Number(qty)<=0) {return normExpiryDate(raw);}
+    const d=normExpiryDate(raw);
+    if(!d){
+        const text=String(raw ?? '').trim();
+        toast(text ? `تاريخ الصلاحية غير صحيح (${text.slice(0,24)}) — الصيغة المطلوبة YYYY-MM-DD`
+            : `تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية${itemName ? ` للصنف ${itemName}` : ''} (YYYY-MM-DD)`, 'error');
+    }
+    return d;
+}
 function showAddItemModal(prefillBarcode=''){
 const shelfOptions = STATE.shelves.map(s=>`<option value="${s.id}">${esc(s.code)} - ${esc(s.name)}</option>`).join('');
 showModal(`<h3><i class=ji data-i=package></i> إضافة صنف جديد</h3>
 <div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="itemName"></div><div class="fg"><label>الفئة</label><input type="text" id="itemCategory"></div></div>
 <div class="fg"><label>الباركود / QR</label><div style="display:flex;gap:8px"><input type="text" id="itemBarcode" value="${esc(prefillBarcode)}" placeholder="امسح أو اكتب يدوياً" class="u-flex1"><button type="button" class="btn btn-blue btn-sm" onclick="scanForItemBarcodeField('itemBarcode')"><i class=ji data-i=camera></i> مسح</button></div></div>
 <div class="fr"><div class="fg"><label>وحدة الشراء والتخزين</label><select id="itemUnit">${inventoryUnitOptions('kg')}</select><small class="text-muted">مثال: زيت باللتر، أرز بالكجم، دجاج بالقطعة</small></div><div class="fg"><label>الحد الأدنى</label><input type="number" id="itemMinQty" value="5" step="0.01"></div></div>
-<div class="fr"><div class="fg"><label>الكمية الافتتاحية</label><input type="number" id="itemQty" value="0" step="0.01"></div><div class="fg"><label>سعر الشراء</label><input type="number" id="itemPrice" value="0" step="0.01"></div></div>
+<div class="fr"><div class="fg"><label>الكمية الافتتاحية</label><input type="number" id="itemQty" value="0" step="0.01"></div><div class="fg"><label>سعر الشراء</label><input type="number" id="itemPrice" value="0" step="0.01"></div><div class="fg"><label>تاريخ الصلاحية</label><input type="date" id="itemExpiry"><small class="text-muted">إلزامي عند رصيدٍ افتتاحي أكبر من صفر</small></div></div>
 <div class="fr"><div class="fg"><label>الوزن (كجم)</label><input type="number" id="itemWeight" value="0" step="0.01"></div><div class="fg"><label>الرف</label><select id="itemShelf"><option value="">بدون رف</option>${shelfOptions}</select></div></div>
 <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="addInventoryItem()"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
@@ -1318,6 +1336,7 @@ showModal(`<h3><i class=ji data-i=package></i> ${esc(item.name)}</h3>
 </div>
 <div class="fg"><label>الكمية المضافة</label><input type="number" id="quickStockQty" value="1" step="0.01"></div>
 <div class="fg"><label>سعر الشراء (اختياري)</label><input type="number" id="quickStockPrice" value="${item.avgCost}" step="0.01"></div>
+<div class="fg"><label>تاريخ الصلاحية *</label><input type="date" id="quickStockExpiry"><small class="text-muted">إلزامي لكل صنف يدخل المخزن — YYYY-MM-DD</small></div>
 <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmQuickStockIn('${item.id}')"><i class=ji data-i=save></i> إضافة للمخزون</button></div>`);
 setTimeout(()=>{ document.getElementById('quickStockQty')?.focus(); document.getElementById('quickStockQty')?.select(); },50);
 }
@@ -1327,14 +1346,17 @@ const item=STATE.inventory.find(i=>i.id===itemId);
 if(!item) {return;}
 const qty=parseFloat(document.getElementById('quickStockQty')?.value)||0;
 const price=parseFloat(document.getElementById('quickStockPrice')?.value)||item.avgCost;
+const expiryRaw=document.getElementById('quickStockExpiry')?.value||'';
 if(qty<=0){ toast('أدخل كمية صحيحة','error'); return; }
+const expiryDate=requireExpiryDate(expiryRaw, qty, item.name);
+if(!expiryDate) {return;}
 confirmQuickStockIn._busy=true;
 const oldValue=item.qty*item.avgCost;
 const newValue=qty*price;
 const newQty=item.qty+qty;
 const newAvgCost=newQty>0?(oldValue+newValue)/newQty:price;
 try{
-const result = await apiFetch(`/warehouse/inventory/${encodeURIComponent(item.id)}/receipt`, {method:'POST',body:JSON.stringify({qty,price,unit:item.unit})});
+const result = await apiFetch(`/warehouse/inventory/${encodeURIComponent(item.id)}/receipt`, {method:'POST',body:JSON.stringify({qty,price,unit:item.unit,expiryDate})});
 Object.assign(item, result.inventory || {qty:newQty,avgCost:newAvgCost});
 if(!STATE.inventoryTx){STATE.inventoryTx=[];}
 if(result.transaction){STATE.inventoryTx.push(result.transaction);}
@@ -1355,12 +1377,15 @@ const qty=parseFloat(document.getElementById('itemQty')?.value)||0;
 const price=parseFloat(document.getElementById('itemPrice')?.value)||0;
 const weight=parseFloat(document.getElementById('itemWeight')?.value)||0;
 const shelfId=document.getElementById('itemShelf')?.value||null;
+const expiryRaw=document.getElementById('itemExpiry')?.value||'';
 if(!name){toast('أدخل اسم الصنف','error');return;}
 if(STATE.inventory.find(i=>i.name===name)){toast('هذا الصنف موجود بالفعل','error');return;}
 if(barcode && STATE.inventory.find(i=>i.barcode && i.barcode===barcode)){toast('هذا الباركود مستخدم لصنف آخر بالفعل','error');return;}
+const expiryDate=requireExpiryDate(expiryRaw, qty, name);
+if(qty>0 && !expiryDate) {return;}
 addInventoryItem._busy=true;
 try{
-const newItem = await persistCreate('inventory', (saved)=>STATE.inventory.push(saved), {id:uid(),name,category,unit,qty,avgCost:price,minQty,weight,shelfId,barcode});
+const newItem = await persistCreate('inventory', (saved)=>STATE.inventory.push(saved), {id:uid(),name,category,unit,qty,avgCost:price,minQty,weight,shelfId,barcode,expiryDate});
 if(qty>0){
 if(!STATE.inventoryTx){STATE.inventoryTx=[];}
 await persistCreate('inventoryTx', (saved)=>STATE.inventoryTx.push(saved), {id:uid(),itemId:newItem.id,itemName:name,qty:qty,type:'initial',date:today(),cost:price,totalValue:qty*price,notes:'رصيد افتتاحي'});
@@ -1547,6 +1572,7 @@ id:uid(),itemId:item.itemId||item.item_id||null,itemName:item.itemName||item.nam
 qty:Number(item.qty)||0,price:Number(item.price)||0,total:Number(item.total)||0,
 unit:item.unit||'وحدة',weight:item.weight??'',taxCategory:item.taxCategory||item.tax_category||'STANDARD',
 packagingQty:item.packagingQty??item.packaging_qty??null,packagingUom:item.packagingUom||item.packaging_uom||null,
+expiryDate:normExpiryDate(item.expiryDate ?? item.expiry_date) || '',
 }));
 currentInvoiceItems.forEach(item=>{item.total=Math.round((item.qty*item.price+Number.EPSILON)*100)/100;});
 invoicePaidTouched=true;
@@ -1674,6 +1700,7 @@ else if(field==='unit'){ item.unit=String(value||'').trim()||'وحدة'; }
 else if(field==='price'){ item.price=value===''?0:Number(value); }
 else if(field==='taxCategory'){ item.taxCategory=['STANDARD','ZERO_RATED','EXEMPT','OUT_OF_SCOPE'].includes(value)?value:'STANDARD'; updateInvoiceTotal(); }
 else if(field==='weight'){ item.weight=String(value||'').trim()===''?'':(parseFloat(value)||0); }
+else if(field==='expiryDate'){ item.expiryDate=String(value||'').trim(); }
 item.total = Math.round((item.qty * item.price + Number.EPSILON) * 100) / 100;
 const totalEl=document.getElementById(`item_total_${index}`);
 if(totalEl) {totalEl.innerHTML=fC(item.total);}
@@ -1724,6 +1751,7 @@ function renderInvoiceItemsList(){
   <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوحدة</small><input type="text" id="item_unit_${idx}" value="${esc(item.unit||'وحدة')}" list="invoiceUnitOptions" placeholder="كجم / شوال / علبة" class="u-input" onchange="updateInvoiceItem(${idx},'unit',this.value)"></div>
   <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الوزن الإجمالي (كجم)</small><input type="number" id="item_weight_${idx}" value="${item.weight??''}" min="0" step="0.001" placeholder="اختياري" class="u-input" oninput="updateInvoiceItem(${idx},'weight',this.value)"></div>
   <div class="u-flex1" style="min-width:105px"><small style="display:block;margin-bottom:4px;color:var(--text3)">سعر الوحدة</small><input type="number" id="item_price_${idx}" value="${item.price}" min="0" step="0.01" placeholder="السعر" class="u-input" oninput="updateInvoiceItem(${idx},'price',this.value)"></div>
+  <div class="u-flex1" style="min-width:150px"><small style="display:block;margin-bottom:4px;color:var(--text3)">تاريخ الصلاحية *</small><input type="date" id="item_expiry_${idx}" value="${esc(item.expiryDate||'')}" class="u-input" aria-label="تاريخ الصلاحية للصنف ${idx+1}" onchange="updateInvoiceItem(${idx},'expiryDate',this.value)"></div>
   <div class="u-flex1" style="min-width:110px"><small style="display:block;margin-bottom:4px;color:var(--text3)">الفئة الضريبية</small><select class="u-input" aria-label="الفئة الضريبية للصنف" onchange="updateInvoiceItem(${idx},'taxCategory',this.value)">
   <option value="STANDARD" ${(item.taxCategory||'STANDARD')==='STANDARD'?'selected':''}>خاضع 15%</option>
   <option value="ZERO_RATED" ${item.taxCategory==='ZERO_RATED'?'selected':''}>صفري 0%</option>
@@ -1734,7 +1762,7 @@ function renderInvoiceItemsList(){
   <button type="button" onclick="removeInvoiceItemRow(${idx})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 12px;cursor:pointer" title="حذف الصنف"><i class=ji data-i=x></i></button>
   </div>`;
  }).join('');
- container.innerHTML=`<datalist id="invoiceUnitOptions">${unitOptions}</datalist><div class="text-muted" style="font-size:12px;margin-bottom:10px">الوحدة مرنة ويمكن كتابتها مثل: كجم، شوال، علبة أو كرتون. الوزن الإجمالي اختياري بالكيلوجرام.</div>${rows}`;
+ container.innerHTML=`<datalist id="invoiceUnitOptions">${unitOptions}</datalist><div class="text-muted" style="font-size:12px;margin-bottom:10px">الوحدة مرنة ويمكن كتابتها مثل: كجم، شوال، علبة أو كرتون. الوزن الإجمالي اختياري بالكيلوجرام. <strong style="color:var(--red)">تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن.</strong></div>${rows}`;
 }
 let _savingPurchaseInvoice = false;
 async function savePurchaseInvoice(){
@@ -1754,6 +1782,14 @@ if(invoicePaidTouched&&paidAmountRaw!==''&&(!Number.isFinite(Number(paidAmountRa
 const discountType=document.getElementById('invoiceDiscountType')?.value||'none';
 const discountValue=Number(document.getElementById('invoiceDiscountValue')?.value||0);
 if(!Number.isFinite(discountValue)||discountValue<0||(discountType==='percent'&&discountValue>100)){toast('قيمة الخصم غير صحيحة','error');return;}
+// سياسة المالك: لا بضاعة تدخل المخزن بلا تاريخ صلاحية — نفس رسالة الخادم 422 قبل الشبكة.
+const missingExpiry=validItems.filter(item=>!normExpiryDate(item.expiryDate));
+if(missingExpiry.length){
+    toast(`تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف ${missingExpiry.slice(0,5).map(i=>i.itemName).join('، ')}${missingExpiry.length>5?` (+${missingExpiry.length-5} صنفًا)`:''}`,'error');
+    const firstIdx=currentInvoiceItems.indexOf(missingExpiry[0]);
+    if(firstIdx>=0) {document.getElementById(`item_expiry_${firstIdx}`)?.focus();}
+    return;
+}
 _savingPurchaseInvoice = true;
 const _payload = {
 invoiceNumber,date:invoiceDate,supplierName,supplierPhone,paymentMethod,notes,
@@ -1761,7 +1797,7 @@ supplierId:supplierSel||null,
 discountType,discountValue,
 // أوتوماتيك: لم يلمس المستخدم المسدد → الخادم يسدد الشامل (نقدي) أو صفر (آجل)
 paidAmount:invoicePaidTouched&&(paidAmountRaw!==''&&paidAmountRaw!=null)?Number(paidAmountRaw):undefined,
-items:validItems.map(item=>({...item}))
+items:validItems.map(item=>({...item,expiryDate:normExpiryDate(item.expiryDate)}))
 };
 try{
 const editingId=currentEditingInvoiceId;
@@ -1825,11 +1861,11 @@ return (STATE.suppliers||[]).find(s=>s.category==='افتتاحي'||/افتتا�
 || { id:null, name:'رصيد افتتاحي - بداية الفترة' };
 }
 function showOpeningBalanceModal(){
-openingRows=[{name:'',qty:'',unit:'كجم',price:'',boxes:'',category:''}];
+openingRows=[{name:'',qty:'',unit:'كجم',price:'',boxes:'',category:'',expiry:''}];
 renderOpeningRows();
 const sup=openingSupplier();
 showModal(`<h3><i class=ji data-i=flag></i> رصيد افتتاحي — بداية الفترة</h3>
-<div class="workflow-banner"><i class=ji data-i=info></i> ادخل الجدول مباشرة: <strong>اسم الصنف • الوحدة • كمية فعلية • سعر الشراء</strong> — مفتاح <strong>Enter</strong> ينقلك بين الخلايا، وآخر صف ينشئ صفًا جديدًا. اللحوم أضف <strong>عدد الكراتين</strong>. تُحفظ كفاتورة آجلة (مسدد 0) على المورد <strong>${esc(sup.name)}</strong> بلا حركة نقدية.</div>
+<div class="workflow-banner"><i class=ji data-i=info></i> ادخل الجدول مباشرة: <strong>اسم الصنف • الوحدة • كمية فعلية • سعر الشراء • تاريخ الصلاحية</strong> — مفتاح <strong>Enter</strong> ينقلك بين الخلايا، وآخر صف ينشئ صفًا جديدًا. اللحوم أضف <strong>عدد الكراتين</strong>. <strong style="color:var(--red)">تاريخ الصلاحية إلزامي لكل صنف (YYYY-MM-DD).</strong> تُحفظ كفاتورة آجلة (مسدد 0) على المورد <strong>${esc(sup.name)}</strong> بلا حركة نقدية.</div>
 ${openingNetEnabled()?`<label style="display:flex;gap:10px;align-items:center;margin-top:10px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><input type="checkbox" id="openingNetMode" onchange="openingNetModeChanged(this.checked)"><span class="u-t13"><strong>الوضع الصافي (لإعادة ضبط الجداول):</strong> اكتب كمية <strong>بداية الفترة</strong>، والنظام يجيب المنصرف فعليًا من دفتر الصرف، ويخصمه تلقائيًا ويعيّن الرصيد الحالي = <strong>البداية − المنصرف</strong></span></label>`:''}
 <div id="openingExisting" class="u-my8"></div>
 <div class="callout-blue u-my16"><div class="fw-bold"><i class=ji data-i=file-text></i> إدخال احترافي من Excel</div><div class="text-muted u-t12 u-my8">حمّل النموذج، املأ الأصناف، ثم ارفع الملف لمراجعته قبل إضافته للفاتورة.</div><div class="u-row-wrap"><button type="button" class="btn btn-blue btn-sm" onclick="downloadOpeningTemplate()"><i class=ji data-i=arrow-down></i> تحميل النموذج</button><label class="btn btn-green btn-sm" style="cursor:pointer"><i class=ji data-i=inbox></i> رفع شيت Excel<input type="file" id="openingExcelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewOpeningExcel(this.files[0])"></label></div><div id="openingImportPreview" class="u-mt8"></div></div>
@@ -1853,8 +1889,8 @@ box.innerHTML=`<div class="callout" style="background:var(--bg3);border:1px soli
 }catch(e){ box.innerHTML=`<div class="u-t12 text-muted">تعذر تحميل الأرصدة المسجلة: ${esc(e.message||'')}</div>`; }
 }
 function downloadOpeningTemplate(){
-const data=[['اسم الصنف','الوحدة','كمية فعلية','سعر الشراء','الكراتين','الفئة'],['دجاج','50','كجم','25','4','لحوم'],['مشروم','12','علبة','18','','معلبات'],['دقيق','20','كيس','3.5','','حبوب']];
-const ws=XLSX.utils.aoa_to_sheet(data); ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:12},{wch:18}];
+const data=[['اسم الصنف','الوحدة','كمية فعلية','سعر الشراء','الكراتين','الفئة','تاريخ الصلاحية'],['دجاج','50','كجم','25','4','لحوم','2026-11-30'],['مشروم','12','علبة','18','','معلبات','2027-02-28'],['دقيق','20','كيس','3.5','','حبوب','2027-06-30']];
+const ws=XLSX.utils.aoa_to_sheet(data); ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:12},{wch:18},{wch:14},{wch:18}];
 const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'الرصيد الافتتاحي');
 XLSX.writeFile(wb,`نموذج_الرصيد_الافتتاحي_${today()}.xlsx`); toast('تم تحميل نموذج الرصيد الافتتاحي','success');
 }
@@ -1865,6 +1901,13 @@ return String(value||'').trim().toLowerCase().replace(/[\s_()\-\u00a0\t]/g,'').r
 /* طلب المالك 2026-10-05: شيت Excel بأعمدة «اسم الصنف | الوحدة | كمية فعلية | سعر الشراء» كان يُرفض
    لأن المدقق يدور على «الكمية» فقط — الآن: أسماء أعمدة متعددة (بما فيها كمية فعلية) + يجرب أول
    3 صفوف كصف عناوين (لو في عنوان ورقة فوق الجدول) + رسالة الخطأ تطبع أعمدة الملف الفعلية */
+/* خلية صلاحية من ورقة Excel: نص YYYY-MM-DD، أو Date، أو رقم تسلسي (XLSX يقرأ
+   التواريخ أرقامًا بلا cellDates). لا تاريخ يُخترع — كل صورة غير مفهومة تعود null. */
+function openingExpiryCell(v){
+if(v instanceof Date) {return normExpiryDate(v);}
+if(typeof v==='number'&&Number.isFinite(v)&&v>20&&v<60000) {return normExpiryDate(new Date(Math.round((v-25569)*86400000)).toISOString());}
+return normExpiryDate(v);
+}
 function parseOpeningSheetRows(data){
 const headersOf=(row)=> (row||[]).map(openingHeaderKey);
 let found=null;
@@ -1879,28 +1922,34 @@ const unitIdx=findHeader(['الوحده','وحده','unit','uom']);
 const priceIdx=findHeader(['سعر الشراء','سعر','التكلفه','price','cost']);
 const boxesIdx=findHeader(['الكراتين','كراتين','عدد الكراتين','boxes','cartons']);
 const categoryIdx=findHeader(['الفئه','التصنيف','فئه','category','cat']);
-if(nameIdx>=0&&qtyIdx>=0&&priceIdx>=0){ found={headerRow:h, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx}; break; }
+let expiryIdx=findHeader(['تاريخ الصلاحية','الصلاحية','تاريخ الانتهاء','expiry','expiry_date','bestBefore','best_before']);
+if(expiryIdx<0){ expiryIdx=fuzzy(['صلاحيه','انتهاء','expiry','bestbefore']); }
+if(nameIdx>=0&&qtyIdx>=0&&priceIdx>=0){ found={headerRow:h, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx, expiryIdx}; break; }
 }
 if(!found){
 const seen=(data[0]||[]).map(x=>String(x).trim()).filter(Boolean).join(' ، ');
 return { rows:[], errors:[{line:'—', message:'لم أتعرف على أعمدة الملف. الأعمدة الموجودة: ' + (seen||'(فارغة)') + ' — المطلوب وجود: اسم الصنف، كمية فعلية، سعر الشراء'}], headerRow:-1 };
 }
-const {headerRow, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx}=found;
+const {headerRow, nameIdx, qtyIdx, unitIdx, priceIdx, boxesIdx, categoryIdx, expiryIdx}=found;
 const rows=[], errors=[];
 data.slice(headerRow+1).forEach((row,index)=>{
 const line=headerRow+2+index;
 const name=String(row[nameIdx]||'').trim(), qty=Number(row[qtyIdx]), price=Number(row[priceIdx]);
 const rawBoxes=boxesIdx>=0?String(row[boxesIdx]??'').trim():'';
+const rawExpiry=expiryIdx>=0?row[expiryIdx]:'';
+const hasExpiryCell=rawExpiry!==''&&rawExpiry!=null;
+const expiry=hasExpiryCell?openingExpiryCell(rawExpiry):null;
 if(!name&&!rawBoxes&&!String(row[qtyIdx]??'').trim()&&!String(row[priceIdx]??'').trim()){return;}
 const rowErrors=[];
 if(!name){rowErrors.push('اسم الصنف مفقود');}
 if(!Number.isFinite(qty)||qty<=0){rowErrors.push('الكمية يجب أن تكون أكبر من صفر');}
 if(!Number.isFinite(price)||price<0){rowErrors.push('سعر الشراء غير صحيح');}
+if(hasExpiryCell&&!expiry){rowErrors.push('تاريخ الصلاحية غير صحيح — الصيغة YYYY-MM-DD');}
 let boxes=null;
 if(rawBoxes!==''){boxes=Number(rawBoxes); if(!Number.isInteger(boxes)||boxes<=0){rowErrors.push('الكراتين عدد صحيح أكبر من صفر');}}
 if(boxes!==null&&isOpeningMeatRow({name,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()})===false){rowErrors.push('الكراتين مسموحة لأصناف اللحوم فقط');}
 if(rowErrors.length){errors.push({line,message:rowErrors.join('،')}); return;}
-rows.push({name,qty,unit:String(unitIdx>=0?row[unitIdx]||'':'').trim()||'كجم',price,boxes,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()||'عام'});
+rows.push({name,qty,unit:String(unitIdx>=0?row[unitIdx]||'':'').trim()||'كجم',price,boxes,category:String(categoryIdx>=0?row[categoryIdx]||'':'').trim()||'عام',expiry:expiry||''});
 });
 return {rows, errors, headerRow};
 }
@@ -1923,7 +1972,9 @@ function renderOpeningImportPreview(){
 const el=document.getElementById('openingImportPreview'); if(!el){return;}
 const p=openingImportPreview;
 if(!p.fileName){el.innerHTML=''; return;}
-el.innerHTML=`<div class="u-t12"><strong>${esc(p.fileName)}</strong> — ${p.rows.length} صف صالح${p.errors.length?`، <span class="c-red">${p.errors.length} صف يحتاج تصحيحًا</span>`:'، جاهز للإضافة'}</div>${p.errors.length?`<div class="c-red u-t12 u-my8">${p.errors.slice(0,8).map(e=>`الصف ${e.line}: ${esc(e.message)}`).join('<br>')}${p.errors.length>8?'<br>...':''}</div>`:''}<button type="button" class="btn btn-green btn-sm u-mt8" onclick="appendOpeningImportRows()" ${p.rows.length?'':'disabled'}><i class=ji data-i=plus></i> إضافة ${p.rows.length} صف إلى الجرد</button>`;
+const noExpiry=p.rows.filter(r=>!normExpiryDate(r.expiry)).length;
+const expiryHint=noExpiry?`<div class="c-red u-t12 u-my8"><strong>${noExpiry}</strong> صفاً بلا تاريخ صلاحية — أكمله في عمود «تاريخ الصلاحية» بالجدول قبل الحفظ؛ الخادم يرفض إدخال أي صنف للمخزون بدونه.</div>`:'';
+el.innerHTML=`<div class="u-t12"><strong>${esc(p.fileName)}</strong> — ${p.rows.length} صف صالح${p.errors.length?`، <span class="c-red">${p.errors.length} صف يحتاج تصحيحًا</span>`:'، جاهز للإضافة'}</div>${expiryHint}${p.errors.length?`<div class="c-red u-t12 u-my8">${p.errors.slice(0,8).map(e=>`الصف ${e.line}: ${esc(e.message)}`).join('<br>')}${p.errors.length>8?'<br>...':''}</div>`:''}<button type="button" class="btn btn-green btn-sm u-mt8" onclick="appendOpeningImportRows()" ${p.rows.length?'':'disabled'}><i class=ji data-i=plus></i> إضافة ${p.rows.length} صف إلى الجرد</button>`;
 }
 function appendOpeningImportRows(){
 if(!openingImportPreview.rows.length){toast('لا توجد صفوف صالحة للإضافة','error'); return;}
@@ -1939,7 +1990,7 @@ function renderOpeningRows(){
 const c=document.getElementById('openingRows'); if(!c){return;}
 const invOpts=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">${esc(i.name)} (${esc(i.unit||'وحدة')})</option>`).join('');
 const netCols=openingNet.on?`<th style="width:104px" title="مجموع ما صُرف فعليًا لهذا الصنف بأذون الصرف (من دفتر المخزون)">المنصرف فعليًا</th><th style="width:110px" title="الكمية التي ستُعتمد: بداية الفترة − المنصرف">الصافي المعتمد</th>`:'';
-c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:620px"><thead><tr><th>اسم الصنف</th><th style="width:110px">الوحدة</th><th style="width:120px">كمية فعلية</th><th style="width:120px">سعر الشراء</th>${netCols}<th style="width:104px" title="لأصناف اللحوم ذات الوزن المتغير فقط">كراتين</th><th style="width:44px"></th></tr></thead><tbody>
+c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:620px"><thead><tr><th>اسم الصنف</th><th style="width:110px">الوحدة</th><th style="width:120px">كمية فعلية</th><th style="width:120px">سعر الشراء</th>${netCols}<th style="width:150px" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن (سياسة المالك 2026-10-19)">تاريخ الصلاحية *</th><th style="width:104px" title="لأصناف اللحوم ذات الوزن المتغير فقط">كراتين</th><th style="width:44px"></th></tr></thead><tbody>
 ${openingRows.map((r,idx)=>{
 const issued=openingNet.on?openingIssuedFor(r.name):0;
 const net=openingNet.on?Math.round(((parseFloat(r.qty)||0)-issued)*1000)/1000:null;
@@ -1950,6 +2001,7 @@ return `<tr>
 <td><input type="number" class="u-input" value="${r.qty}" min="0" step="0.001" placeholder="0" style="font-weight:700" oninput="updateOpeningRow(${idx},'qty',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
 <td><input type="number" class="u-input" value="${r.price}" min="0" step="0.01" placeholder="0" oninput="updateOpeningRow(${idx},'price',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
 ${netCells}
+<td><input type="date" id="openingExpiry_${idx}" class="u-input" value="${esc(r.expiry||'')}" aria-label="تاريخ الصلاحية للصنف ${idx+1}" oninput="updateOpeningRow(${idx},'expiry',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
 <td>${openingBoxCell(idx, r)}</td>
 <td><button type="button" class="btn btn-sm btn-red" onclick="removeOpeningRow(${idx})" title="حذف السطر"><i class=ji data-i=x></i></button></td>
 </tr>`;}).join('')}
@@ -1995,15 +2047,15 @@ if(item.category){row.category=String(item.category); const categoryEl=document.
 updateOpeningBoxesVisibility(idx);
 }
 function addOpeningRow(){
-openingRows.push({name:'',qty:'',unit:'',price:'',boxes:'',category:''});
+openingRows.push({name:'',qty:'',unit:'',price:'',boxes:'',category:'',expiry:''});
 renderOpeningRows(); updateOpeningTotal();
 const names=document.querySelectorAll('#openingRows tbody tr:last-child input[type="text"]');
 if(names.length){names[0].focus();}
 }
-function removeOpeningRow(idx){ if(openingRows.length<=1){ openingRows[0]={name:'',qty:'',unit:'كجم',price:'',boxes:'',category:''}; } else { openingRows.splice(idx,1); } renderOpeningRows(); updateOpeningTotal(); }
+function removeOpeningRow(idx){ if(openingRows.length<=1){ openingRows[0]={name:'',qty:'',unit:'كجم',price:'',boxes:'',category:'',expiry:''}; } else { openingRows.splice(idx,1); } renderOpeningRows(); updateOpeningTotal(); }
 function updateOpeningRow(idx,field,value){
 const r=openingRows[idx]; if(!r){return;}
-if(field==='name'||field==='unit'||field==='category'){ r[field]=String(value||''); }
+if(field==='name'||field==='unit'||field==='category'||field==='expiry'){ r[field]=String(value||''); }
 else if(field==='qty'){ r.qty=value===''?'':(parseFloat(value)||0); }
 else if(field==='price'){ r.price=value===''?'':(parseFloat(value)||0); }
 else if(field==='boxes'){ r.boxes=value===''?'':(parseInt(value)||0); }
@@ -2018,8 +2070,23 @@ const el=document.getElementById('openingTotal'); if(el){el.innerHTML=fC(t);}
 }
 /* تطبيع بنود الرصيد الافتتاحي — مشتركة بين الحفظ والاستبدال (نقية للاختبار) */
 function normalizeOpeningItems(rows){
-return (rows||[]).map(r=>({name:String(r.name||'').trim(),qty:parseFloat(r.qty)||0,unit:String(r.unit||'').trim()||'كجم',price:parseFloat(r.price)||0,boxes:r.boxes===''||r.boxes==null?null:(parseInt(r.boxes)||0),category:String(r.category||'').trim()||'عام'}))
+return (rows||[]).map(r=>({name:String(r.name||'').trim(),qty:parseFloat(r.qty)||0,unit:String(r.unit||'').trim()||'كجم',price:parseFloat(r.price)||0,boxes:r.boxes===''||r.boxes==null?null:(parseInt(r.boxes)||0),category:String(r.category||'').trim()||'عام',expiry:String(r.expiry||'').trim()}))
 .filter(r=>r.name&&r.qty>0&&r.price>=0);
+}
+/* سياسة المالك 2026-10-19: الرصيد الافتتاحي مدخلٌ للمخزون — لا يدخل صنفٌ بلا صلاحيته.
+   الرسالتان حرفيتا الخادم (422 EXPIRY_DATE_REQUIRED / INVALID_EXPIRY_DATE): النقص
+   يُذكر قبل الفساد، والمُفسَّل سيئ الصيغة لا يُصلح تلقائيًا.
+   @returns {string|null} رسالة تمنع الحفظ، أو null إذا سلمت كل البنود */
+function openingExpiryError(items){
+const missing=[],invalid=[];
+for(const r of (items||[])){
+    const raw=String(r.expiry ?? '').trim();
+    if(normExpiryDate(raw)) {continue;}
+    (raw?invalid:missing).push(r.name);
+}
+if(missing.length){return `تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف ${missing.slice(0,5).join('، ')}${missing.length>5?` (+${missing.length-5} صنفًا)`:''}`;}
+if(invalid.length){return `تاريخ الصلاحية غير صحيح للصنف ${invalid.slice(0,5).join('، ')} — الصيغة المطلوبة YYYY-MM-DD`;}
+return null;
 }
 async function postOpeningInvoice(items){
 const sup=openingSupplier();
@@ -2028,6 +2095,7 @@ return await apiFetch('/warehouse/purchase-invoices',{method:'POST',body:JSON.st
 invoiceNumber,date:today(),supplierName:sup.name,supplierPhone:'',paymentMethod:'credit',paidAmount:0,
 notes:'رصيد افتتاحي بداية الفترة',supplierId:sup.id||null,
 items:items.map(r=>({itemName:r.name,qty:r.qty,unit:r.unit,price:r.price,category:r.category,
+expiryDate:normExpiryDate(r.expiry),
 ...(r.boxes?{packagingQty:r.boxes,packagingUom:'كرتون'}:{})}))
 })});
 }
@@ -2049,6 +2117,8 @@ return {resolved,negatives};
 async function saveOpeningNet(){
 const items=normalizeOpeningItems(openingRows);
 if(!items.length){ toast('أدخل صنفًا واحدًا على الأقل: اسم + كمية + سعر','error'); return; }
+const expiryErr=openingExpiryError(items);
+if(expiryErr){ toast(expiryErr,'error'); return; }
 const {resolved,negatives}=resolveOpeningNetItems(items);
 if(negatives.length){
 toast(`المنصرف أكبر من البداية المعلنة لـ ${negatives.length} صنف (مثال: «${negatives[0].name}»: بداية ${fN(negatives[0].qty)} − منصرف ${fN(negatives[0].issued)}) — ارفع كمية البداية`,'error');
@@ -2065,7 +2135,7 @@ if(it.invId){
 await apiFetch(`/warehouse/inventory/${encodeURIComponent(it.invId)}/direct`,{method:'PUT',body:JSON.stringify({mainQty:it.net,avgCost:it.price,reason:`تعيين رصيد افتتاحي صافي — بداية ${it.qty}، منصرف ${it.issued}`})});
 updated++;
 }else{
-await persistCreate('inventory',(saved)=>STATE.inventory.push(saved),{id:uid(),name:it.name,category:it.category,unit:it.unit,qty:it.net,avgCost:it.price,minQty:0});
+await persistCreate('inventory',(saved)=>STATE.inventory.push(saved),{id:uid(),name:it.name,category:it.category,unit:it.unit,qty:it.net,avgCost:it.price,minQty:0,expiryDate:normExpiryDate(it.expiry)});
 created++;
 }
 }catch(e){ failed.push({name:it.name,message:e.message||''}); }
@@ -2081,6 +2151,8 @@ async function saveOpeningBalance(){
 if(openingNet.on){return saveOpeningNet();}
 const items=normalizeOpeningItems(openingRows);
 if(!items.length){ toast('أدخل صنفًا واحدًا على الأقل: اسم + كمية + سعر','error'); return; }
+const expiryErr=openingExpiryError(items);
+if(expiryErr){ toast(expiryErr,'error'); return; }
 const bad=items.find(r=>r.boxes!==null&&!(r.boxes>0));
 if(bad){ toast(`عدد الكراتين للصنف "${bad.name}" يجب أن يكون أكبر من صفر أو اتركه فارغًا`,'error'); return; }
 try{
@@ -2100,6 +2172,7 @@ let openingReplace={invoiceId:null,invoiceNumber:'',rows:[],oldVoided:false};
 function buildOpeningReplaceRows(inv){
 return (inv?.items||[]).map(it=>({name:it.itemName||'',qty:it.qty,unit:it.unit||'',price:it.price,
 boxes:it.packagingQty!=null?it.packagingQty:'',category:it.category||'',
+expiry:normExpiryDate(it.expiryDate ?? it.expiry_date) || '',
 oldQty:it.qty,currentQty:it.currentQty,issuedSince:it.issuedSince,itemExists:!!it.itemExists}));
 }
 async function showOpeningBalanceReplaceGrid(inv){
@@ -2118,7 +2191,7 @@ updateOpeningReplaceTotal();
 }
 function renderOpeningReplaceRows(){
 const c=document.getElementById('openingReplaceRows'); if(!c){return;}
-c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:820px"><thead><tr><th>اسم الصنف</th><th style="width:90px">الوحدة</th><th style="width:95px">مدخل قديمًا</th><th style="width:95px">منصرف منذذك</th><th style="width:95px">الرصيد الحالي</th><th style="width:110px">كمية جديدة *</th><th style="width:110px">سعر جديد *</th><th style="width:95px">كراتين</th></tr></thead><tbody>
+c.innerHTML=`<div class="tbl-scroll" style="max-height:46vh"><table style="min-width:960px"><thead><tr><th>اسم الصنف</th><th style="width:90px">الوحدة</th><th style="width:95px">مدخل قديمًا</th><th style="width:95px">منصرف منذذك</th><th style="width:95px">الرصيد الحالي</th><th style="width:110px">كمية جديدة *</th><th style="width:110px">سعر جديد *</th><th style="width:150px" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن">تاريخ الصلاحية *</th><th style="width:95px">كراتين</th></tr></thead><tbody>
 ${openingReplace.rows.map((r,idx)=>{
 const meat=isOpeningMeatRow(r);
 return `<tr${r.itemExists?'':' style="opacity:.6"'}>
@@ -2129,6 +2202,7 @@ return `<tr${r.itemExists?'':' style="opacity:.6"'}>
 <td class="${(Number(r.currentQty)||0)<r.oldQty?'c-red':'c-green'}">${r.currentQty==null?'—':fN(r.currentQty)}</td>
 <td><input type="number" class="u-input" value="${r.qty}" min="0" step="0.001" style="font-weight:700" oninput="updateOpeningReplaceRow(${idx},'qty',this.value)"></td>
 <td><input type="number" class="u-input" value="${r.price}" min="0" step="0.01" oninput="updateOpeningReplaceRow(${idx},'price',this.value)"></td>
+<td><input type="date" class="u-input" value="${esc(r.expiry||'')}" aria-label="تاريخ الصلاحية للصنف ${idx+1}" oninput="updateOpeningReplaceRow(${idx},'expiry',this.value)"></td>
 <td>${meat?`<input type="number" class="u-input" value="${r.boxes}" min="0" step="1" placeholder="—" oninput="updateOpeningReplaceRow(${idx},'boxes',this.value)">`:'<span class="text-muted">—</span>'}</td>
 </tr>`;}).join('')}
 </tbody></table></div>`;
@@ -2137,6 +2211,7 @@ function updateOpeningReplaceRow(idx,field,value){
 const r=openingReplace.rows[idx]; if(!r){return;}
 if(field==='qty'||field==='price'){ r[field]=value===''?'':(parseFloat(value)||0); }
 else if(field==='boxes'){ r.boxes=value===''?'':(parseInt(value)||0); }
+else if(field==='expiry'){ r.expiry=String(value||''); }
 const t=openingReplace.rows.reduce((s,r)=>s+((parseFloat(r.qty)||0)*(parseFloat(r.price)||0)),0);
 const el=document.getElementById('openingReplaceTotal'); if(el){el.innerHTML=fC(t);}
 }
@@ -2145,6 +2220,9 @@ const items=normalizeOpeningItems(openingReplace.rows);
 if(!items.length){ toast('أدخل كمية وسعرًا صحيحين لصنف واحد على الأقل','error'); return; }
 const bad=items.find(r=>r.boxes!==null&&!(r.boxes>0));
 if(bad){ toast(`عدد الكراتين للصنف "${bad.name}" يجب أن يكون أكبر من صفر أو اتركه فارغًا`,'error'); return; }
+// البوابة قبل الإلغاء: لا يُلغى الرصيد القديم ثم يُرفض الجديد بلا صلاحية.
+const expiryErr=openingExpiryError(items);
+if(expiryErr){ toast(expiryErr,'error'); return; }
 const ack=document.getElementById('openingReplaceAck')?.checked;
 if(!ack){ toast('فعّل مربع التأكيد أولًا — العملية تلغي الرصيد القديم','error'); return; }
 try{
@@ -2398,11 +2476,12 @@ showModal(`
 <h3><i class=ji data-i=chart></i> استيراد المخزون من Excel</h3>
 <div class="note-panel">
 <strong><i class=ji data-i=clipboard-list></i> صيغة الملف:</strong><br>
-الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى
+الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى، تاريخ الصلاحية (YYYY-MM-DD)
 </div>
 <div style="background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);padding:12px;border-radius:var(--r);margin-bottom:14px;font-size:12px">
 <i class=ji data-i=alert-triangle></i> <strong>تنبيه:</strong> إذا كان الصنف موجوداً مسبقاً، سيتم تحديث كميته وسعره فقط.
 </div>
+<div class="fg"><label>صلاحية الورقة — للأصناف التي بلا عمود صلاحية في الملف *</label><input type="date" id="bulkSheetExpiry" class="u-input"><small class="text-muted">عمود «تاريخ الصلاحية» في الملف له الأولوية؛ لا يُخترع تاريخ لأي صنف.</small></div>
 <div style="display:flex;gap:10px;margin-bottom:16px">
 <button class="btn btn-blue btn-sm" onclick="downloadInventoryTemplate()"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
 </div>
@@ -2414,8 +2493,8 @@ document.getElementById('inventoryExcelFile').addEventListener('change',previewI
 }
 function downloadInventoryTemplate(){
 const wb=XLSX.utils.book_new();
-const ws=XLSX.utils.aoa_to_sheet([['اسم الصنف','الفئة','الوحدة','الكمية','سعر الشراء','الحد الأدنى'],['دجاج','لحوم','كجم',50,25,10],['أرز','حبوب','كيس',100,3.5,20],['زيت نخيل','زيوت','لتر',30,8,5]]);
-ws['!cols']=[{wch:20},{wch:15},{wch:10},{wch:10},{wch:12},{wch:12}];
+const ws=XLSX.utils.aoa_to_sheet([['اسم الصنف','الفئة','الوحدة','الكمية','سعر الشراء','الحد الأدنى','تاريخ الصلاحية'],['دجاج','لحوم','كجم',50,25,10,'2026-11-30'],['أرز','حبوب','كيس',100,3.5,20,'2027-06-30'],['زيت نخيل','زيوت','لتر',30,8,5,'2027-03-31']]);
+ws['!cols']=[{wch:20},{wch:15},{wch:10},{wch:10},{wch:12},{wch:12},{wch:18}];
 XLSX.utils.book_append_sheet(wb,ws,'المخزون');
 XLSX.writeFile(wb,'نموذج_استيراد_المخزون.xlsx');
 }
@@ -2461,6 +2540,7 @@ function inventoryImportRowsFromSheet(rows) {
     return rows.slice(startIndex).map((row) => {
         const item = Array.isArray(row) ? row : [row];
         const category = parseInventoryImportCell(item[1] || '');
+        const expiryCell = item[6];
         return {
             name: parseInventoryImportCell(item[0]),
             category: category || 'عام',
@@ -2468,6 +2548,10 @@ function inventoryImportRowsFromSheet(rows) {
             qty: parseInventoryImportNumber(item[3], 0),
             price: parseInventoryImportNumber(item[4], 0),
             minQty: parseInventoryImportNumber(item[5], 5),
+            // العمود السابع (ز) صلاحية الدفعة — نص ISO أو Date أو رقم Excel تسلسلي.
+            expiryDate: expiryCell instanceof Date || typeof expiryCell === 'number'
+                ? openingExpiryCell(expiryCell)
+                : (normExpiryDate(parseInventoryImportCell(expiryCell)) || null),
         };
     }).filter((row) => row.name && row.qty >= 0 && row.price >= 0);
 }
@@ -2481,8 +2565,10 @@ const prev=document.getElementById('inventoryImportPreview');
 if(!prev){return;}
 if(!list.length){ prev.innerHTML='<div class="u-red"><i class=ji data-i=alert-triangle></i> لا توجد بيانات صالحة</div>'; return; }
 const totalValue=list.reduce((s,r)=>s+((r.qty||0)*(r.price||0)),0);
-prev.innerHTML=`<div class="preview-scroll"><div class="u-gold-strong u-mb8">معاينة: ${list.length} صنف | إجمالي القيمة: ${fC(totalValue)}</div><table style="width:100%;font-size:12px;border-collapse:collapse"><tr class="u-faint"><th style="text-align:right;padding:4px">الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th></tr>${list.slice(0,6).map(r=>`<tr style="border-top:1px solid var(--border)"><td style="padding:4px">${esc(String(r.name))}</td><td class="u-ta-c">${fN(r.qty||0)} ${r.unit || ''}</td><td class="u-ta-c">${fC(r.price||0)}</td><td style="text-align:center;color:var(--gold)">${fC((r.qty||0)*(r.price||0))}</td></tr>`).join('')}${list.length>6?`<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:6px">... و${list.length-6} أصناف أخرى</td></tr>`:''}</table></div>`;
-}catch(err){ document.getElementById('inventoryImportPreview').innerHTML='<div class="u-red"><i class=ji data-i=circle-x></i> خطأ في قراءة الملف</div>'; }
+const missingExpiry=list.filter((r)=>r.qty>0&&!normExpiryDate(r.expiryDate)).length;
+const expiryWarn=missingExpiry?`<div class="c-red u-t12 u-my8"><i class=ji data-i=alert-triangle></i> <strong>${missingExpiry}</strong> صفاً بلا تاريخ صلاحية — أضِف عمود «تاريخ الصلاحية» أو اختر «صلاحية الورقة» قبل الاستيراد؛ الخادم يرفضها.</div>`:'';
+prev.innerHTML=`<div class="preview-scroll"><div class="u-gold-strong u-mb8">معاينة: ${list.length} صنف | إجمالي القيمة: ${fC(totalValue)}</div>${expiryWarn}<table style="width:100%;font-size:12px;border-collapse:collapse"><tr class="u-faint"><th style="text-align:right;padding:4px">الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th><th>الصلاحية</th></tr>${list.slice(0,6).map(r=>`<tr style="border-top:1px solid var(--border)"><td style="padding:4px">${esc(String(r.name))}</td><td class="u-ta-c">${fN(r.qty||0)} ${r.unit || ''}</td><td class="u-ta-c">${fC(r.price||0)}</td><td style="text-align:center;color:var(--gold)">${fC((r.qty||0)*(r.price||0))}</td><td class="u-ta-c${r.expiryDate?'':' c-red'}" style="text-align:center">${r.expiryDate?esc(r.expiryDate):'ناقص'}</td></tr>`).join('')}${list.length>6?`<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:6px">... و${list.length-6} أصناف أخرى</td></tr>`:''}</table></div>`;
+}catch(_){ document.getElementById('inventoryImportPreview').innerHTML='<div class="u-red"><i class=ji data-i=circle-x></i> خطأ في قراءة الملف</div>'; }
 }).catch(() => { document.getElementById('inventoryImportPreview').innerHTML='<div class="u-red"><i class=ji data-i=circle-x></i> خطأ في قراءة الملف</div>'; });
 }
 async function importBulkInventory(){
@@ -2512,6 +2598,8 @@ const setBusy=(busy)=>{
 };
 try{
 const rows = await readInventoryImportRows(file);
+// عمود الصلاحية اختياري في الملف؛ وحقل «صلاحية الورقة» يغطّي الصفوف الناقصة — ولا تاريخ يُخترع.
+const sheetExpiry = normExpiryDate(document.getElementById('bulkSheetExpiry')?.value || '');
 const items = inventoryImportRowsFromSheet(rows).map((row) => ({
     name: String(row.name).trim(),
     category: String(row.category || 'عام').trim() || 'عام',
@@ -2519,8 +2607,14 @@ const items = inventoryImportRowsFromSheet(rows).map((row) => ({
     qty: Number(row.qty) || 0,
     price: Number(row.price) || 0,
     minQty: Number(row.minQty) || 5,
+    expiryDate: normExpiryDate(row.expiryDate) || sheetExpiry,
 })).filter((row) => row.name && row.qty > 0 && row.price >= 0);
 if(!items.length){toast('لا توجد صفوف صالحة للاستيراد','error'); return;}
+const noExpiry=items.filter((row)=>!row.expiryDate);
+if(noExpiry.length){
+  toast(`تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف ${noExpiry.slice(0,5).map(r=>r.name).join('، ')}${noExpiry.length>5?` (+${noExpiry.length-5} صنفًا)`:''} — بعمود «تاريخ الصلاحية» في الملف أو بحقل «صلاحية الورقة» أعلاه`,'error');
+  return;
+}
 const existingNames=new Set(STATE.inventory.map(i=>String(i.name||'').toLowerCase()));
 const CHUNK=20;
 const chunks=[];

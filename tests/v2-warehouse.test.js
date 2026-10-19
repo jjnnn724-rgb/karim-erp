@@ -26,6 +26,10 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { evalV2Module } = require('./v2-esm-harness');
+
+/** سياسة الصلاحية الحقيقية (وحدة ESM نقية) — محقونة في كل سياق بدل مرآة يدوية. */
+const EXPIRY = evalV2Module('data/expiry-policy.js');
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
 const V2 = path.join(APP, 'js', 'v2');
@@ -50,6 +54,9 @@ function loadEsm(file, injections = {}, collect = []) {
     const context = {
         console, JSON, String, Number, Boolean, Array, Object, RegExp, Error, Date, Math, Promise,
         Set, Map, Intl, URLSearchParams,
+        normalizeExpiryDate: EXPIRY.normalizeExpiryDate,
+        readExpiryField: EXPIRY.readExpiryField,
+        checkExpiryOnLines: EXPIRY.checkExpiryOnLines,
         ...injections,
     };
     vm.createContext(context);
@@ -677,26 +684,54 @@ describe('V2 inventory write layer — six doors + audit studio (W1-6)', () => {
 
     test('a quick receipt sends what the user typed — the register row carries no cost to fall back on', () => {
         const { repo } = auditRepo();
-        expect(repo.receiptPayload({}, '3', '7.25')).toEqual({ qty: 3, price: 7.25, unit: '' });
-        expect(repo.receiptPayload({ unit: 'كجم' }, '2', 0)).toEqual({ qty: 2, price: 0, unit: 'كجم' });
-        expect(repo.receiptPayload({}, 'abc', '5')).toEqual({ qty: 0, price: 5, unit: '' });  // الخادم يعيد فحص qty>0 (:1602)
+        expect(repo.receiptPayload({}, '3', '7.25')).toEqual({ qty: 3, price: 7.25, unit: '', expiryDate: null });
+        expect(repo.receiptPayload({ unit: 'كجم' }, '2', 0)).toEqual({ qty: 2, price: 0, unit: 'كجم', expiryDate: null });
+        expect(repo.receiptPayload({}, 'abc', '5')).toEqual({ qty: 0, price: 5, unit: '', expiryDate: null });  // الخادم يعيد فحص qty>0 (:1602)
         const row = repo.inventoryToRow({ id: 1, name: 'أرز', qty: 1, unit: 'كجم', avgCost: 9.5 });
         expect(row.avgCost).toBeUndefined();                                 // سقط في قائمة السماح
         expect(repo.receiptPayload(row, '1', '').price).toBe(0);             // فلا تعبئة تلقائية بآخر تكلفة
+        // سياسة المالك 2026-10-19: الصلاحية تُرسل كما كُتبت، والتالف يصير null لا تاريخًا مخترعًا.
+        expect(repo.receiptPayload({}, '1', '2', '2026-11-30').expiryDate).toBe('2026-11-30');
+        expect(repo.receiptPayload({}, '1', '2', '30/11/2026').expiryDate).toBeNull();
     });
 
     test('bulk rows take the legacy defaults and drop what the server would refuse', () => {
         const { repo } = auditRepo();
         expect(repo.bulkReceiptRows([
             { name: ' بطاطس ', qty: '5', price: '3' },
-            { name: 'بصل', category: 'خضار', unit: 'كجم', qty: '2', price: '1.5', minQty: '9' },
+            { name: 'بصل', category: 'خضار', unit: 'كجم', qty: '2', price: '1.5', minQty: '9', expiryDate: '2026-12-01' },
             { name: '', qty: 4, price: 2 },                                   // بلا اسم — يسقط
             { name: 'جزر', qty: 0, price: 1 },                                // كمية صفر — تسقط
             { name: 'كوسة', qty: 2, price: -1 },                              // سعر سالب — يسقط
         ])).toEqual([
-            { name: 'بطاطس', category: 'عام', unit: 'قطعة', qty: 5, price: 3, minQty: 5 },
-            { name: 'بصل', category: 'خضار', unit: 'كجم', qty: 2, price: 1.5, minQty: 9 },
+            { name: 'بطاطس', category: 'عام', unit: 'قطعة', qty: 5, price: 3, minQty: 5, expiryDate: null },
+            { name: 'بصل', category: 'خضار', unit: 'كجم', qty: 2, price: 1.5, minQty: 9, expiryDate: '2026-12-01' },
         ]);
+    });
+
+    test('سياسة الصلاحية: حِمل الوارد الجماعي والاستيراد لا يُخترع فيه تاريخ', () => {
+        const { repo } = auditRepo();
+        const rows = repo.bulkReceiptRows([{ name: 'لبن', qty: '4', price: '10', expiryDate: '2027-01-05' }]);
+        expect(EXPIRY.checkExpiryOnLines(rows).ok).toBe(true);
+        expect(EXPIRY.checkExpiryOnLines(repo.bulkReceiptRows([{ name: 'لبن', qty: '4', price: '10' }])).code)
+            .toBe('EXPIRY_DATE_REQUIRED');
+        // الاستيراد من ورقة: العمود السابع أولًا، وتاريخ الورقة للصفوف الناقصة فقط.
+        const sheet = repo.inventoryImportRowsFromSheet([['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى', 'تاريخ الصلاحية'],
+            ['دجاج', 'لحوم', 'كجم', 10, 25, 5, '2026-11-30'], ['أرز', 'حبوب', 'كيس', 20, 4, 5, '']]);
+        const payload = repo.inventoryImportPayload(sheet);
+        expect(payload.map((r) => r.expiryDate)).toEqual(['2026-11-30', null]);
+        expect(repo.applySheetExpiry(payload, '2026-12-31').map((r) => r.expiryDate)).toEqual(['2026-11-30', '2026-12-31']);
+        expect(repo.applySheetExpiry(payload, '').map((r) => r.expiryDate)).toEqual(['2026-11-30', null]);
+        // XLSX.read بلا cellDates يعيد التاريخ رقمًا تسلسليًا — كان يُقرأ «ليس تاريخًا».
+        // والتسلسل تاريخٌ تقويمي: اليوم نفسه في أي منطقة زمنية (46000 = 2025-12-09).
+        const serial = repo.inventoryImportRowsFromSheet([['بصل', 'خضار', 'كجم', 5, 8, 2, 46000]]);
+        expect(serial[0].expiryDate).toBe('2025-12-09');
+        expect(repo.inventoryImportPayload(serial)[0].expiryDate).toBe('2025-12-09');
+        expect(repo.sheetExpiryCell(46000)).toBe('2025-12-09');
+        expect(repo.sheetExpiryCell('خالي')).toBeNull();
+        expect(repo.sheetExpiryCell('')).toBeNull();
+        expect(repo.sheetExpiryCell(5)).toBeNull();                      // ليس نطاق تسلسلي معقول
+        expect(repo.sheetExpiryCell('2026-11-30')).toBe('2026-11-30');
     });
 
     test('the movements guard reads the code or the legacy sentence, nothing else', () => {

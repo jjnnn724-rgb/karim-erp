@@ -102,7 +102,7 @@ import {
     invWriteVisible, invForceVisible, invDirectVisible, invMergeVisible,
     receiptPayload, receiveInventoryItem,
     bulkReceiptRows, bulkReceiveInventory, BULK_CHUNK,
-    importCell, inventoryImportRowsFromSheet, inventoryImportPayload,
+    importCell, inventoryImportRowsFromSheet, inventoryImportPayload, applySheetExpiry,
     catalogRowsFromSheet, createInventoryItem, duplicateNameError,
     deleteInventoryItem, forceDeleteInventoryItem, hasMovementsError,
     directEditError, directEditPayload, directEditInventoryItem,
@@ -115,6 +115,7 @@ import {
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
 } from '../data/inventory-repo.js?v=4.9.169';
 import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.169';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.169';
 import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.169';
 import { ensureXlsx } from '../vendor.js?v=4.9.169';
 import {
@@ -591,10 +592,13 @@ export function mountWarehouseScreen(host, ctx = {}) {
                <input class="erp-input" type="number" min="0.01" step="0.01" value="1" data-v2-receipt-qty></label>
              <label class="erp-field"><span class="erp-label">سعر الشراء</span>
                <input class="erp-input" type="number" min="0" step="0.01" data-v2-receipt-price placeholder="مطلوب"></label>
+             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية <span class="erp-req" aria-hidden="true">*</span></span>
+               <input class="erp-input" type="date" data-v2-receipt-expiry aria-required="true" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن"></label>
              <p class="erp-text-sm erp-text-muted">
                الوحدة المسجلة: <span class="erp-addr" dir="ltr">${esc(row.unit || '—')}</span> —
                الخادم يرفض أي وحدة أخرى. في القديم كان السعر يُملأ تلقائيًا بآخر تكلفة مسجّلة؛
                هذه الشاشة لا تعرض التكلفة عمدًا، فاكتب السعر صراحةً — الفراغ أو الصفر يفسد متوسط التكلفة.
+               <strong>تاريخ الصلاحية إلزامي</strong>: لا تُقبل بضاعة بلا صلاحيته.
              </p>
              ${panelActions('إضافة للمخزون', 'save')}`);
     }
@@ -628,6 +632,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="qty" placeholder="الكمية" aria-label="الكمية">
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="price" placeholder="السعر" aria-label="السعر">
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="min" placeholder="الحد الأدنى (5)" aria-label="الحد الأدنى">
+            <input class="erp-input" type="date" data-v2-bf="expiry" aria-label="تاريخ الصلاحية" aria-required="true" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن">
             <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-remove-row aria-label="حذف الصف"><i class="ji" data-i="x" aria-hidden="true"></i></button>
           </div>`;
     }
@@ -650,6 +655,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
              <div class="erp-stack" data-v2-bulk-fail></div>
              <p class="erp-text-sm erp-text-muted">
                يُرسل كل ${formatInt(BULK_CHUNK)} صنفًا في دفعة (مهلة الطلب) — نفس تقسيم القديم.
+               <strong>تاريخ الصلاحية إلزامي لكل صف:</strong> لا يدخل المخزن صنف بلا صلاحيته.
                ${esc(windowNote)}
              </p>
              ${panelActions('استيراد المخزون', 'upload')}`);
@@ -693,13 +699,13 @@ export function mountWarehouseScreen(host, ctx = {}) {
         const rows = isCatalog
             ? [['اسم الصنف', 'الفئة', 'الوحدة', 'الحد الأدنى'],
                 ['دجاج', 'لحوم', 'كجم', 5], ['أرز', 'حبوب', 'كيس', 10], ['زيت', 'زيوت', 'لتر', 3]]
-            : [['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى'],
-                ['دجاج', 'لحوم', 'كجم', 50, 25, 10], ['أرز', 'حبوب', 'كيس', 100, 3.5, 20],
-                ['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5]];
+            : [['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى', 'تاريخ الصلاحية'],
+                ['دجاج', 'لحوم', 'كجم', 50, 25, 10, '2026-11-30'], ['أرز', 'حبوب', 'كيس', 100, 3.5, 20, '2027-06-30'],
+                ['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5, '2027-03-31']];
         const ws = X.utils.aoa_to_sheet(rows);
         ws['!cols'] = isCatalog
             ? [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 12 }]
-            : [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+            : [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
         const wb = X.utils.book_new();
         X.utils.book_append_sheet(wb, ws, isCatalog ? 'الأصناف' : 'المخزون');
         X.writeFile(wb, isCatalog ? 'نموذج_قائمة_الأصناف.xlsx' : 'نموذج_استيراد_المخزون.xlsx');
@@ -716,7 +722,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             : `حكم «جديد/محدَّث» محسوب على السجل المحمّل (${formatInt(allRows.length)} صنفًا).`;
         return panelShell('استيراد المخزون من Excel', 'upload',
             `<div class="erp-flow-note" data-tone="info">
-               <strong>صيغة الملف:</strong> الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى
+               <strong>صيغة الملف:</strong> الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى، تاريخ الصلاحية (YYYY-MM-DD)
              </div>
              <div class="erp-flow-note" data-tone="warning">
                <strong>تنبيه:</strong> إذا كان الصنف موجودًا مسبقًا، سيتم تحديث كميته وسعره فقط.
@@ -725,6 +731,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
                <i class="ji" data-i="download" aria-hidden="true"></i><span>تحميل نموذج Excel</span></button></div>
              <label class="erp-field"><span class="erp-label">اختر ملف Excel أو CSV</span>
                <input class="erp-input" type="file" accept=".xlsx,.xls,.csv" data-v2-excel-file></label>
+             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية للأصناف التي بلا عمود صلاحية في الملف <span class="erp-req" aria-hidden="true">*</span></span>
+               <input class="erp-input" type="date" data-v2-excel-expiry title="يُطبَّق على الصفوف الناقصة فقط — عمود الصلاحية في الملف له الأولوية"></label>
              <div class="erp-stack" data-v2-excel-progress hidden>
                <div class="erp-wh-import-head">
                  <span class="erp-text-sm" data-v2-excel-phase></span>
@@ -739,18 +747,25 @@ export function mountWarehouseScreen(host, ctx = {}) {
 
     function excelPreviewHtml(list, currency) {
         const total = list.reduce((sum, r) => sum + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
-        const rowHtml = list.slice(0, 6).map((r) => `<tr>
+        // سياسة المالك: ما سيرفضه الخادم يُرى في المعاينة قبل الرفع — كما في القديم.
+        const missingExpiry = list.filter((r) => (Number(r.qty) || 0) > 0 && !normalizeExpiryDate(r.expiryDate)).length;
+        const rowHtml = list.slice(0, 6).map((r) => {
+            const expiry = normalizeExpiryDate(r.expiryDate);
+            return `<tr>
             <td>${esc(r.name)}</td>
             <td>${formatQty(r.qty)} ${esc(r.unit || '')}</td>
             <td>${esc(importMoneyText(r.price, currency))}</td>
             <td>${esc(importMoneyText((Number(r.qty) || 0) * (Number(r.price) || 0), currency))}</td>
-          </tr>`).join('');
+            <td class="${expiry ? 'erp-num' : 'erp-text-danger'}">${expiry ? esc(expiry) : 'ناقص'}</td>
+          </tr>`;
+        }).join('');
         return `<div class="erp-text-sm">
             <strong>معاينة: ${formatInt(list.length)} صنف</strong> | إجمالي القيمة: ${esc(importMoneyText(total, currency))}
           </div>
+          ${missingExpiry ? `<div class="erp-flow-note" data-tone="warning"><strong>${formatInt(missingExpiry)}</strong> صفاً بلا تاريخ صلاحية — أضِف عمود «تاريخ الصلاحية» في الملف أو اختر التاريخ أعلاه؛ الخادم يرفضها.</div>` : ''}
           <div class="erp-wh-audit-scroll">
             <table class="erp-wh-audit-table">
-              <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th></tr></thead>
+              <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th><th>الصلاحية</th></tr></thead>
               <tbody>${rowHtml}</tbody>
             </table>
           </div>
@@ -830,16 +845,23 @@ export function mountWarehouseScreen(host, ctx = {}) {
         const file = fileInput && fileInput.files ? fileInput.files[0] : null;
         if (!file) {notify('اختر ملف Excel أولاً', 'error'); return;}
         const seq = panelSeq;
+        const sheetExpiryRaw = String(panelEl.querySelector('[data-v2-excel-expiry]')?.value ?? '').trim();
         let items;
         try {
             const rows = await readSheetRows(file);
-            items = inventoryImportPayload(inventoryImportRowsFromSheet(rows));
+            items = applySheetExpiry(inventoryImportPayload(inventoryImportRowsFromSheet(rows)), sheetExpiryRaw);
         } catch (e) {
             notify(readErrorText(e), 'error');
             return;
         }
         if (!panelAlive(seq)) {return;}
         if (!items.length) {notify('لا توجد صفوف صالحة للاستيراد', 'error'); return;}
+        const excelExpiryGate = checkExpiryOnLines(items);
+        if (!excelExpiryGate.ok) {
+            notify(`${excelExpiryGate.message} — أضِف عمود تاريخ الصلاحية في الملف أو اختر التاريخ أعلاه`, 'error');
+            panelEl.querySelector('[data-v2-excel-expiry]')?.focus();
+            return;
+        }
 
         const chunks = [];
         for (let i = 0; i < items.length; i += BULK_CHUNK) {chunks.push(items.slice(i, i + BULK_CHUNK));}
@@ -1072,9 +1094,16 @@ export function mountWarehouseScreen(host, ctx = {}) {
             notify('أدخل سعر الشراء — هنا لا يُملأ تلقائيًا بآخر تكلفة (السجل لا يحملها)، والفراغ يُرفض معلنًا');
             return;
         }
+        const expiryRaw = String(panelEl.querySelector('[data-v2-receipt-expiry]')?.value ?? '').trim();
+        const expiryGate = checkExpiryOnLines([{ itemName: row.name, qty, price, expiryDate: expiryRaw }]);
+        if (!expiryGate.ok) {
+            notify(expiryGate.message, 'error');
+            panelEl.querySelector('[data-v2-receipt-expiry]')?.focus();
+            return;
+        }
         busy = true;
         try {
-            await receiveInventoryItem(row.id, receiptPayload(row, qty, price));
+            await receiveInventoryItem(row.id, receiptPayload(row, qty, price, expiryRaw));
             closePanel();
             notify(`تم إضافة ${formatQty(qty)}${row.unit ? ' ' + row.unit : ''} إلى ${row.name}`);
             await reload();
@@ -1120,9 +1149,16 @@ export function mountWarehouseScreen(host, ctx = {}) {
             qty: r.querySelector('[data-v2-bf="qty"]')?.value || '',
             price: r.querySelector('[data-v2-bf="price"]')?.value || '',
             minQty: r.querySelector('[data-v2-bf="min"]')?.value || '',
+            expiryDate: r.querySelector('[data-v2-bf="expiry"]')?.value || '',
         });
         const items = bulkReceiptRows([...panelEl.querySelectorAll('[data-v2-bulk-row]')].map(readRow));
         if (!items.length) {notify('لا توجد صفوف صالحة للاستيراد'); return;}
+        const bulkExpiryGate = checkExpiryOnLines(items);
+        if (!bulkExpiryGate.ok) {
+            notify(bulkExpiryGate.message, 'error');
+            panelEl.querySelector('[data-v2-bf="expiry"]')?.focus();
+            return;
+        }
         const existingNames = new Set(allRows.map((i) => String(i.name || '').toLowerCase()));
         const chunks = [];
         for (let i = 0; i < items.length; i += BULK_CHUNK) {chunks.push(items.slice(i, i + BULK_CHUNK));}

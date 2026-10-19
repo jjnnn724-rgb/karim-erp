@@ -42,6 +42,7 @@ const { guardCreate } = require('./submit-guard');
 const { router: hrRouter } = require('./hr-routes');
 const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode, deptsMatch } = require('./warehouse-routes');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
+const { normalizeExpiryDate, readExpiryField } = require('./expiry-policy');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
 const { router: stocktakingRouter, ensureStocktakingSchema } = require('./stocktaking-routes');
 const { router: inventoryTransferRouter } = require('./inventory-transfer-routes');
@@ -1371,6 +1372,40 @@ async function validateDeptCashierLink(filtered, currentId = null) {
     return { ...filtered, dept_code: deptCode, cashier_no: cashierNo };
 }
 
+/**
+ * حرس تاريخ الصلاحية على البوابة العامة (طلب المالك 2026-10-19: «لا تقبل بدون
+ * تاريخ صلاحيه دخول المنتج للمخزن»).
+ *
+ * تاريخ الصلاحية تاريخ **دُفعة** لا عمود في جدول inventory — الحقيقة لكل دُفعة
+ * في inventory_ledger.expiry_date. لذا يُقرأ من الطلب هنا قبل الترشيح، يُتحقق
+ * منه، ثم يُزال من الجسم ويُمرَّر إلى قيد الرصيد الافتتاحي.
+ * @returns {{expiryDate: (string|null), error?: {error:string, message:string}}}
+ */
+function checkInventoryOpeningExpiry(entity, body) {
+    if (entity !== 'inventory') {return { expiryDate: null };}
+    const raw = readExpiryField(body || {});
+    const expiryDate = normalizeExpiryDate(raw);
+    const qty = Number((body || {}).qty) || 0;
+    if (qty <= 0) {return { expiryDate };}
+    if (!raw) {
+        return { expiryDate: null, error: { error: 'EXPIRY_DATE_REQUIRED', message: 'تاريخ الصلاحية إلزامي عند إدخال صنف للمخزن برصيد — أضِف تاريخ الصلاحية (YYYY-MM-DD)' } };
+    }
+    if (!expiryDate) {
+        return { expiryDate: null, error: { error: 'INVALID_EXPIRY_DATE', message: `تاريخ الصلاحية غير صحيح (${String(raw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` } };
+    }
+    return { expiryDate };
+}
+
+/** إسقاط حقول الصلاحية المكافئة من الجسم حتى لا تُرفض كحقل غير مسموح. */
+function dropExpiryFields(req) {
+    const body = req.body;
+    if (!body || typeof body !== 'object') {return;}
+    const aliases = ['expiryDate', 'expiry_date', 'bestBefore', 'best_before'];
+    if (!aliases.some((key) => Object.prototype.hasOwnProperty.call(body, key))) {return;}
+    req.body = { ...body };
+    for (const key of aliases) {delete req.body[key];}
+}
+
 async function validateEmployeeUserLink(entity, filtered, currentId = null) {    if (entity !== 'employees' || !Object.prototype.hasOwnProperty.call(filtered, 'userId')) {return;}
     const userId = filtered.userId == null || filtered.userId === '' ? null : Number(filtered.userId);
     if (userId == null) {return;}
@@ -1591,6 +1626,10 @@ entities.forEach(entity => {
         const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
         app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist (CRITICAL FIX) ──
+            // حرس الصلاحية (طلب المالك 2026-10-19): لا رصيد افتتاحي بلا تاريخ صلاحية.
+            const expiryGuardA = checkInventoryOpeningExpiry(entity, req.body);
+            if (expiryGuardA.error) {return res.status(422).json(expiryGuardA.error);}
+            dropExpiryFields(req);
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
 
             if (errors.length > 0 || removedKeys.length > 0) {
@@ -1784,6 +1823,7 @@ entities.forEach(entity => {
                                 unitCost: Number(result.rows[0].avgCost) || 0,
                                 referenceType: 'inventory_create', referenceId: String(result.rows[0].id),
                                 idempotencyKey: `inventory-create-opening:${result.rows[0].id}`,
+                                expiryDate: expiryGuardA.expiryDate || null,
                                 reason: 'رصيد افتتاحي عند إنشاء الصنف', metadata: { created_via: 'generic_crud' },
                             });
                         }
@@ -1825,6 +1865,10 @@ entities.forEach(entity => {
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist ──
+            // نفس حرس الصلاحية في المعالج الآخر (البوابة ذات الأدوار المفتوحة).
+            const expiryGuardB = checkInventoryOpeningExpiry(entity, req.body);
+            if (expiryGuardB.error) {return res.status(422).json(expiryGuardB.error);}
+            dropExpiryFields(req);
             const { filtered: f0, errors, removedKeys } = filterBody(entity, req.body);
 
             if (errors.length > 0 || removedKeys.length > 0) {
@@ -1939,6 +1983,7 @@ entities.forEach(entity => {
                                 unitCost: Number(result.rows[0].avgCost) || 0,
                                 referenceType: 'inventory_create', referenceId: String(result.rows[0].id),
                                 idempotencyKey: `inventory-create-opening:${result.rows[0].id}`,
+                                expiryDate: expiryGuardB.expiryDate || null,
                                 reason: 'رصيد افتتاحي عند إنشاء الصنف', metadata: { created_via: 'generic_crud_open_roles' },
                             });
                         }
@@ -1982,6 +2027,7 @@ entities.forEach(entity => {
         const updateRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
         app.put(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(updateRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
+            dropExpiryFields(req); // الصلاحية تُقيَّد في الدفتر عبر مسارات الاستلام، لا عبر التعديل العام
             if (entity === 'dispatches') {return res.status(405).json({ error: 'DISPATCH_WORKFLOW_REQUIRED', message: 'استخدم مسار دورة إذن الصرف المخصص بدل تعديل الحالة مباشرة' });}
             
             // ─── SECURITY: Filter body against whitelist ──
@@ -2086,6 +2132,7 @@ entities.forEach(entity => {
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.put(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
+            dropExpiryFields(req); // نفس القاعدة: لا تعديل عام لتاريخ الصلاحية — مسارات الاستلام هي الحكم
             
             // ─── SECURITY: Filter body against whitelist ──
             const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");

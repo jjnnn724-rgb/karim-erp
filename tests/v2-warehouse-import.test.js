@@ -8,11 +8,16 @@
  *   • النموذجان بنفس الصفوف والورقة واسم الملف.
  *   • المكتبة تُطلب عند الحاجة وحدها، والقراءة بالـAPIs الحديثة.
  *   • النصوص (التنبيه، التقدم، الفشل الجزئي، رسالة النجاح) كما في القديم.
+ *   • الصلاحية (المالك 2026-10-19): العمود السابع، وورقة بلا عمود صلاحية
+ *     تأخذ تاريخ العامل، ولا تاريخ يُخترع عند غياب الاثنين.
  *   • القديم نفسه لم يُمس.
  */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { evalV2Module } = require('./v2-esm-harness');
+
+const EXPIRY = evalV2Module('data/expiry-policy.js');
 
 const ROOT = path.join(__dirname, '..');
 const APP = path.join(ROOT, 'frontend', 'app');
@@ -21,8 +26,8 @@ const SCREEN = path.join(APP, 'js', 'v2', 'screens', 'warehouse.js');
 const LEGACY = path.join(APP, 'js', 'features', 'warehouse.js');
 
 const IMPORTS = ['importCell', 'importNumber', 'inventoryImportRowsFromSheet',
-    'inventoryImportPayload', 'catalogRowsFromSheet', 'catalogItemPayload',
-    'createInventoryItem', 'duplicateNameError'];
+    'inventoryImportPayload', 'applySheetExpiry', 'catalogRowsFromSheet',
+    'catalogItemPayload', 'createInventoryItem', 'duplicateNameError'];
 
 function loadRepo(apiFetch = jest.fn(async () => ({}))) {
     const stripped = fs.readFileSync(REPO, 'utf8')
@@ -33,6 +38,7 @@ function loadRepo(apiFetch = jest.fn(async () => ({}))) {
     const context = {
         console, JSON, String, Number, Boolean, Array, Object, RegExp, Error, Date, Math,
         Promise, Set, Map, Intl, URLSearchParams, apiFetch,
+        normalizeExpiryDate: EXPIRY.normalizeExpiryDate,
         formatMoney: (v) => ({ amount: String(v), unit: '', hasUnit: false }),
     };
     vm.createContext(context);
@@ -71,7 +77,7 @@ describe('تحليل خلايا الملف — parseInventoryImportCell/Number �
         ]);
         expect(withHeader).toHaveLength(1);
         expect(withHeader[0]).toEqual({ name: 'دجاج', category: 'لحوم', unit: 'كجم',
-            qty: 50, price: 25, minQty: 10 });
+            qty: 50, price: 25, minQty: 10, expiryDate: null });
 
         const noHeader = repo.inventoryImportRowsFromSheet([['أرز', '', '', '3', '4.5', '']]);
         expect(noHeader).toHaveLength(1);                         // لا يُحذف أول صف بلا رأس
@@ -101,7 +107,7 @@ describe('تحليل خلايا الملف — parseInventoryImportCell/Number �
             { name: '', qty: 3, price: 1 },
         ]);
         expect(items).toEqual([{ name: 'أرز', category: 'عام', unit: 'قطعة',
-            qty: 4, price: 2, minQty: 5 }]);
+            qty: 4, price: 2, minQty: 5, expiryDate: null }]);
     });
 });
 
@@ -158,27 +164,42 @@ describe('الشاشة — زرّان، نماذج القديم، وتحميل �
         expect(s).toContain("else if (panelKind === 'catalog') {submitCatalog();}");
     });
 
-    test('نموذج المخزون: نفس الصفوف والورقة والاسم', () => {
+    test('نموذج المخزون: نفس الصفوف والورقة والاسم، وعمود الصلاحية السابع', () => {
         const s = screen();
-        for (const text of ['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى']) {
+        for (const text of ['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى', 'تاريخ الصلاحية']) {
             expect(s).toContain(`'${text}'`);
         }
-        expect(s).toContain("['دجاج', 'لحوم', 'كجم', 50, 25, 10]");
-        expect(s).toContain("['أرز', 'حبوب', 'كيس', 100, 3.5, 20]");
-        expect(s).toContain("['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5]");
+        expect(s).toContain("['دجاج', 'لحوم', 'كجم', 50, 25, 10, '2026-11-30']");
+        expect(s).toContain("['أرز', 'حبوب', 'كيس', 100, 3.5, 20, '2027-06-30']");
+        expect(s).toContain("['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5, '2027-03-31']");
         expect(s).toContain("isCatalog ? 'الأصناف' : 'المخزون'");
         expect(s).toContain("'نموذج_استيراد_المخزون.xlsx'");
         expect(s).toContain("'نموذج_قائمة_الأصناف.xlsx'");
-        // نفس الصفوف موجودة في القديم — التكافؤ لا الذاكرة.
+        // نفس الصفوف موجودة في القديم — التكافؤ لا الذاكرة (والقديم أخذ العمود السابع مثله).
         const old = legacy();
-        expect(old).toContain("['دجاج','لحوم','كجم',50,25,10]");
+        expect(old).toContain("['دجاج','لحوم','كجم',50,25,10,'2026-11-30']");
         expect(old).toContain("'نموذج_استيراد_المخزون.xlsx'");
         expect(old).toContain("'نموذج_قائمة_الأصناف.xlsx'");
     });
 
+    test('بوابة الصلاحية في الاستيراد: حقل الورقة + رسالة التصحيح', () => {
+        const s = screen();
+        expect(s).toContain('data-v2-excel-expiry');
+        expect(s).toContain('تاريخ الصلاحية للأصناف التي بلا عمود صلاحية في الملف');
+        expect(s).toContain('أضِف عمود تاريخ الصلاحية في الملف أو اختر التاريخ أعلاه');
+        expect(s).toContain('applySheetExpiry(');
+        expect((s.match(/applySheetExpiry\(/g) || []).length).toBe(1);
+        // المعاينة تُظهر ما سيُرفض: عمود الصلاحية وتنبيه الصفوف الناقصة (مثل القديم).
+        expect(s).toContain('<th>الصلاحية</th>');
+        expect(s).toContain("erp-text-danger'}\">${expiry ? esc(expiry) : 'ناقص'}");
+        expect(s).toContain('صفاً بلا تاريخ صلاحية');
+        // ثلاث بوابات فقط: الوارد المفرد والجماعي والاستيراد — الكتالوج (qty=0) لا بوابة له.
+        expect((s.match(/checkExpiryOnLines\(/g) || []).length).toBe(3);
+    });
+
     test('نصوص القديم: الصيغة، التنبيه، اختيار الملف، التقدم، والفشل الجزئي', () => {
         const s = screen();
-        expect(s).toContain('الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى');
+        expect(s).toContain('الأعمدة: اسم الصنف، الفئة، الوحدة، الكمية، سعر الشراء، الحد الأدنى، تاريخ الصلاحية (YYYY-MM-DD)');
         expect(s).toContain('الأعمدة: اسم الصنف، الفئة، الوحدة، الحد الأدنى');
         expect(s).toContain('إذا كان الصنف موجودًا مسبقًا، سيتم تحديث كميته وسعره فقط.');
         expect(s).toContain('اختر ملف Excel أو CSV');

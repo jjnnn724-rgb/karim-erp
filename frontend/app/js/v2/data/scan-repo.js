@@ -270,6 +270,17 @@ export function dropLine(lines, key) {
     return (Array.isArray(lines) ? lines : []).filter((l) => l && String(l.key) !== String(key));
 }
 
+/**
+ * تاريخ الصلاحية على السطر (سياسة المالك 2026-10-19: لا بضاعة تدخل المخزن
+ * بلا صلاحيته). يُخزَّن كما كتب أمين المخزن — الفراغ يبقى null فيرفضه
+ * الخادم 422 بصفحته، ولا تاريخ يُخترع من اليوم.
+ */
+export function setLineExpiry(lines, key, expiryRaw) {
+    const value = String(expiryRaw ?? '').trim();
+    return (Array.isArray(lines) ? lines : [])
+        .map((l) => (String(l && l.key) === String(key) ? { ...l, expiryDate: value || null } : l));
+}
+
 export function sessionTotals(lines) {
     const list = Array.isArray(lines) ? lines : [];
     return list.reduce((acc, l) => ({

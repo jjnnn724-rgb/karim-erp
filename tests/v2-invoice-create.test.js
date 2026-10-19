@@ -11,10 +11,16 @@
  *   • البحث الذكي منقول عن features/smart-item-search.js: التطبيع العربي،
  *     ترتيب 120/100/80/60، كل الكلمات شرط، والسقف 30.
  *   • الشاشة لا شبكة فيها، والمحرر لا يكتب إلا عبر مستودع الكتابة.
+ *   • الصلاحية (سياسة المالك 2026-10-19): حقل إلزامي على كل سطر، وبوابته
+ *     في المحرر تُصدر رسالة الخادم نفسها قبل القفل والشبكة.
  */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { evalV2Module } = require('./v2-esm-harness');
+
+// الرموز المستوردة في المستودع الحقيقي — محقونة من مصدرها لا من مرآة يدوية.
+const EXPIRY = evalV2Module('data/expiry-policy.js');
 
 const ROOT = path.join(__dirname, '..');
 const APP = path.join(ROOT, 'frontend', 'app');
@@ -37,6 +43,9 @@ function loadModule(file, exports, injections = {}) {
         .replace(/^export\s+/gm, '');
     const ctx = {
         console, JSON, String, Number, Boolean, Array, Object, RegExp, Error, Math, Promise,
+        Date, isNaN, parseFloat, parseInt,
+        normalizeExpiryDate: EXPIRY.normalizeExpiryDate,
+        readExpiryField: EXPIRY.readExpiryField,
         ...injections,
     };
     vm.createContext(ctx);
@@ -98,8 +107,18 @@ describe('مستودع الكتابة — سطور الفاتورة والنمو
         });
         expect(items).toEqual([{
             itemId: 7, itemName: 'دجاج', qty: 2, price: 30, unit: 'وحدة', weight: '',
-            taxCategory: 'ZERO_RATED', packagingQty: 4, packagingUom: 'كرتون',
+            taxCategory: 'ZERO_RATED', packagingQty: 4, packagingUom: 'كرتون', expiryDate: '',
         }]);
+    });
+
+    test('الصلاحية تُقرأ من camelCase وsnake_case على السطر المُوفَّق', () => {
+        expect(repo.invoiceItemsFromRow({ items: [{ name: 'لبن', expiryDate: '2026-11-30T00:00:00.000Z' }] })[0].expiryDate)
+            .toBe('2026-11-30');
+        expect(repo.invoiceItemsFromRow({ items: [{ name: 'لبن', expiry_date: '2027-01-05' }] })[0].expiryDate)
+            .toBe('2027-01-05');
+        // تاريخ غير موفَّق يبقى فارغًا — المحرر يعلّمه ناقصًا بدل أن يخترع له بديلًا.
+        expect(repo.invoiceItemsFromRow({ items: [{ name: 'لبن', expiry_date: '30/11/2026' }] })[0].expiryDate)
+            .toBe('');
     });
 
     test('items تالفة أو غائبة → مصفوفة فارغة لا انفجار', () => {
@@ -147,10 +166,22 @@ describe('مستودع الكتابة — الحمولة الحرفية', () => 
         expect(p.discountValue).toBe(5);
         expect(p.items).toEqual([{
             itemId: null, itemName: 'دجاج', qty: 2, price: 30.5,
-            unit: 'وحدة', weight: 0, taxCategory: 'EXEMPT',
+            unit: 'وحدة', weight: 0, taxCategory: 'EXEMPT', expiryDate: null,
         }]);
         // القديم أرسل undefined فيُحذف المفتاح — الخادم يسدد تلقائيًا.
         expect('paidAmount' in p).toBe(false);
+    });
+
+    test('الصلاحية تُطوى في السطر كما هي: YYYY-MM-DD أو null، ولا تُخترع', () => {
+        const p = repo.purchaseInvoicePayload({
+            items: [
+                { itemName: 'لبن', qty: 1, price: 10, expiryDate: '2026-11-30' },
+                { itemName: 'سمن', qty: 1, price: 10, expiry_date: '2027-02-01' },
+                { itemName: 'ملح', qty: 1, price: 10, expiryDate: '30/11/2026' },
+                { itemName: 'سكر', qty: 1, price: 10 },
+            ],
+        });
+        expect(p.items.map((l) => l.expiryDate)).toEqual(['2026-11-30', '2027-02-01', null, null]);
     });
 
     test('المسدد يُرسل فقط عند لمسه ويقبل الصفر', () => {
@@ -186,7 +217,19 @@ describe('مستودع الكتابة — البابان', () => {
         const body = JSON.parse(calls[0].opts.body);
         expect(body.items).toHaveLength(1);
         expect(body.items[0].itemName).toBe('أرز');
+        expect(body.items[0]).toHaveProperty('expiryDate', null);
         expect(body).not.toHaveProperty('paidAmount');
+    });
+
+    test('الباب يرسل الصلاحية كما يملؤها المحرر — ولا شيء يُحذف في الطريق', async () => {
+        const calls = [];
+        const ctx = loadModule(WRITE_REPO, ['createPurchaseInvoice'],
+            { apiFetch: async (p, opts) => { calls.push(JSON.parse(opts.body)); return { ok: true }; } });
+        await ctx.createPurchaseInvoice({
+            invoiceNumber: 'INV-2', date: '2026-10-17',
+            items: [{ itemName: 'لبن', qty: 1, price: 10, expiryDate: '2026-11-30' }],
+        });
+        expect(calls[0].items[0].expiryDate).toBe('2026-11-30');
     });
 
     test('PUT يرفض المعرّف غير الصحيح قبل الشبكة', async () => {
@@ -365,11 +408,51 @@ describe('المحرر — أمين على القديم', () => {
     });
 
     test('مدخلات الأصناف كلها موجودة، وحارس النقر المزدوج', () => {
-        for (const field of ['name', 'qty', 'unit', 'weight', 'price', 'taxCategory']) {
+        for (const field of ['name', 'qty', 'unit', 'weight', 'expiryDate', 'price', 'taxCategory']) {
             expect(editorSrc).toContain(`data-vi-item="${field}"`);
         }
         expect(editorSrc).toMatch(/if \(saving\) \{\s*notify\('جارٍ حفظ الفاتورة\.\.\. انتظر', 'info'\);/);
         expect(editorSrc).toMatch(/if \(saveBtn\) \{saveBtn\.disabled = true;\}/);
+    });
+
+    test('الصلاحية حقلٌ على كل سطر: إلزامي موسوم، وعلامته لا تسبق محاولة الحفظ', () => {
+        expect(editorSrc).toMatch(/import \{ checkExpiryOnLines, normalizeExpiryDate \} from '\.\/data\/expiry-policy\.js\?v=/);
+        expect(editorSrc).toContain('data-vi-expiry="${idx}"');
+        expect(editorSrc).toContain('aria-required="true"');
+        expect(editorSrc).toContain('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن.');
+        expect(editorSrc).toMatch(/let expiryChecked = false;/);
+        // العلامة لا تُرسم إلا بعد فشلٍ واحد، وعلى الأسطر الصالحة للكمية فقط.
+        expect(editorSrc).toMatch(/const missing = expiryChecked && String\(item\.itemName \|\| ''\)\.trim\(\) !== ''\s*&& num\(item\.qty\) > 0 && !normalizeExpiryDate\(item\.expiryDate\);/);
+        expect(editorSrc).toMatch(/else if \(key === 'expiryDate'\) \{row\.expiryDate = node\.value;\}/);
+        expect(editorSrc).toContain('paintExpiryMarks();');
+    });
+
+    test('بوابة الصلاحية قبل saving = true — رسالة الخادم بلا دورة شبكة', () => {
+        const at = editorSrc.indexOf('const expiryGate = checkExpiryOnLines(valid);');
+        expect(at).toBeGreaterThan(-1);
+        const gate = editorSrc.slice(at, at + 520);
+        expect(gate).toMatch(/expiryChecked = true;\s*paintExpiryMarks\(\);\s*notify\(expiryGate\.message, 'error'\);/);
+        expect(gate).toMatch(/q\('\[data-vi-expiry\]\.is-missing \[data-vi-item="expiryDate"\]'\)/);
+        expect(gate).toMatch(/return;/);
+        expect(gate).toMatch(/saving = true;/);                     // البوابة تسبق القفل
+        expect(gate.indexOf('return;')).toBeLessThan(gate.indexOf('saving = true;'));
+        // بعد نجاح المحاولة تُرفع العلامات حتى لا تبقى صفراء على سطرٍ مكتمل.
+        expect(editorSrc).toMatch(/if \(expiryChecked\) \{expiryChecked = false; paintExpiryMarks\(\);\}/);
+    });
+});
+
+/* ─── CSS المحرر — الصلاحية ضمن الشبكة ──────────────────────────────────── */
+
+describe('تنسيق المحرر — عمود الصلاحية', () => {
+    test('السطر صار تسعة مسارات، وعلامة النقص بألوان الخطر من الرموز', () => {
+        const row = (cssSrc.match(/\.erp-v2 \.erp-vi-row \{[\s\S]*?\}/) || [''])[0];
+        expect(row).toBeTruthy();
+        expect((row.match(/minmax\(/g) || []).length).toBe(8);      // + auto للإزالة
+        expect(row).toContain('minmax(8.5rem, 1.1fr)');             // عمود التاريخ
+        expect(cssSrc).toMatch(/\.erp-vi-expiry \.erp-label|\.erp-vi-expiry input\[type="date"\]/);
+        expect(cssSrc).toMatch(/\.erp-vi-expiry\.is-missing \.erp-label \{ color: var\(--erp-danger-text\); \}/);
+        expect(cssSrc).toMatch(/\.is-missing input\[type="date"\] \{\s*border-color: var\(--erp-danger\);\s*background: var\(--erp-danger-soft\);/);
+        expect(cssSrc).toContain('.erp-vi-expiry-hint');
     });
 });
 

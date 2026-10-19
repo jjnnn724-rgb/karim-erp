@@ -76,6 +76,7 @@
     minmax(6rem, 1fr)
     minmax(6rem, 1fr)
     minmax(6.5rem, 1fr)
+    minmax(8.5rem, 1.1fr)
     minmax(6rem, 1fr)
     minmax(8rem, 1.1fr)
     minmax(7rem, 0.9fr)
@@ -87,6 +88,15 @@
 }
 
 .erp-v2 .erp-vi-name { position: relative; }
+
+/* تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن (سياسة المالك 2026-10-19) */
+.erp-v2 .erp-vi-expiry input[type="date"] { min-inline-size: 8.5rem; }
+.erp-v2 .erp-vi-expiry.is-missing .erp-label { color: var(--erp-danger-text); }
+.erp-v2 .erp-vi-expiry.is-missing input[type="date"] {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-soft);
+}
+.erp-v2 .erp-vi-expiry-hint { color: var(--erp-text-secondary); font-weight: var(--erp-fw-medium); }
 
 .erp-v2 .erp-vi-line-total {
   display: flex;
