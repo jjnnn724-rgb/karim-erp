@@ -23,6 +23,53 @@ export const DEPARTMENT_ICON_OPTIONS = [
     ['chart', 'تقارير'], ['utensils', 'مطعم'],
 ];
 
+/* ── تطبيع أيقونة القسم: رمز تعبية قديم في القاعدة → مفتاح lucide ──────
+ * القاعدة تحوي على رموز تعبية (🧾🧊🍽🍔🥩🚚🔥🥖) وُضعت قبل وحدة الرموز،
+ * والقديم كان يعرض «building» لكل رمز تعبية (features/departments.js:9).
+ * هنا نُحوّلها لأقرب مفتاح حقيقي في KARIM_ICONS فلا تختفي هوية الأقسام. */
+const EMOJI_ICON_MAP = {
+    '🧾': 'receipt', '🧊': 'package', '🍽': 'utensils', '🍽️': 'utensils',
+    '🍔': 'cooking-pot', '🥩': 'beef', '🚚': 'external', '🔥': 'flame',
+    '🥖': 'bread', '☕': 'coffee', '🍹': 'cup-soda', '🥤': 'cup-soda',
+    '🥗': 'salad', '🍰': 'cake', '🎂': 'cake', '🐟': 'fish', '🍚': 'rice',
+    '🥛': 'droplet', '🍳': 'cooking-pot', '🏭': 'building', '🏬': 'store',
+    '🏪': 'store', '📦': 'package', '💰': 'banknote', '🧑‍🍳': 'chef-hat',
+    '👨‍🍳': 'chef-hat', '👩‍🍳': 'chef-hat', '🥓': 'beef', '🍗': 'drumstick',
+    '🍖': 'drumstick', '🥐': 'bread', '🍩': 'cake', '🍪': 'cake',
+    '🍫': 'cake', '🍬': 'cake', '🍭': 'cake', '🧁': 'cake', '🍦': 'cake',
+    '🍶': 'cup-soda', '🍺': 'cup-soda', '🍷': 'cup-soda', '🧃': 'cup-soda',
+};
+
+/** مفاتيح lucide المسموحة لأيقونات الأقسام — مرآة KARIM_ICONS وقت التشغيل. */
+const ALLOWED_ICON_KEYS = new Set([
+    ...DEPARTMENT_ICON_OPTIONS.map(([v]) => v),
+    'receipt', 'flame', 'beef', 'bread', 'coffee', 'cup-soda', 'salad',
+    'cooking-pot', 'external', 'fish', 'rice', 'cake', 'drumstick',
+    'droplet', 'shopping-cart', 'barcode', 'banknote', 'chart', 'users',
+    'package', 'store', 'building', 'chef-hat', 'utensils', 'scale',
+    'archive', 'clipboard-list', 'leaf', 'tree', 'warehouse',
+]);
+
+/**
+ * تحويل قيمة أيقونة القسم إلى مفتاح أيقونة صالح للعرض.
+ * @param {*} value — اسم lucide أو رمز تعبية أو HTML قديم `data-i="..."`
+ * @param {Set<string>} [known] — مفاتيح KARIM_ICONS الحقيقية (اختياري؛
+ *   إن غابت يُتحقق على ALLOWED_ICON_KEYS — نفس منطق القديم).
+ * @returns {string} مفتاح lucide، أو رمز تعبية غير معروف يُعرض كما هو.
+ */
+export function normalizeDepartmentIcon(value, known) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) {return 'building';}
+    const m = raw.match(/data-i=["']?([a-z0-9-]+)/i);
+    let key = m ? m[1] : raw;
+    key = EMOJI_ICON_MAP[key] || key;
+    if (/^[a-z0-9-]+$/.test(key)) {
+        if (known) {return known.has(key) ? key : 'building';}
+        return ALLOWED_ICON_KEYS.has(key) ? key : 'building';
+    }
+    return key; // رمز تعبية غير معروف — يُعرض كما هو (بيانات المستخدم مقدّسة)
+}
+
 const clean = (v) => String(v == null ? '' : v).trim();
 
 /** كود الموارد البشرية: لاتيني آمن، وإلا كود مولّد كما في legacy:694. */

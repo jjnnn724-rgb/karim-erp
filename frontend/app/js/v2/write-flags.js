@@ -20,6 +20,7 @@
  *   ?v2invoicecreate=1 | 0  → إنشاء/تعديل فاتورة شراء (26c-2)
  *   ?v2bulkimport=1 | 0     → استيراد الموظفين/المستخدمين الجماعي (26د)
  *   ?v2chat=1 | 0           → الشات الداخلي (إرسال رسالة = كتابة، 2026-10-17)
+ *   ?v2deptcashier=1 | 0    → ربط القسم بكاشيره المعيَّن (جدول 103، 2026-10-19)
  * وغياب الاثنين = OFF. المخزّن يبقى للـstaging كما في الأعلام الأخرى،
  * ولا يُكتب من هنا إطلاقًا؛ و`=0` في الـURL يغلب المخزّن دائمًا.
  */
@@ -54,6 +55,7 @@ export const INVOICE_VOID_WRITE_FLAG = 'v2invoicevoid';
 export const INVOICE_CREATE_WRITE_FLAG = 'v2invoicecreate';
 export const BULK_IMPORT_WRITE_FLAG = 'v2bulkimport';
 export const CHAT_WRITE_FLAG = 'v2chat';
+export const DEPT_CASHIER_WRITE_FLAG = 'v2deptcashier';
 
 export function financeWriteEnabled(search, storage) {
     return readFlag(FINANCE_WRITE_FLAG, 'karim_v2_finance_write', search, storage);
@@ -109,4 +111,9 @@ export function bulkImportWriteEnabled(search, storage) {
 
 export function chatWriteEnabled(search, storage) {
     return readFlag(CHAT_WRITE_FLAG, 'karim_v2_chat', search, storage);
+}
+
+/** ربط القسم بكاشيره (103) — كتابة على جدول جديد، فعلمه مستقل به. */
+export function deptCashierWriteEnabled(search, storage) {
+    return readFlag(DEPT_CASHIER_WRITE_FLAG, 'karim_v2_dept_cashier_write', search, storage);
 }

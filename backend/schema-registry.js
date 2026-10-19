@@ -268,6 +268,23 @@ const entitySchemas = {
         description: 'Operational departments',
     },
 
+    // ─── Dept ↔ Cashier links (migration 103) ─────────
+    // ربط القسم بكاشيره المعيَّن بدل الخريطة المكتوبة في الكود.
+    // cashier_no = رقم الكاشير الخام فقط (أرقام)، ويُطابق ys_cc_<no> في revenues.deptId.
+    dept_cashier_links: {
+        writeable: ['dept_code', 'cashier_no', 'is_primary', 'notes'],
+        required: ['dept_code', 'cashier_no'],
+        types: {
+            dept_code: TYPES.STRING,
+            cashier_no: TYPES.STRING,
+            is_primary: TYPES.BOOLEAN,
+            notes: TYPES.TEXT,
+        },
+        maxLength: { dept_code: 50, cashier_no: 20, notes: 255 },
+        protected: ['id', 'created_at'],
+        description: 'Cashiers assigned to operational departments',
+    },
+
     // ─── Revenues (migration 001) ──────────────────────
     revenues: {
         writeable: ['deptId', 'source', 'amount', 'date', 'notes'],
@@ -788,6 +805,7 @@ const OPEN_ENTITY_WRITE_ROLES = Object.freeze({
     leaveTypes:      ['admin', 'manager', 'hr'],
     leaveRequests:   ['admin', 'manager', 'hr'], // الإرسال الفعلي عبر /api/hr/leave-requests
     departments:     ['admin', 'manager'],
+    dept_cashier_links: ['admin', 'manager'],
 recipes:         ['admin', 'manager', 'kitchen', 'sous_chef'],
 kitchenReturns:  ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'],
 weightReadings:  ['admin', 'manager', 'kitchen', 'sous_chef', 'warehouse'],

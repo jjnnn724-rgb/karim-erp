@@ -1227,6 +1227,7 @@ const entities = [
     'leaveRequests', 'payroll', 'departments', 'revenues', 'expenses',
     'shelves', 'inventory', 'inventoryTx', 'dispatches', 'recipes',
     'purchaseInvoices', 'kitchenReturns', 'weightReadings', 'notifications', 'settings',
+    'dept_cashier_links',
     'salary_advances', 'payroll_adjustments', 'employee_contracts', 'employee_evaluations', 'payroll_runs'
 ];
 
@@ -1263,6 +1264,7 @@ const entityNames = {
     inventoryTx: 'حركات المخزون', dispatches: 'التوزيعات', recipes: 'الوصفات',
     purchaseInvoices: 'فواتير الشراء', kitchenReturns: 'مرتجعات المطبخ',
     weightReadings: 'قراءات الوزن', notifications: 'الإشعارات', settings: 'الإعدادات',
+    dept_cashier_links: 'روابط الأقسام بالكاشير',
 };
 
 async function ensureEmployeeUserLinkSchema() {
@@ -1323,6 +1325,50 @@ async function validateDeptParent(deptCode, parentCode) {
         cur = next;
     }
     return p;
+}
+
+/**
+ * 103 — روابط الأقسام بالكاشير (طلب المالك 2026-10-19): حرس الكتابة على
+ * الكيان dept_cashier_links عبر الباب العام. الخادم يظل الحاكم: القسم لا بد
+ * مسجل، رقم الكاشير أرقام فقط، لا تكرار للربط، وكاشير أساسي واحد لكل قسم
+ * (الباقِي يُخفَّض تلقائيًا بدل رفض الطلب).
+ */
+async function validateDeptCashierLink(filtered, currentId = null) {
+    const deptCode = String(filtered.dept_code ?? '').trim();
+    const cashierNo = String(filtered.cashier_no ?? '').trim();
+    if (!deptCode) {
+        const error = new Error('كود القسم مطلوب');
+        error.statusCode = 422; error.code = 'DEPT_CODE_REQUIRED'; throw error;
+    }
+    if (!cashierNo) {
+        const error = new Error('رقم الكاشير مطلوب');
+        error.statusCode = 422; error.code = 'CASHIER_NO_REQUIRED'; throw error;
+    }
+    if (!/^[0-9]{1,6}$/.test(cashierNo)) {
+        const error = new Error('رقم الكاشير أرقام فقط (مثل 1 أو 9)');
+        error.statusCode = 422; error.code = 'INVALID_CASHIER_NO'; throw error;
+    }
+    const dept = await pool.query('SELECT code FROM departments WHERE code = $1 LIMIT 1', [deptCode]);
+    if (!dept.rows.length) {
+        const error = new Error('القسم غير موجود في سجل الأقسام');
+        error.statusCode = 422; error.code = 'DEPT_NOT_FOUND'; throw error;
+    }
+    const duplicate = await pool.query(
+        'SELECT id FROM dept_cashier_links WHERE dept_code = $1 AND cashier_no = $2 AND id <> $3 LIMIT 1',
+        [deptCode, cashierNo, currentId || 0]
+    );
+    if (duplicate.rows.length) {
+        const error = new Error('هذا الكاشير مربوط بهذا القسم بالفعل');
+        error.statusCode = 409; error.code = 'DEPT_CASHIER_LINK_EXISTS'; throw error;
+    }
+    const primary = filtered.is_primary === true || filtered.is_primary === 'true' || filtered.is_primary === 1;
+    if (primary) {
+        await pool.query(
+            'UPDATE dept_cashier_links SET is_primary = false WHERE dept_code = $1 AND cashier_no <> $2',
+            [deptCode, cashierNo]
+        );
+    }
+    return { ...filtered, dept_code: deptCode, cashier_no: cashierNo };
 }
 
 async function validateEmployeeUserLink(entity, filtered, currentId = null) {    if (entity !== 'employees' || !Object.prototype.hasOwnProperty.call(filtered, 'userId')) {return;}
@@ -1830,6 +1876,10 @@ entities.forEach(entity => {
             if (entity === 'departments' && Object.prototype.hasOwnProperty.call(filtered, 'parent_code')) {                try { filtered = { ...filtered, parent_code: await validateDeptParent(filtered.code, filtered.parent_code) }; }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: error.message }); }
             }
+            if (entity === 'dept_cashier_links') {
+                try { filtered = await validateDeptCashierLink(filtered); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: error.message }); }
+            }
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
                 if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });}
@@ -2118,6 +2168,16 @@ entities.forEach(entity => {
                     filtered = { ...filtered, parent_code: await validateDeptParent(target.code, filtered.parent_code) };
                 }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: error.message }); }
+            }
+            if (entity === 'dept_cashier_links') {
+                try {
+                    const target = (await pool.query(
+                        'SELECT dept_code, cashier_no, is_primary FROM dept_cashier_links WHERE id = $1 LIMIT 1', [id]
+                    )).rows[0];
+                    if (!target) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+                    filtered = await validateDeptCashierLink({ ...target, ...filtered }, id);
+                }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: error.message }); }
             }
             const periodBlockPutOpen = await payrollRowViolation(entity, id, filtered);
             if (periodBlockPutOpen) {return res.status(423).json(periodBlockPutOpen);}
