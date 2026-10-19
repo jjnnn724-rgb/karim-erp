@@ -44,7 +44,7 @@
  *   remains the authority on every gate — this file only names the paths.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.154';
+import { apiFetch } from '../../core/api.js?v=4.9.169';
 
 /** Bounded entity walk (5 × 1000), same shape as the other registers. */
 export async function fetchDispatches() {

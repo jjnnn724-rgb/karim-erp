@@ -21,7 +21,7 @@
  *   re-checks the role and the payload on every request.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.154';
+import { apiFetch } from '../../core/api.js?v=4.9.169';
 
 /** Mirror of OPEN_ENTITY_WRITE_ROLES.weightReadings (schema-registry.js:793). */
 export const WEIGHT_WRITE_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef', 'warehouse'];

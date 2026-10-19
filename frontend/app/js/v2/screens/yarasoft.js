@@ -1,5 +1,5 @@
-import { fetchYarasoftStatus, fetchYarasoftLog } from '../data/portal-repo.js?v=4.9.154';
-import { formatInt } from '../data/reports-repo.js?v=4.9.154';
+import { fetchYarasoftStatus, fetchYarasoftLog } from '../data/portal-repo.js?v=4.9.169';
+import { formatInt } from '../data/reports-repo.js?v=4.9.169';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const pretty = (o) => { try { return JSON.stringify(o, null, 2); } catch (_) { return String(o); } };

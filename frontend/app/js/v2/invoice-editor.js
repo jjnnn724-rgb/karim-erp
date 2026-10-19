@@ -17,15 +17,15 @@
  * والوزن عند الاختيار — كما القديم.
  */
 
-import { formatMoney } from './data/reports-repo.js?v=4.9.154';
+import { formatMoney } from './data/reports-repo.js?v=4.9.169';
 import {
     createPurchaseInvoice, updatePurchaseInvoice,
     invoiceFormFromRow,
     isDuplicateInvoiceError, TAX_CATEGORIES,
-} from './data/purchase-invoices-write-repo.js?v=4.9.154';
+} from './data/purchase-invoices-write-repo.js?v=4.9.169';
 import {
     rankItemMatches, normalizeItemText, smartSearchEnabled, setSmartSearchEnabled,
-} from './item-search.js?v=4.9.154';
+} from './item-search.js?v=4.9.169';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
