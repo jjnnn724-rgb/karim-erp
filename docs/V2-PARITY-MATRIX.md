@@ -91,8 +91,8 @@
 | `payroll` | ✅ | `screens/payroll.js` + `data/payroll-suite.js` |
 | `menu-board` | ✅ | `screens/menu-board.js` — تضمين `/app/menu-admin.html` حرفيًّا كالقديم (`page-router.js:123-130`) + لوحة V2 خلف `?v2board` |
 | `pos` | 🔗 | مدخل V2 (`screens/pos-entry.js`) يفتح `/app/pos.html` بمرساة `noopener` — **إعادة البناء داخل V2 بند مستقل** (#30) |
-| `query` | ❌ | مفتاح في `NAV_GROUPS`/`ALL_PERMISSIONS` فقط (`auth-navigation.js:284`، `i18n.js:275`)؛ **لا قائمة دور تحمله ولا `case` له** في `page-router.js` → يقع على `default: renderDashboard()`. V2 يرث السلوك نفسه. |
-| `professional` | ❌ | نفس العلة (`i18n.js:276`) — لا صفحة في القديم أصلًا. |
+| `query` | ✅ | **بُني 2026‑10‑19** — `screens/inventory-inquiry.js` + `data/inventory-inquiry-repo.js` فوق `backend/inventory-inquiry.js` (`/items` · `/item/:id` · `/departments`)؛ والقديم صار له صفحة حقيقية في `page-router.js` و`features/inventory-inquiry.js`. للأدوار التي تحمل المفتاح: `admin` و`sous_chef` فقط بقرار المالك. |
+| `professional` | ✅ | **بُني 2026‑10‑19** — `screens/inventory-inquiry-pro.js` يعرض `data-display/item-dossier.js` (ملف صنف كامل: كراسي، فواتير شراء، أقسام، دُفعات، أسطر POS) بلا شاشة ميتة في `screens/`. نفس الأبواب ونفس القيود في القديم. |
 
 ---
 
@@ -107,6 +107,7 @@
 | تاريخ الصلاحية في مداخل المخزون | لا إلزام: صنفٌ يدخل برصيد بلا دُفعة مؤرَّخة | `backend/expiry-policy.js` حاكم — `422 EXPIRY_DATE_REQUIRED`/`INVALID_EXPIRY_DATE` في فاتورة الشراء إنشاءً وتعديلًا، والاستلام المباشر، واستيراد Excel، و`POST /api/inventory` برصيد افتتاحي؛ `data/expiry-policy.js` ينسخ النص نفسه للواجهة في محرر الفواتير وشاشة المسح، والحركات الداخلية تحمل `latestExpiryFor` بلا اختراع تاريخ | ✅ | مغلق — `942f448` · 299 اختبارًا على شجرة الفهرس · بلا HTTP حيّ ولا ترحيل مطبَّق |
 | شريط الجوال السفلي | `mobile-shell.js` — `mobileNavItems()`، يظهر ≤900px، أدوار محددة | `mobile-shell.js` + `erp-mobile-shell.css` (شريط 5 أزرار، بصمتي، والمزيد) | ✅ | مغلق — `v2-mobile-shell` · 9 اختبارات ودليل 360/900 |
 | بحث الأصناف الذكي | `smart-item-search.js` — تطبيع عربي/همزات، تنقل ↑↓، يعبّئ الوحدة والسعر | `item-search.js` + `invoice-editor.js` داخل شاشة ٠٨ خلف `v2invoicecreate` — التطبيع والترتيب والتنقل ↑↓/Enter/Esc وتعبئة الوحدة/السعر نفسها | ✅ | مغلق — `9b4ff17` · `v2-invoice-create-2026-10-17` · 32 اختبارًا ودليل 1180/360 |
+| ملف الصنف المشترك | `features/inventory-inquiry.js` (`iqOpenCard`) يبني البطاقة في DOM القديم | `data-display/item-dossier.js` — قطعة عرض يستدعيها مكانان (المحرك والبطاقة الفاخرة)، فلا نسخة ثانية ولا شاشة ميتة في `screens/`؛ يُقيَّد العرض بـ `min-inline-size:0` لأبناء الشبكة كي لا يمدّد جدولٌ عريض الصفحة على الهاتف | ✅ | مغلق — 2026‑10‑19 · `tests/v2-inventory-inquiry.test.js` (21) ودليل 1180/360 |
 | بطاقة الموظف وQR | `smart-card.js` | `employee-card-repo.js` + شاشة الموظفين (P0‑5) | ✅ | — |
 | شارة حالة الخادم | `main.js:204` (`/system/server-info`، محدّث/قديم) | مصابيح صحة فقط (`/health`) | ⬜ | #31 |
 | قيود قاعدة البيانات للعميل | `db-constraints-client.js` (`/api/schema/constraints`) | لا شيء | ⬜ | تحقق عميل استرشادي؛ الخادم يبقى الحكم → #31 |
