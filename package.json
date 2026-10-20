@@ -14,7 +14,7 @@
     "url": "https://github.com/karim-erp/karim-desktop.git"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node scripts/serve.js",
@@ -39,6 +39,7 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
+    "test:sale-cycle": "node tests/integration/sale-cycle.js",
     "test:lint": "npx eslint . --ext .js,.mjs",
     "test:v2-revision": "node scripts/v2-revision.js --check",
     "test:format": "npx prettier --check . --ignore-path .prettierignore",
@@ -51,6 +52,7 @@
     "responsive": "node scripts/test-responsive.mjs",
     "pos-sale": "node scripts/pos-sale-test.js",
     "test:pos-scenarios": "node tests/expanded-pos-scenarios.js",
+    "test:pos-inventory-http": "node tests/pos-inventory-http-scenarios.js",
     "postinstall": "electron-builder install-app-deps",
     "stop": "node scripts/stop.js",
     "status": "node scripts/status.js",
@@ -106,6 +108,8 @@
       "!**/node_modules/*.tgz",
       "!**/node_modules/tests/{test,tests,__tests__,}/**/*",
       "!**/dist/demo",
+      "!**/NUL",
+      "!**/nul",
       "!database/data/**/*",
       "!database/backups/**/*",
       "!**/*.map",
@@ -151,8 +155,7 @@
       "artifactName": "KarimERP-Setup-${version}-${arch}.${ext}",
       "requestedExecutionLevel": "highestAvailable",
       "verifyUpdateCodeSignature": false,
-      "signAndEditExecutable": false,
-      "publisherName": "Karim ERP"
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -251,7 +254,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.11.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.0.9",
     "onnxruntime-node": "^1.30.0",
     "oracledb": "^7.0.1",
     "pg": "^8.12.0",
@@ -269,17 +272,18 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.0",
     "@types/jest": "^30.0.0",
-    "electron": "^28.3.3",
-    "electron-builder": "^24.13.3",
+    "electron": "^44.9.2",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
-    "jest": "^29.7.0",
-    "prettier": "^3.9.8"
+    "jest": "^30.5.2",
+    "prettier": "^3.9.8",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "socket.io-parser": "4.2.7"
   },
   "allowScripts": {
-    "electron@28.3.3": true
+    "electron@44.9.2": true
   }
 }
