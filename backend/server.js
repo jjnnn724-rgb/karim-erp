@@ -17,15 +17,17 @@ const { MEDIA_ROOT, ensureMediaDirs } = require('./media-storage');
 const { spawn } = require('child_process');
 
 // ─── Enterprise Foundation Layers ──────────────────────────
-const { correlationMiddleware, updateUserContext } = require('./middleware/correlation');
-const { securityHeaders, hppGuard } = require('./middleware/security');
+const { correlationMiddleware } = require('./middleware/correlation');
+const { createBrotliStatic } = require('./middleware/brotli-static');
+const { createBrotliMetrics } = require('./middleware/brotli-metrics');
+const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-cache-policy');
+const { securityHeaders, hppGuard, buildV2Csp } = require('./middleware/security');
 const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
 const { registerWithHealthChecks: circuitRegisterHealth } = require('./middleware/circuit');
 const startup = require('./startup');
 const {
     attachSafeHelpers,
-    asyncHandler: asyncHandlerEnterprise,
     globalErrorHandler,
     installProcessShields,
     notFoundHandler,
@@ -40,7 +42,7 @@ const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('.
 const { requireRoleOrPerm, permForEntity } = require('./permissions');
 const { guardCreate } = require('./submit-guard');
 const { router: hrRouter } = require('./hr-routes');
-const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode, deptsMatch } = require('./warehouse-routes');
+const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode } = require('./warehouse-routes');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { normalizeExpiryDate, readExpiryField } = require('./expiry-policy');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
@@ -48,7 +50,7 @@ const { router: stocktakingRouter, ensureStocktakingSchema } = require('./stockt
 const { router: inventoryTransferRouter } = require('./inventory-transfer-routes');
 const { router: kitchenProductionRouter, ensureKitchenSchema } = require('./kitchen-production-routes');
 const { router: procurementRouter, ensureProcurementSchema } = require('./procurement-routes');
-const { router: financeRouter } = require('./finance-routes');
+const { router: financeRouter, resolveCostAnalysisPeriod } = require('./finance-routes');
 const { router: leaveWorkflowRouter, ensureLeaveWorkflowSchema } = require('./leave-workflow-routes');
 const { ensureNotificationsSchema } = require('./notification-service');
 const notificationRouter = require('./notification-routes');
@@ -58,7 +60,7 @@ const { router: zktecoRouter, ensureZktecoSchema, attendanceEngine } = require('
 const { router: yarasoftRouter, ensureYarasoftSchema, yarasoftEngine } = require('./yarasoft');
 
 // ─── Schema Registry (Column Whitelist for Security) ──
-const { filterBody, entityExists, validateColumnName, getSortableColumns, getSchema, getEntityWriteRoles, isProtectedDeleteEntity, maskEmployeeRowForRole } = require('./schema-registry');
+const { filterBody, validateColumnName, getSortableColumns, getSchema, getEntityWriteRoles, isProtectedDeleteEntity, maskEmployeeRowForRole } = require('./schema-registry');
 const { encryptForVault, ensurePasswordVaultSchema } = require('./password-vault');
 // decryptFromVault يُستخدم الآن داخل ops-inspect-routes.js
 // ─── طبقة الفروع (migration 102) — تصفية CRUD الديناميكي حسب branch_id ───
@@ -70,7 +72,7 @@ const { riyadhToday } = require('./riyadh-date');
 const { parsePaginationParams, buildPaginatedQuery } = require('./pagination');
 
 // ─── Rate Limiting ──────────────────────────────────
-const { generalLimiter, authLimiter, stateLimiter, crudLimiter } = require('./rate-limiter');
+const { generalLimiter, stateLimiter, crudLimiter } = require('./rate-limiter');
 
 // ─── Graceful Shutdown Handler ──────────────────────
 const { initGracefulShutdown, rejectDuringShutdown, getShutdownStatus } = require('./graceful-shutdown');
@@ -232,19 +234,6 @@ function emitScoped(event, data, exceptSocketId) {
 
 // Track connected clients
 const connectedClients = new Map(); // socketId → { ip, deviceName, joinedAt }
-
-function getErrorMessage(error) {
-    if (!error) {return 'Unknown error';}
-    if (error.message) {return error.message;}
-    if (Array.isArray(error.errors) && error.errors.length > 0) {
-        return error.errors
-            .map(getErrorMessage)
-            .filter(Boolean)
-            .join(' | ');
-    }
-    if (error.code) {return error.code;}
-    return String(error);
-}
 
 // ─── Security: Sanitize headers to prevent XSS ─────────
 function sanitizeHeader(value) {
@@ -528,7 +517,18 @@ try {
 // بعد COMMIT؛ هذا مجرد صمام أمان كل 5 دقائق.
 try {
     const { bridgeUnbridged } = require('./yarasoft/gl-bridge');
-    const yaraGlSweep = () => bridgeUnbridged(pool).catch(e => logger.warn('[YARA-GL] sweep failed:', e.message));
+    let yaraGlSweepRunning = false;
+    const yaraGlSweep = async () => {
+        if (yaraGlSweepRunning) {return;}
+        yaraGlSweepRunning = true;
+        try {
+            await bridgeUnbridged(pool);
+        } catch (e) {
+            logger.warn('[YARA-GL] sweep failed:', e.message);
+        } finally {
+            yaraGlSweepRunning = false;
+        }
+    };
     setTimeout(yaraGlSweep, 90_000);
     setInterval(yaraGlSweep, 5 * 60_000);
 } catch (e) {
@@ -644,7 +644,7 @@ const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
 // ─── محرك واتساب (Baileys — معطّل حتى WHATSAPP_ENABLED=true) ─────────────
 // محرك واتساب تحميله محمي: بيئة تشغيل لا تدعم require(ESM) (baileys) —
-// مثل Node 18 المدمج في إلكترون — تعطل تحميله يجب ألا يُسقط الخادم كله.
+// مثل Node المدمج في Electron — تعطل تحميله يجب ألا يُسقط الخادم كله.
 let whatsappRouter = null, ensureWhatsappSchema = null, whatsappEngine = null;
 try {
     ({ router: whatsappRouter, ensureWhatsappSchema, whatsappEngine } = require('./whatsapp-engine'));
@@ -711,7 +711,7 @@ io.on('connection', (socket) => {
     // Task 20: تسجيل هوية المستخدم على الغرف — الإشعارات الفورية توجَّه عبر
     // user:<id> و role:<role> و dept:<dept_code>، والصلاحيات تُقرأ من قاعدة
     // البيانات (لا من رسالة العميل) حتى لا يمكن انتحال غرفة غير حقها.
-    socket.on('register_user', async (data) => {
+    socket.on('register_user', async (_data) => {
         if (!rtGuard(socket, 'register_user')) {return;}
         try {
             // SECURITY: الهوية تُؤخذ من JWT المُتحقق منه في الـ handshake فقط —
@@ -965,7 +965,7 @@ app.post('/api/state', jwtAuth, requireRole('admin', 'manager'), stateLimiter, a
         lang: rawState.lang === 'en' ? 'en' : 'ar',
         theme: rawState.theme === 'light' ? 'light' : 'dark',
     };
-    const stateSize = JSON.stringify(state).length;
+    JSON.stringify(state);
 
     // ─── AUDIT LOG: Record who saved state ─────────────
     const auditInfo = {
@@ -1213,7 +1213,9 @@ async function enforceAttendanceSelfService(entity, req, filtered, existingId = 
 // Never expose password hashes to browsers, logs, sockets, or export responses.
 function publicEntityRow(entity, row) {
     if (entity !== 'users' || !row) {return row;}
-    const { password: _password, password_vault: _pwVault, ...safe } = row;
+    const safe = { ...row };
+    delete safe.password;
+    delete safe.password_vault;
     return safe;
 }
 
@@ -1375,8 +1377,8 @@ async function validateDeptCashierLink(filtered, currentId = null) {
 }
 
 /**
- * حرس تاريخ الصلاحية على البوابة العامة (طلب المالك 2026-10-19: «لا تقبل بدون
- * تاريخ صلاحيه دخول المنتج للمخزن»).
+ * حرس تاريخ الصلاحية على البوابة العامة (سياسة المالك 2026-10-20:
+ * التاريخ اختياري، ويُرفض فقط إن جاء بصيغة فاسدة).
  *
  * تاريخ الصلاحية تاريخ **دُفعة** لا عمود في جدول inventory — الحقيقة لكل دُفعة
  * في inventory_ledger.expiry_date. لذا يُقرأ من الطلب هنا قبل الترشيح، يُتحقق
@@ -1390,7 +1392,7 @@ function checkInventoryOpeningExpiry(entity, body) {
     const qty = Number((body || {}).qty) || 0;
     if (qty <= 0) {return { expiryDate };}
     if (!raw) {
-        return { expiryDate: null, error: { error: 'EXPIRY_DATE_REQUIRED', message: 'تاريخ الصلاحية إلزامي عند إدخال صنف للمخزن برصيد — أضِف تاريخ الصلاحية (YYYY-MM-DD)' } };
+        return { expiryDate: null };
     }
     if (!expiryDate) {
         return { expiryDate: null, error: { error: 'INVALID_EXPIRY_DATE', message: `تاريخ الصلاحية غير صحيح (${String(raw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` } };
@@ -1550,8 +1552,28 @@ entities.forEach(entity => {
         // ─── تصفية الفرع: null = كل الفروع (سلوك ما قبل 102 حرفيًا) ───
         const branchId = branchCtx.BRANCH_AWARE_ENTITIES.has(entity) ? await branchCtx.resolveBranch(req) : null;
 
+        const queryOptions = { branchId };
+        const v2MonthDateColumn = {
+            revenues: 'date',
+            expenses: 'date',
+            dispatches: 'date',
+            inventoryTx: 'date',
+            kitchenReturns: 'date',
+            purchaseInvoices: 'date',
+        }[entity];
+        if (v2MonthDateColumn && req.query.v2_period === 'month') {
+            const { from, to } = resolveCostAnalysisPeriod({});
+            const toExclusive = new Date(`${to}T00:00:00.000Z`);
+            toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+            queryOptions.dateRange = {
+                column: v2MonthDateColumn,
+                from,
+                toExclusive: toExclusive.toISOString().slice(0, 10),
+            };
+        }
+
         // Build safe paginated query
-        const { dataQuery, countQuery, params, countParams } = buildPaginatedQuery(entity, pagination, { branchId });
+        const { dataQuery, countQuery, params, countParams } = buildPaginatedQuery(entity, pagination, queryOptions);
 
         // Execute both queries in parallel for performance
         const [dataResult, countResult] = await Promise.all([
@@ -1628,7 +1650,7 @@ entities.forEach(entity => {
         const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
         app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist (CRITICAL FIX) ──
-            // حرس الصلاحية (طلب المالك 2026-10-19): لا رصيد افتتاحي بلا تاريخ صلاحية.
+            // حرس الصلاحية (سياسة 2026-10-20): الرصيد الافتتاحي بلا تاريخ مقبول.
             const expiryGuardA = checkInventoryOpeningExpiry(entity, req.body);
             if (expiryGuardA.error) {return res.status(422).json(expiryGuardA.error);}
             dropExpiryFields(req);
@@ -1664,7 +1686,8 @@ entities.forEach(entity => {
                     'chefApprovedAt', 'chefApprovedBy', 'chefApprovalSignatureData', 'chefApprovalSignatureHash', 'chefRejectedAt', 'chefRejectedBy', 'chefRejectionSignatureData', 'chefRejectionSignatureHash', 'needsChefApproval', 'creatorRole'];
                 const attemptedWorkflowFields = workflowFields.filter(field => Object.prototype.hasOwnProperty.call(filtered, field) && !(field === 'status' && filtered.status === 'pending'));
                 if (attemptedWorkflowFields.length) {return res.status(400).json({ error: 'WORKFLOW_FIELDS_FORBIDDEN', message: 'حقول حالة إذن الصرف لا تُرسل عبر CRUD العام', fields: attemptedWorkflowFields });}
-                const { status: _clientStatus, ...requestFields } = filtered;
+                const requestFields = { ...filtered };
+                delete requestFields.status;
                 // Task 19: رئيس القسم يُجبر على قسمه ولا يراه إلا فيه، وطلبه يمر بالشيف العمومي إجباريًا
                 if (req.user?.role === 'dept_head') {
                     const resolved = resolveDeptHeadDispatch(req.user, requestFields.deptCode);
@@ -1688,7 +1711,7 @@ entities.forEach(entity => {
                         const opDept = (await pool.query('SELECT code, name FROM departments WHERE LOWER(code)=LOWER($1) OR LOWER(code)=LOWER($2) LIMIT 1', [requestFields.deptCode, canonCode])).rows[0];
                         if (opDept) {
                             requestFields.deptCode = opDept.code;
-                            if (!requestFields.deptName || requestFields.deptName === 'قسم غير معروف') requestFields.deptName = opDept.name;
+                            if (!requestFields.deptName || requestFields.deptName === 'قسم غير معروف') {requestFields.deptName = opDept.name;}
                         }
                     }
                     filtered = { ...requestFields, status: 'pending', createdBy: req.user.name || req.user.username || String(req.user.id), requestedAt: new Date().toISOString(), creatorRole: req.user?.role || null, needsChefApproval: false, creatorUserId: req.user.id };
@@ -2045,6 +2068,13 @@ entities.forEach(entity => {
                 });
             }
             if (entity === 'users') {
+                // ─── حارس الهدف: غير-admin لا يستهدف حساب administrator ───
+                if (req.user?.role !== 'admin') {
+                    const targetUser = (await pool.query('SELECT role, username FROM users WHERE id=$1', [id])).rows[0];
+                    if (targetUser && targetUser.role === 'admin') {
+                        return res.status(403).json({ error: 'ADMIN_TARGET_FORBIDDEN', message: 'لا يمكن تعديل حساب المسؤول العام إلا من قبل المسؤول العام نفسه' });
+                    }
+                }
                 // Empty/whitespace passwords must never overwrite a stored hash
                 if (filtered.password !== undefined && !String(filtered.password).trim()) {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
@@ -2329,7 +2359,24 @@ entities.forEach(entity => {
         const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : ['admin', 'manager'];
         app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
-            if (entity === 'users') {await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);}
+            if (entity === 'users') {
+                // ─── حارس الهدف: غير-admin لا يستهدف حساب administrator ───
+                if (req.user?.role !== 'admin') {
+                    const targetUser = (await pool.query('SELECT role FROM users WHERE id=$1', [id])).rows[0];
+                    if (targetUser && targetUser.role === 'admin') {
+                        return res.status(403).json({ error: 'ADMIN_TARGET_FORBIDDEN', message: 'لا يمكن حذف حساب المسؤول العام إلا من قبل المسؤول العام نفسه' });
+                    }
+                }
+                // ─── حارس آخر-admin: لا يُحذف آخر مسؤول عام حتى من الأدمن نفسه ───
+                const targetAdmin = (await pool.query('SELECT role FROM users WHERE id=$1', [id])).rows[0];
+                if (targetAdmin && targetAdmin.role === 'admin') {
+                    const adminCount = Number((await pool.query('SELECT count(*) FROM users WHERE role=$1', ['admin'])).rows[0].count);
+                    if (adminCount <= 1) {
+                        return res.status(403).json({ error: 'LAST_ADMIN_FORBIDDEN', message: 'لا يمكن حذف آخر مسؤول عام في النظام' });
+                    }
+                }
+                await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);
+            }
             const periodBlockDel = await payrollRowViolation(entity, id);
             if (periodBlockDel) {return res.status(423).json(periodBlockDel);}
             // تدقيق أمني جولة 2: إذن الصرف الموقّع (معتمد/مرفوض/مستلم) مستند مالي
@@ -2371,7 +2418,7 @@ entities.forEach(entity => {
                 }
             }
             if (entity === 'expenses') { await purgeExpenseJournal(id); }
-                        if (entity === 'inventory' && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true)) {
+            if (entity === 'inventory' && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true)) {
                 // ROOT FIX 2026-10-02: الحذف القسري كان يفشل 500 بقيد RESTRICT —
                 // ينضف الأرصدة والدفتر وحركات POS أولًا (قرار أدمن صريح موثق).
                 try {
@@ -2380,7 +2427,7 @@ entities.forEach(entity => {
                     await pool.query(`DELETE FROM "inventoryTx" WHERE "itemId" = $1`, [id]);
                 } catch (e2) { logger.warn("[inventory-force-cleanup]", e2.message); }
             }
-const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
+            const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
 
             emitEntityChange(entity, 'delete', { id }, req);
@@ -2510,7 +2557,7 @@ app.get('/app/sw.js', (req, res) => {
         res.setHeader('Cache-Control', 'no-store, must-revalidate');
         res.setHeader('Service-Worker-Allowed', '/app/');
         res.send(js);
-    } catch (e) { res.status(500).send('// sw unavailable'); }
+    } catch (_) { res.status(500).send('// sw unavailable'); }
 });
 // The live menu preview is embedded only by this same-origin dashboard.
 app.use('/app/menu-board.html', (req, res, next) => {
@@ -2527,6 +2574,39 @@ app.use('/app/menu-board.html', (req, res, next) => {
     res.setHeader('Content-Security-Policy', sameOriginPolicy);
     next();
 });
+/* Brotli للأصول الساكنة — Nginx في aaPanel مجرد reverse proxy لا يقرأ القرص،
+   فالضغط مسؤولية Node. يغطي /app و/app/js/vendor معًا (نفس الجذر على القرص). */
+const brotliLimits = resolveCacheLimits();
+const appBrotliMetrics = createBrotliMetrics({
+    // BROTLI_METRICS=off يوقف القياس بلا لمس أي منطق ضغط
+    enabled: process.env.BROTLI_METRICS !== 'off',
+    maxBytes: brotliLimits.maxBytes,
+});
+const appBrotli = createBrotliStatic({
+    rootDir: APP_DIR,
+    setCacheHeaders: setStaticCacheHeaders,
+    metrics: appBrotliMetrics,
+});
+appBrotliMetrics.setCacheDir(appBrotli.cacheDir); // حجم الكاش يُقاس عند السحب
+/* سياسة التنظيف: عمر ثم حجم — أول كنستة بعد التسخين ثم دوريًا (مؤقّت unref) */
+const appBrotliCache = createCachePolicy({
+    cacheDir: appBrotli.cacheDir,
+    metrics: appBrotliMetrics,
+    maxBytes: brotliLimits.maxBytes,
+    maxAgeDays: brotliLimits.maxAgeDays,
+});
+appBrotliCache.start(); // كنستة أولى بعد التسخين ثم دورية — مؤقّت unref لا يُبقي العملية حيّة
+/* إبطال المرحلة 3 — fs.watch في التطوير فقط: تغيّر أي ملف أصل يُحذف مقابله
+   القديم فورًا. في الإنتاج لا يُنشأ مراقب، والإبطال عبر BROTLI_POLICY_VERSION
+   أو POST /api/system/brotli-cache/invalidate (admin). */
+appBrotli.watch();
+app.use((req, res, next) => {
+    if (req.path === '/app/v2.html') {
+        res.setHeader('Content-Security-Policy', buildV2Csp());
+    }
+    next();
+});
+app.use('/app', appBrotli);
 app.use('/app/js/vendor', express.static(VENDOR_DIR, {
     maxAge: '365d',
     immutable: true,
@@ -2581,9 +2661,10 @@ app.use(globalErrorHandler);
 //   • uncaughtException / unhandledRejection → clean crash report
 //   • memory watchdog (warns at 2GB RSS, configurable MEM_WARN_MB)
 //   • Node.js diagnostic reports (OOM hints)
-//   • Fatal DB / config errors → escalate to process restart
+//   • Unrecoverable process errors → controlled exit for WinSW restart
 // (Replaces inline steelFail.)
 installProcessShields({
+    exitOnFatal: true,
     shutdownTimeoutMs: 15_000,
     onFatal: async (/* err */) => {
         stopDailyReportScheduler();
@@ -2626,7 +2707,35 @@ httpServer.keepAliveTimeout = 65_000;
 httpServer.headersTimeout = 70_000;
 httpServer.requestTimeout = 120_000;
 
-httpServer.listen(PORT, '0.0.0.0', async () => {
+// ─── Resilient listen (FIX 2026-10-19) ─────────────────────────────────────
+// مع إعادة تشغيل الخدمة، المنفذ قد يبقى في TIME_WAIT أو ممسوكًا لحظيًا فيموت
+// الخادم الجديد بـEADDRINUSE (306 سقوطًا تاريخيًا في CRASH.log). الآن نعيد
+// المحاولة بتدرّج حتى يتحرّر المنفذ ثم نُقلع مرة واحدة فقط، ولا نُسقط العملية
+// إلا إذا فشلت كل المحاولات (عندها يتكفّل WinSW/SCM بإعادة التشغيل).
+let _listenAttempt = 0;
+const MAX_LISTEN_ATTEMPTS = 60; // ~ حتى 5 دقائق انتظار
+httpServer.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE' && _listenAttempt < MAX_LISTEN_ATTEMPTS) {
+        _listenAttempt += 1;
+        const waitMs = Math.min(1000 + _listenAttempt * 1000, 15000);
+        logger.warn(
+            { event: 'listen_retry', port: PORT, code: err.code, attempt: _listenAttempt, waitMs },
+            `⏳ المنفذ ${PORT} ما زال مشغولًا — إعادة المحاولة ${_listenAttempt}/${MAX_LISTEN_ATTEMPTS} بعد ${waitMs}ms`
+        );
+        setTimeout(() => httpServer.listen(PORT, '0.0.0.0'), waitMs);
+        return;
+    }
+    logger.fatal({ event: 'listen_failed', code: err?.code, message: err?.message },
+        '💥 فشل ربط منفذ الـHTTP — إعادة تشغيل نظيفة مطلوبة');
+    process.exit(1);
+});
+httpServer.on('listening', async () => {
+    _listenAttempt = 0;
+    await onServerListening();
+});
+httpServer.listen(PORT, '0.0.0.0');
+
+async function onServerListening() {
     const nets = os.networkInterfaces();
     const ips = [];
     for (const name of Object.keys(nets)) {
@@ -2649,6 +2758,10 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
         logger.error('[STARTUP] فحص الصحة قبل الإقلاع فشل:', e.message);
     }
     markBootComplete(); // flips /health/startup → 200
+
+    // ─── تسخين نسخ Brotli خلفيًا: لا ينتظر أي مستخدم أول ضغطة ───
+    // WARMUP_ENABLED=false يوقفه بلا إعادة تشغيل (القياس يبقى يعمل)
+    if (process.env.WARMUP_ENABLED !== 'false') { appBrotli.warmup(); }
 
     // ─── إعلان LAN: أجهزة العميل (EXE) تكتشف هذا الخادم تلقائيًا عبر UDP 50505 ───
     if (String(process.env.KARIM_LAN_BEACON ?? 'true').trim().toLowerCase() !== 'false') {
@@ -2700,10 +2813,30 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
         const oraCfg = loadOracleConfig();
         if (oraCfg.enabled) {
             const pollMs = Math.max(1, oraCfg.pollMinutes || 1) * 60 * 1000;
+            let activeOracleWorker = null;
             const runOracleWorker = () => {
-                const w = spawnWorker(process.execPath, [path.join(__dirname, '..', 'scripts', 'oracle-poll-worker.js')],
-                    { stdio: 'ignore', cwd: path.join(__dirname, '..'), env: process.env });
-                w.on('error', (e) => logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message));
+                if (activeOracleWorker) {
+                    logger.warn('[YARASOFT_ORACLE] تخطي دورة Oracle جديدة — الدورة السابقة ما زالت تعمل');
+                    return;
+                }
+                try {
+                    const worker = spawnWorker(process.execPath, [path.join(__dirname, '..', 'scripts', 'oracle-poll-worker.js')],
+                        { stdio: 'ignore', cwd: path.join(__dirname, '..'), env: process.env });
+                    activeOracleWorker = worker;
+                    worker.once('error', (e) => {
+                        if (activeOracleWorker === worker) {activeOracleWorker = null;}
+                        logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message);
+                    });
+                    worker.once('exit', (code, signal) => {
+                        if (activeOracleWorker === worker) {activeOracleWorker = null;}
+                        if (code !== 0) {
+                            logger.error(`[YARASOFT_ORACLE] انتهت دورة العامل بخطأ (code=${code}, signal=${signal || 'none'})`);
+                        }
+                    });
+                } catch (e) {
+                    activeOracleWorker = null;
+                    logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message);
+                }
             };
             runOracleWorker(); // دورة أولى بعد الإقلاع مباشرة
             const oraTimer = setInterval(runOracleWorker, pollMs);
@@ -2722,4 +2855,4 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
             .catch((error) => logger.error('[WHATSAPP] تعذر تهيئة محرك واتساب (سيستمر الخادم بدونه):', error.message));
     }
     logger.info(`${'='.repeat(50)}\n`);
-});
+}
