@@ -177,6 +177,28 @@ jobs:
       - name: Run migrations
         run: npm run migrate
 
+      # فحص النظام الشامل — يعمل على القاعدة المعزولة (حارس العزل في
+      # scripts/audit.js يرفض أي قاعدة غير معزولة). معلوماتي الآن: نجمع
+      # التقرير على كل build حتى نُثبّت استقراره، ثم نرفعه حاجبًا.
+      - name: System audit (informational — isolated DB)
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/audit.js --dry-run --no-save --json > audit-report.json
+          AUDIT_EXIT=$?
+          set -e
+          echo "audit_exit=$AUDIT_EXIT"
+          node -e "const r=require('./audit-report.json');const bad=(r.findings||[]).filter(f=>!['pass','info'].includes(f.status));console.log(bad.length?('⚠ '+bad.length+' ملاحظة: '+bad.map(f=>f.id).join(', ')):'✅ لا ملاحظات');"
+
+      - name: Upload system audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-audit-report
+          path: audit-report.json
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
       - name: Run Jest unit tests (coverage gate — jest.config.js thresholds)
         run: npm run test:coverage -- --testPathIgnorePatterns="/node_modules/" --testPathIgnorePatterns="smoke|integration|workflow"
 
