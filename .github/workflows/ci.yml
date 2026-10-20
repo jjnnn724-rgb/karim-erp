@@ -93,6 +93,9 @@ jobs:
       - name: ESLint gate — no errors, no NEW warnings (per-file baseline)
         run: npm run test:lint:gate
 
+      - name: Inline-handler gate — no dead onclick/oninput handlers
+        run: npm run test:handlers:gate
+
       - name: Run Prettier check (via package script)
         run: npm run test:format
 

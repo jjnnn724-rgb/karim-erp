@@ -1,8 +1,5 @@
 {
   "_comment": "حصة التحذيرات المسموحة لكل ملف. تُخفض مع كل دفعة إصلاح، ولا تُرفع أبدًا.",
-  "total": 23,
-  "files": {
-    "frontend/app/js/features/warehouse.js": 6,
-    "frontend/app/js/menu-admin.js": 17
-  }
+  "total": 0,
+  "files": {}
 }

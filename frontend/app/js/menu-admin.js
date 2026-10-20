@@ -3,12 +3,19 @@
  * الدخول بنفس حسابات النظام (admin/manager) عبر /api/auth/login،
  * الأصناف تُدار من شاشة الكاشير — هنا الإعدادات واستعراض ما يُعرض.
  */
+/* eslint-disable no-unused-vars --
+   هذا الملف سكربت عادي (يُحمَّل بـscript src لا type=module)، فدواله
+   عالمية. معظمها يُستدعى من معالجات سطرية داخل menu-admin.html
+   (onclick="catToggleAll(this)" ...)، وESLint لا يرى الاستدعاء من
+   نص HTML داخل ملف آخر. مدقّق المعالجات السطرية (scripts/audit-inline-handlers.js)
+   يتحقق من وجود كل معالج في نطاق عام. */
 'use strict';
 
 let TOKEN = sessionStorage.getItem('mb_token') || '';
 let APP_KEY = sessionStorage.getItem('mb_app_key') || '';
 let POLL = null;
 let CUSTOM_BACKGROUND = '';
+let WEEK_CATALOG = [];
 let BUFFET_LAYOUT = { enabled: false, mains: [], soups: [], desserts: [], appetizers: [], salads: [], carving_by_day: [] };
 let BUFFET_EDITOR_READY = false;
 
@@ -84,15 +91,44 @@ function flashSync() {
 function showTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
-    if (name === 'preview') { reloadPreview(); }
+    if (name === 'preview') {
+        reloadPreview();
+        requestAnimationFrame(fitPortraitPreview);
+    }
 }
 function reloadPreview() {
     const f = $('previewFrame');
-    if (f) { try { f.contentWindow.location.reload(); } catch (_) { f.src = f.src; } }
+    if (f) {
+        try { f.contentWindow.location.reload(); } catch (_) { const src = f.getAttribute('src'); if (src) { f.src = src; } }
+        setTimeout(fitPortraitPreview, 120);
+    }
+}
+function fitPortraitPreview() {
+    const frame = $('previewFrame'), stage = frame && frame.closest('.preview-stage');
+    if (!frame || !stage || !stage.clientWidth || !stage.clientHeight) { return; }
+    const scale = Math.min(stage.clientWidth / 1080, stage.clientHeight / 1920);
+    frame.style.transform = `translate(-50%, -50%) scale(${scale})`;
+}
+async function togglePreviewFullscreen() {
+    const stage = $('previewFrame') && $('previewFrame').closest('.preview-stage');
+    if (!stage) { return; }
+    try {
+        if (document.fullscreenElement === stage) {
+            await document.exitFullscreen();
+        } else if (stage.requestFullscreen) {
+            await stage.requestFullscreen();
+        } else {
+            toast('ملء الشاشة غير مدعوم في هذا المتصفح');
+            return;
+        }
+        requestAnimationFrame(fitPortraitPreview);
+    } catch (error) {
+        toast('تعذّر تكبير المعاينة: ' + error.message);
+    }
 }
 function reloadControl() {
     const f = $('controlFrame');
-    if (f) { try { f.contentWindow.location.reload(); } catch (_) { f.src = f.src; } }
+    if (f) { try { f.contentWindow.location.reload(); } catch (_) { const src = f.getAttribute('src'); if (src) { f.src = src; } } }
 }
 
 /* ─── المؤشرات (KPIs) ─── */
@@ -115,6 +151,8 @@ async function loadBoard() {
             api('GET', '/api/menu-board/public'),
             api('GET', '/api/menu-board/items').catch(() => ({ items: [] })),
         ]);
+        WEEK_CATALOG = (full.items || []).filter(item => item.is_active !== false);
+        renderWeeklyCatalogSelectors();
         const cats = [...new Set((full.items || []).map(i => i.category || 'أصناف أخرى'))].sort((a, c) => a.localeCompare(c, 'ar'));
         ALL_CATS = cats;
         renderPeriodCategoryOptions();
@@ -157,7 +195,7 @@ function catToggleAll(el) {
 function catToggle(el) {
     const c = el.getAttribute('data-cat');
     let cur = SEL_CATS === null || SEL_CATS === undefined ? [...ALL_CATS] : [...SEL_CATS];
-    if (el.checked) { if (!cur.includes(c)) cur.push(c); }
+    if (el.checked) { if (!cur.includes(c)) {cur.push(c);} }
     else { cur = cur.filter(x => x !== c); }
     SEL_CATS = cur.length >= ALL_CATS.length ? null : cur;
     renderCatPicker();
@@ -209,11 +247,11 @@ async function addItem() {
     try {
         await api('POST', '/api/menu-board/items', { name_ar: name, name_en: nameEn, price, category: category || undefined, unit: unit || undefined });
         toast('اتضاف الصنف — ظهر على الشاشة لحظيًا');
-        if ($('newName')) $('newName').value = '';
-        if ($('newNameEn')) $('newNameEn').value = '';
-        if ($('newPrice')) $('newPrice').value = '';
-        if ($('newCat')) $('newCat').value = '';
-        if ($('newUnit')) $('newUnit').value = '';
+        if ($('newName')) {$('newName').value = '';}
+        if ($('newNameEn')) {$('newNameEn').value = '';}
+        if ($('newPrice')) {$('newPrice').value = '';}
+        if ($('newCat')) {$('newCat').value = '';}
+        if ($('newUnit')) {$('newUnit').value = '';}
         loadBoard();
     } catch (e) {
         if (e.message !== 'unauthorized') { toast('تعذر الإضافة: ' + e.message); }
@@ -559,12 +597,15 @@ function weekSelect(d) {
 }
 function renderWeekDay() {
     const d = weekDay(WEEK_DAY);
-    if ($('wkTitle')) $('wkTitle').value = d.title || '';
-    if ($('wkNote')) $('wkNote').value = d.note || '';
+    if ($('wkTitle')) {$('wkTitle').value = d.title || '';}
+    if ($('wkNote')) {$('wkNote').value = d.note || '';}
     const host = $('weekItems');
     if (!host) {return;}
     host.innerHTML = (d.items || []).map((it, i) => `
         <div class="wk-row">
+            <select class="wk-catalog" aria-label="اختيار صنف محفوظ" data-i="${i}" onchange="weekUseCatalogItem(this)">
+                ${weeklyCatalogOptions(it)}
+            </select>
             <input value="${esc(it.name || '')}" maxlength="120" placeholder="اسم الصنف" data-k="name" data-i="${i}">
             <input value="${esc(it.name_en || '')}" maxlength="120" placeholder="اسم الصنف بالإنجليزية" data-k="name_en" data-i="${i}">
             <input type="number" min="0" max="100000" step="0.5" value="${Number(it.price) || 0}" data-k="price" data-i="${i}" title="السعر">
@@ -573,19 +614,71 @@ function renderWeekDay() {
             <button class="btn ghost sm" onclick="weekDelRow(${i})">حذف</button>
         </div>`).join('') || '<div class="loading">لا أصناف لهذا اليوم — أضف من زر «＋ صنف».</div>';
 }
+function weeklyCatalogOptions(item) {
+    const selected = WEEK_CATALOG.find(catalogItem =>
+        String(catalogItem.id) === String(item.catalog_id || '')) || null;
+    const label = catalogItem => `${catalogItem.name_ar || catalogItem.name || 'صنف'}${catalogItem.name_en ? ` · ${catalogItem.name_en}` : ''}`;
+    const sectionNames = {
+        soups: 'الشوربات', mains: 'الأطباق الرئيسية', desserts: 'الحلويات',
+        appetizers: 'المقبلات', salads: 'السلطات',
+    };
+    const groups = new Map();
+    WEEK_CATALOG.forEach(catalogItem => {
+        const section = sectionNames[catalogItem.section] || catalogItem.category || 'أصناف أخرى';
+        if (!groups.has(section)) { groups.set(section, []); }
+        groups.get(section).push(catalogItem);
+    });
+    const options = [...groups].map(([section, items]) =>
+        `<optgroup label="${esc(section)}">${items.map(catalogItem =>
+            `<option value="${Number(catalogItem.id)}" ${selected && Number(selected.id) === Number(catalogItem.id) ? 'selected' : ''}>${esc(label(catalogItem))}</option>`).join('')}</optgroup>`);
+    return '<option value="">— اختر من الأصناف المحفوظة —</option>' + options.join('');
+}
+function renderWeeklyCatalogSelectors() {
+    document.querySelectorAll('.wk-catalog').forEach(select => {
+        const rowIndex = Number(select.dataset.i);
+        const current = weekDay(WEEK_DAY).items[rowIndex] || {};
+        const value = select.value;
+        select.innerHTML = weeklyCatalogOptions({ ...current, catalog_id: value || current.catalog_id });
+        select.value = value || String(current.catalog_id || '');
+    });
+}
+window.weekUseCatalogItem = select => {
+    const catalogItem = WEEK_CATALOG.find(item => String(item.id) === select.value);
+    if (!catalogItem) { return; }
+    const rowIndex = Number(select.dataset.i);
+    const item = weekDay(WEEK_DAY).items[rowIndex];
+    if (!item) { return; }
+    const sectionNames = {
+        soups: 'الشوربات', mains: 'الأطباق الرئيسية', desserts: 'الحلويات',
+        appetizers: 'المقبلات', salads: 'السلطات',
+    };
+    item.catalog_id = Number(catalogItem.id);
+    item.name = catalogItem.name_ar || catalogItem.name || '';
+    item.name_en = catalogItem.name_en || '';
+    item.category = catalogItem.category || sectionNames[catalogItem.section] || item.category || '';
+    if (!Number(item.price) && Number(catalogItem.price) > 0) { item.price = Number(catalogItem.price); }
+    renderWeekDay();
+    renderWeekTabs();
+};
 function weekReadRows() {
     const host = $('weekItems');
     if (!host) {return [];}
     const rows = [...host.querySelectorAll('.wk-row')];
     return rows.map(r => {
         const g = (k) => { const el = r.querySelector(`[data-k="${k}"]`); return el ? el.value : ''; };
-        return { name: g('name').trim(), name_en: g('name_en').trim(), price: Number(String(g('price')).replace(/[^0-9.]/g, '')) || 0, category: g('category').trim(), note: g('note').trim() };
+        const select = r.querySelector('.wk-catalog');
+        return {
+            catalog_id: select && select.value ? Number(select.value) : null,
+            name: g('name').trim(), name_en: g('name_en').trim(),
+            price: Number(String(g('price')).replace(/[^0-9.]/g, '')) || 0,
+            category: g('category').trim(), note: g('note').trim(),
+        };
     }).filter(x => x.name);
 }
 function weekAddRow() {
     const d = weekDay(WEEK_DAY);
     d.items = d.items || [];
-    d.items.push({ name: '', name_en: '', price: 0, category: '', note: '' });
+    d.items.push({ catalog_id: null, name: '', name_en: '', price: 0, category: '', note: '' });
     renderWeekDay();
     renderWeekTabs();
 }
@@ -622,6 +715,7 @@ function printWeeklyFile(all) {
     const dayName = (d) => WEEK_AR[Number(d)] || '';
     const w = window.open('', '_blank');
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
+    const logoUrl = esc(new URL('assets/al-shurfa-logo.png', window.location.href).href);
     const sec = (d) => {
         const dd = typeof d === 'number' ? weekDay(d) : d;
         const items = dd.items || [];
@@ -639,6 +733,7 @@ function printWeeklyFile(all) {
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Cairo',Tahoma,sans-serif;background:#fff;color:#2b2113;padding:36px 40px}
     .cover{text-align:center;border:3px double #9a7418;border-radius:18px;padding:30px 20px;margin-bottom:26px;background:linear-gradient(180deg,#fdfbf4,#f6efdb)}
+    .cover-logo{display:block;width:88px;height:88px;object-fit:contain;margin:0 auto 10px}
     .cover h1{font-family:'Aref Ruqaa',serif;font-size:44px;color:#6d4c12;margin:6px 0}
     .cover h2{font-size:20px;color:#8a7648;letter-spacing:2px}
     .cover .rule{width:220px;height:2px;background:linear-gradient(90deg,transparent,#9a7418,transparent);margin:14px auto}
@@ -656,7 +751,7 @@ function printWeeklyFile(all) {
     .foot{text-align:center;color:#8a7648;font-size:13px;margin-top:10px;border-top:1px solid #e3d5ae;padding-top:12px}
     @media print{body{padding:0}.day{break-inside:avoid}}
     </style></head><body>
-    <div class="cover"><h2>مطاعم الشرفه العالمي</h2><h1>${all ? 'منيو الأسبوع' : 'منيو ' + esc(dayName(WEEK_DAY))}</h1><div class="rule"></div><h2>ALSHORFA RESTAURANTS — WEEKLY BUFFET</h2></div>
+    <div class="cover"><img class="cover-logo" src="${logoUrl}" alt="شعار مطاعم الشرفة العالمي"><h2>مطاعم الشرفة العالمي</h2><h1>${all ? 'منيو الأسبوع' : 'منيو ' + esc(dayName(WEEK_DAY))}</h1><div class="rule"></div><h2>ALSHORFA RESTAURANTS — WEEKLY BUFFET</h2></div>
     ${days.map(sec).join('')}
     <div class="foot">الأسعار شاملة الضريبة · نتشرف بخدمتكم — للحفظ PDF: طباعة ← حفظ كـ PDF</div>
     </body></html>`);
@@ -723,6 +818,18 @@ function fN(n) {
 
 /* ─── ربط الأحداث ─── */
 document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('resize', fitPortraitPreview);
+    document.addEventListener('fullscreenchange', () => {
+        const button = $('btnPreviewFullscreen');
+        const active = document.fullscreenElement === ($('previewFrame') && $('previewFrame').closest('.preview-stage'));
+        if (button) { button.textContent = active ? '⤢ تصغير المعاينة' : '⛶ تكبير المعاينة'; }
+        requestAnimationFrame(fitPortraitPreview);
+    });
+    if (typeof ResizeObserver === 'function') {
+        const stage = $('previewFrame') && $('previewFrame').closest('.preview-stage');
+        if (stage) { new ResizeObserver(fitPortraitPreview).observe(stage); }
+    }
+    window.togglePreviewFullscreen = togglePreviewFullscreen;
     $('loginForm').addEventListener('submit', (ev) => {
         ev.preventDefault();
         doLogin($('username').value.trim(), $('password').value);
