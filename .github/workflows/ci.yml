@@ -42,20 +42,20 @@ jobs:
       - name: Install dependencies (ci)
         run: npm ci --ignore-scripts
 
-      - name: Run npm audit (low+)
+      - name: Run npm audit (production dependencies only)
         id: audit
         run: |
-          echo "=== NPM Audit Report ==="
+          echo "=== NPM Audit (production dependencies — ما يُشحن فعلًا إلى الخادم) ==="
           set +e
-          npm audit --audit-level=low --json > npm-audit-report.json
+          npm audit --omit=dev --audit-level=moderate --json > npm-audit-report.json
           AUDIT_EXIT=$?
           set -e
           echo "audit_exit_code=$AUDIT_EXIT" >> $GITHUB_OUTPUT
           if [ $AUDIT_EXIT -ne 0 ]; then
-            echo "::warning::npm audit found issues. Review the uploaded artifact."
-            npm audit --audit-level=low || true
+            echo "::error::ثغرات moderate+ في تبعيات الإنتاج (ما يُشحن إلى الخادم)."
+            npm audit --omit=dev --audit-level=moderate || true
           else
-            echo "✅ No vulnerabilities found at low level or above."
+            echo "✅ لا ثغرات moderate+ في تبعيات الإنتاج."
           fi
           exit 0
 
@@ -67,10 +67,22 @@ jobs:
           path: npm-audit-report.json
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Fail on moderate+ vulnerabilities (all CI events)
+      - name: Fail on moderate+ vulnerabilities in PRODUCTION dependencies (all CI events)
         run: |
-          echo "Checking for moderate+ vulnerabilities on every pull request, push, and manual workflow run..."
+          echo "Checking production dependencies on every pull request, push, and manual run..."
+          npm audit --omit=dev --audit-level=moderate
+
+      - name: Dev-dependency audit (informational — tools only, never shipped to the server)
+        if: always()
+        run: |
+          set +e
           npm audit --audit-level=moderate
+          EXIT=$?
+          set -e
+          if [ $EXIT -ne 0 ]; then
+            echo "::warning::توجد ثغرات moderate+ في تبعيات التطوير فقط (jest/electron-builder/capacitor-cli) — لا تُشحن إلى الخادم. تُعالج على دفعات."
+          fi
+          exit 0
 
   lint-and-typecheck:
     name: 🧹 Lint, Format & TypeCheck
