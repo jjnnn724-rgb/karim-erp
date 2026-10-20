@@ -14,7 +14,7 @@ const WANT = [
 
 function sh(cmd) {
     try { return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
-    catch (e) { return null; }
+    catch (_) { return null; }
 }
 
 (async () => {

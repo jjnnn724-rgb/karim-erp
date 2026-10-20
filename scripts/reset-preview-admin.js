@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const { Client } = require('pg');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });

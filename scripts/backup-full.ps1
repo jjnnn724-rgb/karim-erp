@@ -1,6 +1,6 @@
 # karim ERP - Full Backup & Archive
 # Creates: fresh DB dump + code + .env + SSL certs + Yarasoft data
-# Output: C:\KarimData\backups\karim_FULL_YYYY-MM-DD_HHmmss\ + .zip
+# Output: restricted local directory + GPG-encrypted .zip.gpg for offsite storage
 # Schedule: KarimERP-Backup runs daily at 2:00 AM
 
 $ErrorActionPreference = 'Stop'
@@ -8,6 +8,28 @@ $ROOT = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $TS = Get-Date -Format 'yyyy-MM-dd_HHmmss'
 $BACKUP_BASE = 'C:\KarimData\backups'
 $BACKUP = Join-Path $BACKUP_BASE "karim_FULL_$TS"
+$encryptedPath = "$BACKUP.zip.gpg"
+$encryptedHashPath = "$encryptedPath.sha256"
+. (Join-Path $PSScriptRoot 'backup-encryption.ps1')
+$gpgConfig = Resolve-BackupGpg
+if ((Test-Path -LiteralPath $BACKUP) -or
+    (Test-Path -LiteralPath $encryptedPath) -or
+    (Test-Path -LiteralPath $encryptedHashPath)) {
+    throw "Backup destination already exists; refusing to overwrite it: $BACKUP"
+}
+New-Item -ItemType Directory -Path $BACKUP -Force | Out-Null
+Set-PrivateBackupAcl -Path $BACKUP
+
+function Get-Setting([string]$Name, [string]$Fallback = '') {
+    $value = [Environment]::GetEnvironmentVariable($Name)
+    if ($value) { return $value }
+    $envFile = Join-Path $ROOT '.env'
+    if (Test-Path $envFile) {
+        $line = Select-String -Path $envFile -Pattern ("^" + [regex]::Escape($Name) + "=(.*)$") | Select-Object -First 1
+        if ($line) { return $line.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
+    }
+    return $Fallback
+}
 
 Write-Host ''
 Write-Host '========================================' -ForegroundColor DarkCyan
@@ -17,11 +39,15 @@ Write-Host ''
 
 # [1] PostgreSQL dump (fresh)
 Write-Host "[1/7] Creating fresh PostgreSQL dump..." -ForegroundColor Yellow
-$env:PGPASSWORD = 'Kimo20177'
+$env:PGPASSWORD = Get-Setting 'DB_PASSWORD'
+$dbHost = Get-Setting 'DB_HOST' '127.0.0.1'
+$dbPort = Get-Setting 'DB_PORT' '5432'
+$dbUser = Get-Setting 'DB_USER' 'postgres'
+$dbName = Get-Setting 'DB_NAME' 'karim_erp'
 $pgBin = ''
 $pgPaths = @('C:\Program Files\PostgreSQL\18\bin','C:\Program Files\PostgreSQL\17\bin','C:\Program Files\PostgreSQL\16\bin')
 foreach($p in $pgPaths) { if(Test-Path (Join-Path $p 'pg_dump.exe')) { $pgBin = $p; break } }
-if(!$pgBin) { Write-Host '  pg_dump.exe not found - skipping DB dump' -ForegroundColor Red }
+if(!$pgBin) { throw 'pg_dump.exe not found - backup aborted before copying files.' }
 else {
     $dumpDir = Join-Path $BACKUP 'database'
     New-Item -ItemType Directory -Path $dumpDir -Force | Out-Null
@@ -29,14 +55,18 @@ else {
     $sqlFile  = Join-Path $dumpDir "karim_erp_$TS.sql"
 
     Write-Host "  pg_dump (custom format)..."
-    & "$pgBin\pg_dump.exe" -h 127.0.0.1 -p 5432 -U postgres -Fc -Z9 --no-owner --no-privileges -f $dumpFile karim_erp 2>&1 | Out-Null
-    if($LASTEXITCODE -eq 0) {
-        $dumpMB = [math]::Round((Get-Item $dumpFile).Length / 1MB, 1)
-        Write-Host "  Dump OK: $dumpMB MB" -ForegroundColor Green
-    } else {
-        Write-Host "  pg_dump failed (exit $LASTEXITCODE) - SQL fallback..." -ForegroundColor Yellow
-        & "$pgBin\pg_dump.exe" -h 127.0.0.1 -p 5432 -U postgres --no-owner --no-privileges karim_erp > $sqlFile 2>&1
+    & "$pgBin\pg_dump.exe" -h $dbHost -p $dbPort -U $dbUser -Fc -Z9 --no-owner --no-privileges -f $dumpFile $dbName
+    if($LASTEXITCODE -ne 0 -or !(Test-Path $dumpFile) -or (Get-Item $dumpFile).Length -eq 0) {
+        throw ('pg_dump failed (exit {0}) - backup aborted.' -f $LASTEXITCODE)
     }
+    $pgRestore = Join-Path $pgBin 'pg_restore.exe'
+    & $pgRestore --list $dumpFile *> $null
+    if($LASTEXITCODE -ne 0) { throw 'Backup archive verification failed - backup aborted.' }
+    Get-FileHash -Algorithm SHA256 -Path $dumpFile | ForEach-Object {
+        "$($_.Hash)  $(Split-Path $dumpFile -Leaf)" | Set-Content -Path "$dumpFile.sha256" -Encoding ASCII
+    }
+    $dumpMB = [math]::Round((Get-Item $dumpFile).Length / 1MB, 1)
+    Write-Host "  Verified dump: $dumpMB MB" -ForegroundColor Green
 
     # Save row counts for verification
     $countFile = Join-Path $dumpDir "row_counts_$TS.txt"
@@ -44,14 +74,14 @@ else {
     $ErrorActionBak = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $r = & "$pgBin\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d karim_erp -t -A -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;" 2>&1
+        $r = & "$pgBin\psql.exe" -v ON_ERROR_STOP=1 -h $dbHost -p $dbPort -U $dbUser -d $dbName -t -A -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;" 2>&1
         $tables = ($r | Out-String) -split "`n" | Where-Object { $_.Trim() -ne '' -and $_.Trim() -notmatch '^ERROR' }
         $counts = @()
         foreach($t in $tables) {
             $t = $t.Trim()
             if($t -eq '' -or $t -match '^ERROR') { continue }
             $sql = 'SELECT COUNT(*) FROM "' + $t + '";'
-            $r2 = & "$pgBin\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d karim_erp -t -A -c $sql 2>&1
+            $r2 = & "$pgBin\psql.exe" -v ON_ERROR_STOP=1 -h $dbHost -p $dbPort -U $dbUser -d $dbName -t -A -c $sql 2>&1
             $cnt = ($r2 | Out-String).Trim()
             if($cnt -match '^\d+$') { $counts += "$t : $cnt" }
         }
@@ -67,6 +97,7 @@ else {
 Write-Host "[2/7] Copying code..." -ForegroundColor Yellow
 $codeDst = Join-Path $BACKUP 'karim-erp'
 robocopy $ROOT $codeDst /E /XD node_modules logs .opencode "database/backups" __pycache__ /NFL /NDL /NJH /NJS /NC /NS /NP /R:0 /W:0 | Out-Null
+if ($LASTEXITCODE -ge 8) { throw "Code backup failed (robocopy exit $LASTEXITCODE)." }
 Write-Host "  Code copied" -ForegroundColor Green
 
 # [3] .env
@@ -111,17 +142,34 @@ try { Get-Service -Name 'KarimERP*' -ErrorAction SilentlyContinue | Format-Table
 try { ipconfig /all | Out-String | Out-File (Join-Path $tasksDir 'network.txt') -Encoding UTF8 } catch {}
 Write-Host "  System info saved" -ForegroundColor Green
 
-# [7] ZIP archive
-Write-Host "[7/7] Creating ZIP archive..." -ForegroundColor Yellow
-$zipPath = "$BACKUP.zip"
-$zipOK = $false
+# [7] Encrypt the archive for offsite storage
+Write-Host "[7/7] Creating and encrypting backup archive..." -ForegroundColor Yellow
+$archiveWork = Join-Path $BACKUP_BASE ".karim-backup-archive-$TS"
+$zipPath = Join-Path $archiveWork 'archive.zip'
+New-Item -ItemType Directory -Path $archiveWork -Force | Out-Null
+Set-PrivateBackupAcl -Path $archiveWork
 try {
-    Compress-Archive -Path $BACKUP -DestinationPath $zipPath -CompressionLevel Optimal -Force
-    $zipMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
-    Write-Host "  ZIP created: $zipMB MB" -ForegroundColor Green
-    $zipOK = $true
+    Compress-Archive -Path $BACKUP -DestinationPath $zipPath -CompressionLevel Optimal
+    Protect-BackupArchive -InputPath $zipPath -OutputPath (Join-Path $archiveWork 'archive.zip.gpg') `
+        -Recipient $gpgConfig.Recipient -GpgPath $gpgConfig.GpgPath
+    Move-Item -LiteralPath (Join-Path $archiveWork 'archive.zip.gpg') -Destination $encryptedPath
+    $encryptedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $encryptedPath).Hash
+    "$encryptedHash  $(Split-Path $encryptedPath -Leaf)" |
+        Set-Content -LiteralPath $encryptedHashPath -Encoding ASCII
+    $archiveMB = [math]::Round((Get-Item -LiteralPath $encryptedPath).Length / 1MB, 1)
+    Write-Host "  Encrypted archive created: $archiveMB MB" -ForegroundColor Green
 } catch {
-    Write-Host "  ZIP failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    if (Test-Path -LiteralPath $encryptedPath) {
+        Remove-Item -LiteralPath $encryptedPath -Force
+    }
+    if (Test-Path -LiteralPath $encryptedHashPath) {
+        Remove-Item -LiteralPath $encryptedHashPath -Force
+    }
+    throw "Encrypted archive creation failed; no plaintext archive was retained. $($_.Exception.Message)"
+} finally {
+    if (Test-Path -LiteralPath $archiveWork) {
+        Remove-Item -LiteralPath $archiveWork -Recurse -Force
+    }
 }
 
 # Cleanup old backups (keep last 14)
@@ -132,10 +180,17 @@ if($oldBackups.Count -gt 14) {
     $toDelete = $oldBackups | Select-Object -Last ($oldBackups.Count - 14)
     foreach($d in $toDelete) {
         Remove-Item $d.FullName -Recurse -Force -ErrorAction SilentlyContinue
-        $zipOld = "$($d.FullName).zip"
-        if(Test-Path $zipOld) { Remove-Item $zipOld -Force -ErrorAction SilentlyContinue }
+        foreach ($oldArchive in @("$($d.FullName).zip.gpg", "$($d.FullName).zip.gpg.sha256")) {
+            if (Test-Path -LiteralPath $oldArchive) {
+                Remove-Item -LiteralPath $oldArchive -Force -ErrorAction SilentlyContinue
+            }
+        }
         Write-Host "  Removed: $($d.Name)" -ForegroundColor DarkGray
     }
+}
+$legacyArchives = @(Get-ChildItem -Path $BACKUP_BASE -Filter 'karim_FULL_*.zip' -File -ErrorAction SilentlyContinue)
+if ($legacyArchives.Count -gt 0) {
+    Write-Warning "Found $($legacyArchives.Count) legacy plaintext ZIP archive(s); they were not uploaded or automatically deleted. Securely migrate or remove them."
 }
 
 # Summary
@@ -144,9 +199,9 @@ Write-Host ''
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ('  Backup Complete: {0} MB' -f [math]::Round($sz/1MB,1)) -ForegroundColor Green
 Write-Host ('  Folder: {0}' -f $BACKUP) -ForegroundColor Green
-if($zipOK) { Write-Host ('  ZIP:    {0}' -f $zipPath) -ForegroundColor Green }
+Write-Host ('  Encrypted archive: {0}' -f $encryptedPath) -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ''
 Write-Host 'To restore on a new machine:' -ForegroundColor Yellow
-Write-Host '  1. Extract this folder next to karim-erp code' -ForegroundColor White
-Write-Host '  2. Run: .\scripts\restore-all.ps1' -ForegroundColor White
+Write-Host '  1. Decrypt the .zip.gpg archive with the organization private key kept off-server' -ForegroundColor White
+Write-Host '  2. Extract the archive and run: .\scripts\restore-all.ps1' -ForegroundColor White

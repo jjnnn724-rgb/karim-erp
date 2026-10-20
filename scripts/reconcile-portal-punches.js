@@ -13,12 +13,12 @@ const { Pool } = require('pg');
 const ROOT = path.join(__dirname, '..');
 for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
     const m = line.match(/^([A-Z_]+)=(.*)$/);
-    if (m) process.env[m[1]] = m[2];
+    if (m) {process.env[m[1]] = m[2];}
 }
 const pad = n => String(n).padStart(2, '0');
 const wallOf = (d) => {
     const p = {};
-    for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d)) p[x.type] = x.value;
+    for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d)) {p[x.type] = x.value;}
     return { date: `${p.year}-${p.month}-${p.day}`, time: `${pad(Number(p.hour) % 24)}:${p.minute}` };
 };
 
@@ -34,7 +34,7 @@ const wallOf = (d) => {
           ORDER BY attempted_at`)).rows;
     let filled = 0, created = 0, ok = 0, skippedOut = 0;
     for (const a of atts) {
-        if (!a.employee_id) continue;
+        if (!a.employee_id) {continue;}
         // حارس 2026-10-11: بصمة خروج أغلقت صف أمس — لا تُنشأ صف دخول لليوم الجديد
         // (المصنع الذكي يغلق صف أمس ثم هذا المسخّن يفتح صف شبح لليوم — نفس البصمة!)
         let engineAction = null;

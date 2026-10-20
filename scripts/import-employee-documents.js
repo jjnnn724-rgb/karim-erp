@@ -162,7 +162,7 @@ function dedupe(rows, keyOf, sameOf) {
 
 // ─── الحكم على قيمة قديمة → عملية ────────────────────────────────────────────
 // يرجع {op, next} حيث op ∈ UPDATED|UNCHANGED|REENCODED|CONFLICT|FILL
-function decide({ oldVal, nextISO, oldHijriRawIncoming, oldWasHijri }) {
+function decide({ oldVal, nextISO, oldHijriRawIncoming: _oldHijriRawIncoming, oldWasHijri }) {
     const old = String(oldVal ?? '').trim();
     if (!old) {return { op: 'FILL', next: nextISO };}
     if (old === nextISO) {return { op: 'UNCHANGED', next: nextISO };}

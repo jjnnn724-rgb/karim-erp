@@ -10,14 +10,13 @@ const ROOT = path.join(__dirname, '..');
 function walk(dir, out = []) {
     for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, f.name);
-        if (f.isDirectory()) { if (f.name !== 'node_modules') walk(p, out); continue; }
+        if (f.isDirectory()) { if (f.name !== 'node_modules') {walk(p, out);} continue; }
         if (!f.name.endsWith('.js')) {continue;}
         out.push(p);
     }
     return out;
 }
 
-const methods = ['post', 'put', 'delete', 'patch'];
 const routes = [];
 for (const file of walk(path.join(ROOT, 'backend'))) {
     const rel = path.relative(ROOT, file).replace(/\\/g, '/');
@@ -29,7 +28,7 @@ for (const file of walk(path.join(ROOT, 'backend'))) {
         const window = src.slice(m.index, m.index + 600);
         const hasJwt = /jwtAuth|requireAuth|authenticate/.test(window);
         const hasRoles = /requireRole|requireRoleOrPerm|writeGuard|permForEntity|PAYMENT_WRITE|PAYMENT_DELETE|SUPPLIER_WRITE|AUDIT_WRITE|PR_CREATE|createRoles|deleteRoles|openWriteRoles/.test(window);
-        const handlerAt = window.search(/async\s*\(|\(\s*req\s*,/);
+        window.search(/async\s*\(|\(\s*req\s*,/);
         routes.push({
             file: rel, method: m[2].toUpperCase(), path: m[3],
             hasJwt, hasRoles,

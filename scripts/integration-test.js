@@ -4,31 +4,47 @@
 const http = require('http');
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const https = require('https');
-// السيرفر يعمل HTTPS بشهادة محلية عند توفر SSL_KEY/SSL_CERT (نفس شرط server.js)
-// يُحسب وقت الطلب (لا عند التحميل) لأن dotenv يُحمَّل لاحقًا
-const fsSsl = require('fs');
-function sslEnabled() {
-    return Boolean(process.env.SSL_KEY && process.env.SSL_CERT
-        && fsSsl.existsSync(process.env.SSL_KEY) && fsSsl.existsSync(process.env.SSL_CERT));
-}
 
 const PINK = '\x1b[35m', GREEN = '\x1b[32m', RED = '\x1b[31m', CYAN = '\x1b[36m', YELLOW = '\x1b[33m', RESET = '\x1b[0m', BOLD = '\x1b[1m';
 
 let pass = 0, fail = 0;
 const failures = [];
 let adminToken = null;
-const cashierToken = null;
+
+function assertSafeTestTarget() {
+    const baseUrl = process.env.KARIM_TEST_BASE_URL;
+    const allowedHosts = new Set(['localhost', '127.0.0.1', '::1']);
+    let target;
+    try { target = new URL(baseUrl); } catch (cause) {
+        throw new Error('Set KARIM_TEST_BASE_URL to an explicit loopback test-server URL.', { cause });
+    }
+    if (process.env.NODE_ENV !== 'test'
+        || process.env.DB_NAME !== 'karim_erp_test'
+        || process.env.KARIM_TEST_DB_NAME !== 'karim_erp_test'
+        || process.env.KARIM_TEST_DB_ISOLATED !== '1'
+        || !allowedHosts.has(target.hostname)
+        || !['http:', 'https:'].includes(target.protocol)) {
+        throw new Error('Integration tests require an explicitly isolated karim_erp_test database and a loopback test server.');
+    }
+}
 
 function req(method, path, body = null, headers = {}) {
     return new Promise((resolve) => {
-        const opts = { method, hostname: 'localhost', port: Number(process.env.PORT || 5000), path, headers: { ...headers } };
+        const baseUrl = new URL(process.env.KARIM_TEST_BASE_URL);
+        const target = new URL(path, baseUrl);
+        const opts = {
+            method,
+            hostname: target.hostname,
+            port: Number(target.port || (target.protocol === 'https:' ? 443 : 80)),
+            path: `${target.pathname}${target.search}`,
+            headers: { ...headers },
+        };
         if (body) {
             const data = JSON.stringify(body);
             opts.headers['Content-Type'] = 'application/json';
             opts.headers['Content-Length'] = Buffer.byteLength(data);
         }
-        const useHttps = sslEnabled();
-        if (useHttps) {opts.rejectUnauthorized = false;} // شهادة محلية موقّعة ذاتيًا
+        const useHttps = target.protocol === 'https:';
         const r = (useHttps ? https : http).request(opts, (res) => {
             let buf = '';
             res.on('data', d => buf += d);
@@ -50,6 +66,7 @@ function check(name, ok, detail = '') {
 }
 
 async function main() {
+    assertSafeTestTarget();
     console.log(`\n${BOLD}${PINK}═══════════════════════════════════════════════════════${RESET}`);
     console.log(`${BOLD}${PINK}  Karim ERP — اختبار تكاملي مع PostgreSQL حقيقي${RESET}`);
     console.log(`${BOLD}${PINK}═══════════════════════════════════════════════════════${RESET}\n`);
@@ -74,12 +91,7 @@ async function main() {
     console.log(`\n${BOLD}${YELLOW}[Phase 2] المصادقة (Login → JWT)${RESET}`);
 
     const adminPassword = process.env.KARIM_TEST_PASSWORD;
-    if (!adminPassword) {
-        // الاختبار يتطلب كلمة مرور حية يوفرها المشغّل عمدًا — بدونها: تخطٍ نظيف لا فشل
-        console.log(`${YELLOW}⚠ KARIM_TEST_PASSWORD غير مضبوط — تخطي اختبارات التكامل الحية (هذا متعمّد)${RESET}`);
-        console.log(`${CYAN}  لتشغيلها: KARIM_TEST_PASSWORD=<كلمة مرور admin> node scripts/integration-test.js${RESET}`);
-        process.exit(0);
-    }
+    if (!adminPassword) {throw new Error('KARIM_TEST_PASSWORD must be a synthetic test-account password.');}
     // admin login
     r = await req('POST', '/api/auth/login', { username: 'admin', password: adminPassword });
     check('admin login ناجح (200)', r.status === 200, `(HTTP ${r.status})`);
@@ -87,7 +99,6 @@ async function main() {
     check('login يرجع user.id', !!r.json?.user?.id, '');
     check('login يرجع user.role = admin', r.json?.user?.role === 'admin', r.json?.user?.role || '');
     adminToken = r.json?.access_token;
-    console.log(`      ${CYAN}admin token: ${adminToken?.substring(0, 30)}...${RESET}`);
 
     // wrong password
     r = await req('POST', '/api/auth/login', { username: 'admin', password: 'wrong' });

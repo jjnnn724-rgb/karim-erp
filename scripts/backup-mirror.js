@@ -7,14 +7,84 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
+const crypto = require('crypto');
 
 const MIRROR_ROOTS = [
     process.env.KARIM_MIRROR_D || 'D:/KarimBackups',
     process.env.KARIM_MIRROR_E || 'E:/KarimBackups',
 ];
 
+function sha256File(filePath) {
+    const hash = crypto.createHash('sha256');
+    const buffer = Buffer.alloc(1024 * 1024);
+    const fd = fs.openSync(filePath, 'r');
+    try {
+        let bytesRead;
+        do {
+            bytesRead = fs.readSync(fd, buffer, 0, buffer.length, null);
+            if (bytesRead > 0) {hash.update(buffer.subarray(0, bytesRead));}
+        } while (bytesRead > 0);
+    } finally {
+        fs.closeSync(fd);
+    }
+    return hash.digest('hex');
+}
+
+function encryptBackupFile(srcFile) {
+    const outputFile = `${srcFile}.gpg`;
+    const checksumFile = `${outputFile}.sha256`;
+    if (fs.existsSync(outputFile) || fs.existsSync(checksumFile)) {
+        throw new Error(`Encrypted backup already exists; refusing to overwrite it: ${outputFile}`);
+    }
+
+    const helperPath = path.join(__dirname, 'backup-encryption.ps1')
+        .replace(/'/g, "''");
+    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    const command = [
+        `$ErrorActionPreference = 'Stop'`,
+        `. ${quote(helperPath)}`,
+        '$gpg = Resolve-BackupGpg',
+        `Protect-BackupArchive -InputPath ${quote(path.resolve(srcFile))} -OutputPath ${quote(path.resolve(outputFile))} -Recipient $gpg.Recipient -GpgPath $gpg.GpgPath`,
+    ].join('; ');
+    const result = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command,
+    ], { encoding: 'utf8', windowsHide: true, timeout: 600000 });
+
+    if (result.error || result.status !== 0) {
+        if (fs.existsSync(outputFile)) {fs.unlinkSync(outputFile);}
+        const detail = result.error ? result.error.message : (result.stderr || result.stdout || `exit code ${result.status}`);
+        throw new Error(`GPG encryption failed for ${srcFile}: ${String(detail).trim()}`);
+    }
+    if (!fs.existsSync(outputFile) || fs.statSync(outputFile).size === 0) {
+        if (fs.existsSync(outputFile)) {fs.unlinkSync(outputFile);}
+        throw new Error(`GPG did not create a non-empty encrypted backup: ${outputFile}`);
+    }
+
+    const digest = sha256File(outputFile);
+    fs.writeFileSync(checksumFile, `${digest}  ${path.basename(outputFile)}\n`, { encoding: 'utf8', flag: 'wx' });
+    return outputFile;
+}
+
 function mirrorFile(srcFile, subdir) {
     const out = { ok: true, mirrored: [], errors: [] };
+    if (path.extname(srcFile).toLowerCase() !== '.gpg') {
+        out.ok = false;
+        out.errors.push('plaintext-mirror-refused:encrypted-.gpg-required');
+        return out;
+    }
+    const checksumFile = `${srcFile}.sha256`;
+    if (!fs.existsSync(checksumFile)) {
+        out.ok = false;
+        out.errors.push('encrypted-backup-checksum-missing');
+        return out;
+    }
+    const checksum = fs.readFileSync(checksumFile, 'utf8').trim().match(/^([a-f0-9]{64})\s+(.+)$/i);
+    if (!checksum || checksum[2] !== path.basename(srcFile) || sha256File(srcFile).toLowerCase() !== checksum[1].toLowerCase()) {
+        out.ok = false;
+        out.errors.push('encrypted-backup-checksum-invalid');
+        return out;
+    }
     let stat;
     try { stat = fs.statSync(srcFile); } catch (e) { out.ok = false; out.errors.push('src-missing:' + e.message); return out; }
     if (!stat.size) { out.ok = false; out.errors.push('src-empty'); return out; }
@@ -23,20 +93,20 @@ function mirrorFile(srcFile, subdir) {
             const dir = subdir ? path.join(root, subdir) : root;
             fs.mkdirSync(dir, { recursive: true });
             const dest = path.join(dir, path.basename(srcFile));
-            // انسخ فقط لو غير موجود أو أقدم/أصغر (توفير وقت وكتابة)
-            let skip = false;
-            try {
-                const ds = fs.statSync(dest);
-                if (ds.size === stat.size && ds.mtimeMs >= stat.mtimeMs - 1000) skip = true;
-            } catch (_) {}
-            if (!skip) fs.copyFileSync(srcFile, dest);
+            fs.copyFileSync(srcFile, dest);
+            fs.copyFileSync(checksumFile, `${dest}.sha256`);
+            if (sha256File(dest).toLowerCase() !== checksum[1].toLowerCase()) {
+                fs.unlinkSync(dest);
+                fs.unlinkSync(`${dest}.sha256`);
+                throw new Error('copied encrypted backup checksum mismatch');
+            }
             out.mirrored.push(dest);
         } catch (e) {
             out.errors.push(root + ':' + String(e.message).slice(0, 80));
         }
     }
-    if (!out.mirrored.length) out.ok = false;
+    if (!out.mirrored.length) {out.ok = false;}
     return out;
 }
 
-module.exports = { mirrorFile, MIRROR_ROOTS };
+module.exports = { encryptBackupFile, mirrorFile, MIRROR_ROOTS };

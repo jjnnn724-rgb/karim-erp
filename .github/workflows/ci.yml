@@ -96,6 +96,9 @@ jobs:
       - name: Inline-handler gate — no dead onclick/oninput handlers
         run: npm run test:handlers:gate
 
+      - name: Secret scanner — no hardcoded credentials in tracked files
+        run: npm run test:secrets:gate
+
       - name: Run Prettier check (via package script)
         run: npm run test:format
 

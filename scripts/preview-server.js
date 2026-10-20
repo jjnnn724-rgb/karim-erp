@@ -143,7 +143,7 @@ const server = http.createServer((req, res) => {
     if (route === 'state') {return json(res, 200, { lang: 'ar', theme: 'light' });}
     if (route === 'settings/main_settings') {
       if (req.method === 'GET') {return json(res, 200, settings);}
-      let body = ''; req.on('data', c => body += c); req.on('end', () => { try { Object.assign(settings, JSON.parse(body || '{}')); } catch (e) {} return json(res, 200, settings); });
+      let body = ''; req.on('data', c => body += c); req.on('end', () => { try { Object.assign(settings, JSON.parse(body || '{}')); } catch (_) {} return json(res, 200, settings); });
       return;
     }
     if (route === 'pos/departments') {return json(res, 200, posDepartments);}
@@ -216,7 +216,7 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET' && !entityId) {return json(res, 200, paginate(DB[entity], url.searchParams));}
       if (req.method === 'POST') {
         let body = ''; req.on('data', c => body += c); req.on('end', () => {
-          try { const row = JSON.parse(body || '{}'); row.id = id(); row.icon = row.icon && deptIcons[row.icon] ? row.icon : row.icon; DB[entity].push(row); return json(res, 200, row); } catch (e) { return json(res, 400, { message: 'bad json' }); }
+          try { const row = JSON.parse(body || '{}'); row.id = id(); row.icon = row.icon && deptIcons[row.icon] ? row.icon : row.icon; DB[entity].push(row); return json(res, 200, row); } catch (_) { return json(res, 400, { message: 'bad json' }); }
         });
         return;
       }
@@ -224,7 +224,7 @@ const server = http.createServer((req, res) => {
         let body = ''; req.on('data', c => body += c); req.on('end', () => {
           const idx = DB[entity].findIndex(r => String(r.id) === String(entityId));
           if (req.method === 'DELETE') { if (idx >= 0) {DB[entity].splice(idx, 1);} return json(res, 200, { ok: true }); }
-          if (idx >= 0) { try { Object.assign(DB[entity][idx], JSON.parse(body || '{}')); } catch (e) {} }
+          if (idx >= 0) { try { Object.assign(DB[entity][idx], JSON.parse(body || '{}')); } catch (_) {} }
           return json(res, 200, idx >= 0 ? DB[entity][idx] : { ok: true });
         });
         return;

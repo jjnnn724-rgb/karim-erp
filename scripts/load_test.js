@@ -291,7 +291,7 @@ async function p3IdempotencyRace() {
     };
     const r = await storm(12, 12, () => api('POST', '/api/sales/complete', ctx.token, body,
         { 'Idempotency-Key': key, 'X-Shift-Session-Id': String(ctx.shift1) }, 300000));
-    const created = r.count(201), replayed = r.statuses.filter((x, i) => x >= 200 && x < 300).length;
+    r.count(201); r.statuses.filter((x, _i) => x >= 200 && x < 300).length;
     const dupOrders = await q(`SELECT id FROM pos_orders WHERE notes = $1`, [`فحص تكرار ${RUN}`]);
     ctx.orderIds.push(...dupOrders.rows.map(x => x.id));
     const bal = await one(`SELECT on_hand FROM inventory_location_balances WHERE inventory_id=$1 AND location_id=$2`, [ctx.invB, ctx.locId]);

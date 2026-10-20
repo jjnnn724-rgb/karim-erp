@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn, spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const crypto = require('crypto');
 
 // ─── .env ──────────────────────────────────────────
@@ -47,7 +47,7 @@ const EXE = IS_WIN ? '.exe' : '';
 // otherwise you'll get mismatched validation errors.
 // Last updated by Karim on 2026-09-19 to align with the
 // Saudi tax office requirements.
-const MIN_NODE_VERSION = 18;
+const MIN_NODE_VERSION = 20;
 const MIN_PG_MAJOR = 16;
 const DEFAULT_DB_PORT = 5432;
 const APP_PORT = 5000;
@@ -409,7 +409,7 @@ function psqlFile(sqlFile, dbName) {
     const user = getEnv('DB_USER', 'postgres');
     const password = getEnv('DB_PASSWORD', '');
     const env = { ...process.env, PGPASSWORD: password };
-    const result = spawnSync(psql, ['-h', host, '-p', String(port), '-U', user, '-d', dbName, '-f', sqlFile], { encoding: 'utf-8', timeout: 120000, env });
+    const result = spawnSync(psql, ['-v', 'ON_ERROR_STOP=1', '-h', host, '-p', String(port), '-U', user, '-d', dbName, '-f', sqlFile], { encoding: 'utf-8', timeout: 120000, env });
     return { status: result.status, stdout: result.stdout || '', stderr: result.stderr || '' };
 }
 

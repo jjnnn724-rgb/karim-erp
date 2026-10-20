@@ -43,6 +43,7 @@
     "test:lint": "npx eslint . --ext .js,.mjs",
     "test:lint:gate": "node scripts/lint-gate.js",
     "test:handlers:gate": "node scripts/audit-inline-handlers.js",
+    "test:secrets:gate": "node scripts/check-secrets.js",
     "test:v2-revision": "node scripts/v2-revision.js --check",
     "test:format": "npx prettier --check . --ignore-path .prettierignore",
     "test:type": "npm run typecheck && npm run typecheck:strict",

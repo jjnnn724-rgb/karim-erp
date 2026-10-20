@@ -19,7 +19,7 @@
  */
 const lib = require('./shared');
 process.chdir(lib.ROOT);
-const { log, ROOT, NODE_MODULES, ENV_FILE, setupEnvSecrets, ensureDir, genSecret } = lib;
+const { log, ROOT, NODE_MODULES, ENV_FILE, setupEnvSecrets } = lib;
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const NODE_BIN = process.execPath;
@@ -150,7 +150,7 @@ async function main() {
 
     // ─── Step 6: Apply migrations ──────────────────
     log.step('6/8 — تطبيق migrations');
-    const dbName = lib.getEnv('DB_NAME', 'karim_erp');
+    lib.getEnv('DB_NAME', 'karim_erp');
     try {
         const result = spawnSync(NODE_BIN, [path.join(ROOT, 'database', 'scripts', 'run-migration.js')], {
             stdio: 'inherit', cwd: ROOT, timeout: 120000,

@@ -14,7 +14,7 @@
 const lib = require('./shared');
 // Ensure we are in the project root
 process.chdir(lib.ROOT);
-const { log, getEnv } = lib;
+const { log } = lib;
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

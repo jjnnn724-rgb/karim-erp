@@ -26,7 +26,7 @@ const report = { at: new Date().toISOString(), fix: FIX, checks: {}, actions: []
 try {
     for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
         const m = line.match(/^([A-Z_]+)=(.*)$/);
-        if (m && (process.env[m[1]] === undefined || process.env[m[1]] === '')) process.env[m[1]] = m[2];
+        if (m && (process.env[m[1]] === undefined || process.env[m[1]] === '')) {process.env[m[1]] = m[2];}
     }
 } catch (_) {}
 
@@ -69,6 +69,16 @@ function procRunning(exe) {
         return out.toLowerCase().includes(exe.toLowerCase());
     } catch (_) { return false; }
 }
+// انتظار تحرّر المنفذ قبل تشغيل الخادم (FIX 2026-10-19): الإيقاف ليس فوريًا
+// (stoptimeout=30s)، والتشغيل قبل التحرّر يُنتج EADDRINUSE يُسقط النسخة الجديدة.
+async function waitPortFree(port, totalMs = 45000) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < totalMs) {
+        if (!(await tcpOk('127.0.0.1', port, 1500))) {return true;}
+        await new Promise((r) => setTimeout(r, 2000));
+    }
+    return false;
+}
 
 (async () => {
     // ── 1) PostgreSQL ──
@@ -81,37 +91,54 @@ function procRunning(exe) {
             report.actions.push(`postgres-start:${started ? 'ok' : 'FAILED'}`);
             await new Promise((r) => setTimeout(r, 8000));
             report.checks.postgres_after = (await tcpOk('127.0.0.1', 5432)) ? 'listening' : 'STILL-DOWN';
-            if (report.checks.postgres_after !== 'listening') report.ok = false;
+            if (report.checks.postgres_after !== 'listening') {report.ok = false;}
         }
     }
 
     // ── 2) ERP backend ──
-    const apiOk = await httpsOk('https://127.0.0.1:5000/api/health');
+    /* FIX 2026-10-20: لا نُسقط خادمًا حيًّا مشغولًا. الفحص الواحد كان يكفي
+       لأن يمرّ ضغطُ الاستعلامات أو إقلاعٌ بطيء كـ«سقوط»، فيُعاد التشغيل بلا
+       داعٍ ويرى المستخدم الخدمة تقع. ثلاث محاولات متباعدة = مهلة تعافٍ حقيقية،
+       ولا تدخّل إلا إذا بقي ميتًا فعلًا. */
+    let apiOk = false;
+    for (let i = 0; i < 3 && !apiOk; i++) {
+        if (i) {await new Promise((r) => setTimeout(r, 5000));}
+        apiOk = await httpsOk('https://127.0.0.1:5000/api/health', 15000);
+    }
     report.checks.erp = apiOk ? 'healthy' : 'DOWN';
     if (!apiOk) {
         report.ok = false;
         if (FIX) {
             let revived = false;
-            // أ) خدمة الويندوز إن وُجدت
+            // أ) خدمة الويندوز: إيقاف رشيق ← انتظار تحرّر المنفذ ← تشغيل.
+            //    كانت تنتظر 4 ثوانٍ فقط ثم تشغّل فيصطدم بالمنفذ المشغول ويموت
+            //    الخادم الجديد بـEADDRINUSE (FIX 2026-10-19).
             try {
                 const st = svc('x', 'KarimERP-Server');
                 if (st === 'running' || st === 'stopped' || String(st).startsWith('unknown') === false) {
-                    spawnSync('sc', ['stop', 'KarimERP-Server'], { timeout: 30000 });
-                    await new Promise((r) => setTimeout(r, 4000));
+                    spawnSync('sc', ['stop', 'KarimERP-Server'], { timeout: 40000 });
+                    const freed = await waitPortFree(5000, 45000);
+                    report.actions.push(`port-free:${freed ? 'ok' : 'timeout'}`);
                     revived = svcStart('KarimERP-Server');
                 }
             } catch (_) {}
-            // ب) بدء مباشر مخفي كاحتياطي
+            // ب) بدء مباشر مخفي كاحتياطي (فقط إذا لم تُقلع الخدمة)
             if (!revived) {
                 try {
+                    await waitPortFree(5000, 20000);
                     spawnSync('C:\\nodejs\\node.exe', [path.join(ROOT, 'backend', 'server.js')],
                         { cwd: ROOT, detached: true, stdio: 'ignore', windowsHide: true, timeout: 15000 }).unref?.();
                     revived = true;
                 } catch (_) {}
             }
             report.actions.push(`erp-restart:${revived ? 'attempted' : 'FAILED'}`);
-            await new Promise((r) => setTimeout(r, 25000));
-            report.checks.erp_after = (await httpsOk('https://127.0.0.1:5000/api/health')) ? 'healthy' : 'STILL-DOWN';
+            // انتظار أطول: الإقلاع الكامل (ترحيلات/فهارس/محركات) قد يتجاوز 25 ثانية.
+            let healthy = false;
+            for (let i = 0; i < 20 && !healthy; i++) {
+                await new Promise((r) => setTimeout(r, 3000));
+                healthy = await httpsOk('https://127.0.0.1:5000/api/health', 8000);
+            }
+            report.checks.erp_after = healthy ? 'healthy' : 'STILL-DOWN';
         }
     }
 
@@ -141,7 +168,7 @@ function procRunning(exe) {
     if (tunProc && pubOk === false) {
         const localOk = await httpsOk('https://127.0.0.1:5000/api/health', 8000);
         strikes = localOk ? prevStrikes + 1 : 0;
-        if (localOk) report.actions.push('tunnel-public-fail:' + strikes + '/2');
+        if (localOk) {report.actions.push('tunnel-public-fail:' + strikes + '/2');}
     }
     report.tunnel_strikes = strikes;
     const needTunnelRestart = !tunProc || strikes >= 2;
@@ -162,7 +189,7 @@ function procRunning(exe) {
                     report.actions.push('tunnel-sessions-reset:attempted');
                     report.tunnel_strikes = 0;
                 }
-            } catch (e) { report.actions.push('tunnel-restart:FAILED'); }
+            } catch (_) { report.actions.push('tunnel-restart:FAILED'); }
         }
     }
 

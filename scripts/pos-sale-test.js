@@ -12,7 +12,6 @@ let adminToken = null;
 let sessionId = null;
 let departmentId = null;
 let products = [];
-let orderId = null;
 let invoiceCounter = null;
 let qrPayload = null;
 const initialStock = {};
@@ -132,7 +131,6 @@ async function main() {
     check('zatca_queued = true', r.json?.zatca_queued === true, `${r.json?.zatca_queued}`);
     check('session_id مرتبط بالوردية', Number(r.json?.session_id) === Number(sessionId), `${r.json?.session_id}`);
 
-    orderId = r.json?.order_id;
     invoiceCounter = r.json?.invoice_counter;
     qrPayload = r.json?.qr_payload;
 

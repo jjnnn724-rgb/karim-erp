@@ -61,7 +61,6 @@ for (const rel of files) {
   const src = fs.readFileSync(fp, 'utf8');
   let out = '';
   let i = 0;
-  const quote = null; // ', ", ` or null
   const report = [];
 
   while (i < src.length) {

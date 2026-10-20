@@ -146,7 +146,7 @@ function checkPgConnection({ host, port, user, password, dbName }) {
     // 1) Node version
     logStep('1/9 — Node.js version');
     const nodeMaj = parseInt(process.versions.node.split('.')[0], 10);
-    if (nodeMaj < 18) { add('error', 'E_NODE', `Node.js ${process.versions.node} — الحد الأدنى 18+ (ضع الإصدار من https://nodejs.org/)`); process.exit(1); }
+    if (nodeMaj < 20) { add('error', 'E_NODE', `Node.js ${process.versions.node} — الحد الأدنى 20+ (ضع الإصدار من https://nodejs.org/)`); process.exit(1); }
     add('ok', 'E_NODE', `Node.js ${process.versions.node}`);
 
     // 2) Project files

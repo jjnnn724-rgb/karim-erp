@@ -10,7 +10,7 @@ const RE = /catch\s*\([^)]*\)\s*\{\s*\}/g;
 function walk(dir, out = []) {
     for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, f.name);
-        if (f.isDirectory()) { if (f.name !== 'node_modules') walk(p, out); continue; }
+        if (f.isDirectory()) { if (f.name !== 'node_modules') {walk(p, out);} continue; }
         if (!f.name.endsWith('.js')) {continue;}
         out.push(p);
     }

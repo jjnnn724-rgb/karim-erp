@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 const lib = require('./shared');
 process.chdir(lib.ROOT);
-const { log, getEnv } = lib;
+const { log } = lib;
 const path = require('path');
-const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 

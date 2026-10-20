@@ -32,7 +32,7 @@ try { require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet
     };
 })();
 
-const { runSystemAudit, report, engine } = require('../backend/audit-engine');
+const { runSystemAudit, report } = require('../backend/audit-engine');
 
 const SEV_RANK = { CRITICAL: 5, HIGH: 4, MEDIUM: 3, LOW: 2, INFO: 1 };
 

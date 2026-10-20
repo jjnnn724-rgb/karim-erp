@@ -611,11 +611,11 @@ async function main() {
   head('1/10  فحص إصدار Node.js');
   const nodeV = process.versions.node;
   const nodeMajor = parseInt(nodeV.split('.')[0], 10);
-  if (nodeMajor >= 18) {
+  if (nodeMajor >= 20) {
     ok(`Node.js ${nodeV} — الإصدار متوافق ✓`);
-    phaseResults.push(['فحص Node.js (>=18)', true, nodeV]);
+    phaseResults.push(['فحص Node.js (>=20)', true, nodeV]);
   } else {
-    fatal(`إصدار Node.js قديم جدًا: ${nodeV}. Karim ERP يتطلب Node.js 18 أو أحدث. قم بالتحديث من nodejs.org`);
+    fatal(`إصدار Node.js قديم جدًا: ${nodeV}. Karim ERP يتطلب Node.js 20 أو أحدث. قم بالتحديث من nodejs.org`);
   }
 
   // ── المرحلة 2: فحص وجود الملفات الأساسية للمشروع

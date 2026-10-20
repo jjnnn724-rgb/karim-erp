@@ -3,10 +3,9 @@
 const fs = require('fs');
 for (const line of fs.readFileSync('.env', 'utf8').split(/\r?\n/)) {
     const m = line.match(/^([A-Z_]+)=(.*)$/);
-    if (m) process.env[m[1]] = m[2];
+    if (m) {process.env[m[1]] = m[2];}
 }
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-const { execFileSync } = require('child_process');
 const jwt = require('jsonwebtoken');
 const TOKEN = jwt.sign({ sub: '1', role: 'admin', name: 'مدير النظام', sid: null, pwd_change: false }, process.env.JWT_ACCESS_SECRET, { expiresIn: '10m', algorithm: 'HS256' });
 const HDRS = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', 'x-api-key': process.env.API_KEY || '' };

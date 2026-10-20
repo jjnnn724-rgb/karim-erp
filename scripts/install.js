@@ -31,7 +31,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const https = require('https');
-const net = require('net');
 const crypto = require('crypto'); // needed for correlation ID generation
 
 // ─── App Constants ─────────────────────────────────────

@@ -16,7 +16,6 @@
  * الاستدعاء: node scripts/attendance-shift-mismatch.js [أيام=14]
  * مخرجاته مقترح للإدارة فقط: تصحيح الوردية تعديل إعداد حي يؤثر على الاستيعاب الجديد.
  */
-const path = require('path');
 const { pool } = require('../backend/shared-pool');
 const ae = require('../backend/attendance-engine');
 

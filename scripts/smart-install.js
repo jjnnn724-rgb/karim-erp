@@ -50,7 +50,7 @@ function step(n, total, msg) {
 function checkNode() {
   const major = parseInt(process.versions.node.split('.')[0], 10);
   if (major < 18) {
-    log.error(`Node.js ${process.versions.node} — المطلوب 18+ من https://nodejs.org/`);
+    log.error(`Node.js ${process.versions.node} — المطلوب 20+ من https://nodejs.org/`);
     process.exit(1);
   }
   log.ok(`Node.js ${process.versions.node}`);

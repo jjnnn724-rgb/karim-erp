@@ -11,7 +11,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.PATH = ["C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\cmd", "C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\usr\\bin", "C:\\Users\\RemoteHome\\AppData\\Local\\hermes\\git\\bin", "C:\\Windows\\System32", process.env.PATH].join(";");
 for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
     const m = line.match(/^([A-Z_]+)=(.*)$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && process.env[m[1]] === undefined) {process.env[m[1]] = m[2];}
 }
 const results = [];
 const gate = (name, pass, got) => { results.push({ name, pass, got: String(got).slice(0, 90) }); };
@@ -50,7 +50,7 @@ const { Client } = require('pg');
     // 5) بوابة الصمت
     const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'silent-catch-baseline.json'), 'utf8'));
     let current = 0;
-    const walk = (dir) => { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) { if (f.name !== 'node_modules') walk(p); continue; } if (f.name.endsWith('.js')) current += (fs.readFileSync(p, 'utf8').match(/catch\s*\([^)]*\)\s*\{\s*\}/g) || []).length; } };
+    const walk = (dir) => { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) { if (f.name !== 'node_modules') {walk(p);} continue; } if (f.name.endsWith('.js')) {current += (fs.readFileSync(p, 'utf8').match(/catch\s*\([^)]*\)\s*\{\s*\}/g) || []).length;} } };
     walk(path.join(ROOT, 'backend'));
     gate('صفر-صمت — لا كتل catch فارغة جديدة', current <= baseline.total, `الحالي=${current} / الأساس=${baseline.total}`);
 

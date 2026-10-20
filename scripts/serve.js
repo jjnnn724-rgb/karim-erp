@@ -15,7 +15,7 @@ process.chdir(lib.ROOT);
 
 // شهادة HTTPS تلقائية لهذا الجهاز (اسم الجهاز + كل عناوين الشبكة) قبل تشغيل HTTPS
 try { require('./lan-cert').ensure(); } catch (_) {}
-const { log, ROOT, isPgRunning, isPortInUse, getEnv, httpReq } = lib;
+const { log, ROOT, isPortInUse, getEnv, httpReq } = lib;
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -52,17 +52,17 @@ const pgStartedByUs = false;
 // إحياء ذاتي: سقوط الخادم ≠ توقف النظام — إعادة تشغيل تلقائية مع سجل ملف
 let launcherStopping = false;
 let backendRestarts = 0;
+let backendStartedAt = 0;
 const MAX_BACKEND_RESTARTS = 50;
 const BACKEND_RESTART_DELAY_MS = 3000;
-const backendLogStream = null;
+// FIX 2026-10-19: كان `null` ثابتًا فلا يُكتب سجل إعادة التشغيل أبدًا.
+let backendLogStream = null;
+try {
+    fs.mkdirSync(path.join(ROOT, 'logs'), { recursive: true });
+    backendLogStream = fs.createWriteStream(path.join(ROOT, 'logs', 'server.log'), { flags: 'a' });
+    backendLogStream.on('error', () => { backendLogStream = null; });
+} catch (_) { backendLogStream = null; }
 
-function backendLogFile() {
-    try {
-        const dir = path.join(ROOT, 'logs');
-        fs.mkdirSync(dir, { recursive: true });
-        return path.join(dir, 'server.log');
-    } catch (_) { return null; }
-}
 function noteBackend(text) {
     const line = `[${new Date().toISOString()}] ${text}\n`;
     try { if (backendLogStream) {backendLogStream.write(line);} } catch (_) {}
@@ -113,7 +113,7 @@ async function ensurePgRunning() {
         log.error(resolver.diagnoseArabic(r));
         log.error('بعد الإصلاح أعد: node scripts/serve.js');
         return false;
-    } catch (e) {
+    } catch (_) {
         // v3.0: System PG only — cannot start portable
         // PostgreSQL must be installed and running as a service
         log.error('PostgreSQL غير يعمل — تأكد من تثبيت أحدث PostgreSQL على النظام');
@@ -153,6 +153,7 @@ function startBackend() {
         cwd: ROOT,
         env: { ...process.env, DB_PASSWORD: getEnv('DB_PASSWORD') },
     });
+    backendStartedAt = Date.now();
 
     backendProcess.on('error', (err) => {
         log.error(`فشل بدء الخادم: ${err.message}`);
@@ -176,6 +177,8 @@ function startBackend() {
                 }
             }
             if (code === 0) {return;} // إيقاف طبيعي — لا إعادة
+            // تشغيلٌ مستقر > 60 ثانية يُصفّر عدّاد الإحياء (وإلا امتلأ عبر الأيام)
+            if (backendStartedAt && Date.now() - backendStartedAt > 60000) {backendRestarts = 0;}
             log.warn(`الخادم توقف (${reason}) — إعادة تشغيل تلقائية...`);
             noteBackend(`BACKEND_EXIT ${reason} — auto-restart ${backendRestarts + 1}/${MAX_BACKEND_RESTARTS}`);
             if (backendRestarts >= MAX_BACKEND_RESTARTS) {
@@ -338,7 +341,7 @@ async function main() {
                 ready = true;
                 break;
             }
-        } catch (e) {
+        } catch (_) {
             // Not ready yet, continue waiting
         }
     }
