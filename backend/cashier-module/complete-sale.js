@@ -463,6 +463,40 @@ function reconcilePayments(payments, totalAmount) {
     return { paid, diff };
 }
 
+const round2cash = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/**
+ * FIX (Enterprise 2026-10-21): الباقي النقدي الفعلي.
+ *
+ * كان أي فائض في الدفع يُسجَّل صفَّ 'cash/out' — حتى لو كان الدفع زيادة
+ * بالبطاقة. الـ cash/out ينقص النقد المتوقع في الإقفال
+ * (expected = opening + cash_in − cash_out)، فكان كل بيع مدفوع زيادة
+ * بالبطاقة يُنتج فارقًا وهميًا في درج النقد.
+ *
+ * القاعدة الآن: لا يخرج نقد من الدرج إلا ما تسلّمه الكاشير نقدًا.
+ *   cashChange = النقد المُسلَّم − النقد المطبَّق على الفاتورة
+ * والزيادة على وسيلة غير نقدية تُبلَّغ ولا تُسجَّل كخروج نقدي.
+ */
+function computeCashChange(payments, totalAmount) {
+    const list = Array.isArray(payments) ? payments : [];
+    const total = round2cash(totalAmount);
+    const cashIn = round2cash(list
+        .filter((p) => String(p && p.method).toLowerCase() === 'cash')
+        .reduce((s, p) => s + Number(p.amount || 0), 0));
+    const nonCashIn = round2cash(list
+        .filter((p) => String(p && p.method).toLowerCase() !== 'cash')
+        .reduce((s, p) => s + Number(p.amount || 0), 0));
+    const cashNeeded = Math.max(0, round2cash(total - nonCashIn));
+    const cashApplied = Math.min(cashIn, cashNeeded);
+    return {
+        cashChange: round2cash(cashIn - cashApplied),
+        cashIn,
+        nonCashIn,
+        // زيادة على وسيلة غير نقدية — لا نقد يخرج من الدرج
+        nonCashOverpayment: round2cash(Math.max(0, round2cash(nonCashIn - total))),
+    };
+}
+
 async function completeSale(req, res) {
     const requestId = req.id || uuidv4();
     const startedAt = Date.now();
@@ -751,6 +785,9 @@ async function completeSale(req, res) {
         // ── Server-side totals ────────────────────────────────────────────────
         const totals = computeTotalsServerSide(req.body.items, productsMap, cashier);
         const { paid, diff } = reconcilePayments(req.body.payments, totals.total_amount);
+        // FIX (Enterprise 2026-10-21): الباقي النقدي الفعلي — لا نقد يخرج من
+        // الدرج إلا ما تسلّمه الكاشير نقدًا.
+        const { cashChange, nonCashOverpayment } = computeCashChange(req.body.payments, totals.total_amount);
 
         // ── Stock reason context ──────────────────────────────────────────────
         await client.query(`SELECT set_config('app.stock_reason', 'sale', true);`);
@@ -862,13 +899,19 @@ async function completeSale(req, res) {
         // record it as a cash 'out' row, otherwise shift-close math
         // (expected = opening + in − out) reports a phantom negative variance
         // equal to the change on EVERY overpaid cash sale.
-        if (diff > 0) {
+        // FIX (Enterprise 2026-10-21): لا يُسجَّل خروج نقدي إلا إذا خرج النقد
+        // فعلاً — الزيادة على وسيلة غير نقدية (بطاقة/محفظة) كانت تُخصم من
+        // النقد المتوقع رغم أن النقد لم يخرج، فيظهر فارق وهمي في كل بيع
+        // مدفوع زيادة بالبطاقة.
+        if (cashChange > 0) {
             await client.query(
                 `INSERT INTO pos_invoice_payments
                     (order_id, method, amount, direction, currency, reference, payer_info)
                  VALUES ($1, 'cash', $2, 'out', 'SAR', $3, '{}'::jsonb);`,
-                [orderId, diff, JSON.stringify({ reason: 'change', request_id: requestId })]
+                [orderId, cashChange, JSON.stringify({ reason: 'change', request_id: requestId })]
             );
+        } else if (nonCashOverpayment > 0) {
+            logger.warn(`[${requestId}] زيادة دفع على وسيلة غير نقدية: ${nonCashOverpayment} — لا نقد يخرج من الدرج، ولم يُسجَّل صف خروج نقدي (فائض ${diff})`);
         }
 
         // ── Promote to 'issued' → ZATCA hash chain trigger fires ──────────────
@@ -939,7 +982,7 @@ async function completeSale(req, res) {
         // thermal receipt printed garbage. Must await.
         const escposBytes = await buildEscPosReceipt({
             order: orderRow, items: totals.line_items, payments: req.body.payments,
-            qrPayload, department: { ...dept, vat_number: vatNumberForQr }, cashier, paid, change: diff > 0 ? diff : 0,
+            qrPayload, department: { ...dept, vat_number: vatNumberForQr }, cashier, paid, change: cashChange,
             buffet: isBuffetDept,
         });
         const printRes = await client.query(
@@ -1034,7 +1077,9 @@ async function completeSale(req, res) {
             tax_total: Number(orderRow.tax_total),
             subtotal: totals.subtotal,
             discount_total: totals.discount_total,
-            paid, change: diff > 0 ? diff : 0,
+            paid, change: cashChange,
+            // زيادة على وسيلة غير نقدية (لا نقد يخرج من الدرج) — للتتبّع
+            non_cash_overpayment: nonCashOverpayment,
             print_job_id: printJobId,
             zatca_queued: true,
             kot_enabled: kotEnabled,
@@ -1227,4 +1272,4 @@ function register(app) {
     );
 }
 
-module.exports = { register, completeSale, validateSalePayload, computeTotalsServerSide, appendLegacyRevenueMirror, syncErpRevenueFromPosSale, resolveRecipeStockAvailability };
+module.exports = { register, completeSale, validateSalePayload, computeTotalsServerSide, computeCashChange, appendLegacyRevenueMirror, syncErpRevenueFromPosSale, resolveRecipeStockAvailability };
