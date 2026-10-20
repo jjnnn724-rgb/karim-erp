@@ -152,7 +152,7 @@ router.get('/:id', jwtAuth, async (req, res) => {
  */
 // guardCreate('posOrders', inflight): الطلبات المتزامنة المتطابقة = ضغط مزدوج
 // يُرفض فورًا؛ الطلبات المتتابعة المتطابقة (بيعان حقيقيان) تمر طبيعيًا.
-router.post('/', jwtAuth, crudLimiter, guardCreate('posOrders', { mode: 'inflight' }), async (req, res) => {
+router.post('/', jwtAuth, requireRole('admin'), crudLimiter, guardCreate('posOrders', { mode: 'inflight' }), async (req, res) => {
     const client = await pool.connect();
     try {
         const b = req.body || {};
