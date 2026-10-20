@@ -1,14 +1,21 @@
 #!/bin/sh
 # ════════════════════════════════════════════════════════════════
-# Karim ERP — Docker Entrypoint
+# Karim ERP — Docker Entrypoint (آمن)
 # ينشئ قاعدة البيانات (إن لم توجد) ويطبق migrations ثم يشغل السيرفر
 # ════════════════════════════════════════════════════════════════
-set -e
+set -euo pipefail
+
+# متطلبات إلزامية — يفشل فورًا إن غابت، لا افتراضيات آمنة.
+: "${DB_HOST:?DB_HOST مطلوب}"
+: "${DB_PORT:?DB_PORT مطلوب}"
+: "${DB_USER:?DB_USER مطلوب}"
+: "${DB_PASSWORD:?DB_PASSWORD مطلوب — لا توجد كلمة مرور افتراضية}"
+: "${DB_NAME:?DB_NAME مطلوب}"
 
 export PGPASSWORD="$DB_PASSWORD"
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "  مطاعم الشرفه العالمي — Karim ERP Docker Startup"
+echo "  مطاعم الشرفه العالمي — Karim ERP Docker Startup (آمن)"
 echo "═══════════════════════════════════════════════════════════════"
 
 # ─── انتظار PostgreSQL ───────────────────────────────────────────
@@ -30,24 +37,27 @@ else
     echo "  ✓ Database '$DB_NAME' created"
 fi
 
-# ─── تطبيق migrations ────────────────────────────────────────────
+# ─── تطبيق migrations (فشل فوري — لا استكمال على قاعدة جزئية) ───
 echo "[3/4] Applying migrations..."
-node database/scripts/run-migration.js || {
-    echo "  ⚠ Migration warning (may be already applied)";
-}
+node database/scripts/run-migration.js
 echo "  ✓ Migrations done"
 
-# ─── إنشاء كلمة مرور admin فقط في قاعدة جديدة ────────────────────
-echo "[3.5] Ensuring an admin account exists..."
-node -e "
+# ─── إنشاء كلمة مرور admin فقط إذا قُدِّمت صراحة عبر المتغير البيئي ──
+echo "[3.5] فحص حساب admin..."
+if [ -n "${ADMIN_PASSWORD:-}" ]; then
+    echo "  تعيين كلمة مرور admin من المتغير البيئي ADMIN_PASSWORD..."
+    node -e "
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
-const pool = new Pool({ user:'$DB_USER', host:'$DB_HOST', database:'$DB_NAME', password:'$DB_PASSWORD', port:parseInt('$DB_PORT') });
-const hash = bcrypt.hashSync('admin123', 12);
+const pool = new Pool({ user: process.env.DB_USER, host: process.env.DB_HOST, database: process.env.DB_NAME, password: process.env.DB_PASSWORD, port: parseInt(process.env.DB_PORT) });
+const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
 pool.query(\"UPDATE users SET password=\\$1 WHERE username='admin' AND (password IS NULL OR password='')\", [hash])
-    .then(r => { console.log('  ✓ Admin account checked'); pool.end(); })
-    .catch(e => { console.error('  Admin password error:', e.message); pool.end(); });
-" 2>/dev/null || echo "  ⚠ Admin password setup skipped"
+    .then(() => { console.log('  ✓ Admin password set'); pool.end(); })
+    .catch(e => { console.error('  Admin password error:', e.message); pool.end(); process.exit(1); });
+" || { echo "  ✗ فشل تعيين كلمة مرور admin"; exit 1; }
+else
+    echo "  ⚠ ADMIN_PASSWORD غير مضبوط — لا توجد كلمة مرور افتراضية. الحساب يبقى كما هو."
+fi
 
 # ─── تشغيل السيرفر ──────────────────────────────────────────────
 echo "[4/4] Starting Karim ERP Server on port ${PORT:-5000}..."
