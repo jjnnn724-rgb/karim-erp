@@ -31,6 +31,7 @@ const { buildEscPosReceipt } = require('./escpos-printer');
 const { buildKotGroups, buildKotData, buildEscPosKot } = require('./kot-printer');
 const { postInventoryLedgerEntry } = require('../inventory-ledger');
 const { writeAuditLog } = require('./audit-middleware');
+const { riyadhDateOf } = require('../riyadh-date');
 const { convertQuantity } = require('../unit-conversion');
 const { recordSale } = require('./metrics');
 
@@ -136,7 +137,9 @@ async function syncErpRevenueFromPosSale(client, {
     }
 
     const revenueId = generateLegacyId();
-    const date = new Date(orderRow.created_at || Date.now()).toISOString().split('T')[0];
+    // FIX (Enterprise 2026-10-21): تاريخ الإيراد بتوقيت الرياض — toISOString()
+    // كان يُرجع اليوم السابق لمبيعات 00:00–02:59 الرياض.
+    const date = riyadhDateOf(orderRow.created_at || Date.now());
     const itemsText = summarizeItemsForNotes(totals?.line_items || []);
 
     const notes = [

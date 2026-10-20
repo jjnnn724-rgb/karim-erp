@@ -21,4 +21,20 @@ function riyadhMonth() {
     return riyadhToday().slice(0, 7);
 }
 
-module.exports = { riyadhToday, riyadhMonth };
+/**
+ * تاريخ يوم عمل بتوقيت الرياض ل��طابع زمني محدَّد (فاتورة/قيد/حركة).
+ * toISOString() وحدها تُرجع اليوم السابق في 00:00–02:59 الرياض — لذلك
+ * أي تاريخ مالي مشتق من_created_at_ كان ينزلق يومًا للخلف.
+ * @param {Date|string|number} value
+ * @returns {string} YYYY-MM-DD بتوقيت Asia/Riyadh
+ */
+function riyadhDateOf(value) {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) {return riyadhToday();}
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d);
+}
+
+module.exports = { riyadhToday, riyadhMonth, riyadhDateOf };

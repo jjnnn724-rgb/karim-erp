@@ -30,7 +30,7 @@ const crypto = require('crypto');
 const uid = () => Date.now() * 1000 + crypto.randomInt(0, 999999);
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // FIX 2026-10-11 (M20): use riyadhToday() instead of UTC toISOString()
-const { riyadhToday } = require('./riyadh-date');
+const { riyadhToday, riyadhMonth, riyadhDateOf } = require('./riyadh-date');
 
 // مراكز التكلفة اختيارية على مستوى القاعدة: إن لم تُطبق migration 081 بعد،
 // يعمل الترحيل (يدوي وتلقائي) بدونها بدل أن يكسر البيع. يُكتشف مرة واحدة.
@@ -243,7 +243,10 @@ async function postSaleToLedger(orderId) {
     }
     if (revenue > 0) {lines.push({ account_code: '4000', debit: 0, credit: revenue, memo: `مبيعات فاتورة #${orderId}` });}
     if (tax > 0) {lines.push({ account_code: '2100', debit: 0, credit: tax, memo: `ضريبة فاتورة #${orderId}` });}
-    const day = new Date(o.created_at || Date.now()).toISOString().slice(0, 10);
+    // FIX (Enterprise 2026-10-21): تاريخ القيد بتوقيت الرياض لا UTC.
+    // toISOString() في 00:00–02:59 الرياض يُرجع اليوم السابق — فمبيعات
+    // ما بعد منتصف الليل كانت تُرحَّل في يوم اليوم.
+    const day = riyadhDateOf(o.created_at || Date.now());
     const out = await postJournal(pool, {
         date: day,
         memo: `مبيعات كاشير — فاتورة #${orderId}`,
@@ -383,10 +386,11 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
 router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const dayRe = /^\d{4}-\d{2}-\d{2}$/;
-        const now = new Date();
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        // FIX (Enterprise 2026-10-21): الشهر واليوم بتوقيت الرياض — لا
+        // التوقيت المحلي للخادم ولا UTC (كانا ينزلقان شهرًا/يومًا).
+        const monthStart = `${riyadhMonth()}-01`;
         const from = dayRe.test(String(req.query.from || '')) ? String(req.query.from) : monthStart;
-        const to = dayRe.test(String(req.query.to || '')) ? String(req.query.to) : now.toISOString().slice(0, 10);
+        const to = dayRe.test(String(req.query.to || '')) ? String(req.query.to) : riyadhToday();
         if (from > to) {return res.status(422).json({ error: 'LEDGER_PERIOD_INVALID', message: 'بداية الفترة بعد نهايتها' });}
         const posted = await pool.query(
             `SELECT l.account_code,
@@ -582,14 +586,20 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
 // ─── ملخص المدير المالي ──────────────────────────────────────────────────────
 router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
-        const from = String(req.query.from || new Date().toISOString().slice(0, 8) + '01').slice(0, 10);
+        const from = String(req.query.from || `${riyadhMonth()}-01`).slice(0, 10);
         const to = String(req.query.to || riyadhToday()).slice(0, 10);
         const q = async (sql, p) => (await pool.query(sql, p)).rows[0];
         const rev = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM revenues WHERE date >= $1 AND date <= $2 AND "deptId" != 'ys_b4_ext'`, [from, to]);
         const exp = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM expenses
             WHERE date >= $1 AND date <= $2 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [from, to]);
         const pay = await q(`SELECT COALESCE(SUM("netSalary"),0)::numeric(14,2) AS t FROM payroll WHERE status <> 'cancelled' AND ("year" || '-' || LPAD("month"::text,2,'0')) BETWEEN substr($1,1,7) AND substr($2,1,7)`, [from, to]);
-        const pos = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(total_amount),0)::numeric(14,2) AS t FROM pos_orders WHERE status = 'issued' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')`, [from, to]);
+        // FIX (Enterprise 2026-10-21): حدود اليوم تُحسب بتوقيت الرياض لا
+        // بتوقيت الخادم. created_at عمود TIMESTAMPTZ، ومقارنته بـ$1::date
+        // كانت تفسّره في توقيت الخادم (UTC) — فمبيعات 00:00–02:59 الرياض
+        // كانت خارج نطاق يومها.
+        const pos = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(total_amount),0)::numeric(14,2) AS t FROM pos_orders WHERE status = 'issued'
+            AND created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Riyadh')
+            AND created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Riyadh')`, [from, to]);
         const cash = await q(`SELECT COALESCE(SUM(CASE WHEN l.account_code IN ('1000','1010') THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS t
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'`, []);
         const topExp = (await pool.query(
