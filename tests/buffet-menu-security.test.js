@@ -50,7 +50,7 @@ function request(server, method, path, body, token) {
             });
         });
         req.on('error', reject);
-        if (body) req.write(JSON.stringify(body));
+        if (body) {req.write(JSON.stringify(body));}
         req.end();
     });
 }

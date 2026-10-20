@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
   POSTGRES_VERSION: '16'
   CACHE_DEPENDENCY_PATH: |
     ~/.npm
@@ -67,10 +67,9 @@ jobs:
           path: npm-audit-report.json
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Fail on moderate+ vulnerabilities
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Fail on moderate+ vulnerabilities (all CI events)
         run: |
-          echo "Checking for moderate+ vulnerabilities on main branch..."
+          echo "Checking for moderate+ vulnerabilities on every pull request, push, and manual workflow run..."
           npm audit --audit-level=moderate
 
   lint-and-typecheck:
@@ -91,8 +90,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint (via package script)
-        run: npm run test:lint
+      - name: ESLint gate — no errors, no NEW warnings (per-file baseline)
+        run: npm run test:lint:gate
 
       - name: Run Prettier check (via package script)
         run: npm run test:format
@@ -127,6 +126,8 @@ jobs:
       DB_PASSWORD: postgres
       DB_NAME: karim_erp_test
       DB_POOL_MAX: 10
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: '1'
       API_KEY: test-api-key-32-chars-minimum-length
       JWT_ACCESS_SECRET: test-jwt-secret-32-chars-minimum-length-for-testing
       JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length
@@ -463,22 +464,78 @@ jobs:
           path: release/*.exe
           retention-days: 30
 
-  deploy-production:
-    name: 🚀 Deploy to Production
+  release-preparation:
+    name: 📦 Release Preparation (deploy is MANUAL, by design)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [build-electron, e2e-tests]
     environment: production
     steps:
-      - name: Deploy to aaPanel
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download the built installer
+        uses: actions/download-artifact@v4
+        with:
+          name: KarimERP-Setup
+          path: release
+
+      # ── ماكينة الحقيقة ──────────────────────────────────────────────────
+      # Job كان اسمه «Deploy to Production» وكان يفعل echo فقط — أي أن
+      # everybody يظن أن النشر تم بينما لم يحدث شيء. الاستبداله هنا
+      # يحضّر حزمة إصدار موثّقة (بصمة SHA-256) ويطبع أمر النشر اليدوي
+      # المتفق عليه، ولا يدّعي نشراً لم يحدث.
+      - name: Verify the artifact and emit a signed release manifest
+        id: verify
         run: |
-          echo "Deploy to production server via SSH"
-          # Add your deployment script here
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(release/*.exe)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::لا يوجد ملف تثبيت في حزمة الإصدار — لا يمكن تحضير النشر."
+            exit 1
+          fi
+          for f in "${artifacts[@]}"; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 1000000 ]; then
+              echo "::error::حجم الحزمة غير منطقي ($size بايت) — تحقّق من البناء."
+              exit 1
+            fi
+            sha=$(sha256sum "$f" | awk '{print $1}')
+            echo "artifact=$(basename "$f")" >> "$GITHUB_OUTPUT"
+            echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+            echo "size=$size" >> "$GITHUB_OUTPUT"
+            echo "✅ $(basename "$f") — $size بايت — SHA-256 $sha"
+          done
+          {
+            echo "# Release manifest"
+            echo "version: ${{ github.ref_name }}"
+            echo "commit: ${{ github.sha }}"
+            echo "artifact: ${{ steps.verify.outputs.artifact }}"
+            echo "sha256: ${{ steps.verify.outputs.sha256 }}"
+            echo "built_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > release/RELEASE-MANIFEST.md
+          cat release/RELEASE-MANIFEST.md
+
+      - name: Upload the verified release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: karim-release-verified
+          path: release/
+          retention-days: 30
+
+      - name: Deployment handoff — MANUAL and approval-gated
+        run: |
+          echo "::warning::النشر إلى الإنتاج **غير مُتتَم آلياً** في هذا المسار."
+          echo "الحزمة موثّقة بالبصمة أعلاه. النشر يتطلّب نافذة تنفيذ موافَق عليها:"
+          echo ""
+          echo "  1. ارفع release/ إلى خادم الإنتاج."
+          echo "  2. شغّل على الخادم (بصلاحيات مدير):"
+          echo "     ./scripts/update-production.ps1 -PackageUrl '<url>' -Sha256 '${{ steps.verify.outputs.sha256 }}'"
+          echo ""
+          echo "السكربت يوقف الخدمات عند الفشل ولا يدّعي استعادة تلقائية."
+          echo "لم يُنفَّذ أي نشر في هذا الـ job — وهذا مقصود."
 
   notify:
     name: 📢 Notify (Status Summary)
@@ -493,7 +550,7 @@ jobs:
       - integration-tests
       - e2e-tests
       - build-electron
-      - deploy-production
+      - release-preparation
     steps:
       - name: Collect job statuses
         id: status
@@ -514,7 +571,7 @@ jobs:
             "integration-tests:${{ needs.integration-tests.result }}" \
             "e2e-tests:${{ needs.e2e-tests.result }}" \
             "build-electron:${{ needs.build-electron.result }}" \
-            "deploy-production:${{ needs.deploy-production.result }}"; do
+            "release-preparation:${{ needs.release-preparation.result }}"; do
             JOB=$(echo $result | cut -d: -f1)
             RES=$(echo $result | cut -d: -f2-)
             case "$RES" in

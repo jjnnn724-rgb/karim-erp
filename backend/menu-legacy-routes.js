@@ -23,10 +23,10 @@ function validateBuffetPayload(payload) {
     // restaurant
     if (payload.restaurant) {
         const r = payload.restaurant;
-        if (r.nameAr !== undefined && (typeof r.nameAr !== 'string' || r.nameAr.length > 200)) errors.push('restaurant.nameAr');
-        if (r.nameEn !== undefined && (typeof r.nameEn !== 'string' || r.nameEn.length > 200)) errors.push('restaurant.nameEn');
-        if (r.ticker !== undefined && (typeof r.ticker !== 'string' || r.ticker.length > 500)) errors.push('restaurant.ticker');
-        if (r.buffetPrice !== undefined && (typeof r.buffetPrice !== 'number' || r.buffetPrice < 0 || r.buffetPrice > 100000)) errors.push('restaurant.buffetPrice');
+        if (r.nameAr !== undefined && (typeof r.nameAr !== 'string' || r.nameAr.length > 200)) {errors.push('restaurant.nameAr');}
+        if (r.nameEn !== undefined && (typeof r.nameEn !== 'string' || r.nameEn.length > 200)) {errors.push('restaurant.nameEn');}
+        if (r.ticker !== undefined && (typeof r.ticker !== 'string' || r.ticker.length > 500)) {errors.push('restaurant.ticker');}
+        if (r.buffetPrice !== undefined && (typeof r.buffetPrice !== 'number' || r.buffetPrice < 0 || r.buffetPrice > 100000)) {errors.push('restaurant.buffetPrice');}
     }
     // categories
     if (payload.categories !== undefined) {
@@ -36,16 +36,16 @@ function validateBuffetPayload(payload) {
             for (let i = 0; i < payload.categories.length; i++) {
                 const c = payload.categories[i];
                 if (!c || typeof c !== 'object') { errors.push(`categories[${i}]`); continue; }
-                if (c.nameAr !== undefined && (typeof c.nameAr !== 'string' || c.nameAr.length > 200)) errors.push(`categories[${i}].nameAr`);
-                if (c.nameEn !== undefined && (typeof c.nameEn !== 'string' || c.nameEn.length > 200)) errors.push(`categories[${i}].nameEn`);
-                if (c.icon !== undefined && typeof c.icon !== 'string') errors.push(`categories[${i}].icon`);
+                if (c.nameAr !== undefined && (typeof c.nameAr !== 'string' || c.nameAr.length > 200)) {errors.push(`categories[${i}].nameAr`);}
+                if (c.nameEn !== undefined && (typeof c.nameEn !== 'string' || c.nameEn.length > 200)) {errors.push(`categories[${i}].nameEn`);}
+                if (c.icon !== undefined && typeof c.icon !== 'string') {errors.push(`categories[${i}].icon`);}
                 if (Array.isArray(c.items)) {
                     for (let j = 0; j < c.items.length; j++) {
                         const it = c.items[j];
                         if (!it || typeof it !== 'object') { errors.push(`categories[${i}].items[${j}]`); continue; }
-                        if (it.nameAr !== undefined && (typeof it.nameAr !== 'string' || it.nameAr.length > 200)) errors.push(`categories[${i}].items[${j}].nameAr`);
-                        if (it.nameEn !== undefined && (typeof it.nameEn !== 'string' || it.nameEn.length > 200)) errors.push(`categories[${i}].items[${j}].nameEn`);
-                        if (it.meal !== undefined && !Array.isArray(it.meal)) errors.push(`categories[${i}].items[${j}].meal`);
+                        if (it.nameAr !== undefined && (typeof it.nameAr !== 'string' || it.nameAr.length > 200)) {errors.push(`categories[${i}].items[${j}].nameAr`);}
+                        if (it.nameEn !== undefined && (typeof it.nameEn !== 'string' || it.nameEn.length > 200)) {errors.push(`categories[${i}].items[${j}].nameEn`);}
+                        if (it.meal !== undefined && !Array.isArray(it.meal)) {errors.push(`categories[${i}].items[${j}].meal`);}
                     }
                 }
             }
@@ -58,21 +58,21 @@ function sanitizeBuffetPayload(payload) {
     const out = JSON.parse(JSON.stringify(payload));
     if (out.restaurant) {
         const r = out.restaurant;
-        if (typeof r.nameAr === 'string') r.nameAr = escapeHtml(r.nameAr);
-        if (typeof r.nameEn === 'string') r.nameEn = escapeHtml(r.nameEn);
-        if (typeof r.ticker === 'string') r.ticker = escapeHtml(r.ticker);
+        if (typeof r.nameAr === 'string') {r.nameAr = escapeHtml(r.nameAr);}
+        if (typeof r.nameEn === 'string') {r.nameEn = escapeHtml(r.nameEn);}
+        if (typeof r.ticker === 'string') {r.ticker = escapeHtml(r.ticker);}
     }
     if (Array.isArray(out.categories)) {
         for (const c of out.categories) {
-            if (!c || typeof c !== 'object') continue;
-            if (typeof c.nameAr === 'string') c.nameAr = escapeHtml(c.nameAr);
-            if (typeof c.nameEn === 'string') c.nameEn = escapeHtml(c.nameEn);
-            if (typeof c.icon === 'string') c.icon = escapeHtml(c.icon);
+            if (!c || typeof c !== 'object') {continue;}
+            if (typeof c.nameAr === 'string') {c.nameAr = escapeHtml(c.nameAr);}
+            if (typeof c.nameEn === 'string') {c.nameEn = escapeHtml(c.nameEn);}
+            if (typeof c.icon === 'string') {c.icon = escapeHtml(c.icon);}
             if (Array.isArray(c.items)) {
                 for (const it of c.items) {
-                    if (!it || typeof it !== 'object') continue;
-                    if (typeof it.nameAr === 'string') it.nameAr = escapeHtml(it.nameAr);
-                    if (typeof it.nameEn === 'string') it.nameEn = escapeHtml(it.nameEn);
+                    if (!it || typeof it !== 'object') {continue;}
+                    if (typeof it.nameAr === 'string') {it.nameAr = escapeHtml(it.nameAr);}
+                    if (typeof it.nameEn === 'string') {it.nameEn = escapeHtml(it.nameEn);}
                 }
             }
         }
