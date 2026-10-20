@@ -467,4 +467,8 @@ function checkMenuAccessLocal(menuKey){ if(!STATE.currentUser) {return false;} i
 // عنقود الإعدادات والمستخدمين: نُقل إلى js/features/settings-users.js (يجسر عبر js/main.js — BRIDGE-020)
 // عنقود المدير المالي: نُقل إلى js/features/cfo.js (يجسر عبر js/main.js — BRIDGE-021)
 
-export { applyTopbarRoleGates, completeRequiredPasswordChange, showForgotPasswordModal, fpFail, submitForgotPassword, issueResetCode, copyResetCode, markLoginInvalid, clearLoginInvalid, doLogin, enterApp, doLogout, getLogoSrc, getAbsoluteLogoSrc, logoMarkup, updateLogoDisplay, NAV_GROUPS, buildNav, go, deptDetailFrom, deptDetailTo, openDepartmentDetail, toggleSidebar, toggleLang, toggleTheme, isOperatingExpense, accountingExpenseAmount, isStockMovementExpense, isCountCorrectionExpense, deptExpenseBreakdown, deptWithChildren, calcStats, updateDateDisplay, updateRoleIndicator, updateQuickDispatchButton, checkMenuAccessLocal };
+// showChangeMyPasswordModal و submitChangeMyPassword مستدعاة من معالج
+// سطري داخل index.html (onclick="showChangeMyPasswordModal()") — والملف
+// يُحمَّل كوحدة عبر safeBridge، فبلا تصديرهما لا تصلان إلى window
+// فيسقط الزر بـReferenceError ولا يستطيع المستخدم تغيير كلمة مروره.
+export { applyTopbarRoleGates, completeRequiredPasswordChange, showChangeMyPasswordModal, submitChangeMyPassword, showForgotPasswordModal, fpFail, submitForgotPassword, issueResetCode, copyResetCode, markLoginInvalid, clearLoginInvalid, doLogin, enterApp, doLogout, getLogoSrc, getAbsoluteLogoSrc, logoMarkup, updateLogoDisplay, NAV_GROUPS, buildNav, go, deptDetailFrom, deptDetailTo, openDepartmentDetail, toggleSidebar, toggleLang, toggleTheme, isOperatingExpense, accountingExpenseAmount, isStockMovementExpense, isCountCorrectionExpense, deptExpenseBreakdown, deptWithChildren, calcStats, updateDateDisplay, updateRoleIndicator, updateQuickDispatchButton, checkMenuAccessLocal };

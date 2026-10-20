@@ -1,11 +1,13 @@
 const API = '';
 const CURRENCY = 'SAR'; // عملة العرض — مصدر وحيد لكل شاشات الكاشير
+const posSearchKey = window.POSSearch.key;
 let accessToken = null;
 let currentUser = null;
 let currentSession = null;
 let currentDepartment = null;
 let departments = [];
 let products = [];
+const productSearchCache = new WeakMap();
 let catalogProducts = [];
 let categories = [];
 let currentCategory = 'all';
@@ -57,6 +59,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     const b = document.getElementById('posInstallBtn');
     if (b) {b.style.display = '';}
 });
+// eslint-disable-next-line no-unused-vars -- مستدعاة من HTML: pos.html:40 onclick="posPwaInstall()"
 async function posPwaInstall() {
     if (_posPwaPrompt) {
         _posPwaPrompt.prompt();
@@ -117,6 +120,18 @@ function fmtQty(n) {    return Number(n || 0).toLocaleString('en-US', {
 function isManagerRole() {
     return ['admin', 'manager'].includes(currentUser?.role);
 }
+
+function productSearchText(product) {
+    let cached = productSearchCache.get(product);
+    if (cached === undefined) {
+        cached = [product.name_ar, product.name_en, product.barcode, product.category]
+            .map(posSearchKey)
+            .filter(Boolean)
+            .join(' ');
+        productSearchCache.set(product, cached);
+    }
+    return cached;
+}
 // قرار المالك 2026-10-05: الشيف هو من يتحكم في المنيو (شاشة البوفيه)
 function canManageMenu() {
     return ['admin', 'manager', 'kitchen', 'sous_chef'].includes(currentUser?.role);
@@ -126,7 +141,7 @@ function resetCartDiscount() {
     cartDiscount = { type: null, value: 0 };
 }
 
-function showToast(message, type = 'info') { /* notifications disabled */ return; }
+function showToast(message, _type = 'info') { /* notifications disabled */ return; }
 window.toast = showToast;
 
 function showLoading(text = 'جارٍ المعالجة...') {
@@ -498,7 +513,6 @@ function renderBuffetPeople() {
                 <div class="buffet-add-label">+ إضافة فرد</div>
             </button>`;
         }).join('') || '<div class="pos-empty-grid">لم يتم إعداد أسعار البوفيه بعد — استخدم زر قائمة الأسعار</div>'}`;
-    $$('.buffet-person-card').forEach((card) => card.addEventListener('click', () => addToCart(Number(card.dataset.id))));
     loadBuffetLive().catch(() => {});
 }
 
@@ -564,13 +578,10 @@ function stopBuffetLiveTimer() {
 
 function renderProducts(filter = '') {
     const grid = $('#products-grid');
-    const search = String(filter || '').trim().toLowerCase();
+    const search = posSearchKey(filter);
     const filtered = products.filter((product) => {
         const categoryMatch = currentCategory === 'all' || product.category === currentCategory;
-        const searchMatch = !search
-            || (product.name_ar || '').toLowerCase().includes(search)
-            || (product.barcode || '').toLowerCase().includes(search)
-            || (product.category || '').toLowerCase().includes(search);
+        const searchMatch = !search || productSearchText(product).includes(search);
         return categoryMatch && searchMatch;
     });
 
@@ -578,6 +589,7 @@ function renderProducts(filter = '') {
         grid.innerHTML = `<div class="pos-empty-grid">
             <div class="pos-empty-icon"><i class=ji data-i=search></i></div>
             <div>لا توجد أصناف مطابقة</div>
+            <small>جرّب كتابة الاسم بطريقة أخرى أو امسح باركود الصنف.</small>
         </div>`;
         return;
     }
@@ -593,25 +605,15 @@ function renderProducts(filter = '') {
         const image = product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name_ar)}" loading="lazy">` : icon;
 
         return `
-            <div class="product-card ${outOfStock ? 'out-of-stock' : ''}" data-id="${product.id}">
+            <button type="button" class="product-card ${outOfStock ? 'out-of-stock' : ''}" data-id="${product.id}" aria-disabled="${outOfStock ? 'true' : 'false'}" aria-label="${escapeHtml(product.name_ar)} — ${fmtMoney(product.price)} ${CURRENCY}${outOfStock ? ' — غير متاح' : ''}">
                 ${stockLabel ? `<div class="product-stock ${stockClass}">${stockLabel}</div>` : ''}
                 <div class="product-icon ${product.image_url ? 'has-product-image' : ''}">${image}</div>
                 <div class="product-name">${escapeHtml(product.name_ar)}</div>
                 <div class="product-price">${fmtMoney(product.price)} <span class="currency">${CURRENCY}</span></div>
                 ${product.barcode ? `<div class="product-meta">${escapeHtml(product.barcode)}</div>` : ''}
-            </div>
+            </button>
         `;
     }).join('');
-
-    $$('.product-card').forEach((card) => {
-        card.addEventListener('click', () => {
-            if (card.classList.contains('out-of-stock')) {
-                showToast('هذا الصنف غير متاح حاليًا', 'warning');
-                return;
-            }
-            addToCart(Number(card.dataset.id));
-        });
-    });
 }
 
 function renderCart() {
@@ -2080,12 +2082,28 @@ $('#product-search').addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') {return;}
     const term = event.target.value.trim();
     if (!term) {return;}
-    const exact = products.find((product) => String(product.barcode || '').trim() === term);
+    const exact = products.find((product) => posSearchKey(product.barcode) === posSearchKey(term));
     if (exact) {
         event.preventDefault();
+        const card = $(`#products-grid .product-card[data-id="${Number(exact.id)}"]`);
+        if (card?.classList.contains('out-of-stock')) {
+            showToast('هذا الصنف غير متاح حاليًا', 'warning');
+            return;
+        }
         addToCart(exact.id);
-        event.target.select();
+        event.target.value = '';
+        renderProducts('');
+        event.target.focus();
     }
+});
+$('#products-grid').addEventListener('click', (event) => {
+    const card = event.target.closest('.product-card');
+    if (!card || !$('#products-grid').contains(card)) {return;}
+    if (card.classList.contains('out-of-stock')) {
+        showToast('هذا الصنف غير متاح حاليًا', 'warning');
+        return;
+    }
+    addToCart(Number(card.dataset.id));
 });
 
 $('#catalog-btn').addEventListener('click', async () => {
@@ -2135,7 +2153,7 @@ function posBarcodeScan(event) {
     try {
         if ($('#pos-screen')?.classList.contains('hidden')) {_scanBuf.text = ''; return;}
         const ae = document.activeElement;
-        const typingField = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.id !== 'product-search';
+        const typingField = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
         if (event.key === 'Escape') {_scanBuf.text = ''; return;}
         if (typingField) {_scanBuf.text = ''; return;}
         if (document.querySelector('.modal:not(.hidden)')) {_scanBuf.text = ''; return;}

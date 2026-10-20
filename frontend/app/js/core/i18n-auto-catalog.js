@@ -611,7 +611,8 @@ window.KARIM_I18N_AUTO = {
   'قيد الاعتماد': 'Under approval',
   'عاد للموظف للتعديل': 'Returned to employee for editing',
   'معتمد نهائيًا': 'Finally approved',
-  'غير محدد': 'Unspecified',
+  // 'غير محدد' مكرّرة في مجموعتين (سير العمل + جدول التحديد) — في كائن JS
+  // آخر مفتاح هو الفائز، فحُذفت النسخة الميتة (السابقة) بلا تغيير السلوك.
   'أعيد للموظف': 'Returned to employee',
   'بانتظار الإجراء': 'Awaiting action',
   'تعذر تحميل مسار الإجازات': 'Could not load the leave workflow',
@@ -1406,7 +1407,6 @@ window.KARIM_I18N_AUTO = {
   'مغلق الآن': 'Closed now',
   'متوفر': 'Available',
   'غير متوفر': 'Unavailable',
-  'منخفض المخزون': 'Low stock',
   'نفد المخزون': 'Out of stock',
   'جديد اليوم': 'New today',
   'محدث الآن': 'Updated now',

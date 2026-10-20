@@ -31,7 +31,6 @@ document.getElementById('content').innerHTML = `
 return;
 }
 await ensureEmployeeCardData(emp);
-const dept = STATE.hrDepartments.find(d=>d.code===emp.department);
 const myAttendance = STATE.attendance.filter(a=>a.employeeId===emp.id && a.checkIn);
 const myLeaves = STATE.leaveRequests.filter(l=>l.employeeId===emp.id);
 const totalKarim = myAttendance.reduce((sum,a)=>{
@@ -134,7 +133,7 @@ ${punchRows||'<span class="text-muted">لا توجد بصمات مسجلة لك 
 ${rec?`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);color:var(--text2);font-size:13px">حالة سجل اليوم: حضور <b class="c-green">${esc(rec.checkIn||'—')}</b> — انصراف <b class="c-red">${esc(rec.checkOut||'—')}</b>${rec.workMinutes?` — عمل ${rec.workMinutes} دقيقة`:''}</div>`:''}
 </div>
 </div>`;
-}catch(e){ panel.innerHTML=''; }
+}catch(_){ panel.innerHTML=''; }
 }
 function zkPortalIndicator(state,msg){
 const map={none:['bdg-gray','<i class=ji data-i=info></i>'],unlinked:['bdg-orange','<i class=ji data-i=alert-triangle></i>'],linked:['bdg-green','<i class=ji data-i=circle-check></i>']};
@@ -150,11 +149,13 @@ else if(['admin','hr','manager'].includes(STATE.currentUser?.role)){ toast(`بص
 if(STATE.page==='employee-portal' || (STATE.page==='dashboard' && STATE.currentUser?.role==='employee')) {loadMyBiometricPanel();}
 clearTimeout(window.__zkPunchRefreshTimer);
 window.__zkPunchRefreshTimer = setTimeout(async ()=>{
-try{ await loadData(); if(['attendance','zkteco','dashboard'].includes(STATE.page)) {renderPage();} }catch(e){}
+try{ await loadData(); if(['attendance','zkteco','dashboard'].includes(STATE.page)) {renderPage();} }catch(_){}
 }, 800);
 };
 function switchPortalEmployee(empId){
-const emp = STATE.employees.find(e=>e.id==empId);
+// المعرّف من القاعدة رقم والـempId نص من DOM — المقارنة بالنص تحفظ
+// دلالة المقارنة المرنة (==) دون كسر المطابقة.
+const emp = STATE.employees.find(e=>String(e.id)===String(empId));
 if(!emp) {return;}
 renderEmployeePortalFor(emp);
 }

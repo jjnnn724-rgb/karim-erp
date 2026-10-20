@@ -1,13 +1,8 @@
 {
   "_comment": "حصة التحذيرات المسموحة لكل ملف. تُخفض مع كل دفعة إصلاح، ولا تُرفع أبدًا.",
-  "total": 30,
+  "total": 23,
   "files": {
-    "frontend/app/js/core/i18n-auto-catalog.js": 1,
-    "frontend/app/js/features/auth-navigation.js": 2,
-    "frontend/app/js/features/employee-portal.js": 1,
-    "frontend/app/js/features/kitchen.js": 2,
     "frontend/app/js/features/warehouse.js": 6,
-    "frontend/app/js/menu-admin.js": 17,
-    "frontend/app/js/pos.js": 1
+    "frontend/app/js/menu-admin.js": 17
   }
 }

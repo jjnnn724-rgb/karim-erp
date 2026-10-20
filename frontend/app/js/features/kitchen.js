@@ -200,7 +200,7 @@ const DEPT_CODE_ALIASES = Object.freeze({
     'external_sales': 'external_sales',
 });
 function canonicalDeptCode(code) {
-    if (!code) return '';
+    if (!code) {return '';}
     const clean = String(code).trim().toLowerCase();
     return DEPT_CODE_ALIASES[clean] || String(code).trim();
 }
@@ -247,7 +247,7 @@ let panelHtml='';
 if(panel && panel.scope && String(panel.scope.deptCode||'')===String(my||'')){
 const src=panel.expenses?.bySource||{};
 const labels=panel.expenses?.labels||{};
-const card=(key,icon,colorCls)=>{const row=src[key];const total=row?row.total:0;const cnt=row?row.count:0;return `<div class="metric-card-premium"><div class="kpi-top"><span class="kpi-label">${esc(labels[key]||key)}</span><span class="kpi-chip"><i class=ji data-i=${icon}></i></span></div><div class="value ${total<0?'c-red':''}">${fC(total)}</div><div class="trend"><i class=ji data-i=chart></i> ${cnt} حركة</div></div>`;};
+const card=(key,icon,_colorCls)=>{const row=src[key];const total=row?row.total:0;const cnt=row?row.count:0;return `<div class="metric-card-premium"><div class="kpi-top"><span class="kpi-label">${esc(labels[key]||key)}</span><span class="kpi-chip"><i class=ji data-i=${icon}></i></span></div><div class="value ${total<0?'c-red':''}">${fC(total)}</div><div class="trend"><i class=ji data-i=chart></i> ${cnt} حركة</div></div>`;};
 const sourcesHtml=['dispatch','dispatch_return','stocktaking','manual'].map(k=>card(k, k==='dispatch'?'package':k==='dispatch_return'?'undo':k==='stocktaking'?'clipboard-list':'wallet')).join('');
 const subDepts=Array.isArray(panel.subDepartments)?panel.subDepartments:[];
 panelHtml=`
@@ -606,15 +606,15 @@ upsertStateEntity('purchaseRequests',saved); closeModal(); renderPage(); toast('
 }catch(e){ toast(e.message||'تعذر رفض الطلب','error'); }
 finally{ hideLoad(); }
 }
-function openPRReceiveModal(id){
+function openPRReceiveModal(_id){
 // متقاعد بأمر المالك (2026-10-01): دورة طلب الشراء تنتهي باعتماد المدير العام —
 // البضاعة تدخل المخزون عبر فواتير المشتريات (الاستلام هنا كان ازدواجًا)
 toast('دورة طلب الشراء تنتهي باعتماد المدير العام — سجّل البضاعة بفاتورة مشتريات','info');
 return;
 }
-function prDeliverModeSync(v){ return; }
+function prDeliverModeSync(_v){ return; }
 function prFreshSuggest(){ return; }
-async function confirmPRReceive(id){
+async function confirmPRReceive(_id){
 toast('الاستلام من طلب الشراء موقوف — سجّل البضاعة بفاتورة مشتريات','error');
 return;
 }
@@ -909,7 +909,6 @@ baseQty=Math.round(qty*Number(uomOpt.dataset.factor)*1000)/1000;
 }
 if(baseQty>max+1e-6){ toast(`الرصيد غير كافٍ من "${name}": المتاح ${fN(max)} فقط ولا يمكن طلب ${fN(baseQty)}`,'error'); return; }
 if(uomOpt&&Number(uomOpt.dataset.factor||1)!==1){
-const factor=Number(uomOpt.dataset.factor);
 items.push({itemName:name,qty:baseQty,unit:baseUnit,requestedQty:qty,requestedUom:uomOpt.value});
 }else{
 items.push({itemName:name,qty,unit:baseUnit});
@@ -1308,7 +1307,9 @@ document.getElementById('returnDispatch').addEventListener('change',refreshRetur
 }
 function refreshReturnItems(){
 const dispatchId = document.getElementById('returnDispatch')?.value;
-const dispatch = STATE.dispatches.find(d=>d.id==dispatchId);
+// المعرّف من القاعدة رقم والـdispatchId نص من <select> — المقارنة بالنص
+// تحفظ دلالة المقارنة المرنة (==) دون كسر المطابقة.
+const dispatch = STATE.dispatches.find(d=>String(d.id)===String(dispatchId));
 const container = document.getElementById('returnItemsContainer');
 if(!container||!dispatch){return;}
 const items = dispatch.approvedItems || dispatch.items || [];
@@ -1321,7 +1322,9 @@ container.innerHTML = `<div class="edit-row-item">
 }
 function addReturnItemField(){
 const dispatchId = document.getElementById('returnDispatch')?.value;
-const dispatch = STATE.dispatches.find(d=>d.id==dispatchId);
+// المعرّف من القاعدة رقم والـdispatchId نص من <select> — المقارنة بالنص
+// تحفظ دلالة المقارنة المرنة (==) دون كسر المطابقة.
+const dispatch = STATE.dispatches.find(d=>String(d.id)===String(dispatchId));
 const container = document.getElementById('returnItemsContainer');
 if(!container||!dispatch){return;}
 const items = dispatch.approvedItems || dispatch.items || [];
@@ -1418,7 +1421,7 @@ function recipeDefaultUnit(inv){ const u=recipeNormalizeUnit(inv?.unit); return 
 function recipeManagerCost(){ return recipeManagerState.ingredients.reduce((sum,item)=>{ const inv=recipeManagerState.inventory.find(x=>String(x.id)===String(item.inventory_id)); try { const q=recipeConvertQty(item.quantity_per_unit,item.unit,inv?.unit,inv); return sum + q*(1+Number(item.waste_percent||0)/100)*Number(inv?.avgCost||inv?.avg_cost||0); } catch (_) { return sum; } },0); }
 function renderRecipeManagerIngredients(){
  const host=document.getElementById('recipe-manager-ingredients'); if(!host){return;}
- host.innerHTML=recipeManagerState.ingredients.map((item,index)=>{ const inv=recipeManagerState.inventory.find(x=>String(x.id)===String(item.inventory_id))||{}; let lineCost=0, converted='—'; try { const q=recipeConvertQty(item.quantity_per_unit,item.unit,inv.unit,inv); lineCost=q*(1+Number(item.waste_percent||0)/100)*Number(inv.avgCost||0); converted=`${fN(q)} ${esc(inv.unit||'وحدة')}`; } catch (_) { lineCost=NaN; }
+ host.innerHTML=recipeManagerState.ingredients.map((item,index)=>{ const inv=recipeManagerState.inventory.find(x=>String(x.id)===String(item.inventory_id))||{}; let lineCost, converted='—'; try { const q=recipeConvertQty(item.quantity_per_unit,item.unit,inv.unit,inv); lineCost=q*(1+Number(item.waste_percent||0)/100)*Number(inv.avgCost||0); converted=`${fN(q)} ${esc(inv.unit||'وحدة')}`; } catch (_) { lineCost=NaN; }
  const invFamily=recipeUnitInfo(recipeNormalizeUnit(inv.unit)).family; const currentQty=Number(item.quantity_per_unit||0); const portionControl=invFamily==='count'?`<label class="recipe-portion-field"><span>حصة الاستخدام</span><select onchange="updateRecipeManagerPortion(${index},this.value)"><option value="custom" ${![0.25,0.5,1].includes(currentQty)?'selected':''}>كمية مخصصة</option><option value="0.25" ${currentQty===0.25?'selected':''}>ربع حبة (0.25)</option><option value="0.5" ${currentQty===0.5?'selected':''}>نصف حبة (0.50)</option><option value="1" ${currentQty===1?'selected':''}>حبة كاملة (1)</option></select></label>`:''; const units=recipeManagerState.unitOptions.filter(u=>!inv.unit || u.family===invFamily || (invFamily==='volume'&&u.family==='mass') || (invFamily==='mass'&&u.family==='volume')).map(u=>`<option value="${u.value}" ${recipeNormalizeUnit(item.unit)===u.value?'selected':''}>${esc(u.label)}</option>`).join('');
  return `<article class="recipe-ingredient-card"><div class="recipe-ingredient-main"><div class="recipe-ingredient-title"><span class="recipe-ingredient-icon"><i class=ji data-i=utensils></i></span><div><strong>${esc(inv.name||item.inventory_name||'مكون')}</strong><small>تكلفة ${fC(inv.avgCost||0)} لكل ${esc(inv.unit||'وحدة')}</small></div></div><button class="btn btn-red btn-sm recipe-delete-ingredient" onclick="removeRecipeManagerIngredient(${index})">حذف</button></div><div class="recipe-ingredient-fields">${portionControl}<label><span>الكمية المستخدمة</span><input type="number" min="0.0001" step="0.0001" value="${Number(item.quantity_per_unit||0)}" oninput="updateRecipeManagerQty(${index},this.value)" aria-label="كمية المكون"></label><label><span>وحدة الاستخدام</span><select onchange="updateRecipeManagerUnit(${index},this.value)" aria-label="وحدة المكون">${units}</select></label><label><span>الهدر %</span><input type="number" min="0" max="100" step="0.01" value="${Number(item.waste_percent||0)}" oninput="updateRecipeManagerWaste(${index},this.value)" aria-label="هدر المكون"></label></div><div class="recipe-ingredient-result"><span>سيُخصم من المخزن: <b>${converted}</b></span><strong>${Number.isFinite(lineCost)?fC(lineCost):'وحدات غير متوافقة'}</strong></div></article>`}).join('')||'<div class="text-muted" style="padding:18px;text-align:center">لم تتم إضافة مكونات بعد</div>';
  const count=document.getElementById('recipe-components-count'); if(count) {count.textContent=`${recipeManagerState.ingredients.length} مكونات`;} const cost=recipeManagerCost(), price=Number(recipeManagerState.recipe?.sellingPrice||0), profit=price-cost, margin=price>0?profit/price*100:0; const total=document.getElementById('recipe-manager-total-cost'); if(total){total.innerHTML=fC(cost);} const profitEl=document.getElementById('recipe-manager-profit'); if(profitEl){profitEl.innerHTML=`${fC(profit)} <small>(${fN(margin.toFixed(1))}%)</small>`;} const suggested=document.getElementById('recipe-manager-suggested-price'); if(suggested) {suggested.innerHTML=fC(cost/(1-0.30)||0);}
