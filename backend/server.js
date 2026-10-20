@@ -474,6 +474,11 @@ function apiKeyMiddleware(req, res, next) {
     if (req.path === '/i18n/config') {
         return next();
     }
+    // سياسة توحيد مسار POS — تُقرأ قبل تسجيل الدخول (لعرض التنبيه/التوجيه
+    // على الشاشة القديمة)، ولا تحوي إلا الوضع والمسار — لا سرّ.
+    if (req.path === '/pos/path-policy') {
+        return next();
+    }
     // Auth endpoints stay open: they are credential/JWT-gated + rate-limited,
     // and the browser cannot know the app key before login. The key is handed
     // to the client inside login/refresh responses and required on all DATA
@@ -935,6 +940,9 @@ require('./branch-routes').register(app);
 
 // إعداد اللغة/العملة العام — backend/i18n-routes.js
 require('./i18n-routes').register(app);
+
+// سياسة توحيد مسار POS (off | banner | redirect) — backend/pos-path-routes.js
+require('./pos-path-routes').register(app);
 
 
 // -------------------------------------------------------
@@ -2138,10 +2146,36 @@ entities.forEach(entity => {
             }
 
             const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
-            const result = await pool.query(
-                `UPDATE "${entity}" SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
-                [...values, id]
-            );
+            let result;
+            try {
+                result = await pool.query(
+                    `UPDATE "${entity}" SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+                    [...values, id]
+                );
+            } catch (updErr) {
+                // 42703 = column does not exist. Happens when the code ships
+                // before the migration that adds the column (staged rollout).
+                // Retrying without the unknown column keeps the other fields
+                // saved instead of failing the whole update.
+                if (updErr && updErr.code === '42703') {
+                    // message: column "x" of relation "settings" does not exist
+                    const missing = /column "([^"]+)"[^;]*does not exist/i.exec(updErr.message || '');
+                    const bad = missing ? missing[1] : null;
+                    const kept = bad ? keys.filter((k) => k !== bad) : [];
+                    if (kept.length && kept.length !== keys.length) {
+                        logger.warn(`[crud] missing column in ${entity} (${bad}) - retried without it`);
+                        const keptValues = kept.map((key) => prepareDbValue(entity, key, filtered[key]));
+                        result = await pool.query(
+                            `UPDATE "${entity}" SET ${kept.map((k, i) => `"${k}" = $${i + 1}`).join(', ')} WHERE id = $${kept.length + 1} RETURNING *`,
+                            [...keptValues, id]
+                        );
+                    } else {
+                        throw updErr;
+                    }
+                } else {
+                    throw updErr;
+                }
+            }
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
 
             const publicRow = publicEntityRow(entity, result.rows[0]);

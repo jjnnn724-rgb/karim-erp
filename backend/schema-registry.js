@@ -531,7 +531,10 @@ const entitySchemas = {
 
     // ─── Settings (ADMIN ONLY — migration 001) ────────
     settings: {
-        writeable: ['name', 'logo', 'logoB64', 'currency', 'lowStockAlert', 'workStartHour', 'hidden_nav_pages'],
+        // FIX 2026-10-21: الحقول التي لا تُذكر هنا تُحذف من الطلب **بلا خطأ**
+        // (removedKeys) — فأي مفتاح في لوحة الإعدادات كان يضيع بصمت.
+        writeable: ['name', 'logo', 'logoB64', 'currency', 'lowStockAlert', 'workStartHour', 'hidden_nav_pages',
+            'opening_balance_visible', 'pos_legacy_mode', 'pos_official_path'],
         required: ['name'],
         types: {
             name: TYPES.STRING,
@@ -541,8 +544,15 @@ const entitySchemas = {
             lowStockAlert: TYPES.BOOLEAN,
             workStartHour: TYPES.NUMBER,
             hidden_nav_pages: TYPES.STRING,
+            opening_balance_visible: TYPES.BOOLEAN,
+            // off | banner | redirect — انظر frontend/app/js/pos-path-guard.js
+            pos_legacy_mode: TYPES.STRING,
+            pos_official_path: TYPES.STRING,
         },
-        maxLength: { name: 255, logo: 100, currency: 50, hidden_nav_pages: 500 },
+        maxLength: {
+            name: 255, logo: 100, currency: 50, hidden_nav_pages: 500,
+            pos_legacy_mode: 20, pos_official_path: 255,
+        },
         protected: ['id'],
         description: 'System settings (admin only)',
     },
@@ -702,7 +712,7 @@ function filterBody(entityName, body, operation = 'create') {
  * @param {object} schema - Full schema for context
  * @returns {{ valid: boolean, error?: string }}
  */
-function validateType(fieldName, value, expectedType, schema) {
+function validateType(fieldName, value, expectedType, _schema) {
     switch (expectedType) {
         case TYPES.NUMBER:
             if (typeof value !== 'number' && isNaN(Number(value))) {
@@ -729,7 +739,7 @@ function validateType(fieldName, value, expectedType, schema) {
                 } else if (typeof value !== 'object') {
                     return { valid: false, error: `الحقل "${fieldName}" يجب أن يكون بيانات JSON صحيحة` };
                 }
-            } catch (e) {
+            } catch (_) {
                 return { valid: false, error: `الحقل "${fieldName}" يجب أن يكون بيانات JSON صحيحة` };
             }
             break;

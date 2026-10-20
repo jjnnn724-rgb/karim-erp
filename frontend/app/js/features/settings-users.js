@@ -58,6 +58,16 @@ return `
 </div>
 <div class="fg"><label><i class=ji data-i=alarm></i> ${t('set.workStart')}</label><input type="number" id="settingsWorkStart" value="${STATE.settings.workStartHour||9}" min="0" max="23"></div>
 <div class="fg"><label><i class=ji data-i=flag></i> إظهار زر "رصيد افتتاحي" في شاشة المخزون</label><label style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" id="settingsOpeningVisible" ${STATE.settings.opening_balance_visible!==false?'checked':''}> مفعل</label></div>
+<div class="fg"><label><i class=ji data-i=layers></i> توحيد واجهة الكاشير (توجيه تدريجي)</label>
+<select id="settingsPosLegacyMode" style="max-width:320px">
+<option value="off" ${(STATE.settings.pos_legacy_mode||'off')==='off'?'selected':''}>إيقاف — كل المسارات تعمل كما هي (الافتراضي)</option>
+<option value="banner" ${STATE.settings.pos_legacy_mode==='banner'?'selected':''}>تنبيه على الشاشة القديمة "ستُوقف قريبًا"</option>
+<option value="redirect" ${STATE.settings.pos_legacy_mode==='redirect'?'selected':''}>تحويل الشاشة القديمة إلى الواجهة الرسمية</option>
+</select>
+<small class="text-muted" style="display:block;margin-top:6px">لا يُحذف أي مسار. التحويل يتم فقط إذا حُدِّد المسار الرسمي أدناه.</small></div>
+<div class="fg"><label><i class=ji data-i=link></i> مسار واجهة الكاشير الرسمية</label>
+<input type="text" id="settingsPosOfficialPath" value="${esc(STATE.settings.pos_official_path||'')}" placeholder="/app/cashier/" maxlength="255" dir="ltr">
+<small class="text-muted" style="display:block;margin-top:6px">مسار داخلي يبدأ بـ/ فقط (مثال: /app/cashier/). يُتجاهل أي مسار خارجي.</small></div>
 <button class="btn btn-gold" onclick="saveSettings()"><i class=ji data-i=save></i> ${t('set.save')}</button>
 </div>
 </div>
@@ -182,6 +192,10 @@ const payload={
   logo:STATE.settings.logo||'<i class=ji data-i=utensils></i>',
   workStartHour:parseInt(document.getElementById('settingsWorkStart')?.value)||9,
   opening_balance_visible:document.getElementById('settingsOpeningVisible')?.checked !== false,
+  // سياسة توحيد مسار POS — تُحفظ في main_settings (migration 104)
+  pos_legacy_mode:['off','banner','redirect'].includes(document.getElementById('settingsPosLegacyMode')?.value)
+    ? document.getElementById('settingsPosLegacyMode').value : 'off',
+  pos_official_path:(document.getElementById('settingsPosOfficialPath')?.value||'').trim().slice(0,255),
 };
 try {
   const saved=await apiUpdate('settings','main_settings',payload);

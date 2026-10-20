@@ -70,6 +70,25 @@ GRANT SELECT ON TABLE public.inventory_location_balances TO PUBLIC;
 GRANT SELECT, INSERT ON TABLE pos_audit_logs TO PUBLIC;
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE pos_audit_logs FROM PUBLIC;
 
--- ── 7) توثيق ─────────────────────────────────────────────────────────────
+-- ── 7) أعمدة إعدادات الواجهة (قابلة للاستمرار عبر CRUD) ────────────────────
+-- هذه الأعمدة كان يُحفظها الـCRUD ثم تُسقَط بصمت (ليست في whitelist
+-- جدول settings)، فأي مفتاح في لوحة الإعدادات كان يضيع بلا خطأ.
+ALTER TABLE public.settings
+    ADD COLUMN IF NOT EXISTS opening_balance_visible BOOLEAN DEFAULT true,
+    ADD COLUMN IF NOT EXISTS pos_legacy_mode VARCHAR(20) DEFAULT 'off',
+    ADD COLUMN IF NOT EXISTS pos_official_path VARCHAR(255) DEFAULT '';
+
+-- تهيئة الصف الرئيسي بقيم افتراضية صريحة (idempotent)
+UPDATE public.settings SET
+    opening_balance_visible = true
+WHERE id = 'main_settings' AND opening_balance_visible IS NULL;
+UPDATE public.settings SET
+    pos_legacy_mode = 'off'
+WHERE id = 'main_settings' AND (pos_legacy_mode IS NULL OR pos_legacy_mode = '');
+UPDATE public.settings SET
+    pos_official_path = ''
+WHERE id = 'main_settings' AND pos_official_path IS NULL;
+
+-- ── 8) توثيق ─────────────────────────────────────────────────────────────
 COMMENT ON ROLE karim_app IS
     'دور تشغيل Karim ERP (DML بلا DDL). التفعيل: ALTER ROLE karim_app LOGIN PASSWORD ''<random>'' ثم DB_USER=karim_app في .env. لا تُخزَّن كلمة المرور في المستودع.';
