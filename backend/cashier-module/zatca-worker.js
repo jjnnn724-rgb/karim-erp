@@ -15,6 +15,9 @@ const zatcaHttpClient = axios.create({ timeout: 30_000 });
 
 const MAX_ATTEMPTS = parseInt(process.env.ZATCA_MAX_ATTEMPTS || '10', 10);
 const POLL_INTERVAL_MS = 10_000;
+// Master kill-switch: معطل افتراضيًا. حتى لو قال إعداد قاعدة البيانات "مفعل"،
+// المتغير البيئي يغلق الإرسال بالكامل ولا يكسر البيع — يسجل فقط ويتخطى.
+const ZATCA_ENABLED = process.env.ZATCA_ENABLED === 'true';
 // If Redis never becomes ready (not installed, stopped, wrong URL), BullMQ
 // mode would sit SILENTLY INERT — the queue freezes with no error anywhere.
 // A production POS must not depend on remembering a flag: after this grace
@@ -135,6 +138,13 @@ function escapeXml(value) {
 }
 
 async function submitInvoiceToZatca(orderId, config = null) {
+    // Master kill-switch من المتغير البيئي: لا يُرسل شيء إلى ZATCA لو معطل.
+    if (!ZATCA_ENABLED) {
+        logger.warn(`[zatca-worker] ZATCA_DISABLED via env — تُخطى الفاتورة ${orderId} وتُسجل فقط، البيع لا يتوقف.`);
+        const err = new Error('ZATCA_DISABLED_ENV: الربط مع هيئة الزكاة موقوف عبر المتغير البيئي ZATCA_ENABLED=false');
+        err.code = 'ZATCA_DISABLED_ENV';
+        throw err;
+    }
     const client = await pool.connect();
     try {
         const cfg = config || await loadZatcaConfig();

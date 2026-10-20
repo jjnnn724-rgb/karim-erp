@@ -1,7 +1,7 @@
 {
   "name": "karim-erp",
   "version": "4.9.2",
-  "description": "مطاعم الشرفه العالمي - نظام إدارة المطاعم المتكامل | Restaurant Management System with POS, Inventory, HR & ZATCA Compliance | v4.0 Enterprise UI redesign",
+  "description": "مطاعم الشرفه العالمي - نظام إدارة المطاعم المتكامل | Restaurant Management System with POS, Inventory, HR (ZATCA قيد التطوير، غير معتمد) | v4.0 Enterprise UI redesign",
   "main": "electron/main.js",
   "author": {
     "name": "karim Team",
