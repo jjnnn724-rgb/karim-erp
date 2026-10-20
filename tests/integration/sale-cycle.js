@@ -22,6 +22,7 @@
  *     ولا تُطبع ولا تُحفظ في المستودع.
  */
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 
@@ -206,8 +207,8 @@ function stopServer() {
 }
 
 // ── 3) عميل HTTP ──────────────────────────────────────────────────────────
-async function api(method, urlPath, { token, body, idem, shift, appKey } = {}) {
-    const headers = { 'Content-Type': 'application/json' };
+async function api(method, urlPath, { token, body, idem, shift, appKey, headers: extraHeaders } = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(extraHeaders || {}) };
     if (token) {headers.Authorization = `Bearer ${token}`;}
     if (idem) {headers['Idempotency-Key'] = idem;}
     if (shift) {headers['X-Shift-Session-Id'] = String(shift);}
@@ -463,6 +464,53 @@ async function run() {
         const expected = await db.query(`SELECT TO_CHAR(created_at AT TIME ZONE 'Asia/Riyadh','YYYY-MM-DD') AS d FROM pos_orders WHERE id=$1`, [state.splitOrderId]);
         assert(asDay(row.rows[0].date) === expected.rows[0].d, `تاريخ القيد ${asDay(row.rows[0].date)} != يوم الرياض ${expected.rows[0].d}`);
         return `date=${asDay(row.rows[0].date)} (يوم الرياض مطابق)`;
+    });
+
+    // (ض) قياس القناة على خادم حقيقي — قبل إقفال الوردية (البيع يحتاج وردية مفتوحة)
+    await step('قياس قناة POS: Referer يحدّد القناة في ملف القياس', async () => {
+        const saleWith = async (referer) => {
+            const amt = amounts(1, 0);
+            return api('POST', '/api/sales/complete', {
+                token: tokens.cashier, appKey: state.appKey, shift: state.sessionId,
+                idem: crypto.randomUUID(),
+                headers: { Referer: referer },
+                body: {
+                    department_id: DEPT_ID,
+                    items: [{ product_id: Number(state.product.id), quantity: 1, unit_price: unitPrice, discount: 0 }],
+                    payments: [{ method: 'cash', amount: amt.total }],
+                },
+            });
+        };
+        const r1 = await saleWith(`http://127.0.0.1:${PORT}/app/pos.html`);
+        assert(r1.status === 201, `بيع pos فشل (${r1.status}) ${JSON.stringify(r1.body).slice(0, 120)}`);
+        const r2 = await saleWith(`http://127.0.0.1:${PORT}/app/cashier/`);
+        assert(r2.status === 201, `بيع cashier فشل (${r2.status})`);
+        const r3 = await saleWith(`http://127.0.0.1:${PORT}/app/v2.html?live=1`);
+        assert(r3.status === 201, `بيع v2 فشل (${r3.status})`);
+
+        // ننتظر دورة الكتابة (5 ثوانٍ) ثم نقرأ الملف
+        const logDir = path.join(ROOT, 'logs');
+        let file = null;
+        for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            const day = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
+            const candidate = path.join(logDir, `pos-channel-usage-${day}.json`);
+            if (fs.existsSync(candidate)) {
+                const data = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+                if (data.channels.pos.sales >= 1 && data.channels.cashier.sales >= 1 && data.channels['v2-embedded'].sales >= 1) {
+                    file = { path: candidate, data };
+                    break;
+                }
+            }
+        }
+        assert(file, 'ملف القياس لم يُنتج القنوات الثلاث');
+        const c = file.data.channels;
+        assert(c.pos.sales >= 1, `pos.sales=${c.pos.sales}`);
+        assert(c.cashier.sales >= 1, `cashier.sales=${c.cashier.sales}`);
+        assert(c['v2-embedded'].sales >= 1, `v2-embedded.sales=${c['v2-embedded'].sales}`);
+        return `pos=${c.pos.sales} cashier=${c.cashier.sales} v2-embedded=${c['v2-embedded'].sales} (${path.basename(file.path)})`;
     });
 
     // (ض) إقفال الوردية وحساب النقد المتوقع

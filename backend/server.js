@@ -22,6 +22,7 @@ const { createBrotliStatic } = require('./middleware/brotli-static');
 const { createBrotliMetrics } = require('./middleware/brotli-metrics');
 const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-cache-policy');
 const { securityHeaders, hppGuard, buildV2Csp } = require('./middleware/security');
+const { posChannelMeter, getMeter: getPosChannelMeter } = require('./middleware/pos-channel-meter');
 const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
 const { registerWithHealthChecks: circuitRegisterHealth } = require('./middleware/circuit');
@@ -499,6 +500,12 @@ function apiKeyMiddleware(req, res, next) {
 }
 app.use('/api', apiKeyMiddleware);
 app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
+// Phase 4.1: قياس قناة واجهة POS الفعلية (pos / cashier / v2-embedded).
+// لا يفتح اتصال قاعدة ولا يستورد شيئاً من الإنتاج، ولا يُسقط أي طلب.
+// المرجع من المتصفح (Referer/Origin) هو مصدر القرار — لا ترويسة العميل.
+app.use('/api', posChannelMeter);
+// بدء الكتابة الدورية لملف القياس اليومي (كل 5 ثوانٍ، unref فلا يمنع الإغلاق)
+getPosChannelMeter().start();
 // FIX 2026-10-11 (C6): moved apiCacheMiddleware AFTER apiKeyMiddleware + rejectDuringShutdown
 // — was mounted at line 412 (before auth), so a cache HIT bypassed API-key check,
 // shutdown rejection, and rate limiting. Now cached responses are only served
