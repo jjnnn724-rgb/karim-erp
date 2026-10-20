@@ -14,6 +14,12 @@ RUN apt-get update && \
 # ─── مجلد العمل ──────────────────────────────────────────────────
 WORKDIR /app
 
+// ─── مستخدم غير مميّز (SECURITY) ───────────────────────────────────
+// تشغيل الحاوية كـroot يعني أن أي ثغرة في التطبيق = ثغرة كاملة على المضيف.
+// مستخدم مخصّص بلا صلاحيات إدارة، والمجلدات القابلة للكتابة ملكه وحده.
+RUN groupadd --system --gid 1001 karim \
+    && useradd --system --uid 1001 --gid 1001 --home-dir /app --shell /usr/sbin/nologin karim
+
 # ─── نسخ package files وتثبيت التبعيات ───────────────────────────
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production --ignore-scripts && \
@@ -23,16 +29,23 @@ RUN npm ci --only=production --ignore-scripts && \
 # FIX 2026-10-03 (Enterprise R2): أُزيل `COPY .env ./` — كان يخبز الأسرار
 # الحقيقية داخل الصورة (أي من يملك الصورة يملك JWT/DB/WhatsApp). البيئة
 # تُمرر عبر docker-compose environment أو env_file وقت التشغيل فقط.
-COPY backend/ ./backend/
-COPY frontend/ ./frontend/
-COPY database/ ./database/
-COPY scripts/ ./scripts/
-COPY docker-entrypoint.sh ./
+COPY --chown=karim:karim backend/ ./backend/
+COPY --chown=karim:karim frontend/ ./frontend/
+COPY --chown=karim:karim database/ ./database/
+COPY --chown=karim:karim scripts/ ./scripts/
+COPY --chown=karim:karim docker-entrypoint.sh ./
 
 # ─── صلاحيات entrypoint ──────────────────────────────────────────
-RUN chmod +x docker-entrypoint.sh
 
 # ─── المنفذ ──────────────────────────────────────────────────────
+# ─── المجلدات القابلة للكتابة (السجلات/المرفقات/بيانات) ─────
+RUN mkdir -p /app/logs /app/uploads /app/data /app/database/data \
+    && chown -R karim:karim /app/logs /app/uploads /app/data /app/database/data \
+    && chmod +x /app/docker-entrypoint.sh
+
+# SECURITY: لا تشغيل كـroot — see the useradd block above.
+USER karim
+
 EXPOSE 5000
 
 # ─── Healthcheck ─────────────────────────────────────────────────
