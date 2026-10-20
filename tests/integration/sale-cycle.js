@@ -539,6 +539,42 @@ async function run() {
         return '403 كما هو مطلوب';
     });
 
+    // (ق) استمرارية إعدادات الواجهة + سياسة توحيد المسار
+    await step('إعدادات الواجهة تُحفظ فعليًا (لا تُسقَط بصمت)', async () => {
+        const payload = {
+            name: 'مطاعم الشرفه العالمي',
+            currency: 'SAR',
+            workStartHour: 9,
+            opening_balance_visible: false,
+            pos_legacy_mode: 'banner',
+            pos_official_path: '/app/cashier/',
+        };
+        const save = await api('PUT', '/api/settings/main_settings', {
+            token: tokens.admin, appKey: state.appKey, body: payload,
+        });
+        assert([200, 201].includes(save.status), `فشل حفظ الإعدادات (${save.status}) ${JSON.stringify(save.body).slice(0, 160)}`);
+        // نقرأ من القاعدة مباشرة — لا من ردّ الحفظ (الرد قد لا يعكس ما حُفظ)
+        const row = await db.query(`SELECT opening_balance_visible, pos_legacy_mode, pos_official_path
+            FROM settings WHERE id='main_settings'`);
+        const r = row.rows[0] || {};
+        assert(r.opening_balance_visible === false, `opening_balance_visible=${r.opening_balance_visible} (لم يُحفظ)`);
+        assert(r.pos_legacy_mode === 'banner', `pos_legacy_mode=${r.pos_legacy_mode} (لم يُحفظ)`);
+        assert(r.pos_official_path === '/app/cashier/', `pos_official_path=${r.pos_official_path} (لم يُحفظ)`);
+        // السياسة العامة (بلا مصادقة) تعكس ما حُفظ
+        const policy = await api('GET', '/api/pos/path-policy');
+        assert(policy.status === 200, `.policy ${policy.status}`);
+        assert(policy.body.policy.mode === 'banner', `mode=${policy.body.policy.mode}`);
+        assert(policy.body.policy.path === '/app/cashier/', `path=${policy.body.policy.path}`);
+        // إعادة الوضع الافتراضي (off) حتى لا تتأثر بقية الجولات
+        await api('PUT', '/api/settings/main_settings', {
+            token: tokens.admin, appKey: state.appKey,
+            body: { ...payload, opening_balance_visible: true, pos_legacy_mode: 'off', pos_official_path: '' },
+        });
+        const back = await db.query(`SELECT pos_legacy_mode FROM settings WHERE id='main_settings'`);
+        assert(back.rows[0].pos_legacy_mode === 'off', `لم يُرجَع الوضع إلى off`);
+        return 'حُفظت الحقول الثلاثة وظهرت في السياسة العامة (banner)';
+    });
+
     return results;
 }
 

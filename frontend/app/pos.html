@@ -12,11 +12,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="karim POS">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-400-arabic.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-700-arabic.woff2">
+    <link rel="stylesheet" href="css/menu-fonts.css">
     <link rel="stylesheet" href="css/design-tokens.css">
-    <link rel="stylesheet" href="css/pos.css?v=4.9.32">
+    <link rel="stylesheet" href="css/pos.css?v=4.9.34">
     <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
     <link rel="stylesheet" href="css/pro-theme.css?v=4.9.33">
 </head>
@@ -107,7 +107,14 @@
                     </div>
                 </div>
                 <div class="search-bar">
-                    <input type="text" id="product-search" placeholder="ابحث باسم الطبق أو المشروب..." autofocus>
+                    <input type="text" id="product-search" placeholder="ابحث بالاسم أو الباركود..." aria-label="البحث عن صنف بالاسم أو الباركود" autocomplete="off" autofocus>
+                    <div class="pos-shortcut-help" role="note" aria-label="اختصارات الكاشير">
+                        <span><kbd>F1</kbd> بحث</span>
+                        <span><kbd>F2</kbd> إتمام البيع</span>
+                        <span><kbd>F3</kbd> تعليق</span>
+                        <span><kbd>F4</kbd> تفريغ السلة</span>
+                        <span><kbd>F9</kbd> إغلاق الوردية</span>
+                    </div>
                 </div>
                 <div class="category-tabs" id="category-tabs"></div>
                 <div id="products-grid" class="products-grid"></div>
@@ -531,8 +538,17 @@
     <script src="js/icons.js"></script>
     <script src="js/vendor/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/pos.js?v=4.9.33"></script>
+    <script src="js/pos-search.js?v=4.9.162"></script>
+    <script src="js/pos.js?v=4.9.34"></script>
     <script src="js/pos-orders.js"></script>
+    <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
+         الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
+    <script src="js/pos-path-guard.js?v=4.9.77"></script>
+    <script>
+      if (window.PosPathGuard) {
+        window.PosPathGuard.applyPosPathPolicy().catch(function () { /* لا سياسة = لا تغيير */ });
+      }
+    </script>
     <script>
       if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost')) {
         window.addEventListener('load', () => navigator.serviceWorker.register('/app/sw.js').catch(() => {}));
