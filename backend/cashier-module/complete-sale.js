@@ -30,11 +30,30 @@ const { resolveSellerVat } = require('./zatca-vat');
 const { buildEscPosReceipt } = require('./escpos-printer');
 const { buildKotGroups, buildKotData, buildEscPosKot } = require('./kot-printer');
 const { postInventoryLedgerEntry } = require('../inventory-ledger');
+const { writeAuditLog } = require('./audit-middleware');
 const { convertQuantity } = require('../unit-conversion');
 const { recordSale } = require('./metrics');
 
 const ALLOWED_METHODS = new Set(['cash', 'card', 'wallet', 'bank_transfer', 'voucher', 'loyalty']);
 const MAX_ITEMS = 200;
+
+// ─── تفويض الخصم وتخفيض السعر (fail-closed) ──────────────────────────────
+// قبل هذا الإصلاح كان أي كاشير يخفض السعر تحت سعر القائمة أو يطبّق خصماً
+// بلا حدّ — تسريب مالي مباشر بلا أثر. القواعد الآن:
+//   · SALE_DISCOUNT_MAX_PERCENT       : أقصى خصم (نسبة من إجمالي السطر) لغير المعتمد
+//   · SALE_PRICE_OVERRIDE_MAX_PERCENT : أقصى تخفيض سعر (نسبة من سعر القائمة) لغير المعتمد
+//   · SALE_DISCOUNT_APPROVER_ROLES    : الأدوار التي تتجاوز الحد (مع سجل تدقيق)
+// الافتراضي 0% = مغلق حتى يحدد المالك السياسة بنفسه (لا تخمين لقيم العمل).
+// القيمة تُقرأ عند الإقلاع — تغييرها يحتاج إعادة تشغيل الخادم.
+const SALE_DISCOUNT_MAX_PERCENT = Math.max(0, Number(process.env.SALE_DISCOUNT_MAX_PERCENT || '0'));
+const SALE_PRICE_OVERRIDE_MAX_PERCENT = Math.max(0, Number(process.env.SALE_PRICE_OVERRIDE_MAX_PERCENT || '0'));
+const SALE_DISCOUNT_APPROVER_ROLES = new Set(
+    String(process.env.SALE_DISCOUNT_APPROVER_ROLES || 'manager,admin')
+        .split(',').map((s) => s.trim()).filter(Boolean)
+);
+function isDiscountApprover(role) {
+    return SALE_DISCOUNT_APPROVER_ROLES.has(String(role || ''));
+}
 const MAX_PAYMENTS = 8;
 
 function generateLegacyId() {
@@ -57,6 +76,23 @@ function summarizeItemsForNotes(lineItems = []) {
     return topNames;
 }
 
+function resolveRecipeStockAvailability({
+    required,
+    consumptionLocationId,
+    consumptionAvailable,
+    mainLocationId,
+    mainAvailable,
+    allowFallback,
+}) {
+    if (consumptionAvailable >= required) {
+        return consumptionAvailable;
+    }
+    if (allowFallback && mainLocationId && mainLocationId !== consumptionLocationId && mainAvailable >= required) {
+        return mainAvailable;
+    }
+    return consumptionAvailable;
+}
+
 async function syncErpRevenueFromPosSale(client, {
     orderId,
     orderRow,
@@ -71,8 +107,7 @@ async function syncErpRevenueFromPosSale(client, {
     );
     const posDept = posDeptRes.rows[0] || null;
     if (!posDept) {
-        logger.error(`[${requestId}] POS sale references unknown pos_departments.id=${orderRow.department_id} — cannot sync revenue`);
-        return null;
+        throw new Error(`POS sale references unknown department ${orderRow.department_id}; refusing to issue a sale without its ERP revenue mapping.`);
     }
 
     let legacyDeptCode = posDept.legacy_dept_code || null;
@@ -101,7 +136,6 @@ async function syncErpRevenueFromPosSale(client, {
     }
 
     const revenueId = generateLegacyId();
-    let persistedRevenueId = revenueId;
     const date = new Date(orderRow.created_at || Date.now()).toISOString().split('T')[0];
     const itemsText = summarizeItemsForNotes(totals?.line_items || []);
 
@@ -113,34 +147,33 @@ async function syncErpRevenueFromPosSale(client, {
         itemsText ? `items=${itemsText}` : null,
     ].filter(Boolean).join(' | ');
 
-    // 1) Write to normalized revenues table (for future reports / CRUD API)
-    // Non-fatal: some installs may not have migration 001 applied.
-    try {
-        const revenueInsert = await client.query(
-            `INSERT INTO revenues (id, "deptId", source, amount, date, notes, pos_order_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (pos_order_id) WHERE pos_order_id IS NOT NULL DO NOTHING
-             RETURNING id;`,
-            [
-                revenueId,
-                legacyDeptCode,
-                `POS:${posDept.name_ar || posDept.code || 'dept'}`,
-                Number(orderRow.total_amount),
-                date,
-                notes,
-                orderId,
-            ]
-        );
-        if (revenueInsert.rows[0]?.id) {persistedRevenueId = revenueInsert.rows[0].id;}
-        else {
-            const existing = await client.query('SELECT id FROM revenues WHERE pos_order_id = $1 LIMIT 1', [orderId]);
-            if (existing.rows[0]?.id) {persistedRevenueId = existing.rows[0].id;}
-        }
-    } catch (e) {
-        logger.warn(`[${requestId}] Failed to insert into revenues table (non-fatal): ${e.message}`);
+    // The normalized revenue row is part of the sale's accounting projection.
+    // Keep it in the same transaction and fail the sale if it cannot be persisted.
+    const revenueInsert = await client.query(
+        `INSERT INTO revenues (id, "deptId", source, amount, date, notes, pos_order_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (pos_order_id) WHERE pos_order_id IS NOT NULL DO NOTHING
+         RETURNING id;`,
+        [
+            revenueId,
+            legacyDeptCode,
+            `POS:${posDept.name_ar || posDept.code || 'dept'}`,
+            Number(orderRow.total_amount),
+            date,
+            notes,
+            orderId,
+        ]
+    );
+    const insertedRevenueId = revenueInsert.rows[0]?.id;
+    const existingRevenueId = insertedRevenueId ? null : (
+        await client.query('SELECT id FROM revenues WHERE pos_order_id = $1 LIMIT 1', [orderId])
+    ).rows[0]?.id;
+    const persistedRevenueId = insertedRevenueId || existingRevenueId;
+    if (!persistedRevenueId) {
+        throw new Error(`POS revenue projection missing after idempotent insert for order ${orderId}.`);
     }
 
-    // 2) ترآة app_state (لوحة الكلاسيكية) — انتقلت لما بعد الالتزام:
+    // 2) مرآة app_state (لوحة الكلاسيكية) — انتقلت لما بعد الالتزام:
     // كان هذا الكتلة تقرأ وتعيد كتابة JSON كامل داخل المعاملة بقفل FOR UPDATE،
     // مما يُصَلَط كل مبيعات النظام على صف واحد (عنق زجاجة عالمي) ويمنع تزامن البيع.
     // الآن: نبني الحُزمة هنا فقط، والكتابة تتم بعد الالتزام (best-effort، غير قاتلة)
@@ -166,40 +199,50 @@ async function syncErpRevenueFromPosSale(client, {
 
 /**
  * appendLegacyRevenueMirror — مرآة الإيرادات للوحة الكلاسيكية (بعد الالتزام)
- * ────────────────────────────────────────────────────────────────────
- * يُستدعى بعد COMMIT خارج معاملة البيع حتى لا يُصَلَط بيع النظام كله على صف
- * app_state. كتابة واحدة سريعة بقفل صف قصير، مع منع التكرار بمفتاح الطلب،
- * وسقف صارم (آخر 300 إيراد) حتى لا ينمو JSON الحالة بلا حد.
- * الفشل هنا غير قاتل أبدًا: revenues TABLE هو السجل الأساسي.
+ * يُحدّث الصف بعملية upsert ذرّية لمنع فقد إضافات متزامنة، مع منع التكرار
+ * والاحتفاظ بآخر 300 إيراد. جدول revenues هو السجل المالي الأساسي.
  */
 const LEGACY_MIRROR_MAX = 300;
 async function appendLegacyRevenueMirror(mirror) {
     if (!mirror || !mirror.pos || !mirror.pos.order_id) {return false;}
-    const cur = await pool.query(`SELECT state_data FROM app_state WHERE id = 1 FOR UPDATE`);
-    const state = cur.rows[0]?.state_data || null;
-    if (state === null) {
-        await pool.query(
-            `INSERT INTO app_state (id, state_data, updated_at)
-             VALUES (1, jsonb_build_object('revenues', jsonb_build_array($1::jsonb)), CURRENT_TIMESTAMP)
-             ON CONFLICT (id) DO NOTHING;`,
-            [JSON.stringify(mirror)]
-        );
-        return true;
-    }
-    const arr = (state && Array.isArray(state.revenues)) ? state.revenues : [];
-    // منع التكرار (دفاع عميق) — المفتاح معرف الطلب
-    if (arr.some(r => r && r.pos && r.pos.order_id === mirror.pos.order_id)) {return false;}
-    // اقتصاص من القدم: احتفظ بآخر 299 ثم أضف الجديد → سقف ثابت
-    const kept = arr.slice(Math.max(0, arr.length - (LEGACY_MIRROR_MAX - 1)));
-    kept.push(mirror);
-    await pool.query(
-        `UPDATE app_state
-            SET state_data = jsonb_set(state_data, '{revenues}', $1::jsonb),
+    const result = await pool.query(
+        `INSERT INTO app_state AS current_state (id, state_data, updated_at)
+         VALUES (1, jsonb_build_object('revenues', jsonb_build_array($2::jsonb)), CURRENT_TIMESTAMP)
+         ON CONFLICT (id) DO UPDATE
+            SET state_data = jsonb_set(
+                    COALESCE(current_state.state_data, '{}'::jsonb),
+                    '{revenues}',
+                    (
+                        SELECT COALESCE(jsonb_agg(recent.item ORDER BY recent.ordinality), '[]'::jsonb)
+                               || jsonb_build_array($2::jsonb)
+                          FROM (
+                              SELECT entry.item, entry.ordinality
+                                FROM jsonb_array_elements(
+                                    CASE WHEN jsonb_typeof(current_state.state_data->'revenues') = 'array'
+                                         THEN current_state.state_data->'revenues'
+                                         ELSE '[]'::jsonb END
+                                ) WITH ORDINALITY AS entry(item, ordinality)
+                               WHERE entry.item #>> '{pos,order_id}' IS DISTINCT FROM $1::text
+                               ORDER BY entry.ordinality DESC
+                               LIMIT $3
+                          ) recent
+                    ),
+                    true
+                ),
                 updated_at = CURRENT_TIMESTAMP
-          WHERE id = 1;`,
-        [JSON.stringify(kept)]
+          WHERE NOT EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements(
+                    CASE WHEN jsonb_typeof(current_state.state_data->'revenues') = 'array'
+                         THEN current_state.state_data->'revenues'
+                         ELSE '[]'::jsonb END
+                ) AS existing(item)
+               WHERE existing.item #>> '{pos,order_id}' = $1::text
+          )
+         RETURNING id;`,
+        [String(mirror.pos.order_id), JSON.stringify(mirror), LEGACY_MIRROR_MAX - 1]
     );
-    return true;
+    return result.rowCount > 0;
 }
 
 function sortKeysDeep(obj) {
@@ -329,17 +372,52 @@ function releaseSaleSlot() {
     else { _saleActive -= 1; }
 }
 
-function computeTotalsServerSide(items, productsMap) {
+function computeTotalsServerSide(items, productsMap, actor = null) {
     let subtotal = 0, discount_total = 0, tax_total = 0;
     const lineItems = [];
+    const overrides = [];
+    const isApprover = isDiscountApprover(actor?.role);
     for (const it of items) {
         const p = productsMap.get(it.product_id);
         if (!p) {throw Object.assign(new Error(`Product ${it.product_id} not found`), { code: 'PRODUCT_NOT_FOUND' });}
-        if (it.unit_price > Number(p.price)) {
+        const listPrice = Number(p.price);
+        if (it.unit_price > listPrice) {
             throw Object.assign(
                 new Error(`Price override for product ${p.id}: requested ${it.unit_price} > stored ${p.price}`),
                 { code: 'PRICE_OVERRIDE_FORBIDDEN' }
             );
+        }
+        const discount = Number((it.discount || 0).toFixed(2));
+        // ── حد تخفيض السعر تحت سعر القائمة (لا يُسمح للسلطة وحدها) ──
+        const priceGapPercent = listPrice > 0 ? ((listPrice - Number(it.unit_price)) / listPrice) * 100 : 0;
+        if (priceGapPercent > SALE_PRICE_OVERRIDE_MAX_PERCENT + 1e-9) {
+            if (!isApprover) {
+                throw Object.assign(
+                    new Error(`تخفيض السعر للصنف ${p.id} تجاوز الحد (${priceGapPercent.toFixed(2)}% / حد ${SALE_PRICE_OVERRIDE_MAX_PERCENT}%) — يتطلب صلاحية معتمد`),
+                    { code: 'DISCOUNT_APPROVAL_REQUIRED', statusCode: 403 }
+                );
+            }
+            overrides.push({
+                kind: 'price', product_id: p.id, product_name: p.name_ar,
+                list_price: listPrice, charged_price: Number(it.unit_price),
+                percent: Number(priceGapPercent.toFixed(2)),
+            });
+        }
+        // ── حد الخصم على السطر ──
+        const gross = Number(it.quantity) * Number(it.unit_price);
+        const discountPercent = gross > 0 ? (discount / gross) * 100 : 0;
+        if (discountPercent > SALE_DISCOUNT_MAX_PERCENT + 1e-9) {
+            if (!isApprover) {
+                throw Object.assign(
+                    new Error(`خصم السطر للصنف ${p.id} تجاوز الحد (${discountPercent.toFixed(2)}% / حد ${SALE_DISCOUNT_MAX_PERCENT}%) — يتطلب صلاحية معتمد`),
+                    { code: 'DISCOUNT_APPROVAL_REQUIRED', statusCode: 403 }
+                );
+            }
+            overrides.push({
+                kind: 'discount', product_id: p.id, product_name: p.name_ar,
+                gross: Number(gross.toFixed(2)), discount,
+                percent: Number(discountPercent.toFixed(2)),
+            });
         }
         const lineTotal = Number(((it.quantity * it.unit_price) - (it.discount || 0)).toFixed(2));
         if (lineTotal < 0) {
@@ -349,7 +427,6 @@ function computeTotalsServerSide(items, productsMap) {
         // missing value falls back to the standard 15% rate
         const vatRate = (p.vat_rate === null || p.vat_rate === undefined || Number.isNaN(Number(p.vat_rate))) ? 15.00 : Number(p.vat_rate);
         const vatAmount = Number((lineTotal * vatRate / 100).toFixed(2));
-        const discount = Number((it.discount || 0).toFixed(2));
         subtotal += lineTotal;
         discount_total += discount;
         tax_total += vatAmount;
@@ -365,6 +442,8 @@ function computeTotalsServerSide(items, productsMap) {
         tax_total: Number(tax_total.toFixed(2)),
         total_amount: Number((subtotal + tax_total).toFixed(2)),
         line_items: lineItems,
+        // تجاوزات مصرّح بها (معتمد تجاوز الحد) — تُكتب في سجل التدقيق
+        overrides,
     };
     if (totals.total_amount < 0) {
         throw Object.assign(new Error('Sale total cannot be negative'), { code: 'NEGATIVE_TOTAL' });
@@ -594,11 +673,12 @@ async function completeSale(req, res) {
               SELECT b.product_id, b.inventory_id, b.quantity_per_unit, b.waste_percent,
                      i.name AS inventory_name,
                      COALESCE((SELECT GREATEST(0, on_hand - reserved) FROM inventory_location_balances WHERE inventory_id = i.id AND location_id = $2), 0) AS available_qty,
+                     COALESCE((SELECT GREATEST(0, on_hand - reserved) FROM inventory_location_balances WHERE inventory_id = i.id AND location_id = $3), 0) AS main_available_qty,
                      i.unit AS inventory_unit, i.weight AS inventory_weight, b.unit
                 FROM selected_bom b
                 JOIN inventory i ON i.id = b.inventory_id
                ORDER BY b.product_id, b.inventory_id;`,
-            [productIds, consumptionLocationId]
+            [productIds, consumptionLocationId, mainLocationId]
         );
         const ingredientsByProduct = new Map();
         for (const row of ingredientRes.rows) {
@@ -644,7 +724,14 @@ async function completeSale(req, res) {
 
         for (const [inventoryId, required] of ingredientRequirements) {
             const ingredient = ingredientRes.rows.find(row => Number(row.inventory_id) === inventoryId);
-            const available = Number(ingredient?.available_qty || 0);
+            const available = resolveRecipeStockAvailability({
+                required,
+                consumptionLocationId,
+                consumptionAvailable: Number(ingredient?.available_qty || 0),
+                mainLocationId,
+                mainAvailable: Number(ingredient?.main_available_qty || 0),
+                allowFallback: allowKitchenFallback && kitchenMode !== 'strict',
+            });
             if (available < required) {
                 await client.query('ROLLBACK;');
                 return res.status(409).json({
@@ -659,7 +746,7 @@ async function completeSale(req, res) {
         }
 
         // ── Server-side totals ────────────────────────────────────────────────
-        const totals = computeTotalsServerSide(req.body.items, productsMap);
+        const totals = computeTotalsServerSide(req.body.items, productsMap, cashier);
         const { paid, diff } = reconcilePayments(req.body.payments, totals.total_amount);
 
         // ── Stock reason context ──────────────────────────────────────────────
@@ -667,7 +754,7 @@ async function completeSale(req, res) {
 
         // ── Insert order (draft) ──────────────────────────────────────────────
         const orderId = uuidv4();
-        const orderInsertRes = await client.query(
+        await client.query(
             `INSERT INTO pos_orders
                 (id, session_id, department_id, cashier_id, status,
                  subtotal, discount_total, tax_total, total_amount, currency_code, notes, created_at)
@@ -732,7 +819,7 @@ async function completeSale(req, res) {
                 });
                 kitchenExceptions.push({ inventory_id: inventoryId, quantity: Number(required), reason: 'لا يوجد رصيد كافٍ في مخزن المطبخ؛ تم السماح بالبيع كاستثناء مرن' });
             }
-            const ingredient = ingredientConsumption.find(item => item.inventory_id === inventoryId);
+            ingredientConsumption.find(item => item.inventory_id === inventoryId);
             for (const consumption of ingredientConsumption.filter(item => item.inventory_id === inventoryId)) {
                 await client.query(
                     `INSERT INTO pos_stock_movements
@@ -805,10 +892,16 @@ async function completeSale(req, res) {
         // ONLY the department column was read, so a VAT saved in the ZATCA hub
         // never reached invoices — a settings field that silently did nothing.
         let settingsVat = null;
+        await client.query('SAVEPOINT zatca_settings_lookup;');
         try {
             const cfgRes = await client.query(`SELECT vat_number FROM zatca_settings WHERE id = 1;`);
             settingsVat = cfgRes.rows[0]?.vat_number || null;
-        } catch (_) { /* settings table not provisioned yet — chain still resolves */ }
+            await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
+        } catch (settingsError) {
+            await client.query('ROLLBACK TO SAVEPOINT zatca_settings_lookup;');
+            await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
+            logger.warn(`[${requestId}] ZATCA settings lookup unavailable; resolving VAT from department: ${settingsError.message}`);
+        }
         const resolvedVat = resolveSellerVat({ deptVat: dept?.vat_number, settingsVat });
         const vatNumberForQr = resolvedVat.vat;
         const vatNumberPlaceholder = resolvedVat.placeholder;
@@ -862,6 +955,7 @@ async function completeSale(req, res) {
         // here must NEVER block the sale — log loudly and continue.
         const kotJobs = [];
         let kotEnabled = false;
+        await client.query('SAVEPOINT pos_kot_enqueue;');
         try {
             const kotCfgRes = await client.query(
                 `SELECT kot_enabled, kot_copies, kot_include_notes
@@ -901,7 +995,11 @@ async function completeSale(req, res) {
                     }
                 }
             }
+            await client.query('RELEASE SAVEPOINT pos_kot_enqueue;');
         } catch (kotErr) {
+            await client.query('ROLLBACK TO SAVEPOINT pos_kot_enqueue;');
+            await client.query('RELEASE SAVEPOINT pos_kot_enqueue;');
+            kotJobs.length = 0;
             logger.error(`[${requestId}] KOT enqueue failed — sale continues untouched:`, kotErr.message);
         }
 
@@ -1011,6 +1109,31 @@ async function completeSale(req, res) {
         try { await require('../accounting-routes').postSaleToLedger(orderId); }
         catch (e) { logger.warn(`[${requestId}] ledger posting failed (non-fatal):`, e.message); }
 
+        // ── سجل تدقيق تجاوزات الخصم/تخفيض السعر (معتمد تجاوز الحد) ──
+        if (Array.isArray(totals.overrides) && totals.overrides.length) {
+            try {
+                await writeAuditLog({
+                    action: 'PRICE_OVERRIDE',
+                    tableName: 'pos_orders',
+                    rowPk: orderId,
+                    reason: `تجاوز حد الخصم/تخفيض السعر — ${totals.overrides.length} بند`,
+                    metadata: {
+                        overrides: totals.overrides,
+                        max_discount_percent: SALE_DISCOUNT_MAX_PERCENT,
+                        max_price_override_percent: SALE_PRICE_OVERRIDE_MAX_PERCENT,
+                        total_amount: totals.total_amount,
+                    },
+                    actor: {
+                        userId: cashier.id,
+                        userName: cashier.username || cashier.name,
+                        role: cashier.role,
+                        ip: req.ip || (req.socket && req.socket.remoteAddress) || '',
+                        requestId,
+                    },
+                });
+            } catch (e) { logger.warn(`[${requestId}] discount-override audit failed (non-fatal):`, e.message); }
+        }
+
         if (req.io) {try {
             const salePayload = {
                 order_id: orderId,
@@ -1062,6 +1185,7 @@ async function completeSale(req, res) {
 
         if (code === '23505') {return res.status(409).json({ error: 'DUPLICATE', message: err.message, _request_id: requestId });}
         if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });}
+        if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });}
         if (err.code === 'INSUFFICIENT_STOCK' || code === '23514') {return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: err.message, _request_id: requestId });}
         if (err.code === 'UNDERPAYMENT') {return res.status(422).json({ error: 'UNDERPAYMENT', message: err.message, _request_id: requestId });}
         if (err.code === 'PRODUCT_NOT_FOUND') {return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });}
@@ -1100,4 +1224,4 @@ function register(app) {
     );
 }
 
-module.exports = { register, completeSale, validateSalePayload, computeTotalsServerSide, appendLegacyRevenueMirror };
+module.exports = { register, completeSale, validateSalePayload, computeTotalsServerSide, appendLegacyRevenueMirror, syncErpRevenueFromPosSale, resolveRecipeStockAvailability };
