@@ -31,11 +31,35 @@ function sha256File(filePath) {
     return hash.digest('hex');
 }
 
+/** Reads the archive passphrase from the environment (never printed, never stored). */
+function readBackupPassphrase() {
+    const raw = String(process.env.KARIM_BACKUP_PASSPHRASE || '').trim();
+    return raw.length >= 12 ? raw : null;
+}
+
 function encryptBackupFile(srcFile) {
     const outputFile = `${srcFile}.gpg`;
     const checksumFile = `${outputFile}.sha256`;
     if (fs.existsSync(outputFile) || fs.existsSync(checksumFile)) {
         throw new Error(`Encrypted backup already exists; refusing to overwrite it: ${outputFile}`);
+    }
+
+    // Preferred path: passphrase (no key file to move around — a secret the
+    // owner keeps in their password manager). Falls back to GPG below.
+    const passphrase = readBackupPassphrase();
+    if (passphrase) {
+        const { encryptFile } = require('./backup-passphrase-encryption');
+        // امتداد مختلف عن .gpg حتى لا تختلط الصيغ (فك التشفير يقرأ الصيغة من الترويسة)
+        const passphraseOutput = `${srcFile}.kbak`;
+        try {
+            encryptFile(srcFile, passphraseOutput, passphrase);
+        } catch (e) {
+            if (fs.existsSync(passphraseOutput)) {fs.unlinkSync(passphraseOutput);}
+            throw new Error(`Passphrase encryption failed for ${srcFile}: ${String(e.message || e).slice(0, 200)}`, { cause: e });
+        }
+        const digest = sha256File(passphraseOutput);
+        fs.writeFileSync(`${passphraseOutput}.sha256`, `${digest}  ${path.basename(passphraseOutput)}\n`, { encoding: 'utf8', flag: 'wx' });
+        return passphraseOutput;
     }
 
     const helperPath = path.join(__dirname, 'backup-encryption.ps1')
@@ -68,9 +92,10 @@ function encryptBackupFile(srcFile) {
 
 function mirrorFile(srcFile, subdir) {
     const out = { ok: true, mirrored: [], errors: [] };
-    if (path.extname(srcFile).toLowerCase() !== '.gpg') {
+    const ext = path.extname(srcFile).toLowerCase();
+    if (ext !== '.gpg' && ext !== '.kbak') {
         out.ok = false;
-        out.errors.push('plaintext-mirror-refused:encrypted-.gpg-required');
+        out.errors.push('plaintext-mirror-refused:encrypted-.gpg-or-.kbak-required');
         return out;
     }
     const checksumFile = `${srcFile}.sha256`;
