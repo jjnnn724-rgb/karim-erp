@@ -44,7 +44,7 @@ employees: [], attendance: [], leaveRequests: [], hrDepartments: [], leaveTypes:
 deptEmployees: [],   // موظفو قسم رئيس القسم — من GET /hr/dept-employees (جدول الحضور المقيد)
 salary_advances: [], payroll_adjustments: [], employee_contracts: [], employee_evaluations: [], payroll_runs: [],
 shelves: [], weightReadings: [],
-settings: { name:'مطاعم الشرفه العالمي', logo:'<i class=ji data-i=utensils></i>', logoB64:null, currency:'SAR', lowStockAlert:true, workStartHour:9 },
+settings: { name:'مطاعم الشرفه العالمي', logo:'<i class=ji data-i=utensils></i>', logoB64:null, currency:'SAR', lowStockAlert:true, workStartHour:9, opening_balance_visible:true },
 recipeCatalog: {},
 page: 'dashboard', dept: null, charts: {}, lang: 'ar', theme: 'light',
 notifications: [],

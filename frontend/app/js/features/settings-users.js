@@ -57,6 +57,7 @@ return `
 </div>
 </div>
 <div class="fg"><label><i class=ji data-i=alarm></i> ${t('set.workStart')}</label><input type="number" id="settingsWorkStart" value="${STATE.settings.workStartHour||9}" min="0" max="23"></div>
+<div class="fg"><label><i class=ji data-i=flag></i> إظهار زر "رصيد افتتاحي" في شاشة المخزون</label><label style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" id="settingsOpeningVisible" ${STATE.settings.opening_balance_visible!==false?'checked':''}> مفعل</label></div>
 <button class="btn btn-gold" onclick="saveSettings()"><i class=ji data-i=save></i> ${t('set.save')}</button>
 </div>
 </div>
@@ -168,7 +169,7 @@ try {
 async function saveNavVisibility(){
 const hidden=Array.from(document.querySelectorAll('.navVisBox:checked')).map(x=>x.value).join(',');
 try{
-const saved=await apiUpdate('settings','main_settings',{name:STATE.settings.name||'مطاعم الشرفه العالمي',hidden_nav_pages:hidden});
+await apiUpdate('settings','main_settings',{name:STATE.settings.name||'مطاعم الشرفه العالمي',hidden_nav_pages:hidden});
 Object.assign(STATE.settings,{hidden_nav_pages:hidden,hiddenNavPages:hidden});
 if(typeof window.buildNav==='function'){window.buildNav();}
 toast('تم تحديث ظهور القوائم لكل المستخدمين','success');
@@ -180,6 +181,7 @@ const payload={
   currency:document.getElementById('settingsCurrency')?.value.trim()||'SAR',
   logo:STATE.settings.logo||'<i class=ji data-i=utensils></i>',
   workStartHour:parseInt(document.getElementById('settingsWorkStart')?.value)||9,
+  opening_balance_visible:document.getElementById('settingsOpeningVisible')?.checked !== false,
 };
 try {
   const saved=await apiUpdate('settings','main_settings',payload);
@@ -289,7 +291,7 @@ try {
 async function zatcaToggle(enable){
 if(!enable && !confirm('إيقاف الربط يجمّد الإبلاغ الضريبي مؤقتًا — الفواتير تبقى محفوظة وتُرسل عند إعادة التفعيل. متابعة؟')) {return;}
 try {
-  const r=await apiFetch('/zatca/toggle',{method:'POST',body:JSON.stringify({enabled:enable})});
+  await apiFetch('/zatca/toggle',{method:'POST',body:JSON.stringify({enabled:enable})});
   toast(enable?'تم تفعيل ربط ZATCA — سيبدأ الإبلاغ تلقائيًا':'تم إيقاف ربط ZATCA — الطابور مجمّد', enable?'success':'info');
   await loadZatcaHub();
 } catch(e) { toast(e.response?.message||e.message||'تعذر تغيير الحالة','error'); }
@@ -345,7 +347,7 @@ const otp=document.getElementById('zatcaOtp')?.value.trim();
 if(!/^\d{6}$/.test(otp||'')){ toast('أدخل رمز OTP المكوّن من 6 أرقام','error'); return; }
 try {
   showLoad('جارٍ إرسال الطلب للهيئة…');
-  const r=await apiFetch('/zatca/csid',{method:'POST',body:JSON.stringify({otp})});
+  await apiFetch('/zatca/csid',{method:'POST',body:JSON.stringify({otp})});
   closeModal(); await loadZatcaHub();
   toast('تم استلام شهادة CSID بنجاح — يمكنك تفعيل الربط الآن','success');
 } catch(e) {
@@ -572,7 +574,7 @@ const restoreEnv=document.getElementById('sysRestoreEnv')?.checked===true;
 if(!confirm('تأكيد نهائي: الاستعادة هتمسح الوضع الحالي وترجع النسخة؟')) {return;}
 showLoad();
 try{
-const r=await apiFetch('/system/restore',{method:'POST',body:JSON.stringify({file,confirm:'RESTORE',restoreEnv})});
+await apiFetch('/system/restore',{method:'POST',body:JSON.stringify({file,confirm:'RESTORE',restoreEnv})});
 closeModal(); toast('تمت الاستعادة — أعد تشغيل خدمة السيرفر الآن','success');
 await sysLoadBackups();
 }catch(e){ toast(e.message||'فشلت الاستعادة','error'); }finally{ hideLoad(); }
@@ -610,7 +612,7 @@ showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3>
 return;
 }
 showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">اسم المستخدم: <strong>@${esc(u.username)}</strong> — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:26px;font-weight:bold;letter-spacing:2px;color:var(--gold,#c9a227)">${esc(r.password)}</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="copyResetCode('${esc(r.password)}')"><i class=ji data-i=copy></i> نسخ</button></div>`);
-}catch(e){ toast('تعذر جلب كلمة المرور — حاول مرة أخرى','error'); }
+}catch(_){ toast('تعذر جلب كلمة المرور — حاول مرة أخرى','error'); }
 }
 function renderUserCards(users){
 if(!users || !users.length) {return '<div class="mcard u-empty-grid">' + t('user.noResult') + '</div>';}
@@ -719,7 +721,7 @@ try {
 // PUNCH PORTAL ADMIN PANEL — SPEC-employee-pwa-attendance-geofence-v1 (S7–S8)
 // الإعدادات تنعكس فورًا (السيرفر يقرأها حيًا) — بلا إعادة تشغيل.
 // ═══════════════════════════════════════════════════════════════════════════
-let _punchAdminState = { settings: {}, attempts: [], summary: null };
+const _punchAdminState = { settings: {}, attempts: [], summary: null };
 
 async function loadPunchSettingsUI(){
 const body=document.getElementById('punchSettingsBody');

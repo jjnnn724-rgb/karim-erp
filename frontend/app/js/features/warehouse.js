@@ -190,7 +190,7 @@ ${window.whSelected.size?`<button class="btn btn-sm" onclick="whInvClearSel()">�
 <button class="btn btn-blue btn-sm" onclick="scanToAddInventoryItem()"><i class=ji data-i=camera></i> ${t('wh.scan')}</button>
 <button class="btn btn-gold btn-sm" onclick="showAddItemModal()"><i class=ji data-i=plus></i> ${t('wh.new')}</button>
 <details class="wh-adv"><summary class="btn btn-sm">إجراءات متقدمة</summary><div class="u-row-wrap">
-<button class="btn btn-gold btn-sm" onclick="showOpeningBalanceModal()" title="إدخال سريع لأرصدة بداية الفترة دفعة واحدة" hidden><i class=ji data-i=flag></i> رصيد افتتاحي</button>
+${STATE.settings?.opening_balance_visible !== false ? `<button class="btn btn-gold btn-sm" onclick="showOpeningBalanceModal()" title="إدخال سريع لأرصدة بداية الفترة دفعة واحدة"><i class=ji data-i=flag></i> رصيد افتتاحي</button>` : ''}
 <button class="btn btn-blue btn-sm" onclick="showImportItemsCatalogModal()"><i class=ji data-i=inbox></i> ${t('wh.impCat')}</button>
 <button class="btn btn-blue btn-sm" onclick="showBulkInventoryImportModal()"><i class=ji data-i=chart></i> ${t('wh.impStock')}</button>
 <button class="btn btn-red btn-sm" onclick="whBulkDelete()"><i class=ji data-i=trash></i> حذف المحدد</button>
