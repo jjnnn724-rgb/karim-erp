@@ -65,3 +65,13 @@ docker-deploy/.env
 *.tmp
 deleted_employees*.csv
 diag-*.txt
+state.txt
+wip.patch
+
+# سرية عامة — لا تُتبع أي مفتاح أو شهادة خاصة
+*.pem
+*.key
+*.secret
+
+# سكрипتات معطلة بأمان (نسخة محلية فقط، خارج التتبع)
+_disabled/
