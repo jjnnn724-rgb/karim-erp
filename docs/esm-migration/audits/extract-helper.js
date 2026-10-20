@@ -30,7 +30,6 @@ if (mode === 'audit' || mode === 'move') {
 
 // top-level declarations in span (audit/move only)
 let decls = [];
-const unknownFreeIds = [];
 if (mode === 'audit' || mode === 'move') {
   decls = [];
   for (const l of span) {

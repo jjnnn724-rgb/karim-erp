@@ -127,9 +127,10 @@ const storScan = (label, text) => {
     const k = `${label}:${m[1]}.${m[2]}:${m[3].trim()}`;
     storage[k] = (storage[k] || 0) + 1;
   }
-  for (const m of text.matchAll(/document\.cookie\b/g)) {
+  const cookieHits = text.match(/document\.cookie\b/g);
+  if (cookieHits) {
     const k = `${label}:document.cookie`;
-    storage[k] = (storage[k] || 0) + 1;
+    storage[k] = (storage[k] || 0) + cookieHits.length;
   }
   for (const m of text.matchAll(/indexedDB|caches\.open\(['"`]([^'"`]+)/g)) {
     const k = `${label}:${m[0].slice(0, 40)}`;

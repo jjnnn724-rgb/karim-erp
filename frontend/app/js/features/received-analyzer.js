@@ -23,9 +23,6 @@ function raEscape(v) {
     return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function raNum(n) { return Number(n || 0).toLocaleString('ar-EG'); }
-function raMoney(n) { return Number(n || 0).toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function raDate(n) { const d = new Date(n); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' }); }
-function raTime(n) { const d = new Date(n); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }); }
 
 // ─── فترات جاهزة ───
 function raPreset(key) {
@@ -576,4 +573,7 @@ function raExportExcel() {
     toast('تم تصدير Excel', 'success');
 }
 
-export { renderReceivedAnalyzerPage, raApply, raExportExcel, raPrintReport, raSwitchTab, raDispatchesPage, raOpenDispatch, raPrintDispatch, raPreset, raPickSuggest };
+// raSuggest مستدعاة من معالج سطري داخل HTML (oninput="raSuggest()") —
+// والملف يُحمَّل كـmodule عبر safeBridge (import + Object.assign(window)).
+// بلا تصديرها لا تصل إلى window فيسقط الاستدعاء بـReferenceError.
+export { renderReceivedAnalyzerPage, raApply, raSuggest, raExportExcel, raPrintReport, raSwitchTab, raDispatchesPage, raOpenDispatch, raPrintDispatch, raPreset, raPickSuggest };

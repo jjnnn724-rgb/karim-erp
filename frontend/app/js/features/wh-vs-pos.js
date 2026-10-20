@@ -308,4 +308,6 @@ function wvExportExcel() {
     toast('تم تصدير Excel', 'success');
 }
 
-export { renderWhVsPosPage, wvApply, wvExportExcel, wvPrintReport, wvPreset, wvPickSuggest };
+// wvSuggest مستدعاة من معالج سطري داخل HTML (oninput="wvSuggest()") —
+// والملف يُحمَّل كـmodule عبر safeBridge، فبلا تصديرها لا تصل إلى window.
+export { renderWhVsPosPage, wvApply, wvSuggest, wvExportExcel, wvPrintReport, wvPreset, wvPickSuggest };

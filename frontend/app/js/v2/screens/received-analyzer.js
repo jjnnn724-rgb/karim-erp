@@ -7,13 +7,15 @@
  * والصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { formatInt } from '../data/reports-repo.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
 import {
-    fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow, rangeError,
-    analysisLabel, RECEIVED_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+    fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow,
+    fetchReceivedDispatchDetail, rangeError, analysisLabel, RECEIVED_GROUPS,
+} from '../data/yara-reports-repo.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 /** أسماء حالات الاستهلاك كما في تصدير القديم (features/received-analyzer.js:550). */
 const OUTFLOW_ALERT_AR = { negative: 'سالب', depleted: 'صفر', low: 'منخفض', ok: 'سليم' };
@@ -72,7 +74,7 @@ function template(from, to) {
               <span class="erp-text-muted erp-text-sm" data-v2-dcount></span>
             </h3>
           </div>
-          <div class="erp-card__body"><div data-v2-dispatches></div></div>
+          <div class="erp-card__body"><div data-v2-dispatches></div><div data-v2-dispatch-detail></div></div>
         </section>
 
         <section class="erp-card">
@@ -124,12 +126,17 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
         emptyMessage: 'لا أذون مستلمة في هذا المدى', rowKey: (r) => r.id,
         columns: [
             { key: 'doc_no', header: 'الإذن', width: '140px', className: 'erp-mono',
-                render: (r) => `<span class="erp-num" dir="ltr">${esc(r.doc_no ?? r.id ?? '—')}</span>` },
+                render: (r) => `<button type="button" class="erp-link-btn" data-v2-disp-view="${esc(r.id)}"><span class="erp-num" dir="ltr">${esc(r.doc_no ?? r.id ?? '—')}</span></button>` },
             { key: 'date', header: 'التاريخ', sortable: true, width: '120px', align: 'center', className: 'erp-tnum' },
             { key: 'dept', header: 'القسم', sortable: true, filterable: true, width: '140px' },
             { key: 'items_count', header: 'أصناف', type: 'number', width: '100px', align: 'end', value: (r) => r.items_count ?? 0,
                 render: (r) => `<span class="erp-num" dir="ltr">${formatInt(r.items_count ?? 0)}</span>` },
             { key: 'received_by', header: 'المستلم', filterable: true },
+            { key: 'actions', header: 'إجراءات', width: '110px', align: 'center', className: 'erp-no-print',
+                render: (r) => `<span class="erp-row-wrap" style="gap:4px">`
+                    + `<button type="button" class="erp-btn erp-btn--subtle erp-btn--xs" data-v2-disp-view="${esc(r.id)}" title="عرض التفاصيل"><i class="ji" data-i="eye" aria-hidden="true"></i></button>`
+                    + `<button type="button" class="erp-btn erp-btn--subtle erp-btn--xs" data-v2-disp-print="${esc(r.id)}" title="طباعة"><i class="ji" data-i="printer" aria-hidden="true"></i></button>`
+                    + `</span>` },
         ],
     });
     const itemsTable = createDataTable({
@@ -246,6 +253,7 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
             ]));
             window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(itemData), 'الأصناف المستلمة');
 
+            prepareReportWorkbook(window.XLSX, wb, `تقرير المستلم من المخزن ${f.from} إلى ${f.to}`);
             window.XLSX.writeFile(wb, `received_${f.from}_${f.to}.xlsx`);
             notify('تم تصدير Excel');
         } finally {
@@ -270,7 +278,7 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
             const [d, it, ofl] = await Promise.allSettled([
                 fetchReceivedDispatches(f), fetchReceivedItems({ ...f, group }),
                 fetchItemOutflow({ from: f.from, to: f.to, item: f.item }),
-                import('../data/reports-repo.js?v=4.9.169').then((m) => m.fetchCurrency()).catch(() => ''),
+                import('../data/reports-repo.js?v=4.9.181').then((m) => m.fetchCurrency()).catch(() => ''),
             ]);
             if (!el.isConnected) {return;}
             if (d.status === 'fulfilled') {dispatches = d.value.dispatches || d.value.rows || [];}
@@ -302,7 +310,128 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
         }
     }
 
+    /** فتح تفاصيل إذن صرف — مرآة raOpenDispatch (features/received-analyzer.js:323-396). */
+    async function openDispatchDetail(dispId) {
+        const detailHost = q('[data-v2-dispatch-detail]');
+        if (!detailHost) {return;}
+        detailHost.innerHTML = '<div class="erp-card erp-card--subtle" style="margin-top:14px"><div class="erp-card__body erp-text-center"><span class="erp-spinner" aria-hidden="true"></span> جارٍ جلب تفاصيل الإذن…</div></div>';
+        try {
+            const data = await fetchReceivedDispatchDetail(dispId);
+            if (!el.isConnected) {return;}
+            const disp = (data && data.dispatch) || {};
+            const items = Array.isArray(disp.approved_items) && disp.approved_items.length
+                ? disp.approved_items : (Array.isArray(disp.items) ? disp.items : []);
+            const receivedMap = new Map();
+            (disp.received_items || []).forEach((ri) => {
+                receivedMap.set(String(ri.itemName || ri.item_name || ''), ri);
+            });
+            const linesHtml = items.map((it, i) => {
+                const name = it.itemName || it.name || '';
+                const ri = receivedMap.get(String(name)) || {};
+                const approved = Number(it.qty || it.approvedQty || 0);
+                const received = Number(ri.receivedQty || 0);
+                const variance = Number(ri.varianceQty || 0);
+                return `<tr>
+                    <td>${i + 1}</td>
+                    <td style="text-align:start">${esc(name)}</td>
+                    <td>${esc(it.unit || '')}</td>
+                    <td><span class="erp-num" dir="ltr">${formatInt(approved)}</span></td>
+                    <td><span class="erp-num" dir="ltr">${formatInt(received)}</span></td>
+                    <td class="${variance < 0 ? 'erp-text-danger' : (variance > 0 ? 'erp-text-success' : '')}"><span class="erp-num" dir="ltr">${formatInt(variance)}</span></td>
+                </tr>`;
+            }).join('');
+            detailHost.innerHTML = `
+              <div class="erp-card erp-card--subtle" style="margin-top:16px">
+                <div class="erp-card__head">
+                  <h4 class="erp-card__title">
+                    <i class="ji" data-i="file-text" aria-hidden="true"></i>
+                    إذن صرف ${esc(disp.dept_name || '')} — ${esc(disp.date || '')}
+                  </h4>
+                  <span class="erp-grow"></span>
+                  <button type="button" class="erp-btn erp-btn--sm" data-v2-disp-print="${esc(dispId)}">
+                    <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
+                  </button>
+                  <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-disp-close>
+                    <i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span>
+                  </button>
+                </div>
+                <div class="erp-card__body erp-stack">
+                  <div class="erp-emp-stats">
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">القسم</span><span class="erp-emp-stat__v">${esc(disp.dept_name || '—')}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">التاريخ</span><span class="erp-emp-stat__v erp-tnum" dir="ltr">${esc(disp.date || '')}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">المستلم</span><span class="erp-emp-stat__v">${esc(disp.received_by || '—')}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">وقت الاستلام</span><span class="erp-emp-stat__v erp-tnum" dir="ltr">${esc(String(disp.received_at || '').slice(0, 16).replace('T', ' '))}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">المُنشئ</span><span class="erp-emp-stat__v">${esc(disp.created_by || '—')}</span></div>
+                  </div>
+                  <div class="erp-tbl-wrap" style="overflow-x:auto">
+                    <table class="erp-tbl">
+                      <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>معتمد</th><th>مستلم</th><th>الفرق</th></tr></thead>
+                      <tbody>${linesHtml || '<tr><td colspan="6" class="erp-text-muted erp-text-center">لا أصناف مفصّلة</td></tr>'}</tbody>
+                    </table>
+                  </div>
+                  ${disp.notes ? `<p class="erp-text-sm"><strong>ملاحظات:</strong> ${esc(disp.notes)}</p>` : ''}
+                  ${disp.receipt_notes ? `<p class="erp-text-sm"><strong>ملاحظات الاستلام:</strong> ${esc(disp.receipt_notes)}</p>` : ''}
+                </div>
+              </div>`;
+            detailHost.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            detailHost.innerHTML = `<div class="erp-card erp-card--subtle" style="margin-top:14px"><div class="erp-card__body erp-text-danger">تعذر جلب تفاصيل الإذن: ${esc((e && e.message) || 'خطأ')}</div></div>`;
+        }
+    }
+
+    /** طباعة إذن صرف فردي — مرآة raPrintDispatch (features/received-analyzer.js:400-457). */
+    async function printDispatchReceipt(dispId) {
+        try {
+            const data = await fetchReceivedDispatchDetail(dispId);
+            const disp = (data && data.dispatch) || {};
+            const items = Array.isArray(disp.approved_items) && disp.approved_items.length
+                ? disp.approved_items : (Array.isArray(disp.items) ? disp.items : []);
+            const receivedMap = new Map();
+            (disp.received_items || []).forEach((ri) => {
+                receivedMap.set(String(ri.itemName || ri.item_name || ''), ri);
+            });
+            const linesHtml = items.map((it, i) => {
+                const name = it.itemName || it.name || '';
+                const ri = receivedMap.get(String(name)) || {};
+                return `<tr><td>${i + 1}</td><td style="text-align:start">${esc(name)}</td><td>${esc(it.unit || '')}</td>
+                <td>${formatInt(it.qty || it.approvedQty || 0)}</td><td><b>${formatInt(ri.receivedQty || 0)}</b></td></tr>`;
+            }).join('');
+            const w = openInAppReport(`إذن صرف ${esc(disp.dept_name || dispId)}`);
+            if (!w) { notify('تعذر فتح عارض الطباعة'); return; }
+            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف ${esc(disp.dept_name || '')}</title>
+            <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
+            table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
+            .meta{font-size:13px;line-height:1.9;margin:10px 0}.meta b{display:inline-block;min-width:90px}
+            @media print{body{padding:0}}</style></head><body>
+            <h1>مطاعم الشرفة العالمي</h1><h2>إذن صرف — ${esc(disp.dept_name || '')}</h2>
+            <div class="meta">
+              <div><b>التاريخ:</b> ${esc(disp.date || '')}</div>
+              <div><b>المستلم:</b> ${esc(disp.received_by || '—')}</div>
+              <div><b>وقت الاستلام:</b> ${esc(String(disp.received_at || '').slice(0, 16).replace('T', ' '))}</div>
+              <div><b>المُنشئ:</b> ${esc(disp.created_by || '—')}</div>
+            </div>
+            <table><thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>معتمد</th><th>مستلم</th></tr></thead><tbody>${linesHtml}</tbody></table>
+            ${disp.notes ? `<p style="margin-top:10px;font-size:12px"><b>ملاحظات:</b> ${esc(disp.notes)}</p>` : ''}
+            <p style="text-align:center;font-size:11px;margin-top:16px;color:#777">تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</p>
+            </body></html>`);
+            w.document.close();
+            w.focus();
+        } catch (e) {
+            notify('تعذر طباعة الإذن: ' + ((e && e.message) || 'خطأ'));
+        }
+    }
+
     el.addEventListener('click', (event) => {
+        const dispView = event.target.closest('[data-v2-disp-view]');
+        if (dispView) {openDispatchDetail(dispView.dataset.v2DispView); return;}
+        const dispPrint = event.target.closest('[data-v2-disp-print]');
+        if (dispPrint) {printDispatchReceipt(dispPrint.dataset.v2DispPrint); return;}
+        if (event.target.closest('[data-v2-disp-close]')) {
+            const dh = q('[data-v2-dispatch-detail]');
+            if (dh) {dh.innerHTML = '';}
+            return;
+        }
         const g = event.target.closest('[data-v2-group]');
         if (g) {group = g.dataset.v2Group; paintGroupSeg(); reload(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
