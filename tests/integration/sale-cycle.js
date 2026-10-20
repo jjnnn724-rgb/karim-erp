@@ -120,10 +120,16 @@ async function ensureFixtures() {
     const invId = inv.rows[0].id;
 
     for (const loc of [DEPT_LOCATION, MAIN_LOCATION]) {
-        const bal = await db.query('SELECT 1 FROM inventory_location_balances WHERE inventory_id=$1 AND location_id=$2', [invId, loc]);
+        const bal = await db.query('SELECT on_hand FROM inventory_location_balances WHERE inventory_id=$1 AND location_id=$2', [invId, loc]);
         if (!bal.rows.length) {
             await db.query(`INSERT INTO inventory_location_balances (inventory_id, location_id, on_hand, reserved)
                 VALUES ($1,$2,100,0)`, [invId, loc]);
+        } else {
+            // إعادة تعبئة: الجولات المتكررة تستهلك المخزون، وبلا تعبئة يفشل
+            // الاختبار في التشغيل الثاني لا الأول.
+            await db.query(`UPDATE inventory_location_balances
+                SET on_hand = GREATEST(on_hand, 100), reserved = 0
+                WHERE inventory_id=$1 AND location_id=$2`, [invId, loc]);
         }
     }
 

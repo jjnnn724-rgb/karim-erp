@@ -83,6 +83,17 @@ function dayStamp(d = new Date()) {
     }).format(d);
 }
 
+/** دمج عدّاداتEvents/claimed بين ملفين — Maximum لكل مفتاح. */
+function mergeCounters(a, b) {
+    const out = {};
+    for (const src of [a || {}, b || {}]) {
+        for (const [k, v] of Object.entries(src)) {
+            out[k] = Math.max(Number(out[k]) || 0, Number(v) || 0);
+        }
+    }
+    return out;
+}
+
 class PosChannelMeter {
     constructor({ logDir = LOG_DIR } = {}) {
         this.logDir = logDir;
@@ -162,7 +173,30 @@ class PosChannelMeter {
                 await fs.promises.mkdir(this.logDir, { recursive: true });
                 const file = path.join(this.logDir, `pos-channel-usage-${payload.day}.json`);
                 const tmp = `${file}.tmp`;
-                await fs.promises.writeFile(tmp, JSON.stringify(payload, null, 2), 'utf8');
+                // FIX (Enterprise 2026-10-21): الملف مشترك بين كل العمليات على
+                // نفس الجهاز (إنتاج + sandbox)، والكتابة فوق الكاتبة كانت تمحو
+                // أرقام كاتب آخر. الدمج بالـMAX يحفظ أعلى قيمة لكل عدّاد:
+                // العدّادات ر.monotonic فلا تُحتسب مرتين ولا تضيع أرقام غيرنا.
+                let merged = payload;
+                try {
+                    const prev = JSON.parse(await fs.promises.readFile(file, 'utf8'));
+                    if (prev && prev.channels) {
+                        merged = { day: payload.day, channels: {} };
+                        for (const ch of CHANNELS) {
+                            const a = (prev.channels && prev.channels[ch]) || {};
+                            const b = payload.channels[ch] || {};
+                            merged.channels[ch] = {
+                                requests: Math.max(Number(a.requests) || 0, Number(b.requests) || 0),
+                                sales: Math.max(Number(a.sales) || 0, Number(b.sales) || 0),
+                                errors: Math.max(Number(a.errors) || 0, Number(b.errors) || 0),
+                                events: mergeCounters(a.events, b.events),
+                                claimed: mergeCounters(a.claimed, b.claimed),
+                                sessions: Math.max(Number(a.sessions) || 0, Number(b.sessions) || 0),
+                            };
+                        }
+                    }
+                } catch (_) { /* لا ملف سابق أو غير صالح */ }
+                await fs.promises.writeFile(tmp, JSON.stringify(merged, null, 2), 'utf8');
                 await fs.promises.rename(tmp, file);
             } catch (err) {
                 logger.warn('[pos-channel-meter] flush failed (non-fatal):', err.message);
