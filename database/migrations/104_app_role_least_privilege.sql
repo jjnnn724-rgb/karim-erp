@@ -48,13 +48,14 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 -- ── 4) منع توارث الصلاحيات في الجداول المستقبلية ────────────────────────
--- بدون هذا السطر: كل جدول ينشئه مشغّل الترحيلات لاحقًا يرث GRANT ALL
--- لـPUBLIC تلقائيًا (وهو بالضبط ما حدث في 003).
+-- افتراضياً لا ترث الجداول الجديدة أي صلاحية لـPUBLIC (المالك فقط) — فهذه
+-- الخطوة دفاعية: تمنع أي ALTER DEFAULT PRIVILEGES لاحق من منح PUBLIC، وتُصلح
+-- أي قاعدة سبق فيها منحٌ صريح. تشمل الدور الذي *ينشئ* الجداول (postgres).
 DO $$
 DECLARE
     r record;
 BEGIN
-    FOR r IN SELECT rolname FROM pg_roles WHERE rolcanlogin AND rolname <> 'postgres' LOOP
+    FOR r IN SELECT rolname FROM pg_roles WHERE rolcanlogin OR rolname = 'postgres' LOOP
         EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC', r.rolname);
         EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC', r.rolname);
     END LOOP;
