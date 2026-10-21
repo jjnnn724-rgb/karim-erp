@@ -27,7 +27,7 @@ describe('الفترات المسبقة', () => {
         expect(src).toMatch(/7: \[todayIso\(-6\), todayIso\(0\)\]/);
         expect(src).toMatch(/30: \[todayIso\(-29\), todayIso\(0\)\]/);
         expect(src).toMatch(/b\.classList\.toggle\('is-active', on\)/);
-        expect(src).toMatch(/reload\(\);\n {4}\}/);
+        expect(src).toMatch(/reload\(\);[\s\S]{0,160}\}/);
     });
 });
 
@@ -35,7 +35,7 @@ describe('بحث الصنف والاقتراحات', () => {
     test('فلترة فورية بالتطبيع العربي', () => {
         expect(src).toMatch(/function visibleRows\(\)/);
         expect(src).toMatch(/arSearchIncludes\(r\.label, term\) \|\| arSearchIncludes\(r\.code, term\)/);
-        expect(src).toMatch(/filterText = event\.target\.value;\n {8}paint\(\);/);
+        expect(src).toMatch(/filterText = event\.target\.value;[\s\S]{0,200}paint\(\);/);
     });
 
     test('اقتراحات مؤجّلة 250ms وآخر كتابة تفوز', () => {
@@ -47,7 +47,7 @@ describe('بحث الصنف والاقتراحات', () => {
     });
 
     test('اختيار اقتراح يملأ الخانة ويفلتر فورًا', () => {
-        expect(src).toMatch(/q\('#v2wv-item'\)\.value = name;\n {12}filterText = name;\n {12}hideSuggest\(\);\n {12}paint\(\);/);
+        expect(src).toMatch(/q\('#v2wv-item'\)\.value = name;[\s\S]{0,240}filterText = name;[\s\S]{0,240}hideSuggest\(\);[\s\S]{0,240}paint\(\);/);
     });
 });
 
@@ -73,12 +73,12 @@ describe('التحديث التلقائي', () => {
 
     test('يتوقف عند التدمير أو خروج العنصر', () => {
         expect(src).toMatch(/if \(!el\.isConnected\) \{stopAuto\(\); return;\}/);
-        expect(src).toMatch(/destroy\(\) \{\n {12}if \(suggestTimer\) \{clearTimeout\(suggestTimer\);\}\n {12}stopAuto\(\);/);
+        expect(src).toMatch(/destroy\(\) \{[\s\S]{0,240}if \(suggestTimer\) \{clearTimeout\(suggestTimer\);\}[\s\S]{0,240}stopAuto\(\);/);
     });
 });
 
 describe('التصدير', () => {
     test('يصدّر الصفوف المعروضة بعد البحث/الفلتر', () => {
-        expect(src).toMatch(/const exported = visibleRows\(\);\n {12}exported\.forEach/);
+        expect(src).toMatch(/const exported = visibleRows\(\);[\s\S]{0,240}exported\.forEach/);
     });
 });

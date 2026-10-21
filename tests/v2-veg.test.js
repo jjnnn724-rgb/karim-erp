@@ -35,6 +35,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { ruleBody, hidesLabel, withoutSrOnly } = require('./helpers/css-contract');
 const vm = require('vm');
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
@@ -702,7 +703,10 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
         const blocks = source(OPS_CSS).match(/@media \(max-width: 640px\)[\s\S]*?\n\}/g);
         expect(blocks).toHaveLength(2);   // كتلتان فقط — كتلة ثالثة تكسر ضوابط W1-1/W1-2
         const d = blocks[blocks.length - 1];
-        expect(d).toContain('.erp-v2-veg .erp-card__head .erp-btn > span { display: none; }');
+        // تسمية الزرّ تُخفى (display:none أو النمط البصري sr-only) ويبقى الرمز مقروءًا
+        const labelRule = ruleBody(d, '.erp-v2-veg .erp-card__head .erp-btn > span');
+        expect(labelRule).not.toBe('');
+        expect(hidesLabel(labelRule)).toBe(true);
         expect(d).toMatch(/min-block-size: var\(--erp-space-8\)/);
         expect(d).toContain('.erp-v2-veg__tools { flex: 1 1 100%; }');
         expect(d).toContain('.erp-v2-veg .erp-seg { flex-wrap: wrap; }');
@@ -724,9 +728,11 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
         const body = source(OPS_CSS)
             .replace(/\/\*[\s\S]*?\*\//g, '')
             .replace(/@media[^{]+\{/g, '');   // شرط الوسيط مقبول، القيم ليست كذلك
-        expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-        expect(body).not.toMatch(/rgba?\(/);
-        expect(body).not.toMatch(/\b\d+(px|rem|em)\b/);
+        // استثناء واحد مبيّن: نمط الإخفاء البصري (sr-only) — مقاس 1px وسالب -1px
+        const noSrOnly = withoutSrOnly(body);
+        expect(noSrOnly).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(noSrOnly).not.toMatch(/rgba?\(/);
+        expect(noSrOnly).not.toMatch(/\b\d+(px|rem|em)\b/);
         expect(body).toMatch(/var\(--erp-space-8\)/);
     });
 });

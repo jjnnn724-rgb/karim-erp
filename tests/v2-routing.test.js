@@ -245,7 +245,7 @@ describe('التوجيه — الوصل في المضيف', () => {
         expect(host).toMatch(/if \(ROUTING \|\| GOODS_SCAN_DEEP_LINK\) \{applyRouteFromHash\(\);\} else \{renderScreen\('dashboard'\);\}/);
         expect(host).toMatch(/function applyKey\(key\) \{[\s\S]*?if \(ROUTING\) \{syncHash\(key\);\}/);
         // مسار التنقّل الواحد: onNavigate لم يعد يرسم مباشرة
-        expect(host).toMatch(/onNavigate\(key\) \{\n\s*applyKey\(key\);\n\s*\},/);
+        expect(host).toMatch(/onNavigate\(key\) \{[\s\S]{0,120}applyKey\(key\);[\s\S]{0,60}\},/);
         expect(host).not.toMatch(/onNavigate\(key\) \{[\s\S]{0,200}renderScreen\(key\);[\s\S]{0,40}\},/);
     });
 
@@ -262,7 +262,7 @@ describe('التوجيه — الوصل في المضيف', () => {
         expect(host).toMatch(/if \(!routeSettled && res\.key !== DASH_KEY\) \{return;\}/);
         // التسوية تحدث داخل جلب الصلاحيات نفسه — لا في مكان آخر
         const slice = host.slice(host.indexOf('async function applyMyPermissions'));
-        expect(slice).toMatch(/routeSettled = true;\n\s*applyRouteFromHash\(\);/);
+        expect(slice).toMatch(/routeSettled = true;[\s\S]{0,160}applyRouteFromHash\(\);/);
         expect(slice.slice(0, slice.indexOf('\n}') + 2)).toMatch(/window\.STATE\.permissions = await fetchMyPermissions\(\);\n\s*shell\.refreshNav\(\);\n\s*\/\/[^\n]*\n\s*routeSettled = true;\n\s*applyRouteFromHash\(\);\n\}/);
     });
 

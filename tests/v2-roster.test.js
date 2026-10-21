@@ -23,6 +23,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { ruleBody, hidesLabel } = require('./helpers/css-contract');
 const vm = require('vm');
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
@@ -35,19 +36,7 @@ const HR_CSS = path.join(APP, 'css', 'v2', 'erp-hr.css');
 const MIGRATION = path.join(V2, 'MIGRATION.md');
 const PREVIEW = path.join(V2, 'preview.js');
 
-/* عقد CSS يثبت النية لا الصياغة: إخفاء تسمية الزرّ إما display:none أو
-   النمط البصري (sr-only: position:absolute + مقاس 1px + clip-path). */
-const ruleBody = (cssText, selector) => {
-    const i = cssText.indexOf(selector);
-    if (i < 0) return '';
-    const open = cssText.indexOf('{', i);
-    const close = cssText.indexOf('}', open);
-    return open < 0 || close < 0 ? '' : cssText.slice(open + 1, close);
-};
-const hidesLabel = (body) => /display:\s*none/.test(body)
-    || (/position:\s*absolute/.test(body)
-        && /inline-size:\s*1px/.test(body)
-        && /clip-path:\s*inset\(50%\)/.test(body));
+
 
 function loadEsm(file, injections = {}, collect = []) {
     const stripped = fs.readFileSync(file, 'utf8')

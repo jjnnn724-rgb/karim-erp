@@ -36,6 +36,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { ruleBody, hidesLabel } = require('./helpers/css-contract');
 const vm = require('vm');
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
@@ -678,7 +679,10 @@ describe('شاشة 13 — السجل المشترك والمضيف والطبق�
     test('٦٤٠px: الأزرار ٤٠ والأسماء تختفي، والحقول لا تُرفع', () => {
         const blocks = source(OPS_CSS).match(/@media \(max-width: 640px\)\s*\{[\s\S]*?\n\}/g);
         const d = blocks[blocks.length - 1];
-        expect(d).toContain('.erp-v2-dispatch .erp-card__head .erp-btn > span { display: none; }');
+        // تسمية الزرّ تُخفى (display:none أو النمط البصري sr-only) ويبقى الرمز مقروءًا
+        const labelRule = ruleBody(d, '.erp-v2-dispatch .erp-card__head .erp-btn > span');
+        expect(labelRule).not.toBe('');
+        expect(hidesLabel(labelRule)).toBe(true);
         expect(d).toMatch(/min-block-size: var\(--erp-space-8\)/);
         expect(d).toContain('.erp-v2-dispatch__tools { flex: 1 1 100%; }');
         expect(d).not.toMatch(/\.erp-v2-dispatch \.erp-input\s*\{[^}]*min-block-size/);

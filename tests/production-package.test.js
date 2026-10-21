@@ -21,7 +21,7 @@ describe('production package hardening', () => {
   });
 
   test('environment template contains no usable password or JWT placeholders', () => {
-    const envTemplate = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
+    const envTemplate = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8').replace(/\r\n/g, '\n');
     expect(envTemplate).toContain('DB_PASSWORD=\n');
     expect(envTemplate).toContain('JWT_ACCESS_SECRET=\n');
     expect(envTemplate).toContain('JWT_REFRESH_SECRET=\n');

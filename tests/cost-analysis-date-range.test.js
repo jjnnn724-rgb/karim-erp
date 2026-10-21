@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const FINANCE = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'finance.js'), 'utf8');
+const FINANCE = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'finance.js'), 'utf8')
+    .replace(/\r\n/g, '\n');   // العقد لا يهمّه CRLF ولا LF
 
 function between(source, start, end) {
     const startAt = source.indexOf(start);

@@ -100,8 +100,8 @@ const SERVER_ROW_KEYS = [...read(SERVER).match(/const rows = rowsQ\.rows\.map\([
     .matchAll(/^\s+([A-Za-z]\w*):/gm)].map((x) => x[1]);
 
 /* مفاتيح totals التي يرسلها /items (:408-420) — البطاقات تُقرأ منها لا من اختراع. */
-const SERVER_TOTAL_KEYS = [...read(SERVER).match(/totals: \{[\s\S]*?\n\s{12}\},\n\s+meta:/)[0]
-    .matchAll(/^\s{16}(\w+):/gm)].map((x) => x[1]);
+const SERVER_TOTAL_KEYS = [...read(SERVER).match(/totals: \{[\s\S]*?\n\s*\},\n\s*meta:/)[0]
+    .matchAll(/^\s+(\w+):/gm)].map((x) => x[1]);
 
 describe('الباب ↔ الخادم — الأدوار والمسار والسقف', () => {
     const server = read(SERVER);

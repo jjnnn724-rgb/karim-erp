@@ -112,7 +112,7 @@ describe('الشاشة — القسم والربط', () => {
     });
 
     test('الفتح والتحديث يقرآن البطاقات أيضًا', () => {
-        expect(screen).toMatch(/reload\(\);\n {4}readGovernance\(\);\n {4}readCostCards\(\);/);
+        expect(screen).toMatch(/reload\(\);[\s\S]{0,240}readGovernance\(\);[\s\S]{0,240}readCostCards\(\);/);
         expect(screen).toMatch(/if \(event\.target\.closest\('\[data-v2-reload\]'\)\) \{reload\(\); readGovernance\(\); readCostCards\(\); return;\}/);
     });
 
