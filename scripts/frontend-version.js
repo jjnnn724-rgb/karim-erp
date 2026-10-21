@@ -39,14 +39,31 @@ function collectFiles(dir, out = []) {
     return out;
 }
 
-/** بصمة محتوى مستقرة (ترتيب ثابت + hash لكل ملف). */
+/**
+ * محتوى الملف كما هو في الفهرس (المودَع) — يعود للقرص إن لم يكن متتبَّعًا.
+ * السبب: CI يبني من commit ⇒ البصمة يجب أن تقيس المحتوى المودّع، وإلا
+ * فشل أي تعديل غير مودّع (WIP) البوابة على GitHub بينما تنجح محليًا.
+ */
+function indexContent(absPath) {
+    const rel = path.relative(ROOT, absPath).split(path.sep).join('/');
+    try {
+        return execFileSync('git', ['show', ':' + rel], {
+            cwd: ROOT, encoding: 'buffer', maxBuffer: 64 * 1024 * 1024,
+        });
+    } catch (_) {
+        // غير متتبَّع (لن يكون في الـcommit) ⇒ لا يؤثر في البصمة
+        return Buffer.from('untracked');
+    }
+}
+
+/** بصمة محتوى مستقرة (ترتيب ثابت + hash لكل ملف) — على المحتوى المودَع. */
 function contentHash() {
     const files = collectFiles(APP).sort();
     const h = crypto.createHash('sha256');
     for (const f of files) {
         h.update(path.relative(APP, f).split(path.sep).join('/'));
         h.update('\0');
-        try {h.update(fs.readFileSync(f));} catch (_) {h.update('unreadable');}
+        h.update(indexContent(f));
         h.update('\0');
     }
     return h.digest('hex').slice(0, 16);
@@ -140,7 +157,14 @@ if (mode === 'compute') {
         console.error(`✗ الإصدار في index.html (${version}) ≠ المسجَّل (${state.version}) — شغّل --bump`);
         process.exit(1);
     }
-    if (state.hash !== hash) {
+    const dirty = (() => {
+        try {
+            return execFileSync('git', ['status', '--porcelain', '--', 'frontend/app'], { cwd: ROOT, encoding: 'utf8' }).trim().length > 0;
+        } catch (_) {return false;}
+    })();
+    if (dirty) {
+        console.log('ℹ شجرة العمل فيها تعديلات غير مودّعة ⇒ فحص البصمة يُؤجَّل (CI يفحصه على commit نظيف).');
+    } else if (state.hash !== hash) {
         console.error('✗ تغيّرت ملفات الواجهة بعد آخر زيادة — العملاء سيبقون على نسخة قديمة.');
         console.error('   شغّل: node scripts/frontend-version.js --bump');
         process.exit(1);
