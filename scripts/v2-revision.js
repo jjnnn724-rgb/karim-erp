@@ -29,8 +29,12 @@ const EXT = String.raw`js|mjs|css|json`;
    و`?v=`. يشملُ `from '…'` و`import('…')` معًا، ويستثني مكتبات vendor ذاتِ
    المساراتِ غيرِ النسبية (`vendor/xlsx…?v=4.9.77` في js/v2/vendor.js). */
 const REV_IN_SPEC = new RegExp(String.raw`(['"])(\.[^'"]*?\.(?:${EXT}))\?v=([0-9][0-9.]*)(?=['"])`, 'g');
-const LINK_IN_HTML = /(href="css\/v2\/[^"]*?\.css\?v=)([0-9][0-9.]*)(")/g;
-const SCRIPT_IN_HTML = /(src="js\/v2\/[^"]*?\.js\?v=)([0-9][0-9.]*)(")/g;
+/* المساراتُ المطلقة: تطبيقُ الكاشير يستدعي عائلة V2 بمسارٍ مطلق
+   (`/app/js/v2/screens/pos-entry.js?v=…`) — وكان خارجًا عن الأداة، فبقيت
+   مراجعُه على رقمٍ قديم وكسرت العقدان v2-pos-buffet وv2-identity. */
+const REV_IN_ABS = new RegExp(String.raw`(['"])(/app/(?:css|js)/v2/[^'"]*?\.(?:${EXT}))\?v=([0-9][0-9.]*)(?=['"])`, 'g');
+const LINK_IN_HTML = /(href="(?:css\/v2|\/app\/css\/v2)[^"]*?\.css\?v=)([0-9][0-9.]*)(")/g;
+const SCRIPT_IN_HTML = /(src="(?:js\/v2|\/app\/js\/v2)[^"]*?\.js\?v=)([0-9][0-9.]*)(")/g;
 const PAGE_REV = /js\/v2\/preview\.js\?v=([0-9][0-9.]*)/;
 
 const argv = process.argv.slice(2);
@@ -79,24 +83,43 @@ const versionCmp = (a, b) => {
 };
 
 const plan = [];
-for (const f of jsFiles) {
+/* صفحاتٌ ترافق V2: تطبيقُ الكاشير (index.html + main.js) يستدعي عائلةَ V2
+   بمسارات مطلقة ⇒ مراجعُها يجب أن تحمل رقمَ الصفحة نفسه، وإلا خدمت نسخة
+   أقدم من الصفحة (وهذا ما كسر عقدي v2-pos-buffet وv2-identity). */
+const COMPANION_DIR = path.join(APP, 'cashier');
+const companionFiles = [];
+(function walk(dir) {
+    if (!fs.existsSync(dir)) {return;}
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {walk(p);} else if (e.name.endsWith('.js') || e.name.endsWith('.html')) {companionFiles.push(p);}
+    }
+})(COMPANION_DIR);
+
+const specFiles = jsFiles.concat(companionFiles.filter((f) => f.endsWith('.js')));
+const htmlFiles = [HTML].concat(companionFiles.filter((f) => f.endsWith('.html')));
+
+for (const f of specFiles) {
     const src = fs.readFileSync(f, 'utf8');
-    const out = src.replace(REV_IN_SPEC, (_m, quote, spec) => `${quote}${spec}?v=${rev}`);
-    const before = hits(src, REV_IN_SPEC);
+    const out = src
+        .replace(REV_IN_SPEC, (_m, quote, spec) => `${quote}${spec}?v=${rev}`)
+        .replace(REV_IN_ABS, (_m, quote, spec) => `${quote}${spec}?v=${rev}`);
+    const before = hits(src, REV_IN_SPEC) + hits(src, REV_IN_ABS);
     const changing = before > 0 && out !== src;
     if (changing) {plan.push({ file: f, src, out, count: before });}
 }
-{
+for (const f of htmlFiles) {
     /* CSS يتقدّم ولا يتأخّر: لا نُنزل ورقةً أحدث من الصفحة. */
-    const out = html
+    const src = fs.readFileSync(f, 'utf8');
+    const out = src
         .replace(LINK_IN_HTML, (m, pre, v, post) => (versionCmp(v, rev) < 0 ? `${pre}${rev}${post}` : m))
         .replace(SCRIPT_IN_HTML, `$1${rev}$3`);
-    const count = hits(html, LINK_IN_HTML) + hits(html, SCRIPT_IN_HTML);
-    if (out !== html) {plan.push({ file: HTML, src: html, out, count });}
+    const count = hits(src, LINK_IN_HTML) + hits(src, SCRIPT_IN_HTML);
+    if (out !== src) {plan.push({ file: f, src, out, count });}
 }
 
 /* مجموعةُ الرقمِ المرجعيٍّ differ بين الأنماطِ الثلاثة: 3 للمحدِّد، 2 للروابط. */
-const JS_PROBES = [[REV_IN_SPEC, 3], [SCRIPT_IN_HTML, 2]];
+const JS_PROBES = [[REV_IN_SPEC, 3], [REV_IN_ABS, 3], [SCRIPT_IN_HTML, 2]];
 const driftOf = (src) => {
     const bad = [];
     for (const [re, gv] of JS_PROBES) {
@@ -114,7 +137,7 @@ const driftOf = (src) => {
     return bad;
 };
 const drift = [];
-for (const f of jsFiles.concat([HTML])) {
+for (const f of specFiles.concat(htmlFiles)) {
     for (const s of driftOf(fs.readFileSync(f, 'utf8'))) {drift.push(`${path.relative(ROOT, f).split(path.sep).join('/')} → ${s}`);}
 }
 
@@ -133,6 +156,6 @@ if (plan.length === 0) {console.log('الشجرةُ موائمةٌ تمامًا 
 for (const p of plan) {console.log(`  ${rel(p.file)}: ${p.count} محدِّدًا ← ${rev}`);}
 if (has('--dry-run')) {console.log(`dry-run: كان سيُكتَب ${plan.length} ملفًا.`); process.exit(0);}
 for (const p of plan) {fs.writeFileSync(p.file, p.out); console.log(`✓ ${rel(p.file)}`);}
-const left = jsFiles.concat([HTML]).reduce((n, f) => n + driftOf(fs.readFileSync(f, 'utf8')).length, 0);
+const left = specFiles.concat(htmlFiles).reduce((n, f) => n + driftOf(fs.readFileSync(f, 'utf8')).length, 0);
 console.log(`موائمٌ ${plan.length} ملفًا؛ الانحرافُ المتبقّي: ${left}`);
 if (left > 0) {process.exit(1);}
