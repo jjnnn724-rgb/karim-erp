@@ -597,6 +597,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
+    # إعلامي فقط: لا يُفشل الـpipeline (الفشل فع��ً في الـjobs نفسها)
+    continue-on-error: true
     needs:
       - security-audit
       - lint-and-typecheck

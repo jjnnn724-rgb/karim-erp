@@ -77,8 +77,15 @@ function compare(baseline, current) {
             failures.push(`${file}: ${count} تحذيراً (الحصة ${allowed}) — +${count - allowed}`);
         }
     }
-    if (current.warnings > Number((baseline && baseline.total) || 0)) {
-        failures.push(`مجموع التحذيرات ${current.warnings} > الأساس ${baseline.total}`);
+    // نقارن المجموع على مجموعة الملفات الموجودة على هذه المنصة فقط:
+    // فالأساس قد يحتوي ملفات لا توجد على ويندوز/لينكس ⇒ المقارنة العادلة
+    // كانت تُظهر انحدارًا وهميًا على CI.
+    const baseTotalHere = Object.entries(current.files || {})
+        .reduce((sum, [file]) => sum + Number(baseFiles[file] || 0), 0);
+    const currentTotalHere = Object.entries(current.files || {})
+        .reduce((sum, [, count]) => sum + Number(count || 0), 0);
+    if (currentTotalHere > baseTotalHere) {
+        failures.push(`مجموع التحذيرات ${currentTotalHere} > الأساس ${baseTotalHere} (لهذه المنصة)`);
     }
     return failures;
 }
