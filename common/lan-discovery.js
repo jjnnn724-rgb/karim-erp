@@ -130,7 +130,7 @@ function startLanBeacon({ info, logger = console, bindAddress } = {}) {
  * bindPort اختياري: منفذ الاستماع المحلي (0 = عشوائي — للاختبارات؛ الافتراضي
  * DEFAULT_PORT لسماع إعلانات الـ broadcast).
  */
-function discoverServers({ listenMs = 3000, logger = console, bindAddress, verify, targets, bindPort } = {}) {
+function discoverServers({ listenMs = 3000, logger: _logger = console, bindAddress, verify, targets, bindPort } = {}) {
     return new Promise((resolve) => {
         const found = new Map();
         let socket = null;
