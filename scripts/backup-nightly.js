@@ -42,7 +42,7 @@ const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 fs.mkdirSync(BACKUPS, { recursive: true });
 // طابع زمني: تشغيلان في اليوم نفسه لا يتصادمان (والأرشيف المشفَّر
 // يرفض الكتابة فوق موجود — حاجز أمان لا يُلغى).
-const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
 const nightly = path.join(BACKUPS, `karim_erp-nightly-${stamp}.dump`);
 console.log('[backup] pg_dump →', nightly);
 try {
