@@ -544,15 +544,8 @@
     <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
          الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
     <script src="js/pos-path-guard.js?v=4.9.77"></script>
-    <script>
-      if (window.PosPathGuard) {
-        window.PosPathGuard.applyPosPathPolicy().catch(function () { /* لا سياسة = لا تغيير */ });
-      }
-    </script>
-    <script>
-      if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost')) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('/app/sw.js').catch(() => {}));
-      }
-    </script>
+    <!-- Phase 4.2: تهيئة الـPOS في ملف خارجي — سكربتات inline محجوبة بسياسة CSP
+         (وجود nonce يجعل المتصفح يتجاهل 'unsafe-inline')، فلم تكن تعمل داخل الصفحة. -->
+    <script src="js/pos-bootstrap.js?v=4.9.77"></script>
 </body>
 </html>

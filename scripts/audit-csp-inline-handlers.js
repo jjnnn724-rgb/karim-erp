@@ -70,8 +70,7 @@ if (process.argv.includes('--json')) {
 }
 
 // ── كتابة خط الأساس (الميزانية المسموحة) ──
-if (process.argv.includes('--write-baseline')) {
-    const target = process.argv[process.argv.indexOf('--write-baseline') + 1];
+if (process.argv.includes('--write-baseline')) {    const target = process.argv[process.argv.indexOf('--write-baseline') + 1];
     if (!target) {console.error('--write-baseline يحتاج مسار ملف'); process.exit(1);}
     const filesMap = {};
     for (const p of pages) {filesMap[p.file] = p.handlers;}
@@ -111,4 +110,19 @@ if (checkIndex > -1) {
         process.exit(1);
     }
     console.log(`✓ المعالجات السطرية ${totalHandlers} ≤ الميزانية ${allowedTotal}`);
+}
+
+// ── بوابة سكربتات inline: يجب ألا يوجد أي منها ──
+// السبب: سكربت inline داخل HTML محجوب فعليًا بسياسة CSP المتروّضة
+// (وجود nonce في script-src يجعل المتصفح يتجاهل 'unsafe-inline').
+// أي سكربت inline جديد = كود صامت لا يعمل ⇒ بوابة تمنع تكرارها.
+if (process.argv.includes('--check-inline-scripts')) {
+    const offenders = pages.filter((p) => p.inlineScripts > 0);
+    if (offenders.length) {
+        console.error('✗ سكربتات inline موجودة (محجوبة بسياسة CSP — لا تعمل):');
+        for (const p of offenders) {console.error(`   • ${p.file}: ${p.inlineScripts} سكربت`);}
+        console.error('   الحل: انقلها إلى ملف .js خارجي وحمّله بـ <script src="...">.');
+        process.exit(1);
+    }
+    console.log('✓ لا سكربتات inline في الواجهة (0)');
 }

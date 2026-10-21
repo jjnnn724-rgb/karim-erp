@@ -111,6 +111,9 @@ jobs:
       - name: Inline-handler budget — no growth (CSP ratchet)
         run: npm run test:handlers:budget
 
+      - name: No inline <script> blocks — they are blocked by CSP and silently never run
+        run: npm run test:inline-scripts:gate
+
       - name: Secret scanner — no hardcoded credentials in tracked files
         run: npm run test:secrets:gate
 
