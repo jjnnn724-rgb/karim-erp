@@ -55,6 +55,65 @@ function shouldApply(ctx, f) { return isDemoMode(ctx) || !DEMO_MIGRATIONS.has(pa
 
 module.exports = [
     {
+        id: 'db.app_role_not_superuser',
+        domain: 'database',
+        title: 'التطبيق لا يعمل بدور superuser',
+        description: 'دور الاتصال (DB_USER) يجب ألا يكون superuser ولا يملك صلاحيات قاعدة/إنشاء قواعد.',
+        severity: 'HIGH',
+        detect: async (ctx) => {
+            try {
+                const r = await q(ctx,
+                    `SELECT r.rolname, r.rolsuper, r.rolcreatedb, r.rolcreaterole, r.rolreplication, r.rolbypassrls
+                       FROM pg_roles r WHERE r.rolname = current_user`);
+                const row = r[0];
+                if (!row) { return { status: 'fail', detail: 'تعذّر قراءة دور المستخدم' }; }
+                const bad = [];
+                if (row.rolsuper) {bad.push('SUPERUSER');}
+                if (row.rolcreatedb) {bad.push('CREATEDB');}
+                if (row.rolcreaterole) {bad.push('CREATEROLE');}
+                if (row.rolreplication) {bad.push('REPLICATION');}
+                if (row.rolbypassrls) {bad.push('BYPASSRLS');}
+                if (bad.length) {
+                    return {
+                        status: 'fail',
+                        detail: `الدور ${row.rolname} يملك: ${bad.join(', ')}`,
+                        remediation: 'فعّل دور التطبيق المحدود: node scripts/activate-app-role.js --apply',
+                    };
+                }
+                return { status: 'pass', detail: `الدور ${row.rolname}: بلا صلاحيات إدارية` };
+            } catch (e) {
+                return { status: 'warn', detail: 'تعذّر فحص صلاحيات الدور: ' + String(e.message).slice(0, 140) };
+            }
+        },
+    },
+
+    {
+        id: 'db.public_grants_purged',
+        domain: 'database',
+        title: 'لا امتيازات موروثة لـ PUBLIC',
+        description: 'سجل GRANT القديم (migration 003) منح PUBLIC صلاحيات على كل الجداول — يجب أن يكون صفرًا.',
+        severity: 'MEDIUM',
+        detect: async (ctx) => {
+            try {
+                const r = await q(ctx,
+                    `SELECT count(*)::int AS n FROM information_schema.role_table_grants
+                      WHERE table_schema = 'public' AND grantee = 'PUBLIC'`);
+                const n = Number(r[0]?.n || 0);
+                if (n > 0) {
+                    return {
+                        status: 'fail',
+                        detail: `PUBLIC يملك صلاحيات على ${n} جدول/جداول`,
+                        remediation: 'شغّل: node database/scripts/run-migration.js database/migrations/113_app_role_activation.sql',
+                    };
+                }
+                return { status: 'pass', detail: 'PUBLIC بلا امتيازات على جداول التطبيق' };
+            } catch (e) {
+                return { status: 'warn', detail: 'تعذّر فحص امتيازات PUBLIC: ' + String(e.message).slice(0, 140) };
+            }
+        },
+    },
+
+    {
         id: 'db.connectivity',
         domain: 'database',
         title: 'الاتصال بقاعدة البيانات',
