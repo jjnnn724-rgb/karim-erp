@@ -40,7 +40,10 @@ const DB = process.env.DB_NAME || 'karim_erp';
 const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
 fs.mkdirSync(BACKUPS, { recursive: true });
-const nightly = path.join(BACKUPS, `karim_erp-nightly-${today}.dump`);
+// طابع زمني: تشغيلان في اليوم نفسه لا يتصادمان (والأرشيف المشفَّر
+// يرفض الكتابة فوق موجود — حاجز أمان لا يُلغى).
+const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+const nightly = path.join(BACKUPS, `karim_erp-nightly-${stamp}.dump`);
 console.log('[backup] pg_dump →', nightly);
 try {
     execFileSync(path.join(PG, 'pg_dump.exe'), [
