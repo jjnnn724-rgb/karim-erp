@@ -174,10 +174,15 @@ function buildV2Csp() {
  *   · script-src-attr 'none'      ← الإجراء الذي يمنع حقن HTML
  *   · object-src 'none' + base-uri 'self' + form-action 'self'
  */
-function buildStrictCsp() {
+function buildStrictCsp(opts = {}) {
+    const nonce = opts.nonce ? `'nonce-${opts.nonce}'` : '';
+    const reportUri = opts.reportUri ? `report-uri ${opts.reportUri}` : '';
     return [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-hashes' 'nonce-__NONCE__'",
+        // 'unsafe-hashes' يسمح بالمعالجات السطرية الموقّعة، لكن لا 'unsafe-inline'
+        // (وهو ما يسمح بحقن HTML). والـnonce يُستبدل بقيمة حقيقية per-request —
+        // placeholder فارغ يجعل المتصفح يتجاهل المصدر بالكامل.
+        `script-src 'self' 'unsafe-hashes' ${nonce}`.trim(),
         "script-src-attr 'none'",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "style-src-attr 'unsafe-inline'",
@@ -189,7 +194,8 @@ function buildStrictCsp() {
         "form-action 'self'",
         "base-uri 'self'",
         "object-src 'none'",
-    ].join('; ');
+        reportUri,
+    ].filter(Boolean).join('; ');
 }
 
 /**
@@ -197,6 +203,7 @@ function buildStrictCsp() {
  * يُستخدم مع Content-Security-Policy-Report-Only أثناء مرحلة القياس.
  */
 function createCspReportCollector() {
+    // المفتاح: التوجيه + ما حُجب + المستند. القيمة: العدد + مواضع المصدر.
     const counters = new Map();
     return {
         /** يقرأ تقريرًا واحدًا (من المتصفح) ويحدّث العدادات. */
@@ -208,20 +215,33 @@ function createCspReportCollector() {
             const doc = String(src.documenturi || src['document-uri'] || '').slice(0, 200);
             const directive = String(src['violated-directive'] || src.violatedDirective || 'unknown');
             const blocked = String(src['blocked-uri'] || src.blockedURI || '').slice(0, 200);
-            const key = `${directive}|${blocked.split('?')[0]}`;
-            counters.set(key, (counters.get(key) || 0) + 1);
+            const file = String(src['source-file'] || src.sourceFile || '').slice(0, 200);
+            const line = parseInt(String(src['line-number'] || src.lineNumber || '0'), 10) || 0;
+            const key = `${directive}|${blocked.split('?')[0]}|${doc}`;
+            let entry = counters.get(key);
+            if (!entry) {
+                entry = { count: 0, sources: [] };
+                counters.set(key, entry);
+            }
+            entry.count += 1;
+            if (file && entry.sources.length < 12) {
+                const where = `${file}${line ? `:${line}` : ''}`;
+                if (!entry.sources.includes(where)) {entry.sources.push(where);}
+            }
             return { directive, blocked, document: doc };
         },
         /** لقطة العدادات (للفحص الدوري). */
         snapshot() {
             const out = {};
-            for (const [k, v] of counters) {out[k] = v;}
+            for (const [k, v] of counters) {
+                out[k] = { count: v.count, sources: v.sources };
+            }
             return out;
         },
         /** عدد المخالفات الكلي. */
         total() {
             let n = 0;
-            for (const v of counters.values()) {n += v;}
+            for (const v of counters.values()) {n += v.count;}
             return n;
         },
         reset() {counters.clear();},

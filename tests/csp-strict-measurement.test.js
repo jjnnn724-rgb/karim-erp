@@ -25,9 +25,17 @@ describe('سياسة CSP الصارمة (قياس قبل الفرض)', () => {
         expect(buildStrictCsp()).toContain("style-src 'self' 'unsafe-inline'");
     });
 
-    test('placeholder الـnonce موجود ليُستبدل بطلب حقيقي', () => {
-        expect(buildStrictCsp()).toContain("'nonce-__NONCE__'");
-        expect(buildStrictCsp().replace('__NONCE__', 'abc')).toContain("'nonce-abc'");
+    test('placeholder الـnonce يُستبدل بقيمة حقيقية (nonce فارغ يتجاهله المتصفح)', () => {
+        // ما رصده المتصفح فعليًا: nonce فارغ ⇒ invalid source ... It will be ignored
+        const empty = buildStrictCsp({});
+        expect(empty).not.toContain("'nonce-'");
+        const real = buildStrictCsp({ nonce: 'abc123' });
+        expect(real).toContain("'nonce-abc123'");
+    });
+
+    test('الترويسة توجّه التقارير إلى نقطة الاستقبال', () => {
+        expect(buildStrictCsp({ reportUri: '/api/security/csp-report' }))
+            .toContain('report-uri /api/security/csp-report');
     });
 
     test('جامع المخالفات يعدّ ولا يخزّن بيانات شخصية', () => {
@@ -36,11 +44,15 @@ describe('سياسة CSP الصارمة (قياس قبل الفرض)', () => {
             'document-uri': 'http://host/app/index.html',
             'violated-directive': 'script-src-attr',
             'blocked-uri': 'inline',
+            'source-file': 'http://host/app/index.html',
+            'line-number': 215,
         }});
         c.record({ 'csp-report': {
             'document-uri': 'http://host/app/index.html',
             'violated-directive': 'script-src-attr',
             'blocked-uri': 'inline',
+            'source-file': 'http://host/app/index.html',
+            'line-number': 213,
         }});
         c.record({ 'csp-report': {
             'document-uri': 'http://host/app/pos.html',
@@ -50,7 +62,14 @@ describe('سياسة CSP الصارمة (قياس قبل الفرض)', () => {
         expect(c.total()).toBe(3);
         const snap = c.snapshot();
         expect(Object.keys(snap)).toHaveLength(2);
-        expect(Object.values(snap).reduce((a, b) => a + b, 0)).toBe(3);
+        const total = Object.values(snap).reduce((a, b) => a + b.count, 0);
+        expect(total).toBe(3);
+        // مواضع المصدر تُلتقط (ملف:سطر) لتصبح المخالفة قابلة للتنفيذ
+        const attr = Object.entries(snap).find(([k]) => k.startsWith('script-src-attr'));
+        expect(attr).toBeTruthy();
+        expect(attr[1].count).toBe(2);
+        expect(attr[1].sources.length).toBe(2);
+        expect(attr[1].sources[0]).toMatch(/index\.html:21\d?$/);
     });
 
     test('تقرير تالف أو فارغ لا يكسر الجامع', () => {

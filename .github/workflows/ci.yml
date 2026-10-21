@@ -108,6 +108,9 @@ jobs:
       - name: Inline-handler gate — no dead onclick/oninput handlers
         run: npm run test:handlers:gate
 
+      - name: Inline-handler budget — no growth (CSP ratchet)
+        run: npm run test:handlers:budget
+
       - name: Secret scanner — no hardcoded credentials in tracked files
         run: npm run test:secrets:gate
 

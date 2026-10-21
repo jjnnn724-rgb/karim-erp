@@ -313,7 +313,9 @@ if (cspMeasurementEnabled) {
     app.use((req, res, next) => {
         // V2 له CSP صارم خاص به — لا نلمسه
         if (String(req.path || '').endsWith('/v2.html')) {return next();}
-        res.setHeader('Content-Security-Policy-Report-Only', buildStrictCsp().replace('__NONCE__', ''));
+        // nonce حقيقي per-request + report-uri حتى تصل التقارير إلى الجامع
+        res.setHeader('Content-Security-Policy-Report-Only',
+            buildStrictCsp({ nonce: req.cspNonce, reportUri: '/api/security/csp-report' }));
         next();
     });
     logger.info('[csp] قياس الانتهاكات مفعّل (Report-Only) — التقارير على /api/security/csp-report');
@@ -445,13 +447,17 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ─── استقبال تقارير CSP (بعد محلّل الجسم وإلا وصل req.body فارغًا) ────────
 if (cspMeasurementEnabled) {
-    app.post('/api/security/csp-report', (req, res) => {
-        try {
-            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-            cspReports.record(body['csp-report'] || body);
-        } catch (_) { /* تقرير تالف — نتجاهله */ }
-        res.status(204).end();
-    });
+    // المتصفح يرسل تقرير CSP بنوع application/csp-report — لا يلتقطه
+    // محلّل JSON الافتراضي، فنقرأ النص ونحلّله بأنفسنا.
+    app.post('/api/security/csp-report',
+        express.text({ type: ['application/csp-report', 'application/json', 'text/plain'], limit: '64kb' }),
+        (req, res) => {
+            try {
+                const raw = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+                cspReports.record(raw['csp-report'] || raw);
+            } catch (_) { /* تقرير تالف — نتجاهله */ }
+            res.status(204).end();
+        });
     app.get('/api/security/csp-report', (req, res) => {
         res.json({ ok: true, total: cspReports.total(), counters: cspReports.snapshot() });
     });
