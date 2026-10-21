@@ -242,6 +242,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
+      # حارس عزل الاختبارات: قاعدة منفصلة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: karim_erp_test
@@ -253,6 +256,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      # حارس عزل الاختبارات: قاعدة منفصلة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
       # حارس سكربت الـsmoke: يرفض التشغيل بلا هدف صريح (حمايةً من الإنتاج).
       KARIM_TEST_BASE_URL: http://localhost:3000
       NODE_ENV: test
@@ -325,6 +331,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
+      # حارس عزل الاختبارات: قاعدة منفصلة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: karim_erp_test
@@ -336,6 +345,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      # حارس عزل الاختبارات: قاعدة منفصلة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
       NODE_ENV: test
       DB_HOST: localhost
       DB_PORT: 5432
