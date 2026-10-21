@@ -237,7 +237,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # مستقل عن Unit Tests (يبني قاعدته بنفسه) ⇒ يعمل بالتوازي ويكشف أعطاله مبكرًا
-    needs: []
+    needs: [lint-and-typecheck]
     services:
       postgres:
         image: postgres:16
