@@ -31,7 +31,7 @@
 /** @type {any} */
 let _geolib = null;
 try {
-    // eslint-disable-next-line global-require
+     
     _geolib = require('geolib');
 } catch (_) { _geolib = null; }
 

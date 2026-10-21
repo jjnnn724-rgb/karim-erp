@@ -106,7 +106,7 @@ function deviceKeyFromPath(config, filePath) {
         const rel = path.relative(base, path.dirname(String(filePath)));
         if (!rel || rel === '.' || rel.startsWith('..')) {return '';}
         return rel.split(path.sep)[0];
-    } catch (err) {
+    } catch (_) {
         return '';
     }
 }

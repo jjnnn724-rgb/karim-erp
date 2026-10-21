@@ -10,8 +10,6 @@
  */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
 const { buildContext } = require('./context');
 const { runAudit } = require('./engine');
 const { checks, DOMAINS } = require('./checks');

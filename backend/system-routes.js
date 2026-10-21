@@ -18,6 +18,7 @@ const multer = require('multer');
 const { spawn } = require('child_process');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { getActiveBrotliStatic } = require('./middleware/brotli-static');
 const { pool } = require('./shared-pool');
 const { runSystemAudit, buildContext } = require('./audit-engine');
 
@@ -318,6 +319,39 @@ router.post('/audit/fix', jwtAuth, requireRole('admin'), async (req, res) => {
     } catch (e) {
         logger.error('[system/audit/fix]', e.message);
         res.status(500).json({ error: 'AUDIT_FIX_FAILED', message: 'تعذر تنفيذ إصلاحات المدقق' });
+    }
+});
+
+// ─── إبطال كاش Brotli (مدير فقط) — المرحلة 3 ───
+// POST /api/system/brotli-cache/invalidate
+//   body {}                     → إبطال كل النسخ (أول طلب تالٍ يعيد الضغط ويسلّم br)
+//   body {path:'js/v2/x.js'}    → إبطال نسخة ملف واحد داخل جذر الأصول
+// حذف نسخ مضغوطة فقط: لا يُمسّ أي ملف أصلي ولا أي منطق HTTP.
+router.post('/brotli-cache/invalidate', jwtAuth, requireRole('admin'), (req, res) => {
+    try {
+        const brotli = getActiveBrotliStatic();
+        if (!brotli || typeof brotli.invalidateAll !== 'function') {
+            return res.status(503).json({ error: 'BROTLI_NOT_ACTIVE', message: 'وسيط Brotli غير مُركّب في هذه العملية' });
+        }
+        const raw = req.body && typeof req.body.path === 'string' ? req.body.path.trim() : '';
+        let result;
+        if (!raw) {
+            result = brotli.invalidateAll();
+        } else {
+            // مسار نسبي فقط، بلا جذر مطلق ولا مقاطع نقطية ولا رجوع للخلف
+            const rel = raw.replace(/\\/g, '/');
+            const unsafe = rel.startsWith('/') || rel.includes('\0') ||
+                rel.split('/').some((seg) => !seg || seg === '.' || seg === '..' || seg.startsWith('.'));
+            if (unsafe) {
+                return res.status(422).json({ error: 'INVALID_PATH', message: 'مسار نسبي داخل جذر الأصول مطلوب بلا مقاطع نقطية' });
+            }
+            result = brotli.invalidate(path.resolve(brotli.rootDir, rel));
+        }
+        logger.info(`[system/brotli-cache] invalidate ${result.scope} removed=${result.removed} bytes=${result.bytes} by ${req.user?.name || req.user?.id || 'admin'}`);
+        res.json({ ok: true, ...result, policyVersion: brotli.policyVersion, cacheDir: brotli.cacheDir });
+    } catch (e) {
+        logger.error('[system/brotli-cache]', e.message);
+        res.status(500).json({ error: 'INVALIDATE_FAILED', message: 'تعذر إبطال كاش Brotli' });
     }
 });
 

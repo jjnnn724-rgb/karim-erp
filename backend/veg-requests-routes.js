@@ -26,19 +26,6 @@ const CREATE_ROLES = ['sous_chef', 'admin', 'owner'];
 const READ_ROLES = [...CREATE_ROLES, 'warehouse'];
 const RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'];
 
-/**
- * Penerimaan oleh kepala bagian (permintaan pemilik 2026-10-04): kepala bagian dapur
- * atau kepala bagian salad boleh menerima permintaan sayur. dept_code bisa huruf besar
- * ('KITCHEN') atau daftar dipisah koma ('storeroom,SERVICE') — dicocokkan tanpa
- * memperhatikan huruf besar/kecil per bagian.
- */
-function isKitchenFamilyDeptHead(req) {
-    if (req.user?.role !== 'dept_head') {return false;}
-    const depts = String(req.user?.dept_code || '')
-        .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
-    return depts.includes('kitchen') || depts.includes('salads');
-}
-
 // ─── المخطط (lazy — أول لمسة تُنشئ الجدول) ───────────────────────────────────
 
 let schemaReady = null;

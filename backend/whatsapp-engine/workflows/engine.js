@@ -34,8 +34,6 @@
 
 const { logger } = require('../../logger');
 const store = require('../store');
-const { TemplateManager } = require('../templates');
-const { AIChatbot } = require('../ai/chatbot');
 
 class WorkflowEngine {
     constructor() {

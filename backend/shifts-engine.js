@@ -103,7 +103,7 @@ async function resolveEmployee(token) {
 
 /** تطبيق قائمة ورديات + إعادة حساب مشتقات الحضور */
 async function applyShiftText(text, month, actorId = null) {
-    const { items, errors } = parseShiftLines(text);
+    const { items } = parseShiftLines(text);
     const applied = [], failed = [];
     const todayStr = riyadhToday();
     for (const it of items) {

@@ -10,7 +10,7 @@ const { logger } = require("../logger");
  * system will rely solely on the SQL queue + a polling worker.
  */
 
-let Queue, QueueEvents, IORedis;
+let Queue, IORedis;
 let connection;
 let zatcaQueue = null;
 let dlqQueue = null;
@@ -20,7 +20,7 @@ let SKIP_BULLMQ = process.env.SKIP_BULLMQ === '1' || process.env.SKIP_BULLMQ ===
 
 if (!SKIP_BULLMQ) {
     try {
-        ({ Queue, QueueEvents } = require('bullmq'));
+        ({ Queue } = require('bullmq'));
         IORedis = require('ioredis');
         const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
         connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null, enableReadyCheck: true });

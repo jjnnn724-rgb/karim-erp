@@ -212,7 +212,7 @@ async function cmOpenOrder(docNo){
         box.innerHTML = `
         <div class="tbl-wrap" style="margin-top:14px">
         <div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فاتورة ${esc(o.doc_no)} — كاشير ${esc(o.cashier_no)}</h3>
-        <button class="btn btn-sm" onclick="document.getElementById('cmOrderBox').innerHTML=''">إغلاق</button></div>
+        <button class="btn btn-sm" data-karim-action="kdAct">إغلاق</button></div>
         <div class="tbl-scroll"><table>
         <thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>الصافي</th><th>الخصم</th><th>الضريبة</th><th>نقدًا</th><th>شبكة</th><th>مطبوع</th></tr></thead>
         <tbody><tr>
@@ -235,8 +235,13 @@ async function cmOpenOrder(docNo){
         box.innerHTML = `<div class="mcard">تعذر جلب الفاتورة: ${esc(e.message || 'خطأ')}</div>`;
     }
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct() {
+    document.getElementById('cmOrderBox').innerHTML=''
+}
 
-export { renderCashierMonitor, cmDateChange, cmRefresh, cmFilterCashier, cmPageGo, cmOpenOrder, cmPrintReport, cmExportExcel, CMSTATE };
+
+export {renderCashierMonitor, cmDateChange, cmRefresh, cmFilterCashier, cmPageGo, cmOpenOrder, cmPrintReport, cmExportExcel, CMSTATE, kdAct };;
 
 // ─── تقرير إيرادات كل كاشير (طباعة + Excel) ───
 function cmReportRows(){

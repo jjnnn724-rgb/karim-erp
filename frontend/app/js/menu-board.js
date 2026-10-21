@@ -411,7 +411,7 @@ function render() {
             <div class="item${it.sold_out ? ' sold-out' : ''}${it.image ? ' has-img' : ''}" style="--i:${j}">
                 <div class="item-top">
                     <span class="item-bullet">${String(j + 1).padStart(2, '0')}</span>
-                    ${it.image ? `<img class="item-thumb" src="${esc(it.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+                    ${it.image ? `<img class="item-thumb" src="${esc(it.image)}" alt="" loading="lazy" data-karim-imgerror="remove">` : ''}
                     <div class="item-copy">
                     <span class="item-name">${esc(language === 'en' ? (it.name_en || it.name) : it.name)}${it.sold_out && language === 'ar' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>
                     <span class="item-en">${esc(language === 'en' ? (it.name || '') : (it.name_en || ''))}${it.sold_out && language === 'en' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>

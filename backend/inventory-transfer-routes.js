@@ -53,7 +53,7 @@ router.get('/intelligence/overview', jwtAuth, requireRole('admin', 'manager', 'w
       audit_attention: variances.rows.length,
       sold_skus_today: sales.rows.length,
     }, balances: balances.rows, low_stock: lowStock.rows, open_transfers: transfers.rows, audit_attention: variances.rows, sales_by_item_today: sales.rows, total_available_value: totalAvailableValue });
-  } catch (e) { res.status(500).json({ error: 'INTELLIGENCE_OVERVIEW_FAILED', message: 'تعذر تحميل ملخص الذكاء المخزني' }); }
+  } catch (_) { res.status(500).json({ error: 'INTELLIGENCE_OVERVIEW_FAILED', message: 'تعذر تحميل ملخص الذكاء المخزني' }); }
 });
 
 function fail(res, status, error, message, extra = {}) { return res.status(status).json({ error, message, ...extra }); }
@@ -100,7 +100,7 @@ router.get('/transfers', jwtAuth, requireRole('admin', 'manager', 'warehouse', '
       params
     );
     res.json(rows.rows);
-  } catch (e) { res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب قائمة التحويلات' }); }
+  } catch (_) { res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب قائمة التحويلات' }); }
 });
 
 router.post('/transfers', jwtAuth, requireRole(...routerWriteRoles), async (req, res) => {
@@ -148,7 +148,7 @@ router.post('/transfers', jwtAuth, requireRole(...routerWriteRoles), async (req,
     await event(client, transfer.id, null, 'requested', req.user.id, 'إنشاء طلب تحويل');
     await client.query('COMMIT');
     res.status(201).json(transfer);
-  } catch (e) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إنشاء طلب التحويل' }); }
+  } catch (_) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إنشاء طلب التحويل' }); }
   finally { client.release(); }
 });
 
@@ -287,7 +287,7 @@ router.post('/transfers/:id/cancel', jwtAuth, requireRole(...approvalRoles), asy
     await event(client, transfer.id, transfer.status, 'cancelled', req.user.id, req.body.reason || 'إلغاء طلب التحويل');
     await client.query('COMMIT');
     res.json({ transfer_id: transfer.id, status: 'cancelled' });
-  } catch (e) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إلغاء التحويل' }); }
+  } catch (_) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إلغاء التحويل' }); }
   finally { client.release(); }
 });
 
@@ -303,7 +303,7 @@ router.post('/transfers/:id/reconcile', jwtAuth, requireRole('admin', 'manager',
     await event(client, transfer.id, transfer.status, 'reconciled', req.user.id, reason);
     await client.query('COMMIT');
     res.json({ transfer_id: transfer.id, status: 'reconciled' });
-  } catch (e) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسوية التحويل' }); }
+  } catch (_) { await client.query('ROLLBACK').catch(() => {}); res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسوية التحويل' }); }
   finally { client.release(); }
 });
 

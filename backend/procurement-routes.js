@@ -16,7 +16,7 @@ const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
-const { normalizeVatNumber, validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
+const { validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { arFuzzyPattern } = require('./ar-search');
 

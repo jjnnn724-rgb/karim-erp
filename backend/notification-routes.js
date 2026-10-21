@@ -33,7 +33,7 @@ function ownershipScope(userId) {
 // M21 (2026-10-11): effective-read predicate.
 // Personal notifications: read column on the row.
 // Public (user_id NULL): a row in notification_reads for this user.
-function effectiveReadSql(userId) {
+function effectiveReadSql(_userId) {
     return `(n.read = true OR (n.user_id IS NULL AND EXISTS (SELECT 1 FROM notification_reads nr WHERE nr.notification_id = n.id AND nr.user_id = $1)))`;
 }
 

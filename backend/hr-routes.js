@@ -6,7 +6,7 @@ const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { generalLimiter } = require('./rate-limiter');
 const { buildMonthlyAttendanceSummaryQuery } = require('./monthly-attendance-query');
-const { shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, lockGraceMinutes, graceMinutes, calculateDelayParts } = require('./shift-day');
+const { shiftDateForEmployee, prevDay, isLate, isEarlyLeave, lockGraceMinutes, graceMinutes, calculateDelayParts } = require('./shift-day');
 const { calculateTotalLateMinutes, loadShiftHistoryMap, resolveShiftAt } = require('./attendance-engine');
 const { arFuzzyPattern } = require('./ar-search');
 
@@ -26,7 +26,6 @@ function esc(v) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-const WORK_DAY_MINUTES = 10 * 60;
 function requireQrSecret(res) {
     if (!QR_SECRET) {
         res.status(503).json({ error: 'EMPLOYEE_QR_SECRET_NOT_CONFIGURED', message: 'لم يتم إعداد مفتاح QR للموظفين' });
@@ -84,7 +83,7 @@ function buildQrPayload(employee, token) {
     };
 }
 
-function generateEmployeeToken(employee) {
+function generateEmployeeToken(_employee) {
     return crypto.randomBytes(32).toString('base64url');
 }
 
@@ -136,20 +135,6 @@ function calculateMinutes(row) {
         return Math.max(0, Math.round((new Date(row.checkOutAt) - new Date(row.checkInAt)) / 60000));
     }
     return 0;
-}
-
-function parseTimeMinutes(t) {
-    const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) {return null;}
-    return Number(m[1]) * 60 + Number(m[2]);
-}
-
-function getShiftStartMinutes(employee) {
-    const s = String(employee?.shift_start || '').trim();
-    const v = parseTimeMinutes(s);
-    if (v != null) {return v;}
-    const fallback = Number(process.env.WORK_START_HOUR || 9);
-    return fallback * 60;
 }
 
 /**
@@ -309,8 +294,8 @@ router.get('/employees/:id/lux-card', jwtAuth, async (req, res) => {
     const gen = path.join(__dirname, '..', 'tools', 'employee-card', 'generate-card.js');
     const r = await new Promise((resolve) => {
         const child = spawn(process.execPath, [gen, '--fp', fp], { timeout: 60000 });
-        let stdout = '', stderr = '';
-        child.stdout?.on('data', (d) => { stdout += d; });
+        let stderr = '';
+        child.stdout?.on('data', () => {});
         child.stderr?.on('data', (d) => { stderr += d; });
         child.on('error', (err) => resolve({ status: 1, stderr: String(err) }));
         child.on('close', (code) => resolve({ status: code, stderr }));
@@ -574,7 +559,6 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
         await client.query('BEGIN');
         // Period-closed check (inside txn, fail-closed)
         try {
-            const { isPeriodClosed } = require('./accounting-periods');
             const pc = await client.query(
                 "SELECT status FROM accounting_periods WHERE month = $1 LIMIT 1", [month]);
             if (pc.rows[0]?.status === 'closed') {
@@ -860,7 +844,7 @@ router.get('/employees/ledger', jwtAuth, requireRole('admin', 'hr', 'manager'), 
                 }
                 query += ` ORDER BY e.id ASC LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}`;
                 params.push(limit, offset);
-        const { rows: employees, rowCount } = await pool.query(query, params);
+        const { rows: employees } = await pool.query(query, params);
         const { rows: [countRow] } = await pool.query(`SELECT COUNT(*)::int AS total FROM employees`);
         res.json({ ok:true, employees, total: countRow.total, page, limit });
     } catch (error) {
@@ -892,7 +876,7 @@ function eachDate(start, end) {
 }
 
 async function computeMonthDeductions(month, { skipFridays = false } = {}) {
-    const { start, end, daysInMonth } = monthBounds(month);
+    const { start, end } = monthBounds(month);
     const todayStr = new Date().toISOString().slice(0, 10);
     const emps = (await pool.query(
         `SELECT id, name, "employeeId", salary, shift_karim, "joinDate" FROM employees WHERE status = 'active' ORDER BY id`)).rows;
@@ -1682,7 +1666,7 @@ router.get('/shift-schedule/:employeeId', jwtAuth, async (req, res) => {
             current: { shift_start: emp.shift_start, shift_karim: emp.shift_karim, day_off: emp.day_off },
             scheduled: sched,
         });
-    } catch (e) {
+    } catch (_) {
         res.status(500).json({ error: 'SCHEDULE_FAILED', message: 'تعذر جلب الدوام المجدول' });
     }
 });

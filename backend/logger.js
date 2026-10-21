@@ -29,11 +29,9 @@ function getTransport() {
     const isProduction = process.env.NODE_ENV === 'production';
     const isTest = process.env.NODE_ENV === 'test';
     
-    // In test environment, use minimal config
+    // In test environment, use a direct destination to avoid transport workers.
     if (isTest) {
-        // Cross-platform null device: /dev/null on Unix, NUL on Windows
-        const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null';
-        return { target: 'pino/file', options: { destination: nullDevice, sync: true } };
+        return undefined;
     }
     
     // Default (production): JSON إلى ملف عبر worker-thread — FIX 2026-10-03
@@ -93,7 +91,7 @@ function getTransport() {
 
 // ─── Create Logger Instance ───────────────────────────────
 
-const logger = pino({
+const loggerOptions = {
     name: 'karim-erp-pro',
     level: process.env.LOG_LEVEL || 'info',
     timestamp: pino.stdTimeFunctions.isoTime,
@@ -127,7 +125,11 @@ const logger = pino({
         censor: '[REDACTED]',
     },
     ...(getTransport() ? { transport: getTransport() } : {}),
-});
+};
+const testDestination = process.env.NODE_ENV === 'test'
+    ? pino.destination({ dest: process.platform === 'win32' ? 'NUL' : '/dev/null', sync: true })
+    : undefined;
+const logger = pino(loggerOptions, testDestination);
 
 // ─── Child Logger Factory (Request-Scoped) ────────────────
 

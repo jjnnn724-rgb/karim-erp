@@ -199,7 +199,7 @@ async function checkAlerts(engine) {
             for (const d of docs) {
                 const r = await store.pool.query(
                     `SELECT COUNT(*) FILTER (WHERE ${d.col} <> '' AND ${d.col} ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (${d.col})::date < CURRENT_DATE)::int AS expired,
-                            COUNT(*) FILTER (WHERE ${d.col} <> '' AND ${d.col} ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (${d.col})::date BETWEEN CURRENT_DATE AND CURRENT_DATE + $1)::int AS soon
+                            COUNT(*) FILTER (WHERE ${d.col} <> '' AND ${d.col} ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (${d.col})::date BETWEEN CURRENT_DATE AND CURRENT_DATE + $1::int)::int AS soon
                        FROM employees WHERE status = 'active'`, [warnDays]);
                 const { expired, soon } = r.rows[0] || {};
                 if (Number(expired || 0) > 0 || Number(soon || 0) > 0) {

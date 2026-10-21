@@ -18,14 +18,10 @@
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
 const { ZKClient, ZKError } = require('./client');
-const { shiftDateFor, prevDay, isLate, expectedEndTime, isEarlyLeave, lockGraceMinutes, graceMinutes, normalizeShiftStart, normalizeShiftKarim } = require('../shift-day');
-const { engine, calculateTotalLateMinutes, autoCompleteEnabled: acEnabled, smartReconcileEnabled, maxReconcileDays, matchUserToEmployee: matchUtil, BUSINESS_TZ_OFFSET_MS } = require('../attendance-engine');
+const { engine, matchUserToEmployee: matchUtil, BUSINESS_TZ_OFFSET_MS } = require('../attendance-engine');
 const proto = require('./protocol');
 
 const AUTO_MATCH_DEFAULT = String(process.env.ZK_AUTO_MATCH_EMPLOYEE_ID ?? 'true') !== 'false';
-
-// مفاتيح محلية للتوافق
-const autoCompleteEnabled = acEnabled;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -335,7 +331,6 @@ class AttendanceSyncEngine {
             // users with genuinely new punches this cycle are touched.
             // Batches go through a single UNNEST query per chunk instead of
             // one round-trip per user.
-            let storedUsers = 0;
             try {
                 if (Array.isArray(users) && users.length) {
                     // البصمات الجديدة فقط (insertedRows) حتى لا يتضاعف العدّاد مع نافذة إعادة المعالجة
@@ -394,7 +389,6 @@ class AttendanceSyncEngine {
                                     "lastSeenAt" = NOW(), "updatedAt" = NOW()`,
                                 [device.id, aUid, aUidStr, aName, aPriv, aCard, aPunch]
                             );
-                            storedUsers += slice.length;
                         } catch (chunkErr) {
                             logger.warn('[ZKTECO_ENGINE] persist users chunk skipped: ' + String(chunkErr.message).slice(0, 120));
                         }
@@ -553,7 +547,7 @@ class AttendanceSyncEngine {
      * ملء سجل الحضور اليومي — fill-only + ورديات ليلية (تفويض للمحرك الموحد)
      * @returns {Promise<'check_in'|'check_out'|null>}
      */
-    async _writeBackDailyAttendance({ employeeId, punchState, instant, wall, device, shift }) {
+    async _writeBackDailyAttendance({ employeeId, punchState, instant, wall, device, shift: _shift }) {
         const result = await engine.processPunch({
             employeeId, punchState, instant, wall, device, source: 'device'
         });

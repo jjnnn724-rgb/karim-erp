@@ -428,7 +428,7 @@ function getEntitySchema(entityName) {
  * @param {string[]} requiredFields - Fields that remain required
  * @returns {z.ZodSchema} New partial schema
  */
-function partialSchema(schema, requiredFields = []) {
+function partialSchema(schema, _requiredFields = []) {
     return schema.partial();
 }
 

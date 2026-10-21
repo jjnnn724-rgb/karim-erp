@@ -99,22 +99,38 @@ function parsePaginationParams(query, allowedSortColumns = ['id']) {
 function buildPaginatedQuery(tableName, params, options = {}) {
     const { limit, offset, sort, order } = params;
     const branchId = options.branchId != null ? Number(options.branchId) : null;
+    const predicates = [];
+    const filterParams = [];
 
-    // Note: tableName MUST come from trusted source (entities array), not user input
-    // الفرع يأخذ $1 حتى يبقى الاستعلام قابلًا للاستدلال على الأنواع (42P18)
-    // في نسختي البيانات والعدّ معًا.
-    const where = branchId != null ? ' WHERE "branch_id" = $1' : '';
-    const limitPh = branchId != null ? 2 : 1;
-    const offsetPh = branchId != null ? 3 : 2;
+    // Note: tableName MUST come from trusted source (entities array), not user input.
+    if (branchId != null) {
+        filterParams.push(branchId);
+        predicates.push(`"branch_id" = $${filterParams.length}`);
+    }
+    if (options.dateRange) {
+        const { column, from, toExclusive } = options.dateRange;
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(column) || !from || !toExclusive) {
+            throw new TypeError('Invalid paginated date range');
+        }
+        filterParams.push(from);
+        predicates.push(`"${column}" >= $${filterParams.length}`);
+        filterParams.push(toExclusive);
+        predicates.push(`"${column}" < $${filterParams.length}`);
+    }
+
+    // Keep the branch predicate first so PostgreSQL can infer its type (42P18).
+    const where = predicates.length ? ` WHERE ${predicates.join(' AND ')}` : '';
+    const limitPh = filterParams.length + 1;
+    const offsetPh = filterParams.length + 2;
     const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
     const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"${where}`;
 
     return {
         dataQuery,
         countQuery,
-        params: branchId != null ? [branchId, limit, offset] : [limit, offset],
-        // العدّ لا يحمل LIMIT/OFFSET: إرسالهما يُلغي البروتوكول (PG 08P01).
-        countParams: branchId != null ? [branchId] : [],
+        params: [...filterParams, limit, offset],
+        // COUNT has no LIMIT/OFFSET parameters (PG 08P01 guard).
+        countParams: filterParams,
     };
 }
 
@@ -151,7 +167,7 @@ function paginationMiddleware(allowedSortColumns = ['id']) {
             }
             
             next();
-        } catch (err) {
+        } catch (_) {
             res.status(400).json({
                 error: 'PAGINATION_PARSE_ERROR',
                 message: 'Failed to parse pagination parameters',

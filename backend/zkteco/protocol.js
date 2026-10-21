@@ -160,7 +160,7 @@ function makeCommKey(key, sessionId, ticks = 50) {
     // تبديل الكلمتين 16-بت: pack('HH', w1, w0)
     const w0 = b0 | (b1 << 8);
     const w1 = b2 | (b3 << 8);
-    const c0 = w1 & 0xFF, c1 = (w1 >> 8) & 0xFF, c2 = w0 & 0xFF, c3 = (w0 >> 8) & 0xFF;
+    const c0 = w1 & 0xFF, c1 = (w1 >> 8) & 0xFF, c3 = (w0 >> 8) & 0xFF;
     // XOR بالticks (البايت الثالث يصبح B نفسه)
     const B = 0xFF & ticks;
     return Buffer.from([c0 ^ B, c1 ^ B, B, c3 ^ B]);

@@ -136,7 +136,7 @@ router.get('/drafts', jwtAuth, requireRole(...READ_ROLES), async (req, res, next
     } catch (e) { next(e); }
 });
 
-router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
+router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, _next) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id <= 0) {

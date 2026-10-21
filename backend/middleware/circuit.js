@@ -36,7 +36,7 @@ const DEFAULT_RETRY = {
     maxDelayMs:         10_000,
     jitter:             true,
     retryableStatuses:  [408, 429, 500, 502, 503, 504],
-    isRetryable:        (err) => true, // by default, let caller control
+    isRetryable:        (_err) => true, // by default, let caller control
 };
 
 // ─── Per-key circuit store ──────────────────────────────────

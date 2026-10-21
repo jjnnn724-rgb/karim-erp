@@ -65,7 +65,6 @@ function generateNonce() {
  */
 function buildCspDirectives(opts, nonce) {
     const self = "'self'";
-    const unsafeInline = "'unsafe-inline'";
     const unsafeEval   = process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : '';
     const dataImg      = 'data:';
     const blobMedia    = 'blob:';
@@ -98,7 +97,10 @@ function buildCspDirectives(opts, nonce) {
         // The current UI generates many data-bound onclick handlers for menus
         // and modal controls. Scope the exception to event attributes only;
         // nonce protection remains active for inline script blocks.
-        'script-src-attr': [unsafeInline],
+        // 2026-10-21: تم ترحيل **كل** المعالجات السطرية (1158 ⇒ 0) إلى تفويض
+        // (data-karim-action) ⇒ صار بالإمكان منع معالجات السطرية نهائيًا.
+        // ⇒ 'script-src-attr': 'none' — أي حقن HTML لا يستطيع تنفيذ JS.
+        'script-src-attr': ["'none'"],
         'style-src': [
             self,
             "'unsafe-inline'",   // CSS-in-JS / dynamic styles in POS view

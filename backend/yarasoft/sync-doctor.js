@@ -160,7 +160,7 @@ async function catchUp(days, io) {
                 job.chunks.push({ fromDay, toDay, skipped: true, ora: oraCnt, local: loc });
                 continue;
             }
-            const p = await pullWindow(fromDay, toDay, `${fromDay}_${toDay}`);
+            await pullWindow(fromDay, toDay, `${fromDay}_${toDay}`);
             const { consumeAllPending } = require('./oracle-consume');
             const c = await consumeAllPending({ io });
             let done = 0, dups = 0;

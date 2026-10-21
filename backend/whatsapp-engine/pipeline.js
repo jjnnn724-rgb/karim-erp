@@ -18,9 +18,8 @@
 const crypto = require('crypto');
 const { logger } = require('../logger');
 const store = require('./store');
-const { normalizeText, firstMatch, isValidChatJid, isGroupJid, isLidJid, phoneDigitsOf, extractText } = require('./rules');
-const { processNLU, getContext, updateContext } = require('./ai/nlu');
-const { SmartAssistant } = require('./ai/smart-assistant');
+const { firstMatch, isValidChatJid, isGroupJid, isLidJid, phoneDigitsOf, extractText } = require('./rules');
+const { processNLU, updateContext } = require('./ai/nlu');
 
 function toInboxRecord(upsertMsg) {
     const key = upsertMsg?.key || {};

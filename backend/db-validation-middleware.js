@@ -3,7 +3,7 @@
  * يربط بين route parameters و table names ويفعل التحقق تلقائياً
  */
 
-const { dbValidationMiddleware, invalidateCache } = require('./db-constraints');
+const { invalidateCache } = require('./db-constraints');
 
 /** خريطة route patterns إلى table names */
 const ROUTE_TABLE_MAP = {
@@ -63,7 +63,7 @@ const ROUTE_TABLE_MAP = {
 };
 
 /** استخراج table name من المسار */
-function getTableFromPath(path, method) {
+function getTableFromPath(path, _method) {
   // البحث عن تطابق دقيق أولاً
   if (ROUTE_TABLE_MAP[path]) {return ROUTE_TABLE_MAP[path];}
   

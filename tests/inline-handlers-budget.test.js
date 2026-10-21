@@ -27,7 +27,7 @@ describe('ميزانية المعالجات السطرية', () => {
     test('خط الأساس موجود ومتسق مع نفسه', () => {
         const b = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
         expect(typeof b.totalHandlers).toBe('number');
-        expect(b.totalHandlers).toBeGreaterThan(0);
+        expect(b.totalHandlers).toBeGreaterThanOrEqual(0);
         const sum = Object.values(b.files).reduce((a, n) => a + n, 0);
         expect(sum).toBe(b.totalHandlers);
     });
@@ -38,15 +38,17 @@ describe('ميزانية المعالجات السطرية', () => {
         expect(r.out).toMatch(/المعالجات السطرية/);
     });
 
-    test('العدد الحقيقي أكبر بكثير مما يبلّغه المتصفح وحده', () => {
-        // هذا هو سبب وجود المدقّق الثابت: تقرير Report-Only جزئي.
+    test('الترحيل اكتمل: صفر معالجات سطرية في الواجهة', () => {
+        // كان 1158 ⇒ رُحّل الكل إلى تفويض (data-karim-action) بلا eval،
+        // فصار بالإمكان فرض script-src-attr 'none' على الواجهة.
         const b = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
-        expect(b.totalHandlers).toBeGreaterThan(50);
+        expect(b.totalHandlers).toBe(0);
+        expect(b.totalInlineScripts).toBe(0);
     });
 
     test('تجاوز الميزانية يُرفض (سلوك البوابة)', () => {
         const tmp = path.join(ROOT, 'tests', '.tmp-inline-budget.json');
-        fs.writeFileSync(tmp, JSON.stringify({ totalHandlers: 1, files: {} }), 'utf8');
+        fs.writeFileSync(tmp, JSON.stringify({ totalHandlers: -1, files: {} }), 'utf8');
         try {
             const r = run(['--check', tmp]);
             expect(r.ok).toBe(false);

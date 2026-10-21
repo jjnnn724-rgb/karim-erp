@@ -58,10 +58,16 @@ async function insertDomainEvent(client, spec) {
  * التجارية بلا تأثر — صفر انحدار. تُقلب إلى فشل-مغلق في بوابة G2.
  */
 async function tryInsertDomainEvent(pool, client, spec) {
+    if (!(await ensureTableKnown(pool))) {return null;}
+    const savepoint = `outbox_optional_${crypto.randomUUID().replace(/-/g, '')}`;
     try {
-        if (!(await ensureTableKnown(pool))) {return null;}
-        return await insertDomainEvent(client, spec);
+        await client.query(`SAVEPOINT ${savepoint}`);
+        const result = await insertDomainEvent(client, spec);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return result;
     } catch (e) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
         try {
             require('../logger').logger.warn('[outbox] tryInsertDomainEvent skipped:',
                 e.message, spec.eventType);

@@ -27,14 +27,14 @@ const ordered=filtered.slice().reverse();
 const pages=Math.max(1,Math.ceil(ordered.length/PAGE_SIZE));
 window.revPage=Math.min(Math.max(1,Number(window.revPage)||1),pages);
 const pageRows=ordered.slice((window.revPage-1)*PAGE_SIZE,window.revPage*PAGE_SIZE);
-const pageBar=`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px"><small class="text-muted">صفحة ${fN(window.revPage)} من ${fN(pages)} — ${fN(ordered.length)} إيراد</small><div style="display:flex;gap:6px"><button class="btn btn-sm" ${window.revPage<=1?'disabled':''} data-karim-action="renderPage" data-karim-set="revPage:1">&laquo; الأولى</button><button class="btn btn-sm" ${window.revPage<=1?'disabled':''} onclick="window.revPage--;renderPage()">السابقة</button><button class="btn btn-sm" ${window.revPage>=pages?'disabled':''} onclick="window.revPage++;renderPage()">التالية</button><button class="btn btn-sm" ${window.revPage>=pages?'disabled':''} onclick="window.revPage=${pages};renderPage()">الأخيرة &raquo;</button></div></div>`;
-return `<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> ${t('pg.revenues')}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="revPrintFiltered"><i class=ji data-i=printer></i> طباعة</button><button class="btn btn-gold btn-sm" data-karim-action="showAddRevenueModal"><i class=ji data-i=plus></i> ${t('rev.add')}</button></div></div><div class="fr" style="align-items:end;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap"><div class="fg"><label>${t('exp.dept')}</label><select data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterDept:@value,revPage:1"><option value="all" ${window.revFilterDept==='all'?'selected':''}>${t('exp.allDepts')}</option>${deptOpts}</select></div><div class="fg"><label>${t('exp.fromDate')}</label><input type="date" value="${window.revFilterFrom}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterFrom:@value,revPage:1"></div><div class="fg"><label>${t('exp.toDate')}</label><input type="date" value="${window.revFilterTo}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterTo:@value,revPage:1"></div><div class="fg"><label>بحث</label><input type="text" placeholder="المصدر أو ملاحظات..." value="${esc(window.revFilterSearch)}" oninput="window.revFilterSearch=this.value;window.revPage=1;renderPage();const s=document.getElementById('revSearchBox');if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length);}" id="revSearchBox"></div>${hasFilter?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="revFilterDept:'all',revFilterFrom:'',revFilterTo:'',revFilterSearch:'',revPage:1"><i class=ji data-i=rotate-ccw></i> ${t('exp.clearFilter')}</button>`:''}<div class="mcard" style="padding:8px 14px;margin-inline-start:auto"><div class="mcard-label" style="font-size:11px">${t('exp.netShown')} (${fN(filtered.length)} ${t('exp.items')})</div><div class="mcard-val c-gold" style="font-size:18px">${fC(totalRev)}</div></div></div>${pageBar}<div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('rev.source')}</th><th>${t('rev.dept')}</th><th>${t('rev.amount')}</th><th>${t('rev.date')}</th><th>${t('rev.notes')}</th><th></th></tr></thead><tbody>${pageRows.map((r,i)=>{const d=STATE.departments.find(x=>x.code===r.deptId);return `<tr><td>${ordered.length-((window.revPage-1)*PAGE_SIZE)-i}</td><td class="fw-bold">${esc(r.source)}</td><td class="c-gold">${d?`${deptIcon(d)} ${esc(d.name)}`:'—'}</td><td class="c-gold fw-bold">${fC(r.amount)}</td><td class="text-muted">${fD(r.date)}</td><td class="text-muted"><span class="revenue-note-clean">${esc(formatRevenueNote(r.notes||r.source||'—'))}</span></td><td><button class="btn btn-sm" data-karim-action="editRevenue" data-karim-arg0="${r.id}"><i class=ji data-i=pencil></i></button><button class="btn btn-red btn-sm" data-karim-action="deleteRevenue" data-karim-arg0="${r.id}"><i class=ji data-i=trash></i></button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">' + t('rev.noData') + '</td></tr>'}</tbody><tfoot><tr><td colspan="4" class="u-num-l"><i class=ji data-i=banknote></i> ${t('rev.total')}</td><td colspan="3" class="c-gold fw-bold">${fC(totalRev)}</td></tr></tfoot></table></div></div>`;
+const pageBar=`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px"><small class="text-muted">صفحة ${fN(window.revPage)} من ${fN(pages)} — ${fN(ordered.length)} إيراد</small><div style="display:flex;gap:6px"><button class="btn btn-sm" ${window.revPage<=1?'disabled':''} data-karim-action="renderPage" data-karim-set="revPage:1">&laquo; الأولى</button><button class="btn btn-sm" ${window.revPage<=1?'disabled':''} data-karim-action="kdRenderPage">السابقة</button><button class="btn btn-sm" ${window.revPage>=pages?'disabled':''} data-karim-action="kdRenderPage18">التالية</button><button class="btn btn-sm" ${window.revPage>=pages?'disabled':''} data-karim-action="kdRenderPage20" data-karim-arg0="${pages}">الأخيرة &raquo;</button></div></div>`;
+return `<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> ${t('pg.revenues')}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="revPrintFiltered"><i class=ji data-i=printer></i> طباعة</button><button class="btn btn-gold btn-sm" data-karim-action="showAddRevenueModal"><i class=ji data-i=plus></i> ${t('rev.add')}</button></div></div><div class="fr" style="align-items:end;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap"><div class="fg"><label>${t('exp.dept')}</label><select data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterDept:@value,revPage:1"><option value="all" ${window.revFilterDept==='all'?'selected':''}>${t('exp.allDepts')}</option>${deptOpts}</select></div><div class="fg"><label>${t('exp.fromDate')}</label><input type="date" value="${window.revFilterFrom}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterFrom:@value,revPage:1"></div><div class="fg"><label>${t('exp.toDate')}</label><input type="date" value="${window.revFilterTo}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="revFilterTo:@value,revPage:1"></div><div class="fg"><label>بحث</label><input type="text" placeholder="المصدر أو ملاحظات..." value="${esc(window.revFilterSearch)}" data-karim-action="kdIf" data-karim-event="input" data-karim-pass="value" id="revSearchBox"></div>${hasFilter?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="revFilterDept:'all',revFilterFrom:'',revFilterTo:'',revFilterSearch:'',revPage:1"><i class=ji data-i=rotate-ccw></i> ${t('exp.clearFilter')}</button>`:''}<div class="mcard" style="padding:8px 14px;margin-inline-start:auto"><div class="mcard-label" style="font-size:11px">${t('exp.netShown')} (${fN(filtered.length)} ${t('exp.items')})</div><div class="mcard-val c-gold" style="font-size:18px">${fC(totalRev)}</div></div></div>${pageBar}<div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('rev.source')}</th><th>${t('rev.dept')}</th><th>${t('rev.amount')}</th><th>${t('rev.date')}</th><th>${t('rev.notes')}</th><th></th></tr></thead><tbody>${pageRows.map((r,i)=>{const d=STATE.departments.find(x=>x.code===r.deptId);return `<tr><td>${ordered.length-((window.revPage-1)*PAGE_SIZE)-i}</td><td class="fw-bold">${esc(r.source)}</td><td class="c-gold">${d?`${deptIcon(d)} ${esc(d.name)}`:'—'}</td><td class="c-gold fw-bold">${fC(r.amount)}</td><td class="text-muted">${fD(r.date)}</td><td class="text-muted"><span class="revenue-note-clean">${esc(formatRevenueNote(r.notes||r.source||'—'))}</span></td><td><button class="btn btn-sm" data-karim-action="editRevenue" data-karim-arg0="${r.id}"><i class=ji data-i=pencil></i></button><button class="btn btn-red btn-sm" data-karim-action="deleteRevenue" data-karim-arg0="${r.id}"><i class=ji data-i=trash></i></button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">' + t('rev.noData') + '</td></tr>'}</tbody><tfoot><tr><td colspan="4" class="u-num-l"><i class=ji data-i=banknote></i> ${t('rev.total')}</td><td colspan="3" class="c-gold fw-bold">${fC(totalRev)}</td></tr></tfoot></table></div></div>`;
 }
 window.revFilterDept='all';window.revFilterSearch='';;
 // الشهر الحالي افتراضيًا (طلب المالك 2026-10-08) — زر المسح يعرض الكل
 if(!window.revFilterFrom&&!window.revFilterTo){const m=today().slice(0,8)+'01';window.revFilterFrom=m;window.revFilterTo=today();}
 window.whCatFilter='all'; // كان let في قسم الوزن — صار خاصية window لأن المخزن والوزن يتشاركان الفلتر (BRIDGE-012)
-const whShortFilter='all'; // all | out | low — فلتر لوحة النواقص الشاملة
+let whShortFilter='all'; // all | out | low — فلتر لوحة النواقص الشاملة
 async function refreshWhShortages(silent){
 try{
 const rows=await apiFetch('/warehouse/purchase-requests/shortages');
@@ -75,7 +75,7 @@ const refill=all.reduce((s,r)=>s+r.gapVal,0);
 const noCostCount=all.filter(r=>r.noCost&&r.gap>0).length;
 const refillTxt=noCostCount&&refill<=0?'—':fC(refill);
 const rows=whShortRows();
-const fBtn=(k,l)=>`<button class="btn btn-sm ${whShortFilter===k?'btn-gold':''}" onclick="whShortFilter='${k}';renderPage()">${l}</button>`;
+const fBtn=(k,l)=>`<button class="btn btn-sm ${whShortFilter===k?'btn-gold':''}" data-karim-action="kdRenderPage23" data-karim-arg0="${k}">${l}</button>`;
 return `<div class="tbl-wrap" style="border:2px solid var(--gold)">
 <div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> كل الأصناف الناقصة وخلاصة المخزن</h3>
 <div class="u-row-wrap">${fBtn('all',`الكل (${fN(all.length)})`)}${fBtn('out',`نافذ (${fN(out.length)})`)}${fBtn('low',`منخفض (${fN(low.length)})`)}
@@ -497,7 +497,36 @@ function pnlExportExcel(){
   toast('تم تحميل ملف Excel','success');
 }
 window.pnlApplyPreset=pnlApplyPreset; window.pnlRefresh=pnlRefresh; window.pnlPrint=pnlPrint; window.pnlExportExcel=pnlExportExcel;
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdRenderPage() {
+    window.revPage--
+    renderPage();
+}
+
+function kdRenderPage18() {
+    window.revPage++
+    renderPage();
+}
+
+function kdRenderPage20(p0) {
+    window.revPage = p0;
+    renderPage();
+}
+
+function kdIf(p0) {
+    window.revFilterSearch = p0;
+    window.revPage = 1;
+    renderPage();
+    const s=document.getElementById('revSearchBox')
+    if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length);}
+}
+
+function kdRenderPage23(p0) {
+    whShortFilter = p0;
+    renderPage();
+}
 
 
 
-export { renderRevenues, whShortFilter, refreshWhShortages, whPrintShortages, whShortRows, whShortPanel, revPrintFiltered, expPrintFiltered, showAddRevenueModal, addRevenue, editRevenue, updateRevenue, deleteRevenue, renderExpenses, showAddExpenseModal, addExpense, editExpense, updateExpense, deleteExpense, renderCostAnalysis, PNL_PRESETS, pnlPresetRange, pnlActivePreset, pnlLoad, pnlRefresh, pnlCmpChip, renderPnl, pnlApplyPreset, pnlInitCharts, pnlPrint, pnlExportExcel };
+
+export {renderRevenues, whShortFilter, refreshWhShortages, whPrintShortages, whShortRows, whShortPanel, revPrintFiltered, expPrintFiltered, showAddRevenueModal, addRevenue, editRevenue, updateRevenue, deleteRevenue, renderExpenses, showAddExpenseModal, addExpense, editExpense, updateExpense, deleteExpense, renderCostAnalysis, PNL_PRESETS, pnlPresetRange, pnlActivePreset, pnlLoad, pnlRefresh, pnlCmpChip, renderPnl, pnlApplyPreset, pnlInitCharts, pnlPrint, pnlExportExcel, kdRenderPage, kdRenderPage18, kdRenderPage20, kdIf, kdRenderPage23 };;

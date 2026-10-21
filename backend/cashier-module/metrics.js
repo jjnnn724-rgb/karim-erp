@@ -3,6 +3,8 @@
  * Tracks p50/p95/p99 latency + counters.
  */
 
+const { brotliPrometheus } = require('../middleware/brotli-metrics');
+
 const WINDOW_MS = 5 * 60 * 1000;
 const buckets = [10, 25, 50, 100, 200, 500, 1000, 2500];
 
@@ -75,6 +77,9 @@ function prometheusFormat() {
     out += `pos_complete_sale_duration_bucket{le="+Inf"} ${recent.length}\n`;
     out += `pos_complete_sale_duration_count ${recent.length}\n`;
     out += `pos_complete_sale_duration_sum ${recent.reduce((s, v) => s + v, 0)}\n`;
+
+    // Brotli للأصول الساكنة — نص فارغ إن لم يكن الوسيط مُركّبًا
+    out += brotliPrometheus();
     return out;
 }
 
@@ -91,7 +96,7 @@ function registerMetricsRoute(app) {
             return next();
         }
         // Otherwise require JWT + admin/auditor role
-        const auth = jwtAuth(req, res, (err) => {
+        jwtAuth(req, res, (err) => {
             if (err) {return;}
             requireRole('admin', 'auditor')(req, res, next);
         });

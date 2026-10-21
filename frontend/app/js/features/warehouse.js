@@ -384,9 +384,9 @@ function renderProcurement(){
 </div>
 <div class="tbl-wrap">
 <div class="tbl-hd" style="gap:10px;flex-wrap:wrap">
-${tabs.map(([k,label,icon])=>`<button class="btn btn-sm ${PCMT.tab===k?'btn-gold':''}" onclick="PCMT.tab='${k}';renderPage()"><i class=ji data-i=${icon}></i> ${label}</button>`).join('')}
+${tabs.map(([k,label,icon])=>`<button class="btn btn-sm ${PCMT.tab===k?'btn-gold':''}" data-karim-action="kdRenderPage" data-karim-arg0="${k}"><i class=ji data-i=${icon}></i> ${label}</button>`).join('')}
 <div class="fr"></div>
-${PCMT.tab==='invoices'?`<select class="u-input" style="max-width:180px" onchange="PCMT.invFilter=this.value;renderPage()">
+${PCMT.tab==='invoices'?`<select class="u-input" style="max-width:180px" data-karim-action="kdRenderPage53" data-karim-event="change" data-karim-pass="value">
 <option value="all" ${PCMT.invFilter==='all'?'selected':''}>كل الفواتير</option>
 <option value="unpaid" ${PCMT.invFilter==='unpaid'?'selected':''}>غير مسددة</option>
 <option value="partial" ${PCMT.invFilter==='partial'?'selected':''}>مسددة جزئياً</option>
@@ -551,7 +551,7 @@ function pcmtPaymentsTab(){
     if(PCMT.paySupplier) {payments=payments.filter(p=>String(p.supplierId)===String(PCMT.paySupplier));}
     const canDel=STATE.currentUser?.role==='admin';
     return `
-<div class="fr" style="margin-bottom:10px"><select class="u-input" style="max-width:240px" onchange="PCMT.paySupplier=this.value;renderPage()">
+<div class="fr" style="margin-bottom:10px"><select class="u-input" style="max-width:240px" data-karim-action="kdRenderPage55" data-karim-event="change" data-karim-pass="value">
 <option value="">كل الموردين</option>
 ${(STATE.suppliers||[]).map(s=>`<option value="${esc(String(s.id))}" ${String(PCMT.paySupplier)===String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}
 </select></div>
@@ -954,8 +954,8 @@ async function stocktakHtmlNew(){
         <div class="st-scope" data-karim-action="stocktakSetScope" data-karim-args="[&quot;search&quot;]"><i class=ji data-i=search></i><strong>بحث بالاسم/الباركود</strong><span>أصناف مختارة</span></div>
     </div>
     <div class="fr">
-        <div class="fg" id="stScopeCat" style="display:none"><label>الفئة</label><select onchange="STOCK.scope.category=this.value;stocktakScopePreview()"><option value="">— اختر الفئة —</option>${cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select></div>
-        <div class="fg" id="stScopeSearch" style="display:none"><label>بحث</label><input type="text" oninput="STOCK.scope.search=this.value;stocktakScopePreview()" placeholder="اسم الصنف أو الباركود"></div>
+        <div class="fg" id="stScopeCat" style="display:none"><label>الفئة</label><select data-karim-action="kdStocktakScopePreview" data-karim-event="change" data-karim-pass="value"><option value="">— اختر الفئة —</option>${cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select></div>
+        <div class="fg" id="stScopeSearch" style="display:none"><label>بحث</label><input type="text" data-karim-action="kdStocktakScopePreview58" data-karim-event="input" data-karim-pass="value" placeholder="اسم الصنف أو الباركود"></div>
     </div>
     <div class="st-preview" id="stScopePreview"></div>
     <div class="fr">
@@ -1542,7 +1542,7 @@ const n=(STATE.purchaseInvoices||[]).length;
 if(!n){ toast('لا توجد فواتير لحذفها','info'); return; }
 showModal(`<h3><i class=ji data-i=trash></i> حذف كل فواتير الشراء (${fN(n)})</h3>
 <div class="workflow-banner" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.35)"><i class=ji data-i=alert-triangle></i> <strong>عملية نهائية لا يمكن التراجع عنها:</strong> ستُحذف الفواتير الـ ${fN(n)} كلها، وسيتم <strong>عكس كمياتها من المخزون</strong> (الاستلام كان يزيد الرصيد — الحذف ينقصه)، وستُحذف حركات المخزون المرتبطة بها. خذ نسخة احتياطية أولًا من الإعدادات.</div>
-<label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:10px 0"><input type="checkbox" id="clearInvConfirm" onchange="document.getElementById('clearInvBtn').disabled=!this.checked"> أفهم أن هذه العملية نهائية وتعكس كميات المخزون</label>
+<label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:10px 0"><input type="checkbox" id="clearInvConfirm" data-karim-action="kdAct" data-karim-event="change" data-karim-pass="checked"> أفهم أن هذه العملية نهائية وتعكس كميات المخزون</label>
 <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" id="clearInvBtn" disabled data-karim-action="clearAllInvoices"><i class=ji data-i=trash></i> حذف كل الفواتير نهائيًا</button></div>`);
 }
 async function clearAllInvoices(){
@@ -1882,8 +1882,9 @@ const box=document.getElementById('openingExisting'); if(!box) {return;}
 try{
 const res=await apiFetch('/warehouse/opening-balance/report');
 const invoices=Array.isArray(res.invoices)?res.invoices:[];
+window.__openingInvList=invoices;
 if(!invoices.length){ box.innerHTML='<div class="u-t12 text-muted">لا يوجد رصيد افتتاحي مسجل بعد — أدخله في الجدول بالأسفل.</div>'; return; }
-box.innerHTML=`<div class="callout" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><div class="fw-bold u-t13"><i class=ji data-i=history></i> أرصدة افتتاحية مسجلة (${fN(invoices.length)})</div>${invoices.map(inv=>`<div class="u-row-between u-mt8" style="gap:8px;flex-wrap:wrap"><span class="u-t12"><strong>${esc(inv.invoiceNumber)}</strong> · ${esc(inv.date||'')} · ${fN(inv.items.length)} صنف · ${fC(inv.totalAmount)}</span><button type="button" class="btn btn-orange btn-sm" onclick="showOpeningBalanceReplaceGrid(${JSON.stringify(inv).replace(/"/g,'&quot;')})"><i class=ji data-i=rotate-ccw></i> استبدال وإعادة إدخال</button></div>`).join('')}<div class="u-t11 text-muted u-mt8">الاستبدال يلغي القديم ويعكس استلامه فقط — <strong>طلبات الصرف تبقى محسوبة</strong>، ثم تدخل الكميات الصحيحة.</div></div>`;
+box.innerHTML=`<div class="callout" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><div class="fw-bold u-t13"><i class=ji data-i=history></i> أرصدة افتتاحية مسجلة (${fN(invoices.length)})</div>${invoices.map(inv=>`<div class="u-row-between u-mt8" style="gap:8px;flex-wrap:wrap"><span class="u-t12"><strong>${esc(inv.invoiceNumber)}</strong> · ${esc(inv.date||'')} · ${fN(inv.items.length)} صنف · ${fC(inv.totalAmount)}</span><button type="button" class="btn btn-orange btn-sm" data-karim-action="showOpeningBalanceReplaceGrid" data-karim-arg0="${inv.id}"><i class=ji data-i=rotate-ccw></i> استبدال وإعادة إدخال</button></div>`).join('')}<div class="u-t11 text-muted u-mt8">الاستبدال يلغي القديم ويعكس استلامه فقط — <strong>طلبات الصرف تبقى محسوبة</strong>، ثم تدخل الكميات الصحيحة.</div></div>`;
 }catch(e){ box.innerHTML=`<div class="u-t12 text-muted">تعذر تحميل الأرصدة المسجلة: ${esc(e.message||'')}</div>`; }
 }
 function downloadOpeningTemplate(){
@@ -1972,7 +1973,7 @@ const p=openingImportPreview;
 if(!p.fileName){el.innerHTML=''; return;}
 const noExpiry=p.rows.filter(r=>!normExpiryDate(r.expiry)).length;
 const expiryHint=noExpiry?`<div class="text-muted u-t12 u-my8"><i class=ji data-i=info></i> ${noExpiry} صفاً بلا تاريخ صلاحية — سيُحفظ بدون صلاحية (اختياري).</div>`:'';
-el.innerHTML=`<div class="u-t12"><strong>${esc(p.fileName)}</strong> — ${p.rows.length} صف صالح${p.errors.length?`، <span class="c-red">${p.errors.length} صف يحتاج تصحيحًا</span>`:'، جاهز للإضافة'}</div>${expiryHint}${p.errors.length?`<div class="c-red u-t12 u-my8">${p.errors.slice(0,8).map(e=>`الصف ${e.line}: ${esc(e.message)}`).join('<br>')}${p.errors.length>8?'<br>...':''}</div>`:''}<button type="button" class="btn btn-green btn-sm u-mt8" onclick="appendOpeningImportRows()" ${p.rows.length?'':'disabled'}><i class=ji data-i=plus></i> إضافة ${p.rows.length} صف إلى الجرد</button>`;
+el.innerHTML=`<div class="u-t12"><strong>${esc(p.fileName)}</strong> — ${p.rows.length} صف صالح${p.errors.length?`، <span class="c-red">${p.errors.length} صف يحتاج تصحيحًا</span>`:'، جاهز للإضافة'}</div>${expiryHint}${p.errors.length?`<div class="c-red u-t12 u-my8">${p.errors.slice(0,8).map(e=>`الصف ${e.line}: ${esc(e.message)}`).join('<br>')}${p.errors.length>8?'<br>...':''}</div>`:''}<button type="button" class="btn btn-green btn-sm u-mt8" data-karim-action="kdAppendOpeningImportRows" ${p.rows.length?'':'disabled'}><i class=ji data-i=plus></i> إضافة ${p.rows.length} صف إلى الجرد</button>`;
 }
 function appendOpeningImportRows(){
 if(!openingImportPreview.rows.length){toast('لا توجد صفوف صالحة للإضافة','error'); return;}
@@ -2171,7 +2172,8 @@ boxes:it.packagingQty!=null?it.packagingQty:'',category:it.category||'',
 expiry:normExpiryDate(it.expiryDate ?? it.expiry_date) || '',
 oldQty:it.qty,currentQty:it.currentQty,issuedSince:it.issuedSince,itemExists:!!it.itemExists}));
 }
-async function showOpeningBalanceReplaceGrid(inv){
+async function showOpeningBalanceReplaceGrid(id){
+   const inv=(window.__openingInvList||[]).find(x=>String(x.id)===String(id));
 if(!inv||!inv.id){toast('فاتورة غير صالحة','error');return;}
 openingReplace={invoiceId:inv.id,invoiceNumber:inv.invoiceNumber||'',rows:buildOpeningReplaceRows(inv),oldVoided:false};
 if(!openingReplace.rows.length){toast('الفاتورة القديمة بلا بنود صالحة','error');return;}
@@ -2899,4 +2901,38 @@ renderPage();
 }
 
 function __dbgInvoiceState(){ return { len: currentInvoiceItems.length, items: currentInvoiceItems.map(i=>({n:i.itemName,q:i.qty,p:i.price,u:i.unit})) }; }
-export { adminDirectEdit, __dbgInvoiceState, renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whInvClearSearch, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, openingBoxCell, openingRowKey, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, addSecUnitPreset, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, parseOpeningSheetRows, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, normalizeOpeningItems, postOpeningInvoice, loadOpeningExisting, buildOpeningReplaceRows, showOpeningBalanceReplaceGrid, renderOpeningReplaceRows, updateOpeningReplaceRow, confirmOpeningReplace, openingNetModeChanged, openingNetEnabled, openingIssuedFor, refreshOpeningNetCells, resolveOpeningNetItems, saveOpeningNet, mergeItemKey, findDuplicateItemGroups, showMergeDuplicatesModal, mergeDuplicateGroup, showSystemHealth, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem, renderWhInvoices, renderWhMoves, whInvListPrint, whTxListPrint, renderWhReturns, renderWhPrs, showClearAllInvoicesModal, clearAllInvoices };
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdRenderPage(p0) {
+    PCMT.tab = p0;
+    renderPage();
+}
+
+function kdRenderPage53(p0) {
+    PCMT.invFilter = p0;
+    renderPage();
+}
+
+function kdRenderPage55(p0) {
+    PCMT.paySupplier = p0;
+    renderPage();
+}
+
+function kdStocktakScopePreview(p0) {
+    STOCK.scope.category = p0;
+    stocktakScopePreview();
+}
+
+function kdStocktakScopePreview58(p0) {
+    STOCK.scope.search = p0;
+    stocktakScopePreview();
+}
+
+function kdAct(p0) {
+    document.getElementById('clearInvBtn').disabled=!p0
+}
+
+function kdAppendOpeningImportRows() {
+    appendOpeningImportRows();
+}
+
+export {adminDirectEdit, __dbgInvoiceState, renderWarehouse, whGoSec, WHINV, whInvSearchInput, whInvFilterChange, whInvPage, whInvClearSel, whInvClearSearch, whSelToggle, whSelPage, whInvFetch, getPaymentMethodLabel, whBulkDelete, whPrintInventory, PCMT, PCMT_CAN_WRITE, PCMT_CAN_PAY, PCMT_PAY_LABELS, pcmtStatusBadge, pcmtInvoiceSupplier, pcmtInvoiceRemaining, refreshProcurementData, renderProcurement, pcmtRerenderSuppliers, openingBoxCell, openingRowKey, pcmtSuppSearchInput, pcmtSuppTaxChange, pcmtSuppPage, pcmtFetchSuppliers, pcmtTaxStatusChanged, pcmtReadTaxStatus, pcmtTaxBadge, pcmtInvoicesTab, pcmtSuppliersTab, pcmtPaymentsTab, showSupplierModal, saveSupplier, toggleSupplier, deleteSupplier, showPaymentModal, pcmtUnpaidOptions, pcmtOnSupplierChange, savePayment, payInvoiceFull, deletePayment, openStatement, loadStatement, pcmtStatementHtml, printStatement, STOCK, STOCK_CAN_WRITE, stocktakStatusBadge, stocktakChipsHtml, stocktakClientSummary, showInventoryAuditModal, stocktakSetTab, stocktakRender, stocktakScopeItems, stocktakScopePreview, stocktakSetLocation, stocktakLoadLocations, stocktakSetScope, stocktakHtmlNew, stocktakStartSession, showFiscalYearModal, closeFiscalYear, createNextFiscalYear, stocktakOpenSession, stocktakRefreshDetail, stocktakCountFilter, stocktakRowHtml, stocktakRowsTbodyHtml, stocktakStaleBanner, stocktakHtmlCount, stocktakOnSearch, stocktakToggleDiffs, stocktakScanCount, stocktakCountChanged, stocktakSaveCount, stocktakApplyItem, stocktakApplyProgress, stocktakClearCount, stocktakSavePending, stocktakSubmitSession, stocktakApproveSession, stocktakCancelSession, stocktakCancelById, stocktakPrintById, stocktakPrint, stocktakHtmlHistory, inventoryUnitOptions, showAddItemModal, scanForItemBarcodeField, scanToAddInventoryItem, showQuickStockInModal, confirmQuickStockIn, addInventoryItem, editItem, updateInventoryItem, deleteItem, addSecUnitRow, addSecUnitPreset, collectSecUnits, currentInvoiceItems, showAddPurchaseInvoiceModal, pcmtInvoiceSupplierChanged, pcmtSupplierLinkHint, pcmtSupplierQuickLink, pcmtInvoicePaidChanged, addInvoiceItemRow, removeInvoiceItemRow, updateInvoiceItem, updateInvoiceTotal, focusInvoiceEntryField, renderInvoiceItemsList, savePurchaseInvoice, openingRows, openingImportPreview, openingSupplier, showOpeningBalanceModal, downloadOpeningTemplate, openingHeaderKey, parseOpeningSheetRows, previewOpeningExcel, renderOpeningImportPreview, appendOpeningImportRows, renderOpeningRows, isOpeningMeatRow, updateOpeningBoxesVisibility, syncOpeningRowWithInventory, addOpeningRow, removeOpeningRow, updateOpeningRow, updateOpeningTotal, saveOpeningBalance, normalizeOpeningItems, postOpeningInvoice, loadOpeningExisting, buildOpeningReplaceRows, showOpeningBalanceReplaceGrid, renderOpeningReplaceRows, updateOpeningReplaceRow, confirmOpeningReplace, openingNetModeChanged, openingNetEnabled, openingIssuedFor, refreshOpeningNetCells, resolveOpeningNetItems, saveOpeningNet, mergeItemKey, findDuplicateItemGroups, showMergeDuplicatesModal, mergeDuplicateGroup, showSystemHealth, viewPurchaseInvoice, voidPurchaseInvoice, printPurchaseInvoice, showImportItemsCatalogModal, downloadItemsCatalogTemplate, previewCatalogFile, importItemsCatalog, showBulkInventoryImportModal, downloadInventoryTemplate, parseInventoryImportCell, parseInventoryImportNumber, readInventoryImportRows, inventoryImportRowsFromSheet, previewInventoryFile, importBulkInventory, renderShelves, showAddShelfModal, addShelf, editShelf, updateShelf, deleteShelf, currentWeight, weightUnit, renderWeight, adjustWeight, resetWeight, setWeightUnit, recordWeight, recordWeightToItem, confirmRecordWeightToItem, renderWhInvoices, renderWhMoves, whInvListPrint, whTxListPrint, renderWhReturns, renderWhPrs, showClearAllInvoicesModal, clearAllInvoices, kdRenderPage, kdRenderPage53, kdRenderPage55, kdStocktakScopePreview, kdStocktakScopePreview58, kdAct, kdAppendOpeningImportRows };;

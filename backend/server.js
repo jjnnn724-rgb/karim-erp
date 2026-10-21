@@ -706,6 +706,8 @@ app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, re
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────
 const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
+// ─── مركز التحكم بالسيرفر: بروكسي محروس إلى الخدمة المرافقة (مدير فقط) ──
+require('./server-control-routes').register(app);
 // ─── محرك واتساب (Baileys — معطّل حتى WHATSAPP_ENABLED=true) ─────────────
 // محرك واتساب تحميله محمي: بيئة تشغيل لا تدعم require(ESM) (baileys) —
 // مثل Node المدمج في Electron — تعطل تحميله يجب ألا يُسقط الخادم كله.

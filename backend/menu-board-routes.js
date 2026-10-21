@@ -156,7 +156,7 @@ function cleanBuffetLayout(value) {
     if (value === undefined) {return emptyBuffetLayout();}
     let layout = value;
     if (typeof layout === 'string') {
-        try { layout = JSON.parse(layout); } catch (_) { throw new Error('INVALID_BUFFET_LAYOUT'); }
+        try { layout = JSON.parse(layout); } catch (e) { throw new Error('INVALID_BUFFET_LAYOUT', { cause: e }); }
     }
     if (!layout || typeof layout !== 'object' || Array.isArray(layout)) { throw new Error('INVALID_BUFFET_LAYOUT'); }
     if (layout.enabled !== undefined && typeof layout.enabled !== 'boolean') { throw new Error('INVALID_BUFFET_ENABLED'); }
@@ -540,7 +540,7 @@ function register(app, opts = {}) {
                 }
                 mealCategories[key] = selected ? cleanText(selected, 40) : null;
             }
-            let customBackground = b.custom_background === undefined ? current.custom_background : b.custom_background;
+            const customBackground = b.custom_background === undefined ? current.custom_background : b.custom_background;
             if (typeof customBackground !== 'string' || customBackground.length > MAX_BACKGROUND_LENGTH ||
                 (customBackground && !/^data:image\/jpeg;base64,[A-Za-z0-9+/]*={0,2}$/.test(customBackground))) {
                 return res.status(422).json({ error: 'INVALID_BACKGROUND_IMAGE', message: 'صورة الخلفية غير صالحة أو حجمها أكبر من المسموح' });
@@ -620,6 +620,7 @@ function register(app, opts = {}) {
             const dow = Number(d.day_of_week);
             if (!Number.isInteger(dow) || dow < 0 || dow > 6) {return res.status(422).json({ error: 'INVALID_DAY', message: 'اليوم من 0 (الأحد) إلى 6 (السبت)' });}
             const items = (Array.isArray(d.items) ? d.items : []).slice(0, 120).map(it => ({
+                catalog_id: Number.isSafeInteger(Number(it.catalog_id)) && Number(it.catalog_id) > 0 ? Number(it.catalog_id) : null,
                 name: cleanText(it.name, 120),
                 name_en: cleanText(it.name_en, 120),
                 price: Math.max(0, Math.min(100000, Number(it.price) || 0)),

@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('./cashier-module/db-pool');
-const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { jwtAuth } = require('./cashier-module/jwt-middleware');
 // M20: riyadhToday for business dates
 const { riyadhToday } = require('./riyadh-date');
 
@@ -72,10 +72,6 @@ function isPrivileged(user) { return ['admin', 'hr', 'manager'].includes(user?.r
 // Stage enforcement is stricter: only a general admin may act on any stage;
 // 'hr' and 'manager' must follow the stage chain like everyone else
 // (previously they bypassed every stage, including the general-manager stage).
-function canActOnStage(user, stage) {
-  if (user?.role === 'admin') {return true;}
-  return (STAGE_ROLES[stage] || []).includes(user?.role);
-}
 // ─── تدقيق أمني جولة 2: منع التصديق الذاتي في سلسلة الإجازات ───
 // مدير/hr يقدّم إجازة لنفسه (isPrivileged يسمح بالطلب لأي موظف) ثم يعتمدها
 // بنفسه في مرحلته — قرار مالي (راتب إجازة) بلا مراجعة. صاحب الطلب لا
@@ -122,7 +118,7 @@ router.get('/leave-workflow', jwtAuth, async (req, res) => {
         ${filter}
        ORDER BY lr."requestDate" DESC NULLS LAST,lr.id DESC`, params)).rows;
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'LEAVE_WORKFLOW_LIST_FAILED', message: 'تعذر جلب طلبات الإجازة' }); }
+  } catch (_) { res.status(500).json({ error: 'LEAVE_WORKFLOW_LIST_FAILED', message: 'تعذر جلب طلبات الإجازة' }); }
 });
 
 router.get('/leave-workflow/:id', jwtAuth, async (req, res) => {
@@ -143,7 +139,7 @@ router.get('/leave-workflow/:id', jwtAuth, async (req, res) => {
     }
     row.events = (await pool.query('SELECT * FROM leave_approval_events WHERE workflow_id=$1 ORDER BY created_at ASC,id ASC', [row.workflow_id])).rows;
     res.json(row);
-  } catch (e) { res.status(500).json({ error: 'LEAVE_WORKFLOW_DETAILS_FAILED', message: 'تعذر جلب تفاصيل طلب الإجازة' }); }
+  } catch (_) { res.status(500).json({ error: 'LEAVE_WORKFLOW_DETAILS_FAILED', message: 'تعذر جلب تفاصيل طلب الإجازة' }); }
 });
 
 router.post('/leave-requests', jwtAuth, async (req, res) => {

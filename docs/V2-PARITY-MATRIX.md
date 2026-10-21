@@ -1,9 +1,17 @@
 # مصفوفة التكافؤ V2 ↔ الواجهة القديمة
 
-**التاريخ:** 2026‑10‑17 · **الفرع:** `refactor/esm-migration`
+**التاريخ:** 2026‑10‑17 · **آخر مراجعة:** تنفيذ وإثبات البنود المشتركة لـ#31 · **الفرع:** `refactor/esm-migration`
 **المصدر:** جرد آلي من شجرة المستودع (لا من الماستر برومبت ولا من `MIGRATION.md`)،
 مع تصنيف يدوي لكل فجوة. البند المرجعي: قرار المالك 2026‑10‑17 في
 `docs/V2-COMPLETION-CONTRACT.md`.
+
+**تحديث 2026‑10‑20 (مراجعة الكود لا الورق):** صُحِّحت بنود كانت أقدم من الكود:
+`#27` مغلق (الأبواب الأربعة مربوطة)، `departments` و`sales-analyzer` و`received-analyzer`
+مكتملة، `wh-vs-pos` أُكملت أدواته (فترات/بحث/تحديث تلقائي)، `kitchen` نُقلت إليه
+بطاقات التكلفة، وزرّ «فاتورة شراء جديدة» صار ظاهرًا افتراضيًا. أُغلقت البنود
+المشتركة في `#31`، وأُكملا `#28` YaraSoft و`#29` WhatsApp على مستوى الكود
+والعقود (من دون اتصال حيّ بالخدمتين)؛ المتبقي الفعلي `#30` POS إلى حين إتمام
+القبول الميداني.
 
 ---
 
@@ -49,13 +57,13 @@
 | `dashboard` | ✅ | `screens/dashboard.js` + لوحات الأدوار (`role-dashboard.js`) + لجنة `briefing` داخلية (`preview.js:2357`). لا صفحة `briefing` مستقلة في القديم. |
 | `revenues` | ✅ | `screens/revenues.js` · `data/finance-repo.js` |
 | `expenses` | ✅ | `screens/expenses.js` · نفس الـrepo |
-| `cost-analysis` | ✅ | `screens/cost-analysis.js` |
+| `cost-analysis` | ✅ | `screens/cost-analysis.js` — مطابقة لحسابات القديم؛ توضح الشاشة حد القراءة (أحدث 8,000 حركة لكل سجل) حتى لا توحي باكتمال الفترات الأقدم. |
 | `pnl` | ✅ | `screens/pnl.js` · `/finance/pnl` (`finance-repo.js:77`) |
 | `cfo` | ✅ | `screens/cfo.js` + `data/cfo-repo.js` — **31/31** بابًا مطابقًا لـ`features/cfo.js` (قيود، ميزان، موازنة، أصول، فترات، إغلاق يوم/وردية…) |
-| `departments` | ◐ | CRUD + تفكيك + تفاصيل داخلية ✅ (`screens/departments.js:29`) + بطاقات ثيمية بلوحة روابط الكاشير خلف `v2deptcashier` (`9fdf8f3` · جدول 103) — **ناقص**: منتقي كاشير يارا سوفت الحي (`features/departments.js:162` على `/yara-reports/cashiers-live` و`cashiers-today`) وبطاقة ترحيل المطبخ (`:45`) → #31 |
+| `departments` | ✅ | CRUD + تفكيك + تفاصيل داخلية ✅ (`screens/departments.js:29`) + بطاقات ثيمية بروابط الكاشير؛ إيراد الشهر الفعلي وصافي يارا سوفت للكاشيرات 1/3/4/5/9، بتحديث 10 ثوانٍ وتنبيه عند غياب الإسناد (من دون تخمين أو عرض صفر عند فشل القراءة). الكاشير 2 مستبعد كما في تقارير يارا سوفت. بطاقة ترحيل المطبخ انظر `kitchen` — صارت ✅ 2026‑10‑20. |
 | `departmentDetail` | ✅ | لم تُبنَ صفحة مستقلة؛ التفاصيل داخل شاشة الأقسام بنفس الحقول (`screens/departments.js:231-282`). المفتاح القديم يبقى عنوانًا فقط. |
-| `warehouse` | ◐ | سجل المخزون + وارد/استيراد يدوي + حذف (`screens/warehouse.js`)، واستيراد Excel جزئي (شبكة يدوية بدل ملف `.xlsx`) — **ناقص**: الرصيد الافتتاحي السريع ووضع «الصافي بعد المنصرف» (`features/warehouse.js:1785-1805`، الباب `/warehouse/issued-totals`) → #31 |
-| `wh-invoices` | ✅ | `screens/wh-invoices.js` + `data/purchase-invoices-repo.js` (قراءة) + `purchase-invoices-write-repo.js` (كتابة خلف علم): إنشاء/تعديل في نفس الصفحة خلف `v2invoicecreate`، وتسديد كامل؛ الإلغاء والحذف الجماعي في شاشة ٠٦ خلف `v2invoicevoid` |
+| `warehouse` | ✅ | سجل المخزون والوارد والاستيراد والحذف؛ الرصيد الافتتاحي متعدد الأصناف مع قالب Excel/CSV ومعاينة الصفوف والتحقق من الصلاحية والكراتين، والفاتورة تُسجَّل آجلة بلا حركة نقدية. للأدمن فقط: وضع الصافي يجلب `/warehouse/issued-totals`، يمنع الصافي السالب، ويعدّل المخزن الرئيسي مع إبقاء أرصدة الأقسام. زر «مسح بضاعة» يفعّل الشاشة على الجهاز عند اختياره؛ الكاميرا الخلفية تدعم الباركود وQR، وقارئ USB/QR يعمل كإدخال لوحة مفاتيح. الصرف أو البحث اليدوي ينشئ إذنًا معلّقًا عبر مسار الاعتماد القائم. `screens/warehouse.js` + `data/opening-balance-repo.js`؛ اختبارات `v2-opening-balance` و`v2-scan` |
+| `wh-invoices` | ✅ | `screens/wh-invoices.js` + `data/purchase-invoices-repo.js` (قراءة) + `purchase-invoices-write-repo.js` (كتابة): إنشاء/تعديل في نفس الصفحة — الزر **ظاهر افتراضيًا** (`?v2invoicecreate=0` يُخفيه، قرار المالك 2026‑10‑20)، وتسديد كامل؛ الإلغاء والحذف الجماعي في شاشة ٠٦ خلف `v2invoicevoid` |
 | `wh-moves` | ✅ | `screens/wh-moves.js` |
 | `wh-returns` | ✅ | `screens/wh-returns.js` + `warehouse-repo.js:244-249` |
 | `wh-prs` | ✅ | `screens/wh-prs.js` + `data/pr-repo.js` (11 بابًا: إنشاء/إلغاء/اعتماد شيف/مدير) |
@@ -65,7 +73,7 @@
 | `shelves` | ✅ | `screens/shelves.js` |
 | `weight` | ✅ | `screens/weight.js` |
 | `dispatch` | ✅ | `screens/dispatch.js` + `data/dispatch-repo.js` (12 بابًا: اعتماد مخزن/شيف/رفض/استلام/تعديل) + طباعة إذن |
-| `kitchen` | ◐ | `screens/kitchen.js` + `data/kitchen-repo.js` (اطّلاع، إنتاج، مستندات، جرد، تحويلات) — **ناقص**: بطاقات التكلفة (الصرف الفعلي مقابل الإيراد + طباعة) `features/kitchen.js:1495` → #31 |
+| `kitchen` | ✅ | `screens/kitchen.js` + `data/kitchen-repo.js` (اطّلاع، إنتاج، مستندات، جرد، تحويلات) + **بطاقات التكلفة** (الصرف الفعلي مقابل الإيراد + طباعة) — `fetchKitchenCostCards` على `/kitchen/production/cost-cards`، منقولة 2026‑10‑20 ومثبَّتة بـ`tests/v2-kitchen-cost-cards.test.js` |
 | `recipes` | ✅ | `screens/recipes.js` — BOM، مكوّنات المنتج، الوحدات، مزامنة الكاشير، تكلفة السطر (`data/recipes-repo.js` + `recipes-edit-repo.js`) |
 | `reports` | ◐ | `screens/reports.js` — تقارير المبيعات/الأقسام/الكاشير/المطبخ/المرتجعات/المخزن/HR + Yara departments/cashier-items + طباعة الصفحة الحالية. **ناقص**: عارض التقرير داخل التطبيق (WebView) + تصدير Excel في بعض الشاشات → #26 |
 | `settings` | ✅ | `screens/settings.js` — يغطي أبواب `settings-users.js` (23) عبر `settings-repo.js` و`users-repo.js`: ZATCA (طابور/retry/CSR/تفعيل)، KOT، البوابة (أجهزة/محاولات/وجوه)، نسخ واستعادة، reset-all. |
@@ -76,21 +84,21 @@
 | `leaves` | ✅ | `screens/leaves.js` |
 | `attendance` | ✅ | `screens/attendance.js` + `data/attendance-repo.js` (فترة/مسح/تجاوزات/تحليلات شيفتات) |
 | `zkteco` | ✅ | `screens/zkteco.js` + `data/zkteco-repo.js` (16 نداءً — تغطية P2‑2) |
-| `yarasoft` | ◐ | `screens/yarasoft.js` **قراءة فقط**: الحالة + سجل الاستيراد (`portal-repo.js`). القديم يستدعي **32 بابًا** (مزامنة Oracle، مرايا، أقسام، quarantines، reprocess) → #28 |
-| `cashier-monitor` | ✅ | `screens/cashier-monitor.js` — مرآة كاملة لـ`features/cashier-monitor.js` (ملخص/أوردرات/تفاصيل/تصدير) |
-| `sales-analyzer` | ◐ | `screens/sales-analyzer.js` — جدول + طباعة + تصدير Excel للتبويب النشط بأعمدة القديم (`9438a9b`). **ناقص**: بحث عربي متسامح، تفاصيل/طباعة أوردر (`/yara-reports/order-detail/:docNo`) → #27 |
-| `received-analyzer` | ◐ | `screens/received-analyzer.js` — جدولان + طباعة + مصنف Excel بثلاث أوراق بأعمدة القديم (`9438a9b`). **ناقص**: جدول صفوف الاستهلاك (الخادم يعيدها وV2 يعرض ملخصًا فقط)، تفاصيل/طباعة إذن صرف (`/yara-reports/received-dispatch-detail/:id`) → #27 |
-| `wh-vs-pos` | ◐ | `screens/wh-vs-pos.js` — جدول + طباعة + Excel بأعمدة القديم (`9438a9b`). **ناقص**: فترات جاهزة، بحث صنف باقتراحات + «المختلفة فقط»، تحديث تلقائي 60 ثانية، ملخص/تنبيهات/رسم القديم → #27 |
+| `yarasoft` | ✅ | `screens/yarasoft.js` + `data/yarasoft-repo.js`: أبواب الحالة والسجل وإعادة المعالجة والمراجعة وOracle ومرآة الكاشير وربط المنتجات/الأقسام وجودة البيانات؛ صلاحيات القراءة والكتابة متمايزة. 32 بابًا موصولة ومغطاة بـ`tests/v2-yarasoft.test.js`. لم يُختبر اتصال Oracle حيًّا. |
+| `cashier-monitor` | ✅ | `screens/cashier-monitor.js` — قراءة مباشرة للملخص وفواتير الكاشيرات 1/3/4/5/9 من Oracle، تفاصيل الفاتورة، وطباعة/Excel؛ تحديث 10 ثوانٍ عبر `live=1`، للقراءة فقط |
+| `sales-analyzer` | ✅ | `screens/sales-analyzer.js` — جدول + طباعة + تصدير Excel للتبويب النشط بأعمدة القديم (`9438a9b`) + بحث عربي متسامح (`arSearchIncludes`) + تفاصيل أوردر وطباعة إيصال (`/yara-reports/order-detail/:docNo` — `printOrderReceipt`) |
+| `received-analyzer` | ✅ | `screens/received-analyzer.js` — جدولان + جدول صفوف الاستهلاك (`/item-outflow`) + طباعة + مصنف Excel بثلاث أوراق بأعمدة القديم (`9438a9b`) + تفاصيل/طباعة إذن صرف (`/yara-reports/received-dispatch-detail/:id` — `printDispatchReceipt`) |
+| `wh-vs-pos` | ✅ | `screens/wh-vs-pos.js` — جدول + طباعة + Excel بأعمدة القديم (`9438a9b`) + فترات جاهزة (اليوم/أمس/7/30) + بحث صنف باقتراحات `/item-suggest` (آخر كتابة تفوز) + «المختلفة فقط» + تحديث تلقائي 60 ثانية بعدّاد — منقولة ومثبَّتة 2026‑10‑20 (`tests/v2-wh-vs-pos-controls.test.js`) |
 | `yara-daily-locks` | ✅ | `screens/daily-locks.js` + `data/oracle-repo.js:48` |
 | `oracle-data` | ✅ | `screens/oracle-data.js` + `data/oracle-repo.js` |
-| `whatsapp` | ◐ | `screens/whatsapp.js` — الحالة + الرسائل فقط. القديم يستدعي **19 بابًا** (QR/إقران/قواعد/حملات/outbox/قوالب/query…) → #29 |
+| `whatsapp` | ✅ | `screens/whatsapp.js` + `data/whatsapp-repo.js`: حالة/QR/إقران/وارد وصادر/قوالب/حملات/قواعد/مديرون/أتمتة/سجلات/استعلام؛ ضوابط الدور والتأكيد وموافقة مستلمي الحملات. 19 بابًا موصولة ومغطاة بـ`tests/v2-whatsapp.test.js`. لم تُختبر جلسة WhatsApp أو QR حية. |
 | `employee-portal` | ✅ | `screens/employee-portal.js` — البصمة الذاتية وGPS والوجه وشريط الجوال السفلي المتجاوب |
 | `veg-requests` | ✅ | `screens/veg-requests.js` + `data/veg-repo.js` (طلب/تسعير/طباعة/استلام/إلغاء/كتالوج) |
 | `branches` | ✅ | `screens/branches.js` + `data/branches-repo.js` |
 | `hr-departments` | ✅ | `screens/hr-departments.js` |
 | `payroll` | ✅ | `screens/payroll.js` + `data/payroll-suite.js` |
 | `menu-board` | ✅ | `screens/menu-board.js` — تضمين `/app/menu-admin.html` حرفيًّا كالقديم (`page-router.js:123-130`) + لوحة V2 خلف `?v2board` |
-| `pos` | 🔗 | مدخل V2 (`screens/pos-entry.js`) يفتح `/app/pos.html` بمرساة `noopener` — **إعادة البناء داخل V2 بند مستقل** (#30) |
+| `pos` | ◐ | `screens/pos-entry.js` + `data/pos-v2-repo.js`: نقطة بيع مدمجة تغطي الورديات والسلة/التعليق/الدفع/الإيصال وسجل الفواتير، خلف `embeddedPos: false`؛ يبقى `/app/pos.html` مسار الإنتاج. **غير مقبول ميدانيًا بعد**، وما زالت وظائف البوفيه وKOT والإقفال الحراري/اعتماد الأجهزة خارج النطاق الجاري → #30 |
 | `query` | ✅ | **بُني 2026‑10‑19** — `screens/inventory-inquiry.js` + `data/inventory-inquiry-repo.js` فوق `backend/inventory-inquiry.js` (`/items` · `/item/:id` · `/departments`)؛ والقديم صار له صفحة حقيقية في `page-router.js` و`features/inventory-inquiry.js`. للأدوار التي تحمل المفتاح: `admin` و`sous_chef` فقط بقرار المالك. |
 | `professional` | ✅ | **بُني 2026‑10‑19** — `screens/inventory-inquiry-pro.js` يعرض `data-display/item-dossier.js` (ملف صنف كامل: كراسي، فواتير شراء، أقسام، دُفعات، أسطر POS) بلا شاشة ميتة في `screens/`. نفس الأبواب ونفس القيود في القديم. |
 
@@ -104,14 +112,14 @@
 | عارض التقارير داخل التطبيق | `report-viewer.js` (`openInAppReport` → iframe `srcdoc`) مستخدم في 13 وحدة | `report-viewer.js` + 10 شاشات طباعة + `erp-report-viewer.css`، حوار Escape/تركيز، خلف لا شيء لأنه عرض فقط | ✅ | مغلق — `350bc3e` · `v2-report-viewer-2026-10-17` · 20 اختبارًا ودليل 1180/360 |
 | الاستيراد الجماعي للموظفين/المستخدمين | `bulk-import.js` (معاينة، توليد يوزر/كلمة مرور، بصمات، تصدير، طباعة) | `bulk-import-wizard.js` + `bulk-import.js` + `bulk-import-repo.js` خلف `?v2bulkimport` | ✅ | مغلق — `c3556d9` · 20 اختبارًا ودليل 1180/360 |
 | استيراد المخزون من Excel | `warehouse.js:2396-2567` (ملف `.xlsx` + قائمة أصناف) | زر «استيراد Excel» + «كتالوج الأصناف» بجانب «إدخال يدوي» (`screens/warehouse.js`) | ✅ | مغلق — `ad01b05` · `v2-warehouse-excel-2026-10-17` · 16 اختبارًا ودليل 1180/360 |
-| تاريخ الصلاحية في مداخل المخزون | لا إلزام: صنفٌ يدخل برصيد بلا دُفعة مؤرَّخة | `backend/expiry-policy.js` حاكم — `422 EXPIRY_DATE_REQUIRED`/`INVALID_EXPIRY_DATE` في فاتورة الشراء إنشاءً وتعديلًا، والاستلام المباشر، واستيراد Excel، و`POST /api/inventory` برصيد افتتاحي؛ `data/expiry-policy.js` ينسخ النص نفسه للواجهة في محرر الفواتير وشاشة المسح، والحركات الداخلية تحمل `latestExpiryFor` بلا اختراع تاريخ | ✅ | مغلق — `942f448` · 299 اختبارًا على شجرة الفهرس · بلا HTTP حيّ ولا ترحيل مطبَّق |
+| تاريخ الصلاحية في مداخل المخزون | اختياري دائمًا (سياسة 2026-10-20): يُقبل الغياب ويُحفظ `null`، ويُرفض فقط `INVALID_EXPIRY_DATE` | `backend/expiry-policy.js` حاكم — الغياب مقبول والتاريخ الفاسد فقط يُرفض في فاتورة الشراء إنشاءً وتعديلًا، والاستلام المباشر، واستيراد Excel، و`POST /api/inventory` برصيد افتتاحي؛ `data/expiry-policy.js` ينسخ النص نفسه للواجهة في محرر الفواتير وشاشة المسح، والحركات الداخلية تحمل `latestExpiryFor` بلا اختراع تاريخ. لا يوجد مفتاح إلزام. | ✅ | مغلق — محدَّث 2026-10-20 · اختبارات الصلاحية والواجهة خضراء |
 | شريط الجوال السفلي | `mobile-shell.js` — `mobileNavItems()`، يظهر ≤900px، أدوار محددة | `mobile-shell.js` + `erp-mobile-shell.css` (شريط 5 أزرار، بصمتي، والمزيد) | ✅ | مغلق — `v2-mobile-shell` · 9 اختبارات ودليل 360/900 |
 | بحث الأصناف الذكي | `smart-item-search.js` — تطبيع عربي/همزات، تنقل ↑↓، يعبّئ الوحدة والسعر | `item-search.js` + `invoice-editor.js` داخل شاشة ٠٨ خلف `v2invoicecreate` — التطبيع والترتيب والتنقل ↑↓/Enter/Esc وتعبئة الوحدة/السعر نفسها | ✅ | مغلق — `9b4ff17` · `v2-invoice-create-2026-10-17` · 32 اختبارًا ودليل 1180/360 |
 | ملف الصنف المشترك | `features/inventory-inquiry.js` (`iqOpenCard`) يبني البطاقة في DOM القديم | `data-display/item-dossier.js` — قطعة عرض يستدعيها مكانان (المحرك والبطاقة الفاخرة)، فلا نسخة ثانية ولا شاشة ميتة في `screens/`؛ يُقيَّد العرض بـ `min-inline-size:0` لأبناء الشبكة كي لا يمدّد جدولٌ عريض الصفحة على الهاتف | ✅ | مغلق — 2026‑10‑19 · `tests/v2-inventory-inquiry.test.js` (21) ودليل 1180/360 |
 | بطاقة الموظف وQR | `smart-card.js` | `employee-card-repo.js` + شاشة الموظفين (P0‑5) | ✅ | — |
-| شارة حالة الخادم | `main.js:204` (`/system/server-info`، محدّث/قديم) | مصابيح صحة فقط (`/health`) | ⬜ | #31 |
-| قيود قاعدة البيانات للعميل | `db-constraints-client.js` (`/api/schema/constraints`) | لا شيء | ⬜ | تحقق عميل استرشادي؛ الخادم يبقى الحكم → #31 |
-| بديل realtime بالاستقصاء | `realtime.js` (`/api/rt/events`، `/ack`، `/version`) | socket.io فقط (`v2/realtime.js`) | ⬜ | مسار احتياطي عند حجب websocket → #31 |
+| شارة حالة الخادم | `main.js:204` (`/system/server-info`، محدّث/قديم) | `shell-repo.js` + `shell-extras.js`؛ تحديث كل 5 دقائق وحالة خطأ صريحة | ✅ | حالة الكود ووقت التشغيل وآخر تعديل |
+| قيود قاعدة البيانات للعميل | `db-constraints-client.js` (`/api/schema/constraints`) | `data/db-constraints-repo.js` + `window.DBConstraintsV2` | ✅ | تحقق استرشادي للأدمن فقط (الباب محمي كذلك في الخادم)؛ الخادم يبقى الحكم |
+| بديل realtime بالاستقصاء | `realtime.js` (`/api/rt/events`، `/ack`، `/version`) | `v2/realtime.js`؛ polling احتياطي عند تعذر الاتصال، استعادة متسلسلة وACK وفحص التوافق؛ المحادثة المفتوحة تستعلم عن سجلها عند انقطاع socket | ✅ | فجوة كبيرة تُطلق إعادة تحميل الشاشة الحالية؛ لا تغيير لمسارات الخادم |
 | الدخول/الخروج/كلمة المرور | `auth-navigation.js` | `screens/login.js` + `shell-extras.js` + `shell-repo.js` | ✅ | نفس الأبواب والحقول |
 | اللغة والاتجاه والثيم | `karim-i18n.js` + theme | `shell-extras.js` + `theme.js` | ✅ | نفس مفتاح `karim_lang` |
 
@@ -121,7 +129,7 @@
 
 | الوحدة | أبواب الخادم | ما يستدعيه القديم | ما يغطيه V2 | الفجوة | المهمة |
 |---|---|---|---|---|---|
-| تقارير Yara | **23** (`backend/yarasoft/`) | **14** بابًا | **10** (`yara-reports-repo.js` 7 + `reports-extra.js:174/185/198` 3) + `daily-locks` من `oracle-repo` | **4**: `cashiers-live`, `cashiers-today`, `order-detail/:docNo`, `received-dispatch-detail/:id` | #27 |
+| تقارير Yara | **23** (`backend/yarasoft/`) | **14** بابًا | **14** (`yara-reports-repo.js` 11 + `reports-extra.js:174/185/198` 3) + `daily-locks` من `oracle-repo` | **0** — الأبواب الأربعة الباقية (`cashiers-live`, `cashiers-today`, `order-detail/:docNo`, `received-dispatch-detail/:id`) مربوطة في `departments`/`sales-analyzer`/`received-analyzer` | ✅ #27 مغلق |
 | YaraSoft | **60** في 20 ملفًا | **32** | **3**: `status`, `log`, `sections/invoice-detail` | 29 بابًا + كتابات خلف أعلام مستقلة | #28 |
 | WhatsApp | **60** | **19** | **2**: `status`, `messages` | 17 بابًا + QR/إقران حيّ + كتابات خلف أعلام | #29 |
 | POS | تطبيق مستقل + `/api/pos/*` | كل `pos.js`/`pos-orders.js` | 🔗 مدخل فقط | إعادة بناء كاملة (بند #30، `pos.html` بلا مسّ) | #30 |
@@ -153,12 +161,12 @@
 
 | المهمة | المحتوى | تُغلق عندما |
 |---|---|---|
-| #26 الأسطح المشتركة | عارض تقارير V2 + تصدير Excel (wh-vs-pos والتحليلان) + استيراد المخزون وكتالوج الأصناف + معالج الاستيراد الجماعي للموظفين/المستخدمين + بحث الأصناف الذكي + شريط الجوال السفلي | ✅ مغلق بالكامل — 6/6 سطوح منفّذة ومختبرة ومطابقة (`c3556d9` + `v2-mobile-shell`) |
+| #26 الأسطح المشتركة | عارض تقارير V2 + طباعة V2 بشعار الإعدادات وتنسيق موحّد (دون تغيير طباعة الواجهة القديمة) + تصدير Excel (wh-vs-pos والتحليلان) + استيراد المخزون وكتالوج الأصناف + معالج الاستيراد الجماعي للموظفين/المستخدمين + بحث الأصناف الذكي + شريط الجوال السفلي | ✅ مغلق بالكامل — 6/6 سطوح منفّذة ومختبرة ومطابقة (`c3556d9` + `v2-mobile-shell`) |
 | #27 تقارير Yara | الأبواب الأربعة الناقصة + فرز 23 بابًا: مستهلك/غير مستهلك | 14/14 مما يستدعيه القديم + قرار موثّق للباقي |
-| #28 YaraSoft | 29 بابًا خلف واجهة V2، قراءة أولًا ثم كتابات بأعلام مستقلة | 32/32 + اختبارات + دليل |
-| #29 WhatsApp | 17 بابًا + QR/إقران + كتابات بأعلام مستقلة | 19/19 + دليل بمقبس/جلسة حيّة أو تصريح بما لم يُختبر |
-| #30 POS | إعادة بناء كاملة داخل V2 على نفس `/api/pos/*`، خلف علم OFF | شاشة V2 بكل وظائف `pos.html` + دليل + `pos.html` بلا تغيير |
-| #31 البقية | بطاقات التكلفة، لوحة الكاشيرية في الأقسام، الرصيد الافتتاحي الصافي، شارة الخادم، قيود العميل، بديل realtime | كل بند مغلق بدليله أو مصرَّح ببقائه |
+| #28 YaraSoft | 32 بابًا خلف واجهة V2، قراءة أولًا ثم كتابات محكومة بالدور | ✅ موصول ومختبر (`v2-yarasoft`؛ لا اتصال حيّ بـOracle) |
+| #29 WhatsApp | 19 بابًا + QR/إقران + كتابات محكومة بالدور والتأكيد | ✅ موصول ومختبر (`v2-whatsapp`؛ لا جلسة/QR حيّة) |
+| #30 POS | إعادة بناء داخل V2 على نفس `/api/pos/*`، خلف علم OFF | قيد القبول: إتمام الوظائف غير المنقولة والاختبار الميداني؛ لا يُفتح العلم الآن |
+| #31 البقية | بطاقات التكلفة، لوحة الكاشيرية في الأقسام، الرصيد الافتتاحي الصافي، شارة الخادم، قيود العميل، بديل realtime | ✅ مغلق بالكود والاختبارات: `v2-opening-balance` و`v2-shell-parity` و`v2-realtime` و`v2-chat`، مع إعادة تشغيل 83 مجموعة V2 |
 | #32 التوقيع | إعادة تشغيل هذه المصفوفة بعد الإغلاق + متصفح شامل + لقطة تكافؤ | صفر ◐/⬜ بلا قرار |
 
 ---
@@ -168,5 +176,7 @@
 - هذه المصفوفة **جرد مصادر** (ملفات وأسطر وأبواب)، لا شهادة سلوك: كل صفّ ✅
   يستند إلى شاشة V2 وباب مطابق أو مكافئ، وأغلبها سبق إثباته في بنوده.
 - أرقام §١ آلية بتاريخ 2026‑10‑17؛ تُعاد بتشغيل الجرد نفسه عند #32.
-- ما **لم** يُختبر هنا: لا جلسة حيّة ولا قاعدة بيانات ولا متصفح لهذا البند؛
-  الدليل السلوكي يبقى مسؤولية كل بند تنفيذي عند إغلاقه.
+- إثبات هذا الإغلاق: 83 مجموعة V2، 1688 اختبارًا ناجحًا؛ تشمل اختبارات
+  الرصيد الافتتاحي، قيود قاعدة البيانات، شارة الخادم، واستعادة realtime.
+- ما **لم** يُختبر: جلسة حيّة أو قاعدة بيانات أو متصفح في هذا الإغلاق؛
+  بوابات الخادم تظل المرجع النهائي، ولا يُعدّ الاختبار الوحدوي قبولًا ميدانيًا.

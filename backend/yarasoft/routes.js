@@ -22,7 +22,6 @@ const express = require('express');
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
 const { jwtAuth, requireRole } = require('../cashier-module/jwt-middleware');
-const files = require('./files');
 const { parseInvoiceFile, suggestProfile, ParseError } = require('./parser');
 const { resolveItems } = require('./mapping');
 const { STATUS } = require('./importer');
@@ -622,7 +621,7 @@ router.get('/oracle/catalog-status', jwtAuth, requireRole(...READ_ROLES), async 
 // GET  /daily-closing?date=YYYY-MM-DD   إجماليات حية + حالة القفل لكل قسم
 // POST /daily-closing/close             قفل يوم (لقطة ثابتة) {date, dept_codes?, notes}
 // POST /daily-closing/reopen            إعادة فتح يوم/قسم {date, dept_code}
-const YS_CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_4', 'ys_cc_5', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
+const YS_CASHIER_DEPTS = ['ys_cc_1', 'ys_cc_3', 'ys_cc_4', 'ys_cc_5', 'ys_cc_45', 'ys_cc_6', 'ys_cc_9'];
 
 function parseCloseDate(value) {
     const raw = String(value || '').trim();
@@ -887,14 +886,14 @@ router.get('/oracle/catch-up/status', jwtAuth, requireRole(...READ_ROLES), async
     try {
         const { jobStatus } = require('./sync-doctor');
         res.json({ ok: true, job: jobStatus() });
-    } catch (error) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
+    } catch (_) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
 });
 
 router.get('/oracle/catch-up/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const { jobStatus } = require('./sync-doctor');
         res.json({ ok: true, job: jobStatus() });
-    } catch (error) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
+    } catch (_) { res.status(500).json({ error: 'CATCHUP_STATUS_FAILED' }); }
 });
 
 // ═══ مرآة الكاشيرية الحية (1/4/5/6/9): أوامر يارا سوفت داخل نظامنا ═══
@@ -903,7 +902,7 @@ router.get('/oracle/catch-up/status', jwtAuth, requireRole(...READ_ROLES), async
 // GET  /mirror/orders/:doc                 تفاصيل أوردر بسطوره
 // GET  /mirror/close?cashier=&date=        تقرير التقفيل (Z): إجماليات + خصم + ضريبة + مدفوع + متبقي + ساعات + أعلى أصناف
 // POST /mirror/refresh                     تحديث يدوي فوري
-const MIRROR_CASHIERS = ['1', '4', '5', '6', '9'];
+const MIRROR_CASHIERS = ['1', '3', '4', '5', '6', '9'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function mirrorDay(req) {
     const d = String(req.query.date || '').slice(0, 10);

@@ -517,7 +517,7 @@ function vegEditItems(id) {
     showModal('<h3><i class=ji data-i=pencil></i> تعديل كميات الطلب ' + esc(r.request_no || ('#' + r.id)) + '</h3>'
         + '<div class="text-muted" style="margin-bottom:10px">التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك.</div>'
         + items.map((it, i) => '<div class="fr" style="align-items:end;gap:8px"><div class="fg" style="flex:2"><label>' + esc(it.name) + ' (' + esc(it.unit || '') + ')</label><input type="number" min="0.001" step="0.001" id="vegEditQty_' + i + '" value="' + Number(it.qty || 0) + '"></div></div>').join('')
-        + '<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" onclick="vegSubmitItemsEdit(' + Number(id) + ')"><i class=ji data-i=save></i> حفظ الكميات</button></div>');
+        + '<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="vegSubmitItemsEdit" data-karim-arg0="' + Number(id) + '"><i class=ji data-i=save></i> حفظ الكميات</button></div>');
 }
 async function vegSubmitItemsEdit(id) {
     const list = (window._vegLog || []);

@@ -101,8 +101,8 @@ async function loadRosterWeek(){
                     tbody += '<div style="font-size:11px;color:' + (off ? 'var(--text3)' : 'var(--text)') + '">' + (off ? 'راحة' : esc(cell.shift_start) + '<br><small>' + esc(String(cell.shift_hours)) + 'س</small>') + '</div>';
                 } else {
                     tbody += '<div style="display:flex;flex-direction:column;gap:3px;align-items:center">'
-                        + '<input type="time" class="inp rsW-start" value="' + esc(cell.shift_start) + '" style="width:82px;padding:3px 4px;font-size:11px" onchange="rosterMarkDirty(this)"' + (off ? ' disabled' : '') + '>'
-                        + '<input type="number" class="inp rsW-hours" value="' + esc(String(cell.shift_hours)) + '" min="1" max="24" step="0.5" style="width:60px;padding:3px 4px;font-size:11px" onchange="rosterMarkDirty(this)"' + (off ? ' disabled' : '') + '>'
+                        + '<input type="time" class="inp rsW-start" value="' + esc(cell.shift_start) + '" style="width:82px;padding:3px 4px;font-size:11px" data-karim-action="rosterMarkDirty" data-karim-event="change" data-karim-pass="element"' + (off ? ' disabled' : '') + '>'
+                        + '<input type="number" class="inp rsW-hours" value="' + esc(String(cell.shift_hours)) + '" min="1" max="24" step="0.5" style="width:60px;padding:3px 4px;font-size:11px" data-karim-action="rosterMarkDirty" data-karim-event="change" data-karim-pass="element"' + (off ? ' disabled' : '') + '>'
                         + '<label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" class="rsW-off" ' + (off ? 'checked' : '') + ' data-karim-action="rosterToggleOff" data-karim-event="change" data-karim-pass="element">راحة</label>'
                         + '</div>';
                 }
@@ -126,7 +126,7 @@ async function loadRosterWeek(){
                 apBox.innerHTML = '<div class="workflow-banner" style="border-right:4px solid #16a34a"><i class=ji data-i=circle-check></i> <b>معتمدة من شؤون العاملين:</b> ' + esc(ap.approved_name) + ' — ' + esc(String(ap.approved_at || '').replace('T', ' ').slice(0, 16)) + ' — الطباعة ستخرج معتمدة</div>';
             } else if (ap && ap.requested_name) {
                 apBox.innerHTML = '<div class="workflow-banner"><i class=ji data-i=hourglass></i> <b>مُرسلة لاعتماد شؤون العاملين</b> — بواسطة ' + esc(ap.requested_name || '—') + ' (بانتظار التوقيع)'
-                    + (isHR ? ' <button class="btn btn-green btn-sm" onclick="rosterApprove(\'' + esc(rosterApKey(d)) + '\')"><i class=ji data-i=pen-line></i> توقيع واعتماد الآن</button>' : '') + '</div>';
+                    + (isHR ? ' <button class="btn btn-green btn-sm" data-karim-action="rosterApprove" data-karim-arg0="' + esc(rosterApKey(d)) + '"><i class=ji data-i=pen-line></i> توقيع واعتماد الآن</button>' : '') + '</div>';
             } else {
                 apBox.innerHTML = '<button class="btn btn-sm btn-blue" data-karim-action="rosterRequestApproval"><i class=ji data-i=pen-line></i> إرسال لاعتماد شؤون العاملين</button><small class="text-muted"> — بعد اعتمادهم تُطبع النسخة موقّعة ومعتمدة</small>';
             }
@@ -188,7 +188,7 @@ async function rosterLoadPending(){
         const rows = Array.isArray(p.pending) ? p.pending : [];
         box.innerHTML = rows.length
             ? '<div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=pen-line></i> طلبات اعتماد دوامات بانتظار توقيع شؤون العاملين (' + rows.length + ')</h3></div><table style="width:100%"><thead><tr><th>القسم</th><th>الطالب</th><th>الوقت</th><th>إجراء</th></tr></thead><tbody>'
-            + rows.map((r) => '<tr><td class="fw-bold">' + esc(String(r.dept_key).split(',').map((c) => deptNameByCode(c) || c).join(' + ')) + '</td><td>' + esc(r.requested_name || '—') + '</td><td class="text-muted">' + esc(String(r.requested_at || '').replace('T', ' ').slice(0, 16)) + '</td><td><button class="btn btn-green btn-sm" onclick="rosterApprove(\'' + esc(r.dept_key) + '\')"><i class=ji data-i=pen-line></i> توقيع واعتماد</button></td></tr>').join('')
+            + rows.map((r) => '<tr><td class="fw-bold">' + esc(String(r.dept_key).split(',').map((c) => deptNameByCode(c) || c).join(' + ')) + '</td><td>' + esc(r.requested_name || '—') + '</td><td class="text-muted">' + esc(String(r.requested_at || '').replace('T', ' ').slice(0, 16)) + '</td><td><button class="btn btn-green btn-sm" data-karim-action="rosterApprove" data-karim-arg0="' + esc(r.dept_key) + '"><i class=ji data-i=pen-line></i> توقيع واعتماد</button></td></tr>').join('')
             + '</tbody></table></div>'
             : '';
     }catch(_){ box.innerHTML = ''; }

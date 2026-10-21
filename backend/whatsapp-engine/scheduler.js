@@ -19,19 +19,6 @@ const { logger } = require('../logger');
 const store = require('./store');
 const { isValidChatJid } = require('./rules');
 
-// ─── Time helpers ──────────────────────────────────────────────────────────────
-function riyadhNow() {
-    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
-}
-
-function riyadhDateStr(offsetDays = 0) {
-    const d = new Date(Date.now() + offsetDays * 86400000);
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Riyadh',
-        year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(d);
-}
-
 // ─── Scheduler ──────────────────────────────────────────────────────────────────
 class MessageScheduler {
     constructor(engine) {

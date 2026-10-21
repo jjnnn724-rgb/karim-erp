@@ -114,10 +114,6 @@ function clockDistanceMinutes(a, b) {    const day = 24 * 60;
     return Math.min(diff, day - diff);
 }
 
-function wallToInstant(wall) {
-    return new Date(Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second) - BUSINESS_TZ_OFFSET_MS);
-}
-
 function instantToWall(instant) {
     const shifted = new Date(instant.getTime() + BUSINESS_TZ_OFFSET_MS);
     return {
@@ -159,7 +155,7 @@ async function lastPunchFromDb(employeeId, instant) {
 }
 
 /** دقائق بين وقتين على نفس يوم الوردية (يدعم عبر منتصف الليل) */
-function minutesBetween(inTime, outTime, shiftDate) {    const [ih, im] = String(inTime).split(':').map(Number);
+function minutesBetween(inTime, outTime, _shiftDate) {    const [ih, im] = String(inTime).split(':').map(Number);
     const [oh, om] = String(outTime).split(':').map(Number);
     let d = (oh * 60 + om) - (ih * 60 + im);
     if (d < 0) { d += 24 * 60; }
@@ -224,7 +220,7 @@ function classifyPunch({
     openRowCheckIn,    // ساعة دخول الصف المفتوح ('HH:MM' أو null) — حرس الارتداد
     lastPunch,         // { min, out, at? } آخر بصمة معالجة (at = لحظة مطلقة)
     pattern,           // { medianIn, medianOut, samples }
-    dayLogs,           // جميع بصمات اليوم مصنفة: { in: [], out: [] }
+    dayLogs: _dayLogs,           // جميع بصمات اليوم مصنفة: { in: [], out: [] }
 }) {
     const deviceIn = IN_STATES.has(Number(punchState));
     const deviceOut = OUT_STATES.has(Number(punchState));
@@ -445,7 +441,7 @@ async loadPattern(employeeId) {
             wall = clean ? { ...wall, time: clean } : { ...wall, time: null };
         }
 
-        const { shiftStart, shiftKarim, autoCheckout, autoLock } = shift;
+        const { shiftStart, shiftKarim, autoLock } = shift;
         const shiftStartMin = toMin(shiftStart);
         const shiftEndMin = shiftStartMin + Math.round(Number(shiftKarim) * 60);
         const shiftDate = shiftDateForEmployee(wall.date, wall.hour, { shift_start: shiftStart, shift_karim: shiftKarim });
@@ -671,7 +667,7 @@ async loadPattern(employeeId) {
     // معالج الدخول
     // ════════════════════════════════════════════════════════════════════════
 
-    async handleCheckIn({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, autoLock, verdict, source, device, onLeave }) {
+    async handleCheckIn({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, autoLock, verdict: _verdict, source, device, onLeave }) {
         const note = `تسجيل حضور عبر ${source}${device ? ` (${device.name || device.deviceName})` : ''}`;
         const lateFlag = isLate(wall.hour, wall.minute, shiftStart, Number(process.env.WORK_START_HOUR || 9));
 
@@ -784,7 +780,7 @@ async loadPattern(employeeId) {
     // معالج الخروج (الأذكى)
     // ════════════════════════════════════════════════════════════════════════
 
-    async handleCheckOut({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, verdict, source, device, onLeave, punchState }) {
+    async handleCheckOut({ client, employeeId, shiftDate, wall, instant, shiftStart, shiftKarim, verdict: _verdict, source, device, onLeave, punchState }) {
         const note = `تسجيل انصراف عبر ${source}${device ? ` (${device.name || device.deviceName})` : ''}`;
         const earlyFlag = isEarlyLeave(wall.hour, wall.minute, shiftStart, shiftKarim);
 
@@ -1038,13 +1034,6 @@ async loadPattern(employeeId) {
             }
 
             const logsOf = (day) => logs.filter(l => shiftDateForEmployee(l.wall.date, l.wall.hour, { shift_start: sStart, shift_karim: sHours }) === day);
-            const minsBetween = (inT, outT) => {
-                const [ih, im] = inT.split(':').map(Number);
-                const [oh, om] = outT.split(':').map(Number);
-                let d = (oh * 60 + om) - (ih * 60 + im);
-                if (d < 0) {d += 24 * 60;}
-                return d;
-            };
 
             for (const row of empRows) {
                 const isToday = row.date === todayStr;

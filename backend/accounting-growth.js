@@ -338,7 +338,7 @@ router.post('/fixed-assets/:id/dispose', jwtAuth, requireRole(...WRITE_ROLES), a
 // CORRECTNESS: كل شيء داخل معاملة واحدة — تحديث الأصول وقيد GL يُرفعان معًا أو
 // لا يُرفعان (كان القيد بعد COMMIT فيتباعد دفتر الأصول عن دفتر الأستاذ عند فشله).
 // FOR UPDATE يمنع سباق تشغيلين متوازيين من مضاعفة الإهلاك المتراكم.
-router.post('/depreciation/run', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
+router.post('/depreciation/run', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, _next) => {
     try {
         const month = /^\d{4}-\d{2}$/.test(String(req.body?.month || ''))
             ? String(req.body.month) : riyadhMonth();

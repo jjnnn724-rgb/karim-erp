@@ -28,8 +28,6 @@ async function pollOnce() {
         catch (_) { /* already marked failed inside processor */ }
     }
 }
-
-let workerStarted = false;
 if (!SKIP_BULLMQ) {
     try {
         const { Worker } = require('bullmq');
@@ -50,7 +48,6 @@ if (!SKIP_BULLMQ) {
         }, { connection, concurrency: Number(process.env.ATTENDANCE_PUSH_CONCURRENCY) || 5 });
         pushWorker.on('completed', (j) => logger.info('[attendance-push-worker] done ' + j.id));
         pushWorker.on('failed', (j, err) => logger.error('[attendance-push-worker] failed ' + (j && j.id) + ': ' + err.message));
-        workerStarted = true;
         logger.info('[attendance-push-worker] BullMQ mode');
     } catch (e) {
         logger.warn('[attendance-push-worker] BullMQ unavailable, SQL polling only: ' + e.message);

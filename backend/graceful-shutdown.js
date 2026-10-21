@@ -1,4 +1,3 @@
-const { logger } = require("./logger");
 /**
  * graceful-shutdown.js — Graceful Shutdown Handler for Express/Socket.io
  * ────────────────────────────────────────────────────────────────────────────
@@ -15,7 +14,6 @@ const { logger } = require("./logger");
 
 // ─── Configuration ───────────────────────────────────────
 const SHUTDOWN_TIMEOUT_MS = 30_000; // 30 seconds max for graceful shutdown
-const HEALTH_CHECK_INTERVAL = 30_000; // Health check during shutdown
 
 let _isShuttingDown = false;  // Internal state variable
 let shutdownStartTime = null;
@@ -67,21 +65,6 @@ function initGracefulShutdown(dependencies = {}, options = {}) {
             
             await gracefulShutdown({ signal, server, io, pool, redisClient, bullMQ }, { timeout, onShutdown, onCleanup, logger });
         });
-    });
-
-    // ─── Handle Uncaught Exceptions ───────────────────────
-    // CRITICAL: Under load, a single bad request must NEVER kill the server.
-    // The old handler called gracefulShutdown → process.exit(1), which meant
-    // one uncaught exception from any route took down ALL clients (HTTP 0
-    // on every subsequent request). Now we log loudly and keep serving.
-    // Only SIGTERM/SIGINT (operator intent) trigger a real shutdown.
-    process.on('uncaughtException', (error) => {
-        try { logger.error('[shutdown] Uncaught exception (suppressed — server stays up):', error); } catch (_) {}
-    });
-
-    // ─── Handle Unhandled Promise Rejections ─────────────
-    process.on('unhandledRejection', (reason, promise) => {
-        try { logger.error('[shutdown] Unhandled rejection at:', promise, 'reason:', reason); } catch (_) {}
     });
 
     logger.info('[shutdown] Graceful shutdown handlers registered');

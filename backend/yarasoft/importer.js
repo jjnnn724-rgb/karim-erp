@@ -266,7 +266,7 @@ async function fail(logId, message, config, { final }) {
 }
 
 /** معالجة فاتورة واحدة (من ملف قد يحوي أكثر من فاتورة) */
-async function processOneInvoice({ invoice, meta, filePath, config, importer, logRow, io, started, device }) {
+async function processOneInvoice({ invoice, meta, filePath, config, importer: _importer, logRow, io, started, device }) {
     const dev = device || { key: '', sourceName: config.sourceName, deptCode: config.defaultDeptCode };
     const invoiceNumber = String(invoice.invoiceNumber || '').trim()
         || `NO_${meta.hash.slice(0, 12)}`; // فاتورة بلا رقم: الهش هو هويتها
@@ -303,7 +303,7 @@ async function processOneInvoice({ invoice, meta, filePath, config, importer, lo
                 unmapped.map(u => u.externalBarcode),
                 unmapped.map(u => u.itemName),
                 unmapped.map(u => u.quantity),
-                unmapped.map(u => null),
+                unmapped.map(_u => null),
                 unmapped.map(u => u.reason),
             ]
         );

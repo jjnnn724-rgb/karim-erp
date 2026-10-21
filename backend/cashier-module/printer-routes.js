@@ -129,7 +129,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         if (exists.rowCount > 0) {
             return res.status(409).json({ error: 'PRINTER_EXISTS', message: `الطابعة ${printerId} مسجلة بالفعل — استخدم التعديل` });
         }
-        const inserted = await pool.query(
+        await pool.query(
             `INSERT INTO pos_printers (id, name, kind, department_id, connection_type, address,
                                         paper_width_mm, charset, is_online)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false) RETURNING *;`,

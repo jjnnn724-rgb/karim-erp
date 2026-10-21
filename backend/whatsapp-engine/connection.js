@@ -220,7 +220,7 @@ class WhatsappConnection extends EventEmitter {
                 } else {
                     consecutiveFails = 0;
                 }
-            } catch (e) {
+            } catch (_) {
                 consecutiveFails++;
                 if (consecutiveFails >= 3) {
                     logger.error('[WHATSAPP] liveness: ping failed 3x — forcing reconnect');

@@ -113,7 +113,7 @@ async function wvSuggest() {
             const items = data.suggestions || [];
             if (!items.length) { box.style.display = 'none'; return; }
             box.innerHTML = items.map((s) => `
-              <div style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#f0f0f0)" onmousedown="wvPickSuggest('${wvEscape(s.name)}')" onmouseover="this.style.background='var(--bg,#f5f5f5)'" onmouseout="this.style.background=''">
+              <div style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#f0f0f0)" data-karim-action="wvPickSuggest" data-karim-event="mousedown" data-karim-arg0="${wvEscape(s.name)}" data-karim-hover="var(--bg,#f5f5f5)">
                 <span><b>${wvEscape(s.name)}</b></span>
                 <span style="font-size:11px;color:${s.balance < 0 ? '#dc2626' : '#16a34a'}">رصيد: ${wvNum(s.balance)}</span>
               </div>`).join('');

@@ -22,7 +22,6 @@
  */
 
 const express = require('express');
-const crypto = require('crypto');
 const axios = require('axios');
 const { pool } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');

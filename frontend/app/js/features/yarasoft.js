@@ -524,14 +524,14 @@ ${canWrite?`<td><input type="checkbox" class="ysInvChk" value="${r.id}"></td>`:'
 <td>${r.import_status?`<span class="badge bdg-blue">${esc(r.import_status)}</span>`:'—'}</td>
 </tr>`).join('');
 const pages=[]; const tp=d.pages||1, cp=d.page||1;
-for(let p=Math.max(1,cp-2);p<=Math.min(tp,cp+2);p++) {pages.push(`<button class="btn btn-sm ${p===cp?'btn-gold':''}" onclick="YSSTATE.secInv.page=${p};ysSecInvReload()">${fN(p)}</button>`);}
+for(let p=Math.max(1,cp-2);p<=Math.min(tp,cp+2);p++) {pages.push(`<button class="btn btn-sm ${p===cp?'btn-gold':''}" data-karim-action="kdYsSecInvReload" data-karim-arg0="${p}">${fN(p)}</button>`);}
 box.innerHTML=`<div class="tbl-wrap" style="margin-bottom:12px;border:1px solid var(--gold)">
 <div class="tbl-hd"><h3><i class=ji data-i=receipt></i> فواتير: ${esc(m.display_ar)} (${fN(d.total||0)} فاتورة)</h3>
 <div class="u-row-wrap">
-<input type="date" id="ysInvFrom" class="inp" value="${esc(st.date_from||'')}" onchange="YSSTATE.secInv.date_from=this.value;YSSTATE.secInv.page=1;ysSecInvReload()" style="max-width:150px">
-<input type="date" id="ysInvTo" class="inp" value="${esc(st.date_to||'')}" onchange="YSSTATE.secInv.date_to=this.value;YSSTATE.secInv.page=1;ysSecInvReload()" style="max-width:150px">
-<input type="text" id="ysInvQ" class="inp" placeholder="بحث برقم الفاتورة..." value="${esc(st.q||'')}" onkeydown="if(event.key==='Enter'){YSSTATE.secInv.q=this.value;YSSTATE.secInv.page=1;ysSecInvReload()}" style="max-width:170px">
-<button class="btn btn-blue btn-sm" onclick="YSSTATE.secInv={mapId:${st.mapId},page:1,limit:20};ysSecInvReload()"><i class=ji data-i=refresh></i> تصفير</button>
+<input type="date" id="ysInvFrom" class="inp" value="${esc(st.date_from||'')}" data-karim-action="kdYsSecInvReload64" data-karim-event="change" data-karim-pass="value" style="max-width:150px">
+<input type="date" id="ysInvTo" class="inp" value="${esc(st.date_to||'')}" data-karim-action="kdYsSecInvReload66" data-karim-event="change" data-karim-pass="value" style="max-width:150px">
+<input type="text" id="ysInvQ" class="inp" placeholder="بحث برقم الفاتورة..." value="${esc(st.q||'')}" data-karim-action="kdIf" data-karim-event="keydown" data-karim-pass="value,event" style="max-width:170px">
+<button class="btn btn-blue btn-sm" data-karim-action="kdYsSecInvReload69" data-karim-arg0="${st.mapId}"><i class=ji data-i=refresh></i> تصفير</button>
 <button class="btn btn-sm" data-karim-action="ysCloseSecDrill">إغلاق ✕</button>
 </div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
@@ -602,7 +602,7 @@ const mergeOpts=(YSSTATE.secMap||[]).map(m=>`<option value="${m.id}">${esc(m.dis
 showModal(`
 <h3><i class=ji data-i=check></i> اعتماد قسم جديد</h3>
 <div class="mcard" style="margin-bottom:12px">المصدر: <span class="badge bdg-blue">${esc(u.src_table)}</span> <b>${esc(u.src_name)}</b> — ${fN(u.invoices_count||0)} فاتورة بإجمالي <span class="c-gold">${fC(u.total_amount||0)}</span><br><small class="text-muted">اختر: قسم جديد مستقل، أو دمج في قسم موجود (للأخطاء الإملائية مثل مطبخ/مبطخ) — والاعتماد يرحّل الفواتير فورًا.</small></div>
-<div class="fg"><label>الوضع</label><select id="ysSecMode" onchange="document.getElementById('ysSecMergeWrap').style.display=this.value==='merge'?'':'none';document.getElementById('ysSecNewWrap').style.display=this.value==='merge'?'none':''"><option value="new">قسم جديد مستقل</option><option value="merge">دمج في قسم موجود</option></select></div>
+<div class="fg"><label>الوضع</label><select id="ysSecMode" data-karim-action="kdAct" data-karim-event="change" data-karim-pass="value,value"><option value="new">قسم جديد مستقل</option><option value="merge">دمج في قسم موجود</option></select></div>
 <div id="ysSecMergeWrap" style="display:none"><div class="fg"><label>ادمج في</label><select id="ysSecMerge">${mergeOpts}</select></div></div>
 <div id="ysSecNewWrap"><div class="fr">
 <div class="fg"><label>اسم القسم (عربي)</label><input type="text" id="ysSecAr" value="${esc(u.src_name)}"></div>
@@ -766,7 +766,7 @@ async function ysLoadMirror(el){
 function ysRenderMirror(el){
     const m = YSSTATE.mirror;
     const cards = (m.cashiers||[]).map(c=>`
-        <div class="mcard" style="cursor:pointer;${String(m.cashier)===String(c.cashier_no)?'border:2px solid var(--gold);':''}" onclick="YSSTATE.mirror.cashier='${c.cashier_no}';YSSTATE.mirror.offset=0;ysLoadMirror()">
+        <div class="mcard" style="cursor:pointer;${String(m.cashier)===String(c.cashier_no)?'border:2px solid var(--gold);':''}" data-karim-action="kdYsLoadMirror" data-karim-arg0="${c.cashier_no}">
         <div class="mcard-label"><i class=ji data-i=store></i> كاشير ${esc(c.cashier_no)}</div>
         <div class="mcard-val c-gold">${fC(c.revenue||0)}</div>
         <div class="u-t13 text-muted">${fN(c.invoices||0)} فاتورة · متوسط ${fC(c.avg||0)} · آخر ${esc(c.last_time||'—')}</div>
@@ -786,8 +786,8 @@ function ysRenderMirror(el){
         </tr>`).join('') || '<tr><td colspan="8" class="u-empty">لا أوردرات في هذه الفترة</td></tr>';
     el.innerHTML = `
     <div class="fr" style="align-items:end;margin-bottom:10px;flex-wrap:wrap">
-      <div class="fg" style="max-width:160px"><label>التاريخ</label><input type="date" class="inp" value="${ysMirrorDay()}" onchange="YSSTATE.mirror.date=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"></div>
-      <div class="fg" style="max-width:150px"><label>الكاشير</label><select class="inp" onchange="YSSTATE.mirror.cashier=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"><option value="">الكل (1/4/5/6/9)</option>${['1','4','5','6','9'].map(c=>`<option value="${c}" ${String(m.cashier)===c?'selected':''}>كاشير ${c}</option>`).join('')}</select></div>
+      <div class="fg" style="max-width:160px"><label>التاريخ</label><input type="date" class="inp" value="${ysMirrorDay()}" data-karim-action="kdYsLoadMirror73" data-karim-event="change" data-karim-pass="value"></div>
+      <div class="fg" style="max-width:150px"><label>الكاشير</label><select class="inp" data-karim-action="kdYsLoadMirror75" data-karim-event="change" data-karim-pass="value"><option value="">الكل (1/4/5/6/9)</option>${['1','4','5','6','9'].map(c=>`<option value="${c}" ${String(m.cashier)===c?'selected':''}>كاشير ${c}</option>`).join('')}</select></div>
       <button class="btn btn-gold btn-sm" data-karim-action="ysMirrorRefresh"><i class=ji data-i=refresh></i> تحديث فوري</button>
       ${m.cashier?`<button class="btn btn-green btn-sm" data-karim-action="ysMirrorClose" data-karim-arg0="${m.cashier}"><i class=ji data-i=printer></i> تقفيل كاشير ${m.cashier}</button>`:''}
       <span class="u-t13 text-muted" style="margin-inline-start:auto">المرآة تتحدث كل دقيقة من Oracle</span>
@@ -796,8 +796,8 @@ function ysRenderMirror(el){
     <div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=receipt></i> الأوردرات (${fN(m.total||0)})</h3></div>
     <div class="tbl-scroll"><table><thead><tr><th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الطاولة</th><th>سطور</th><th>الإجمالي</th><th>المدفوع</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="fr" style="padding:8px 14px;align-items:center"><span class="u-t13 text-muted">صفحة ${fN(page)} من ${fN(pages)}</span><div class="fr"></div>
-    <button class="btn btn-sm" ${page<=1?'disabled':''} onclick="YSSTATE.mirror.offset=Math.max(0,YSSTATE.mirror.offset-YSSTATE.mirror.limit);ysLoadMirror()">السابق</button>
-    <button class="btn btn-sm" ${page>=pages?'disabled':''} onclick="YSSTATE.mirror.offset=YSSTATE.mirror.offset+YSSTATE.mirror.limit;ysLoadMirror()">التالي</button></div>
+    <button class="btn btn-sm" ${page<=1?'disabled':''} data-karim-action="kdYsLoadMirror77">السابق</button>
+    <button class="btn btn-sm" ${page>=pages?'disabled':''} data-karim-action="kdYsLoadMirror79">التالي</button></div>
     </div>`;
 }
 async function ysMirrorRefresh(){
@@ -901,5 +901,65 @@ ${r.suggestedProfile?`<div style="margin-top:8px"><b>ملف تعريف مقتر�
 out.innerHTML=`<div class="mcard" style="border:1px solid var(--orange)"><b style="color:var(--orange)">فشل التحليل:</b> ${esc(e.message)}</div>`;
 }
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdYsSecInvReload(p0) {
+    YSSTATE.secInv.page = p0;
+    ysSecInvReload();
+}
 
-export { YSSTATE, renderYarasoftPage, ysRefresh, ysLoadOracleBox, ysOracleImportItems, ysOraclePollNow, ysReconcile, ysCatchUp, ysCatchUpStatus, ysOracleTest, ysSetTab, ysRenderBody, ysNetBadge, ysRenderStatus, ysStatusBadge, ysTableSearch, ysPrintReport, ysRunNow, ysReprocess, ysPrintLog, ysViewInvoice, ysPrintInvoiceDetail, ysLoadReview, ysRenderReview, ysPrintReview, ysResolveReview, ysConfirmReview, ysLoadMappings, ysRenderMappings, ysAddMappingModal, ysSaveMapping, ysDeactivateMapping, ysLoadSections, ysRenderSections, ysPrintSections, ysCashierIcon, ysCashierCards, ysOpenSecInvoices, ysSecInvReload, ysSecInvToggleAll, ysSecInvReclassify, ysCloseSecDrill, ysInvDetail, ysPrintInvDetail, ysApproveSectionModal, ysConfirmApproveSection, ysRenameSectionModal, ysConfirmRenameSection, ysManualSectionModal, ysConfirmManualSection, ysLoadWarehouse, ysPrintQuarantine, ysOrganizeCategories, ysSyncBalances, ysLoadMirror, ysRenderMirror, ysMirrorRefresh, ysMirrorDetail, ysMirrorPrint, ysMirrorClose, ysMirrorPrintClose, ysRenderTools, ysPreview };
+function kdYsSecInvReload64(p0) {
+    YSSTATE.secInv.date_from = p0;
+    YSSTATE.secInv.page = 1;
+    ysSecInvReload();
+}
+
+function kdYsSecInvReload66(p0) {
+    YSSTATE.secInv.date_to = p0;
+    YSSTATE.secInv.page = 1;
+    ysSecInvReload();
+}
+
+function kdIf(p0, p1) {
+    if(p1.key==='Enter'){YSSTATE.secInv.q=p0;YSSTATE.secInv.page=1;ysSecInvReload()}
+}
+
+function kdYsSecInvReload69(p0) {
+    YSSTATE.secInv = {mapId:p0,page:1,limit:20};
+    ysSecInvReload();
+}
+
+function kdAct(p0, p1) {
+    document.getElementById('ysSecMergeWrap').style.display=p0==='merge'?'':'none'
+    document.getElementById('ysSecNewWrap').style.display=p1==='merge'?'none':''
+}
+
+function kdYsLoadMirror(p0) {
+    YSSTATE.mirror.cashier = p0;
+    YSSTATE.mirror.offset = 0;
+    ysLoadMirror();
+}
+
+function kdYsLoadMirror73(p0) {
+    YSSTATE.mirror.date = p0;
+    YSSTATE.mirror.offset = 0;
+    ysLoadMirror();
+}
+
+function kdYsLoadMirror75(p0) {
+    YSSTATE.mirror.cashier = p0;
+    YSSTATE.mirror.offset = 0;
+    ysLoadMirror();
+}
+
+function kdYsLoadMirror77() {
+    YSSTATE.mirror.offset = Math.max(0,YSSTATE.mirror.offset-YSSTATE.mirror.limit);
+    ysLoadMirror();
+}
+
+function kdYsLoadMirror79() {
+    YSSTATE.mirror.offset = YSSTATE.mirror.offset+YSSTATE.mirror.limit;
+    ysLoadMirror();
+}
+
+
+export {YSSTATE, renderYarasoftPage, ysRefresh, ysLoadOracleBox, ysOracleImportItems, ysOraclePollNow, ysReconcile, ysCatchUp, ysCatchUpStatus, ysOracleTest, ysSetTab, ysRenderBody, ysNetBadge, ysRenderStatus, ysStatusBadge, ysTableSearch, ysPrintReport, ysRunNow, ysReprocess, ysPrintLog, ysViewInvoice, ysPrintInvoiceDetail, ysLoadReview, ysRenderReview, ysPrintReview, ysResolveReview, ysConfirmReview, ysLoadMappings, ysRenderMappings, ysAddMappingModal, ysSaveMapping, ysDeactivateMapping, ysLoadSections, ysRenderSections, ysPrintSections, ysCashierIcon, ysCashierCards, ysOpenSecInvoices, ysSecInvReload, ysSecInvToggleAll, ysSecInvReclassify, ysCloseSecDrill, ysInvDetail, ysPrintInvDetail, ysApproveSectionModal, ysConfirmApproveSection, ysRenameSectionModal, ysConfirmRenameSection, ysManualSectionModal, ysConfirmManualSection, ysLoadWarehouse, ysPrintQuarantine, ysOrganizeCategories, ysSyncBalances, ysLoadMirror, ysRenderMirror, ysMirrorRefresh, ysMirrorDetail, ysMirrorPrint, ysMirrorClose, ysMirrorPrintClose, ysRenderTools, ysPreview, kdYsSecInvReload, kdYsSecInvReload64, kdYsSecInvReload66, kdIf, kdYsSecInvReload69, kdAct, kdYsLoadMirror, kdYsLoadMirror73, kdYsLoadMirror75, kdYsLoadMirror77, kdYsLoadMirror79 };;

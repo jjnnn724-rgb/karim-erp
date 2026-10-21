@@ -79,7 +79,7 @@ async function systemHealthAnswer(engine, rec) {
             `الصادر الميت بعد المحاولات: ${queue.outbox_dead || 0}`,
             `آخر اتصال واتساب: ${wa.lastOkAt || '—'}`,
         ].join('\n');
-    } catch (e) {
+    } catch (_) {
         return 'حالة النظام: ⚠ تعذر قراءة كل المكونات الآن — قاعدة البيانات أو أحد المحركات لا يستجيب.';
     }
 }

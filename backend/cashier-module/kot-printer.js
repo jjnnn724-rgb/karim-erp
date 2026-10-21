@@ -14,7 +14,7 @@
  *   kotHtml(datas)                          → RTL HTML page (one card per dept)
  */
 
-const ESC = 0x1B, GS = 0x1D, LF = 0x0A;
+const ESC = 0x1B, GS = 0x1D;
 const CMD = {
     INIT:         Buffer.from([ESC, 0x40]),
     ALIGN_LEFT:   Buffer.from([ESC, 0x61, 0x00]),
@@ -63,7 +63,6 @@ function buildKotGroups(items, productPrepMap) {
 }
 
 // ─── Data assembly (pure) ────────────────────────────────────────────────────
-function pad(str, len) { str = String(str); return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length); }
 
 /**
  * Flat data for one ticket — shared by the ESC/POS builder and the HTML view

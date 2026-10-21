@@ -761,7 +761,7 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                 while (idx < ips.length) {
                     const ip = ips[idx++];
                     if (await _checkTcpPort(ip, port, timeoutMs)) {
-                        let info = { ip, port, open: true };
+                        const info = { ip, port, open: true };
                         if (onlyZkteco) {
                             const probe = await _probeZkteco(ip, port, 0, timeoutMs * 2);
                             if (probe.isZkteco) {

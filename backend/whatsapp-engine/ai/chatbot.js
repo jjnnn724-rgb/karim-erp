@@ -27,7 +27,6 @@
 const http = require('http');
 const https = require('https');
 const { logger } = require('../../logger');
-const store = require('../store');
 const { processNLU, getContext, updateContext, clearContext } = require('./nlu');
 
 // ─── Configuration (all FREE providers) ───
@@ -163,7 +162,7 @@ async function callLLM(prompt, cfg) {
                                  parsed?.choices?.[0]?.message?.content?.trim();
                     if (text) {resolve({ text, usage: parsed.usage });}
                     else {reject(new Error('Empty LLM response'));}
-                } catch (e) {
+                } catch (_) {
                     reject(new Error('Invalid LLM response format'));
                 }
             });
@@ -307,7 +306,7 @@ class AIChatbot {
     /**
      * NLU-based fallback when no LLM is available — still gives intelligent responses
      */
-    _nluFallback(nluResult, message, context) {
+    _nluFallback(nluResult, _message, _context) {
         const { intent, language, sentiment } = nluResult;
         const isAr = language === 'ar';
 

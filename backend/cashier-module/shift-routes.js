@@ -19,8 +19,7 @@ const { pool, withTransaction } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { rateLimit } = require('./rate-limit');
 const { writeAuditLog } = require('./audit-middleware');
-const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity, formatUnit } = require('../unit-conversion');
-const { ensureBuffetSetup } = require('./buffet-routes');
+const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity } = require('../unit-conversion');
 
 const router = express.Router();
 const PRODUCTS_CACHE_TTL_MS = 2000;
@@ -118,6 +117,85 @@ function emitCatalogChanged(req, action, data) {
         if (sender && typeof req.io.except === 'function') {req.io.except(sender).emit('entity_changed', payload);}
         else {req.io.emit('entity_changed', payload);}
     } catch (_) { /* البث غير حرج */ }
+}
+
+async function syncRecipeCatalog(req) {
+    const counts = await withTransaction(async (client) => {
+        await client.query(`SELECT pg_advisory_xact_lock(hashtext('pos_recipe_catalog_sync'));`);
+
+        const updated = await client.query(`
+            UPDATE pos_products p
+               SET name_ar = r.name,
+                   name_en = r.name,
+                   price = COALESCE(r."sellingPrice", 0),
+                   cost_price = COALESCE(r."totalCost", 0),
+                   department_id = d.id,
+                   is_active = true,
+                   metadata = COALESCE(p.metadata, '{}'::jsonb)
+                       || jsonb_build_object('legacy_recipe_id', r.id::text, 'catalog_scope', 'menu', 'managed_in', 'restaurant', 'recipe_managed', true),
+                   updated_at = CURRENT_TIMESTAMP
+              FROM recipes r
+              LEFT JOIN pos_departments d
+                ON d.legacy_dept_code = r."deptId" AND d.is_active = true
+             WHERE p.metadata->>'legacy_recipe_id' = r.id::text
+               AND COALESCE(p.metadata->>'managed_in', '') <> 'pos'
+               AND (
+                   p.name_ar IS DISTINCT FROM r.name
+                   OR p.name_en IS DISTINCT FROM r.name
+                   OR p.price IS DISTINCT FROM COALESCE(r."sellingPrice", 0)
+                   OR p.cost_price IS DISTINCT FROM COALESCE(r."totalCost", 0)
+                   OR p.department_id IS DISTINCT FROM d.id
+                   OR p.is_active IS DISTINCT FROM true
+                   OR p.metadata->>'recipe_managed' IS DISTINCT FROM 'true'
+               )
+            RETURNING p.id;`);
+
+        const inserted = await client.query(`
+            INSERT INTO pos_products
+                (name_ar, name_en, price, cost_price, stock_quantity, min_stock_level,
+                 is_active, category, unit, department_id, metadata)
+            SELECT r.name, r.name, COALESCE(r."sellingPrice", 0), COALESCE(r."totalCost", 0),
+                   0, 0, true, 'وصفة', 'طلب', d.id,
+                   jsonb_build_object('legacy_recipe_id', r.id::text, 'catalog_scope', 'menu',
+                                      'managed_in', 'restaurant', 'recipe_managed', true)
+              FROM recipes r
+              LEFT JOIN pos_departments d
+                ON d.legacy_dept_code = r."deptId" AND d.is_active = true
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM pos_products p
+                  WHERE p.metadata->>'legacy_recipe_id' = r.id::text
+             )
+            RETURNING id;`);
+
+        const archived = await client.query(`
+            UPDATE pos_products p
+               SET is_active = false, updated_at = CURRENT_TIMESTAMP
+             WHERE p.is_active = true
+               AND p.metadata->>'recipe_managed' = 'true'
+               AND p.metadata->>'legacy_recipe_id' IS NOT NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM recipes r
+                    WHERE r.id::text = p.metadata->>'legacy_recipe_id'
+               )
+            RETURNING p.id;`);
+
+        return {
+            created: inserted.rowCount || 0,
+            updated: updated.rowCount || 0,
+            archived: archived.rowCount || 0,
+        };
+    }, {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userName: req.user?.name || req.user?.username || '',
+        clientIp: req.ip || '',
+        requestId: req.id || '',
+    });
+
+    if (counts.created || counts.updated || counts.archived) {
+        emitCatalogChanged(req, 'recipe-sync', counts);
+    }
+    return counts;
 }
 
 
@@ -239,6 +317,12 @@ router.get('/products', jwtAuth, requireRole('cashier','manager','admin','audito
     const deptId = req.query.department_id ? parseInt(req.query.department_id, 10) : null;
     const includeInactive = String(req.query.include_inactive || '') === 'true' && canManageCatalog(req.user);
     const cacheKey = `${deptId || 'all'}:${includeInactive ? 'inactive' : 'active'}`;
+    try {
+        await syncRecipeCatalog(req);
+    } catch (e) {
+        logger.error('[pos/products] recipe catalog synchronization failed', e);
+        return res.status(500).json({ error: 'RECIPE_CATALOG_SYNC_FAILED', message: 'تعذرت مزامنة وصفات الكاشير' });
+    }
     const cached = productsCache.get(cacheKey);
 
     if (cached && cached.expiresAt > Date.now()) {
@@ -377,6 +461,7 @@ router.post('/recipes/sync-legacy', jwtAuth, requireRole('manager','admin'), asy
             product = (await pool.query(`INSERT INTO pos_products (name_ar,name_en,price,cost_price,stock_quantity,min_stock_level,is_active,category,unit,department_id,metadata) VALUES ($1,$1,$2,$3,0,0,true,'وصفة','طلب',$4,jsonb_build_object('legacy_recipe_id',$5::text,'catalog_scope','menu','managed_in','restaurant','recipe_managed',true)) RETURNING id,name_ar,name_en,price,cost_price,department_id,is_active,image_url`, [r.name, Number(r.sellingPrice || 0), Number(r.totalCost || 0), departmentId, String(r.id)])).rows[0];
         }
         res.json({ recipe_id: r.id, product, synced: true });
+        emitCatalogChanged(req, existing.rows.length ? 'update' : 'create', product);
     } catch (e) {
         logger.error('[sync_legacy_recipe]', e);
         res.status(500).json({ error: 'RECIPE_SYNC_FAILED', message: 'تعذر مزامنة الوصفة مع منيو الكاشير' });
@@ -401,7 +486,7 @@ router.get('/products/:id/ingredients', jwtAuth, requireRole('manager','admin','
             try {
                 const inventoryQuantity = convertQuantity(Number(row.quantity_per_unit), row.unit, row.inventory_unit, { inventoryWeight: Number(row.inventory_weight || 0) });
                 return { ...row, inventory_unit_normalized: normalizeUnit(row.inventory_unit), quantity_in_inventory_units: inventoryQuantity, extended_cost: Number((inventoryQuantity * (1 + Number(row.waste_percent || 0) / 100) * Number(row.avg_cost || 0)).toFixed(4)), unit_error: null };
-            } catch (error) {
+            } catch (_) {
                 return { ...row, inventory_unit_normalized: normalizeUnit(row.inventory_unit), quantity_in_inventory_units: null, extended_cost: null, unit_error: 'وحدات غير متوافقة' };
             }
         });

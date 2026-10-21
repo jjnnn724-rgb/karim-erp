@@ -23,7 +23,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const APP = path.join(ROOT, 'frontend', 'app');
 
-const HANDLER_ATTR_RE = /\son(click|input|change|submit|keydown|keyup|focus|blur|load|error|contextmenu|dblclick|pointerdown|pointerup|touchstart|touchend|mouseover|mouseenter|mouseleave|wheel|drag\w*|drop|select|scroll|resize|toggle|animationstart|animationend|transitionend|copy|cut|paste|beforeunload|unload|hashchange|popstate|message|storage|offline|online|play|pause|ended|timeupdate|canplay|loadedmetadata|seeking|volumechange|play|waiting|progress|abort|invalid|reset|search|show|close|command|beforeprint|afterprint|fullscreenchange|visibilitychange)\s*=/gi;
+const HANDLER_ATTR_RE = /[^.\w]on(click|input|change|submit|keydown|keyup|focus|blur|load|error|contextmenu|dblclick|pointerdown|pointerup|touchstart|touchend|mouseover|mouseenter|mouseleave|wheel|drag\w*|drop|select|scroll|resize|toggle|animationstart|animationend|transitionend|copy|cut|paste|beforeunload|unload|hashchange|popstate|message|storage|offline|online|play|pause|ended|timeupdate|canplay|loadedmetadata|seeking|volumechange|waiting|progress|abort|invalid|reset|search|show|close|command|beforeprint|afterprint|fullscreenchange|visibilitychange)\s*=\s*"/gi;
 const INLINE_SCRIPT_RE = /<script(?![^>]*\ssrc\s*=)[^>]*>/gi;
 
 function walk(dir, out = []) {
@@ -47,7 +47,10 @@ for (const f of files) {
     const src = fs.readFileSync(f, 'utf8');
     const isHtml = f.endsWith('.html');
     // نتجاهل التعليقات (أمثلة التوثيق) — ما يُنفَّذ فقط هو ما يُحتسب
-    const code = src.split('\n')
+    // نتجاهل التعليقات: // … و /* … *// و<!-- … -->
+    const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
         .filter((l) => {
             const t = l.trim();
             return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('<!--') || t.startsWith('#'));

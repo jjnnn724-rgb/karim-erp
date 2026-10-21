@@ -13,17 +13,41 @@ const pending = new Map();
 let next = 0;
 let jobId = 0;
 
+function hasPendingJobs(worker) {
+    for (const job of pending.values()) {
+        if (job.worker === worker) {return true;}
+    }
+    return false;
+}
+
+function rejectWorkerJobs(worker, error) {
+    for (const [id, job] of pending) {
+        if (job.worker === worker) {
+            pending.delete(id);
+            job.reject(error);
+        }
+    }
+}
+
 function getWorker(i) {
     if (!workers[i] || workers[i] === null) {
         const w = new Worker(path.join(__dirname, 'pw-worker.js'));
-        w.unref ? null : null;
+        w.unref();
         w.on('message', (msg) => {
             const p = pending.get(msg.id);
-            if (p) { pending.delete(msg.id); msg.ok ? p.resolve(msg.out) : p.reject(new Error(msg.err)); }
+            if (p) {
+                pending.delete(msg.id);
+                msg.ok ? p.resolve(msg.out) : p.reject(new Error(msg.err));
+                if (!hasPendingJobs(w)) {w.unref();}
+            }
         });
-        w.on('error', (err) => {
-            workers[i] = null;
-            for (const [k, p] of pending) { p.reject(err); pending.delete(k); }
+        w.on('error', (error) => {
+            if (workers[i] === w) {workers[i] = null;}
+            rejectWorkerJobs(w, error);
+        });
+        w.on('exit', (code) => {
+            if (workers[i] === w) {workers[i] = null;}
+            rejectWorkerJobs(w, new Error(`password worker exited before completing jobs (code ${code})`));
         });
         workers[i] = w;
     }
@@ -33,7 +57,17 @@ function dispatch(job) {
     const id = ++jobId;
     const w = getWorker(next);
     next = (next + 1) % SIZE;
-    return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); w.postMessage({ id, ...job }); });
+    return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject, worker: w });
+        try {
+            w.ref();
+            w.postMessage({ id, ...job });
+        } catch (error) {
+            pending.delete(id);
+            if (!hasPendingJobs(w)) {w.unref();}
+            reject(error);
+        }
+    });
 }
 async function hash(pw, cost = 12) {
     if (!pw) {throw new Error('empty password');}

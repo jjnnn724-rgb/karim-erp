@@ -20,9 +20,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { logger } = require('./logger');
-const { ConfigurationError, wrapUnknown } = require('./errors/app-error');
+const { ConfigurationError } = require('./errors/app-error');
 
 // ─── Valid rule catalog for env vars ────────────────────────
 function makeRules() {

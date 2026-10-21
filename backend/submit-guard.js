@@ -39,12 +39,12 @@ const VOLATILE_KEYS = new Set([
 ]);
 
 function normalizeValue(v) {
-    if (v === null || v === undefined) return '';
-    if (Array.isArray(v)) return v.map(normalizeValue);
+    if (v === null || v === undefined) {return '';}
+    if (Array.isArray(v)) {return v.map(normalizeValue);}
     if (typeof v === 'object') {
         const out = {};
         for (const k of Object.keys(v).sort()) {
-            if (VOLATILE_KEYS.has(k)) continue;
+            if (VOLATILE_KEYS.has(k)) {continue;}
             out[k] = normalizeValue(v[k]);
         }
         return out;
@@ -62,8 +62,8 @@ function signatureOf(body) {
 
 function sweep() {
     const now = Date.now();
-    for (const [k, v] of inflight) { if (now - v.at > INFLIGHT_STALE_MS) inflight.delete(k); }
-    for (const [k, v] of recent) { if (now - v.at > RECENT_WINDOW_MS) recent.delete(k); }
+    for (const [k, v] of inflight) { if (now - v.at > INFLIGHT_STALE_MS) {inflight.delete(k);} }
+    for (const [k, v] of recent) { if (now - v.at > RECENT_WINDOW_MS) {recent.delete(k);} }
 }
 
 /**
@@ -81,9 +81,9 @@ function sweep() {
  */
 function guardCreate(entity, { mode = 'window' } = {}) {
     return (req, res, next) => {
-        if (!DEDUP_ENTITIES.has(entity) && !EXTRA_ENTITIES.has(entity)) return next();
+        if (!DEDUP_ENTITIES.has(entity) && !EXTRA_ENTITIES.has(entity)) {return next();}
         const sig = signatureOf(req.body);
-        if (sig === null) return next();
+        if (sig === null) {return next();}
         const key = `${entity}|${req.user?.id ?? '?'}|${sig}`;
         sweep();
 

@@ -22,8 +22,16 @@
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-const { logger } = require('../logger');
 const { ForbiddenError } = require('../errors/app-error');
+
+function withTimeout(operation, timeoutMs) {
+    let timeout;
+    const work = Promise.resolve().then(operation);
+    const deadline = new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    });
+    return Promise.race([work, deadline]).finally(() => clearTimeout(timeout));
+}
 
 // ─── Runtime state mutated by server boot ──────────────────
 const BOOT_STATE = {
@@ -66,7 +74,7 @@ function diskUsageSync(dir) {
     };
     try {
         return measure(dir);
-    } catch (e) {
+    } catch (_) {
         // The measured dir may legitimately be absent (moved/archived while the
         // app runs) — the volume it lives on is what we actually report.
         try {
@@ -105,10 +113,7 @@ async function checkDatabase(pool) {
     }
     _dbCheckPending = (async () => {
         try {
-            const { rows } = await Promise.race([
-                pool.query('SELECT 1 AS ok'),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
-            ]);
+            const { rows } = await withTimeout(() => pool.query('SELECT 1 AS ok'), 5000);
             const result = {
                 component: 'database',
                 status: 'ok',
@@ -139,10 +144,7 @@ async function checkRedis(ioredis) {
     const t0 = Date.now();
     try {
         if (!ioredis) {return { component: 'redis', status: 'warn', durationMs: 0, error: 'not_configured' };}
-        const pong = await Promise.race([
-            ioredis.ping(),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
-        ]);
+        const pong = await withTimeout(() => ioredis.ping(), 2000);
         return { component: 'redis', status: 'ok', durationMs: Date.now() - t0, details: { pong } };
     } catch (e) {
         return { component: 'redis', status: 'fail', durationMs: Date.now() - t0, error: e.message };
@@ -240,10 +242,7 @@ function createHealthRouter({ pool, redis, dataDir } = {}) {
         // Extra user-registered checks (with timeout per-check)
         for (const fn of BOOT_STATE.readyChecks) {
             try {
-                const result = await Promise.race([
-                    Promise.resolve(fn()),
-                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000)),
-                ]);
+                const result = await withTimeout(fn, 3000);
                 if (result) {checks.push(result);}
             } catch (e) {
                 checks.push({

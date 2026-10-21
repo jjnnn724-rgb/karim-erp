@@ -107,7 +107,7 @@ async function raSuggest() {
             const items = data.suggestions || [];
             if (!items.length) { box.style.display = 'none'; return; }
             box.innerHTML = items.map((s) => `
-              <div style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#f0f0f0)" onmousedown="raPickSuggest('${raEscape(s.name)}')" onmouseover="this.style.background='var(--bg,#f5f5f5)'" onmouseout="this.style.background=''">
+              <div style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#f0f0f0)" data-karim-action="raPickSuggest" data-karim-event="mousedown" data-karim-arg0="${raEscape(s.name)}" data-karim-hover="var(--bg,#f5f5f5)">
                 <span><b>${raEscape(s.name)}</b></span>
                 <span style="font-size:11px;color:${s.balance < 0 ? '#dc2626' : '#16a34a'}">رصيد: ${raNum(s.balance)}</span>
               </div>`).join('');
@@ -374,7 +374,7 @@ async function raOpenDispatch(id) {
             <h3><i class=ji data-i=file-text></i> إذن صرف — ${raEscape(disp.dept_name || '')} — ${raEscape(disp.date || '')}</h3>
             <div style="display:flex;gap:6px">
               <button class="btn btn-sm btn-green" data-karim-action="raPrintDispatch" data-karim-arg0="${raEscape(disp.id)}"><i class=ji data-i=printer></i> طباعة</button>
-              <button class="btn btn-sm" onclick="document.getElementById('raDispatchDetail').innerHTML=''">إغلاق</button>
+              <button class="btn btn-sm" data-karim-action="kdAct">إغلاق</button>
             </div>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--bg,#f9fafb);border-radius:8px;margin:8px 0;font-size:13px">
@@ -576,4 +576,9 @@ function raExportExcel() {
 // raSuggest مستدعاة من معالج سطري داخل HTML (oninput="raSuggest()") —
 // والملف يُحمَّل كـmodule عبر safeBridge (import + Object.assign(window)).
 // بلا تصديرها لا تصل إلى window فيسقط الاستدعاء بـReferenceError.
-export { renderReceivedAnalyzerPage, raApply, raSuggest, raExportExcel, raPrintReport, raSwitchTab, raDispatchesPage, raOpenDispatch, raPrintDispatch, raPreset, raPickSuggest };
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct() {
+    document.getElementById('raDispatchDetail').innerHTML=''
+}
+
+export {renderReceivedAnalyzerPage, raApply, raSuggest, raExportExcel, raPrintReport, raSwitchTab, raDispatchesPage, raOpenDispatch, raPrintDispatch, raPreset, raPickSuggest, kdAct };;

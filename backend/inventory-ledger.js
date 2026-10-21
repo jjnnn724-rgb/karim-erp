@@ -50,6 +50,10 @@ async function postInventoryLedgerEntry(client, input = {}) {
     [inventoryId]
   );
   if (!item.rows.length) {throw new Error('INVENTORY_ITEM_NOT_FOUND');}
+  if (idempotencyKey) {
+    const committed = await client.query('SELECT * FROM inventory_ledger WHERE idempotency_key = $1 FOR UPDATE', [idempotencyKey]);
+    if (committed.rows.length) {return { ledger: committed.rows[0], replay: true };}
+  }
   const location = await client.query('SELECT id, negative_stock_policy FROM inventory_locations WHERE id = $1 AND active = true FOR SHARE', [locationId]);
   if (!location.rows.length) {throw new Error('INVENTORY_LOCATION_NOT_FOUND');}
 
@@ -95,9 +99,7 @@ async function postInventoryLedgerEntry(client, input = {}) {
   
   // سباق التكرار (نقرتان متزامنتان): الفحص-ثم-الإدخال قد يتسابق — القيد الفريد
   // inventory_ledger_idempotency_unique هو الحكم النهائي، ونحوّل التعارض إلى replay نظيف
-  let ledger;
-  try {
-    ledger = await client.query(
+  const ledgerResult = await client.query(
       `INSERT INTO inventory_ledger
         (transaction_id, transaction_type, inventory_id, location_id, quantity_delta,
          unit, unit_cost, total_cost, batch_id, lot_number, expiry_date,
@@ -105,6 +107,7 @@ async function postInventoryLedgerEntry(client, input = {}) {
          business_date, shift_id, user_id, correlation_id, idempotency_key, reason, metadata,
          catch_weight_qty, catch_weight_unit)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+        ON CONFLICT ON CONSTRAINT inventory_ledger_idempotency_unique DO NOTHING
         RETURNING *`,
       [transactionId, transactionType, inventoryId, locationId, delta, input.unit || item.rows[0].unit || 'وحدة',
         unitCost, Number((Math.abs(delta) * unitCost).toFixed(4)), input.batchId || null,
@@ -113,14 +116,15 @@ async function postInventoryLedgerEntry(client, input = {}) {
         input.businessDate || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date()), input.shiftId || null,
         input.userId || null, correlationId, idempotencyKey, input.reason || transactionType, JSON.stringify(metadata),
         catchWeightQty, catchWeightUnit]
-    );
-  } catch (insertError) {
-    if (insertError && insertError.code === '23505' && idempotencyKey) {
-      const raced = await client.query('SELECT * FROM inventory_ledger WHERE idempotency_key = $1', [idempotencyKey]);
-      if (raced.rows.length) {return { ledger: raced.rows[0], replay: true };}
-    }
-    throw insertError;
+  );
+  if (ledgerResult.rows.length === 0 && idempotencyKey) {
+    // ON CONFLICT keeps PostgreSQL's transaction usable; a caught 23505 would
+    // otherwise leave the caller's whole transaction aborted.
+    const raced = await client.query('SELECT * FROM inventory_ledger WHERE idempotency_key = $1', [idempotencyKey]);
+    if (raced.rows.length) {return { ledger: raced.rows[0], replay: true };}
   }
+
+  if (ledgerResult.rows.length === 0) {throw new Error('INVENTORY_LEDGER_INSERT_RETURNED_NO_ROW');}
 
   await client.query(
     `UPDATE inventory_location_balances
@@ -134,7 +138,7 @@ async function postInventoryLedgerEntry(client, input = {}) {
       WHERE id = $1`,
     [inventoryId]
   );
-  return { ledger: ledger.rows[0], replay: false, balanceBefore: current, balanceAfter: next };
+  return { ledger: ledgerResult.rows[0], replay: false, balanceBefore: current, balanceAfter: next };
 }
 
 module.exports = { postInventoryLedgerEntry, ALLOWED_TYPES };

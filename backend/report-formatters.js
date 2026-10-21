@@ -6,7 +6,7 @@ function formatHours(value, digits = 1) {
   return `${hours.toFixed(digits)} ساعة`;
 }
 
-function formatLateSummary({ totalMinutes = 0, lateDays = 0 } = {}) {
+function formatLateSummary({ totalMinutes = 0, lateDays: _lateDays = 0 } = {}) {
   const minutes = Number(totalMinutes || 0);
   if (!Number.isFinite(minutes) || minutes <= 0) {
     return '—';

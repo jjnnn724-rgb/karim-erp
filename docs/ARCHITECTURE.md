@@ -7,7 +7,7 @@
 
 ## 1. نظرة عامة على المعمارية
 
-karim ERP هو تطبيق سطح مكتب (Electron 28) يضمّ داخله:
+karim ERP هو تطبيق سطح مكتب (Electron 44؛ بيئة Node.js المدمجة المختبرة 24.22.0) يضمّ داخله:
 - خادم **Express 5** على المنفذ 5000
 - قاعدة بيانات **PostgreSQL 16** (Portable على Windows)
 - اتصالات فورية عبر **Socket.io** للبث اللحظي للأجهزة على الشبكة المحلية
@@ -186,7 +186,7 @@ node scripts/migrate-plaintext-passwords.js
 
 ### المتطلبات
 - Windows 10/11 (64-bit)
-- Node.js 18+
+- Node.js 20+
 - 4GB RAM كحد أدنى
 
 ### التشغيل

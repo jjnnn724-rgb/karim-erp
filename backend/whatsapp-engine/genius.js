@@ -102,7 +102,7 @@ function mapDeptName(name) {
 
 /* ─── استعلام موظفين متقدم: فلترة متعددة ─── */
 async function queryEmployees(filters = {}) {
-  const { department, position, shiftStart, status = 'active', lateOnly, absentToday, limit = 20 } = filters;
+  const { department, position, shiftStart, status = 'active', limit = 20 } = filters;
   let sql = `SELECT id, name, "employeeId", shift_start, shift_karim, department, position, status FROM employees WHERE 1=1`;
   const params = [];
   if (status) { params.push(status); sql += ` AND status = $${params.length}`; }
@@ -414,7 +414,6 @@ async function handleText(text, rec) {
       const day = dm ? dm[1] : riyadhToday();
       const depRaw = depMatch ? depMatch[1].trim() : undefined;
       const dep = mapDeptName(depRaw) || depRaw;
-      const shift = shiftMatch ? shiftMatch[1] : undefined;
       const rows = await departmentSummary({ department: dep, date: day });
       if (!rows.length) {return { text: `لا بيانات لليوم ${day}`, source: 'genius' };}
       const lines = [`📊 ملخص الحضور ${day} ${dep ? `— قسم ${dep}` : ''}:`];

@@ -586,9 +586,9 @@ ${rows.length?rows.map(r=>`<tr>
 </div>`;
 }else{
 const pg=`<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px" class="no-print">
-<button class="btn btn-sm" ${data.page<=1?'disabled':''} onclick="YCASH.page=${(data.page||1)-1};generateReport()">السابق</button>
+<button class="btn btn-sm" ${data.page<=1?'disabled':''} data-karim-action="kdGenerateReport" data-karim-arg0="${(data.page||1)-1}">السابق</button>
 <span class="u-faint">صفحة ${fN(data.page||1)} من ${fN(data.pages||1)} — ${fN(data.total||0)} فاتورة</span>
-<button class="btn btn-sm" ${data.page>=data.pages?'disabled':''} onclick="YCASH.page=${(data.page||1)+1};generateReport()">التالي</button>
+<button class="btn btn-sm" ${data.page>=data.pages?'disabled':''} data-karim-action="kdGenerateReport41" data-karim-arg0="${(data.page||1)+1}">التالي</button>
 </div>`;
 tableHtml=`
 <div class="report-section">
@@ -625,8 +625,8 @@ return `
 </div>
 </div>
 <div class="report-filter-bar no-print" style="margin-bottom:12px">
-<div class="fg"><label>الكاشير</label><select id="yCashierSel" onchange="YCASH.cashier=this.value;YCASH.page=1;generateReport()">${cashierOpts}</select></div>
-<div class="fg"><label>العرض</label><select id="yCashierView" onchange="YCASH.view=this.value;YCASH.page=1;generateReport()">
+<div class="fg"><label>الكاشير</label><select id="yCashierSel" data-karim-action="kdGenerateReport43" data-karim-event="change" data-karim-pass="value">${cashierOpts}</select></div>
+<div class="fg"><label>العرض</label><select id="yCashierView" data-karim-action="kdGenerateReport45" data-karim-event="change" data-karim-pass="value">
 <option value="items" ${YCASH.view==='items'?'selected':''}>الأصناف المباعة</option>
 <option value="invoices" ${YCASH.view==='invoices'?'selected':''}>الفواتير</option>
 </select></div>
@@ -677,5 +677,28 @@ printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta
 printWindow.document.close();
 setTimeout(()=>{ printWindow.focus(); },500);
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdGenerateReport(p0) {
+    YCASH.page = p0;
+    generateReport();
+}
 
-export { renderReports, updateDateInputs, getDateRange, generateReport, generatePosSalesReport, renderPosPaymentSummary, renderPosSalesReportHtml, formatRevenueNote, generateGeneralReport, generateDepartmentReport, generateKitchenReport, generateReturnsReport, generateWarehouseReport, generateHRReport, generateSpecificDeptReport, generateYaraDeptReport, YCASH, generateYaraCashiersReport, renderYaraCashiersHtml, ysCashierInvoiceDetail, printReportOnly };
+function kdGenerateReport41(p0) {
+    YCASH.page = p0;
+    generateReport();
+}
+
+function kdGenerateReport43(p0) {
+    YCASH.cashier = p0;
+    YCASH.page = 1;
+    generateReport();
+}
+
+function kdGenerateReport45(p0) {
+    YCASH.view = p0;
+    YCASH.page = 1;
+    generateReport();
+}
+
+
+export {renderReports, updateDateInputs, getDateRange, generateReport, generatePosSalesReport, renderPosPaymentSummary, renderPosSalesReportHtml, formatRevenueNote, generateGeneralReport, generateDepartmentReport, generateKitchenReport, generateReturnsReport, generateWarehouseReport, generateHRReport, generateSpecificDeptReport, generateYaraDeptReport, YCASH, generateYaraCashiersReport, renderYaraCashiersHtml, ysCashierInvoiceDetail, printReportOnly, kdGenerateReport, kdGenerateReport41, kdGenerateReport43, kdGenerateReport45 };;

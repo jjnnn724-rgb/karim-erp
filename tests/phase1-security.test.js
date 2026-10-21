@@ -375,7 +375,9 @@ describe('Phase 1.4 — XSS Protection & Error Handling', () => {
             expect(directive).toContain("'unsafe-hashes'");
             expect(directive).toContain("'nonce-abc123'");
             // المعالجات السطرية (onclick) مسموحة عبر script-src-attr — 1158 منها
-            expect(directive).toContain("script-src-attr 'unsafe-inline'");
+            // 2026-10-21: بعد ترحيل كل المعالجات السطرية (1158 ⇒ 0) صار
+            // بالإمكان منعها نهائيًا — أي حقن HTML لا ينفّذ JS.
+            expect(directive).toContain("script-src-attr 'none'");
         });
 
         it('should allow the approved Google Fonts stylesheet and font hosts', () => {

@@ -5,8 +5,8 @@
 // ============================================
 // DASHBOARD
 // ============================================
-const dashboardChartDays = 30;
-const dashboardChartDept = 'all';
+let dashboardChartDays = 30;
+let dashboardChartDept = 'all';
 function dashboardDateKey(value){ const d=new Date(value); return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10); }
 function dashboardFilteredRows(){
  const cutoff=dashboardChartDays==='all'?null:new Date(Date.now()-Number(dashboardChartDays)*86400000);
@@ -18,7 +18,7 @@ function dashboardFilteredRows(){
 }
 function renderDashboardAnalytics(){
  const deptOptions=STATE.departments.map(d=>`<option value="${esc(d.code)}" ${dashboardChartDept===d.code?'selected':''}>${esc(d.name)}</option>`).join('');
- return `<section class="dashboard-analytics" style="margin-top:30px"><div class="section-header"><div><div class="section-title"><i class=ji data-i=chart></i> التحليلات التفاعلية</div><div class="text-muted" style="font-size:12px;margin-top:4px">بيانات مباشرة من النظام — اضغط على عناصر الرسم للتفاصيل</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="dashboardChartDays" class="form-control" onchange="dashboardChartDays=this.value;renderPage()"><option value="7" ${dashboardChartDays==='7'?'selected':''}>آخر 7 أيام</option><option value="30" ${String(dashboardChartDays)==='30'?'selected':''}>آخر 30 يومًا</option><option value="90" ${String(dashboardChartDays)==='90'?'selected':''}>آخر 90 يومًا</option><option value="all" ${dashboardChartDays==='all'?'selected':''}>كل الفترة</option></select><select id="dashboardChartDept" class="form-control" onchange="dashboardChartDept=this.value;renderPage()"><option value="all">كل الأقسام</option>${deptOptions}</select></div></div><div class="dashboard-chart-grid"><div class="mcard chart-panel"><div class="chart-panel-title">الإيرادات والمصروفات حسب القسم</div><div class="chart-canvas-wrap"><canvas id="dashboardDeptChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">اتجاه الإيرادات والنتيجة</div><div class="chart-canvas-wrap"><canvas id="dashboardTrendChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">توزيع المصروفات التشغيلية</div><div class="chart-canvas-wrap chart-doughnut"><canvas id="dashboardExpenseChart"></canvas></div></div></div></section>`;
+ return `<section class="dashboard-analytics" style="margin-top:30px"><div class="section-header"><div><div class="section-title"><i class=ji data-i=chart></i> التحليلات التفاعلية</div><div class="text-muted" style="font-size:12px;margin-top:4px">بيانات مباشرة من النظام — اضغط على عناصر الرسم للتفاصيل</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="dashboardChartDays" class="form-control" data-karim-action="kdRenderPage" data-karim-event="change" data-karim-pass="value"><option value="7" ${dashboardChartDays==='7'?'selected':''}>آخر 7 أيام</option><option value="30" ${String(dashboardChartDays)==='30'?'selected':''}>آخر 30 يومًا</option><option value="90" ${String(dashboardChartDays)==='90'?'selected':''}>آخر 90 يومًا</option><option value="all" ${dashboardChartDays==='all'?'selected':''}>كل الفترة</option></select><select id="dashboardChartDept" class="form-control" data-karim-action="kdRenderPage7" data-karim-event="change" data-karim-pass="value"><option value="all">كل الأقسام</option>${deptOptions}</select></div></div><div class="dashboard-chart-grid"><div class="mcard chart-panel"><div class="chart-panel-title">الإيرادات والمصروفات حسب القسم</div><div class="chart-canvas-wrap"><canvas id="dashboardDeptChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">اتجاه الإيرادات والنتيجة</div><div class="chart-canvas-wrap"><canvas id="dashboardTrendChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">توزيع المصروفات التشغيلية</div><div class="chart-canvas-wrap chart-doughnut"><canvas id="dashboardExpenseChart"></canvas></div></div></div></section>`;
 }
 function initDashboardCharts(){
  if(STATE.page!=='dashboard'||typeof Chart==='undefined') {return;}
@@ -331,14 +331,14 @@ return `
 <div class="hero-panel">
 <h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> تسجيل الحضور والانصراف</h3>
 <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
-<button class="attendance-btn check-in" onclick="checkIn()" ${todayRecord?.checkIn?'disabled':''}>
+<button class="attendance-btn check-in" data-karim-action="kdCheckIn" ${todayRecord?.checkIn?'disabled':''}>
 <span class="u-f28"><i class=ji data-i=inbox></i></span>
 <div>
 <div class="u-t16-bold">تسجيل حضور</div>
 <div class="u-faint-80">${todayRecord?.checkIn?`تم: ${todayRecord.checkIn}`:'اضغط للتسجيل'}</div>
 </div>
 </button>
-<button class="attendance-btn check-out" onclick="checkOut()" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
+<button class="attendance-btn check-out" data-karim-action="kdCheckOut" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
 <span class="u-f28"><i class=ji data-i=upload></i></span>
 <div>
 <div class="u-t16-bold">تسجيل انصراف</div>
@@ -381,6 +381,25 @@ if(warnAlerts.length>0){
 html += `<div class="expiry-alert-banner warn-only"><h4><i class=ji data-i=alert-triangle></i> وثائق ستنتهي قريباً</h4><div class="expiry-alert-list">${warnAlerts.map(a=>`<div class="expiry-alert-row"><span>${a.icon} ${esc(a.text)} <small class="text-muted">هجري:  ${esc(a.date||'—')}</small></span><span class="badge bdg-orange">${esc(a.meta)}</span></div>`).join('')}</div></div>`;
 }
 return html;
+}/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdRenderPage(p0) {
+    dashboardChartDays = p0;
+    renderPage();
 }
 
-export { dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner };
+function kdRenderPage7(p0) {
+    dashboardChartDept = p0;
+    renderPage();
+}
+
+function kdCheckIn() {
+    checkIn();
+}
+
+function kdCheckOut() {
+    checkOut();
+}
+
+
+
+export {dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner, kdRenderPage, kdRenderPage7, kdCheckIn, kdCheckOut };;

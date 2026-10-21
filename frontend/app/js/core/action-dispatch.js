@@ -166,7 +166,33 @@
         }, false);
     }
 
-    ['click', 'change', 'input', 'submit', 'keydown', 'focus', 'blur', 'keyup'].forEach(bind);
+    ['click', 'change', 'input', 'submit', 'keydown', 'focus', 'blur', 'keyup', 'mousedown'].forEach(bind);
+
+    // تلوين عند المرور (بديل onmouseover/onmouseout): data-karim-hover="<لون>".
+    document.addEventListener('mouseover', function (event) {
+        const el = event.target;
+        if (!el || typeof el.closest !== 'function') {return;}
+        const holder = el.closest('[data-karim-hover]');
+        if (holder && holder.contains(el)) {holder.style.background = holder.getAttribute('data-karim-hover');}
+    }, true);
+    document.addEventListener('mouseout', function (event) {
+        const el = event.target;
+        if (!el || typeof el.closest !== 'function') {return;}
+        const holder = el.closest('[data-karim-hover]');
+        if (holder && holder.contains(el)) {holder.style.background = '';}
+    }, true);
+
+    // أخطاء الصور: حدث error لا يمرّر بالـbubbling ⇒ نلتقطه في مرحلة capture.
+    // data-karim-imgerror="hide" ⇒ إخفاء الصورة · "remove" ⇒ إزالة العنصر.
+    document.addEventListener('error', function (event) {
+        const el = event.target;
+        if (!el || typeof el.closest !== 'function') {return;}
+        const holder = el.closest('[data-karim-imgerror]');
+        if (!holder) {return;}
+        const mode = holder.getAttribute('data-karim-imgerror');
+        if (mode === 'remove') {holder.remove();}
+        else if (mode === 'hide') {holder.style.display = 'none';}
+    }, true);
 
     // ─── قلب media="print" ⇒ "all" (كان onload="this.media='all'") ───
     // كانت هذه معالجات سطرية ⇒ محجوبة ⇒ أنماط realtime/scanner لم تكن

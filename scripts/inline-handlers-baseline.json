@@ -1,32 +1,6 @@
 {
   "_comment": "ميزانية المعالجات السطرية لكل ملف — لا تُرفع. أي زيادة تفشل CI. تُخفض مع كل دفعة تحويل إلى addEventListener.",
-  "totalHandlers": 74,
+  "totalHandlers": 0,
   "totalInlineScripts": 0,
-  "files": {
-    "frontend/app/js/features/yarasoft.js": 11,
-    "frontend/app/js/features/warehouse.js": 8,
-    "frontend/app/js/features/kitchen.js": 7,
-    "frontend/app/js/features/finance.js": 5,
-    "frontend/app/js/features/hr.js": 5,
-    "frontend/app/js/features/dashboard.js": 4,
-    "frontend/app/js/features/departments.js": 4,
-    "frontend/app/js/features/reports.js": 4,
-    "frontend/app/js/features/roster.js": 4,
-    "frontend/app/js/features/settings-users.js": 3,
-    "frontend/app/js/db-constraints-client.js": 2,
-    "frontend/app/js/features/cfo.js": 2,
-    "frontend/app/js/features/received-analyzer.js": 2,
-    "frontend/app/js/features/whatsapp.js": 2,
-    "frontend/app/js/features/branches.js": 1,
-    "frontend/app/js/features/bulk-import.js": 1,
-    "frontend/app/js/features/cashier-monitor.js": 1,
-    "frontend/app/js/features/dept-employees.js": 1,
-    "frontend/app/js/features/sales-analyzer.js": 1,
-    "frontend/app/js/features/smart-card.js": 1,
-    "frontend/app/js/features/veg-requests.js": 1,
-    "frontend/app/js/features/wh-vs-pos.js": 1,
-    "frontend/app/js/menu-board.js": 1,
-    "frontend/app/js/v2/layout/app-layout.js": 1,
-    "frontend/app/js/v2/theme.js": 1
-  }
+  "files": {}
 }

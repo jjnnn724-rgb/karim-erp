@@ -25,7 +25,6 @@ const VAULT_PREFIX = 'v1:';
 // Falls back to legacy sha256 derivation for backward compatibility with
 // existing encrypted passwords. Set VAULT_KEY in .env for full separation.
 let _vaultKeyCache = null;
-let _vaultKeySource = null;
 
 /** مفتاح التشفير — VAULT_KEY أولاً، وإلا التراثي (للتوافق مع البيانات القديمة). */
 function vaultKey() {
@@ -34,7 +33,6 @@ function vaultKey() {
     const dedicated = String(process.env.VAULT_KEY || '');
     if (dedicated.length >= 32) {
         _vaultKeyCache = crypto.createHash('sha256').update(dedicated + '|karim-pw-vault|v1').digest();
-        _vaultKeySource = 'VAULT_KEY';
         return _vaultKeyCache;
     }
     // 2. Legacy fallback: sha256 من JWT secret (نفس المشتق القديم — للتوافق)
@@ -42,7 +40,6 @@ function vaultKey() {
         || process.env.JWT_SECRET || process.env.EMPLOYEE_QR_SECRET || '');
     if (secret.length < 16) {return null;}
     _vaultKeyCache = crypto.createHash('sha256').update(secret + '|karim-pw-vault|v1').digest();
-    _vaultKeySource = 'JWT-derived (legacy)';
     return _vaultKeyCache;
 }
 

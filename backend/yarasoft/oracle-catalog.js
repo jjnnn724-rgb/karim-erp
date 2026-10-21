@@ -13,7 +13,6 @@
 'use strict';
 
 const { pool } = require('../shared-pool');
-const { logger } = require('../logger');
 const { sanitizeError, oraExecute } = require('./oracle-link');
 
 let _oracledb = null;

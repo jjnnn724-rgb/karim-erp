@@ -45,6 +45,11 @@ function createCspViolationLog(filePath, options = {}) {
     let target = String(filePath || '');
     if (!target) {return { append() { /* مُعطّل */ }, path: '', flush() { return Promise.resolve(); } };}
     if (!/\.jsonl$/i.test(target)) {target = `${target}.jsonl`;}
+    // مسار نسبي ⇒ يُثبَّت على جذر المشروع (لا على مجلد تشغيل الخدمة،
+    // حتى لا يختلف مكان السجل بين التشغيل اليدوي والخدمة وDocker).
+    if (!path.isAbsolute(target)) {
+        target = path.resolve(__dirname, '..', target);
+    }
 
     let queue = Promise.resolve();
 

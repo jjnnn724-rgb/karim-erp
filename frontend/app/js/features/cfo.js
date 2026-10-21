@@ -31,8 +31,8 @@ async function renderCfoPage(){
   content.innerHTML = `
   <div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=briefcase></i> ${t('pg.cfo')}</h3>
   <div class="u-row-wrap">
-    <input type="date" id="cfoFrom" value="${CFO_STATE.from}" onchange="CFO_STATE.from=this.value">
-    <input type="date" id="cfoTo" value="${CFO_STATE.to}" onchange="CFO_STATE.to=this.value">
+    <input type="date" id="cfoFrom" value="${CFO_STATE.from}" data-karim-action="kdAct" data-karim-event="change" data-karim-pass="value">
+    <input type="date" id="cfoTo" value="${CFO_STATE.to}" data-karim-action="kdAct4" data-karim-event="change" data-karim-pass="value">
     <button class="btn btn-blue btn-sm" data-karim-action="renderCfoPage"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button>
     <button class="btn btn-sm" data-karim-action="cfoPrintSummary"><i class=ji data-i=printer></i> ${t('cfo.printSum')}</button>
     ${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="cfoJournalModal"><i class=ji data-i=plus></i> ${t('cfo.manual')}</button>
@@ -473,5 +473,14 @@ function cfoExportTB(){
   XLSX.writeFile(wb, `trial-balance_${CFO_STATE.from}_${CFO_STATE.to}.xlsx`);
   toast('تم تحميل ميزان المراجعة', 'success');
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct(p0) {
+    CFO_STATE.from = p0;
+}
 
-export { CFO_STATE, cfoCanWrite, renderCfoPage, cfoJournalModal, cfoSaveJournal, cfoApproveEntry, cfoLoadPeriods, cfoClosePeriod, cfoOpenPeriod, cfoLoadBalance, cfoLoadCashflow, cfoLoadOpenShifts, cfoCloseShiftRemote, cfoExecDayClose, cfoLoadCC, cfoLoadAging, cfoLoadBank, cfoAutoMatch, cfoAddStmt, cfoLoadAssets, cfoAddAsset, cfoDisposeAsset, cfoRunDepreciation, cfoLoadCustody, cfoHandCustody, cfoAckCustody, cfoLoadBudgets, cfoAddBudget, cfoDelBudget, cfoAlertsLog, cfoRunAlerts, cfoPostPayroll, cfoConfirmPostPayroll, cfoVoidEntry, cfoPrintShell, cfoPrintTB, cfoPrintJournal, cfoPrintSummary, cfoExportTB };
+function kdAct4(p0) {
+    CFO_STATE.to = p0;
+}
+
+
+export {CFO_STATE, cfoCanWrite, renderCfoPage, cfoJournalModal, cfoSaveJournal, cfoApproveEntry, cfoLoadPeriods, cfoClosePeriod, cfoOpenPeriod, cfoLoadBalance, cfoLoadCashflow, cfoLoadOpenShifts, cfoCloseShiftRemote, cfoExecDayClose, cfoLoadCC, cfoLoadAging, cfoLoadBank, cfoAutoMatch, cfoAddStmt, cfoLoadAssets, cfoAddAsset, cfoDisposeAsset, cfoRunDepreciation, cfoLoadCustody, cfoHandCustody, cfoAckCustody, cfoLoadBudgets, cfoAddBudget, cfoDelBudget, cfoAlertsLog, cfoRunAlerts, cfoPostPayroll, cfoConfirmPostPayroll, cfoVoidEntry, cfoPrintShell, cfoPrintTB, cfoPrintJournal, cfoPrintSummary, cfoExportTB, kdAct, kdAct4 };;

@@ -166,7 +166,7 @@ function requireRoleOrPerm(roles, permKey) {
             if (list.includes(req.user?.role)) {return next();}
             if (await userHasPerm(req.user, permKey, [], null)) {return next();}
             return res.status(403).json({ error: 'FORBIDDEN', message: 'لا تملك صلاحية هذه العملية' });
-        } catch (e) {
+        } catch (_) {
             return res.status(500).json({ error: 'PERM_CHECK_FAILED', message: 'تعذر التحقق من الصلاحية' });
         }
     };

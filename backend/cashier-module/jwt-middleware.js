@@ -60,7 +60,7 @@ if (process.env.NODE_ENV === 'production' &&
 const ACCESS_SECRET  = (process.env.JWT_ACCESS_SECRET  && !accessSecretIsPlaceholder)
     ? process.env.JWT_ACCESS_SECRET
     : crypto.randomBytes(32).toString('hex');
-const REFRESH_SECRET = (process.env.JWT_REFRESH_SECRET && !refreshSecretIsPlaceholder)
+(process.env.JWT_REFRESH_SECRET && !refreshSecretIsPlaceholder)
     ? process.env.JWT_REFRESH_SECRET
     : crypto.randomBytes(32).toString('hex');
 const ACCESS_TTL  = '24h';

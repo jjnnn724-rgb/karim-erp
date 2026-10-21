@@ -3,12 +3,11 @@
  * Mirrors the Epson TM-T20III / TM-m30 command set.
  */
 
-const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const { PNG } = require('pngjs');
 
-const ESC = 0x1B, GS = 0x1D, LF = 0x0A;
+const ESC = 0x1B, GS = 0x1D;
 const CMD = {
     INIT:         Buffer.from([ESC, 0x40]),
     ALIGN_LEFT:   Buffer.from([ESC, 0x61, 0x00]),
@@ -23,14 +22,6 @@ const CMD = {
 };
 const PAPER_WIDTH = 48;
 
-function pad(str, len, align = 'left') {
-    str = String(str);
-    if (str.length >= len) {return str.slice(0, len);}
-    const sp = ' '.repeat(len - str.length);
-    if (align === 'right') {return sp + str;}
-    if (align === 'center') { const l = Math.floor(sp.length / 2); return sp.slice(0, l) + str + sp.slice(l); }
-    return str + sp;
-}
 function fmtMoney(n) { return Number(n).toFixed(2) + ' SAR'; }
 function textLine(t, _) { return Buffer.from(t + '\n', 'utf8'); }
 function divider(c = '-') { return Buffer.from(c.repeat(PAPER_WIDTH) + '\n', 'ascii'); }

@@ -101,7 +101,7 @@ function brToggleAll(on) {
   brLoad();
 }
 
-function brModalInner(b, saveFn) {
+function brModalInner(b, actionName, argsJson) {
   b = b || {};
   window.showModal(`<h3 style="margin-top:0">${b.id ? '<i class=ji data-i=pencil></i> تعديل فرع' : '<i class=ji data-i=plus></i> فرع جديد'}</h3>
         <div class="fr">
@@ -118,11 +118,11 @@ function brModalInner(b, saveFn) {
         <div class="fg"><label>العنوان</label><input id="brAddress" value="${esc(b.address || '')}"></div>
         <div id="brErr" class="form-error" role="alert"></div>
         <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button>
-          <button class="btn btn-gold" onclick="${saveFn}"><i class=ji data-i=save></i> حفظ</button></div>`);
+          <button class="btn btn-gold" data-karim-action="${actionName}" data-karim-args="${argsJson || '[]'}"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 
 function brAddModal() {
-  brModalInner(null, 'brSaveNew()');
+  brModalInner(null, 'brSaveNew', '[]');
 }
 
 function brEditModal(id) {
@@ -131,7 +131,7 @@ function brEditModal(id) {
     toast('الفرع غير موجود', 'error');
     return;
   }
-  brModalInner(b, `brSaveEdit('${id}')`);
+  brModalInner(b, 'brSaveEdit', JSON.stringify([id]));
 }
 
 function brRead() {

@@ -129,7 +129,7 @@ router.get('/departments', requireRole(...READ_ROLES), async (req, res) => {
             invoices: s.invoices + x.invoices, refunds: s.refunds + x.refunds,
         }), { gross: 0, refund: 0, net: 0, invoices: 0, refunds: 0 });
         res.json({ ok: true, from, to, group, rows: r.rows, totals: t });
-    } catch (e) {
+    } catch (_) {
         res.status(500).json({ ok: false, error: 'YARA_REPORT_FAILED' });
     }
 });
@@ -138,10 +138,11 @@ router.get('/departments', requireRole(...READ_ROLES), async (req, res) => {
  * تفاصيل مبيعات الكاشيرية (CC) — أصنافًا وفواتيرًا، حيًا من Oracle
  * ────────────────────────────────────────────────────────────────────────────
  * GET /api/yara-reports/cashier-items?from=YYYY-MM-DD&to=YYYY-MM-DD
- *     &cashier=4&view=items|invoices&page=&limit=
+ *     &cashier=4&cashiers=1,3,4&view=items|invoices&page=&limit=[&summary_only=1]
  * يوم العمل = DATE اليوم نفسه (DOC_DATE منتصف الليل دائمًا) — فلتر مدى صريح
  * على العمود الخام ليستخدم الفهرس بدل المسح الكامل. + تجمع Oracle مشترك
- * + استعلامات متوازية + كاش 90 ثانية.
+ * + استعلامات متوازية + كاش 90 ثانية افتراضيًا؛ live=1 وحده يفعّل 10 ثوانٍ.
+ * summary_only=1 يرجع التجميع دون استعلام تفاصيل الفواتير.
  * يستثني الكاشير 2 (داخلي/اختباري — نفس قاعدة خط الإيرادات).
  */
 
@@ -171,9 +172,10 @@ async function _ciPoolGet(oracledb, cfg) {
     return _ciPool;
 }
 
-// كاش قصير: نفس البرامترات = نفس الرد 90 ثانية (أيام مغلقة لا تتغير)
+// التاريخ الحالي يُحدّث كل 10 ثوانٍ للوحة الحية؛ الفترات التاريخية تبقى 90 ثانية.
 const _ciCache = new Map(); // key -> { at, body }
 const CI_CACHE_MS = 90 * 1000;
+const CI_LIVE_CACHE_MS = 10 * 1000;
 setInterval(() => {
     const now = Date.now();
     for (const [k, v] of _ciCache.entries()) { if (now - v.at > CI_CACHE_MS) {_ciCache.delete(k);} }
@@ -186,20 +188,32 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
     const spanDays = Math.round((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000);
     if (spanDays > 62) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 62 يومًا لكل استعلام' });}
     const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
+    const cashiersRaw = String(req.query.cashiers || '').trim();
+    const cashierTokens = cashiersRaw ? cashiersRaw.split(',').map((no) => no.trim()) : [];
+    if (cashierTokens.length > 10 || cashierTokens.some((no) => !/^\d{1,8}$/.test(no))) {
+        return res.status(422).json({ ok: false, error: 'INVALID_CASHIERS' });
+    }
+    const cashiers = [...new Set(cashierTokens)];
     const view = String(req.query.view || 'items') === 'invoices' ? 'invoices' : 'items';
+    const summaryOnly = String(req.query.summary_only || '') === '1';
+    const liveRefresh = String(req.query.live || '') === '1';
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(200, Math.max(10, parseInt(req.query.limit) || 50));
 
-    const cacheKey = `${from}|${to}|${cashier}|${view}|${view === 'invoices' ? Math.min(page, Math.max(1, 1)) : 0}|${limit}`;
+    const cashierScope = cashier ? cashier : cashiers.join(',');
+    const resultKind = summaryOnly ? 'summary' : view;
+    const cacheKey = `${from}|${to}|${cashierScope}|${resultKind}|${view === 'invoices' ? Math.min(page, Math.max(1, 1)) : 0}|${limit}`;
+    const cacheTtlMs = liveRefresh && (summaryOnly || view === 'invoices') && to === riyadhDay(0)
+        ? CI_LIVE_CACHE_MS : CI_CACHE_MS;
     const cached = _ciCache.get(cacheKey + '|pg' + page);
-    if (cached && Date.now() - cached.at < CI_CACHE_MS) {
+    if (cached && Date.now() - cached.at < cacheTtlMs) {
         res.set('Cache-Control', 'no-store');
         return res.json(cached.body);
     }
 
     let conn = null;
     try {
-        const { loadOracleConfig, oraExecute, sanitizeError, oracleConnect } = require('./oracle-link');
+        const { loadOracleConfig, oraExecute, oracleConnect } = require('./oracle-link');
         const oracledb = require('oracledb');
         const cfg = loadOracleConfig();
         if (!cfg.enabled) {return res.status(409).json({ ok: false, error: 'ORACLE_DISABLED' });}
@@ -208,9 +222,14 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
         // DOC_DATE منتصف الليل دائمًا → مدى صريح على العمود الخام (يستخدم الفهرس)
         const dayRangeE = `e.DOC_DATE >= TO_DATE(:dfrom, 'YYYY-MM-DD') AND e.DOC_DATE < TO_DATE(:dto, 'YYYY-MM-DD') + 1`;
         const dayRangeB = `b.DOC_DATE >= TO_DATE(:dfrom, 'YYYY-MM-DD') AND b.DOC_DATE < TO_DATE(:dto, 'YYYY-MM-DD') + 1`;
-        const cashierFilterE = cashier ? `AND TRIM(e.CSHR_NO) = :cashier` : '';
-        const cashierFilterB = cashier ? `AND TRIM(b.CSHR_NO) = :cashier` : '';
-        const binds = { dfrom: from, dto: to, ...(cashier ? { cashier } : {}) };
+        const cashierFilterE = cashier ? `AND TRIM(e.CSHR_NO) = :cashier`
+            : (cashiers.length ? `AND TRIM(e.CSHR_NO) IN (${cashiers.map((_, i) => `:cashier${i}`).join(',')})` : '');
+        const cashierFilterB = cashier ? `AND TRIM(b.CSHR_NO) = :cashier`
+            : (cashiers.length ? `AND TRIM(b.CSHR_NO) IN (${cashiers.map((_, i) => `:cashier${i}`).join(',')})` : '');
+        const binds = {
+            dfrom: from, dto: to, ...(cashier ? { cashier } : {}),
+            ...(!cashier ? Object.fromEntries(cashiers.map((no, i) => [`cashier${i}`, no])) : {}),
+        };
 
         // بطاقات الكاشيرية (أسماء العرض من خريطة الإيرادات)
         const names = new Map((await pool.query(
@@ -232,7 +251,9 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
             binds, { outFormat: oracledb.OBJECT }).then(r => r.rows || []);
 
         let rowsP;
-        if (view === 'items') {
+        if (summaryOnly) {
+            rowsP = Promise.resolve({ kind: 'summary', total: 0, pages: 1, off: 0, invRows: [], linesMap: new Map() });
+        } else if (view === 'items') {
             rowsP = oraExecute(conn,
                 `SELECT TRIM(e.CSHR_NO) AS cashier_no,
                         TRIM(e.ITM_NO) AS item_code,
@@ -265,7 +286,7 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
                 const invRows = (await oraExecute(conn,
                     `SELECT * FROM (
                        SELECT b.*, ROWNUM rn FROM (
-                         SELECT b.DOC_NO, TRIM(b.CSHR_NO) AS CASHIER_NO, b.DOC_DATE, b.SHFT_NO,
+                         SELECT b.DOC_NO, TRIM(b.CSHR_NO) AS CASHIER_NO, b.DOC_DATE, b.DOC_TIME, b.SHFT_NO,
                                 b.TOTAL_VAL, b.DSCNT_VL, b.NET_VAL, b.PAYED, b.CASH_PYD, b.INVCD_TO
                            FROM CC_BILLS3 b
                           WHERE ${dayRangeB}
@@ -297,19 +318,21 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
 
         // الملخص والتفاصيل معًا — لا انتظار متسلسل
         const [sumRows, detail] = await Promise.all([sumP, rowsP]);
-        const cashiers = sumRows.map(s => ({
+        const cashierSummaries = sumRows.map(s => ({
             no: String(s.CASHIER_NO).trim(),
             name: names.get(String(s.CASHIER_NO).trim()) || ('كاشير ' + String(s.CASHIER_NO).trim()),
             invoices: Number(s.INVOICES || 0),
             net: Number(s.NET || 0),
             discount: Number(s.DISCOUNT || 0),
         }));
-        const totals = cashiers.reduce((a, c) => ({
+        const totals = cashierSummaries.reduce((a, c) => ({
             invoices: a.invoices + c.invoices, net: a.net + c.net, discount: a.discount + c.discount,
         }), { invoices: 0, net: 0, discount: 0 });
 
         let rows = [], pages = 1, total = 0, outPage = 1;
-        if (detail.kind === 'items') {
+        if (detail.kind === 'summary') {
+            total = 0; pages = 1; outPage = 1;
+        } else if (detail.kind === 'items') {
             rows = detail.rows.map(r => ({
                 cashier_no: String(r.CASHIER_NO).trim(),
                 cashier_name: names.get(String(r.CASHIER_NO).trim()) || ('كاشير ' + String(r.CASHIER_NO).trim()),
@@ -331,6 +354,7 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
                 cashier_no: String(r.CASHIER_NO).trim(),
                 cashier_name: names.get(String(r.CASHIER_NO).trim()) || ('كاشير ' + String(r.CASHIER_NO).trim()),
                 day: riyadhDayStr(r.DOC_DATE),
+                time: r.DOC_TIME != null ? String(r.DOC_TIME).trim() : '',
                 shift: r.SHFT_NO,
                 total: Number(r.TOTAL_VAL || 0), discount: Number(r.DSCNT_VL || 0),
                 net: Number(r.NET_VAL || 0), paid: Number(r.PAYED || 0),
@@ -339,8 +363,8 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
             }));
         }
         const body = {
-            ok: true, from, to, view, cashier: cashier || null,
-            cashiers, totals, rows, total,
+            ok: true, from, to, view: summaryOnly ? 'summary' : view, cashier: cashier || null,
+            cashiers: cashierSummaries, totals, rows, total,
             page: outPage, pages, limit,
             ms: Date.now() - t0,
         };
@@ -978,12 +1002,11 @@ router.get('/item-suggest', requireRole('sous_chef', 'admin', 'owner'), async (r
  * GET /api/yara-reports/wh-vs-pos — مقارنة احترافية: الصرف من المخازن vs مبيعات الكاشيرية
  * ?from=&to=[&item=&group=item|dept&only=mismatch|all&limit=][&live=1]
  * يجمع: أذونات الصرف (dispatches.receivedItems) + مبيعات الكاشيرية (ys_mirror_orders.lines)
- * ويطابقهما بالاسم — فروقات، نسب، تنبيهات. live=1 يزامن المرآة فورًا من الكاشيرية.
+ * ويطابقهما بالاسم — فروقات، نسب، تنبيهات. live=1 يُقبل للتوافق لكنه لم يعد يزامن
+ * داخل الطلب — التحديث يجري خلفيًا كل دقيقة (انظر ملاحظة المعالج أدناه).
  */
-const _WV_LIVE_GAP_MS = 45_000;
-let _wvLiveBusy = false;
-let _wvLiveLast = 0;
-let _wvLiveSynced = false;
+// حدّ «الطزاجة»: البيانات تُعتبر حيّة إذا وقع آخر upsert ناجح خلال هذه المدة
+const WV_FRESH_MS = 3 * 60 * 1000;
 router.get('/wh-vs-pos', requireRole('sous_chef', 'admin', 'owner'), async (req, res) => {
     try {
         const dayRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -995,21 +1018,11 @@ router.get('/wh-vs-pos', requireRole('sous_chef', 'admin', 'owner'), async (req,
         const item = String(req.query.item || '').trim().slice(0, 60);
         const only = String(req.query.only || 'all') === 'mismatch' ? 'mismatch' : 'all';
 
-        // ── مزامنة حية من الكاشيرية (live=1) ──────────────────────────────────
-        // عند طلب ?live=1 (من شاشة المقارنة فقط) نُحدّث مرآة الكاشيرية فورًا
-        // من يارا سوفت قبل القراءة — نفس نموذج cashier-monitor.
-        // throttle 45 ثانية حتى لا نُثقل Oracle لو عدة شاشات مفتوحة.
-        if (String(req.query.live || '') === '1' && to === riyadhDay(0)) {
-            if (!_wvLiveBusy && Date.now() - _wvLiveLast >= _WV_LIVE_GAP_MS) {
-                _wvLiveBusy = true; _wvLiveLast = Date.now();
-                try {
-                    const { refreshMirrorOrders } = require('./mirror');
-                    const m = await refreshMirrorOrders({ days: 2, io: req.io || null });
-                    _wvLiveSynced = !!(m && m.ok && m.upserted > 0);
-                } catch (_) { /* best-effort */ }
-                _wvLiveBusy = false;
-            }
-        }
+        // (2026-10) أُزيلت المزامنة المتزامنة من داخل الطلب: كانت تجمّد الاستجابة
+        // ~21s عند تعذّر Oracle (timeout اتصال) و~60s وهو متاح (N+1: ~2,150
+        // استعلام أسطر متتالي). التحديث يجري خلفيًا في دورة العامل كل دقيقة
+        // (oracle-link.pollOnce → refreshMirrorOrders)، والرد يحمل lastSyncAt /
+        // liveSynced من ys_mirror_orders.synced_at لشفافية الطزاجة.
 
         // تطبيع الاسم: إزالة «ال»، التشكيل، المسافات الزائدة، الألف المقصورة
         function normName(s) {
@@ -1126,8 +1139,15 @@ router.get('/wh-vs-pos', requireRole('sous_chef', 'admin', 'owner'), async (req,
             total_pos_gross: Math.round(merged.reduce((s, m) => s + m.pos_gross, 0) * 100) / 100,
         };
 
+        // مؤشر الطزاجة الحقيقي: آخر upsert ناجح فعليًا في المرآة (لا مجرد مزامنة مطلوبة)
+        let lastSyncAt = null;
+        try {
+            const lr = await pool.query('SELECT MAX(synced_at) AS last FROM ys_mirror_orders');
+            lastSyncAt = lr.rows[0] && lr.rows[0].last ? new Date(lr.rows[0].last).toISOString() : null;
+        } catch (_) { /* الطزاجة best-effort — لا تكسر التقرير */ }
+        const liveSynced = !!lastSyncAt && (Date.now() - new Date(lastSyncAt).getTime()) <= WV_FRESH_MS;
         res.set('Cache-Control', 'no-store');
-        res.json({ ok: true, from, to, spanDays, liveSynced: _wvLiveSynced, rows: filtered, summary, count: filtered.length });
+        res.json({ ok: true, from, to, spanDays, liveSynced, lastSyncAt, rows: filtered, summary, count: filtered.length });
     } catch (e) {
         logger.error('[wh-vs-pos]', e);
         res.status(500).json({ ok: false, error: 'WH_VS_POS_FAILED' });

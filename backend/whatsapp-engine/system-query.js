@@ -20,10 +20,6 @@ const { withTimeout } = require('./erp');
 
 const ERP_TIMEZONE = 'Asia/Riyadh';
 
-function escapeRegExp(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function toLocalDateKey(date, timeZone = ERP_TIMEZONE) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone,
@@ -358,7 +354,7 @@ const QUERY_EXECUTORS = {
 
     // حضور موظف معين
     async attendanceEmp(parsed) {
-        const today = new Date().toISOString().slice(0, 10);
+        new Date().toISOString().slice(0, 10);
         const name = parsed.empName;
         if (!name) {return '<div class="mcard">اكتب اسم الموظف: "حضور أحمد"</div>';}
         try {
@@ -417,7 +413,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── المخزون ───
-    async inventory(parsed) {
+    async inventory(_parsed) {
         try {
             const r = await withTimeout(pool.query(`
                 SELECT COUNT(*) FILTER (WHERE is_active = true) as total_products,
@@ -442,7 +438,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── الموظفين ───
-    async employees(parsed) {
+    async employees(_parsed) {
         try {
             const r = await withTimeout(pool.query(`
                 SELECT COUNT(*) as total,
@@ -463,7 +459,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── المالية ───
-    async financial(parsed) {
+    async financial(_parsed) {
         const today = new Date().toISOString().slice(0, 10);
         try {
             const r = await withTimeout(pool.query(`
@@ -490,7 +486,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── الوثائق: منتهية + تنتهي خلال 30 يوم ───
-    async documents(parsed) {
+    async documents(_parsed) {
         try {
             const r = await withTimeout(pool.query(`
                 SELECT name,
@@ -519,7 +515,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── النواقص: نسيان بصمات + أقسام معلقة + مخزون حرج ───
-    async gaps(parsed) {
+    async gaps(_parsed) {
         try {
             const { collectBriefing } = require('../manager-briefing');
             const b = await withTimeout(collectBriefing(pool, undefined), 20000, 'BRIEFING');
@@ -539,7 +535,7 @@ const QUERY_EXECUTORS = {
     },
 
     // ─── حالة النظام ───
-    async system(parsed) {
+    async system(_parsed) {
         try {
             const r = await withTimeout(pool.query(`SELECT COUNT(*) as total FROM users WHERE active = true`), 3000, 'SYSTEM');
             const users = r.rows[0].total;
@@ -551,7 +547,7 @@ const QUERY_EXECUTORS = {
                 { label: 'قاعدة البيانات', value: '✅ متصلة' },
                 { label: 'السيرفر', value: '✅ يعمل' }
             ]);
-        } catch (e) {
+        } catch (_) {
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب حالة النظام</b></div>';
         }
     }
@@ -581,7 +577,7 @@ async function executeQuery(text) {
                 const empExecutor = QUERY_EXECUTORS.attendanceEmp;
                 const result = await empExecutor({ ...parsed, categories: [{ category: 'attendanceEmp' }] });
                 results.push(result);
-            } catch (e) {}
+            } catch (_) {}
         }
 
         if (results.length === 0) {

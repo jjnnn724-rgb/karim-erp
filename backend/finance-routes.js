@@ -32,6 +32,7 @@ const { riyadhToday } = require('./riyadh-date');
 const router = express.Router();
 
 const READ_ROLES = ['admin', 'manager', 'accountant'];
+const COST_ANALYSIS_READ_ROLES = [...READ_ROLES, 'auditor'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 366;
 
@@ -543,8 +544,6 @@ ${deptRows ? `<table>
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-router.use(jwtAuth, requireRole(...READ_ROLES));
-
 function resolvePeriod(query) {
     let from = normalizeDay(query.from);
     let to = normalizeDay(query.to);
@@ -572,6 +571,200 @@ function resolvePeriod(query) {
     }
     return { from, to };
 }
+
+function resolveCostAnalysisPeriod(query) {
+    const parseDay = (value) => {
+        if (value == null || value === '') {return '';}
+        const day = String(value);
+        const parsed = DATE_RE.test(day) ? new Date(`${day}T00:00:00.000Z`) : null;
+        if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day) {
+            const err = new Error('صيغة التاريخ غير صالحة — استخدم YYYY-MM-DD');
+            err.statusCode = 400;
+            err.code = 'INVALID_PERIOD';
+            throw err;
+        }
+        return day;
+    };
+    const today = riyadhToday();
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const from = parseDay(query.from) || monthStart;
+    const to = parseDay(query.to) || today;
+    if (from > to) {
+        const err = new Error('تاريخ البداية يجب أن يكون قبل النهاية أو مساويًا له');
+        err.statusCode = 400;
+        err.code = 'INVALID_PERIOD';
+        throw err;
+    }
+    if (from < monthStart || to > today) {
+        const err = new Error('تحليل V2 متاح من بداية الشهر الحالي وحتى اليوم فقط');
+        err.statusCode = 400;
+        err.code = 'V2_CURRENT_MONTH_ONLY';
+        throw err;
+    }
+    return { from, to };
+}
+
+function costAnalysisSql(from, to) {
+    const params = [];
+    const predicates = (column) => {
+        const parts = [];
+        if (from) {
+            params.push(from);
+            parts.push(`${column} >= $${params.length}`);
+        }
+        if (to) {
+            const nextDay = new Date(`${to}T00:00:00.000Z`);
+            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+            params.push(nextDay.toISOString().slice(0, 10));
+            parts.push(`${column} < $${params.length}`);
+        }
+        return parts.length ? ` AND ${parts.join(' AND ')}` : '';
+    };
+    const revenueRange = predicates('r.date');
+    const expenseRange = predicates('e.date');
+    const categoryRange = predicates('x.date');
+    return {
+        params,
+        text: `
+            WITH RECURSIVE dept_tree(root_code, code, path) AS (
+                SELECT d.code, d.code, ARRAY[d.code]::varchar[]
+                  FROM departments d
+                 WHERE d.code IS NOT NULL
+                UNION ALL
+                SELECT tree.root_code, child.code, tree.path || child.code
+                  FROM dept_tree tree
+                  JOIN departments child ON child.parent_code = tree.code
+                 WHERE NOT child.code = ANY(tree.path)
+            ),
+            revenue_totals AS (
+                SELECT tree.root_code, SUM(COALESCE(r.amount, 0)) AS revenue
+                  FROM dept_tree tree
+                  JOIN revenues r ON r."deptId" = tree.code${revenueRange}
+                 GROUP BY tree.root_code
+            ),
+            expense_totals AS (
+                SELECT tree.root_code,
+                       GREATEST(0, COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
+                               ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                                'inventory_transfer', 'kitchen_return')
+                       ), 0)) AS materials,
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'
+                       ), 0) AS count_adj,
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
+                               ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                                'inventory_transfer', 'kitchen_return', 'count_correction')
+                       ), 0) AS operating,
+                       COUNT(e.id)::int AS row_count
+                  FROM dept_tree tree
+                  LEFT JOIN expenses e ON e."deptId" = tree.code${expenseRange}
+                 GROUP BY tree.root_code
+            ),
+            -- الإجماليات على مستوى الشركة تقرأ كل صفوف الفترة بلا فلتر قسم:
+            -- صفوف بلا deptId (مثل فروق جرد موقع غير مسند) جزء من الكلفة ولا
+            -- يجوز إسقاطها من الإجمالي. صفوف الأقسام وحدها تبقى في الجدول.
+            overall_totals AS (
+                SELECT
+                    (SELECT COALESCE(SUM(COALESCE(r.amount, 0)), 0)
+                       FROM revenues r
+                      WHERE r."deptId" != 'ys_b4_ext'${revenueRange}) AS revenue,
+                    (SELECT COALESCE(SUM(e.amount), 0)
+                       FROM expenses e
+                      WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
+                          ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                           'inventory_transfer', 'kitchen_return')${expenseRange}) AS materials,
+                    (SELECT COALESCE(SUM(e.amount), 0)
+                       FROM expenses e
+                      WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'${expenseRange}) AS count_adj,
+                    (SELECT COALESCE(SUM(e.amount), 0)
+                       FROM expenses e
+                      WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
+                          ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                           'inventory_transfer', 'kitchen_return', 'count_correction')${expenseRange}) AS operating
+            ),
+            category_totals AS (
+                SELECT COALESCE(x.category, 'أخرى') AS label,
+                       SUM(COALESCE(x.amount, 0)) AS amount
+                  FROM expenses x
+                 WHERE TRUE${categoryRange}
+                 GROUP BY 1
+            ),
+            categories AS (
+                SELECT COALESCE(
+                    JSON_AGG(JSON_BUILD_OBJECT('label', label, 'value', amount) ORDER BY amount DESC),
+                    '[]'::json
+                ) AS items
+                  FROM category_totals
+            )
+            SELECT d.code, d.name,
+                   COALESCE(r.revenue, 0) AS revenue,
+                   COALESCE(e.materials, 0) AS materials,
+                   COALESCE(e.count_adj, 0) AS count_adj,
+                   COALESCE(e.operating, 0) AS operating,
+                   COALESCE(e.row_count, 0) AS row_count,
+                   categories.items AS categories,
+                   overall_totals.revenue AS total_revenue,
+                   overall_totals.materials AS total_materials,
+                   overall_totals.count_adj AS total_count_adj,
+                   overall_totals.operating AS total_operating
+              FROM departments d
+              LEFT JOIN revenue_totals r ON r.root_code = d.code
+              LEFT JOIN expense_totals e ON e.root_code = d.code
+              CROSS JOIN categories
+              CROSS JOIN overall_totals
+             ORDER BY d.name, d.code`,
+    };
+}
+
+function buildCostAnalysisResult(rows) {
+    const departments = (Array.isArray(rows) ? rows : []).map((row) => {
+        const rev = num(row.revenue);
+        const materials = num(row.materials);
+        const countAdj = num(row.count_adj);
+        const operating = num(row.operating);
+        const exp = materials + countAdj + operating;
+        return {
+            code: row.code,
+            name: row.name,
+            rev,
+            exp,
+            profit: rev - exp,
+            costRatio: rev > 0 ? (exp / rev) * 100 : 0,
+            materials,
+            countAdj,
+            operating,
+            total: exp,
+            rowCount: num(row.row_count),
+        };
+    });
+    const overall = Array.isArray(rows) && rows.length ? rows[0] : {};
+    const totals = {
+        rev: num(overall.total_revenue),
+        mat: num(overall.total_materials),
+        cnt: num(overall.total_count_adj),
+        ops: num(overall.total_operating),
+    };
+    totals.exp = totals.mat + totals.cnt + totals.ops;
+    totals.avgCost = totals.rev > 0 ? (totals.exp / totals.rev) * 100 : 0;
+    return {
+        rows: departments,
+        totals,
+        categories: Array.isArray(rows) && rows.length && Array.isArray(rows[0].categories)
+            ? rows[0].categories
+            : [],
+    };
+}
+
+router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+    const { from, to } = resolveCostAnalysisPeriod(req.query);
+    const query = costAnalysisSql(from, to);
+    const result = await pool.query(query.text, query.params);
+    res.json({ ...buildCostAnalysisResult(result.rows), period: { from, to } });
+}));
+
+router.use(jwtAuth, requireRole(...READ_ROLES));
 
 async function loadPnlInputs(from, to) {
     const [ordersRes, manualRes, expensesRes, payrollRes, deptMapRes, deptHierarchyRes] = await Promise.all([
@@ -684,4 +877,7 @@ module.exports = {
     buildPnlStatement,
     buildComparison,
     renderPnlPrintHtml,
+    resolveCostAnalysisPeriod,
+    costAnalysisSql,
+    buildCostAnalysisResult,
 };

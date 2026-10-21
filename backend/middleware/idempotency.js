@@ -84,7 +84,7 @@ async function storeGet(redis, pool, key) {
                 if (redis) {redis.setex(`idem:${key}`, DEFAULT_TTL_MS / 1000, JSON.stringify(r)).catch(() => {});}
                 return r;
             }
-        } catch (e) { /* table may not exist yet — not critical */ }
+        } catch (_) { /* table may not exist yet — not critical */ }
     }
     // Memory fallback
     return memoryStore.get(key);
@@ -112,7 +112,7 @@ async function storeSet(redis, pool, key, value, ttlMs = DEFAULT_TTL_MS) {
                 key, value.status, value.statusCode ?? null, value.responseBody ?? null,
                 value.requestHash ?? null, ttlMs,
             ]);
-        } catch (e) { /* ignore — table might not exist */ }
+        } catch (_) { /* ignore — table might not exist */ }
     }
     await memoryStore.set(key, value, ttlMs);
 }
@@ -154,7 +154,7 @@ async function storeLock(redis, pool, key, hash, ttlMs = DEFAULT_INFLIGHT_TTL_MS
                 return false;
             }
             return false;
-        } catch (e) { /* fall through */ }
+        } catch (_) { /* fall through */ }
     }
     // Memory CAS
     const existing = await memoryStore.get(key);
@@ -265,22 +265,19 @@ function idempotency(opts = {}) {
             };
             res.json = function(body) {
                 capturedBody = body;
-                finalize();
-                return origJson(body);
+                return sendAfterFinalize(() => origJson(body));
             };
             res.end = function(chunk, enc, cb) {
                 if (!capturedBody && chunk) {
                     try { capturedBody = JSON.parse(typeof chunk === 'string' ? chunk : chunk.toString(enc || 'utf8')); }
                     catch { capturedBody = { raw: String(chunk).slice(0, 8192) }; }
                 }
-                finalize();
-                return origEnd(chunk, enc, cb);
+                return sendAfterFinalize(() => origEnd(chunk, enc, cb));
             };
 
-            let finalized = false;
+            let finalizePromise = null;
             function finalize() {
-                if (finalized) {return;}
-                finalized = true;
+                if (finalizePromise) {return finalizePromise;}
                 const statusCode = res.statusCode || capturedStatus;
                 // FIX 2026-10-11 (M1): only cache 2xx as completed — was caching
                 // 4xx (401 expired token, 409, 422) as completed and replaying
@@ -293,7 +290,21 @@ function idempotency(opts = {}) {
                     responseBody: success ? capturedBody : null, // don't cache 4xx/5xx
                     requestHash: reqHash,
                 };
-                storeSet(redis, pool, safeKey, record, ttlMs).catch(() => {});
+                finalizePromise = storeSet(redis, pool, safeKey, record, ttlMs);
+                return finalizePromise;
+            }
+            function sendAfterFinalize(send) {
+                finalize().then(() => {
+                    try {
+                        send();
+                    } catch (raw) {
+                        next(wrapUnknown(raw, 'idempotency response'));
+                    }
+                }, (raw) => {
+                    logger.error('[idempotency] result persistence failed:', raw?.message || String(raw));
+                    next(wrapUnknown(raw, 'idempotency persistence'));
+                });
+                return res;
             }
 
             next();

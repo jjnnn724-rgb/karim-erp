@@ -14,14 +14,10 @@
 'use strict';
 
 const path = require('path');
-const { pool } = require(path.join(__dirname, '..', '..', 'shared-pool'));
 const { logger } = require(path.join(__dirname, '..', '..', 'logger'));
-const store = require(path.join(__dirname, '..', 'store'));
-const { processNLU, getContext, updateContext, clearContext } = require('./nlu');
-const { answerFreeText } = require('../answer');
-const { callLLM, checkLLMAvailability, maskPhone } = require('./chatbot');
+const { getContext } = require('./nlu');
+const { callLLM, checkLLMAvailability } = require('./chatbot');
 const { loadConfig } = require('../config.js');
-const { riyadhDay, fnum } = require('../answer');
 
 const BRAND_CONTEXT = `أنت مساعد ذكي رسمي لمطاعم الشرفة العالمي (Horus ERP) — نظام إدارة مطاعم احترافي متكامل.
 أجب دائماً باللغة التي كتب بها المستخدم (عربي/إنجليزي).
@@ -35,8 +31,6 @@ const responseCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const userRateLimit = new Map();
-const RATE_LIMIT_PER_HOUR = 60;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 function checkRateLimit(jid) {
     const now = Date.now();
@@ -89,7 +83,7 @@ class SmartAssistant {
 
     async respond(jid, message, context = {}) {
         const started = Date.now();
-        const cfg = this.getConfig();
+        this.getConfig();
 
         if (!this._enabled) {
             return { text: 'المساعد الذكي معطل حالياً. تواصل مع الإدارة لتفعيله.', source: 'disabled' };
@@ -194,7 +188,7 @@ class SmartAssistant {
     // ════════════════════════════════════════════════════════════════════════════════════════════════════
 
     async _processNLU(message, jid) {
-        const { processNLU, getContext, updateContext } = require('./nlu');
+        const { processNLU, getContext } = require('./nlu');
         const nluResult = await processNLU(message, jid);
         // Enhance with context
         const context = getContext(jid);
@@ -206,10 +200,9 @@ class SmartAssistant {
     // NLU FALLBACK — رد ذكي بدون LLM
     // ══════════════════════════════════════════════════════════════════════════════════════════════════════
 
-    _nluFallback(nluResult, message, context) {
-        const { intent, language, sentiment, entities } = nluResult;
+    _nluFallback(nluResult, _message, _context) {
+        const { language, sentiment } = nluResult;
         const isAr = language === 'ar';
-        const isManager = context.isManager || false;
 
         // Sentiment-aware
         if (sentiment?.label === 'angry' || sentiment?.label === 'negative') {
@@ -284,7 +277,7 @@ INVENTORY: '📦 **المخزون الحالي** — ملخص شامل...',
 
     _buildPrompt(message, nluResult, context, routerResponse) {
         const isAr = nluResult.language === 'ar';
-        const history = context.history?.map(h => `${h.role === 'user' ? 'العميل' : 'المساعد'}: ${h.text}`).join('\n') || '(لا يوجد سجل سابق)';
+        context.history?.map(h => `${h.role === 'user' ? 'العميل' : 'المساعد'}: ${h.text}`).join('\n') || '(لا يوجد سجل سابق)';
 
         let routerInfo = '';
         if (routerResponse) {

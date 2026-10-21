@@ -654,6 +654,7 @@ router.get('/departments', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), as
             `SELECT "deptId" AS code, COALESCE(SUM(amount),0)::float AS manual, COUNT(*)::int AS rows_count
                FROM revenues
               WHERE ${dayOf('date')} BETWEEN $1 AND $2
+                AND "deptId" != 'ys_b4_ext'
               GROUP BY 1`, [range.from, range.to]);
 
         const posRevQ = pool.query(

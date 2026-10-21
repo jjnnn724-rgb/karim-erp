@@ -59,7 +59,7 @@ showModal(`
 <div class="bulk-step-body" id="bulkStepBody">
 <!-- STEP 1: Input -->
 <div id="bulkStep1Content">
-<div class="bulk-dropzone" id="bulkDropzone" onclick="document.getElementById('bulkFileInput').click()">
+<div class="bulk-dropzone" id="bulkDropzone" data-karim-action="kdAct">
 <div class="bulk-dropzone-icon"><i class=ji data-i=folder-open></i></div>
 <div class="bulk-dropzone-title">اسحب الملف هنا أو اضغط للاختيار</div>
 <div class="bulk-dropzone-sub">Excel (.xlsx) • CSV • TXT — عمود واحد بالأسماء</div>
@@ -594,5 +594,10 @@ body{font-family:'Cairo',Arial,sans-serif;padding:16px;direction:rtl;color:#222}
 printWin.document.close();
 setTimeout(() => printWin.focus(), 500);
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct() {
+    document.getElementById('bulkFileInput').click();
+}
 
-export { BULK_IMPORT_ROWS, BULK_AR_TO_EN, bulkTransliterate, bulkGenPassword, bulkGenUsername, showBulkImportModal, bulkSetupDragDrop, bulkSelectFormat, bulkGetSelectedFormat, bulkNextStep, bulkFpForms, bulkUsedFpSet, bulkAllocFp, bulkRenderPreview, bulkDeleteRow, bulkClearAll, bulkReadFile, bulkConfirmImport, bulkShowResultsModal, bulkExportExcel, bulkExportCSV, bulkExportJSON, bulkCopyAllPasswords, bulkPrint, bulkPrintSlips };
+
+export {BULK_IMPORT_ROWS, BULK_AR_TO_EN, bulkTransliterate, bulkGenPassword, bulkGenUsername, showBulkImportModal, bulkSetupDragDrop, bulkSelectFormat, bulkGetSelectedFormat, bulkNextStep, bulkFpForms, bulkUsedFpSet, bulkAllocFp, bulkRenderPreview, bulkDeleteRow, bulkClearAll, bulkReadFile, bulkConfirmImport, bulkShowResultsModal, bulkExportExcel, bulkExportCSV, bulkExportJSON, bulkCopyAllPasswords, bulkPrint, bulkPrintSlips, kdAct };;

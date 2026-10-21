@@ -50,14 +50,14 @@ async function deptEmpLoad() {
     }
 }
 
-function deptEmpModal(title, fieldsHtml, saveFn) {
+function deptEmpModal(title, fieldsHtml, actionName, argsJson) {
     window.showModal(`<h3 style="margin-top:0">${title}</h3>
         <div class="fg"><label>الاسم <b style="color:#e74c3c">*</b></label><input id="deptEmpName" value="${fieldsHtml.name || ''}"></div>
         <div class="fr"><div class="fg"><label>الرقم الوظيفي <b style="color:#e74c3c">*</b></label><input id="deptEmpId" value="${fieldsHtml.employeeId || ''}" ${fieldsHtml.lockId ? 'readonly' : ''} placeholder="مثال: EMP-101"></div>
         <div class="fg"><label>الوظيفة</label><input id="deptEmpPos" value="${fieldsHtml.position || ''}" placeholder="مثال: أمين مخزن مساعد"></div></div>
         <div class="fg"><label>الهاتف</label><input id="deptEmpPhone" value="${fieldsHtml.phone || ''}" placeholder="05xxxxxxxx"></div>
         <div id="deptEmpErr" class="form-error" role="alert"></div>
-        <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" onclick="${saveFn}"><i class=ji data-i=save></i> حفظ</button></div>`);
+        <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="${actionName}" data-karim-args="${argsJson || '[]'}"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 
 function deptEmpAddModal() {
@@ -68,7 +68,7 @@ function deptEmpEditModal(id) {
     deptEmpFetch('').then(r => {
         const emp = (r.employees || []).find(x => String(x.id) === String(id));
         if (!emp) {window.toast && toast('الموظف غير موجود في قسمك', 'error'); return;}
-        deptEmpModal('<i class=ji data-i=pencil></i> تعديل موظف القسم', { name: emp.name, employeeId: emp.employeeId, position: emp.position, phone: emp.phone, lockId: true }, `deptEmpSaveEdit('${id}')`);
+        deptEmpModal('<i class=ji data-i=pencil></i> تعديل موظف القسم', { name: emp.name, employeeId: emp.employeeId, position: emp.position, phone: emp.phone, lockId: true }, 'deptEmpSaveEdit', JSON.stringify([id]));
     }).catch(e => { window.toast && toast(e.message || 'خطأ', 'error'); });
 }
 

@@ -257,7 +257,7 @@ router.get('/inventory/locations/:id/preview', jwtAuth, requireRole(...AUDIT_REA
         const locationId = Number(req.params.id);
         if (!Number.isInteger(locationId) || locationId <= 0) {return res.status(422).json({ error: 'LOCATION_ID_INVALID', message: 'معرف المخزن غير صحيح' });}
         const scope = normalizeScopeFilter(req.query);
-        const search = String(scope.search || '').trim().toLowerCase();
+        String(scope.search || '').trim().toLowerCase();
         const rows = (await pool.query(`
             SELECT inv.name, COALESCE(inv.barcode,'') AS barcode, COALESCE(inv.category,'') AS category, b.on_hand AS system_qty, inv."avgCost"
               FROM inventory inv

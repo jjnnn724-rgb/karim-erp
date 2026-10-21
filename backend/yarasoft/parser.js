@@ -39,10 +39,6 @@ function splitDelimited(line, delimiter) {
     return out.map(s => s.trim());
 }
 
-function countDelimiter(sampleLines, d) {
-    return sampleLines.reduce((sum, l) => sum + (l.split(d).length - 1), 0);
-}
-
 /** اكتشاف المحدد من عينة أسطر (؛ | \t , :) */
 function sniffDelimiter(lines) {
     const candidates = [';', ',', '\t', '|', ':'];
@@ -74,8 +70,6 @@ function isFixedWidth(lines) {
     const multiSpace = noSpace.filter(l => /\s{2,}/.test(l)).length;
     return multiSpace >= noSpace.length * 0.8;
 }
-
-const NUMBER_RE = /^-?\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d+)?$|^-?\d+[.,]\d+$|^-?\d+$/;
 
 function parseNumber(raw) {
     if (raw === null || raw === undefined) {return null;}
@@ -292,7 +286,7 @@ function parseDelimited(text, profile) {
         total: fieldIdx.total ?? -1,
     };
 
-    const dataLines = rawLines.filter((l, i) => {
+    const dataLines = rawLines.filter((l, _i) => {
         if (explicitIdx || noHeader) {return true;} // بلا ترويسة: كل الأسطر بيانات
         const s = scoreHeaderLine(splitDelimited(l, delimiter));
         if (s >= 2) {return false;} // سطر ترويسة (حتى المتكرر بعدة فواتير)
@@ -379,7 +373,11 @@ function parseDelimited(text, profile) {
         if (g.date == null && it._dateCell) {g.date = parseDateRaw(it._dateCell)?.iso || null;}
         if (!g.customer && it._customerCell) {g.customer = it._customerCell;}
         if (!g.paymentMethod && it._payCell) {g.paymentMethod = it._payCell;}
-        const { _invoiceKey, _dateCell, _customerCell, _payCell, ...clean } = it;
+        const clean = { ...it };
+        delete clean._invoiceKey;
+        delete clean._dateCell;
+        delete clean._customerCell;
+        delete clean._payCell;
         g.items.push(clean);
         // ملاحظة: إجماليات أسطر الأصناف لا تدخل totals.total — الإجمالي المعتمد
         // إما من سطر ملخص مستقل أو المجموع المحسوب computed (وإلا نقص إجمالي الفواتير متعددة الأسطر)

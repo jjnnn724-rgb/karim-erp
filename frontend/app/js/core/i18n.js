@@ -288,7 +288,7 @@ function applyLangAttrs(){
   const en = STATE.lang === 'en';
   document.documentElement.lang = en ? 'en' : 'ar';
   document.documentElement.dir = en ? 'ltr' : 'rtl';
-  const lb = document.querySelector('.topbar-btn[onclick="toggleLang()"]');
+  const lb = document.querySelector('.topbar-btn[data-karim-action="toggleLang"]');
   if(lb) {lb.innerHTML = '<i class="ji" data-i="globe"></i> ' + (en ? 'عربي' : 'EN');}
   applyLoginI18n();
 }

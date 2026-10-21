@@ -64,9 +64,18 @@ let _pool = new Pool({
 function _attachPoolHandlers(p) {
     p.on('connect', (client) => {
         logger.info('[shared-pool] new DB connection established', { pid: client.processID });
+        // FIX 2026-10-19: عميلٌ مأخوذ من الـpool قد يبثّ 'error' بعد قطع الاتصال
+        // (Connection terminated unexpectedly)؛ وبلا مستمع يتحوّل الحدث إلى
+        // uncaughtException يُسقط الخادم كله. مستمعٌ دائم لكل عميل يجعل القطع
+        // حدثًا مُعالَجًا يتعافى منه الـpool بدل أن يقتل العملية.
+        client.on('error', (err) => {
+            logger.warn('[shared-pool] client socket error (absorbed):', err && err.message);
+        });
     });
     p.on('remove', () => {
-        logger.warn('[shared-pool] DB connection removed from pool');
+        // إغلاق اتصالٍ خامل بعد idleTimeout حدثٌ طبيعي — لا يُرفع إلى warn
+        // وإلا غطّى على الأعطال الحقيقية في السجل.
+        logger.debug('[shared-pool] idle connection closed');
     });
     p.on('error', (err) => {
         logger.error('[shared-pool] Unexpected error on idle client:', err.message);

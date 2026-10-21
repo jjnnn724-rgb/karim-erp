@@ -27,7 +27,6 @@
 
 const { logger, securityLog } = require('../logger');
 const {
-    AppError,
     wrapUnknown,
     isAppError,
     isServerError,
@@ -72,7 +71,7 @@ function asyncHandler(fn) {
 // ══════════════════════════════════════════════════════════
 // THE GLOBAL ERROR HANDLER — installed LAST in server.js
 // ══════════════════════════════════════════════════════════
-function globalErrorHandler(err, req, res, next) {
+function globalErrorHandler(err, req, res, _next) {
     // ─── Step 0: normalize to AppError ────────────────
     const error = isAppError(err) ? err : wrapUnknown(err);
 
@@ -178,30 +177,72 @@ function writeCrashJournal(kind, payload) {
     } catch {/* journaling must never throw inside a crash path */}
 }
 
+// ─── Transient infrastructure errors (retry-worthy, NOT fatal) ─────────────
+// FIX 2026-10-19 (طلب المالك: «السيرفر بيغلق لوحده… مش يخليه يغلق»):
+// قطع اتصال PostgreSQL أو الشبكة حدثٌ عابر — الـpool يتعافى والقاعدة تعود،
+// فلا معنى لإسقاط الخادم كله وحرمان العملاء. العابر يُسجَّل ويُمتصّ؛ الخطأ
+// البرمجي الحقيقي وحده يُعيد التشغيل. القائمة مرآةُ قائمة safeQuery العابرة.
+const TRANSIENT_INFRA_CODES = new Set([
+    'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'EHOSTUNREACH', 'ENETUNREACH',
+    '08000', '08003', '08006',
+    '57P01', '57P02', '57P03',
+    '40001', '40P01',
+]);
+const TRANSIENT_INFRA_RE =
+    /connection terminated|connection timeout|server closed the connection|socket hang up|terminating connection|idle-in-transaction|admin shutdown|crash shutdown|cannot connect now|too many clients/i;
+
+function isTransientInfraError(err) {
+    const code = String((err && err.code) || (err && err.cause && err.cause.code) || '');
+    if (TRANSIENT_INFRA_CODES.has(code)) {return true;}
+    const msg = String((err && err.message) || (err && err.cause && err.cause.message) || '');
+    return TRANSIENT_INFRA_RE.test(msg);
+}
+
+// سقف أمان: لو تحوّل العابر لسيلٍ جنوني فالمشكلة أعمق من عابرة → إعادة تشغيل نظيفة.
+const TRANSIENT_BURST_WINDOW_MS = 60_000;
+const TRANSIENT_BURST_MAX = 200;
+let _transientBurstStart = 0;
+let _transientBurstCount = 0;
+function noteTransientBurst() {
+    const now = Date.now();
+    if (now - _transientBurstStart > TRANSIENT_BURST_WINDOW_MS) {
+        _transientBurstStart = now;
+        _transientBurstCount = 0;
+    }
+    _transientBurstCount += 1;
+    return _transientBurstCount > TRANSIENT_BURST_MAX;
+}
+
 function installProcessShields({
     onFatal = null,    // async () => Promise<void> — called before exit
     shutdownTimeoutMs = 10_000,
+    exitOnFatal = String(process.env.SHIELD_EXIT_ON_FATAL || 'true').toLowerCase() !== 'false',
 } = {}) {
     // ─── Unhandled Promise rejections ─────────────────
-    // ENTERPRISE STABILITY POLICY (big-company behavior): a single bad
-    // request must NEVER kill the server. We journal the evidence
-    // synchronously to logs/CRASH.log, log loudly, and KEEP SERVING.
-    // (This aligns with graceful-shutdown.js "suppressed — server stays
-    // up". The old behavior called process.exit(1) here, which took down
-    // ALL clients under load — observed as WinSW EXIT 1067 mid-storm.)
-    // Set SHIELD_EXIT_ON_FATAL=true to restore the old hard-exit behavior.
-    const exitOnFatal = String(process.env.SHIELD_EXIT_ON_FATAL || '').toLowerCase() === 'true';
+    // An unhandled rejection may leave shared process state inconsistent.
+    // Journal it, stop background services, and let the Windows service
+    // supervisor restart a clean process instead of serving from unknown state.
     process.on('unhandledRejection', (reason, promise) => {
         const err = wrapUnknown(reason, 'unhandledRejection');
-        writeCrashJournal('unhandledRejection', {
+        // عابر (قاعدة بيانات/شبكة): يُسجَّل ويُمتصّ — لا يُسقط الخادم.
+        const transient = isTransientInfraError(err) && !noteTransientBurst();
+        writeCrashJournal(transient ? 'transientRejection' : 'unhandledRejection', {
             message: err.message, code: err.code, stack: err.stack,
-            promise: String(promise),
+            promise: String(promise), transient,
         });
+        if (transient) {
+            logger.warn({
+                ...err.toLogObject(),
+                event: 'transient_rejection_absorbed',
+                promise: String(promise),
+            }, '↩︎ رفض وعدٍ عابر (قاعدة بيانات/شبكة) — امتُصّ دون إسقاط الخادم');
+            return;
+        }
         logger.fatal({
             ...err.toLogObject(),
             event: 'unhandled_rejection',
             promise: String(promise),
-        }, '💥 UNHANDLED PROMISE REJECTION — this is ALWAYS a bug (server stays up)');
+        }, '💥 UNHANDLED PROMISE REJECTION — controlled restart required');
 
         if (exitOnFatal) {triggerFatalShutdown(1, err, onFatal, shutdownTimeoutMs);}
     });
@@ -209,14 +250,24 @@ function installProcessShields({
     // ─── Synchronous uncaught exceptions ──────────────
     process.on('uncaughtException', (err, origin) => {
         const appErr = wrapUnknown(err, `uncaughtException (${origin})`);
-        writeCrashJournal('uncaughtException', {
-            origin, message: appErr.message, code: appErr.code, stack: appErr.stack,
+        // عابر (قاعدة بيانات/شبكة): يُسجَّل ويُمتصّ — لا يُسقط الخادم.
+        const transient = isTransientInfraError(appErr) && !noteTransientBurst();
+        writeCrashJournal(transient ? 'transientException' : 'uncaughtException', {
+            origin, message: appErr.message, code: appErr.code, stack: appErr.stack, transient,
         });
+        if (transient) {
+            logger.warn({
+                ...appErr.toLogObject(),
+                event: 'transient_exception_absorbed',
+                origin,
+            }, '↩︎ استثناء عابر (قاعدة بيانات/شبكة) — امتُصّ دون إسقاط الخادم');
+            return;
+        }
         logger.fatal({
             ...appErr.toLogObject(),
             event: 'uncaught_exception',
             origin,
-        }, '💥 UNCAUGHT EXCEPTION — logged + journaled, server stays up');
+        }, '💥 UNCAUGHT EXCEPTION — controlled restart required');
 
         if (exitOnFatal) {triggerFatalShutdown(1, appErr, onFatal, shutdownTimeoutMs);}
     });
@@ -280,5 +331,6 @@ module.exports = {
     asyncHandler,
     globalErrorHandler,
     installProcessShields,
+    isTransientInfraError,
     notFoundHandler,
 };

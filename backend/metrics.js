@@ -17,7 +17,8 @@
  */
 'use strict';
 
-const { performance, monitorEventLoopDelay, PerformanceObserver } = require('perf_hooks');
+const { monitorEventLoopDelay } = require('perf_hooks');
+const { brotliSnapshot } = require('./middleware/brotli-metrics');
 
 const RING_MAX = (() => {
     // FIX 2026-10-11 (M8): validate env var — parseInt NaN → new Array(NaN) = RangeError boot crash
@@ -159,6 +160,7 @@ function snapshot(pool) {
             rssLimitMB: process.config?.variables?.node_max_old_space_size || undefined,
         },
         cpu: { userSec: +(cpu.user / 1e6).toFixed(2), systemSec: +(cpu.system / 1e6).toFixed(2) },
+        brotli: brotliSnapshot(),
         dbPool: pool ? {
             total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
             max: parseInt(process.env.DB_POOL_MAX || '60', 10),

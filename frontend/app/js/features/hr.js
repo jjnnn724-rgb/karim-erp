@@ -80,14 +80,14 @@ return `
 <div class="hero-panel">
 <h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> تسجيل الحضور والانصراف</h3>
 <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
-<button class="attendance-btn check-in" onclick="checkIn()" ${todayRecord?.checkIn?'disabled':''}>
+<button class="attendance-btn check-in" data-karim-action="kdCheckIn" ${todayRecord?.checkIn?'disabled':''}>
 <span class="u-f28"><i class=ji data-i=inbox></i></span>
 <div>
 <div class="u-t16-bold">تسجيل حضور</div>
 <div class="u-faint-80">${todayRecord?.checkIn?`تم: ${todayRecord.checkIn}`:'اضغط للتسجيل'}</div>
 </div>
 </button>
-<button class="attendance-btn check-out" onclick="checkOut()" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
+<button class="attendance-btn check-out" data-karim-action="kdCheckOut" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
 <span class="u-f28"><i class=ji data-i=upload></i></span>
 <div>
 <div class="u-t16-bold">تسجيل انصراف</div>
@@ -368,7 +368,7 @@ gaps.forEach(g=>byType[g.type]++);
 const typeMeta={absent:['لم يحضر تمامًا','bdg-red'],missOut:['نسي الخروج','bdg-orange'],missIn:['نسي الدخول','bdg-orange']};
 box.innerHTML=`<div class="tbl-wrap" style="margin-top:14px;border:1px solid var(--gold)">
 <div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> نواقص الفترة (${fN(gaps.length)}) — لم يحضر: ${fN(byType.absent)} • نسي خروج: ${fN(byType.missOut)} • نسي دخول: ${fN(byType.missIn)}</h3>
-<div class="u-row-wrap"><input type="search" class="inp" id="attGapsSearch" placeholder="بحث بالاسم أو الكود..." value="${esc(STATE.attGapsQ||'')}" data-karim-action="attGapsSearch" data-karim-event="input" data-karim-pass="value" style="max-width:200px"><small class="text-muted">العطلات الأسبوعية ظاهرة أيضًا — عدّها بعينك قبل المعالجة</small><button class="btn btn-sm" onclick="STATE.attGapsQ='';attGapsToggle()">إخفاء ✕</button></div></div>
+<div class="u-row-wrap"><input type="search" class="inp" id="attGapsSearch" placeholder="بحث بالاسم أو الكود..." value="${esc(STATE.attGapsQ||'')}" data-karim-action="attGapsSearch" data-karim-event="input" data-karim-pass="value" style="max-width:200px"><small class="text-muted">العطلات الأسبوعية ظاهرة أيضًا — عدّها بعينك قبل المعالجة</small><button class="btn btn-sm" data-karim-action="kdAttGapsToggle">إخفاء ✕</button></div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
 <thead><tr><th>التاريخ</th><th>اليوم</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead>
 <tbody>${gaps.slice(0,300).map((g,_i)=>{ const m=typeMeta[g.type]; const absent=g.type==='absent'; return `<tr${absent?' style="background:rgba(231,76,60,.06)"':''}>
@@ -388,7 +388,7 @@ const others=(STATE.employees||[]).filter(e=>e.status==='active'&&String(e.id)!=
 showModal(`
 <h3><i class=ji data-i=gavel></i> معالجة — ${esc(emp?.name||'')} <small class="text-muted">${fD(date)}</small></h3>
 <div class="mcard" style="margin-bottom:12px;line-height:2">الحالي: حضور <b class="c-green">${esc(rec?.checkIn||'—')}</b> • انصراف <b class="c-red">${esc(rec?.checkOut||'—')}</b></div>
-<div class="fg"><label>نوع المعالجة</label><select id="attResType" onchange="document.getElementById('attResFill').style.display=this.value==='fill'?'':'none';document.getElementById('attResSwap').style.display=this.value==='swap'?'':'none'">
+<div class="fg"><label>نوع المعالجة</label><select id="attResType" data-karim-action="kdAct" data-karim-event="change" data-karim-pass="value,value">
 <option value="fill">تعبئة البصمة الناقصة</option><option value="excuse">عذر معتمد</option><option value="swap">تبديل وردية</option></select></div>
 <div id="attResFill"><div class="fr">
 <div class="fg"><label>بصمة الحضور</label><input type="time" id="attResIn" value="${esc(rec?.checkIn||'')}"></div>
@@ -984,10 +984,29 @@ const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,'الرواتب');
 XLSX.writeFile(wb,`payroll_${today()}.xlsx`);
 toast('تم التصدير','success');
+}/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdCheckIn() {
+    checkIn();
+}
+
+function kdCheckOut() {
+    checkOut();
+}
+
+function kdAttGapsToggle() {
+    STATE.attGapsQ = '';
+    attGapsToggle();
+}
+
+function kdAct(p0, p1) {
+    document.getElementById('attResFill').style.display=p0==='fill'?'':'none'
+    document.getElementById('attResSwap').style.display=p1==='swap'?'':'none'
 }
 
 
-export { renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkInOutByScan, scanAttendanceKiosk, checkIn, checkOut, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrDeductionsModal, hrDeductionsPreview, hrDeductionsApply, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel };
+
+
+export {renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkInOutByScan, scanAttendanceKiosk, checkIn, checkOut, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrDeductionsModal, hrDeductionsPreview, hrDeductionsApply, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel, kdCheckIn, kdCheckOut, kdAttGapsToggle, kdAct };;
 
 // ─── محرك الورديات: إدخال جماعي من المالك + تطبيق وإعادة حساب تلقائية ───
 function openShiftsPanel(){

@@ -329,7 +329,7 @@ el.innerHTML=`
 </div>
 <div style="margin-bottom:12px"><div class="tbl-hd"><h4><i class=ji data-i=zap></i> استعلامات سريعة</h4></div>
 <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap">
-${categories.map(c=>`<button class="btn btn-sm btn-blue" onclick="document.getElementById('waQueryInput').value='${c.label} ';waDoQuery()">${c.label}</button>`).join('')}
+${categories.map(c=>`<button class="btn btn-sm btn-blue" data-karim-action="kdWaDoQuery" data-karim-arg0="${c.label}">${c.label}</button>`).join('')}
 </div></div>
 <div id="waQueryResult"></div>`;
 if(categories.length===0){document.getElementById('waQueryResult').innerHTML='<div class="mcard">جارٍ تحميل الفئات...</div>';}
@@ -506,5 +506,11 @@ ysPrintReport(`جدول ${d.table}`, `${fN(d.total)} صف — صفحة ${d.page}
 cols, rows);
 }
 // عنقود الإيرادات والمصاريف + تحليل التكاليف + الأرباح والخسائر: نُقل إلى js/features/finance.js (يجسر عبر js/main.js — BRIDGE-014)
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdWaDoQuery(p0) {
+    document.getElementById('waQueryInput').value=p0 + ' '
+    waDoQuery();
+}
 
-export { WASTATE, waStateBadge, renderWhatsappPage, waSetTab, waRefreshStatus, waStateHtml, waRenderBody, waRenderOverview, waDo, waQrStop, waQrPoll, waQrRefresh, waPairModal, waPairGo, waLogoutModal, waLogoutGo, waAutoLoad, waAutoSave, waAutoTest, waLoadMsgs, waLoadCampaigns, waCampaignCreate, waCampaignAction, waChatMetaSave, waLoadOutbox, waSendGo, waLoadRules, waRuleModal, waRuleSave, waRuleDel, waLoadManagers, waManagerAdd, waManagerDel, waRenderQueryTab, waDoQuery, waLoadLogs, renderOracleDataPage, renderDailyLocksPage, loadDailyLocks, oraDataRefresh, oraDataSync, oraDataRender, oraDataFilter, oraDataOpen, oraDataRenderDetail, oraDataPrint };
+
+export {WASTATE, waStateBadge, renderWhatsappPage, waSetTab, waRefreshStatus, waStateHtml, waRenderBody, waRenderOverview, waDo, waQrStop, waQrPoll, waQrRefresh, waPairModal, waPairGo, waLogoutModal, waLogoutGo, waAutoLoad, waAutoSave, waAutoTest, waLoadMsgs, waLoadCampaigns, waCampaignCreate, waCampaignAction, waChatMetaSave, waLoadOutbox, waSendGo, waLoadRules, waRuleModal, waRuleSave, waRuleDel, waLoadManagers, waManagerAdd, waManagerDel, waRenderQueryTab, waDoQuery, waLoadLogs, renderOracleDataPage, renderDailyLocksPage, loadDailyLocks, oraDataRefresh, oraDataSync, oraDataRender, oraDataFilter, oraDataOpen, oraDataRenderDetail, oraDataPrint, kdWaDoQuery };;

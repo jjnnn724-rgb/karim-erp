@@ -75,7 +75,7 @@ async function notifyChainEvent(req, dispatch, event, { io = null, reason = null
             io: io ?? req.io ?? null,
         };
         return await notifyBestEffort(pool, notifyOpts);
-    } catch (error) {
+    } catch (_) {
         return 0;
     }
 }

@@ -51,7 +51,7 @@ return `
 <div id="logoPreview" style="width:80px;height:80px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--border)">${logoMarkup('settings-logo-preview')}</div>
 <div class="u-flex1">
 <input type="file" id="logoFileInput" accept="image/*" style="display:none" data-karim-action="handleLogoUpload" data-karim-event="change" data-karim-args="[event]">
-<button class="btn btn-gold btn-sm" onclick="document.getElementById('logoFileInput').click()"><i class=ji data-i=folder></i> ${t('set.uploadLogo')}</button>
+<button class="btn btn-gold btn-sm" data-karim-action="kdAct"><i class=ji data-i=folder></i> ${t('set.uploadLogo')}</button>
 <button class="btn btn-red btn-sm u-mt8" data-karim-action="resetLogo"><i class=ji data-i=refresh></i> ${t('set.removeLogo')}</button>
 </div>
 </div>
@@ -84,7 +84,7 @@ ${['cfo','revenues','expenses','cost-analysis','pnl','departments','warehouse','
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=printer></i> تذاكر المطبخ</h3></div><div id="kotSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=id-card></i> بطاقات الموظفين</h3></div><div id="cardSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=timer></i> البصمة الذاتية</h3></div><div id="punchSettingsBody" style="padding:24px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
-<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" data-karim-action="sysDoBackup"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" onclick="document.getElementById('sysUploadInput')?.click()"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" data-karim-action="sysUploadBackup" data-karim-event="change" data-karim-pass="element"><button class="btn btn-blue btn-sm" data-karim-action="sysLoadBackups"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" data-karim-action="sysDoBackup"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" data-karim-action="kdAct49"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" data-karim-action="sysUploadBackup" data-karim-event="change" data-karim-pass="element"><button class="btn btn-blue btn-sm" data-karim-action="sysLoadBackups"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
 <div style="padding:16px 24px"><small class="text-muted">النسخة تشمل قاعدة البيانات كاملة + الإعدادات — انسخ أحدث ملف على فلاشة خارجية للأمان من ضبط المصنع. الاستعادة تمسح الحالي (بنعمل نسخة أمان تلقائيًا أولًا).</small><div id="sysBackupList" style="margin-top:12px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
 </div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=inbox></i> تصدير وتصفير</h3></div>
@@ -543,7 +543,7 @@ const rows=(d.files||[]).map((f,i)=>`<tr>
 <td class="text-muted">${esc(String(f.mtime||'').replace('T',' ').slice(0,19))}</td>
 <td>${f.shaOk===true?'<span class="badge bdg-green">سليمة</span>':f.shaOk===false?'<span class="badge bdg-red">تالفة!</span>':f.hasSha?'<span class="badge bdg-gray">بصمة موجودة</span>':'<span class="badge bdg-gray">بلا بصمة</span>'}</td>
 <td>${f.manifest?'<span class="badge bdg-blue">كاملة + إعدادات</span>':'<span class="text-muted">قاعدة فقط</span>'}</td>
-<td><button class="btn btn-gold btn-sm" onclick="sysRestoreModal('${esc(f.file)}')" ${f.shaOk===false?'disabled':''}><i class=ji data-i=archive></i> استعادة</button></td>
+<td><button class="btn btn-gold btn-sm" data-karim-action="kdSysRestoreModal" data-karim-arg0="${esc(f.file)}" ${f.shaOk===false?'disabled':''}><i class=ji data-i=archive></i> استعادة</button></td>
 </tr>`).join('');
 box.innerHTML=`<div class="tbl-scroll"><table><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th>السلامة</th><th>المحتوى</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="u-empty-sm">لا نسخ بعد — دوس نسخة احتياطية الآن</td></tr>'}</tbody></table></div>
 <small class="text-muted">مجلد النسخ: <code dir="ltr">${esc(d.dir||'')}</code> — انسخ أحدث ملف لفلاشة خارجية قبل أي ضبط مصنع.</small>`;
@@ -1026,5 +1026,18 @@ const r = await apiFetch('/attendance/portal/punch-devices/'+userId, { method:'D
 toast('تم فك الربط ('+(r.unbound||0)+' جهاز) — البصمة التالية تربط من جديد','success');
 await loadPunchDevices();
 }catch(e){ toast(e.message||'فشل فك الربط','error'); }
+}/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct() {
+    document.getElementById('logoFileInput').click();
 }
-export { saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts, loadPunchDevices, unbindPunchDevice };
+
+function kdAct49() {
+    document.getElementById('sysUploadInput')?.click();
+}
+
+function kdSysRestoreModal(p0) {
+    sysRestoreModal(p0);
+}
+
+
+export {saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts, loadPunchDevices, unbindPunchDevice, kdAct, kdAct49, kdSysRestoreModal };;

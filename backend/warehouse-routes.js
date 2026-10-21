@@ -9,7 +9,7 @@ const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
-// إلزام تاريخ الصلاحية عند دخول البضاعة للمخزن (طلب المالك 2026-10-19)
+// سياسة تاريخ الصلاحية: اختياري، ويُرفض فقط إن جاء بصيغة فاسدة (2026-10-20)
 const { normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor } = require('./expiry-policy');
 
 const router = express.Router();
@@ -60,16 +60,16 @@ const DEPT_CODE_ALIASES = Object.freeze({
 });
 
 function canonicalDeptCode(code) {
-    if (!code) return '';
+    if (!code) {return '';}
     const clean = String(code).trim().toLowerCase();
     return DEPT_CODE_ALIASES[clean] || String(code).trim();
 }
 
 function deptsMatch(codeA, codeB) {
-    if (!codeA || !codeB) return false;
+    if (!codeA || !codeB) {return false;}
     const cleanA = String(codeA).trim().toLowerCase();
     const cleanB = String(codeB).trim().toLowerCase();
-    if (cleanA === cleanB) return true;
+    if (cleanA === cleanB) {return true;}
     const canA = canonicalDeptCode(cleanA).toLowerCase();
     const canB = canonicalDeptCode(cleanB).toLowerCase();
     return canA === canB || cleanA === canB || cleanB === canA;
@@ -1603,14 +1603,12 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
         if (!Number.isInteger(inventoryId) || inventoryId <= 0 || !(qty > 0) || price < 0) {
             return fail(res, 422, 'INVALID_RECEIPT', 'أدخل صنفًا وكمية وسعرًا صحيحين');
         }
-        // لا كمية تدخل المخزن بلا تاريخ صلاحية (طلب المالك 2026-10-19)
+        // تاريخ الصلاحية اختياري (سياسة 2026-10-20) — يُرفض فقط إن جاء فاسدًا
         const rawReceiptExpiry = readExpiryField(req.body || {});
         const receiptExpiry = normalizeExpiryDate(rawReceiptExpiry);
-        if (!receiptExpiry) {
-            return fail(res, 422, rawReceiptExpiry ? 'INVALID_EXPIRY_DATE' : 'EXPIRY_DATE_REQUIRED',
-                rawReceiptExpiry
-                    ? 'تاريخ الصلاحية غير صحيح — الصيغة المطلوبة YYYY-MM-DD'
-                    : 'تاريخ الصلاحية إلزامي عند إضافة كمية إلى المخزن');
+        if (rawReceiptExpiry && !receiptExpiry) {
+            return fail(res, 422, 'INVALID_EXPIRY_DATE',
+                'تاريخ الصلاحية غير صحيح — الصيغة المطلوبة YYYY-MM-DD');
         }
         await client.query('BEGIN');
         const item = (await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [inventoryId])).rows[0];
@@ -1661,7 +1659,7 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
     const client = await pool.connect();
     try {
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
-        // استيراد دفعي = بضاعة تدخل المخزن: كل صنف يحتاج تاريخ صلاحية (المالك 2026-10-19)
+        // استيراد دفعي = بضاعة تدخل المخزن: الصلاحية اختيارية (2026-10-20)، والفساد وحده يُرفض.
         const bulkExpiry = checkExpiryOnLines(rawItems.filter(raw => raw && cleanName(raw.name || raw.itemName)
             && n(raw.qty) > 0 && n(raw.price) >= 0), (raw) => cleanName(raw.name || raw.itemName));
         if (!bulkExpiry.ok) {return fail(res, 422, bulkExpiry.code, bulkExpiry.message, { missing: bulkExpiry.missing, invalid: bulkExpiry.invalid });}
@@ -1857,8 +1855,8 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         // سطر صنف حقيقي — نفس المعيار في التطبيع وفي حرس الصلاحية (لا ازدواج).
         const isInvoiceLine = (raw) => Boolean(raw) && cleanName(raw.itemName || raw.name) !== ''
             && n(raw.qty) > 0 && n(raw.price) >= 0;
-        // لا بضاعة تدخل المخزن بلا تاريخ صلاحية (طلب المالك 2026-10-19): كل صنف
-        // في الفاتورة يحتاج تاريخًا صحيحًا، وإلا تُرفض الفاتورة كلها 422.
+        // سياسة 2026-10-20: الصلاحية اختيارية — لا تُرفض الفاتورة لغيابها،
+        // ويُرفض فقط السطر الذي جاء بتاريخ فاسد (INVALID_EXPIRY_DATE).
         const expiryGate = checkExpiryOnLines(rawItems.filter(isInvoiceLine));
         if (!expiryGate.ok) {
             await client.query('ROLLBACK');
@@ -1906,7 +1904,6 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         const inventoryRows = [];
         const transactions = [];
         const invoiceItems = [];
-        let totalAmount = 0;
         const createdNames = [];
         const invoiceId = id();
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
@@ -1959,7 +1956,6 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
                 catchWeightQty: item.packagingQty, catchWeightUnit: item.packagingQty !== null ? (item.packagingUom || inv.packaging_uom || 'كرتون') : null,
             });
             const lineTotal = item.total;
-            totalAmount += lineTotal;
             const tx = (await client.query(
                 `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes, "invoiceNumber", "supplierName", weight, catch_weight_qty, catch_weight_unit)
                  VALUES ($1,$2,$3,$4,'in',$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
@@ -2197,8 +2193,8 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         }
 
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
-        // التعديل يعيد الاستلام فعليًا — نفس حرس الإنشاء: لا صنف يدخل المخزن بلا
-        // تاريخ صلاحية (طلب المالك 2026-10-19).
+        // التعديل يعيد الاستلام فعليًا — نفس حرس الإنشاء: الغياب مقبول،
+        // والصيغة الفاسدة وحدها تُرفض (سياسة 2026-10-20).
         const expiryGateEdit = checkExpiryOnLines(rawItems.filter(raw => raw
             && cleanName(raw.itemName || raw.name) !== '' && n(raw.qty) > 0 && n(raw.price) >= 0));
         if (!expiryGateEdit.ok) {
@@ -2748,7 +2744,6 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
         }
         const payRows = (await client.query('SELECT id, amount, notes FROM supplier_payments WHERE "invoiceId" = $1 FOR UPDATE', [invoiceId])).rows;
         const payClass = classifyInvoicePaymentsForVoid(payRows);
-        const payRef = { c: payRows.length, t: payClass.total };
         const isOpeningBalance = /^OPEN-/i.test(String(inv.invoiceNumber || ''))
             || /^رصيد افتتاحي(?:\s|$)/.test(String(inv.supplierName || ''))
             || /^رصيد افتتاحي(?:\s|$)/.test(String(inv.notes || ''));

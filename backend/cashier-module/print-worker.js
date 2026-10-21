@@ -165,18 +165,20 @@ async function sendToPrinter(printer, payloadBuffer) {
         }
 }
 
-logger.info('[print-worker] 🖨 started, polling every 2s');
-const timer = setInterval(() => {
-    pollAndPrint().catch(err => logger.error('[print-worker] poll error:', err.message));
-}, POLL_INTERVAL_MS);
+if (require.main === module) {
+    logger.info('[print-worker] 🖨 started, polling every 2s');
+    const timer = setInterval(() => {
+        pollAndPrint().catch(err => logger.error('[print-worker] poll error:', err.message));
+    }, POLL_INTERVAL_MS);
 
-async function shutdown(signal) {
-    logger.info(`[print-worker] received ${signal}, stopping...`);
-    clearInterval(timer);
-    await pool.end();
-    process.exit(0);
+    async function shutdown(signal) {
+        logger.info(`[print-worker] received ${signal}, stopping...`);
+        clearInterval(timer);
+        await pool.end();
+        process.exit(0);
+    }
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 }
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT',  () => shutdown('SIGINT'));
 
-module.exports = { pollAndPrint, sendToPrinter };
+module.exports = { pollAndPrint, attemptPrint, sendToPrinter, markPrintFailed };

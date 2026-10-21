@@ -7,8 +7,6 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const os = require('os');
 
 const REQUIRED_KEYS = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME'];
 
@@ -103,7 +101,7 @@ module.exports = [
                 try {
                     if (!fs.existsSync(p)) {problems.push(`${name} غير موجود (${p})`); continue;}
                     fs.accessSync(p, fs.constants.W_OK);
-                } catch (e) {
+                } catch (_) {
                     problems.push(`${name} غير قابل للكتابة (${p})`);
                 }
             }

@@ -18,7 +18,7 @@ const express = require('express');
 const { pool } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { logger } = require('../logger');
-const { buildKotGroups, buildKotData, buildEscPosKot, kotHtml } = require('./kot-printer');
+const { buildKotGroups, buildKotData, kotHtml } = require('./kot-printer');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'manager', 'accountant', 'auditor'];

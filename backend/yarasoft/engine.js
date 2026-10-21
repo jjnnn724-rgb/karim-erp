@@ -15,14 +15,12 @@
 
 'use strict';
 
-const path = require('path');
 const { loadConfig, joinShare } = require('./config');
 const files = require('./files');
 const { scanDirectory, pruneKnown } = require('./watcher');
 const importer = require('./importer');
 const { STATUS } = require('./importer');
 const { logger } = require('../logger');
-const { pool } = require('../shared-pool');
 
 class YarasoftEngine {
     constructor() {

@@ -1,16 +1,15 @@
 /**
  * سياسة تاريخ الصلاحية — حرس دخول البضاعة للمخزن
  * ═══════════════════════════════════════════════════════════════════════
- * طلب المالك 2026-10-19: «عند إضافة أي فاتورة شراء لازم تاريخ الصلاحية —
- * لا تقبل بدون تاريخ صلاحيه دخول المنتج للمخزن»، والنطاق المختار:
- * **كل مداخل المخزون**.
+ * سياسة المالك 2026-10-20: تاريخ الصلاحية **اختياري** في الفواتير ومداخل
+ * المخزون. يبقى محفوظًا ومُتحقَّقًا منه عند إدخاله، ويُرفض فقط إذا كانت
+ * صيغته فاسدة — لا يُخترع تاريخ ولا يُمنع البيع/الاستلام لغيابه.
  *
- * القواعد التي يقرها هذا الملف (لا يُخترع تاريخ أبداً):
+ * القواعد التي يقرها هذا الملف:
  *   • مدخل بضاعة جديدة (فاتورة شراء/إضافة يدوية/استيراد/رصيد افتتاحي):
- *     تاريخ الصلاحية إلزامي لكل صنف — يُرفض الطلب 422 بلا استثناء.
- *   • حركة داخلية (صرف/استلام/إرجاع/تحويل/جرد): الصنف داخل النظام من قبل،
- *     فيُحمل تاريخ دُفعته المسجل في الدفتر (latestExpiryFor) ويُترك فارغًا
- *     إن لم يوجد — الرفض هناك كان يعطّل الجرد والمرتجعات بلا فائدة.
+ *     التاريخ اختياري. إن أُرسل فيجب أن يكون YYYY-MM-DD صحيحًا.
+ *   • حركة داخلية (صرف/استلام/إرجاع/تحويل/جرد): يُحمل تاريخ الدُفعة المسجل
+ *     في الدفتر (latestExpiryFor) ويُترك فارغًا إن لم يوجد.
  *
  * الحكم النهائي للخادم دائمًا: الواجهة تتحقق للراحة فقط.
  */
@@ -59,32 +58,23 @@ function readExpiryField(source, keys = ['expiryDate', 'expiry_date', 'bestBefor
  * @param {Array} lines صفوف الطلب (أصناف فاتورة/استيراد…).
  * @param {(line)=>string} nameOf اسم الصنف لرسالة عربية مفيدة.
  * @returns {{ok:boolean, code?:string, message?:string, missing:string[], invalid:string[]}}
- * رسالة واحدة تحمل أسماء الأصناف الناقصة (أسلوب الخادم: عربي + اسم الصنف).
+ * رسالة واحدة تحمل أسماء الأصناف الفاسدة (أسلوب الخادم: عربي + اسم الصنف).
+ * الغياب مقبول دائمًا — لا يوجد وضع «إلزامي».
  */
 function checkExpiryOnLines(lines = [], nameOf = (line) => String(line?.itemName || line?.name || '')) {
-    const missing = [];
     const invalid = [];
     for (const line of lines) {
         const raw = readExpiryField(line);
-        const normalized = normalizeExpiryDate(raw);
-        if (!normalized) {
-            (raw === null || raw === undefined || String(raw).trim() === '' ? missing : invalid).push(nameOf(line));
-        }
-    }
-    if (missing.length) {
-        return {
-            ok: false,
-            code: 'EXPIRY_DATE_REQUIRED',
-            message: `تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف ${missing.slice(0, 5).join('، ')}${missing.length > 5 ? ` (+${missing.length - 5} صنفًا)` : ''}`,
-            missing, invalid,
-        };
+        if (normalizeExpiryDate(raw)) {continue;}
+        const empty = raw === null || raw === undefined || String(raw).trim() === '';
+        if (!empty) {invalid.push(nameOf(line));}
     }
     if (invalid.length) {
         return {
             ok: false,
             code: 'INVALID_EXPIRY_DATE',
             message: `تاريخ الصلاحية غير صحيح للصنف ${invalid.slice(0, 5).join('، ')} — الصيغة المطلوبة YYYY-MM-DD`,
-            missing, invalid,
+            missing: [], invalid,
         };
     }
     return { ok: true, missing: [], invalid: [] };

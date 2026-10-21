@@ -54,7 +54,7 @@ function findHandlerMatches(src) {
             if (ch === '"') {
                 const after = src.slice(i + 1).match(/^\s*(.)/);
                 const next = after ? after[1] : null;
-                if (next === null || next === '>' || next === '/' || /[A-Za-z]/.test(next)) {break;}
+                if (next === null || next === '>' || next === '/' || next === '$' || next === '{' || next === '}' || /[A-Za-z]/.test(next)) {break;}
             }
             i++;
         }

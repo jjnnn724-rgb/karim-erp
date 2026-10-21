@@ -21,14 +21,14 @@
  *   - Full audit logging
  *   - Preview mode (dry-run)
  *   - CSV/JSON input support
- *   - Expiry policy: كل صف يدخل المخزون برصيد (qty > 0) يجب أن يحمل تاريخ صلاحية
- *     صحيحًا بصيغة YYYY-MM-DD وإلا يُرفض الصف. الاستيراد يكتب inventory.qty مباشرة
+ *   - Expiry policy: تاريخ الصلاحية اختياري لكل صف يدخل المخزون. إن أُرسل فيجب
+ *     أن يكون بصيغة YYYY-MM-DD صحيحة وإلا يُرفض الصف؛ الغياب لا يمنع الاستيراد
+ *     ولا يُخترع تاريخ. الاستيراد يكتب inventory.qty مباشرة
  *     ولا يمر بمخزون inventory_ledger، لذلك يُحفظ تاريخ الصلاحية في سجل التدقيق
  *     (audit_log.new_data) وفي نتيجة المعاينة فقط — ربط الاستيراد بدفتر المخزون
  *     بند مستقل يحتاج موافقة المالك لأنه يغيّر طريقة احتساب الكميات.
  */
 const express = require('express');
-const crypto = require('crypto');
 const { logger } = require('../logger');
 const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
@@ -39,11 +39,6 @@ const router = express.Router();
 
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────────
 const MAX_IMPORT_ROWS = 5000;
-const MAX_NAME_LENGTH = 255;
-const MAX_CATEGORY_LENGTH = 100;
-const MAX_UNIT_LENGTH = 50;
-const MAX_BARCODE_LENGTH = 100;
-const MAX_SHELF_CODE_LENGTH = 50;
 
 const COLUMN_ALIASES = {
     name:        ['name', 'الاسم', 'اسم الصنف', 'product', 'الصنف'],
@@ -138,19 +133,11 @@ function validateRow(row, rowIndex, existingNames, existingBarcodes, categoryCac
     const weight = toNumber(pick(row, COLUMN_ALIASES.weight), 0);
     if (weight < 0) { errors.push({ field: 'weight', message: 'الوزن لا يمكن أن يكون سالباً' }); }
 
-    // ─── Expiry (policy: كل صنف يدخل المخزن برصيد يجب أن يحمل تاريخ صلاحية) ───
+    // ─── Expiry (سياسة 2026-10-20: اختياري، ويُرفض فقط إن جاء بصيغة فاسدة) ───
     const expiryRaw = pick(row, COLUMN_ALIASES.expiryDate);
     let expiryDate = null;
-    if (qty > 0) {
-        if (expiryRaw === undefined || expiryRaw === null || String(expiryRaw).trim() === '') {
-            errors.push({ field: 'expiryDate', message: 'تاريخ الصلاحية مطلوب لكل صنف يدخل المخزن برصيد — الصيغة YYYY-MM-DD (مثال 2026-12-31)' });
-        } else {
-            expiryDate = normalizeExpiryDate(expiryRaw);
-            if (!expiryDate) {
-                errors.push({ field: 'expiryDate', message: `تاريخ الصلاحية غير صحيح (${String(expiryRaw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` });
-            }
-        }
-    } else if (expiryRaw !== undefined && expiryRaw !== null && String(expiryRaw).trim() !== '') {
+    const hasExpiry = !(expiryRaw === undefined || expiryRaw === null || String(expiryRaw).trim() === '');
+    if (hasExpiry) {
         expiryDate = normalizeExpiryDate(expiryRaw);
         if (!expiryDate) {
             errors.push({ field: 'expiryDate', message: `تاريخ الصلاحية غير صحيح (${String(expiryRaw).slice(0, 24)}) — الصيغة المطلوبة YYYY-MM-DD` });

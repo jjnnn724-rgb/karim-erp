@@ -217,7 +217,7 @@ async function saOpenOrder(docNo) {
             <h3><i class=ji data-i=file-text></i> فاتورة ${saEscape(o.doc_no)} — ${saEscape(o.cashier_name || 'كاشير ' + o.cashier_no)} — ${saEscape(o.doc_date)}</h3>
             <div style="display:flex;gap:6px">
               <button class="btn btn-sm btn-green" data-karim-action="saPrintOrder" data-karim-arg0="${saEscape(o.doc_no)}"><i class=ji data-i=printer></i> طباعة الأوردر</button>
-              <button class="btn btn-sm" onclick="document.getElementById('saOrderDetail').innerHTML=''">إغلاق</button>
+              <button class="btn btn-sm" data-karim-action="kdAct">إغلاق</button>
             </div>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--bg,#f9fafb);border-radius:8px;margin:8px 0;font-size:13px">
@@ -387,5 +387,10 @@ function saExportExcel() {
     }
     toast('تم تصدير Excel', 'success');
 }
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdAct() {
+    document.getElementById('saOrderDetail').innerHTML=''
+}
 
-export { renderSalesAnalyzerPage, saApply, saExportExcel, saPrintReport, saSwitchTab, saOrdersPage, saOpenOrder, saPrintOrder };
+
+export {renderSalesAnalyzerPage, saApply, saExportExcel, saPrintReport, saSwitchTab, saOrdersPage, saOpenOrder, saPrintOrder, kdAct };;
