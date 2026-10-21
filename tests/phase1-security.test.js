@@ -11,7 +11,7 @@
  * Run: npm test
  */
 
-const { describe, it, expect, beforeAll, afterAll } = require('@jest/globals');
+const { describe, it, expect } = require('@jest/globals');
 
 // Import modules under test
 const {
@@ -361,12 +361,20 @@ describe('Phase 1.3 — Password Migration (Plaintext → Bcrypt)', () => {
 describe('Phase 1.4 — XSS Protection & Error Handling', () => {
 
     describe('CSP inline event handler safety', () => {
-        it('should allow inline event handlers while keeping nonce-based scripts enforced', () => {
+        it('allows inline event handlers while keeping inline script blocks forbidden', () => {
             const directive = buildCspDirectives({ reportOnly: false }, 'abc123');
 
-            expect(directive).toContain("script-src 'self' 'nonce-abc123' https://static.cloudflareinsights.com 'unsafe-hashes' 'unsafe-inline'");
+            // 'unsafe-inline' ممنوع في script-src: وجود 'nonce-…' يجعل المتصفح
+            // يتجاهل 'unsafe-inline' أصلًا (قاعدة CSP2) ⇒ كان وجودهما تناقضًا
+            // مُضلِّلًا يعني أن كل سكربت inline يُحجب بصمت (قيس في الإنتاج).
+            // صفر سكربت inline في الواجهة الآن، وبوابة CI تمنع عودتها.
+            expect(directive).toContain("script-src 'self' 'nonce-abc123' https://static.cloudflareinsights.com 'unsafe-hashes'");
+            const scriptSrc = directive.split(';').map((d) => d.trim())
+                .find((d) => d.startsWith('script-src '));
+            expect(scriptSrc).not.toContain("'unsafe-inline'");
             expect(directive).toContain("'unsafe-hashes'");
             expect(directive).toContain("'nonce-abc123'");
+            // المعالجات السطرية (onclick) مسموحة عبر script-src-attr — 1158 منها
             expect(directive).toContain("script-src-attr 'unsafe-inline'");
         });
 
@@ -465,13 +473,13 @@ describe('Entity Schema Completeness', () => {
     });
 
     it('should have at least one required field per entity', () => {
-        Object.entries(entitySchemas).forEach(([name, schema]) => {
+        Object.entries(entitySchemas).forEach(([_name, schema]) => {
             expect(schema.required.length).toBeGreaterThan(0);
         });
     });
 
     it('should have protected fields excluding client-settable IDs', () => {
-        Object.entries(entitySchemas).forEach(([name, schema]) => {
+        Object.entries(entitySchemas).forEach(([_name, schema]) => {
             expect(schema.protected).toContain('id');
         });
     });

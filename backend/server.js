@@ -467,9 +467,7 @@ if (cspMeasurementEnabled) {
             } catch (_) { /* تقرير تالف — نتجاهله */ }
             res.status(204).end();
         });
-    app.get('/api/security/csp-report', (req, res) => {
-        res.json({ ok: true, total: cspReports.total(), counters: cspReports.snapshot() });
-    });
+    // القراءة (العدّادات) تُركَّب لاحقًا بعد apiKeyMiddleware — انظر أدناه.
 }
 // FIX 2026-10-03 (اختبار ضغط): أُزيل morgan('combined') — كان يسجّل كل طلب
 // مرتين (httpLogger المنظم يغطي البداية والنهاية بتفاصيل أكبر)، والتحذير
@@ -551,6 +549,14 @@ function apiKeyMiddleware(req, res, next) {
 }
 app.use('/api', apiKeyMiddleware);
 app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
+// ─── قراءة عدّادات مخالفات CSP (محمية بمفتاح التطبيق) ─────────────────────
+// الاستقبال (POST) عام لأن المتصفح لا يستطيع إضافة ترويسة x-api-key إلى
+// تقرير CSP؛ أمّا القراءة فتكشف بنية الملفات الداخلية ⇒ لا تكون عامة.
+if (cspMeasurementEnabled) {
+    app.get('/api/security/csp-report', (req, res) => {
+        res.json({ ok: true, total: cspReports.total(), counters: cspReports.snapshot() });
+    });
+}
 // Phase 4.1: قياس قناة واجهة POS الفعلية (pos / cashier / v2-embedded).
 // لا يفتح اتصال قاعدة ولا يستورد شيئاً من الإنتاج، ولا يُسقط أي طلب.
 // المرجع من المتصفح (Referer/Origin) هو مصدر القرار — لا ترويسة العميل.
@@ -2692,6 +2698,13 @@ app.use((req, res, next) => {
         res.setHeader('Content-Security-Policy', buildV2Csp());
     }
     next();
+});
+// شاشة البوفيه القديمة (Tailwind CDN) محجوبة بسياسة CSP الحالية
+// (script-src 'self' يمنع cdn.tailwindcss.com) ⇒ كانت صفحة ميتة: سكربتها
+// inline محجوب ولا تُعرض أي عناصر. الشاشة الحيّة هي menu-board.html.
+// نحوّلها بدل ترك رابط مكسور للعملاء.
+app.use('/app/menu.html', (req, res) => {
+    res.redirect(302, '/app/menu-board.html');
 });
 app.use('/app', appBrotli);
 app.use('/app/js/vendor', express.static(VENDOR_DIR, {

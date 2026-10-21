@@ -80,13 +80,18 @@ function buildCspDirectives(opts, nonce) {
             // breaks nor spams CSP violations. (Disable it in Cloudflare
             // dashboard → Speed → Observability if you don't want it at all.)
             'https://static.cloudflareinsights.com',
-            // The app uses inline handlers on the login page and several browser
-            // widgets rely on inline JavaScript. Keep the per-request nonce but
-            // allow the inline fallback necessary for the current frontend.
-            // NOTE: inline event handlers such as onclick="..." are rejected unless
-            // 'unsafe-hashes' is present in script-src.
+            // 'unsafe-inline' ممنوع هنا عن قصد: وجود 'nonce-…' في نفس
+            // المصدر يجعل المتصفح يتجاهل 'unsafe-inline' أصلًا (قاعدة CSP2)،
+            // فوجودهما معًا تناقض مُضلِّل — كان يعني أن أي سكربت inline
+            // يُحجب بصمت.Measured in production: the inline <script> in
+            // pos.html (POS path policy + SW registration) and the 347-line
+            // block in menu.html never executed because of this.
+            // ⇒ All inline scripts were moved to external .js files, and the
+            //   frontend now has ZERO inline scripts (CI gate:
+            //   npm run test:inline-scripts:gate).
+            // 'unsafe-hashes' يبقى كمسار ترحيل للسماح بتجزئات (hashes) محددة
+            // أثناء تحويل المعالجات السطرية (1158 معالجًا) إلى addEventListener.
             "'unsafe-hashes'",
-            unsafeInline,
             process.env.NODE_ENV === 'development' ? unsafeEval : '',
             unsafeEval,
         ].filter(Boolean),
