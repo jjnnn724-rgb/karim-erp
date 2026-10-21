@@ -193,9 +193,9 @@
       <div class="w-full flex items-center justify-between gap-2 px-1">
         <!-- Meal Type Selector -->
         <div class="flex items-center gap-1 p-0.5 rounded-full bg-slate-950/70 border border-amber-400/30" dir="ltr">
-          <button onclick="setMeal('breakfast')" id="mealBtn-breakfast" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">إفطار</button>
-          <button onclick="setMeal('lunch')" id="mealBtn-lunch" class="badge-gold px-3.5 py-1 rounded-full text-slate-950 font-black text-[10.5px] uppercase transition shadow">غداء</button>
-          <button onclick="setMeal('dinner')" id="mealBtn-dinner" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">عشاء</button>
+          <button data-karim-action="setMeal" data-karim-args="[&quot;breakfast&quot;]" id="mealBtn-breakfast" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">إفطار</button>
+          <button data-karim-action="setMeal" data-karim-args="[&quot;lunch&quot;]" id="mealBtn-lunch" class="badge-gold px-3.5 py-1 rounded-full text-slate-950 font-black text-[10.5px] uppercase transition shadow">غداء</button>
+          <button data-karim-action="setMeal" data-karim-args="[&quot;dinner&quot;]" id="mealBtn-dinner" class="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 rounded-full transition hover:text-white">عشاء</button>
         </div>
 
         <!-- Today Day Pill -->
@@ -275,6 +275,7 @@
   <!-- ========================================== -->
   <!-- JAVASCRIPT: DATA ARCHITECTURE & SYNC LOGIC -->
   <!-- ========================================== -->
-  <script src="js/features/menu-legacy.js?v=4.9.82"></script>
+  <script src="js/features/menu-legacy.js?v=4.9.84"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.84" defer></script>
 </body>
 </html>

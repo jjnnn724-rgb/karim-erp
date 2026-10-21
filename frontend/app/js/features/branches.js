@@ -29,12 +29,12 @@ function brRowsHtml(list, isAdmin) {
       const actions = isAdmin
         ? `
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-sm" onclick="brEditModal(${b.id})"><i class=ji data-i=pencil></i> تعديل</button>
+              <button class="btn btn-sm" data-karim-action="brEditModal" data-karim-arg0="${b.id}"><i class=ji data-i=pencil></i> تعديل</button>
               ${
                 b.code !== 'MAIN'
                   ? active
-                    ? `<button class="btn btn-red btn-sm" onclick="brDeactivate(${b.id},'${esc(b.name_ar)}')"><i class=ji data-i=x-circle></i> إيقاف</button>`
-                    : `<button class="btn btn-sm" onclick="brReactivate(${b.id})"><i class=ji data-i=check-circle></i> إعادة تفعيل</button>`
+                    ? `<button class="btn btn-red btn-sm" data-karim-action="brDeactivate" data-karim-arg0="${b.id}" data-karim-arg1="${esc(b.name_ar)}"><i class=ji data-i=x-circle></i> إيقاف</button>`
+                    : `<button class="btn btn-sm" data-karim-action="brReactivate" data-karim-arg0="${b.id}"><i class=ji data-i=check-circle></i> إعادة تفعيل</button>`
                   : ''
               }
             </div>`
@@ -85,14 +85,14 @@ async function brLoad() {
             <label class="text-muted" style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
               <input type="checkbox" ${_branchesShowAll ? 'checked' : ''} onchange="brToggleAll(this.checked)"> إظهار المعطّلة
             </label>
-            <button class="btn btn-gold" onclick="brAddModal()"><i class=ji data-i=plus></i> إضافة فرع</button>
+            <button class="btn btn-gold" data-karim-action="brAddModal"><i class=ji data-i=plus></i> إضافة فرع</button>
           </div>
         </div>
         <div class="workflow-banner" style="margin-bottom:12px">كل سجل (أمر بيع/مصروف/حضور/قيد) يُنسب لفرعه عبر عمود <strong>branch_id</strong> — الإيقاف ليّن: السجلات التاريخية تبقى سليمة.</div>
         ${brRowsHtml(_branchesCache, true)}`;
   } catch (e) {
     box.innerHTML = `<div class="mcard u-empty">تعذر تحميل الفروع: ${esc(e.message || 'خطأ')}
-          <div style="margin-top:8px"><button class="btn btn-sm" onclick="brLoad()"><i class=ji data-i=rotate-ccw></i> إعادة المحاولة</button></div></div>`;
+          <div style="margin-top:8px"><button class="btn btn-sm" data-karim-action="brLoad"><i class=ji data-i=rotate-ccw></i> إعادة المحاولة</button></div></div>`;
   }
 }
 
@@ -117,7 +117,7 @@ function brModalInner(b, saveFn) {
         </div>
         <div class="fg"><label>العنوان</label><input id="brAddress" value="${esc(b.address || '')}"></div>
         <div id="brErr" class="form-error" role="alert"></div>
-        <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button>
+        <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button>
           <button class="btn btn-gold" onclick="${saveFn}"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 

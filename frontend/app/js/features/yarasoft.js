@@ -15,18 +15,18 @@ content.innerHTML = `
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
 <h3 class="u-gold-strong"><i class=ji data-i=shopping-cart></i> استيراد فواتير Yarasoft</h3>
 <div class="u-row-wrap">
-${canWrite?`<button class="btn btn-green" onclick="ysRunNow()"><i class=ji data-i=refresh></i> تشغيل الآن</button>`:''}
-<button class="btn btn-blue btn-sm" onclick="ysRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
+${canWrite?`<button class="btn btn-green" data-karim-action="ysRunNow"><i class=ji data-i=refresh></i> تشغيل الآن</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="ysRefresh"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
 </div>
 <div class="u-row-wrap" style="gap:8px;margin-bottom:14px" id="ysTabs">
-<button class="btn btn-sm ${YSSTATE.tab==='status'?'btn-gold':''}" onclick="ysSetTab('status')"><i class=ji data-i=chart></i> الحالة والسجل</button>
-<button class="btn btn-sm ${YSSTATE.tab==='review'?'btn-gold':''}" onclick="ysSetTab('review')"><i class=ji data-i=alert-triangle></i> مراجعة الأصناف</button>
-<button class="btn btn-sm ${YSSTATE.tab==='sections'?'btn-gold':''}" onclick="ysSetTab('sections')"><i class=ji data-i=layout-grid></i> أقسام الإيرادات</button>
-<button class="btn btn-sm ${YSSTATE.tab==='warehouse'?'btn-gold':''}" onclick="ysSetTab('warehouse')"><i class=ji data-i=package></i> مخازن يارا سوفت</button>
-<button class="btn btn-sm ${YSSTATE.tab==='mirror'?'btn-gold':''}" onclick="ysSetTab('mirror')"><i class=ji data-i=store></i> مرآة الكاشيرية</button>
-<button class="btn btn-sm ${YSSTATE.tab==='mappings'?'btn-gold':''}" onclick="ysSetTab('mappings')"><i class=ji data-i=tag></i> ربط المنتجات</button>
-<button class="btn btn-sm ${YSSTATE.tab==='tools'?'btn-gold':''}" onclick="ysSetTab('tools')"><i class=ji data-i=settings></i> معاينة الصيغة</button>
+<button class="btn btn-sm ${YSSTATE.tab==='status'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;status&quot;]"><i class=ji data-i=chart></i> الحالة والسجل</button>
+<button class="btn btn-sm ${YSSTATE.tab==='review'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;review&quot;]"><i class=ji data-i=alert-triangle></i> مراجعة الأصناف</button>
+<button class="btn btn-sm ${YSSTATE.tab==='sections'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;sections&quot;]"><i class=ji data-i=layout-grid></i> أقسام الإيرادات</button>
+<button class="btn btn-sm ${YSSTATE.tab==='warehouse'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;warehouse&quot;]"><i class=ji data-i=package></i> مخازن يارا سوفت</button>
+<button class="btn btn-sm ${YSSTATE.tab==='mirror'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;mirror&quot;]"><i class=ji data-i=store></i> مرآة الكاشيرية</button>
+<button class="btn btn-sm ${YSSTATE.tab==='mappings'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;mappings&quot;]"><i class=ji data-i=tag></i> ربط المنتجات</button>
+<button class="btn btn-sm ${YSSTATE.tab==='tools'?'btn-gold':''}" data-karim-action="ysSetTab" data-karim-args="[&quot;tools&quot;]"><i class=ji data-i=settings></i> معاينة الصيغة</button>
 </div>
 <div id="ysBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>`;
 await ysRefresh();
@@ -59,7 +59,7 @@ async function ysLoadOracleBox(){
     : d.driver === false ? '<span class="badge bdg-red">بانتظار مكتبة oracledb</span>'
     : d.running ? '<span class="badge bdg-green">يعمل</span>' : '<span class="badge bdg-blue">جاهز</span>';
   box.innerHTML = `<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=database></i> الربط المباشر — قاعدة يارسوفت (Oracle)</h3>
-  <div class="u-row-wrap">${stateBadge}${canW ? `<button class="btn btn-green btn-sm" onclick="ysOraclePollNow()"><i class=ji data-i=zap></i> سحب الآن</button><button class="btn btn-gold btn-sm" onclick="ysOracleTest()"><i class=ji data-i=activity></i> فحص الاتصال</button><button class="btn btn-blue btn-sm" onclick="ysOracleImportItems()"><i class=ji data-i=package></i> استيراد الأصناف</button>` : ''}</div></div>
+  <div class="u-row-wrap">${stateBadge}${canW ? `<button class="btn btn-green btn-sm" data-karim-action="ysOraclePollNow"><i class=ji data-i=zap></i> سحب الآن</button><button class="btn btn-gold btn-sm" data-karim-action="ysOracleTest"><i class=ji data-i=activity></i> فحص الاتصال</button><button class="btn btn-blue btn-sm" data-karim-action="ysOracleImportItems"><i class=ji data-i=package></i> استيراد الأصناف</button>` : ''}</div></div>
   <div style="padding:10px 14px" class="text-muted">الخادم <bdi dir="ltr">${esc(d.host)}:${d.port}/${esc(d.service)}</bdi> — المستخدم <bdi dir="ltr">${esc(d.hasUser ? 'مضبوط' : 'ناقص')}</bdi> — كلمة المرور <bdi>${d.hasPassword ? 'مضبوطة' : 'ناقصة'}</bdi> — Thick mode <bdi>${d.thick ? 'مفعّل' : '—'}</bdi>${d.lastOk ? ` — آخر سحب ناجح: ${esc(d.lastOk)}` : ''}${d.lastError ? `<br><b style="color:var(--red)">آخر خطأ:</b> ${esc(d.lastError)}` : ''}${d.driver === false ? `<br><small>يحتاج: <bdi dir="ltr">npm install oracledb</bdi> + Instant Client 12.2 (لقاعدة قديمة) ثم تفعيل YARASOFT_ORACLE_ENABLED — كلمة المرور لا تظهر هنا أبدًا.</small>` : `<br><small>المكتبة والربط جاهزان — كلمة المرور لا تظهر هنا أبدًا.</small>`}</div></div>`;
 }
 async function ysOracleImportItems(){
@@ -123,7 +123,7 @@ const j=d.job||{};
 const chunks=(j.chunks||[]).map(c=>`<tr><td>${esc(c.fromDay)} ← ${esc(c.toDay)}</td><td>${c.skipped?'<span class="badge bdg-gray"><i class=ji data-i=check></i> مغطى</span>':'<span class="badge bdg-gold">اتسحب</span>'}</td><td>${fN(c.posted||0)}</td></tr>`).join('');
 box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${j.running?'<span class="badge bdg-gold">جارٍ اللحاق...</span>':`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> اكتمل</span> — منشور: <b>${fN(j.posted||0)}</b> — مكرر متخطى: <b>${fN(j.dups||0)}</b>`}${j.error?` <span class="c-red">${esc(j.error)}</span>`:''}</div>
 ${chunks?`<div class="tbl-scroll" style="max-height:220px;overflow:auto"><table><thead><tr><th>المقطع</th><th>الحالة</th><th>منشور</th></tr></thead><tbody>${chunks}</tbody></table></div>`:''}
-<div style="padding-top:8px"><button class="btn btn-blue btn-sm" onclick="ysReconcile()"><i class=ji data-i=chart></i> فحص الفجوات بعد المزامنة</button></div>`;
+<div style="padding-top:8px"><button class="btn btn-blue btn-sm" data-karim-action="ysReconcile"><i class=ji data-i=chart></i> فحص الفجوات بعد المزامنة</button></div>`;
 if(j.running && loop!==false) {setTimeout(()=>{ if(document.getElementById('ysSyncDocBody')) {ysCatchUpStatus(true);} },5000);}
 }catch(_){ /* صامت */ }
 }
@@ -169,12 +169,12 @@ el.innerHTML = `
 ${eng.lastError?`<div class="mcard" style="border:1px solid var(--red)"><b style="color:var(--red)">آخر خطأ:</b> <span style="color:var(--text2)">${esc(eng.lastError)}</span><br><small class="text-muted">المحرك يعيد المحاولة تلقائيًا كل ${30} ثانية عند انقطاع الشبكة — لا تدخل مطلوب.</small></div>`:''}
 <div id="ysOracleBox" style="margin-top:14px"><div class="mcard u-empty"><div class="spinner"></div></div></div>
 <div class="tbl-wrap" style="margin-top:14px">
-<div class="tbl-hd"><h3><i class=ji data-i=zap></i> محرك المزامنة الذكي — لحاق تلقائي بالفائت</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="ysReconcile()"><i class=ji data-i=chart></i> فحص الفجوات (14 يوم)</button><button class="btn btn-gold btn-sm" onclick="ysCatchUp()"><i class=ji data-i=refresh></i> مزامنة الفائت الآن</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=zap></i> محرك المزامنة الذكي — لحاق تلقائي بالفائت</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="ysReconcile"><i class=ji data-i=chart></i> فحص الفجوات (14 يوم)</button><button class="btn btn-gold btn-sm" data-karim-action="ysCatchUp"><i class=ji data-i=refresh></i> مزامنة الفائت الآن</button></div></div>
 <div style="padding:6px 14px" class="text-muted" style="font-size:12px">لو الجهاز اتقفل واشتغل، المحرك يلحق كل الفواتير الفائتة لوحده بعد الإقلاع بدقيقة — من غير أي زر.</div>
 <div id="ysSyncDocBody" style="padding:0 14px 14px"><div class="text-muted">دوس فحص الفجوات لمقارنة ياراسوفت بالنظام يوم بيوم.</div></div>
 </div>
 <div class="tbl-wrap" style="margin-top:14px">
-<div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل استيراد الفواتير</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في السجل..." oninput="ysTableSearch(this,'ysLogBody')" style="max-width:220px"><button class="btn btn-blue btn-sm" onclick="ysPrintLog()"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل استيراد الفواتير</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في السجل..." oninput="ysTableSearch(this,'ysLogBody')" style="max-width:220px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintLog"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="text-muted" style="padding:6px 14px;font-size:12px">كل ملف يُعالج مرة واحدة بالضبط (حماية بالهش + رقم الفاتورة + مرجع الإيراد)</div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الملف</th><th>رقم الفاتورة</th><th>الحالة</th><th>أصناف</th><th>الإجمالي</th><th>محاولات</th><th>المدة</th><th>التاريخ</th><th>خطأ</th><th></th></tr></thead>
@@ -190,7 +190,7 @@ ${YSSTATE.log.map(l=>`
 <td>${l.processing_duration_ms!=null?l.processing_duration_ms+'ms':'—'}</td>
 <td>${l.created_at?zkFmtDate(l.created_at)+' '+zkFmtTime(l.created_at):'—'}</td>
 <td class="u-maxw-200 text-muted" title="${esc(l.error_message||'')}">${l.error_message?esc(String(l.error_message).slice(0,60))+'…':'—'}</td>
-<td>${['admin','manager'].includes(STATE.currentUser?.role)&&['FAILED','REQUIRES_REVIEW'].includes(l.status)?`<button class="btn btn-blue btn-sm" onclick="ysReprocess('${l.id}')"><i class=ji data-i=rotate-ccw></i> إعادة فتح</button>`:''} <button class="btn btn-sm" onclick="ysViewInvoice('${l.id}')"><i class=ji data-i=eye></i> عرض</button></td>
+<td>${['admin','manager'].includes(STATE.currentUser?.role)&&['FAILED','REQUIRES_REVIEW'].includes(l.status)?`<button class="btn btn-blue btn-sm" data-karim-action="ysReprocess" data-karim-arg0="${l.id}"><i class=ji data-i=rotate-ccw></i> إعادة فتح</button>`:''} <button class="btn btn-sm" data-karim-action="ysViewInvoice" data-karim-arg0="${l.id}"><i class=ji data-i=eye></i> عرض</button></td>
 </tr>`).join('')||'<tr><td colspan="10" class="u-empty-sm">لا سجلات بعد — فعّل YARASOFT_ENABLED في .env وضع ملفات الفواتير في مجلد Invoices</td></tr>'}
 </tbody></table></div>
 </div>`;
@@ -280,8 +280,8 @@ showModal(`
 <tbody>${rows}</tbody>
 </table></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إغلاق</button>
-<button class="btn btn-blue" onclick="ysPrintInvoiceDetail()"><i class=ji data-i=printer></i> طباعة الفاتورة</button>
+<button class="btn" data-karim-action="closeModal">إغلاق</button>
+<button class="btn btn-blue" data-karim-action="ysPrintInvoiceDetail"><i class=ji data-i=printer></i> طباعة الفاتورة</button>
 </div>`);
 }catch(e){ hideLoad(); toast(e.message||'تعذر جلب التفاصيل','error'); }
 }
@@ -310,12 +310,12 @@ const rows=(YSSTATE.review||[]).map(r=>`
 <td class="fw-bold">${esc(r.item_name||'—')}</td>
 <td>${fN(r.quantity||0)}</td>
 <td>${esc(r.reason||'')}</td>
-<td>${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="ysResolveReview('${r.id}')"><i class=ji data-i=tag></i> ربط بمنتج</button>`:'—'}</td>
+<td>${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="ysResolveReview" data-karim-arg0="${r.id}"><i class=ji data-i=tag></i> ربط بمنتج</button>`:'—'}</td>
 </tr>`).join('');
 el.innerHTML=`
 <div class="mcard" style="margin-bottom:12px"><b><i class=ji data-i=info></i> القاعدة:</b> <span style="color:var(--text2)">لن يُستبدل صنف غير مطابق بمنتج آخر أبدًا — اربطه يدويًا هنا وستُستورد فاتورته تلقائيًا بعد اكتمال كل أصنافها، ويُستخدم نفس الربط لكل الفواتير القادمة.</span></div>
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> أصناف بلا مطابقة (${fN((YSSTATE.review||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysReviewBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" onclick="ysLoadReview(document.getElementById('ysBody'))"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" onclick="ysPrintReview()"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> أصناف بلا مطابقة (${fN((YSSTATE.review||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysReviewBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysLoadReview" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintReview"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الفاتورة</th><th>كود Yarasoft</th><th>الباركود</th><th>اسم الصنف</th><th>الكمية</th><th>السبب</th><th></th></tr></thead>
 <tbody id="ysReviewBody">${rows||'<tr><td colspan="7" class="u-empty-sm">لا أصناف معلقة — كل الفواتير مستوردة</td></tr>'}</tbody>
@@ -337,8 +337,8 @@ showModal(`
 ${(products||[]).map(p=>`<option value="${p.id}">${esc(p.name)}${p.barcode?` — باركود ${esc(p.barcode)}`:''} — متوفر ${fN(p.qty||0)}</option>`).join('')}
 </select></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="ysConfirmReview('${id}')"><i class=ji data-i=save></i> ربط ومتابعة الاستيراد</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="ysConfirmReview" data-karim-arg0="${id}"><i class=ji data-i=save></i> ربط ومتابعة الاستيراد</button>
 </div>`);
 }
 async function ysConfirmReview(id){
@@ -366,10 +366,10 @@ const rows=(YSSTATE.mappings||[]).map(m=>`
 <td>${esc(m.external_barcode||'—')}</td>
 <td class="fw-bold">${esc(m.product_name)}</td>
 <td>${m.active?'<span class="badge bdg-green">نشط</span>':'<span class="badge bdg-gray">معطل</span>'}</td>
-<td>${canWrite?`<button class="btn btn-red btn-sm" onclick="ysDeactivateMapping('${m.id}')"><i class=ji data-i=circle-x></i> تعطيل</button>`:'—'}</td>
+<td>${canWrite?`<button class="btn btn-red btn-sm" data-karim-action="ysDeactivateMapping" data-karim-arg0="${m.id}"><i class=ji data-i=circle-x></i> تعطيل</button>`:'—'}</td>
 </tr>`).join('');
 el.innerHTML=`
-${canWrite?`<div class="u-row-wrap" style="gap:8px;margin-bottom:12px"><button class="btn btn-gold" onclick="ysAddMappingModal()"><i class=ji data-i=plus></i> ربط جديد</button></div>`:''}
+${canWrite?`<div class="u-row-wrap" style="gap:8px;margin-bottom:12px"><button class="btn btn-gold" data-karim-action="ysAddMappingModal"><i class=ji data-i=plus></i> ربط جديد</button></div>`:''}
 <div class="tbl-wrap">
 <div class="tbl-hd"><h3><i class=ji data-i=tag></i> ربط أكواد Yarasoft بمنتجات karim</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysMapBody')" style="max-width:200px"><span class="text-muted">أولوية المطابقة: باركود ← كود خارجي ← ربط صريح ← رقم منتج داخلي</span></div></div>
 <div class="tbl-scroll"><table>
@@ -391,8 +391,8 @@ showModal(`
 ${(products||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
 </select></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="ysSaveMapping()"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="ysSaveMapping"><i class=ji data-i=save></i> حفظ</button>
 </div>`);
 }
 async function ysSaveMapping(){
@@ -439,7 +439,7 @@ return `
 <td class="c-red">${fC(m.posted_expenses||0)}</td>
 <td class="fw-bold ${profit>=0?'c-green':'c-red'}">${fC(profit)}</td>
 <td>${m.active?'<span class="badge bdg-green">نشط</span>':'<span class="badge bdg-gray">معطل</span>'}</td>
-<td>${canWrite?`<button class="btn btn-sm" onclick="ysRenameSectionModal('${m.id}','${esc(m.display_ar)}')"><i class=ji data-i=pencil></i> تسمية</button>`:''}</td>
+<td>${canWrite?`<button class="btn btn-sm" data-karim-action="ysRenameSectionModal" data-karim-arg0="${m.id}" data-karim-arg1="${esc(m.display_ar)}"><i class=ji data-i=pencil></i> تسمية</button>`:''}</td>
 </tr>`;}).join('');
 const unRows=(YSSTATE.secUnmapped||[]).map(u=>`
 <tr>
@@ -448,7 +448,7 @@ const unRows=(YSSTATE.secUnmapped||[]).map(u=>`
 <td>${fN(u.invoices_count||0)}</td>
 <td class="c-gold">${fC(u.total_amount||0)}</td>
 <td class="text-muted">${u.last_seen?zkFmtDate(u.last_seen):'—'}</td>
-<td>${canWrite?`<button class="btn btn-gold btn-sm" onclick="ysApproveSectionModal('${u.id}')"><i class=ji data-i=check></i> اعتماد قسم</button>`:'—'}</td>
+<td>${canWrite?`<button class="btn btn-gold btn-sm" data-karim-action="ysApproveSectionModal" data-karim-arg0="${u.id}"><i class=ji data-i=check></i> اعتماد قسم</button>`:'—'}</td>
 </tr>`).join('');
 el.innerHTML=`
 <div class="mcard" style="margin-bottom:12px"><b><i class=ji data-i=info></i> القاعدة:</b> <span style="color:var(--text2)">الإيراد يأتي من بيع الكاشير فقط (CC) + البيع الخارجي للشركات (BILLS4) — فواتير الصرف الداخلي للأقسام (BILLS6) ليست إيرادًا ولا تُرحّل — أي كاشير جديد يتوقف هنا للاعتماد — سمِّ كل كاشير باسم منفذه بزر "تسمية" — اضغط على اسم أي قسم لعرض فواتيره ونقلها بين الأقسام.</span></div>
@@ -461,7 +461,7 @@ ${(YSSTATE.secUnmapped||[]).length?`<div class="tbl-wrap" style="margin-bottom:1
 <tbody>${unRows}</tbody>
 </table></div></div>`:''}
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=layout-grid></i> خريطة الأقسام (${fN((YSSTATE.secMap||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الأقسام..." oninput="ysTableSearch(this,'ysSecMapBody')" style="max-width:220px">${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="ysManualSectionModal()"><i class=ji data-i=plus></i> قسم يدوي</button>`:''}<button class="btn btn-blue btn-sm" onclick="ysLoadSections(document.getElementById('ysBody'))"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" onclick="ysPrintSections()"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=layout-grid></i> خريطة الأقسام (${fN((YSSTATE.secMap||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الأقسام..." oninput="ysTableSearch(this,'ysSecMapBody')" style="max-width:220px">${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="ysManualSectionModal"><i class=ji data-i=plus></i> قسم يدوي</button>`:''}<button class="btn btn-blue btn-sm" data-karim-action="ysLoadSections" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintSections"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الجدول</th><th>القسم</th><th>الكود</th><th>فواتير مرحلة</th><th>إيرادات تلقائية</th><th>مصروفات تلقائية</th><th>الصافي</th><th>الحالة</th><th></th></tr></thead>
 <tbody id="ysSecMapBody">${mapRows||'<tr><td colspan="9" class="u-empty-sm">لا أقسام بعد</td></tr>'}</tbody>
@@ -517,7 +517,7 @@ const canWrite=['admin','manager'].includes(STATE.currentUser?.role);
 const targets=(YSSTATE.secMap||[]).filter(x=>x.active&&Number(x.id)!==Number(st.mapId)).map(x=>`<option value="${x.id}">${esc(x.display_ar)}</option>`).join('');
 const rows=(d.rows||[]).map(r=>`<tr>
 ${canWrite?`<td><input type="checkbox" class="ysInvChk" value="${r.id}"></td>`:''}
-<td><a href="javascript:void(0)" onclick="ysInvDetail('${esc(r.external_ref||'')}')" title="اضغط لعرض تفاصيل الفاتورة بالضبط" style="color:var(--gold);cursor:pointer"><code dir="ltr">${esc((r.external_ref||'').replace(/^ora:/,''))}</code></a></td>
+<td><a href="javascript:void(0)" data-karim-action="ysInvDetail" data-karim-arg0="${esc(r.external_ref||'')}" title="اضغط لعرض تفاصيل الفاتورة بالضبط" style="color:var(--gold);cursor:pointer"><code dir="ltr">${esc((r.external_ref||'').replace(/^ora:/,''))}</code></a></td>
 <td>${esc(r.date||'—')}</td>
 <td class="c-green fw-bold">${fC(r.amount||0)}</td>
 <td class="text-muted" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.notes||'')}">${esc(r.notes||'—')}</td>
@@ -532,7 +532,7 @@ box.innerHTML=`<div class="tbl-wrap" style="margin-bottom:12px;border:1px solid 
 <input type="date" id="ysInvTo" class="inp" value="${esc(st.date_to||'')}" onchange="YSSTATE.secInv.date_to=this.value;YSSTATE.secInv.page=1;ysSecInvReload()" style="max-width:150px">
 <input type="text" id="ysInvQ" class="inp" placeholder="بحث برقم الفاتورة..." value="${esc(st.q||'')}" onkeydown="if(event.key==='Enter'){YSSTATE.secInv.q=this.value;YSSTATE.secInv.page=1;ysSecInvReload()}" style="max-width:170px">
 <button class="btn btn-blue btn-sm" onclick="YSSTATE.secInv={mapId:${st.mapId},page:1,limit:20};ysSecInvReload()"><i class=ji data-i=refresh></i> تصفير</button>
-<button class="btn btn-sm" onclick="ysCloseSecDrill()">إغلاق ✕</button>
+<button class="btn btn-sm" data-karim-action="ysCloseSecDrill">إغلاق ✕</button>
 </div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
 <thead><tr>${canWrite?'<th><input type="checkbox" onclick="ysSecInvToggleAll(this)"></th>':''}<th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th><th>الحالة</th></tr></thead>
@@ -540,7 +540,7 @@ box.innerHTML=`<div class="tbl-wrap" style="margin-bottom:12px;border:1px solid 
 </table></div>
 <div class="tbl-hd" style="border-top:1px solid var(--line)">
 <div class="u-row-wrap">${pages.join('')}<span class="text-muted">صفحة ${fN(cp)} من ${fN(tp)}</span></div>
-${canWrite?`<div class="u-row-wrap"><select id="ysInvTarget" class="inp" style="max-width:220px"><option value="">انقل المحدد إلى...</option>${targets}</select><button class="btn btn-gold btn-sm" onclick="ysSecInvReclassify()"><i class=ji data-i=send></i> نقل (إعادة تصنيف)</button></div>`:''}
+${canWrite?`<div class="u-row-wrap"><select id="ysInvTarget" class="inp" style="max-width:220px"><option value="">انقل المحدد إلى...</option>${targets}</select><button class="btn btn-gold btn-sm" data-karim-action="ysSecInvReclassify"><i class=ji data-i=send></i> نقل (إعادة تصنيف)</button></div>`:''}
 </div></div>`;
 }
 function ysSecInvToggleAll(el){
@@ -583,7 +583,7 @@ ${h.NOTES?`<br><b>ملاحظات:</b> <span class="text-muted">${esc(h.NOTES)}</
 <thead><tr><th>#</th><th>الكود</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>الضريبة</th></tr></thead>
 <tbody>${lines||'<tr><td colspan="7" class="u-empty-sm">لا أصناف مسجلة لهذه الفاتورة</td></tr>'}</tbody>
 </table></div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-blue" onclick="ysPrintInvDetail()"><i class=ji data-i=printer></i> طباعة الفاتورة</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-blue" data-karim-action="ysPrintInvDetail"><i class=ji data-i=printer></i> طباعة الفاتورة</button></div>`);
 }catch(e){toast(e.message||'تعذر جلب التفاصيل','error');}finally{hideLoad();}
 }
 function ysPrintInvDetail(){
@@ -609,8 +609,8 @@ showModal(`
 <div class="fg"><label>الاسم الإنجليزي (اختياري)</label><input type="text" id="ysSecEn" placeholder="Optional"></div>
 </div></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="ysConfirmApproveSection('${u.id}')"><i class=ji data-i=check></i> اعتماد وترحيل</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="ysConfirmApproveSection" data-karim-arg0="${u.id}"><i class=ji data-i=check></i> اعتماد وترحيل</button>
 </div>`);
 }
 async function ysConfirmApproveSection(id){
@@ -635,8 +635,8 @@ showModal(`
 <div class="fg"><label>الاسم الإنجليزي (اختياري)</label><input type="text" id="ysRenEn" placeholder="Optional"></div>
 </div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="ysConfirmRenameSection('${id}')"><i class=ji data-i=save></i> حفظ التسمية</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="ysConfirmRenameSection" data-karim-arg0="${id}"><i class=ji data-i=save></i> حفظ التسمية</button>
 </div>`);
 }
 async function ysConfirmRenameSection(id){
@@ -660,8 +660,8 @@ showModal(`
 <div class="fg"><label>الاسم الإنجليزي (اختياري)</label><input type="text" id="ysManEn" placeholder="Optional"></div>
 </div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="ysConfirmManualSection()"><i class=ji data-i=save></i> إنشاء القسم</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="ysConfirmManualSection"><i class=ji data-i=save></i> إنشاء القسم</button>
 </div>`);
 }
 async function ysConfirmManualSection(){
@@ -704,13 +704,13 @@ el.innerHTML=`
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=alert-triangle></i> قيم معزولة (حجر)</div><div class="mcard-val ${(quar||[]).length?'c-orange':'c-green'}">${fN((quar||[]).length)}</div></div>
 </div>
 ${canWrite?`<div class="u-row-wrap" style="gap:8px;margin:12px 0">
-<button class="btn btn-gold" onclick="ysOracleImportItems()"><i class=ji data-i=package></i> نسخ الأصناف من يارا سوفت</button>
-<button class="btn btn-purple" onclick="ysOrganizeCategories()"><i class=ji data-i=layout-grid></i> تنظيم الفئات من شجرة يارا سوفت</button>
-<button class="btn btn-green" onclick="ysSyncBalances(false)"><i class=ji data-i=check></i> نسخ الأرصدة (السليمة فقط)</button>
-<button class="btn btn-blue btn-sm" onclick="ysLoadWarehouse(document.getElementById('ysBody'))"><i class=ji data-i=refresh></i> تحديث</button>
+<button class="btn btn-gold" data-karim-action="ysOracleImportItems"><i class=ji data-i=package></i> نسخ الأصناف من يارا سوفت</button>
+<button class="btn btn-purple" data-karim-action="ysOrganizeCategories"><i class=ji data-i=layout-grid></i> تنظيم الفئات من شجرة يارا سوفت</button>
+<button class="btn btn-green" data-karim-action="ysSyncBalances" data-karim-args="[false]"><i class=ji data-i=check></i> نسخ الأرصدة (السليمة فقط)</button>
+<button class="btn btn-blue btn-sm" data-karim-action="ysLoadWarehouse" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button>
 </div>`:''}
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=shield></i> الحجر الصحي — قيم شاذة لم تدخل المخزون (${fN((quar||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysQuarBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" onclick="ysPrintQuarantine()"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=shield></i> الحجر الصحي — قيم شاذة لم تدخل المخزون (${fN((quar||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysQuarBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintQuarantine"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>النوع</th><th>الكود</th><th>الكمية</th><th>القيمة</th><th>سعر الوحدة</th><th>السبب</th></tr></thead>
 <tbody id="ysQuarBody">${qRows||'<tr><td colspan="6" class="u-empty-sm">لا قيم معزولة — كل الأرصدة سليمة</td></tr>'}</tbody>
@@ -761,7 +761,7 @@ async function ysLoadMirror(el){
         YSSTATE.mirror.orders = ord.orders || [];
         YSSTATE.mirror.total = ord.total || 0;
         ysRenderMirror(el);
-    }catch(e){ el.innerHTML = `<div class="mcard u-empty">تعذر التحميل: ${esc(e.message||'خطأ')} <button class="btn btn-sm" onclick="ysLoadMirror()">إعادة</button></div>`; }
+    }catch(e){ el.innerHTML = `<div class="mcard u-empty">تعذر التحميل: ${esc(e.message||'خطأ')} <button class="btn btn-sm" data-karim-action="ysLoadMirror">إعادة</button></div>`; }
 }
 function ysRenderMirror(el){
     const m = YSSTATE.mirror;
@@ -781,15 +781,15 @@ function ysRenderMirror(el){
         <td>${fN(o.lines_count||0)}</td>
         <td class="c-gold fw-bold">${fC(o.total)}</td>
         <td class="c-green">${fC(o.payed)}</td>
-        <td><button class="btn btn-blue btn-sm" onclick="ysMirrorDetail('${esc(o.doc_no)}')"><i class=ji data-i=eye></i> عرض وطباعة</button>
+        <td><button class="btn btn-blue btn-sm" data-karim-action="ysMirrorDetail" data-karim-arg0="${esc(o.doc_no)}"><i class=ji data-i=eye></i> عرض وطباعة</button>
         ${o.printed?'<span class="badge bdg-gray">مطبوعة</span>':''}</td>
         </tr>`).join('') || '<tr><td colspan="8" class="u-empty">لا أوردرات في هذه الفترة</td></tr>';
     el.innerHTML = `
     <div class="fr" style="align-items:end;margin-bottom:10px;flex-wrap:wrap">
       <div class="fg" style="max-width:160px"><label>التاريخ</label><input type="date" class="inp" value="${ysMirrorDay()}" onchange="YSSTATE.mirror.date=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"></div>
       <div class="fg" style="max-width:150px"><label>الكاشير</label><select class="inp" onchange="YSSTATE.mirror.cashier=this.value;YSSTATE.mirror.offset=0;ysLoadMirror()"><option value="">الكل (1/4/5/6/9)</option>${['1','4','5','6','9'].map(c=>`<option value="${c}" ${String(m.cashier)===c?'selected':''}>كاشير ${c}</option>`).join('')}</select></div>
-      <button class="btn btn-gold btn-sm" onclick="ysMirrorRefresh()"><i class=ji data-i=refresh></i> تحديث فوري</button>
-      ${m.cashier?`<button class="btn btn-green btn-sm" onclick="ysMirrorClose('${m.cashier}')"><i class=ji data-i=printer></i> تقفيل كاشير ${m.cashier}</button>`:''}
+      <button class="btn btn-gold btn-sm" data-karim-action="ysMirrorRefresh"><i class=ji data-i=refresh></i> تحديث فوري</button>
+      ${m.cashier?`<button class="btn btn-green btn-sm" data-karim-action="ysMirrorClose" data-karim-arg0="${m.cashier}"><i class=ji data-i=printer></i> تقفيل كاشير ${m.cashier}</button>`:''}
       <span class="u-t13 text-muted" style="margin-inline-start:auto">المرآة تتحدث كل دقيقة من Oracle</span>
     </div>
     <div class="metrics-grid">${cards}</div>
@@ -817,7 +817,7 @@ async function ysMirrorDetail(doc){
         <div class="mcard"><div class="mcard-label">المدفوع / المتبقي</div><div class="mcard-val c-green">${fC(o.payed)} / ${fC(Number(o.total||0)-Number(o.payed||0))}</div></div>
         <div class="mcard"><div class="mcard-label">الطاولة</div><div class="mcard-val u-t14">${esc(o.table_name||'—')}</div></div></div>
         <div class="tbl-scroll" style="max-height:300px;overflow:auto"><table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>وحدة</th><th>سعر</th><th>خصم</th><th>ضريبة</th><th>إجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>
-        <div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-blue" onclick="ysMirrorPrint()"><i class=ji data-i=printer></i> طباعة الفاتورة</button></div>`);
+        <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-blue" data-karim-action="ysMirrorPrint"><i class=ji data-i=printer></i> طباعة الفاتورة</button></div>`);
     }catch(e){ toast(e.message||'تعذر التفاصيل','error'); }
 }
 function ysMirrorPrint(){
@@ -848,7 +848,7 @@ async function ysMirrorClose(cashier){
         <div class="mcard"><div class="mcard-label">أول / آخر فاتورة</div><div class="mcard-val u-t14">${esc(r.first_time||'—')} / ${esc(r.last_time||'—')}</div></div>
         </div>
         <div class="tbl-wrap"><div class="tbl-hd"><h3>الإيراد بالساعة</h3></div><div class="tbl-scroll"><table><thead><tr><th>الساعة</th><th>فواتير</th><th>إيراد</th></tr></thead><tbody>${hours||'<tr><td colspan="3" class="u-empty">لا بيانات</td></tr>'}</tbody></table></div></div>
-        <div class="tbl-wrap"><div class="tbl-hd"><h3>أعلى 15 صنفًا</h3><button class="btn btn-blue btn-sm" onclick="ysMirrorPrintClose()"><i class=ji data-i=printer></i> طباعة التقفيل</button></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>إجمالي</th></tr></thead><tbody>${top||'<tr><td colspan="4" class="u-empty">لا بيانات</td></tr>'}</tbody></table></div></div>`);
+        <div class="tbl-wrap"><div class="tbl-hd"><h3>أعلى 15 صنفًا</h3><button class="btn btn-blue btn-sm" data-karim-action="ysMirrorPrintClose"><i class=ji data-i=printer></i> طباعة التقفيل</button></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>إجمالي</th></tr></thead><tbody>${top||'<tr><td colspan="4" class="u-empty">لا بيانات</td></tr>'}</tbody></table></div></div>`);
     }catch(e){ toast(e.message||'تعذر التقفيل','error'); }
 }
 function ysMirrorPrintClose(){
@@ -875,7 +875,7 @@ el.innerHTML=`
 <div class="mcard" style="margin-top:12px">
 <div class="fg"><label>ألصق محتوى ملف فاتورة للمعاينة</label>
 <textarea id="ysPreviewText" rows="8" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;direction:ltr" placeholder="InvoiceNo;Date;ItemCode;Qty;Price..."></textarea></div>
-<button class="btn btn-blue" onclick="ysPreview()"><i class=ji data-i=eye></i> حلّل واعرض الحمولة</button>
+<button class="btn btn-blue" data-karim-action="ysPreview"><i class=ji data-i=eye></i> حلّل واعرض الحمولة</button>
 <div id="ysPreviewResult" style="margin-top:12px"></div>
 </div>`;
 }

@@ -319,12 +319,15 @@ describe('شاشة الأقسام — البطاقات الثيمية', () => {
         expect(screen).toMatch(/canLink \? `<button type="button" class="erp-btn erp-btn--sm" data-v2-link=/);
     });
 
-    test('إيراد البطاقة ومعدل التكلفة شهريان ويعتمدان صافي يارا سوفت المباشر', () => {
+    test('إيراد البطاقة شهري: حيّ من يارا، وإلا فمرآة القاعدة بلا أصفار بديلة', () => {
         expect(screen).toContain('function monthToDateRange()');
         expect(screen).toContain('fetchYaraCashierItems({from, to, view:');
         expect(screen).toContain('actualCashierRevenue.get(String(no))');
         expect(screen).toMatch(/const rev = localRevenue \+ cashRev;/);
-        expect(screen).toContain("new Set(['1', '3', '4', '5', '9'])");
+        expect(screen).toContain("new Set(['1', '3', '4', '5', '6', '9'])");
+        // تعذر يارا: يُجمع إيراد الكاشير من صفوف المرآة المحلية لا صفرًا
+        expect(screen).toContain('cashierRevenueIn(revenues, [no], from, to)');
+        expect(screen).toMatch(/actualCashierReady && mirrorIsIncluded/);
         expect(screen).toContain('لا تُعرض أصفار بديلة');
         expect(screen).toContain('كاشيرات بلا إسناد موثّق');
     });

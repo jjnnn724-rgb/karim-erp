@@ -39,7 +39,7 @@ function openScanner(opts = {}) {
     <input type="text" id="scannerManualInput" placeholder="امسح هنا أو اكتب الكود..." autocomplete="off">
   </div>
 </div>
-<div class="modal-footer"><button class="btn" onclick="closeScannerModal()">إلغاء</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeScannerModal">إلغاء</button></div>
 `, 'scanner-modal');
 
     _startScannerCamera(boxId);

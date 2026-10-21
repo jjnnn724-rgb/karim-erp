@@ -148,64 +148,69 @@ for (const f of classicFiles) {
 
 /** ٥) المسح: كل معالج سطري يشير إلى معرّف */
 const findings = [];
-/** سطر داخل تعليق (توثيق/شرح) لا ينفَّذ ⇒ لا يُفحص. */
+
+/**
+ * فحص توفّر دالة لملف معيّن (منطق واحد للمعالج السطري والتفويض):
+ *   · معرَّفة في نفس الملف ⇒ إن كان سكربتًا عاديًا ⇒ global ✓
+ *     وإن كانت وحدة ⇒ يجب أن تكون مُصدَّرة (تُنسخ إلى window).
+ *   · معرَّفة في ملف آخر ⇒ تصل فقط إن كانت global أو مُصدَّرة في وحدة
+ *     تُنسخ إلى window (وإلا الزر ميت).
+ */
+function resolveHandler(file, name) {
+    const inThisFile = (definedIn.get(file) || new Set()).has(name);
+    if (inThisFile) {
+        if (classicFiles.has(file)) {return null;}
+        if (explicitGlobals.has(name)) {return null;}
+        const exported = exposedModules.get(file);
+        if (exported) {
+            return exported.has(name) ? null : 'وحدة تُنسخ إلى window — والدالة غير مُصدَّرة';
+        }
+        return 'وحدة غير مُسنَدة إلى window — المعالج لا يجد الدالة';
+    }
+    const fromClassic = [...classicGlobals.values()].some((set) => set.has(name));
+    const fromExposed = [...exposedModules.values()].some((set) => set.has(name));
+    if (!fromClassic && !fromExposed && !explicitGlobals.has(name)) {
+        return 'لا تُعرف في أي نطاق عام';
+    }
+    return null;
+}
+
+/** سطر داخل تعليق (توثيق/شرح) لا يُنفَّذ ⇒ لا يُفحص. */
 function isCommentLine(src, index) {
     const lineStart = src.lastIndexOf('\n', index) + 1;
     const lineEnd = src.indexOf('\n', index);
     const line = src.slice(lineStart, lineEnd < 0 ? src.length : lineEnd).trim();
     return line.startsWith('*') || line.startsWith('//') || line.startsWith('<!--') || line.startsWith('#');
 }
+
+/** ٥) المسح: كل معالج سطري أو أمر تفويض يشير إلى معرّف موجود. */
 for (const f of files) {
     const src = fs.readFileSync(f, 'utf8');
-    if (!HANDLER_RE.test(src)) {continue;}
-    HANDLER_RE.lastIndex = 0;
-    let hit;
-    while ((hit = HANDLER_RE.exec(src))) {
-        if (isCommentLine(src, hit.index)) {continue;}
-        const name = hit[1];
-        if (BUILTINS.has(name)) {continue;}
-        const line = src.slice(0, hit.index).split('\n').length;
-        const inThisFile = (definedIn.get(f) || new Set()).has(name);
 
-        if (f.endsWith('.html')) {
-            // دالة معرَّفة داخل نفس ملف HTML عالمية في تلك الصفحة
-            const local = (definedIn.get(f) || new Set()).has(name);
-            if (local) {continue;}
-            // في HTML: المتاح هو السكربتات العادية + المسنَدة إلى window
-            const ok = explicitGlobals.has(name)
-                || [...classicGlobals.values()].some((set) => set.has(name))
-                || [...exposedModules.values()].some((set) => set.has(name));
-            if (!ok) {findings.push({ file: rel(f), line, handler: name, reason: 'غير معرّفة في أي نطاق عام' });}
-            continue;
-        }
-
-        if (inThisFile) {
-            if (classicFiles.has(f)) {continue;}                     // سكربت عادي →	global ✓
-            if (explicitGlobals.has(name)) {continue;}               // مُسنَدة إلى window صراحةً ✓
-            const exported = exposedModules.get(f);
-            if (exported) {
-                if (!exported.has(name)) {
-                    findings.push({ file: rel(f), line, handler: name, reason: 'وحدة تُنسخ إلى window — والدالة غير مُصدَّرة' });
-                }
+    // أ) المعالجات السطرية
+    if (HANDLER_RE.test(src)) {
+        HANDLER_RE.lastIndex = 0;
+        let hit;
+        while ((hit = HANDLER_RE.exec(src))) {
+            if (isCommentLine(src, hit.index)) {continue;}
+            const name = hit[1];
+            if (BUILTINS.has(name)) {continue;}
+            const line = src.slice(0, hit.index).split('\n').length;
+            if (f.endsWith('.html')) {
+                // دالة معرَّفة داخل نفس ملف HTML عالمية في تلك الصفحة
+                if ((definedIn.get(f) || new Set()).has(name)) {continue;}
+                const ok = explicitGlobals.has(name)
+                    || [...classicGlobals.values()].some((set) => set.has(name))
+                    || [...exposedModules.values()].some((set) => set.has(name));
+                if (!ok) {findings.push({ file: rel(f), line, handler: name, reason: 'غير معرّفة في أي نطاق عام' });}
                 continue;
             }
-            findings.push({ file: rel(f), line, handler: name, reason: 'وحدة غير مُسنَدة إلى window — المعالج لا يجد الدالة' });
-            continue;
-        }
-
-        // يشير إلى دالة في ملف آخر
-        const fromClassic = [...classicGlobals.entries()].some(([, set]) => set.has(name));
-        const fromExposed = [...exposedModules.entries()].some(([, set]) => set.has(name));
-        if (!fromClassic && !fromExposed && !explicitGlobals.has(name)) {
-            findings.push({ file: rel(f), line, handler: name, reason: 'لا تُعرف في أي نطاق عام' });
+            const reason = resolveHandler(f, name);
+            if (reason) {findings.push({ file: rel(f), line, handler: name, reason });}
         }
     }
-}
 
-/** ٦) أوامر التفويض (data-karim-action / data-karim-also) — نفس منطق المعالجات
- *  السطرية: اسم غير موجود = زر صامت لا يفعل شيئًا. */
-for (const f of files) {
-    const src = fs.readFileSync(f, 'utf8');
+    // ب) أوامر التفويض (data-karim-action / data-karim-also)
     for (const attr of ['data-karim-action', 'data-karim-also']) {
         const re = new RegExp(`${attr}\\s*=\\s*["']([A-Za-z_$][\\w$]*)["']`, 'g');
         let hit;
@@ -214,20 +219,17 @@ for (const f of files) {
             const name = hit[1];
             if (BUILTINS.has(name)) {continue;}
             const line = src.slice(0, hit.index).split('\n').length;
-            const inThisFile = (definedIn.get(f) || new Set()).has(name);
-            if (inThisFile && classicFiles.has(f)) {continue;}
-            if (explicitGlobals.has(name)) {continue;}
-            const exported = exposedModules.get(f);
-            if (exported) {
-                if (!exported.has(name)) {
-                    findings.push({ file: rel(f), line, handler: name, reason: 'وحدة تُنسخ إلى window — والدالة غير مُصدَّرة' });
-                }
-                continue;
-            }
-            const ok = [...classicGlobals.values()].some((set) => set.has(name))
-                || [...exposedModules.values()].some((set) => set.has(name));
-            if (!ok) {
-                findings.push({ file: rel(f), line, handler: name, reason: 'أمر تفويض يشير إلى دالة غير موجودة' });
+            const reason = f.endsWith('.html')
+                ? ((definedIn.get(f) || new Set()).has(name)
+                    ? null
+                    : ((explicitGlobals.has(name)
+                        || [...classicGlobals.values()].some((set) => set.has(name))
+                        || [...exposedModules.values()].some((set) => set.has(name)))
+                        ? null
+                        : 'غير معرّفة في أي نطاق عام'))
+                : resolveHandler(f, name);
+            if (reason) {
+                findings.push({ file: rel(f), line, handler: name, reason: `أمر تفويض: ${reason}` });
             }
         }
     }

@@ -33,12 +33,12 @@ return `
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=alert-triangle></i> نواقص الشهر تحتاج معالجة</div><div class="mcard-val ${monthGaps>0?'c-red':'c-green'}">${fN(monthGaps)}</div></div>
 </div>
 <div class="quick-actions">
-<button class="quick-action-btn" onclick="hrGoGaps()"><i class=ji data-i=gavel></i> مراجعة نواقص الشهر</button>
-<button class="quick-action-btn" onclick="go('employees')"><i class=ji data-i=users></i> إدارة الموظفين</button>
-<button class="quick-action-btn" onclick="go('attendance')"><i class=ji data-i=timer></i> الحضور والانصراف</button>
-<button class="quick-action-btn" onclick="go('leaves')"><i class=ji data-i=calendar></i> طلبات الإجازات</button>
-<button class="quick-action-btn" onclick="go('hr-departments')"><i class=ji data-i=building></i> أقسام HR</button>
-<button class="quick-action-btn" onclick="go('payroll')"><i class=ji data-i=banknote></i> الرواتب</button>
+<button class="quick-action-btn" data-karim-action="hrGoGaps"><i class=ji data-i=gavel></i> مراجعة نواقص الشهر</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;employees&quot;]"><i class=ji data-i=users></i> إدارة الموظفين</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;attendance&quot;]"><i class=ji data-i=timer></i> الحضور والانصراف</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;leaves&quot;]"><i class=ji data-i=calendar></i> طلبات الإجازات</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;hr-departments&quot;]"><i class=ji data-i=building></i> أقسام HR</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;payroll&quot;]"><i class=ji data-i=banknote></i> الرواتب</button>
 </div>
 <div class="charts-grid">
 <div class="chart-card"><div class="chart-title"><i class=ji data-i=chart></i> توزيع الموظفين حسب القسم</div><div class="chart-box"><canvas id="hrDeptChart"></canvas></div></div>
@@ -149,28 +149,28 @@ return `
 <div class="tbl-hd">
 <h3><i class=ji data-i=clipboard-list></i> سجل الحضور — ${fD(attFrom)} → ${fD(attTo)}</h3>
 <div class="u-row-wrap">
-<input type="date" id="attFrom" value="${attFrom}" onchange="attRangeChange()" style="min-width:140px">
+<input type="date" id="attFrom" value="${attFrom}" data-karim-action="attRangeChange" data-karim-event="change" style="min-width:140px">
 <span style="color:var(--faint)">إلى</span>
-<input type="date" id="attTo" value="${attTo}" onchange="attRangeChange()" style="min-width:140px">
-<button class="btn btn-gold btn-sm" onclick="attRangeChange()"><i class=ji data-i=search></i> عرض</button>
-<button class="btn btn-blue btn-sm" onclick="attRangePreset(7)">7 أيام</button>
-<button class="btn btn-blue btn-sm" onclick="attRangePreset(30)">30 يوم</button>
-<button class="btn btn-blue btn-sm" onclick="attRangePreset(180)">6 شهور</button>
+<input type="date" id="attTo" value="${attTo}" data-karim-action="attRangeChange" data-karim-event="change" style="min-width:140px">
+<button class="btn btn-gold btn-sm" data-karim-action="attRangeChange"><i class=ji data-i=search></i> عرض</button>
+<button class="btn btn-blue btn-sm" data-karim-action="attRangePreset" data-karim-args="[7]">7 أيام</button>
+<button class="btn btn-blue btn-sm" data-karim-action="attRangePreset" data-karim-args="[30]">30 يوم</button>
+<button class="btn btn-blue btn-sm" data-karim-action="attRangePreset" data-karim-args="[180]">6 شهور</button>
 </div>
 </div>
 <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center">
 <input type="search" id="attSearch" placeholder="بحث بالاسم أو الكود أو القسم..." value="${esc(STATE.attSearch||'')}" oninput="attSearchFilter(this.value)" style="min-width:180px">
-${!isDeptHead?`<button class="btn btn-gold btn-sm" onclick="scanAttendanceKiosk()"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
-<button class="btn btn-blue btn-sm" onclick="openShiftsPanel()"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>`:''}
-<button class="btn btn-blue btn-sm" onclick="exportAttendanceExcel()"><i class=ji data-i=inbox></i> تصدير Excel</button>
-${!isDeptHead?`<button class="btn btn-green btn-sm" onclick="printMonthlyAttendance()"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
-<button class="btn btn-blue btn-sm" onclick="runStrictAuditUI()"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
-<button class="btn btn-gold btn-sm" onclick="attGapsToggle()"><i class=ji data-i=alert-triangle></i> مراجعة نواقص الشهر</button>
+${!isDeptHead?`<button class="btn btn-gold btn-sm" data-karim-action="scanAttendanceKiosk"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
+<button class="btn btn-blue btn-sm" data-karim-action="openShiftsPanel"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="exportAttendanceExcel"><i class=ji data-i=inbox></i> تصدير Excel</button>
+${!isDeptHead?`<button class="btn btn-green btn-sm" data-karim-action="printMonthlyAttendance"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
+<button class="btn btn-blue btn-sm" data-karim-action="runStrictAuditUI"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
+<button class="btn btn-gold btn-sm" data-karim-action="attGapsToggle"><i class=ji data-i=alert-triangle></i> مراجعة نواقص الشهر</button>
 `:''}
-${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" onclick="revertAllInferred()" title="إلغاء كل الاستكمال التلقائي"><i class=ji data-i=undo></i> إلغاء الاستكمال للكل</button>` : ''}
+${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" data-karim-action="revertAllInferred" title="إلغاء كل الاستكمال التلقائي"><i class=ji data-i=undo></i> إلغاء الاستكمال للكل</button>` : ''}
 <span class="text-muted" style="margin-inline-start:auto">صفحة ${fN(STATE.attPage)} من ${fN(attPages)} — ${fN(allRecs.length)} سجل (شامل الغياب)</span>
-<button class="btn btn-sm" ${STATE.attPage<=1?'disabled':''} onclick="attPageGo(-1)">السابق</button>
-<button class="btn btn-sm" ${STATE.attPage>=attPages?'disabled':''} onclick="attPageGo(1)">التالي</button>
+<button class="btn btn-sm" ${STATE.attPage<=1?'disabled':''} data-karim-action="attPageGo" data-karim-args="[-1]">السابق</button>
+<button class="btn btn-sm" ${STATE.attPage>=attPages?'disabled':''} data-karim-action="attPageGo" data-karim-args="[1]">التالي</button>
 </div>
 <div class="tbl-scroll tbl-sticky-first">
 <table>
@@ -311,7 +311,7 @@ function attExceptionsBox(emps){
     <td class="c-red">${r.rec?.checkOut ? esc(r.rec.checkOut) + (r.rec.checkout_inferred ? ' <span class="badge bdg-orange">~</span>' : '') : '—'}</td>
     <td class="c-gold fw-bold">${workHrs(r)} ساعة</td>
     <td>${r.isExc ? '<span class="badge bdg-green">معذور</span>' : '<span class="badge bdg-red">معلق</span>'}</td>
-    <td>${r.isExc ? '—' : `<div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="attExcuseModal('${r.emp.id}')"><i class=ji data-i=file-check></i> عذر</button><button class="btn btn-red btn-sm" onclick="hrAdjustModal('${r.emp.id}','${d.slice(0, 7)}','penalty')"><i class=ji data-i=gavel></i> جزاء</button></div>`}</td>
+    <td>${r.isExc ? '—' : `<div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="attExcuseModal" data-karim-arg0="${r.emp.id}"><i class=ji data-i=file-check></i> عذر</button><button class="btn btn-red btn-sm" onclick="hrAdjustModal('${r.emp.id}','${d.slice(0, 7)}','penalty')"><i class=ji data-i=gavel></i> جزاء</button></div>`}</td>
   </tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
@@ -396,7 +396,7 @@ showModal(`
 </div></div>
 <div id="attResSwap" style="display:none"><div class="fg"><label>تبديل مع الموظف</label><select id="attResWith"><option value="">اختر...</option>${others}</select></div></div>
 <div class="fg"><label>السبب (إجباري)</label><input type="text" id="attResReason" placeholder="مثال: نسي البصمة — ظرف عائلي — تبديل متفق عليه"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="attResolveSave('${empId}','${date}','${rec?rec.id:''}')"><i class=ji data-i=save></i> اعتماد المعالجة</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="attResolveSave" data-karim-arg0="${empId}" data-karim-arg1="${date}" data-karim-arg2="${rec?rec.id:''}"><i class=ji data-i=save></i> اعتماد المعالجة</button></div>`);
 }
 function attCalcTimes(ci, co, shiftStart){
 const toMin=t=>{ const m=String(t).match(/^(\d{2}):(\d{2})/); return Number(m[1])*60+Number(m[2]); };
@@ -457,7 +457,7 @@ function attExcuseModal(empId){
   showModal(`<h3><i class=ji data-i=file-check></i> عذر إداري — ${esc(emp?.name || '')}</h3>
   <div class="fg"><label>التاريخ</label><input type="date" id="attExcDate" value="${today()}"></div>
   <div class="fg"><label>سبب العذر</label><input type="text" id="attExcReason" placeholder="مثال: ظرف عائلي / مأمورية عمل"></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="attExcuseSave('${empId}')"><i class=ji data-i=save></i> اعتماد العذر</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="attExcuseSave" data-karim-arg0="${empId}"><i class=ji data-i=save></i> اعتماد العذر</button></div>`);
 }
 async function attExcuseSave(empId){
   const date = document.getElementById('attExcDate')?.value || today();
@@ -485,7 +485,7 @@ showModal(`
 <div class="fg"><label>بصمة الانصراف ${missOut?'<span class="badge bdg-red">ناقصة</span>':''}</label><input type="time" id="attCorOut" value="${esc(rec.checkOut||'')}"></div>
 </div>
 <div class="fg"><label>سبب التصحيح (إجباري)</label><input type="text" id="attCorReason" placeholder="مثال: نسي بصمة الدخول — تم التأكد من الكاميرات"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="attCorrectSave('${rec.id}')"><i class=ji data-i=save></i> اعتماد التصحيح</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="attCorrectSave" data-karim-arg0="${rec.id}"><i class=ji data-i=save></i> اعتماد التصحيح</button></div>`);
 }
 async function attCorrectSave(recordId){
 const rec=(STATE.attendance||[]).find(a=>String(a.id)===String(recordId));
@@ -583,7 +583,7 @@ function leaveCanAct(leave){if(!leave||leave.workflow_status!=='in_progress'){re
 function renderLeavesPage(){
  if(!leaveWorkflowLoaded&&!leaveWorkflowLoading){setTimeout(refreshLeaveWorkflow,0);}
  const leavesToShow=leaveWorkflowLoaded?leaveWorkflowData:STATE.leaveRequests;const pendingCount=leavesToShow.filter(l=>l.workflow_status==='in_progress'||(!l.workflow_status&&l.status==='pending')).length;
- return `<div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> ${t('lv.total')}</div><div class="mcard-val c-gold">${fN(leavesToShow.length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> ${t('lv.pending')}</div><div class="mcard-val c-orange">${fN(pendingCount)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> ${t('lv.approved')}</div><div class="mcard-val c-green">${fN(leavesToShow.filter(l=>l.workflow_status==='completed'||l.status==='approved').length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> مرفوضة</div><div class="mcard-val c-red">${fN(leavesToShow.filter(l=>l.workflow_status==='rejected'||l.status==='rejected').length)}</div></div></div><div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=calendar></i> دورة اعتماد الإجازات</h3><button class="btn btn-gold" onclick="showAddLeaveModal()"><i class=ji data-i=plus></i> طلب إجازة</button></div><div class="workflow-banner"><strong><i class=ji data-i=git-branch></i> مسار الاعتماد:</strong> الموظف ← المدير المباشر (رئيس القسم) ← المدير العام ← شؤون العاملين (تقفل الطلب)</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> متابعة الطلبات</h3><small class="text-muted">المرحلة الحالية والملاحظات والإجراء المطلوب تظهر في كل طلب.</small></div><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>نوع الإجازة</th><th>الفترة</th><th>المرحلة الحالية</th><th>الحالة</th><th>آخر ملاحظة</th><th>إجراءات</th></tr></thead><tbody>${leavesToShow.slice().reverse().map(l=>{const emp=findEmployeeById(l.employeeId);const type=STATE.leaveTypes.find(t=>String(t.id)===String(l.leaveTypeId));const days=Math.ceil((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;const canAct=leaveCanAct(l);return `<tr><td class="fw-bold">${esc(l.employee_name||emp?.name||'—')}</td><td>${l.leave_type_icon||type?.icon||''} ${esc(l.leave_type_name||type?.name||'—')}</td><td>${fD(l.startDate)} — ${fD(l.endDate)}<small class="text-muted" style="display:block">${days} يوم</small></td><td><span class="badge ${canAct?'bdg-blue':'bdg-purple'}">${LEAVE_STAGE_LABELS[l.current_stage]||'—'}</span></td><td><span class="badge ${leaveWorkflowStatusClass(l.workflow_status||l.status)}">${leaveWorkflowStatusLabel(l.workflow_status||l.status)}</span></td><td class="u-maxw-260">${esc(l.current_note||l.reason||'—')}</td><td style="display:flex;gap:5px;flex-wrap:wrap">${canAct?`<button class="btn btn-green btn-sm" onclick="advanceLeaveWorkflow('${l.id}','approve')"><i class=ji data-i=circle-check></i> اعتماد</button><button class="btn btn-red btn-sm" onclick="advanceLeaveWorkflow('${l.id}','reject')"><i class=ji data-i=circle-x></i> رفض</button><button class="btn btn-sm" onclick="advanceLeaveWorkflow('${l.id}','return')"><i class=ji data-i=corner-up-left></i> إعادة</button>`:''}<button class="btn btn-blue btn-sm" onclick="viewLeaveDetails('${l.id}')"><i class=ji data-i=eye></i> عرض</button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`;
+ return `<div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> ${t('lv.total')}</div><div class="mcard-val c-gold">${fN(leavesToShow.length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> ${t('lv.pending')}</div><div class="mcard-val c-orange">${fN(pendingCount)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> ${t('lv.approved')}</div><div class="mcard-val c-green">${fN(leavesToShow.filter(l=>l.workflow_status==='completed'||l.status==='approved').length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> مرفوضة</div><div class="mcard-val c-red">${fN(leavesToShow.filter(l=>l.workflow_status==='rejected'||l.status==='rejected').length)}</div></div></div><div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=calendar></i> دورة اعتماد الإجازات</h3><button class="btn btn-gold" data-karim-action="showAddLeaveModal"><i class=ji data-i=plus></i> طلب إجازة</button></div><div class="workflow-banner"><strong><i class=ji data-i=git-branch></i> مسار الاعتماد:</strong> الموظف ← المدير المباشر (رئيس القسم) ← المدير العام ← شؤون العاملين (تقفل الطلب)</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> متابعة الطلبات</h3><small class="text-muted">المرحلة الحالية والملاحظات والإجراء المطلوب تظهر في كل طلب.</small></div><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>نوع الإجازة</th><th>الفترة</th><th>المرحلة الحالية</th><th>الحالة</th><th>آخر ملاحظة</th><th>إجراءات</th></tr></thead><tbody>${leavesToShow.slice().reverse().map(l=>{const emp=findEmployeeById(l.employeeId);const type=STATE.leaveTypes.find(t=>String(t.id)===String(l.leaveTypeId));const days=Math.ceil((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;const canAct=leaveCanAct(l);return `<tr><td class="fw-bold">${esc(l.employee_name||emp?.name||'—')}</td><td>${l.leave_type_icon||type?.icon||''} ${esc(l.leave_type_name||type?.name||'—')}</td><td>${fD(l.startDate)} — ${fD(l.endDate)}<small class="text-muted" style="display:block">${days} يوم</small></td><td><span class="badge ${canAct?'bdg-blue':'bdg-purple'}">${LEAVE_STAGE_LABELS[l.current_stage]||'—'}</span></td><td><span class="badge ${leaveWorkflowStatusClass(l.workflow_status||l.status)}">${leaveWorkflowStatusLabel(l.workflow_status||l.status)}</span></td><td class="u-maxw-260">${esc(l.current_note||l.reason||'—')}</td><td style="display:flex;gap:5px;flex-wrap:wrap">${canAct?`<button class="btn btn-green btn-sm" onclick="advanceLeaveWorkflow('${l.id}','approve')"><i class=ji data-i=circle-check></i> اعتماد</button><button class="btn btn-red btn-sm" onclick="advanceLeaveWorkflow('${l.id}','reject')"><i class=ji data-i=circle-x></i> رفض</button><button class="btn btn-sm" onclick="advanceLeaveWorkflow('${l.id}','return')"><i class=ji data-i=corner-up-left></i> إعادة</button>`:''}<button class="btn btn-blue btn-sm" data-karim-action="viewLeaveDetails" data-karim-arg0="${l.id}"><i class=ji data-i=eye></i> عرض</button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`;
 }
 function showAddLeaveModal(){
 const isAdmin=['admin','hr','manager'].includes(STATE.currentUser.role);
@@ -608,8 +608,8 @@ showModal(`
 </div>
 <div class="fg"><label>السبب</label><textarea id="leaveReason" rows="3"></textarea></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="addLeaveRequest()"><i class=ji data-i=save></i> إرسال الطلب</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="addLeaveRequest"><i class=ji data-i=save></i> إرسال الطلب</button>
 </div>
 `);
 }
@@ -630,7 +630,7 @@ async function returnLeaveToEmployee(id){return advanceLeaveWorkflow(id,'return'
 function viewLeaveDetails(id){
  const leave=workflowForLeave(id);if(!leave){toast('طلب الإجازة غير موجود','error');return;}
  const emp=findEmployeeById(leave.employeeId),type=STATE.leaveTypes.find(t=>String(t.id)===String(leave.leaveTypeId)),days=Math.ceil((new Date(leave.endDate)-new Date(leave.startDate))/86400000)+1;
- showModal(`<h3><i class=ji data-i=git-branch></i> مسار طلب الإجازة</h3><div class="fr"><div class="details-item"><strong>الموظف:</strong><div>${esc(leave.employee_name||emp?.name||'—')}</div></div><div class="details-item"><strong>نوع الإجازة:</strong><div>${leave.leave_type_icon||type?.icon||''} ${esc(leave.leave_type_name||type?.name||'—')}</div></div></div><div class="fr"><div class="details-item"><strong>الفترة:</strong><div>${fD(leave.startDate)} — ${fD(leave.endDate)}</div></div><div class="details-item"><strong>عدد الأيام:</strong><div class="c-gold fw-bold">${days} يوم</div></div></div><div class="details-item"><strong>السبب:</strong><div>${esc(leave.reason||'—')}</div></div><div class="workflow-banner"><strong>متوقف حاليًا لدى: ${esc(LEAVE_STAGE_LABELS[leave.current_stage]||'—')}</strong><br><span>${esc(leave.current_note||'لا توجد ملاحظات')}</span></div>${renderLeaveWorkflowTimeline(leave)}<div class="tbl-wrap u-mt12"><div class="tbl-hd"><h3><i class=ji data-i=clock></i> سجل الإجراءات والملاحظات</h3></div><div class="tbl-scroll"><table><thead><tr><th>التاريخ</th><th>المرحلة</th><th>الإجراء</th><th>الملاحظة</th></tr></thead><tbody>${(leave.events||[]).map(e=>`<tr><td>${fD(e.created_at)}</td><td>${esc(LEAVE_STAGE_LABELS[e.stage]||e.stage)}</td><td>${esc({submitted:'تقديم',approve:'اعتماد',reject:'رفض',return:'إعادة للموظف',resubmit:'إعادة إرسال'}[e.action]||e.action)}</td><td>${esc(e.note||'—')}</td></tr>`).join('')||'<tr><td colspan="4">لا يوجد سجل إجراءات</td></tr>'}</tbody></table></div></div><div class="modal-footer"><button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>`);
+ showModal(`<h3><i class=ji data-i=git-branch></i> مسار طلب الإجازة</h3><div class="fr"><div class="details-item"><strong>الموظف:</strong><div>${esc(leave.employee_name||emp?.name||'—')}</div></div><div class="details-item"><strong>نوع الإجازة:</strong><div>${leave.leave_type_icon||type?.icon||''} ${esc(leave.leave_type_name||type?.name||'—')}</div></div></div><div class="fr"><div class="details-item"><strong>الفترة:</strong><div>${fD(leave.startDate)} — ${fD(leave.endDate)}</div></div><div class="details-item"><strong>عدد الأيام:</strong><div class="c-gold fw-bold">${days} يوم</div></div></div><div class="details-item"><strong>السبب:</strong><div>${esc(leave.reason||'—')}</div></div><div class="workflow-banner"><strong>متوقف حاليًا لدى: ${esc(LEAVE_STAGE_LABELS[leave.current_stage]||'—')}</strong><br><span>${esc(leave.current_note||'لا توجد ملاحظات')}</span></div>${renderLeaveWorkflowTimeline(leave)}<div class="tbl-wrap u-mt12"><div class="tbl-hd"><h3><i class=ji data-i=clock></i> سجل الإجراءات والملاحظات</h3></div><div class="tbl-scroll"><table><thead><tr><th>التاريخ</th><th>المرحلة</th><th>الإجراء</th><th>الملاحظة</th></tr></thead><tbody>${(leave.events||[]).map(e=>`<tr><td>${fD(e.created_at)}</td><td>${esc(LEAVE_STAGE_LABELS[e.stage]||e.stage)}</td><td>${esc({submitted:'تقديم',approve:'اعتماد',reject:'رفض',return:'إعادة للموظف',resubmit:'إعادة إرسال'}[e.action]||e.action)}</td><td>${esc(e.note||'—')}</td></tr>`).join('')||'<tr><td colspan="4">لا يوجد سجل إجراءات</td></tr>'}</tbody></table></div></div><div class="modal-footer"><button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button></div>`);
 }
 // ============================================
 // HR DEPARTMENTS
@@ -639,7 +639,7 @@ function renderHRDepartmentsPage(){
 return `
 <div class="u-row-between">
 <h3 class="u-gold-strong"><i class=ji data-i=building></i> أقسام HR</h3>
-<button class="btn btn-gold" onclick="showAddHRDeptModal()"><i class=ji data-i=plus></i> إضافة قسم</button>
+<button class="btn btn-gold" data-karim-action="showAddHRDeptModal"><i class=ji data-i=plus></i> إضافة قسم</button>
 </div>
 <div class="dept-grid">
 ${STATE.hrDepartments.map(dept=>{
@@ -659,8 +659,8 @@ return `
 <div>${esc(dept.manager||'—')}</div>
 </div>
 <div class="u-footer-sep">
-<button class="btn btn-sm u-flex1" onclick="editHRDept('${dept.code}')"><i class=ji data-i=pencil></i> تعديل</button>
-<button class="btn btn-red btn-sm u-flex1" onclick="deleteHRDept('${dept.code}')"><i class=ji data-i=trash></i> حذف</button>
+<button class="btn btn-sm u-flex1" data-karim-action="editHRDept" data-karim-arg0="${dept.code}"><i class=ji data-i=pencil></i> تعديل</button>
+<button class="btn btn-red btn-sm u-flex1" data-karim-action="deleteHRDept" data-karim-arg0="${dept.code}"><i class=ji data-i=trash></i> حذف</button>
 </div>
 </div>
 `;
@@ -677,8 +677,8 @@ showModal(`
 </div>
 <div class="fg"><label>${t('hrd.manager')}</label><input type="text" id="hrDeptManager"></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">${t('act.cancel')}</button>
-<button class="btn btn-gold" onclick="addHRDept()"><i class=ji data-i=save></i> ${t('act.save')}</button>
+<button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button>
+<button class="btn btn-gold" data-karim-action="addHRDept"><i class=ji data-i=save></i> ${t('act.save')}</button>
 </div>
 `);
 }
@@ -704,8 +704,8 @@ showModal(`
 <div class="fg"><label>${t('hrd.name')}</label><input type="text" id="hrDeptName" value="${esc(dept.name)}"></div>
 <div class="fg"><label>${t('hrd.manager')}</label><input type="text" id="hrDeptManager" value="${esc(dept.manager||'')}"></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">${t('act.cancel')}</button>
-<button class="btn btn-gold" onclick="updateHRDept('${code}')"><i class=ji data-i=save></i> ${t('act.save')}</button>
+<button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button>
+<button class="btn btn-gold" data-karim-action="updateHRDept" data-karim-arg0="${code}"><i class=ji data-i=save></i> ${t('act.save')}</button>
 </div>
 `);
 }
@@ -742,7 +742,7 @@ return `
 <div class="tbl-wrap">
 <div class="tbl-hd">
 <h3><i class=ji data-i=banknote></i> ${t('pay.sheet')}</h3>
-<button class="btn btn-blue btn-sm" onclick="exportPayrollExcel()"><i class=ji data-i=inbox></i> ${t('act.export')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="exportPayrollExcel"><i class=ji data-i=inbox></i> ${t('act.export')}</button>
 </div>
 <div class="tbl-scroll">
 <table>
@@ -783,23 +783,23 @@ function hrSuiteSection(){
   const kindAr = { penalty: 'جزاء', bonus: 'علاوة', deduction: 'خصم', allowance: 'بدل' };
   return `
   <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=banknote></i> توليد مسير الرواتب</h3>
-  <div class="u-row-wrap"><input type="month" id="payrunMonth" value="${curMonth}">${canWrite ? `<button class="btn btn-blue btn-sm" onclick="hrDeductionsModal()"><i class=ji data-i=gavel></i> معالجة خصومات الالتزام</button><button class="btn btn-gold btn-sm" onclick="runPayrollGen()"><i class=ji data-i=zap></i> توليد المسير</button>` : ''}</div></div>
+  <div class="u-row-wrap"><input type="month" id="payrunMonth" value="${curMonth}">${canWrite ? `<button class="btn btn-blue btn-sm" data-karim-action="hrDeductionsModal"><i class=ji data-i=gavel></i> معالجة خصومات الالتزام</button><button class="btn btn-gold btn-sm" data-karim-action="runPayrollGen"><i class=ji data-i=zap></i> توليد المسير</button>` : ''}</div></div>
   <div class="tbl-scroll"><table><thead><tr><th>الشهر</th><th>الموظفون</th><th>الأساسي</th><th>أوفرتايم</th><th>علاوات</th><th>جزاءات</th><th>سلف</th><th>الصافي</th></tr></thead><tbody>
   ${runs.map(r => `<tr><td class="fw-bold">${esc(r.month)}</td><td>${r.employee_count}</td><td>${fC(r.total_basic)}</td><td class="c-green">${fC(r.total_overtime)}</td><td class="c-green">${fC(r.total_bonuses)}</td><td class="c-red">${fC(r.total_penalties)}</td><td class="c-red">${fC(r.total_advances)}</td><td class="c-gold fw-bold">${fC(r.total_net)}</td></tr>`).join('') || '<tr><td colspan="8" class="u-empty-sm">لا مسيرات مولدة بعد</td></tr>'}
   </tbody></table></div></div>
-  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=wallet></i> السلف (${(STATE.salary_advances || []).length})</h3>${canWrite ? `<button class="btn btn-gold btn-sm" onclick="hrAdvanceModal()"><i class=ji data-i=plus></i> سلفة</button>` : ''}</div>
+  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=wallet></i> السلف (${(STATE.salary_advances || []).length})</h3>${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="hrAdvanceModal"><i class=ji data-i=plus></i> سلفة</button>` : ''}</div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>المبلغ</th><th>القسط الشهري</th><th>المتبقي</th><th>الحالة</th><th>التاريخ</th>${canWrite ? '<th></th>' : ''}</tr></thead><tbody>
   ${(STATE.salary_advances || []).slice().reverse().slice(0, 30).map(a => `<tr><td class="fw-bold">${esc(empName(a.employeeId))}</td><td>${fC(a.amount)}</td><td>${fC(a.monthly_deduction)}</td><td class="c-red fw-bold">${fC(a.remaining)}</td><td>${a.status === 'active' ? '<span class="badge bdg-green">نشطة</span>' : '<span class="badge">مغلقة</span>'}</td><td class="text-muted">${fD(a.date)}</td>${canWrite ? `<td><button class="btn btn-red btn-sm" onclick="hrDelete('salary_advances','${a.id}')"><i class=ji data-i=trash></i></button></td>` : ''}</tr>`).join('') || '<tr><td colspan="7" class="u-empty-sm">لا سلف</td></tr>'}
   </tbody></table></div></div>
-  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=gavel></i> جزاءات وعلاوات الشهر</h3>${canWrite ? `<button class="btn btn-gold btn-sm" onclick="hrAdjustModal()"><i class=ji data-i=plus></i> بند</button>` : ''}</div>
+  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=gavel></i> جزاءات وعلاوات الشهر</h3>${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="hrAdjustModal"><i class=ji data-i=plus></i> بند</button>` : ''}</div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>الشهر</th><th>النوع</th><th>المبلغ</th><th>السبب</th>${canWrite ? '<th></th>' : ''}</tr></thead><tbody>
   ${(STATE.payroll_adjustments || []).slice().reverse().slice(0, 30).map(a => `<tr><td class="fw-bold">${esc(empName(a.employeeId))}</td><td>${esc(a.month)}</td><td><span class="badge ${a.kind === 'penalty' || a.kind === 'deduction' ? 'bdg-red' : 'bdg-green'}">${kindAr[a.kind] || a.kind}</span></td><td>${fC(a.amount)}</td><td class="text-muted">${esc(a.reason || '—')}</td>${canWrite ? `<td><button class="btn btn-red btn-sm" onclick="hrDelete('payroll_adjustments','${a.id}')"><i class=ji data-i=trash></i></button></td>` : ''}</tr>`).join('') || '<tr><td colspan="6" class="u-empty-sm">لا بنود</td></tr>'}
   </tbody></table></div></div>
-  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> العقود (الأقرب انتهاءً)</h3>${canWrite ? `<button class="btn btn-gold btn-sm" onclick="hrContractModal()"><i class=ji data-i=plus></i> عقد</button>` : ''}</div>
+  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> العقود (الأقرب انتهاءً)</h3>${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="hrContractModal"><i class=ji data-i=plus></i> عقد</button>` : ''}</div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>من</th><th>إلى</th><th>الحالة</th>${canWrite ? '<th></th>' : ''}</tr></thead><tbody>
   ${(STATE.employee_contracts || []).slice().sort((a, b) => String(a.end_date).localeCompare(String(b.end_date))).slice(0, 30).map(k => { const left = Math.ceil((new Date(k.end_date) - new Date()) / 86400000); return `<tr><td class="fw-bold">${esc(empName(k.employeeId))}</td><td>${fD(k.start_date)}<br><small class="text-muted">${fHijri(k.start_date)}</small></td><td>${fD(k.end_date)}<br><small class="text-muted">${fHijri(k.end_date)}</small></td><td>${left < 0 ? '<span class="badge bdg-red">منتهٍ</span>' : left <= 30 ? `<span class="badge bdg-orange">متبقٍ ${left} يوم</span>` : '<span class="badge bdg-green">سارٍ</span>'}</td>${canWrite ? `<td><button class="btn btn-red btn-sm" onclick="hrDelete('employee_contracts','${k.id}')"><i class=ji data-i=trash></i></button></td>` : ''}</tr>`; }).join('') || '<tr><td colspan="5" class="u-empty-sm">لا عقود</td></tr>'}
   </tbody></table></div></div>
-  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=star></i> التقييمات</h3>${canWrite ? `<button class="btn btn-gold btn-sm" onclick="hrEvalModal()"><i class=ji data-i=plus></i> تقييم</button>` : ''}</div>
+  <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=star></i> التقييمات</h3>${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="hrEvalModal"><i class=ji data-i=plus></i> تقييم</button>` : ''}</div>
   <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>الفترة</th><th>التقييم</th><th>ملاحظات</th>${canWrite ? '<th></th>' : ''}</tr></thead><tbody>
   ${(STATE.employee_evaluations || []).slice().reverse().slice(0, 30).map(v => `<tr><td class="fw-bold">${esc(empName(v.employeeId))}</td><td>${esc(v.period)}</td><td>${'★'.repeat(Number(v.score) || 0)}${'☆'.repeat(5 - (Number(v.score) || 0))}</td><td class="text-muted">${esc(v.notes || '—')}</td>${canWrite ? `<td><button class="btn btn-red btn-sm" onclick="hrDelete('employee_evaluations','${v.id}')"><i class=ji data-i=trash></i></button></td>` : ''}</tr>`).join('') || '<tr><td colspan="5" class="u-empty-sm">لا تقييمات</td></tr>'}
   </tbody></table></div></div>`;
@@ -835,10 +835,10 @@ function hrDeductionsModal(){
   <div class="u-row-wrap" style="gap:8px;align-items:center">
   <input type="month" id="hrDedMonth" value="${curMonth}">
   <label style="font-size:13px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="hrDedSkipFri"> استثناء الجمعة</label>
-  <button class="btn btn-blue btn-sm" onclick="hrDeductionsPreview()"><i class=ji data-i=search></i> معاينة</button>
+  <button class="btn btn-blue btn-sm" data-karim-action="hrDeductionsPreview"><i class=ji data-i=search></i> معاينة</button>
   </div>
   <div id="hrDedBody" class="u-mt12"><div class="text-muted">اختر الشهر واضغط «معاينة» — يُحسب التأخير والغياب من البصمات مع استبعاد أيام الإجازات المعتمدة.</div></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" id="hrDedApplyBtn" onclick="hrDeductionsApply()" style="display:none"><i class=ji data-i=zap></i> تطبيق الخصومات</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" id="hrDedApplyBtn" data-karim-action="hrDeductionsApply" style="display:none"><i class=ji data-i=zap></i> تطبيق الخصومات</button></div>`);
 }
 async function hrDeductionsPreview(){
   const m = document.getElementById('hrDedMonth')?.value || '';
@@ -889,7 +889,7 @@ function hrAdvanceModal(){
   <div class="fr"><div class="fg"><label>المبلغ</label><input type="number" id="hrAdvAmt" step="0.01"></div>
   <div class="fg"><label>القسط الشهري (0 = خصم كامل عند أول توليد)</label><input type="number" id="hrAdvInst" step="0.01" value="0"></div></div>
   <div class="fg"><label>التاريخ</label><input type="date" id="hrAdvDate" value="${today()}"></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="hrAdvanceSave()"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="hrAdvanceSave"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
 }
 async function hrAdvanceSave(){
   const employeeId = Number(document.getElementById('hrAdvEmp')?.value);
@@ -912,7 +912,7 @@ function hrAdjustModal(preEmp, preMonth, preKind){
   <div class="fr"><div class="fg"><label>النوع</label><select id="hrAdjKind">${kinds.map(([v, l]) => `<option value="${v}" ${preKind === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
   <div class="fg"><label>المبلغ</label><input type="number" id="hrAdjAmt" step="0.01"></div></div>
   <div class="fg"><label>السبب</label><input type="text" id="hrAdjReason"></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="hrAdjustSave()"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="hrAdjustSave"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
 }
 async function hrAdjustSave(){
   const employeeId = Number(document.getElementById('hrAdjEmp')?.value);
@@ -934,7 +934,7 @@ function hrContractModal(){
   <div class="fr"><div class="fg"><label>من (ميلادي)</label><input type="date" id="hrConFrom" value="${today()}"></div>
   <div class="fg"><label>إلى (ميلادي)</label><input type="date" id="hrConTo"></div></div>
   <div class="fg"><label>الراتب التعاقدي</label><input type="number" id="hrConSalary" step="0.01"></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="hrContractSave()"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="hrContractSave"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
 }
 async function hrContractSave(){
   const employeeId = Number(document.getElementById('hrConEmp')?.value);
@@ -956,7 +956,7 @@ function hrEvalModal(){
   <div class="fr"><div class="fg"><label>التقييم (1-5)</label><select id="hrEvScore"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
   <div class="fg"><label>المقيّم</label><input type="text" id="hrEvBy" value="${esc(STATE.currentUser?.name || '')}"></div></div>
   <div class="fg"><label>ملاحظات</label><textarea id="hrEvNotes"></textarea></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="hrEvalSave()"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="hrEvalSave"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
 }
 async function hrEvalSave(){
   const employeeId = Number(document.getElementById('hrEvEmp')?.value);
@@ -1001,8 +1001,8 @@ function openShiftsPanel(){
 احمد السيد العدوي 16:00 12س"></textarea>
     <label style="display:flex;gap:6px;align-items:center;margin:8px 0;font-size:13px"><input type="checkbox" id="shiftsAutoSuggest" checked> أضف تلقائيًا ورديات مقترحة من واقع البصمة للموظفين غير المذكورين (فجوة ≥30 دقيقة)</label>
     <div style="display:flex;gap:8px;justify-content:flex-start">
-      <button class="btn btn-gold" onclick="applyShiftsFromPanel()">تطبيق وإعادة حساب الحضور</button>
-      <button class="btn" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-gold" data-karim-action="applyShiftsFromPanel">تطبيق وإعادة حساب الحضور</button>
+      <button class="btn" data-karim-action="closeModal">إلغاء</button>
     </div>
     <div id="shiftsResult" style="margin-top:10px;font-size:13px"></div>
   </div>`;

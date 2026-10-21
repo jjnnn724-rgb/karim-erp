@@ -186,7 +186,7 @@ function renderCatPicker() {
     host.innerHTML = `<div class="cat-picker-title">التصنيفات المعروضة على الشاشة الخارجية ${all ? '<span class="count">الكل</span>' : `<span class="count">${(SEL_CATS || []).length} مختار</span>`}</div>`
         + `<label class="cat-opt"><input type="checkbox" ${all ? 'checked' : ''} onchange="catToggleAll(this)"> <b>كل المنيو</b></label>`
         + ALL_CATS.map(c => `<label class="cat-opt"><input type="checkbox" data-cat="${esc(c)}" ${all || (SEL_CATS || []).includes(c) ? 'checked' : ''} onchange="catToggle(this)"> ${esc(c)}</label>`).join('')
-        + `<div class="cat-picker-actions"><span class="cat-picker-hint">التغيير لا يظهر على الشاشة قبل الحفظ</span><button class="btn gold" onclick="saveCategories()">حفظ الاختيار</button></div>`;
+        + `<div class="cat-picker-actions"><span class="cat-picker-hint">التغيير لا يظهر على الشاشة قبل الحفظ</span><button class="btn gold" data-karim-action="saveCategories">حفظ الاختيار</button></div>`;
 }
 function catToggleAll(el) {
     SEL_CATS = el.checked ? null : [];
@@ -294,9 +294,9 @@ function renderGroups(categories) {
                         <span class="p"><input type="number" min="0" max="100000" step="0.5" id="price-${it.id}" value="${Number(it.price)}" title="السعر"> ${esc(it.unit || 'ريال')}</span>
                         <span class="p"><input type="text" id="cat-${it.id}" value="${esc(cat.name)}" maxlength="40" title="التصنيف" placeholder="التصنيف"></span>
                         <label class="show" title="إظهار/إخفاء من الشاشة"><input type="checkbox" id="show-${it.id}" checked> عرض</label>
-                        <button class="btn gold sm" onclick="saveItem(${Number(it.id)})">حفظ</button>
-                        <button class="btn ghost sm" onclick="hideItem(${Number(it.id)},'${esc(it.name).replace(/'/g, "\\'")}')">إخفاء</button>
-                        <button class="btn ghost sm danger" onclick="deleteItem(${Number(it.id)},'${esc(it.name).replace(/'/g, "\\'")}')">حذف</button>
+                        <button class="btn gold sm" data-karim-action="saveItem" data-karim-arg0="${Number(it.id)}">حفظ</button>
+                        <button class="btn ghost sm" data-karim-action="hideItem" data-karim-arg0="${Number(it.id)}" data-karim-arg1="${esc(it.name).replace(/'/g, "\'")}">إخفاء</button>
+                        <button class="btn ghost sm danger" data-karim-action="deleteItem" data-karim-arg0="${Number(it.id)}" data-karim-arg1="${esc(it.name).replace(/'/g, "\'")}">حذف</button>
                     </div>`).join('')}
             </div>
         </div>`).join('');
@@ -587,7 +587,7 @@ function renderWeekTabs() {
     if (!host) {return;}
     host.innerHTML = WEEK_AR.map((n, d) => {
         const c = (weekDay(d).items || []).length;
-        return `<button class="day-tab${d === WEEK_DAY ? ' active' : ''}" onclick="weekSelect(${d})">${n}<span class="count">${c}</span></button>`;
+        return `<button class="day-tab${d === WEEK_DAY ? ' active' : ''}" data-karim-action="weekSelect" data-karim-arg0="${d}">${n}<span class="count">${c}</span></button>`;
     }).join('');
 }
 function weekSelect(d) {
@@ -611,7 +611,7 @@ function renderWeekDay() {
             <input type="number" min="0" max="100000" step="0.5" value="${Number(it.price) || 0}" data-k="price" data-i="${i}" title="السعر">
             <input value="${esc(it.category || '')}" maxlength="40" placeholder="التصنيف" data-k="category" data-i="${i}">
             <input value="${esc(it.note || '')}" maxlength="120" placeholder="ملاحظة" data-k="note" data-i="${i}">
-            <button class="btn ghost sm" onclick="weekDelRow(${i})">حذف</button>
+            <button class="btn ghost sm" data-karim-action="weekDelRow" data-karim-arg0="${i}">حذف</button>
         </div>`).join('') || '<div class="loading">لا أصناف لهذا اليوم — أضف من زر «＋ صنف».</div>';
 }
 function weeklyCatalogOptions(item) {

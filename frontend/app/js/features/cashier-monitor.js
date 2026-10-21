@@ -115,9 +115,9 @@ async function renderCashierMonitor(){
     <span class="text-muted" style="font-size:12px">آخر تحديث <b id="cmLiveStamp" dir="ltr">${esc(cmClock(CMSTATE.updatedAt))}</b></span>
     ${syncBadge}
     <input type="date" id="cmDate" value="${esc(CMSTATE.date)}" onchange="cmDateChange(this.value)" style="min-width:150px">
-    <button class="btn btn-gold btn-sm" onclick="cmRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
-    <button class="btn btn-blue btn-sm" onclick="cmPrintReport()"><i class=ji data-i=printer></i> طباعة التقرير</button>
-    <button class="btn btn-green btn-sm" onclick="cmExportExcel()"><i class=ji data-i=inbox></i> Excel</button>
+    <button class="btn btn-gold btn-sm" data-karim-action="cmRefresh"><i class=ji data-i=refresh></i> تحديث</button>
+    <button class="btn btn-blue btn-sm" data-karim-action="cmPrintReport"><i class=ji data-i=printer></i> طباعة التقرير</button>
+    <button class="btn btn-green btn-sm" data-karim-action="cmExportExcel"><i class=ji data-i=inbox></i> Excel</button>
     </div>
     </div>
     <div class="metrics-grid">
@@ -128,7 +128,7 @@ async function renderCashierMonitor(){
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0" id="cmCards">
     ${CMSTATE.summary.map(c => `
-    <div class="mcard" style="cursor:pointer;min-width:210px;flex:1;${String(CMSTATE.cashier) === String(c.cashier_no) ? 'border:2px solid var(--gold);' : ''}" onclick="cmFilterCashier('${esc(c.cashier_no)}')">
+    <div class="mcard" style="cursor:pointer;min-width:210px;flex:1;${String(CMSTATE.cashier) === String(c.cashier_no) ? 'border:2px solid var(--gold);' : ''}" data-karim-action="cmFilterCashier" data-karim-arg0="${esc(c.cashier_no)}">
     <div class="mcard-label"><i class=ji data-i=store></i> كاشير ${esc(c.cashier_no)} ${String(CMSTATE.cashier) === String(c.cashier_no) ? '✓' : ''}</div>
     <div class="mcard-val c-gold" style="font-size:20px">${cmMoney(c.revenue)}</div>
     <div class="text-muted" style="font-size:12px;margin-top:4px">
@@ -142,7 +142,7 @@ async function renderCashierMonitor(){
     <div class="tbl-wrap">
     <div class="tbl-hd">
     <h3><i class=ji data-i=receipt></i> أوردرات ${CMSTATE.cashier ? `كاشير ${esc(CMSTATE.cashier)}` : 'كل الكاشيرية'} — ${fN(CMSTATE.total)} أوردر</h3>
-    ${CMSTATE.cashier ? `<button class="btn btn-sm" onclick="cmFilterCashier('')">إلغاء الفلتر</button>` : ''}
+    ${CMSTATE.cashier ? `<button class="btn btn-sm" data-karim-action="cmFilterCashier" data-karim-args="[&quot;&quot;]">إلغاء الفلتر</button>` : ''}
     </div>
     <div class="tbl-scroll">
     <table>
@@ -150,7 +150,7 @@ async function renderCashierMonitor(){
     <tbody>
     ${CMSTATE.orders.length === 0 ? '<tr><td colspan=9 style="text-align:center;padding:30px;color:var(--faint)">لا توجد أوردرات في هذا اليوم</td></tr>' : ''}
     ${CMSTATE.orders.map(o => `
-    <tr onclick="cmOpenOrder('${esc(o.doc_no)}')" style="cursor:pointer">
+    <tr data-karim-action="cmOpenOrder" data-karim-arg0="${esc(o.doc_no)}" style="cursor:pointer">
     <td class="fw-bold" dir="ltr">${esc(o.doc_no)}</td>
     <td><span class="badge bdg-blue">كاشير ${esc(o.cashier_no)}</span></td>
     <td dir="ltr">${esc(cmTime(o.doc_time))}</td>
@@ -166,8 +166,8 @@ async function renderCashierMonitor(){
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
     <span class="text-muted">صفحة ${fN(page)} من ${fN(pages)}</span>
-    <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="cmPageGo(-1)">السابق</button>
-    <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} onclick="cmPageGo(1)">التالي</button>
+    <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} data-karim-action="cmPageGo" data-karim-args="[-1]">السابق</button>
+    <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} data-karim-action="cmPageGo" data-karim-args="[1]">التالي</button>
     <span class="text-muted" style="margin-inline-start:auto">${CMSTATE.cashier ? 'اضغط على بطاقة الكاشير المحددة لإلغاء الفلتر' : 'اضغط على أي بطاقة كاشير لعزل فواتيره'}</span>
     </div>
     </div>

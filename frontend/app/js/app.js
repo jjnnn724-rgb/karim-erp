@@ -302,7 +302,7 @@ const html = `
 <div class="notif-scroll">
 ${notifs.length===0?'<div class="u-empty">لا توجد إشعارات — كل إجراء في سلسلة الصرف سيصلك هنا لحظيًا</div>':
 notifs.map(n=>`
-<div class="insight-item insight-item--clickable ${!n.read?'notif-unread':''}" onclick="openNotification('${String(n.id).replace(/'/g,"\\'")}')">
+<div class="insight-item insight-item--clickable ${!n.read?'notif-unread':''}" data-karim-action="openNotification" data-karim-arg0="${String(n.id).replace(/'/g,"\'")}">
 <div class="insight-icon">${n.type==='success'?'<i class=ji data-i=circle-check></i>':n.type==='error'?'<i class=ji data-i=circle-x></i>':n.type==='warning'?'<i class=ji data-i=alert-triangle></i>':'<i class=ji data-i=info></i>'}</div>
 <div class="insight-content">
 <div class="insight-text">${esc(n.title)}${!n.read?' <span class="badge bdg-blue">جديد</span>':''}</div>
@@ -311,9 +311,9 @@ notifs.map(n=>`
 </div>`).join('')}
 </div>
 <div class="modal-footer">
-<button class="btn btn-blue btn-sm" onclick="markAllNotificationsRead()"><i class=ji data-i=check></i> تعليم الكل كمقروء</button>
-<button class="btn btn-red btn-sm" onclick="clearAllNotifications()"><i class=ji data-i=trash></i> مسح الكل</button>
-<button class="btn btn-gold" onclick="closeModal()">إغلاق</button>
+<button class="btn btn-blue btn-sm" data-karim-action="markAllNotificationsRead"><i class=ji data-i=check></i> تعليم الكل كمقروء</button>
+<button class="btn btn-red btn-sm" data-karim-action="clearAllNotifications"><i class=ji data-i=trash></i> مسح الكل</button>
+<button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button>
 </div>`;
 showModal(html);
 }
@@ -345,9 +345,9 @@ document.body.appendChild(fab);
 const panel=document.createElement('div');
 panel.id='chatPanel';
 panel.style.cssText='position:fixed;bottom:82px;left:18px;z-index:9000;width:min(360px,92vw);max-height:55vh;display:none;flex-direction:column;background:var(--bg2);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden';
-panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg3)"><span id="chatHead"><strong><i class=ji data-i=message></i> شات الطاقم</strong></span><span class="u-row-wrap"><button class="btn btn-sm" id="chatBackBtn" style="display:none" onclick="backToChatUsers()">الموظفون</button><button class="btn btn-sm" onclick="toggleChatPanel()">إغلاق</button></span></div>
+panel.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg3)"><span id="chatHead"><strong><i class=ji data-i=message></i> شات الطاقم</strong></span><span class="u-row-wrap"><button class="btn btn-sm" id="chatBackBtn" style="display:none" data-karim-action="backToChatUsers">الموظفون</button><button class="btn btn-sm" data-karim-action="toggleChatPanel">إغلاق</button></span></div>
 <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:180px"></div>
-<div id="chatInputRow" style="display:none;gap:6px;padding:10px 12px;border-top:1px solid var(--line)"><input id="chatInput" class="inp" placeholder="اكتب رسالتك..." maxlength="1000" style="flex:1"><button class="btn btn-gold btn-sm" onclick="sendChatMsg()"><i class=ji data-i=send></i></button></div>`;
+<div id="chatInputRow" style="display:none;gap:6px;padding:10px 12px;border-top:1px solid var(--line)"><input id="chatInput" class="inp" placeholder="اكتب رسالتك..." maxlength="1000" style="flex:1"><button class="btn btn-gold btn-sm" data-karim-action="sendChatMsg"><i class=ji data-i=send></i></button></div>`;
 document.body.appendChild(panel);
 const inp=document.getElementById('chatInput');
 if(inp){ inp.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ sendChatMsg(); } }); }
@@ -388,7 +388,7 @@ const back=document.getElementById('chatBackBtn'); if(back){ back.style.display=
 const row=document.getElementById('chatInputRow'); if(row){ row.style.display='none'; }
 const list=CHATSTATE.users||[];
 box.innerHTML=list.length?list.map(u=>`
-<div class="insight-item insight-item--clickable" onclick="pickChatPeer('${esc(String(u.id))}')">
+<div class="insight-item insight-item--clickable" data-karim-action="pickChatPeer" data-karim-arg0="${esc(String(u.id))}">
 <div class="insight-icon">${u.online?'<i class=ji data-i=dot-green></i>':'<i class=ji data-i=dot-red></i>'}</div>
 <div class="insight-content"><div class="insight-text">${esc(u.name||u.username||'—')} ${u.online?'<span class="badge bdg-green">متصل</span>':'<span class="text-muted">غير متصل</span>'}</div>
 <div class="insight-meta">${esc(u.role||'')} · ${esc(u.username||'')}</div></div>

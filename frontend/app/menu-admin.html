@@ -52,11 +52,11 @@
         <main class="wrap">
             <!-- التبويبات -->
             <nav class="tabs">
-                <button class="tab active" data-tab="board" onclick="showTab('board')">🍽️ ما يُعرض الآن</button>
-                <button class="tab" data-tab="weekly" onclick="showTab('weekly')">📅 منيو الأسبوع</button>
-                <button class="tab" data-tab="settings" onclick="showTab('settings')">⚙️ إعدادات الشاشة</button>
-                <button class="tab" data-tab="preview" onclick="showTab('preview')">👁️ معاينة حيّة</button>
-                <button class="tab" data-tab="control" onclick="showTab('control')">🎛️ لوحة التحكم</button>
+                <button class="tab active" data-tab="board" data-karim-action="showTab" data-karim-args="[&quot;board&quot;]">🍽️ ما يُعرض الآن</button>
+                <button class="tab" data-tab="weekly" data-karim-action="showTab" data-karim-args="[&quot;weekly&quot;]">📅 منيو الأسبوع</button>
+                <button class="tab" data-tab="settings" data-karim-action="showTab" data-karim-args="[&quot;settings&quot;]">⚙️ إعدادات الشاشة</button>
+                <button class="tab" data-tab="preview" data-karim-action="showTab" data-karim-args="[&quot;preview&quot;]">👁️ معاينة حيّة</button>
+                <button class="tab" data-tab="control" data-karim-action="showTab" data-karim-args="[&quot;control&quot;]">🎛️ لوحة التحكم</button>
             </nav>
 
             <!-- تبويب: الأصناف -->
@@ -73,7 +73,7 @@
                         <input id="newPrice" type="number" min="0" max="100000" step="0.5" placeholder="السعر">
                         <input id="newCat" maxlength="40" placeholder="التصنيف (فطار/غدا/عشا...)">
                         <input id="newUnit" maxlength="20" placeholder="الوحدة">
-                        <button class="btn gold sm" onclick="addItem()">إضافة — يظهر لحظيًا</button>
+                        <button class="btn gold sm" data-karim-action="addItem">إضافة — يظهر لحظيًا</button>
                     </div>
                     <div id="boardGroups" class="board-groups"><div class="loading">جارٍ التحميل…</div></div>
                 </div>
@@ -93,11 +93,11 @@
                     </div>
                     <div id="weekItems" class="wk-items"></div>
                     <div class="row-between">
-                        <button class="btn ghost" onclick="weekAddRow()">＋ صنف</button>
+                        <button class="btn ghost" data-karim-action="weekAddRow">＋ صنف</button>
                         <div class="row-gap">
-                            <button class="btn ghost" onclick="printWeekly()">🖨 طباعة اليوم</button>
-                            <button class="btn ghost" onclick="printWeeklyAll()">🖨 المنيو الأسبوعي (PDF)</button>
-                            <button class="btn gold" onclick="saveWeekly()">حفظ منيو الأسبوع</button>
+                            <button class="btn ghost" data-karim-action="printWeekly">🖨 طباعة اليوم</button>
+                            <button class="btn ghost" data-karim-action="printWeeklyAll">🖨 المنيو الأسبوعي (PDF)</button>
+                            <button class="btn gold" data-karim-action="saveWeekly">حفظ منيو الأسبوع</button>
                         </div>
                     </div>
                 </div>
@@ -128,10 +128,10 @@
                                 </select>
                             </label>
                             <div class="theme-swatches" aria-label="معاينة الثيمات">
-                                <button type="button" class="theme-swatch emerald" data-theme="emerald" onclick="selectTheme('emerald')"><span>✦</span><b>زمرد</b></button>
-                                <button type="button" class="theme-swatch sapphire" data-theme="sapphire" onclick="selectTheme('sapphire')"><span>✧</span><b>لازورد</b></button>
-                                <button type="button" class="theme-swatch ruby" data-theme="ruby" onclick="selectTheme('ruby')"><span>✦</span><b>ياقوت</b></button>
-                                <button type="button" class="theme-swatch midnight" data-theme="midnight" onclick="selectTheme('midnight')"><span>❖</span><b>ليل ملكي</b></button>
+                                <button type="button" class="theme-swatch emerald" data-theme="emerald" data-karim-action="selectTheme" data-karim-args="[&quot;emerald&quot;]"><span>✦</span><b>زمرد</b></button>
+                                <button type="button" class="theme-swatch sapphire" data-theme="sapphire" data-karim-action="selectTheme" data-karim-args="[&quot;sapphire&quot;]"><span>✧</span><b>لازورد</b></button>
+                                <button type="button" class="theme-swatch ruby" data-theme="ruby" data-karim-action="selectTheme" data-karim-args="[&quot;ruby&quot;]"><span>✦</span><b>ياقوت</b></button>
+                                <button type="button" class="theme-swatch midnight" data-theme="midnight" data-karim-action="selectTheme" data-karim-args="[&quot;midnight&quot;]"><span>❖</span><b>ليل ملكي</b></button>
                             </div>
                             <label>نقشة الخلفية
                                 <select id="setBackgroundStyle">
@@ -197,8 +197,8 @@
                 <div class="card preview-card">
                     <div class="card-head">
                         <h2>محاكاة شاشة المطعم المباشرة</h2>
-                        <button class="btn ghost sm" onclick="reloadPreview()">↻ تحديث المعاينة</button>
-                        <button class="btn gold sm" id="btnPreviewFullscreen" type="button" onclick="togglePreviewFullscreen()" aria-label="تكبير معاينة شاشة سامسونج الطولية">⛶ تكبير المعاينة</button>
+                        <button class="btn ghost sm" data-karim-action="reloadPreview">↻ تحديث المعاينة</button>
+                        <button class="btn gold sm" id="btnPreviewFullscreen" type="button" data-karim-action="togglePreviewFullscreen" aria-label="تكبير معاينة شاشة سامسونج الطولية">⛶ تكبير المعاينة</button>
                     </div>
                     <div class="preview-stage">
                         <iframe id="previewFrame" src="/app/menu-board.html" title="معاينة الشاشة" loading="lazy"></iframe>
@@ -224,7 +224,7 @@
                         <div class="preview-frame-label">DASHBOARD · LIVE EDIT</div>
                     </div>
                     <div class="panel-actions" style="margin-top:12px">
-                        <button class="btn ghost sm" onclick="reloadControl()">↻ إعادة تحميل اللوحة</button>
+                        <button class="btn ghost sm" data-karim-action="reloadControl">↻ إعادة تحميل اللوحة</button>
                         <a class="btn ghost sm" href="/app/menu-totem-dashboard.html" target="_blank">⛶ فتح اللوحة في تبويب مستقل ↗</a>
                     </div>
                 </div>
@@ -235,5 +235,6 @@
     <div id="toast" class="toast hidden"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/menu-admin.js?v=5.14.1"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.84" defer></script>
 </body>
 </html>

@@ -39,7 +39,7 @@ describe('بوابة المعالجات السطرية', () => {
         const fs = require('fs');
         const warehouseSrc = fs.readFileSync(path.join(ROOT, 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
         // المعالج موجود في القالب، والدالة مُصدَّرة الآن (إلاFixed سابقًا)
-        expect(warehouseSrc).toContain('onclick="addSecUnitPreset(');
+        expect(warehouseSrc).toContain('data-karim-action="addSecUnitPreset"');
         const exportsLine = warehouseSrc.slice(warehouseSrc.lastIndexOf('export {'));
         expect(exportsLine).toContain('addSecUnitPreset');
     });

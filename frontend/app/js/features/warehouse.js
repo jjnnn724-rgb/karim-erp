@@ -54,7 +54,7 @@ function whInvLocalItems(){
 }
 function whInvRowsHtml(items){
     if(WHINV.loading) {return '<tr><td colspan="13" class="u-empty" aria-live="polite">جارٍ تحميل الأصناف...</td></tr>';}
-    if(WHINV.error && WHINV.results === null) {return `<tr><td colspan="13" class="u-empty">تعذر البحث: ${esc(WHINV.error)} — عرض محلي <button class="btn btn-sm" onclick="whInvFetch()">إعادة المحاولة</button></td></tr>`;}
+    if(WHINV.error && WHINV.results === null) {return `<tr><td colspan="13" class="u-empty">تعذر البحث: ${esc(WHINV.error)} — عرض محلي <button class="btn btn-sm" data-karim-action="whInvFetch">إعادة المحاولة</button></td></tr>`;}
     return items.map(item=>{
     // طلب المالك 2026-10-05: «إذن الصرف 4 يعني الباقي 4» — العمود الأساسي = رصيد المخزن
     // الرئيسي، وما انتقل لمخازن الأقسام يظهر في عمود مستقل، والإجمالي في عمود القيمة
@@ -75,7 +75,7 @@ function whInvRowsHtml(items){
     <td class="c-gold">${fC(item.avgCost)}</td>
     <td class="c-gold fw-bold">${fC(item.qty*item.avgCost)}</td>
     <td><span class="badge ${isLow?'bdg-red':'bdg-green'}">${isLow?`<i class=ji data-i=alert-triangle></i> ${t('wh.lowSt')}`:`<i class=ji data-i=circle-check></i> ${t('wh.okSt')}`}</span></td>
-    <td style="display:flex;gap:4px"><button type="button" class="btn btn-sm" data-action="edit-inventory" data-id="${esc(String(item.id))}" onclick="editItem('${esc(String(item.id))}')"><i class=ji data-i=pencil></i> ${t('act.edit')}</button><button type="button" class="btn btn-red btn-sm" data-action="delete-inventory" data-id="${esc(String(item.id))}" onclick="deleteItem('${esc(String(item.id))}')"><i class=ji data-i=trash></i> ${t('act.delete')}</button></td>
+    <td style="display:flex;gap:4px"><button type="button" class="btn btn-sm" data-action="edit-inventory" data-id="${esc(String(item.id))}" data-karim-action="editItem" data-karim-arg0="${esc(String(item.id))}"><i class=ji data-i=pencil></i> ${t('act.edit')}</button><button type="button" class="btn btn-red btn-sm" data-action="delete-inventory" data-id="${esc(String(item.id))}" data-karim-action="deleteItem" data-karim-arg0="${esc(String(item.id))}"><i class=ji data-i=trash></i> ${t('act.delete')}</button></td>
     </tr>`;
     }).join('')||`<tr><td colspan="13" class="u-empty">${t('wh.noItems')}</td></tr>`;
 }
@@ -86,8 +86,8 @@ function whInvPagerHtml(serverMode){
     return `<div class="fr" style="padding:8px 14px;align-items:center" aria-live="polite">
     <span class="u-t13 text-muted">الأصناف: ${fN(WHINV.total)} — صفحة ${fN(WHINV.page)} من ${fN(pages)} (50/صفحة)${fuzzyNote}</span>
     <div class="fr"></div>
-    <button class="btn btn-sm" ${WHINV.page<=1?'disabled':''} onclick="whInvPage(-1)">السابق</button>
-    <button class="btn btn-sm" ${WHINV.page>=pages?'disabled':''} onclick="whInvPage(1)">التالي</button>
+    <button class="btn btn-sm" ${WHINV.page<=1?'disabled':''} data-karim-action="whInvPage" data-karim-args="[-1]">السابق</button>
+    <button class="btn btn-sm" ${WHINV.page>=pages?'disabled':''} data-karim-action="whInvPage" data-karim-args="[1]">التالي</button>
     </div>`;
 }
 function whInvPartialRender(){
@@ -162,7 +162,7 @@ const whTopSearch = `
 <div style="position:sticky;top:0;z-index:35;background:var(--bg2);border:1px solid var(--border-gold,var(--border));border-radius:var(--r);padding:10px 14px;box-shadow:0 8px 22px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center">
 <i class=ji data-i=search style="color:var(--gold);font-size:18px;flex-shrink:0"></i>
 <input type="text" id="whTopSearch" class="inp" placeholder="بحث فوري: اسم / باركود / فئة..." aria-label="بحث الأصناف" value="${esc(WHINV.q)}" oninput="whInvSearchInput(this.value)" style="flex:1;border:none;background:transparent;font-size:16px;font-weight:700;color:var(--text);padding:4px 0;outline:none;box-shadow:none">
-${WHINV.q?`<button class="btn btn-red btn-sm" onclick="whInvClearSearch()" title="مسح البحث"><i class=ji data-i=x></i></button>`:''}
+${WHINV.q?`<button class="btn btn-red btn-sm" data-karim-action="whInvClearSearch" title="مسح البحث"><i class=ji data-i=x></i></button>`:''}
 </div>
 </section>`;
 const whCats = [...new Set((STATE.inventory||[]).map(i=>String(i.category||'عام')))].sort((a,b)=>a.localeCompare(b,'ar'));
@@ -184,18 +184,18 @@ return whTopSearch + whMetricsHtml() + `
 <option value="ok" ${WHINV.stock==='ok'?'selected':''}>سليم</option>
 </select>
 <span id="whSelCount" class="u-t13 text-muted">المحدد: ${fN(window.whSelected.size)}</span>
-${window.whSelected.size?`<button class="btn btn-sm" onclick="whInvClearSel()">مسح التحديد</button>`:''}
-<button class="btn btn-blue btn-sm" onclick="whPrintInventory()"><i class=ji data-i=printer></i> طباعة</button>
-<button class="btn btn-green btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=file-text></i> ${t('wh.invBill')}</button>
-<button class="btn btn-blue btn-sm" onclick="scanToAddInventoryItem()"><i class=ji data-i=camera></i> ${t('wh.scan')}</button>
-<button class="btn btn-gold btn-sm" onclick="showAddItemModal()"><i class=ji data-i=plus></i> ${t('wh.new')}</button>
+${window.whSelected.size?`<button class="btn btn-sm" data-karim-action="whInvClearSel">مسح التحديد</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="whPrintInventory"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn btn-green btn-sm" data-karim-action="showAddPurchaseInvoiceModal"><i class=ji data-i=file-text></i> ${t('wh.invBill')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="scanToAddInventoryItem"><i class=ji data-i=camera></i> ${t('wh.scan')}</button>
+<button class="btn btn-gold btn-sm" data-karim-action="showAddItemModal"><i class=ji data-i=plus></i> ${t('wh.new')}</button>
 <details class="wh-adv"><summary class="btn btn-sm">إجراءات متقدمة</summary><div class="u-row-wrap">
-${STATE.settings?.opening_balance_visible !== false ? `<button class="btn btn-gold btn-sm" onclick="showOpeningBalanceModal()" title="إدخال سريع لأرصدة بداية الفترة دفعة واحدة"><i class=ji data-i=flag></i> رصيد افتتاحي</button>` : ''}
-<button class="btn btn-blue btn-sm" onclick="showImportItemsCatalogModal()"><i class=ji data-i=inbox></i> ${t('wh.impCat')}</button>
-<button class="btn btn-blue btn-sm" onclick="showBulkInventoryImportModal()"><i class=ji data-i=chart></i> ${t('wh.impStock')}</button>
-<button class="btn btn-red btn-sm" onclick="whBulkDelete()"><i class=ji data-i=trash></i> حذف المحدد</button>
-<button class="btn btn-purple btn-sm" onclick="showInventoryAuditModal()"><i class=ji data-i=clipboard-list></i> ${t('wh.audit')}</button><button class="btn btn-blue btn-sm" onclick="showFiscalYearModal()"><i class=ji data-i=calendar></i> ${t('wh.fyear')}</button>
-${STATE.currentUser?.role==='admin'?`<button class="btn btn-blue btn-sm" onclick="showSystemHealth()" title="تشخيص شامل بضغطة: سلامة الأرصدة والدفاتر وإحصائيات المخزن"><i class=ji data-i=clipboard-list></i> فحص النظام</button><button class="btn btn-orange btn-sm" onclick="showMergeDuplicatesModal()" title="اكتشاف الأصناف المكررة بالاسم ودمجها في صنف واحد"><i class=ji data-i=git-merge></i> دمج أصناف مكررة</button>`:''}
+${STATE.settings?.opening_balance_visible !== false ? `<button class="btn btn-gold btn-sm" data-karim-action="showOpeningBalanceModal" title="إدخال سريع لأرصدة بداية الفترة دفعة واحدة"><i class=ji data-i=flag></i> رصيد افتتاحي</button>` : ''}
+<button class="btn btn-blue btn-sm" data-karim-action="showImportItemsCatalogModal"><i class=ji data-i=inbox></i> ${t('wh.impCat')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="showBulkInventoryImportModal"><i class=ji data-i=chart></i> ${t('wh.impStock')}</button>
+<button class="btn btn-red btn-sm" data-karim-action="whBulkDelete"><i class=ji data-i=trash></i> حذف المحدد</button>
+<button class="btn btn-purple btn-sm" data-karim-action="showInventoryAuditModal"><i class=ji data-i=clipboard-list></i> ${t('wh.audit')}</button><button class="btn btn-blue btn-sm" data-karim-action="showFiscalYearModal"><i class=ji data-i=calendar></i> ${t('wh.fyear')}</button>
+${STATE.currentUser?.role==='admin'?`<button class="btn btn-blue btn-sm" data-karim-action="showSystemHealth" title="تشخيص شامل بضغطة: سلامة الأرصدة والدفاتر وإحصائيات المخزن"><i class=ji data-i=clipboard-list></i> فحص النظام</button><button class="btn btn-orange btn-sm" data-karim-action="showMergeDuplicatesModal" title="اكتشاف الأصناف المكررة بالاسم ودمجها في صنف واحد"><i class=ji data-i=git-merge></i> دمج أصناف مكررة</button>`:''}
 </div></details>
 </div>
 </div>
@@ -222,7 +222,7 @@ const invoices = allInvoices.filter(i=>{const d=String(i.date||'').slice(0,10);i
 const invTotal = invoices.reduce((s,i)=>s+Number(i.totalAmount||0),0);
 const monthFiltered = window.whInvFrom||window.whInvTo;
 return `
-<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(invoices.length)} فاتورة بإجمالي ${fC(invTotal)}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="whInvListPrint()"><i class=ji data-i=printer></i> طباعة الكشف</button><button class="btn btn-gold btn-sm" onclick="showAddPurchaseInvoiceModal()"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" onclick="go('procurement')"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button>${STATE.currentUser?.role==='admin'&&invoices.length?`<button class="btn btn-red btn-sm" onclick="showClearAllInvoicesModal()"><i class=ji data-i=trash></i> حذف كل الفواتير</button>`:''}</div></div><div class="fr" style="align-items:end;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px"><div class="fg"><label>من</label><input type="date" value="${window.whInvFrom||''}" onchange="window.whInvFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.whInvTo||''}" onchange="window.whInvTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.whInvFrom='';window.whInvTo='';renderPage()"><i class=ji data-i=rotate-ccw></i> عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>${invoices.map((inv,ii)=>{const pay={cash:'نقدي',bank:'بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||esc(inv.paymentMethod||'—');const st={paid:['مدفوعة','bdg-green'],partial:['مسددة جزئياً','bdg-orange'],unpaid:['غير مسددة','bdg-red']}[inv.paymentStatus]||['غير محددة','bdg-gray'];return `<tr><td>${ii+1}</td><td class="fw-bold">${esc(inv.invoiceNumber||'—')}</td><td>${esc(inv.supplierName||'—')}</td><td class="text-muted">${fD(inv.date)}</td><td class="c-gold fw-bold">${fC(inv.totalAmount)}</td><td>${pay}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:nowrap;display:flex;gap:5px"><button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=eye></i> عرض</button><button class="btn btn-sm" onclick="printPurchaseInvoice('${esc(String(inv.id))}')" title="طباعة الفاتورة"><i class=ji data-i=printer></i> طباعة</button></td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير في الفترة — أفرغ التاريخ لعرض الكل</td></tr>'}</tbody></table></div></div>`;
+<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=file-text></i> فواتير الشراء — ${fN(invoices.length)} فاتورة بإجمالي ${fC(invTotal)}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="whInvListPrint"><i class=ji data-i=printer></i> طباعة الكشف</button><button class="btn btn-gold btn-sm" data-karim-action="showAddPurchaseInvoiceModal"><i class=ji data-i=plus></i> فاتورة جديدة</button><button class="btn btn-blue btn-sm" data-karim-action="go" data-karim-args="[&quot;procurement&quot;]"><i class=ji data-i=arrow-left></i> إدارة الفواتير والموردين</button>${STATE.currentUser?.role==='admin'&&invoices.length?`<button class="btn btn-red btn-sm" data-karim-action="showClearAllInvoicesModal"><i class=ji data-i=trash></i> حذف كل الفواتير</button>`:''}</div></div><div class="fr" style="align-items:end;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px"><div class="fg"><label>من</label><input type="date" value="${window.whInvFrom||''}" onchange="window.whInvFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.whInvTo||''}" onchange="window.whInvTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.whInvFrom='';window.whInvTo='';renderPage()"><i class=ji data-i=rotate-ccw></i> عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>${invoices.map((inv,ii)=>{const pay={cash:'نقدي',bank:'بنكي',card:'بطاقة',cheque:'شيك',credit:'آجل'}[inv.paymentMethod]||esc(inv.paymentMethod||'—');const st={paid:['مدفوعة','bdg-green'],partial:['مسددة جزئياً','bdg-orange'],unpaid:['غير مسددة','bdg-red']}[inv.paymentStatus]||['غير محددة','bdg-gray'];return `<tr><td>${ii+1}</td><td class="fw-bold">${esc(inv.invoiceNumber||'—')}</td><td>${esc(inv.supplierName||'—')}</td><td class="text-muted">${fD(inv.date)}</td><td class="c-gold fw-bold">${fC(inv.totalAmount)}</td><td>${pay}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td style="white-space:nowrap;display:flex;gap:5px"><button class="btn btn-blue btn-sm" data-karim-action="viewPurchaseInvoice" data-karim-arg0="${esc(String(inv.id))}"><i class=ji data-i=eye></i> عرض</button><button class="btn btn-sm" data-karim-action="printPurchaseInvoice" data-karim-arg0="${esc(String(inv.id))}" title="طباعة الفاتورة"><i class=ji data-i=printer></i> طباعة</button></td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير في الفترة — أفرغ التاريخ لعرض الكل</td></tr>'}</tbody></table></div></div>`;
 }
 
 // ─── صفحة حركات المخزون (مستقلة) ───
@@ -249,7 +249,7 @@ const txShown=txRows.slice(0,300);
 const monthFiltered=window.txFrom||window.txTo;
 return `
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=chart></i> حركات المخزون ${monthFiltered?'<span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="whTxListPrint()"><i class=ji data-i=printer></i> طباعة الكشف</button><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=chart></i> حركات المخزون ${monthFiltered?'<span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="whTxListPrint"><i class=ji data-i=printer></i> طباعة الكشف</button><input type="text" class="inp" placeholder="بحث في الحركات..." oninput="ysTableSearch(this,'whTxBody')" style="max-width:220px"></div></div>
 <div class="fr" style="padding:8px 14px;gap:8px;flex-wrap:wrap"><div class="fg"><label>من</label><input type="date" value="${window.txFrom||''}" onchange="window.txFrom=this.value;renderPage()"></div><div class="fg"><label>إلى</label><input type="date" value="${window.txTo||''}" onchange="window.txTo=this.value;renderPage()"></div>${monthFiltered?`<button class="btn btn-sm" onclick="window.txFrom='';window.txTo='';renderPage()">عرض الكل (قديم + جديد)</button>`:''}<small class="text-muted">الأحدث أولًا (بحد أقصى 300 صف)</small></div>
 <div class="tbl-scroll">
 <table>
@@ -399,8 +399,8 @@ ${PCMT.tab==='suppliers'?`<input class="u-input" style="max-width:240px" placeho
 <option value="NOT_REGISTERED" ${PCMT.suppTax==='NOT_REGISTERED'?'selected':''}>غير مسجل</option>
 <option value="EXEMPT" ${PCMT.suppTax==='EXEMPT'?'selected':''}>معفى</option>
 </select>`:''}
-${PCMT.tab==='suppliers'&&PCMT_CAN_WRITE.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="showSupplierModal()"><i class=ji data-i=plus></i> مورد جديد</button>`:''}
-${PCMT.tab==='payments'&&PCMT_CAN_PAY.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" onclick="showPaymentModal()"><i class=ji data-i=plus></i> تسجيل دفعة</button>`:''}
+${PCMT.tab==='suppliers'&&PCMT_CAN_WRITE.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="showSupplierModal"><i class=ji data-i=plus></i> مورد جديد</button>`:''}
+${PCMT.tab==='payments'&&PCMT_CAN_PAY.includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="showPaymentModal"><i class=ji data-i=plus></i> تسجيل دفعة</button>`:''}
 </div>
 ${body}
 </div>`;
@@ -482,9 +482,9 @@ return `<tr>
 <td class="${rem>0?'c-red':'c-green'} fw-bold">${fC(rem)}</td>
 <td>${pcmtStatusBadge(inv.paymentStatus)}</td>
 <td style="display:flex;gap:4px;flex-wrap:wrap">
-<button class="btn btn-blue btn-sm" onclick="viewPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=eye></i> عرض</button>
-${canPay?`<button class="btn btn-green btn-sm" onclick="payInvoiceFull('${esc(String(inv.id))}')"><i class=ji data-i=coins></i> تسديد</button>`:''}
-<button class="btn btn-sm" onclick="printPurchaseInvoice('${esc(String(inv.id))}')"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn btn-blue btn-sm" data-karim-action="viewPurchaseInvoice" data-karim-arg0="${esc(String(inv.id))}"><i class=ji data-i=eye></i> عرض</button>
+${canPay?`<button class="btn btn-green btn-sm" data-karim-action="payInvoiceFull" data-karim-arg0="${esc(String(inv.id))}"><i class=ji data-i=coins></i> تسديد</button>`:''}
+<button class="btn btn-sm" data-karim-action="printPurchaseInvoice" data-karim-arg0="${esc(String(inv.id))}"><i class=ji data-i=printer></i> طباعة</button>
 </td>
 </tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد فواتير مطابقة — أنشئ فاتورة شراء مرتبطة بمورد من صفحة المخزن</td></tr>'}
 </tbody>
@@ -507,7 +507,7 @@ function pcmtSuppliersTab(suppliers){
     const bodyHtml = PCMT.suppLoading
         ? '<tr><td colspan="11" class="u-empty" aria-live="polite">جارٍ البحث...</td></tr>'
         : PCMT.suppError
-            ? `<tr><td colspan="11" class="u-empty">تعذر البحث: ${esc(PCMT.suppError)} <button class="btn btn-sm" onclick="pcmtFetchSuppliers()">إعادة المحاولة</button></td></tr>`
+            ? `<tr><td colspan="11" class="u-empty">تعذر البحث: ${esc(PCMT.suppError)} <button class="btn btn-sm" data-karim-action="pcmtFetchSuppliers">إعادة المحاولة</button></td></tr>`
             : (rows.map(s=>{
 const canW=PCMT_CAN_WRITE.includes(STATE.currentUser?.role);
 const canP=PCMT_CAN_PAY.includes(STATE.currentUser?.role);
@@ -523,11 +523,11 @@ return `<tr ${s.is_active?'':'style="opacity:.55"'}>
 <td class="${Number(s.dueTotal)>0?'c-red fw-bold':'c-green'}">${fC(s.dueTotal||0)}</td>
 <td><span class="badge ${s.is_active?'bdg-green':'bdg-red'}">${s.is_active?'نشط':'موقوف'}</span></td>
 <td style="display:flex;gap:4px;flex-wrap:wrap">
-<button class="btn btn-blue btn-sm" onclick="openStatement('${esc(String(s.id))}')"><i class=ji data-i=file-text></i> كشف حساب</button>
-${canP&&s.is_active?`<button class="btn btn-green btn-sm" onclick="showPaymentModal('${esc(String(s.id))}')"><i class=ji data-i=coins></i> دفعة</button>`:''}
-${canW?`<button class="btn btn-sm" onclick="showSupplierModal('${esc(String(s.id))}')"><i class=ji data-i=pencil></i> تعديل</button>
-<button class="btn btn-purple btn-sm" onclick="toggleSupplier('${esc(String(s.id))}')"><i class=ji data-i=${s.is_active?'lock':'unlock'}></i> ${s.is_active?'إيقاف':'تفعيل'}</button>
-<button class="btn btn-red btn-sm" onclick="deleteSupplier('${esc(String(s.id))}')"><i class=ji data-i=trash></i> حذف</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="openStatement" data-karim-arg0="${esc(String(s.id))}"><i class=ji data-i=file-text></i> كشف حساب</button>
+${canP&&s.is_active?`<button class="btn btn-green btn-sm" data-karim-action="showPaymentModal" data-karim-arg0="${esc(String(s.id))}"><i class=ji data-i=coins></i> دفعة</button>`:''}
+${canW?`<button class="btn btn-sm" data-karim-action="showSupplierModal" data-karim-arg0="${esc(String(s.id))}"><i class=ji data-i=pencil></i> تعديل</button>
+<button class="btn btn-purple btn-sm" data-karim-action="toggleSupplier" data-karim-arg0="${esc(String(s.id))}"><i class=ji data-i=${s.is_active?'lock':'unlock'}></i> ${s.is_active?'إيقاف':'تفعيل'}</button>
+<button class="btn btn-red btn-sm" data-karim-action="deleteSupplier" data-karim-arg0="${esc(String(s.id))}"><i class=ji data-i=trash></i> حذف</button>`:''}
 </td>
 </tr>`;}).join('')||'<tr><td colspan="11" class="u-empty">لا يوجد موردون مطابقون — جرّب بحثًا مختلفًا أو أضف موردًا جديدًا</td></tr>');
     return `
@@ -542,8 +542,8 @@ ${bodyHtml}
 ${serverMode?`<div class="fr" style="margin-top:8px;align-items:center" aria-live="polite">
 <span class="u-t13 text-muted">النتائج: ${fN(PCMT.suppTotal||0)} — صفحة ${fN(PCMT.suppPage||1)} من ${fN(pages)}</span>
 <div class="fr"></div>
-<button class="btn btn-sm" ${PCMT.suppPage<=1?'disabled':''} onclick="pcmtSuppPage(-1)">السابق</button>
-<button class="btn btn-sm" ${PCMT.suppPage>=pages?'disabled':''} onclick="pcmtSuppPage(1)">التالي</button>
+<button class="btn btn-sm" ${PCMT.suppPage<=1?'disabled':''} data-karim-action="pcmtSuppPage" data-karim-args="[-1]">السابق</button>
+<button class="btn btn-sm" ${PCMT.suppPage>=pages?'disabled':''} data-karim-action="pcmtSuppPage" data-karim-args="[1]">التالي</button>
 </div>`:''}`;
 }
 function pcmtPaymentsTab(){
@@ -569,7 +569,7 @@ return `<tr>
 <td>${inv?esc(inv.invoiceNumber||('#'+inv.id)):'—'}</td>
 <td>${esc(p.notes||'—')}</td>
 <td class="u-t12">${esc(p.createdBy||'—')}</td>
-${canDel?`<td><button class="btn btn-red btn-sm" onclick="deletePayment('${esc(String(p.id))}')"><i class=ji data-i=trash></i> عكس</button></td>`:''}
+${canDel?`<td><button class="btn btn-red btn-sm" data-karim-action="deletePayment" data-karim-arg0="${esc(String(p.id))}"><i class=ji data-i=trash></i> عكس</button></td>`:''}
 </tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد دفعات مسجلة</td></tr>'}
 </tbody>
 </table>
@@ -586,9 +586,9 @@ function showSupplierModal(id){
 <div class="fg"><label>البريد الإلكتروني</label><input type="email" id="suppEmail" dir="ltr" value="${esc(s?.email||'')}"></div></div>
 <div class="fg"><label>الحالة الضريبية *</label>
 <div class="fr" role="radiogroup" aria-label="الحالة الضريبية">
-<label><input type="radio" name="suppTaxStatus" value="REGISTERED" ${st==='REGISTERED'?'checked':''} onchange="pcmtTaxStatusChanged()"> مسجل في ضريبة القيمة المضافة</label>
-<label><input type="radio" name="suppTaxStatus" value="NOT_REGISTERED" ${st==='NOT_REGISTERED'?'checked':''} onchange="pcmtTaxStatusChanged()"> غير مسجل</label>
-<label><input type="radio" name="suppTaxStatus" value="EXEMPT" ${st==='EXEMPT'?'checked':''} onchange="pcmtTaxStatusChanged()"> معفى</label>
+<label><input type="radio" name="suppTaxStatus" value="REGISTERED" ${st==='REGISTERED'?'checked':''} data-karim-action="pcmtTaxStatusChanged" data-karim-event="change"> مسجل في ضريبة القيمة المضافة</label>
+<label><input type="radio" name="suppTaxStatus" value="NOT_REGISTERED" ${st==='NOT_REGISTERED'?'checked':''} data-karim-action="pcmtTaxStatusChanged" data-karim-event="change"> غير مسجل</label>
+<label><input type="radio" name="suppTaxStatus" value="EXEMPT" ${st==='EXEMPT'?'checked':''} data-karim-action="pcmtTaxStatusChanged" data-karim-event="change"> معفى</label>
 </div></div>
 <div class="fr"><div class="fg"><label id="suppVatLabel">الرقم الضريبي (15 رقمًا)</label><input type="text" id="suppVat" dir="ltr" inputmode="numeric" maxlength="15" value="${esc(s?.vat_number||s?.vatNumber||'')}" placeholder="302212427200003" aria-describedby="suppVatHint">
 <small id="suppVatHint" class="text-muted" aria-live="polite"></small></div>
@@ -597,7 +597,7 @@ function showSupplierModal(id){
 <div class="fg"><label>الرصيد الافتتاحي المستحق</label><input type="number" id="suppOpening" value="${s?Number(s.openingBalance||0):0}" step="0.01" min="0"><small class="text-muted">ما عليه له قبل استخدام النظام</small></div></div>
 <div class="fg"><label>العنوان</label><input type="text" id="suppAddress" value="${esc(s?.address||'')}"></div>
 <div class="fg"><label>ملاحظات</label><textarea id="suppNotes" rows="2">${esc(s?.notes||'')}</textarea></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="saveSupplier(${s?`'${esc(String(s.id))}'`:'null'})"><i class=ji data-i=save></i> حفظ</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="saveSupplier" data-karim-arg0="${s?`'${esc(String(s.id))}'`:'null'}"><i class=ji data-i=save></i> حفظ</button></div>
 `);
     pcmtTaxStatusChanged();
 }
@@ -697,7 +697,7 @@ function showPaymentModal(supplierId){
     const selected=supplierId||String(suppliers[0].id);
     showModal(`
 <h3><i class=ji data-i=coins></i> تسجيل دفعة لمورد</h3>
-<div class="fr"><div class="fg"><label>المورد *</label><select id="paySupplier" onchange="pcmtOnSupplierChange()">${suppliers.map(s=>`<option value="${esc(String(s.id))}" ${String(selected)===String(s.id)?'selected':''}>${esc(s.name)} — مستحق ${fN(s.dueTotal)}</option>`).join('')}</select></div>
+<div class="fr"><div class="fg"><label>المورد *</label><select id="paySupplier" data-karim-action="pcmtOnSupplierChange" data-karim-event="change">${suppliers.map(s=>`<option value="${esc(String(s.id))}" ${String(selected)===String(s.id)?'selected':''}>${esc(s.name)} — مستحق ${fN(s.dueTotal)}</option>`).join('')}</select></div>
 <div class="fg"><label>المبلغ *</label><input type="number" id="payAmount" step="0.01" min="0.01" placeholder="0.00"></div></div>
 <div class="fr"><div class="fg"><label>طريقة الدفع</label><select id="payMethod"><option value="cash">نقدي</option><option value="bank">تحويل بنكي</option><option value="card">بطاقة</option><option value="cheque">شيك</option></select></div>
 <div class="fg"><label>التاريخ</label><input type="date" id="payDate" value="${today()}"></div></div>
@@ -705,7 +705,7 @@ function showPaymentModal(supplierId){
 <small class="text-muted">عند الربط يجب ألا يتجاوز المبلغ المتبقي على الفاتورة</small></div>
 <div class="fg"><label>ملاحظات</label><input type="text" id="payNotes" placeholder="مثال: دفعة أولى"></div>
 <div id="payHint" class="u-t13 text-muted"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="savePayment()"><i class=ji data-i=save></i> حفظ الدفعة</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="savePayment"><i class=ji data-i=save></i> حفظ الدفعة</button></div>
 `);
     pcmtOnSupplierChange();
 }
@@ -773,9 +773,9 @@ async function openStatement(id){
 <h3><i class=ji data-i=file-text></i> كشف حساب — ${esc(s.name)}</h3>
 <div class="fr"><div class="fg"><label>من تاريخ</label><input type="date" id="stmtFrom" value="${PCMT.stmtFrom}"></div>
 <div class="fg"><label>إلى تاريخ</label><input type="date" id="stmtTo" value="${PCMT.stmtTo}"></div>
-<div class="fg"><label>&nbsp;</label><button class="btn btn-blue" onclick="loadStatement()"><i class=ji data-i=search></i> عرض الكشف</button></div></div>
+<div class="fg"><label>&nbsp;</label><button class="btn btn-blue" data-karim-action="loadStatement"><i class=ji data-i=search></i> عرض الكشف</button></div></div>
 <div id="stmtBody"><div class="u-empty" style="padding:24px">اختر الفترة (أو اتركها فارغة لكل الحركات) ثم اعرض الكشف</div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="printStatement()"><i class=ji data-i=printer></i> طباعة</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="printStatement"><i class=ji data-i=printer></i> طباعة</button></div>
 `,'modal-wide');
 }
 async function loadStatement(){
@@ -858,9 +858,9 @@ async function showInventoryAuditModal(){
     STOCK.tab='new'; STOCK.detail=null; STOCK.search=''; STOCK.diffsOnly=false; STOCK.dirty={};
     showModal(`<h3><i class=ji data-i=clipboard-list></i> استوديو جرد المخزون</h3>
         <div class="st-tabs">
-            <button class="st-tab" id="sttab-new" onclick="stocktakSetTab('new')"><i class=ji data-i=plus></i> جلسة جديدة</button>
-            <button class="st-tab" id="sttab-count" onclick="stocktakSetTab('count')"><i class=ji data-i=clipboard-list></i> العد والفروقات</button>
-            <button class="st-tab" id="sttab-history" onclick="stocktakSetTab('history')"><i class=ji data-i=history></i> سجل الجرد</button>
+            <button class="st-tab" id="sttab-new" data-karim-action="stocktakSetTab" data-karim-args="[&quot;new&quot;]"><i class=ji data-i=plus></i> جلسة جديدة</button>
+            <button class="st-tab" id="sttab-count" data-karim-action="stocktakSetTab" data-karim-args="[&quot;count&quot;]"><i class=ji data-i=clipboard-list></i> العد والفروقات</button>
+            <button class="st-tab" id="sttab-history" data-karim-action="stocktakSetTab" data-karim-args="[&quot;history&quot;]"><i class=ji data-i=history></i> سجل الجرد</button>
         </div>
         <div id="stocktakBody"><div class="text-muted" style="padding:26px;text-align:center">جارٍ التحميل…</div></div>`, 'modal-wide');
     stocktakRender();
@@ -935,23 +935,23 @@ async function stocktakHtmlNew(){
     const locations = await stocktakLoadLocations();
     if(!STOCK.locationId) {STOCK.locationId = Number(locations.find(l=>l.code==='MAIN-WAREHOUSE')?.id || locations[0]?.id || 0);}
     const locChips = locations.map(l=>`
-        <div class="st-loc ${Number(l.id)===Number(STOCK.locationId)?'active':''}" data-loc="${l.id}" onclick="stocktakSetLocation('${l.id}')">
+        <div class="st-loc ${Number(l.id)===Number(STOCK.locationId)?'active':''}" data-loc="${l.id}" data-karim-action="stocktakSetLocation" data-karim-arg0="${l.id}">
             <i class=ji data-i=package></i>
             <strong>${esc(l.name_ar)}</strong>
             <span>${l.dept_name?esc(l.dept_name)+' · ':''}${fN(l.items_count)} ${fN(l.items_count)} صنف · ${fC(l.on_hand_value)}</span>
         </div>`).join('');
     const openStrip = open.length?`<div class="st-resume"><i class=ji data-i=alert-circle></i> لديك جلسات جرد مفتوحة:
-        ${open.slice(0,3).map(a=>`<button class="btn btn-gold btn-sm" onclick="stocktakOpenSession('${a.id}')">${esc(a.audit_number)} — متابعة العد</button>`).join('')}</div>`:'';
+        ${open.slice(0,3).map(a=>`<button class="btn btn-gold btn-sm" data-karim-action="stocktakOpenSession" data-karim-arg0="${a.id}">${esc(a.audit_number)} — متابعة العد</button>`).join('')}</div>`:'';
     return `${openStrip}
     <div class="audit-note"><strong>دورة جرد آمنة بثلاث خطوات — لكل مخزن على حدة</strong><br>
     <span class="text-muted">١) اختر المخزن وحدّد نطاق الجرد وابدأ الجلسة — ٢) عدّ الأصناف فعلياً (يُحفظ كل عدّ تلقائياً وتظهر الفروقات فوراً مقارنةً برصيد هذا المخزن) — ٣) اعتمد الفروقات فيُطبَّق على رصيد المخزن بحركات تصحيح موثّقة، وعجز المخزن يُسجَّل كلفة على القسم صاحبه. لا يتأثر أي رصيد قبل الاعتماد.</span></div>
     <h4 class="st-lochead"><i class=ji data-i=package></i> اختر مخزن الجرد</h4>
     <div class="st-loc-grid">${locChips||'<div class="text-muted">لا توجد مخازن مفعّلة</div>'}</div>
     <div class="st-scope-grid">
-        <div class="st-scope active" onclick="stocktakSetScope('all')"><i class=ji data-i=package></i><strong>كل أصناف المخزن</strong><span>جرد شامل للمخزن المختار</span></div>
-        <div class="st-scope" onclick="stocktakSetScope('in_stock')"><i class=ji data-i=box></i><strong>ذات رصيد فقط</strong><span>تجاهل أصناف الصفر في هذا المخزن</span></div>
-        <div class="st-scope" onclick="stocktakSetScope('category')"><i class=ji data-i=folder></i><strong>فئة محددة</strong><span>جرد جزئي سريع</span></div>
-        <div class="st-scope" onclick="stocktakSetScope('search')"><i class=ji data-i=search></i><strong>بحث بالاسم/الباركود</strong><span>أصناف مختارة</span></div>
+        <div class="st-scope active" data-karim-action="stocktakSetScope" data-karim-args="[&quot;all&quot;]"><i class=ji data-i=package></i><strong>كل أصناف المخزن</strong><span>جرد شامل للمخزن المختار</span></div>
+        <div class="st-scope" data-karim-action="stocktakSetScope" data-karim-args="[&quot;in_stock&quot;]"><i class=ji data-i=box></i><strong>ذات رصيد فقط</strong><span>تجاهل أصناف الصفر في هذا المخزن</span></div>
+        <div class="st-scope" data-karim-action="stocktakSetScope" data-karim-args="[&quot;category&quot;]"><i class=ji data-i=folder></i><strong>فئة محددة</strong><span>جرد جزئي سريع</span></div>
+        <div class="st-scope" data-karim-action="stocktakSetScope" data-karim-args="[&quot;search&quot;]"><i class=ji data-i=search></i><strong>بحث بالاسم/الباركود</strong><span>أصناف مختارة</span></div>
     </div>
     <div class="fr">
         <div class="fg" id="stScopeCat" style="display:none"><label>الفئة</label><select onchange="STOCK.scope.category=this.value;stocktakScopePreview()"><option value="">— اختر الفئة —</option>${cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select></div>
@@ -965,7 +965,7 @@ async function stocktakHtmlNew(){
         <div class="fg"><label>نهاية الفترة</label><input type="date" id="stPeriodEnd" value="${today()}"></div>
     </div>
     <div class="fg"><label>ملاحظات الجلسة</label><input type="text" id="stNotes" placeholder="مثال: جرد نهاية الشهر — فرع الرئيسي"></div>
-    <div class="modal-footer" style="margin-top:14px"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-purple" id="stStartBtn" onclick="stocktakStartSession()"><i class=ji data-i=play></i> بدء جلسة الجرد</button></div>`;
+    <div class="modal-footer" style="margin-top:14px"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-purple" id="stStartBtn" data-karim-action="stocktakStartSession"><i class=ji data-i=play></i> بدء جلسة الجرد</button></div>`;
 }
 async function stocktakStartSession(){
     showLoad();
@@ -992,8 +992,8 @@ async function showFiscalYearModal(){
         const years=await apiFetch('/warehouse/fiscal-years');
         const current=years.find(y=>y.status==='open')||years[0];
         const canClose=STATE.currentUser?.role==='admin';
-        const cards=years.map(y=>`<tr><td><strong>${esc(y.name||y.year_code)}</strong><div class="text-muted">${esc(String(y.start_date))} → ${esc(String(y.end_date))}</div></td><td><span class="badge ${y.status==='closed'?'bdg-green':'bdg-blue'}">${y.status==='closed'?'مغلقة':'مفتوحة'}</span></td><td>${y.status==='closed'?`إيرادات: ${fC(y.closing_snapshot?.revenue_total||0)}<br>صافي: ${fC(y.closing_snapshot?.net_result||0)}`:'بانتظار الإقفال'}</td><td>${y.status==='open'&&canClose?`<button class="btn btn-gold btn-sm" onclick="closeFiscalYear('${y.id}')"><i class=ji data-i=lock></i> إقفال السنة</button>`:''}${y.status==='closed'&&canClose?`<button class="btn btn-blue btn-sm" onclick="createNextFiscalYear('${y.id}')"><i class=ji data-i=plus></i> السنة التالية</button>`:''}</td></tr>`).join('');
-        showModal(`<h3><i class=ji data-i=calendar></i> السنة المالية والإقفال</h3><div class="audit-note"><strong>${current?esc(current.name):'لا توجد سنة مالية'}</strong><br><span class="text-muted">لا يتم حذف المبيعات أو المصروفات. يحفظ النظام لقطة إقفال، قيمة المخزون، وترحيل الأرصدة الافتتاحية للسنة التالية.</span></div><div class="tbl-scroll"><table><thead><tr><th>السنة</th><th>الحالة</th><th>الملخص</th><th>الإجراء</th></tr></thead><tbody>${cards||'<tr><td colspan="4">لا توجد سنوات مالية</td></tr>'}</tbody></table></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`,'modal-wide');
+        const cards=years.map(y=>`<tr><td><strong>${esc(y.name||y.year_code)}</strong><div class="text-muted">${esc(String(y.start_date))} → ${esc(String(y.end_date))}</div></td><td><span class="badge ${y.status==='closed'?'bdg-green':'bdg-blue'}">${y.status==='closed'?'مغلقة':'مفتوحة'}</span></td><td>${y.status==='closed'?`إيرادات: ${fC(y.closing_snapshot?.revenue_total||0)}<br>صافي: ${fC(y.closing_snapshot?.net_result||0)}`:'بانتظار الإقفال'}</td><td>${y.status==='open'&&canClose?`<button class="btn btn-gold btn-sm" data-karim-action="closeFiscalYear" data-karim-arg0="${y.id}"><i class=ji data-i=lock></i> إقفال السنة</button>`:''}${y.status==='closed'&&canClose?`<button class="btn btn-blue btn-sm" data-karim-action="createNextFiscalYear" data-karim-arg0="${y.id}"><i class=ji data-i=plus></i> السنة التالية</button>`:''}</td></tr>`).join('');
+        showModal(`<h3><i class=ji data-i=calendar></i> السنة المالية والإقفال</h3><div class="audit-note"><strong>${current?esc(current.name):'لا توجد سنة مالية'}</strong><br><span class="text-muted">لا يتم حذف المبيعات أو المصروفات. يحفظ النظام لقطة إقفال، قيمة المخزون، وترحيل الأرصدة الافتتاحية للسنة التالية.</span></div><div class="tbl-scroll"><table><thead><tr><th>السنة</th><th>الحالة</th><th>الملخص</th><th>الإجراء</th></tr></thead><tbody>${cards||'<tr><td colspan="4">لا توجد سنوات مالية</td></tr>'}</tbody></table></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`,'modal-wide');
     }catch(e){toast(e.message||'تعذر تحميل السنوات المالية','error');}
 }
 async function closeFiscalYear(id){
@@ -1038,11 +1038,11 @@ function stocktakRowHtml(item, locked){
     return `<tr class="st-row ${state}" id="strow-${item.item_id}">
         <td><strong>${esc(item.item_name)}</strong><div class="st-sub">${esc(item.category||'—')} · ${esc(item.unit||'وحدة')}${item.barcode?` · <span class="st-bc">${esc(item.barcode)}</span>`:''}</div></td>
         <td class="c st-sys">${fN(item.system_qty)}</td>
-        <td class="c"><input type="number" class="st-count-input" id="stc-${item.item_id}" min="0" step="0.001" inputmode="decimal" value="${counted?item.counted_qty:''}" placeholder="${item.system_qty}" ${locked?'disabled':''} oninput="stocktakCountChanged(${item.item_id})" onchange="stocktakSaveCount(${item.item_id},true)"></td>
+        <td class="c"><input type="number" class="st-count-input" id="stc-${item.item_id}" min="0" step="0.001" inputmode="decimal" value="${counted?item.counted_qty:''}" placeholder="${item.system_qty}" ${locked?'disabled':''} data-karim-action="stocktakCountChanged" data-karim-event="input" data-karim-arg0="${item.item_id}" onchange="stocktakSaveCount(${item.item_id},true)"></td>
         <td class="c st-var ${diffCls}" id="stv-${item.item_id}">${varText}</td>
         <td class="c st-val ${diffCls}" id="stvv-${item.item_id}">${counted?fC(item.variance_value):'—'}</td>
         <td><input type="text" class="st-note" id="stn-${item.item_id}" value="${esc(item.notes||'')}" placeholder="ملاحظة" ${locked?'disabled':''} onchange="stocktakSaveCount(${item.item_id},true)"></td>
-        <td class="c">${counted&&!locked?`<button class="st-clear" title="مسح العد وإرجاعه إلى غير معدود" onclick="stocktakClearCount(${item.item_id})"><i class=ji data-i=x></i></button>`:''}</td>
+        <td class="c">${counted&&!locked?`<button class="st-clear" title="مسح العد وإرجاعه إلى غير معدود" data-karim-action="stocktakClearCount" data-karim-arg0="${item.item_id}"><i class=ji data-i=x></i></button>`:''}</td>
     </tr>`;
 }
 function stocktakRowsTbodyHtml(){
@@ -1062,7 +1062,7 @@ async function stocktakHtmlCount(){
         let audits=[]; try{ audits=await apiFetch('/warehouse/inventory/audits'); }catch(e){ console.warn(e); }
         const open = audits.filter(a=>['draft','submitted'].includes(a.status));
         return `<div class="st-empty"><i class=ji data-i=clipboard-list></i><p>لا توجد جلسة جرد مفتوحة الآن.</p><p class="text-muted">ابدأ جلسة جديدة من تبويب «جلسة جديدة»، أو تابع إحدى الجلسات المفتوحة:</p>
-        ${open.length?open.slice(0,5).map(a=>`<button class="btn btn-gold btn-sm" onclick="stocktakOpenSession('${a.id}')">${esc(a.audit_number)} (${a.item_count||0} صنف)</button>`).join(''):'<span class="text-muted">لا توجد جلسات مفتوحة</span>'}</div>`;
+        ${open.length?open.slice(0,5).map(a=>`<button class="btn btn-gold btn-sm" data-karim-action="stocktakOpenSession" data-karim-arg0="${a.id}">${esc(a.audit_number)} (${a.item_count||0} صنف)</button>`).join(''):'<span class="text-muted">لا توجد جلسات مفتوحة</span>'}</div>`;
     }
     const {audit,progress} = STOCK.detail;
     const locked = audit.status!=='draft';
@@ -1083,21 +1083,21 @@ async function stocktakHtmlCount(){
     <div class="st-toolbar">
         <div class="st-search"><i class=ji data-i=search></i><input type="text" id="stSearchInput" placeholder="بحث بالاسم أو الباركود أو الفئة…" value="${esc(STOCK.search)}" oninput="stocktakOnSearch(this.value)"></div>
         <label class="st-diffsonly"><input type="checkbox" ${STOCK.diffsOnly?'checked':''} onchange="stocktakToggleDiffs(this.checked)"> الفروقات فقط</label>
-        <button class="btn btn-sm" onclick="stocktakScanCount()"><i class=ji data-i=camera></i> مسح باركود</button>
-        <button class="btn btn-blue btn-sm" onclick="stocktakPrint('count-sheet')"><i class=ji data-i=printer></i> ورقة الجرد</button>
-        <button class="btn btn-sm" onclick="stocktakRefreshDetail()"><i class=ji data-i=refresh></i> تحديث</button>
+        <button class="btn btn-sm" data-karim-action="stocktakScanCount"><i class=ji data-i=camera></i> مسح باركود</button>
+        <button class="btn btn-blue btn-sm" data-karim-action="stocktakPrint" data-karim-args="[&quot;count-sheet&quot;]"><i class=ji data-i=printer></i> ورقة الجرد</button>
+        <button class="btn btn-sm" data-karim-action="stocktakRefreshDetail"><i class=ji data-i=refresh></i> تحديث</button>
     </div>
     <div class="tbl-scroll" style="max-height:42vh">
         <table class="st-table"><thead><tr><th>الصنف</th><th class="c">رصيد النظام</th><th class="c" style="min-width:130px">العدّ الفعلي</th><th class="c">الفرق</th><th class="c">قيمة الفرق</th><th style="min-width:120px">ملاحظة</th><th class="c"></th></tr></thead>
         <tbody id="stTbody">${stocktakRowsTbodyHtml()}</tbody></table>
     </div>
-    ${locked?`<div class="modal-footer" style="margin-top:12px"><button class="btn" onclick="stocktakPrint('report')"><i class=ji data-i=printer></i> طباعة التقرير</button>${audit.status==='submitted'&&canWrite?`<button class="btn btn-gold" onclick="stocktakCancelSession()"><i class=ji data-i=x-circle></i> إلغاء الجلسة</button><button class="btn btn-purple" onclick="stocktakApproveSession()"><i class=ji data-i=circle-check></i> اعتماد وتطبيق الفروقات</button>`:''}</div>`
+    ${locked?`<div class="modal-footer" style="margin-top:12px"><button class="btn" data-karim-action="stocktakPrint" data-karim-args="[&quot;report&quot;]"><i class=ji data-i=printer></i> طباعة التقرير</button>${audit.status==='submitted'&&canWrite?`<button class="btn btn-gold" data-karim-action="stocktakCancelSession"><i class=ji data-i=x-circle></i> إلغاء الجلسة</button><button class="btn btn-purple" data-karim-action="stocktakApproveSession"><i class=ji data-i=circle-check></i> اعتماد وتطبيق الفروقات</button>`:''}</div>`
     :canWrite?`
     ${signaturePadMarkup('stSignature','توقيع مسؤول الجرد / المعتمد')}
     <div class="modal-footer" style="margin-top:12px">
-        <button class="btn btn-gold" onclick="stocktakCancelSession()"><i class=ji data-i=x-circle></i> إلغاء الجلسة</button>
-        <button class="btn btn-blue" onclick="stocktakSubmitSession()"><i class=ji data-i=send></i> إرسال للاعتماد</button>
-        <button class="btn btn-purple" onclick="stocktakApproveSession()"><i class=ji data-i=circle-check></i> اعتماد فوري وتطبيق الفروقات</button>
+        <button class="btn btn-gold" data-karim-action="stocktakCancelSession"><i class=ji data-i=x-circle></i> إلغاء الجلسة</button>
+        <button class="btn btn-blue" data-karim-action="stocktakSubmitSession"><i class=ji data-i=send></i> إرسال للاعتماد</button>
+        <button class="btn btn-purple" data-karim-action="stocktakApproveSession"><i class=ji data-i=circle-check></i> اعتماد فوري وتطبيق الفروقات</button>
     </div>`:`<div class="text-muted" style="text-align:center;padding:10px">دورك يسمح بالمشاهدة والعد فقط — الاعتماد يتطلب مديراً.</div>`}`;
 }
 function stocktakOnSearch(value){
@@ -1255,9 +1255,9 @@ async function stocktakHtmlHistory(){
     const rows = audits.map(a=>{
         const counted = a.counted_items!=null?a.counted_items:null;
         const variance = Number(a.total_variance_value||0);
-        const actions = [`<button class="btn btn-blue btn-sm" onclick="stocktakOpenSession('${a.id}')"><i class=ji data-i=eye></i> فتح</button>`];
+        const actions = [`<button class="btn btn-blue btn-sm" data-karim-action="stocktakOpenSession" data-karim-arg0="${a.id}"><i class=ji data-i=eye></i> فتح</button>`];
         if(a.status!=='cancelled') {actions.push(`<button class="btn btn-sm" onclick="stocktakPrintById('${a.id}','report')"><i class=ji data-i=printer></i> تقرير</button>`);}
-        if(['draft','submitted'].includes(a.status)&&STOCK_CAN_WRITE.includes(STATE.currentUser?.role)) {actions.push(`<button class="btn btn-gold btn-sm" onclick="stocktakCancelById('${a.id}')"><i class=ji data-i=x-circle></i> إلغاء</button>`);}
+        if(['draft','submitted'].includes(a.status)&&STOCK_CAN_WRITE.includes(STATE.currentUser?.role)) {actions.push(`<button class="btn btn-gold btn-sm" data-karim-action="stocktakCancelById" data-karim-arg0="${a.id}"><i class=ji data-i=x-circle></i> إلغاء</button>`);}
         return `<tr>
             <td><strong>${esc(a.audit_number)}</strong><div class="st-sub">${esc(String(a.created_at||'').slice(0,16).replace('T',' '))}</div></td>
             <td>${esc(String(a.counted_at||'').slice(0,10))}</td>
@@ -1297,11 +1297,11 @@ function showAddItemModal(prefillBarcode=''){
 const shelfOptions = STATE.shelves.map(s=>`<option value="${s.id}">${esc(s.code)} - ${esc(s.name)}</option>`).join('');
 showModal(`<h3><i class=ji data-i=package></i> إضافة صنف جديد</h3>
 <div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="itemName"></div><div class="fg"><label>الفئة</label><input type="text" id="itemCategory"></div></div>
-<div class="fg"><label>الباركود / QR</label><div style="display:flex;gap:8px"><input type="text" id="itemBarcode" value="${esc(prefillBarcode)}" placeholder="امسح أو اكتب يدوياً" class="u-flex1"><button type="button" class="btn btn-blue btn-sm" onclick="scanForItemBarcodeField('itemBarcode')"><i class=ji data-i=camera></i> مسح</button></div></div>
+<div class="fg"><label>الباركود / QR</label><div style="display:flex;gap:8px"><input type="text" id="itemBarcode" value="${esc(prefillBarcode)}" placeholder="امسح أو اكتب يدوياً" class="u-flex1"><button type="button" class="btn btn-blue btn-sm" data-karim-action="scanForItemBarcodeField" data-karim-args="[&quot;itemBarcode&quot;]"><i class=ji data-i=camera></i> مسح</button></div></div>
 <div class="fr"><div class="fg"><label>وحدة الشراء والتخزين</label><select id="itemUnit">${inventoryUnitOptions('kg')}</select><small class="text-muted">مثال: زيت باللتر، أرز بالكجم، دجاج بالقطعة</small></div><div class="fg"><label>الحد الأدنى</label><input type="number" id="itemMinQty" value="5" step="0.01"></div></div>
 <div class="fr"><div class="fg"><label>الكمية الافتتاحية</label><input type="number" id="itemQty" value="0" step="0.01"></div><div class="fg"><label>سعر الشراء</label><input type="number" id="itemPrice" value="0" step="0.01"></div><div class="fg"><label>تاريخ الصلاحية</label><input type="date" id="itemExpiry"><small class="text-muted">اختياري — إن أُدخل فيجب أن يكون YYYY-MM-DD</small></div></div>
 <div class="fr"><div class="fg"><label>الوزن (كجم)</label><input type="number" id="itemWeight" value="0" step="0.01"></div><div class="fg"><label>الرف</label><select id="itemShelf"><option value="">بدون رف</option>${shelfOptions}</select></div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="addInventoryItem()"><i class=ji data-i=save></i> حفظ</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="addInventoryItem"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 function scanForItemBarcodeField(inputId){
 openScanner({
@@ -1335,7 +1335,7 @@ showModal(`<h3><i class=ji data-i=package></i> ${esc(item.name)}</h3>
 <div class="fg"><label>الكمية المضافة</label><input type="number" id="quickStockQty" value="1" step="0.01"></div>
 <div class="fg"><label>سعر الشراء (اختياري)</label><input type="number" id="quickStockPrice" value="${item.avgCost}" step="0.01"></div>
 <div class="fg"><label>تاريخ الصلاحية</label><input type="date" id="quickStockExpiry"><small class="text-muted">اختياري — إن أُدخل فيجب أن يكون YYYY-MM-DD</small></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="confirmQuickStockIn('${item.id}')"><i class=ji data-i=save></i> إضافة للمخزون</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="confirmQuickStockIn" data-karim-arg0="${item.id}"><i class=ji data-i=save></i> إضافة للمخزون</button></div>`);
 setTimeout(()=>{ document.getElementById('quickStockQty')?.focus(); document.getElementById('quickStockQty')?.select(); },50);
 }
 async function confirmQuickStockIn(itemId){
@@ -1398,7 +1398,7 @@ if(!item){return;}
 const shelfOptions = STATE.shelves.map(s=>`<option value="${s.id}" ${String(item.shelfId)===String(s.id)?'selected':''}>${esc(s.code)} - ${esc(s.name)}</option>`).join('');
 showModal(`<h3><i class=ji data-i=pencil></i> تعديل الصنف</h3>
 <div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="eiName" value="${esc(item.name)}"></div><div class="fg"><label>الفئة</label><input type="text" id="eiCategory" value="${esc(item.category||'')}"></div></div>
-<div class="fg"><label>الباركود / QR</label><div style="display:flex;gap:8px"><input type="text" id="eiBarcode" value="${esc(item.barcode||'')}" placeholder="امسح أو اكتب يدوياً" class="u-flex1"><button type="button" class="btn btn-blue btn-sm" onclick="scanForItemBarcodeField('eiBarcode')"><i class=ji data-i=camera></i> مسح</button></div></div>
+<div class="fg"><label>الباركود / QR</label><div style="display:flex;gap:8px"><input type="text" id="eiBarcode" value="${esc(item.barcode||'')}" placeholder="امسح أو اكتب يدوياً" class="u-flex1"><button type="button" class="btn btn-blue btn-sm" data-karim-action="scanForItemBarcodeField" data-karim-args="[&quot;eiBarcode&quot;]"><i class=ji data-i=camera></i> مسح</button></div></div>
 <div class="fr"><div class="fg"><label>وحدة الشراء والتخزين</label><select id="eiUnit">${inventoryUnitOptions(item.unit)}</select><small class="text-muted">يجب أن تطابق وحدة السعر في الفاتورة</small></div><div class="fg"><label>الحد الأدنى</label><input type="number" id="eiMin" value="${item.minQty}" step="0.01"></div></div>
 <div class="fr"><div class="fg"><label>الوزن (كجم)</label><input type="number" id="eiWeight" value="${item.weight||0}" step="0.01"></div><div class="fg"><label>الرف</label><select id="eiShelf"><option value="">بدون رف</option>${shelfOptions}</select></div></div>
 <div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r)">
@@ -1414,14 +1414,14 @@ ${STATE.currentUser?.role === 'admin' ? `
 <div class="fg"><label>متوسط التكلفة الجديد</label><input type="number" id="eiAdminCost" value="${item.avgCost}" step="0.01" min="0"></div>
 </div>
 <div class="fg"><label>سبب التعديل (يُوثَّق في الدفتر)</label><input type="text" id="eiAdminReason" placeholder="مثال: تسوية جرد فعلي / تصحيح إدخال"></div>
-<button type="button" class="btn btn-red btn-sm" onclick="adminDirectEdit('${esc(String(id))}')"><i class=ji data-i=save></i> حفظ التعديل المباشر</button>
+<button type="button" class="btn btn-red btn-sm" data-karim-action="adminDirectEdit" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=save></i> حفظ التعديل المباشر</button>
 </div>` : ''}
 <div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--border)">
 <strong style="font-size:13px"><i class=ji data-i=repeat></i> وحدات طلب ثانوية</strong>
 <small class="text-muted" style="display:block;margin:4px 0 8px">لو الأقسام تطلب الصنف بوحدة مختلفة (شكارة، كرتون، صاع...) سجلها هنا مع محتواها — مثال: شكارة أرز = 50 كجم. عند طلب الصرف بالشكارة يتحوّل المبلغ تلقائيًا لوحدة المخزن.</small>
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${['صاع','شكارة','كرتون','كيس','جوال','دزينة','علبة'].map(u=>`<button type="button" class="btn btn-sm" style="padding:3px 10px" onclick="addSecUnitPreset('${esc(u)}')">${esc(u)}</button>`).join('')}<small class="text-muted" style="align-self:center">اضغط لإضافة الوحدة بسرعة ثم اكتب محتواها</small></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${['صاع','شكارة','كرتون','كيس','جوال','دزينة','علبة'].map(u=>`<button type="button" class="btn btn-sm" style="padding:3px 10px" data-karim-action="addSecUnitPreset" data-karim-arg0="${esc(u)}">${esc(u)}</button>`).join('')}<small class="text-muted" style="align-self:center">اضغط لإضافة الوحدة بسرعة ثم اكتب محتواها</small></div>
 <div id="secUnitsRows"></div>
-<button type="button" class="btn btn-blue btn-sm" onclick="addSecUnitRow()"><i class=ji data-i=plus></i> إضافة وحدة</button>
+<button type="button" class="btn btn-blue btn-sm" data-karim-action="addSecUnitRow"><i class=ji data-i=plus></i> إضافة وحدة</button>
 </div>
 <div style="background:var(--bg3);padding:12px;margin:12px 0;border-radius:var(--r);border:1px dashed var(--border)">
 <strong style="font-size:13px"><i class=ji data-i=scale></i> الوزن المتغير — استلام بالكيلو وصرف بالكرتون</strong>
@@ -1432,7 +1432,7 @@ ${STATE.currentUser?.role === 'admin' ? `
 <div class="fg"><label>متوسط وزن التعبئة (كجم)</label><input type="number" id="eiPkgFactor" value="${item.packaging_qty_per_base??''}" step="0.001" min="0" placeholder="مثال: 25"></div>
 </div>
 </div>
-<div class="modal-footer"><button type="button" class="btn btn-red" onclick="deleteItem('${esc(String(id))}')"><i class=ji data-i=trash></i> حذف</button><button type="button" class="btn" onclick="closeModal()">إلغاء</button><button type="button" class="btn btn-gold" onclick="updateInventoryItem('${esc(String(id))}')"><i class=ji data-i=save></i> حفظ</button></div>`);
+<div class="modal-footer"><button type="button" class="btn btn-red" data-karim-action="deleteItem" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=trash></i> حذف</button><button type="button" class="btn" data-karim-action="closeModal">إلغاء</button><button type="button" class="btn btn-gold" data-karim-action="updateInventoryItem" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=save></i> حفظ</button></div>`);
 try{ (Array.isArray(item.secondary_units)?item.secondary_units:[]).forEach(u=>addSecUnitRow(u.uom,u.factor)); }catch(_){}
 }
 // ─── محرر وحدات الطلب الثانوية ───
@@ -1543,7 +1543,7 @@ if(!n){ toast('لا توجد فواتير لحذفها','info'); return; }
 showModal(`<h3><i class=ji data-i=trash></i> حذف كل فواتير الشراء (${fN(n)})</h3>
 <div class="workflow-banner" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.35)"><i class=ji data-i=alert-triangle></i> <strong>عملية نهائية لا يمكن التراجع عنها:</strong> ستُحذف الفواتير الـ ${fN(n)} كلها، وسيتم <strong>عكس كمياتها من المخزون</strong> (الاستلام كان يزيد الرصيد — الحذف ينقصه)، وستُحذف حركات المخزون المرتبطة بها. خذ نسخة احتياطية أولًا من الإعدادات.</div>
 <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:10px 0"><input type="checkbox" id="clearInvConfirm" onchange="document.getElementById('clearInvBtn').disabled=!this.checked"> أفهم أن هذه العملية نهائية وتعكس كميات المخزون</label>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" id="clearInvBtn" disabled onclick="clearAllInvoices()"><i class=ji data-i=trash></i> حذف كل الفواتير نهائيًا</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" id="clearInvBtn" disabled data-karim-action="clearAllInvoices"><i class=ji data-i=trash></i> حذف كل الفواتير نهائيًا</button></div>`);
 }
 async function clearAllInvoices(){
 try{
@@ -1583,26 +1583,26 @@ showModal(`
 <div class="fg"><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate" value="${esc(String(editing?.date||today()).slice(0,10))}"></div>
 </div>
 <div class="fr">
-<div class="fg"><label>المورد <small class="text-muted">(اختياري — يربط الفاتورة بالحساب)</small></label><select id="invoiceSupplierSel" onchange="pcmtInvoiceSupplierChanged()"><option value="">بدون ربط (اسم حر)</option>${(STATE.suppliers||[]).filter(s=>s.is_active||String(s.id)===String(editing?.supplierId)).map(s=>`<option value="${esc(String(s.id))}" ${String(s.id)===String(editing?.supplierId)?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
-<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName" oninput="pcmtSupplierLinkHint()" value="${esc(editing?.supplierName||'')}"><small id="invoiceSupplierLinkHint" aria-live="polite"></small></div>
+<div class="fg"><label>المورد <small class="text-muted">(اختياري — يربط الفاتورة بالحساب)</small></label><select id="invoiceSupplierSel" data-karim-action="pcmtInvoiceSupplierChanged" data-karim-event="change"><option value="">بدون ربط (اسم حر)</option>${(STATE.suppliers||[]).filter(s=>s.is_active||String(s.id)===String(editing?.supplierId)).map(s=>`<option value="${esc(String(s.id))}" ${String(s.id)===String(editing?.supplierId)?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+<div class="fg" id="invoiceSupplierNameWrap" style="display:none"><label>اسم المورد</label><input type="text" id="supplierName" data-karim-action="pcmtSupplierLinkHint" data-karim-event="input" value="${esc(editing?.supplierName||'')}"><small id="invoiceSupplierLinkHint" aria-live="polite"></small></div>
 <div class="fg" id="invoiceSupplierPhoneWrap" style="display:none"><label>رقم الهاتف</label><input type="text" id="supplierPhone" value="${esc(editing?.supplierPhone||'')}"></div>
 </div>
 <div style="margin:16px 0">
 <div style="font-weight:700;margin-bottom:12px"><i class=ji data-i=package></i> الأصناف</div>
 <div id="invoiceItemsList"></div>
-<button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addInvoiceItemRow()"><i class=ji data-i=plus></i> إضافة صنف</button>
+<button type="button" class="btn btn-blue btn-sm u-mt8" data-karim-action="addInvoiceItemRow"><i class=ji data-i=plus></i> إضافة صنف</button>
 </div>
 <div class="fr">
-<div class="fg"><label>خصم الفاتورة</label><div style="display:flex;gap:8px"><select id="invoiceDiscountType" class="u-input" onchange="updateInvoiceTotal()"><option value="none" ${!editing?.discount_type||editing.discount_type==='none'?'selected':''}>بدون خصم</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>نسبة مئوية %</option><option value="amount" ${editing?.discount_type==='amount'?'selected':''}>مبلغ ثابت</option></select><input type="number" id="invoiceDiscountValue" min="0" step="0.01" value="${Number(editing?.discount_value||0)}" placeholder="قيمة الخصم" oninput="updateInvoiceTotal()"></div><small id="invoiceDiscountHint" class="text-muted" aria-live="polite"></small></div>
-<div class="fg"><label>إجمالي الفاتورة <small class="text-muted">(محسوب تلقائيًا)</small></label><input type="number" id="invoiceTotal" readonly aria-readonly="true" title="يُحسب تلقائيًا من كمية وسعر كل صنف" onclick="focusInvoiceEntryField()" style="background:var(--gold-d);color:var(--gold);font-weight:800;cursor:pointer"><small id="invoiceVatHint" class="text-muted" aria-live="polite"></small></div>
-<div class="fg"><label>طريقة الدفع</label><select id="paymentMethod" onchange="pcmtInvoicePaidChanged()"><option value="cash" ${editing?.paymentMethod==='cash'?'selected':''}>نقدي (مسدد)</option><option value="bank" ${editing?.paymentMethod==='bank'?'selected':''}>تحويل بنكي (مسدد)</option><option value="credit" ${editing?.paymentMethod==='credit'?'selected':''}>آجل (غير مسدد)</option><option value="card" ${editing?.paymentMethod==='card'?'selected':''}>بطاقة</option><option value="cheque" ${editing?.paymentMethod==='cheque'?'selected':''}>شيك</option></select></div>
+<div class="fg"><label>خصم الفاتورة</label><div style="display:flex;gap:8px"><select id="invoiceDiscountType" class="u-input" data-karim-action="updateInvoiceTotal" data-karim-event="change"><option value="none" ${!editing?.discount_type||editing.discount_type==='none'?'selected':''}>بدون خصم</option><option value="percent" ${editing?.discount_type==='percent'?'selected':''}>نسبة مئوية %</option><option value="amount" ${editing?.discount_type==='amount'?'selected':''}>مبلغ ثابت</option></select><input type="number" id="invoiceDiscountValue" min="0" step="0.01" value="${Number(editing?.discount_value||0)}" placeholder="قيمة الخصم" data-karim-action="updateInvoiceTotal" data-karim-event="input"></div><small id="invoiceDiscountHint" class="text-muted" aria-live="polite"></small></div>
+<div class="fg"><label>إجمالي الفاتورة <small class="text-muted">(محسوب تلقائيًا)</small></label><input type="number" id="invoiceTotal" readonly aria-readonly="true" title="يُحسب تلقائيًا من كمية وسعر كل صنف" data-karim-action="focusInvoiceEntryField" style="background:var(--gold-d);color:var(--gold);font-weight:800;cursor:pointer"><small id="invoiceVatHint" class="text-muted" aria-live="polite"></small></div>
+<div class="fg"><label>طريقة الدفع</label><select id="paymentMethod" data-karim-action="pcmtInvoicePaidChanged" data-karim-event="change"><option value="cash" ${editing?.paymentMethod==='cash'?'selected':''}>نقدي (مسدد)</option><option value="bank" ${editing?.paymentMethod==='bank'?'selected':''}>تحويل بنكي (مسدد)</option><option value="credit" ${editing?.paymentMethod==='credit'?'selected':''}>آجل (غير مسدد)</option><option value="card" ${editing?.paymentMethod==='card'?'selected':''}>بطاقة</option><option value="cheque" ${editing?.paymentMethod==='cheque'?'selected':''}>شيك</option></select></div>
 </div>
 <div class="fr">
-<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="${Number(editing?.paidAmount||0).toFixed(2)}" oninput="pcmtInvoicePaidChanged(true)"><small class="text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — يقبل الكسور حتى هللتين</small></div>
+<div class="fg"><label>المسدد الآن</label><input type="number" id="invoicePaidAmount" step="0.01" min="0" value="${Number(editing?.paidAmount||0).toFixed(2)}" data-karim-action="pcmtInvoicePaidChanged" data-karim-event="input" data-karim-args="[true]"><small class="text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — يقبل الكسور حتى هللتين</small></div>
 <div class="fg"><label>حالة السداد المتوقعة</label><div id="invoiceStatusPreview"><span class="badge bdg-red">غير مسددة</span></div></div>
 </div>
 <div class="fg"><label>ملاحظات</label><textarea id="invoiceNotes" rows="2">${esc(editing?.notes||'')}</textarea></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="savePurchaseInvoice()"><i class=ji data-i=save></i> ${editing?'حفظ التعديلات':'حفظ الفاتورة'}</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="savePurchaseInvoice"><i class=ji data-i=save></i> ${editing?'حفظ التعديلات':'حفظ الفاتورة'}</button></div>
 `);
 if(editing){pcmtInvoiceSupplierChanged();const paid=document.getElementById('invoicePaidAmount');if(paid){paid.value=Number(editing.paidAmount||0).toFixed(2);}pcmtInvoicePaidChanged(true);updateInvoiceTotal();}
 }
@@ -1629,7 +1629,7 @@ function pcmtSupplierLinkHint(){
     const match=(STATE.suppliers||[]).find(s=>s.is_active&&String(s.name||'').trim().toLowerCase()===typed
         &&String(s.tax_status||s.tax_registration_status||'').toUpperCase()==='REGISTERED');
     if(!match) {return;}
-    hint.innerHTML=`«${esc(match.name)}» مسجل ضريبيًا (15%) — <button type="button" class="btn btn-gold btn-sm" onclick="pcmtSupplierQuickLink('${esc(String(match.id))}')">اربط لتطبيق الضريبة</button>`;
+    hint.innerHTML=`«${esc(match.name)}» مسجل ضريبيًا (15%) — <button type="button" class="btn btn-gold btn-sm" data-karim-action="pcmtSupplierQuickLink" data-karim-arg0="${esc(String(match.id))}">اربط لتطبيق الضريبة</button>`;
 }
 function pcmtSupplierQuickLink(id){
     const sel=document.getElementById('invoiceSupplierSel');
@@ -1757,7 +1757,7 @@ function renderInvoiceItemsList(){
   <option value="OUT_OF_SCOPE" ${item.taxCategory==='OUT_OF_SCOPE'?'selected':''}>خارج النطاق</option>
   </select></div>
   <div style="flex:1;min-width:95px;text-align:center;font-weight:800;color:var(--gold)"><small style="display:block;margin-bottom:4px;color:var(--text3)">الإجمالي</small><span id="item_total_${idx}">${fC(item.total)}</span></div>
-  <button type="button" onclick="removeInvoiceItemRow(${idx})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 12px;cursor:pointer" title="حذف الصنف"><i class=ji data-i=x></i></button>
+  <button type="button" data-karim-action="removeInvoiceItemRow" data-karim-arg0="${idx}" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 12px;cursor:pointer" title="حذف الصنف"><i class=ji data-i=x></i></button>
   </div>`;
  }).join('');
  container.innerHTML=`<datalist id="invoiceUnitOptions">${unitOptions}</datalist><div class="text-muted" style="font-size:12px;margin-bottom:10px">الوحدة مرنة ويمكن كتابتها مثل: كجم، شوال، علبة أو كرتون. الوزن الإجمالي اختياري بالكيلوجرام. <strong>تاريخ الصلاحية اختياري، وإن أُدخل فيجب أن يكون بصيغة YYYY-MM-DD.</strong></div>${rows}`;
@@ -1866,11 +1866,11 @@ showModal(`<h3><i class=ji data-i=flag></i> رصيد افتتاحي — بداي
 <div class="workflow-banner"><i class=ji data-i=info></i> ادخل الجدول مباشرة: <strong>اسم الصنف • الوحدة • كمية فعلية • سعر الشراء • تاريخ الصلاحية</strong> — مفتاح <strong>Enter</strong> ينقلك بين الخلايا، وآخر صف ينشئ صفًا جديدًا. اللحوم أضف <strong>عدد الكراتين</strong>. <strong>تاريخ الصلاحية اختياري (YYYY-MM-DD).</strong> تُحفظ كفاتورة آجلة (مسدد 0) على المورد <strong>${esc(sup.name)}</strong> بلا حركة نقدية.</div>
 ${openingNetEnabled()?`<label style="display:flex;gap:10px;align-items:center;margin-top:10px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><input type="checkbox" id="openingNetMode" onchange="openingNetModeChanged(this.checked)"><span class="u-t13"><strong>الوضع الصافي (لإعادة ضبط الجداول):</strong> اكتب كمية <strong>بداية الفترة</strong>، والنظام يجيب المنصرف فعليًا من دفتر الصرف، ويخصمه تلقائيًا ويعيّن الرصيد الحالي = <strong>البداية − المنصرف</strong></span></label>`:''}
 <div id="openingExisting" class="u-my8"></div>
-<div class="callout-blue u-my16"><div class="fw-bold"><i class=ji data-i=file-text></i> إدخال احترافي من Excel</div><div class="text-muted u-t12 u-my8">حمّل النموذج، املأ الأصناف، ثم ارفع الملف لمراجعته قبل إضافته للفاتورة.</div><div class="u-row-wrap"><button type="button" class="btn btn-blue btn-sm" onclick="downloadOpeningTemplate()"><i class=ji data-i=arrow-down></i> تحميل النموذج</button><label class="btn btn-green btn-sm" style="cursor:pointer"><i class=ji data-i=inbox></i> رفع شيت Excel<input type="file" id="openingExcelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewOpeningExcel(this.files[0])"></label></div><div id="openingImportPreview" class="u-mt8"></div></div>
+<div class="callout-blue u-my16"><div class="fw-bold"><i class=ji data-i=file-text></i> إدخال احترافي من Excel</div><div class="text-muted u-t12 u-my8">حمّل النموذج، املأ الأصناف، ثم ارفع الملف لمراجعته قبل إضافته للفاتورة.</div><div class="u-row-wrap"><button type="button" class="btn btn-blue btn-sm" data-karim-action="downloadOpeningTemplate"><i class=ji data-i=arrow-down></i> تحميل النموذج</button><label class="btn btn-green btn-sm" style="cursor:pointer"><i class=ji data-i=inbox></i> رفع شيت Excel<input type="file" id="openingExcelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewOpeningExcel(this.files[0])"></label></div><div id="openingImportPreview" class="u-mt8"></div></div>
 <div id="openingRows" style="margin-top:12px"></div>
-<button type="button" class="btn btn-blue btn-sm u-mt8" onclick="addOpeningRow()"><i class=ji data-i=plus></i> إضافة صف</button>
+<button type="button" class="btn btn-blue btn-sm u-mt8" data-karim-action="addOpeningRow"><i class=ji data-i=plus></i> إضافة صف</button>
 <div class="callout-gold u-my16"><div class="fw-bold">إجمالي الرصيد الافتتاحي</div><div class="callout-value" id="openingTotal">${fC(0)}</div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" id="openingSaveBtn" onclick="saveOpeningBalance()"><i class=ji data-i=save></i> حفظ الرصيد الافتتاحي</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" id="openingSaveBtn" data-karim-action="saveOpeningBalance"><i class=ji data-i=save></i> حفظ الرصيد الافتتاحي</button></div>`);
 renderOpeningRows();
 updateOpeningTotal();
 loadOpeningExisting();
@@ -2001,7 +2001,7 @@ return `<tr>
 ${netCells}
 <td><input type="date" id="openingExpiry_${idx}" class="u-input" value="${esc(r.expiry||'')}" aria-label="تاريخ الصلاحية للصنف ${idx+1}" oninput="updateOpeningRow(${idx},'expiry',this.value)" onkeydown="openingRowKey(event,${idx})"></td>
 <td>${openingBoxCell(idx, r)}</td>
-<td><button type="button" class="btn btn-sm btn-red" onclick="removeOpeningRow(${idx})" title="حذف السطر"><i class=ji data-i=x></i></button></td>
+<td><button type="button" class="btn btn-sm btn-red" data-karim-action="removeOpeningRow" data-karim-arg0="${idx}" title="حذف السطر"><i class=ji data-i=x></i></button></td>
 </tr>`;}).join('')}
 </tbody></table></div><datalist id="openingInvList">${invOpts}</datalist>`;
 }
@@ -2181,7 +2181,7 @@ showModal(`<h3><i class=ji data-i=rotate-ccw></i> استبدال الرصيد ا
 <div id="openingReplaceRows" style="margin-top:10px"></div>
 <div class="callout-gold u-my16"><div class="fw-bold">إجمالي الرصيد الجديد</div><div class="callout-value" id="openingReplaceTotal">${fC(0)}</div></div>
 <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="openingReplaceAck"> أفهم أن الرصيد القديم سيُلغى ويُعكس استلامه فقط — وطلبات الصرف تبقى محسوبة على الرصيد الجديد</label>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" onclick="confirmOpeningReplace()"><i class=ji data-i=rotate-ccw></i> إلغاء القديم وحفظ الجديد</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="confirmOpeningReplace"><i class=ji data-i=rotate-ccw></i> إلغاء القديم وحفظ الجديد</button></div>`);
 renderOpeningReplaceRows();
 updateOpeningReplaceTotal();
 }
@@ -2264,7 +2264,7 @@ showModal(`<h3><i class=ji data-i=clipboard-list></i> فحص النظام</h3>
 <div class="details-item"><strong>تحت الحد الأدنى:</strong> <span class="c-orange">${fN(r.lowStock)}</span></div>
 </div>
 ${anomalyRows?`<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)">${anomalyRows}</div>`:''}
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
 }catch(e){ toast(e.message||'تعذر الفحص','error'); } finally{ hideLoad(); }
 }
 // ─── دمج الأصناف المكررة (طلب المالك 2026-10-05: «في اصناف مثل كده عايز احذف المكرر») ───
@@ -2285,7 +2285,7 @@ return [...groups.values()].filter(g=>g.length>1);
 function showMergeDuplicatesModal(){
 if(STATE.currentUser?.role!=='admin'){toast('الدمج متاح للأدمن فقط','error');return;}
 const groups=findDuplicateItemGroups();
-if(!groups.length){showModal(`<h3><i class=ji data-i=git-merge></i> دمج أصناف مكررة</h3><div class="u-empty">ممتاز — لا توجد أصناف مكررة بالاسم نفسه حاليًا 👌</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);return;}
+if(!groups.length){showModal(`<h3><i class=ji data-i=git-merge></i> دمج أصناف مكررة</h3><div class="u-empty">ممتاز — لا توجد أصناف مكررة بالاسم نفسه حاليًا 👌</div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);return;}
 const cards=groups.map((g,gi)=>{
 const keepIdx=g.reduce((best,i,idx)=>Number(i.qty)>Number(g[best].qty)?idx:best,0);
 return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px">
@@ -2294,13 +2294,13 @@ ${g.map((i,idx)=>`<label style="display:flex;gap:8px;align-items:center;padding:
 <input type="radio" name="mergeKeep_${gi}" value="${esc(String(i.id))}" ${idx===keepIdx?'checked':''}>
 <span class="u-t13">${idx===keepIdx?'<strong>':''}${esc(i.name)}${idx===keepIdx?'</strong>':''} — رصيد ${fN(i.qty)} ${esc(i.unit||'')}${Number(i.minQty)>0?` · حد أدنى ${fN(i.minQty)}`:''} <span class="text-muted">(id: ${esc(String(i.id))})</span></span>
 </label>`).join('')}
-<button type="button" class="btn btn-red btn-sm u-mt8" onclick="mergeDuplicateGroup(${gi})"><i class=ji data-i=git-merge></i> دمج في الصنف المحدد</button>
+<button type="button" class="btn btn-red btn-sm u-mt8" data-karim-action="mergeDuplicateGroup" data-karim-arg0="${gi}"><i class=ji data-i=git-merge></i> دمج في الصنف المحدد</button>
 </div>`;
 }).join('');
 showModal(`<h3><i class=ji data-i=git-merge></i> دمج أصناف مكررة</h3>
 <div class="workflow-banner"><i class=ji data-i=info></i> اختر النسخة التي <strong>تبقى</strong> في كل مجموعة ثم اضغط دمج — يتم نقل الرصيد والسجل التاريخي للمُبقي وحذف المكرر نهائيًا. <strong>لا تراجع بعد الدمج.</strong></div>
 ${cards}
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
 }
 async function mergeDuplicateGroup(gi){
 const groups=findDuplicateItemGroups();
@@ -2341,7 +2341,7 @@ ${inv.supplierId?`<div class="fr">
 <div class="details-item"><strong>المسدد:</strong><div class="c-green fw-bold">${fC(inv.paidAmount||0)}</div></div>
 <div class="details-item"><strong>المتبقي:</strong><div class="${pcmtInvoiceRemaining(inv)>0?'c-red':'c-green'} fw-bold">${fC(pcmtInvoiceRemaining(inv))}</div></div>
 </div>
-<div class="details-item"><strong>حالة السداد:</strong><div>${pcmtStatusBadge(inv.paymentStatus)}${pcmtInvoiceRemaining(inv)>0?` <button class="btn btn-green btn-sm" onclick="closeModal();payInvoiceFull('${esc(String(inv.id))}')"><i class=ji data-i=coins></i> تسديد المتبقي</button>`:''}</div></div>`:''}
+<div class="details-item"><strong>حالة السداد:</strong><div>${pcmtStatusBadge(inv.paymentStatus)}${pcmtInvoiceRemaining(inv)>0?` <button class="btn btn-green btn-sm" data-karim-action="closeModal" data-karim-also="payInvoiceFull"><i class=ji data-i=coins></i> تسديد المتبقي</button>`:''}</div></div>`:''}
 <div class="tbl-wrap" style="margin-top:14px">
 <div class="tbl-hd"><h3><i class=ji data-i=package></i> الأصناف</h3></div>
 <div class="tbl-scroll">
@@ -2357,7 +2357,7 @@ ${invoiceItems.map(item=>`<tr><td class="fw-bold">${esc(item.itemName)}</td><td>
 <div class="details-item"><strong>ملاحظات:</strong><div>${esc(inv.notes||'—')}</div></div>
 <div class="details-item"><strong>الخصم:</strong><div>${inv.discount_type==='percent'?`${fN(inv.discount_value)}%`:inv.discount_type==='amount'?fC(inv.discount_amount):'بدون خصم'} ${Number(inv.discount_amount||0)>0?`(${fC(inv.discount_amount)})`:''}</div></div>
 ${Number(inv.vat_total||0)>0?`<div class="details-item"><strong>ضريبة القيمة المضافة:</strong><div>${fC(inv.vat_total)}</div></div>`:''}
-<div class="modal-footer"><button class="btn btn-blue" onclick="printPurchaseInvoice('${inv.id}')"><i class=ji data-i=printer></i> طباعة الفاتورة</button>${['admin','manager','warehouse'].includes(STATE.currentUser?.role)&&Number(inv.paidAmount||0)===0?`<button class="btn btn-gold" onclick="closeModal();showAddPurchaseInvoiceModal('${esc(String(inv.id))}')"><i class=ji data-i=edit></i> تعديل الفاتورة</button>`:''}${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-red" onclick="voidPurchaseInvoice('${inv.id}')"><i class=ji data-i=trash></i> حذف الفاتورة</button>`:''}<button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>
+<div class="modal-footer"><button class="btn btn-blue" data-karim-action="printPurchaseInvoice" data-karim-arg0="${inv.id}"><i class=ji data-i=printer></i> طباعة الفاتورة</button>${['admin','manager','warehouse'].includes(STATE.currentUser?.role)&&Number(inv.paidAmount||0)===0?`<button class="btn btn-gold" data-karim-action="closeModal" data-karim-also="showAddPurchaseInvoiceModal"><i class=ji data-i=edit></i> تعديل الفاتورة</button>`:''}${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-red" data-karim-action="voidPurchaseInvoice" data-karim-arg0="${inv.id}"><i class=ji data-i=trash></i> حذف الفاتورة</button>`:''}<button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button></div>
 `);
 }
 async function voidPurchaseInvoice(id, force){
@@ -2408,11 +2408,11 @@ showModal(`
 الأعمدة: اسم الصنف، الفئة، الوحدة، الحد الأدنى
 </div>
 <div style="display:flex;gap:10px;margin-bottom:16px">
-<button class="btn btn-blue btn-sm" onclick="downloadItemsCatalogTemplate()"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
+<button class="btn btn-blue btn-sm" data-karim-action="downloadItemsCatalogTemplate"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
 </div>
 <div class="fg"><label>اختر ملف Excel أو CSV</label><input type="file" id="catalogExcelFile" accept=".xlsx,.xls,.csv" class="u-input"></div>
 <div id="catalogPreview" class="u-mt12"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="importItemsCatalog()"><i class=ji data-i=inbox></i> استيراد</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="importItemsCatalog"><i class=ji data-i=inbox></i> استيراد</button></div>
 `);
 document.getElementById('catalogExcelFile').addEventListener('change',previewCatalogFile);
 }
@@ -2479,11 +2479,11 @@ showModal(`
 </div>
 <div class="fg"><label>صلاحية الورقة — للأصناف التي بلا عمود صلاحية في الملف (اختياري)</label><input type="date" id="bulkSheetExpiry" class="u-input"><small class="text-muted">عمود «تاريخ الصلاحية» في الملف له الأولوية؛ لا يُخترع تاريخ لأي صنف.</small></div>
 <div style="display:flex;gap:10px;margin-bottom:16px">
-<button class="btn btn-blue btn-sm" onclick="downloadInventoryTemplate()"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
+<button class="btn btn-blue btn-sm" data-karim-action="downloadInventoryTemplate"><i class=ji data-i=arrow-down></i> تحميل نموذج Excel</button>
 </div>
 <div class="fg"><label>اختر ملف Excel أو CSV</label><input type="file" id="inventoryExcelFile" accept=".xlsx,.xls,.csv" class="u-input"></div>
 <div id="bulkImportProgress" style="display:none;margin:10px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px"><span id="bulkImportPhase">جارٍ الاستيراد...</span><span id="bulkImportPct" dir="ltr">0%</span></div><div style="height:10px;background:var(--bg3);border-radius:999px;overflow:hidden"><div id="bulkImportBar" style="height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#b45309);transition:width .3s"></div></div></div><div id="inventoryImportPreview" class="u-mt12"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="importBulkInventory()"><i class=ji data-i=inbox></i> استيراد المخزون</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="importBulkInventory"><i class=ji data-i=inbox></i> استيراد المخزون</button></div>
 `);
 document.getElementById('inventoryExcelFile').addEventListener('change',previewInventoryFile);
 }
@@ -2667,7 +2667,7 @@ return `
 </div>
 <div class="u-row-between">
 <h3 class="u-gold-strong"><i class=ji data-i=archive></i> إدارة الرفوف</h3>
-<button class="btn btn-gold" onclick="showAddShelfModal()"><i class=ji data-i=plus></i> إضافة رف</button>
+<button class="btn btn-gold" data-karim-action="showAddShelfModal"><i class=ji data-i=plus></i> إضافة رف</button>
 </div>
 <div class="shelf-grid">
 ${STATE.shelves.map(shelf=>{
@@ -2697,8 +2697,8 @@ ${items.length>5?`<div style="font-size:11px;color:var(--text3);text-align:cente
 ${items.length===0?'<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">الرف فارغ</div>':''}
 </div>
 <div style="display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-<button class="btn btn-sm u-flex1" onclick="editShelf('${shelf.id}')"><i class=ji data-i=pencil></i> تعديل</button>
-<button class="btn btn-red btn-sm u-flex1" onclick="deleteShelf('${shelf.id}')"><i class=ji data-i=trash></i> حذف</button>
+<button class="btn btn-sm u-flex1" data-karim-action="editShelf" data-karim-arg0="${shelf.id}"><i class=ji data-i=pencil></i> تعديل</button>
+<button class="btn btn-red btn-sm u-flex1" data-karim-action="deleteShelf" data-karim-arg0="${shelf.id}"><i class=ji data-i=trash></i> حذف</button>
 </div>
 </div>
 `;
@@ -2719,8 +2719,8 @@ showModal(`
 </div>
 <div class="fg"><label>الأيقونة</label><input type="text" id="shelfIcon" value="<i class=ji data-i=archive></i>" maxlength="2"></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="addShelf()"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="addShelf"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }
@@ -2748,8 +2748,8 @@ showModal(`
 </div>
 <div class="fg"><label>الأيقونة</label><input type="text" id="shelfIcon" value="${shelf.icon||'<i class=ji data-i=archive></i>'}" maxlength="2"></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="updateShelf('${id}')"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="updateShelf" data-karim-arg0="${id}"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }
@@ -2794,20 +2794,20 @@ return `
 <div class="weight-value" id="weightValue">${fN(currentWeight)}</div>
 <div class="weight-unit" id="weightUnit">${weightUnit==='kg'?'كجم':weightUnit==='g'?'جرام':'رطل'}</div>
 <div class="weight-controls">
-<button class="weight-btn" onclick="adjustWeight(-1)">- 1</button>
-<button class="weight-btn" onclick="adjustWeight(-0.1)">- 0.1</button>
-<button class="weight-btn active" onclick="resetWeight()"><i class=ji data-i=refresh></i> تصفير</button>
-<button class="weight-btn" onclick="adjustWeight(0.1)">+ 0.1</button>
-<button class="weight-btn" onclick="adjustWeight(1)">+ 1</button>
+<button class="weight-btn" data-karim-action="adjustWeight" data-karim-args="[-1]">- 1</button>
+<button class="weight-btn" data-karim-action="adjustWeight" data-karim-args="[-0.1]">- 0.1</button>
+<button class="weight-btn active" data-karim-action="resetWeight"><i class=ji data-i=refresh></i> تصفير</button>
+<button class="weight-btn" data-karim-action="adjustWeight" data-karim-args="[0.1]">+ 0.1</button>
+<button class="weight-btn" data-karim-action="adjustWeight" data-karim-args="[1]">+ 1</button>
 </div>
 <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-<button class="btn btn-gold" onclick="recordWeight()"><i class=ji data-i=file-text></i> تسجيل القراءة</button>
-<button class="btn btn-blue" onclick="recordWeightToItem()"><i class=ji data-i=package></i> إضافة لصنف</button>
+<button class="btn btn-gold" data-karim-action="recordWeight"><i class=ji data-i=file-text></i> تسجيل القراءة</button>
+<button class="btn btn-blue" data-karim-action="recordWeightToItem"><i class=ji data-i=package></i> إضافة لصنف</button>
 </div>
 <div style="margin-top:15px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-<button class="weight-btn ${weightUnit==='kg'?'active':''}" onclick="setWeightUnit('kg')">كجم</button>
-<button class="weight-btn ${weightUnit==='g'?'active':''}" onclick="setWeightUnit('g')">جرام</button>
-<button class="weight-btn ${weightUnit==='lb'?'active':''}" onclick="setWeightUnit('lb')">رطل</button>
+<button class="weight-btn ${weightUnit==='kg'?'active':''}" data-karim-action="setWeightUnit" data-karim-args="[&quot;kg&quot;]">كجم</button>
+<button class="weight-btn ${weightUnit==='g'?'active':''}" data-karim-action="setWeightUnit" data-karim-args="[&quot;g&quot;]">جرام</button>
+<button class="weight-btn ${weightUnit==='lb'?'active':''}" data-karim-action="setWeightUnit" data-karim-args="[&quot;lb&quot;]">رطل</button>
 </div>
 </div>
 <div class="tbl-wrap">
@@ -2873,8 +2873,8 @@ showModal(`
 <div class="fg"><label>الوزن المقاس</label><input type="number" id="recordedWeight" value="${currentWeight}" step="0.01" readonly style="background:var(--gold-d);color:var(--gold);font-weight:800"></div>
 <div class="fg"><label>ملاحظات</label><textarea id="weightNotes" rows="2"></textarea></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="confirmRecordWeightToItem()"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="confirmRecordWeightToItem"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }

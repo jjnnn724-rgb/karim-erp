@@ -16,7 +16,7 @@ return `
 <div class="report-filter-bar no-print">
 <div class="fg">
 <label>${t('rep.type')}</label>
-<select id="reportType" onchange="generateReport()">
+<select id="reportType" data-karim-action="generateReport" data-karim-event="change">
 <option value="general">${t('rep.general')}</option>
 <option value="department">${t('rep.dept')}</option>
 <option value="kitchen">${t('rep.kitchen')}</option>
@@ -33,13 +33,13 @@ return `
 </div>
 <div class="fg" id="deptSelectGroup" style="display:none">
 <label>اختر القسم</label>
-<select id="reportDeptSelect" onchange="generateReport()">
+<select id="reportDeptSelect" data-karim-action="generateReport" data-karim-event="change">
 ${(STATE.departments||[]).map(d=>`<option value="${d.code}">${esc(d.name)}</option>`).join('')}
 </select>
 </div>
 <div class="fg">
 <label>الفترة الزمنية</label>
-<select id="reportPeriod" onchange="updateDateInputs()">
+<select id="reportPeriod" data-karim-action="updateDateInputs" data-karim-event="change">
 <option value="today">اليوم</option>
 <option value="week">هذا الأسبوع</option>
 <option value="month">هذا الشهر</option>
@@ -56,8 +56,8 @@ ${(STATE.departments||[]).map(d=>`<option value="${d.code}">${esc(d.name)}</opti
 <input type="date" id="reportDateTo" value="${todayStr}">
 </div>
 <div class="fg" style="display:flex;align-items:flex-end;gap:8px">
-<button class="btn btn-gold" onclick="generateReport()"><i class=ji data-i=refresh></i> تحديث</button>
-<button class="btn btn-blue" onclick="printReportOnly()"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn btn-gold" data-karim-action="generateReport"><i class=ji data-i=refresh></i> تحديث</button>
+<button class="btn btn-blue" data-karim-action="printReportOnly"><i class=ji data-i=printer></i> طباعة</button>
 </div>
 </div>
 <div id="reportContent" class="report-content"></div>
@@ -133,7 +133,7 @@ html+=`<div class="report-footer"><div style="margin-bottom:8px"><i class=ji dat
 liveContainer.innerHTML=html;
 }catch(repErr){
 console.error('[generateReport]', repErr);
-try{ liveContainer.innerHTML=`<div class="mcard" style="text-align:center;padding:30px">⚠️ تعذر إنشاء التقرير: ${esc(repErr.message||'خطأ غير متوقع')} <button class="btn btn-gold btn-sm" onclick="generateReport()">إعادة المحاولة</button></div>`; }catch(_){}
+try{ liveContainer.innerHTML=`<div class="mcard" style="text-align:center;padding:30px">⚠️ تعذر إنشاء التقرير: ${esc(repErr.message||'خطأ غير متوقع')} <button class="btn btn-gold btn-sm" data-karim-action="generateReport">إعادة المحاولة</button></div>`; }catch(_){}
 }
 },300);
 }
@@ -597,7 +597,7 @@ tableHtml=`
 <thead><tr><th>رقم الفاتورة</th><th>اليوم</th><th>الكاشير</th><th>الوردية</th><th>الأصناف</th><th>الإجمالي</th><th>الخصم</th><th>الصافي</th><th>المدفوع</th></tr></thead>
 <tbody>
 ${rows.length?rows.map(r=>`<tr>
-<td><a href="#" onclick="ysCashierInvoiceDetail('${esc(r.doc_no)}');return false;" class="mono"><strong>${esc(r.doc_no)}</strong></a></td>
+<td><a href="#" data-karim-action="ysCashierInvoiceDetail" data-karim-arg0="${esc(r.doc_no)}" data-karim-prevent class="mono"><strong>${esc(r.doc_no)}</strong></a></td>
 <td>${esc(r.day||'—')}</td>
 <td>${esc(r.cashier_name||'—')}</td>
 <td>${esc(r.shift??'—')}</td>
@@ -665,7 +665,7 @@ showModal(`<h3><i class=ji data-i=receipt></i> فاتورة كاشير #${esc(do
 <table class="report-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>الضريبة</th></tr></thead><tbody>
 ${lines.length?lines.map(l=>`<tr><td><strong>${esc(l.name||'—')}</strong><br><small class="ltr-inline">${esc(l.code||'')}</small></td><td>${fN(l.qty||0)} ${esc(l.unit||'')}</td><td class="amount-cell">${fC(l.price||0)}</td><td class="amount-cell amount-gold">${fC(l.total||0)}</td><td class="amount-cell c-orange">${fC(l.vat||0)}</td></tr>`).join(''):'<tr><td colspan="5" class="u-empty-sm">بلا أصناف مسجلة</td></tr>'}
 </tbody></table>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
 }catch(e){ toast(e.message||'تعذر جلب تفاصيل الفاتورة','error'); }
 }
 function printReportOnly(){

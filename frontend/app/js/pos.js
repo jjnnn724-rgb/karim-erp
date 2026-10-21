@@ -645,7 +645,7 @@ function renderCart() {
                     <button class="qty-btn" onclick="changeQty(${index}, -1)">−</button>
                     <span class="cart-item-qty">${fmtQty(item.quantity)}</span>
                     <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
-                    <button class="qty-btn remove" onclick="removeFromCart(${index})"><i class=ji data-i=x></i></button>
+                    <button class="qty-btn remove" data-karim-action="removeFromCart" data-karim-arg0="${index}"><i class=ji data-i=x></i></button>
                 </div>
             </div>
         `).join('');
@@ -829,8 +829,8 @@ function renderBuffetHeldTab() {
             <div class="order-items">${escapeHtml(order.items_preview || 'بدون تفاصيل')}</div>
             <div class="order-total">${fmtMoney(order.total_amount)} ${CURRENCY}</div>
             <div class="held-order-actions">
-                <button class="modal-btn primary modal-btn-block" onclick="buffetRecallHeld('${order.id}')">استرجاع للسلة</button>
-                <button class="modal-btn danger modal-btn-block" onclick="buffetDeleteHeld('${order.id}')">حذف</button>
+                <button class="modal-btn primary modal-btn-block" data-karim-action="buffetRecallHeld" data-karim-arg0="${order.id}">استرجاع للسلة</button>
+                <button class="modal-btn danger modal-btn-block" data-karim-action="buffetDeleteHeld" data-karim-arg0="${order.id}">حذف</button>
             </div>
         </div>
     `).join('');
@@ -1148,8 +1148,8 @@ function renderHeldOrders() {
             <div class="order-items">${escapeHtml(order.items_preview || 'بدون تفاصيل')}</div>
             <div class="order-total">${fmtMoney(order.total_amount)} ${CURRENCY}</div>
             <div class="held-order-actions">
-                <button class="modal-btn primary modal-btn-block" onclick="recallHeldOrder('${order.id}')">استرجاع</button>
-                <button class="modal-btn danger modal-btn-block" onclick="deleteHeldOrder('${order.id}')">حذف</button>
+                <button class="modal-btn primary modal-btn-block" data-karim-action="recallHeldOrder" data-karim-arg0="${order.id}">استرجاع</button>
+                <button class="modal-btn danger modal-btn-block" data-karim-action="deleteHeldOrder" data-karim-arg0="${order.id}">حذف</button>
             </div>
         </div>
     `).join('');
@@ -1296,7 +1296,7 @@ function renderRecipeIngredients() {
             <div><div class="ingredient-name">${escapeHtml(item.inventory_name || item.name || 'مكون')}</div><div class="ingredient-meta">المتاح: ${fmtQty(item.available_qty || 0)} ${escapeHtml(item.inventory_unit || item.unit || '')}</div></div>
             <input type="number" class="recipe-qty" min="0.0001" step="0.0001" value="${Number(item.quantity_per_unit || 0)}" aria-label="كمية المكون">
             <span class="ingredient-meta">${escapeHtml(item.unit || item.inventory_unit || 'وحدة')}</span>
-            <button type="button" class="recipe-remove-btn" onclick="removeRecipeIngredient(${index})" aria-label="حذف المكون"><i class=ji data-i=x></i></button>
+            <button type="button" class="recipe-remove-btn" data-karim-action="removeRecipeIngredient" data-karim-arg0="${index}" aria-label="حذف المكون"><i class=ji data-i=x></i></button>
         </div>
     `).join('');
     $$('.recipe-qty').forEach((input) => input.addEventListener('change', (event) => {
@@ -1578,7 +1578,7 @@ function kotReceiptHtml(result) {
     const depts = [...new Set(jobs.map((j) => j.department_name))].join('، ');
     return `
         <div class="row"><span>تذاكر المطبخ:</span><strong><i class=ji data-i=check></i> ${jobs.length} — ${escapeHtml(depts)}</strong></div>
-        <div class="row"><span></span><strong><a href="#" onclick="openKotHtml('${String(result.order_id)}');return false" style="color:#d4a843;text-decoration:underline">فتح تذاكر المطبخ للطباعة</a></strong></div>`;
+        <div class="row"><span></span><strong><a href="#" data-karim-action="openKotHtml" data-karim-arg0="${String(result.order_id)}" data-karim-prevent style="color:#d4a843;text-decoration:underline">فتح تذاكر المطبخ للطباعة</a></strong></div>`;
 }
 async function openKotHtml(orderId) {
     try {

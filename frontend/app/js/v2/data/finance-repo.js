@@ -40,10 +40,14 @@ import { apiFetch } from '../../core/api.js?v=4.9.181';
 /** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;
 
+/** Hard ceiling for registers whose monthly totals must be complete. */
+export const WALK_ALL_PAGES = 200;
+
 /** Bounded entity walk, newest first; finance registers can be month-scoped server-side. */
 export async function fetchEntityNewest(entity, options = {}) {
     const rows = [];
-    for (let page = 1; page <= WALK_PAGES; page += 1) {
+    const maxPages = Math.max(1, Math.min(Number(options.maxPages) || WALK_PAGES, WALK_ALL_PAGES));
+    for (let page = 1; page <= maxPages; page += 1) {
         const params = new URLSearchParams({
             page: String(page), limit: '1000', sort: 'id', order: 'desc',
         });
@@ -58,8 +62,8 @@ export async function fetchEntityNewest(entity, options = {}) {
     return rows;
 }
 
-export const fetchRevenues = () => fetchEntityNewest('revenues', { currentMonth: true });
-export const fetchExpenses = () => fetchEntityNewest('expenses', { currentMonth: true });
+export const fetchRevenues = () => fetchEntityNewest('revenues', { currentMonth: true, maxPages: WALK_ALL_PAGES });
+export const fetchExpenses = () => fetchEntityNewest('expenses', { currentMonth: true, maxPages: WALK_ALL_PAGES });
 export const fetchDepartments = () => fetchEntityNewest('departments');
 
 /** Server-side aggregation for the cost-analysis screen; no transaction rows cross the API. */

@@ -47,8 +47,8 @@ async function renderVegRequestsPage() {
         <div id="vegStats" class="veg-stats">…</div>
       </div>
       <div class="veg-tabs">
-        ${vegCanCreate() ? `<button type="button" class="veg-tab" data-t="new" onclick="vegSwitchTab('new')"><i class=ji data-i=chef-hat></i> طلب جديد</button>` : ''}
-        <button type="button" class="veg-tab" data-t="log" onclick="vegSwitchTab('log')"><i class=ji data-i=clipboard-list></i> سجل الطلبات</button>
+        ${vegCanCreate() ? `<button type="button" class="veg-tab" data-t="new" data-karim-action="vegSwitchTab" data-karim-args="[&quot;new&quot;]"><i class=ji data-i=chef-hat></i> طلب جديد</button>` : ''}
+        <button type="button" class="veg-tab" data-t="log" data-karim-action="vegSwitchTab" data-karim-args="[&quot;log&quot;]"><i class=ji data-i=clipboard-list></i> سجل الطلبات</button>
       </div>
       <div id="vegNewTab"></div>
       <div id="vegLogTab"></div>
@@ -160,16 +160,16 @@ function vegRenderNewTab() {
       <div id="vegCatalog">${catsHtml}</div>
       <div class="veg-cat-title"><i class=ji data-i=plus></i> صنف غير موجود في القايمة</div>
       <div id="vegCustomRows"></div>
-      <button type="button" class="btn btn-blue btn-sm" onclick="vegAddCustomRow()"><i class=ji data-i=plus></i> إضافة صنف حر</button>
+      <button type="button" class="btn btn-blue btn-sm" data-karim-action="vegAddCustomRow"><i class=ji data-i=plus></i> إضافة صنف حر</button>
     </div>
     <div class="veg-summary">
       <div class="vs-count">الأصناف: <span id="vegSelCount" style="color:var(--gold)">0</span></div>
       <div class="veg-priority">
-        <button type="button" id="vegPrNormal" class="on normal" onclick="vegSetPriority('normal')">عادي</button>
-        <button type="button" id="vegPrUrgent" onclick="vegSetPriority('urgent')">🚨 عاجل</button>
+        <button type="button" id="vegPrNormal" class="on normal" data-karim-action="vegSetPriority" data-karim-args="[&quot;normal&quot;]">عادي</button>
+        <button type="button" id="vegPrUrgent" data-karim-action="vegSetPriority" data-karim-args="[&quot;urgent&quot;]">🚨 عاجل</button>
       </div>
       <input type="text" id="vegNotes" placeholder="ملاحظات للمخازن (اختياري) — مثل: التوريد قبل ٩ صباحًا" style="flex:1;min-width:180px;padding:9px 12px;border-radius:10px">
-      <button type="button" class="btn btn-gold" style="font-size:15px;padding:11px 26px" onclick="vegSendRequest()"><i class=ji data-i=send></i> إرسال الطلب للمخازن</button>
+      <button type="button" class="btn btn-gold" style="font-size:15px;padding:11px 26px" data-karim-action="vegSendRequest"><i class=ji data-i=send></i> إرسال الطلب للمخازن</button>
     </div>`;
     box.dataset.built = '1';
     vegUpdateCount();
@@ -277,9 +277,9 @@ function vegShowSuccess(req) {
       <h3 style="margin:6px 0">تم إرسال الطلب للمخازن</h3>
       <div style="font-size:15px">رقم الطلب: <b style="color:var(--gold);font-size:19px">${esc(req.request_no)}</b> — ${esc(String(req.items_count))} صنف${req.priority === 'urgent' ? ' — <span style="color:var(--red);font-weight:800">عاجل 🚨</span>' : ''}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
-        <button type="button" class="btn btn-gold" onclick="vegPrint(${Number(req.id)})"><i class=ji data-i=printer></i> طباعة الفورمة</button>
-        <button type="button" class="btn btn-blue" onclick="vegResetForm()"><i class=ji data-i=plus></i> طلب جديد</button>
-        <button type="button" class="btn btn-sm" onclick="vegSwitchTab('log')"><i class=ji data-i=clipboard-list></i> سجل الطلبات</button>
+        <button type="button" class="btn btn-gold" data-karim-action="vegPrint" data-karim-arg0="${Number(req.id)}"><i class=ji data-i=printer></i> طباعة الفورمة</button>
+        <button type="button" class="btn btn-blue" data-karim-action="vegResetForm"><i class=ji data-i=plus></i> طلب جديد</button>
+        <button type="button" class="btn btn-sm" data-karim-action="vegSwitchTab" data-karim-args="[&quot;log&quot;]"><i class=ji data-i=clipboard-list></i> سجل الطلبات</button>
       </div>
     </div>`;
     const newTab = document.getElementById('vegNewTab');
@@ -311,9 +311,9 @@ async function loadVegRequestsLog() {
         box.innerHTML = `
         <div class="veg-card">
           <div class="veg-search">
-            <button type="button" class="btn btn-blue btn-sm" onclick="loadVegRequestsLog()"><i class=ji data-i=refresh></i> تحديث</button>
+            <button type="button" class="btn btn-blue btn-sm" data-karim-action="loadVegRequestsLog"><i class=ji data-i=refresh></i> تحديث</button>
             ${[['', 'الكل'], ['pending', 'قيد الانتظار'], ['received', 'تم الاستلام'], ['cancelled', 'ملغي']].map(([v, l]) =>
-                `<button type="button" class="veg-tab ${_vegFilter === v ? 'active' : ''}" style="padding:6px 16px" onclick="vegSetFilter('${v}')">${l}</button>`).join('')}
+                `<button type="button" class="veg-tab ${_vegFilter === v ? 'active' : ''}" style="padding:6px 16px" data-karim-action="vegSetFilter" data-karim-arg0="${v}">${l}</button>`).join('')}
           </div>
           <div id="vegLogList">${requests.length ? requests.map(vegRequestCard).join('') : '<div class="mcard u-empty">لا توجد طلبات — أول طلب من المطبخ هيظهر هنا</div>'}</div>
         </div>`;
@@ -353,11 +353,11 @@ function vegRequestCard(r) {
       ${r.status === 'priced' ? `<div style="font-size:14px;margin-top:8px;color:var(--text)"><b style="color:var(--gold);font-size:17px">${esc(String(r.total))} ر.س</b> — محمّلة مصروف على قسم المطبخ (مصروف #${esc(String(r.expense_id || ''))})${r.priced_by_name ? ` — سعّرها ${esc(r.priced_by_name)}` : ''}</div>` : ''}
       ${r.status === 'cancelled' && r.cancelled_by_name ? `<div style="font-size:13px;color:var(--text2);margin-top:6px">ألغاها ${esc(r.cancelled_by_name)}</div>` : ''}
       <div class="veg-actions">
-        <button type="button" class="btn btn-gold btn-sm" onclick="vegPrint(${Number(r.id)})"><i class=ji data-i=printer></i> طباعة</button>
-        ${r.status === 'pending' && vegCanReceive() ? `<button type="button" class="btn btn-blue btn-sm" onclick="vegToggleReceive(${Number(r.id)})"><i class=ji data-i=check></i> استلام / إرجاع</button>` : ''}
-        ${r.status === 'received' && vegCanPrice() ? `<button type="button" class="btn btn-blue btn-sm" onclick="vegTogglePricing(${Number(r.id)})">💰 سعرها</button>` : ''}
-        ${vegCanEdit(r) ? `<button type="button" class="btn btn-blue btn-sm" onclick="vegEditItems(${Number(r.id)})"><i class=ji data-i=pencil></i> تعديل الكميات</button>` : ''}
-        ${canCancel ? `<button type="button" class="btn btn-red btn-sm" onclick="vegCancel(${Number(r.id)})">✖ إلغاء</button>` : ''}
+        <button type="button" class="btn btn-gold btn-sm" data-karim-action="vegPrint" data-karim-arg0="${Number(r.id)}"><i class=ji data-i=printer></i> طباعة</button>
+        ${r.status === 'pending' && vegCanReceive() ? `<button type="button" class="btn btn-blue btn-sm" data-karim-action="vegToggleReceive" data-karim-arg0="${Number(r.id)}"><i class=ji data-i=check></i> استلام / إرجاع</button>` : ''}
+        ${r.status === 'received' && vegCanPrice() ? `<button type="button" class="btn btn-blue btn-sm" data-karim-action="vegTogglePricing" data-karim-arg0="${Number(r.id)}">💰 سعرها</button>` : ''}
+        ${vegCanEdit(r) ? `<button type="button" class="btn btn-blue btn-sm" data-karim-action="vegEditItems" data-karim-arg0="${Number(r.id)}"><i class=ji data-i=pencil></i> تعديل الكميات</button>` : ''}
+        ${canCancel ? `<button type="button" class="btn btn-red btn-sm" data-karim-action="vegCancel" data-karim-arg0="${Number(r.id)}">✖ إلغاء</button>` : ''}
         ${r.print_count ? `<small style="align-self:center;color:var(--text2)">طُبع ${esc(String(r.print_count))} مرة</small>` : ''}
       </div>
       ${r.status === 'pending' && vegCanReceive() ? vegReceivePanel(r, items) : ''}
@@ -382,7 +382,7 @@ function vegReceivePanel(r, items) {
       ${rows}
       <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
         <small class="text-muted">المرفوض لا يرجع للمخزن للتسعير ولا يُحمَّل مصروفًا</small>
-        <button type="button" class="btn btn-gold btn-sm" onclick="vegSubmitReceive(${Number(r.id)})">تأكيد الاستلام</button>
+        <button type="button" class="btn btn-gold btn-sm" data-karim-action="vegSubmitReceive" data-karim-arg0="${Number(r.id)}">تأكيد الاستلام</button>
       </div>
     </div>`;
 }
@@ -440,7 +440,7 @@ function vegPricingPanel(r, items) {
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <span style="flex:1;min-width:120px">${esc(it.name)} <small class="text-muted">(${esc(String(it.qty))} ${esc(it.unit)})</small>${it.spoiledQty ? ` <span class="badge bdg-red" title="كمية تالفة لا تُحتسب">تالف: ${esc(String(it.spoiledQty))}</span>` : ''}</span>
         <input type="number" min="0" step="0.01" placeholder="سعر الوحدة" style="width:110px;padding:6px 8px;border-radius:8px"
-               data-vp-price="${Number(r.id)}" data-vp-name="${esc(it.name)}" data-vp-qty="${esc(String(it.qty))}" oninput="vegPriceCalc(${Number(r.id)})">
+               data-vp-price="${Number(r.id)}" data-vp-name="${esc(it.name)}" data-vp-qty="${esc(String(it.qty))}" data-karim-action="vegPriceCalc" data-karim-event="input" data-karim-arg0="${Number(r.id)}">
         <span style="width:80px;text-align:left" id="vpLine_${Number(r.id)}_${esc(it.name).replace(/"/g, '')}">—</span>
       </div>`).join('');
     const hasAccepted = priced.length > 0;
@@ -452,7 +452,7 @@ function vegPricingPanel(r, items) {
       <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
         <b>الإجمالي (المقبول فقط): <span id="vpTotal_${Number(r.id)}">0.00</span> ر.س</b>
         <small class="text-muted">يُحمّل مصروف على قسم المطبخ تلقائياً عند التأكيد</small>
-        ${hasAccepted ? `<button type="button" class="btn btn-gold btn-sm" onclick="vegSubmitPrices(${Number(r.id)})">تأكيد التسعير</button>` : '<small class="text-muted">لا صنف مقبول — التسعير غير متاح</small>'}
+        ${hasAccepted ? `<button type="button" class="btn btn-gold btn-sm" data-karim-action="vegSubmitPrices" data-karim-arg0="${Number(r.id)}">تأكيد التسعير</button>` : '<small class="text-muted">لا صنف مقبول — التسعير غير متاح</small>'}
       </div>
     </div>`;
 }
@@ -517,7 +517,7 @@ function vegEditItems(id) {
     showModal('<h3><i class=ji data-i=pencil></i> تعديل كميات الطلب ' + esc(r.request_no || ('#' + r.id)) + '</h3>'
         + '<div class="text-muted" style="margin-bottom:10px">التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك.</div>'
         + items.map((it, i) => '<div class="fr" style="align-items:end;gap:8px"><div class="fg" style="flex:2"><label>' + esc(it.name) + ' (' + esc(it.unit || '') + ')</label><input type="number" min="0.001" step="0.001" id="vegEditQty_' + i + '" value="' + Number(it.qty || 0) + '"></div></div>').join('')
-        + '<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="vegSubmitItemsEdit(' + Number(id) + ')"><i class=ji data-i=save></i> حفظ الكميات</button></div>');
+        + '<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" onclick="vegSubmitItemsEdit(' + Number(id) + ')"><i class=ji data-i=save></i> حفظ الكميات</button></div>');
 }
 async function vegSubmitItemsEdit(id) {
     const list = (window._vegLog || []);

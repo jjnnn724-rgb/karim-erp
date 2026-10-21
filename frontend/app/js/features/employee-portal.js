@@ -58,7 +58,7 @@ ${STATE.employees.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}
 </div>
 <div id="zkMyPunches" style="margin-top:24px"></div>
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=timer></i> سجل الحضور والانصراف</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" onclick="printEmployeeAttendanceDay('${emp.id}')"><i class=ji data-i=printer></i> اليوم</button><button class="btn btn-blue btn-sm" onclick="printEmployeeAttendanceMonth('${emp.id}')"><i class=ji data-i=calendar></i> الشهر كامل</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=timer></i> سجل الحضور والانصراف</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" data-karim-action="printEmployeeAttendanceDay" data-karim-arg0="${emp.id}"><i class=ji data-i=printer></i> اليوم</button><button class="btn btn-blue btn-sm" data-karim-action="printEmployeeAttendanceMonth" data-karim-arg0="${emp.id}"><i class=ji data-i=calendar></i> الشهر كامل</button></div></div>
 <div class="tbl-scroll">
 <table>
 <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>ساعات العمل</th><th>المصدر</th><th>الحالة</th></tr></thead>

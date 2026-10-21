@@ -16,7 +16,8 @@ window.addEventListener('unhandledrejection', function (e) {
 });
 
 // ─── عين إظهار/إخفاء كلمة المرور (صفحة الدخول) ───
-function toggleLoginPassword(btn) {
+function toggleLoginPassword() {
+    const btn = this;
     const inp = document.getElementById('lp');
     if (!inp) {return;}
     const show = inp.type === 'password';

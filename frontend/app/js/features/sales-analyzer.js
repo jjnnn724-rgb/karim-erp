@@ -43,8 +43,8 @@ function saShell() {
     </div>
     <!-- تبويبات -->
     <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:2px solid var(--border,#ddd);padding-bottom:0">
-      <button id="saTabAnalysis" class="btn ${SA.tab === 'analysis' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" onclick="saSwitchTab('analysis')"><i class=ji data-i=bar-chart></i> تحليل مجمّع</button>
-      <button id="saTabOrders" class="btn ${SA.tab === 'orders' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" onclick="saSwitchTab('orders')"><i class=ji data-i=receipt></i> الأوردرات</button>
+      <button id="saTabAnalysis" class="btn ${SA.tab === 'analysis' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" data-karim-action="saSwitchTab" data-karim-args="[&quot;analysis&quot;]"><i class=ji data-i=bar-chart></i> تحليل مجمّع</button>
+      <button id="saTabOrders" class="btn ${SA.tab === 'orders' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" data-karim-action="saSwitchTab" data-karim-args="[&quot;orders&quot;]"><i class=ji data-i=receipt></i> الأوردرات</button>
     </div>
     <!-- شريط الفلاتر -->
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px;background:var(--card,#fff);padding:12px;border-radius:10px;border:1px solid var(--border,#e5e7eb)">
@@ -57,9 +57,9 @@ function saShell() {
         <option value="cashier" ${SA.group === 'cashier' ? 'selected' : ''}>بالكاشير</option>
         <option value="day" ${SA.group === 'day' ? 'selected' : ''}>باليوم</option>
       </select></label>
-      <button class="btn btn-primary" onclick="saApply()"><i class=ji data-i=search></i> تحليل</button>
-      <button class="btn btn-green" onclick="saPrintReport()"><i class=ji data-i=printer></i> طباعة</button>
-      <button class="btn" onclick="saExportExcel()"><i class=ji data-i=inbox></i> Excel</button>
+      <button class="btn btn-primary" data-karim-action="saApply"><i class=ji data-i=search></i> تحليل</button>
+      <button class="btn btn-green" data-karim-action="saPrintReport"><i class=ji data-i=printer></i> طباعة</button>
+      <button class="btn" data-karim-action="saExportExcel"><i class=ji data-i=inbox></i> Excel</button>
     </div>
     <div id="saCards" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
     <div id="saBody"><div class="u-empty"><div class="spinner"></div> جارٍ التحميل…</div></div>`;
@@ -170,7 +170,7 @@ function saRenderOrders() {
     const pages = Math.max(1, Math.ceil(SA.ordersTotal / SA.ordersLimit));
     const page = Math.floor(SA.ordersOffset / SA.ordersLimit) + 1;
     const rowsHtml = SA.orders.map((o) => `
-      <tr style="cursor:pointer" onclick="saOpenOrder('${saEscape(o.doc_no)}')">
+      <tr style="cursor:pointer" data-karim-action="saOpenOrder" data-karim-arg0="${saEscape(o.doc_no)}">
         <td class="fw-bold" dir="ltr">${saEscape(o.doc_no)}</td>
         <td><span class="badge bdg-blue">${saEscape(o.cashier_name || o.cashier_no)}</span></td>
         <td dir="ltr">${saEscape(String(o.doc_time || '').slice(0, 5))}</td>
@@ -191,8 +191,8 @@ function saRenderOrders() {
         </table></div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:8px 0">
           <span class="text-muted">صفحة ${saNum(page)} من ${saNum(pages)}</span>
-          <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="saOrdersPage(-1)">السابق</button>
-          <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} onclick="saOrdersPage(1)">التالي</button>
+          <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} data-karim-action="saOrdersPage" data-karim-args="[-1]">السابق</button>
+          <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} data-karim-action="saOrdersPage" data-karim-args="[1]">التالي</button>
           <span class="text-muted" style="margin-inline-start:auto;font-size:12px">اضغط على أي أوردر لعرض تفاصيله</span>
         </div>
       </div>
@@ -216,7 +216,7 @@ async function saOpenOrder(docNo) {
           <div class="tbl-hd">
             <h3><i class=ji data-i=file-text></i> فاتورة ${saEscape(o.doc_no)} — ${saEscape(o.cashier_name || 'كاشير ' + o.cashier_no)} — ${saEscape(o.doc_date)}</h3>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-green" onclick="saPrintOrder('${saEscape(o.doc_no)}')"><i class=ji data-i=printer></i> طباعة الأوردر</button>
+              <button class="btn btn-sm btn-green" data-karim-action="saPrintOrder" data-karim-arg0="${saEscape(o.doc_no)}"><i class=ji data-i=printer></i> طباعة الأوردر</button>
               <button class="btn btn-sm" onclick="document.getElementById('saOrderDetail').innerHTML=''">إغلاق</button>
             </div>
           </div>

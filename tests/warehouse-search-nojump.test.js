@@ -170,13 +170,13 @@ describe('طلب المالك 2026-10-05: «اجعل البحث في أول صف
         const m = build(ctx);
         m.WHINV.results = ITEMS; m.WHINV.loading = false; m.WHINV.error = '';
         m.WHINV.q = 'أرز';
-        expect(m.renderWarehouse()).toContain('whInvClearSearch()');
+        expect(m.renderWarehouse()).toContain('data-karim-action="whInvClearSearch"');
         ctx.calls.renderPage = 0;
         m.whInvClearSearch();
         expect(m.WHINV.q).toBe('');
         expect(m.WHINV.page).toBe(1);
         expect(ctx.calls.renderPage).toBe(1);
         m.WHINV.q = '';
-        expect(m.renderWarehouse()).not.toContain('whInvClearSearch()');
+        expect(m.renderWarehouse()).not.toContain('data-karim-action="whInvClearSearch"');
     });
 });

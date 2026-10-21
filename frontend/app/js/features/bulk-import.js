@@ -126,13 +126,13 @@ emp + رقم
 </div>
 </div>
 <div class="bulk-action-bar" id="bulkActionBar">
-<button class="btn btn-gold" id="bulkNextBtn" onclick="bulkNextStep()"><i class=ji data-i=zap></i> توليد المعاينة</button>
-<button class="btn btn-red" id="bulkClearBtn" onclick="bulkClearAll()" style="display:none"><i class=ji data-i=trash></i> مسح الكل</button>
+<button class="btn btn-gold" id="bulkNextBtn" data-karim-action="bulkNextStep"><i class=ji data-i=zap></i> توليد المعاينة</button>
+<button class="btn btn-red" id="bulkClearBtn" data-karim-action="bulkClearAll" style="display:none"><i class=ji data-i=trash></i> مسح الكل</button>
 </div>
 </div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" id="bulkConfirmBtn" style="display:none" onclick="bulkConfirmImport()"><i class=ji data-i=circle-check></i> إضافة الكل للنظام</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" id="bulkConfirmBtn" style="display:none" data-karim-action="bulkConfirmImport"><i class=ji data-i=circle-check></i> إضافة الكل للنظام</button>
 </div>
 `,'modal-wide');
 // Setup drag & drop
@@ -294,7 +294,7 @@ ${BULK_IMPORT_ROWS.map((u,i) => `
 <td><span class="mono" style="color:var(--green);font-size:13px">${esc(u.password)}</span></td>
 <td><span class="badge bdg-green"><i class=ji data-i=user-check></i> ${esc(u.fp || '—')}</span></td>
 <td><span class="badge bdg-purple">${ROLES[u.role]?.icon||''} ${ROLES[u.role]?.name||u.role}</span></td>
-<td><button class="btn btn-red btn-sm" onclick="bulkDeleteRow(${i})" title="حذف"><i class=ji data-i=trash></i></button></td>
+<td><button class="btn btn-red btn-sm" data-karim-action="bulkDeleteRow" data-karim-arg0="${i}" title="حذف"><i class=ji data-i=trash></i></button></td>
 </tr>
 `).join('')}
 </tbody>
@@ -438,13 +438,13 @@ ${BULK_IMPORT_ROWS.map((u,i) => `
 </table>
 </div>
 <div class="modal-footer" style="flex-wrap:wrap">
-<button class="btn btn-blue btn-sm" onclick="bulkExportExcel()"><i class=ji data-i=inbox></i> تحميل Excel</button>
-<button class="btn btn-sm" onclick="bulkExportCSV()"><i class=ji data-i=file-text></i> تحميل CSV</button>
-<button class="btn btn-sm" onclick="bulkExportJSON()">{ } JSON</button>
-<button class="btn btn-sm" onclick="bulkCopyAllPasswords()"><i class=ji data-i=clipboard-list></i> نسخ كل الباسوردات</button>
-<button class="btn btn-sm" onclick="bulkPrint()"><i class=ji data-i=printer></i> طباعة جدول</button>
-<button class="btn btn-green btn-sm" onclick="bulkPrintSlips()"><i class=ji data-i=ticket></i> طباعة قصاصات</button>
-<button class="btn btn-gold" onclick="closeModal()"><i class=ji data-i=circle-check></i> تم</button>
+<button class="btn btn-blue btn-sm" data-karim-action="bulkExportExcel"><i class=ji data-i=inbox></i> تحميل Excel</button>
+<button class="btn btn-sm" data-karim-action="bulkExportCSV"><i class=ji data-i=file-text></i> تحميل CSV</button>
+<button class="btn btn-sm" data-karim-action="bulkExportJSON">{ } JSON</button>
+<button class="btn btn-sm" data-karim-action="bulkCopyAllPasswords"><i class=ji data-i=clipboard-list></i> نسخ كل الباسوردات</button>
+<button class="btn btn-sm" data-karim-action="bulkPrint"><i class=ji data-i=printer></i> طباعة جدول</button>
+<button class="btn btn-green btn-sm" data-karim-action="bulkPrintSlips"><i class=ji data-i=ticket></i> طباعة قصاصات</button>
+<button class="btn btn-gold" data-karim-action="closeModal"><i class=ji data-i=circle-check></i> تم</button>
 </div>
 `,'modal-wide');
 }, 300);

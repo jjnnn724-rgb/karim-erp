@@ -61,7 +61,7 @@ const canWrite=['admin','manager'].includes(STATE.currentUser?.role);
 const tabs=[['overview','الحالة والربط'],['inbox','الوارد'],['outbox','الصادر'],['campaigns','الحملات'],['rules','قواعد الرد'],['managers','أرقام الإدارة'],['logs','السجل'],['query','استعلامات']];
 body.innerHTML=`
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="waTabs">
-${tabs.map(([k,l])=>`<button class="btn btn-sm ${WASTATE.tab===k?'btn-gold':''}" onclick="waSetTab('${k}')">${l}</button>`).join('')}
+${tabs.map(([k,l])=>`<button class="btn btn-sm ${WASTATE.tab===k?'btn-gold':''}" data-karim-action="waSetTab" data-karim-arg0="${k}">${l}</button>`).join('')}
 </div>
 <div id="waBody"></div>`;
 const el=document.getElementById('waBody');
@@ -81,15 +81,15 @@ el.innerHTML=`
 <div id="waStateBox">${waStateHtml()}</div>
 <div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=zap></i> التحكم</h3></div>
 <div style="padding:16px 20px;display:flex;gap:10px;flex-wrap:wrap">
-${canWrite?`<button class="btn btn-green btn-sm" onclick="waDo('start')"><i class=ji data-i=play></i> بدء</button>
-<button class="btn btn-sm" onclick="waDo('stop')"><i class=ji data-i=pause></i> إيقاف</button>
-<button class="btn btn-blue btn-sm" onclick="waPairModal()"><i class=ji data-i=key></i> ربط برقم الهاتف</button>
-<button class="btn btn-red btn-sm" onclick="waLogoutModal()"><i class=ji data-i=log-out></i> خروج ومسح الجلسة</button>`:''}
-<button class="btn btn-blue btn-sm" onclick="waRefreshStatus()"><i class=ji data-i=refresh></i> تحديث الحالة</button>
+${canWrite?`<button class="btn btn-green btn-sm" data-karim-action="waDo" data-karim-args="[&quot;start&quot;]"><i class=ji data-i=play></i> بدء</button>
+<button class="btn btn-sm" data-karim-action="waDo" data-karim-args="[&quot;stop&quot;]"><i class=ji data-i=pause></i> إيقاف</button>
+<button class="btn btn-blue btn-sm" data-karim-action="waPairModal"><i class=ji data-i=key></i> ربط برقم الهاتف</button>
+<button class="btn btn-red btn-sm" data-karim-action="waLogoutModal"><i class=ji data-i=log-out></i> خروج ومسح الجلسة</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="waRefreshStatus"><i class=ji data-i=refresh></i> تحديث الحالة</button>
 </div></div>
-${STATE.currentUser?.role==='admin'?`<div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=clock></i> التقارير المجدولة والتنبيهات</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="waAutoTest()"><i class=ji data-i=send></i> تجربة إرسال الآن</button></div></div>
+${STATE.currentUser?.role==='admin'?`<div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=clock></i> التقارير المجدولة والتنبيهات</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" data-karim-action="waAutoTest"><i class=ji data-i=send></i> تجربة إرسال الآن</button></div></div>
 <div style="padding:16px 20px" id="waAutoBox"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>`:''}
-<div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=camera></i> رمز الربط QR</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="waQrPoll(true)"><i class=ji data-i=refresh></i> جلب الرمز</button> <button class="btn btn-gold btn-sm" onclick="waQrRefresh()"><i class=ji data-i=sync></i> رمز جديد</button></div></div>
+<div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=camera></i> رمز الربط QR</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="waQrPoll" data-karim-args="[true]"><i class=ji data-i=refresh></i> جلب الرمز</button> <button class="btn btn-gold btn-sm" data-karim-action="waQrRefresh"><i class=ji data-i=sync></i> رمز جديد</button></div></div>
 <div style="padding:20px;text-align:center" id="waQrBox"><span class="text-muted">دوس جلب الرمز ثم امسحه من واتساب ← الأجهزة المرتبطة ← ربط جهاز</span></div></div>`;
 if(c.state==='QR_REQUIRED'||c.qrAvailable){setTimeout(()=>waQrPoll(true),500);}
 if(STATE.currentUser?.role==='admin') {waAutoLoad();}
@@ -141,7 +141,7 @@ showModal(`<h3><i class=ji data-i=key></i> ربط برقم الهاتف</h3>
 <div class="mcard" style="margin-bottom:12px"><small class="text-muted">أدخل رقم الهاتف بالصيغة الدولية بدون + (مثال: 9665XXXXXXXX) وسيظهر رمز من 8 خانات تدخله في واتساب.</small></div>
 <div class="fg"><label>رقم الهاتف</label><input id="waPairPhone" dir="ltr" placeholder="9665XXXXXXXX"></div>
 <div id="waPairOut" style="margin-top:10px"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="waPairGo()">طلب الرمز</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="waPairGo">طلب الرمز</button></div>`);
 }
 async function waPairGo(){
 const phone=document.getElementById('waPairPhone')?.value.trim()||'';
@@ -155,7 +155,7 @@ function waLogoutModal(){
 showModal(`<h3 class="u-red"><i class=ji data-i=alert-triangle></i> خروج ومسح الجلسة</h3>
 <div class="mcard" style="margin-bottom:12px;line-height:2">سيتم تسجيل خروج الحساب ومسح بيانات الربط من السيرفر. للربط مجددًا ستحتاج QR جديد.<br><small class="text-muted">سجل الرسائل والقواعد في القاعدة محفوظ ولا يُمس.</small></div>
 <div class="fg"><label>اكتب LOGOUT للتأكيد</label><input id="waLogoutConfirm" dir="ltr" placeholder="LOGOUT"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" onclick="waLogoutGo()">تنفيذ الخروج</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="waLogoutGo">تنفيذ الخروج</button></div>`);
 }
 async function waLogoutGo(){
 if(document.getElementById('waLogoutConfirm')?.value.trim()!=='LOGOUT'){ toast('اكتب LOGOUT','error'); return; }
@@ -180,7 +180,7 @@ box.innerHTML=`<div class="fr">
 <div class="fg">${chk('alertDocs','تنبيه الوثائق المنتهية/القريبة')}</div>
 <div class="fg">${chk('alertShifts','تنبيه ورديات مفتوحة من أمس')}</div>
 </div>
-<div style="margin-top:10px"><button class="btn btn-gold btn-sm" onclick="waAutoSave()"><i class=ji data-i=save></i> حفظ الإعدادات</button></div>`;
+<div style="margin-top:10px"><button class="btn btn-gold btn-sm" data-karim-action="waAutoSave"><i class=ji data-i=save></i> حفظ الإعدادات</button></div>`;
 }catch(e){ box.innerHTML=`<div class="u-empty-sm">${esc(e.message||'تعذر الجلب')}</div>`; }
 }
 async function waAutoSave(){
@@ -203,9 +203,9 @@ const users=(STATE.users||[]).filter(u=>['admin','manager','auditor'].includes(u
 const rows=(d.rows||[]).map(m=>{
 const jid=String(m.remote_jid||'');
 const userOptions=users.map(u=>`<option value="${u.id}"${String(m.assigned_to||'')===String(u.id)?' selected':''}>${esc(u.name||u.username||u.id)}</option>`).join('');
-return `<tr><td class="text-muted">${esc(String(m.created_at||'').replace('T',' ').slice(0,19))}</td><td><code dir="ltr">${esc(jid)}</code></td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${esc(m.body||'—')}</td><td>${esc(m.status)}</td><td><select id="waChatStatus_${m.id}" class="inp" style="min-width:100px"><option value="open"${m.chat_status==='open'||!m.chat_status?' selected':''}>مفتوحة</option><option value="pending"${m.chat_status==='pending'?' selected':''}>معلقة</option><option value="resolved"${m.chat_status==='resolved'?' selected':''}>محلولة</option><option value="snoozed"${m.chat_status==='snoozed'?' selected':''}>مؤجلة</option></select></td><td><select id="waChatPriority_${m.id}" class="inp" style="min-width:90px"><option value="normal"${m.chat_priority==='normal'||!m.chat_priority?' selected':''}>عادية</option><option value="low"${m.chat_priority==='low'?' selected':''}>منخفضة</option><option value="high"${m.chat_priority==='high'?' selected':''}>عالية</option><option value="urgent"${m.chat_priority==='urgent'?' selected':''}>عاجلة</option></select></td><td><select id="waChatAssignee_${m.id}" class="inp" style="min-width:120px"><option value="">غير معين</option>${userOptions}</select><button class="btn btn-xs btn-gold" onclick="waChatMetaSave('${encodeURIComponent(jid)}',${m.id})">حفظ</button></td></tr>`;
+return `<tr><td class="text-muted">${esc(String(m.created_at||'').replace('T',' ').slice(0,19))}</td><td><code dir="ltr">${esc(jid)}</code></td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${esc(m.body||'—')}</td><td>${esc(m.status)}</td><td><select id="waChatStatus_${m.id}" class="inp" style="min-width:100px"><option value="open"${m.chat_status==='open'||!m.chat_status?' selected':''}>مفتوحة</option><option value="pending"${m.chat_status==='pending'?' selected':''}>معلقة</option><option value="resolved"${m.chat_status==='resolved'?' selected':''}>محلولة</option><option value="snoozed"${m.chat_status==='snoozed'?' selected':''}>مؤجلة</option></select></td><td><select id="waChatPriority_${m.id}" class="inp" style="min-width:90px"><option value="normal"${m.chat_priority==='normal'||!m.chat_priority?' selected':''}>عادية</option><option value="low"${m.chat_priority==='low'?' selected':''}>منخفضة</option><option value="high"${m.chat_priority==='high'?' selected':''}>عالية</option><option value="urgent"${m.chat_priority==='urgent'?' selected':''}>عاجلة</option></select></td><td><select id="waChatAssignee_${m.id}" class="inp" style="min-width:120px"><option value="">غير معين</option>${userOptions}</select><button class="btn btn-xs btn-gold" data-karim-action="waChatMetaSave" data-karim-arg0="${encodeURIComponent(jid)}" data-karim-arg1="${m.id}">حفظ</button></td></tr>`;
 }).join('');
-el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=inbox></i> الوارد (${fN(d.total||0)})</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="waLoadMsgs(document.getElementById('waBody'))"><i class=ji data-i=refresh></i> تحديث</button></div></div>
+el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=inbox></i> الوارد (${fN(d.total||0)})</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="waLoadMsgs" data-karim-args="[document.getElementById(&#39;waBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button></div></div>
 <div class="tbl-scroll"><table><thead><tr><th>الوقت</th><th>المحادثة</th><th>النص</th><th>المعالجة</th><th>حالة المحادثة</th><th>الأولوية</th><th>التعيين</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="u-empty-sm">لا رسائل بعد</td></tr>'}</tbody></table></div></div>`;
 }catch(e){ el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
@@ -215,7 +215,7 @@ try{
 const d=await apiFetch('/whatsapp/campaigns');
 const canAdmin=STATE.currentUser?.role==='admin';
 const rows=(d.campaigns||[]).map(c=>`<tr><td>${esc(c.name)}</td><td><code>${esc(c.template_name)}</code></td><td>${esc(c.status)}</td><td>${c.consented||0}/${c.recipients||0}</td><td>${c.sent||0}</td><td>${c.scheduled_at?esc(String(c.scheduled_at).replace('T',' ').slice(0,16)):'فورًا بعد الاعتماد'}</td><td>${canAdmin&&['draft'].includes(c.status)?`<button class="btn btn-xs btn-green" onclick="waCampaignAction(${c.id},'approve')">اعتماد</button>`:''}${canAdmin&&['approved','running'].includes(c.status)?`<button class="btn btn-xs" onclick="waCampaignAction(${c.id},'pause')">إيقاف</button>`:''}${canAdmin&&!['completed','cancelled'].includes(c.status)?`<button class="btn btn-xs btn-red" onclick="waCampaignAction(${c.id},'cancel')">إلغاء</button>`:''}</td></tr>`).join('');
-el.innerHTML=`${canAdmin?`<div class="tbl-wrap" style="margin-bottom:12px"><div class="tbl-hd"><h3><i class=ji data-i=send></i> حملة جديدة (Draft)</h3></div><div style="padding:16px 20px"><div class="fr"><div class="fg"><label>اسم الحملة</label><input id="waCampName" class="inp"></div><div class="fg"><label>اسم القالب</label><input id="waCampTemplate" class="inp" placeholder="اسم قالب محفوظ"></div><div class="fg"><label>وقت الجدولة اختياري</label><input id="waCampSchedule" type="datetime-local" class="inp"></div></div><div class="fg"><label>المستلمون: كل سطر رقم|موافقة|متغيرات (مثال: 9665...@s.whatsapp.net|yes|أحمد,123)</label><textarea id="waCampRecipients" class="inp" rows="5" dir="ltr"></textarea></div><button class="btn btn-gold" onclick="waCampaignCreate()">إنشاء Draft</button></div></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=send></i> الحملات</h3><button class="btn btn-blue btn-sm" onclick="waLoadCampaigns(document.getElementById('waBody'))">تحديث</button></div><div class="tbl-scroll"><table><thead><tr><th>الاسم</th><th>القالب</th><th>الحالة</th><th>الموافقة</th><th>تم الإرسال</th><th>الجدولة</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="u-empty-sm">لا حملات</td></tr>'}</tbody></table></div></div>`;
+el.innerHTML=`${canAdmin?`<div class="tbl-wrap" style="margin-bottom:12px"><div class="tbl-hd"><h3><i class=ji data-i=send></i> حملة جديدة (Draft)</h3></div><div style="padding:16px 20px"><div class="fr"><div class="fg"><label>اسم الحملة</label><input id="waCampName" class="inp"></div><div class="fg"><label>اسم القالب</label><input id="waCampTemplate" class="inp" placeholder="اسم قالب محفوظ"></div><div class="fg"><label>وقت الجدولة اختياري</label><input id="waCampSchedule" type="datetime-local" class="inp"></div></div><div class="fg"><label>المستلمون: كل سطر رقم|موافقة|متغيرات (مثال: 9665...@s.whatsapp.net|yes|أحمد,123)</label><textarea id="waCampRecipients" class="inp" rows="5" dir="ltr"></textarea></div><button class="btn btn-gold" data-karim-action="waCampaignCreate">إنشاء Draft</button></div></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=send></i> الحملات</h3><button class="btn btn-blue btn-sm" data-karim-action="waLoadCampaigns" data-karim-args="[document.getElementById(&#39;waBody&#39;)]">تحديث</button></div><div class="tbl-scroll"><table><thead><tr><th>الاسم</th><th>القالب</th><th>الحالة</th><th>الموافقة</th><th>تم الإرسال</th><th>الجدولة</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="u-empty-sm">لا حملات</td></tr>'}</tbody></table></div></div>`;
 }catch(e){el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`;}
 }
 async function waCampaignCreate(){
@@ -245,7 +245,7 @@ el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=s
 <div class="tbl-wrap" style="margin-top:12px"><div class="tbl-hd"><h3><i class=ji data-i=plus></i> إرسال رسالة</h3></div>
 <div style="padding:16px 20px"><div class="fr"><div class="fg"><label>إلى (JID)</label><input id="waSendTo" dir="ltr" placeholder="9665XXXXXXXX@s.whatsapp.net"></div></div>
 <div class="fg"><label>النص</label><textarea id="waSendBody" rows="3"></textarea></div>
-<button class="btn btn-gold" onclick="waSendGo()"><i class=ji data-i=send></i> إرسال للطابور</button></div></div>`;
+<button class="btn btn-gold" data-karim-action="waSendGo"><i class=ji data-i=send></i> إرسال للطابور</button></div></div>`;
 }catch(e){ el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
 async function waSendGo(){
@@ -260,9 +260,9 @@ async function waLoadRules(el,canWrite){
 el.innerHTML='<div class="mcard u-empty"><div class="spinner"></div></div>';
 try{
 const d=await apiFetch('/whatsapp/rules');
-const rows=(d.rows||[]).map(r=>`<tr><td class="fw-bold">${esc(r.name)}</td><td><span class="badge bdg-blue">${esc(r.match_type)}</span></td><td><code>${esc(r.pattern)}</code></td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.response||'—')}</td><td>${r.enabled?'<span class="badge bdg-green">مفعلة</span>':'<span class="badge bdg-gray">معطلة</span>'}</td><td>${canWrite?`<button class="btn btn-sm" onclick='waRuleModal(${r.id})'><i class=ji data-i=pencil></i></button> <button class="btn btn-red btn-sm" onclick="waRuleDel(${r.id})"><i class=ji data-i=trash></i></button>`:''}</td></tr>`).join('');
+const rows=(d.rows||[]).map(r=>`<tr><td class="fw-bold">${esc(r.name)}</td><td><span class="badge bdg-blue">${esc(r.match_type)}</span></td><td><code>${esc(r.pattern)}</code></td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.response||'—')}</td><td>${r.enabled?'<span class="badge bdg-green">مفعلة</span>':'<span class="badge bdg-gray">معطلة</span>'}</td><td>${canWrite?`<button class="btn btn-sm" onclick='waRuleModal(${r.id})'><i class=ji data-i=pencil></i></button> <button class="btn btn-red btn-sm" data-karim-action="waRuleDel" data-karim-arg0="${r.id}"><i class=ji data-i=trash></i></button>`:''}</td></tr>`).join('');
 WASTATE.rules=d.rows||[];
-el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=zap></i> قواعد الرد التلقائي (${fN((d.rows||[]).length)})</h3><div class="u-row-wrap">${canWrite?`<button class="btn btn-gold btn-sm" onclick="waRuleModal('')"><i class=ji data-i=plus></i> قاعدة جديدة</button>`:''}<button class="btn btn-blue btn-sm" onclick="waLoadRules(document.getElementById('waBody'),${canWrite})"><i class=ji data-i=refresh></i> تحديث</button></div></div>
+el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=zap></i> قواعد الرد التلقائي (${fN((d.rows||[]).length)})</h3><div class="u-row-wrap">${canWrite?`<button class="btn btn-gold btn-sm" data-karim-action="waRuleModal" data-karim-args="[&quot;&quot;]"><i class=ji data-i=plus></i> قاعدة جديدة</button>`:''}<button class="btn btn-blue btn-sm" onclick="waLoadRules(document.getElementById('waBody'),${canWrite})"><i class=ji data-i=refresh></i> تحديث</button></div></div>
 <div class="tbl-scroll"><table><thead><tr><th>الاسم</th><th>النوع</th><th>النمط</th><th>الرد</th><th>الحالة</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="u-empty-sm">لا قواعد</td></tr>'}</tbody></table></div></div>`;
 }catch(e){ el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
@@ -274,7 +274,7 @@ showModal(`<h3><i class=ji data-i=zap></i> ${id?'تعديل قاعدة':'قاع�
 <div class="fg"><label>النمط</label><input id="waRulePattern" value="${esc(r.pattern||'')}"></div>
 <div class="fg"><label>الرد (فارغ للأوامر المنفذة برمجيًا)</label><textarea id="waRuleResponse" rows="3">${esc(r.response||'')}</textarea></div>
 <div class="fg"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="waRuleEnabled" ${r.enabled===false?'':'checked'}> مفعلة</label></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="waRuleSave('${id||''}')"><i class=ji data-i=save></i> حفظ</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="waRuleSave" data-karim-arg0="${id||''}"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 async function waRuleSave(id){
 const body={ name:document.getElementById('waRuleName')?.value.trim()||'', match_type:document.getElementById('waRuleType')?.value||'exact', pattern:document.getElementById('waRulePattern')?.value.trim()||'', response:document.getElementById('waRuleResponse')?.value||'', enabled:document.getElementById('waRuleEnabled')?.checked!==false };
@@ -296,11 +296,11 @@ el.innerHTML='<div class="mcard u-empty"><div class="spinner"></div></div>';
 try{
 const d=await apiFetch('/whatsapp/managers');
 const rows=(d.numbers||[]).map(n=>`<tr><td class="fw-bold" dir="ltr">${esc(n)}</td>
-<td><button class="btn btn-red btn-sm" onclick="waManagerDel('${esc(n)}')"><i class=ji data-i=trash></i> حذف</button></td></tr>`).join('');
+<td><button class="btn btn-red btn-sm" data-karim-action="waManagerDel" data-karim-arg0="${esc(n)}"><i class=ji data-i=trash></i> حذف</button></td></tr>`).join('');
 el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=users></i> أرقام الإدارة (${fN((d.numbers||[]).length)})</h3></div>
 <div style="padding:16px 20px"><div class="mcard" style="margin-bottom:12px"><small class="text-muted">الأرقام دي بس اللي يرد عليها المحرك بأمر «تقرير». أي رقم تاني بيترد عليه "غير مصرح".</small></div>
 <div class="fr"><div class="fg"><label>رقم جديد (دولي بدون +)</label><input id="waMgrNum" dir="ltr" placeholder="9665XXXXXXXX"></div>
-<div class="fg"><label>&nbsp;</label><button class="btn btn-gold" onclick="waManagerAdd()"><i class=ji data-i=plus></i> إضافة الرقم</button></div></div></div>
+<div class="fg"><label>&nbsp;</label><button class="btn btn-gold" data-karim-action="waManagerAdd"><i class=ji data-i=plus></i> إضافة الرقم</button></div></div></div>
 <div class="tbl-scroll"><table><thead><tr><th>الرقم</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="2" class="u-empty-sm">لا أرقام بعد — ضيف رقمك الأول</td></tr>'}</tbody></table></div></div>`;
 }catch(e){ el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
@@ -325,7 +325,7 @@ el.innerHTML=`
 <div class="mcard" style="margin-bottom:12px"><b><i class=ji data-i=search></i> محرك الاستعلامات الذكية</b><br><small class="text-muted">اسأل عن أي شيء في النظام بالعربية أو الإنجليزية — مثال: "حضور اليوم"، "إيرادات الشهر"، "المخزون"، "عدد الموظفين"</small></div>
 <div class="fg" style="margin-bottom:12px">
 <input id="waQueryInput" type="text" class="inp" placeholder="اكتب سؤالك... (مثال: حضور أحمد 1/9)" style="font-size:16px">
-<button class="btn btn-gold" onclick="waDoQuery()" style="margin-top:8px"><i class=ji data-i=paper-plane></i> استعلام</button>
+<button class="btn btn-gold" data-karim-action="waDoQuery" style="margin-top:8px"><i class=ji data-i=paper-plane></i> استعلام</button>
 </div>
 <div style="margin-bottom:12px"><div class="tbl-hd"><h4><i class=ji data-i=zap></i> استعلامات سريعة</h4></div>
 <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -354,7 +354,7 @@ el.innerHTML='<div class="mcard u-empty"><div class="spinner"></div></div>';
 try{
 const d=await apiFetch('/whatsapp/logs');
 const rows=(d.rows||[]).map(l=>`<tr><td class="text-muted">${esc(String(l.created_at||'').replace('T',' ').slice(0,19))}</td><td><span class="badge bdg-blue">${esc(l.kind)}</span></td><td><code>${esc(l.ref||'—')}</code></td><td class="text-muted">${esc(l.detail||'')}</td></tr>`).join('');
-el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل الأحداث</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="waLoadLogs(document.getElementById('waBody'))"><i class=ji data-i=refresh></i> تحديث</button></div></div>
+el.innerHTML=`<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل الأحداث</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="waLoadLogs" data-karim-args="[document.getElementById(&#39;waBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button></div></div>
 <div class="tbl-scroll"><table><thead><tr><th>الوقت</th><th>النوع</th><th>المرجع</th><th>التفاصيل</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="u-empty-sm">لا أحداث بعد</td></tr>'}</tbody></table></div></div>`;
 }catch(e){ el.innerHTML=`<div class="mcard u-empty">${esc(e.message)}</div>`; }
 }
@@ -362,7 +362,7 @@ async function renderOracleDataPage(){
   const content = document.getElementById('content');
   content.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <h3 class="u-gold-strong"><i class=ji data-i=database></i> بيانات Oracle المنسوخة</h3>
-    <div style="display:flex;gap:8px;align-items:center"><span id="oraLastRefresh" style="font-size:.75em;color:var(--muted)"></span><button class="btn btn-blue btn-sm" onclick="oraDataRefresh()"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-green btn-sm" onclick="oraDataSync()"><i class=ji data-i=database></i> مزامنة</button></div>
+    <div style="display:flex;gap:8px;align-items:center"><span id="oraLastRefresh" style="font-size:.75em;color:var(--muted)"></span><button class="btn btn-blue btn-sm" data-karim-action="oraDataRefresh"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-green btn-sm" data-karim-action="oraDataSync"><i class=ji data-i=database></i> مزامنة</button></div>
   </div>
   <div id="oraDataBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>`;
   await oraDataRefresh();
@@ -373,7 +373,7 @@ async function renderDailyLocksPage(){
     <h3 class="u-gold-strong"><i class=ji data-i=lock></i> لوحة التقفيل اليومي</h3>
     <div style="display:flex;gap:8px;align-items:center">
       <input type="date" id="dlDate" class="inp" style="width:auto" value="">
-      <button class="btn btn-blue btn-sm" onclick="renderDailyLocksPage()"><i class=ji data-i=refresh></i> تحديث</button>
+      <button class="btn btn-blue btn-sm" data-karim-action="renderDailyLocksPage"><i class=ji data-i=refresh></i> تحديث</button>
     </div>
   </div>
   <div id="dlBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>`;
@@ -453,7 +453,7 @@ function oraDataRender(){
         <td><b>${esc(t.oracle_name||'')}</b></td>
         <td><code style="font-size:.75em">${esc(t.pg_name||'')}</code></td>
         <td><span class="badge bdg-blue">${fN(t.live_count||0)}</span></td>
-        <td><button class="btn btn-sm btn-blue" onclick="oraDataOpen('${esc(t.pg_name||'')}')"><i class=ji data-i=eye></i> عرض</button></td>
+        <td><button class="btn btn-sm btn-blue" data-karim-action="oraDataOpen" data-karim-arg0="${esc(t.pg_name||'')}"><i class=ji data-i=eye></i> عرض</button></td>
       </tr>`).join('')}
     </tbody></table></div>
     <div id="oraDataDetail" style="margin-top:16px"></div>`;
@@ -483,9 +483,9 @@ function oraDataRenderDetail(){
     <div class="mcard" style="padding:12px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <h4><i class=ji data-i=table></i> ${esc(d.table||'')}</h4>
-        <div class="u-row-wrap"><div class="text-muted">${fN(d.total)} صف — صفحة ${d.page}/${d.totalPages}</div><button class="btn btn-blue btn-sm" onclick="oraDataPrint()"><i class=ji data-i=printer></i> طباعة</button></div>
+        <div class="u-row-wrap"><div class="text-muted">${fN(d.total)} صف — صفحة ${d.page}/${d.totalPages}</div><button class="btn btn-blue btn-sm" data-karim-action="oraDataPrint"><i class=ji data-i=printer></i> طباعة</button></div>
       </div>
-      <div style="margin-top:8px"><input type="text" id="oraDetailSearch" class="inp" placeholder="بحث..." value="${esc(ORADATA.search||'')}" onkeydown="if(event.key==='Enter')oraDataOpen('${esc(ORADATA.selected)}',1,this.value)" style="width:100%;max-width:400px"></div>
+      <div style="margin-top:8px"><input type="text" id="oraDetailSearch" class="inp" placeholder="بحث..." value="${esc(ORADATA.search||'')}" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="oraDataOpen" style="width:100%;max-width:400px"></div>
     </div>
     <div style="overflow-x:auto"><table class="tbl"><thead><tr>
       ${cols.map(c=>`<th>${esc(c)}</th>`).join('')}
@@ -493,8 +493,8 @@ function oraDataRenderDetail(){
       ${(d.rows||[]).map(row=>`<tr>${cols.map(c=>`<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(String(row[c]||''))}">${esc(String(row[c]||''))}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
     ${d.totalPages > 1 ? `<div style="display:flex;justify-content:center;gap:6px;margin-top:12px">
-      ${d.page > 1 ? `<button class="btn btn-sm btn-blue" onclick="oraDataOpen('${esc(ORADATA.selected)}',${d.page-1},'${esc(ORADATA.search||'')}')">السابق</button>` : ''}
-      ${d.page < d.totalPages ? `<button class="btn btn-sm btn-blue" onclick="oraDataOpen('${esc(ORADATA.selected)}',${d.page+1},'${esc(ORADATA.search||'')}')">التالي</button>` : ''}
+      ${d.page > 1 ? `<button class="btn btn-sm btn-blue" data-karim-action="oraDataOpen" data-karim-arg0="${esc(ORADATA.selected)}" data-karim-arg1="${d.page-1}" data-karim-arg2="${esc(ORADATA.search||'')}">السابق</button>` : ''}
+      ${d.page < d.totalPages ? `<button class="btn btn-sm btn-blue" data-karim-action="oraDataOpen" data-karim-arg0="${esc(ORADATA.selected)}" data-karim-arg1="${d.page+1}" data-karim-arg2="${esc(ORADATA.search||'')}">التالي</button>` : ''}
     </div>` : ''}`;
 }
 function oraDataPrint(){

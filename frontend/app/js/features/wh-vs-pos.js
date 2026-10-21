@@ -59,26 +59,26 @@ function wvShell() {
         <label style="font-size:13px">من <input type="date" id="wvFrom" value="${wvEscape(WV.from)}" class="inp" style="width:150px"></label>
         <label style="font-size:13px">إلى <input type="date" id="wvTo" value="${wvEscape(WV.to)}" class="inp" style="width:150px"></label>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="wvPreset('today')">اليوم</button>
-          <button class="btn btn-sm" onclick="wvPreset('yesterday')">أمس</button>
-          <button class="btn btn-sm" onclick="wvPreset('week')">هذا الأسبوع</button>
-          <button class="btn btn-sm btn-primary" onclick="wvPreset('month')">هذا الشهر</button>
-          <button class="btn btn-sm" onclick="wvPreset('last7')">آخر 7 أيام</button>
-          <button class="btn btn-sm" onclick="wvPreset('last30')">آخر 30 يوم</button>
+          <button class="btn btn-sm" data-karim-action="wvPreset" data-karim-args="[&quot;today&quot;]">اليوم</button>
+          <button class="btn btn-sm" data-karim-action="wvPreset" data-karim-args="[&quot;yesterday&quot;]">أمس</button>
+          <button class="btn btn-sm" data-karim-action="wvPreset" data-karim-args="[&quot;week&quot;]">هذا الأسبوع</button>
+          <button class="btn btn-sm btn-primary" data-karim-action="wvPreset" data-karim-args="[&quot;month&quot;]">هذا الشهر</button>
+          <button class="btn btn-sm" data-karim-action="wvPreset" data-karim-args="[&quot;last7&quot;]">آخر 7 أيام</button>
+          <button class="btn btn-sm" data-karim-action="wvPreset" data-karim-args="[&quot;last30&quot;]">آخر 30 يوم</button>
         </div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
         <div style="font-size:13px;flex:1;min-width:220px;position:relative">
-          <label>بحث صنف <input type="text" id="wvItem" value="${wvEscape(WV.item)}" placeholder="اكتب اسم الصنف… مثال: بيبسي، دجاج، بطاطس" class="inp" style="width:100%" autocomplete="off" oninput="wvSuggest()" onkeydown="if(event.key==='Enter')wvApply()"></label>
+          <label>بحث صنف <input type="text" id="wvItem" value="${wvEscape(WV.item)}" placeholder="اكتب اسم الصنف… مثال: بيبسي، دجاج، بطاطس" class="inp" style="width:100%" autocomplete="off" data-karim-action="wvSuggest" data-karim-event="input" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="wvApply"></label>
           <div id="wvSuggestBox" style="display:none;position:absolute;top:100%;right:0;left:0;background:var(--card,#fff);border:1px solid var(--border,#ddd);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
         </div>
         <label style="font-size:13px">عرض <select id="wvOnly" class="inp" style="width:170px">
           <option value="all" ${WV.only === 'all' ? 'selected' : ''}>كل الأصناف</option>
           <option value="mismatch" ${WV.only === 'mismatch' ? 'selected' : ''}>المختلفة فقط</option>
         </select></label>
-        <button class="btn btn-primary" onclick="wvApply()"><i class=ji data-i=search></i> استعلام</button>
-        <button class="btn btn-green" onclick="wvPrintReport()"><i class=ji data-i=printer></i> طباعة</button>
-        <button class="btn" onclick="wvExportExcel()"><i class=ji data-i=inbox></i> Excel</button>
+        <button class="btn btn-primary" data-karim-action="wvApply"><i class=ji data-i=search></i> استعلام</button>
+        <button class="btn btn-green" data-karim-action="wvPrintReport"><i class=ji data-i=printer></i> طباعة</button>
+        <button class="btn" data-karim-action="wvExportExcel"><i class=ji data-i=inbox></i> Excel</button>
       </div>
     </div>
     <div id="wvAlerts" style="margin-bottom:14px"></div>

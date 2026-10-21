@@ -83,9 +83,9 @@ function iqShell() {
     <h3 class="u-gold-strong"><i class=ji data-i=search></i> محرك استعلامات المخزون — دخول · مخزن · انصراف · مبيع · تكلفة</h3>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="u-dim" style="font-size:12px">قراءة فقط من دفتر المخزون</span>
-      <button class="btn btn-sm" onclick="iqPrintReport()"><i class=ji data-i=printer></i> طباعة</button>
-      <button class="btn btn-sm" onclick="iqExportExcel()"><i class=ji data-i=inbox></i> Excel</button>
-      <button class="btn btn-sm btn-primary" onclick="iqReload()"><i class=ji data-i=refresh></i> استعلام</button>
+      <button class="btn btn-sm" data-karim-action="iqPrintReport"><i class=ji data-i=printer></i> طباعة</button>
+      <button class="btn btn-sm" data-karim-action="iqExportExcel"><i class=ji data-i=inbox></i> Excel</button>
+      <button class="btn btn-sm btn-primary" data-karim-action="iqReload"><i class=ji data-i=refresh></i> استعلام</button>
     </div>
   </div>
   <div style="background:var(--card,#fff);padding:14px;border-radius:12px;border:1px solid var(--border,#e5e7eb);margin-bottom:14px">
@@ -93,27 +93,27 @@ function iqShell() {
       <label style="font-size:13px">من <input type="date" id="iqFrom" value="${iqEsc(IQ.from)}" class="inp" style="width:150px"></label>
       <label style="font-size:13px">إلى <input type="date" id="iqTo" value="${iqEsc(IQ.to)}" class="inp" style="width:150px" max="${iqEsc(iqToday(0))}"></label>
       <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="iqPreset('today')">اليوم</button>
-        <button class="btn btn-sm" onclick="iqPreset('yesterday')">أمس</button>
-        <button class="btn btn-sm" onclick="iqPreset(7)">7 أيام</button>
-        <button class="btn btn-sm btn-primary" onclick="iqPreset(30)">30 يوم</button>
-        <button class="btn btn-sm" onclick="iqPreset('month')">هذا الشهر</button>
+        <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[&quot;today&quot;]">اليوم</button>
+        <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[&quot;yesterday&quot;]">أمس</button>
+        <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[7]">7 أيام</button>
+        <button class="btn btn-sm btn-primary" data-karim-action="iqPreset" data-karim-args="[30]">30 يوم</button>
+        <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[&quot;month&quot;]">هذا الشهر</button>
       </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
       <label style="font-size:13px;flex:1;min-width:220px">بحث
-        <input type="search" id="iqQ" value="${iqEsc(IQ.q)}" class="inp" style="width:100%" placeholder="اسم أو تصنيف أو باركود" autocomplete="off" onkeydown="if(event.key==='Enter')iqApply()">
+        <input type="search" id="iqQ" value="${iqEsc(IQ.q)}" class="inp" style="width:100%" placeholder="اسم أو تصنيف أو باركود" autocomplete="off" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="iqApply">
       </label>
       <label style="font-size:13px">مخزن القسم
-        <select id="iqDept" class="inp" style="width:200px" onchange="iqApply()">
+        <select id="iqDept" class="inp" style="width:200px" data-karim-action="iqApply" data-karim-event="change">
           <option value="">المخزن الرئيسي وكل الأقسام</option>
         </select>
       </label>
       <label style="font-size:13px">تصنيف
-        <select id="iqCat" class="inp" style="width:170px" onchange="iqApply()"><option value="">الكل</option></select>
+        <select id="iqCat" class="inp" style="width:170px" data-karim-action="iqApply" data-karim-event="change"><option value="">الكل</option></select>
       </label>
       <label style="font-size:13px">الحالة
-        <select id="iqOnly" class="inp" style="width:170px" onchange="iqApply()">
+        <select id="iqOnly" class="inp" style="width:170px" data-karim-action="iqApply" data-karim-event="change">
           <option value="all" ${IQ.only === 'all' ? 'selected' : ''}>كل الأصناف</option>
           <option value="moved" ${IQ.only === 'moved' ? 'selected' : ''}>تحركت في المدى</option>
           <option value="active" ${IQ.only === 'active' ? 'selected' : ''}>موجودة أو متحركة</option>
@@ -122,7 +122,7 @@ function iqShell() {
         </select>
       </label>
       <label style="font-size:13px">ترتيب
-        <select id="iqSort" class="inp" style="width:170px" onchange="iqApply()">
+        <select id="iqSort" class="inp" style="width:170px" data-karim-action="iqApply" data-karim-event="change">
           <option value="movements" ${IQ.sort === 'movements' ? 'selected' : ''}>الأكثر حركة</option>
           <option value="onHand" ${IQ.sort === 'onHand' ? 'selected' : ''}>الأعلى رصيدًا</option>
           <option value="value" ${IQ.sort === 'value' ? 'selected' : ''}>الأعلى قيمة</option>
@@ -134,7 +134,7 @@ function iqShell() {
           <option value="name" ${IQ.sort === 'name' ? 'selected' : ''}>الاسم</option>
         </select>
       </label>
-      <button class="btn btn-primary" onclick="iqApply()"><i class=ji data-i=search></i> استعلام</button>
+      <button class="btn btn-primary" data-karim-action="iqApply"><i class=ji data-i=search></i> استعلام</button>
     </div>
   </div>
   <div id="iqScope" class="u-dim" style="font-size:12px;margin-bottom:10px"></div>
@@ -259,7 +259,7 @@ function iqRenderTable() {
         <td>${iqMoney(r.outCost)}</td>
         <td>${iqMoney(r.stockValue)}</td>
         <td>${iqExpiryBadge(r.nearestExpiry, IQ.to)}</td>
-        <td><button class="btn btn-sm" onclick="iqOpenCard(${Number(r.itemId)} )"><i class=ji data-i=id-card></i> البطاقة</button></td>
+        <td><button class="btn btn-sm" data-karim-action="iqOpenCard" data-karim-arg0="${Number(r.itemId)}"><i class=ji data-i=id-card></i> البطاقة</button></td>
       </tr>`;
     }).join('');
     body.innerHTML = `
@@ -385,7 +385,7 @@ function icCardHtml(d) {
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm" onclick="window.print()"><i class=ji data-i=printer></i> طباعة</button>
-        <button class="btn btn-sm" onclick="iqCloseCard()"><i class=ji data-i=x></i> إغلاق</button>
+        <button class="btn btn-sm" data-karim-action="iqCloseCard"><i class=ji data-i=x></i> إغلاق</button>
       </div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
@@ -472,10 +472,10 @@ async function renderItemCardPage() {
           <label style="font-size:13px">من <input type="date" id="iqFrom" value="${iqEsc(IQ.from)}" class="inp" style="width:150px"></label>
           <label style="font-size:13px">إلى <input type="date" id="iqTo" value="${iqEsc(IQ.to)}" class="inp" style="width:150px" max="${iqEsc(iqToday(0))}"></label>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="iqPreset('today')">اليوم</button>
-            <button class="btn btn-sm" onclick="iqPreset(7)">7 أيام</button>
-            <button class="btn btn-sm btn-primary" onclick="iqPreset(30)">30 يوم</button>
-            <button class="btn btn-sm" onclick="iqPreset(90)">90 يوم</button>
+            <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[&quot;today&quot;]">اليوم</button>
+            <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[7]">7 أيام</button>
+            <button class="btn btn-sm btn-primary" data-karim-action="iqPreset" data-karim-args="[30]">30 يوم</button>
+            <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[90]">90 يوم</button>
           </div>
           <label style="font-size:13px;flex:1;min-width:220px">الصنف
             <select id="icPick" class="inp" style="width:100%" onchange="iqOpenCard(this.value)"><option value="">جارٍ القراءة…</option></select>

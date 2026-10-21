@@ -59,6 +59,18 @@ describe('عائلة يارا — مرآة الخادم', () => {
         expect(src).not.toMatch(/method:\s*'(POST|PUT|DELETE)'/);
     });
 
+    test('cashier-items: لا تظليل لاسم cashiers داخل المعالج (TDZ أسقط كل طلب 500)', () => {
+        const start = srv.indexOf("router.get('/cashier-items'");
+        const end = srv.indexOf("router.get('/cashiers-today'");
+        expect(start).toBeGreaterThan(-1);
+        expect(end).toBeGreaterThan(start);
+        const handler = srv.slice(start, end);
+        // الإعلان الوحيد لـcashiers هو فلتر الطلب؛ ملخص النتائج باسم آخر
+        expect((handler.match(/const cashiers\b/g) || []).length).toBe(1);
+        expect(handler).toContain('const cashierSummaries = sumRows.map');
+        expect(handler).toContain('cashiers: cashierSummaries');
+    });
+
     test('الأبواب الأحد عشر مساراتها وبارامتراتها كما يخدمها الخادم', async () => {
         const { apiFetch, calls } = repoStub(() => ({}));
         const ctx = loadEsm(REPO, { apiFetch }, [

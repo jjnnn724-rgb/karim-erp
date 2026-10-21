@@ -71,7 +71,7 @@ function familyOrder(list) {
    والمفتاح في شريط العرض يعيدها فورًا. البادئة ys_ هي مساحة الأسماء التي
    يولّدها التكامل وحده، ولا قسم يدوي يبدأ بها. */
 const MIRROR_DEPT_RE = /^ys_/i;
-const LIVE_CASHIER_NOS = new Set(['1', '3', '4', '5', '9']);
+const LIVE_CASHIER_NOS = new Set(['1', '3', '4', '5', '6', '9']);
 const CASHIER_REFRESH_MS = 10_000;
 export function isMirrorDept(code) { return MIRROR_DEPT_RE.test(String(code ?? '')); }
 
@@ -330,15 +330,23 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         return candidateCode === ancestorCode;
     }
 
+    /** إحصاءات البطاقة: إيراد القسم + كاشيراته، ومصروفه، والصافي.
+     *  إيراد الكاشير حيّ من يارا حين يتاح، وإلا فعن مرآة القاعدة (ys_cc_N) —
+     *  نفس مصدر القديم، فلا تسقط المبيعات إلى صفر عند تعذر أوراكل. */
     function deptCardStats(r, nos) {
         const {from, to} = monthToDateRange();
-        const s = calcDeptStats(revenues, expenses, rows, String(r.code), from, to);
-        const cashierMirror = String(r.code).match(/^ys_cc_(\d+)$/i);
-        const mirrorIsIncluded = cashierMirror && LIVE_CASHIER_NOS.has(cashierMirror[1]);
-        const localRevenue = mirrorIsIncluded ? 0 : s.rev;
+        const code = String(r.code);
+        const s = calcDeptStats(revenues, expenses, rows, code, from, to);
+        const cashierMirror = code.match(/^ys_cc_(\d+)$/i);
+        const mirrorIsIncluded = Boolean(cashierMirror) && LIVE_CASHIER_NOS.has(cashierMirror[1]);
+        // بطاقة القسم المرآتي نفسه: إيراده المحلي هو نفس إيراد كاشيره.
+        // مع الحي نُصفّره ونضيف الحي (بلا ازدواج)، وبدون الحي نُبقيه.
+        const localRevenue = (actualCashierReady && mirrorIsIncluded) ? 0 : s.rev;
         const cashRev = actualCashierReady
             ? nos.reduce((sum, no) => sum + (actualCashierRevenue.get(String(no)) || 0), 0)
-            : 0;
+            : nos.reduce((sum, no) => sum + (deptIsWithin(`ys_cc_${no}`, code)
+                ? 0 /* داخل شجرة البطاقة نفسها: محسوب أصلًا في s.rev */
+                : cashierRevenueIn(revenues, [no], from, to)), 0);
         const rev = localRevenue + cashRev;
         return {
             rev, exp: s.exp, profit: rev - s.exp,
@@ -379,14 +387,20 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     /** شارة كاشير على البطاقة — أساسي بنجمة، ثانوي بحد منقّط، الوارث باسم قسمه.
      *  اسم الكاشير من دليل يارا سوفت الحي؛ لا اسم لرقم لا يعرفه الدليل. */
     function deptCashierChip(l) {
-        const rev = actualCashierRevenue.get(String(l.cashierNo));
+        const no = String(l.cashierNo);
+        const {from, to} = monthToDateRange();
+        const rev = actualCashierReady
+            ? (actualCashierRevenue.get(no) || 0)
+            : cashierRevenueIn(revenues, [no], from, to);
+        const amount = (actualCashierReady || rev > 0) ? formatInt(rev) : '—';
+        const source = actualCashierReady ? '' : 'من سجل الإيرادات — يارا سوفت غير متاح';
         const owner = l.inherited ? ` · ${esc(deptNameOf(l.deptCode, rows))}` : '';
         const nm = cashierNameOf(l.cashierNo, cashDir);
         return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}" title="${esc(cashierLabel(l.cashierNo, cashDir))}${owner}">`
             + `<i class="ji" data-i="receipt" aria-hidden="true"></i>كاشير <span class="erp-mono" dir="ltr">${esc(l.cashierNo)}</span>`
             + (nm ? `<span class="erp-dept-cashier__name">${esc(nm)}</span>` : '')
             + `${l.isPrimary ? '<span class="erp-dept-cashier__star" title="الكاشير الأساسي للقسم">★</span>' : ''}`
-            + `<span class="erp-dept-cashier__amount erp-num" dir="ltr">${actualCashierReady ? formatInt(rev || 0) : '—'}</span>`
+            + `<span class="erp-dept-cashier__amount erp-num" dir="ltr"${source ? ` title="${esc(source)}"` : ''}>${amount}</span>`
             + `${owner}</span>`;
     }
 
@@ -483,13 +497,13 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + deptSignalsHtml(code)
             + `<div class="erp-dept-card__stats">`
             + deptStatCell('إيراد الشهر', 'banknote', s.rev, 'erp-dept-stat--rev')
-            + deptStatCell('المصروف', 'package', s.exp, 'erp-dept-stat--exp')
-            + `<span class="erp-dept-stat erp-dept-stat--net"><span class="erp-dept-stat__label"><i class="ji" data-i="gem" aria-hidden="true"></i>الصافي</span>`
+            + deptStatCell('مصروف الشهر', 'package', s.exp, 'erp-dept-stat--exp')
+            + `<span class="erp-dept-stat erp-dept-stat--net"><span class="erp-dept-stat__label"><i class="ji" data-i="gem" aria-hidden="true"></i>صافي الشهر</span>`
             + `<span class="erp-dept-stat__value ${netClass}">${money(s.profit, currency)}</span></span>`
             + '</div>'
-            + `<div class="erp-dept-card__ratio${s.costRatio > 100 ? ' is-high' : ''}">`
+            + `<div class="erp-dept-card__ratio${s.costRatio > 100 ? ' is-high' : ''}"${s.rev > 0 ? ` title="${s.verified ? 'نسبة المصروف إلى إيراد الكاشير الحي' : 'نسبة المصروف إلى إيراد القسم من سجل الإيرادات — يارا سوفت غير متاح'}"` : ''}>`
             + `<span class="erp-dept-card__ratio-track"><span class="erp-dept-card__ratio-fill" style="width:${ratioPct.toFixed(1)}%"></span></span>`
-            + `<span class="erp-dept-card__ratio-label">نسبة التكلفة <span class="erp-num" dir="ltr">${s.verified ? `${formatInt(Math.round(s.costRatio))}%` : '—'}</span></span>`
+            + `<span class="erp-dept-card__ratio-label">نسبة التكلفة <span class="erp-num" dir="ltr">${s.rev > 0 ? `${formatInt(Math.round(s.costRatio))}%` : '—'}</span></span>`
             + '</div>'
             + `<div class="erp-dept-card__cashiers">${chips}</div>`
             + `<div class="erp-dept-card__foot">`
@@ -810,9 +824,9 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const fin = (label, value) => (financeReady ? kpiMoneyHtml(label, value, currency) : kpiHtml(label, '—'));
         kpiEl.innerHTML = !total ? '' : kpiHtml('إجمالي الأقسام', formatInt(total))
             + kpiHtml('رئيسية / فرعية', `${formatInt(roots)} / ${formatInt(total - roots)}`)
-            + fin('إجمالي الإيراد', totalRev)
-            + fin('إجمالي المصروف', totalExp)
-            + fin('صافي الربح', totalRev - totalExp)
+            + fin('إجمالي إيراد الشهر', totalRev)
+            + fin('إجمالي مصروف الشهر', totalExp)
+            + fin('صافي ربح الشهر', totalRev - totalExp)
             + kpiHtml('الموظفون', signalsReady ? formatInt(totals.people) : '—')
             + kpiHtml('الأصناف', signalsReady ? formatInt(totals.items) : '—')
             + kpiHtml('أذون معلّقة', signalsReady ? formatInt(pending) : '—');

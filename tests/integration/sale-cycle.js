@@ -102,9 +102,12 @@ async function ensureFixtures() {
             await db.query('UPDATE users SET password=$1, role=$2, active=true, must_change_password=false WHERE username=$3',
                 [hash, u.role, u.username]);
         } else {
-            // عمود id عمود identity — نترك القاعدة تولّده
-            await db.query(`INSERT INTO users (username, password, role, name, active, must_change_password)
-                VALUES ($1,$2,$3,$4,true,false)`, [u.username, hash, u.role, u.name]);
+            // users.id عمود bigint بلا default/identity ⇒ نمرّر المعرّف صراحةً.
+            // (التعليق القديم كان يقول "identity" ⇒ خطأ كسر الاختبار على قاعدة جديدة.)
+            const nextId = await db.query('SELECT COALESCE(MAX(id),0)+1 AS id FROM users');
+            await db.query(`INSERT INTO users (id, username, password, role, name, active, must_change_password)
+                VALUES ($1,$2,$3,$4,$5,true,false)`,
+            [nextId.rows[0].id, u.username, hash, u.role, u.name]);
         }
     }
 

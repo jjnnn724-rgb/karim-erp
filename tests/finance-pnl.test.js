@@ -78,7 +78,14 @@ describe('تحليل التكاليف — تجميع خادمي محدود بق�
         ]);
         expect(query.text).toContain('WITH RECURSIVE dept_tree');
         expect(query.text).toContain('overall_totals AS');
-        expect(query.text).toContain('direct_expense_totals AS');
+        // الإجمالي العام يقرأ الحركات نفسها بلا فلتر أقسام: حركات بلا deptId
+        // (فروق جرد المواقع غير المسندة) جزء من كلفة الشركة ولا يجوز إسقاطها.
+        expect(query.text).toContain('FROM revenues r');
+        expect(query.text).toContain('FROM expenses e');
+        expect(query.text).toMatch(/FROM revenues r\s+WHERE TRUE/);
+        expect(query.text).toMatch(/FROM expenses e\s+WHERE LOWER/);
+        expect(query.text).not.toContain('direct_expense_totals');
+        expect(query.text).not.toContain('direct_revenue_totals');
         expect(query.text).toContain('JSON_AGG');
         expect(query.text).toContain('dispatch_return');
         expect(query.text).toContain('count_correction');

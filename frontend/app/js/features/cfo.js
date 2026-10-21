@@ -33,10 +33,10 @@ async function renderCfoPage(){
   <div class="u-row-wrap">
     <input type="date" id="cfoFrom" value="${CFO_STATE.from}" onchange="CFO_STATE.from=this.value">
     <input type="date" id="cfoTo" value="${CFO_STATE.to}" onchange="CFO_STATE.to=this.value">
-    <button class="btn btn-blue btn-sm" onclick="renderCfoPage()"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button>
-    <button class="btn btn-sm" onclick="cfoPrintSummary()"><i class=ji data-i=printer></i> ${t('cfo.printSum')}</button>
-    ${canWrite ? `<button class="btn btn-gold btn-sm" onclick="cfoJournalModal()"><i class=ji data-i=plus></i> ${t('cfo.manual')}</button>
-    <button class="btn btn-green btn-sm" onclick="cfoPostPayroll()"><i class=ji data-i=banknote></i> ${t('cfo.postPayroll')}</button>` : ''}
+    <button class="btn btn-blue btn-sm" data-karim-action="renderCfoPage"><i class=ji data-i=refresh></i> ${t('act.refresh')}</button>
+    <button class="btn btn-sm" data-karim-action="cfoPrintSummary"><i class=ji data-i=printer></i> ${t('cfo.printSum')}</button>
+    ${canWrite ? `<button class="btn btn-gold btn-sm" data-karim-action="cfoJournalModal"><i class=ji data-i=plus></i> ${t('cfo.manual')}</button>
+    <button class="btn btn-green btn-sm" data-karim-action="cfoPostPayroll"><i class=ji data-i=banknote></i> ${t('cfo.postPayroll')}</button>` : ''}
   </div></div>
   <div class="metrics-grid">
     <div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> ${t('cfo.revenue')}</div><div class="mcard-val c-green">${fC(s.revenue.total)}</div><small class="text-muted">${fN(s.revenue.count)} ${t('cfo.ops')}</small></div>
@@ -47,7 +47,7 @@ async function renderCfoPage(){
     <div class="mcard"><div class="mcard-label"><i class=ji data-i=scale></i> ${t('cfo.tb')}</div><div class="mcard-val ${tb.balanced ? 'c-green' : 'c-red'}">${tb.balanced ? t('cfo.balanced') : t('cfo.unbalanced')}</div><small class="text-muted">${t('cfo.debit')} ${fC(tb.total_debit)} = ${t('cfo.credit')} ${fC(tb.total_credit)}</small></div>
   </div>
   <div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=scale></i> ${t('cfo.tbTitle')} (${esc(CFO_STATE.from)} → ${esc(CFO_STATE.to)})</h3>
-  <div class="u-row-wrap"><button class="btn btn-sm" onclick="cfoPrintTB()"><i class=ji data-i=printer></i> ${t('cfo.printTB')}</button><button class="btn btn-blue btn-sm" onclick="cfoExportTB()"><i class=ji data-i=inbox></i> ${t('cfo.excel')}</button></div></div>
+  <div class="u-row-wrap"><button class="btn btn-sm" data-karim-action="cfoPrintTB"><i class=ji data-i=printer></i> ${t('cfo.printTB')}</button><button class="btn btn-blue btn-sm" data-karim-action="cfoExportTB"><i class=ji data-i=inbox></i> ${t('cfo.excel')}</button></div></div>
   <div class="tbl-scroll"><table><thead><tr><th>${t('cfo.code')}</th><th>${t('cfo.account')}</th><th>${t('cfo.type')}</th><th>${t('cfo.debit')}</th><th>${t('cfo.credit')}</th><th>${t('cfo.balance')}</th></tr></thead><tbody>
   ${tb.accounts.filter(a => Number(a.debit) || Number(a.credit)).map(a => {
     const bal = Number(a.debit) - Number(a.credit);
@@ -55,20 +55,20 @@ async function renderCfoPage(){
   }).join('') || '<tr><td colspan="6" class="u-empty-sm">لا حركات في الفترة — رحّل المبيعات تلقائيًا من الكاشير أو أدخل قيدًا يدويًا</td></tr>'}
   </tbody></table></div></div>
   <div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3><i class=ji data-i=book></i> ${t('cfo.journalTitle')}</h3>
-  <div class="u-row-wrap"><button class="btn btn-sm" onclick="cfoPrintJournal()"><i class=ji data-i=printer></i> ${t('cfo.printJ')}</button></div></div>
+  <div class="u-row-wrap"><button class="btn btn-sm" data-karim-action="cfoPrintJournal"><i class=ji data-i=printer></i> ${t('cfo.printJ')}</button></div></div>
   <div class="tbl-scroll"><table><thead><tr><th>${t('cfo.entryNo')}</th><th>${t('cfo.date')}</th><th>${t('cfo.memo')}</th><th>${t('cfo.source')}</th><th>${t('cfo.lines')}</th><th>${t('cfo.st')}</th><th></th></tr></thead><tbody>
-  ${(CFO_STATE.journal || []).map(j => `<tr${j.status !== 'posted' ? ' style="opacity:.55"' : ''}><td class="mono">${esc(j.entry_no)}</td><td>${fD(j.date)}</td><td>${esc(j.memo || '—')}${j.created_by_name ? `<br><small class="text-muted">${t('cfo.by')} @${esc(j.created_by_name)}</small>` : ''}</td><td><span class="badge bdg-blue">${esc(j.source_type)}${j.source_id ? ' #' + esc(j.source_id) : ''}</span></td><td>${(j.lines || []).map(l => `<div><span class="mono">${esc(l.account_code)}</span> ${Number(l.debit) ? `<span class="c-green">${t('cfo.debit')} ${fC(l.debit)}</span>` : `<span class="c-red">${t('cfo.credit')} ${fC(l.credit)}</span>`}</div>`).join('')}</td><td>${j.status === 'posted' ? `<span class="badge bdg-green">${t('cfo.posted')}</span>` : j.status === 'draft' ? `<span class="badge bdg-orange">مسودة</span>` : `<span class="badge bdg-gray">${t('cfo.voided')}</span>`}</td><td>${(typeof cfoCanWrite === 'function' && cfoCanWrite()) ? (j.status === 'draft' ? `<button class="btn btn-green btn-sm" onclick="cfoApproveEntry('${j.id}')">اعتماد</button> ` : '') + (j.status === 'posted' ? `<button class="btn btn-red btn-sm" onclick="cfoVoidEntry('${j.id}')">${t('cfo.voidBtn')}</button>` : '') : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="u-empty-sm">لا قيود بعد</td></tr>'}
+  ${(CFO_STATE.journal || []).map(j => `<tr${j.status !== 'posted' ? ' style="opacity:.55"' : ''}><td class="mono">${esc(j.entry_no)}</td><td>${fD(j.date)}</td><td>${esc(j.memo || '—')}${j.created_by_name ? `<br><small class="text-muted">${t('cfo.by')} @${esc(j.created_by_name)}</small>` : ''}</td><td><span class="badge bdg-blue">${esc(j.source_type)}${j.source_id ? ' #' + esc(j.source_id) : ''}</span></td><td>${(j.lines || []).map(l => `<div><span class="mono">${esc(l.account_code)}</span> ${Number(l.debit) ? `<span class="c-green">${t('cfo.debit')} ${fC(l.debit)}</span>` : `<span class="c-red">${t('cfo.credit')} ${fC(l.credit)}</span>`}</div>`).join('')}</td><td>${j.status === 'posted' ? `<span class="badge bdg-green">${t('cfo.posted')}</span>` : j.status === 'draft' ? `<span class="badge bdg-orange">مسودة</span>` : `<span class="badge bdg-gray">${t('cfo.voided')}</span>`}</td><td>${(typeof cfoCanWrite === 'function' && cfoCanWrite()) ? (j.status === 'draft' ? `<button class="btn btn-green btn-sm" data-karim-action="cfoApproveEntry" data-karim-arg0="${j.id}">اعتماد</button> ` : '') + (j.status === 'posted' ? `<button class="btn btn-red btn-sm" data-karim-action="cfoVoidEntry" data-karim-arg0="${j.id}">${t('cfo.voidBtn')}</button>` : '') : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="u-empty-sm">لا قيود بعد</td></tr>'}
   </tbody></table></div>
-  <div class="tbl-wrap" style="margin-top:16px"><div class="tbl-hd"><h3><i class=ji data-i=lock></i> الإغلاق الشهري (قفل الفترات)</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="cfoLoadPeriods()"><i class=ji data-i=refresh></i> تحديث</button></div></div>
+  <div class="tbl-wrap" style="margin-top:16px"><div class="tbl-hd"><h3><i class=ji data-i=lock></i> الإغلاق الشهري (قفل الفترات)</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="cfoLoadPeriods"><i class=ji data-i=refresh></i> تحديث</button></div></div>
   <div style="padding:16px 24px" id="cfoPeriodsBody"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
   <div class="tbl-wrap" style="margin-top:16px"><div class="tbl-hd"><h3><i class=ji data-i=scale></i> القوائم الختامية</h3>
-  <div class="u-row-wrap"><input type="date" id="cfoStmtDate" value="${CFO_STATE.to}"><button class="btn btn-gold btn-sm" onclick="cfoLoadBalance()">الميزانية العمومية</button><button class="btn btn-gold btn-sm" onclick="cfoLoadCashflow()">التدفق النقدي</button></div></div>
+  <div class="u-row-wrap"><input type="date" id="cfoStmtDate" value="${CFO_STATE.to}"><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadBalance">الميزانية العمومية</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadCashflow">التدفق النقدي</button></div></div>
   <div style="padding:16px 24px" id="cfoStmtBody"><div class="mcard u-empty">اختر التاريخ ثم اعرض القائمة — تُطبع من زر الطباعة بالمتصفح.</div></div></div>
   <div class="tbl-wrap" style="margin-top:16px"><div class="tbl-hd"><h3><i class=ji data-i=users></i> إغلاق ورديات الكاشير مركزيًا (بدون المرور على الأجهزة)</h3>
-  <div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="cfoLoadOpenShifts()"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-gold btn-sm" onclick="cfoExecDayClose()">إقفال اليوم Z</button></div></div>
+  <div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="cfoLoadOpenShifts"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-gold btn-sm" data-karim-action="cfoExecDayClose">إقفال اليوم Z</button></div></div>
   <div style="padding:16px 24px" id="cfoShiftsBody"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
   <div class="tbl-wrap" style="margin-top:16px"><div class="tbl-hd"><h3><i class=ji data-i=trending-up></i> النمو المحاسبي</h3>
-  <div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="cfoLoadCC()">ربحية المراكز</button><button class="btn btn-gold btn-sm" onclick="cfoLoadAging()">أعمار الذمم</button><button class="btn btn-gold btn-sm" onclick="cfoLoadBank()">التسوية البنكية</button><button class="btn btn-gold btn-sm" onclick="cfoLoadAssets()">الأصول والإهلاك</button><button class="btn btn-gold btn-sm" onclick="cfoLoadCustody()">العهد</button><button class="btn btn-gold btn-sm" onclick="cfoLoadBudgets()">الموازنات</button><button class="btn btn-blue btn-sm" onclick="cfoAlertsLog()">سجل التنبيهات</button></div></div>
+  <div class="u-row-wrap"><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadCC">ربحية المراكز</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadAging">أعمار الذمم</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadBank">التسوية البنكية</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadAssets">الأصول والإهلاك</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadCustody">العهد</button><button class="btn btn-gold btn-sm" data-karim-action="cfoLoadBudgets">الموازنات</button><button class="btn btn-blue btn-sm" data-karim-action="cfoAlertsLog">سجل التنبيهات</button></div></div>
   <div style="padding:16px 24px" id="cfoGrowthBody"><div class="mcard u-empty">اختر تقريرًا من الأزرار أعلاه.</div></div></div></div>`;
   setTimeout(cfoLoadPeriods, 0);
   setTimeout(cfoLoadOpenShifts, 0);
@@ -81,7 +81,7 @@ function cfoJournalModal(){
   <div class="fg"><label>البيان</label><input type="text" id="jlMemo" placeholder="شرح القيد"></div></div>
   <table style="width:100%"><thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead><tbody>${row(0)}${row(1)}${row(2)}${row(3)}</tbody></table>
   <div class="text-muted" style="font-size:12px;margin-top:8px">اترك السطور الزائدة فارغة — يجب تساوي المدين والدائن.</div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn" onclick="cfoSaveJournal(true)">حفظ كمسودة</button><button class="btn btn-gold" onclick="cfoSaveJournal(false)"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`, 'modal-wide');
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn" data-karim-action="cfoSaveJournal" data-karim-args="[true]">حفظ كمسودة</button><button class="btn btn-gold" data-karim-action="cfoSaveJournal" data-karim-args="[false]"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`, 'modal-wide');
 }
 async function cfoSaveJournal(asDraft){
   const lines = [];
@@ -115,7 +115,7 @@ async function cfoLoadPeriods(){
       <td>${p.closed ? '<span class="badge bdg-gray">مقفلة 🔒</span>' : '<span class="badge bdg-green">مفتوحة</span>'}</td>
       <td class="text-muted">${Number(p.posted) || 0} مرحّل / ${Number(p.drafts) || 0} مسودة</td>
       <td class="text-muted">${p.closed ? `أقفلها @${esc(p.closed_by_name || '—')}` : '—'}</td>
-      <td>${!p.closed ? `<button class="btn btn-gold btn-sm" onclick="cfoClosePeriod('${esc(p.period)}')">قفل</button>` : `<button class="btn btn-sm" onclick="cfoOpenPeriod('${esc(p.period)}')">إعادة فتح</button>`}</td>
+      <td>${!p.closed ? `<button class="btn btn-gold btn-sm" data-karim-action="cfoClosePeriod" data-karim-arg0="${esc(p.period)}">قفل</button>` : `<button class="btn btn-sm" data-karim-action="cfoOpenPeriod" data-karim-arg0="${esc(p.period)}">إعادة فتح</button>`}</td>
     </tr>`).join('');
     box.innerHTML = `<div class="tbl-scroll"><table><thead><tr><th>الفترة</th><th>الحالة</th><th>القيود</th><th>القفل</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <small class="text-muted">القفل يمنع أي ترحيل/إلغاء على الشهر — وإعادة الفتح للمدير فقط ومسجلة باسمه.</small>`;
@@ -180,8 +180,8 @@ async function cfoLoadBudgets(){
       <td class="mono">${esc(r.account_code || '—')}</td><td>${fC(r.budget)}</td><td>${fC(r.actual)}</td>
       <td class="${r.over ? 'c-red fw-bold' : 'c-green'}">${fC(r.variance)}${r.over ? ' ⚠' : ''}</td>
       <td>${r.pct === null || r.pct === undefined ? '—' : fN(r.pct) + '%'}</td>
-      <td><button class="btn btn-red btn-sm" onclick="cfoDelBudget('${r.id}')">حذف</button></td></tr>`).join('');
-    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-green btn-sm" onclick="cfoAddBudget()">موازنة جديدة</button>
+      <td><button class="btn btn-red btn-sm" data-karim-action="cfoDelBudget" data-karim-arg0="${r.id}">حذف</button></td></tr>`).join('');
+    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-green btn-sm" data-karim-action="cfoAddBudget">موازنة جديدة</button>
     <span class="text-muted">${esc(period)} — التجاوز يُنبه تلقائيًا (جرس + واتساب).</span></div>
     <div class="tbl-scroll"><table><thead><tr><th>البند</th><th>الحساب</th><th>الموازنة</th><th>الفعلي</th><th>الانحراف</th><th>النسبة</th><th></th></tr></thead>
     <tbody>${rows || '<tr><td colspan="7" class="u-empty-sm">لا موازنات — أضف سقوف المصروفات هنا.</td></tr>'}</tbody></table></div>`;
@@ -210,7 +210,7 @@ async function cfoAlertsLog(){
     const d = await apiFetch('/accounting/alerts/log');
     const rows = (d.log || []).map(a => `<tr><td class="mono">${esc(a.key)}</td><td>${esc(a.last_title || '—')}</td>
       <td class="text-muted">${esc(String(a.last_sent_at || '').replace('T', ' ').slice(0, 19))}</td><td>${a.times_sent}×</td></tr>`).join('');
-    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-blue btn-sm" onclick="cfoRunAlerts()">فحص الآن</button>
+    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-blue btn-sm" data-karim-action="cfoRunAlerts">فحص الآن</button>
     <span class="text-muted">الفحص التلقائي كل 30 دقيقة — التنبيه الواحد يُرسل مرة كل 24 ساعة (جرس + واتساب المديرين إن فُعّل).</span></div>
     <div class="tbl-scroll"><table><thead><tr><th>القاعدة</th><th>آخر تنبيه</th><th>الوقت</th><th>المرات</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" class="u-empty-sm">لا تنبيهات مرسلة — الوضع هادئ ✓</td></tr>'}</tbody></table></div>`;
@@ -258,8 +258,8 @@ async function cfoLoadBank(){
     <div class="metrics-grid"><div class="mcard"><div class="mcard-label">الدفتر</div><div class="mcard-val">${fC(d.book)}</div></div>
     <div class="mcard"><div class="mcard-label">الكشف</div><div class="mcard-val">${fC(d.statement)}</div></div>
     <div class="mcard"><div class="mcard-label">الفرق</div><div class="mcard-val ${d.diff === 0 ? 'c-green' : 'c-red'}">${fC(d.diff)}</div></div></div>
-    <div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-blue btn-sm" onclick="cfoAutoMatch()">مطابقة تلقائية</button>
-    <button class="btn btn-sm" onclick="cfoAddStmt()">إضافة سطر كشف</button></div>
+    <div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-blue btn-sm" data-karim-action="cfoAutoMatch">مطابقة تلقائية</button>
+    <button class="btn btn-sm" data-karim-action="cfoAddStmt">إضافة سطر كشف</button></div>
     <div class="tbl-scroll"><table><thead><tr><th>التاريخ</th><th>البيان</th><th>المبلغ</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="u-empty-sm">لا بنود معلقة — التسوية نظيفة ✓</td></tr>'}</tbody></table></div>`;
   }catch(e){ box.innerHTML = `<div class="mcard u-empty">${esc(e.message || 'تعذر الجلب')}</div>`; }
 }
@@ -285,9 +285,9 @@ async function cfoLoadAssets(){
     const rows = (d.assets || []).filter(a => a.status === 'active').map(a => `<tr><td class="fw-bold">${esc(a.name)}</td>
       <td>${fC(a.cost)}</td><td>${fC(a.monthly)}/شهر</td><td>${fC(a.accumulated)}</td><td class="c-gold">${fC(a.remaining)}</td>
       <td class="text-muted">${esc(a.last_month || '—')}</td>
-      <td><button class="btn btn-red btn-sm" onclick="cfoDisposeAsset('${a.id}')">استبعاد</button></td></tr>`).join('');
-    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-green btn-sm" onclick="cfoAddAsset()">أصل جديد</button>
-    <button class="btn btn-gold btn-sm" onclick="cfoRunDepreciation()">تشغيل إهلاك الشهر</button></div>
+      <td><button class="btn btn-red btn-sm" data-karim-action="cfoDisposeAsset" data-karim-arg0="${a.id}">استبعاد</button></td></tr>`).join('');
+    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-green btn-sm" data-karim-action="cfoAddAsset">أصل جديد</button>
+    <button class="btn btn-gold btn-sm" data-karim-action="cfoRunDepreciation">تشغيل إهلاك الشهر</button></div>
     <div class="tbl-scroll"><table><thead><tr><th>الأصل</th><th>التكلفة</th><th>الشهري</th><th>المتراكم</th><th>المتبقي</th><th>آخر إهلاك</th><th></th></tr></thead>
     <tbody>${rows || '<tr><td colspan="7" class="u-empty-sm">لا أصول — سجل معدات المطبخ والتجهيزات هنا.</td></tr>'}</tbody></table></div>`;
   }catch(e){ box.innerHTML = `<div class="mcard u-empty">${esc(e.message || 'تعذر الجلب')}</div>`; }
@@ -325,11 +325,11 @@ async function cfoLoadCustody(){
     const rows = (d.rows || []).map(c => `<tr><td>@${esc(c.from_name)}</td><td>@${esc(c.to_name)}</td>
       <td class="c-gold">${fC(c.amount)}</td><td>${esc(c.note || '—')}</td>
       <td>${c.ack_at ? '<span class="badge bdg-green">مُستلمة ✓</span>' : '<span class="badge bdg-orange">معلقة</span>'}</td></tr>`).join('');
-    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-gold btn-sm" onclick="cfoHandCustody()">تسليم عهدة</button>
+    box.innerHTML = `<div class="u-row-wrap" style="margin-bottom:8px"><button class="btn btn-gold btn-sm" data-karim-action="cfoHandCustody">تسليم عهدة</button>
     <span class="text-muted">لديك ${d.myPending} عهدة معلقة بانتظار إقرارك.</span></div>
     <div class="tbl-scroll"><table><thead><tr><th>من</th><th>إلى</th><th>المبلغ</th><th>ملاحظة</th><th>الحالة</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="5" class="u-empty-sm">لا عهد اليوم.</td></tr>'}</tbody></table></div>
-    <div class="u-row-wrap"><input id="cfoAckId" placeholder="رقم العهدة للإقرار" style="width:160px"><button class="btn btn-green btn-sm" onclick="cfoAckCustody()">إقرار استلام</button></div>`;
+    <div class="u-row-wrap"><input id="cfoAckId" placeholder="رقم العهدة للإقرار" style="width:160px"><button class="btn btn-green btn-sm" data-karim-action="cfoAckCustody">إقرار استلام</button></div>`;
   }catch(e){ box.innerHTML = `<div class="mcard u-empty">${esc(e.message || 'تعذر الجلب')}</div>`; }
 }
 async function cfoHandCustody(){
@@ -363,7 +363,7 @@ async function cfoLoadOpenShifts(){
       <td class="c-gold">${fC(s.expected_cash)}</td>
       <td class="text-muted">${s.invoice_count} فاتورة</td>
       <td><input type="number" id="cfo-shift-actual-${s.id}" min="0" step="0.01" placeholder="الجرد الفعلي" style="width:120px"></td>
-      <td><button class="btn btn-red btn-sm" onclick="cfoCloseShiftRemote('${s.id}')">إغلاق</button></td>
+      <td><button class="btn btn-red btn-sm" data-karim-action="cfoCloseShiftRemote" data-karim-arg0="${s.id}">إغلاق</button></td>
     </tr>`; }).join('');
     box.innerHTML = `<div class="tbl-scroll"><table><thead><tr><th>وردية</th><th>الكاشير</th><th>القسم</th><th>اليوم</th><th>العهدة</th><th>المتوقع</th><th>الحركة</th><th>الجرد الفعلي</th><th></th></tr></thead>
     <tbody>${rows || '<tr><td colspan="9" class="u-empty-sm">لا ورديات مفتوحة — كل الكاشيرية مغلقة ✓</td></tr>'}</tbody></table></div>
@@ -397,7 +397,7 @@ async function cfoExecDayClose(){
 async function cfoPostPayroll(){
   showModal(`<h3><i class=ji data-i=banknote></i> ${t('cfo.payTitle')}</h3>
   <div class="fg"><label>${t('cfo.month')} (YYYY-MM)</label><input type="month" id="cfoPayMonth" value="${new Date().toISOString().slice(0, 7)}"></div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">${t('act.cancel')}</button><button class="btn btn-gold" onclick="cfoConfirmPostPayroll()"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">${t('act.cancel')}</button><button class="btn btn-gold" data-karim-action="cfoConfirmPostPayroll"><i class=ji data-i=save></i> ${t('act.save')}</button></div>`);
 }
 async function cfoConfirmPostPayroll(){
   const m = document.getElementById('cfoPayMonth')?.value || '';

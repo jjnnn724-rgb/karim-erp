@@ -88,20 +88,20 @@ function hijriDateField(prefix, gregValue, defaultMode){
   return `
   <input type="hidden" id="${prefix}" value="${esc(gregValue || '')}">
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-    <button type="button" class="btn btn-xs btn-outline" id="${prefix}Toggle" onclick="toggleDateMode('${prefix}')" title="تبديل بين هجري وميلادي">
+    <button type="button" class="btn btn-xs btn-outline" id="${prefix}Toggle" data-karim-action="toggleDateMode" data-karim-arg0="${prefix}" title="تبديل بين هجري وميلادي">
       <i class=ji data-i=calendar></i> <span id="${prefix}ModeLabel">${gregFirst ? 'ميلادي' : 'هجري'}</span>
     </button>
     <small class="text-muted" id="${prefix}Greg">${esc(gregValue || '—')}</small>
   </div>
   <div id="${prefix}HijriPanel" ${gregFirst ? 'style="display:none"' : ''}>
     <div class="fr" style="gap:6px">
-      <div class="fg"><label>اليوم</label><select id="${prefix}Hd" onchange="syncHijriToGreg('${prefix}')">${days}</select></div>
-      <div class="fg"><label>الشهر</label><select id="${prefix}Hm" onchange="syncHijriToGreg('${prefix}')">${months}</select></div>
-      <div class="fg"><label>السنة</label><select id="${prefix}Hy" onchange="syncHijriToGreg('${prefix}')">${years}</select></div>
+      <div class="fg"><label>اليوم</label><select id="${prefix}Hd" data-karim-action="syncHijriToGreg" data-karim-event="change" data-karim-arg0="${prefix}">${days}</select></div>
+      <div class="fg"><label>الشهر</label><select id="${prefix}Hm" data-karim-action="syncHijriToGreg" data-karim-event="change" data-karim-arg0="${prefix}">${months}</select></div>
+      <div class="fg"><label>السنة</label><select id="${prefix}Hy" data-karim-action="syncHijriToGreg" data-karim-event="change" data-karim-arg0="${prefix}">${years}</select></div>
     </div>
   </div>
   <div id="${prefix}GregPanel" ${gregFirst ? '' : 'style="display:none"'}>
-    <input type="date" id="${prefix}GregInput" value="${esc(gregValue || '')}" onchange="syncGregToHijri('${prefix}')" class="input" style="width:100%">
+    <input type="date" id="${prefix}GregInput" value="${esc(gregValue || '')}" data-karim-action="syncGregToHijri" data-karim-event="change" data-karim-arg0="${prefix}" class="input" style="width:100%">
   </div>`;
 }
 function toggleDateMode(prefix){

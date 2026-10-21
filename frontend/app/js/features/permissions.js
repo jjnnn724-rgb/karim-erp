@@ -53,7 +53,7 @@ return `
 ${target.role === 'admin' ? '' : `
 <div class="fr" style="padding:0 14px 14px;align-items:end">
 <div class="fg" style="max-width:320px"><label>سبب المنح/السحب (يُسجَّل في التدقيق)</label><input type="text" id="permReason" class="inp" placeholder="اختياري"></div>
-<button class="btn btn-gold" onclick="permSave()"><i class=ji data-i=save></i> حفظ الصلاحيات</button>
+<button class="btn btn-gold" data-karim-action="permSave"><i class=ji data-i=save></i> حفظ الصلاحيات</button>
 </div>`}
 ${(PERM.audit || []).length ? `
 <div class="tbl-hd"><h3><i class=ji data-i=history></i> سجل التدقيق (آخر 50)</h3></div>

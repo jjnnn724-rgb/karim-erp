@@ -197,13 +197,16 @@
 .erp-v2 .erp-dept-stat__label .ji,
 .erp-v2 .erp-dept-stat__label svg { inline-size: 13px; block-size: 13px; }
 .erp-v2 .erp-dept-stat__value {
-  font-size: var(--erp-text-base, 14px);
+  font-size: 13px;
   font-weight: var(--erp-fw-bold);
   color: var(--erp-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 4px;
+  min-inline-size: 0;
 }
+.erp-v2 .erp-dept-stat__value .erp-num { white-space: nowrap; }
 .erp-v2 .erp-dept-stat--rev .erp-dept-stat__value { color: var(--erp-brand-text); }
 .erp-v2 .erp-dept-stat--exp .erp-dept-stat__value { color: var(--erp-danger-text); }
 .erp-v2 .erp-dept-stat--net .erp-dept-stat__value.is-positive { color: var(--erp-success-text); }

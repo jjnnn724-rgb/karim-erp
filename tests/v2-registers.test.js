@@ -69,6 +69,22 @@ describe('سجلات القراءة — عقد المشي المحدود وأب�
         ]);
     });
 
+    test('سجلات المال الشهرية تُقرأ كاملة — سقف 8 صفحات كان يقتطع الإجمالي', async () => {
+        const calls = [];
+        const apiFetch = jest.fn(async (p) => {
+            calls.push(p);
+            const page = Number(new URLSearchParams(p.split('?')[1]).get('page'));
+            return {
+                data: Array.from({ length: 1000 }, (_, i) => ({ id: page * 1000 + i })),
+                pagination: { totalPages: 17 },
+            };
+        });
+        const ctx = loadEsm(path.join(V2, 'data', 'finance-repo.js'), { apiFetch }, ['fetchRevenues']);
+        const rows = await ctx.fetchRevenues();
+        expect(calls).toHaveLength(17);
+        expect(rows).toHaveLength(17000);
+    });
+
     test('المشي يمشي الصفحات حتى السقف إن امتلأت كلها', async () => {
         const calls = [];
         const apiFetch = jest.fn(async (p) => {

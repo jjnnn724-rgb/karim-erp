@@ -22,20 +22,20 @@ content.innerHTML = `
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
 <h3 class="u-gold-strong"><i class=ji data-i=users></i> ${t('emp.title')}</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap">
-<button class="btn btn-blue btn-sm" onclick="exportEmployeesExcel()"><i class=ji data-i=inbox></i> ${t('act.export')}</button>
-<button class="btn btn-green btn-sm" onclick="showEmpSheetImportModal()"><i class=ji data-i=file-text></i> استيراد شيت Excel</button>
-<button class="btn btn-gold" onclick="showAddEmployeeModal()"><i class=ji data-i=plus></i> ${t('emp.add')}</button>
-<button class="btn btn-green" onclick="showBulkImportModal()"><i class=ji data-i=inbox></i> ${t('emp.bulk')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="exportEmployeesExcel"><i class=ji data-i=inbox></i> ${t('act.export')}</button>
+<button class="btn btn-green btn-sm" data-karim-action="showEmpSheetImportModal"><i class=ji data-i=file-text></i> استيراد شيت Excel</button>
+<button class="btn btn-gold" data-karim-action="showAddEmployeeModal"><i class=ji data-i=plus></i> ${t('emp.add')}</button>
+<button class="btn btn-green" data-karim-action="showBulkImportModal"><i class=ji data-i=inbox></i> ${t('emp.bulk')}</button>
 </div>
 </div>
 <div class="emp-search-row">
 <div class="smart-search">
-<input type="text" id="empSearch" placeholder="${t('emp.searchName')}" oninput="filterEmployees()" onkeydown="if(event.key==='Enter')filterEmployees()">
+<input type="text" id="empSearch" placeholder="${t('emp.searchName')}" data-karim-action="filterEmployees" data-karim-event="input" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="filterEmployees">
 </div>
-<button class="btn btn-blue btn-sm" onclick="filterEmployees()"><i class=ji data-i=search></i> ${t('emp.searchBtn')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="filterEmployees"><i class=ji data-i=search></i> ${t('emp.searchBtn')}</button>
 <div class="emp-id-search">
-<input type="text" id="empIdSearch" inputmode="numeric" placeholder="${t('emp.searchId')}" onkeydown="if(event.key==='Enter')searchEmployeeById()">
-<button class="btn btn-gold btn-sm" onclick="searchEmployeeById()"><i class=ji data-i=search></i> ${t('emp.search')}</button>
+<input type="text" id="empIdSearch" inputmode="numeric" placeholder="${t('emp.searchId')}" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="searchEmployeeById">
+<button class="btn btn-gold btn-sm" data-karim-action="searchEmployeeById"><i class=ji data-i=search></i> ${t('emp.search')}</button>
 </div>
 </div>
 <div class="dept-grid" id="employeesGrid">
@@ -75,7 +75,7 @@ const dept=STATE.hrDepartments.find(d=>d.code===emp.department);
 const linkedUser=linkedUserForEmployee(emp);
 const initials=emp.name.split(' ').map(n=>n[0]).join('').substring(0,2);
 return `
-<div class="employee-card" onclick="viewEmployeeDetails('${emp.id}')">
+<div class="employee-card" data-karim-action="viewEmployeeDetails" data-karim-arg0="${emp.id}">
 <div class="emp-head">
 <div class="employee-avatar">${emp.photo?`<img src="${emp.photo}" alt="${esc(emp.name)}" loading="lazy">`:initials}</div>
 <div class="u-flex1">
@@ -230,10 +230,10 @@ showModal(`
 </div>
 <div class="fg"><label>الحالة</label><select id="empStatus"><option value="active">نشط</option><option value="inactive">غير نشط</option></select></div>
 ${STATE.currentUser?.role==='admin'?`<div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoCheckout"> <span>انصراف تلقائي عند نهاية الوردية <small class="text-muted">(لمن ينسى بصمة الخروج — متوقف حاليًا بقرار الإدارة)</small></span></label></div><div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="empAutoLock"> <span>🔒 قفل اليوم بعد الإغلاق <small class="text-muted">(لا تُقبل بصمات لاحقة)</small></span></label></div>`:''}
-<div class="workflow-banner" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="empCreateAccount" checked onchange="toggleEmployeeAccountFields()"> إنشاء حساب دخول وربطه بالموظف الآن</label><div id="empAccountFields" class="fr" style="margin-top:10px"><div class="fg"><label>اسم المستخدم</label><input type="text" id="empUsername" placeholder="مثال: emp001"></div><div class="fg"><label>الدور والصلاحيات</label><select id="empRole">${Object.keys(ROLES).map(k=>`<option value="${k}" ${k==='employee'?'selected':''}>${ROLES[k].icon} ${ROLES[k].name}</option>`).join('')}</select></div><div class="fg"><label>كلمة المرور المؤقتة</label><input type="password" id="empPassword"></div></div></div>
+<div class="workflow-banner" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="empCreateAccount" checked data-karim-action="toggleEmployeeAccountFields" data-karim-event="change"> إنشاء حساب دخول وربطه بالموظف الآن</label><div id="empAccountFields" class="fr" style="margin-top:10px"><div class="fg"><label>اسم المستخدم</label><input type="text" id="empUsername" placeholder="مثال: emp001"></div><div class="fg"><label>الدور والصلاحيات</label><select id="empRole">${Object.keys(ROLES).map(k=>`<option value="${k}" ${k==='employee'?'selected':''}>${ROLES[k].icon} ${ROLES[k].name}</option>`).join('')}</select></div><div class="fg"><label>كلمة المرور المؤقتة</label><input type="password" id="empPassword"></div></div></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="addEmployee()"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="addEmployee"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }
@@ -329,8 +329,8 @@ ${STATE.currentUser?.role==='admin'?`<div class="fg"><label style="display:flex;
 </div></div>
 <div class="fg"><label>الحالة</label><select id="empStatus"><option value="active" ${emp.status==='active'?'selected':''}>نشط</option><option value="inactive" ${emp.status==='inactive'?'selected':''}>غير نشط</option></select></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="updateEmployee('${emp.id}')"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="updateEmployee" data-karim-arg0="${emp.id}"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }
@@ -380,17 +380,17 @@ const canUpload = ['admin','hr'].includes(STATE.currentUser?.role);
 showModal(`
 <h3><i class=ji data-i=user></i> تفاصيل الموظف</h3>
 <div id="modalSmartCard"></div>
-<div class="workflow-banner u-mt16"><strong><i class=ji data-i=user-check></i> بصمة الحضور:</strong> ${emp.deviceUserId?`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> مربوط برقم البصمة ${esc(String(emp.deviceUserId))}</span>`:'<span class="badge bdg-orange"><i class=ji data-i=circle-x></i> غير مربوط</span> <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" onclick="closeModal();editEmployee(this.dataset.eid)" data-eid="${emp.id}">ربط رقم البصمة</button>'}</div>
-<div class="workflow-banner u-mt16"><strong><i class=ji data-i=key></i> حساب الدخول والصلاحيات:</strong> ${linkedUser?`@${esc(linkedUser.username)} — ${esc(ROLES[linkedUser.role]?.name||linkedUser.role)} · ${linkedUser.active!==false?'نشط':'موقوف'} <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" onclick="closeModal();editUser(this.dataset.eid)" data-eid="${linkedUser.id}">تعديل الحساب</button>`:`غير منشأ <button class="btn btn-green btn-sm" style="margin-inline-start:8px" onclick="closeModal();showCreateEmployeeAccountModal(this.dataset.eid)" data-eid="${emp.id}">إنشاء حساب</button>`}</div>
+<div class="workflow-banner u-mt16"><strong><i class=ji data-i=user-check></i> بصمة الحضور:</strong> ${emp.deviceUserId?`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> مربوط برقم البصمة ${esc(String(emp.deviceUserId))}</span>`:'<span class="badge bdg-orange"><i class=ji data-i=circle-x></i> غير مربوط</span> <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" data-karim-action="closeModal" data-karim-also="editEmployee" data-eid="${emp.id}">ربط رقم البصمة</button>'}</div>
+<div class="workflow-banner u-mt16"><strong><i class=ji data-i=key></i> حساب الدخول والصلاحيات:</strong> ${linkedUser?`@${esc(linkedUser.username)} — ${esc(ROLES[linkedUser.role]?.name||linkedUser.role)} · ${linkedUser.active!==false?'نشط':'موقوف'} <button class="btn btn-blue btn-sm" style="margin-inline-start:8px" data-karim-action="closeModal" data-karim-also="editUser" data-eid="${linkedUser.id}">تعديل الحساب</button>`:`غير منشأ <button class="btn btn-green btn-sm" style="margin-inline-start:8px" data-karim-action="closeModal" data-karim-also="showCreateEmployeeAccountModal" data-eid="${emp.id}">إنشاء حساب</button>`}</div>
 <div class="tbl-wrap u-mt16">
-<div class="tbl-hd"><h3><i class=ji data-i=timer></i> سجل الحضور والانصراف</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" onclick="printLuxCard('${emp.id}')"><i class=ji data-i=id-card></i> البطاقة الفاخرة</button><button class="btn btn-green btn-sm" onclick="printEmployeeAttendanceDay('${emp.id}')"><i class=ji data-i=printer></i> اليوم</button><button class="btn btn-blue btn-sm" onclick="printEmployeeAttendanceMonth('${emp.id}')"><i class=ji data-i=calendar></i> الشهر كامل</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=timer></i> سجل الحضور والانصراف</h3><div class="u-row-wrap"><button class="btn btn-gold btn-sm" data-karim-action="printLuxCard" data-karim-arg0="${emp.id}"><i class=ji data-i=id-card></i> البطاقة الفاخرة</button><button class="btn btn-green btn-sm" data-karim-action="printEmployeeAttendanceDay" data-karim-arg0="${emp.id}"><i class=ji data-i=printer></i> اليوم</button><button class="btn btn-blue btn-sm" data-karim-action="printEmployeeAttendanceMonth" data-karim-arg0="${emp.id}"><i class=ji data-i=calendar></i> الشهر كامل</button></div></div>
 <div class="u-mt12" style="background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.25);border-radius:10px;padding:12px">
 <strong style="font-size:13px"><i class=ji data-i=calendar-search></i> بحث بفترة مخصصة (من — إلى):</strong>
 <div class="u-row-wrap u-mt8" style="gap:8px;align-items:center">
 <label style="font-size:12px">من</label><input type="date" id="empAttFrom" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 8px;border-radius:8px;border:1px solid #d1d5db">
 <label style="font-size:12px">إلى</label><input type="date" id="empAttTo" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 8px;border-radius:8px;border:1px solid #d1d5db">
-<button class="btn btn-blue btn-sm" onclick="searchEmployeeAttendanceRange('${emp.id}')"><i class=ji data-i=search></i> بحث</button>
-<button class="btn btn-green btn-sm" onclick="printEmployeeAttendanceRange('${emp.id}')"><i class=ji data-i=printer></i> طباعة الفترة</button>
+<button class="btn btn-blue btn-sm" data-karim-action="searchEmployeeAttendanceRange" data-karim-arg0="${emp.id}"><i class=ji data-i=search></i> بحث</button>
+<button class="btn btn-green btn-sm" data-karim-action="printEmployeeAttendanceRange" data-karim-arg0="${emp.id}"><i class=ji data-i=printer></i> طباعة الفترة</button>
 </div>
 <div id="empAttRangeResults"></div>
 </div>
@@ -426,8 +426,8 @@ return `<tr><td>${type?esc(type.name):'—'}</td><td>${fD(l.startDate)}</td><td>
 </div>
 `:''}
 <div class="modal-footer">
-<button class="btn btn-sm" onclick="closeModal();editEmployee('${emp.id}')"><i class=ji data-i=pencil></i> تعديل</button>
-<button class="btn btn-gold" onclick="closeModal()">إغلاق</button>
+<button class="btn btn-sm" data-karim-action="closeModal" data-karim-also="editEmployee"><i class=ji data-i=pencil></i> تعديل</button>
+<button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button>
 </div>
 `);
 const modalCard = document.getElementById('modalSmartCard');
@@ -443,7 +443,7 @@ showModal(`
 <h3><i class=ji data-i=ticket></i> البطاقة الذكية - ${esc(emp.name)}</h3>
 <div id="modalSmartCardView"></div>
 <div class="modal-footer">
-<button class="btn btn-gold" onclick="closeModal()">إغلاق</button>
+<button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button>
 </div>
 `);
 const container = document.getElementById('modalSmartCardView');
@@ -488,10 +488,10 @@ showModal(`
 <div style="background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);padding:12px;border-radius:var(--r);margin-bottom:14px;font-size:12px">
 <i class=ji data-i=alert-triangle></i> <strong>تنبيه:</strong> الرقم الوظيفي الموجود مسبقًا سيُتخطى (لا تعديل) — الصفوف الناقصة (اسم/رقم) تُرفض في المعاينة قبل الاستيراد.
 </div>
-<div style="display:flex;gap:10px;margin-bottom:16px"><button class="btn btn-blue btn-sm" onclick="downloadEmpSheetTemplate()"><i class=ji data-i=arrow-down></i> تحميل القالب</button></div>
+<div style="display:flex;gap:10px;margin-bottom:16px"><button class="btn btn-blue btn-sm" data-karim-action="downloadEmpSheetTemplate"><i class=ji data-i=arrow-down></i> تحميل القالب</button></div>
 <div class="fg"><label>اختر ملف Excel أو CSV</label><input type="file" id="empSheetFile" accept=".xlsx,.xls,.csv" class="u-input"></div>
 <div id="empSheetPreview" class="u-mt12"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="importEmpSheet()"><i class=ji data-i=inbox></i> استيراد المعتمد</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="importEmpSheet"><i class=ji data-i=inbox></i> استيراد المعتمد</button></div>`);
 document.getElementById('empSheetFile').addEventListener('change',previewEmpSheetFile);
 }
 function previewEmpSheetFile(){

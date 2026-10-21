@@ -61,7 +61,7 @@ function renderCommandResults(){
     return;
   }
   container.innerHTML = commandPaletteFiltered.map((item, idx) => `
-    <div class="command-item ${idx === commandPaletteSelected ? 'selected' : ''}" onclick="executeCommand(${idx})">
+    <div class="command-item ${idx === commandPaletteSelected ? 'selected' : ''}" data-karim-action="executeCommand" data-karim-arg0="${idx}">
       <div class="command-item-icon">${item.icon}</div>
       <div class="command-item-text">
         <div class="command-item-title">${item.title}</div>
@@ -231,7 +231,7 @@ function showShortcutsHelp(){
       </div>
     </div>
     <div class="modal-footer" style="margin-top:20px">
-      <button class="btn btn-gold" onclick="closeModal()">فهمت</button>
+      <button class="btn btn-gold" data-karim-action="closeModal">فهمت</button>
     </div>
   `, 'modal-lg');
 }

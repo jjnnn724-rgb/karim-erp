@@ -9,7 +9,7 @@ describe('Samsung portrait menu preview', () => {
         const html = read('menu-admin.html');
         const css = read('css/menu-admin.css');
         expect(html).toContain('SAMSUNG PORTRAIT · 9:16 · 1080 × 1920');
-        expect(html).toContain('onclick="togglePreviewFullscreen()"');
+        expect(html).toContain('data-karim-action="togglePreviewFullscreen"');
         // المراجع المُصدَّرة تأخذ مراجعة الصفحة — الحراسة تثبّت صيغة `?v=` لا الرقم
         expect(html).toMatch(/menu-admin\.css\?v=\d+\.\d+\.\d+/);
         expect(html).toMatch(/menu-admin\.js\?v=\d+\.\d+\.\d+/);

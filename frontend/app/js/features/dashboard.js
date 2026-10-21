@@ -78,14 +78,14 @@ const expRows=[...STATE.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date))
 return `
 <div class="section-header"><div class="section-title"><i class=ji data-i=calculator></i> لوحة المدير المالي</div></div>
 <div class="stats-grid-premium kpi-grid-4">
-  <div class="metric-card-premium" onclick="go('revenues')"><div class="kpi-top"><span class="kpi-label">إيرادات الشهر</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(mRev)}</div><div class="trend">${fN(STATE.revenues.length)} عملية مسجلة</div></div>
-  <div class="metric-card-premium" onclick="go('expenses')"><div class="kpi-top"><span class="kpi-label">مصاريف الشهر</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div><div class="value">${fC(mExp)}</div><div class="trend">${fN(STATE.expenses.length)} عملية مسجلة</div></div>
-  <div class="metric-card-premium" onclick="go('pnl')"><div class="kpi-top"><span class="kpi-label">الصافي</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div><div class="value ${net<0?'c-red':''}">${fC(net)}</div><div class="trend">إيرادات − مصاريف</div></div>
-  <div class="metric-card-premium" onclick="go('reports')"><div class="kpi-top"><span class="kpi-label">التقارير</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div><div class="value">فتح</div><div class="trend">تقارير مالية مفصلة</div></div>
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;revenues&quot;]"><div class="kpi-top"><span class="kpi-label">إيرادات الشهر</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(mRev)}</div><div class="trend">${fN(STATE.revenues.length)} عملية مسجلة</div></div>
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;expenses&quot;]"><div class="kpi-top"><span class="kpi-label">مصاريف الشهر</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div><div class="value">${fC(mExp)}</div><div class="trend">${fN(STATE.expenses.length)} عملية مسجلة</div></div>
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;pnl&quot;]"><div class="kpi-top"><span class="kpi-label">الصافي</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div><div class="value ${net<0?'c-red':''}">${fC(net)}</div><div class="trend">إيرادات − مصاريف</div></div>
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;reports&quot;]"><div class="kpi-top"><span class="kpi-label">التقارير</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div><div class="value">فتح</div><div class="trend">تقارير مالية مفصلة</div></div>
 </div>
 <div class="fr" style="gap:12px;margin-top:14px">
-<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث الإيرادات</h3><button class="btn btn-blue btn-sm" onclick="go('revenues')">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${revRows||'<tr><td class="u-empty-sm">لا إيرادات بعد</td></tr>'}</tbody></table></div>
-<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث المصاريف</h3><button class="btn btn-blue btn-sm" onclick="go('expenses')">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${expRows||'<tr><td class="u-empty-sm">لا مصاريف بعد</td></tr>'}</tbody></table></div>
+<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث الإيرادات</h3><button class="btn btn-blue btn-sm" data-karim-action="go" data-karim-args="[&quot;revenues&quot;]">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${revRows||'<tr><td class="u-empty-sm">لا إيرادات بعد</td></tr>'}</tbody></table></div>
+<div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>أحدث المصاريف</h3><button class="btn btn-blue btn-sm" data-karim-action="go" data-karim-args="[&quot;expenses&quot;]">الكل</button></div><table style="width:100%;font-size:12px"><tbody>${expRows||'<tr><td class="u-empty-sm">لا مصاريف بعد</td></tr>'}</tbody></table></div>
 </div>`;
 }
 function renderHRDashboard(){
@@ -97,12 +97,12 @@ const leaveRows=pendingLeaves.slice(0,6).map(l=>{const e=STATE.employees.find(x=
 return `
 <div class="section-header"><div class="section-title"><i class=ji data-i=users></i> لوحة الموارد البشرية</div></div>
 <div class="stats-grid-premium kpi-grid-4">
-  <div class="mini-chart-card" onclick="go('employees')"><div class="mini-chart-header"><div><div class="u-sub-strong">الموظفون النشطون</div></div><div class="kpi-chip"><i class=ji data-i=users></i></div></div><div class="u-panel-title">${fN(totalEmp)}</div><div class="u-sub">في النظام</div></div>
-  <div class="mini-chart-card" onclick="go('attendance')"><div class="mini-chart-header"><div><div class="u-sub-strong">الحاضرون اليوم</div></div><div class="kpi-chip"><i class=ji data-i=circle-check></i></div></div><div class="u-panel-title">${fN(presentToday)}</div><div class="u-sub">من ${fN(totalEmp)}</div></div>
-  <div class="mini-chart-card" onclick="go('leaves')"><div class="mini-chart-header"><div><div class="u-sub-strong">إجازات معلقة</div></div><div class="kpi-chip"><i class=ji data-i=hourglass></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingLeaves.length>0?'var(--orange)':'var(--text)'}">${fN(pendingLeaves.length)}</div><div class="u-sub">بانتظار اعتماد</div></div>
-  <div class="mini-chart-card" onclick="go('roster')"><div class="mini-chart-header"><div><div class="u-sub-strong">دوامات</div></div><div class="kpi-chip"><i class=ji data-i=calendar-clock></i></div></div><div class="u-panel-title">فتح</div><div class="u-sub">جدول الدوامات</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;employees&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">الموظفون النشطون</div></div><div class="kpi-chip"><i class=ji data-i=users></i></div></div><div class="u-panel-title">${fN(totalEmp)}</div><div class="u-sub">في النظام</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;attendance&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">الحاضرون اليوم</div></div><div class="kpi-chip"><i class=ji data-i=circle-check></i></div></div><div class="u-panel-title">${fN(presentToday)}</div><div class="u-sub">من ${fN(totalEmp)}</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;leaves&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">إجازات معلقة</div></div><div class="kpi-chip"><i class=ji data-i=hourglass></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingLeaves.length>0?'var(--orange)':'var(--text)'}">${fN(pendingLeaves.length)}</div><div class="u-sub">بانتظار اعتماد</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;roster&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">دوامات</div></div><div class="kpi-chip"><i class=ji data-i=calendar-clock></i></div></div><div class="u-panel-title">فتح</div><div class="u-sub">جدول الدوامات</div></div>
 </div>
-<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>طلبات إجازة بانتظار الاعتماد</h3><button class="btn btn-gold btn-sm" onclick="go('leaves')">إدارة الإجازات</button></div>
+<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>طلبات إجازة بانتظار الاعتماد</h3><button class="btn btn-gold btn-sm" data-karim-action="go" data-karim-args="[&quot;leaves&quot;]">إدارة الإجازات</button></div>
 <table style="width:100%"><thead><tr><th>الموظف</th><th>الفترة</th><th>الحالة</th></tr></thead><tbody>${leaveRows||'<tr><td colspan=3 style="text-align:center;padding:20px;color:var(--faint)">لا طلبات معلقة</td></tr>'}</tbody></table></div>`;
 }
 function renderWarehouseDashboard(){
@@ -116,12 +116,12 @@ const lowRows=STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty)).slice(0,
 return `
 <div class="section-header"><div class="section-title"><i class=ji data-i=package></i> لوحة المخزن</div></div>
 <div class="stats-grid-premium kpi-grid-4">
-  <div class="mini-chart-card" onclick="go('warehouse')"><div class="mini-chart-header"><div><div class="u-sub-strong">أصناف تحت الحد</div></div><div class="kpi-chip"><i class=ji data-i=alert-triangle></i></div></div><div style="font-size:22px;font-weight:700;color:${lowStock>0?'var(--red)':'var(--text)'}">${fN(lowStock)}</div><div class="u-sub">نافذ: ${fN(outStock)}</div></div>
-  <div class="mini-chart-card" onclick="go('dispatch')"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات صرف معلقة</div></div><div class="kpi-chip"><i class=ji data-i=clipboard-list></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingDisp>0?'var(--orange)':'var(--text)'}">${fN(pendingDisp)}</div><div class="u-sub">بانتظار الإجراء</div></div>
-  <div class="mini-chart-card" onclick="go('wh-prs')"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات شراء</div></div><div class="kpi-chip"><i class=ji data-i=shopping-cart></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingPR>0?'var(--orange)':'var(--text)'}">${fN(pendingPR)}</div><div class="u-sub">معلقة</div></div>
-  <div class="mini-chart-card" onclick="go('wh-moves')"><div class="mini-chart-header"><div><div class="u-sub-strong">حركات اليوم</div></div><div class="kpi-chip"><i class=ji data-i=chart></i></div></div><div class="u-panel-title">${fN(movesToday)}</div><div class="u-sub">دخول/خروج اليوم</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;warehouse&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">أصناف تحت الحد</div></div><div class="kpi-chip"><i class=ji data-i=alert-triangle></i></div></div><div style="font-size:22px;font-weight:700;color:${lowStock>0?'var(--red)':'var(--text)'}">${fN(lowStock)}</div><div class="u-sub">نافذ: ${fN(outStock)}</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;dispatch&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات صرف معلقة</div></div><div class="kpi-chip"><i class=ji data-i=clipboard-list></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingDisp>0?'var(--orange)':'var(--text)'}">${fN(pendingDisp)}</div><div class="u-sub">بانتظار الإجراء</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;wh-prs&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">طلبات شراء</div></div><div class="kpi-chip"><i class=ji data-i=shopping-cart></i></div></div><div style="font-size:22px;font-weight:700;color:${pendingPR>0?'var(--orange)':'var(--text)'}">${fN(pendingPR)}</div><div class="u-sub">معلقة</div></div>
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;wh-moves&quot;]"><div class="mini-chart-header"><div><div class="u-sub-strong">حركات اليوم</div></div><div class="kpi-chip"><i class=ji data-i=chart></i></div></div><div class="u-panel-title">${fN(movesToday)}</div><div class="u-sub">دخول/خروج اليوم</div></div>
 </div>
-<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>أكثر الأصناف نقصًا</h3><button class="btn btn-gold btn-sm" onclick="go('warehouse')">المخزن</button></div>
+<div class="tbl-wrap" style="margin-top:14px"><div class="tbl-hd"><h3>أكثر الأصناف نقصًا</h3><button class="btn btn-gold btn-sm" data-karim-action="go" data-karim-args="[&quot;warehouse&quot;]">المخزن</button></div>
 <table style="width:100%"><thead><tr><th>الصنف</th><th>الكمية</th><th>الحد الأدنى</th></tr></thead><tbody>${lowRows||'<tr><td colspan=3 style="text-align:center;padding:20px;color:var(--faint)">المخزون في الحدود الآمنة</td></tr>'}</tbody></table></div>`;
 }
 function renderDashboard(){
@@ -153,22 +153,22 @@ html += renderExpiryAlertBanner();
 if(role!=='hr'){
 html += `
 <div class="stats-grid-premium kpi-grid-4">
-  <div class="metric-card-premium" onclick="go('revenues')" data-tooltip="اضغط لعرض الإيرادات" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiRev')}">
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;revenues&quot;]" data-tooltip="اضغط لعرض الإيرادات" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiRev')}">
     <div class="kpi-top"><span class="kpi-label">${t('db.kpiRev')} — الشهر</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div>
     <div class="value">${fC(monthlyRev)}</div>
     <div class="trend"><i class=ji data-i=calendar></i> الإجمالي: ${fC(totalRev)}</div>
   </div>
-  <div class="metric-card-premium" onclick="go('expenses')" data-tooltip="اضغط لعرض المصاريف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiExp')}">
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;expenses&quot;]" data-tooltip="اضغط لعرض المصاريف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiExp')}">
     <div class="kpi-top"><span class="kpi-label">تكلفة الشهر</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div>
     <div class="value">${fC(monthlyExp)}</div>
     <div class="trend"><i class=ji data-i=calendar></i> الإجمالي: ${fC(totalExp)}</div>
   </div>
-  <div class="metric-card-premium" onclick="go('pnl')" data-tooltip="اضغط لعرض قائمة الأرباح والخسائر" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiProfit')}">
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;pnl&quot;]" data-tooltip="اضغط لعرض قائمة الأرباح والخسائر" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiProfit')}">
     <div class="kpi-top"><span class="kpi-label">صافي الشهر</span><span class="kpi-chip"><i class=ji data-i=gem></i></span></div>
     <div class="value ${monthlyProfit<0?'c-red':''}">${fC(monthlyProfit)}</div>
     <div class="trend ${profitTrend>=0?'trend-up':'trend-down'}">${profitTrend>=0?'<i class=ji data-i=trending-up></i>':'<i class=ji data-i=trending-down></i>'} ${t('db.margin')} ${fN(profitTrend)}%</div>
   </div>
-  <div class="metric-card-premium" onclick="go('cost-analysis')" data-tooltip="اضغط لعرض تحليل التكاليف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiCost')}">
+  <div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;cost-analysis&quot;]" data-tooltip="اضغط لعرض تحليل التكاليف" role="button" tabindex="0" data-kb-activate aria-label="${t('db.kpiCost')}">
     <div class="kpi-top"><span class="kpi-label">نسبة تكلفة الشهر</span><span class="kpi-chip"><i class=ji data-i=chart></i></span></div>
     <div class="value">${fN(monthlyRatio.toFixed(1))}%</div>
     <div class="progress-premium ${monthlyRatio<=65?'is-ok':monthlyRatio<=85?'is-warn':'is-bad'}" style="margin-top:10px"><div class="progress-premium-bar" style="width:${Math.min(monthlyRatio,100)}%"></div></div>
@@ -184,7 +184,7 @@ const presentToday = STATE.attendance.filter(a=>a.date===new Date().toISOString(
 const pendingLeaves = STATE.leaveRequests.filter(l=>l.status==='pending').length;
 const totalSalaries = STATE.employees.reduce((s,e)=>s+(e.salary||0),0);
 html += `
-  <div class="mini-chart-card" onclick="go('employees')" role="button" tabindex="0" data-kb-activate aria-label="${t('db.totalEmp')}">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;employees&quot;]" role="button" tabindex="0" data-kb-activate aria-label="${t('db.totalEmp')}">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">${t('db.totalEmp')}</div></div>
       <div class="kpi-chip"><i class=ji data-i=users></i></div>
@@ -192,7 +192,7 @@ html += `
     <div class="u-panel-title">${fN(totalEmp)}</div>
     <div class="u-sub">${t('db.activeInSys')}</div>
   </div>
-  <div class="mini-chart-card" onclick="go('attendance')" role="button" tabindex="0" data-kb-activate aria-label="${t('db.presentToday')}">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;attendance&quot;]" role="button" tabindex="0" data-kb-activate aria-label="${t('db.presentToday')}">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">${t('db.presentToday')}</div></div>
       <div class="kpi-chip"><i class=ji data-i=circle-check></i></div>
@@ -200,7 +200,7 @@ html += `
     <div class="u-panel-title">${fN(presentToday)}</div>
     <div class="u-sub">${t('db.ofTotal')} ${fN(totalEmp)} ${t('db.emp')}</div>
   </div>
-  <div class="mini-chart-card" onclick="go('leaves')" role="button" tabindex="0" data-kb-activate aria-label="${t('db.pendingLeaves')}">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;leaves&quot;]" role="button" tabindex="0" data-kb-activate aria-label="${t('db.pendingLeaves')}">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">${t('db.pendingLeaves')}</div></div>
       <div class="kpi-chip"><i class=ji data-i=hourglass></i></div>
@@ -208,7 +208,7 @@ html += `
     <div style="font-size:22px;font-weight:700;color:${pendingLeaves>0?'var(--orange)':'var(--text)'}">${fN(pendingLeaves)}</div>
     <div class="u-sub">${t('db.pendingApproval')}</div>
   </div>
-  <div class="mini-chart-card" onclick="go('payroll')" role="button" tabindex="0" data-kb-activate aria-label="إجمالي الرواتب">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;payroll&quot;]" role="button" tabindex="0" data-kb-activate aria-label="إجمالي الرواتب">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">إجمالي الرواتب</div></div>
       <div class="kpi-chip"><i class=ji data-i=banknote></i></div>
@@ -219,7 +219,7 @@ html += `
 }
 if(role==='admin'||role==='manager'||role==='warehouse'){
 html += `
-  <div class="mini-chart-card" onclick="go('dispatch')" role="button" tabindex="0" data-kb-activate aria-label="طلبات صرف">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;dispatch&quot;]" role="button" tabindex="0" data-kb-activate aria-label="طلبات صرف">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">طلبات صرف</div></div>
       <div class="kpi-chip"><i class=ji data-i=clipboard-list></i></div>
@@ -227,7 +227,7 @@ html += `
     <div style="font-size:22px;font-weight:700;color:${pendingDisp>0?'var(--orange)':'var(--text)'}">${fN(pendingDisp)}</div>
     <div class="u-sub">${pendingDisp>0?'<i class=ji data-i=hourglass></i> معلق':'<i class=ji data-i=circle-check></i> لا يوجد'}</div>
   </div>
-  <div class="mini-chart-card" onclick="go('warehouse')" role="button" tabindex="0" data-kb-activate aria-label="مخزون منخفض">
+  <div class="mini-chart-card" data-karim-action="go" data-karim-args="[&quot;warehouse&quot;]" role="button" tabindex="0" data-kb-activate aria-label="مخزون منخفض">
     <div class="mini-chart-header">
       <div><div class="u-sub-strong">مخزون منخفض</div></div>
       <div class="kpi-chip"><i class=ji data-i=alert-triangle></i></div>
@@ -240,7 +240,7 @@ html += `
 html += `</div>`;
 // ── علامة حالة بصمة الحضور (مربوطة/غير مربوطة/متصلة) ──
 if(['admin','hr','manager'].includes(role)){
-html += `<div id="zkDashStatus" class="mini-chart-card" style="margin-top:14px;cursor:pointer;min-height:110px" onclick="go('zkteco')" data-tooltip="اضغط لفتح صفحة بصمة الحضور" role="button" tabindex="0" data-kb-activate aria-label="حالة بصمة الحضور"><div class="spinner"></div></div>`;
+html += `<div id="zkDashStatus" class="mini-chart-card" style="margin-top:14px;cursor:pointer;min-height:110px" data-karim-action="go" data-karim-args="[&quot;zkteco&quot;]" data-tooltip="اضغط لفتح صفحة بصمة الحضور" role="button" tabindex="0" data-kb-activate aria-label="حالة بصمة الحضور"><div class="spinner"></div></div>`;
 setTimeout(loadZkDashboardStatus, 60);
 }
 // ─── موجز المدير (لوحة التحكم) ───
@@ -253,13 +253,13 @@ const cashRows=(b.cashiers||[]).map(c=>`<tr><td class="fw-bold">${esc(c.name)}</
 const outRows=(b.stockOut||[]).slice(0,5).map(s=>`<tr><td>${esc(s.name)}</td><td class="c-red">نافذ</td></tr>`).join('');
 const fcRows=(b.forecast||[]).slice(0,5).map(s=>`<tr><td>${esc(s.name)}</td><td class="c-gold">${fN(s.days_cover)} يوم</td></tr>`).join('');
 const p=b.pending||{};
-box.innerHTML=`<div class="tbl-hd"><h3><i class=ji data-i=briefcase></i> موجز المدير — ${esc(b.day||'')} (مباشر)</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="mgrBriefLoad()"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" onclick="go('reports')"><i class=ji data-i=chart></i> التقارير</button></div></div>
+box.innerHTML=`<div class="tbl-hd"><h3><i class=ji data-i=briefcase></i> موجز المدير — ${esc(b.day||'')} (مباشر)</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="mgrBriefLoad"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="go" data-karim-args="[&quot;reports&quot;]"><i class=ji data-i=chart></i> التقارير</button></div></div>
 <div style="padding:16px 20px">
 <div class="stats-grid-premium kpi-grid-4" style="margin-bottom:12px">
-<div class="metric-card-premium" onclick="go('revenues')"><div class="kpi-top"><span class="kpi-label">مبيعات الكاشيرية</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(b.cashiersTotal?.total||0)}</div><div class="trend">${fN(b.cashiersTotal?.invoices||0)} فاتورة اليوم${(b.cashiersY&&Number(b.cashiersY.total)>0)?` — أمس ${fC(b.cashiersY.total)}`:''}</div></div>
-<div class="metric-card-premium" onclick="go('expenses')"><div class="kpi-top"><span class="kpi-label">مصاريف اليوم</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div><div class="value">${fC(b.expenses?.total||0)}</div><div class="trend">${fN(b.expenses?.count||0)} عملية</div></div>
-<div class="metric-card-premium" onclick="go('warehouse')"><div class="kpi-top"><span class="kpi-label">نواقص المخزن</span><span class="kpi-chip"><i class=ji data-i=alert-triangle></i></span></div><div class="value">${fN((b.stockOut||[]).length+(b.stockLow||[]).length)}</div><div class="trend">نافذ ${(b.stockOut||[]).length} • سينفد ${(b.forecast||[]).length}</div></div>
-<div class="metric-card-premium" onclick="go('attendance')"><div class="kpi-top"><span class="kpi-label">الحضور</span><span class="kpi-chip"><i class=ji data-i=timer></i></span></div><div class="value">${fN(b.attendance?.checked_in||0)}</div><div class="trend">نسي خروج ${fN(b.attendance?.missing_out||0)} • نسي دخول ${fN(b.attendance?.missing_in||0)}</div></div>
+<div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;revenues&quot;]"><div class="kpi-top"><span class="kpi-label">مبيعات الكاشيرية</span><span class="kpi-chip"><i class=ji data-i=banknote></i></span></div><div class="value">${fC(b.cashiersTotal?.total||0)}</div><div class="trend">${fN(b.cashiersTotal?.invoices||0)} فاتورة اليوم${(b.cashiersY&&Number(b.cashiersY.total)>0)?` — أمس ${fC(b.cashiersY.total)}`:''}</div></div>
+<div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;expenses&quot;]"><div class="kpi-top"><span class="kpi-label">مصاريف اليوم</span><span class="kpi-chip"><i class=ji data-i=wallet></i></span></div><div class="value">${fC(b.expenses?.total||0)}</div><div class="trend">${fN(b.expenses?.count||0)} عملية</div></div>
+<div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;warehouse&quot;]"><div class="kpi-top"><span class="kpi-label">نواقص المخزن</span><span class="kpi-chip"><i class=ji data-i=alert-triangle></i></span></div><div class="value">${fN((b.stockOut||[]).length+(b.stockLow||[]).length)}</div><div class="trend">نافذ ${(b.stockOut||[]).length} • سينفد ${(b.forecast||[]).length}</div></div>
+<div class="metric-card-premium" data-karim-action="go" data-karim-args="[&quot;attendance&quot;]"><div class="kpi-top"><span class="kpi-label">الحضور</span><span class="kpi-chip"><i class=ji data-i=timer></i></span></div><div class="value">${fN(b.attendance?.checked_in||0)}</div><div class="trend">نسي خروج ${fN(b.attendance?.missing_out||0)} • نسي دخول ${fN(b.attendance?.missing_in||0)}</div></div>
 </div>
 <div class="fr" style="gap:12px">
 <div class="fg"><div class="tbl-hd" style="padding:8px 4px"><h3>الكاشيرية اليوم</h3></div><table style="width:100%;font-size:12px"><tbody>${cashRows||'<tr><td class="u-empty-sm">لا مبيعات بعد اليوم</td></tr>'}</tbody></table></div>
@@ -274,7 +274,7 @@ html += renderDashboardAnalytics();
 
 // ── موجز المدير المباشر (كاشيرية + مصاريف + نواقص + تنبؤ + حضور) ──
 if(role==='admin'||role==='manager'){
-html += `<div class="tbl-wrap" style="margin-top:14px" id="mgrBriefBox"><div class="tbl-hd"><h3><i class=ji data-i=briefcase></i> موجز المدير — اليوم مباشرة من السستم</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="mgrBriefLoad()"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" onclick="go('reports')"><i class=ji data-i=chart></i> التقارير</button></div></div><div style="padding:16px 20px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>`;
+html += `<div class="tbl-wrap" style="margin-top:14px" id="mgrBriefBox"><div class="tbl-hd"><h3><i class=ji data-i=briefcase></i> موجز المدير — اليوم مباشرة من السستم</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="mgrBriefLoad"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="go" data-karim-args="[&quot;reports&quot;]"><i class=ji data-i=chart></i> التقارير</button></div></div><div style="padding:16px 20px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>`;
 setTimeout(mgrBriefLoad, 120);
 }
 
@@ -283,12 +283,12 @@ if(role==='admin'||role==='manager'){
 html += `
 <div class="section-header" style="margin-top:30px">
   <div class="section-title"><i class=ji data-i=building></i> أداء الأقسام</div>
-  <button class="btn btn-gold btn-sm" onclick="go('cost-analysis')"><i class=ji data-i=chart></i> تحليل مفصل <i class=ji data-i=arrow-left></i></button>
+  <button class="btn btn-gold btn-sm" data-karim-action="go" data-karim-args="[&quot;cost-analysis&quot;]"><i class=ji data-i=chart></i> تحليل مفصل <i class=ji data-i=arrow-left></i></button>
 </div>
 <div class="dept-grid">`;
 html += deptStats.map((d)=>{
   const efficiency = d.rev>0 ? Math.min(100, Math.max(0, 100 - d.costRatio)) : 0;
-  return `<div class="dept-card" onclick="go('departments')">
+  return `<div class="dept-card" data-karim-action="go" data-karim-args="[&quot;departments&quot;]">
     <div class="dept-hd">
       <span class="dept-ic">${deptIcon(d)}</span>
       <div class="u-flex1">
@@ -314,10 +314,10 @@ html += `
   <div class="section-title"><i class=ji data-i=zap></i> إجراءات سريعة</div>
 </div>
 <div class="quick-actions-row">
-  <button class="btn btn-gold" onclick="showAddRevenueModal()"><i class=ji data-i=plus></i> إيراد</button>
-  <button class="btn" onclick="showAddExpenseModal()"><i class=ji data-i=wallet></i> مصروف</button>
-  <button class="btn" onclick="showDispatchRequestModal()"><i class=ji data-i=package></i> طلب صرف</button>
-  <button class="btn" onclick="generateReport();go('reports')"><i class=ji data-i=chart></i> تقرير</button>
+  <button class="btn btn-gold" data-karim-action="showAddRevenueModal"><i class=ji data-i=plus></i> إيراد</button>
+  <button class="btn" data-karim-action="showAddExpenseModal"><i class=ji data-i=wallet></i> مصروف</button>
+  <button class="btn" data-karim-action="showDispatchRequestModal"><i class=ji data-i=package></i> طلب صرف</button>
+  <button class="btn" data-karim-action="generateReport" data-karim-also="go"><i class=ji data-i=chart></i> تقرير</button>
 </div>`;
 
 return html;
@@ -348,8 +348,8 @@ return `
 </div>
 </div>
 <div class="quick-actions">
-<button class="quick-action-btn" onclick="go('leaves')"><i class=ji data-i=calendar></i> طلب إجازة</button>
-<button class="quick-action-btn" onclick="go('attendance')"><i class=ji data-i=timer></i> سجل الحضور</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;leaves&quot;]"><i class=ji data-i=calendar></i> طلب إجازة</button>
+<button class="quick-action-btn" data-karim-action="go" data-karim-args="[&quot;attendance&quot;]"><i class=ji data-i=timer></i> سجل الحضور</button>
 </div>
 `;
 }

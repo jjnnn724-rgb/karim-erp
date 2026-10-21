@@ -176,7 +176,7 @@ try{ generateReport(); }catch(e){ console.warn('[reports] generateReport:', e.me
 }catch(pageErr){
 console.error('[renderPage]', STATE.page, pageErr);
 try{
-content.innerHTML=`<div class="mcard" style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><h3>تعذر عرض الصفحة</h3><p class="text-muted">${String(pageErr.message||'خطأ غير متوقع')}</p><button class="btn btn-gold" onclick="renderPage()">إعادة المحاولة</button></div>`;
+content.innerHTML=`<div class="mcard" style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><h3>تعذر عرض الصفحة</h3><p class="text-muted">${String(pageErr.message||'خطأ غير متوقع')}</p><button class="btn btn-gold" data-karim-action="renderPage">إعادة المحاولة</button></div>`;
 content.style.opacity='1';
 }catch(_){}
 }

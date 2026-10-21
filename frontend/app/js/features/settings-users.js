@@ -50,9 +50,9 @@ return `
 <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
 <div id="logoPreview" style="width:80px;height:80px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--border)">${logoMarkup('settings-logo-preview')}</div>
 <div class="u-flex1">
-<input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+<input type="file" id="logoFileInput" accept="image/*" style="display:none" data-karim-action="handleLogoUpload" data-karim-event="change" data-karim-args="[event]">
 <button class="btn btn-gold btn-sm" onclick="document.getElementById('logoFileInput').click()"><i class=ji data-i=folder></i> ${t('set.uploadLogo')}</button>
-<button class="btn btn-red btn-sm u-mt8" onclick="resetLogo()"><i class=ji data-i=refresh></i> ${t('set.removeLogo')}</button>
+<button class="btn btn-red btn-sm u-mt8" data-karim-action="resetLogo"><i class=ji data-i=refresh></i> ${t('set.removeLogo')}</button>
 </div>
 </div>
 </div>
@@ -68,7 +68,7 @@ return `
 <div class="fg"><label><i class=ji data-i=link></i> مسار واجهة الكاشير الرسمية</label>
 <input type="text" id="settingsPosOfficialPath" value="${esc(STATE.settings.pos_official_path||'')}" placeholder="/app/cashier/" maxlength="255" dir="ltr">
 <small class="text-muted" style="display:block;margin-top:6px">مسار داخلي يبدأ بـ/ فقط (مثال: /app/cashier/). يُتجاهل أي مسار خارجي.</small></div>
-<button class="btn btn-gold" onclick="saveSettings()"><i class=ji data-i=save></i> ${t('set.save')}</button>
+<button class="btn btn-gold" data-karim-action="saveSettings"><i class=ji data-i=save></i> ${t('set.save')}</button>
 </div>
 </div>
 </div>
@@ -78,22 +78,22 @@ ${STATE.currentUser?.role==='admin'?`
 ${['cfo','revenues','expenses','cost-analysis','pnl','departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','shelves','weight','kitchen','dispatch','recipes','procurement','hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal','roster','reports','users','permissions','yarasoft','oracle-data','whatsapp'].map(k=>`<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:8px;background:var(--bg3)"><input type="checkbox" class="navVisBox" value="${k}" ${(String(STATE.settings.hidden_nav_pages||'').split(',').map(x=>x.trim()).includes(k))?'checked':''}> <span>${esc(t('pg.'+k)||k)}</span></label>`).join('')}
 </div>
 <small class="text-muted" style="display:block;margin-top:10px">المُعلَّم = مخفي من القائمة الجانبية لكل المستخدمين (عرض فقط — الصفحات تبقى تعمل عبر الروابط الداخلية). الرئيسية والإعدادات لا يُخفيان. سجل الصرف مخفي افتراضيًا.</small>
-<button class="btn btn-gold btn-sm u-mt12" onclick="saveNavVisibility()"><i class=ji data-i=save></i> حفظ ظهور القوائم</button>
+<button class="btn btn-gold btn-sm u-mt12" data-karim-action="saveNavVisibility"><i class=ji data-i=save></i> حفظ ظهور القوائم</button>
 </div></div>`:''}
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=landmark></i> ربط هيئة الزكاة</h3></div><div id="zatcaHub" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=printer></i> تذاكر المطبخ</h3></div><div id="kotSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=id-card></i> بطاقات الموظفين</h3></div><div id="cardSettingsBody" style="padding:24px"><div class="mcard u-empty">جارٍ التحميل...</div></div></div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=timer></i> البصمة الذاتية</h3></div><div id="punchSettingsBody" style="padding:24px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
-<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" onclick="sysDoBackup()"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" onclick="document.getElementById('sysUploadInput')?.click()"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" onchange="sysUploadBackup(this)"><button class="btn btn-blue btn-sm" onclick="sysLoadBackups()"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
+<div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=save></i> النسخ الاحتياطي الكامل والاستعادة</h3><div class="u-row-wrap"><button class="btn btn-green btn-sm" data-karim-action="sysDoBackup"><i class=ji data-i=save></i> نسخة احتياطية الآن</button><button class="btn btn-gold btn-sm" onclick="document.getElementById('sysUploadInput')?.click()"><i class=ji data-i=upload></i> رفع نسخة خارجية</button><input type="file" id="sysUploadInput" accept=".sql" style="display:none" onchange="sysUploadBackup(this)"><button class="btn btn-blue btn-sm" data-karim-action="sysLoadBackups"><i class=ji data-i=refresh></i> تحديث القائمة</button></div></div>
 <div style="padding:16px 24px"><small class="text-muted">النسخة تشمل قاعدة البيانات كاملة + الإعدادات — انسخ أحدث ملف على فلاشة خارجية للأمان من ضبط المصنع. الاستعادة تمسح الحالي (بنعمل نسخة أمان تلقائيًا أولًا).</small><div id="sysBackupList" style="margin-top:12px"><div class="mcard u-empty"><div class="spinner"></div></div></div></div>
 </div>
 <div class="tbl-wrap" style="margin-top:32px"><div class="tbl-hd"><h3><i class=ji data-i=inbox></i> تصدير وتصفير</h3></div>
 <div style="padding:24px">
 <div style="display:flex;gap:12px;flex-wrap:wrap">
-<button class="btn btn-green btn-sm" onclick="exportAllData()"><i class=ji data-i=inbox></i> تصدير قراءة البيانات (JSON)</button>
-<button class="btn btn-blue btn-sm" onclick="showDatabaseRestoreInfo()"><i class=ji data-i=archive></i> إرشادات استعادة قاعدة البيانات</button>
-<button class="btn btn-red" onclick="resetAllData()"><i class=ji data-i=trash></i> مسح جميع البيانات</button>
-${STATE.currentUser?.role==='admin'?`<button class="btn btn-red" style="border:2px solid var(--red);font-weight:900" onclick="showOperationalResetModal()"><i class=ji data-i=alert-triangle></i> تصفير شامل (كل السستم)</button>`:''}
+<button class="btn btn-green btn-sm" data-karim-action="exportAllData"><i class=ji data-i=inbox></i> تصدير قراءة البيانات (JSON)</button>
+<button class="btn btn-blue btn-sm" data-karim-action="showDatabaseRestoreInfo"><i class=ji data-i=archive></i> إرشادات استعادة قاعدة البيانات</button>
+<button class="btn btn-red" data-karim-action="resetAllData"><i class=ji data-i=trash></i> مسح جميع البيانات</button>
+${STATE.currentUser?.role==='admin'?`<button class="btn btn-red" style="border:2px solid var(--red);font-weight:900" data-karim-action="showOperationalResetModal"><i class=ji data-i=alert-triangle></i> تصفير شامل (كل السستم)</button>`:''}
 </div>
 </div>
 </div>
@@ -110,7 +110,7 @@ box.innerHTML=`
 <small class="text-muted">عنوان السيرفر اللي الموبايلات توصله عند المسح (IP مكتب / Tailscale / دومين). بدون / في الآخر.</small></div>
 <div class="fg"><label><i class=ji data-i=phone></i> رقم الطوارئ على البطاقة</label>
 <input id="cardEmergency" dir="ltr" value="${esc(s.emergencyPhone||'')}" placeholder="+966-5X-XXX-XXXX"></div>
-<button class="btn btn-gold" onclick="saveCardSettings()"><i class=ji data-i=save></i> حفظ إعدادات البطاقات</button>
+<button class="btn btn-gold" data-karim-action="saveCardSettings"><i class=ji data-i=save></i> حفظ إعدادات البطاقات</button>
 <small class="text-muted" style="display:block;margin-top:8px">البطاقات الجديدة تستخدم الرابط المحفوظ تلقائيًا — لا حاجة لأي كود.</small>`;
 }catch(e){ box.innerHTML=`<div class="mcard u-empty">تعذر تحميل إعدادات البطاقات: ${esc(e.message||e)}</div>`; }
 }
@@ -132,7 +132,7 @@ function showOperationalResetModal(){
       <div class="fg"><label>سبب التصفير الشامل</label><textarea id="resetReason" rows="3" placeholder="اكتب سبباً واضحاً لا يقل عن 10 أحرف"></textarea></div>
       <div class="fg"><label>اكتب CONFIRM PRODUCTION RESET للتأكيد</label><input id="resetConfirmation" autocomplete="off" placeholder="CONFIRM PRODUCTION RESET"></div>
       <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--red);font-weight:700"><input type="checkbox" id="resetForce" checked> <span>تصفير إجباري: يمسح كل حساب term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term</span></label></div>
-      <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" onclick="executeOperationalReset()"><i class=ji data-i=alert-triangle></i> تنفيذ التصفير الشامل</button></div>`);
+      <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="executeOperationalReset"><i class=ji data-i=alert-triangle></i> تنفيذ التصفير الشامل</button></div>`);
 }
 async function executeOperationalReset(){
     const confirmation=document.getElementById('resetConfirmation')?.value.trim();
@@ -227,8 +227,8 @@ return `
   </div>
   <div class="zs-queue">${queueChips}</div>
   ${can?`<div class="zs-actions">
-    <button class="btn ${c.enabled?'btn-red':'btn-green'} btn-sm" onclick="zatcaToggle(!${c.enabled?'true':'false'})"><i class=ji data-i=${c.enabled?'pause':'play'}></i> ${c.enabled?'إيقاف الربط':'تفعيل الربط'}</button>
-    <button class="btn btn-blue btn-sm" onclick="zatcaTest()"><i class=ji data-i=wifi></i> اختبار الاتصال</button>
+    <button class="btn ${c.enabled?'btn-red':'btn-green'} btn-sm" data-karim-action="zatcaToggle" data-karim-args="[! 0 ]"><i class=ji data-i=${c.enabled?'pause':'play'}></i> ${c.enabled?'إيقاف الربط':'تفعيل الربط'}</button>
+    <button class="btn btn-blue btn-sm" data-karim-action="zatcaTest"><i class=ji data-i=wifi></i> اختبار الاتصال</button>
     <span id="zatcaTestResult" class="zatca-test-result"></span>
   </div>`:''}
 </div>
@@ -239,7 +239,7 @@ ${can?`
   <div class="fg"><label>السجل التجاري / رقم المنشأة</label><input id="ztCrn" value="${esc(c.crn||'')}" placeholder="1xxxxxxxxx"></div>
   <div class="fg"><label>الفرع</label><input id="ztBranch" value="${esc(c.branch_name||'')}" placeholder="الفرع الرئيسي"></div>
   <div class="fg u-col2"><label>العنوان</label><input id="ztAddress" value="${esc(c.address||'')}" placeholder="الرياض — حي — شارع"></div>
-  <div class="fg"><label>البيئة</label><select id="ztEnv" onchange="zatcaEnvChanged()">${envOptions}</select></div>
+  <div class="fg"><label>البيئة</label><select id="ztEnv" data-karim-action="zatcaEnvChanged" data-karim-event="change">${envOptions}</select></div>
   <div class="fg"><label>عنوان الـ API (اختياري — يتبع البيئة تلقائيًا)</label><input id="ztApiBase" value="${esc(c.api_base||'')}" placeholder="${esc(c.default_api_base||'')}" dir="ltr"></div>
   <div class="fg"><label>اسم الحل البرمجي</label><input id="ztSolution" value="${esc(c.solution_name||'')}" placeholder="Karim ERP"></div>
   <div class="fg"><label>الرقم التعريفي / السجل المدني (اختياري — للفردية)</label><input id="ztEid" value="${esc(c.eid&&c.eid!=='••••'?c.eid:'')}" placeholder="1xxxxxxxxx" dir="ltr"></div>
@@ -247,12 +247,12 @@ ${can?`
   <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="ztPoll" ${c.poll_in_server!==false?'checked':''}> <span>مزامنة الإبلاغ تلقائيًا من داخل الخادم (موصى بها)</span></label></div>
 </div>
 <div class="zatca-actions-row">
-  <button class="btn btn-gold" onclick="zatcaSave()"><i class=ji data-i=save></i> حفظ بيانات الربط</button>
-  <button class="btn ${c.has_csr?'':'btn-blue'}" onclick="zatcaGenerateCsr()"><i class=ji data-i=key></i> ${c.has_csr?'إعادة توليد CSR':'توليد CSR'}</button>
-  <button class="btn ${c.has_csid?'':'btn-gold'}" onclick="zatcaCsidModal()"><i class=ji data-i=shield-check></i> ${c.has_csid?'إعادة طلب شهادة CSID':'طلب شهادة CSID برمز OTP'}</button>
-  <button class="btn" onclick="zatcaCsidManualModal()"><i class=ji data-i=clipboard></i> إدخال شهادة يدويًا</button>
-  ${c.has_csid?`<button class="btn btn-red" onclick="zatcaCsidClear()"><i class=ji data-i=trash></i> حذف الشهادة</button>`:''}
-  <button class="btn btn-blue" onclick="zatcaApplyVat()"><i class=ji data-i=building></i> تطبيق الرقم الضريبي على كل الأقسام</button>
+  <button class="btn btn-gold" data-karim-action="zatcaSave"><i class=ji data-i=save></i> حفظ بيانات الربط</button>
+  <button class="btn ${c.has_csr?'':'btn-blue'}" data-karim-action="zatcaGenerateCsr"><i class=ji data-i=key></i> ${c.has_csr?'إعادة توليد CSR':'توليد CSR'}</button>
+  <button class="btn ${c.has_csid?'':'btn-gold'}" data-karim-action="zatcaCsidModal"><i class=ji data-i=shield-check></i> ${c.has_csid?'إعادة طلب شهادة CSID':'طلب شهادة CSID برمز OTP'}</button>
+  <button class="btn" data-karim-action="zatcaCsidManualModal"><i class=ji data-i=clipboard></i> إدخال شهادة يدويًا</button>
+  ${c.has_csid?`<button class="btn btn-red" data-karim-action="zatcaCsidClear"><i class=ji data-i=trash></i> حذف الشهادة</button>`:''}
+  <button class="btn btn-blue" data-karim-action="zatcaApplyVat"><i class=ji data-i=building></i> تطبيق الرقم الضريبي على كل الأقسام</button>
 </div>
 <div class="zatca-hint">
   <b>خطوات الربط الحقيقية مع منصة Fatoora:</b>
@@ -261,9 +261,9 @@ ${can?`
 </div>`:''}
 <div class="tbl-hd" style="margin-top:18px"><h4><i class=ji data-i=database></i> مراقبة طابور الإبلاغ الضريبي</h4></div>
 <div class="zatca-queue-tools">
-  <button class="btn btn-sm" onclick="loadZatcaQueue()"><i class=ji data-i=refresh></i> تحديث</button>
-  ${can?`<button class="btn btn-blue btn-sm" onclick="zatcaRetry('failed')"><i class=ji data-i=undo></i> إعادة محاولة الفاشلة</button>
-  <button class="btn btn-sm" onclick="zatcaRetry('all')"><i class=ji data-i=history></i> إعادة جدولة الكل</button>`:''}
+  <button class="btn btn-sm" data-karim-action="loadZatcaQueue"><i class=ji data-i=refresh></i> تحديث</button>
+  ${can?`<button class="btn btn-blue btn-sm" data-karim-action="zatcaRetry" data-karim-args="[&quot;failed&quot;]"><i class=ji data-i=undo></i> إعادة محاولة الفاشلة</button>
+  <button class="btn btn-sm" data-karim-action="zatcaRetry" data-karim-args="[&quot;all&quot;]"><i class=ji data-i=history></i> إعادة جدولة الكل</button>`:''}
 </div>
 <div id="zatcaQueueBox"><div class="mcard u-empty">جارٍ تحميل الطابور…</div></div>
 `;
@@ -336,7 +336,7 @@ try {
   showModal(`<h3><i class=ji data-i=key></i> تم توليد CSR حقيقي (EC P-256)</h3>
     <div class="fg"><label>الموضوع (Subject)</label><input readonly dir="ltr" value="${esc([r.subject.C,r.subject.SN,r.subject.O,r.subject.OU,r.subject.UID,r.subject.CN].filter(Boolean).join(', '))}"></div>
     <div class="fg"><label>محتوى CSR — انسخه لمنصة Fatoora عند الحاجة</label><textarea readonly dir="ltr" rows="8" style="font-family:monospace;font-size:10px">${esc(r.csr_pem)}</textarea></div>
-    <div class="modal-footer"><button class="btn btn-gold" onclick="zatcaCopyCsr()"><i class=ji data-i=copy></i> نسخ CSR</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+    <div class="modal-footer"><button class="btn btn-gold" data-karim-action="zatcaCopyCsr"><i class=ji data-i=copy></i> نسخ CSR</button><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
 } catch(e) { toast(e.response?.message||e.message||'تعذر توليد CSR — احفظ الرقم الضريبي أولاً','error'); }
 finally { hideLoad(); }
 }
@@ -353,7 +353,7 @@ function zatcaCsidModal(){
 showModal(`<h3><i class=ji data-i=shield-check></i> طلب شهادة الامتثال CSID</h3>
   <div class="fg"><label>رمز OTP من منصة Fatoora (6 أرقام)</label><input id="zatcaOtp" inputmode="numeric" maxlength="6" placeholder="######" autocomplete="off"></div>
   <div class="zatca-hint">ادخل إلى fatoora.zatca.gov.sa ← «الأجهزة والبرمجيات» ← «إنشاء رمز OTP» ثم أدخله هنا. سيُرسل CSR المولّد إلى الهيئة فعليًا ويُحفظ الرد.</div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="zatcaRequestCsid()"><i class=ji data-i=send></i> إرسال الطلب للهيئة</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="zatcaRequestCsid"><i class=ji data-i=send></i> إرسال الطلب للهيئة</button></div>`);
 }
 
 async function zatcaRequestCsid(){
@@ -409,7 +409,7 @@ showModal(`<h3><i class=ji data-i=clipboard></i> إدخال شهادة CSID يد
   <div class="fg"><label>رمز الشهادة (binarySecurityToken) من منصة Fatoora</label><textarea id="zatcaManualCsid" rows="6" dir="ltr" style="font-family:monospace;font-size:11px" placeholder="MIIC…"></textarea></div>
   <div class="fg"><label>الرقم الضريبي (اختياري — يُحفظ مع الشهادة إن كان فارغًا في الضبط)</label><input id="zatcaManualVat" inputmode="numeric" maxlength="20" placeholder="300000000000003" dir="ltr"></div>
   <div class="zatca-hint">استخدم هذا المسار إذا أتممت تسجيل جهاز الفوترة على منصة fatoora.zatca.gov.sa ونسخت الشهادة من البوابة مباشرة. تُحفظ الشهادة فورًا ويصبح التفعيل متاحًا.</div>
-  <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="zatcaCsidManualSubmit()"><i class=ji data-i=save></i> حفظ الشهادة</button></div>`);
+  <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="zatcaCsidManualSubmit"><i class=ji data-i=save></i> حفظ الشهادة</button></div>`);
 }
 
 async function zatcaCsidManualSubmit(){
@@ -486,7 +486,7 @@ return `
   </div>
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
-  ${can?`<button class="btn btn-gold" onclick="saveKotSettings()"><i class=ji data-i=save></i> حفظ إعدادات التذاكر</button>`:''}
+  ${can?`<button class="btn btn-gold" data-karim-action="saveKotSettings"><i class=ji data-i=save></i> حفظ إعدادات التذاكر</button>`:''}
   <span style="font-size:8.5pt;color:var(--muted,#888)">تُطبع على طابعات <b>kot-&lt;رقم القسم&gt;</b> — ويمكن عرضها من شاشة المطبخ عبر صفحة التذاكر لكل فاتورة.</span>
 </div>`;
 }
@@ -579,7 +579,7 @@ showModal(`
 <small class="text-muted">هنعمل <b>نسخة أمان تلقائية</b> للوضع الحالي أولًا، ونتحقق من سلامة الملف، وبعدين نرجع كل شيء زي ما كان. بعد الاستعادة أعد تشغيل خدمة السيرفر.</small></div>
 <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="sysRestoreEnv"> <span>استعادة ملف الإعدادات أيضًا (.env)</span></label></div>
 <div class="fg"><label>اكتب RESTORE للتأكيد</label><input id="sysRestoreConfirm" autocomplete="off" placeholder="RESTORE" dir="ltr"></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-red" onclick="sysConfirmRestore('${esc(file)}')"><i class=ji data-i=archive></i> تنفيذ الاستعادة</button></div>`);
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="sysConfirmRestore" data-karim-arg0="${esc(file)}"><i class=ji data-i=archive></i> تنفيذ الاستعادة</button></div>`);
 }
 async function sysConfirmRestore(file){
 const c=document.getElementById('sysRestoreConfirm')?.value.trim();
@@ -622,23 +622,23 @@ if(!u){return;}
 try{
 const r=await apiFetch('/users/'+id+'/password');
 if(!r.available){
-showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل الحساب» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.</div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل الحساب» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.</div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
 return;
 }
-showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">اسم المستخدم: <strong>@${esc(u.username)}</strong> — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:26px;font-weight:bold;letter-spacing:2px;color:var(--gold,#c9a227)">${esc(r.password)}</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn btn-gold" onclick="copyResetCode('${esc(r.password)}')"><i class=ji data-i=copy></i> نسخ</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">اسم المستخدم: <strong>@${esc(u.username)}</strong> — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:26px;font-weight:bold;letter-spacing:2px;color:var(--gold,#c9a227)">${esc(r.password)}</div></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="copyResetCode" data-karim-arg0="${esc(r.password)}"><i class=ji data-i=copy></i> نسخ</button></div>`);
 }catch(_){ toast('تعذر جلب كلمة المرور — حاول مرة أخرى','error'); }
 }
 function renderUserCards(users){
 if(!users || !users.length) {return '<div class="mcard u-empty-grid">' + t('user.noResult') + '</div>';}
-return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" onclick="editUser('${u.id}')"><i class=ji data-i=pencil></i> تعديل الحساب</button><button class="btn btn-sm" onclick="viewUserPassword('${u.id}')" title="عرض كلمة المرور المسجلة"><i class=ji data-i=eye></i></button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" onclick="issueResetCode('${u.id}')" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id?`<button class="btn btn-red btn-sm" onclick="deleteUser('${u.id}')"><i class=ji data-i=trash></i></button>`:''}</div></div>`;}).join('');
+return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" data-karim-action="editUser" data-karim-arg0="${u.id}"><i class=ji data-i=pencil></i> تعديل الحساب</button><button class="btn btn-sm" data-karim-action="viewUserPassword" data-karim-arg0="${u.id}" title="عرض كلمة المرور المسجلة"><i class=ji data-i=eye></i></button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" data-karim-action="issueResetCode" data-karim-arg0="${u.id}" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id?`<button class="btn btn-red btn-sm" data-karim-action="deleteUser" data-karim-arg0="${u.id}"><i class=ji data-i=trash></i></button>`:''}</div></div>`;}).join('');
 }
 function renderUsers(){
 if(STATE.currentUser.role!=='admin') {return '<div class="mcard"><i class=ji data-i=circle-x></i> هذه الصفحة للمدير فقط</div>';}
-return `<div class="u-row-between"><div><h3 class="u-gold-strong"><i class=ji data-i=users></i> ${t('pg.users')}</h3><small class="text-muted">الحساب للدخول والصلاحيات، والموظف للسجل الوظيفي والحضور والراتب.</small></div><div style="display:flex;gap:10px"><button class="btn btn-green" onclick="showBulkImportModal()"><i class=ji data-i=inbox></i> استيراد جماعي</button><button class="btn btn-gold" onclick="showAddUserModal()"><i class=ji data-i=plus></i> مستخدم جديد</button></div></div><div><div class="emp-search-row">
+return `<div class="u-row-between"><div><h3 class="u-gold-strong"><i class=ji data-i=users></i> ${t('pg.users')}</h3><small class="text-muted">الحساب للدخول والصلاحيات، والموظف للسجل الوظيفي والحضور والراتب.</small></div><div style="display:flex;gap:10px"><button class="btn btn-green" data-karim-action="showBulkImportModal"><i class=ji data-i=inbox></i> استيراد جماعي</button><button class="btn btn-gold" data-karim-action="showAddUserModal"><i class=ji data-i=plus></i> مستخدم جديد</button></div></div><div><div class="emp-search-row">
 <div class="smart-search">
-<input type="text" id="userSearch" placeholder="${t('user.searchPh')}" oninput="filterUsers()" onkeydown="if(event.key==='Enter')filterUsers()">
+<input type="text" id="userSearch" placeholder="${t('user.searchPh')}" data-karim-action="filterUsers" data-karim-event="input" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="filterUsers">
 </div>
-<button class="btn btn-blue btn-sm" onclick="filterUsers()"><i class=ji data-i=search></i> ${t('act.search')}</button>
+<button class="btn btn-blue btn-sm" data-karim-action="filterUsers"><i class=ji data-i=search></i> ${t('act.search')}</button>
 </div><div class="dept-grid" id="usersGrid">${renderUserCards(STATE.users)}</div>`;
 }
 function filterUsers(){
@@ -658,7 +658,7 @@ const linkedEmployee=employeeId?STATE.employees.find(e=>String(e.id)===String(em
 const roleOpts=Object.keys(ROLES).map(k=>`<option value="${k}">${ROLES[k].icon} ${ROLES[k].name}</option>`).join('');
 const deptSrc=(STATE.hrDepartments&&STATE.hrDepartments.length?STATE.hrDepartments:(STATE.departments||[]));
 const deptBoxes=deptSrc.map(d=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:8px"><input type="checkbox" class="userDeptBox" value="${esc(d.code)}"> <span>${esc(d.name||d.name_ar||d.code)}</span></label>`).join('');
-showModal(`<h3><i class=ji data-i=plus></i> إضافة مستخدم وربطه بموظف</h3><div class="workflow-banner">الحساب يحدد تسجيل الدخول والصلاحيات، والربط يوصله بالسجل الوظيفي والحضور والراتب.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(linkedEmployee?.name||'')}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername"></div></div><div class="fr"><div class="fg"><label>كلمة المرور</label><input type="password" id="userPassword"></div><div class="fg"><label>الدور</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:none"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(employeeId||'',null)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" selected>نشط</option><option value="false">موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="addUser()"><i class=ji data-i=save></i> حفظ وربط الحساب</button></div>`);
+showModal(`<h3><i class=ji data-i=plus></i> إضافة مستخدم وربطه بموظف</h3><div class="workflow-banner">الحساب يحدد تسجيل الدخول والصلاحيات، والربط يوصله بالسجل الوظيفي والحضور والراتب.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(linkedEmployee?.name||'')}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername"></div></div><div class="fr"><div class="fg"><label>كلمة المرور</label><input type="password" id="userPassword"></div><div class="fg"><label>الدور</label><select id="userRole" data-karim-action="toggleUserDeptField" data-karim-event="change">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:none"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(employeeId||'',null)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" selected>نشط</option><option value="false">موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="addUser"><i class=ji data-i=save></i> حفظ وربط الحساب</button></div>`);
 }
 function toggleUserDeptField(){
 const roleEl=document.getElementById('userRole'); const field=document.getElementById('userDeptField');
@@ -694,7 +694,7 @@ const roleOpts=Object.keys(ROLES).map(k=>`<option value="${k}" ${u.role===k?'sel
 const deptSrc=(STATE.hrDepartments&&STATE.hrDepartments.length?STATE.hrDepartments:(STATE.departments||[]));
 const currentDepts=String(u.dept_code||'').split(',').map(x=>x.trim()).filter(Boolean);
 const deptBoxes=deptSrc.map(d=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:8px"><input type="checkbox" class="userDeptBox" value="${esc(d.code)}" ${currentDepts.includes(String(d.code))?'checked':''}> <span>${esc(d.name||d.name_ar||d.code)}</span></label>`).join('');
-showModal(`<h3><i class=ji data-i=pencil></i> تعديل حساب المستخدم</h3><div class="workflow-banner">اسم المستخدم ثابت كمعرّف دخول. يمكنك تعديل الاسم، الدور، الحالة، كلمة المرور، والموظف المرتبط.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(u.name)}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername" value="${esc(u.username)}" readonly></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(اتركها فارغة دون تغيير)</small></label><input type="password" id="userPassword"></div><div class="fg"><label>الدور والصلاحيات</label><select id="userRole" onchange="toggleUserDeptField()">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:${u.role==='dept_head'?'':'none'}"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(emp?.id||'',u.id)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" ${u.active!==false?'selected':''}>نشط</option><option value="false" ${u.active===false?'selected':''}>موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="updateUser('${id}')"><i class=ji data-i=save></i> حفظ التعديل</button></div>`);
+showModal(`<h3><i class=ji data-i=pencil></i> تعديل حساب المستخدم</h3><div class="workflow-banner">اسم المستخدم ثابت كمعرّف دخول. يمكنك تعديل الاسم، الدور، الحالة، كلمة المرور، والموظف المرتبط.</div><div class="fr"><div class="fg"><label>الاسم</label><input type="text" id="userName" value="${esc(u.name)}"></div><div class="fg"><label>اسم المستخدم</label><input type="text" id="userUsername" value="${esc(u.username)}" readonly></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(اتركها فارغة دون تغيير)</small></label><input type="password" id="userPassword"></div><div class="fg"><label>الدور والصلاحيات</label><select id="userRole" data-karim-action="toggleUserDeptField" data-karim-event="change">${roleOpts}</select></div></div><div class="fr"><div class="fg" id="userDeptField" style="display:${u.role==='dept_head'?'':'none'}"><label>قسم الرئيس <small>(إجباري لرئيس القسم)</small></label><div id="userDeptBoxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg3)">${deptBoxes}</div><small class="text-muted">اختر قسمًا أو أكثر — رئيس قسم لأكثر من قسم مدعوم</small></div><div class="fg"><label>الموظف المرتبط</label><select id="userEmployee">${employeeAccountOptions(emp?.id||'',u.id)}</select></div></div><div class="fr"><div class="fg"><label>حالة الحساب</label><select id="userActive"><option value="true" ${u.active!==false?'selected':''}>نشط</option><option value="false" ${u.active===false?'selected':''}>موقوف</option></select></div><div></div></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="updateUser" data-karim-arg0="${id}"><i class=ji data-i=save></i> حفظ التعديل</button></div>`);
 }
 async function updateUser(id){
 const u=STATE.users.find(x=>String(x.id)===String(id));
@@ -788,7 +788,7 @@ return `
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px">
 <input id="punchLat" value="${esc(punchKv('punch_restaurant_lat')||'')}" placeholder="خط العرض" style="width:150px">
 <input id="punchLng" value="${esc(punchKv('punch_restaurant_lng')||'')}" placeholder="خط الطول" style="width:150px">
-<button class="btn btn-blue btn-sm" onclick="captureRestaurantLocation()"><i class=ji data-i=map-pin></i> أنا هنا — التقط الموقع</button>
+<button class="btn btn-blue btn-sm" data-karim-action="captureRestaurantLocation"><i class=ji data-i=map-pin></i> أنا هنا — التقط الموقع</button>
 </div>
 </div>
 <div class="fg" style="margin-top:10px">
@@ -811,7 +811,7 @@ return `
 </div>
 </div>
 <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
-<button class="btn btn-gold" onclick="savePunchSettings()"><i class=ji data-i=save></i> حفظ الإعدادات (ينعكس فورًا)</button>
+<button class="btn btn-gold" data-karim-action="savePunchSettings"><i class=ji data-i=save></i> حفظ الإعدادات (ينعكس فورًا)</button>
 ${(!hasCoords&&geoOn)?'<span class="u-red">⚠ الجيوفانس مفعّل بلا إحداثيات — البصمة ستُرفض! التقط الموقع أو أطفئ الجيوفانس.</span>':''}
 ${portalOn?'<span style="color:#2ecc71;font-weight:700">● الميزة مفعّلة الآن — الموظفون يبصمون</span>':'<span class="text-muted">● الميزة مغلقة — الموظفون لا يرون زر البصمة</span>'}
 </div>
@@ -824,14 +824,14 @@ ${portalOn?'<span style="color:#2ecc71;font-weight:700">● الميزة مفع�
 <option value="">— اختر الموظف —</option>
 ${(STATE.employees||[]).filter(e=>e.userId).map(e=>`<option value="${e.userId}">${esc(e.name)} (${esc(e.employeeId||"")})</option>`).join("")}
 </select>
-<button class="btn btn-gold btn-sm" onclick="enrollPunchFace()"><i class=ji data-i=camera></i> تسجيل الوجه بالكاميرا</button>
+<button class="btn btn-gold btn-sm" data-karim-action="enrollPunchFace"><i class=ji data-i=camera></i> تسجيل الوجه بالكاميرا</button>
 </div>
 <small class="text-muted" style="display:block;margin-top:8px">يُحسب متجه الوجه من كاميرا حية ويُخزن كأرقام فقط — لا تُحفظ أي صورة. الوجه المقيد جغرافيًا مثل بقية البصمة.</small>
 </div>
 </div>
 <div class="tbl-wrap" style="margin-top:18px">
 <div class="tbl-hd"><h3><i class=ji data-i=activity></i> الأجهزة المربوطة (ربط الجهاز L4)</h3>
-<div class="u-row-wrap"><button class="btn btn-blue btn-sm" onclick="loadPunchDevices()"><i class=ji data-i=refresh></i> تحديث</button></div>
+<div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="loadPunchDevices"><i class=ji data-i=refresh></i> تحديث</button></div>
 </div>
 <div style="padding:16px 24px">
 <div id="punchDevicesList">جارٍ التحميل…</div>
@@ -841,12 +841,12 @@ ${(STATE.employees||[]).filter(e=>e.userId).map(e=>`<option value="${e.userId}">
 <div class="tbl-wrap" style="margin-top:18px">
 <div class="tbl-hd"><h3><i class=ji data-i=activity></i> سجل محاولات البصمة</h3>
 <div class="u-row-wrap">
-<select id="punchAttemptsFilter" onchange="loadPunchAttempts()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+<select id="punchAttemptsFilter" data-karim-action="loadPunchAttempts" data-karim-event="change" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text)">
 <option value="">كل المحاولات</option>
 <option value="rejected">المرفوضة فقط</option>
 <option value="accepted">المقبولة فقط</option>
 </select>
-<button class="btn btn-blue btn-sm" onclick="loadPunchAttempts()"><i class=ji data-i=refresh></i> تحديث</button>
+<button class="btn btn-blue btn-sm" data-karim-action="loadPunchAttempts"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
 </div>
 <div style="padding:16px 24px">
@@ -957,7 +957,7 @@ if(!box){return;}
 box.innerHTML = window.__punchFaces?.length
 ? window.__punchFaces.map(f=>`<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px">
 <span><b>${esc(f.name||f.username||('موظف '+f.user_id))}</b> <small class="text-muted">سُجل ${esc(String(f.enrolled_at||'').slice(0,10))}</small> ${f.engine === 'v2' ? '<span class="badge bdg-blue">متقدم</span>' : '<span class="badge bdg-gray">أساسي</span>'}</span>
-<button class="btn btn-red btn-sm" onclick="removePunchFace(${f.user_id})"><i class=ji data-i=trash></i> إزالة</button>
+<button class="btn btn-red btn-sm" data-karim-action="removePunchFace" data-karim-arg0="${f.user_id}"><i class=ji data-i=trash></i> إزالة</button>
 </div>`).join('')
 : '<small class="text-muted">لا وجوه مسجلة بعد</small>';
 }
@@ -1014,7 +1014,7 @@ return `<tr style="border-top:1px solid var(--border)">
 <td><code>${esc(String(d.device_id||'').slice(0,12))}…</code></td>
 <td>${esc(d.bound_ip||'—')}</td>
 <td>${esc(dt)}</td>
-<td><button class="btn btn-red btn-sm" onclick="unbindPunchDevice(${Number(d.user_id)})"><i class=ji data-i=trash></i> فك الربط</button></td>
+<td><button class="btn btn-red btn-sm" data-karim-action="unbindPunchDevice" data-karim-arg0="${Number(d.user_id)}"><i class=ji data-i=trash></i> فك الربط</button></td>
 </tr>`;}).join('')}</tbody></table></div>`;
 }catch(e){ box.innerHTML = `<div class="mcard u-empty">تعذر تحميل الأجهزة: ${esc(e.message)}</div>`; }
 }

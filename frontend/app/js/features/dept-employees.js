@@ -27,7 +27,7 @@ async function deptEmpLoad() {
         box.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
         <h3 class="u-gold-strong"><i class=ji data-i=users></i> موظفو القسم: ${esc(deptNames)}</h3>
-        <button class="btn btn-gold" onclick="deptEmpAddModal()"><i class=ji data-i=plus></i> إضافة موظف للقسم</button>
+        <button class="btn btn-gold" data-karim-action="deptEmpAddModal"><i class=ji data-i=plus></i> إضافة موظف للقسم</button>
         </div>
         <div id="deptEmpList">
         ${emps.length ? emps.map(e => `
@@ -39,8 +39,8 @@ async function deptEmpLoad() {
               <div class="text-muted" style="font-size:12px">${esc(e.employeeId)} · ${esc(e.position || 'بدون وظيفة')} · ${esc(e.phone || 'بلا هاتف')}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-sm" onclick="deptEmpEditModal(${e.id})"><i class=ji data-i=pencil></i> تعديل</button>
-              <button class="btn btn-red btn-sm" onclick="deptEmpDeactivate(${e.id},'${esc(e.name)}')"><i class=ji data-i=x-circle></i> تعطيل</button>
+              <button class="btn btn-sm" data-karim-action="deptEmpEditModal" data-karim-arg0="${e.id}"><i class=ji data-i=pencil></i> تعديل</button>
+              <button class="btn btn-red btn-sm" data-karim-action="deptEmpDeactivate" data-karim-arg0="${e.id}" data-karim-arg1="${esc(e.name)}"><i class=ji data-i=x-circle></i> تعطيل</button>
             </div>
           </div>
         </div>`).join('') : '<div class="mcard u-empty">لا يوجد موظفون في قسمك بعد — أضف أول موظف من الزر الأعلى</div>'}
@@ -57,7 +57,7 @@ function deptEmpModal(title, fieldsHtml, saveFn) {
         <div class="fg"><label>الوظيفة</label><input id="deptEmpPos" value="${fieldsHtml.position || ''}" placeholder="مثال: أمين مخزن مساعد"></div></div>
         <div class="fg"><label>الهاتف</label><input id="deptEmpPhone" value="${fieldsHtml.phone || ''}" placeholder="05xxxxxxxx"></div>
         <div id="deptEmpErr" class="form-error" role="alert"></div>
-        <div class="modal-footer"><button class="btn" onclick="closeModal()">إلغاء</button><button class="btn btn-gold" onclick="${saveFn}"><i class=ji data-i=save></i> حفظ</button></div>`);
+        <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" onclick="${saveFn}"><i class=ji data-i=save></i> حفظ</button></div>`);
 }
 
 function deptEmpAddModal() {

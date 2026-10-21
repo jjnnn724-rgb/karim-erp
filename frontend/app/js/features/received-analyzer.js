@@ -54,9 +54,9 @@ function raShell() {
     </div>
     <!-- تبويبات -->
     <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:2px solid var(--border,#ddd);padding-bottom:0;flex-wrap:wrap">
-      <button id="raTabItems" class="btn ${RA.tab === 'items' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" onclick="raSwitchTab('items')"><i class=ji data-i=package></i> المستلمة</button>
-      <button id="raTabDispatches" class="btn ${RA.tab === 'dispatches' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" onclick="raSwitchTab('dispatches')"><i class=ji data-i=file-text></i> أذونات الصرف</button>
-      <button id="raTabOutflow" class="btn ${RA.tab === 'outflow' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" onclick="raSwitchTab('outflow')"><i class=ji data-i=trending-down></i> المصروفات والاستهلاك</button>
+      <button id="raTabItems" class="btn ${RA.tab === 'items' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" data-karim-action="raSwitchTab" data-karim-args="[&quot;items&quot;]"><i class=ji data-i=package></i> المستلمة</button>
+      <button id="raTabDispatches" class="btn ${RA.tab === 'dispatches' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" data-karim-action="raSwitchTab" data-karim-args="[&quot;dispatches&quot;]"><i class=ji data-i=file-text></i> أذونات الصرف</button>
+      <button id="raTabOutflow" class="btn ${RA.tab === 'outflow' ? 'btn-primary' : ''}" style="border-radius:8px 8px 0 0" data-karim-action="raSwitchTab" data-karim-args="[&quot;outflow&quot;]"><i class=ji data-i=trending-down></i> المصروفات والاستهلاك</button>
     </div>
     <!-- فلاتر -->
     <div style="background:var(--card,#fff);padding:14px;border-radius:12px;border:1px solid var(--border,#e5e7eb);margin-bottom:14px">
@@ -64,18 +64,18 @@ function raShell() {
         <label style="font-size:13px">من <input type="date" id="raFrom" value="${raEscape(RA.from)}" class="inp" style="width:150px"></label>
         <label style="font-size:13px">إلى <input type="date" id="raTo" value="${raEscape(RA.to)}" class="inp" style="width:150px"></label>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="raPreset('today')">اليوم</button>
-          <button class="btn btn-sm" onclick="raPreset('yesterday')">أمس</button>
-          <button class="btn btn-sm" onclick="raPreset('week')">هذا الأسبوع</button>
-          <button class="btn btn-sm btn-primary" onclick="raPreset('month')">هذا الشهر</button>
-          <button class="btn btn-sm" onclick="raPreset('last7')">آخر 7 أيام</button>
-          <button class="btn btn-sm" onclick="raPreset('last30')">آخر 30 يوم</button>
+          <button class="btn btn-sm" data-karim-action="raPreset" data-karim-args="[&quot;today&quot;]">اليوم</button>
+          <button class="btn btn-sm" data-karim-action="raPreset" data-karim-args="[&quot;yesterday&quot;]">أمس</button>
+          <button class="btn btn-sm" data-karim-action="raPreset" data-karim-args="[&quot;week&quot;]">هذا الأسبوع</button>
+          <button class="btn btn-sm btn-primary" data-karim-action="raPreset" data-karim-args="[&quot;month&quot;]">هذا الشهر</button>
+          <button class="btn btn-sm" data-karim-action="raPreset" data-karim-args="[&quot;last7&quot;]">آخر 7 أيام</button>
+          <button class="btn btn-sm" data-karim-action="raPreset" data-karim-args="[&quot;last30&quot;]">آخر 30 يوم</button>
         </div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">
         <label style="font-size:13px;${RA.tab === 'dispatches' ? 'display:none' : ''}" id="raDeptWrap">القسم <input type="text" id="raDept" value="${raEscape(RA.dept)}" placeholder="مثال: الحلواني" class="inp" style="width:160px"></label>
         <div style="font-size:13px;flex:1;min-width:220px;position:relative;${RA.tab === 'dispatches' ? 'display:none' : ''}" id="raItemWrap">
-          <label>بحث صنف <input type="text" id="raItem" value="${raEscape(RA.item)}" placeholder="اكتب اسم الصنف… مثال: البيبسي، دجاج، لحم" class="inp" style="width:100%" autocomplete="off" oninput="raSuggest()" onkeydown="if(event.key==='Enter')raApply()"></label>
+          <label>بحث صنف <input type="text" id="raItem" value="${raEscape(RA.item)}" placeholder="اكتب اسم الصنف… مثال: البيبسي، دجاج، لحم" class="inp" style="width:100%" autocomplete="off" data-karim-action="raSuggest" data-karim-event="input" data-karim-action="if" data-karim-event="keydown" data-karim-args="[event.key===&#39;Enter&#39;]" data-karim-also="raApply"></label>
           <div id="raSuggestBox" style="display:none;position:absolute;top:100%;right:0;left:0;background:var(--card,#fff);border:1px solid var(--border,#ddd);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
         </div>
         <label style="font-size:13px;${RA.tab !== 'items' ? 'display:none' : ''}" id="raGroupWrap">تجميع <select id="raGroup" class="inp" style="width:120px">
@@ -83,9 +83,9 @@ function raShell() {
           <option value="dept" ${RA.group === 'dept' ? 'selected' : ''}>بالقسم</option>
           <option value="day" ${RA.group === 'day' ? 'selected' : ''}>باليوم</option>
         </select></label>
-        <button class="btn btn-primary" onclick="raApply()"><i class=ji data-i=search></i> استعلام</button>
-        <button class="btn btn-green" onclick="raPrintReport()"><i class=ji data-i=printer></i> طباعة</button>
-        <button class="btn" onclick="raExportExcel()"><i class=ji data-i=inbox></i> Excel</button>
+        <button class="btn btn-primary" data-karim-action="raApply"><i class=ji data-i=search></i> استعلام</button>
+        <button class="btn btn-green" data-karim-action="raPrintReport"><i class=ji data-i=printer></i> طباعة</button>
+        <button class="btn" data-karim-action="raExportExcel"><i class=ji data-i=inbox></i> Excel</button>
       </div>
     </div>
     <div id="raAlerts" style="margin-bottom:14px"></div>
@@ -316,7 +316,7 @@ function raRenderDispatches() {
     const pages = Math.max(1, Math.ceil(RA.dispatchesTotal / RA.dispatchesLimit));
     const page = Math.floor(RA.dispatchesOffset / RA.dispatchesLimit) + 1;
     const rowsHtml = RA.dispatches.map((d) => `
-      <tr style="cursor:pointer" onclick="raOpenDispatch('${raEscape(d.id)}')">
+      <tr style="cursor:pointer" data-karim-action="raOpenDispatch" data-karim-arg0="${raEscape(d.id)}">
         <td class="fw-bold" dir="ltr">${raEscape(d.id.slice(-8))}</td>
         <td style="text-align:start"><b>${raEscape(d.dept_name || '—')}</b></td>
         <td dir="ltr">${raEscape(d.date)}</td>
@@ -335,8 +335,8 @@ function raRenderDispatches() {
         </table></div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:8px 0">
           <span class="text-muted">صفحة ${raNum(page)} من ${raNum(pages)}</span>
-          <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="raDispatchesPage(-1)">السابق</button>
-          <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} onclick="raDispatchesPage(1)">التالي</button>
+          <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} data-karim-action="raDispatchesPage" data-karim-args="[-1]">السابق</button>
+          <button class="btn btn-sm" ${page >= pages ? 'disabled' : ''} data-karim-action="raDispatchesPage" data-karim-args="[1]">التالي</button>
         </div>
       </div>
       <div id="raDispatchDetail"></div>`;
@@ -373,7 +373,7 @@ async function raOpenDispatch(id) {
           <div class="tbl-hd">
             <h3><i class=ji data-i=file-text></i> إذن صرف — ${raEscape(disp.dept_name || '')} — ${raEscape(disp.date || '')}</h3>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-green" onclick="raPrintDispatch('${raEscape(disp.id)}')"><i class=ji data-i=printer></i> طباعة</button>
+              <button class="btn btn-sm btn-green" data-karim-action="raPrintDispatch" data-karim-arg0="${raEscape(disp.id)}"><i class=ji data-i=printer></i> طباعة</button>
               <button class="btn btn-sm" onclick="document.getElementById('raDispatchDetail').innerHTML=''">إغلاق</button>
             </div>
           </div>

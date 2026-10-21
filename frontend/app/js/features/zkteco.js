@@ -33,16 +33,16 @@ content.innerHTML = `
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
 <h3 class="u-gold-strong"><i class=ji data-i=user-check></i> أجهزة بصمة الحضور</h3>
 <div class="u-row-wrap">
-${canWrite?`<button class="btn btn-gold" onclick="zkAddDeviceModal()"><i class=ji data-i=plus></i> إضافة جهاز</button>`:''}
-${canWrite?`<button class="btn btn-teal" onclick="zkScanNetwork()"><i class=ji data-i=search></i> مسح الشبكة</button>`:''}
-<button class="btn btn-blue btn-sm" onclick="zkRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
+${canWrite?`<button class="btn btn-gold" data-karim-action="zkAddDeviceModal"><i class=ji data-i=plus></i> إضافة جهاز</button>`:''}
+${canWrite?`<button class="btn btn-teal" data-karim-action="zkScanNetwork"><i class=ji data-i=search></i> مسح الشبكة</button>`:''}
+<button class="btn btn-blue btn-sm" data-karim-action="zkRefresh"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
 </div>
 <div class="u-row-wrap" style="gap:8px;margin-bottom:14px" id="zkTabs">
-<button class="btn btn-sm ${ZKSTATE.tab==='devices'?'btn-gold':''}" onclick="zkSetTab('devices')"><i class=ji data-i=user-check></i> الأجهزة</button>
-<button class="btn btn-sm ${ZKSTATE.tab==='mappings'?'btn-gold':''}" onclick="zkSetTab('mappings')"><i class=ji data-i=users></i> ربط الموظفين</button>
-<button class="btn btn-sm ${ZKSTATE.tab==='logs'?'btn-gold':''}" onclick="zkSetTab('logs')"><i class=ji data-i=clipboard-list></i> سجل البصمات</button>
-<button class="btn btn-sm ${ZKSTATE.tab==='coverage'?'btn-gold':''}" onclick="zkSetTab('coverage')"><i class=ji data-i=shield-check></i> تغطية البصمات</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='devices'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;devices&quot;]"><i class=ji data-i=user-check></i> الأجهزة</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='mappings'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;mappings&quot;]"><i class=ji data-i=users></i> ربط الموظفين</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='logs'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;logs&quot;]"><i class=ji data-i=clipboard-list></i> سجل البصمات</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='coverage'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;coverage&quot;]"><i class=ji data-i=shield-check></i> تغطية البصمات</button>
 </div>
 <div id="zkBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>
 `;
@@ -75,7 +75,7 @@ const rows = found.map(d=>`
 <td>${d.serial?`<span class="badge bdg-gray">${esc(d.serial)}</span>`:'<span class="text-muted">—</span>'}</td>
 <td>${d.deviceName?esc(d.deviceName):'<span class="text-muted">—</span>'}</td>
 <td>${d.firmware?esc(d.firmware):'<span class="text-muted">—</span>'}</td>
-<td><button class="btn btn-gold btn-sm" onclick="zkUseFoundDevice('${esc(d.ip)}',${d.port},'${esc(d.serial||'')}')"><i class=ji data-i=check></i> استخدام هذا الجهاز</button></td>
+<td><button class="btn btn-gold btn-sm" data-karim-action="zkUseFoundDevice" data-karim-arg0="${esc(d.ip)}" data-karim-arg1="${d.port}" data-karim-arg2="${esc(d.serial||'')}"><i class=ji data-i=check></i> استخدام هذا الجهاز</button></td>
 </tr>`).join('');
 showModal(`
 <h3><i class=ji data-i=search></i> نتائج مسح الشبكة</h3>
@@ -85,7 +85,7 @@ showModal(`
 <thead><tr><th>عنوان IP</th><th>المنفذ</th><th>الرقم التسلسلي</th><th>اسم الجهاز</th><th>الفيرموير</th><th></th></tr></thead>
 <tbody>${rows||'<tr><td colspan="6" class="u-empty-sm">لم يُعثر على أي جهاز بصمة ZKTeco على الشبكة.<br><small class="text-muted">تأكد من تشغيل الجهاز وتوصيله بالشبكة، ثم أعد المسح.</small></td></tr>'}</tbody>
 </table></div></div>
-<div class="modal-footer"><button class="btn" onclick="closeModal()">إغلاق</button></div>
+<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>
 `,'modal-wide');
 }catch(e){ toast(e.message||'فشل مسح الشبكة','error'); }
 finally{ hideLoad(); }
@@ -145,7 +145,7 @@ el.innerHTML = `
 <span class="badge bdg-red">مشاكل: ${s.problems||0}</span>
 <span class="badge bdg-teal">بصمة وجه (تطبيق): ${s.face_enrolled||0}</span>
 <span class="badge bdg-gold">بصمات خام بلا موظف: ${s.unmapped_device_users||0}</span>
-<button class="btn btn-blue btn-sm" onclick="zkRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
+<button class="btn btn-blue btn-sm" data-karim-action="zkRefresh"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
 ${(r.unmapped_device_users||[]).length?`<div class="mcard" style="margin-bottom:14px;border:1px solid var(--gold,#c9a227)"><b><i class=ji data-i=alert-triangle></i> بصمات خام على الجهاز بلا موظف مربوط — اربطها من تبويب «ربط الموظفين»:</b><div class="u-row-wrap" style="margin-top:8px">${r.unmapped_device_users.map(u=>`<span class="badge bdg-gold">جهاز #${esc(String(u.deviceUserId))} — ${u.raw} بصمة خام</span>`).join(' ')}</div></div>`:''}
 <div class="tbl-wrap"><div class="tbl-hd"><h3>الموظفون الذين يحتاجون معالجة (${(r.problems||[]).length})</h3><small class="text-muted">آخر 7 أيام — بصمة الإصبع تُسجل بلمس الجهاز؛ وبصمة الوجه من التطبيق تصلح للجميع</small></div>
@@ -173,11 +173,11 @@ const rows = ZKSTATE.devices.map(d=>`
 <td>
 <div class="u-row-wrap" style="gap:4px">
 ${['admin','hr'].includes(STATE.currentUser?.role)?`
-<button class="btn btn-green btn-sm" onclick="zkTestDevice('${d.id}')" title="فحص اتصال حقيقي"><i class=ji data-i=zap></i> فحص</button>
-<button class="btn btn-blue btn-sm" onclick="zkSyncNow('${d.id}')" title="مزامنة الآن"><i class=ji data-i=refresh></i> مزامنة</button>
-<button class="btn btn-sm" onclick="zkEditDeviceModal('${d.id}')"><i class=ji data-i=pencil></i></button>
-<button class="btn btn-sm" onclick="zkToggleEnabled('${d.id}', ${!d.enabled})" title="${d.enabled?'إيقاف':'تشغيل'}">${d.enabled?'⏸':'▶'}</button>
-<button class="btn btn-red btn-sm" onclick="zkDeleteDevice('${d.id}')"><i class=ji data-i=trash></i></button>`:'—'}
+<button class="btn btn-green btn-sm" data-karim-action="zkTestDevice" data-karim-arg0="${d.id}" title="فحص اتصال حقيقي"><i class=ji data-i=zap></i> فحص</button>
+<button class="btn btn-blue btn-sm" data-karim-action="zkSyncNow" data-karim-arg0="${d.id}" title="مزامنة الآن"><i class=ji data-i=refresh></i> مزامنة</button>
+<button class="btn btn-sm" data-karim-action="zkEditDeviceModal" data-karim-arg0="${d.id}"><i class=ji data-i=pencil></i></button>
+<button class="btn btn-sm" data-karim-action="zkToggleEnabled" data-karim-arg0="${d.id}" data-karim-arg1="${!d.enabled}" title="${d.enabled?'إيقاف':'تشغيل'}">${d.enabled?'⏸':'▶'}</button>
+<button class="btn btn-red btn-sm" data-karim-action="zkDeleteDevice" data-karim-arg0="${d.id}"><i class=ji data-i=trash></i></button>`:'—'}
 </div>
 </td>
 </tr>`).join('');
@@ -224,8 +224,8 @@ showModal(`
 <div class="fg"><label>مفعّل</label><select id="zkEnabled"><option value="true" selected>نعم — ابدأ المزامنة</option><option value="false">لا — لاحقًا</option></select></div>
 </div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="zkAddDevice()"><i class=ji data-i=save></i> حفظ الجهاز</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="zkAddDevice"><i class=ji data-i=save></i> حفظ الجهاز</button>
 </div>
 `);
 }
@@ -260,8 +260,8 @@ showModal(`
 <div class="fg"><label>مفعّل</label><select id="zkEnabled"><option value="true" ${d.enabled?'selected':''}>نعم</option><option value="false" ${!d.enabled?'selected':''}>لا</option></select></div>
 </div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="zkUpdateDevice('${d.id}')"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="zkUpdateDevice" data-karim-arg0="${d.id}"><i class=ji data-i=save></i> حفظ</button>
 </div>
 `);
 }
@@ -327,11 +327,11 @@ const empRows=emps.map(e=>`
 <td>${e.deviceUserId?`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> مربوط — رقم ${esc(String(e.deviceUserId))}</span>`:'<span class="badge bdg-orange"><i class=ji data-i=circle-x></i> غير مربوط</span>'}</td>
 <td><input type="text" id="zkMap_${e.id}" value="${esc(e.deviceUserId||'')}" placeholder="رقم البصمة على الجهاز" style="max-width:160px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text)" ${canWrite?'':'disabled'}></td>
 <td>${e.todayPunches?`<span class="badge bdg-green">${e.todayPunches} بصمة اليوم</span>`:'<span class="badge bdg-gray">لا بصمات اليوم</span>'}</td>
-<td>${canWrite?`<button class="btn btn-gold btn-sm" onclick="zkSaveMapping('${e.id}')"><i class=ji data-i=save></i> حفظ</button>`:'—'}</td>
+<td>${canWrite?`<button class="btn btn-gold btn-sm" data-karim-action="zkSaveMapping" data-karim-arg0="${e.id}"><i class=ji data-i=save></i> حفظ</button>`:'—'}</td>
 </tr>`).join('');
 const unmappedRows=(m.unmapped||[]).map(u=>`
 <tr><td><span class="badge bdg-blue">${esc(u.deviceUserId)}</span></td><td>${u.punches}</td><td>${u.lastPunch?zkFmtDate(u.lastPunch)+' · '+zkFmtTime(u.lastPunch):'—'}</td>
-<td>${canWrite?`<button class="btn btn-sm" onclick="zkMapDeviceUser('${esc(u.deviceUserId)}')">اختر موظفًا…</button>`:'—'}</td></tr>`).join('');
+<td>${canWrite?`<button class="btn btn-sm" data-karim-action="zkMapDeviceUser" data-karim-arg0="${esc(u.deviceUserId)}">اختر موظفًا…</button>`:'—'}</td></tr>`).join('');
 el.innerHTML=`
 <div class="metrics-grid" style="margin-bottom:12px">
 <div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> موظفون مربوطون بالبصمة</div><div class="mcard-val c-green">${fN(linkedCount)} / ${fN(emps.length)}</div></div>
@@ -340,7 +340,7 @@ el.innerHTML=`
 </div>
 ${canWrite?`
 <div class="u-row-wrap" style="gap:8px;margin-bottom:12px">
-<button class="btn btn-green" onclick="zkAutoLink()"><i class=ji data-i=zap></i> ربط تلقائي بالرقم الوظيفي</button>
+<button class="btn btn-green" data-karim-action="zkAutoLink"><i class=ji data-i=zap></i> ربط تلقائي بالرقم الوظيفي</button>
 <span class="text-muted" style="font-size:12px">يربط كل موظف بلا رقم بصمة برقمه الوظيفي مباشرة (إن لم يكن مرتبطًا بموظف آخر)</span>
 </div>
 <div class="tbl-wrap" style="margin-bottom:12px">
@@ -353,7 +353,7 @@ ${ZKSTATE.devices.map(d=>`<option value="${d.id}">${esc(d.name)} — ${esc(d.ipA
 <option value="">بدون قسم</option>
 ${(STATE.hrDepartments||[]).map(d=>`<option value="${esc(d.code)}">${esc(d.name)}</option>`).join('')}
 </select>
-<button class="btn btn-blue" onclick="zkImportPreview()"><i class=ji data-i=user-check></i> سحب الأسماء من الجهاز</button>
+<button class="btn btn-blue" data-karim-action="zkImportPreview"><i class=ji data-i=user-check></i> سحب الأسماء من الجهاز</button>
 </div>
 </div>`:''}
 <div class="tbl-wrap">
@@ -405,8 +405,8 @@ showModal(`
 ${candidates.map(e=>`<option value="${e.id}">${esc(e.name)} — ${esc(e.employeeId||'')}</option>`).join('')}
 </select></div>
 <div class="modal-footer">
-<button class="btn" onclick="closeModal()">إلغاء</button>
-<button class="btn btn-gold" onclick="zkConfirmMapDeviceUser('${esc(deviceUserId)}')"><i class=ji data-i=save></i> ربط</button>
+<button class="btn" data-karim-action="closeModal">إلغاء</button>
+<button class="btn btn-gold" data-karim-action="zkConfirmMapDeviceUser" data-karim-arg0="${esc(deviceUserId)}"><i class=ji data-i=save></i> ربط</button>
 </div>`);
 }
 // ─── استيراد مستخدمي الجهاز كموظفين (الرقم الوظيفي = رقم البصمة) ───
@@ -470,8 +470,8 @@ function zkImportModal(){
   </table>
   </div>
   <div class="modal-footer">
-  <button class="btn" onclick="closeModal()">إلغاء</button>
-  <button class="btn btn-gold" onclick="zkConfirmImport()"><i class=ji data-i=circle-check></i> إنشاء المحدد كموظفين</button>
+  <button class="btn" data-karim-action="closeModal">إلغاء</button>
+  <button class="btn btn-gold" data-karim-action="zkConfirmImport"><i class=ji data-i=circle-check></i> إنشاء المحدد كموظفين</button>
   </div>`, 'modal-wide');
 }
 async function zkConfirmImport(){
@@ -491,7 +491,7 @@ async function zkConfirmImport(){
     <div class="mcard"><div class="mcard-label">تُخطي (موجود)</div><div class="mcard-val c-orange">${fN(r.skipped || 0)}</div></div>
     </div>
     <div class="text-muted" style="font-size:12.5px">${esc(r.message || '')}</div>
-    <div class="modal-footer"><button class="btn btn-gold" onclick="closeModal()">تم</button></div>`);
+    <div class="modal-footer"><button class="btn btn-gold" data-karim-action="closeModal">تم</button></div>`);
   }catch(e){ toast(e.message || 'فشل الاستيراد', 'error'); }
   finally{ hideLoad(); }
 }
@@ -529,8 +529,8 @@ el.innerHTML=`
 <div class="u-row-wrap">
 <input type="date" id="zkExpFrom" class="inp" title="من تاريخ">
 <input type="date" id="zkExpTo" class="inp" title="إلى تاريخ">
-<button class="btn btn-green btn-sm" onclick="zkExportLogs()"><i class=ji data-i=download></i> تصدير CSV</button>
-<button class="btn btn-blue btn-sm" onclick="zkRefresh()"><i class=ji data-i=refresh></i> تحديث</button>
+<button class="btn btn-green btn-sm" data-karim-action="zkExportLogs"><i class=ji data-i=download></i> تصدير CSV</button>
+<button class="btn btn-blue btn-sm" data-karim-action="zkRefresh"><i class=ji data-i=refresh></i> تحديث</button>
 </div></div>
 <div class="tbl-scroll">
 <table>

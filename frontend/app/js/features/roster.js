@@ -29,15 +29,15 @@ function renderRoster() {
         + '<h3 class="u-gold-strong"><i class=ji data-i=calendar-clock></i> شبكة دوامات القسم</h3>'
         + '<small class="text-muted">غيّر أي موظف في أي يوم وأي دوام — اضغط <strong>حفظ الأسبوع</strong> فيتطبق كل خلية في تاريخها تلقائيًا. الماضي محمي ولا يُمس أبدًا.</small></div>'
         + '<div class="u-row-wrap"><span id="rosterDeptWrap"></span>'
-        + '<button class="btn btn-sm" onclick="loadRosterWeek()"><i class=ji data-i=refresh></i> تحديث</button>'
-        + '<button class="btn btn-sm btn-blue" onclick="printRoster()"><i class=ji data-i=printer></i> طباعة الأسبوع</button></div></div>'
+        + '<button class="btn btn-sm" data-karim-action="loadRosterWeek"><i class=ji data-i=refresh></i> تحديث</button>'
+        + '<button class="btn btn-sm btn-blue" data-karim-action="printRoster"><i class=ji data-i=printer></i> طباعة الأسبوع</button></div></div>'
         + '<div class="u-row-between" style="margin-top:12px;flex-wrap:wrap;gap:8px">'
-        + '<div class="u-row-wrap"><button class="btn btn-sm" onclick="rosterWeekNav(-1)" title="الأسبوع السابق"><i class=ji data-i=arrow-right></i></button>'
+        + '<div class="u-row-wrap"><button class="btn btn-sm" data-karim-action="rosterWeekNav" data-karim-args="[-1]" title="الأسبوع السابق"><i class=ji data-i=arrow-right></i></button>'
         + '<b id="rosterWeekLabel" style="min-width:230px;text-align:center"></b>'
-        + '<button class="btn btn-sm" onclick="rosterWeekNav(1)" title="الأسبوع التالي"><i class=ji data-i=arrow-left></i></button>'
-        + '<button class="btn btn-sm btn-gold" onclick="rosterWeekNav(0)">هذا الأسبوع</button></div>'
-        + '<div class="u-row-wrap"><button class="btn btn-sm" onclick="rosterCopyPrevWeek()" title="اجلب قيم الأسبوع الماضي كأساس لهذا الأسبوع"><i class=ji data-i=copy></i> نسخ من الأسبوع السابق</button>'
-        + '<button class="btn btn-gold" id="rosterSaveBtn" onclick="saveRosterWeek()" disabled><i class=ji data-i=save></i> حفظ الأسبوع</button></div>'
+        + '<button class="btn btn-sm" data-karim-action="rosterWeekNav" data-karim-args="[1]" title="الأسبوع التالي"><i class=ji data-i=arrow-left></i></button>'
+        + '<button class="btn btn-sm btn-gold" data-karim-action="rosterWeekNav" data-karim-args="[0]">هذا الأسبوع</button></div>'
+        + '<div class="u-row-wrap"><button class="btn btn-sm" data-karim-action="rosterCopyPrevWeek" title="اجلب قيم الأسبوع الماضي كأساس لهذا الأسبوع"><i class=ji data-i=copy></i> نسخ من الأسبوع السابق</button>'
+        + '<button class="btn btn-gold" id="rosterSaveBtn" data-karim-action="saveRosterWeek" disabled><i class=ji data-i=save></i> حفظ الأسبوع</button></div>'
         + '</div>'
         + '<div id="rosterNotice" style="margin-top:10px"></div>'
         + '<div id="rosterApprovalBox" style="margin-top:10px"></div>'
@@ -128,7 +128,7 @@ async function loadRosterWeek(){
                 apBox.innerHTML = '<div class="workflow-banner"><i class=ji data-i=hourglass></i> <b>مُرسلة لاعتماد شؤون العاملين</b> — بواسطة ' + esc(ap.requested_name || '—') + ' (بانتظار التوقيع)'
                     + (isHR ? ' <button class="btn btn-green btn-sm" onclick="rosterApprove(\'' + esc(rosterApKey(d)) + '\')"><i class=ji data-i=pen-line></i> توقيع واعتماد الآن</button>' : '') + '</div>';
             } else {
-                apBox.innerHTML = '<button class="btn btn-sm btn-blue" onclick="rosterRequestApproval()"><i class=ji data-i=pen-line></i> إرسال لاعتماد شؤون العاملين</button><small class="text-muted"> — بعد اعتمادهم تُطبع النسخة موقّعة ومعتمدة</small>';
+                apBox.innerHTML = '<button class="btn btn-sm btn-blue" data-karim-action="rosterRequestApproval"><i class=ji data-i=pen-line></i> إرسال لاعتماد شؤون العاملين</button><small class="text-muted"> — بعد اعتمادهم تُطبع النسخة موقّعة ومعتمدة</small>';
             }
         }
         if (isHR) {rosterLoadPending();}

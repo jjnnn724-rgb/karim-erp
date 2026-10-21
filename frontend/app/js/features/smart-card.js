@@ -302,13 +302,13 @@ ${qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="max-width:200px;width:100%;h
 </div>
 </div>
 <div class="smart-card-actions" style="padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #f1f5f9">
-<button class="btn btn-gold btn-sm" onclick="showFullQRModal('${emp.id}')"><i class=ji data-i=smartphone></i> QR كبير</button>
-<button class="btn btn-blue btn-sm" onclick="printSmartCard('${emp.id}')"><i class=ji data-i=printer></i> طباعة</button>
-<button class="btn btn-sm" onclick="downloadSmartCard('${emp.id}')"><i class=ji data-i=save></i> حفظ</button>
+<button class="btn btn-gold btn-sm" data-karim-action="showFullQRModal" data-karim-arg0="${emp.id}"><i class=ji data-i=smartphone></i> QR كبير</button>
+<button class="btn btn-blue btn-sm" data-karim-action="printSmartCard" data-karim-arg0="${emp.id}"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn btn-sm" data-karim-action="downloadSmartCard" data-karim-arg0="${emp.id}"><i class=ji data-i=save></i> حفظ</button>
 <input type="month" id="empAttMonth" value="${new Date().toISOString().slice(0,7)}" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-family:inherit" title="اختر الشهر المطلوب طباعة كشفه">
-<button class="btn btn-sm btn-green-soft" onclick="printEmployeeAttendanceDay('${emp.id}')"><i class=ji data-i=printer></i> كشف اليوم</button>
-<button class="btn btn-sm btn-blue" onclick="printEmployeeAttendanceMonth('${emp.id}')"><i class=ji data-i=calendar></i> كشف الشهر</button>
-<button class="btn btn-sm btn-purple" onclick="regenerateFingerprint('${emp.id}')"><i class=ji data-i=refresh></i> تجديد</button>
+<button class="btn btn-sm btn-green-soft" data-karim-action="printEmployeeAttendanceDay" data-karim-arg0="${emp.id}"><i class=ji data-i=printer></i> كشف اليوم</button>
+<button class="btn btn-sm btn-blue" data-karim-action="printEmployeeAttendanceMonth" data-karim-arg0="${emp.id}"><i class=ji data-i=calendar></i> كشف الشهر</button>
+<button class="btn btn-sm btn-purple" data-karim-action="regenerateFingerprint" data-karim-arg0="${emp.id}"><i class=ji data-i=refresh></i> تجديد</button>
 </div>
 </div>`;
 } catch(e) {
@@ -343,9 +343,9 @@ showModal(`
 </div>
 </div>
 <div class="modal-footer" style="flex-wrap:wrap">
-<button class="btn btn-blue btn-sm" onclick="downloadQRImage('${emp.id}')"><i class=ji data-i=save></i> تحميل رمز النظام</button>
-<button class="btn btn-green btn-sm" onclick="downloadHumanQRImage('${emp.id}')"><i class=ji data-i=save></i> تحميل رمز البيانات</button>
-<button class="btn btn-gold" onclick="closeModal()">إغلاق</button>
+<button class="btn btn-blue btn-sm" data-karim-action="downloadQRImage" data-karim-arg0="${emp.id}"><i class=ji data-i=save></i> تحميل رمز النظام</button>
+<button class="btn btn-green btn-sm" data-karim-action="downloadHumanQRImage" data-karim-arg0="${emp.id}"><i class=ji data-i=save></i> تحميل رمز البيانات</button>
+<button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button>
 </div>`);
 }
 async function downloadHumanQRImage(empId){
@@ -519,7 +519,7 @@ win.document.close();
 async function runStrictAuditUI(){
 const from=document.getElementById('attFrom')?.value||'';
 const month=(from||today()).slice(0,7);
-showModal(`<h3><i class=ji data-i=shield-check></i> التدقيق الصارم — ${esc(month)}</h3><div id="strictAuditBody"><div class="u-mt12 text-muted">جارٍ فحص سلامة البيانات...</div></div><div class="modal-footer"><button class="btn btn-gold" onclick="closeModal()">إغلاق</button></div>`);
+showModal(`<h3><i class=ji data-i=shield-check></i> التدقيق الصارم — ${esc(month)}</h3><div id="strictAuditBody"><div class="u-mt12 text-muted">جارٍ فحص سلامة البيانات...</div></div><div class="modal-footer"><button class="btn btn-gold" data-karim-action="closeModal">إغلاق</button></div>`);
 const box=document.getElementById('strictAuditBody');
 try{
 const res=await apiFetch(`/hr/strict-audit?month=${encodeURIComponent(month)}`);

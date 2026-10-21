@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -37,7 +37,7 @@
             </form>
             <div id="login-error" class="login-error"></div>
             <a href="#" id="forgot-link" style="display:block;text-align:center;margin-top:12px;color:#c9a227;font-size:13px;text-decoration:none"><i class=ji data-i=key></i> نسيت كلمة المرور؟</a>
-            <button type="button" id="posInstallBtn" onclick="posPwaInstall()" style="display:none;width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #c9a227;background:transparent;color:#c9a227;font:inherit;cursor:pointer">⬇ ثبّت تطبيق الكاشير</button>
+            <button type="button" id="posInstallBtn" data-karim-action="posPwaInstall" style="display:none;width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #c9a227;background:transparent;color:#c9a227;font:inherit;cursor:pointer">⬇ ثبّت تطبيق الكاشير</button>
         </div>
     </div>
 
@@ -543,9 +543,10 @@
     <script src="js/pos-orders.js"></script>
     <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
          الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
-    <script src="js/pos-path-guard.js?v=4.9.82"></script>
+    <script src="js/pos-path-guard.js?v=4.9.84"></script>
     <!-- Phase 4.2: تهيئة الـPOS في ملف خارجي — سكربتات inline محجوبة بسياسة CSP
          (وجود nonce يجعل المتصفح يتجاهل 'unsafe-inline')، فلم تكن تعمل داخل الصفحة. -->
-    <script src="js/pos-bootstrap.js?v=4.9.82"></script>
+    <script src="js/pos-bootstrap.js?v=4.9.84"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.84" defer></script>
 </body>
 </html>
