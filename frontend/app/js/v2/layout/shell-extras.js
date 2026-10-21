@@ -14,8 +14,8 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.185';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.185';
+} from '../data/shell-repo.js?v=4.9.186';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.186';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -441,6 +441,23 @@ export function mountShellExtras(shell, ctx = {}) {
             }
             panel.querySelector('[data-erp-more-lang]')?.appendChild(langBtn);
             panel.querySelector('[data-erp-more-account]')?.appendChild(pwBtn);
+            // «النظام الحالي» — كان شريطًا فوق الصفحة فحُذف (طلب المالك)،
+            // فصار بابًا في مركز التحكّم لكل الأدوار لا للأدمن وحده.
+            const legacySection = document.createElement('section');
+            legacySection.className = 'erp-shell__more-section';
+            const legacyHead = document.createElement('h3');
+            legacyHead.className = 'erp-shell__more-label';
+            legacyHead.textContent = 'النظام';
+            const legacyRow = document.createElement('div');
+            legacyRow.className = 'erp-shell__more-row';
+            const legacyLink = document.createElement('a');
+            legacyLink.className = 'erp-btn erp-btn--sm';
+            legacyLink.href = 'index.html';
+            legacyLink.innerHTML = '<i class="ji" data-i="external" aria-hidden="true"></i><span>النظام الحالي</span>';
+            legacyRow.appendChild(legacyLink);
+            legacySection.appendChild(legacyHead);
+            legacySection.appendChild(legacyRow);
+            panel.appendChild(legacySection);
         }
     } catch { /* header layout is the shell's own */ }
     document.body.appendChild(fabHost);

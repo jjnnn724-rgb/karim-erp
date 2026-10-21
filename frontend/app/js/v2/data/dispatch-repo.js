@@ -44,7 +44,7 @@
  *   remains the authority on every gate — this file only names the paths.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.185';
+import { apiFetch } from '../../core/api.js?v=4.9.186';
 
 /** Bounded current-month entity walk (5 × 1000), newest first. */
 export async function fetchDispatches() {

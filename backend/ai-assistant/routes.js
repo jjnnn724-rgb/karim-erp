@@ -1,0 +1,89 @@
+/**
+ * ai-assistant/routes.js — بوابة المساعد (الأدمن فقط)
+ * ══════════════════════════════════════════════════════════════════════
+ * البوابة ثلاثة أقفال لا يُفتح أحدها:
+ *   1) session حيّة (jwtAuth) — لا anon ولا مفتاح واجهة.
+ *   2) دور admin (requireRole) — المساعد يقرأ المشروع وال.Diagnostics الحيّة.
+ *   3) محدّد معدل خاص — الطلب مكلف (نموذج مجاني بحصة يومية)، فسقفٌ
+ *      صغير لكل مستخدم: 12 طلبًا / 5 دقائق.
+ *
+ * ما لا يُسجَّل: نصّ السؤال (فيه بيانات المالك) ولا نصّ الرد. يُسجَّل
+ * الوضع والمدة والنموذج فقط — عيّن تشغيل بلا محتوى.
+ */
+'use strict';
+
+const express = require('express');
+const { jwtAuth, requireRole } = require('../cashier-module/jwt-middleware');
+const { asyncHandler } = require('../errors/error-handler');
+const { pool } = require('../shared-pool');
+const { logger } = require('../logger');
+const assistant = require('./assistant');
+
+const router = express.Router();
+
+/* محدّد المساعد: 12 طلبًا لكل مستخدم كل 5 دقائق. */
+const WINDOW_MS = 5 * 60 * 1000;
+const MAX_PER_WINDOW = 12;
+const hits = new Map();
+
+function assistantLimiter(req, res, next) {
+    const key = String((req.user && (req.user.id || req.user.username)) || req.ip || 'anon');
+    const now = Date.now();
+    const list = (hits.get(key) || []).filter((t) => now - t < WINDOW_MS);
+    if (list.length >= MAX_PER_WINDOW) {
+        const wait = Math.ceil((WINDOW_MS - (now - list[0])) / 1000);
+        res.set('Retry-After', String(wait));
+        return res.status(429).json({
+            error: 'RATE_LIMITED',
+            message: `تجاوزت حدّ المساعد (${MAX_PER_WINDOW} طلبًا كل ${WINDOW_MS / 60000} دقائق). حاول بعد ${wait} ثانية.`,
+        });
+    }
+    list.push(now);
+    hits.set(key, list);
+    return next();
+}
+
+/** هل المساعد مجاني ومفعّل؟ (الواجهة تعرض ذلك للمدير بصراحة) */
+router.get('/status', jwtAuth, requireRole('admin'), (req, res) => {
+    res.json({
+        enabled: assistant.enabled(),
+        model: assistant.enabled() ? assistant.model() : null,
+        free: true,
+        modes: assistant.MODES,
+        maxQuestion: assistant.MAX_QUESTION,
+    });
+});
+
+/** سؤال واحد ⇒ رد واحد. */
+router.post('/ask', jwtAuth, requireRole('admin'), assistantLimiter, asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const question = String(body.question || '').trim();
+    if (!question) {
+        return res.status(400).json({ error: 'EMPTY_QUESTION', message: 'اكتب سؤالًا أولًا.' });
+    }
+    if (question.length > assistant.MAX_QUESTION) {
+        return res.status(400).json({
+            error: 'QUESTION_TOO_LONG',
+            message: `الحدّ ${assistant.MAX_QUESTION} حرف.`,
+        });
+    }
+    const started = Date.now();
+    const result = await assistant.ask({
+        question,
+        mode: body.mode,
+        screen: body.screen,
+        paths: body.paths,
+        pool,
+    });
+    // عيّن تشغيل بلا محتوى: الوضع والمدة والنموذج فقط.
+    logger.info(`[ai-assistant] mode=${result.mode} model=${result.model || 'rule-based'} fallback=${result.fallback} ms=${Date.now() - started}`);
+    return res.json({
+        text: result.text,
+        mode: result.mode,
+        model: result.model,
+        fallback: result.fallback,
+        grounded: result.grounded,
+    });
+}));
+
+module.exports = { router, assistantLimiter, MAX_PER_WINDOW, WINDOW_MS };

@@ -7,15 +7,15 @@
  * والصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
-import { formatInt } from '../data/reports-repo.js?v=4.9.185';
-import { openInAppReport } from '../report-viewer.js?v=4.9.185';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.186';
+import { formatInt } from '../data/reports-repo.js?v=4.9.186';
+import { openInAppReport } from '../report-viewer.js?v=4.9.186';
 import {
     fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow,
     fetchReceivedDispatchDetail, rangeError, analysisLabel, RECEIVED_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.185';
-import { ensureXlsx } from '../vendor.js?v=4.9.185';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
+} from '../data/yara-reports-repo.js?v=4.9.186';
+import { ensureXlsx } from '../vendor.js?v=4.9.186';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.186';
 
 /** أسماء حالات الاستهلاك كما في تصدير القديم (features/received-analyzer.js:550). */
 const OUTFLOW_ALERT_AR = { negative: 'سالب', depleted: 'صفر', low: 'منخفض', ok: 'سليم' };
@@ -278,7 +278,7 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
             const [d, it, ofl] = await Promise.allSettled([
                 fetchReceivedDispatches(f), fetchReceivedItems({ ...f, group }),
                 fetchItemOutflow({ from: f.from, to: f.to, item: f.item }),
-                import('../data/reports-repo.js?v=4.9.185').then((m) => m.fetchCurrency()).catch(() => ''),
+                import('../data/reports-repo.js?v=4.9.186').then((m) => m.fetchCurrency()).catch(() => ''),
             ]);
             if (!el.isConnected) {return;}
             if (d.status === 'fulfilled') {dispatches = d.value.dispatches || d.value.rows || [];}

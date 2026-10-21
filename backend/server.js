@@ -673,6 +673,17 @@ ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_S
 // إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
 app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
 
+// ─── مساعد المشروع (V2) — الأدمن فقط ────────────────────────────────────
+// يجيب أسئلة المالك عن شاشات V2 وعقودها ويشخّص النظام الحي — مجانًا
+// (Gemini free tier) وبلا نموذج يعمل «قواعديًا». البوابة: session حيّة +
+// دور admin + سقف طلبات. لا يُسجَّل نصّ السؤال ولا نصّ الرد.
+try {
+    const { router: aiAssistantRouter } = require('./ai-assistant/routes');
+    app.use('/api/ai-assistant', aiAssistantRouter);
+} catch (e) {
+    logger.error('[AI_ASSISTANT] module failed to load — assistant disabled:', e.message);
+}
+
 // ─── ZKTeco biometric sync (inside the ERP process) ───
 // أجهزة البصمة + ربط الموظفين + بصمات بوابة الموظف
 app.use('/api/zkteco', (req, res, next) => { req.io = io; req.app.locals.attendanceEngine = attendanceEngine; next(); }, zktecoRouter);

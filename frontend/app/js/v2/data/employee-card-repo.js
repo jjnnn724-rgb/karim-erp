@@ -43,8 +43,8 @@
  *   screens/employees.js: they are presentation, and this file stays pure.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.185';
-import { isWeeklyOff } from './attendance-repo.js?v=4.9.185';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.186';
+import { isWeeklyOff } from './attendance-repo.js?v=4.9.186';
 
 const int = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : 0; };
 // A missing salary is not zero: Number(null) is 0, and a card that prints

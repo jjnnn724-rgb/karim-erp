@@ -2,11 +2,11 @@
  * V2 — Opening-balance input and net stock adjustment.
  * The purchase-invoice and direct-inventory endpoints remain authoritative.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.185';
+import { apiFetch } from '../../core/api.js?v=4.9.186';
 import {
     importCell, importNumber, mergeItemKey, sheetExpiryCell,
-} from './inventory-repo.js?v=4.9.185';
-import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.185';
+} from './inventory-repo.js?v=4.9.186';
+import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.186';
 
 export const OPENING_WRITE_ROLES = Object.freeze(['admin', 'manager', 'warehouse']);
 export const OPENING_NET_ROLES = Object.freeze(['admin']);
