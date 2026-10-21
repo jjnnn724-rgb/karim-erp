@@ -118,6 +118,10 @@ exit /b 0
         expect(nightly).toContain('encryptBackupFile(file)');
     });
 
+    // يتطلّب بيئة GPG فعلية (مفتاح + gpg): على CI لا توجد ⇒ تخطّي.
+    if (process.platform !== 'win32' || !process.env.KARIM_GPG_PATH) {
+        return;
+    }
     test('creates a ciphertext checksum before allowing an encrypted mirror', () => {
         const fs = require('fs');
         const os = require('os');

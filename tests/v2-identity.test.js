@@ -12,7 +12,8 @@
  *   ٣) التباين: كل درجة نصّ ≥ 4.5 على السطح والكانفس، بعد حلّ var() فعليًا
  *      من الملف نفسه — لا نسخٌ يدوي للأرقام.
  *   ٤) العمود الجانبي والعلامة والتركيز والحالات في الوضعين.
- *   ٥) الوجوه محليةٌ موجودة، بلا local() وبلا CDN.
+ *   ٥) الوجوه: مالكٌ واحد (erp-fonts.css) بلا local() وبلا CDN، والهوية
+ *      لا تعلن @font-face ولا تُعيد وجهًا ثانيًا إلى الصفحة.
  *   ٦) العزل: كل مُحدِّدٍ تحت طبقات V2، والورقة لا تُربط في أي صفحة قديمة.
  *   ٧) الطباعة تعود ورقًا، والتوكنات التي كانت مستهلكةً بلا تعريف صار لها تعريف.
  */
@@ -272,23 +273,17 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
         }
     });
 
-    test('الوجوه: أربعة ملفات محلية موجودة، بلا local() وبلا CDN', () => {
+    test('الوجوه: مالكٌ واحد — الهوية لا تعلن @font-face، ووجوهها من erp-fonts.css', () => {
         const faces = ALL_RULES.filter((r) => r.sel.startsWith('@font-face'));
-        expect(faces.length).toBe(4);
-        const families = new Set();
-        for (const face of faces) {
-            expect(face.body).not.toMatch(/local\(/);
-            expect(face.body).not.toMatch(/https?:/);
-            expect(face.body).toMatch(/font-display:\s*swap/);
-            const m = face.body.match(/font-family:\s*'([^']+)'/);
-            expect(m).not.toBeNull();
-            families.add(m[1]);
-            const src = face.body.match(/url\(([^)]+)\)/);
-            expect(src).not.toBeNull();
-            const file = path.resolve(CSS, src[1].trim());
-            expect({ face: src[1], exists: fs.existsSync(file) }).toEqual({ face: src[1], exists: true });
-        }
-        expect([...families].sort()).toEqual(['Outfit', 'Tajawal']);
+        expect(faces.length).toBe(0);
+        // الوجهان (العرض والأرقام) يشيران إلى نفس العائلة المحلية، فلا
+        // يعود انقسام الشخصية بين عنوانٍ ورقمٍ بجواره.
+        const body = ALL_RULES.find((r) => r.body.includes('--erp-font-num'))?.body || '';
+        expect(body).toMatch(/--erp-font-num:\s*"IBM Plex Sans Arabic"/);
+        expect(body).toMatch(/--erp-font-display:\s*"IBM Plex Sans Arabic"/);
+        const fontSheet = stripCssComments(read(path.join(CSS, 'erp-fonts.css')));
+        expect(fontSheet).not.toMatch(/local\(/);
+        expect(fontSheet).not.toMatch(/https?:/);
     });
 
     test('العزل: كل مُحدِّدٍ داخل طبقات V2، والورقة لا تُربط في صفحة قديمة', () => {

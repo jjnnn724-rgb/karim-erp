@@ -1,22 +1,20 @@
 /**
- * v2-fonts.test.js — الخط العربي المحلي (المرحلة ١)
+ * v2-fonts.test.js — الخط العربي المحلي (المرحلة ٢: الوجه المؤسسي)
  * ═════════════════════════════════════════════════════════════════════════
  * الخطر الذي لا يكشفه أي اختبار آخر ولا أي خطأ console: أن تكون الطباعة
  * خاصّةً بجهاز العارض لا بالمنتج.
  *
- * قبل هذا الملف لم يكن لـV2 وجهٌ واحد. `.erp-v2` كان يأخذ
- * `--erp-font-sans` → `var(--karim-font)` → "IBM Plex Sans Arabic", "Cairo",
- * "Tajawal", "Segoe UI" — والأولى والثانية والثالثة أسماءُ خطوطٍ لا يوفر
- * المستودع أيّ ملفٍ منها. النتيجة المقيسة:
- *   · على جهاز البناء (Tajawal مثبَّت) → العربية بخط Tajawal.
- *   · على عميل ويندوز نظيف (لا شيء منها مثبَّت) → العربية بوجه النظام.
- * نفس الترميز، منتجان مختلفان.
+ * المرحلة ١ ثبّتت Tajawal كملف محلي. المرحلة ٢ استبدلته بـIBM Plex Sans
+ * Arabic: وجهٌ مؤسسي للـERP (أرقام مال، رواتب، ضريبة، مخزون) بدل الوجه
+ * التسويقي المستدير. القاعدة نفسها لم تتغيّر: الصفحة لا تسأل الجهاز عن
+ * خطٍّ مثبَّت.
  *
  * لذلك يثبّت هذا الملف ستة أشياء:
  *   ١) الصفحة تربط `erp-fonts.css` على نفس نسخة `preview.js` (فيدخل الكاش
  *      المُسبق عبر refsInHtml في sw.js تلقائيًا — لا قائمة يدوية).
- *   ٢) الملف يعلن وجوهَ `Tajawal` وحدها: 400/500/700 × arabic/latin = ٦،
- *      كلُّها `font-display: swap`.
+ *   ٢) الملف يعلن وجوهَ `IBM Plex Sans Arabic` وحدها:
+ *      400/500/600/700 × arabic/latin = ٨، كلُّها `font-display: swap`.
+ *      وجود 600 حقيقي هو ما يجعل `--erp-fw-semibold` لا يُحلّ إلى 700.
  *   ٣) كلُّ `src` ملفٌ حقيقيٌّ في المستودع، وصفرُ `local()` — وهذا هو الدليل
  *      أنّ الخط يُحمَّل من ملف، لا من خطٍّ مثبَّت على الجهاز. القاعدة: لو
  *      أُضيف `local()` لَعاد العطب من بابه.
@@ -61,31 +59,31 @@ function pageRevision() {
     return m[1];
 }
 
-describe('V2 الخط المحلي — الوجه يتبع الملف لا الجهاز (المرحلة ١)', () => {
+describe('V2 الخط المحلي — الوجه يتبع الملف لا الجهاز (المرحلة ٢)', () => {
 
     test('الصفحة تربط erp-fonts.css على نسخة preview.js نفسها', () => {
         expect(read(V2_HTML)).toContain(`css/v2/erp-fonts.css?v=${pageRevision()}`);
     });
 
-    test('الملف يعلن Tajawal وحدها: ٤٠٠/٥٠٠/٧٠٠ × arabic+latin، وكلُّها swap', () => {
+    test('الملف يعلن IBM Plex Sans Arabic وحدها: ٤٠٠/٥٠٠/٦٠٠/٧٠٠ × arabic+latin، وكلُّها swap', () => {
         const all = faces();
-        expect(all.length).toBe(6);
-        expect([...new Set(all.map((f) => f.family))]).toEqual(['Tajawal']);
+        expect(all.length).toBe(8);
+        expect([...new Set(all.map((f) => f.family))]).toEqual(['IBM Plex Sans Arabic']);
         expect([...new Set(all.map((f) => f.display))]).toEqual(['swap']);
         // كلُّ وزنٍ له نطاقاه: العربي واللاتيني.
         const byWeight = {};
         for (const f of all) {byWeight[f.weight] = (byWeight[f.weight] || 0) + 1;}
-        expect(byWeight).toEqual({ '400': 2, '500': 2, '700': 2 });
+        expect(byWeight).toEqual({ '400': 2, '500': 2, '600': 2, '700': 2 });
     });
 
-    test('كل src ملفٌ حقيقيٌّ في المستودع تحت fonts/menu — وصفرُ local()', () => {
+    test('كل src ملفٌ حقيقيٌّ في المستودع تحت fonts/v2 — وصفرُ local()', () => {
         const srcs = faces().map((f) => f.src);
-        expect(srcs.length).toBe(6);
+        expect(srcs.length).toBe(8);
         for (const src of srcs) {
             // صيغةٌ واحدة ضيّقة: مسارٌ نسبيٌّ من css/v2 إلى ملف woff2، ثم format.
-            const m = src.match(/^url\(\.\.\/\.\.\/fonts\/menu\/([\w-]+\.woff2)\)\s*format\('woff2'\)$/);
+            const m = src.match(/^url\(\.\.\/\.\.\/fonts\/v2\/([\w-]+\.woff2)\)\s*format\('woff2'\)$/);
             expect({ src, matched: Boolean(m) }).toEqual({ src, matched: true });
-            expect(fs.existsSync(path.join(CSS_V2, '../../fonts/menu', m[1]))).toBe(true);
+            expect(fs.existsSync(path.join(CSS_V2, '../../fonts/v2', m[1]))).toBe(true);
         }
         // `local()` يجعل خطًّا مثبَّتًا على الجهاز يفوز — وهو العطب نفسه من بابه.
         // ناديه في التعليقات موثَّق، فلا يُقرأ إلا بعد تجريدها.
@@ -124,14 +122,15 @@ describe('V2 الخط المحلي — الوجه يتبع الملف لا ال�
         expect(rest).toBe('');
     });
 
-    test('التوكن يقدّم Tajawal أولًا، و`.erp-v2` يستهلك التوكن فعلًا', () => {
+    test('التوكن يقدّم IBM Plex Sans Arabic أولًا، و`.erp-v2` يستهلك التوكن فعلًا', () => {
         const declared = stripComments(read(TOKENS)).match(/--erp-font-sans\s*:\s*([^;]+);/);
         expect(declared).not.toBeNull();
         const chain = declared[1];
-        expect(chain).toMatch(/^"Tajawal"\s*,/);
-        // وهي قبل الأسماء التي لا يوفر المستودع ملفاتٍ لها، وإلّا عاد التبع للجهاز.
-        expect(chain.indexOf('"Tajawal"')).toBeLessThan(chain.indexOf('IBM Plex Sans Arabic'));
-        // سلسلةُ الأسماء القديمة باقيةٌ كبديل — فشلُ الورقة يردّنا لسلوك اليوم.
+        expect(chain).toMatch(/^"IBM Plex Sans Arabic"\s*,/);
+        // الوجه المُعلَن هنا هو نفسه الذي تحمّله erp-fonts.css من ملف.
+        expect([...new Set(faces().map((f) => f.family))]).toEqual(['IBM Plex Sans Arabic']);
+        // Tajawal يبقى بديلًا محليًا، والسلسلة القديمة وراءهما.
+        expect(chain).toContain('"Tajawal"');
         expect(chain).toContain('--karim-font');
         // والتوكن بلا مستهلكٍ اسمٌ ميت.
         const root = stripComments(read(BASE)).match(/\.erp-v2\s*\{([^}]*)\}/);

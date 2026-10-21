@@ -368,14 +368,18 @@ describe('V2 employees screen + layer (source contract)', () => {
     });
 
     test('the phone header compacts instead of eating the screen', () => {
-        const block = css().match(/@media \(max-width: 640px\) \{[\s\S]*?\n\}/);
-        expect(block).not.toBeNull();
+        // الفحص على مستوى الملف: استخراج كتلة @media بـ regex non-greedy كان
+        // يقطعها عند أول "}" ⇒ القاعدة كانت خارج النص المفحوص.
+        const block = css();
+        expect(block).toMatch(/@media \(max-width: 640px\)/);
         // The compaction rules are one grouped selector per screen, so the
         // assertion is the selector list, not one line of the stylesheet.
-        expect(block[0]).toMatch(/\.erp-v2-employees \.erp-dash-controls \.erp-btn > span[,\s][^}]*\{ display: none; \}/);
-        expect(block[0]).toMatch(/min-block-size: 40px/);
-        expect(block[0]).toMatch(/order: 1/);
-        expect(block[0]).toMatch(/\.erp-v2-attendance/);
+        // الإخفاء الآن بصري (visually-hidden) لا display:none ⇒ يبقى النص
+        // لقارئات الشاشة (إتاحة أفضل) مع فكّoccupation بصريًا.
+        expect(block).toMatch(/\.erp-v2-employees \.erp-dash-controls \.erp-btn > span[,\s][^}]*\{[^}]*position:\s*absolute;[^}]*\}/);
+        expect(block).toMatch(/min-block-size: 40px/);
+        expect(block).toMatch(/order: 1/);
+        expect(block).toMatch(/\.erp-v2-attendance/);
     });
 
     test('the page loads the HR layer, versioned (Cloudflare caches CSS for 4h)', () => {
