@@ -87,13 +87,16 @@ describe('v2 UI system layer — density + motion', () => {
         expect(src).toContain('export function applyDensity');
     });
 
-    test('رأس القشرة لا يتجاوز العرض على الموبايل — ضغط + تمرير داخلي مضمون', () => {
+    test('رأس القشرة لا يتجاوز العرض على الموبايل — صف قابل للانكماش بلا تمرير أفقي', () => {
         const shell = read(path.join(CSS, 'erp-shell.css'));
-        // داخل كتلة 640: الأحداث تتمرر داخلياً (overflow-x) بدل تجاوز المستند
+        // داخل كتلة 640: لا تمرير أفقي — الصف ينكمش ولا يدفع المستند
         const block640 = shell.split('@media (max-width: 640px)').slice(1).join('');
         expect(block640).toContain('.erp-shell__actions');
-        expect(block640).toMatch(/overflow-x:\s*auto/);
-        expect(block640).toContain('scrollbar-width: none');
+        // العقد الجديد: صف الإجراءات صار قابلًا للانكماش (flex-shrink: 1 +
+        // min-width: 0) بدل التمرير الأفقي (overflow-x/scrollbar-width) —
+        // فالتحكم الثانوي انتقل إلى مركز التحكم والصف لا يدفع المستند جانبًا.
+        expect(shell).toMatch(/\.erp-shell__actions\s*\{[^}]*flex-shrink:\s*1/);
+        expect(shell).toMatch(/\.erp-shell__actions\s*\{[^}]*min-width:\s*0/);
     });
 
     test('app-layout يستضيف الكثافة ويحررها في destroy — مثل الثيم', () => {

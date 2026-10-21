@@ -1,26 +1,25 @@
 /**
- * v2-header-layout.test.js — رأس الشل: لا يتجاوز العرض ولا يُخرج أزراره (المرحلة ٢)
+ * v2-header-layout.test.js — رأس الشل ومركز التحكم
  * ═════════════════════════════════════════════════════════════════════════
- * العطب المقيس على الصفحة الحيّة (RTL، قبل هذا الإصلاح):
- *   `.erp-shell__actions` كان يبسط 1308px من عناصر التحكم داخل هيدر 985px
- *   (1280 − 248 شريط جانبي − 32 حشو − 15 شريط تمرير) فيدفع المستند 351px
- *   ويُخرج زرَّي الثيم والكثافة — آخر كتلتين — خارج الشاشة تمامًا. ولم يكن
- *   عطبًا «للشاشات الصغيرة»: تجاوز عند 1440 (+191) و1366 (+265) أيضًا.
+ * العطب المقيس تاريخيًا: `.erp-shell__actions` كان يبسط 1308px من عناصر
+ * التحكم داخل هيدر 985px فيدفع المستند 351px، وعند 390px صار العنقود
+ * 0px عرضًا يحمل 796px محتوى — كلمة المرور وحالة الخادم واللغة والثيم كلها
+ * خارج الشاشة. الحلّ ليس نقطة توقف جديدة بل بنية جديدة: الرأس يحتفظ فقط
+ * بما له وظيفة دائمة (بحث · جرس · جلسة · مركز التحكم)، وكل تحكم ثانوي
+ * يسكن لوحة منبثقة ثابتة العرض.
  *
  * فما يحرسه هذا الملف:
- *   ١) الصف قابل للتقليص في القاعدة، لا `flex-shrink: 0` — وإلّا عاد الدفع.
- *   ٢) الممتص الوحيد هو العنقود (`erp-shell__extras`)، لأنه الوحيد بلا
- *      popover متمركز داخله: فلا قصّ لقائمة الجرس. وأنه `nowrap` لأن الهيدر
- *      شريطٌ ثابت الارتفاع (56px) فلا يتحمّل صفًّا ثانيًا.
- *   ٣) الصف نفسه لا يحمل `overflow-x` في القاعدة: كائنُ تمريرٍ هنا يقصّ قائمة
- *      الجرس (وهي `position: absolute` داخله). التمرير يبقى للعنقود وحده.
- *   ٤) لا `overflow-x: hidden` في css/v2 كلها — إخفاءُ العطب ممنوع.
- *   ٥) نقطتا التوقف (1620 · 1400) مخفيتان لما هو مكرّر فقط، وأن كل عنصر
- *      أُخفي نصّه يحمل اسمًا وصوليًّا في مصدره:
- *        · السَّيرشتر وزر كلمة المرور: `aria-label` ⇒ `display: none` مسموح.
- *        · خيارات الثيم: نصّها هو اسمها ⇒ وصفة `.erp-sr-only`، لا `display: none`.
- *   ٦) شبكة الأمان عند 640px فعّالة: `flex: 0 1 auto` — لا `min-width: 0`
- *      وحدها (كانت عاطلة تحت `flex-shrink: 0` فظل الصف 874px عند 360px).
+ *   ١) الصف قابل للتقليص في القاعدة (`flex-shrink: 1` + `min-width: 0`)
+ *      ولا يحمل `overflow-x` — فلا دفع للمستند ولا قصّ لقائمة الجرس.
+ *   ٢) لا وجود لشريط `erp-shell__extras` بعد اليوم (لا CSS ولا تركيب).
+ *   ٣) الزناد يعلن اللوحة (`aria-controls`/`aria-expanded`) واللوحة
+ *      `role="dialog"` مخفيةٌ افتراضيًا وخارج `<header>` — لأن
+ *      `backdrop-filter` على الرأس يجعل `position: fixed` يتمركز داخله.
+ *   ٤) كل التحكمات الثانوية تُركَّب داخل `[data-erp-more]` لا في الرأس.
+ *   ٥) شبكة الأزرار السريعة تقع على `<span class="erp-shell__quick">`
+ *      لا على حاويها — وإلّا صارت الأربعة صفًّا واحدًا مقصوصًا.
+ *   ٦) حدود التكامل المخفية لا تُرسم (`.erp-boundary[hidden]`).
+ *   ٧) لا `overflow-x: hidden` في css/v2 كلها — إخفاء العطب ممنوع.
  */
 const fs = require('fs');
 const path = require('path');
@@ -28,6 +27,8 @@ const path = require('path');
 const APP = path.join(__dirname, '..', 'frontend', 'app');
 const CSS_V2 = path.join(APP, 'css', 'v2');
 const SHELL = path.join(CSS_V2, 'erp-shell.css');
+const LAYOUT = path.join(APP, 'js', 'v2', 'layout', 'app-layout.js');
+const EXTRAS = path.join(APP, 'js', 'v2', 'layout', 'shell-extras.js');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -57,33 +58,101 @@ function ruleBody(text, selector) {
 
 const CSS = strip(read(SHELL));
 const BASE = CSS.slice(0, CSS.indexOf('@media'));
-const M1620 = mediaBlock(CSS, 1620);
-const M1400 = mediaBlock(CSS, 1400);
 const M640 = mediaBlock(CSS, 640);
+const M340 = mediaBlock(CSS, 340);
 
-describe('V2 رأس الشل — لا دفع للمستند ولا إخراج لأزراره (المرحلة ٢)', () => {
+const layoutSrc = read(LAYOUT);
+const extrasSrc = read(EXTRAS);
 
-    test('الصف قابل للتقليص في القاعدة الأساسية', () => {
+describe('V2 رأس الشل — مركز تحكم بدل شريطٍ يُسحق', () => {
+
+    test('الصف قابل للتقليص في القاعدة ولا يمرّر', () => {
         const body = ruleBody(BASE, '.erp-shell__actions');
         expect(body).not.toBeNull();
         expect(body).toMatch(/flex-shrink:\s*1/);
         expect(body).not.toMatch(/flex-shrink:\s*0/);
         expect(body).toMatch(/min-width:\s*0/);
-    });
-
-    test('الممتص الوحيد هو العنقود: يمرّر داخليًا ولا يلتفّ', () => {
-        const body = ruleBody(BASE, '.erp-v2 .erp-shell__extras');
-        expect(body).not.toBeNull();
-        expect(body).toMatch(/min-width:\s*0/);
-        expect(body).toMatch(/overflow-x:\s*auto/);
-        expect(body).toMatch(/scrollbar-width:\s*none/);
-        // الهيدر شريطٌ ثابت 56px: صفٌّ ثانٍ هنا كان سيُرسم فوق المحتوى تحته.
-        expect(body).toMatch(/flex-wrap:\s*nowrap/);
-    });
-
-    test('الصف نفسه لا يمرّر في القاعدة: تمريرُه يقصّ قائمة الجرس', () => {
-        const body = ruleBody(BASE, '.erp-shell__actions');
+        // التمرير هنا يقصّ قائمة الجرس (absolute داخل الصف).
         expect(body).not.toMatch(/overflow-x/);
+    });
+
+    test('شريط extras أُزيل من CSS والتركيب معًا', () => {
+        const offenders = fs.readdirSync(CSS_V2).filter((n) => n.endsWith('.css'))
+            .filter((f) => /erp-shell__extras/.test(strip(read(path.join(CSS_V2, f)))));
+        expect({ offenders }).toEqual({ offenders: [] });
+        expect(layoutSrc).not.toMatch(/erp-shell__extras/);
+        expect(extrasSrc).not.toMatch(/erp-shell__actions/);
+    });
+
+    test('الزناد يعلن اللوحة واللوحة حوارٌ مخفيٌّ افتراضيًا', () => {
+        expect(layoutSrc).toMatch(/data-erp-more-toggle/);
+        expect(layoutSrc).toMatch(/aria-controls="erp-more-panel"/);
+        expect(layoutSrc).toMatch(/aria-expanded="false"/);
+        expect(layoutSrc).toMatch(/aria-label="مركز التحكم"/);
+        expect(layoutSrc).toMatch(/id="erp-more-panel"[^>]*data-erp-more[^>]*hidden/);
+        expect(layoutSrc).toMatch(/role="dialog" aria-label="مركز التحكم"/);
+    });
+
+    test('اللوحة خارج الرأس: backdrop-filter يجعل fixed يتمركز داخله', () => {
+        const panelAt = layoutSrc.indexOf('id="erp-more-panel"');
+        const headerEnd = layoutSrc.indexOf('</header>');
+        const toolbarAt = layoutSrc.indexOf('class="erp-toolbar"');
+        expect(panelAt).toBeGreaterThan(headerEnd);
+        expect(panelAt).toBeLessThan(toolbarAt);
+    });
+
+    test('كل التحكمات الثانوية لها مقعد داخل اللوحة', () => {
+        for (const slot of [
+            'data-erp-more-status', 'data-erp-theme-slot', 'data-erp-density-slot',
+            'data-erp-more-lang', 'data-erp-more-quick', 'data-erp-more-account',
+        ]) {
+            expect(layoutSrc).toMatch(new RegExp(slot));
+        }
+        // التركيب الفعلي: extras تبحث عن اللوحة وتُلحق بها، لا بالرأس.
+        expect(extrasSrc).toMatch(/querySelector\('\[data-erp-more\]'\)/);
+        expect(extrasSrc).toMatch(/querySelector\('\[data-erp-more-status\]'\)/);
+        expect(extrasSrc).toMatch(/querySelector\('\[data-erp-more-quick\]'\)/);
+        expect(extrasSrc).toMatch(/querySelector\('\[data-erp-more-lang\]'\)/);
+        expect(extrasSrc).toMatch(/querySelector\('\[data-erp-more-account\]'\)/);
+    });
+
+    test('الفتح/الإغلاق يحفظ التركيز ويحترم Escape والضغط الخارجي', () => {
+        expect(layoutSrc).toMatch(/el\.morePanel\.hidden = !moreOpen;/);
+        expect(layoutSrc).toMatch(/el\.moreToggle\.setAttribute\('aria-expanded', String\(moreOpen\)\);/);
+        expect(layoutSrc).toMatch(/moreReturnFocus/);
+        // Escape يغلق اللوحة قبل الدرج.
+        expect(layoutSrc.indexOf("e.key === 'Escape' && moreOpen"))
+            .toBeLessThan(layoutSrc.indexOf("e.key === 'Escape' && state.drawerOpen"));
+        // النقر الخارجي يغلق دون سحب التركيز من حيث ذهب المستخدم.
+        expect(layoutSrc).toMatch(/setMore\(false, \{ returnFocus: false \}\)/);
+    });
+
+    test('اللوحة ثابتة بعرضٍ مقروء وبتمرير داخلي', () => {
+        const body = ruleBody(BASE, '.erp-shell__more {');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/position:\s*fixed/);
+        expect(body).toMatch(/inline-size:\s*min\(340px/);
+        expect(body).toMatch(/max-block-size:/);
+        expect(body).toMatch(/overflow-y:\s*auto/);
+        const hidden = ruleBody(BASE, '.erp-shell__more[hidden]');
+        expect(hidden).toMatch(/display:\s*none/);
+        expect(ruleBody(BASE, '.erp-shell__more-section[hidden]')).toMatch(/display:\s*none/);
+    });
+
+    test('الشبكة السريعة على span الأزرار لا على حاويها', () => {
+        const body = ruleBody(BASE, '.erp-v2 .erp-shell__more-quick .erp-shell__quick');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/display:\s*grid/);
+        expect(body).toMatch(/grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+        expect(body).toMatch(/inline-size:\s*100%/);
+        // عناوين طويلة تُقصّ بنقاط لا تدفع اللوحة أفقيًا.
+        expect(BASE).toMatch(/\.erp-v2 \.erp-shell__more-quick \.erp-btn span \{[^}]*text-overflow:\s*ellipsis/);
+    });
+
+    test('الحدود المخفية لا تُرسم: القاعدة تتغلب على display:inline-flex', () => {
+        const body = ruleBody(BASE, '.erp-v2 .erp-boundary[hidden]');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/display:\s*none/);
     });
 
     test('لا overflow-x: hidden في css/v2 كلها', () => {
@@ -92,52 +161,38 @@ describe('V2 رأس الشل — لا دفع للمستند ولا إخراج ل
         expect({ offenders }).toEqual({ offenders: [] });
     });
 
-    test('≤1620px: يسقط النصّ المكرَّر فقط — وكل عنصرٍ يحمل aria-label', () => {
-        expect(M1620).not.toBeNull();
-        // النصّان المكرَّران: نصّ السَّيرشتر ولوحة Ctrl+K، وتسمية زر كلمة المرور.
-        expect(M1620).toMatch(/\.erp-v2 \.erp-search-trigger__text/);
-        expect(M1620).toMatch(/\.erp-v2 \.erp-search-trigger \.erp-pal__kbd/);
-        expect(M1620).toMatch(/\.erp-v2 \.erp-shell__extras > \.erp-btn:last-child span/);
-        expect(M1620).toMatch(/display:\s*none/);
-
-        // الأسماء الوصولية لها في مصدرها: اسمٌ لا يسقط مع النصّ.
-        const dash = read(path.join(APP, 'js', 'v2', 'screens', 'dashboard.js'));
-        expect(dash).toMatch(/trigger\.setAttribute\('aria-label', 'بحث سريع في الشاشات \(Ctrl\+K\)'\)/);
-        expect(dash).toMatch(/class="erp-pal__kbd" aria-hidden="true"/);
-
-        const extras = read(path.join(APP, 'js', 'v2', 'layout', 'shell-extras.js'));
-        expect(extras).toMatch(/pwBtn\.setAttribute\('aria-label', 'تغيير كلمة المرور'\)/);
-        // والمُحدِّد `:last-child` يشير إليه فعلًا: كلمة المرور آخر ما يُضاف للعنقود.
-        expect(extras).toMatch(/cluster\.append\(lamps, langBtn, quick, serverInfo, pwBtn\)/);
-    });
-
-    test('≤1400px: نصّ خيار الثيم يُخفى بصريًّا لا يُحذف — الاسم يبقى لـAT', () => {
-        expect(M1400).not.toBeNull();
-        const body = ruleBody(M1400, '.erp-v2 .erp-shell__actions .erp-theme-option span');
-        expect(body).not.toBeNull();
-        expect(body).toMatch(/position:\s*absolute/);
-        expect(body).toMatch(/clip-path:\s*inset\(50%\)/);
-        expect(body).toMatch(/width:\s*1px/);
-        // ليس `display: none`: بها كان يمحو اسم الخيار من شجرة الوصول.
-        expect(body).not.toMatch(/display:\s*none/);
-    });
-
-    test('≤640px: شبكةُ التمرير فعّالة فعلًا (flex: 0 1 auto لا min-width وحدها)', () => {
+    test('≤640px: ورقةٌ كاملة العرض ويُخفى النصّ المكرَّر فقط', () => {
         expect(M640).not.toBeNull();
-        const body = ruleBody(M640, '.erp-v2 .erp-shell__actions');
-        expect(body).not.toBeNull();
-        expect(body).toMatch(/flex:\s*0 1 auto/);
-        expect(body).toMatch(/min-width:\s*0/);
-        expect(body).toMatch(/overflow-x:\s*auto/);
-        expect(body).toMatch(/scrollbar-width:\s*none/);
-        // ولا display: none على نصّ خيار الثيم عند 640 إمّا: الاسم يبقى.
-        expect(M640).not.toMatch(/\.erp-theme-option span\s*\{[^}]*display:\s*none/);
+        const sheet = ruleBody(M640, '.erp-shell__more {');
+        expect(sheet).not.toBeNull();
+        expect(sheet).toMatch(/inset-inline:\s*var\(--erp-space-2\)/);
+        expect(sheet).toMatch(/inline-size:\s*auto/);
+
+        expect(M640).toMatch(/\.erp-v2 \.erp-search-trigger__text/);
+        expect(M640).toMatch(/\.erp-v2 \.erp-search-trigger \.erp-pal__kbd/);
+        expect(M640).toMatch(/display:\s*none/);
+        // الاسم الوصولي في المصدر لا يسقط مع النص.
+        expect(read(path.join(APP, 'js', 'v2', 'screens', 'dashboard.js')))
+            .toMatch(/trigger\.setAttribute\('aria-label', 'بحث سريع في الشاشات \(Ctrl\+K\)'\)/);
+
+        // نصّ خيارات الثيم والكثافة هو اسمها — لا يُخفى في أي عرض.
+        for (const block of [M640, M340]) {
+            expect(block).not.toMatch(/\.erp-theme-option[^}]*display:\s*none/);
+            expect(block).not.toMatch(/\.erp-density-option[^}]*display:\s*none/);
+        }
     });
 
-    test('التوكنز المستعملة في كتل الرأس كلها معرَّفة', () => {
+    test('≤340px: الأزرار السريعة عمود واحد بلا نقاط قصّ', () => {
+        expect(M340).not.toBeNull();
+        const body = ruleBody(M340, '.erp-v2 .erp-shell__more-quick .erp-shell__quick');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+    });
+
+    test('التوكنز المستعملة في كتل العرض معرَّفة', () => {
         const tokens = read(path.join(CSS_V2, 'erp-tokens.css'));
         const defined = new Set((tokens.match(/--erp-[a-z0-9-]+(?=\s*:)/g) || []));
-        for (const block of [M1620, M1400, M640].filter(Boolean)) {
+        for (const block of [M640, M340].filter(Boolean)) {
             const used = [...block.matchAll(/var\((--erp-[a-z0-9-]+)/g)].map((m) => m[1]);
             expect([...new Set(used)].filter((t) => !defined.has(t))).toEqual([]);
         }
