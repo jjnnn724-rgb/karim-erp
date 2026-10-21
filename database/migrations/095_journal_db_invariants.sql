@@ -9,6 +9,8 @@
 -- ملاحظة نطاق (موثقة في 07): حذف القيود المنشورة يبقى مسموحًا مؤقتًا لأن
 -- مسارات تشغيلية قائمة تعتمد عليه (purge expense / dispatch delete) —
 -- التحويل لـ void-first قرار لاحق منفصل.
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.trg_fn_journal_posted_balance()
 RETURNS trigger AS $$
 DECLARE
@@ -33,7 +35,8 @@ BEGIN
     RETURN NULL;
 END $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_journal_posted_balance
+DROP TRIGGER IF EXISTS trg_journal_posted_balance ON public.journal_entries;
+CREATE CONSTRAINT TRIGGER trg_journal_posted_balance
     AFTER INSERT OR UPDATE OF status ON public.journal_entries
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION public.trg_fn_journal_posted_balance();
@@ -53,6 +56,9 @@ BEGIN
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_journal_posted_identity ON public.journal_entries;
 CREATE TRIGGER trg_journal_posted_identity
     BEFORE UPDATE ON public.journal_entries
     FOR EACH ROW EXECUTE FUNCTION public.trg_fn_journal_posted_identity();
+
+COMMIT;
