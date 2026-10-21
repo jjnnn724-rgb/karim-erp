@@ -18,7 +18,7 @@ concurrency:
 
 env:
   NODE_VERSION: '22.x'
-  POSTGRES_VERSION: '16'
+  POSTGRES_VERSION: '16'   # ملاحظة: لا تُستخدم كـ env context داخل services.image (مرفوض من GitHub) — القيمة الحرفية هناك
   CACHE_DEPENDENCY_PATH: |
     ~/.npm
     node_modules
@@ -139,7 +139,7 @@ jobs:
     needs: [lint-and-typecheck]
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -234,7 +234,7 @@ jobs:
     needs: [unit-tests]
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -315,7 +315,7 @@ jobs:
     needs: [smoke-test]
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -401,7 +401,7 @@ jobs:
     needs: [smoke-test]
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
