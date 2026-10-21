@@ -125,7 +125,9 @@ async function main() {
         const csp = page.headers.get('content-security-policy') || '';
         const scriptSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src')) || '';
         check('script-src بلا unsafe-inline', !scriptSrc.includes("'unsafe-inline'"), scriptSrc);
-        check('script-src-attr يسمح بالمعالجات السطرية (الوضع الحالي)', (csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src-attr')) || '').includes("'unsafe-inline'"));
+        // بعد ترحيل كل المعالجات السطرية (1158 ⇒ 0): صار منعها نهائيًا ممكنًا.
+        check('script-src-attr يمنع المعالجات السطرية (الوضع الصارم)', (csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src-attr')) || '').includes("'none'"));
+        check('لا unsafe-inline في script-src (تناقض مع الـnonce)', !(csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src ')) || '').includes("'unsafe-inline'"));
 
         console.log('\n✅ كل فحوص الصفحات الثابتة نجحت:');
         for (const r of results) {console.log(`   • ${r.name}`);}
