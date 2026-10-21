@@ -12,10 +12,10 @@
  * نسخة ثانية من العقد في مكان ثانٍ، ولا شاشة ميتة في شجرة screens/.
  */
 
-import { createDataTable } from './data-table.js?v=4.9.186';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.186';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.186';
-import { fetchInquiryItem, expiryState } from '../data/inventory-inquiry-repo.js?v=4.9.186';
+import { createDataTable } from './data-table.js?v=4.9.187';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.187';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.187';
+import { fetchInquiryItem, expiryState } from '../data/inventory-inquiry-repo.js?v=4.9.187';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

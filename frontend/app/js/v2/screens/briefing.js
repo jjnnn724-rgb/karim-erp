@@ -32,15 +32,15 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.186';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.187';
 import {
     fetchBriefing,
     fetchTodayStats,
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.186';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.186';
+} from '../data/briefing-repo.js?v=4.9.187';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.187';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
