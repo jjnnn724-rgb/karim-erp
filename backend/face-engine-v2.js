@@ -25,7 +25,9 @@ const DETECTOR_PATH = path.join(__dirname, 'face-models-v2', 'version-RFB-320.on
 const EMB_DIM = 512;
 
 function lazyDeps() {
-    if (!ort) {ort = require('onnxruntime-node');}
+    // الوحدة الأصلية قد لا تكون مثبَّتة (بيئة CI مثلاً) ⇒ لا نُسقط الخادم:
+    // محرّك البصمة يعود معطّلًا برسالة واضحة بدل crash.
+    if (!ort) {try {ort = require('onnxruntime-node');} catch (e) {ort = null; logger.warn('[FACE] onnxruntime غير متاح — محرّك البصمة معطّل:', e.message);}}
     if (!sharpLib) {sharpLib = require('sharp');}
     return { ort, sharp: sharpLib };
 }
