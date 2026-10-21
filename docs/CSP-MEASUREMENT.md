@@ -22,16 +22,33 @@
 لذا الرقم الحاسم جاء من **مدقّق ثابت** (`npm run test:handlers:budget`) لا من المتصفح.
 ## 2. ما الذي يمنع فرض السياسة الصارمة الآن؟
 
-| المخالفة | العدد | الأثر |
-|---|---|---|
-| `script-src-attr` (معالجات `onclick=…`) | **1158** في 45 ملفًا | **حاجز الفرض** — كسر الواجهة بالكامل |
-| `script-src-elem` (سكربتات inline) | 0 بعد الإصلاح | أُصلح (انظر §4) |
-| `script-src` (سكربت Cloudflare beacon) | 1 | يحتاج `https://static.cloudflareinsights.com` صريحًا |
-| `script-src-elem` (سكربت يحقنه Cloudflare على الحافة) | 1 | يُحجب اليوم أيضًا (سلوك سابق) |
-| `frame-ancestors` على `/` | 3 | أثر ضئيل — ملاحظة |
+| المخالفة | قبل | بعد الترحيل | الأثر |
+|---|---|---|---|
+| `script-src-attr` (معالجات `onclick=…`) | **1158** | **74** | **الحاجز المتبقي أمام الفرض** |
+| `script-src-elem` (سكربتات inline) | 3 | **0** | أُصلحت (نُقلت لملفات خارجية) |
+| `script-src` (سكربت Cloudflare beacon) | 1 | 1 | يحتاج `https://static.cloudflareinsights.com` صريحًا |
+| `script-src-elem` (سكربت يحقنه Cloudflare على الحافة) | 1 | 1 | يُحجب اليوم أيضًا (سلوك سابق) |
+| `frame-ancestors` على `/` | 3 | 3 | أثر ضئيل — ملاحظة |
 
-**الخلاصة:** وحدها الـ1158 معالجًا سطريًا هي مانعة الفرض. تحويلها إلى
-`addEventListener` عمل ميكانيكي على دفعات (أسبوع-أسبوع)، لا يوم.
+**الخلاصة:** نزلنا من 1158 إلى **74** معالجًا سطريًا (1061 محوَّلًا = 94%).
+الباقي 74 في 25 ملفًا ويحتاج **قراءة الدالة من العنصر** بدل `this` (دفعة يدوية).
+
+### كيف تم الترحيل (بلا eval)
+
+- `data-karim-action="fn"` + `data-karim-args` (JSON) أو `data-karim-argN`.
+- `data-karim-pass="value|checked|files.0|element"` ⇒ يمرّر قيم العنصر،
+  **فلا نحتاج تعديل أي دالة** (المعامل `this` يصير من العنصر).
+- `data-karim-set="name:value"` (تعيين `window.X` قبل الإجراء) · `data-karim-stop` ·
+  `data-karim-event` (change/input/…) · `data-karim-prevent`.
+- الموزّع: `frontend/app/js/core/action-dispatch.js` — بلا `eval` ولا `new Function`
+  ⇒ يعمل تحت CSP بلا `'unsafe-eval'`.
+
+**الأدوات:** `scripts/migrate-handlers-to-delegation.js` + `scripts/lib/parse-handler-call.js`
+(يفهم template literals و regex داخل interpolations والتعيينات).
+
+**البوابات:** `npm run test:handlers:budget` (ميزانية لكل ملف) ·
+`npm run test:inline-scripts:gate` (صفر سكربت inline) ·
+`npm run test:dispatch:gate` (كل صفحة تفويض تحمّل الموزّع).
 
 ## 3. المسار المقترح (قرار المالك)
 
