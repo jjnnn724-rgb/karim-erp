@@ -45,6 +45,23 @@ function moneyCell(v, currency) {
         + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : '');
 }
 
+/** Auto-imported notes arrive as `[AUTO:YARASOFT] | invoice=… | sec=… | items=…`;
+ *  show the same facts in Arabic instead of the machine's key=value syntax. */
+function noteText(raw) {
+    const text = String(raw ?? '').trim();
+    if (!text || !text.startsWith('[AUTO:YARASOFT]')) {return text;}
+    const parts = text.split('|').map((p) => p.trim()).filter(Boolean).slice(1);
+    return parts.map((part) => {
+        const m = part.match(/^([a-z_]+)=(.*)$/i);
+        if (!m) {return part;}
+        const val = m[2].trim();
+        if (m[1].toLowerCase() === 'invoice') {return `فاتورة ${val}`;}
+        if (m[1].toLowerCase() === 'sec') {return `الجهة: ${val}`;}
+        if (m[1].toLowerCase() === 'items') {return `الأصناف: ${val}`;}
+        return val;
+    }).join(' · ');
+}
+
 function template(from, to) {
     return `
       <section class="erp-card erp-v2-revenues">
@@ -142,7 +159,10 @@ export function mountRevenuesScreen(host, ctx = {}) {
             },
             {
                 key: 'notes', header: 'ملاحظات',
-                render: (row) => (row.notes ? esc(row.notes) : `<span class="erp-text-muted">—</span>`),
+                render: (row) => {
+                    const text = noteText(row.notes);
+                    return text ? esc(text) : `<span class="erp-text-muted">—</span>`;
+                },
             },
             ...(writable ? [{
                 key: 'actions',
@@ -179,7 +199,7 @@ export function mountRevenuesScreen(host, ctx = {}) {
             if (deptCode !== 'all' && String(r.deptId) !== deptCode) {return false;}
             if (from && r.date < from) {return false;}
             if (to && r.date > to) {return false;}
-            if (query && !`${r.source || ''} ${r.notes || ''} ${r.deptId || ''}`.toLowerCase().includes(query)) {return false;}
+            if (query && !`${r.source || ''} ${noteText(r.notes)} ${r.deptId || ''}`.toLowerCase().includes(query)) {return false;}
             return true;
         }).map((r) => ({ ...r, deptName: deptNameOf(r.deptId) }));
         return { rows, filtered: !!(from || to || deptCode !== 'all' || query) };

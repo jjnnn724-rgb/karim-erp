@@ -893,7 +893,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             <label class="erp-btn erp-btn--sm erp-no-print" for="v2emp-photo-file">
               <i class="ji" data-i="camera" aria-hidden="true"></i><span>صورة الموظف</span></label>
             <input type="file" id="v2emp-photo-file" accept="image/*" capture="environment" data-v2-photo hidden>
-            <span class="erp-text-sm erp-text-muted" data-v2-photo-note>تُصغَّر إلى 300px كالبطاقة القديمة — تُرفع مع الحفظ.</span>
+            <span class="erp-text-sm erp-text-muted" data-v2-photo-note>تُصغَّر إلى 300px قبل الرفع — تُرفع مع الحفظ.</span>
           </div>
           ${panelActions(row ? 'حفظ التعديلات' : 'إضافة الموظف', row ? 'save' : 'plus')}`));
     }

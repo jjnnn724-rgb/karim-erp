@@ -117,10 +117,10 @@ export function canActOnStage(role, stage, workflowStatus) {
 export function doorScopeNote(role) {
     const r = String(role || '');
     if (['admin', 'manager', 'hr'].includes(r)) {
-        return 'نطاق الباب: كل الطلبات (admin|manager|hr — :103)';
+        return 'نطاق العرض: كل الطلبات — يراها مدير النظام ومدير المطعم والموارد البشرية';
     }
-    if (r === 'dept_head') {return 'نطاق الباب: طلبات قسمك/أقسامك (:105-109)';}
-    return 'نطاق الباب: طلباتك أنت فقط؛ بلا ملف موظف موصول بالحساب تكون القائمة فارغة (:110-112)';
+    if (r === 'dept_head') {return 'نطاق العرض: طلبات قسمك أو أقسامك';}
+    return 'نطاق العرض: طلباتك أنت فقط؛ وبلا ملف موظف مرتبط بالحساب تبقى القائمة فارغة';
 }
 
 /** @returns {Promise<any[]>} joined rows exactly as the door sent them */

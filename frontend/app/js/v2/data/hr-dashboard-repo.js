@@ -102,7 +102,7 @@ export function buildHrKpis({ employees = [], attendance = [], leaves = [], depa
         { id: 'absent', icon: 'circle-x', label: 'لم يحضروا', en: 'Absent', value: formatInt(absent), unit: '', pill: null, hint: day || 'اليوم' },
         { id: 'late', icon: 'clock', label: 'متأخرون اليوم', en: 'Late', value: formatInt(late.length), unit: '', pill: null, hint: 'حضور بعد الموعد' },
         { id: 'pending', icon: 'hourglass', label: 'إجازات معلقة', en: 'Pending Leaves', value: formatInt(pending.length), unit: '', pill: null, hint: 'بانتظار القرار' },
-        { id: 'payroll', icon: 'banknote', label: 'إجمالي الرواتب', en: 'Payroll Total', value: m(salaries).amount, unit: m(salaries).hasUnit ? m(salaries).unit : '', pill: null, hint: 'SUM(salary) للدليل' },
+        { id: 'payroll', icon: 'banknote', label: 'إجمالي الرواتب', en: 'Payroll Total', value: m(salaries).amount, unit: m(salaries).hasUnit ? m(salaries).unit : '', pill: null, hint: 'مجموع رواتب دليل الموظفين' },
         { id: 'depts', icon: 'building', label: 'أقسام HR', en: 'Departments', value: formatInt(departments.length), unit: '', pill: null, hint: 'من دليل الأقسام' },
     ];
 }

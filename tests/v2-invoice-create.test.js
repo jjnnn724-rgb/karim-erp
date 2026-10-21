@@ -461,7 +461,7 @@ describe('تنسيق المحرر — عمود الصلاحية', () => {
 describe('الشاشتان 06/08 — لا ادعاء قديم', () => {
     test('06 ترشد إلى 08 والعلم بدل «الإنشاء باقٍ في القديم»', () => {
         expect(invoicesSrc).toContain('v2invoicecreate');
-        expect(invoicesSrc).toContain('الإنشاء والتعديل في صفحة فواتير الشراء (08)');
+        expect(invoicesSrc).toMatch(/الإنشاء والتعديل في\s+صفحة فواتير الشراء \(08\)/);
         expect(invoicesSrc).not.toContain('الإنشاء باقٍ في صفحته القديمة');
     });
 });

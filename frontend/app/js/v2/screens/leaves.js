@@ -46,10 +46,13 @@ import {
     LEAVES_TYPE_PAGE, LEAVES_TYPE_PAGES, createLeaveRequest, isPrivilegedLeaveRole,
 } from '../data/leaves-repo.js?v=4.9.185';
 import { fetchEmployees } from '../data/employees-repo.js?v=4.9.185';
+import { ROLES } from '../../core/config.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+const roleLabelOf = (role) => (ROLES[role] && ROLES[role].name) || 'غير معروف';
 
 const TOP_PORTLET = 6;
 
@@ -528,7 +531,7 @@ export function mountLeavesScreen(host, ctx = {}) {
             {
                 key: 'actorRole', header: 'دور الفاعل', sortable: true, width: '130px',
                 render: (row) => (row.actorRole
-                    ? `<span class="erp-addr" dir="ltr">${esc(row.actorRole)}</span>`
+                    ? `<span>${esc(roleLabelOf(row.actorRole))}</span>`
                     : '<span class="erp-text-muted">—</span>'),
             },
             {
@@ -778,7 +781,7 @@ export function mountLeavesScreen(host, ctx = {}) {
         const move = outcome.known
             ? (outcome.final ? 'وبهذا الاعتماد تُقفل السلسلة' : `نقلٌ من مرحلة ${stageWord} إلى مرحلة ${STAGE_LABELS_AR[outcome.next] || outcome.next}`)
             : 'ونقلٌ في السلسلة يحدده الخادم';
-        if (!confirmFn(`اعتماد إجازة ${row.employee} — ${period}؟ ${move}، ويسجَّل باسمك بدور ${role || 'غير معروف'}.`)) {return;}
+        if (!confirmFn(`اعتماد إجازة ${row.employee} — ${period}؟ ${move}، ويسجَّل باسمك بدور ${roleLabelOf(role)}.`)) {return;}
         sendDecision('approve', row.id, '');
     }
 

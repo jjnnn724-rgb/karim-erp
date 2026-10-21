@@ -282,7 +282,8 @@ describe('P2-4 — عقد مصدر الشاشة', () => {
         expect((src.match(/if \(!el\.isConnected\)\s*\{return;\}/g) || []).length).toBeGreaterThanOrEqual(6);
         expect(src).toContain('لا يمكن تكرار الإقفال');
         expect(src).toContain('سيتم إنشاء السنة التالية وترحيل أرصدة المخزون الافتتاحية');
-        expect(src).toContain('علم <span class="erp-mono" dir="ltr">v2fiscalwrite</span> مغلق');
+        expect(src).toContain('ميزة الإقفال غير مفعّلة');
+        expect(src).not.toContain('v2fiscalwrite</span>');
     });
 
     test('الجداول ببنية erp-table__scroll > erp-table__grid', () => {

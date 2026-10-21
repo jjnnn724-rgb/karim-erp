@@ -220,7 +220,7 @@ function shortageBlock(items, max) {
     if (!items.length) {
         return `<div class="erp-state" role="status">
           <span class="erp-state__title">لا أصناف تحت الحد</span>
-          <span>لا صف في النتيجة الحالية عند qty≤minQty بكمية موجبة، ولا صف نفد.</span>
+          <span>لا صف في النتيجة الحالية عند حدّ إعادة الطلب بكمية موجبة، ولا صف نفد.</span>
         </div>`;
     }
     return `<ul class="erp-tops" role="list" aria-label="أصناف تحت الحد أو نفدت، الأكبر نقصًا أولًا">`

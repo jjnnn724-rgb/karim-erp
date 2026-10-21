@@ -110,7 +110,7 @@ export function mountHrDepartmentsScreen(host, ctx = {}) {
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-hrd-go>حفظ</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-hrd-x>إلغاء</button>`
             + `</div><div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-hrd-err role="alert"></div>`
-            + (row ? '' : '<p class="erp-text-sm erp-text-muted">الكود العربي أو الفارغ يُستبدل تلقائيًا بكود لاتيني آمن (كما في القديم) لأنه مفتاح ربط الموظفين بالقسم.</p>')
+            + (row ? '' : '<p class="erp-text-sm erp-text-muted">الكود العربي أو الفارغ يُستبدل تلقائيًا بكود لاتيني آمن لأنه مفتاح ربط الموظفين بالقسم.</p>')
             + `</div></section>`;
         holder.scrollIntoView({ block: 'nearest' });
     }

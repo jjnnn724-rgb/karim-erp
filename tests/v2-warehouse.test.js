@@ -424,7 +424,8 @@ describe('V2 inventory repository — the server rule, the allowlist, the bounds
         expect(chips.find((c) => c.id === 'total').value).toBe('6');
         expect(chips.find((c) => c.id === 'total').pill.text).toBe('6');
         expect(chips.find((c) => c.id === 'state:low').value).toBe('2');
-        expect(chips.find((c) => c.id === 'state:low').hint).toMatch('warehouse-routes.js:1749');
+        expect(chips.find((c) => c.id === 'state:low').hint).toMatch('حد إعادة الطلب');
+        expect(chips.find((c) => c.id === 'state:low').hint).not.toMatch(/warehouse-routes|qty/);
         expect(chips.find((c) => c.id === 'untracked').value).toBe('2');
         expect(chips.find((c) => c.id === 'no-shelf').value).toBe('1');      // the null shelfId row
         expect(chips.find((c) => c.id === 'no-shelf').hint).toMatch('لم يُحلّ');  // id 99 is unresolved

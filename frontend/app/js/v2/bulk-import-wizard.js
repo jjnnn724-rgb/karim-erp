@@ -261,7 +261,7 @@ export function mountBulkImportWizard(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-bulk-print="table"><i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة جدول</span></button>
             <button type="button" class="erp-btn erp-btn--sm" data-v2-bulk-print="slips"><i class="ji" data-i="ticket" aria-hidden="true"></i><span>طباعة قصاصات</span></button>
           </div>
-          <p class="erp-text-sm erp-text-muted">التصدير يحمل كل الصفوف المولدة كما القديم، بما فيها المتخطى والفاشل — راجع عدادات النتيجة أعلاه.</p>
+          <p class="erp-text-sm erp-text-muted">التصدير يحمل كل الصفوف المولدة، بما فيها المتخطى والفاشل — راجع عدادات النتيجة أعلاه.</p>
           ${noteMarkup()}
         </div>`;
     }

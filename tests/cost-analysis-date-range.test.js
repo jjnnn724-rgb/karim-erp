@@ -21,6 +21,9 @@ describe('فترة تحليل التكلفة', () => {
         expect(toInput).not.toContain('data-karim-event="change"');
         expect(screen).toContain('data-karim-action="applyCostAnalysisPeriod"');
         expect(screen).toContain('data-karim-action="resetCostAnalysisPeriod"');
+        expect(screen).toContain('aria-label="فتح تقويم تاريخ البداية"');
+        expect(screen).toContain('aria-label="فتح تقويم تاريخ النهاية"');
+        expect(screen).toContain('data-karim-action="openCostAnalysisDatePicker"');
     });
 
     test('يطبّق النطاق المكتمل، ويرفض ترتيب تاريخ غير صحيح، ويعيد كل الفترة', () => {
@@ -36,5 +39,14 @@ describe('فترة تحليل التكلفة', () => {
         expect(reset).toContain("window.costAnalysisFrom=''");
         expect(reset).toContain("window.costAnalysisTo=''");
         expect(reset).toContain('renderPage()');
+    });
+
+    test('زر التقويم يفتح منتقي التاريخ مباشرة ويدعم المتصفحات التي لا توفر showPicker', () => {
+        const open = between(FINANCE, 'function openCostAnalysisDatePicker(inputId)', 'function resetCostAnalysisPeriod()');
+
+        expect(open).toContain('input.showPicker()');
+        expect(open).toContain("typeof input.showPicker!=='function'");
+        expect(open).toContain('input.focus()');
+        expect(open).toContain("error?.name==='NotAllowedError'");
     });
 });

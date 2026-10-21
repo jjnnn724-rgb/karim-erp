@@ -14,6 +14,7 @@
  */
 
 import { canWrite } from '../session.js?v=4.9.185';
+import { ROLES } from '../../core/config.js?v=4.9.185';
 import { formatInt } from '../data/reports-repo.js?v=4.9.185';
 import {
     PERM_WRITE_ROLES, fetchPermCatalog, fetchUserPerms, saveUserPerms,
@@ -23,6 +24,8 @@ import {
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+const roleLabelOf = (role) => (ROLES[role] && ROLES[role].name) || 'دور غير معروف';
 
 function kpiStrip(kpis) {
     return `<ul class="erp-kpis" aria-label="مؤشرات الصلاحيات">`
@@ -112,7 +115,7 @@ export function mountPermissionsScreen(host, ctx = {}) {
         const groups = groupCatalog(catalog);
         const isAdminTarget = target && target.role === 'admin';
         const dirty = dirtyCount();
-        const userOpts = users.map((u) => `<option value="${esc(String(u.id))}"${String(userId) === String(u.id) ? ' selected' : ''}>${esc(u.name || u.username)} (${esc(u.role || '')})${u.role === 'admin' ? ' — الكل' : ''}</option>`).join('');
+        const userOpts = users.map((u) => `<option value="${esc(String(u.id))}"${String(userId) === String(u.id) ? ' selected' : ''}>${esc(u.name || u.username)} (${esc(roleLabelOf(u.role))})${u.role === 'admin' ? ' — الكل' : ''}</option>`).join('');
         body.innerHTML = kpiStrip([
             { icon: 'key', label: 'صلاحيات الكتالوج', en: 'Catalog', value: formatInt(catalog.length), hint: 'مجموعات حسب النظام' },
             { icon: 'user-check', label: 'ممنوحة للهدف', en: 'Granted', value: formatInt(grants.size), hint: target ? `لـ ${target.name || target.username}` : 'اختر مستخدمًا' },
@@ -124,7 +127,7 @@ export function mountPermissionsScreen(host, ctx = {}) {
         + `<div class="erp-card__body erp-stack">`
         + (!target
             ? `<p class="erp-text-sm erp-text-muted">اختر مستخدمًا لعرض صلاحياته ومنح صلاحيات إضافية لدوره الحالي</p>`
-            : `<p class="erp-text-sm erp-text-muted">المستخدم: <b>${esc(target.name || target.username)}</b> — الدور: <b>${esc(target.role || '')}</b>${target.role === 'admin' ? ' (يملك كل الصلاحيات — لا حاجة لمنح)' : ''}${dirty ? ` — <b>تغييرات غير محفوظة: ${formatInt(dirty)}</b>` : ''}</p>`
+            : `<p class="erp-text-sm erp-text-muted">المستخدم: <b>${esc(target.name || target.username)}</b> — الدور: <b>${esc(roleLabelOf(target.role))}</b>${target.role === 'admin' ? ' (يملك كل الصلاحيات — لا حاجة لمنح)' : ''}${dirty ? ` — <b>تغييرات غير محفوظة: ${formatInt(dirty)}</b>` : ''}</p>`
             + groups.map((g) => `<div class="erp-card__head" style="border-top:1px solid var(--erp-border)"><h3 class="erp-card__title">${esc(g.name)}</h3></div>`
                 + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">`
                 + g.items.map((p) => {

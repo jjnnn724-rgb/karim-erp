@@ -229,10 +229,11 @@ describe('leaves-repo — كلمات الخادم منسوخة لا مبتكرة
         }
     });
 
-    test('نطاق الباب منطوقٌ بأرقام أسطره — والفراغ ليس «لا إجازات في الشركة»', () => {
+    test('نطاق العرض بالأدوار العربية — والفراغ ليس «لا إجازات في الشركة»', () => {
         const { repo } = repoStub([]);
         expect(repo.doorScopeNote('hr')).toMatch(/كل الطلبات/);
-        expect(repo.doorScopeNote('manager')).toMatch(/:103/);
+        expect(repo.doorScopeNote('manager')).toMatch(/مدير المطعم/);
+        expect(repo.doorScopeNote('manager')).not.toMatch(/:103|admin\|/);
         expect(repo.doorScopeNote('dept_head')).toMatch(/قسمك/);
         expect(repo.doorScopeNote('kitchen')).toMatch(/طلباتك أنت فقط/);
         expect(repo.doorScopeNote(null)).toMatch(/فارغة/);

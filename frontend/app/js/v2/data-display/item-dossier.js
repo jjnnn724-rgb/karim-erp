@@ -289,7 +289,7 @@ export function mountItemDossier(host, { itemId, from, to, ctx = {}, compact = f
 
         const salesHost = document.createElement('div');
         panels.insertAdjacentHTML('beforeend', section('خطوط بيع الكاشيرية', 'POS Lines', '<div data-v2-sales></div>',
-            '<span class="erp-text-sm erp-text-muted">ربط بالمعرّف (legacy_inventory_id) — لا بالاسم. مرآة يارا تُقرأ بالاسم وحدها ولا تُجمع مع هذا الرقم.</span>'));
+            '<span class="erp-text-sm erp-text-muted">الربط بمعرّف الصنف لا بالاسم. مرآة يارا تُقرأ بالاسم وحده ولا تُجمع مع هذا الرقم.</span>'));
         panels.querySelector('[data-v2-sales]').appendChild(salesHost);
         addTable(salesHost, {
             caption: 'أسطر البيع من نظام الكاشير', mode: 'client', pageSize: 10, stickyHeader: true,

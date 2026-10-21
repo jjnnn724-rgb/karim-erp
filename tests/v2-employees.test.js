@@ -196,7 +196,8 @@ describe('V2 employees repository — the allowlist and the arithmetic', () => {
         expect(depts.unit).toBe('قسمًا');
         expect(depts.pill.text).toBe('2');
         expect(depts.pill.aria).toMatch('2 من 6 موظفًا');
-        expect(depts.hint).toMatch('من /api/hrDepartments');
+        expect(depts.hint).toMatch('من 4 أقسام معروفة في دليل الأقسام');
+        expect(depts.hint).not.toMatch(/\/api|hrDepartments/);
         const empty = repo.buildEmployeeKpis([]);
         expect(empty.find((c) => c.id === 'depts').pill.text).toBe('—');
     });
@@ -752,7 +753,7 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
         const s = screen();
         expect(s).toMatch(/const max = 300/);
         expect(s).toMatch(/toDataURL\('image\/jpeg', 0\.85\)/);
-        expect(s).toMatch(/تُصغَّر إلى 300px كالبطاقة القديمة — تُرفع مع الحفظ\./);
+        expect(s).toMatch(/تُصغَّر إلى 300px قبل الرفع/);
     });
 
     test('the view toggle is a browser preference, never a server field', () => {

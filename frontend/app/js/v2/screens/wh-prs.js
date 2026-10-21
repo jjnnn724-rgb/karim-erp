@@ -118,7 +118,7 @@ function template(canCreate) {
             دورة الطلب كاملة من هنا: إنشاء (وتوقيع المطبخ <strong>نهائيٌّ يوصله المخزن مباشرة</strong>) ·
             توقيع/رفض الشيف · اعتماد/رفض المدير العام · إلغاء · تفاصيل · طباعة.
             الاستلام أُلغي بقرار المالك — البضاعة تدخل بفواتير المشتريات.
-            الصلاحية قررها الخادم (admin|manager|warehouse|kitchen|sous_chef|accountant).
+            القرار للخادم وحده: مدير النظام ومدير المطعم وأمين المخزن والشيف العمومي وسو شيف ومدير الحسابات.
           </p>
           <p class="erp-text-sm erp-text-muted" data-v2-cap-note hidden></p>
           <div data-v2-table></div>

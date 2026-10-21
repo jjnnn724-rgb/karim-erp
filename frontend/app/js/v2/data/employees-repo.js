@@ -448,8 +448,8 @@ export function buildEmployeeKpis(rows = [], opts = {}) {
         value: formatInt(depts.length), unit: 'قسمًا',
         hint: depts.length
             ? (named === depts.length
-                ? 'كل قسم باسمه العربي من /api/hrDepartments'
-                : `${formatInt(named)} من ${formatInt(depts.length)} باسمه العربي من /api/hrDepartments`)
+                ? 'كل قسم معروف في دليل الأقسام'
+                : `${formatInt(named)} من ${formatInt(depts.length)} أقسام معروفة في دليل الأقسام`)
             : 'لا أقسام في الدليل',
         // A count of departments has no share of the roster, so the pill
         // carries the next real number instead: how big the biggest one is.

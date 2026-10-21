@@ -635,7 +635,8 @@ describe('شاشة 21 — العقد المصدَّر من المصدر', () => 
     test('سقف السجل 200 معلن في الشاشة من مصدره الخادمي', () => {
         const s = src();
         expect(s).toContain('const PR_LIST_CAP = 200;');
-        expect(s).toContain('warehouse-routes.js:3215');
+        expect(s).toContain('السجل يسقف عند أحدث');
+        expect(s).not.toContain('warehouse-routes.js');
         expect(s).toMatch(/capNoteEl\.hidden = !\(rawRows\.length >= PR_LIST_CAP\);/);
     });
 

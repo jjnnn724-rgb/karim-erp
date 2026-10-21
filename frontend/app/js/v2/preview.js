@@ -273,7 +273,7 @@ const shell = mountAppLayout(root, {
         // The door in index.html opens V2 in a new tab; this is the way back
         // out of that tab. Relative on purpose — it must resolve under the
         // /app static mount, a LAN origin, and the Electron shell alike.
-        { label: 'الواجهة القديمة', icon: 'monitor', onClick: () => { window.location.assign('index.html'); } },
+        { label: 'الواجهة الكلاسيكية', icon: 'monitor', onClick: () => { window.location.assign('index.html'); } },
     ],
     onNavigate(key) {
         applyKey(key);
@@ -985,14 +985,14 @@ function liveModeStrip() {
           <h3 class="erp-card__title">وضع المعاينة — بيانات نموذجية</h3>
           <p class="erp-text-sm erp-text-muted">
             لا يُطلب أي شيء من الشبكة في هذا الوضع. لقراءة بيانات حقيقية بالجلسة
-            المسجّلة في هذا المتصفح: <a href="v2.html?live=1">v2.html?live=1</a>
+            المسجّلة في هذا المتصفح: <a href="v2.html?live=1">الوضع الحيّ</a>
             — الوضع يبدّل مصدر البيانات فقط، ولا يُنشئ جلسة ولا يغيّر كلمة مرور.
           </p>`);
     }
     if (sessionState.status === 'pending') {
         return strip(`
           <h3 class="erp-card__title">جارٍ التحقق من الجلسة…</h3>
-          <p class="erp-text-sm erp-text-muted">وضع البيانات الحية (‎?live=1‎).</p>`,
+          <p class="erp-text-sm erp-text-muted">جارٍ التحقق من الجلسة المسجّلة في هذا المتصفح…</p>`,
         'status');
     }
     if (sessionState.status === 'none') {
@@ -1001,7 +1001,7 @@ function liveModeStrip() {
           <p class="erp-text-sm erp-text-muted">
             الوضع الحيّ لا يُنشئ جلسة — لا توجد وسيلة آمنة لتسجيل الدخول من هنا.
             سجّل الدخول في النظام الحالي ثم أعد فتح
-            <a href="v2.html?live=1">v2.html?live=1</a>.
+            <a href="v2.html?live=1">الوضع الحيّ</a>.
           </p>
           <a class="erp-btn erp-btn--sm" href="index.html">الذهاب لتسجيل الدخول</a>`,
         'alert');
@@ -1010,9 +1010,9 @@ function liveModeStrip() {
     return strip(`
       <h3 class="erp-card__title">وضع البيانات الحية</h3>
       <p class="erp-text-sm erp-text-muted">
-        جلسة حقيقية (مصدر: ${esc(info.source || 'غير معروف')}) بدور
-        <strong>${esc(info.role || 'غير معروف')}</strong> — القيم المعروضة تُقرأ من
-        نفس واجهات النظام الحالي، والصلاحية قررها للخادم وحده.
+        جلسة حقيقية بصلاحية
+        <strong>${esc((ROLES[info.role] && ROLES[info.role].name) || 'مستخدم')}</strong> —
+        القيم المعروضة تُقرأ من واجهات النظام نفسها، والصلاحية للخادم وحده.
       </p>`,
     'status');
 }
@@ -1076,7 +1076,7 @@ function renderAttendanceScreen() {
               <div class="erp-state">
                 <span class="erp-state__title">شاشة الحضور — أول شاشة تُنقل في V2</span>
                 <span>في وضع المعاينة ترى نموذج سجل الحضور في لوحة التحكم. البيانات الحية
-                تتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                تتطلب <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
             </div>
@@ -1138,7 +1138,7 @@ function renderEmployeesScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">شاشة الموظفون — ثاني شاشة تُنقل في V2</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1206,7 +1206,7 @@ function renderWarehouseScreen() {
                 <span class="erp-state__title">شاشة المخزون — ثالث شاشة تُنقل في V2</span>
                 <span>فلاترها (الحالة والفئة والبحث المتسامح) تُسأل الخادم نفسه، فلا
                 نموذج يُعرض بدلها. البيانات الحية تتطلب
-                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
             </div>
@@ -1267,7 +1267,7 @@ function renderWarehouseGovScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">حوكمة المخزن — سنوات مالية ورصيد افتتاحي وفحص نظام</span>
-                <span>القراءة الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>القراءة الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح؛ لا سنوات ولا أرقام نموذجية تحت هذا الاسم.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1326,7 +1326,7 @@ function renderReportsScreen() {
                 <span class="erp-state__title">شاشة التقارير — رابع شاشة تُنقل في V2</span>
                 <span>الفترة والتجميع يُحسبان في SQL على الخادم، فلا رقم نموذجي يُعرض
                 بدلها. الأرقام الحية تتطلب
-                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
             </div>
@@ -1387,7 +1387,7 @@ function renderBriefingScreen() {
               <div class="erp-state">
                 <span class="erp-state__title">موجز المدير — شاشة بأرقام حية</span>
                 <span>لوحة التحكم هنا تعرض نموذجًا للقياس؛ الأرقام الحقيقية تُقرأ من
-                <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
             </div>
@@ -1439,7 +1439,7 @@ function renderProcurementScreen() {
               <div class="erp-state">
                 <span class="erp-state__title">شاشة الموردون — خامس شاشة تُنقل في V2</span>
                 <span>الدليل والملخص يُقرآن من الخادم، فلا نموذج يُعرض بدلها. البيانات
-                الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span>
+                الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
             </div>
@@ -1491,7 +1491,7 @@ function renderInvoicesScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">فواتير الموردين — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1541,7 +1541,7 @@ function renderPaymentsScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">مدفوعات الموردين — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1593,7 +1593,7 @@ function renderWhInvoicesScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">فواتير الشراء — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1645,7 +1645,7 @@ function renderKitchenScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">المطبخ — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1703,7 +1703,7 @@ function renderLeavesScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">طلبات الإجازات — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1755,7 +1755,7 @@ function renderZktecoScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">أجهزة البصمة — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1808,7 +1808,7 @@ function renderHrDashboardScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">لوحة الموارد البشرية — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1860,7 +1860,7 @@ function renderDispatchScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">أذون الصرف — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1920,7 +1920,7 @@ function renderVegScreen() {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">طلبات شراء الخضار — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -1984,7 +1984,7 @@ function renderLiveRegisterScreen({ key, title, mount, assign }) {
             <div class="erp-card__body">
               <div class="erp-state">
                 <span class="erp-state__title">${esc(title)} — تُقرأ من الخادم</span>
-                <span>البيانات الحية تتطلب <a href="v2.html?live=1">v2.html?live=1</a>
+                <span>البيانات الحية تتطلب <a href="v2.html?live=1">الوضع الحيّ</a>
                 بجلسة مسجلة في هذا المتصفح.</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-go-dash>العودة للوحة المعاينة</button>
               </div>
@@ -2131,7 +2131,7 @@ function renderPosEntryScreen() { renderLiveRegisterScreen({ key: 'pos', title: 
 
 function renderMenuBoardScreen() {
     if (!isLive()) {
-        shell.main.innerHTML = `${liveModeStrip()}<section class="erp-card" style="margin-block-start:var(--erp-space-4)"><div class="erp-card__body"><div class="erp-state"><span class="erp-state__title">شاشات المنيو — تُعرض من الخادم</span><span>العرض الحي يتطلب <a href="v2.html?live=1">v2.html?live=1</a> بجلسة مسجلة في هذا المتصفح.</span></div></div></section>`;
+        shell.main.innerHTML = `${liveModeStrip()}<section class="erp-card" style="margin-block-start:var(--erp-space-4)"><div class="erp-card__body"><div class="erp-state"><span class="erp-state__title">شاشات المنيو — تُعرض من الخادم</span><span>العرض الحي يتطلب <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span></div></div></section>`;
         return;
     }
     sessionPromise.then((session) => {

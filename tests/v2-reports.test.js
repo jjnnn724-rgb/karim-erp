@@ -464,7 +464,7 @@ describe('V2 reports screen + layer (source contract)', () => {
     test('the table is client mode over server-grouped rows, and both search boxes are declared', () => {
         const s = screen();
         expect(s).toMatch(/mode: 'client'/);
-        expect(s).toMatch(/الفترة والتجميع يسألان الخادم/);
+        expect(s).toMatch(/الفترة والتجميع يُسألان/);
         expect(s).toMatch(/مربع البحث\s+داخل الجدول يضيق/);
     });
 
@@ -503,17 +503,18 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(s).toMatch(/تعذّرت قراءة وحدة المال/);
     });
 
-    test('the status rule is quoted as the servers, not restated as an opinion', () => {
+    test('the status rule is stated in user words, not internal enums', () => {
         const s = screen();
-        expect(s).toMatch(/issued<\/span>$/m);
+        expect(s).toMatch(/فواتير صادرة أو مُبلَّغ عنها فقط/);
         expect(s).toMatch(/المرتجعات والملغاة ليست/);
-        expect(s).toMatch(/قاعدة الخادم لا تصفية من هنا/);
+        expect(s).not.toMatch(/issued<\/span>|reported<\/span>/);
     });
 
     test('the 200-item ceiling is disclosed when the server stopped early', () => {
         const s = screen();
         expect(s).toMatch(/data-v2-cap-note/);
-        expect(s).toMatch(/أول 200 صنفًا \(LIMIT\)/);
+        expect(s).toMatch(/بُعد الأصناف مقيد بأول 200 صنف/);
+        expect(s).not.toMatch(/أول 200 صنفًا \(LIMIT\)/);
         expect(s).toMatch(/capNote\.hidden = !meta\.capped/);
     });
 

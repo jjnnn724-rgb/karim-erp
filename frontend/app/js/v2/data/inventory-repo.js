@@ -306,7 +306,7 @@ export function buildInventoryKpis(rows = [], opts = {}) {
         label: 'بلا حد أدنى', en: 'No minimum',
         value: formatInt(c.untracked), unit: 'صنفًا',
         hint: c.untracked
-            ? 'minQty=0 أو غير مسجّل — «تحت الحد» لا ينطبق عليها وهي محسوبة ضمن «متوفر»'
+            ? 'حد إعادة الطلب صفر أو غير مسجّل — «تحت الحد» لا ينطبق عليها وهي محسوبة ضمن «متوفر»'
             : (total ? 'كل صنف له حد أدنى مسجّل' : 'النتيجة فارغة — لا حدّ يُقاس عليه'),
         pill: pill(c.untracked, 'بلا حد أدنى'),
     });

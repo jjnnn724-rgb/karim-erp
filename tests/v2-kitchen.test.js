@@ -840,7 +840,8 @@ describe('kitchen.js — الشاشة: دورة المطبخ الكاملة بل
         expect(paint).toContain('printNote.textContent');
         expect(paint).toMatch(/جرد: \$\{audits\.length\} جلسة · مستندات: \$\{documents\.length\}/);
         // عدد المواقع انتقل من الشريط إلى سطر المدى — مع أساسه مكتوبًا
-        expect(paint).toMatch(/locations\.length\} موقعًا نشطًا \(inventory_locations active=true\)/);
+        expect(paint).toMatch(/locations\.length\} موقعًا نشطًا · آخر قراءة/);
+        expect(paint).not.toMatch(/inventory_locations/);
         // والملخّاص يُبنى على ما حُمِل فعلًا، لا على مصفوفٍ فارغ يُمرَّر نيابة عنه
         expect(paint).toMatch(/summarizeKitchen\(batches, exceptions, locations, policies, distributions\)/);
         // وسقفا الحوكمة يُنطقان من ثابتيهما لا من رقمٍ حرفي في الشاشة

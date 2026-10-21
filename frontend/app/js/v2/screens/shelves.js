@@ -139,10 +139,9 @@ function template(writable) {
           </div>
         </div>
         <p class="erp-text-sm erp-text-muted">
-          كل صنف يُعيَّن لرفٍ واحد عبر <span class="erp-mono" dir="ltr">inventory.shelfId</span>.
-          حذف الرف لا يحذف أصنافه: المفتاح الخارجي <span class="erp-mono" dir="ltr">ON DELETE SET NULL</span>
-          يزيل تعيينها فقط.
-          ${writable ? '' : '<span data-v2-ro>الكتابة غير متاحة الآن — إما الصلاحية لا تسمح أو علم <span class="erp-mono" dir="ltr">v2shelfwrite</span> مغلق.</span>'}
+          كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. حذف الرف لا يحذف أصنافه —
+          يزيل تعيينها فقط وتبقى في السجل.
+          ${writable ? '' : '<span data-v2-ro>الكتابة غير متاحة لهذه الجلسة — إما الصلاحية لا تسمح أو الميزة غير مفعّلة.</span>'}
         </p>
         <div data-v2-kpis></div>
         <div data-v2-form-host hidden></div>

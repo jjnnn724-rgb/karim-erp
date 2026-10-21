@@ -59,8 +59,8 @@ describe('ربط الشاشة — الدور + العلم + الزر', () => {
         expect(screen).toMatch(/فاتورة شراء جديدة/);
     });
 
-    test('نص الشاشة لا يدّعي أن الزر مطفأ افتراضيًا', () => {
-        expect(screen).not.toMatch(/v2invoicecreate<\/span>\s*\(OFF/);
-        expect(screen).toContain('?v2invoicecreate=0');
+    test('نص الشاشة لا يعرض مفتاح التفعيل الداخلي', () => {
+        expect(screen).not.toMatch(/\?v2invoicecreate/);
+        expect(screen).not.toMatch(/v2invoicecreate<\/span>/);
     });
 });

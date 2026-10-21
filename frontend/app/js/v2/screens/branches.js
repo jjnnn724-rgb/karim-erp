@@ -63,9 +63,9 @@ function template(writable) {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-muted erp-text-sm">
-            كل سجل (أمر بيع / مصروف / حضور / قيد) يُنسب لفرعه عبر عمود
-            <strong>branch_id</strong>. الإيقاف ليّن: السجلات التاريخية تبقى كما هي،
-            والفرع الرئيسي <strong>MAIN</strong> غير قابل للإيقاف.
+            كل سجل (أمر بيع / مصروف / حضور / قيد) يُنسب إلى فرعه تلقائيًا لحظة
+            تسجيله. الإيقاف ليّن: السجلات التاريخية تبقى كما هي، والفرع الرئيسي
+            <strong>MAIN</strong> غير قابل للإيقاف.
           </p>
           ${writable ? '' : '<p class="erp-text-sm erp-text-muted">هذه الشاشة للقراءة فقط بصلاحيتك الحالية — الكتابة لمدير النظام.</p>'}
           <div data-v2-form hidden></div>
