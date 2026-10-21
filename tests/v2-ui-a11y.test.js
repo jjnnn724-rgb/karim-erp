@@ -1,0 +1,59 @@
+/**
+ * v2-ui-a11y.test.js — حراسة إصلاحات الوصول في هيكل V2 والهوية.
+ * تمنع ارتداد: radios بلا aria-pressed، مصابيح بأدوار صحيحة، قوائم بلا
+ * role=group، منطقة تمرير قابلة للتركيز، روابط نصية مسطّرة، وأهداف لمس.
+ */
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const APP = path.join(ROOT, 'frontend', 'app');
+const read = (rel) => fs.readFileSync(path.join(APP, rel), 'utf8');
+
+describe('V2 UI a11y guards', () => {
+    test('أزرار الثيم والكثافة radios: aria-checked فقط بلا aria-pressed', () => {
+        for (const file of ['js/v2/theme.js', 'js/v2/density.js']) {
+            const src = read(file);
+            expect(src).toContain("btn.setAttribute('role', 'radio')");
+            expect(src).toContain("btn.setAttribute('aria-checked', String(on))");
+            expect(src).not.toMatch(/setAttribute\(['"]aria-pressed/);
+        }
+    });
+
+    test('مصابيح الحالة تحمل role=img مع aria-label', () => {
+        const src = read('js/v2/layout/shell-extras.js');
+        expect(src).toMatch(/class="erp-lamp" role="img"[^>]*aria-label=/);
+    });
+
+    test('قائمة تنقل V2 تبقى قائمة أصلية بلا role=group', () => {
+        const src = read('js/v2/layout/app-layout.js');
+        expect(src).toMatch(/<ul class="erp-nav-list" aria-labelledby="erp-nav-g-\$\{esc\(group\.id\)\}">/);
+        expect(src).not.toContain('<ul class="erp-nav-list" role="group"');
+    });
+
+    test('شريط مسار الفواتير القابل للتمرير يقبل التركيز في المسارين', () => {
+        for (const file of ['js/v2/screens/dashboard.js', 'js/v2/screens/briefing.js']) {
+            expect(read(file)).toMatch(/<ol class="erp-pipe" tabindex="0" aria-label=/);
+        }
+    });
+
+    test('الروابط داخل النص مسطّرة (ليست لونًا وحده)', () => {
+        const css = read('css/v2/erp-base.css');
+        expect(css).toMatch(/\.erp-v2 p a\s*\{[^}]*text-decoration:\s*underline/);
+    });
+
+    test('أهداف اللمس على المؤشرات الخشنة ≥ 44px', () => {
+        const css = read('css/v2/erp-shell.css');
+        const block = css.match(/@media \(pointer: coarse\)\s*\{([\s\S]*?)\n\}/);
+        expect(block).not.toBeNull();
+        for (const sel of ['.erp-search-trigger', '.erp-nav-group__title', '.erp-theme-option', '.erp-density-option', '.erp-btn--sm']) {
+            expect(block[1]).toContain(sel);
+        }
+        expect(block[1]).toMatch(/min-height:\s*44px/);
+    });
+
+    test('نص اسم العلامة في الشريط الجانبي يرث حبر الشريط لا حبر الصفحة', () => {
+        const css = read('css/v2/erp-identity.css');
+        expect(css).toMatch(/color:\s*var\(--erp-text-primary\);\s*\n\s*background:\s*var\(--erp-sidebar-bg\);/);
+    });
+});

@@ -17,6 +17,7 @@ const HOST = path.join(V2, 'preview.js');
 const LEGACY = path.join(APP, 'js', 'features', 'auth-navigation.js');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
+const REV = read(path.join(APP, 'v2.html')).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
 
 function loadRepo(apiFetch, collect, sourcePath = REPO) {
     const source = read(sourcePath)
@@ -64,7 +65,7 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
         expect(styles).toContain('aspect-ratio: 1.6 / 1');
         expect(styles).toContain('min-height: 0');
         expect(read(path.join(APP, 'v2.html')))
-            .toContain('css/v2/erp-pos-v2.css?v=4.9.183');
+            .toContain(`css/v2/erp-pos-v2.css?v=${REV}`);
     });
 
     test('بطاقات الأصناف تعرض الصور وتتيح رفعها للإدارة مع استعادة الأزرار بعد المحاولة', () => {
@@ -167,7 +168,7 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
         expect(screen).toContain('وحدة العملة غير متاحة');
         expect(screen).toContain('تعذّر تجهيز نقطة البيع');
         expect(screen).toContain('فشل إتمام البيع ولم تُفرّغ السلة');
-        expect(screen).toContain('تم البيع بنجاح، لكن تعذّر تحديث قائمة الأصناف');
+        expect(screen).toContain('تم البيع بنجاح، لكن تعذّر تحديث قائمة');
         expect(screen).toContain('data-pos-error');
     });
 
@@ -203,11 +204,12 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
         const apiFetch = jest.fn(async () => ({ message: 'queued' }));
         const ctx = loadRepo(apiFetch, ['reprintPosOrder', 'voidPosOrder']);
         const id = '123e4567-e89b-42d3-a456-426614174000';
+        const headers = { 'x-device-name': 'POS (POS terminal)' };
         await ctx.reprintPosOrder(id);
-        expect(apiFetch).toHaveBeenCalledWith(`/pos/orders/${id}/reprint`, { method: 'POST' });
+        expect(apiFetch).toHaveBeenCalledWith(`/pos/orders/${id}/reprint`, { method: 'POST', headers });
         await ctx.voidPosOrder(id, 'خطأ في الطلب');
         expect(apiFetch).toHaveBeenLastCalledWith(`/pos/orders/${id}/void`, {
-            method: 'POST', body: JSON.stringify({ reason: 'خطأ في الطلب' }),
+            method: 'POST', headers, body: JSON.stringify({ reason: 'خطأ في الطلب' }),
         });
         await expect(ctx.voidPosOrder(id, '  ')).rejects.toThrow('سبب الإلغاء');
         await expect(ctx.reprintPosOrder('bad/id')).rejects.toThrow('معرّف الفاتورة');

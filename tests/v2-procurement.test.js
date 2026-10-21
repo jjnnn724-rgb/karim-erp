@@ -36,6 +36,7 @@ const SCREENS = ['procurement', 'invoices', 'payments', 'wh-invoices']
     .map((n) => path.join(V2, 'screens', `${n}.js`));
 const HR_CSS = path.join(APP, 'css', 'v2', 'erp-hr.css');
 const V2_HTML = path.join(APP, 'v2.html');
+const HOST = path.join(V2, 'preview.js');
 const SERVER = path.join(__dirname, '..', 'backend', 'procurement-routes.js');
 const REPORTS_REPO = path.join(V2, 'data', 'reports-repo.js');
 
@@ -476,6 +477,12 @@ describe('الرسوم والثوابت — لا انفجار تخزيني ول�
 
     test('05 تقول صراحةً إن فواتير 06 ومدفوعات 07 شاشتان مستقلتان — لا طيّ صامت', () => {
         expect(screenSrc['procurement.js']).toMatch(/شاشتان مستقلتان \(06\/07\)/);
+    });
+
+    test('المضيف يمرّر confirmFn لشاشة الموردين — لا سقوط صامت إلى نافذة المتصفح الخام', () => {
+        const host = read(HOST);
+        const mount = host.slice(host.indexOf('mountProcurementScreen('));
+        expect(mount).toContain('confirmFn: (message) => window.confirm(message)');
     });
 });
 

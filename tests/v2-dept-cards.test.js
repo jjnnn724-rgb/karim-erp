@@ -319,15 +319,16 @@ describe('شاشة الأقسام — البطاقات الثيمية', () => {
         expect(screen).toMatch(/canLink \? `<button type="button" class="erp-btn erp-btn--sm" data-v2-link=/);
     });
 
-    test('إيراد البطاقة شهري من السجل المرحّل: شجرة القسم + مرايا كاشيريها + مرآة البيع الخارجي', () => {
+    test('إيراد البطاقة شهري من السجل المرحّل: شجرة القسم + مرايا كاشيريها، مع استبعاد BILLS4', () => {
         expect(screen).toContain('function monthToDateRange()');
         expect(screen).toContain('fetchYaraCashierItems({from, to, view:');
         expect(screen).toContain("new Set(['1', '3', '4', '5', '6', '9'])");
         // شجرة القسم + المرايا التي لا تحملها الشجرة (parent_code فارغ في القاعدة)
         expect(screen).toContain('const s = calcDeptStats(revenues, expenses, rows, code, from, to);');
         expect(screen).toMatch(/deptIsWithin\(`ys_cc_\$\{no\}`, code\)/);
-        expect(screen).toContain("const EXT_SALES_MIRROR = 'ys_b4_ext';");
-        expect(screen).toMatch(/deptIsWithin\('external_sales', code\)/);
+        // قرار المالك 2026-10-21: BILLS4 (ys_b4_ext) تسويات قديمة تُستبعد من كل الأرقام
+        expect(screen).toContain("const NON_OPERATIONAL_REVENUE_DEPTS = new Set(['ys_b4_ext']);");
+        expect(screen).toContain('!NON_OPERATIONAL_REVENUE_DEPTS.has(String(r && r.deptId))');
         expect(screen).toMatch(/const rev = s\.rev \+ mirrorRev;/);
         // الحي لا يدخل إجمالي البطاقة: يُعرض في الشارة والملخّص كغير مرحّل
         expect(screen).toContain('actualCashierRevenue.get(String(no))');

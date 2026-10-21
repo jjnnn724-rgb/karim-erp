@@ -48,7 +48,11 @@ describe('تحليل التكاليف — مصدر واحد للإجماليات
         expect(overall).toContain('FROM revenues r');
         expect(overall).toContain('FROM expenses e');
         expect(overall).not.toContain('dept_tree');
-        expect(overall).not.toContain('"deptId"');
+        // "deptId" يظهر الآن كـ*فلتر* (استبعاد مرآة البيع الخارجي) لا كتجميع
+        // ⇒Overall يبقى وحدة واحدة (بلا تكرار) — وهذا هو المقصود.
+        expect(overall).toContain('r."deptId" != \'ys_b4_ext\'');
+        expect(overall).not.toMatch(/GROUP BY\s+"?deptId"?/i);
+        expect(overall).not.toContain('dept_tree');
     });
 
     test('الترحيل 106 يعبّئ الفرع النشط الوحيد ويختم كل كتابة قادمة', () => {

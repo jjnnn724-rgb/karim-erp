@@ -82,7 +82,9 @@ describe('تحليل التكاليف — تجميع خادمي محدود بق�
         // (فروق جرد المواقع غير المسندة) جزء من كلفة الشركة ولا يجوز إسقاطها.
         expect(query.text).toContain('FROM revenues r');
         expect(query.text).toContain('FROM expenses e');
-        expect(query.text).toMatch(/FROM revenues r\s+WHERE TRUE/);
+        // الإجمالي الآن استعلام فرعي scalar + استبعاد مرآة البيع الخارجي
+        // (ys_b4_ext) حتى لا تُحتسب مرّتين — تبقى وحدة واحدة بلا تكرار حسب القسم.
+        expect(query.text).toMatch(/FROM revenues r\s+WHERE r\."deptId"\s*!=\s*'ys_b4_ext'/);
         expect(query.text).toMatch(/FROM expenses e\s+WHERE LOWER/);
         expect(query.text).not.toContain('direct_expense_totals');
         expect(query.text).not.toContain('direct_revenue_totals');
