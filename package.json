@@ -49,6 +49,7 @@
     "test:dispatch:gate": "node scripts/audit-csp-inline-handlers.js --check-dispatch",
     "test:frontend-version": "node scripts/frontend-version.js --check",
     "frontend:version:bump": "node scripts/frontend-version.js --bump",
+    "build:electron": "node scripts/build-electron.js",
     "test:docker:gate": "node scripts/check-docker.js",
     "csp:report": "node scripts/summarize-csp-violations.js",
     "test:secrets:gate": "node scripts/check-secrets.js",

@@ -63,3 +63,21 @@ node scripts/deploy-verify.js --no-preflight   # نشر بدون بوابات (�
   في رأس الملف (مثل `113_app_role_activation.sql`) + نسخة `pg_dump` قبل أي تغيير ✓.
 - **دور التطبيق**: `node scripts/activate-app-role.js --rollback` (استعادة `.env`) ✓.
 - **النسخ الاحتياطية**: `npm run backup` (المجلد `database/backups` + مرايا خارجية) ✓.
+
+## توقيع حزم Electron (Authenticode)
+
+الحزم اليوم **غير موقّعة** ⇒ لا يمكن التحقق من سلامة التحديث.
+بمجرد توفير الشهادة يصبح البناء موقّعًا تلقائيًا (بلا تعديل ملفات):
+
+```powershell
+$env:WIN_CSC_LINK = "C:\certs\karim.pfx"   # أو base64
+$env:WIN_CSC_KEY_PASSWORD = "<password>"
+npm run build:electron
+```
+
+عندها يُبنى بـ `verifyUpdateCodeSignature=true` و`signAndEditExecutable=true`،
+ويصبح حارس التحديث في `electron/update-signature-policy.js` قابلًا للتفعيل:
+`KARIM_UPDATE_SIGNATURE_MODE=required` + `KARIM_UPDATE_EXPECTED_PUBLISHER="CN=…"`.
+
+> الحارس الحالي (prefer) يرفض العبث (HashMismatch/NotTrusted) وناشرًا مزيّفًا،
+> ويسمح بالتحديث غير الموقّع مع تحذير — لأن التوقيع غير متاح بعد.
