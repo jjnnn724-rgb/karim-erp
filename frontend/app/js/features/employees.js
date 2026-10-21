@@ -95,10 +95,10 @@ ${linkedUser?`<span class="badge ${linkedUser.active!==false?'bdg-green':'bdg-re
 ${empShiftChip(emp)}
 </div>
 <div class="u-footer-sep">
-<button class="btn btn-sm u-flex1" onclick="event.stopPropagation();editEmployee('${emp.id}')"><i class=ji data-i=pencil></i> ${t('emp.edit')}</button>
-${linkedUser?`<button class="btn btn-blue btn-sm u-flex1" onclick="event.stopPropagation();editUser('${linkedUser.id}')"><i class=ji data-i=key></i> ${t('emp.account')}</button>`:`<button class="btn btn-green btn-sm u-flex1" onclick="event.stopPropagation();showCreateEmployeeAccountModal('${emp.id}')"><i class=ji data-i=plus></i> ${t('emp.account')}</button>`}
-<button class="btn btn-sm" style="flex:1;background:rgba(52,152,219,0.1);color:var(--blue);border:1px solid rgba(52,152,219,0.2)" onclick="event.stopPropagation();showSmartCardModal('${emp.id}')"><i class=ji data-i=ticket></i> ${t('emp.card')}</button>
-<button class="btn btn-red btn-sm u-flex1" onclick="event.stopPropagation();deleteEmployee('${emp.id}')"><i class=ji data-i=trash></i></button>
+<button class="btn btn-sm u-flex1" data-karim-action="editEmployee" data-karim-arg0="${emp.id}" data-karim-stop><i class=ji data-i=pencil></i> ${t('emp.edit')}</button>
+${linkedUser?`<button class="btn btn-blue btn-sm u-flex1" data-karim-action="editUser" data-karim-arg0="${linkedUser.id}" data-karim-stop><i class=ji data-i=key></i> ${t('emp.account')}</button>`:`<button class="btn btn-green btn-sm u-flex1" data-karim-action="showCreateEmployeeAccountModal" data-karim-arg0="${emp.id}" data-karim-stop><i class=ji data-i=plus></i> ${t('emp.account')}</button>`}
+<button class="btn btn-sm" style="flex:1;background:rgba(52,152,219,0.1);color:var(--blue);border:1px solid rgba(52,152,219,0.2)" data-karim-action="showSmartCardModal" data-karim-arg0="${emp.id}" data-karim-stop><i class=ji data-i=ticket></i> ${t('emp.card')}</button>
+<button class="btn btn-red btn-sm u-flex1" data-karim-action="deleteEmployee" data-karim-arg0="${emp.id}" data-karim-stop><i class=ji data-i=trash></i></button>
 </div>
 </div>
 `;
@@ -293,7 +293,7 @@ showModal(`
 <div class="employee-avatar" style="width:100px;height:100px;font-size:40px;margin:0 auto 10px">${emp.photo?`<img src="${emp.photo}">`:emp.name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
 <label class="btn btn-blue btn-sm" style="cursor:pointer">
 <i class=ji data-i=camera></i> تغيير الصورة
-<input type="file" accept="image/*" style="display:none" onchange="handlePhotoUpload('${emp.id}', this.files[0]); setTimeout(()=>editEmployee('${emp.id}'), 1500)">
+<input type="file" accept="image/*" style="display:none" data-karim-action="handlePhotoUpload" data-karim-event="change" data-karim-arg0="${emp.id}" data-karim-pass="files.0" data-karim-also="setTimeout">
 </label>
 </div>
 <div class="fr">

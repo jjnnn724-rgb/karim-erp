@@ -25,8 +25,8 @@ function openScanner(opts = {}) {
     showModal(`
 <h3>${title}</h3>
 <div class="scanner-tabs">
-  <button type="button" class="scanner-tab active" data-tab="camera" onclick="switchScannerTab(this,'camera')"><i class=ji data-i=camera></i> كاميرا</button>
-  <button type="button" class="scanner-tab" data-tab="manual" onclick="switchScannerTab(this,'manual')"><i class=ji data-i=keyboard></i> ماسح / إدخال يدوي</button>
+  <button type="button" class="scanner-tab active" data-tab="camera" data-karim-action="switchScannerTab" data-karim-args="[&quot;camera&quot;]" data-karim-pass="element"><i class=ji data-i=camera></i> كاميرا</button>
+  <button type="button" class="scanner-tab" data-tab="manual" data-karim-action="switchScannerTab" data-karim-args="[&quot;manual&quot;]" data-karim-pass="element"><i class=ji data-i=keyboard></i> ماسح / إدخال يدوي</button>
 </div>
 <div class="scanner-panel" data-panel="camera">
   <div id="${boxId}" class="scanner-camera-box"></div>

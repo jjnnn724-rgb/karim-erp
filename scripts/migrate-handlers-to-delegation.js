@@ -102,23 +102,56 @@ function parseHandler(body) {
     }
     const parsedCalls = parseHandlerCalls(raw);
     if (!parsedCalls) {return {skip: 'غير استدعاء'};}
-    const { calls, prevent } = parsedCalls;
-    if (!calls.length) {return {skip: 'بلا استدعاء'};}
+    const { calls, prevent, stop, assignments } = parsedCalls;
+
+    // تعوينات window.X = value ⇒ data-karim-set (الموزّع ينفّذها بلا eval)
+    const sets = [];
+    for (const a of (assignments || [])) {
+        const m = a.target.match(/^window\.([A-Za-z_$][\w$]*)$/);
+        if (!m) {return {skip: `تعيين غير قابل للتفويض: ${a.target}`};}
+        const expr = a.expr.trim();
+        let source;
+        const thisProp = expr.match(/^this\.(\w+)$/);
+        if (thisProp) {source = `@${thisProp[1]}`;}
+        else if (/^'.*'$|^".*"$|^-?\d+(\.\d+)?$|^true$|^false$|^null$/.test(expr)) {source = expr;}
+        else {return {skip: `قيمة تعيين غير مدعومة: ${expr.slice(0, 30)}`};}
+        sets.push(`${m[1]}:${source}`);
+    }
+    if (!calls.length && sets.length) {
+        return {skip: 'تعيين بلا استدعاء (يحتاج دالة مسمّاة)'};
+    }
 
     const action = calls[0].name;
     const args = calls[0].args;
     const also = calls.slice(1).map((c) => c.name);
 
-    const hasThis = args.some((a) => /\bthis\b/.test(a.text));
-    const allLiteral = args.every((a) => a.kind === 'literal');
-    const allDynamic = args.every((a) => a.kind === 'dynamic');
+    // إجراءات مدمجة (window.print / window.close)
+    const BUILTIN_MAP = { 'window.print': 'print', 'window.close': 'closeWindow' };
+    if (BUILTIN_MAP[action]) {
+        return {action: BUILTIN_MAP[action], args: null, argAttrs: [], also, prevent};
+    }
+
+    // وسائط تعتمد العنصر (this.value / this.checked / this) ⇒ data-karim-pass
+    const passNames = [];
+    const remaining = [];
+    for (const a of args) {
+        // this / this.value / this.checked / this.files[0] ⇒ data-karim-pass
+        const m = a.text.trim().match(/^this(?:\.(\w+)(?:\[(\d+)\])?)?$/);
+        if (m && a.kind === 'literal') {
+            passNames.push(m[2] !== undefined ? `${m[1]}.${m[2]}` : (m[1] || 'element'));
+            continue;
+        }
+        remaining.push(a);
+    }
+    const allLiteral = remaining.every((a) => a.kind === 'literal');
+    const allDynamic = remaining.every((a) => a.kind === 'dynamic');
+
+    // الوسائط المختلطة: نقبلها فقط إن كانت كل الحرفية **قبل** كل الديناميكية
 
     let jsonArgs = null; let argAttrs = [];
-    if (!args.length) {jsonArgs = null;}
-    else if (hasThis) {
-        return {skip: 'وسائط تعتمد this'};
-    } else if (allLiteral) {
-        const jsonish = args.map((a) => {
+    if (!remaining.length) {jsonArgs = null;}
+    else if (allLiteral) {
+        const jsonish = remaining.map((a) => {
             const t = a.text.trim();
             if (/^'/.test(t)) {return `"${t.slice(1, -1).replace(/\\'/g, "'").replace(/"/g, '\\"')}"`;}
             if (/^"/.test(t)) {return `"${t.slice(1, -1).replace(/"/g, '\\"')}"`;}
@@ -128,11 +161,23 @@ function parseHandler(body) {
         // والمتصفح يفكّها عند القراءة ⇒ نفس النص الأصلي.
         jsonArgs = jsonish.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     } else if (allDynamic) {
-        argAttrs = args.map((a, i) => `data-karim-arg${i}="${a.text}"`);
+        argAttrs = remaining.map((a, i) => `data-karim-arg${i}="${a.text}"`);
     } else {
-        return {skip: 'وسائط مختلطة (حرفية + ديناميكية)'};
+        // مختلطة: JSON واحد بالترتيب الأصلي. الوسائط الديناميكية تُكتب
+        // كقوالب داخل السلسلة ⇒ القالب يقيّمها وقت العرض (كما كان
+        // المعالج السطري) ثم JSON.parse يقرأها بالترتيب الصحيح.
+        const jsonish = remaining.map((a) => {
+            const t = a.text.trim();
+            if (a.kind === 'dynamic') {return `"${t}"`;}
+            if (/^'/.test(t)) {return `"${t.slice(1, -1).replace(/\\'/g, "'").replace(/"/g, '\\"')}"`;}
+            if (/^"/.test(t)) {return `"${t.slice(1, -1).replace(/"/g, '\\"')}"`;}
+            return t;
+        }).join(',');
+        jsonArgs = jsonish.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    return {action, args: jsonArgs, argAttrs, also, prevent};
+    if (passNames.length) {argAttrs = argAttrs.concat(`data-karim-pass="${passNames.join(',')}"`);}
+    if (sets.length) {argAttrs = argAttrs.concat(`data-karim-set="${sets.join(',')}"`);}
+    return {action, args: jsonArgs, argAttrs, also, prevent, stop};
 }
 
 const stats = {converted: 0, skipped: 0};
@@ -176,6 +221,7 @@ for (const file of files) {
         for (const a of parsed.argAttrs) {attrs.push(a);}
         if (parsed.also && parsed.also.length) {attrs.push(`data-karim-also="${parsed.also.join(',')}"`);}
         if (parsed.prevent) {attrs.push('data-karim-prevent');}
+        if (parsed.stop) {attrs.push('data-karim-stop');}
         // مسافة قبل السمة (المطابق الأصلي بدأ بمسافة)
         out = out.slice(0, hit.index) + ` ${attrs.join(' ')}` + out.slice(hit.index + hit.full.length);
         stats.converted += 1;

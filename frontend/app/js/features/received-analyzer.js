@@ -324,7 +324,7 @@ function raRenderDispatches() {
         <td style="text-align:start">${raEscape(d.received_by || '—')}</td>
         <td>${raNum(d.items_count)}</td>
         <td class="c-green"><b>${raNum(d.total_qty)}</b></td>
-        <td><button class="btn btn-sm btn-blue" onclick="event.stopPropagation();raOpenDispatch('${raEscape(d.id)}')"><i class=ji data-i=eye></i></button></td>
+        <td><button class="btn btn-sm btn-blue" data-karim-action="raOpenDispatch" data-karim-arg0="${raEscape(d.id)}" data-karim-stop><i class=ji data-i=eye></i></button></td>
       </tr>`).join('');
     body.innerHTML = `
       <div class="tbl-wrap">
@@ -418,7 +418,7 @@ async function raPrintDispatch(id) {
         .meta{font-size:13px;line-height:2}.meta b{display:inline-block;min-width:80px}.controls{text-align:center;margin-bottom:14px}
         .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
         .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-        <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+        <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
         <h1>إذن صرف — مطاعم الشرفة العالمي</h1>
         <h2>${raEscape(disp.dept_name || '')} — ${raEscape(disp.date || '')}</h2>
         <div class="meta">
@@ -481,7 +481,7 @@ function raPrintItemsReport() {
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#f5d76e}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير الاستلام من المخازن</h1>
     <h2>مطاعم الشرفة العالمي · من ${raEscape(RA.from)} إلى ${raEscape(RA.to)}</h2>
     <div class="filters">تجميع: ${grpLabel}${RA.item ? ' · بحث: ' + raEscape(RA.item) : ''}${RA.dept ? ' · قسم: ' + raEscape(RA.dept) : ''}</div>
@@ -507,7 +507,7 @@ function raPrintOutflowReport() {
     table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير المصروفات والاستهلاك</h1>
     <h2>مطاعم الشرفة العالمي · من ${raEscape(RA.from)} إلى ${raEscape(RA.to)}${RA.item ? ' · بحث: ' + raEscape(RA.item) : ''}</h2>
     <table><thead><tr><th>#</th><th>الصنف</th><th>وارد بالفترة</th><th>مصروف بالفترة</th><th>الرصيد الكلي</th><th>متوسط/يوم</th><th>الحالة</th></tr></thead>
@@ -530,7 +530,7 @@ function raPrintDispatchesReport() {
     table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
     .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير أذونات الصرف المستلمة</h1>
     <h2>مطاعم الشرفة العالمي · من ${raEscape(RA.from)} إلى ${raEscape(RA.to)}${RA.dept ? ' · قسم: ' + raEscape(RA.dept) : ''}</h2>
     <table><thead><tr><th>الإذن</th><th>القسم</th><th>التاريخ</th><th>وقت الاستلام</th><th>المستلم</th><th>أصناف</th><th>إجمالي الكمية</th></tr></thead>

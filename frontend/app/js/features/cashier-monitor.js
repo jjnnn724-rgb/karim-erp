@@ -114,7 +114,7 @@ async function renderCashierMonitor(){
     <div class="u-row-wrap">
     <span class="text-muted" style="font-size:12px">آخر تحديث <b id="cmLiveStamp" dir="ltr">${esc(cmClock(CMSTATE.updatedAt))}</b></span>
     ${syncBadge}
-    <input type="date" id="cmDate" value="${esc(CMSTATE.date)}" onchange="cmDateChange(this.value)" style="min-width:150px">
+    <input type="date" id="cmDate" value="${esc(CMSTATE.date)}" data-karim-action="cmDateChange" data-karim-event="change" data-karim-pass="value" style="min-width:150px">
     <button class="btn btn-gold btn-sm" data-karim-action="cmRefresh"><i class=ji data-i=refresh></i> تحديث</button>
     <button class="btn btn-blue btn-sm" data-karim-action="cmPrintReport"><i class=ji data-i=printer></i> طباعة التقرير</button>
     <button class="btn btn-green btn-sm" data-karim-action="cmExportExcel"><i class=ji data-i=inbox></i> Excel</button>
@@ -253,7 +253,7 @@ function cmPrintReport(){
     if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة','warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير إيرادات الكاشيرية — ${esc(CMSTATE.date)}</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#1a1a1a}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:15px;margin-bottom:18px}table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e}tfoot td{font-weight:800;background:#f3ecd9}.controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="btn-print" onclick="window.print()">طباعة</button><button class="btn-close" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="btn-print" data-karim-action="print">طباعة</button><button class="btn-close" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير إيرادات الكاشيرية — ${esc(fD(CMSTATE.date))}</h1><h2>مطاعم الشرفه العالمي · ${esc(new Date().toLocaleString('ar-EG'))}</h2>
     <table><thead><tr><th>الكاشير</th><th>الفواتير</th><th>الإيراد (شامل)</th><th>قبل الضريبة</th><th>المتوسط</th><th>نقدًا</th><th>شبكة</th><th>آخر فاتورة</th></tr></thead><tbody>
     ${rows.map(r=>`<tr><td><b>كاشير ${esc(r.cashier)}</b></td><td>${fN(r.invoices)}</td><td>${cmMoney(r.revenue)}</td><td>${cmMoney(r.exVat)}</td><td>${cmMoney(r.avg)}</td><td>${cmMoney(r.cash)}</td><td>${cmMoney(r.network)}</td><td dir="ltr">${esc(r.last)}</td></tr>`).join('')}

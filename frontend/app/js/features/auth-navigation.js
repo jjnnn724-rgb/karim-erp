@@ -344,7 +344,7 @@ const mLabel = name.match(/^<i class=ji data-i=([a-z0-9-]+)><\/i>\s*(.*)$/i);
 const navIconName = mLabel ? mLabel[1] : null;
 const navLabelText = mLabel ? mLabel[2] : name;
 const isActive = STATE.page===key;
-return `<div class="nav-item ${isActive?'active':''}" data-page="${key}" onclick="go('${key}',this)" role="button" tabindex="0" data-kb-activate aria-label="${navLabelText}"${isActive?' aria-current="page"':''}><span class="nav-icon">${navIconName&&window.ico?ico(navIconName):''}</span><span>${navLabelText}</span>${badge}</div>`;
+return `<div class="nav-item ${isActive?'active':''}" data-page="${key}" data-karim-action="go" data-karim-arg0="${key}" data-karim-pass="element" role="button" tabindex="0" data-kb-activate aria-label="${navLabelText}"${isActive?' aria-current="page"':''}><span class="nav-icon">${navIconName&&window.ico?ico(navIconName):''}</span><span>${navLabelText}</span>${badge}</div>`;
 };
 let html = '';
 const emitted = new Set();

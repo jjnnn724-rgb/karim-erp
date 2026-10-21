@@ -140,7 +140,7 @@ function vegRenderNewTab() {
           <div class="veg-item" data-veg-item="${esc(it.name)}" data-veg-cat="${esc(cat.key)}">
             <div class="vi-name"><span>${esc(it.name)}</span><span class="vi-unit">${esc(it.unit)}</span></div>
             <div class="veg-row">
-              <input type="number" min="0" step="any" placeholder="الكمية" data-veg-qty="${esc(it.name)}" data-veg-unit="${esc(it.unit)}" oninput="vegMarkFilled(this)">
+              <input type="number" min="0" step="any" placeholder="الكمية" data-veg-qty="${esc(it.name)}" data-veg-unit="${esc(it.unit)}" data-karim-action="vegMarkFilled" data-karim-event="input" data-karim-pass="element">
               <select data-veg-unit-sel="${esc(it.name)}">${unitOptions(it.unit)}</select>
             </div>
           </div>`).join('')}
@@ -154,7 +154,7 @@ function vegRenderNewTab() {
           &nbsp;•&nbsp; <b style="color:var(--text)">إلى:</b> المخازن &nbsp;•&nbsp; ${esc(today)}
         </div>
         <div class="veg-search" style="margin:0">
-          <input type="text" placeholder="🔍 ابحث عن صنف…" oninput="vegSearchItems(this.value)">
+          <input type="text" placeholder="🔍 ابحث عن صنف…" data-karim-action="vegSearchItems" data-karim-event="input" data-karim-pass="value">
         </div>
       </div>
       <div id="vegCatalog">${catsHtml}</div>
@@ -207,7 +207,7 @@ function vegAddCustomRow() {
       <input type="number" class="qty" min="0" step="any" placeholder="الكمية" data-veg-cqty="c${n}">
       <select data-veg-cunit="c${n}">${units.map((u) => `<option value="${esc(u)}">${esc(u)}</option>`).join('')}</select>
       <input type="text" class="note" placeholder="ملاحظة (اختياري)" data-veg-cnote="c${n}">
-      <button type="button" class="btn btn-red btn-sm" onclick="this.parentElement.remove();vegUpdateCount()">✖</button>`;
+      <button type="button" class="btn btn-red btn-sm" data-karim-action="this.parentElement.remove" data-karim-also="vegUpdateCount">✖</button>`;
     box.appendChild(row);
     row.querySelector('.qty').addEventListener('input', vegUpdateCount);
 }
@@ -692,5 +692,5 @@ export {
     vegAddCustomRow, vegSetPriority, vegSendRequest, vegResetForm, vegSetFilter,
     vegPrint, vegReceive, vegCancel, vegBuildPrintHtml,
     vegTogglePricing, vegPriceCalc, vegSubmitPrices, vegToggleReceive, vegSubmitReceive,
-    vegCanEdit, vegEditItems, vegSubmitItemsEdit,
+    vegCanEdit, vegEditItems, vegSubmitItemsEdit, vegUpdateCount,
 };

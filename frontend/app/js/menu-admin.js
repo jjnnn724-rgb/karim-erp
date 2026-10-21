@@ -184,8 +184,8 @@ function renderCatPicker() {
     }
     const all = SEL_CATS === null || SEL_CATS === undefined;
     host.innerHTML = `<div class="cat-picker-title">التصنيفات المعروضة على الشاشة الخارجية ${all ? '<span class="count">الكل</span>' : `<span class="count">${(SEL_CATS || []).length} مختار</span>`}</div>`
-        + `<label class="cat-opt"><input type="checkbox" ${all ? 'checked' : ''} onchange="catToggleAll(this)"> <b>كل المنيو</b></label>`
-        + ALL_CATS.map(c => `<label class="cat-opt"><input type="checkbox" data-cat="${esc(c)}" ${all || (SEL_CATS || []).includes(c) ? 'checked' : ''} onchange="catToggle(this)"> ${esc(c)}</label>`).join('')
+        + `<label class="cat-opt"><input type="checkbox" ${all ? 'checked' : ''} data-karim-action="catToggleAll" data-karim-event="change" data-karim-pass="element"> <b>كل المنيو</b></label>`
+        + ALL_CATS.map(c => `<label class="cat-opt"><input type="checkbox" data-cat="${esc(c)}" ${all || (SEL_CATS || []).includes(c) ? 'checked' : ''} data-karim-action="catToggle" data-karim-event="change" data-karim-pass="element"> ${esc(c)}</label>`).join('')
         + `<div class="cat-picker-actions"><span class="cat-picker-hint">التغيير لا يظهر على الشاشة قبل الحفظ</span><button class="btn gold" data-karim-action="saveCategories">حفظ الاختيار</button></div>`;
 }
 function catToggleAll(el) {
@@ -603,7 +603,7 @@ function renderWeekDay() {
     if (!host) {return;}
     host.innerHTML = (d.items || []).map((it, i) => `
         <div class="wk-row">
-            <select class="wk-catalog" aria-label="اختيار صنف محفوظ" data-i="${i}" onchange="weekUseCatalogItem(this)">
+            <select class="wk-catalog" aria-label="اختيار صنف محفوظ" data-i="${i}" data-karim-action="weekUseCatalogItem" data-karim-event="change" data-karim-pass="element">
                 ${weeklyCatalogOptions(it)}
             </select>
             <input value="${esc(it.name || '')}" maxlength="120" placeholder="اسم الصنف" data-k="name" data-i="${i}">

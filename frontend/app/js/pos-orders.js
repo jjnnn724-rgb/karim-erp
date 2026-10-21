@@ -194,7 +194,7 @@ const POS_ORDERS = {
             const recentEl = document.getElementById('orders-recent');
             if (recentEl && stats.recent_orders) {
                 recentEl.innerHTML = stats.recent_orders.map(o => `
-                    <div class="recent-order-item" onclick="POS_ORDERS.viewInvoice('${o.id}')">
+                    <div class="recent-order-item" data-karim-action="POS_ORDERS.viewInvoice" data-karim-arg0="${o.id}">
                         <span class="invoice-num">#${o.invoice_counter}</span>
                         <span class="invoice-dept">${this.escape(o.department_name || '—')}</span>
                         <span class="invoice-amount">${Number(o.total_amount).toFixed(2)}</span>
@@ -305,7 +305,7 @@ const POS_ORDERS = {
             const payMethods = [...new Set(payments.map(p => p.method))].join(', ');
             
             return `
-            <tr class="order-row ${o.status}" onclick="POS_ORDERS.viewInvoice('${o.id}')">
+            <tr class="order-row ${o.status}" data-karim-action="POS_ORDERS.viewInvoice" data-karim-arg0="${o.id}">
                 <td class="fw-bold c-gold">#${o.invoice_counter}</td>
                 <td>${this.escape(o.department_name || '—')}</td>
                 <td>${date} ${time}</td>
@@ -313,9 +313,9 @@ const POS_ORDERS = {
                 <td>${payMethods || '—'}</td>
                 <td><span class="order-status-badge ${statusClass}">${statusLabel}</span></td>
                 <td>
-                    <button class="btn btn-xs" onclick="event.stopPropagation();POS_ORDERS.viewInvoice('${o.id}')" title="عرض"><i class=ji data-i=eye></i></button>
-                    <button class="btn btn-xs btn-blue" onclick="event.stopPropagation();POS_ORDERS.printReceipt('${o.id}')" title="طباعة"><i class=ji data-i=printer></i></button>
-                    ${o.status === 'issued' ? `<button class="btn btn-xs btn-red" onclick="event.stopPropagation();POS_ORDERS.voidInvoice('${o.id}')" title="إلغاء"><i class=ji data-i=x></i></button>` : ''}
+                    <button class="btn btn-xs" data-karim-action="POS_ORDERS.viewInvoice" data-karim-arg0="${o.id}" data-karim-stop title="عرض"><i class=ji data-i=eye></i></button>
+                    <button class="btn btn-xs btn-blue" data-karim-action="POS_ORDERS.printReceipt" data-karim-arg0="${o.id}" data-karim-stop title="طباعة"><i class=ji data-i=printer></i></button>
+                    ${o.status === 'issued' ? `<button class="btn btn-xs btn-red" data-karim-action="POS_ORDERS.voidInvoice" data-karim-arg0="${o.id}" data-karim-stop title="إلغاء"><i class=ji data-i=x></i></button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -331,9 +331,9 @@ const POS_ORDERS = {
         }
         
         let html = '';
-        html += `<button class="btn btn-sm" ${pag.page <= 1 ? 'disabled' : ''} onclick="POS_ORDERS.goPage(${pag.page - 1})"><i class=ji data-i=arrow-left></i> السابق</button>`;
+        html += `<button class="btn btn-sm" ${pag.page <= 1 ? 'disabled' : ''} data-karim-action="POS_ORDERS.goPage" data-karim-arg0="${pag.page - 1}"><i class=ji data-i=arrow-left></i> السابق</button>`;
         html += `<span class="page-info">صفحة ${pag.page} من ${pag.totalPages}</span>`;
-        html += `<button class="btn btn-sm" ${pag.page >= pag.totalPages ? 'disabled' : ''} onclick="POS_ORDERS.goPage(${pag.page + 1})">التالي <i class=ji data-i=arrow-right></i></button>`;
+        html += `<button class="btn btn-sm" ${pag.page >= pag.totalPages ? 'disabled' : ''} data-karim-action="POS_ORDERS.goPage" data-karim-arg0="${pag.page + 1}">التالي <i class=ji data-i=arrow-right></i></button>`;
         el.innerHTML = html;
     },
 
@@ -414,10 +414,10 @@ const POS_ORDERS = {
         
         // Actions
         modal.querySelector('.invoice-actions').innerHTML = `
-            <button class="btn btn-blue" onclick="POS_ORDERS.printReceipt('${order.id}')"><i class=ji data-i=printer></i> طباعة الإيصال</button>
-            <button class="btn btn-gold" onclick="POS_ORDERS.reprintThermal('${order.id}')"><i class=ji data-i=printer></i> طباعة حرارية</button>
-            ${order.status === 'issued' ? `<button class="btn btn-red" onclick="POS_ORDERS.voidInvoice('${order.id}')"><i class=ji data-i=x></i> إلغاء الفاتورة</button>` : ''}
-            <button class="btn btn-sm" onclick="POS_ORDERS.closeInvoiceModal()"><i class=ji data-i=x></i> إغلاق</button>
+            <button class="btn btn-blue" data-karim-action="POS_ORDERS.printReceipt" data-karim-arg0="${order.id}"><i class=ji data-i=printer></i> طباعة الإيصال</button>
+            <button class="btn btn-gold" data-karim-action="POS_ORDERS.reprintThermal" data-karim-arg0="${order.id}"><i class=ji data-i=printer></i> طباعة حرارية</button>
+            ${order.status === 'issued' ? `<button class="btn btn-red" data-karim-action="POS_ORDERS.voidInvoice" data-karim-arg0="${order.id}"><i class=ji data-i=x></i> إلغاء الفاتورة</button>` : ''}
+            <button class="btn btn-sm" data-karim-action="POS_ORDERS.closeInvoiceModal"><i class=ji data-i=x></i> إغلاق</button>
         `;
         
         modal.classList.remove('hidden');

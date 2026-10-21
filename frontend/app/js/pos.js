@@ -642,9 +642,9 @@ function renderCart() {
                     <div class="cart-item-total">${fmtMoney(item.line_subtotal)} ${CURRENCY}</div>
                 </div>
                 <div class="cart-item-controls">
-                    <button class="qty-btn" onclick="changeQty(${index}, -1)">−</button>
+                    <button class="qty-btn" data-karim-action="changeQty" data-karim-args="[&quot;${index}&quot;,-1]">−</button>
                     <span class="cart-item-qty">${fmtQty(item.quantity)}</span>
-                    <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                    <button class="qty-btn" data-karim-action="changeQty" data-karim-args="[&quot;${index}&quot;,1]">+</button>
                     <button class="qty-btn remove" data-karim-action="removeFromCart" data-karim-arg0="${index}"><i class=ji data-i=x></i></button>
                 </div>
             </div>

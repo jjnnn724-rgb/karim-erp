@@ -180,7 +180,7 @@ function saRenderOrders() {
         <td class="c-green">${saMoney(o.payed)}</td>
         <td>${saNum(o.lines_count)}</td>
         <td class="text-muted">${saEscape(o.zone_name || o.table_name || '—')}</td>
-        <td><button class="btn btn-sm btn-blue" onclick="event.stopPropagation();saPrintOrder('${saEscape(o.doc_no)}')"><i class=ji data-i=printer></i></button></td>
+        <td><button class="btn btn-sm btn-blue" data-karim-action="saPrintOrder" data-karim-arg0="${saEscape(o.doc_no)}" data-karim-stop><i class=ji data-i=printer></i></button></td>
       </tr>`).join('');
     body.innerHTML = `
       <div class="tbl-wrap">
@@ -280,7 +280,7 @@ async function saPrintOrder(docNo) {
           <div><span>شبكة:</span><b>${saMoney(o.pay_network)}</b></div>
         </div>
         <p style="text-align:center;font-size:11px;margin-top:10px;color:#777">تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</p>
-        <div class="btns"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+        <div class="btns"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
         </body></html>`);
         w.document.close();
         w.focus();
@@ -325,7 +325,7 @@ function saPrintReport() {
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#f5d76e}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تحليل مبيعات الكاشيرية</h1>
     <h2>مطاعم الشرفة العالمي · من ${saEscape(SA.from)} إلى ${saEscape(SA.to)}</h2>
     <div class="filters">تجميع: ${grpLabel}${SA.item ? ' · بحث: ' + saEscape(SA.item) : ''}${SA.cashier ? ' · كاشير: ' + saEscape(SA.cashier) : ''}</div>
@@ -350,7 +350,7 @@ function saPrintOrdersReport() {
     table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
     tfoot td{font-weight:800;background:#f3ecd9}.controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير أوردرات الكاشيرية</h1>
     <h2>مطاعم الشرفة العالمي · من ${saEscape(SA.from)} إلى ${saEscape(SA.to)}${SA.cashier ? ' · كاشير: ' + saEscape(SA.cashier) : ''}</h2>
     <table><thead><tr><th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الصافي</th><th>الإجمالي</th><th>مدفوع</th><th>أصناف</th><th>المنطقة</th></tr></thead>

@@ -68,7 +68,7 @@ async function loadRosterWeek(){
                 const cur = window._rosterDept || '';
                 let opts = '<option value="">كل الأقسام</option>';
                 for (const c of depts) {opts += '<option value="' + esc(c) + '"' + (cur === c ? ' selected' : '') + '>' + esc(deptNameByCode(c) || c) + '</option>';}
-                wrap.innerHTML = '<select id="rosterDeptSel" class="inp" onchange="window._rosterDept=this.value;loadRosterWeek()">' + opts + '</select>';
+                wrap.innerHTML = '<select id="rosterDeptSel" class="inp" data-karim-action="loadRosterWeek" data-karim-event="change" data-karim-set="_rosterDept:@value">' + opts + '</select>';
             } else {
                 wrap.innerHTML = '<span class="badge bdg-blue">القسم: ' + esc(deptName) + '</span>';
             }
@@ -103,12 +103,12 @@ async function loadRosterWeek(){
                     tbody += '<div style="display:flex;flex-direction:column;gap:3px;align-items:center">'
                         + '<input type="time" class="inp rsW-start" value="' + esc(cell.shift_start) + '" style="width:82px;padding:3px 4px;font-size:11px" onchange="rosterMarkDirty(this)"' + (off ? ' disabled' : '') + '>'
                         + '<input type="number" class="inp rsW-hours" value="' + esc(String(cell.shift_hours)) + '" min="1" max="24" step="0.5" style="width:60px;padding:3px 4px;font-size:11px" onchange="rosterMarkDirty(this)"' + (off ? ' disabled' : '') + '>'
-                        + '<label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" class="rsW-off" ' + (off ? 'checked' : '') + ' onchange="rosterToggleOff(this)">راحة</label>'
+                        + '<label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" class="rsW-off" ' + (off ? 'checked' : '') + ' data-karim-action="rosterToggleOff" data-karim-event="change" data-karim-pass="element">راحة</label>'
                         + '</div>';
                 }
                 tbody += '</td>';
             }
-            tbody += '<td style="text-align:center"><button class="btn btn-sm" title="انسخ قيم أول يوم متاح لبقية أيام الأسبوع" onclick="rosterCopyRow(this)"><i class=ji data-i=copy></i></button></td></tr>';
+            tbody += '<td style="text-align:center"><button class="btn btn-sm" title="انسخ قيم أول يوم متاح لبقية أيام الأسبوع" data-karim-action="rosterCopyRow" data-karim-pass="element"><i class=ji data-i=copy></i></button></td></tr>';
         }
         if (!d.grid.length) {tbody += '<tr><td colspan="9" class="u-empty">لا موظفون في نطاق هذا القسم بعد</td></tr>';}
         tbody += '</tbody>';

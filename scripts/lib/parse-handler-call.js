@@ -63,6 +63,24 @@ function regexCanStartHere(before) {
     return true;
 }
 
+/** حدّ العبارة: الفاصلة المنقوطة التالية على المستوى الأعلى (أو نهاية النص). */
+function statementEnd(text, from) {
+    let depth = 0;
+    let quote = null;
+    for (let i = from; i < text.length; i++) {
+        const ch = text[i];
+        if (quote) {
+            if (ch === quote && text[i - 1] !== '\\') {quote = null;}
+            continue;
+        }
+        if (ch === '"' || ch === "'" || ch === '`') {quote = ch; continue;}
+        if ('([{'.includes(ch)) {depth++; continue;}
+        if (')]}'.includes(ch)) {depth--; continue;}
+        if (ch === ';' && depth === 0) {return i;}
+    }
+    return text.length;
+}
+
 /** يقسّم نص الوسائط على الفواصل顶层 (خارج الأقواس والنصوص). */
 function splitArgs(text) {
     const parts = [];
@@ -99,6 +117,8 @@ function parseHandlerCalls(body) {
     const calls = [];
     let pos = 0;
     let prevent = false;
+    let stop = false;
+    const assignments = [];
 
     while (pos < masked.length) {
         while (pos < masked.length && /[\s;]/.test(masked[pos])) {pos++;}
@@ -106,9 +126,32 @@ function parseHandlerCalls(body) {
         const rest = masked.slice(pos);
         if (/^return\s+false/i.test(rest)) {prevent = true; break;}
         if (/^return\b/i.test(rest)) {break;}
+        // event.stopPropagation() / event.preventDefault() ⇒ أعلام
+        if (/^event\s*\.\s*stopPropagation\s*\(\s*\)/i.test(rest)) {
+            stop = true;
+            pos += rest.match(/^event\s*\.\s*stopPropagation\s*\(\s*\)\s*;?/i)[0].length;
+            continue;
+        }
+        if (/^event\s*\.\s*preventDefault\s*\(\s*\)/i.test(rest)) {
+            prevent = true;
+            pos += rest.match(/^event\s*\.\s*preventDefault\s*\(\s*\)\s*;?/i)[0].length;
+            continue;
+        }
 
-        const nameMatch = rest.match(/^([A-Za-z_$][\w$]*)\s*\(/);
-        if (!nameMatch) {return null;}
+        const nameMatch = rest.match(/^([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/);
+        if (!nameMatch) {
+            // عبارة تعيين: name = expr  (وليس ==)
+            const assign = rest.match(/^([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*=(?!=)/);
+            if (assign) {
+                const exprStart = assign[0].length;
+                const end = statementEnd(masked, pos + exprStart);
+                const expr = masked.slice(pos + exprStart, end).trim();
+                assignments.push({ target: assign[1], expr });
+                pos = end < masked.length ? end + 1 : masked.length;
+                continue;
+            }
+            return null;
+        }
         const name = nameMatch[1];
         let i = pos + nameMatch[0].length - 1;
         let depth = 0;
@@ -149,8 +192,8 @@ function parseHandlerCalls(body) {
         pos = i + 1;
     }
 
-    if (!calls.length) {return null;}
-    return { calls, prevent };
+    if (!calls.length && !assignments.length) {return null;}
+    return { calls, prevent, stop, assignments };
 }
 
 module.exports = { parseHandlerCalls, maskTemplates, splitArgs };

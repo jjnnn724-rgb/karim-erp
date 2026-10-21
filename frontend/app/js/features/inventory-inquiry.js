@@ -384,7 +384,7 @@ function icCardHtml(d) {
         </div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="window.print()"><i class=ji data-i=printer></i> طباعة</button>
+        <button class="btn btn-sm" data-karim-action="print"><i class=ji data-i=printer></i> طباعة</button>
         <button class="btn btn-sm" data-karim-action="iqCloseCard"><i class=ji data-i=x></i> إغلاق</button>
       </div>
     </div>
@@ -478,7 +478,7 @@ async function renderItemCardPage() {
             <button class="btn btn-sm" data-karim-action="iqPreset" data-karim-args="[90]">90 يوم</button>
           </div>
           <label style="font-size:13px;flex:1;min-width:220px">الصنف
-            <select id="icPick" class="inp" style="width:100%" onchange="iqOpenCard(this.value)"><option value="">جارٍ القراءة…</option></select>
+            <select id="icPick" class="inp" style="width:100%" data-karim-action="iqOpenCard" data-karim-event="change" data-karim-pass="value"><option value="">جارٍ القراءة…</option></select>
           </label>
         </div>
       </div>
@@ -547,7 +547,7 @@ function iqPrintReport() {
     th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#f5d76e}
     .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير استعلامات المخزون</h1>
     <h2>من ${iqEsc(IQ.from)} إلى ${iqEsc(IQ.to)}${IQ.dept ? ' · مخزن قسم: ' + iqEsc(IQ.dept) : ''}</h2>
     <div class="summary"><div>الأصناف: <b>${iqNum(t.items)}</b></div><div>قيمة المخزون: <b>${iqMoney(t.stockValue)}</b></div>

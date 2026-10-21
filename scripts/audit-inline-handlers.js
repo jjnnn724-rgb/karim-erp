@@ -147,6 +147,9 @@ for (const f of classicFiles) {
 }
 
 /** ٥) المسح: كل معالج سطري يشير إلى معرّف */
+/** إجراءات مدمجة في الموزّع (frontend/app/js/core/action-dispatch.js). */
+const DISPATCH_BUILTINS = new Set(['print', 'closeWindow']);
+
 const findings = [];
 
 /**
@@ -217,7 +220,7 @@ for (const f of files) {
         while ((hit = re.exec(src))) {
             if (isCommentLine(src, hit.index)) {continue;}
             const name = hit[1];
-            if (BUILTINS.has(name)) {continue;}
+            if (BUILTINS.has(name) || DISPATCH_BUILTINS.has(name)) {continue;}
             const line = src.slice(0, hit.index).split('\n').length;
             const reason = f.endsWith('.html')
                 ? ((definedIn.get(f) || new Set()).has(name)

@@ -305,7 +305,9 @@ describe('استيراد المخزون بالـExcel (POST /warehouse/inventory
         expect(src).toContain('<label>تاريخ الصلاحية</label>');               // الاستلام السريع
         expect(src).toContain('تاريخ الصلاحية</small>');                      // سطر فاتورة الشراء
         expect(src).toContain('openingExpiry_${idx}');
-        expect(src).toContain("updateOpeningReplaceRow(${idx},'expiry',this.value)");
+        expect(src).toContain('data-karim-action="updateOpeningReplaceRow"');
+        expect(src).toContain('data-karim-args="[&quot;${idx}&quot;,&quot;expiry&quot;]"');
+        expect(src).toContain('data-karim-pass="value"');
     });
 
     test('استيراد الرصيد الافتتاحي: الصف بلا عمود صلاحية يُقبل (اختياري)', () => {

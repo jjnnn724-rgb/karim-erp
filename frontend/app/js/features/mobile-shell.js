@@ -359,7 +359,7 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
             <label class="btn btn-sm" style="width:100%;margin-top:8px;text-align:center;cursor:pointer">📁 أو ارفع صورة واضحة للوجه
                 <input type="file" id="faceUpload" accept="image/*" capture="user" style="display:none">
             </label>
-            <button type="button" class="btn btn-sm" style="width:100%;margin-top:8px" onclick="window.__faceCancel()">إلغاء</button>
+            <button type="button" class="btn btn-sm" style="width:100%;margin-top:8px" data-karim-action="window.__faceCancel">إلغاء</button>
         `);
         let stream = null;
         let stopped = false;

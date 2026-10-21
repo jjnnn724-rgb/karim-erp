@@ -49,10 +49,27 @@ public class TrustAll { public static void On() {
 "@
     [TrustAll]::On()
 
+    # Maintenance gate: an explicit stop from the control panel must not be
+    # undone by this guardian. Mirrors backend/server-control-maintenance.js:
+    # 'stopped' is respected forever; transient states only for 10 minutes.
+    $MaintSkip = $false
+    try {
+        $MaintFile = Join-Path (Split-Path -Parent $PSScriptRoot) 'runtime\maintenance.json'
+        if (Test-Path $MaintFile) {
+            $m = Get-Content $MaintFile -Raw | ConvertFrom-Json
+            if ($m.state -eq 'stopped') { $MaintSkip = $true }
+            elseif ($m.state -in @('stopping', 'starting', 'restarting')) {
+                $at = [datetime]::Parse($m.at)
+                if (((Get-Date) - $at).TotalMinutes -lt 10) { $MaintSkip = $true }
+            }
+            if ($MaintSkip) { WLog ("maintenance={0} - ERP healing skipped" -f $m.state) }
+        }
+    } catch { WLog "maintenance flag unreadable - continuing normal checks" }
+
     # Layer 1: Windows service must be RUNNING
     try {
         $svc = Get-Service -Name $Service
-        if ($svc.Status -ne 'Running') {
+        if ($svc.Status -ne 'Running' -and !$MaintSkip) {
             WLog ("service {0} is {1} - starting it" -f $Service, $svc.Status)
             Write-RecoveryFlag 'guardian-service-not-running'
             Start-Service -Name $Service
@@ -61,7 +78,7 @@ public class TrustAll { public static void On() {
     } catch { WLog ("service check failed: {0}" -f $_.Exception.Message) }
 
     # Layer 2: local app health (safe restart only after 3 failed probes)
-    if (!(Test-Health $HealthUrl)) {
+    if (!$MaintSkip -and !(Test-Health $HealthUrl)) {
         WLog "HEALTH DOWN x3 - safe restart of $Service (never taskkill)"
         Write-RecoveryFlag 'guardian-health-down-x3'
         Restart-Service -Name $Service -Force
@@ -83,7 +100,7 @@ public class TrustAll { public static void On() {
     # Layer 4: public HTTPS entry (tailscale serve) must answer.
     # Detection is end-to-end (no CLI needed). Repair tries the CLI; if the
     # daemon denies it (other-user install), we alert loudly instead.
-    if (!(Test-Health $PublicUrl 2)) {
+    if (!$MaintSkip -and !(Test-Health $PublicUrl 2)) {
         WLog "public HTTPS :443 DOWN - re-applying tailscale serve mapping"
         try {
             $out = & tailscale serve --bg https+insecure://127.0.0.1:5001 2>&1 | Out-String
@@ -97,7 +114,7 @@ public class TrustAll { public static void On() {
     # user session (SYSTEM identity cannot hold the reserved name), so this
     # layer only ALERTS loudly on failure - it cannot relaunch another identity.
     $ZrokUrl = 'https://karim-erp.shares.zrok.io'
-    if ($ZrokUrl -and !(Test-Health ($ZrokUrl + '/api/health') 2)) {
+    if (!$MaintSkip -and $ZrokUrl -and !(Test-Health ($ZrokUrl + '/api/health') 2)) {
         WLog "ALERT: public entry DOWN - open zrok-share-window.bat in the user session (or reboot + log on if Startup shortcut installed)"
         Write-RecoveryFlag 'guardian-zrok-down'
     }

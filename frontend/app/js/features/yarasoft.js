@@ -174,7 +174,7 @@ ${eng.lastError?`<div class="mcard" style="border:1px solid var(--red)"><b style
 <div id="ysSyncDocBody" style="padding:0 14px 14px"><div class="text-muted">دوس فحص الفجوات لمقارنة ياراسوفت بالنظام يوم بيوم.</div></div>
 </div>
 <div class="tbl-wrap" style="margin-top:14px">
-<div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل استيراد الفواتير</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في السجل..." oninput="ysTableSearch(this,'ysLogBody')" style="max-width:220px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintLog"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> سجل استيراد الفواتير</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في السجل..." data-karim-action="ysTableSearch" data-karim-event="input" data-karim-args="[&quot;ysLogBody&quot;]" data-karim-pass="element" style="max-width:220px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintLog"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="text-muted" style="padding:6px 14px;font-size:12px">كل ملف يُعالج مرة واحدة بالضبط (حماية بالهش + رقم الفاتورة + مرجع الإيراد)</div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الملف</th><th>رقم الفاتورة</th><th>الحالة</th><th>أصناف</th><th>الإجمالي</th><th>محاولات</th><th>المدة</th><th>التاريخ</th><th>خطأ</th><th></th></tr></thead>
@@ -233,7 +233,7 @@ th{background:#f7ead8;color:#7c3500}tfoot td{font-weight:700;background:#fafafa}
 .controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}
 .controls button.secondary{background:#555}
 @media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>
-<div class="controls"><button onclick="window.print()">طباعة</button><button class="secondary" onclick="window.close()">إغلاق</button></div>
+<div class="controls"><button data-karim-action="print">طباعة</button><button class="secondary" data-karim-action="closeWindow">إغلاق</button></div>
 <main class="sheet"><header class="head"><h1>${esc(STATE.settings?.name || 'Karim ERP')}</h1><p style="font-size:16px;font-weight:700;color:#111">${esc(title)}</p><p>${esc(subtitle || '')}</p><p>تاريخ التقرير: ${dateStr}</p></header>
 ${summaryPairs?.length ? `<section class="summary">${summaryPairs.map(p => `<div><span>${esc(p[0])}</span><b>${p[1]}</b></div>`).join('')}</section>` : ''}
 <table><thead><tr>${headCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${bodyRows || '<tr><td>لا بيانات</td></tr>'}</tbody></table>
@@ -315,7 +315,7 @@ const rows=(YSSTATE.review||[]).map(r=>`
 el.innerHTML=`
 <div class="mcard" style="margin-bottom:12px"><b><i class=ji data-i=info></i> القاعدة:</b> <span style="color:var(--text2)">لن يُستبدل صنف غير مطابق بمنتج آخر أبدًا — اربطه يدويًا هنا وستُستورد فاتورته تلقائيًا بعد اكتمال كل أصنافها، ويُستخدم نفس الربط لكل الفواتير القادمة.</span></div>
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> أصناف بلا مطابقة (${fN((YSSTATE.review||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysReviewBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysLoadReview" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintReview"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=alert-triangle></i> أصناف بلا مطابقة (${fN((YSSTATE.review||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." data-karim-action="ysTableSearch" data-karim-event="input" data-karim-args="[&quot;ysReviewBody&quot;]" data-karim-pass="element" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysLoadReview" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintReview"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الفاتورة</th><th>كود Yarasoft</th><th>الباركود</th><th>اسم الصنف</th><th>الكمية</th><th>السبب</th><th></th></tr></thead>
 <tbody id="ysReviewBody">${rows||'<tr><td colspan="7" class="u-empty-sm">لا أصناف معلقة — كل الفواتير مستوردة</td></tr>'}</tbody>
@@ -371,7 +371,7 @@ const rows=(YSSTATE.mappings||[]).map(m=>`
 el.innerHTML=`
 ${canWrite?`<div class="u-row-wrap" style="gap:8px;margin-bottom:12px"><button class="btn btn-gold" data-karim-action="ysAddMappingModal"><i class=ji data-i=plus></i> ربط جديد</button></div>`:''}
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=tag></i> ربط أكواد Yarasoft بمنتجات karim</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysMapBody')" style="max-width:200px"><span class="text-muted">أولوية المطابقة: باركود ← كود خارجي ← ربط صريح ← رقم منتج داخلي</span></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=tag></i> ربط أكواد Yarasoft بمنتجات karim</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." data-karim-action="ysTableSearch" data-karim-event="input" data-karim-args="[&quot;ysMapBody&quot;]" data-karim-pass="element" style="max-width:200px"><span class="text-muted">أولوية المطابقة: باركود ← كود خارجي ← ربط صريح ← رقم منتج داخلي</span></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>كود Yarasoft</th><th>باركود Yarasoft</th><th>منتج karim</th><th>الحالة</th><th></th></tr></thead>
 <tbody id="ysMapBody">${rows||'<tr><td colspan="5" class="u-empty-sm">لا روابط صريحة بعد — المطابقة تعمل بالباركود تلقائيًا</td></tr>'}</tbody>
@@ -432,7 +432,7 @@ const profit=Number(m.posted_total||0)-Number(m.posted_expenses||0);
 return `
 <tr>
 <td><span class="badge bdg-blue">${esc(m.src_table)}</span></td>
-<td class="fw-bold"><a href="javascript:void(0)" onclick="ysOpenSecInvoices(${m.id},1)" title="اضغط لعرض فواتير القسم" style="color:inherit;text-decoration:underline dotted;cursor:pointer">${esc(m.display_ar)}</a></td>
+<td class="fw-bold"><a href="javascript:void(0)" data-karim-action="ysOpenSecInvoices" data-karim-args="[&quot;${m.id}&quot;,1]" title="اضغط لعرض فواتير القسم" style="color:inherit;text-decoration:underline dotted;cursor:pointer">${esc(m.display_ar)}</a></td>
 <td><code>${esc(m.dept_code)}</code></td>
 <td>${fN(m.posted_count||0)}</td>
 <td class="c-green">${fC(m.posted_total||0)}</td>
@@ -461,7 +461,7 @@ ${(YSSTATE.secUnmapped||[]).length?`<div class="tbl-wrap" style="margin-bottom:1
 <tbody>${unRows}</tbody>
 </table></div></div>`:''}
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=layout-grid></i> خريطة الأقسام (${fN((YSSTATE.secMap||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الأقسام..." oninput="ysTableSearch(this,'ysSecMapBody')" style="max-width:220px">${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="ysManualSectionModal"><i class=ji data-i=plus></i> قسم يدوي</button>`:''}<button class="btn btn-blue btn-sm" data-karim-action="ysLoadSections" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintSections"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=layout-grid></i> خريطة الأقسام (${fN((YSSTATE.secMap||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث في الأقسام..." data-karim-action="ysTableSearch" data-karim-event="input" data-karim-args="[&quot;ysSecMapBody&quot;]" data-karim-pass="element" style="max-width:220px">${['admin','manager'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="ysManualSectionModal"><i class=ji data-i=plus></i> قسم يدوي</button>`:''}<button class="btn btn-blue btn-sm" data-karim-action="ysLoadSections" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button><button class="btn btn-blue btn-sm" data-karim-action="ysPrintSections"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>الجدول</th><th>القسم</th><th>الكود</th><th>فواتير مرحلة</th><th>إيرادات تلقائية</th><th>مصروفات تلقائية</th><th>الصافي</th><th>الحالة</th><th></th></tr></thead>
 <tbody id="ysSecMapBody">${mapRows||'<tr><td colspan="9" class="u-empty-sm">لا أقسام بعد</td></tr>'}</tbody>
@@ -488,7 +488,7 @@ function ysCashierCards(){
 const cards=(YSSTATE.secMap||[]).filter(m=>m.src_table==='CC'&&m.active);
 if(!cards.length) {return '';}
 return `<div class="stats-grid-premium kpi-grid-4" style="margin-bottom:12px">${cards.map(m=>`
-<div class="metric-card-premium" onclick="ysOpenSecInvoices(${m.id},1)" data-tooltip="اضغط لعرض فواتير ${esc(m.display_ar)}">
+<div class="metric-card-premium" data-karim-action="ysOpenSecInvoices" data-karim-args="[&quot;${m.id}&quot;,1]" data-tooltip="اضغط لعرض فواتير ${esc(m.display_ar)}">
 <div class="kpi-top"><span class="kpi-label">${esc(m.display_ar)}</span><span class="kpi-chip"><i class=ji data-i=${ysCashierIcon(m.dept_code)}></i></span></div>
 <div class="value">${fC(m.posted_total||0)}</div>
 <div class="trend"><i class=ji data-i=receipt></i> ${fN(m.posted_count||0)} فاتورة — اضغط للتفاصيل</div>
@@ -535,7 +535,7 @@ box.innerHTML=`<div class="tbl-wrap" style="margin-bottom:12px;border:1px solid 
 <button class="btn btn-sm" data-karim-action="ysCloseSecDrill">إغلاق ✕</button>
 </div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
-<thead><tr>${canWrite?'<th><input type="checkbox" onclick="ysSecInvToggleAll(this)"></th>':''}<th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th><th>الحالة</th></tr></thead>
+<thead><tr>${canWrite?'<th><input type="checkbox" data-karim-action="ysSecInvToggleAll" data-karim-pass="element"></th>':''}<th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th><th>الحالة</th></tr></thead>
 <tbody>${rows||`<tr><td colspan="6" class="u-empty-sm">لا فواتير مطابقة</td></tr>`}</tbody>
 </table></div>
 <div class="tbl-hd" style="border-top:1px solid var(--line)">
@@ -710,7 +710,7 @@ ${canWrite?`<div class="u-row-wrap" style="gap:8px;margin:12px 0">
 <button class="btn btn-blue btn-sm" data-karim-action="ysLoadWarehouse" data-karim-args="[document.getElementById(&#39;ysBody&#39;)]"><i class=ji data-i=refresh></i> تحديث</button>
 </div>`:''}
 <div class="tbl-wrap">
-<div class="tbl-hd"><h3><i class=ji data-i=shield></i> الحجر الصحي — قيم شاذة لم تدخل المخزون (${fN((quar||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." oninput="ysTableSearch(this,'ysQuarBody')" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintQuarantine"><i class=ji data-i=printer></i> طباعة</button></div></div>
+<div class="tbl-hd"><h3><i class=ji data-i=shield></i> الحجر الصحي — قيم شاذة لم تدخل المخزون (${fN((quar||[]).length)})</h3><div class="u-row-wrap"><input type="text" class="inp" placeholder="بحث..." data-karim-action="ysTableSearch" data-karim-event="input" data-karim-args="[&quot;ysQuarBody&quot;]" data-karim-pass="element" style="max-width:200px"><button class="btn btn-blue btn-sm" data-karim-action="ysPrintQuarantine"><i class=ji data-i=printer></i> طباعة</button></div></div>
 <div class="tbl-scroll"><table>
 <thead><tr><th>النوع</th><th>الكود</th><th>الكمية</th><th>القيمة</th><th>سعر الوحدة</th><th>السبب</th></tr></thead>
 <tbody id="ysQuarBody">${qRows||'<tr><td colspan="6" class="u-empty-sm">لا قيم معزولة — كل الأرصدة سليمة</td></tr>'}</tbody>

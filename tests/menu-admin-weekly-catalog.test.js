@@ -10,7 +10,8 @@ describe('weekly menu uses the saved menu catalog', () => {
         const html = readApp('menu-admin.html');
         expect(js).toContain('WEEK_CATALOG = (full.items || []).filter(item => item.is_active !== false)');
         expect(js).toContain('class="wk-catalog"');
-        expect(js).toContain('onchange="weekUseCatalogItem(this)"');
+        expect(js).toContain('data-karim-action="weekUseCatalogItem"');
+        expect(js).toContain('data-karim-pass="element"');
         expect(js).toContain('window.weekUseCatalogItem = select =>');
         expect(js).toContain('item.name = catalogItem.name_ar || catalogItem.name ||');
         expect(js).toContain('item.name_en = catalogItem.name_en ||');

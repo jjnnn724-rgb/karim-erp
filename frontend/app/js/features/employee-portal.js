@@ -44,7 +44,7 @@ content.innerHTML = `
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
 <h3 class="u-gold-strong"><i class=ji data-i=home></i> بوابة الموظف - البطاقة الذكية</h3>
 ${isAdmin && STATE.employees.length>1 ? `
-<select onchange="switchPortalEmployee(this.value)" style="padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit">
+<select data-karim-action="switchPortalEmployee" data-karim-event="change" data-karim-pass="value" style="padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit">
 ${STATE.employees.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}>${esc(e.name)} - ${esc(e.employeeId||'')}</option>`).join('')}
 </select>
 ` : ''}

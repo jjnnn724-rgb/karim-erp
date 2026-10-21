@@ -160,7 +160,7 @@ describe('طلب المالك 2026-10-05: «اجعل البحث في أول صف
         const m = build(ctx);
         m.WHINV.results = ITEMS; m.WHINV.loading = false; m.WHINV.error = ''; m.WHINV.q = '';
         const html = m.renderWarehouse();
-        expect(html.split('whInvSearchInput(this.value)').length - 1).toBe(1);
+        expect(html.split('data-karim-action="whInvSearchInput"').length - 1).toBe(1);
         expect(html).toContain('position:sticky');
         expect(html).toContain('id="whTopSearch"');
     });

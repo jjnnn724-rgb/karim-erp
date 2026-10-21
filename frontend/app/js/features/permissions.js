@@ -28,7 +28,7 @@ function renderPermissionsPage() {
 <div class="tbl-wrap"><div class="tbl-hd">
 <h3><i class=ji data-i=key></i> ${t('pg.permissions')} — منح فردية فوق الدور</h3>
 <div class="u-row-wrap">
-<select class="inp" style="max-width:260px" onchange="permSelectUser(this.value)" aria-label="اختر المستخدم">
+<select class="inp" style="max-width:260px" data-karim-action="permSelectUser" data-karim-event="change" data-karim-pass="value" aria-label="اختر المستخدم">
 <option value="">— اختر المستخدم —</option>
 ${users.map(u => `<option value="${esc(String(u.id))}" ${String(PERM.userId) === String(u.id) ? 'selected' : ''}>${esc(u.name || u.username)} (${esc(u.role || '')})${u.role === 'admin' ? ' — الكل' : ''}</option>`).join('')}
 </select>
@@ -43,7 +43,7 @@ const mode = denied.has(p.key) ? 'deny' : (granted.has(p.key) ? 'grant' : 'inher
 return `
 <label class="mcard" style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;margin:0;cursor:${isAdminTarget ? 'not-allowed' : 'pointer'};${mode === 'deny' ? 'border-color:var(--red);' : ''}">
 <span style="flex:1"><b>${esc(p.ar)}</b><br><small class="text-muted">${esc(p.key)}</small></span>
-<select data-perm="${esc(p.key)}" ${isAdminTarget ? 'disabled' : ''} onchange="permSet('${esc(p.key)}',this.value)" aria-label="حالة ${esc(p.ar)}" style="max-width:110px" class="inp">
+<select data-perm="${esc(p.key)}" ${isAdminTarget ? 'disabled' : ''} data-karim-action="permSet" data-karim-event="change" data-karim-arg0="${esc(p.key)}" data-karim-pass="value" aria-label="حالة ${esc(p.ar)}" style="max-width:110px" class="inp">
 <option value="inherit" ${mode === 'inherit' ? 'selected' : ''}>وراثة الدور</option>
 <option value="grant" ${mode === 'grant' ? 'selected' : ''}>منح</option>
 <option value="deny" ${mode === 'deny' ? 'selected' : ''}>سحب</option>

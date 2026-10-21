@@ -430,7 +430,7 @@ function cfoPrintShell(title, body){
   .sig{display:flex;justify-content:space-between;margin-top:48px}.sig div{border-top:1px solid #555;padding-top:6px;width:28%;text-align:center;font-size:12px}
   .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}
   @media print{.controls{display:none}body{padding:0}}</style></head><body>
-  <div class="controls"><button class="btn-print" onclick="window.print()">طباعة</button><button class="btn-close" onclick="window.close()">إغلاق</button></div>
+  <div class="controls"><button class="btn-print" data-karim-action="print">طباعة</button><button class="btn-close" data-karim-action="closeWindow">إغلاق</button></div>
   <div class="hd"><h1>${esc(STATE.settings.name)}</h1><p>${esc(title)}</p><p>${esc(CFO_STATE.from)} → ${esc(CFO_STATE.to)}</p></div>
   ${body}
   <div class="sig"><div>إعداد المحاسب</div><div>مراجعة المدير المالي</div><div>اعتماد الإدارة</div></div>

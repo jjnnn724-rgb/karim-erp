@@ -83,7 +83,7 @@ async function brLoad() {
           <h3 class="u-gold-strong"><i class=ji data-i=building></i> فروع المنشأة <span class="text-muted" style="font-weight:400;font-size:13px">(${_branchesCache.length})</span></h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <label class="text-muted" style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
-              <input type="checkbox" ${_branchesShowAll ? 'checked' : ''} onchange="brToggleAll(this.checked)"> إظهار المعطّلة
+              <input type="checkbox" ${_branchesShowAll ? 'checked' : ''} data-karim-action="brToggleAll" data-karim-event="change" data-karim-pass="checked"> إظهار المعطّلة
             </label>
             <button class="btn btn-gold" data-karim-action="brAddModal"><i class=ji data-i=plus></i> إضافة فرع</button>
           </div>

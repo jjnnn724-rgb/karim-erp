@@ -20,6 +20,8 @@ const ROOT = path.join(__dirname, '..');
 const BACKUPS = path.join(ROOT, 'database', 'backups');
 const LOGS = path.join(ROOT, 'logs');
 const STATUS_FILE = path.join(BACKUPS, 'watchdog-status.json');
+const MAINT_FILE = path.join(ROOT, 'runtime', 'maintenance.json');
+const { readMaintenance, maintenanceDecision } = require('../backend/server-control-maintenance');
 const FIX = process.argv.includes('--fix');
 const report = { at: new Date().toISOString(), fix: FIX, checks: {}, actions: [], ok: true };
 // تحميل .env (كلمة مرور القاعدة لفحص الروابط) — best-effort
@@ -59,6 +61,17 @@ function svc(cmd, name) {
         return /RUNNING/.test(out) ? 'running' : 'stopped';
     } catch (e) { return 'unknown:' + String(e.message).slice(0, 60); }
 }
+function svcQuery(name) {
+    try {
+        const out = execFileSync('sc', ['query', name], { encoding: 'utf8', timeout: 15000 });
+        const state = (out.match(/STATE\s*:\s*\d+\s+([A-Z_]+)/) || [])[1] || 'UNKNOWN';
+        return { exists: true, running: state === 'RUNNING', state };
+    } catch (e) {
+        const text = String(e.stdout || '') + String(e.message || '');
+        if (/1060|does not exist/i.test(text)) {return { exists: false, running: false, state: 'NOT_INSTALLED' };}
+        return { exists: true, running: false, state: 'UNKNOWN' };
+    }
+}
 function svcStart(name) {
     const r = spawnSync('sc', ['start', name], { encoding: 'utf8', timeout: 60000 });
     return r.status === 0 || /START_PENDING|RUNNING/.test(r.stdout || '');
@@ -95,50 +108,75 @@ async function waitPortFree(port, totalMs = 45000) {
         }
     }
 
-    // ── 2) ERP backend ──
+    // ── 1b) الخدمة المرافقة للتحكم: إن كانت مثبتة يجب أن تبقى حيّة ──
+    /* هي التي تستقبل «تشغيل» بعد الإيقاف، وتفرض وضع الصيانة. سقوطها لا يوقف
+       ERP، لكنه يعطّل زر التشغيل — فيُعاد تشغيلها بأمان. */
+    const ctl = svcQuery('KarimERP-Control');
+    report.checks.control_service = ctl.exists ? ctl.state : 'not-installed';
+    if (ctl.exists && !ctl.running) {
+        report.ok = false;
+        report.actions.push('control-down');
+        if (FIX) {
+            const started = svcStart('KarimERP-Control');
+            report.actions.push(`control-start:${started ? 'ok' : 'FAILED'}`);
+        }
+    }
+
+    // ── 2) ERP backend — مع احترام وضع الصيانة الصريح ──
     /* FIX 2026-10-20: لا نُسقط خادمًا حيًّا مشغولًا. الفحص الواحد كان يكفي
        لأن يمرّ ضغطُ الاستعلامات أو إقلاعٌ بطيء كـ«سقوط»، فيُعاد التشغيل بلا
        داعٍ ويرى المستخدم الخدمة تقع. ثلاث محاولات متباعدة = مهلة تعافٍ حقيقية،
-       ولا تدخّل إلا إذا بقي ميتًا فعلًا. */
+       ولا تدخّل إلا إذا بقي ميتًا فعلًا.
+       FIX 2026-10-21: إيقاف المشرف من لوحة التحكم قرار صريح — لا يُلغى تلقائيًا.
+       راية الصيانة تُقرأ دائمًا، والحالات العابرة تُحترم 10 دقائق فقط. */
+    const maintenance = readMaintenance(MAINT_FILE);
+    const maintenanceGate = maintenanceDecision(maintenance);
+    const skipErp = maintenanceGate.skip;
+    report.checks.maintenance = maintenance
+        ? `${maintenance.state}${skipErp ? '' : ' (stale)'}`
+        : 'none';
     let apiOk = false;
-    for (let i = 0; i < 3 && !apiOk; i++) {
-        if (i) {await new Promise((r) => setTimeout(r, 5000));}
-        apiOk = await httpsOk('https://127.0.0.1:5000/api/health', 15000);
-    }
-    report.checks.erp = apiOk ? 'healthy' : 'DOWN';
-    if (!apiOk) {
-        report.ok = false;
-        if (FIX) {
-            let revived = false;
-            // أ) خدمة الويندوز: إيقاف رشيق ← انتظار تحرّر المنفذ ← تشغيل.
-            //    كانت تنتظر 4 ثوانٍ فقط ثم تشغّل فيصطدم بالمنفذ المشغول ويموت
-            //    الخادم الجديد بـEADDRINUSE (FIX 2026-10-19).
-            try {
-                const st = svc('x', 'KarimERP-Server');
-                if (st === 'running' || st === 'stopped' || String(st).startsWith('unknown') === false) {
-                    spawnSync('sc', ['stop', 'KarimERP-Server'], { timeout: 40000 });
-                    const freed = await waitPortFree(5000, 45000);
-                    report.actions.push(`port-free:${freed ? 'ok' : 'timeout'}`);
-                    revived = svcStart('KarimERP-Server');
-                }
-            } catch (_) {}
-            // ب) بدء مباشر مخفي كاحتياطي (فقط إذا لم تُقلع الخدمة)
-            if (!revived) {
+    if (skipErp) {
+        report.checks.erp = `maintenance:${maintenance.state}`;
+        log(`maintenance=${maintenance.state} — healing skipped`);
+    } else {
+        for (let i = 0; i < 3 && !apiOk; i++) {
+            if (i) {await new Promise((r) => setTimeout(r, 5000));}
+            apiOk = await httpsOk('https://127.0.0.1:5000/api/health', 15000);
+        }
+        report.checks.erp = apiOk ? 'healthy' : 'DOWN';
+        if (!apiOk) {
+            report.ok = false;
+            if (FIX) {
+                let revived = false;
+                // أ) خدمة الويندوز: إيقاف رشيق ← انتظار تحرّر المنفذ ← تشغيل.
                 try {
-                    await waitPortFree(5000, 20000);
-                    spawnSync('C:\\nodejs\\node.exe', [path.join(ROOT, 'backend', 'server.js')],
-                        { cwd: ROOT, detached: true, stdio: 'ignore', windowsHide: true, timeout: 15000 }).unref?.();
-                    revived = true;
+                    const st = svc('x', 'KarimERP-Server');
+                    if (st === 'running' || st === 'stopped' || String(st).startsWith('unknown') === false) {
+                        spawnSync('sc', ['stop', 'KarimERP-Server'], { timeout: 40000 });
+                        const freed = await waitPortFree(5000, 45000);
+                        report.actions.push(`port-free:${freed ? 'ok' : 'timeout'}`);
+                        revived = svcStart('KarimERP-Server');
+                    }
                 } catch (_) {}
+                // ب) بدء مباشر مخفي كاحتياطي (فقط إذا لم تُقلع الخدمة)
+                if (!revived) {
+                    try {
+                        await waitPortFree(5000, 20000);
+                        spawnSync('C:\\nodejs\\node.exe', [path.join(ROOT, 'backend', 'server.js')],
+                            { cwd: ROOT, detached: true, stdio: 'ignore', windowsHide: true, timeout: 15000 }).unref?.();
+                        revived = true;
+                    } catch (_) {}
+                }
+                report.actions.push(`erp-restart:${revived ? 'attempted' : 'FAILED'}`);
+                // انتظار أطول: الإقلاع الكامل (ترحيلات/فهارس/محركات) قد يتجاوز 25 ثانية.
+                let healthy = false;
+                for (let i = 0; i < 20 && !healthy; i++) {
+                    await new Promise((r) => setTimeout(r, 3000));
+                    healthy = await httpsOk('https://127.0.0.1:5000/api/health', 8000);
+                }
+                report.checks.erp_after = healthy ? 'healthy' : 'STILL-DOWN';
             }
-            report.actions.push(`erp-restart:${revived ? 'attempted' : 'FAILED'}`);
-            // انتظار أطول: الإقلاع الكامل (ترحيلات/فهارس/محركات) قد يتجاوز 25 ثانية.
-            let healthy = false;
-            for (let i = 0; i < 20 && !healthy; i++) {
-                await new Promise((r) => setTimeout(r, 3000));
-                healthy = await httpsOk('https://127.0.0.1:5000/api/health', 8000);
-            }
-            report.checks.erp_after = healthy ? 'healthy' : 'STILL-DOWN';
         }
     }
 
@@ -154,10 +192,14 @@ async function waitPortFree(port, totalMs = 45000) {
     } catch (_) {}
     report.checks.tunnel_proc = tunProc ? 'running' : 'MISSING';
     let pubOk = null;
-    if (tunProc) {
+    // وضع الصيانة: الموقع العام يسقط حتمًا لأن ERP متوقف بأمر المشرف —
+    // فحص النفق هنا يُنتج إنذارات كاذبة ويعيد تشغيل cloudflared بلا سبب.
+    if (!skipErp && tunProc) {
         try { pubOk = await httpsOk('https://karimeg.online/api/health', 12000, 4); }
         catch (_) { pubOk = false; }
         report.checks.tunnel_public = pubOk ? 'reachable' : 'UNREACHABLE';
+    } else if (skipErp) {
+        report.checks.tunnel_public = 'maintenance-skip';
     }
     let prevStrikes = 0;
     try {
@@ -165,13 +207,13 @@ async function waitPortFree(port, totalMs = 45000) {
         prevStrikes = Number(prev.tunnel_strikes) || 0;
     } catch (_) {}
     let strikes = 0;
-    if (tunProc && pubOk === false) {
+    if (!skipErp && tunProc && pubOk === false) {
         const localOk = await httpsOk('https://127.0.0.1:5000/api/health', 8000);
         strikes = localOk ? prevStrikes + 1 : 0;
         if (localOk) {report.actions.push('tunnel-public-fail:' + strikes + '/2');}
     }
-    report.tunnel_strikes = strikes;
-    const needTunnelRestart = !tunProc || strikes >= 2;
+    report.tunnel_strikes = skipErp ? 0 : strikes;
+    const needTunnelRestart = !skipErp && (!tunProc || strikes >= 2);
     if (needTunnelRestart) {
         report.ok = false;
         if (FIX) {

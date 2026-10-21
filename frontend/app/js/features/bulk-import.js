@@ -66,7 +66,7 @@ showModal(`
 <div class="bulk-dropzone-formats">
 <span>XLSX</span><span>XLS</span><span>CSV</span><span>TXT</span>
 </div>
-<input type="file" id="bulkFileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="bulkReadFile(this.files[0])">
+<input type="file" id="bulkFileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none" data-karim-action="bulkReadFile" data-karim-event="change" data-karim-args="[this.files[0]]">
 </div>
 <div class="bulk-or-divider">أو اكتب الأسماء يدوياً</div>
 <div class="fg">
@@ -79,19 +79,19 @@ showModal(`
 <div class="bulk-option-card">
 <label><i class=ji data-i=file-text></i> تنسيق اسم المستخدم</label>
 <div class="bulk-format-options" id="bulkFormatOptions">
-<div class="bulk-format-opt selected" data-fmt="first_num" onclick="bulkSelectFormat(this)">
+<div class="bulk-format-opt selected" data-fmt="first_num" data-karim-action="bulkSelectFormat" data-karim-pass="element">
 الاسم الأول + رقم
 <span class="fmt-example">ahmed1</span>
 </div>
-<div class="bulk-format-opt" data-fmt="full_dot" onclick="bulkSelectFormat(this)">
+<div class="bulk-format-opt" data-fmt="full_dot" data-karim-action="bulkSelectFormat" data-karim-pass="element">
 الاسم كامل بنقطة
 <span class="fmt-example">ahmed.ali</span>
 </div>
-<div class="bulk-format-opt" data-fmt="initials_num" onclick="bulkSelectFormat(this)">
+<div class="bulk-format-opt" data-fmt="initials_num" data-karim-action="bulkSelectFormat" data-karim-pass="element">
 أول حرف + رقم
 <span class="fmt-example">a001</span>
 </div>
-<div class="bulk-format-opt" data-fmt="emp_num" onclick="bulkSelectFormat(this)">
+<div class="bulk-format-opt" data-fmt="emp_num" data-karim-action="bulkSelectFormat" data-karim-pass="element">
 emp + رقم
 <span class="fmt-example">emp001</span>
 </div>
@@ -527,8 +527,8 @@ th{background:#d4a843;color:#000;font-weight:900}
 @media print{.controls{display:none}}
 </style></head><body>
 <div class="controls">
-<button class="btn-print" onclick="window.print()"><i class=ji data-i=printer></i> طباعة</button>
-<button class="btn-close" onclick="window.close()"><i class=ji data-i=circle-x></i> إغلاق</button>
+<button class="btn-print" data-karim-action="print"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn-close" data-karim-action="closeWindow"><i class=ji data-i=circle-x></i> إغلاق</button>
 </div>
 <div style="text-align:center;margin-bottom:12px"><img src="${esc(getAbsoluteLogoSrc())}" style="width:64px;height:64px;object-fit:contain;background:#fff;border:2px solid #d4a843;border-radius:12px;padding:5px" alt="مطاعم الشرفه العالمي"></div>
 <h1><i class=ji data-i=lock></i> بيانات دخول المستخدمين</h1>
@@ -586,8 +586,8 @@ body{font-family:'Cairo',Arial,sans-serif;padding:16px;direction:rtl;color:#222}
 @media print{.controls{display:none}body{padding:0}.slips{gap:10px}}
 </style></head><body>
 <div class="controls">
-<button class="btn-print" onclick="window.print()">طباعة</button>
-<button class="btn-close" onclick="window.close()">إغلاق</button>
+<button class="btn-print" data-karim-action="print">طباعة</button>
+<button class="btn-close" data-karim-action="closeWindow">إغلاق</button>
 </div>
 <div class="slips">${slips}</div>
 </body></html>`);

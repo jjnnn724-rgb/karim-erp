@@ -319,17 +319,39 @@ describe('شاشة الأقسام — البطاقات الثيمية', () => {
         expect(screen).toMatch(/canLink \? `<button type="button" class="erp-btn erp-btn--sm" data-v2-link=/);
     });
 
-    test('إيراد البطاقة شهري: حيّ من يارا، وإلا فمرآة القاعدة بلا أصفار بديلة', () => {
+    test('إيراد البطاقة شهري من السجل المرحّل: شجرة القسم + مرايا كاشيريها + مرآة البيع الخارجي', () => {
         expect(screen).toContain('function monthToDateRange()');
         expect(screen).toContain('fetchYaraCashierItems({from, to, view:');
-        expect(screen).toContain('actualCashierRevenue.get(String(no))');
-        expect(screen).toMatch(/const rev = localRevenue \+ cashRev;/);
         expect(screen).toContain("new Set(['1', '3', '4', '5', '6', '9'])");
-        // تعذر يارا: يُجمع إيراد الكاشير من صفوف المرآة المحلية لا صفرًا
-        expect(screen).toContain('cashierRevenueIn(revenues, [no], from, to)');
-        expect(screen).toMatch(/actualCashierReady && mirrorIsIncluded/);
-        expect(screen).toContain('لا تُعرض أصفار بديلة');
+        // شجرة القسم + المرايا التي لا تحملها الشجرة (parent_code فارغ في القاعدة)
+        expect(screen).toContain('const s = calcDeptStats(revenues, expenses, rows, code, from, to);');
+        expect(screen).toMatch(/deptIsWithin\(`ys_cc_\$\{no\}`, code\)/);
+        expect(screen).toContain("const EXT_SALES_MIRROR = 'ys_b4_ext';");
+        expect(screen).toMatch(/deptIsWithin\('external_sales', code\)/);
+        expect(screen).toMatch(/const rev = s\.rev \+ mirrorRev;/);
+        // الحي لا يدخل إجمالي البطاقة: يُعرض في الشارة والملخّص كغير مرحّل
+        expect(screen).toContain('actualCashierRevenue.get(String(no))');
+        expect(screen).toMatch(/is-unposted/);
+        expect(screen).toContain('إيراد حي غير مرحّل');
+        expect(screen).toContain('مصروفات غير مسندة إلى قسم');
+        expect(screen).toContain('نفس أساس تحليل التكاليف');
+        expect(screen).toContain('لا أصفار بديلة');
         expect(screen).toContain('كاشيرات بلا إسناد موثّق');
+    });
+
+    test('صفّ الفرع يعرض إيراده ومصروفه بجوار الصافي — الكوست لا يُخفى', () => {
+        expect(screen).toMatch(/erp-dept-child__split/);
+        expect(screen).toMatch(/إيراد \$\{amountOnly\(s\.rev\)\}/);
+        expect(screen).toMatch(/مصروف \$\{amountOnly\(s\.exp\)\}/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-child__split \{/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-cashier\.is-unposted \{/);
+    });
+
+    test('نسبة التكلفة عند صفر إيراد تُعرض — لا 0%: القسمة على صفر غير معرّفة', () => {
+        // صفّ الفرع والدرج كلاهما مشروطان بإيراد موجب
+        expect(screen).toMatch(/s\.rev > 0 \? `\$\{formatInt\(Math\.round\(s\.costRatio\)\)\}%` : '—'/);
+        expect(screen).toMatch(/s\.rev > 0 \? `\$\{esc\(Number\(s\.costRatio\)\.toFixed\(1\)\)\}%` : '—'/);
+        expect((screen.match(/النسبة غير قابلة للحساب/g) || []).length).toBeGreaterThanOrEqual(2);
     });
 
     test('الروابط تُقرأ بلا كسر حين لا يكون 103 مطبَّقًا (fallback الخريطة)', () => {

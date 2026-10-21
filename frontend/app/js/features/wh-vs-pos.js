@@ -274,7 +274,7 @@ function wvPrintReport() {
     table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#f5d76e}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
-    <div class="controls"><button class="bp" onclick="window.print()">طباعة</button><button class="bc" onclick="window.close()">إغلاق</button></div>
+    <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
     <h1>تقرير مقارنة الصرف والمبيعات</h1>
     <h2>مطاعم الشرفة العالمي · من ${wvEscape(WV.from)} إلى ${wvEscape(WV.to)}${WV.item ? ' · بحث: ' + wvEscape(WV.item) : ''}</h2>
     <div class="summary">

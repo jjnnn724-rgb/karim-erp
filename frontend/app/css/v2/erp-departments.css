@@ -250,6 +250,22 @@
   color: color-mix(in srgb, var(--dept-accent) 74%, var(--erp-text-primary));
 }
 .erp-v2 .erp-dept-cashier__amount { font-weight: var(--erp-fw-normal); color: var(--erp-text-secondary); }
+/* كاشير له إيراد حي بلا مرآة مرحّلة: الرقم ظاهر لكنه خارج إجمالي البطاقة. */
+.erp-v2 .erp-dept-cashier.is-unposted {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--erp-warning) 58%, transparent);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+}
+.erp-v2 .erp-dept-cashier.is-unposted .erp-dept-cashier__amount { color: var(--erp-warning-text); }
+.erp-v2 .erp-dept-cashier__flag {
+  font-size: 10px;
+  font-weight: var(--erp-fw-bold);
+  padding-inline: 5px;
+  border-radius: var(--erp-radius-full);
+  background: color-mix(in srgb, var(--erp-warning) 24%, transparent);
+  color: var(--erp-warning-text);
+}
 .erp-v2 .erp-dept-cashier.is-secondary {
   border-style: dashed;
   background: transparent;
@@ -506,6 +522,17 @@
 .erp-v2 .erp-dept-child__net { font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); white-space: nowrap; }
 .erp-v2 .erp-dept-child__net.is-positive { color: var(--erp-success-text); }
 .erp-v2 .erp-dept-child__net.is-negative { color: var(--erp-danger-text); }
+/* إيراد ومصروف الفرع ظاهران بجوار الصافي: الكوست لا يُخفى في صفٍّ فرعي. */
+.erp-v2 .erp-dept-child__split {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 8px;
+  font-size: 11px;
+  color: var(--erp-text-faint);
+  white-space: nowrap;
+}
+.erp-v2 .erp-dept-child__split .erp-num { color: var(--erp-text-secondary); font-weight: var(--erp-fw-semibold); }
 .erp-v2 .erp-dept-child__ratio { font-size: 11px; color: var(--erp-text-faint); white-space: nowrap; }
 .erp-v2 .erp-dept-child__actions { display: inline-flex; align-items: center; gap: var(--erp-space-2); }
 .erp-v2 .erp-dept-child .erp-dept-link-panel { margin: 0 var(--erp-space-3) var(--erp-space-3); }
@@ -527,6 +554,7 @@
   .erp-v2 .erp-dept-card { padding: var(--erp-space-4); }
   .erp-v2 .erp-dept-kids { padding-inline-start: var(--erp-space-2); }
   .erp-v2 .erp-dept-child__amounts { margin-inline-start: 0; align-items: flex-start; }
+  .erp-v2 .erp-dept-child__split { justify-content: flex-start; }
   .erp-v2 .erp-dept-child__signals { white-space: normal; }
   .erp-v2 .erp-dept-card__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

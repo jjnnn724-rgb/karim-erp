@@ -232,7 +232,7 @@ return `
 <div class="smart-card-header" style="background:linear-gradient(135deg,#1a1a2e 0%,#C9A961 100%);padding:20px 16px;border-radius:12px 12px 0 0;color:#fff;position:relative">
 <div style="display:flex;align-items:center;gap:12px">
 ${emp.photo ? `<img src="${emp.photo}" alt="${esc(emp.name)}" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,.5);object-fit:cover">` : `<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;border:3px solid rgba(255,255,255,.5)">${initials}</div>`}
-${canUploadPhoto ? `<label class="photo-upload-btn" title="رفع صورة" style="position:absolute;bottom:4px;right:4px;background:rgba(255,255,255,.3);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer"><i class=ji data-i=camera></i><input type="file" accept="image/*" style="display:none" onchange="handlePhotoUpload('${emp.id}', this.files[0])"></label>` : ''}
+${canUploadPhoto ? `<label class="photo-upload-btn" title="رفع صورة" style="position:absolute;bottom:4px;right:4px;background:rgba(255,255,255,.3);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer"><i class=ji data-i=camera></i><input type="file" accept="image/*" style="display:none" data-karim-action="handlePhotoUpload" data-karim-event="change" data-karim-arg0="${emp.id}" data-karim-pass="files.0"></label>` : ''}
 <div style="flex:1">
 <div style="font-size:18px;font-weight:800;line-height:1.2">${esc(emp.name)}</div>
 <div style="font-size:12px;opacity:.85">${esc(emp.position||'—')} • ${dept?esc(dept.name):''}</div>
@@ -855,8 +855,8 @@ body{font-family:'Cairo',sans-serif;background:#f0f0f0;padding:20px;direction:rt
 @media print{body{background:white;padding:0}.controls{display:none}.card{box-shadow:none;page-break-inside:avoid}}
 </style></head><body>
 <div class="controls">
-<button class="btn-print" onclick="window.print()"><i class=ji data-i=printer></i> طباعة</button>
-<button class="btn-close" onclick="window.close()"><i class=ji data-i=circle-x></i> إغلاق</button>
+<button class="btn-print" data-karim-action="print"><i class=ji data-i=printer></i> طباعة</button>
+<button class="btn-close" data-karim-action="closeWindow"><i class=ji data-i=circle-x></i> إغلاق</button>
 </div>
 <div class="card">
 <div class="card-inner">
