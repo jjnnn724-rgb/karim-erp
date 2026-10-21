@@ -1956,7 +1956,7 @@ if(!file){return;}
 const reader=new FileReader();
 reader.onload=e=>{
 try{
-const wb=XLSX.read(e.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
+const wb=window.XLSXGuard.readWorkbook(e.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
 const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 if(data.length<2){throw new Error('الملف لا يحتوي على صفوف بيانات بعد عناوين الأعمدة');}
 const parsed=parseOpeningSheetRows(data);
@@ -2429,7 +2429,7 @@ if(!file){return;}
 const reader=new FileReader();
 reader.onload=function(e){
 try{
-const wb=XLSX.read(e.target.result,{type:'binary'});
+const wb=window.XLSXGuard.readWorkbook(e.target.result,{type:'binary'});
 const ws=wb.Sheets[wb.SheetNames[0]];
 const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 const rows=data.filter((r,i)=>i>0&&r[0]);
@@ -2447,7 +2447,7 @@ if(!file){ toast('اختر ملف Excel أولاً','error'); return; }
 const reader=new FileReader();
 reader.onload=async function(e){
 try{
-const wb=XLSX.read(e.target.result,{type:'binary'});
+const wb=window.XLSXGuard.readWorkbook(e.target.result,{type:'binary'});
 const ws=wb.Sheets[wb.SheetNames[0]];
 const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 const rows=data.filter((r,i)=>i>0&&String(r[0]).trim());
@@ -2514,7 +2514,7 @@ async function readInventoryImportRows(file) {
                 const result = e.target && e.target.result;
                 if (!result) { resolve([]); return; }
                 const isCsv = /\.csv$/i.test(file.name || '');
-                const book = XLSX.read(result, { type: isCsv ? 'string' : 'binary' });
+                const book = window.XLSXGuard.readWorkbook(result, { type: isCsv ? 'string' : 'binary' });
                 const sheet = book.Sheets[book.SheetNames[0]];
                 const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
                 const rows = Array.isArray(allRows) ? allRows.filter((row) => Array.isArray(row) ? row.some((cell) => parseInventoryImportCell(cell) !== '') : parseInventoryImportCell(row) !== '') : [];

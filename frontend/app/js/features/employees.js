@@ -501,7 +501,7 @@ if(!file||!prev) {return;}
 const reader=new FileReader();
 reader.onload=function(e){
 try{
-const wb=XLSX.read(e.target.result,{type:'binary'});
+const wb=window.XLSXGuard.readWorkbook(e.target.result,{type:'binary'});
 const ws=wb.Sheets[wb.SheetNames[0]];
 const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 const raw=data.filter((r,i)=>i>0&&(String(r[0]).trim()||String(r[1]).trim()));
@@ -527,7 +527,7 @@ prev.innerHTML=`<div class="preview-scroll"><div class="u-gold-strong u-mb8">م�
 <table style="width:100%;font-size:12px;border-collapse:collapse"><tr class="u-faint"><th style="text-align:right;padding:4px">الرقم</th><th>الاسم</th><th>القسم</th><th>الراتب</th><th>الحالة</th></tr>
 ${rows.slice(0,8).map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:4px">${esc(x.id||'—')}</td><td>${esc(x.name||'—')}${x.err?`<br><small class="c-red">${esc(x.err)}</small>`:''}${x.warn?`<br><small class="c-gold">${esc(x.warn)}</small>`:''}</td><td class="u-ta-c">${esc(x.dept||'—')}</td><td class="u-ta-c">${fN(x.sal)}</td><td class="u-ta-c">${x.err?'<span class="badge bdg-red">مرفوض</span>':existingIds.has(x.id)?'<span class="badge bdg-gray">موجود</span>':'<span class="badge bdg-green">جاهز</span>'}</td></tr>`).join('')}
 ${rows.length>8?`<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:6px">... و${rows.length-8} صفوف أخرى</td></tr>`:''}</table></div>`;
-}catch(err){ prev.innerHTML='<div class="u-red"><i class=ji data-i=circle-x></i> خطأ في قراءة الملف</div>'; }
+}catch(_){ prev.innerHTML='<div class="u-red"><i class=ji data-i=circle-x></i> خطأ في قراءة الملف</div>'; }
 };
 reader.readAsBinaryString(file);
 }
@@ -542,8 +542,7 @@ const existingIds=new Set((STATE.employees||[]).map(x=>String(x.employeeId||'').
 for(const x of rows){
 if(existingIds.has(x.id)){ skipped++; continue; }
 try{
-const saved=await persistCreate('employees',(s)=>STATE.employees.push(s),{
-name:x.name,employeeId:x.id,department:x.deptCode||'',position:x.pos,phone:x.phone,email:x.email,
+await persistCreate('employees',(s)=>STATE.employees.push(s),{name:x.name,employeeId:x.id,department:x.deptCode||'',position:x.pos,phone:x.phone,email:x.email,
 joinDate:x.join||today(),salary:x.sal,status:x.st.includes('غير')?'inactive':'active',
 iqamaExpiry:x.iq||null,healthCertExpiry:x.hc||null,healthEduExpiry:x.he||null,
 userId:null,photo:null,digitalFingerprint:null,cardId:null});

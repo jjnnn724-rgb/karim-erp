@@ -11,17 +11,17 @@
  * `v2bulkimport` (OFF). الخادم يعيد فحص كل صف على أي حال.
  */
 
-import { CONFIG, ROLES } from '../core/config.js?v=4.9.169';
-import { ensureXlsx } from './vendor.js?v=4.9.169';
-import { openInAppReport } from './report-viewer.js?v=4.9.169';
-import { loadBulkImportContext, createBulkAccount } from './data/bulk-import-repo.js?v=4.9.169';
+import { CONFIG, ROLES } from '../core/config.js?v=4.9.181';
+import { ensureXlsx } from './vendor.js?v=4.9.181';
+import { openInAppReport } from './report-viewer.js?v=4.9.181';
+import { loadBulkImportContext, createBulkAccount } from './data/bulk-import-repo.js?v=4.9.181';
 import {
     BULK_DEFAULT_ROLE, BULK_PASSWORD_LENGTH,
     buildBulkRows, bulkPreviewStats, bulkToCopyText, bulkToCsv, bulkToJson,
     bulkToExcelAoa, bulkPrintTableHtml, bulkPrintSlipsHtml,
     fingerprintForms, generateBulkPassword, parseBulkFileText, parseBulkNames,
     usedFingerprintSet,
-} from './bulk-import.js?v=4.9.169';
+} from './bulk-import.js?v=4.9.181';
 
 const ROLE_NAMES = Object.keys(ROLES).reduce((map, key) => {
     map[key] = ROLES[key].name;
@@ -696,7 +696,7 @@ export function mountBulkImportWizard(host, ctx = {}) {
                 }
                 const buffer = await file.arrayBuffer();
                 if (destroyed) {return;}
-                const workbook = window.XLSX.read(buffer, { type: 'array' });
+                const workbook = window.XLSXGuard.readWorkbook(buffer, { type: 'array' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1 });
                 names = rows.map((row) => String((row && row[0]) || '').trim()).filter((name) => name.length > 1);

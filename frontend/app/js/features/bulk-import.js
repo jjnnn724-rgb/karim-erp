@@ -254,7 +254,6 @@ const previewTable = document.getElementById('bulkPreviewTable');
 if(!statsBar || !previewTable) {return;}
 const roleCount = {};
 BULK_IMPORT_ROWS.forEach(r => { roleCount[r.role] = (roleCount[r.role]||0)+1; });
-const roleName = ROLES[BULK_IMPORT_ROWS[0]?.role]?.name || '';
 statsBar.innerHTML = `
 <div class="bulk-stat">
 <div class="bulk-stat-val">${BULK_IMPORT_ROWS.length}</div>
@@ -326,20 +325,32 @@ document.getElementById('bulkConfirmBtn').style.display = 'none';
 const namesInput = document.getElementById('bulkNamesInput');
 if(namesInput) {namesInput.value = '';}
 }
+// حدود الاستيراد: ملف ضخم أو ملف Thousands الصفوف يستهلك ذاكرة جهاز
+// الكاشير بالكامل (المتصفح يجمّد) — والقراءة تتم في المتصفح.
+const BULK_IMPORT_MAX_BYTES = 20 * 1024 * 1024;   // 20MB
+const BULK_IMPORT_MAX_ROWS = 20000;
 function bulkReadFile(file){
 if(!file) {return;}
+if(typeof file.size === 'number' && file.size > BULK_IMPORT_MAX_BYTES){
+toast(`حجم الملف يتجاوز الحد (${Math.round(BULK_IMPORT_MAX_BYTES/1024/1024)}MB) — اختر ملفًا أصغر`,'error');
+return;
+}
 const ext = file.name.split('.').pop().toLowerCase();
 const reader = new FileReader();
 if(ext === 'xlsx' || ext === 'xls'){
 reader.onload = e => {
 try{
-const wb = XLSX.read(e.target.result, { type: 'array' });
+const wb = window.XLSXGuard.readWorkbook(e.target.result, { type: 'array' });
 const ws = wb.Sheets[wb.SheetNames[0]];
 const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+if(rows.length > BULK_IMPORT_MAX_ROWS){
+toast(`الملف يحوي ${rows.length} صفًا — الحد ${BULK_IMPORT_MAX_ROWS}`,'error');
+return;
+}
 const names = rows.map(r => (r[0] || '').toString().trim()).filter(n => n.length > 1);
 document.getElementById('bulkNamesInput').value = names.join('\n');
 toast(`تم تحميل ${names.length} اسم من الملف`);
-}catch(err){ toast('خطأ في قراءة الملف','error'); }
+}catch(_){ toast('خطأ في قراءة الملف','error'); }
 };
 reader.readAsArrayBuffer(file);
 }else{
@@ -359,7 +370,7 @@ if(!STATE.employees) {STATE.employees = [];}
 let added = 0, skipped = 0, failed = 0;
 showLoad();
 try {
-  for(const [index,row] of BULK_IMPORT_ROWS.entries()){
+  for(const [,row] of BULK_IMPORT_ROWS.entries()){
     if(usedUsernames.has(row.username)){ skipped++; continue; }
     // أمان أخير ضد تعارض رقم البصمة/الوظيفي
     const fpTaken = (STATE.employees || []).some(e =>

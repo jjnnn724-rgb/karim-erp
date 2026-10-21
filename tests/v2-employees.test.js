@@ -727,7 +727,8 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
         expect(s).toMatch(/runBtn\.disabled = c\.ok === 0/);
         expect(s).toMatch(/for \(const x of toSend\) \{[\s\S]*?if \(existingIds\.has\(x\.id\)\) \{skipped \+= 1; continue;\}/);
         expect(s).toMatch(/createEmployee\(sheetRowToPayload\(x, todayIso\(\)\)\)/);
-        expect(s).toMatch(/XLSX\.read\(buf, \{ type: 'array' \}\)/);
+        // القراءة تمرّ عبر الحارس المشتركة (حدّ حجم/صفوف قبل القراءة)
+        expect(s).toMatch(/window\.XLSXGuard\.readWorkbook\(buf, \{ type: 'array' \}\)/);
         expect(s).toMatch(/accept="\.xlsx,\.xls,\.csv"/);
         expect(s).toMatch(/data-v2-import-run disabled/);
     });

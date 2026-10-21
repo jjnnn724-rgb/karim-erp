@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { openInAppReport } from '../report-viewer.js?v=4.9.169';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.169';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.169';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.181';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.181';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.181';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,16 +81,17 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.169';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.169';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.169';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.169';
+} from '../data/employees-repo.js?v=4.9.181';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.181';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.181';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.181';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.169';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.169';
+} from '../data/employee-card-repo.js?v=4.9.181';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1430,7 +1431,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
         }
         try {
             const buf = await file.arrayBuffer();
-            const wb = window.XLSX.read(buf, { type: 'array' });
+            const wb = window.XLSXGuard.readWorkbook(buf, { type: 'array' });
             const ws = wb.Sheets[wb.SheetNames[0]];
             const data = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
             const raw = data.filter((r, i) => i > 0 && (String(r[0]).trim() || String(r[1]).trim()));
@@ -1531,6 +1532,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ws['!cols'] = matrix[0].map(() => ({ wch: 20 }));
             const wb = window.XLSX.utils.book_new();
             window.XLSX.utils.book_append_sheet(wb, ws, 'الموظفون');
+            prepareReportWorkbook(window.XLSX, wb, 'تقرير الموظفين');
             window.XLSX.writeFile(wb, `employees_${todayIso()}.xlsx`);
             notify(`تم التصدير — ${formatInt(rows.length)} موظفًا (${rows.length === allRows.length ? 'الدليل كله' : 'النتيجة المصفّاة'})`);
         } catch (e) {

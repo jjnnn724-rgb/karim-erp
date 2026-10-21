@@ -94,12 +94,13 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
     formatInt, formatQty, STOCK_FILTERS,
     invWriteVisible, invForceVisible, invDirectVisible, invMergeVisible,
+    createOpeningInventoryItem, setOpeningMainWarehouseBalance, mergeItemKey,
     receiptPayload, receiveInventoryItem,
     bulkReceiptRows, bulkReceiveInventory, BULK_CHUNK,
     importCell, inventoryImportRowsFromSheet, inventoryImportPayload, applySheetExpiry,
@@ -113,15 +114,20 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.169';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.169';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.169';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+} from '../data/inventory-repo.js?v=4.9.181';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.181';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.181';
+import {
+    OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
+    fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
+    validateOpeningRows,
+} from '../data/opening-balance-repo.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.169';
+} from '../signature.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -352,6 +358,8 @@ function template(stock, can) {
                 <i class="ji" data-i="upload" aria-hidden="true"></i><span>استيراد Excel</span></button>` : ''}
               ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="bulk">
                 <i class="ji" data-i="pencil" aria-hidden="true"></i><span>إدخال يدوي</span></button>` : ''}
+              ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="opening">
+                <i class="ji" data-i="flag" aria-hidden="true"></i><span>رصيد افتتاحي</span></button>` : ''}
               ${can.write ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="catalog">
                 <i class="ji" data-i="inbox" aria-hidden="true"></i><span>كتالوج الأصناف</span></button>` : ''}
               ${can.merge ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-new="merge">
@@ -425,6 +433,12 @@ export function mountWarehouseScreen(host, ctx = {}) {
     let panelKind = null;
     let panelData = null;
     let studio = null;
+    let openingRows = [];
+    let openingNetMode = false;
+    let openingIssued = new Map();
+    let openingPreview = null;
+    let openingTotalCurrency = '';
+    let openingLoading = false;
 
     host.insertAdjacentHTML('beforeend', template('all', { write: canWrite, merge: canMerge, audit: canAuditRead, gov: canGov }));
     const el = host.lastElementChild;
@@ -580,6 +594,230 @@ export function mountWarehouseScreen(host, ctx = {}) {
         if (text) {notify(text);}
     }
 
+    function openingRowMarkup(row, index) {
+        const issued = openingIssued.get(mergeItemKey(row.name)) || 0;
+        let net = null;
+        if (openingNetMode && row.qty !== '' && Number.isFinite(Number(row.qty))) {
+            net = openingNetQuantity(Number(row.qty), issued);
+        }
+        return `<tr data-v2-opening-row="${index}">
+          <td><input class="erp-input" data-v2-opening-field="name" data-index="${index}" value="${esc(row.name)}" aria-label="اسم الصنف ${index + 1}" placeholder="اسم الصنف"></td>
+          <td><input class="erp-input" data-v2-opening-field="unit" data-index="${index}" value="${esc(row.unit)}" aria-label="الوحدة ${index + 1}" placeholder="كجم"></td>
+          <td><input class="erp-input erp-input--ltr" type="number" min="0.001" step="0.001" data-v2-opening-field="qty" data-index="${index}" value="${esc(row.qty)}" aria-label="كمية بداية الفترة ${index + 1}"></td>
+          <td><input class="erp-input erp-input--ltr" type="number" min="0" step="0.01" data-v2-opening-field="price" data-index="${index}" value="${esc(row.price)}" aria-label="سعر الشراء ${index + 1}"></td>
+          ${openingNetMode ? `<td class="erp-num" data-v2-opening-issued dir="ltr">${formatQty(issued)}</td><td class="erp-num${net !== null && net < 0 ? ' erp-text-danger' : ''}" data-v2-opening-net-qty dir="ltr">${net === null ? '—' : formatQty(net)}</td>` : ''}
+          <td><input class="erp-input erp-input--ltr" type="date" data-v2-opening-field="expiry" data-index="${index}" value="${esc(row.expiry)}" aria-label="تاريخ الصلاحية ${index + 1}"></td>
+          <td><input class="erp-input erp-input--ltr" type="number" min="1" step="1" data-v2-opening-field="boxes" data-index="${index}" value="${esc(row.boxes)}" aria-label="عدد الكراتين ${index + 1}" placeholder="لحوم فقط"></td>
+          <td><input class="erp-input" data-v2-opening-field="category" data-index="${index}" value="${esc(row.category)}" aria-label="الفئة ${index + 1}" placeholder="عام"></td>
+          <td><button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-opening-remove="${index}" aria-label="حذف الصنف ${index + 1}"><i class="ji" data-i="trash" aria-hidden="true"></i></button></td>
+        </tr>`;
+    }
+
+    function renderOpeningRows() {
+        const target = panelEl.querySelector('[data-v2-opening-rows]');
+        if (!target) {return;}
+        const netHeads = openingNetMode ? '<th>المنصرف فعليًا</th><th>الصافي المعتمد</th>' : '';
+        target.innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid">
+          <caption class="erp-sr-only">جدول إدخال الرصيد الافتتاحي</caption>
+          <thead><tr><th>اسم الصنف</th><th>الوحدة</th><th>كمية فعلية</th><th>سعر الشراء</th>${netHeads}<th>تاريخ الصلاحية</th><th>الكراتين</th><th>الفئة</th><th>إجراءات</th></tr></thead>
+          <tbody>${openingRows.map(openingRowMarkup).join('')}</tbody></table></div>`;
+        const total = openingRows.reduce((sum, row) => {
+            const qty = Number(row.qty);
+            const price = Number(row.price);
+            return sum + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
+        }, 0);
+        const formatted = formatMoney(total, openingTotalCurrency);
+        const totalEl = panelEl.querySelector('[data-v2-opening-total]');
+        if (totalEl) {
+            totalEl.textContent = formatted.hasUnit
+                ? `${formatted.amount} ${formatted.unit}`
+                : `${formatted.amount} (عملة النظام غير متاحة)`;
+        }
+    }
+
+    function openingHtml() {
+        const canNet = OPENING_NET_ROLES.includes(role);
+        openingRows = [{ name: '', qty: '', unit: 'كجم', price: '', boxes: '', category: '', expiry: '' }];
+        openingNetMode = false;
+        openingIssued = new Map();
+        openingPreview = null;
+        return panelShell('الرصيد الافتتاحي — بداية الفترة', 'flag',
+            `<div class="erp-flow-note" data-tone="info">
+               أدخل اسم الصنف والوحدة والكمية الفعلية وسعر الشراء وتاريخ الصلاحية (اختياري).
+               يُحفظ الرصيد العادي كفاتورة آجلة، دون حركة نقدية. إن أُدخل تاريخ الصلاحية فيجب أن يكون بصيغة YYYY-MM-DD.
+             </div>
+             ${canNet ? `<label class="erp-field"><span class="erp-label"><input type="checkbox" data-v2-opening-net> الوضع الصافي (إعادة ضبط المخزون)</span>
+               <span class="erp-text-sm erp-text-muted">يخصم المنصرف الفعلي من دفتر الصرف، ثم يعيّن رصيد المخزن الرئيسي = كمية البداية − المنصرف. هذا الإجراء للأدمن فقط.</span></label>` : ''}
+             <div class="erp-dash-controls">
+               <button type="button" class="erp-btn erp-btn--sm" data-v2-opening-template>تحميل نموذج Excel</button>
+               <label class="erp-btn erp-btn--sm" for="v2-opening-file">رفع Excel / CSV</label>
+               <input id="v2-opening-file" class="erp-sr-only" type="file" accept=".xlsx,.xls,.csv" data-v2-opening-file>
+               <button type="button" class="erp-btn erp-btn--sm" data-v2-opening-add>إضافة صف</button>
+             </div>
+             <div data-v2-opening-preview aria-live="polite"></div>
+             <div data-v2-opening-rows></div>
+             <div class="erp-kpi"><span class="erp-kpi__label">إجمالي الرصيد الافتتاحي</span><strong data-v2-opening-total>0 (عملة النظام غير متاحة)</strong></div>
+             <p class="erp-text-sm erp-text-muted" data-v2-opening-note role="status" aria-live="polite"></p>
+             ${panelActions('حفظ الرصيد الافتتاحي', 'save')}`);
+    }
+
+    async function loadOpeningCurrency() {
+        const note = panelEl.querySelector('[data-v2-opening-note]');
+        try {
+            openingTotalCurrency = await fetchCurrency();
+            renderOpeningRows();
+        } catch (error) {
+            if (note) {note.textContent = `تعذّر جلب عملة النظام: ${error.message || 'خطأ غير معروف'}`;}
+        }
+    }
+
+    function renderOpeningPreview() {
+        const target = panelEl.querySelector('[data-v2-opening-preview]');
+        if (!target) {return;}
+        if (!openingPreview) {target.innerHTML = ''; return;}
+        const errors = openingPreview.errors.map((error) =>
+            `<li>السطر ${esc(error.line)}: ${esc(error.message)}</li>`).join('');
+        target.innerHTML = `<div class="erp-flow-note" data-tone="${errors ? 'warning' : 'success'}">
+          <strong>${formatInt(openingPreview.rows.length)} صف صالح</strong>
+          ${errors ? `<ul>${errors}</ul>` : ''}
+          <button type="button" class="erp-btn erp-btn--sm" data-v2-opening-apply${openingPreview.rows.length ? '' : ' disabled'}>إضافة الصفوف الصالحة للجدول</button>
+        </div>`;
+    }
+
+    async function previewOpeningFile(file) {
+        if (!file || openingLoading) {return;}
+        openingLoading = true;
+        panelMsg('جارٍ قراءة ملف الرصيد الافتتاحي…');
+        try {
+            const rows = await readSheetRows(file);
+            openingPreview = parseOpeningSheetRows(rows);
+            renderOpeningPreview();
+            panelMsg(openingPreview.errors.length
+                ? `تمت معاينة ${openingPreview.rows.length} صف صالح مع ${openingPreview.errors.length} ملاحظة؛ راجعها قبل الإضافة.`
+                : `تمت معاينة ${openingPreview.rows.length} صف — اضغط «إضافة الصفوف الصالحة للجدول».`);
+        } catch (error) {
+            panelMsg(`تعذّر قراءة ملف الرصيد الافتتاحي: ${readErrorText(error)}`);
+        } finally {
+            openingLoading = false;
+        }
+    }
+
+    async function setOpeningNetMode(enabled) {
+        if (!enabled) {
+            openingNetMode = false;
+            openingIssued.clear();
+            renderOpeningRows();
+            return;
+        }
+        if (!OPENING_NET_ROLES.includes(role)) {
+            panelMsg('الوضع الصافي متاح للأدمن فقط');
+            return;
+        }
+        try {
+            const issuedRows = await fetchOpeningIssuedTotals();
+            openingIssued = new Map();
+            for (const row of issuedRows) {
+                const key = mergeItemKey(row.name);
+                openingIssued.set(key, (openingIssued.get(key) || 0) + row.issued);
+            }
+            openingNetMode = true;
+            renderOpeningRows();
+            panelMsg('تم جلب المنصرف من دفتر الصرف — راجع الصافي قبل الحفظ.');
+        } catch (error) {
+            const checkbox = panelEl.querySelector('[data-v2-opening-net]');
+            if (checkbox) {checkbox.checked = false;}
+            openingNetMode = false;
+            panelMsg(`تعذّر جلب المنصرف؛ لم يتغير الوضع: ${error.message || 'خطأ غير معروف'}`);
+        }
+    }
+
+    async function findOpeningInventoryItem(itemName) {
+        const key = mergeItemKey(itemName);
+        const loaded = allRows.filter((row) => mergeItemKey(row.name) === key);
+        if (loaded.length > 1) {throw new Error(`يوجد أكثر من صنف باسم مطابق لـ«${itemName}» — ادمج التكرار أولًا`);}
+        if (loaded.length === 1) {return loaded[0];}
+        const search = await fetchInventory({ q: itemName, maxPages: 10 });
+        const matches = search.rows.map((row) => inventoryToRow(row))
+            .filter((row) => mergeItemKey(row.name) === key);
+        if (matches.length > 1) {throw new Error(`يوجد أكثر من صنف باسم مطابق لـ«${itemName}» — ادمج التكرار أولًا`);}
+        return matches[0] || null;
+    }
+
+    async function submitOpeningBalance() {
+        if (busy || openingLoading) {return;}
+        const validation = validateOpeningRows(openingRows);
+        if (validation.errors.length) {
+            panelMsg(validation.errors.map((error) => `السطر ${error.line}: ${error.message}`).join(' — '));
+            return;
+        }
+        const items = validation.rows;
+        busy = true;
+        try {
+            if (!openingNetMode) {
+                const date = new Date().toISOString().slice(0, 10);
+                const invoiceNumber = `OPEN-${date.replace(/-/g, '')}-${String(Math.floor(Math.random() * 900000) + 100000)}`;
+                await createOpeningInvoice(items, { invoiceNumber, date });
+                closePanel();
+                notify(`تم حفظ الرصيد الافتتاحي: ${items.length} صنف كفاتورة آجلة`);
+                await reload();
+                return;
+            }
+
+            const issuedRows = await fetchOpeningIssuedTotals();
+            const issuedByName = new Map();
+            for (const row of issuedRows) {
+                const key = mergeItemKey(row.name);
+                issuedByName.set(key, (issuedByName.get(key) || 0) + row.issued);
+            }
+            const plan = [];
+            for (const item of items) {
+                const issued = issuedByName.get(mergeItemKey(item.name)) || 0;
+                const net = openingNetQuantity(item.qty, issued);
+                if (net < 0) {
+                    throw new Error(`المنصرف (${formatQty(issued)}) أكبر من كمية البداية (${formatQty(item.qty)}) للصنف «${item.name}»`);
+                }
+                plan.push({ ...item, issued, net, inventory: await findOpeningInventoryItem(item.name) });
+            }
+            const approved = await confirmFn(`سيُعيَّن صافي الرصيد الرئيسي لـ ${plan.length} صنفًا (${plan.reduce((sum, row) => sum + row.net, 0)} وحدة إجمالًا). ستُسجّل التسويات في دفتر المخزون ولن تتغير أرصدة الأقسام. متابعة؟`);
+            if (!approved) {return;}
+
+            let updated = 0;
+            let created = 0;
+            const failures = [];
+            for (const item of plan) {
+                try {
+                    const reason = `تعيين رصيد افتتاحي صافي — بداية ${item.qty}، منصرف ${item.issued}`;
+                    if (item.inventory) {
+                        await setOpeningMainWarehouseBalance(item.inventory.id, {
+                            mainQty: item.net, avgCost: item.price, expiryDate: item.expiry, reason,
+                        });
+                        updated += 1;
+                    } else {
+                        await createOpeningInventoryItem({
+                            name: item.name, category: item.category, unit: item.unit,
+                            qty: item.net, avgCost: item.price, expiryDate: item.expiry,
+                        });
+                        created += 1;
+                    }
+                } catch (error) {
+                    failures.push({ name: item.name, message: error.message || 'تعذّر التعيين' });
+                }
+            }
+            if (failures.length) {
+                panelMsg(`اكتمل جزئيًا: عُدّل ${updated} وأُنشئ ${created}، وتعذّر ${failures.length}. أول فشل: «${failures[0].name}» — ${failures[0].message}. أعد المحاولة بعد معالجة السبب؛ التغييرات الناجحة سُجلت.`);
+                await reload();
+                return;
+            }
+            closePanel();
+            notify(`تم تعيين الرصيد الصافي: ${updated} صنفًا عُدّل و${created} جديد؛ المنصرف مخصوم من رصيد المخزن الرئيسي.`);
+            await reload();
+        } catch (error) {
+            panelMsg(error.message || 'تعذّر حفظ الرصيد الافتتاحي');
+        } finally {
+            busy = false;
+        }
+    }
+
     /* ── الباب 1: وارد سريع (صف) — النصوص من :1311-1345 ─────────────────── */
 
     function receiptHtml(row) {
@@ -592,13 +830,13 @@ export function mountWarehouseScreen(host, ctx = {}) {
                <input class="erp-input" type="number" min="0.01" step="0.01" value="1" data-v2-receipt-qty></label>
              <label class="erp-field"><span class="erp-label">سعر الشراء</span>
                <input class="erp-input" type="number" min="0" step="0.01" data-v2-receipt-price placeholder="مطلوب"></label>
-             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية <span class="erp-req" aria-hidden="true">*</span></span>
-               <input class="erp-input" type="date" data-v2-receipt-expiry aria-required="true" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن"></label>
+             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية</span>
+               <input class="erp-input" type="date" data-v2-receipt-expiry aria-required="false" title="اختياري — YYYY-MM-DD"></label>
              <p class="erp-text-sm erp-text-muted">
                الوحدة المسجلة: <span class="erp-addr" dir="ltr">${esc(row.unit || '—')}</span> —
                الخادم يرفض أي وحدة أخرى. في القديم كان السعر يُملأ تلقائيًا بآخر تكلفة مسجّلة؛
                هذه الشاشة لا تعرض التكلفة عمدًا، فاكتب السعر صراحةً — الفراغ أو الصفر يفسد متوسط التكلفة.
-               <strong>تاريخ الصلاحية إلزامي</strong>: لا تُقبل بضاعة بلا صلاحيته.
+               <strong>تاريخ الصلاحية اختياري</strong>، ويُرفض فقط إن جاء بصيغة فاسدة.
              </p>
              ${panelActions('إضافة للمخزون', 'save')}`);
     }
@@ -632,7 +870,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="qty" placeholder="الكمية" aria-label="الكمية">
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="price" placeholder="السعر" aria-label="السعر">
             <input class="erp-input" type="number" min="0" step="0.01" data-v2-bf="min" placeholder="الحد الأدنى (5)" aria-label="الحد الأدنى">
-            <input class="erp-input" type="date" data-v2-bf="expiry" aria-label="تاريخ الصلاحية" aria-required="true" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن">
+            <input class="erp-input" type="date" data-v2-bf="expiry" aria-label="تاريخ الصلاحية" aria-required="false" title="اختياري — YYYY-MM-DD">
             <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-remove-row aria-label="حذف الصف"><i class="ji" data-i="x" aria-hidden="true"></i></button>
           </div>`;
     }
@@ -655,7 +893,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
              <div class="erp-stack" data-v2-bulk-fail></div>
              <p class="erp-text-sm erp-text-muted">
                يُرسل كل ${formatInt(BULK_CHUNK)} صنفًا في دفعة (مهلة الطلب) — نفس تقسيم القديم.
-               <strong>تاريخ الصلاحية إلزامي لكل صف:</strong> لا يدخل المخزن صنف بلا صلاحيته.
+               <strong>تاريخ الصلاحية اختياري لكل صف</strong>، ويُرفض فقط إن جاء بصيغة فاسدة.
                ${esc(windowNote)}
              </p>
              ${panelActions('استيراد المخزون', 'upload')}`);
@@ -675,7 +913,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             if (isCsv) {reader.readAsText(file, 'UTF-8');}
             else {reader.readAsArrayBuffer(file);}
         });
-        const book = window.XLSX.read(isCsv ? result : new Uint8Array(result), { type: isCsv ? 'string' : 'array' });
+        const book = window.XLSXGuard.readWorkbook(isCsv ? result : new Uint8Array(result), { type: isCsv ? 'string' : 'array' });
         const sheet = book.Sheets[book.SheetNames[0]];
         const all = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
         return Array.isArray(all) ? all.filter((row) => (Array.isArray(row)
@@ -696,19 +934,26 @@ export function mountWarehouseScreen(host, ctx = {}) {
         }
         const X = window.XLSX;
         const isCatalog = kind === 'catalog';
-        const rows = isCatalog
+        const isOpening = kind === 'opening';
+        const rows = isOpening
+            ? [['اسم الصنف', 'الوحدة', 'كمية فعلية', 'سعر الشراء', 'الكراتين', 'الفئة', 'تاريخ الصلاحية'],
+                ['دجاج', 'كجم', 50, 25, 4, 'لحوم', '2026-11-30'],
+                ['مشروم', 'علبة', 12, 18, '', 'معلبات', '2027-02-28']]
+            : (isCatalog
             ? [['اسم الصنف', 'الفئة', 'الوحدة', 'الحد الأدنى'],
                 ['دجاج', 'لحوم', 'كجم', 5], ['أرز', 'حبوب', 'كيس', 10], ['زيت', 'زيوت', 'لتر', 3]]
             : [['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى', 'تاريخ الصلاحية'],
                 ['دجاج', 'لحوم', 'كجم', 50, 25, 10, '2026-11-30'], ['أرز', 'حبوب', 'كيس', 100, 3.5, 20, '2027-06-30'],
-                ['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5, '2027-03-31']];
+                ['زيت نخيل', 'زيوت', 'لتر', 30, 8, 5, '2027-03-31']]);
         const ws = X.utils.aoa_to_sheet(rows);
-        ws['!cols'] = isCatalog
+        ws['!cols'] = isOpening
+            ? [{ wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 18 }]
+            : (isCatalog
             ? [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 12 }]
-            : [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
+            : [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }]);
         const wb = X.utils.book_new();
-        X.utils.book_append_sheet(wb, ws, isCatalog ? 'الأصناف' : 'المخزون');
-        X.writeFile(wb, isCatalog ? 'نموذج_قائمة_الأصناف.xlsx' : 'نموذج_استيراد_المخزون.xlsx');
+        X.utils.book_append_sheet(wb, ws, isOpening ? 'الرصيد الافتتاحي' : (isCatalog ? 'الأصناف' : 'المخزون'));
+        X.writeFile(wb, isOpening ? 'نموذج_الرصيد_الافتتاحي.xlsx' : (isCatalog ? 'نموذج_قائمة_الأصناف.xlsx' : 'نموذج_استيراد_المخزون.xlsx'));
     }
 
     function importMoneyText(v, currency) {
@@ -731,7 +976,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
                <i class="ji" data-i="download" aria-hidden="true"></i><span>تحميل نموذج Excel</span></button></div>
              <label class="erp-field"><span class="erp-label">اختر ملف Excel أو CSV</span>
                <input class="erp-input" type="file" accept=".xlsx,.xls,.csv" data-v2-excel-file></label>
-             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية للأصناف التي بلا عمود صلاحية في الملف <span class="erp-req" aria-hidden="true">*</span></span>
+             <label class="erp-field"><span class="erp-label">تاريخ الصلاحية للأصناف التي بلا عمود صلاحية في الملف (اختياري)</span>
                <input class="erp-input" type="date" data-v2-excel-expiry title="يُطبَّق على الصفوف الناقصة فقط — عمود الصلاحية في الملف له الأولوية"></label>
              <div class="erp-stack" data-v2-excel-progress hidden>
                <div class="erp-wh-import-head">
@@ -756,13 +1001,13 @@ export function mountWarehouseScreen(host, ctx = {}) {
             <td>${formatQty(r.qty)} ${esc(r.unit || '')}</td>
             <td>${esc(importMoneyText(r.price, currency))}</td>
             <td>${esc(importMoneyText((Number(r.qty) || 0) * (Number(r.price) || 0), currency))}</td>
-            <td class="${expiry ? 'erp-num' : 'erp-text-danger'}">${expiry ? esc(expiry) : 'ناقص'}</td>
+            <td class="${expiry ? 'erp-num' : 'erp-text-muted'}">${expiry ? esc(expiry) : '—'}</td>
           </tr>`;
         }).join('');
         return `<div class="erp-text-sm">
             <strong>معاينة: ${formatInt(list.length)} صنف</strong> | إجمالي القيمة: ${esc(importMoneyText(total, currency))}
           </div>
-          ${missingExpiry ? `<div class="erp-flow-note" data-tone="warning"><strong>${formatInt(missingExpiry)}</strong> صفاً بلا تاريخ صلاحية — أضِف عمود «تاريخ الصلاحية» في الملف أو اختر التاريخ أعلاه؛ الخادم يرفضها.</div>` : ''}
+          ${missingExpiry ? `<div class="erp-flow-note" data-tone="info"><strong>${formatInt(missingExpiry)}</strong> صفاً بلا تاريخ صلاحية — سيُحفظ بدون صلاحية (اختياري).</div>` : ''}
           <div class="erp-wh-audit-scroll">
             <table class="erp-wh-audit-table">
               <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>القيمة</th><th>الصلاحية</th></tr></thead>
@@ -858,7 +1103,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
         if (!items.length) {notify('لا توجد صفوف صالحة للاستيراد', 'error'); return;}
         const excelExpiryGate = checkExpiryOnLines(items);
         if (!excelExpiryGate.ok) {
-            notify(`${excelExpiryGate.message} — أضِف عمود تاريخ الصلاحية في الملف أو اختر التاريخ أعلاه`, 'error');
+            notify(excelExpiryGate.message, 'error');
             panelEl.querySelector('[data-v2-excel-expiry]')?.focus();
             return;
         }
@@ -1054,6 +1299,10 @@ export function mountWarehouseScreen(host, ctx = {}) {
             openAuditStudio();
             return;
         }
+        if (kind === 'opening' && !OPENING_WRITE_ROLES.includes(role)) {
+            notify('إدخال الرصيد الافتتاحي متاح للمخزن والمدير والإدارة فقط');
+            return;
+        }
         const gate = kind === 'direct' ? canDirect : (kind === 'merge' ? canMerge : canWrite);
         if (!gate) {
             notify(kind === 'merge' ? 'الدمج متاح للأدمن فقط'
@@ -1064,6 +1313,12 @@ export function mountWarehouseScreen(host, ctx = {}) {
         panelSeq += 1;
         panelKind = kind;
         panelData = data || null;
+        if (kind === 'opening') {
+            setPanel(openingHtml());
+            renderOpeningRows();
+            loadOpeningCurrency();
+            return;
+        }
         if (kind === 'receipt') {setPanel(receiptHtml(data)); return;}
         if (kind === 'excel') {setPanel(excelImportHtml()); return;}
         if (kind === 'bulk') {setPanel(bulkHtml()); return;}
@@ -1080,6 +1335,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
         else if (panelKind === 'bulk') {submitBulk();}
         else if (panelKind === 'catalog') {submitCatalog();}
         else if (panelKind === 'direct') {submitDirect();}
+        else if (panelKind === 'opening') {submitOpeningBalance();}
     }
 
     async function submitReceipt() {
@@ -2042,6 +2298,28 @@ export function mountWarehouseScreen(host, ctx = {}) {
         }
         const opener = event.target.closest('[data-v2-new]');
         if (opener) {openPanel(opener.getAttribute('data-v2-new')); return;}
+        if (event.target.closest('[data-v2-opening-template]')) {downloadTemplate('opening'); return;}
+        if (event.target.closest('[data-v2-opening-add]')) {
+            openingRows.push({ name: '', qty: '', unit: 'كجم', price: '', boxes: '', category: '', expiry: '' });
+            renderOpeningRows();
+            return;
+        }
+        const openingRemove = event.target.closest('[data-v2-opening-remove]');
+        if (openingRemove) {
+            const index = Number(openingRemove.getAttribute('data-v2-opening-remove'));
+            if (openingRows.length > 1) {openingRows.splice(index, 1);}
+            else {openingRows[0] = { name: '', qty: '', unit: 'كجم', price: '', boxes: '', category: '', expiry: '' };}
+            renderOpeningRows();
+            return;
+        }
+        if (event.target.closest('[data-v2-opening-apply]') && openingPreview) {
+            openingRows.push(...openingPreview.rows);
+            openingPreview = null;
+            renderOpeningPreview();
+            renderOpeningRows();
+            panelMsg('أُضيفت الصفوف الصالحة — راجع الجدول قبل الحفظ.');
+            return;
+        }
         const tpl = event.target.closest('[data-v2-template]');
         if (tpl) {downloadTemplate(tpl.getAttribute('data-v2-template')); return;}
         if (event.target.closest('[data-v2-audit-open]')) {openAuditStudio(); return;}
@@ -2103,6 +2381,14 @@ export function mountWarehouseScreen(host, ctx = {}) {
             previewCatalogFile(event.target.files && event.target.files[0]);
             return;
         }
+        if (event.target.matches('[data-v2-opening-file]')) {
+            previewOpeningFile(event.target.files && event.target.files[0]);
+            return;
+        }
+        if (event.target.matches('[data-v2-opening-net]')) {
+            setOpeningNetMode(event.target.checked);
+            return;
+        }
         if (!studio) {return;}
         // ── استوديو الجرد: تغييرات النموذج تعيش في حالة الاستوديو ──
         if (event.target.matches('[data-v2-speriod]')) {studio.periodType = event.target.value; return;}
@@ -2119,6 +2405,42 @@ export function mountWarehouseScreen(host, ctx = {}) {
     });
 
     el.addEventListener('input', (event) => {
+        const openingField = event.target.closest('[data-v2-opening-field]');
+        if (openingField) {
+            const index = Number(openingField.getAttribute('data-index'));
+            const row = openingRows[index];
+            if (!row) {return;}
+            const field = openingField.getAttribute('data-v2-opening-field');
+            row[field] = openingField.value;
+            if (openingNetMode && (field === 'qty' || field === 'name')) {
+                const tr = openingField.closest('[data-v2-opening-row]');
+                const issued = openingIssued.get(mergeItemKey(row.name)) || 0;
+                const issuedCell = tr?.querySelector('[data-v2-opening-issued]');
+                const netCell = tr?.querySelector('[data-v2-opening-net-qty]');
+                const qty = Number(row.qty);
+                const net = row.qty === '' || !Number.isFinite(qty) || qty < 0
+                    ? null
+                    : openingNetQuantity(qty, issued);
+                if (issuedCell) {issuedCell.textContent = formatQty(issued);}
+                if (netCell) {
+                    netCell.textContent = net === null ? '—' : formatQty(net);
+                    netCell.classList.toggle('erp-text-danger', net !== null && net < 0);
+                }
+            }
+            const total = openingRows.reduce((sum, line) => {
+                const qty = Number(line.qty);
+                const price = Number(line.price);
+                return sum + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
+            }, 0);
+            const formatted = formatMoney(total, openingTotalCurrency);
+            const totalEl = panelEl.querySelector('[data-v2-opening-total]');
+            if (totalEl) {
+                totalEl.textContent = formatted.hasUnit
+                    ? `${formatted.amount} ${formatted.unit}`
+                    : `${formatted.amount} (عملة النظام غير متاحة)`;
+            }
+            return;
+        }
         if (event.target.matches('[data-v2-q]')) {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {

@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION='4.25.56'; // 2026-10-16: كاش مُشتقّ من الصفحات + تخزين مفرد + تقليم المراجعات
+const CACHE_VERSION='4.25.61'; // 2026-10-17: معاينة شاشة سامسونج الطولية بنسبة 9:16
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -45,7 +45,6 @@ const MODULE_SPEC_RE = /['"](\.[^'"]*?\.(?:js|css|mjs|json)(?:\?v=[0-9.]+)?)['"]
 const PRECACHE_LIMIT = 200;
 const MAX_REVISIONS_PER_PATH = 2;
 
-const OFFLINE_FALLBACKS = ['/app/index.html', '/app/pos.html'];
 // API_TTL أُزيل: بيانات /api/ لا تُخزَّن في الكاش إطلاقًا (سياسة bypass).
 const STATIC_TTL = 30 * 24 * 60 * 60 * 1000;
 
@@ -127,10 +126,16 @@ async function precacheAll() {
     const importedRefs = [];
     moduleTexts.forEach((js, i) => {importedRefs.push(...refsInModule(js, hrefOf(walkable[i])));});
 
-    const pending = [...new Set([...pageRefs, ...MANIFEST_ASSETS, ...importedRefs])]
-        .sort()
-        .filter((key) => !stored.has(key))
-        .slice(0, Math.max(PRECACHE_LIMIT - stored.size, 0));
+    // FIX (Enterprise 2026-10-21): الأصول الصريحة (manifest + الأيقونات) كانت
+    // تُقصّ مع الترتيب الأبجدي عند بلوغ الحد — فيسقط manifest.json من الذيل
+    // ويختفي التطبيق المثبَّت. الصريح الآن **أولًا دائمًا**، والباقي يملأ
+    // ما تبقّى من الميزانية.
+    const explicit = MANIFEST_ASSETS.filter((key) => !stored.has(key));
+    const derived = [...new Set([...pageRefs, ...importedRefs])]
+        .filter((key) => !stored.has(key) && !explicit.includes(key))
+        .sort();
+    const budget = Math.max(PRECACHE_LIMIT - stored.size - explicit.length, 0);
+    const pending = [...explicit, ...derived.slice(0, budget)];
     await Promise.allSettled(pending.map((key) => take(key, false)));
     return [...stored];
 }
