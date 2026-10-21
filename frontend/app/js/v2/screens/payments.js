@@ -18,14 +18,14 @@
  * undo). Recording a NEW payment is not this screen's door.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
 import {
     fetchSupplierPayments, fetchSuppliers, paymentToRow,
     fetchCurrency, formatMoney, formatInt, PAYMENT_DELETE_ROLES,
     deletePayment,
-} from '../data/procurement-repo.js?v=4.9.181';
-import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.181';
+} from '../data/procurement-repo.js?v=4.9.185';
+import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -85,12 +85,11 @@ function template(from, to) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
-            السجل من وجه الخادم الحالي
-            (<span class="erp-addr" dir="ltr">/api/procurement/payments</span>)،
-            والفلاتر (المورد والمدة) تُطبق في SQL — آخر 500 دفعة حدّ الخادم
-            ويُعلن عند بلوغه. رقم الفاتورة المرتبطة يُحلّ من السجل، ورقمها
-            الخام عند تعذّر الحل. الكتابة الوحيدة هنا عكس دفعة مسجّلة، للحساب
-            الذي يملك ذلك عند الخادم، والفاتورة المرتبطة تُعاد حسابها هناك.
+            السجل من النظام مباشرة، والفلاتر (المورد والمدة) تُطبق قبل العرض —
+            آخر 500 دفعة حدّ أقصى ويُعلن عند بلوغه. رقم الفاتورة المرتبطة يُحلّ
+            من السجل، ورقمها الخام عند تعذّر الحل. الكتابة الوحيدة هنا عكس
+            دفعة مسجّلة، لمن يملك صلاحيتها، وتُعاد الفاتورة المرتبطة حوسبتها
+            تلقائيًا.
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
           <div data-v2-table></div>

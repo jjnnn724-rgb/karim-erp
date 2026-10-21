@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.181';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.181';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.185';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.185';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.185';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,17 +81,17 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.181';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.181';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.181';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.181';
+} from '../data/employees-repo.js?v=4.9.185';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.185';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.185';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.185';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.181';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+} from '../data/employee-card-repo.js?v=4.9.185';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -265,6 +265,7 @@ function template() {
           </div>
           <div class="erp-card__body">
             <div data-v2-cards></div>
+            <div data-v2-cards-pager></div>
           </div>
         </section>
 
@@ -277,15 +278,12 @@ function template() {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              القراءة والكتابة من وجه الخادم الحالي
-              (<span class="erp-addr" dir="ltr">/api/employees</span>)،
-              والصلاحية قررها الخادم وحده: الإضافة والتعديل والحذف والاستيراد
-              لأدوار admin|manager|hr (أو منحة hr.edit) — ورسالة الخادم هي المعروضة
-              عند الرفض. الجدول يعرض قائمة السماح فقط؛
-              بطاقات العرض تضيف الراتب ورقم البصمة والوردية كما في القديم
-              (لأدوار هذه الشاشة حصرًا)، والهوية والرموز لا تظهر أبدًا.
-              التصدير يتبع أعمدة قالب الاستيراد الاثنتي عشرة نفسها،
-              لكنه لا يحمل البصمة الرقمية ولا رقم البطاقة — تضييق معلن عن القديم.
+              عرض الموظفين وإضافتهم وتعديلهم وحذفهم واستيرادهم متاح لأدوار
+              الإدارة والموارد البشرية، والنظام يتحقق من الصلاحية عند كل
+              إجراء ويعرض رسالة الرفض كما هي. الجدول يعرض قائمة السماح وحدها،
+              وبطاقات العرض تضيف الراتب ورقم البصمة والوردية، أما الهوية
+              والرموز فلا تظهر أبدًا. التصدير يتبع أعمدة قالب الاستيراد
+              الاثني عشر نفسها، لكنه لا يحمل البصمة الرقمية ولا رقم البطاقة.
               <span data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</span>
               <span data-v2-curnote hidden>تعذّرت قراءة وحدة المال — الرواتب بلا وحدة.</span>
             </p>
@@ -342,6 +340,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
     const cardsSection = q('[data-v2-cards-section]');
     const rosterSection = q('[data-v2-roster]');
     const cardsHost = q('[data-v2-cards]');
+    const cardsPagerHost = q('[data-v2-cards-pager]');
     const cardsCountEl = q('[data-v2-cardscount]');
     const viewSegHost = q('[data-v2-viewseg]');
     const curNote = q('[data-v2-curnote]');
@@ -352,6 +351,13 @@ export function mountEmployeesScreen(host, ctx = {}) {
     let extrasById = new Map();
     let currency = '';
     const expandedIds = new Set();
+
+    /* بطاقات الموظفين تُصفَّح ٢٠ لكل صفحة مثل الجدول: ١٣٦ بطاقة في عمود
+       واحد كانت تجعل الصفحة ٣٠ ألف بكسل. التوقيع يعيد الصفحة للأولى عند
+       تغيّر البحث/التصفية فقط، لا عند كل رسم. */
+    const CARD_PAGE_SIZE = 20;
+    let cardPage = 1;
+    let cardsSig = '';
 
     /* البحث (W2-6) — الصندوق هنا، والدرجات والمطابقة في الباب. */
     let searchQuery = '';
@@ -390,13 +396,15 @@ export function mountEmployeesScreen(host, ctx = {}) {
      *  roles; export is a re-save of rows the server already sent this
      *  session, so every viewer keeps it. */
     function toolsSeg() {
-        return (canWrite ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--primary erp-no-print" data-v2-new="add">
+        /* aria-label ثابت: النص المرئي يصير sr-only على الموبايل، والاسم
+           لا يعتمد على CSS. */
+        return (canWrite ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--primary erp-no-print" data-v2-new="add" aria-label="إضافة موظف">
               <i class="ji" data-i="plus" aria-hidden="true"></i><span>إضافة موظف</span></button>
-            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="import">
+            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="import" aria-label="استيراد Excel">
               <i class="ji" data-i="upload" aria-hidden="true"></i><span>استيراد Excel</span></button>` : '')
-            + (canBulkImport ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="bulk">
+            + (canBulkImport ? `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-new="bulk" aria-label="استيراد جماعي">
               <i class="ji" data-i="users" aria-hidden="true"></i><span>استيراد جماعي</span></button>` : '')
-            + `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-export>
+            + `<button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-export aria-label="تصدير Excel">
               <i class="ji" data-i="download" aria-hidden="true"></i><span>تصدير Excel</span></button>`;
     }
 
@@ -588,6 +596,23 @@ export function mountEmployeesScreen(host, ctx = {}) {
         }).join('') + `</ul>`;
     }
 
+    function cardsPager(total, pages) {
+        if (pages <= 1) {return '';}
+        const from = (cardPage - 1) * CARD_PAGE_SIZE + 1;
+        const to = Math.min(cardPage * CARD_PAGE_SIZE, total);
+        const btn = (target, icon, label, disabled) => `<button type="button" class="erp-btn erp-btn--sm" data-card-page="${target}" aria-label="${label}"${disabled ? ' disabled' : ''}><i class="ji" data-i="${icon}" aria-hidden="true"></i></button>`;
+        return `<div class="erp-table__pager erp-no-print">
+          <span class="erp-pager__info">${formatInt(from)}–${formatInt(to)} من ${formatInt(total)} بطاقة</span>
+          <div class="erp-pager__btns">
+            ${btn('first', 'chevrons-right', 'الصفحة الأولى', cardPage === 1)}
+            ${btn('prev', 'chevron-right', 'الصفحة السابقة', cardPage === 1)}
+            <span class="erp-pager__page">${cardPage} / ${pages}</span>
+            ${btn('next', 'chevron-left', 'الصفحة التالية', cardPage === pages)}
+            ${btn('last', 'chevrons-left', 'الصفحة الأخيرة', cardPage === pages)}
+          </div>
+        </div>`;
+    }
+
     function paint() {
         const f = filters();
         const searched = searchEmployees(allRows, searchQuery, extrasById);
@@ -617,7 +642,13 @@ export function mountEmployeesScreen(host, ctx = {}) {
         cardsSection.hidden = view !== 'cards';
         rosterSection.hidden = view !== 'table';
         if (view === 'cards') {
-            cardsHost.innerHTML = cardsBlock(rows);
+            const pages = Math.max(1, Math.ceil(rows.length / CARD_PAGE_SIZE));
+            const sig = `${rows.length}|${searchQuery}|${active.join('·')}`;
+            if (sig !== cardsSig) {cardsSig = sig; cardPage = 1;}
+            cardPage = Math.min(cardPage, pages);
+            const pageRows = rows.slice((cardPage - 1) * CARD_PAGE_SIZE, cardPage * CARD_PAGE_SIZE);
+            cardsHost.innerHTML = cardsBlock(pageRows);
+            cardsPagerHost.innerHTML = cardsPager(rows.length, pages);
             cardsCountEl.textContent = `(${formatInt(rows.length)})`;
         }
 
@@ -628,7 +659,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
         }
         qHint.textContent = searchNote(searched);
         printNote.textContent = view === 'cards'
-            ? `بطاقات الموظفين — ${formatInt(rows.length)} بطاقة. المطبوعة تعرض البطاقات الظاهرة.`
+            ? `بطاقات الموظفين — ${formatInt(rows.length)} بطاقة. المطبوعة تعرض الصفحة الحالية من البطاقات، لا الدليل كاملًا.`
             : `دليل الموظفين — ${formatInt(rows.length)} موظفًا. المطبوعة تعرض الصفحة الحالية من الجدول، لا الدليل كاملًا.`;
     }
 
@@ -1594,6 +1625,18 @@ export function mountEmployeesScreen(host, ctx = {}) {
                 paint();
                 cardsHost.querySelector(`[data-v2-expand="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
             }
+            return;
+        }
+        const pageBtn = event.target.closest('[data-card-page]');
+        if (pageBtn) {
+            const target = pageBtn.getAttribute('data-card-page');
+            const pages = Math.max(1, Math.ceil(rows.length / CARD_PAGE_SIZE));
+            if (target === 'first') {cardPage = 1;}
+            if (target === 'prev') {cardPage = Math.max(1, cardPage - 1);}
+            if (target === 'next') {cardPage = Math.min(pages, cardPage + 1);}
+            if (target === 'last') {cardPage = pages;}
+            paint();
+            cardsPagerHost.querySelector(`[data-card-page="${target}"]`)?.focus({ preventScroll: true });
             return;
         }
         const viewBtn = event.target.closest('[data-v2-view]');

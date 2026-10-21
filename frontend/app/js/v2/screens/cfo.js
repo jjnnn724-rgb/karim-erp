@@ -14,12 +14,12 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.181';
-import { ensureXlsx } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.185';
+import { ensureXlsx } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -29,7 +29,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.181';
+} from '../data/cfo-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -124,7 +124,7 @@ function template(canPost) {
         <section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title"><i class="ji" data-i="lock" aria-hidden="true"></i> الإغلاق الشهري (قفل الفترات)</h3>
           <span class="erp-grow"></span>
-          <button type="button" class="erp-btn erp-btn--sm" data-v2-periods>
+          <button type="button" class="erp-btn erp-btn--sm" data-v2-periods-refresh>
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
           </button>
         </div><div class="erp-card__body erp-stack"><div data-v2-periods></div></div></section>
@@ -138,7 +138,7 @@ function template(canPost) {
         <section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title"><i class="ji" data-i="users" aria-hidden="true"></i> إغلاق ورديات الكاشير مركزيًا</h3>
           <span class="erp-grow"></span>
-          <button type="button" class="erp-btn erp-btn--sm" data-v2-shifts>
+          <button type="button" class="erp-btn erp-btn--sm" data-v2-shifts-refresh>
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
           </button>
           <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-dayclose>إقفال اليوم Z</button>
@@ -210,9 +210,9 @@ export function mountCfoScreen(host, ctx = {}) {
             { key: 'code', header: 'الكود', sortable: true, filterable: true, width: '110px', className: 'erp-mono' },
             { key: 'name', header: 'الحساب', sortable: true, filterable: true },
             { key: 'type', header: 'النوع', sortable: true, filterable: true, width: '120px' },
-            { key: 'debit', header: 'مدين', sortable: true, type: 'number', width: '130px', align: 'end', className: 'erp-tnum' },
-            { key: 'credit', header: 'دائن', sortable: true, type: 'number', width: '130px', align: 'end', className: 'erp-tnum' },
-            { key: 'balance', header: 'الرصيد', sortable: true, type: 'number', width: '140px', align: 'end', className: 'erp-tnum' },
+            { key: 'debit', header: 'مدين', sortable: true, type: 'number', width: '130px', align: 'end', className: 'erp-tnum', render: (row) => moneyText(row.debit) },
+            { key: 'credit', header: 'دائن', sortable: true, type: 'number', width: '130px', align: 'end', className: 'erp-tnum', render: (row) => moneyText(row.credit) },
+            { key: 'balance', header: 'الرصيد', sortable: true, type: 'number', width: '140px', align: 'end', className: 'erp-tnum', render: (row) => moneyText(row.balance) },
         ],
     });
 
@@ -757,10 +757,10 @@ export function mountCfoScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-print-tb]')) {printTb(); return;}
         if (event.target.closest('[data-v2-export-tb]')) {exportTb(); return;}
         if (event.target.closest('[data-v2-print-journal]')) {printJournalDoc(); return;}
-        if (event.target.closest('[data-v2-periods]')) {loadPeriods(); return;}
+        if (event.target.closest('[data-v2-periods-refresh]')) {loadPeriods(); return;}
         if (event.target.closest('[data-v2-balance]')) {loadBalance(); return;}
         if (event.target.closest('[data-v2-cashflow]')) {loadCashflow(); return;}
-        if (event.target.closest('[data-v2-shifts]')) {loadShifts(); return;}
+        if (event.target.closest('[data-v2-shifts-refresh]')) {loadShifts(); return;}
         if (event.target.closest('[data-v2-new-entry]')) {openEntryPanel(); return;}
         if (event.target.closest('[data-v2-jl-draft]')) {submitEntry(true); return;}
         if (event.target.closest('[data-v2-jl-post]')) {submitEntry(false); return;}

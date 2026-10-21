@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * database/scripts/restore.js — Restore database from backup (psql)
+ * database/scripts/restore.js — Restore database from SQL or custom-format backup
  * ────────────────────────────────────────────────────────────────────────────
  * Usage:
- *   node database/scripts/restore.js <backup_file.sql> [--target-db NAME] [--yes] [--drop]
+ *   node database/scripts/restore.js <backup_file.sql|backup_file.dump> [--target-db NAME] [--yes] [--drop]
  *
  * أوضاع التشغيل:
  *   1) عادي (بلا --drop): استعادة داخل قاعدة موجودة. فوق قاعدة الإنتاج تتطلب --yes.
@@ -23,18 +23,37 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+function isCustomDump(file) {
+    const descriptor = fs.openSync(file, 'r');
+    const signature = Buffer.alloc(5);
+    try {
+        return fs.readSync(descriptor, signature, 0, signature.length, 0) === signature.length
+            && signature.toString('ascii') === 'PGDMP';
+    } finally {
+        fs.closeSync(descriptor);
+    }
+}
+
 function main() {
     const argv = process.argv.slice(2);
     const args = argv.filter(a => !a.startsWith('--'));
     const flags = new Set(argv.filter(a => a.startsWith('--') && !a.includes('=')));
     const file = args[0];
     if (!file || !fs.existsSync(file)) {
-        throw new Error('حدد ملف نسخة موجودًا: node database/scripts/restore.js <file.sql> [--target-db NAME] [--yes] [--drop]');
+        throw new Error('حدد ملف نسخة موجودًا بصيغة SQL أو PostgreSQL custom: node database/scripts/restore.js <file.sql|file.dump> [--target-db NAME] [--yes] [--drop]');
+    }
+    if (fs.statSync(file).size === 0) {
+        throw new Error('ملف النسخة الاحتياطية فارغ؛ أُلغيت الاستعادة');
     }
     let targetDb = getEnv('DB_NAME', 'karim_erp');
     const ti = argv.indexOf('--target-db');
     if (ti >= 0 && argv[ti + 1]) targetDb = argv[ti + 1];
-    const isProd = targetDb === getEnv('DB_NAME', 'karim_erp');
+    if (!/^[A-Za-z0-9][A-Za-z0-9_$.-]{0,62}$/.test(targetDb)) {
+        throw new Error('اسم قاعدة البيانات غير صالح؛ استخدم من 1 إلى 63 حرفًا/رقمًا أو _ $ . - ويجب أن يبدأ بحرف أو رقم');
+    }
+    const isProd = process.env.NODE_ENV === 'production'
+        || targetDb === 'karim_erp'
+        || targetDb === getEnv('DB_NAME', 'karim_erp');
     const dropMode = flags.has('--drop');
 
     // تأكيد مدمّر صريح ومطابق: --confirm-drop=<اسم-القاعدة> يجب أن يطابق حرفيًا
@@ -59,8 +78,11 @@ function main() {
         log.warn('لا يوجد ملف بصمة — متابعة بدون تحقق');
     }
 
+    const customDump = isCustomDump(file);
     const psql = process.env.KARIM_PSQL_PATH || getPgBinary('psql');
-    if (!psql) throw new Error('psql binary not found');
+    if (!customDump && !psql) throw new Error('psql binary not found');
+    const pgRestore = process.env.KARIM_PG_RESTORE_PATH || getPgBinary('pg_restore');
+    if (customDump && !pgRestore) throw new Error('pg_restore binary not found');
     const pgDumpBin = process.env.KARIM_PG_DUMP_PATH || getPgBinary('pg_dump');
     const env = { ...process.env, PGPASSWORD: getEnv('DB_PASSWORD') };
     const host = getEnv('DB_HOST', 'localhost');
@@ -85,21 +107,30 @@ function main() {
         const drop = spawnSync(psql, [
             '-h', host, '-p', port, '-U', user, '-d', 'postgres',
             '-v', 'ON_ERROR_STOP=1',
-            '-c', `DROP DATABASE IF EXISTS "${targetDb}";`,
-            '-c', `CREATE DATABASE "${targetDb}";`,
+            '-c', `DROP DATABASE IF EXISTS "${targetDb.replace(/"/g, '""')}";`,
+            '-c', `CREATE DATABASE "${targetDb.replace(/"/g, '""')}";`,
         ], { stdio: 'inherit', env, timeout: 120000 });
         if (drop.status !== 0) throw new Error('فشل DROP/CREATE — راجع الاتصال بصلاحية postgres');
     }
 
     log.info(`استعادة إلى قاعدة: ${targetDb}`);
-    const result = spawnSync(psql, [
-        '-h', host, '-p', port,
-        '-U', user, '-d', targetDb,
-        '-v', 'ON_ERROR_STOP=1', '-f', path.resolve(file),
-    ], { stdio: 'inherit', env, timeout: 600000 });
+    const result = customDump
+        ? spawnSync(pgRestore, [
+            '--exit-on-error', '-h', host, '-p', port,
+            '-U', user, '-d', targetDb, path.resolve(file),
+        ], { stdio: 'inherit', env, timeout: 600000 })
+        : spawnSync(psql, [
+            '-h', host, '-p', port,
+            '-U', user, '-d', targetDb,
+            '-v', 'ON_ERROR_STOP=1', '-f', path.resolve(file),
+        ], { stdio: 'inherit', env, timeout: 600000 });
     if (result.status !== 0) throw new Error('فشلت الاستعادة');
     log.ok('تمت الاستعادة بنجاح');
 }
 
-try { main(); }
-catch (error) { log.error(error.message); process.exit(1); }
+if (require.main === module) {
+    try { main(); }
+    catch (error) { log.error(error.message); process.exit(1); }
+}
+
+module.exports = { isCustomDump };

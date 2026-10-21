@@ -14,34 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.181';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.185';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.185';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.181';
+} from '../data/departments-write-repo.js?v=4.9.185';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
     updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
-} from '../data/dept-cashier-repo.js?v=4.9.181';
+} from '../data/dept-cashier-repo.js?v=4.9.185';
 import {
     CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.181';
+} from '../data/dept-detail.js?v=4.9.185';
 /* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
  * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
  * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
  * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.181';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.181';
-import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.181';
-import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.181';
-import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.181';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.185';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.185';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.185';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.185';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -72,6 +72,10 @@ function familyOrder(list) {
    يولّدها التكامل وحده، ولا قسم يدوي يبدأ بها. */
 const MIRROR_DEPT_RE = /^ys_/i;
 const LIVE_CASHIER_NOS = new Set(['1', '3', '4', '5', '6', '9']);
+/* قرار المالك 2026-10-21: فواتير BILLS4 (ys_b4_ext) تسويات مديونية قديمة
+   وليست إيرادًا لنا — تُستبعد من كل الأرقام التشغيلية. تبقى صفوفها في
+   القاعدة للمطابقة مع يارا فقط. */
+const NON_OPERATIONAL_REVENUE_DEPTS = new Set(['ys_b4_ext']);
 const CASHIER_REFRESH_MS = 10_000;
 export function isMirrorDept(code) { return MIRROR_DEPT_RE.test(String(code ?? '')); }
 
@@ -215,6 +219,10 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     let dispatches = [];
     let signalsReady = false;
     let financeReady = false;
+    /* تسوية الإجمالي: المصروفات غير المسندة (deptId فارغ/غير معروف) مشمولة
+       في إجمالي المؤشرات ولا تظهر على أي بطاقة — تُذكر صراحةً بلا اختراع قسم. */
+    let unassignedExpense = 0;
+    let unassignedExpenseCount = 0;
     let view = 'cards';
     let linkingCode = '';
     /* طيّ أقسام المبيعات المرآتية (ys_*) افتراضيًا: عرضٌ فقط بلا حذف بيانات،
@@ -330,28 +338,26 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         return candidateCode === ancestorCode;
     }
 
-    /** إحصاءات البطاقة: إيراد القسم + كاشيراته، ومصروفه، والصافي.
-     *  إيراد الكاشير حيّ من يارا حين يتاح، وإلا فعن مرآة القاعدة (ys_cc_N) —
-     *  نفس مصدر القديم، فلا تسقط المبيعات إلى صفر عند تعذر أوراكل. */
+    /** إحصاءات البطاقة: إيراد القسم من السجل المرحّل + مرايا الكاشيريات
+     *  المربوطة (ys_cc_N)، ومصروفه، والصافي. إيرادات BILLS4 مستبعدة سلفًا.
+     *  الأرقام كلها من نفس سجل تحليل التكاليف، فتتطابق البطاقات مع الإجمالي
+     *  ومع القديم بلا خلطٍ بين قراءة يارا الحيّة والقاعدة. */
     function deptCardStats(r, nos) {
         const {from, to} = monthToDateRange();
         const code = String(r.code);
         const s = calcDeptStats(revenues, expenses, rows, code, from, to);
-        const cashierMirror = code.match(/^ys_cc_(\d+)$/i);
-        const mirrorIsIncluded = Boolean(cashierMirror) && LIVE_CASHIER_NOS.has(cashierMirror[1]);
-        // بطاقة القسم المرآتي نفسه: إيراده المحلي هو نفس إيراد كاشيره.
-        // مع الحي نُصفّره ونضيف الحي (بلا ازدواج)، وبدون الحي نُبقيه.
-        const localRevenue = (actualCashierReady && mirrorIsIncluded) ? 0 : s.rev;
-        const cashRev = actualCashierReady
-            ? nos.reduce((sum, no) => sum + (actualCashierRevenue.get(String(no)) || 0), 0)
-            : nos.reduce((sum, no) => sum + (deptIsWithin(`ys_cc_${no}`, code)
-                ? 0 /* داخل شجرة البطاقة نفسها: محسوب أصلًا في s.rev */
-                : cashierRevenueIn(revenues, [no], from, to)), 0);
-        const rev = localRevenue + cashRev;
+        // المرايا خارج شجرة القسم في القاعدة (parent_code فارغ)، فتُجمع هنا.
+        // حارس الشجرة يمنع ازدواج مرآةٍ صارت داخل الشجرة أو بطاقةِ المرآة نفسها.
+        let mirrorRev = 0;
+        for (const no of nos) {
+            if (!deptIsWithin(`ys_cc_${no}`, code)) {
+                mirrorRev += cashierRevenueIn(revenues, [no], from, to);
+            }
+        }
+        const rev = s.rev + mirrorRev;
         return {
             rev, exp: s.exp, profit: rev - s.exp,
             costRatio: rev > 0 ? (s.exp / rev) * 100 : 0,
-            verified: actualCashierReady,
         };
     }
 
@@ -389,18 +395,25 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     function deptCashierChip(l) {
         const no = String(l.cashierNo);
         const {from, to} = monthToDateRange();
-        const rev = actualCashierReady
-            ? (actualCashierRevenue.get(no) || 0)
-            : cashierRevenueIn(revenues, [no], from, to);
-        const amount = (actualCashierReady || rev > 0) ? formatInt(rev) : '—';
-        const source = actualCashierReady ? '' : 'من سجل الإيرادات — يارا سوفت غير متاح';
+        // شارة الكاشير تعرض المرحّل (نفس أساس البطاقة). إن كان حيًّا بلا مرآة
+        // بعد (كاشير جديد) يُعرض الحي موسومًا بأنه غير مرحّل وغير مشمول.
+        const posted = cashierRevenueIn(revenues, [no], from, to);
+        const live = actualCashierReady ? (actualCashierRevenue.get(no) || 0) : null;
+        const unposted = live !== null && live > 0 && posted <= 0;
+        const amount = posted > 0 ? formatInt(posted) : (unposted ? formatInt(live) : '—');
+        const source = unposted
+            ? `حي من يارا: ${formatInt(live)} — غير مرحّل إلى قاعدة المرايا وغير مشمول في إجمالي البطاقة`
+            : (live !== null && Math.abs(live - posted) > 0.01
+                ? `المرحّل: ${formatInt(posted)} · الحي: ${formatInt(live)}`
+                : (actualCashierReady ? '' : 'من سجل الإيرادات المرحّل — يارا سوفت غير متاح'));
         const owner = l.inherited ? ` · ${esc(deptNameOf(l.deptCode, rows))}` : '';
         const nm = cashierNameOf(l.cashierNo, cashDir);
-        return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}" title="${esc(cashierLabel(l.cashierNo, cashDir))}${owner}">`
+        return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}${unposted ? ' is-unposted' : ''}" title="${esc(cashierLabel(l.cashierNo, cashDir))}${owner}">`
             + `<i class="ji" data-i="receipt" aria-hidden="true"></i>كاشير <span class="erp-mono" dir="ltr">${esc(l.cashierNo)}</span>`
             + (nm ? `<span class="erp-dept-cashier__name">${esc(nm)}</span>` : '')
             + `${l.isPrimary ? '<span class="erp-dept-cashier__star" title="الكاشير الأساسي للقسم">★</span>' : ''}`
             + `<span class="erp-dept-cashier__amount erp-num" dir="ltr"${source ? ` title="${esc(source)}"` : ''}>${amount}</span>`
+            + `${unposted ? '<span class="erp-dept-cashier__flag">غير مرحّل</span>' : ''}`
             + `${owner}</span>`;
     }
 
@@ -501,7 +514,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `<span class="erp-dept-stat erp-dept-stat--net"><span class="erp-dept-stat__label"><i class="ji" data-i="gem" aria-hidden="true"></i>صافي الشهر</span>`
             + `<span class="erp-dept-stat__value ${netClass}">${money(s.profit, currency)}</span></span>`
             + '</div>'
-            + `<div class="erp-dept-card__ratio${s.costRatio > 100 ? ' is-high' : ''}"${s.rev > 0 ? ` title="${s.verified ? 'نسبة المصروف إلى إيراد الكاشير الحي' : 'نسبة المصروف إلى إيراد القسم من سجل الإيرادات — يارا سوفت غير متاح'}"` : ''}>`
+            + `<div class="erp-dept-card__ratio${s.costRatio > 100 ? ' is-high' : ''}"${s.rev > 0 ? ' title="نسبة المصروف إلى إيراد القسم من سجل الإيراد المرحّل — نفس أساس تحليل التكاليف"' : ''}>`
             + `<span class="erp-dept-card__ratio-track"><span class="erp-dept-card__ratio-fill" style="width:${ratioPct.toFixed(1)}%"></span></span>`
             + `<span class="erp-dept-card__ratio-label">نسبة التكلفة <span class="erp-num" dir="ltr">${s.rev > 0 ? `${formatInt(Math.round(s.costRatio))}%` : '—'}</span></span>`
             + '</div>'
@@ -533,6 +546,12 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     /* بطاقات المستوى الأول فقط، وكل قسم فرعي يُرسم داخل بطاقة أبيه (طلب المالك:
        «مش عايز زحمة») فلا يظهر الفرع مرتين. الأب يبقى يعرض كاشيراته الموروثة
        كما كانت — الطيّ في البطاقة لا في الأرقام. */
+    /** رقم نقدي مكتوم الوحدة داخل صفّ فرعي (الوحدة ظاهرة في الصافي). */
+    const amountOnly = (v) => {
+        const m = formatMoney(v, currency);
+        return `<span class="erp-num" dir="ltr">${esc(m.amount)}</span>`;
+    };
+
     /** صفّ قسم فرعي مضغوط داخل بطاقة أبيه — سطر واحد على الشاشات الواسعة
      *  يلتفّ على الهاتف، فلا تُضخَّم بطاقة الأب ببطاقات كاملة متكررة
      *  (طلب المالك: «مش عايز زحمة»). نفس الأرقام والإجراءات، حجم أقل. */
@@ -567,7 +586,11 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `<span class="erp-dept-child__cashiers">${chips}</span>`
             + '<span class="erp-dept-child__amounts">'
             + `<span class="erp-dept-child__net ${netClass}">${money(s.profit, currency)}</span>`
-            + `<span class="erp-dept-child__ratio">تكلفة <span class="erp-num" dir="ltr">${formatInt(Math.round(s.costRatio))}%</span></span>`
+            + `<span class="erp-dept-child__split">`
+            + `<span title="إيراد الشهر من سجل الإيراد المرحّل">إيراد ${amountOnly(s.rev)}</span>`
+            + `<span title="مصروف الشهر من أذون الصرف والحركات">مصروف ${amountOnly(s.exp)}</span>`
+            + '</span>'
+            + `<span class="erp-dept-child__ratio"${s.rev > 0 ? '' : ' title="لا يوجد إيراد مرحّل لهذا القسم — النسبة غير قابلة للحساب"'}>تكلفة <span class="erp-num" dir="ltr">${s.rev > 0 ? `${formatInt(Math.round(s.costRatio))}%` : '—'}</span></span>`
             + '</span>'
             + '<span class="erp-dept-child__actions">'
             + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-detail="${esc(code)}"><i class="ji" data-i="eye" aria-hidden="true"></i><span>تفاصيل</span></button>`
@@ -638,7 +661,9 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             fetchDispatches().catch(() => []),
         ]);
         if (!el.isConnected) {return;}
-        revenues = Array.isArray(rev) ? rev : [];
+        revenues = (Array.isArray(rev) ? rev : []).filter(
+            (r) => !NON_OPERATIONAL_REVENUE_DEPTS.has(String(r && r.deptId)),
+        );
         expenses = Array.isArray(exp) ? exp : [];
         staff = Array.isArray(emp) ? emp : [];
         recipes = Array.isArray(rec) ? rec : [];
@@ -712,13 +737,14 @@ export function mountDepartmentsScreen(host, ctx = {}) {
                 ? 'تعذّر تحميل دليل أقسام الكاشير؛ لم يتم تخمين إسناد لأي قسم.'
                 : (unmapped.length ? `كاشيرات بلا إسناد موثّق: ${unmapped.join('، ')}.` : '');
             if (!actualCashierReady) {
-                status.textContent = `إيراد الكاشير الفعلي من يارا سوفت غير متاح — لا تُعرض أصفار بديلة. ${actualCashierError} ${mappingNote}`;
+                status.textContent = `إيراد الكاشير الفعلي من يارا سوفت غير متاح — البطاقات تُقرأ من سجل الإيراد المرحّل، لا أصفار بديلة. ${actualCashierError} ${mappingNote}`;
             } else if (actualCashierError) {
-                status.textContent = `تعذّر تحديث إيراد يارا سوفت؛ المعروض آخر قراءة ناجحة ${actualCashierUpdatedAt.toLocaleTimeString('ar-EG')}. ${actualCashierError} ${mappingNote}`;
+                status.textContent = `تعذّر تحديث إيراد يارا سوفت؛ آخر قراءة ناجحة ${actualCashierUpdatedAt.toLocaleTimeString('ar-EG')}. ${actualCashierError} ${mappingNote}`;
             } else {
-                status.textContent = `إيراد الكاشير الفعلي من ${range.from} إلى ${range.to} · تحديث كل 10 ثوانٍ · الكاشير 2 مستبعد حسب إعداد يارا سوفت. ${mappingNote}`;
+                status.textContent = `إيراد الكاشير الفعلي من ${range.from} إلى ${range.to} · تحديث كل 10 ثوانٍ · أرقام البطاقات من السجل المرحّل، والحي للمطابقة وكشف غير المرحّل · الكاشير 2 مستبعد حسب إعداد يارا سوفت. ${mappingNote}`;
             }
         }
+        paintSummary();
         if (view === 'cards') {paintCards();}
     }
 
@@ -789,11 +815,52 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         }).finally(() => {saving = false;});
     }
 
-    function paint() {
+    /** مبلغ نصّي بلا HTML — للملخّص النصّي. */
+    function moneyText(v) {
+        const m = formatMoney(v, currency);
+        return `${m.amount}${m.hasUnit ? ' ' + m.unit : ''}`;
+    }
+
+    function unassignedExpenseTotals() {
+        const codes = new Set(rows.map((d) => String(d.code)));
+        const list = (expenses || []).filter((e) => !codes.has(String((e && e.deptId) || '')));
+        return {count: list.length, sum: list.reduce((s, e) => s + Number(e && e.amount || 0), 0)};
+    }
+
+    /** كاشيرات لهم إيراد حي يتجاوز المرحّل — كاشير جديد لم تُنشأ مرآته بعد. */
+    function unpostedLiveCashiers() {
+        if (!actualCashierReady) {return [];}
+        const {from, to} = monthToDateRange();
+        return [...LIVE_CASHIER_NOS].map((no) => {
+            const posted = cashierRevenueIn(revenues, [no], from, to);
+            const live = actualCashierRevenue.get(String(no)) || 0;
+            return {no, posted, live, delta: live - posted};
+        }).filter((x) => x.delta > 0.01);
+    }
+
+    /** سطر التسوية: ما لا تحمله بطاقة (مصروف بلا قسم، أو حي غير مرحّل) يُقال صراحةً. */
+    function paintSummary() {
         const shown = visibleRows().length;
         const hidden = rows.length - shown;
-        summaryEl.textContent = formatInt(shown) + ' قسمًا'
+        let text = formatInt(shown) + ' قسمًا'
             + (hidden ? ` — ${formatInt(hidden)} قسم مبيعات مرآتي مطوي (طيّ عرضٍ فقط، بلا حذف)` : '');
+        if (financeReady) {
+            text += ' · أرقام البطاقات من سجل الإيراد والمصروف المرحّل — نفس أساس تحليل التكاليف';
+            if (unassignedExpenseCount) {
+                text += ` · مصروفات غير مسندة إلى قسم: ${moneyText(unassignedExpense)}`
+                    + ` (${formatInt(unassignedExpenseCount)} حركة) مشمولة في إجمالي المصروف`;
+            }
+            const unposted = unpostedLiveCashiers();
+            if (unposted.length) {
+                text += ' · إيراد حي غير مرحّل (غير مشمول في البطاقات): '
+                    + unposted.map((x) => `كاشير ${x.no}: ${moneyText(x.delta)}`).join('، ');
+            }
+        }
+        summaryEl.textContent = text;
+    }
+
+    function paint() {
+        const shown = visibleRows().length;
         countEl.textContent = shown ? '(' + formatInt(shown) + ')' : '';
         const mirrorLabel = q('[data-v2-mirrors-label]');
         if (mirrorLabel) {
@@ -819,6 +886,9 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const roots = shown.filter((d) => !d.parent_code).length;
         const totalRev = revenues.reduce((a, r) => a + (Number(r && r.amount) || 0), 0);
         const totalExp = expenses.reduce((a, e) => a + (Number(e && e.amount) || 0), 0);
+        const unassigned = unassignedExpenseTotals();
+        unassignedExpense = unassigned.sum;
+        unassignedExpenseCount = unassigned.count;
         const pending = dispatches.filter((d) => String((d && d.status) || '') === 'pending').length;
         const totals = deptSignalTotals(rows, recipes, staff);
         const fin = (label, value) => (financeReady ? kpiMoneyHtml(label, value, currency) : kpiHtml(label, '—'));
@@ -837,6 +907,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             headEl.innerHTML = !total ? '' : '<div class="erp-print-head__title">سجل الأقسام</div>'
                 + `<div class="erp-print-head__meta">إجمالي ${formatInt(total)} قسمًا — رئيسي ${formatInt(roots)} · فرعي ${formatInt(total - roots)} · صادر في ${esc(issued)}</div>`;
         }
+        paintSummary();
     }
 
     async function reload() {
@@ -935,7 +1006,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     function removeDept(id) {
         const row = rows.find((r) => String(r.id) === String(id));
         if (!row || saving) {return;}
-        const ok = confirmFn(`حذف القسم «${row.name}»؟ PostgreSQL سيحذف إيرادات ومصاريف هذا القسم معه تتابعيًا — لا رجعة.`);
+        const ok = confirmFn(`حذف القسم «${row.name}»؟ ستُحذف إيرادات هذا القسم ومصاريفه معه تتابعيًا — لا رجعة.`);
         if (!ok) {return;}
         let typed = '';
         try {typed = typeof window !== 'undefined' && window.prompt ? (window.prompt('للتأكيد النهائي، اكتب: حذف') || '') : '';} catch { /* deny on blocked prompt */ }
@@ -1008,7 +1079,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         box.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${esc(d.color)}"></span> ${esc(dept.name)} <span class="erp-text-muted erp-mono" dir="ltr">${esc(dept.code)}</span></h3>`
             + `<span class="erp-grow"></span>`
-            + `<span class="erp-badge" data-tone="brand">نسبة التكلفة: <span class="erp-num" dir="ltr">${esc(Number(s.costRatio).toFixed(1))}%</span></span>`
+            + `<span class="erp-badge" data-tone="brand"${s.rev > 0 ? '' : ' title="لا يوجد إيراد مرحّل لهذا القسم — النسبة غير قابلة للحساب"'}>نسبة التكلفة: <span class="erp-num" dir="ltr">${s.rev > 0 ? `${esc(Number(s.costRatio).toFixed(1))}%` : '—'}</span></span>`
             + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-detail-x>رجوع للسجل</button></div>`
             + `<div class="erp-card__body erp-stack">`
             + `<div class="erp-dash-controls">`

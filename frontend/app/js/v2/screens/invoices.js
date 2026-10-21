@@ -25,20 +25,20 @@
  * behind the independent v2invoicecreate flag — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.181';
+} from '../data/purchase-invoices-repo.js?v=4.9.185';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.181';
+} from '../data/procurement-repo.js?v=4.9.185';
 import {
     voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.181';
-import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.181';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.185';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -83,18 +83,14 @@ function template() {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
-            السجل يُقرأ من وجه الخادم الحالي
-            (<span class="erp-addr" dir="ltr">/api/purchaseInvoices</span>)،
-            والصلاحية قررها الخادم وحده. الكتابة هنا: تسديد كامل المتبقي، أو
-            دفعة جزئية مرتبطة بالفاتورة (الخادم يرفض ما يتجاوز المتبقي ويعيد
-            حساب حالة السداد؛ والعكس متاح لاحقًا من شاشة المدفوعات لحساب
-            الأدمن). الإنشاء والتعديل في صفحة فواتير الشراء (08) خلف العلم
-            المستقل <span class="erp-addr" dir="ltr">v2invoicecreate</span>؛
-            والإلغاء الفردي والحذف الجماعي للأدمن وحده وخلف العلم المستقل
-            <span class="erp-addr" dir="ltr">v2invoicevoid</span> (OFF افتراضيًا)،
-            والخادم يعيد فحص الدور وعبارة التأكيد. المتبقي = الإجمالي − المسدد
-            (بحد صفر، قاعدة النظام القديم). حالة السداد المحفوظة تُعرض بعدّتها،
-            والغائب يُقرأ «غير مسددة» كما في القديم.
+            السجل يُعرض من النظام مباشرة، والصلاحية محكومة بالأدوار. الكتابة
+            هنا: تسديد كامل المتبقي، أو دفعة جزئية مرتبطة بالفاتورة (يرفض
+            النظام ما يتجاوز المتبقي ويعيد حساب حالة السداد؛ والعكس متاح
+            لاحقًا من شاشة المدفوعات لحساب مدير النظام). الإنشاء والتعديل في
+            صفحة فواتير الشراء (08)؛ والإلغاء الفردي والحذف الجماعي لمدير
+            النظام وحده، ويتحقق النظام من الصلاحية وعبارة التأكيد. المتبقي =
+            الإجمالي − المسدد (بحد صفر). حالة السداد المحفوظة تُعرض بعدّتها،
+            والغائب يُقرأ «غير مسددة».
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
           <div data-v2-pay-form></div>

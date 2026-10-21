@@ -13,7 +13,7 @@
  */
 const lib = require('../../scripts/shared');
 process.chdir(lib.ROOT);
-const { log, DATA_DIR, MIGRATIONS_DIR, MIGRATION_LOCK, getEnv, isPgRunning, psql, psqlFile, shouldApplyMigration } = lib;
+const { log, DATA_DIR, getEnv, isPgRunning, psql } = lib;
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -128,31 +128,19 @@ function ensureDatabase(psqlBin, psqlEnv, dbHost, dbPort, dbUser, dbName) {
 // ─── Shared: apply migrations ────────────────────────────
 function applyMigrations() {
     log.step('تطبيق migrations');
-    if (!fs.existsSync(MIGRATIONS_DIR)) { log.warn('مجلد migrations غير موجود'); return; }
-    const allFiles = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
-    let applied = [];
-    if (fs.existsSync(MIGRATION_LOCK)) {
-        try { applied = JSON.parse(fs.readFileSync(MIGRATION_LOCK, 'utf-8')); } catch (_) {}
+    const migrationScript = path.join(__dirname, 'run-migration.js');
+    const result = spawnSync(process.execPath, [migrationScript], {
+        cwd: lib.ROOT,
+        encoding: 'utf-8',
+        stdio: 'inherit',
+        timeout: 1800000,
+        env: process.env,
+    });
+    if (result.error) {
+        throw new Error(`Migration runner could not complete: ${result.error.message}`);
     }
-    const pending = allFiles.filter(f => !applied.includes(f) && shouldApplyMigration(f));
-    allFiles.filter(f => !applied.includes(f) && !shouldApplyMigration(f)).forEach(f => log.info(`تخطي بيانات الديمو في الإنتاج: ${f}`));
-    if (pending.length === 0) { log.ok('كل migrations مُطبَّقة'); return; }
-    log.info(`${pending.length} migration بانتظار التطبيق`);
-    if (!fs.existsSync(path.dirname(MIGRATION_LOCK))) {
-        try { fs.mkdirSync(path.dirname(MIGRATION_LOCK), { recursive: true }); } catch (_) {}
-    }
-    for (const file of pending) {
-        if (!shouldApplyMigration(file)) continue;
-        const filepath = path.join(MIGRATIONS_DIR, file);
-        log.info(`تطبيق: ${file}`);
-        const result = psqlFile(filepath, getEnv('DB_NAME', 'karim_erp'));
-        if (result.status === 0 || (result.stderr || '').includes('already exists')) {
-            applied.push(file);
-            fs.writeFileSync(MIGRATION_LOCK, JSON.stringify(applied, null, 2), 'utf-8');
-            log.ok(`✓ ${file}`);
-        } else {
-            log.warn(`✗ ${file} — ${(result.stderr || '').split('\n').slice(0, 3).join('; ')}`);
-        }
+    if (result.status !== 0) {
+        throw new Error(`Migration runner failed with exit status ${result.status === null ? 'unknown' : result.status}${result.signal ? ` (signal ${result.signal})` : ''}.`);
     }
     log.ok('تم تطبيق migrations');
 }

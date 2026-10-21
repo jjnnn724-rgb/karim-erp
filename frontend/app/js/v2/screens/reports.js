@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.181';
+} from '../data/reports-repo.js?v=4.9.185';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.181';
+} from '../data/reports-extra.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -97,7 +97,7 @@ function dimCell(row) {
 }
 
 function kpiStrip(kpis, scopeLabel) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — كل رقم حسبه الخادم في SQL على الفترة المطلوبة">`
+    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — كل رقم حسبه النظام على الفترة المطلوبة">`
         + kpis.map((k) => `
       <li class="erp-kpi">
         <div class="erp-kpi__top">
@@ -120,7 +120,7 @@ function paymentsBlock(pay, currency) {
     if (!pay.rows.length) {
         return `<div class="erp-state" role="status">
           <span class="erp-state__title">لا مدفوعات مسجّلة</span>
-          <span>لا طريقة دفع في مغلّف الخادم لهذه الفترة — الأجماليات من الفواتير، والمدفوعات سجلها منفصل (pos_invoice_payments).</span>
+          <span>لا طريقة دفع في ملخص هذه الفترة — الأجماليات من الفواتير، والمدفوعات لها سجلها المنفصل.</span>
         </div>`;
     }
     const max = Math.max(...pay.rows.map((p) => p.amount), 1);
@@ -279,16 +279,14 @@ function template(period, groupBy) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — التقرير من وجه الخادم الحالي
-              (<span class="erp-addr" dir="ltr">/api/pos/reports/sales</span>)، والصلاحية
-              قررها الخادم وحده. الأرقام مجاميع SQL على الفترة المطلوبة، ولا تُعدّ هنا من
-              الجدول المرئي. ما يُعدّ: فواتير بحالة <span class="erp-mono" dir="ltr">issued</span>
-              أو <span class="erp-mono" dir="ltr">reported</span> فقط — المرتجعات والملغاة ليست
-              في هذا التقرير، وهي قاعدة الخادم لا تصفية من هنا.
-              <span class="erp-text-muted">الفترة والتجميع يسألان الخادم من جديد؛ ومربع البحث
+              قراءة فقط — التقرير يُحسب في النظام مباشرة، والصلاحية محكومة
+              بالأدوار. الأرقام مجاميع على الفترة المطلوبة، ولا تُعدّ هنا من
+              الجدول المرئي. ما يُعدّ: فواتير صادرة أو مُبلَّغ عنها فقط —
+              المرتجعات والملغاة ليست في هذا التقرير.
+              <span class="erp-text-muted">الفترة والتجميع يُسألان من جديد؛ ومربع البحث
               داخل الجدول يضيق ما عاد منه وحده.</span>
               <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-              <span data-v2-cap-note hidden>بُعد الأصناف مقيد في الخادم بأول 200 صنفًا (LIMIT) — الجدول لا يعرض كله، والمؤشرات من الفترة كاملة.</span>
+              <span data-v2-cap-note hidden>بُعد الأصناف مقيد بأول 200 صنف — الجدول لا يعرض كله، والمؤشرات من الفترة كاملة.</span>
               <span data-v2-scope-note hidden></span>
             </p>
             <p class="erp-text-sm erp-text-muted" data-v2-filter-note hidden></p>
@@ -360,22 +358,22 @@ export function mountReportsScreen(host, ctx = {}) {
             {
                 key: 'subtotalSales', header: 'قبل الضريبة', sortable: true, type: 'number',
                 width: '130px', align: 'end', value: (r) => r.subtotalSales,
-                render: (r) => moneyCell(r.subtotalSales, currency, { title: 'SUM(subtotal) كما في الفاتورة' }),
+                render: (r) => moneyCell(r.subtotalSales, currency, { title: 'مجموع ما قبل الضريبة كما في الفواتير' }),
             },
             {
                 key: 'discountTotal', header: 'الخصم', sortable: true, type: 'number',
                 width: '110px', align: 'end', value: (r) => r.discountTotal,
-                render: (r) => moneyCell(r.discountTotal, currency, { title: 'SUM(discount_total) — الصفر يعني لا خصم مسجّل' }),
+                render: (r) => moneyCell(r.discountTotal, currency, { title: 'مجموع الخصومات — الصفر يعني لا خصم مسجّل' }),
             },
             {
                 key: 'taxTotal', header: 'الضريبة', sortable: true, type: 'number',
                 width: '110px', align: 'end', value: (r) => r.taxTotal,
-                render: (r) => moneyCell(r.taxTotal, currency, { title: 'SUM(tax_total) كما في الفاتورة' }),
+                render: (r) => moneyCell(r.taxTotal, currency, { title: 'مجموع الضريبة كما في الفواتير' }),
             },
             {
                 key: 'netSales', header: 'الصافي', sortable: true, type: 'number',
                 width: '140px', align: 'end', value: (r) => r.netSales,
-                render: (r) => moneyCell(r.netSales, currency, { title: 'SUM(total_amount) — ترتيب الخادم على هذا العمود' }),
+                render: (r) => moneyCell(r.netSales, currency, { title: 'مجموع الصافي — والترتيب على هذا العمود' }),
             },
         ];
         const isItem = groupBy === 'item';
@@ -388,35 +386,35 @@ export function mountReportsScreen(host, ctx = {}) {
                 ? [{
                     key: 'departmentName', header: 'القسم', sortable: true, filterable: true, width: '130px',
                     render: (r) => (r.departmentName ? esc(r.departmentName)
-                        : `<span class="erp-text-muted" title="عمود department_name فارغ في سطور الطلب">بلا قسم</span>`),
+                        : `<span class="erp-text-muted" title="القسم غير مسجّل على سطر الطلب">بلا قسم</span>`),
                 }]
                 : []),
             {
                 key: 'invoiceCount', header: 'الفواتير', sortable: true, type: 'number', width: '100px',
                 align: 'end', value: (r) => r.invoiceCount,
-                render: (r) => intCell(r.invoiceCount, { title: isItem ? 'COUNT(DISTINCT order_id) — عدد الفواتير التي اشتملت على الصنف' : 'COUNT(*) لفواتير الفترة' }),
+                render: (r) => intCell(r.invoiceCount, { title: isItem ? 'عدد الفواتير التي اشتملت على الصنف' : 'عدد فواتير الفترة' }),
             },
             ...(isItem
                 ? [{
                     key: 'quantitySold', header: 'الكمية', sortable: true, type: 'number', width: '110px',
                     align: 'end', value: (r) => r.quantitySold,
-                    render: (r) => qtyCell(r.quantitySold, { title: 'SUM(quantity) من سطور الطلب — كما حسبه الخادم بـ3 منازل' }),
+                    render: (r) => qtyCell(r.quantitySold, { title: 'مجموع الكمية من سطور الطلب — بثلاث منازل عشرية' }),
                 }]
                 : [
                     {
                         key: 'itemsQty', header: 'الكمية', sortable: true, type: 'number', width: '110px',
                         align: 'end', value: (r) => r.itemsQty,
-                        render: (r) => qtyCell(r.itemsQty, { title: 'SUM(quantity) لسطور هذا البُعد' }),
+                        render: (r) => qtyCell(r.itemsQty, { title: 'مجموع الكميات لسطور هذا البُعد' }),
                     },
                     {
                         key: 'uniqueItems', header: 'أصناف مختلفة', sortable: true, type: 'number', width: '120px',
                         align: 'end', value: (r) => r.uniqueItems,
-                        render: (r) => intCell(r.uniqueItems, { title: 'COUNT(DISTINCT product_id) — عدّ من الخادم' }),
+                        render: (r) => intCell(r.uniqueItems, { title: 'عدد الأصناف المختلفة' }),
                     },
                     {
                         key: 'avgTicket', header: 'متوسط الفاتورة', sortable: true, type: 'number', width: '140px',
                         align: 'end', value: (r) => r.avgTicket,
-                        render: (r) => moneyCell(r.avgTicket, currency, { title: 'AVG(total_amount) لهذا البُعد' }),
+                        render: (r) => moneyCell(r.avgTicket, currency, { title: 'متوسط الفاتورة لهذا البُعد' }),
                     },
                 ]),
             ...moneyCols,

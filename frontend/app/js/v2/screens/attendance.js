@@ -56,10 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -77,9 +77,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.181';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.181';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.181';
+} from '../data/attendance-repo.js?v=4.9.185';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.185';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -135,7 +135,7 @@ function stateCell(row) {
 function employeeCell(row) {
     if (row.nameResolved) {return esc(row.employee);}
     // An unresolved id is a fact about the join, not a name to guess.
-    return `<span class="erp-text-muted" title="لم تُحلّ هوية هذا الرقم — الأسماء من /api/employees">${esc(row.employee)}</span>`;
+    return `<span class="erp-text-muted" title="لم تُحلّ هوية هذا الرقم في سجل الموظفين">${esc(row.employee)}</span>`;
 }
 
 function deptCell(row) {
@@ -327,11 +327,10 @@ function template(from, to) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              قراءة السجل من نفس واجهة النظام الحالي
-              (<span class="erp-addr" dir="ltr">/api/attendance/range</span>)،
-              ورؤساء الأقسام يرون أقسامهم فقط بقرار من الخادم. الكتابة من
-              الأزرار المحكومة بالأدوار أعلاه — كل إجراء يحمل سببًا إجباريًا
-              يُخزَّن في ملاحظات السجل باسمك، والخادم يعيد فحص الدور قبل التنفيذ.
+              يعرض هذا السجل حضور الموظفين كما سجّله النظام، ورؤساء الأقسام
+              يرون أقسامهم فقط. الإجراءات أعلاه محكومة بالصلاحيات — كل إجراء
+              يتطلب سببًا إجباريًا يُحفظ في ملاحظات السجل باسم المستخدم،
+              ويتحقق النظام من الصلاحية قبل التنفيذ.
               <span data-v2-names-note hidden>تعذّر تحميل الأسماء — تُعرض أرقام الموظفين.</span>
               <span data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</span>
             </p>

@@ -517,6 +517,8 @@
   /* شريط الأدوات سطر كامل له، وشريط الحالات (٨ خانات برقمها) ينثني. */
   .erp-v2-wh-prs__tools { flex: 1 1 100%; }
   .erp-v2-wh-prs .erp-seg { flex-wrap: wrap; }
+  /* مسارات API في الشرح كلمة واحدة طويلة تفوق ٣٢٠px — تُكسر بدل توسيع المستند. */
+  .erp-v2-wh-prs .erp-card__body p { overflow-wrap: anywhere; }
 
   /* W1-4 — شاشة 14 (طلبات الخضار): نفس حركة W1-1/W1-3 بحصر هذه الشاشة. */
   .erp-v2-veg .erp-card__head .erp-btn > span { display: none; }

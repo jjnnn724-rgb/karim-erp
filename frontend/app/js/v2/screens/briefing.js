@@ -32,15 +32,15 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.181';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.185';
 import {
     fetchBriefing,
     fetchTodayStats,
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.181';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+} from '../data/briefing-repo.js?v=4.9.185';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -155,7 +155,7 @@ function topsBlock(tops) {
 }
 
 function pipeBlock(pipeline) {
-    return `<ol class="erp-pipe" aria-label="حركة فواتير اليوم بحسب حالتها الفعلية">`
+    return `<ol class="erp-pipe" tabindex="0" aria-label="حركة فواتير اليوم بحسب حالتها الفعلية">`
         + pipeline.steps.map((s, i) => `
       <li class="erp-pipe__step is-${esc(s.state)}"${s.state === 'current' ? ' aria-current="step"' : ''}>
         <span class="erp-pipe__dot" aria-hidden="true"><span class="erp-num" dir="ltr">${i + 1}</span></span>

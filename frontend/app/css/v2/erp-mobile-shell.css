@@ -31,6 +31,10 @@
   body.erp-mobile-shell-on #erp-main {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
+
+  /* الشريط السفلي هو سطح الإجراءات على الجوال: الزر العائم فوقه كان
+     يتقاطع معه (كلاهما --erp-z-fab أسفل الشاشة). */
+  body.erp-mobile-shell-on .erp-fab-host { display: none; }
 }
 
 .erp-mobile-nav .erp-mnav-item {

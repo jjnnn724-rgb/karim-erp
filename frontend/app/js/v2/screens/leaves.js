@@ -37,15 +37,15 @@
  *   handlers) and refuses to send an empty reason.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.185';
 import {
     fetchLeaveWorkflow, fetchLeaveTypes, leaveToRow, leaveStateOf, leaveTypeMap,
     summarizeLeaves, buildLeavesKpis, topRequesters, flattenEvents, typeToRow,
     doorScopeNote, canActOnStage, decideLeave, approveOutcome, STAGE_LABELS_AR,
     LEAVES_TYPE_PAGE, LEAVES_TYPE_PAGES, createLeaveRequest, isPrivilegedLeaveRole,
-} from '../data/leaves-repo.js?v=4.9.181';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.181';
+} from '../data/leaves-repo.js?v=4.9.185';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -166,11 +166,10 @@ function template() {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted erp-no-print">
-              قراءة من <span class="erp-addr" dir="ltr">/api/hr/leave-workflow</span>
-              (leave-workflow-routes.js:97) — الخادم يقرر نطاق القراءة وحده. مسار الاعتماد:
-              الموظف ← المدير المباشر ← المدير العام ← شؤون العاملين، والتعديل المباشر
-              للطلب مرفوض من الخادم (405، server.js:2056). الإنشاء من الزر أعلاه،
-              والطلب العائد يُعاد إرساله من صاحبه.
+              يعرض النظام طلبات الإجازة وفق نطاق صلاحيتك. مسار الاعتماد:
+              الموظف ← المدير المباشر ← المدير العام ← شؤون العاملين، والتعديل
+              المباشر للطلب مرفوض. الإنشاء من الزر أعلاه، والطلب العائد يُعاد
+              إرساله من صاحبه.
             </p>
             <div data-v2-requests></div>
             <div class="erp-stack erp-no-print" data-v2-create hidden>
@@ -547,7 +546,7 @@ export function mountLeavesScreen(host, ctx = {}) {
         pageSize: 10,
         stickyHeader: true,
         emptyMessage: 'لا أنواع مخزنة',
-        emptyHint: 'بلا نوع لا يُنشأ طلب: الخادم يرفض بـ LEAVE_REFERENCE_NOT_FOUND (:162).',
+        emptyHint: 'بلا نوع لا يُنشأ طلب — النظام يرفض الطلب بلا نوع.',
         rowKey: (row) => row.id,
         columns: [
             { key: 'name', header: 'النوع', sortable: true, filterable: true },

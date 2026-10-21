@@ -14,8 +14,8 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.181';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.181';
+} from '../data/shell-repo.js?v=4.9.185';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -79,6 +79,7 @@ export function mountShellExtras(shell, ctx = {}) {
         try {document.dispatchEvent(new CustomEvent('karim-lang-changed', { detail: { lang: next } }));} catch { /* noop */ }
         paintLang();
         toast(next === 'ar' ? 'الواجهة عربية (شاشات V2 عربية أولًا)' : 'Shell is English-ready (V2 screens stay Arabic-first)');
+        try {shell.closeMore?.();} catch { /* host decides */ }
     });
 
     /* ── Health lamps ─────────────────────────────────────────────────── */
@@ -86,7 +87,7 @@ export function mountShellExtras(shell, ctx = {}) {
     lamps.className = 'erp-shell__lamps';
     lamps.setAttribute('role', 'status');
     lamps.setAttribute('aria-label', 'حالة الخادم وقاعدة البيانات');
-    const dot = (ok, label) => `<span class="erp-lamp" data-ok="${ok === true ? '1' : (ok === false ? '0' : 'x')}" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
+    const dot = (ok, label) => `<span class="erp-lamp" role="img" data-ok="${ok === true ? '1' : (ok === false ? '0' : 'x')}" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
     const serverInfo = document.createElement('span');
     serverInfo.className = 'erp-server-info erp-text-sm';
     serverInfo.setAttribute('role', 'status');
@@ -123,8 +124,16 @@ export function mountShellExtras(shell, ctx = {}) {
         if (!live()) {return;}
         try {
             const h = await fetchHealth();
-            lamps.innerHTML = `${dot(true, 'الخادم يعمل')}${dot(h.db, h.db === true ? 'قاعدة البيانات متصلة' : (h.db === false ? 'قاعدة البيانات لا تستجيب' : 'حالة القاعدة غير معلنة'))}`
-                + `<span class="erp-text-sm erp-text-muted">${esc(h.status || '')}</span>`;
+            /* Never surface the wire token (`ok`) — the two lamps already say
+               which side is down, and this line translates the same fact. */
+            const summary = h.db === true
+                ? 'الخادم وقاعدة البيانات يعملان'
+                : (h.db === false
+                    ? 'الخادم يعمل · قاعدة البيانات لا تستجيب'
+                    : 'الخادم يعمل · حالة القاعدة غير معلنة');
+            lamps.innerHTML = `${dot(true, 'الخادم يعمل')}`
+                + dot(h.db, h.db === true ? 'قاعدة البيانات متصلة' : (h.db === false ? 'قاعدة البيانات لا تستجيب' : 'حالة القاعدة غير معلنة'))
+                + `<span class="erp-text-sm erp-text-muted">${esc(summary)}</span>`;
         } catch {
             lamps.innerHTML = `${dot(false, 'الخادم لا يستجيب')}${dot(null, 'غير معروف')}`;
         }
@@ -172,6 +181,23 @@ export function mountShellExtras(shell, ctx = {}) {
         if (!panel) {return;}
         notifOpen = true;
         panel.hidden = false;
+        /* The dropdown is absolutely positioned inside the bell (a fixed
+           ancestor would be hijacked by the header's backdrop-filter). On a
+           phone the bell sits near the inline start, so anchoring the panel's
+           start edge to it pushed 200px of the panel off-screen; flip to the
+           other edge and clamp to the viewport instead. */
+        const bell = bellWrap.getBoundingClientRect();
+        const width = Math.min(380, window.innerWidth - 24);
+        const gutter = 12;
+        const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+        let left = rtl ? bell.left : bell.right - width;
+        if (left < gutter || left + width > window.innerWidth - gutter) {
+            left = rtl ? bell.right - width : bell.left;
+        }
+        left = Math.max(gutter, Math.min(left, window.innerWidth - width - gutter));
+        panel.style.width = `${Math.round(width)}px`;
+        panel.style.left = `${Math.round(left - bell.left)}px`;
+        panel.style.right = 'auto';
         panel.innerHTML = '<p class="erp-text-sm erp-text-muted">جارٍ التحميل…</p>';
         try {
             const n = await fetchNotifications();
@@ -274,6 +300,7 @@ export function mountShellExtras(shell, ctx = {}) {
     /* ── Quick buttons: POS / menu boards / dispatch ──────────────────── */
     const quick = document.createElement('span');
     quick.className = 'erp-shell__quick';
+    let quickSection = null;
     function paintQuick() {
         const role = String(getRole() || '');
         const posRoles = ['admin', 'manager', 'accountant', 'cashier'];
@@ -286,12 +313,14 @@ export function mountShellExtras(shell, ctx = {}) {
                باب اكتشاف لا يخترق مرآة الصلاحيات؛ اختيار المستخدم يفعّل
                المسح على هذا الجهاز فقط، والشاشة تتحقق من الدور والخادم. */
             + (disRoles.includes(role) ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="goods-scan"><i class="ji" data-i="barcode" aria-hidden="true"></i><span>مسح بضاعة</span></button>` : '');
+        if (quickSection) {quickSection.hidden = quick.childElementCount === 0;}
     }
     quick.addEventListener('click', (event) => {
         const b = event.target.closest('[data-v2-quick]');
         if (!b) {return;}
         const k = b.dataset.v2Quick;
         if (k === 'goods-scan') {window.localStorage.setItem('karim_v2_scan', '1');}
+        try {shell.closeMore?.();} catch { /* host decides */ }
         shell.navigate(k);
     });
 
@@ -336,18 +365,38 @@ export function mountShellExtras(shell, ctx = {}) {
        zero-height here: its only child is position:fixed. */
     const pwPanelHost = document.createElement('div');
     pwPanelHost.className = 'erp-v2';
+    function closePwPanel() {
+        if (!pwPanelHost.isConnected) {return;}
+        pwPanelHost.remove();
+        /* Opening this dialog closes the control centre, so `pwBtn` may now be
+           inside a hidden panel; return focus to the control-centre trigger. */
+        const target = pwBtn.getClientRects().length
+            ? pwBtn
+            : document.querySelector('[data-erp-more-toggle]');
+        target?.focus({ preventScroll: true });
+    }
+    on(pwPanelHost, 'keydown', (event) => {
+        if (event.key === 'Escape') {event.preventDefault(); closePwPanel();}
+    });
     on(pwBtn, 'click', () => {
-        if (pwPanelHost.isConnected) {pwPanelHost.remove(); return;}
-        pwPanelHost.innerHTML = `<div class="erp-pop"><h4>تغيير كلمة المرور</h4>`
+        if (pwPanelHost.isConnected) {closePwPanel(); return;}
+        try {shell.closeMore?.();} catch { /* host decides */ }
+        pwPanelHost.innerHTML = `<div class="erp-pop" role="dialog" aria-labelledby="erp-pw-title"><h4 id="erp-pw-title">تغيير كلمة المرور</h4>`
             + `<label class="erp-text-sm erp-text-muted">الحالية<input class="erp-input" type="password" data-v2-pw="cur" autocomplete="current-password"></label>`
             + `<label class="erp-text-sm erp-text-muted">الجديدة (8+ حرف ورقم)<input class="erp-input" type="password" data-v2-pw="next" autocomplete="new-password"></label>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-pw-err role="alert"></div>`
             + `<div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-pw-go>حفظ</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-pw-x>إلغاء</button></div></div>`;
         document.body.appendChild(pwPanelHost);
+        const header = document.querySelector('.erp-shell__header');
+        const pop = pwPanelHost.querySelector('.erp-pop');
+        if (header && pop) {
+            pop.style.top = `${Math.max(8, Math.round(header.getBoundingClientRect().bottom + 8))}px`;
+        }
+        pwPanelHost.querySelector('[data-v2-pw="cur"]')?.focus();
     });
     pwPanelHost.addEventListener('click', async (event) => {
-        if (event.target.closest('[data-v2-pw-x]')) {pwPanelHost.remove(); return;}
+        if (event.target.closest('[data-v2-pw-x]')) {closePwPanel(); return;}
         if (!event.target.closest('[data-v2-pw-go]')) {return;}
         const cur = pwPanelHost.querySelector('[data-v2-pw="cur"]')?.value || '';
         const next = pwPanelHost.querySelector('[data-v2-pw="next"]')?.value || '';
@@ -382,14 +431,16 @@ export function mountShellExtras(shell, ctx = {}) {
     /* ── Mount + refresh ──────────────────────────────────────────────── */
     try {shell.mountBoundary('notifications', bellWrap);} catch { /* host decides */ }
     try {
-        const actions = shell.root && shell.root.querySelector('.erp-shell__actions');
-        const themeSlot = shell.root && shell.root.querySelector('[data-erp-theme-slot]');
-        if (actions) {
-            const cluster = document.createElement('span');
-            cluster.className = 'erp-shell__extras';
-            cluster.append(lamps, langBtn, quick, serverInfo, pwBtn);
-            actions.insertBefore(cluster, themeSlot || null);
-            disposers.push(() => cluster.remove());
+        const panel = shell.root && shell.root.querySelector('[data-erp-more]');
+        if (panel) {
+            panel.querySelector('[data-erp-more-status]')?.append(lamps, serverInfo);
+            const quickHost = panel.querySelector('[data-erp-more-quick]');
+            if (quickHost) {
+                quickSection = panel.querySelector('[data-erp-more-quick-section]');
+                quickHost.appendChild(quick);
+            }
+            panel.querySelector('[data-erp-more-lang]')?.appendChild(langBtn);
+            panel.querySelector('[data-erp-more-account]')?.appendChild(pwBtn);
         }
     } catch { /* header layout is the shell's own */ }
     document.body.appendChild(fabHost);
@@ -400,7 +451,7 @@ export function mountShellExtras(shell, ctx = {}) {
         paintFab();
         if (!live()) {
             bellWrap.innerHTML = '';
-            lamps.innerHTML = '';
+            lamps.innerHTML = '<span class="erp-text-sm erp-text-muted">وضع المعاينة — لا اتصال بخادم</span>';
             serverInfo.textContent = '';
             startNotifPoll();
             return;

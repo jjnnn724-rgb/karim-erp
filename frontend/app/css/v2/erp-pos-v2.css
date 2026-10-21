@@ -385,6 +385,151 @@
     min-height: 2.75rem;
 }
 
+/* ── Open buffet (sells covers, not items) ─────────────────────────────── */
+.erp-pos-v2-live {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--erp-space-2);
+    padding: var(--erp-space-2) var(--erp-space-3);
+    color: var(--erp-text);
+    background: var(--erp-brand-soft);
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-md);
+    font-size: var(--erp-text-sm);
+}
+
+.erp-pos-v2-live-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    flex: 0 0 auto;
+    background: var(--erp-success, #16a34a);
+    border-radius: 50%;
+    animation: erp-pos-v2-pulse 2.4s ease-in-out infinite;
+}
+
+.erp-pos-v2-live-pill strong {
+    margin-inline-end: 0.2rem;
+    font-size: 1rem;
+}
+
+.erp-pos-v2-live-pill.is-warning {
+    color: var(--erp-warning-text);
+}
+
+@keyframes erp-pos-v2-pulse {
+    0%, 100% {opacity: 1;}
+    50% {opacity: 0.35;}
+}
+
+.erp-pos-v2-people {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(8rem, 9vw, 10rem), 1fr));
+}
+
+.erp-pos-v2-person {
+    min-width: 0;
+}
+
+.erp-pos-v2-person-btn {
+    display: grid;
+    justify-items: center;
+    gap: 0.3rem;
+    width: 100%;
+    min-height: 100%;
+    padding: var(--erp-space-3) var(--erp-space-2);
+    text-align: center;
+    color: var(--erp-text);
+    background: linear-gradient(160deg, var(--erp-surface) 55%, var(--erp-brand-soft));
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-md);
+    box-shadow: var(--erp-shadow-sm);
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.erp-pos-v2-person-btn:hover,
+.erp-pos-v2-person-btn:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--erp-brand);
+    box-shadow: var(--erp-shadow-md);
+    outline: 2px solid transparent;
+}
+
+.erp-pos-v2-person-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.erp-pos-v2-person-btn.is-hospitality {
+    background: linear-gradient(160deg, var(--erp-surface) 55%, var(--erp-warning-soft));
+}
+
+.erp-pos-v2-person-icon {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    color: var(--erp-brand);
+    background: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    border-radius: 50%;
+    font-size: 1.2rem;
+}
+
+.erp-pos-v2-person-btn small {
+    color: var(--erp-text-muted);
+    font-size: var(--erp-text-xs, 0.75rem);
+}
+
+.erp-pos-v2-person-price {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--erp-brand);
+}
+
+.erp-pos-v2-person-add {
+    padding: 0.15rem 0.6rem;
+    color: var(--erp-brand);
+    background: var(--erp-surface);
+    border: 1px dashed var(--erp-border);
+    border-radius: 999px;
+    font-size: var(--erp-text-xs, 0.75rem);
+    font-weight: 700;
+}
+
+.erp-pos-v2-prices {
+    display: grid;
+    gap: var(--erp-space-2);
+}
+
+.erp-pos-v2-price-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto auto;
+    align-items: end;
+    gap: var(--erp-space-2);
+    padding: var(--erp-space-2);
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-sm);
+}
+
+.erp-pos-v2-price-row.is-inactive {
+    opacity: 0.72;
+    background: var(--erp-surface-sunken, var(--erp-surface));
+}
+
+.erp-pos-v2-price-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--erp-space-1);
+    min-width: 0;
+}
+
+.erp-pos-v2-price-row label {
+    display: grid;
+    gap: var(--erp-space-1);
+}
+
 @media (max-width: 900px) {
     .erp-pos-v2 {
         grid-template-columns: minmax(0, 1fr);
@@ -401,6 +546,12 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
+    /* The discount amount input has a 159px intrinsic width; in a half-width
+       column it spills 47px past the fieldset at 320px. Stack the pair. */
+    .erp-pos-v2-discount {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .erp-pos-v2-mode {
         align-items: flex-start;
         flex-direction: column;
@@ -409,6 +560,10 @@
     .erp-pos-v2-products {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--erp-space-2);
+    }
+
+    .erp-pos-v2-price-row {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .erp-pos-v2-product {

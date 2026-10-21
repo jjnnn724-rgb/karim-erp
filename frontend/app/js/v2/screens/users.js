@@ -15,17 +15,17 @@
  * and the independent `v2bulkimport` flag (OFF by default).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.181';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.181';
-import { formatInt } from '../data/reports-repo.js?v=4.9.181';
-import { ROLES } from '../../core/config.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.185';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.185';
+import { formatInt } from '../data/reports-repo.js?v=4.9.185';
+import { ROLES } from '../../core/config.js?v=4.9.185';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
     linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.181';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.181';
+} from '../data/users-repo.js?v=4.9.185';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

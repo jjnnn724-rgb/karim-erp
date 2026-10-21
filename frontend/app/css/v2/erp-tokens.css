@@ -138,16 +138,15 @@
   --erp-radius-full: var(--karim-radius-full, 999px);
 
   /* ── Typography ───────────────────────────────────────────────────── */
-  /* "Tajawal" stands FIRST, ahead of the inherited --karim-font chain,
-     because it is the only family in that chain that actually ships as a
-     file: css/v2/erp-fonts.css self-hosts it from app/fonts/menu/.
-     "IBM Plex Sans Arabic" and "Cairo" precede it in the legacy token but no
-     file in this repository provides either, so leaving the chain untouched
-     made the painted face a property of whichever machine rendered the page
-     (Tajawal on the build box, an OS Arabic face on a fresh client). The
-     chain is preserved verbatim behind Tajawal as the fallback: if the
-     sheet ever fails to load, V2 degrades to exactly today's behaviour. */
-  --erp-font-sans:  "Tajawal", var(--karim-font, "IBM Plex Sans Arabic", "Cairo", system-ui, sans-serif);
+  /* "IBM Plex Sans Arabic" stands FIRST and is the face V2 actually ships:
+     css/v2/erp-fonts.css self-hosts 400/500/600/700 from app/fonts/v2/.
+     It is the corporate cut of the Plex family — Naskh-derived Arabic with
+     open counters, and a Latin companion whose digits stay sober in money
+     columns. Tajawal remains second only as a bundled fallback; the rest of
+     the inherited --karim-font chain is preserved behind it, so a missing
+     sheet degrades to the pre-identity behaviour instead of a system face
+     that differs per machine. */
+  --erp-font-sans:  "IBM Plex Sans Arabic", "Tajawal", var(--karim-font, "Cairo", system-ui, sans-serif);
   --erp-font-mono:  var(--karim-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
 
   --erp-text-xs:   11px;

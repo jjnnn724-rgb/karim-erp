@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.181';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.185';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.181';
+} from '../data/kitchen-repo.js?v=4.9.185';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.181';
+} from '../signature.js?v=4.9.185';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -233,9 +233,9 @@ function template(canWrite, costFrom, costTo) {
           </div>
           <div class="erp-card__body">
             <p class="erp-text-sm erp-text-muted erp-no-print">
-              القراءة من <span class="erp-addr" dir="ltr">/api/kitchen/overview</span>
-              (kitchen-production-routes.js:145) — الصلاحية قرارُ الخادم وحده. أوامر الإنتاج
-              تُنشأ من زر «أمر إنتاج» أعلاه: ثلاث خطوات، والباب يحسم الرصيد والتوزيع.
+              أوامر الإنتاج تُعرض من النظام مباشرة، والصلاحية محكومة بالأدوار.
+              تُنشأ من زر «أمر إنتاج» أعلاه: ثلاث خطوات، ويحسم النظام الرصيد
+              والتوزيع.
             </p>
             <div data-v2-batches></div>
           </div>
@@ -267,9 +267,8 @@ function template(canWrite, costFrom, costTo) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted erp-no-print">
-              قراءة فقط من <span class="erp-addr" dir="ltr">/api/kitchen/production/cost-cards</span>
-              (kitchen-production-routes.js:170) — الصرف من دفتر الحركات بمتوسط التكلفة وقت الاعتماد،
-              والإيراد من إيرادات الكاشير المرتبطة بالقسم.
+              عرض للقراءة فقط: الصرف من دفتر الحركات بمتوسط التكلفة وقت
+              الاعتماد، والإيراد من إيرادات الكاشير المرتبطة بالقسم.
             </p>
             <div data-v2-costcards-board aria-live="polite"></div>
           </div>
@@ -295,7 +294,7 @@ function template(canWrite, costFrom, costTo) {
               <span class="erp-text-muted erp-text-sm" data-v2-exccount></span>
             </h3>
             <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted">الخادم يرسل المفتوح فقط (:148)</span>
+            <span class="erp-text-sm erp-text-muted">الاستثناءات المفتوحة فقط</span>
           </div>
           <div class="erp-card__body">
             <div data-v2-exceptions></div>
@@ -309,7 +308,7 @@ function template(canWrite, costFrom, costTo) {
               <span class="erp-text-muted erp-text-sm" data-v2-polcount></span>
             </h3>
             <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted">كلمات الوضع من صفحة المطبخ الحالية (features/kitchen.js:154)</span>
+            <span class="erp-text-sm erp-text-muted">كلمات الوضع معتمدة من إعداد المطبخ</span>
           </div>
           <div class="erp-card__body">
             <div data-v2-policies></div>
@@ -655,7 +654,7 @@ export function mountKitchenScreen(host, ctx = {}) {
         windowNoteEl.textContent = caps.join(' · ');
 
         scopeEl.textContent = batches.length || exceptions.length
-            ? `نافذة الخادم: أحدث ${KITCHEN_WINDOW.batches} أمرًا و${KITCHEN_WINDOW.exceptions} استثناءً و${KITCHEN_WINDOW.distributions} توزيعًا · ${c.all} أمرًا محمّل (${c.open} مفتوح، ${c.closed} مغلق) · ${locations.length} موقعًا نشطًا (inventory_locations active=true) · آخر قراءة ${readAt}`
+            ? `نافذة الخادم: أحدث ${KITCHEN_WINDOW.batches} أمرًا و${KITCHEN_WINDOW.exceptions} استثناءً و${KITCHEN_WINDOW.distributions} توزيعًا · ${c.all} أمرًا محمّل (${c.open} مفتوح، ${c.closed} مغلق) · ${locations.length} موقعًا نشطًا · آخر قراءة ${readAt}`
             : `لا شيء في نافذة الخادم عند آخر قراءة (${readAt})`;
         printNote.textContent = `المطبخ — ${c.all} أمرًا (${c.open} مفتوح، ${c.closed} مغلق) · ${exceptions.length} استثناءً مفتوحًا · ${policies.length} سياسة · ${locations.length} موقعًا نشطًا · جرد: ${audits.length} جلسة · مستندات: ${documents.length} · نافذة الخادم أحدث ${KITCHEN_WINDOW.batches}/${KITCHEN_WINDOW.exceptions}/${KITCHEN_WINDOW.distributions} · آخر قراءة ${readAt}. المطبوعة تعرض الصفحة الحالية من كل جدول، لا السجل كاملًا.`;
     }
@@ -1309,7 +1308,7 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
             setPanel(panelShell('استلام مواد في مخزن المطبخ', 'inbox', `
               <div class="erp-state" role="alert">
                 <span class="erp-state__title">موقع المخزن الرئيسي أو مخزن المطبخ غير مهيأ</span>
-                <span>لا يُفتح نموذج الاستلام قبل ضبط الموقعين في الخادم (inventory_locations).</span>
+                <span>لا يُفتح نموذج الاستلام قبل ضبط الموقعين في إعدادات المخزون.</span>
                 <button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-panel-close>إغلاق</button>
               </div>`));
             return;

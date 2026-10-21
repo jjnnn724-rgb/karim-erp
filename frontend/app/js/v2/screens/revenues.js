@@ -23,12 +23,12 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.181';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.181';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.185';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.185';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -73,13 +73,12 @@ function template(from, to) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
-            سجل الإيرادات (<span class="erp-addr" dir="ltr">/api/revenues</span>) —
-            والصلاحية قررها الخادم وحده. عمود الإجراءات (تعديل/حذف) لا يُرسم
-            إلا لدور <span class="erp-addr" dir="ltr">finance.edit</span>
-            (admin|manager|accountant) والخادم يعيد فحص كل نداء؛ الإضافة من
-            زر «إيراد +» في تفاصيل القسم (10) لأن إنشاء الإيراد بابٌ آخر.
-            تعرض الواجهة أحدث 8,000 حركة من الشهر الحالي؛ وتبقى الحركات
-            الأقدم محفوظة دون تحميلها أو تعديلها.
+            سجل الإيرادات المعروض من النظام مباشرة، والصلاحية محكومة بالأدوار.
+            عمود الإجراءات (تعديل/حذف) لا يظهر إلا لمن يملك صلاحية تعديل
+            الإيرادات (مدير النظام أو المدير أو المحاسب)، ويتحقق النظام من
+            الصلاحية عند كل إجراء؛ الإضافة من زر «إيراد +» في تفاصيل القسم (10)
+            لأن إنشاء الإيراد باب آخر. تعرض الواجهة أحدث 8,000 حركة من الشهر
+            الحالي؛ وتبقى الحركات الأقدم محفوظة دون تحميلها أو تعديلها.
           </p>
           <div data-v2-form hidden></div>
           <div data-v2-table></div>

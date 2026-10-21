@@ -19,6 +19,9 @@
   gap: var(--erp-space-2);
 }
 .erp-v2 .erp-filterbar > label { padding-inline-start: var(--erp-space-1); }
+/* A field's intrinsic width comes from its longest option; without min-width:0
+   the flex item refuses to shrink and pushes the filter bar past 360px. */
+.erp-v2 .erp-filterbar > .erp-field { min-width: 0; }
 .erp-v2 .erp-filterbar .erp-select,
 .erp-v2 .erp-filterbar .erp-input { inline-size: auto; min-inline-size: 9rem; }
 
@@ -179,18 +182,28 @@
     flex: 1 1 7rem;
   }
 
+  /* الأيقونة وحدها بصريًا، والاسم باقٍ في شجرة الوصول. `display:none`
+     كان يُسقط الاسم من الشجرة فتصل الأزرار بلا اسم (axe: button-name). */
   .erp-v2-attendance .erp-dash-controls .erp-btn > span,
   .erp-v2-employees .erp-dash-controls .erp-btn > span,
   .erp-v2-warehouse .erp-dash-controls .erp-btn > span,
-  .erp-v2-reports .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-reports .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
   /* أيقونة وحدها على شاشة لمس تحتاج هدفًا بحجم الإصبع، لا بحجم النص. */
   .erp-v2-attendance .erp-dash-controls .erp-btn,
   .erp-v2-employees .erp-dash-controls .erp-btn,
   .erp-v2-warehouse .erp-dash-controls .erp-btn,
   .erp-v2-reports .erp-dash-controls .erp-btn {
-    min-block-size: 40px;
-    min-inline-size: 40px;
+    min-block-size: 44px;
+    min-inline-size: 44px;
   }
 
   /* خمسة أزرار فترة + ثلاثة تجميع في سطر واحد بعرض ٣٢٠: الحشو المُجمّد

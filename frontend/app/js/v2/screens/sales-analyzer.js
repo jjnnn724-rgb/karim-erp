@@ -7,15 +7,15 @@
  * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
 import {
     fetchItemSales, fetchYaraOrders, fetchOrderDetail, arSearchIncludes,
     rangeError, analysisLabel, safeTotals, SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.181';
-import { ensureXlsx } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+} from '../data/yara-reports-repo.js?v=4.9.185';
+import { ensureXlsx } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -84,10 +84,9 @@ function template(from, to) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — المصدر مرآة المبيعات المحلية
-              (<span class="erp-addr" dir="ltr">/api/yara-reports/item-sales</span> و
-              <span class="erp-addr" dir="ltr">/orders</span>) — لا Oracle ولا كتابة.
-              سقف المدى 93 يومًا بقرار الخادم؛ المبيعات صافي بعد المرتجعات.
+              قراءة فقط — المصدر مرآة المبيعات المحلية؛ لا اتصال مباشر بالنظام
+              الخارجي ولا كتابة. سقف المدى 93 يومًا؛ المبيعات صافي بعد
+              المرتجعات.
             </p>
             <div data-v2-table></div>
             <div data-v2-order-detail></div>

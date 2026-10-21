@@ -219,7 +219,7 @@ powershell -ExecutionPolicy Bypass -File karim-master.ps1 run
 ## 🔧 حل المشاكل
 
 ### المشكلة: "Node.js is not installed"
-**الحل:** ثبّت Node.js 18+ من https://nodejs.org/ ثم أعد التشغيل.
+**الحل:** ثبّت Node.js 20+ من https://nodejs.org/ ثم أعد التشغيل.
 
 ### المشكلة: "Port 5000 already in use"
 **الحل:**

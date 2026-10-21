@@ -250,33 +250,11 @@
   gap: var(--erp-space-2);
   /* Shrinkable on purpose (this was `flex-shrink: 0`). A fixed row is what let
      eleven controls push the whole DOCUMENT sideways when they stopped
-     fitting — measured at 1280px: 1308px of controls in a 985px header, the
-     page scrolling by 351px and the theme + density controls off-screen. See
-     «header actions redistribution» below for the whole story. */
+     fitting — measured at 1280px: 1308px of controls in a 985px header. The
+     row now holds four controls, and the secondary ones live in the control
+     centre popover, so there is nothing left to squeeze. */
   flex-shrink: 1;
   min-width: 0;
-}
-
-/* The one child of the row allowed to surrender width. Chosen deliberately:
-   the cluster holds NO positioned popover — the password panel is a
-   body-mounted fixed `.erp-pop`, the quick buttons only navigate — so
-   scrolling it clips nothing. The bell (and its dropdown), the theme control
-   and the density control sit outside it, so they never leave the band.
-   `nowrap` for the same reason: inside a fixed 56px band, stacking a second
-   row would paint over the content below instead of staying in the header. */
-.erp-v2 .erp-shell__extras {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  flex-wrap: nowrap;
-}
-.erp-v2 .erp-shell__extras::-webkit-scrollbar { display: none; }
-
-.erp-shell__sep {
-  width: 1px;
-  height: 20px;
-  background: var(--erp-border);
 }
 
 .erp-shell__integrations {
@@ -304,6 +282,10 @@
 }
 .erp-boundary .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
 .erp-boundary:hover { color: var(--erp-text-muted); border-color: var(--erp-text-faint); }
+/* An author display rule outranks the UA `[hidden]` rule: without this the
+   company/branch placeholder that app-layout marks hidden painted as a
+   dashed, inert control in the live header. */
+.erp-v2 .erp-boundary[hidden] { display: none; }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────── */
 .erp-toolbar {
@@ -322,6 +304,9 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: var(--erp-space-5);
+  /* The FAB floats over the inline-start corner at every width; the page must
+     be able to scroll its last row clear of it. */
+  padding-block-end: calc(var(--erp-space-5) + 56px);
   max-width: var(--erp-content-max);
   width: 100%;
 }
@@ -360,74 +345,98 @@
   border-block-start: 1px solid var(--erp-border);
 }
 
-/* ═══════════════ Responsive — header actions redistribution ═══════════════
-   MEASURED DEFECT (before this block, live on the running page, RTL, 1280px):
-   `.erp-shell__actions` laid out 1308px of controls inside a 985px header
-   (1280 − 248px sidebar − 32px inline padding − 15px scrollbar). The document
-   scrolled horizontally by 351px and the theme + density controls — the last
-   two blocks of the row — sat entirely off-screen, which is the reported bug.
-   It was NOT a small-screen bug: the same row overflowed 1440 (+191px) and
-   1366 (+265px).
+/* ═══════════════ Control centre (مركز التحكم) ═══════════════
+   The header used to carry every secondary control in one flex strip. At
+   narrow widths that strip surrendered width until it reached zero: measured
+   live at 390px it was 0px wide holding 796px of content — password, server
+   status, lamps and language were all unreachable — and at 1024px it still
+   clipped the password and status behind an invisible horizontal scroll.
+   A strip has no honest answer when its content does not fit; a popover does.
 
-   Root cause: one flex row of eleven controls that could neither shrink
-   (`flex-shrink: 0`) nor wrap (the header is a fixed 56px band); it pushed the
-   document wider than the viewport instead of yielding.
+   The header now keeps only controls with a standing job: command palette,
+   notifications, session and this popover. Everything else is stacked inside
+   it at a fixed, readable width, so no breakpoint decides which feature
+   disappears. */
+.erp-v2 .erp-shell__more-toggle { flex: 0 0 auto; }
 
-   THE FIX IS STRUCTURAL, SO IT CANNOT BE WRONG BY A PIXEL:
-
-     · The row is shrinkable and the ONE child allowed to surrender width is
-       the extras cluster — both in the base rules above, at every width.
-       Flexbox only shrinks when the content does not fit, so a desktop that
-       fits is untouched, while one that does not can never scroll the document
-       sideways. No threshold to get wrong.
-     · On top of that guarantee, ONE breakpoint drops text an icon plus an
-       accessible name already carry, so the cluster is not squeezed before it
-       has to be.
-
-   MEASURED (RTL, sidebar 248px, scrollbar 15px, this file's own page, Tajawal):
-       row with every label      1196px
-       row after the first drop   953px
-       row after the second drop   858px
-   and the breadcrumb trail wants ~120px to stay readable. That puts the two
-   thresholds at ≈1611px and ≈1368px, so the drop points sit just below them
-   (1620 · 1400) — the labels are kept for as long as they actually fit. Below
-   ≈1252px the cluster scrolls inside itself. Nothing is removed at any width:
-   the controls stay reachable by pointer and by keyboard (focus scrolls its
-   own row into view), and the bell with its dropdown, the theme control and
-   the density control are OUTSIDE the cluster, so none of them can leave the
-   screen. That was the complaint.
-   ═════════════════════════════════════════════════════════════════════════ */
-
-@media (max-width: 1620px) {
-  .erp-v2 .erp-shell__header { gap: var(--erp-space-2); }
-  .erp-v2 .erp-shell__actions { gap: var(--erp-space-1); }
-
-  /* Two controls are already an icon plus an accessible name: the search
-     trigger (aria-label «بحث سريع في الشاشات (Ctrl+K)») and the password
-     button (aria-label «تغيير كلمة المرور»). Their text only repeats that
-     name, so it leaves the layout. Measured: 163→35 and 124→33, i.e. 219px.
-     The password button is the cluster's trailing `.erp-btn` — shell-extras.js
-     appends lamps · language · quick · password, in that order. */
-  .erp-v2 .erp-search-trigger__text,
-  .erp-v2 .erp-search-trigger .erp-pal__kbd,
-  .erp-v2 .erp-shell__extras > .erp-btn:last-child span { display: none; }
+.erp-shell__more {
+  position: fixed;
+  inset-block-start: calc(var(--erp-header-height) + var(--erp-space-2));
+  inset-inline-end: var(--erp-space-4);
+  z-index: var(--erp-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  inline-size: min(340px, calc(100vw - 2 * var(--erp-space-3)));
+  max-block-size: calc(100dvh - var(--erp-header-height) - 3 * var(--erp-space-4));
+  overflow-y: auto;
+  padding: var(--erp-space-3);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-lg);
 }
-
-@media (max-width: 1400px) {
-  /* The theme option's text IS its name, so it uses the `.erp-sr-only` recipe
-     (erp-base.css:125): out of the layout, still in the accessibility tree.
-     Measured: 200→105, i.e. 95px. Scoped to the header row —
-     mountThemeControl is only ever mounted there (app-layout.js:312). */
-  .erp-v2 .erp-shell__actions .erp-theme-option span {
-    position: absolute;
-    width: 1px; height: 1px;
-    padding: 0; margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
+.erp-shell__more[hidden] { display: none; }
+.erp-shell__more-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
 }
+.erp-shell__more-title {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-shell__more-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: 1px solid var(--erp-border);
+}
+.erp-shell__more-section[hidden] { display: none; }
+.erp-shell__more-label {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+  letter-spacing: .08em;
+  color: var(--erp-text-faint);
+}
+.erp-shell__more-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  min-block-size: 40px;
+}
+.erp-shell__more-key { font-size: var(--erp-text-sm); color: var(--erp-text-secondary); }
+.erp-shell__more-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--erp-space-1);
+}
+/* shell-extras paints the buttons inside one `<span class="erp-shell__quick">`;
+   the grid therefore belongs to that span, not to its host. */
+.erp-v2 .erp-shell__more-quick .erp-shell__quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+}
+.erp-v2 .erp-shell__more-quick .erp-btn {
+  justify-content: flex-start;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-shell__more-quick .erp-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.erp-v2 .erp-shell__more .erp-shell__lamps { flex-wrap: wrap; }
+.erp-v2 .erp-shell__more .erp-server-info { white-space: normal; }
+.erp-shell__more-account .erp-btn { inline-size: 100%; justify-content: flex-start; }
 
 /* ═══════════════ Responsive ═══════════════ */
 @media (max-width: 1024px) {
@@ -463,40 +472,55 @@
 @media (max-width: 640px) {
   .erp-shell__brand-text small { display: none; }
   .erp-crumbs { display: none; }   /* breadcrumb trail is redundant on phones */
-  .erp-shell__content { padding: var(--erp-space-3) var(--erp-space-3); }
-
-  /* ── Header actions: measured fix (MIGRATION.md «رأس AppLayout يتجاوز
-     العرض عند الموبايل»: actions 408px داخل هيدر 289px عند 320) ──
-     الضغط أولاً (أيقونات بلا نصوص، فجوات أضيق)، والتمرير الداخلي المخفي
-     ضمانٌ أخير: المستند لا يتجاوز أبدًا مهما أضاف مضيفٌ إلى الأحداث. */
-  .erp-v2 .erp-shell__header { gap: var(--erp-space-2); padding-inline: var(--erp-space-2); }
-  .erp-v2 .erp-shell__actions {
-    /* `min-width: 0` alone was INERT here: the base rule sets
-       `flex-shrink: 0`, so the row kept its full content width and the header
-       pushed the document 874px wide at a 360px viewport. Shrinking is what
-       makes the row's own `overflow-x` scroll instead of the page. */
-    flex: 0 1 auto;
-    min-width: 0;
-    gap: var(--erp-space-1);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+  .erp-shell__content {
+    padding: var(--erp-space-3);
+    /* The floating action button would sit on the last row otherwise. */
+    padding-block-end: calc(var(--erp-space-3) + 64px);
   }
-  .erp-v2 .erp-shell__actions::-webkit-scrollbar { display: none; }
-  .erp-v2 .erp-shell__actions .erp-shell__sep { display: none; }
-  /* الثيم أيقونات فقط (اللون يقول فاتح/داكن — والأيقونة تكفي بلمس).
-     النصّ مخفيٌّ بصريًّا منذ 1360px عبر وصفة `.erp-sr-only` (لا
-     `display: none`: الاسم يبقى في شجرة الوصول عند أضيق عرض أيضًا). */
-  .erp-v2 .erp-theme-option { padding: 0 var(--erp-space-2); }
-  /* الكثافة نصّها هو الأيقونة — تُضغط لا تُخفى */
-  .erp-v2 .erp-density-option { padding: 0 6px; font-size: var(--erp-text-xs); }
-  .erp-v2 .erp-boundary { padding: 0 var(--erp-space-1); }
+
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-2); padding-inline: var(--erp-space-2); }
+  .erp-v2 .erp-shell__actions { gap: var(--erp-space-1); }
+
+  /* Text that only repeats an accessible name already in the source leaves
+     the phone layout; the name stays in the accessibility tree. */
+  .erp-v2 .erp-search-trigger__text,
+  .erp-v2 .erp-search-trigger .erp-pal__kbd { display: none; }
+  .erp-v2 .erp-shell__integrations {
+    gap: var(--erp-space-1);
+    padding-inline-end: var(--erp-space-2);
+  }
+  .erp-v2 .erp-shell__integrations > .erp-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .erp-v2 .erp-shell__integrations > .erp-btn span { display: none; }
+
+  /* Full-width sheet instead of a narrow popover on a phone. */
+  .erp-shell__more {
+    inset-inline: var(--erp-space-2);
+    inline-size: auto;
+  }
+}
+
+@media (max-width: 340px) {
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-1); padding-inline: var(--erp-space-1); }
+  /* Two 130px columns would ellipsis «شاشات المنيو»; stack instead. */
+  .erp-v2 .erp-shell__more-quick .erp-shell__quick { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Touch targets ≥ 44px on coarse pointers (WCAG 2.5.8). */
 @media (pointer: coarse) {
-  .erp-nav-item,
-  .erp-icon-btn,
-  .erp-boundary { min-height: 44px; }
-  .erp-icon-btn, .erp-boundary { min-width: 44px; }
+  .erp-v2 .erp-nav-item,
+  .erp-v2 .erp-icon-btn,
+  .erp-v2 .erp-boundary,
+  .erp-v2 .erp-search-trigger,
+  .erp-v2 .erp-nav-group__title,
+  .erp-v2 .erp-theme-option,
+  .erp-v2 .erp-density-control .erp-density-option,
+  .erp-v2 .erp-shell__more .erp-btn,
+  .erp-v2 .erp-btn--sm { min-height: 44px; }
+  .erp-v2 .erp-icon-btn,
+  .erp-v2 .erp-boundary,
+  .erp-v2 .erp-search-trigger { min-width: 44px; }
 }

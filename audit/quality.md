@@ -105,7 +105,7 @@ Time:        ~6–15 s          → npm test EXIT: 1
 
 ### 4) Config health
 
-- **package.json:** ‏`version 4.9.2`، ‏57 سكربتًا، `engines.node >=18.0.0` ⇐ الفعلي **v20.19.0 مطابق** (لكن هدف `pkg.targets: node18-win-x64` قديم نسبيًا). كل مدخلات السكربتات تشير لملفات موجودة (لا سكربت مكسور).
+- **package.json:** ‏`version 4.9.2`، ‏57 سكربتًا، `engines.node >=20.0.0` ⇐ الفعلي **v24.20.0 مطابق**. Electron 44.9.2 يضم Node 24.22.0 (تم التحقق بتشغيل تطبيق مؤقت)؛ إعداد `pkg.targets: node18-win-x64` ميت/قديم ولا يستخدمه مسار بناء Electron المعتمد. كل مدخلات السكربتات تشير لملفات موجودة (لا سكربت مكسور).
 - **سكربتات مفقودة تُستشهد في التوثيق:** `build`، `download-pg`، `audit:silent`.
 - **معاملات (dependencies) مشبوهة:** `html5-qrcode` و`chart.js` مُصرَّحان في npm لكن الصفحة تحمّل نسخ vendor (`frontend/app/vendor/html5-qrcode.min.js`, `chart.umd.min.js`) ولا يوجد `require('chart.js')`/`html5-qrcode` في أي كود → **معاملات مكررة/غير مستخدمة**. `@capacitor/*` + `@aparajita/capacitor-biometric-auth` تُستخدم عبر Android/Capacitor فقط (لا استدعاء JS مباشر). باقي المعاملات كبيرة (baileys 22، oracledb 73، bullmq 72، zod 690، xlsx 391) مستخدمة فعليًا.
 - **لا يوجد `frontend/package.json`** إطلاقًا (يعمل بـ vanilla ESM + vendor) → لا ازدواجية مع الجذر.
@@ -208,7 +208,7 @@ Time:        ~6–15 s          → npm test EXIT: 1
 | `tsc --noEmit` | 0 أخطاء (10.8 ثانية) |
 | سكربتات package.json | 57 |
 | سكربتات مفقودة تُستشهد في التوثيق | 3 (`build`, `download-pg`, `audit:silent`) |
-| engines node | >=18.0.0 (الفعلي 20.19.0 ✔) |
+| engines node | >=20.0.0 (الفعلي 24.20.0 ✔) |
 | مفاتيح `.env.example` / `.env` فعّالة | 49 / 55 |
 | مفاتيح غير موثّقة في المثال | 6 (+2 موثّقة لكن مُعلَّقة) |
 | ملفات بها U+FFFD (حالات) | 5 (10) |

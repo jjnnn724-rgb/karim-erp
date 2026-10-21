@@ -288,7 +288,7 @@ html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text
 
 .erp-v2 .erp-eyebrow {
   display: block;
-  font-size: 10px;
+  font-size: var(--erp-text-xs);
   letter-spacing: .09em;
   text-transform: uppercase;
   color: var(--erp-text-faint);
@@ -304,7 +304,33 @@ html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text
 }
 .erp-v2 .erp-dash-title { font-size: var(--erp-text-xl); font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); margin: 0; }
 .erp-v2 .erp-dash-sub { font-size: var(--erp-text-sm); color: var(--erp-text-secondary); margin-block-start: 2px; }
-.erp-v2 .erp-dash-controls { margin-inline-start: auto; display: flex; gap: var(--erp-space-3); flex-wrap: wrap; }
+.erp-v2 .erp-dash-controls { margin-inline-start: auto; display: flex; align-items: center; gap: var(--erp-space-3); flex-wrap: wrap; }
+
+/* Settings · بيانات المنشأة — a label above its input, not a caption
+   floating beside it; equal columns fold to one on narrow screens. */
+.erp-v2 .erp-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-settings-fields .erp-input { inline-size: 100%; }
+
+/* Settings · قائمة الظهور — same grid the old inline style drew, now a
+   tokenised rule with a visible hover target. */
+.erp-v2 .erp-settings-navgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-settings-navgrid__item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  cursor: pointer;
+}
+.erp-v2 .erp-settings-navgrid__item:hover { background: var(--erp-surface-hover); }
 .erp-v2 .erp-seg {
   display: inline-flex; align-items: center; gap: 2px;
   background: var(--erp-surface-sunken);
@@ -338,4 +364,18 @@ html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text
   .erp-v2 .erp-dash-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .erp-v2 .erp-card { break-inside: avoid; box-shadow: none; }
   .erp-v2 .erp-dash-controls { display: none; }
+}
+
+/* CFO tables are built from raw HTML (not the data-table component), so they
+   have no `.erp-table__scroll` wrapper. At 360px the journal table is 936px
+   wide and drags the whole document with it. display:block keeps the table
+   grid intact and turns the table itself into a horizontal scroller. */
+@media (max-width: 640px) {
+  .erp-v2-cfo .erp-table__grid { display: block; overflow-x: auto; }
+}
+
+/* At 320px the mini-row's three inline parts are 280px against 274px of
+   content: the 12px gaps are what push it over, not the text (which ellipsizes). */
+@media (max-width: 340px) {
+  .erp-v2 .erp-mini { gap: var(--erp-space-1); }
 }

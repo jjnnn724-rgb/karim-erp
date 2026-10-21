@@ -110,14 +110,18 @@ function main() {
     log.ok(`تم النسخ الاحتياطي: ${sizeStr}`);
     log.info(`SHA-256: ${digest}`);
 
-    // ─── مرايا خارجية D/E (HARDENED 2026-10-07: لا سيناريو ضياع يتكرر) ───
+    // ─── مرايا خارجية D/E مشفرة فقط (HARDENED 2026-10-07) ───
     // best-effort: فشل المرايا لا يُفشل النسخة الأساسية.
+    let offsite = { ok: false, errors: [] };
     try {
-        const { mirrorFile } = require('../../scripts/backup-mirror');
-        const m = mirrorFile(outputFile, 'full');
+        const { encryptBackupFile, mirrorFile } = require('../../scripts/backup-mirror');
+        const encryptedFile = encryptBackupFile(outputFile);
+        const m = mirrorFile(encryptedFile, 'full');
+        offsite = { ok: m.ok, errors: m.errors };
         if (m.mirrored.length) log.ok(`مرايا خارجية: ${m.mirrored.length} نسخة`);
         m.errors.slice(0, 2).forEach(e => log.warn(`مرايا: ${e}`));
     } catch (e) {
+        offsite = { ok: false, errors: [e.message] };
         log.warn(`تعذر المرايا الخارجية (غير قاتل): ${e.message}`);
     }
 
@@ -141,7 +145,7 @@ function main() {
     } catch (e) {
         log.warn(`تعذر تنظيف النسخ القديمة (غير قاتل): ${e.message}`);
     }
-    const statusPayload = { ok: true, file: path.basename(outputFile), bytes: size, sha256: digest, retained };
+    const statusPayload = { ok: true, file: path.basename(outputFile), bytes: size, sha256: digest, retained, offsite };
     try {
         writeStatus(backupDir, statusPayload);
     } catch (_) {

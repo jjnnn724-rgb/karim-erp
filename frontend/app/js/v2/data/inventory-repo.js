@@ -37,9 +37,9 @@
  * (features/warehouse.js:2384). Nothing else may POST/PUT/DELETE.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.181';
-import { formatMoney } from './reports-repo.js?v=4.9.181';
-import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.181';
+import { apiFetch } from '../../core/api.js?v=4.9.185';
+import { formatMoney } from './reports-repo.js?v=4.9.185';
+import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.185';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];
@@ -287,11 +287,11 @@ export function buildInventoryKpis(rows = [], opts = {}) {
 
     for (const spec of [
         { key: 'low', label: 'تحت الحد', en: 'Below minimum', tone: 'warning', icon: 'alert-triangle',
-            hint: 'qty>0 و qty≤minQty — كما في الخادم (warehouse-routes.js:1749)' },
+            hint: 'أصناف لها رصيد وصل إلى حد إعادة الطلب أو نزل تحته' },
         { key: 'out', label: 'نفد', en: 'Out of stock', tone: 'danger', icon: 'circle-x',
-            hint: 'qty≤0 — يشمل الأرصدة السالبة كما هي' },
+            hint: 'أصناف رصيدها صفر أو أقل — وتُحتسب الأرصدة السالبة كما هي' },
         { key: 'ok', label: 'متوفر', en: 'In stock', tone: 'success', icon: 'circle-check',
-            hint: 'qty>minQty — كل ما فوق الحد المسجّل' },
+            hint: 'أصناف رصيدها أعلى من حد إعادة الطلب المسجّل' },
     ]) {
         chips.push({
             id: `state:${spec.key}`, icon: spec.icon, tone: spec.tone,

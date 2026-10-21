@@ -2,7 +2,24 @@
  * V2 — POS doors. Writes use the established cashier routes; the server
  * remains authoritative for stock, VAT, shift ownership, ZATCA and printing.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { API_BASE, apiFetch } from '../../core/api.js?v=4.9.185';
+
+const ORDER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** ASCII-only device label (browsers reject non-Latin-1 header values). */
+export function posDeviceName(departmentId) {
+    let device = 'POS terminal';
+    try {
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+        device = /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : /Windows/i.test(ua) ? 'Windows PC' : device;
+    } catch (_) { /* navigator unavailable in some embedded webviews */ }
+    const dept = Number(departmentId);
+    return `POS (${device}${Number.isInteger(dept) && dept > 0 ? ` dept-${dept}` : ''})`;
+}
+
+function deviceHeaders(departmentId) {
+    return { 'x-device-name': posDeviceName(departmentId) };
+}
 
 /**
  * The existing cashier route syncs departments from the ERP department table
@@ -50,6 +67,7 @@ export async function holdPosOrder({ sessionId, departmentId, items, cartDiscoun
     )) {throw new Error('قيمة خصم الطلب غير صالحة');}
     return apiFetch('/pos/held-orders', {
         method: 'POST',
+        headers: deviceHeaders(department),
         body: JSON.stringify({ session_id: shift, department_id: department, items, cart_discount: cartDiscount }),
     });
 }
@@ -60,6 +78,7 @@ export async function recallPosHeldOrder(orderId, sessionId) {
     if (!id || !Number.isInteger(shift) || shift <= 0) {throw new Error('الطلب أو الوردية غير صالح');}
     return apiFetch(`/pos/held-orders/${encodeURIComponent(id)}/recall`, {
         method: 'POST',
+        headers: deviceHeaders(),
         body: JSON.stringify({ session_id: shift }),
     });
 }
@@ -69,7 +88,10 @@ export async function deletePosHeldOrder(orderId, sessionId) {
     const shift = Number(sessionId);
     if (!id || !Number.isInteger(shift) || shift <= 0) {throw new Error('الطلب أو الوردية غير صالح');}
     const query = new URLSearchParams({ session_id: String(shift) });
-    return apiFetch(`/pos/held-orders/${encodeURIComponent(id)}?${query.toString()}`, { method: 'DELETE' });
+    return apiFetch(`/pos/held-orders/${encodeURIComponent(id)}?${query.toString()}`, {
+        method: 'DELETE',
+        headers: deviceHeaders(),
+    });
 }
 
 export async function openPosShift({ departmentId, openingBalance }) {
@@ -80,6 +102,7 @@ export async function openPosShift({ departmentId, openingBalance }) {
     if (!Number.isFinite(opening) || opening < 0) {throw new Error('العهدة الافتتاحية غير صالحة');}
     return apiFetch('/pos/shifts/open', {
         method: 'POST',
+        headers: deviceHeaders(Number(departmentId)),
         body: JSON.stringify({ department_id: Number(departmentId), opening_balance: opening }),
     });
 }
@@ -136,7 +159,10 @@ export async function reprintPosOrder(orderId) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
         throw new Error('معرّف الفاتورة غير صالح');
     }
-    return apiFetch(`/pos/orders/${encodeURIComponent(id)}/reprint`, { method: 'POST' });
+    return apiFetch(`/pos/orders/${encodeURIComponent(id)}/reprint`, {
+        method: 'POST',
+        headers: deviceHeaders(),
+    });
 }
 
 export async function voidPosOrder(orderId, reason) {
@@ -148,6 +174,7 @@ export async function voidPosOrder(orderId, reason) {
     if (!note || note.length > 500) {throw new Error('سبب الإلغاء مطلوب (حتى 500 حرف)');}
     return apiFetch(`/pos/orders/${encodeURIComponent(id)}/void`, {
         method: 'POST',
+        headers: deviceHeaders(),
         body: JSON.stringify({ reason: note }),
     });
 }
@@ -159,8 +186,53 @@ export async function closePosShift({ sessionId, actualCash, notes }) {
     if (!Number.isFinite(cash) || cash < 0) {throw new Error('النقد الفعلي غير صالح');}
     return apiFetch(`/pos/shifts/${id}/close`, {
         method: 'POST',
+        headers: deviceHeaders(),
         body: JSON.stringify({ actual_cash: cash, notes: String(notes || '').trim() || null }),
     });
+}
+
+export async function fetchPosKotPage(orderId) {
+    const id = String(orderId || '').trim();
+    if (!ORDER_ID.test(id)) {throw new Error('معرّف الفاتورة غير صالح');}
+    const headers = {};
+    if (window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (window._appKey) {headers['x-api-key'] = window._appKey;}
+    const res = await fetch(`${API_BASE}/pos/kot/orders/${encodeURIComponent(id)}/html`, { headers });
+    if (!res.ok) {
+        if (res.status === 401) {throw new Error('انتهت الجلسة — سجّل الدخول مجددًا');}
+        let message = '';
+        try {const data = await res.json(); message = data?.message || data?.error || '';} catch (_) { /* non-JSON error body */ }
+        throw new Error(message || `تعذّر تحميل تذاكر المطبخ (${res.status})`);
+    }
+    const html = await res.text();
+    if (!html.trim()) {throw new Error('صفحة تذاكر المطبخ فارغة');}
+    return html;
+}
+
+export async function exportPosOrders({
+    dateFrom = '', dateTo = '', departmentId = '', cashierId = '', sessionId = '', status = '', search = '',
+} = {}) {
+    if (dateFrom && !/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {throw new Error('تاريخ بداية غير صالح');}
+    if (dateTo && !/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {throw new Error('تاريخ نهاية غير صالح');}
+    if (dateFrom && dateTo && dateFrom > dateTo) {throw new Error('تاريخ البداية يجب ألا يتجاوز تاريخ النهاية');}
+    if (status && !['issued', 'reported', 'cancelled'].includes(status)) {throw new Error('حالة الفاتورة غير صالحة');}
+
+    const query = new URLSearchParams();
+    if (dateFrom) {query.set('date_from', dateFrom);}
+    if (dateTo) {query.set('date_to', dateTo);}
+    if (status) {query.set('status', status);}
+    for (const [key, value, label] of [['department_id', departmentId, 'القسم'], ['cashier_id', cashierId, 'الكاشير'], ['session_id', sessionId, 'الوردية']]) {
+        if (value === '' || value === null || value === undefined) {continue;}
+        const id = Number(value);
+        if (!Number.isInteger(id) || id <= 0) {throw new Error(`${label} غير صالح`);}
+        query.set(key, String(id));
+    }
+    const term = String(search || '').trim().slice(0, 100);
+    if (term) {query.set('search', term);}
+
+    const result = await apiFetch(`/pos/orders/export?${query.toString()}`);
+    if (!result || !Array.isArray(result.data)) {throw new Error('صيغة تصدير فواتير الكاشير غير صالحة');}
+    return result;
 }
 
 export async function completePosSale({ departmentId, sessionId, items, payments, idempotencyKey }) {
@@ -176,6 +248,7 @@ export async function completePosSale({ departmentId, sessionId, items, payments
     return apiFetch('/sales/complete', {
         method: 'POST',
         headers: {
+            ...deviceHeaders(dept),
             'Idempotency-Key': key,
             'X-Shift-Session-Id': String(shift),
         },

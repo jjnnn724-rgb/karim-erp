@@ -55,7 +55,7 @@ run_app() {
   fi
 }
 
-install -d -m 700 "$BOOTSTRAP_DIR" "$APP_DIR/logs" "$APP_DIR/database/media" "$APP_DIR/database/backups"
+install -d -m 700 "$BOOTSTRAP_DIR" "$APP_DIR/logs" "$APP_DIR/database/media" "$APP_DIR/database/backups" "$APP_DIR/var/brotli-cache"
 
 DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)}"
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 48)}"
@@ -99,6 +99,11 @@ DEBUG=false
 DEBUG_SQL=false
 LOG_LEVEL=info
 ZATCA_MODE=${ZATCA_MODE:-sandbox}
+# كاش Brotli للأصول الساكنة (Nginx في aaPanel مجرد reverse proxy لا يقرأ القرص)
+BROTLI_CACHE_DIR=$APP_DIR/var/brotli-cache
+BROTLI_CACHE_MAX_MB=100
+BROTLI_CACHE_MAX_AGE_DAYS=7
+WARMUP_ENABLED=true
 EOF
 chmod 600 "$ENV_FILE"
 
@@ -125,7 +130,7 @@ APP_GROUP="$(id -gn "$APP_USER")"
 chown -R "root:$APP_GROUP" "$APP_DIR"
 find "$APP_DIR" -type d -exec chmod 750 {} +
 find "$APP_DIR" -type f -exec chmod 640 {} +
-for runtime_dir in "$APP_DIR/database/media" "$APP_DIR/database/backups" "$APP_DIR/logs"; do
+for runtime_dir in "$APP_DIR/database/media" "$APP_DIR/database/backups" "$APP_DIR/logs" "$APP_DIR/var/brotli-cache"; do
   chown -R "$APP_USER:$APP_GROUP" "$runtime_dir"
   find "$runtime_dir" -type d -exec chmod 750 {} +
   find "$runtime_dir" -type f -exec chmod 640 {} +

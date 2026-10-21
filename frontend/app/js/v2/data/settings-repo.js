@@ -29,8 +29,8 @@
  * ترويسة القديم (Authorization وحده) ولا شيء غيره.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.181';
-import { fetchMainSettings } from './portal-repo.js?v=4.9.181';
+import { apiFetch } from '../../core/api.js?v=4.9.185';
+import { fetchMainSettings } from './portal-repo.js?v=4.9.185';
 
 export const SETTINGS_WRITE_ROLES = ['admin', 'manager'];
 export const ZATCA_WRITE_ROLES = ['admin', 'manager'];
@@ -184,5 +184,17 @@ export async function resetAllData() {
 export async function operationalReset({ confirmation, reason, force }) {
     return apiFetch('/warehouse/system/reset-all', {
         method: 'POST', body: JSON.stringify({ confirmation, reason, force, scope: 'full' }),
+    });
+}
+
+/* ── التحكم بالسيرفر (مدير فقط — بروكسي محروس إلى الخدمة المرافقة) ────── */
+
+export async function fetchServerControl() {
+    return apiFetch('/server-control/status');
+}
+
+export async function serverControlAction(action, confirm = '') {
+    return apiFetch('/server-control/actions', {
+        method: 'POST', body: JSON.stringify({ action, confirm }),
     });
 }

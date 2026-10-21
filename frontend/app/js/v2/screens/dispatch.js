@@ -24,11 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.181';
-import { formatInt } from '../data/employees-repo.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.185';
+import { formatInt } from '../data/employees-repo.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.185';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     CREATE_ROLES, chainStage, deptCodesOf,
@@ -38,11 +38,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.181';
+} from '../data/dispatch-repo.js?v=4.9.185';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.181';
+} from '../signature.js?v=4.9.185';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -983,14 +983,14 @@ export function mountDispatchScreen(host, ctx = {}) {
         const label = (st && st.label) ? st.label : (raw.status || '');
         const strong = role === 'admin' && String(raw.status) !== 'pending';
         const msg = strong
-            ? `⚠️ حذف نهائي لإذن صرف (${label})؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل الأدمن.\nهل أنت متأكد؟`
-            : 'حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة الأدمن — حذف نهائي موثّق)';
+            ? `⚠️ حذف نهائي لإذن صرف (${label})؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل مدير النظام.\nهل أنت متأكد؟`
+            : 'حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة مدير النظام — حذف نهائي موثّق)';
         const ok = await confirmFn(msg);
         if (!ok) {return;}
         busy = true;
         try {
             await deleteDispatch(raw.id);
-            notify(strong ? 'حُذف إذن الصرف نهائيًا (موثّق باسم الأدمن)' : 'حُذف طلب الصرف المعلق');
+            notify(strong ? 'حُذف إذن الصرف نهائيًا (موثّق باسم مدير النظام)' : 'حُذف طلب الصرف المعلق');
             await reload();
         } catch (e) {
             notify((e && e.message) || 'تعذر حذف الإذن');

@@ -29,11 +29,11 @@
  * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { openInAppReport } from '../report-viewer.js?v=4.9.181';
-import { lineChart, barChart } from '../charts.js?v=4.9.181';
-import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.181';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { openInAppReport } from '../report-viewer.js?v=4.9.185';
+import { lineChart, barChart } from '../charts.js?v=4.9.185';
+import { fetchPnl, PNL_PRESETS, pnlPresetRange } from '../data/finance-repo.js?v=4.9.185';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -307,7 +307,7 @@ export function mountPnlScreen(host, _ctx = {}) {
             noteEl.textContent = e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && (e.code === 'FORBIDDEN' || e.status === 403)
-                    ? 'لا صلاحية لعرض قائمة الدخل بهذا الحساب (admin|manager|accountant) — القرار للخادم وحده.'
+                    ? 'لا صلاحية لعرض قائمة الدخل بهذا الحساب — القرار للنظام وحده.'
                     : `تعذّر تحميل قائمة الدخل: ${(e && e.message) || 'خطأ'}`);
         } finally {
             loading = false;

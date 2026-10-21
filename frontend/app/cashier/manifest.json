@@ -9,8 +9,8 @@
   "scope": "/app/cashier/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f8fafc",
-  "theme_color": "#b45309",
+  "background_color": "#F6F2EA",
+  "theme_color": "#0E5A60",
   "categories": ["business", "food"],
   "icons": [
     {

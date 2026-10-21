@@ -287,7 +287,7 @@
 .erp-v2 .erp-state__title { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }
 
 /* ── Shell extras (W5): lamps, bell, quick cluster, FAB, notifs, offline ── */
-.erp-v2 .erp-shell__extras, .erp-v2 .erp-shell__quick { display: inline-flex; align-items: center; gap: 8px; }
+.erp-v2 .erp-shell__quick { display: inline-flex; align-items: center; gap: 8px; }
 .erp-v2 .erp-shell__lamps { display: inline-flex; align-items: center; gap: 6px; }
 .erp-v2 .erp-server-info { color: var(--erp-text-muted); white-space: nowrap; }
 .erp-v2 .erp-server-info[data-current="1"] { color: var(--erp-success-text); }
@@ -338,8 +338,13 @@
    hand-written 13px is a separate debt. */
 .erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: var(--erp-z-toast); background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
 @media (max-width: 640px) {
-  .erp-v2 .erp-shell__extras { flex-wrap: wrap; }
   .erp-fab-host .erp-fab { width: 44px; height: 44px; }
+  /* A card head is a control strip, not a single line on a phone: without
+     wrapping, filter fields push the last button off-screen (branches,
+     revenues, expenses, wh-moves, payroll). Measured at 360px against live
+     data. The segmented control wraps inside the head for the same reason. */
+  .erp-v2 .erp-card__head { flex-wrap: wrap; row-gap: var(--erp-space-2); }
+  .erp-v2 .erp-card__head .erp-seg { flex-wrap: wrap; }
 }
 .erp-v2 .erp-link { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: var(--erp-brand-text); text-decoration: underline; }
 

@@ -37,8 +37,8 @@ import {
     searchYarasoftProducts,
     startYarasoftOracleCatchUp,
     testYarasoftOracle,
-} from '../data/yarasoft-repo.js?v=4.9.181';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.181';
+} from '../data/yarasoft-repo.js?v=4.9.185';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.185';
 
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -238,7 +238,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const selected = sectionMap.find((item) => String(item.id) === String(selectedMapId));
             const drill = selected && sectionInvoices ? sectionInvoicesMarkup(selected) : '';
             panel.innerHTML = `<div class="erp-stack">
-              <p class="erp-text-sm erp-text-muted">دخل القسم يأتي من مبيعات الكاشير CC أو البيع الخارجي BILLS4. أقسام BILLS4 موحّدة ولا تُعتمد منفصلة. نقل الفواتير يسجل التغيير على الخادم وبصلاحية المدير أو الأدمن.</p>
+              <p class="erp-text-sm erp-text-muted">دخل القسم يأتي من مبيعات الكاشير CC أو البيع الخارجي BILLS4. أقسام BILLS4 موحّدة ولا تُعتمد منفصلة. نقل الفواتير يسجل التغيير في النظام وبصلاحية المدير أو مدير النظام.</p>
               <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">أقسام بانتظار الاعتماد (${formatInt(unmapped.length)})</h3><span class="erp-grow"></span>${canWrite ? '<button type="button" class="erp-btn erp-btn--sm" data-ys-manual-toggle>إضافة قسم يدوي</button>' : ''}<button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث</button></div><div class="erp-card__body">
                 ${canWrite ? '<div class="erp-wa-form"><label class="erp-field"><span class="erp-label">اسم القسم اليدوي</span><input class="erp-input" data-ys-manual-name maxlength="255"></label><label class="erp-field"><span class="erp-label">الاسم الإنجليزي (اختياري)</span><input class="erp-input" data-ys-manual-en maxlength="255"></label><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-ys-manual-create>إنشاء قسم</button></div>' : ''}
                 ${table(['مصدر البيانات', 'اسم القسم الوارد', 'الفواتير', 'الإجمالي', 'آخر ظهور', 'الاعتماد أو الدمج'], waitingRows, 'لا توجد أقسام معلقة.', 6)}</div></section>

@@ -7,11 +7,11 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { formatInt } from '../data/reports-repo.js?v=4.9.181';
-import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.181';
-import { ensureXlsx } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { formatInt } from '../data/reports-repo.js?v=4.9.185';
+import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.185';
+import { ensureXlsx } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {
@@ -88,10 +88,9 @@ function template(from, to) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — يُطابق صرف المخزن مع مبيعات الكاشيرية بالاسم
-              (<span class="erp-addr" dir="ltr">/api/yara-reports/wh-vs-pos</span>)،
-              وبحث الصنف يقترح من <span class="erp-addr" dir="ltr">/item-suggest</span>،
-              والتحديث التلقائي يقرأ كل 60 ثانية عند تفعيله.
+              قراءة فقط — يُطابق صرف المخزن مع مبيعات الكاشيرية بالاسم، وبحث
+              الصنف يقترح من السجل، والتحديث التلقائي يقرأ كل 60 ثانية عند
+              تفعيله.
             </p>
             <p class="erp-text-sm" data-v2-fresh hidden></p>
             <div data-v2-table></div>
@@ -282,7 +281,7 @@ export function mountWhVsPosScreen(host, ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.181').then((m) => m.fetchCurrency()).catch(() => '')]);
+            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.185').then((m) => m.fetchCurrency()).catch(() => '')]);
             if (!el.isConnected) {return;}
             const raw = data.status === 'fulfilled' ? (data.value.rows || data.value.comparison || []) : [];
             rows = raw.map((r) => ({

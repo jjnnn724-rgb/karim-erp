@@ -4,7 +4,7 @@
 
 ### المتطلبات الأساسية
 - Windows 10+ أو Linux
-- Node.js 18+ ([تحميل](https://nodejs.org/))
+- Node.js 20+ ([تحميل](https://nodejs.org/))
 - npm 8+ (يأتي مع Node.js)
 - 2GB RAM كحد أدنى
 - 500MB مساحة فارغة

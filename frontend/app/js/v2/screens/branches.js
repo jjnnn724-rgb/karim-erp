@@ -24,9 +24,9 @@
  *     convoy (dispatch approvals, 2026-10-13).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
 import {
     fetchBranches,
     createBranch,
@@ -34,7 +34,7 @@ import {
     deactivateBranch,
     reactivateBranch,
     validateBranch,
-} from '../data/branches-repo.js?v=4.9.181';
+} from '../data/branches-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,7 +67,7 @@ function template(writable) {
             <strong>branch_id</strong>. الإيقاف ليّن: السجلات التاريخية تبقى كما هي،
             والفرع الرئيسي <strong>MAIN</strong> غير قابل للإيقاف.
           </p>
-          ${writable ? '' : '<p class="erp-text-sm erp-text-muted">هذه الشاشة للقراءة فقط بصلاحيتك الحالية — الكتابة للأدمن.</p>'}
+          ${writable ? '' : '<p class="erp-text-sm erp-text-muted">هذه الشاشة للقراءة فقط بصلاحيتك الحالية — الكتابة لمدير النظام.</p>'}
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
         </div>

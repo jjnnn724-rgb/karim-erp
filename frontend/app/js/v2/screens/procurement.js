@@ -13,15 +13,15 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
 import {
     fetchProcurementSummary, fetchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
     deleteSupplier, fetchSupplierStatement,
-} from '../data/procurement-repo.js?v=4.9.181';
+} from '../data/procurement-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -95,11 +95,9 @@ function template(writable) {
         <div class="erp-card__body erp-stack">
           <div data-v2-kpis></div>
           <p class="erp-text-sm erp-text-muted">
-            الدليل والملخص من وجه الخادم الحالي
-            (<span class="erp-addr" dir="ltr">/api/procurement/suppliers</span> و
-            <span class="erp-addr" dir="ltr">/summary</span>)، والصلاحية قررها
-            الخادم وحده. المستحق = الافتتاحي + المشتريات − المدفوعات كما
-            يحسبها الخادم. فواتير الموردين ومدفوعاتهم شاشتان مستقلتان (06/07).
+            الدليل والملخص من النظام مباشرة، والصلاحية محكومة بالأدوار.
+            المستحق = الافتتاحي + المشتريات − المدفوعات. فواتير الموردين
+            ومدفوعاتهم شاشتان مستقلتان (06/07).
             <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
           </p>
           <div data-v2-form hidden></div>
@@ -159,17 +157,17 @@ export function mountProcurementScreen(host, ctx = {}) {
             {
                 key: 'purchasesTotal', header: 'المشتريات', sortable: true, type: 'number',
                 width: '130px', align: 'end', value: (row) => row.purchasesTotal,
-                render: (row) => moneyCell(row.purchasesTotal, currency, { title: 'SUM(totalAmount) لفواتير هذا المورد' }),
+                render: (row) => moneyCell(row.purchasesTotal, currency, { title: 'مجموع فواتير هذا المورد' }),
             },
             {
                 key: 'paymentsTotal', header: 'المدفوعات', sortable: true, type: 'number',
                 width: '130px', align: 'end', value: (row) => row.paymentsTotal,
-                render: (row) => moneyCell(row.paymentsTotal, currency, { title: 'SUM(amount) لمدفوعات هذا المورد' }),
+                render: (row) => moneyCell(row.paymentsTotal, currency, { title: 'مجموع مدفوعات هذا المورد' }),
             },
             {
                 key: 'dueTotal', header: 'المستحق', sortable: true, type: 'number',
                 width: '130px', align: 'end', value: (row) => row.dueTotal,
-                render: (row) => moneyCell(row.dueTotal, currency, { title: 'الافتتاحي + المشتريات − المدفوعات كما في الخادم' }),
+                render: (row) => moneyCell(row.dueTotal, currency, { title: 'الافتتاحي + المشتريات − المدفوعات' }),
             },
             {
                 key: 'lastPurchaseDate', header: 'آخر شراء', sortable: true, width: '120px', align: 'center',
@@ -226,12 +224,12 @@ export function mountProcurementScreen(host, ctx = {}) {
             {
                 icon: 'banknote', label: 'إجمالي المشتريات', en: 'Purchases',
                 value: m(summary.purchasesTotal), unit: cur,
-                pill: null, hint: 'SUM(totalAmount) المرتبطة بموردين',
+                pill: null, hint: 'مجموع فواتير الموردين المرتبطة',
             },
             {
                 icon: 'wallet', label: 'إجمالي المدفوعات', en: 'Payments',
                 value: m(summary.paymentsTotal), unit: cur,
-                pill: null, hint: 'SUM(amount) لمدفوعات الموردين',
+                pill: null, hint: 'مجموع مدفوعات الموردين',
             },
             {
                 icon: 'alert-triangle', label: 'المستحق للموردين', en: 'Amount Due',

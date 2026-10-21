@@ -33,10 +33,10 @@
  *   screen does not own (P2-4 is the read report plus the fiscal lifecycle).
  */
 
-import { canWrite } from '../session.js?v=4.9.181';
-import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.185';
+import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.185';
 import {
     FISCAL_READ_ROLES, FISCAL_CREATE_ROLES, FISCAL_CLOSE_ROLES,
     OPENING_READ_ROLES, HEALTH_READ_ROLES,
@@ -44,7 +44,7 @@ import {
     fetchOpeningBalanceReport, fetchSystemHealth,
     validateFiscalYearForm, normalizeFiscalYearForm,
     fiscalYearToRow, fiscalSummary, openingToInvoice, openingTotals, healthSummary,
-} from '../data/warehouse-gov-repo.js?v=4.9.181';
+} from '../data/warehouse-gov-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -119,11 +119,10 @@ function fiscalCardHtml(caps) {
           والإنشاء للإدارة والمدير والمحاسب، والقراءة لهؤلاء الثلاثة.
           ${caps.fiscalWrite
         ? ''
-        : '<span data-v2-fiscal-ro>وضع القراءة فقط: علم <span class="erp-mono" dir="ltr">v2fiscalwrite</span> مغلق — لا نموذج إنشاء ولا أزرار إقفال.</span>'}
+        : '<span data-v2-fiscal-ro>وضع القراءة فقط: ميزة الإقفال غير مفعّلة — لا نموذج إنشاء ولا أزرار إقفال.</span>'}
         </p>
         <p class="erp-text-sm erp-text-muted">
-          <span class="erp-addr" dir="ltr">/api/warehouse/fiscal-years</span>
-          — الترتيب من الخادم (الأحدث بدايةً)، والأرقام كما حفظها، والعملة من
+          الترتيب من الأحدث إلى الأقدم، والأرقام كما حفظها الإقفال، والعملة من
           إعدادات النظام.
         </p>
         <div data-v2-fiscal-form-host hidden></div>
@@ -145,12 +144,11 @@ function openingCardHtml(caps) {
       </div>
       <div class="erp-card__body erp-stack">
         <p class="erp-text-sm erp-text-muted">
-          قراءة فقط لفواتير الرصيد الافتتاحي (<span class="erp-mono" dir="ltr">OPEN-*</span>)
-          من <span class="erp-addr" dir="ltr">/api/warehouse/opening-balance/report</span>
-          للإدارة والمدير والمخزن. «الرصيد الحالي» هو رقم سجل المخزون نفسه،
-          و«المنصرف منذ الفاتورة» مجموع قيود الصرف من تاريخها؛ الشاشة لا تطرح
-          ولا تجمع لتستنتج رصيدًا. التعديل والاستبدال والإلغاء في الشاشة القديمة
-          وحدها — هذه الشاشة لا تكتب في المخزون.
+          قراءة فقط لفواتير الرصيد الافتتاحي للإدارة والمدير والمخزن. «الرصيد
+          الحالي» هو رقم سجل المخزون نفسه، و«المنصرف منذ الفاتورة» مجموع قيود
+          الصرف من تاريخها؛ الشاشة لا تطرح ولا تجمع لتستنتج رصيدًا. التعديل
+          والاستبدال والإلغاء من شاشة الرصيد الافتتاحي في النظام الأساسي —
+          هذه الشاشة لا تكتب في المخزون.
         </p>
         <div data-v2-opening-kpis></div>
         <div data-v2-opening-list></div>
@@ -416,7 +414,7 @@ export function mountWarehouseGovScreen(host, ctx = {}) {
 
     if (scopeLine) {
         scopeLine.textContent = caps.fiscalRead || caps.openingRead || caps.healthRead
-            ? 'ثلاث قراءات مستقلة من /api/warehouse — كل بطاقة تحمل دور الخادم نفسَه، فلا بطاقة تتجاوز صلاحيتها.'
+            ? 'ثلاث قراءات مستقلة — كل بطاقة تحمل دورها وصلاحيتها، فلا بطاقة تتجاوز صلاحيتها.'
             : 'لا باب واحد لهذا الحساب في الشاشة — لم يُرسل أي طلب.';
     }
 

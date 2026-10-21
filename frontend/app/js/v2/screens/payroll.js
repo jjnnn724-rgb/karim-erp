@@ -7,20 +7,20 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.181';
-import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.181';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.185';
+import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.185';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.185';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { ensureXlsx } from '../vendor.js?v=4.9.181';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+} from '../data/payroll-suite.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { ensureXlsx } from '../vendor.js?v=4.9.185';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -45,7 +45,7 @@ function template(canPost) {
         + '<div class="erp-card__body erp-stack">'
         + '<ul class="erp-kpis" data-v2-kpis></ul>'
         + '<p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>'
-        + '<p class="erp-text-sm erp-text-muted">سجل /api/payroll_runs (حالة posted عند توليد).'
+        + '<p class="erp-text-sm erp-text-muted">سجل مسيرات الرواتب (معتمد عند التوليد).'
         + (canPost ? ' التوليد والخصومات والسلف والبنود والعقود والتقييمات من الأقسام أدناه.' : ' الكتابة لأدوار الإدارة والموارد.')
         + '</p>'
         + '<div data-v2-table></div></div></section>'

@@ -1,0 +1,448 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 IDENTITY · «بورسلين ونحاس»
+   ═══════════════════════════════════════════════════════════════════════
+   A new visual identity for V2 ONLY. Legacy keeps its own palette because
+   this sheet is never linked there and every rule is scoped to `.erp-v2`
+   (plus the three V2-owned body layers that already carry the token scope).
+
+   THE IDEA
+   ────────
+   The restaurant's menu board is warm paper and gold. The ERP should feel
+   like the ledger behind it — not a second, unrelated product:
+     · PORCELAIN canvas (warm, low-chroma) instead of cool grey.
+     · PETROL ink for actions: deep, quiet, unmistakably not the legacy
+       bronze. It also separates "brand" from "success" (green) and
+       "warning" (amber), which the old gold-on-gold palette blurred.
+     · BRASS is jewellery, not paint: focus rings, the active navigation
+       spine, KPI accents and the logo frame. It comes from the logo.
+     · A DEEP PETROL SIDEBAR in light mode. This is the single largest
+       identity move: the app reads as a bound ledger (dark spine, paper
+       pages) instead of another white admin template.
+
+   HOW IT WORKS
+   ────────────
+   Two token layers, one file:
+     1. PRIMITIVE  --erp-c-*   raw values, defined for light and redefined
+                               under [data-theme="dark"].
+     2. SEMANTIC   --erp-*     declared once, aliasing the primitives. CSS
+                               resolves var() per element after the cascade,
+                               so the dark block only swaps primitives and
+                               every semantic token flips with it.
+   No component file is edited: components already read --erp-*, so they
+   inherit the new identity from the names they already use. The few rules
+   at the bottom are polish that needs a selector (the sidebar's local
+   token remap, the numeral face, the brass rule on the sign-in card).
+
+   CONTRAST
+   ────────
+   Every text pair below was measured before it was written (WCAG 2.1):
+     light  primary 16.26 · secondary 10.26 · muted 6.06 · faint 4.98
+            on the card, and ≥4.54 for every grade on the canvas.
+     dark   primary 15.59 · secondary 11.21 · muted 7.69 · faint 5.81.
+     sidebar 13.55 / 10.62 / 7.29 / 5.35 · accent 7.72 · active label 11.10.
+     brand text 10.21 on card · white on petrol 7.92 · focus 3.90 (≥3).
+     brass as text 6.66 on card (the jewellery brass stays for ≥3:1 marks).
+     every status badge text ≥5.03 on its own soft tint.
+   tests/v2-identity.test.js recomputes these from this file, so the sheet
+   cannot drift lighter than the numbers above without failing.
+
+   ROLLBACK
+   ────────
+   Remove the erp-identity.css <link>. Nothing else references this file,
+   and every declaration is a custom property or a V2-scoped override, so
+   deletion restores the pre-identity palette exactly.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Faces ───────────────────────────────────────────────────────────
+   One owner: css/v2/erp-fonts.css declares IBM Plex Sans Arabic
+   (400/500/600/700 × arabic/latin), self-hosted from app/fonts/v2/.
+   This sheet used to add a Tajawal 800 display cut and an Outfit 600
+   numeral cut; both are gone. The institutional face carries Arabic copy,
+   English micro-labels and money digits itself, so the page does not
+   switch personality between a label and the number beside it. */
+
+/* ═══════════ Layer 1 + 2 — palette and semantics (light) ═══════════ */
+.erp-v2,
+.erp-fab-host,
+.erp-offline-bar,
+.erp-pal-backdrop {
+  /* ── Primitives ─────────────────────────────────────────────────── */
+  --erp-c-canvas:        #F6F2EA;
+  --erp-c-surface:       #FFFDF8;
+  --erp-c-raised:        #FFFFFF;
+  --erp-c-sunken:        #EDE6D8;
+  --erp-c-hover:         #F6F0E4;
+  --erp-c-active:        #EDE2D0;
+  --erp-c-line:          #E3DACB;
+  --erp-c-line-strong:   #CFC2AC;
+
+  --erp-c-ink:           #16211E;
+  --erp-c-ink-2:         #33433E;
+  --erp-c-ink-muted:     #55655E;
+  --erp-c-ink-faint:     #63726A;  /* 4.98 card · 4.54 canvas */
+
+  --erp-c-petrol:        #0E5A60;
+  --erp-c-petrol-hover:  #136C73;
+  --erp-c-petrol-active: #0A464B;
+  --erp-c-petrol-text:   #0B474D;
+
+  --erp-c-brass:         #A9761B;
+  --erp-c-brass-text:    #7A5410;  /* 6.66 card · 6.06 canvas */
+  --erp-c-brass-bright:  #D9B266;
+  --erp-c-brass-soft:    rgba(169, 118, 27, .12);
+
+  --erp-c-success:       #0F7A57;
+  --erp-c-success-text:  #0A5B41;
+  --erp-c-warning:       #B4690E;
+  --erp-c-warning-text:  #8F5208;
+  --erp-c-danger:        #C0392B;
+  --erp-c-danger-text:   #9B2C21;
+  --erp-c-info:          #2563EB;
+  --erp-c-info-text:     #1D4ED8;
+  --erp-c-neutral:       #5B6B65;
+  --erp-c-neutral-text:  #47554F;
+
+  --erp-c-inverse:       #FFFFFF;
+  --erp-c-highlight:     rgba(255, 255, 255, .75);
+  --erp-c-brand-shadow:  rgba(14, 90, 96, .24);
+  --erp-c-plaque-line:   rgba(217, 178, 102, .45);
+
+  /* Sidebar primitives — a petrol spine in BOTH themes. */
+  --erp-c-sidebar:          #0B2927;
+  --erp-c-sidebar-line:     rgba(255, 255, 255, .10);
+  --erp-c-sidebar-line-2:   rgba(255, 255, 255, .20);
+  --erp-c-sidebar-ink:      #F4F0E5;
+  --erp-c-sidebar-ink-2:    #CDD9D2;
+  --erp-c-sidebar-muted:    #A6B6AE;
+  --erp-c-sidebar-faint:    #8B9C94;
+  --erp-c-sidebar-hover:    rgba(255, 255, 255, .06);
+  --erp-c-sidebar-active:   rgba(255, 255, 255, .11);
+  --erp-c-sidebar-accent:   #D9B266;
+  --erp-c-sidebar-paper:    #F1D8A4;
+  --erp-c-sidebar-wash:     rgba(217, 178, 102, .15);
+  --erp-c-sidebar-success:  #6EE7A8;
+  --erp-c-sidebar-plaque:   #FAF7F1;
+  --erp-c-sidebar-plaque-ink: #0B474D;
+
+  /* ── Semantic surfaces ──────────────────────────────────────────── */
+  --erp-background:        var(--erp-c-canvas);
+  --erp-surface:           var(--erp-c-surface);
+  --erp-surface-raised:    var(--erp-c-raised);
+  --erp-surface-sunken:    var(--erp-c-sunken);
+  --erp-surface-hover:     var(--erp-c-hover);
+  --erp-surface-active:    var(--erp-c-active);
+  --erp-surface-2:         var(--erp-c-raised);
+
+  /* ── Semantic text ─────────────────────────────────────────────── */
+  --erp-text-primary:      var(--erp-c-ink);
+  --erp-text-secondary:    var(--erp-c-ink-2);
+  --erp-text-muted:        var(--erp-c-ink-muted);
+  --erp-text-faint:        var(--erp-c-ink-faint);
+  --erp-text-inverse:      var(--erp-c-inverse);
+  --erp-text:              var(--erp-text-primary);
+
+  /* ── Semantic borders ──────────────────────────────────────────── */
+  --erp-border:            var(--erp-c-line);
+  --erp-border-subtle:     var(--erp-c-line);
+  --erp-border-strong:     var(--erp-c-line-strong);
+
+  /* ── Focus: brass, never the brand fill (≥3:1 on both surfaces) ── */
+  --erp-focus-ring:        var(--erp-c-brass);
+  --erp-focus-ring-width:  2px;
+  --erp-focus-ring-offset: var(--erp-surface);
+
+  /* ── Brand ─────────────────────────────────────────────────────── */
+  --erp-brand:             var(--erp-c-petrol);
+  --erp-brand-hover:       var(--erp-c-petrol-hover);
+  --erp-brand-active:      var(--erp-c-petrol-active);
+  --erp-brand-text:        var(--erp-c-petrol-text);
+  --erp-brand-soft:        color-mix(in srgb, var(--erp-brand) 12%, transparent);
+  --erp-brand-soft-hover:  color-mix(in srgb, var(--erp-brand) 18%, transparent);
+  --erp-primary:           var(--erp-brand);
+  --erp-primary-soft:      var(--erp-brand-soft);
+  --erp-brand-shadow:      var(--erp-c-brand-shadow);
+
+  /* ── Brass (identity accent — not the action colour) ───────────── */
+  --erp-brass:             var(--erp-c-brass);
+  --erp-brass-text:        var(--erp-c-brass-text);
+  --erp-brass-bright:      var(--erp-c-brass-bright);
+  --erp-brass-soft:        var(--erp-c-brass-soft);
+  --erp-plaque-line:       var(--erp-c-plaque-line);
+
+  /* ── Status ────────────────────────────────────────────────────── */
+  --erp-success:           var(--erp-c-success);
+  --erp-warning:           var(--erp-c-warning);
+  --erp-danger:            var(--erp-c-danger);
+  --erp-info:              var(--erp-c-info);
+  --erp-neutral:           var(--erp-c-neutral);
+
+  --erp-success-soft:      color-mix(in srgb, var(--erp-success) 14%, transparent);
+  --erp-warning-soft:      color-mix(in srgb, var(--erp-warning) 16%, transparent);
+  --erp-danger-soft:       color-mix(in srgb, var(--erp-danger)  14%, transparent);
+  --erp-info-soft:         color-mix(in srgb, var(--erp-info)    14%, transparent);
+  --erp-neutral-soft:      color-mix(in srgb, var(--erp-neutral) 14%, transparent);
+
+  --erp-success-text:      var(--erp-c-success-text);
+  --erp-warning-text:      var(--erp-c-warning-text);
+  --erp-danger-text:       var(--erp-c-danger-text);
+  --erp-info-text:         var(--erp-c-info-text);
+  --erp-neutral-text:      var(--erp-c-neutral-text);
+
+  /* ── Radius: softer than the legacy 4/6/10 ladder ──────────────── */
+  --erp-radius-sm:   6px;
+  --erp-radius-md:   10px;
+  --erp-radius-lg:   14px;
+  --erp-radius-xl:   18px;
+  --erp-radius-2xl:  22px;
+  --erp-radius-full: 999px;
+
+  /* ── Type: same scale, one institutional family ─────────────────── */
+  --erp-font-num: "IBM Plex Sans Arabic", var(--erp-font-sans);
+  --erp-font-display: "IBM Plex Sans Arabic", var(--erp-font-sans);
+
+  /* ── Elevation: warm, low, paper-like ──────────────────────────── */
+  --erp-shadow-sm: 0 1px 2px rgba(46, 38, 24, .06);
+  --erp-shadow-md: 0 6px 18px rgba(46, 38, 24, .08);
+  --erp-shadow-lg: 0 18px 44px rgba(46, 38, 24, .14);
+  --erp-shadow-xl: 0 30px 72px rgba(46, 38, 24, .20);
+  --erp-highlight: var(--erp-c-highlight);
+
+  /* ── Scrim ─────────────────────────────────────────────────────── */
+  --erp-scrim: rgba(0, 0, 0, .45);
+
+  /* ── Sidebar semantics (consumed by the remap below) ───────────── */
+  --erp-sidebar-bg:          var(--erp-c-sidebar);
+  --erp-sidebar-line:        var(--erp-c-sidebar-line);
+  --erp-sidebar-line-2:      var(--erp-c-sidebar-line-2);
+  --erp-sidebar-ink:         var(--erp-c-sidebar-ink);
+  --erp-sidebar-ink-2:       var(--erp-c-sidebar-ink-2);
+  --erp-sidebar-muted:       var(--erp-c-sidebar-muted);
+  --erp-sidebar-faint:       var(--erp-c-sidebar-faint);
+  --erp-sidebar-hover:       var(--erp-c-sidebar-hover);
+  --erp-sidebar-active:      var(--erp-c-sidebar-active);
+  --erp-sidebar-accent:      var(--erp-c-sidebar-accent);
+  --erp-sidebar-accent-text: var(--erp-c-sidebar-paper);
+  --erp-sidebar-accent-soft: var(--erp-c-sidebar-wash);
+  --erp-sidebar-success:     var(--erp-c-sidebar-success);
+  --erp-sidebar-plaque:      var(--erp-c-sidebar-plaque);
+  --erp-sidebar-plaque-line: var(--erp-plaque-line);
+  --erp-sidebar-plaque-ink:  var(--erp-c-sidebar-plaque-ink);
+
+  /* Dashboard accents use brass, not the action petrol. The text-grade
+     brass is darker than the jewellery brass: it lands on 11px figures. */
+  --erp-dash-accent-text: var(--erp-brass-text);
+}
+
+/* ═══════════ Dark — primitives only; semantics inherit ═══════════ */
+[data-theme="dark"] .erp-v2,
+[data-theme="dark"] .erp-fab-host,
+[data-theme="dark"] .erp-offline-bar,
+[data-theme="dark"] .erp-pal-backdrop {
+  --erp-c-canvas:        #08110F;
+  --erp-c-surface:       #0E1B18;
+  --erp-c-raised:        #14241F;
+  --erp-c-sunken:        #060D0B;
+  --erp-c-hover:         #132420;
+  --erp-c-active:        #192D27;
+  --erp-c-line:          rgba(255, 255, 255, .09);
+  --erp-c-line-strong:   rgba(255, 255, 255, .18);
+
+  --erp-c-ink:           #EDF2EE;
+  --erp-c-ink-2:         #C4D1CA;
+  --erp-c-ink-muted:     #9EAFA7;
+  --erp-c-ink-faint:     #869890;
+
+  --erp-c-petrol:        #5CBFB5;
+  --erp-c-petrol-hover:  #72D2C8;
+  --erp-c-petrol-active: #4AA89F;
+  --erp-c-petrol-text:   #86D8D0;
+
+  --erp-c-brass:         #E7B65C;
+  --erp-c-brass-text:    #E7B65C;
+  --erp-c-brass-bright:  #F0C877;
+  --erp-c-brass-soft:    rgba(231, 182, 92, .12);
+
+  --erp-c-success:       #4ADE80;
+  --erp-c-success-text:  #4ADE80;
+  --erp-c-warning:       #FDB022;
+  --erp-c-warning-text:  #FDB022;
+  --erp-c-danger:        #F87171;
+  --erp-c-danger-text:   #F87171;
+  --erp-c-info:          #7CB8FF;
+  --erp-c-info-text:     #7CB8FF;
+  --erp-c-neutral:       #C4D1CA;
+  --erp-c-neutral-text:  #C4D1CA;
+
+  --erp-c-inverse:       #0C111D;
+  --erp-c-highlight:     rgba(255, 255, 255, .05);
+  --erp-c-brand-shadow:  rgba(0, 0, 0, .38);
+
+  --erp-c-sidebar:          #06110F;
+  --erp-c-sidebar-line:     rgba(255, 255, 255, .08);
+  --erp-c-sidebar-line-2:   rgba(255, 255, 255, .18);
+
+  /* Dark surfaces separate by elevation, not by a black veil inside a
+     near-black canvas (measured 1.1:1 cap — see erp-themes.css). */
+  --erp-scrim: rgba(0, 0, 0, .62);
+
+  /* erp-themes.css declares these on `[data-theme="dark"] .erp-v2` — the
+     same specificity as this block — so the primitives above are not enough
+     on their own. Re-assert the semantics here (this sheet loads last) or
+     the legacy literals win and half the dark palette turns bluish. */
+  --erp-surface-raised: var(--erp-c-raised);
+  --erp-surface-sunken: var(--erp-c-sunken);
+  --erp-text-inverse:   var(--erp-c-inverse);
+  --erp-brand-text:     var(--erp-c-petrol-text);
+  --erp-success-text:   var(--erp-c-success-text);
+  --erp-warning-text:   var(--erp-c-warning-text);
+  --erp-danger-text:    var(--erp-c-danger-text);
+  --erp-info-text:      var(--erp-c-info-text);
+  --erp-neutral-text:   var(--erp-c-neutral-text);
+
+  --erp-shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
+  --erp-shadow-md: 0 4px 14px rgba(0, 0, 0, .45);
+  --erp-shadow-lg: 0 14px 36px rgba(0, 0, 0, .50);
+  --erp-shadow-xl: 0 26px 60px rgba(0, 0, 0, .55);
+}
+
+/* The dashboard's own dark literal has an `html` prefix (higher
+   specificity), so it needs the same prefix here to be overridden. */
+html[data-theme="dark"] .erp-v2 {
+  --erp-dash-accent-text: var(--erp-brass-text);
+}
+
+/* ═══════════ Component polish — selectors, tokens only ═══════════ */
+
+/* The sidebar is a petrol spine in BOTH themes: remap the shared names
+   locally so every existing nav rule (hover, active bar, group titles,
+   role row) repaints without a single duplicated selector. */
+.erp-v2 .erp-shell__sidebar {
+  --erp-surface:        var(--erp-sidebar-bg);
+  --erp-surface-raised: var(--erp-sidebar-bg);
+  --erp-surface-hover:  var(--erp-sidebar-hover);
+  --erp-surface-active: var(--erp-sidebar-active);
+  --erp-border:         var(--erp-sidebar-line);
+  --erp-border-subtle:  var(--erp-sidebar-line);
+  --erp-border-strong:  var(--erp-sidebar-line-2);
+  --erp-text-primary:   var(--erp-sidebar-ink);
+  --erp-text-secondary: var(--erp-sidebar-ink-2);
+  --erp-text-muted:     var(--erp-sidebar-muted);
+  --erp-text-faint:     var(--erp-sidebar-faint);
+  --erp-brand:          var(--erp-sidebar-accent);
+  --erp-brand-text:     var(--erp-sidebar-accent-text);
+  --erp-brand-soft:     var(--erp-sidebar-accent-soft);
+  --erp-focus-ring:     var(--erp-c-brass-bright);
+  --erp-success:        var(--erp-sidebar-success);
+  color: var(--erp-text-primary);
+  background: var(--erp-sidebar-bg);
+  border-inline-end: 1px solid var(--erp-sidebar-line);
+}
+
+/* The logo file carries its own cream background, so it sits on a matching
+   porcelain plaque — a framed emblem rather than a pale square on petrol. */
+.erp-v2 .erp-shell__brand-mark {
+  background: var(--erp-sidebar-plaque);
+  border-color: var(--erp-sidebar-plaque-line);
+  color: var(--erp-sidebar-plaque-ink);
+}
+.erp-v2 .erp-shell__brand-mark [data-v2-shell-logo] {
+  background: transparent;
+}
+.erp-v2 .erp-shell__sidebar .erp-shell__brand-text strong {
+  font-weight: 700;
+}
+
+/* A hairline of light on every card edge: printed-paper bevel, not a
+   second shadow. */
+.erp-v2 .erp-card,
+.erp-v2 .erp-kpi {
+  box-shadow: var(--erp-shadow-sm), inset 0 1px 0 var(--erp-highlight);
+}
+
+/* KPI tiles catch the light from the brass corner; the value wears the
+   numeral face. */
+.erp-v2 .erp-kpi {
+  background-image: linear-gradient(160deg, var(--erp-brass-soft), transparent 46%);
+}
+.erp-v2 .erp-kpi__value {
+  font-family: var(--erp-font-num);
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+.erp-v2 .erp-kpi__icon {
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2 .erp-num,
+.erp-v2 .erp-tnum,
+.erp-v2 .erp-mini__amount,
+.erp-v2 .erp-donut__total,
+.erp-v2 .erp-delta {
+  font-family: var(--erp-font-num);
+}
+
+/* Display cut for the two places that are allowed to raise their voice. */
+.erp-v2 .erp-dash-title,
+.erp-v2 .erp-login-title {
+  font-family: var(--erp-font-display);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+/* Bilingual micro-labels stay quiet petrol: brass at 11px fails AA. */
+.erp-v2 .erp-eyebrow {
+  color: var(--erp-brand-text);
+  letter-spacing: .12em;
+}
+
+/* Inputs answer in petrol, the action colour, not in grey. */
+.erp-v2 .erp-input:focus,
+.erp-v2 .erp-select:focus {
+  border-color: var(--erp-brand);
+}
+
+/* The table header earns its rule; the body stays quiet. */
+.erp-v2 .erp-th {
+  border-block-end-color: var(--erp-border-strong);
+}
+
+/* Primary action sits one hair above the surface. */
+.erp-v2 .erp-btn--primary {
+  box-shadow: 0 1px 2px var(--erp-brand-shadow);
+}
+
+/* Sign-in: a brass rule caps the porcelain card, like a ledger heading. */
+.erp-v2 .erp-login-card {
+  border-block-start: 3px solid var(--erp-brass);
+}
+
+/* The logo file carries its own cream background; frame it so it reads as
+   an emblem on the dark card instead of a pasted square. */
+.erp-v2 .erp-login-logo {
+  border-radius: var(--erp-radius-md);
+  box-shadow: 0 0 0 1px var(--erp-plaque-line);
+}
+
+/* ═══════════ Print — paper is paper, whatever the theme ═══════════ */
+@media print {
+  .erp-v2 {
+    --erp-background: #ffffff;
+    --erp-surface: #ffffff;
+    --erp-surface-raised: #ffffff;
+    --erp-surface-sunken: #ffffff;
+    --erp-surface-hover: #ffffff;
+    --erp-surface-active: #ffffff;
+    --erp-text-primary: #000000;
+    --erp-text-secondary: #1a1a1a;
+    --erp-text-muted: #333333;
+    --erp-text-faint: #444444;
+    --erp-border: #cccccc;
+    --erp-border-subtle: #dddddd;
+    --erp-border-strong: #bbbbbb;
+    --erp-shadow-sm: none;
+    --erp-shadow-md: none;
+    --erp-shadow-lg: none;
+    --erp-shadow-xl: none;
+    --erp-highlight: transparent;
+  }
+}

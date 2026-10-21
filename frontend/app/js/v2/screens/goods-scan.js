@@ -24,18 +24,18 @@
 
 import { resolveScan, assignDecision, coverage, unassignedRows, scanEnabledModel,
     normalizeCode, codeFamily, bumpLine, setLineQty, setLinePrice, setLineExpiry, dropLine,
-    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.181';
-import { checkExpiryOnLines } from '../data/expiry-policy.js?v=4.9.181';
+    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.185';
+import { checkExpiryOnLines } from '../data/expiry-policy.js?v=4.9.185';
 import { inventoryToRow, receiveInventoryItem, receiptPayload,
-    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.181';
+    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.185';
 /* الصادر (أذون صرف): موجةٌ كانت مستقلّة لأن الاعتماد والتوقيع يقعان لاحقًا
  * (warehouse-routes.js:365-382/:621/:1076). الإنشاء وحده لا يطلب توقيعًا —
  * POST /api/dispatches (server.js:1546) يقبل طلبًا pending، وسلسلة الاعتماد
  * القائمة (شيف عمومي ← مخازن ← استلام، بتوقيعاتها) تكمل على شاشة الأذون.
  * فنستعمل أبواب dispatch-repo نفسها حرفًا، ولا نُعيد اختراع ولا نتجاوز توقيعًا. */
-import { createDispatch, fetchDepartmentOptions, CREATE_ROLES } from '../data/dispatch-repo.js?v=4.9.181';
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.181';
+import { createDispatch, fetchDepartmentOptions, CREATE_ROLES } from '../data/dispatch-repo.js?v=4.9.185';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -60,9 +60,9 @@ function offState() {
         </div>
         <div class="erp-card__body">
           <div class="erp-state">
-            <span class="erp-state__title">الشاشة مطفأة — خلف مفتاح <span class="erp-addr" dir="ltr">?v2scan=1</span></span>
-            <span>لا شبكة، ولا قارئ، ولا أزرار كتابة في هذه الحالة. للفحص:
-              <span class="erp-addr" dir="ltr">v2.html?live=1&amp;v2scan=1#goods-scan</span></span>
+            <span class="erp-state__title">الشاشة غير مفعّلة في هذه النسخة</span>
+            <span>لا شبكة، ولا قارئ، ولا أزرار كتابة في هذه الحالة. لتفعيل مسح
+              الباركود تواصل مع مدير النظام.</span>
           </div>
         </div>
       </section>`;
@@ -385,8 +385,8 @@ export function mountGoodsScanScreen(host, ctx = {}) {
 
     function paintBindAmbiguous(items, found) {
         bindBox(`<p class="gs-warn erp-text-sm">${esc(found.items.length + ' أصناف تحمل الكود: ')}${items.map((x) => esc(x.name)).join('، ')}</p>
-          <p class="erp-text-sm erp-text-muted">قيدُ التفريد غير موجود في القاعدة (<span class="erp-addr" dir="ltr">010_inventory_barcode.sql</span>)،
-             فالتفريد هنا فحصُ واجهة. أزل التكرار من صنفٍ واحد ثم أعد الربط.</p>`);
+          <p class="erp-text-sm erp-text-muted">التفريد هنا فحص واجهة لأن قاعدة البيانات
+             لا تمنع تكرار الكود بعد. أزل التكرار من صنفٍ واحد ثم أعد الربط.</p>`);
     }
 
     function paintBindNew(found) {
@@ -474,9 +474,8 @@ export function mountGoodsScanScreen(host, ctx = {}) {
         }).join('') : '<tr><td colspan="6" class="erp-text-sm erp-text-muted">امسح كارتونةً واحدة أو أكثر — كل مسحٍ لنفس الكود يزيد عدَّه لا يضيف صنفًا.</td></tr>';
         panel('in').innerHTML = `
           <div class="gs-box">
-            <p class="erp-text-sm erp-text-muted">الوارد يمرّ بدفتر المخزون نفسه الذي يستعمله النظام القديم
-              (<span class="erp-addr" dir="ltr">POST /warehouse/inventory/:id/receipt</span>) — لا كتابة مباشرة على
-              <span class="erp-addr" dir="ltr">inventory.qty</span>، فالإسقاط يُعاد حسابه من الأرصدة.
+            <p class="erp-text-sm erp-text-muted">الوارد يمرّ بدفتر المخزون نفسه الذي يعتمده النظام
+              — لا كتابة مباشرة على رصيد الصنف، فالإسقاط يُعاد حسابه من الأرصدة.
               <strong>تاريخ الصلاحية اختياري</strong> — إن أُدخل فيجب أن يكون بصيغة YYYY-MM-DD.</p>
             <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>الصنف</th><th>المسح</th><th>الكمية</th><th>سعر الوحدة</th><th>تاريخ الصلاحية</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
             <p class="erp-text-sm">${esc(`${totals.lines} صنفًا · ${totals.scans} مسحة · ${totals.qty} وحدة`)}</p>
@@ -515,9 +514,8 @@ export function mountGoodsScanScreen(host, ctx = {}) {
             + outDepts.map((d) => `<option value="${esc(d.code)}"${outDept === d.code ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
         panel('out').innerHTML = `
           <div class="gs-box">
-            <p class="erp-text-sm erp-text-muted">الصرف هنا ينشئ <strong>أذون صرف معلّقًا</strong> يمرّ بسلسلة الاعتماد القائمة
-              (<span class="erp-addr" dir="ltr">POST /api/dispatches</span>) — اعتماد الشيف العمومي ثم المخازن ثم الاستلام،
-              والتواقيع تُؤخذ عند تلك المراحل لا هنا. الرصيد يُقاس على المخزن الرئيسي، والخادم يعيد الفحص عند الإنشاء.</p>
+            <p class="erp-text-sm erp-text-muted">الصرف هنا ينشئ <strong>أذون صرف معلّقًا</strong> يمرّ بسلسلة الاعتماد القائمة — اعتماد الشيف العمومي ثم المخازن ثم الاستلام،
+              والتواقيع تُؤخذ عند تلك المراحل لا هنا. الرصيد يُقاس على المخزن الرئيسي، ويتحقق النظام منه مرة أخرى عند الإنشاء.</p>
             <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>الصنف</th><th>المتاح بالرئيسي</th><th>الكمية</th><th></th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
             <p class="erp-text-sm">${esc(`${totals.lines} صنفًا · ${totals.qty} وحدة`)}</p>
             ${canDispatch ? `<div class="gs-manual-add">

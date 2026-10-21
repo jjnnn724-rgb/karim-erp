@@ -12,10 +12,11 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.181';
-import { formatInt } from '../data/reports-repo.js?v=4.9.181';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.181';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.185';
+import { formatInt } from '../data/reports-repo.js?v=4.9.185';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.185';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.185';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.185';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -26,17 +27,61 @@ import {
     removePunchFace, fetchPunchDevices, unbindPunchDevice,
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
-} from '../data/settings-repo.js?v=4.9.181';
+    fetchServerControl, serverControlAction,
+} from '../data/settings-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+const SVC_STATE_AR = {
+    RUNNING: 'يعمل', STOPPED: 'متوقف', START_PENDING: 'جارٍ التشغيل',
+    STOP_PENDING: 'جارٍ الإيقاف', PAUSED: 'موقوف مؤقتًا', UNKNOWN: 'غير معروف',
+};
+const SC_STAGE_AR = {
+    queued: 'في الانتظار', stopping: 'جارٍ الإيقاف', waiting_stop: 'انتظار توقف الخدمة',
+    stopped: 'متوقفة', starting: 'جارٍ التشغيل', waiting_health: 'انتظار جاهزية النظام',
+    running: 'قيد التنفيذ', success: 'تم بنجاح', failed: 'فشل',
+};
+const SC_ACTION_AR = { start: 'تشغيل', stop: 'إيقاف', restart: 'إعادة تشغيل' };
+
+function fmtDuration(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d) {return `${d}ي ${h}س`;}
+    if (h) {return `${h}س ${m}د`;}
+    return `${m}د`;
+}
 
 const NAV_KEYS = ['cfo', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'departments',
     'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'kitchen', 'dispatch',
     'recipes', 'procurement', 'hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco',
     'payroll', 'hr-departments', 'employee-portal', 'roster', 'reports', 'users', 'permissions',
     'yarasoft', 'oracle-data', 'whatsapp'];
+
+/* Arabic last resort when the legacy i18n bridge is absent. The live app
+   resolves these from ALL_PERMISSIONS.menus (readMenuLabels); this map only
+   stops an English route key from reaching an Arabic admin screen. */
+const NAV_LABELS_AR = {
+    'cfo': 'المدير المالي', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
+    'cost-analysis': 'تحليل التكاليف', 'pnl': 'الأرباح والخسائر', 'departments': 'الأقسام',
+    'warehouse': 'المخزون', 'wh-invoices': 'فواتير المخزن', 'wh-moves': 'حركات المخزون',
+    'wh-returns': 'مرتجعات المخزون', 'wh-prs': 'طلبات الشراء', 'kitchen': 'المطبخ',
+    'dispatch': 'التوزيع', 'recipes': 'الوصفات', 'procurement': 'المشتريات',
+    'hr-dashboard': 'لوحة الموارد البشرية', 'employees': 'الموظفون', 'leaves': 'الإجازات',
+    'attendance': 'الحضور', 'zkteco': 'جهاز البصمة', 'payroll': 'الرواتب',
+    'hr-departments': 'أقسام الموارد البشرية', 'employee-portal': 'بوابة الموظف',
+    'roster': 'الدوام', 'reports': 'التقارير', 'users': 'المستخدمون',
+    'permissions': 'الصلاحيات', 'yarasoft': 'Yarasoft', 'oracle-data': 'بيانات أوراكل',
+    'whatsapp': 'واتساب',
+};
+
+/** Menu labels arrive as `<i class=ji data-i=…></i> NAME` HTML fragments. */
+function plainMenuLabel(html) {
+    return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 const ZATCA_STATUS_AR = { queued: 'بالانتظار', processing: 'قيد الإرسال', reported: 'مُبلّغة', failed: 'فشلت', dead_letter: 'فشل نهائي', skipped_cancelled: 'ملغاة', skipped_disabled: 'موقوفة' };
 
@@ -80,6 +125,7 @@ function template(isAdmin) {
           ${sectionCard('kot', 'printer', 'تذاكر المطبخ', 'kot', 'kot')}
           ${sectionCard('cards', 'id-card', 'بطاقات الموظفين', 'cards', 'cards')}
           ${sectionCard('punch', 'timer', 'البصمة الذاتية', 'punch', 'punch')}
+          ${isAdmin ? sectionCard('server', 'zap', 'التحكم بالسيرفر', 'server', 'server') : ''}
           ${isAdmin ? sectionCard('backup', 'save', 'النسخ الاحتياطي الكامل والاستعادة', 'backup', 'backup') : ''}
           ${sectionCard('danger', 'inbox', 'تصدير وتصفير', 'danger', '')}
         </div>
@@ -104,6 +150,13 @@ export function mountSettingsScreen(host, ctx = {}) {
     let loading = false;
     let busy = false;
     let zatcaTimer = null;
+    let sc = null;
+    let scTimer = null;
+    let scPolling = false;
+    let scPending = '';
+    let scNotice = '';
+    let scErr = '';
+    let scPanelOpen = false;
 
     host.insertAdjacentHTML('beforeend', template(isAdmin));
     const el = host.lastElementChild;
@@ -124,13 +177,13 @@ export function mountSettingsScreen(host, ctx = {}) {
         }
         box.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title"><i class="ji" data-i="settings" aria-hidden="true"></i> بيانات المنشأة</h3></div>`
-            + `<div class="erp-card__body erp-stack"><div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">اسم المطعم</label>`
-            + `<input class="erp-input" data-v2-main="name" value="${esc(main.name || '')}">`
-            + `<label class="erp-text-sm erp-text-muted">العملة</label>`
-            + `<input class="erp-input erp-input--ltr" data-v2-main="currency" value="${esc(main.currency || '')}" maxlength="3" dir="ltr">`
-            + `<label class="erp-text-sm erp-text-muted">بداية الدوام</label>`
-            + `<input class="erp-input erp-input--ltr" data-v2-main="workStartHour" type="number" min="0" max="23" value="${esc(main.workStartHour ?? 9)}">`
+            + `<div class="erp-card__body erp-stack"><div class="erp-settings-fields">`
+            + `<label class="erp-field" for="v2-main-name"><span class="erp-text-sm erp-text-muted">اسم المطعم</span>`
+            + `<input id="v2-main-name" class="erp-input" data-v2-main="name" autocomplete="organization" value="${esc(main.name || '')}"></label>`
+            + `<label class="erp-field" for="v2-main-currency"><span class="erp-text-sm erp-text-muted">العملة</span>`
+            + `<input id="v2-main-currency" class="erp-input erp-input--ltr" data-v2-main="currency" value="${esc(main.currency || '')}" maxlength="3" dir="ltr" autocomplete="off"></label>`
+            + `<label class="erp-field" for="v2-main-work-start"><span class="erp-text-sm erp-text-muted">بداية الدوام</span>`
+            + `<input id="v2-main-work-start" class="erp-input erp-input--ltr" data-v2-main="workStartHour" type="number" min="0" max="23" value="${esc(main.workStartHour ?? 9)}" autocomplete="off"></label>`
             + `</div><div class="erp-dash-controls">`
             + `<span data-v2-logo-prev>${main.logoB64 ? `<img src="${main.logoB64}" alt="الشعار" style="width:80px;height:80px;border-radius:12px;object-fit:cover">` : '<span class="erp-text-sm erp-text-muted">بلا شعار مرفوع</span>'}</span>`
             + `<input type="file" data-v2-logo-file accept="image/*" hidden>`
@@ -146,11 +199,15 @@ export function mountSettingsScreen(host, ctx = {}) {
         const box = q('[data-v2-nav]');
         if (!box) {return;}
         const hidden = String(main.hidden_nav_pages || '').split(',').map((x) => x.trim()).filter(Boolean);
+        const menuLabels = readMenuLabels();
         box.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title"><i class="ji" data-i="eye" aria-hidden="true"></i> إدارة ظهور القائمة الجانبية</h3></div>`
             + `<div class="erp-card__body erp-stack">`
-            + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">`
-            + NAV_KEYS.map((k) => `<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:8px"><input type="checkbox" data-v2-navbox value="${esc(k)}"${hidden.includes(k) ? ' checked' : ''}> <span>${esc(k)}</span></label>`).join('')
+            + `<div class="erp-settings-navgrid">`
+            + NAV_KEYS.map((k) => {
+                const label = plainMenuLabel(menuLabels[k]) || NAV_LABELS_AR[k] || k;
+                return `<label class="erp-settings-navgrid__item"><input type="checkbox" data-v2-navbox value="${esc(k)}"${hidden.includes(k) ? ' checked' : ''}> <span>${esc(label)}</span></label>`;
+            }).join('')
             + `</div><small class="erp-text-sm erp-text-muted">المُعلَّم = مخفي من القائمة الجانبية لكل المستخدمين (عرض فقط — الصفحات تبقى تعمل عبر الروابط الداخلية). الرئيسية والإعدادات لا يُخفيان.</small>`
             + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-nav-save><i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ ظهور القوائم</span></button></div>`
             + `</div></section>`;
@@ -464,6 +521,225 @@ export function mountSettingsScreen(host, ctx = {}) {
         }
     }
 
+    /* ── التحكم بالسيرفر ────────────────────────────────────────────────── */
+
+    function scTone(state) {
+        if (state === 'RUNNING' || state === 'success' || state === 'accepted') {return 'success';}
+        if (state === 'STOPPED' || state === 'failed') {return 'danger';}
+        if (!state || state === 'UNKNOWN') {return 'neutral';}
+        return 'warning';
+    }
+
+    function scBox(title, value) {
+        return `<div style="border:1px solid var(--erp-border);border-radius:10px;padding:10px;background:var(--erp-surface-sunken)">`
+            + `<div class="erp-text-xs erp-text-muted">${esc(title)}</div>`
+            + `<div class="erp-text-sm" style="margin-top:4px">${value}</div></div>`;
+    }
+
+    function paintServerControl() {
+        const box = secBody('server');
+        const empty = secEmpty('server');
+        if (!box) {return;}
+        if (empty) {empty.hidden = true;}
+
+        if (!sc) {
+            box.innerHTML = scErr
+                ? `<div class="erp-stack"><p class="erp-text-sm" style="color:var(--erp-danger-text)">${esc(scErr)}</p>`
+                  + `<div><button type="button" class="erp-btn erp-btn--sm" data-v2-sc-refresh>إعادة الفحص</button></div></div>`
+                : '<p class="erp-text-sm erp-text-muted">جارٍ فحص حالة الخادم…</p>';
+            return;
+        }
+
+        if (sc.available === false) {
+            const notInstalled = sc.reason === 'not_installed';
+            box.innerHTML = `<div class="erp-stack" style="border:1px solid var(--erp-warning);border-radius:10px;padding:12px">`
+                + `<p><b>التحكم بالسيرفر غير متاح الآن.</b></p>`
+                + `<p class="erp-text-sm erp-text-muted">${esc(sc.message || 'خدمة التحكم المرافقة لا تستجيب.')}</p>`
+                + (notInstalled
+                    ? `<p class="erp-text-sm">التثبيت مرة واحدة كمسؤول: <code dir="ltr">windows-service\\install-control-elevated.bat</code></p>`
+                    : `<p class="erp-text-sm">تحقق من الخدمة <code dir="ltr">KarimERP-Control</code> في services.msc.</p>`)
+                + `<p class="erp-text-sm">صفحة التحكم المستقلة: <code dir="ltr">${esc(sc.controlUrl || 'http://127.0.0.1:5011/')}</code></p>`
+                + `<p class="erp-text-xs erp-text-muted">تُفتح محليًا على جهاز السيرفر، أو عن بُعد عبر نفق التحكم المستقل عند تشغيله.</p>`
+                + `<div><button type="button" class="erp-btn erp-btn--sm" data-v2-sc-refresh>إعادة الفحص</button></div></div>`;
+            return;
+        }
+
+        const svc = sc.service || {};
+        const erp = sc.erp || {};
+        const ctl = sc.control || {};
+        const publicUrl = ctl.publicHost ? `https://${ctl.publicHost}/` : '';
+        const state = String(svc.state || 'UNKNOWN');
+        const running = state === 'RUNNING';
+        const healthy = erp.healthy === true;
+        const maintenance = sc.maintenance && sc.maintenance.state;
+        const actionsOn = ctl.actionsEnabled !== false;
+        const op = sc.operation || sc.lastOperation;
+        const busyNow = !!scPending || !!(sc.operation && sc.operation.state === 'running');
+        const lock = (!actionsOn || busyNow) ? ' disabled' : '';
+
+        const opLine = op
+            ? `${esc(SC_ACTION_AR[op.action] || op.action)} — ${esc(SC_STAGE_AR[op.state] || op.state)}`
+                + (op.actor ? ` · ${esc(op.actor)}` : '')
+                + (op.error ? `<br><span class="erp-text-xs" style="color:var(--erp-danger-text)">${esc(op.error)}</span>` : '')
+            : '<span class="erp-text-muted">لا عمليات بعد</span>';
+
+        const audit = (sc.audit || []).slice(0, 5);
+
+        box.innerHTML = (scNotice ? `<p class="erp-text-sm" role="status"><span class="erp-badge" data-tone="info">${esc(scNotice)}</span></p>` : '')
+            + (scErr ? `<p class="erp-text-sm" role="alert" style="color:var(--erp-danger-text)">${esc(scErr)}</p>` : '')
+            + `<div class="erp-dash-controls">`
+            + `<span class="erp-badge" data-tone="${scTone(state)}">الخدمة: ${esc(SVC_STATE_AR[state] || state)}</span>`
+            + `<span class="erp-badge" data-tone="${healthy ? 'success' : 'danger'}">${healthy ? 'النظام يستجيب' : 'النظام لا يستجيب'}</span>`
+            + (maintenance ? `<span class="erp-badge" data-tone="${maintenance === 'stopped' ? 'danger' : 'warning'}">صيانة: ${esc(maintenance)}</span>` : '')
+            + `<span class="erp-badge" data-tone="neutral">لوحة التحكم <span dir="ltr">v${esc(ctl.version || '—')}</span></span></div>`
+            + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">`
+            + scBox('خدمة ويندوز', `<b dir="ltr">${esc(svc.name || 'KarimERP-Server')}</b>${svc.pid ? ` <span class="erp-text-xs erp-text-muted" dir="ltr">PID ${Number(svc.pid)}</span>` : ''}`)
+            + scBox('صحة التطبيق', healthy
+                ? `متصل${erp.latencyMs != null ? ` · <span dir="ltr">${Number(erp.latencyMs)}ms</span>` : ''}`
+                    + `${erp.version ? ` · <span dir="ltr">v${esc(erp.version)}</span>` : ''}`
+                    + `${erp.uptimeMs != null ? `<br><span class="erp-text-xs erp-text-muted">مدة التشغيل ${fmtDuration(erp.uptimeMs / 1000)}</span>` : ''}`
+                : '<span style="color:var(--erp-danger-text)">لا يستجيب</span>')
+            + scBox('آخر عملية', opLine)
+            + scBox('وضع الصيانة', maintenance
+                ? `${esc(maintenance)}<br><span class="erp-text-xs erp-text-muted">يمنع المراقب من إعادة التشغيل التلقائي</span>`
+                : '<span class="erp-text-muted">غير مفعّل</span>')
+            + `</div>`
+            + `<div class="erp-dash-controls" style="margin-top:4px">`
+            + `<button type="button" class="erp-btn ${running ? 'erp-btn--sm' : 'erp-btn--primary'}" data-v2-sc-open="start"${running ? ' disabled' : lock}>تشغيل السيرفر</button>`
+            + `<button type="button" class="erp-btn ${running ? 'erp-btn--primary' : 'erp-btn--sm'}" data-v2-sc-open="restart"${running ? lock : ' disabled'}>إعادة تشغيل</button>`
+            + `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-sc-open="stop"${running ? lock : ' disabled'}>إيقاف السيرفر</button>`
+            + `</div>`
+            + (publicUrl
+                ? `<p class="erp-text-xs">التحكم الكامل من أي مكان: <a href="${esc(publicUrl)}" target="_blank" rel="noopener" dir="ltr">${esc(publicUrl)}</a></p>`
+                : '')
+            + `<p class="erp-text-xs erp-text-muted">الإيقاف يقطع هذه الصفحة والموقع العام حتى تعيد التشغيل من صفحة التحكم المستقلة${publicUrl ? ` (<a href="${esc(publicUrl)}" target="_blank" rel="noopener" dir="ltr">${esc(publicUrl)}</a>)` : ''} أو محليًا (<span dir="ltr">127.0.0.1:5011</span>). إعادة التشغيل تعيد النظام تلقائيًا خلال ثوانٍ.</p>`
+            + (actionsOn ? '' : '<p class="erp-text-sm" style="color:var(--erp-warning-text)">الأوامر معطّلة في الخدمة المرافقة — أعد تثبيتها بالوضع الخدمي.</p>')
+            + `<div data-v2-sc-panel></div>`
+            + (audit.length
+                ? `<details><summary class="erp-text-sm erp-text-muted">آخر الأوامر (${audit.length})</summary><div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الأمر</th><th>النتيجة</th></tr></thead><tbody>`
+                    + audit.map((a) => `<tr><td class="erp-td erp-text-xs" dir="ltr">${esc(String(a.at || '').slice(5, 16).replace('T', ' '))}</td>`
+                        + `<td class="erp-td">${esc(a.actor || '—')}</td>`
+                        + `<td class="erp-td">${esc(SC_ACTION_AR[a.action] || a.action || '—')}</td>`
+                        + `<td class="erp-td"><span class="erp-badge" data-tone="${scTone(a.result)}">${esc(a.result || '—')}</span></td></tr>`).join('')
+                    + `</tbody></table></div></details>`
+                : '');
+    }
+
+    function scOpenPanel(action) {
+        const panel = el.querySelector('[data-v2-sc-panel]');
+        if (!panel || !SC_ACTION_AR[action]) {return;}
+        const phrase = action === 'stop' ? 'STOP' : action === 'restart' ? 'RESTART' : '';
+        const title = action === 'stop' ? 'إيقاف كامل للسيرفر'
+            : action === 'restart' ? 'إعادة تشغيل السيرفر' : 'تشغيل السيرفر';
+        const warning = action === 'stop'
+            ? 'ستنقطع هذه الصفحة والموقع العام وواجهات الكاشير فورًا. التشغيل بعدها من صفحة التحكم المحلية على جهاز السيرفر فقط.'
+            : action === 'restart'
+                ? 'سيتوقف السيرفر ثوانٍ ثم يعود تلقائيًا. الطلبات الجارية قد تنقطع.'
+                : 'ستبدأ خدمة ويندوز ويصبح النظام متاحًا بعد اكتمال الإقلاع.';
+        panel.innerHTML = `<div class="erp-stack" style="border:1px solid ${action === 'start' ? 'var(--erp-border)' : 'var(--erp-danger-text)'};border-radius:10px;padding:12px;margin-top:8px">`
+            + `<p class="erp-text-sm"><b>${esc(title)}</b></p>`
+            + `<p class="erp-text-sm" style="color:${action === 'start' ? 'var(--erp-text-muted)' : 'var(--erp-danger-text)'}">${esc(warning)}</p>`
+            + (phrase
+                ? `<label class="erp-text-sm erp-text-muted">اكتب <b dir="ltr">${phrase}</b> للتأكيد</label>`
+                    + `<input class="erp-input erp-input--ltr" data-v2-sc-phrase placeholder="${phrase}" autocomplete="off" dir="ltr" maxlength="10">`
+                : '')
+            + `<div class="erp-dash-controls">`
+            + `<button type="button" class="erp-btn erp-btn--sm ${action === 'start' ? 'erp-btn--primary' : 'erp-btn--danger'}" data-v2-sc-go="${action}">${esc(title)} الآن</button>`
+            + `<button type="button" class="erp-btn erp-btn--sm" data-v2-sc-cancel>إلغاء</button></div></div>`;
+        scPanelOpen = true;
+        panel.scrollIntoView({ block: 'nearest' });
+    }
+
+    async function refreshServerControl() {
+        // لا نمسح لوحة التأكيد أثناء كتابة المشرف STOP/RESTART — النداء الدوري
+        // كل 5 ثوانٍ كان يعيد بناء القسم ويطمس المُدخل.
+        if (scPolling || scPanelOpen) {return;}
+        scPolling = true;
+        try {
+            const d = await fetchServerControl();
+            if (!el.isConnected) {return;}
+            sc = d;
+            scErr = '';
+            if (d && d.available !== false) {
+                const opNow = d.operation;
+                if (scPending) {
+                    if (opNow && opNow.action === scPending) {
+                        if (opNow.state === 'success') {
+                            scNotice = `اكتمل: ${SC_ACTION_AR[opNow.action] || opNow.action} — ${SC_STAGE_AR[opNow.stage] || opNow.stage}`;
+                            scPending = '';
+                        } else if (opNow.state === 'failed') {
+                            scNotice = `فشل: ${SC_ACTION_AR[opNow.action] || opNow.action} — ${opNow.error || 'خطأ غير معروف'}`;
+                            scPending = '';
+                        } else {
+                            scNotice = `قيد التنفيذ: ${SC_ACTION_AR[opNow.action] || opNow.action} — ${SC_STAGE_AR[opNow.stage] || opNow.stage || '…'}`;
+                        }
+                    } else if (scPending === 'stop' && d.service && d.service.state !== 'RUNNING') {
+                        scPending = '';
+                        scNotice = 'السيرفر متوقف الآن — التشغيل من صفحة التحكم المحلية على جهاز السيرفر.';
+                    }
+                } else if (opNow && opNow.state === 'running') {
+                    scPending = opNow.action;
+                }
+            }
+            paintServerControl();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            scErr = scPending === 'stop'
+                ? 'انقطع الاتصال بعد أمر الإيقاف — إن كان السيرفر متوقفًا فاستخدم صفحة التحكم المحلية لتشغيله.'
+                : `تعذّر جلب حالة التحكم: ${(e && e.message) || 'خطأ في الاتصال'} — إعادة المحاولة تلقائيًا.`;
+            paintServerControl();
+        } finally {
+            scPolling = false;
+        }
+    }
+
+    async function loadServerControl() {
+        const box = secBody('server');
+        const empty = secEmpty('server');
+        if (empty) {empty.hidden = true;}
+        if (box) {box.innerHTML = '<p class="erp-text-sm erp-text-muted">جارٍ فحص حالة الخادم…</p>';}
+        sc = null; scErr = ''; scNotice = ''; scPanelOpen = false;
+        await refreshServerControl();
+        startScTimer();
+    }
+
+    function startScTimer() {
+        stopScTimer();
+        scTimer = setInterval(() => {
+            if (!el.isConnected) {stopScTimer(); return;}
+            refreshServerControl();
+        }, 5000);
+    }
+
+    function stopScTimer() {
+        if (scTimer) {clearInterval(scTimer); scTimer = null;}
+    }
+
+    async function runServerAction(action) {
+        const phrase = action === 'stop' ? 'STOP' : action === 'restart' ? 'RESTART' : '';
+        if (phrase) {
+            const typed = (el.querySelector('[data-v2-sc-phrase]')?.value || '').trim().toUpperCase();
+            if (typed !== phrase) {say(`اكتب ${phrase} للتأكيد`); return;}
+        } else if (!await confirmFn('تشغيل خدمة السيرفر الآن؟')) {
+            return;
+        }
+        try {
+            await serverControlAction(action, phrase);
+            if (!el.isConnected) {return;}
+            scPending = action;
+            scNotice = action === 'stop'
+                ? 'تم قبول الإيقاف — ستنقطع هذه الواجهة خلال ثوانٍ. لإعادة التشغيل: صفحة التحكم المحلية على جهاز السيرفر.'
+                : action === 'restart'
+                    ? 'تم قبول إعادة التشغيل — سيعود النظام تلقائيًا، وستُحدَّث الحالة هنا.'
+                    : 'تم قبول التشغيل — جارٍ إقلاع النظام.';
+            scErr = '';
+            paintServerControl();
+            startScTimer();
+        } catch (e) {
+            say((e && e.message) || 'تعذر تنفيذ الأمر');
+        }
+    }
+
     /* ── التصدير والتصفير ───────────────────────────────────────────────── */
 
     function paintDanger() {
@@ -542,6 +818,7 @@ export function mountSettingsScreen(host, ctx = {}) {
         else if (key === 'kot') {loadKot();}
         else if (key === 'cards') {loadCards();}
         else if (key === 'punch') {loadPunch();}
+        else if (key === 'server') {loadServerControl();}
         else if (key === 'backup') {loadBackups();}
         else if (key === 'danger') {paintDanger();}
     }
@@ -892,6 +1169,18 @@ export function mountSettingsScreen(host, ctx = {}) {
             return;
         }
 
+        if (event.target.closest('[data-v2-sc-refresh]')) {refreshServerControl(); return;}
+        const scOpen = event.target.closest('[data-v2-sc-open]');
+        if (scOpen) {scOpenPanel(scOpen.dataset.v2ScOpen); return;}
+        if (event.target.closest('[data-v2-sc-cancel]')) {
+            const panel = el.querySelector('[data-v2-sc-panel]');
+            if (panel) {panel.innerHTML = '';}
+            scPanelOpen = false;
+            return;
+        }
+        const scGo = event.target.closest('[data-v2-sc-go]');
+        if (scGo) {scPanelOpen = false; await runServerAction(scGo.dataset.v2ScGo); return;}
+
         if (event.target.closest('[data-v2-bk-now]')) {
             if (!await confirmFn('عمل نسخة احتياطية كاملة الآن (قاعدة البيانات + الإعدادات)؟')) {return;}
             try {
@@ -993,6 +1282,7 @@ export function mountSettingsScreen(host, ctx = {}) {
         el, reload,
         destroy() {
             stopZatcaQueueTimer();
+            stopScTimer();
             el.remove();
         },
     };

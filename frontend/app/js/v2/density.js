@@ -104,7 +104,6 @@ export function mountDensityControl(container, rootEl) {
         buttons.forEach((btn) => {
             const on = btn.dataset.pref === active;
             btn.setAttribute('aria-checked', String(on));
-            btn.setAttribute('aria-pressed', String(on));
             btn.classList.toggle('is-active', on);
         });
     }

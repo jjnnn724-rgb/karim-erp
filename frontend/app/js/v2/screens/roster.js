@@ -27,14 +27,14 @@
  * destroy() on nav, no invented values, no inline handlers.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { formatInt } from '../data/reports-repo.js?v=4.9.185';
 import {
     ROSTER_DAY_LABELS, ROSTER_MAX_CELLS, canApproveRoster, canPickDept,
     canRosterWrite, fetchRosterWeek, fetchRosterPending, saveRosterWeek,
     requestRosterApproval, approveRoster, rosterApprovalKey, rosterApprovalState,
     cellEdit, cellKey, dirtyToCells, weekOf,
-} from '../data/roster-repo.js?v=4.9.181';
+} from '../data/roster-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -94,9 +94,8 @@ function template() {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted erp-no-print">
-              قراءة وحفظ من <span class="erp-addr" dir="ltr">/api/hr/dept-roster-week</span>
-              (hr-routes.js:1327/:1519) — الخادم يقصّ النطاق وفق دورك، والماضي محمي
-              عنده (422)، وأي حفظ يُلغي اعتماد هذا الأسبوع المسجَّل.
+              قراءة وحفظ وفق دورك — النظام يقصّ النطاق وفق صلاحيتك، ولا يقبل
+              تعديل الأسابيع الماضية، وأي حفظ يُلغي اعتماد هذا الأسبوع المسجَّل.
             </p>
             <div class="erp-error" data-v2-form-error role="alert"></div>
             <div data-v2-grid></div>
@@ -581,7 +580,7 @@ export function mountRosterScreen(host, ctx = {}) {
         }
         const cells = dirtyToCells(dirty);
         if (cells.length > ROSTER_MAX_CELLS) {
-            formErrorEl.textContent = `حد الحفظة الواحدة ${ROSTER_MAX_CELLS} خلية (hr-routes.js:1522) — احفظ الأسبوع على دفعتين`;
+            formErrorEl.textContent = `حد الحفظة الواحدة ${ROSTER_MAX_CELLS} خلية — احفظ الأسبوع على دفعتين`;
             return;
         }
         const empCount = new Set(cells.map((c) => c.id)).size;

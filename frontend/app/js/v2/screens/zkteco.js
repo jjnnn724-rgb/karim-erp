@@ -22,11 +22,11 @@
  *   repo is the only door). It never touches inline handlers (CSP).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { zkWriteEnabled } from '../write-flags.js?v=4.9.181';
-import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { zkWriteEnabled } from '../write-flags.js?v=4.9.185';
+import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.185';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     fetchZkMappings, mappingStats, fetchZkLogs, fetchZkCoverage, coverageStats,
@@ -36,7 +36,7 @@ import {
     testDevice, syncDevice, createDevice, updateDevice, deleteDevice,
     scanNetwork, saveMapping, autoLinkMappings, importDeviceUsers,
     downloadZkLogsCsv,
-} from '../data/zkteco-repo.js?v=4.9.181';
+} from '../data/zkteco-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -105,12 +105,11 @@ function template(writable) {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted">
-            حالة المزامنة من وجه الخادم الحالي
-            (<span class="erp-addr" dir="ltr">/api/zkteco/*</span>)، والصلاحية قررها
-            الخادم وحده. أرقام الملخص قد تتأخر 20 ثانية (كاش الخادم).
+            حالة المزامنة من النظام مباشرة، والصلاحية محكومة بالأدوار. أرقام
+            الملخص قد تتأخر 20 ثانية (تحديث مؤقت).
             مفتاح الاتصال (Comm Key) لا يُعرض أبدًا، وحقله في التعديل فارغ يعني
             «أبقِ المفتاح المخزّن».
-            ${writable ? '' : '<span data-v2-ro>الكتابة غير متاحة الآن — إما الصلاحية لا تسمح أو علم <span class="erp-mono" dir="ltr">v2zkwrite</span> مغلق.</span>'}
+            ${writable ? '' : '<span data-v2-ro>الكتابة غير متاحة الآن — إما الصلاحية لا تسمح أو ميزة الكتابة غير مفعّلة.</span>'}
           </p>
           <div class="erp-zk__tabs" role="tablist" aria-label="أقسام شاشة البصمة">
             <button type="button" class="erp-btn erp-btn--sm erp-btn--primary is-active" role="tab" aria-selected="true" data-v2-tab="devices">الأجهزة</button>

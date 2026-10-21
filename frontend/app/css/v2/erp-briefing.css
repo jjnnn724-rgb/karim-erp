@@ -87,6 +87,11 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   column-gap: var(--erp-space-6);
 }
+/* 280px is the track's floor, so at a 320px phone (262px of card body) the
+   track itself overflows. Let the single column shrink instead. */
+@media (max-width: 340px) {
+  .erp-v2 .erp-brief__decisions .erp-minis { grid-template-columns: minmax(0, 1fr); }
+}
 .erp-v2 .erp-brief__decisions .erp-mini { border-block-end: 0; }
 
 /* ── السَنَد: بطاقة بورق حراري ────────────────────────────────────────── */

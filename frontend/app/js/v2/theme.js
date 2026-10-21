@@ -125,7 +125,8 @@ export function watchSystemTheme() {
 /* ── Theme control ───────────────────────────────────────────────────────
    Three explicit options, not a two-way toggle, because "system" is a real
    choice the user must be able to see and return to.
-   aria-pressed carries the current selection (WCAG 4.1.2). */
+   aria-checked carries the current selection (WCAG 4.1.2); radios must not
+   also carry aria-pressed. */
 
 const THEME_OPTIONS = [
     { pref: 'light', label: 'فاتح',     icon: 'sun' },
@@ -164,7 +165,6 @@ export function mountThemeControl(container) {
         buttons.forEach((btn) => {
             const on = btn.dataset.pref === active;
             btn.setAttribute('aria-checked', String(on));
-            btn.setAttribute('aria-pressed', String(on));
             btn.classList.toggle('is-active', on);
         });
     }

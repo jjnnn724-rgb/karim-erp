@@ -4,7 +4,7 @@
 
 ### الخطوة 1: المتطلبات
 - Windows 10+ أو Linux
-- [Node.js 18+](https://nodejs.org/)
+- [Node.js 20+](https://nodejs.org/)
 - 2GB RAM
 
 ### الخطوة 2: التثبيت

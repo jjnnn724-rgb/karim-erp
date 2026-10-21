@@ -20,7 +20,7 @@
  *     تقرأ صلاحياتها. legacy يستدعيها بعد الدخول مباشرة auth-navigation.js:198)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { apiFetch } from '../../core/api.js?v=4.9.185';
 
 export async function fetchNotifications() {
     const data = await apiFetch('/notifications');

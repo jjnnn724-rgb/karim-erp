@@ -10,14 +10,14 @@
  * department and accounts belong to hr/admin (legacy header, verbatim).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { statusBadge } from '../status.js?v=4.9.181';
-import { canWrite } from '../session.js?v=4.9.181';
-import { formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { statusBadge } from '../status.js?v=4.9.185';
+import { canWrite } from '../session.js?v=4.9.185';
+import { formatInt } from '../data/reports-repo.js?v=4.9.185';
 import {
     fetchDeptEmployees, deptEmpToRow, deptScopeLabel, validateDeptEmpForm,
     DEPT_EMP_WRITE_ROLES, createDeptEmployee, updateDeptEmployee, deactivateDeptEmployee,
-} from '../data/dept-employees-repo.js?v=4.9.181';
+} from '../data/dept-employees-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -71,9 +71,7 @@ function template(writable) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              قراءة وكتابة من وجه الخادم الحالي
-              (<span class="erp-addr" dir="ltr">/api/hr/dept-employees</span>) —
-              نطاقك أقسامك حصرًا بقرار من الخادم. حقولك الآمنة: الاسم والوظيفة
+              تعرض هذه الشاشة موظفي أقسامك حصرًا. يمكنك تحديث الاسم والوظيفة
               والهاتف؛ الراتب والحالة والقسم والحسابات صلاحيات الموارد البشرية.
               التعطيل آمن يحفظ التاريخ — الحذف النهائي ليس هنا.
             </p>

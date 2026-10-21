@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,20 +114,20 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.181';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.181';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.181';
+} from '../data/inventory-repo.js?v=4.9.185';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.185';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.185';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.185';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.181';
-import { ensureXlsx } from '../vendor.js?v=4.9.181';
+} from '../data/opening-balance-repo.js?v=4.9.185';
+import { ensureXlsx } from '../vendor.js?v=4.9.185';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.181';
+} from '../signature.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -368,10 +368,9 @@ function template(stock, can) {
           </div>
           <div class="erp-card__body erp-stack">
             <p class="erp-text-sm erp-text-muted">
-              السجل من وجه الخادم الحالي
-              (<span class="erp-addr" dir="ltr">/api/warehouse/inventory/search</span>)،
-              والصلاحية قررها الخادم وحده: الوارد والاستيراد والحذف للمخزن والمدير والإدارة،
-              والتعديل المباشر والدمج للأدمن، والحذف النهائي مع الحركات للمخزن والإدارة.
+              الصلاحيات محكومة بالأدوار: الوارد والاستيراد والحذف للمخزن والمدير
+              والإدارة، والتعديل المباشر والدمج لمدير النظام، والحذف النهائي مع
+              الحركات للمخزن والإدارة.
               وجرد المخزون استوديو كامل من زر «جرد المخزون»: الجلسة والعدّ والاعتماد
               بتوقيع مقفل باسم الحساب — قراءته للمخزن والمدير والإدارة والمحاسبة،
               وكتاباته للثلاثة الأولى.
@@ -647,7 +646,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
                يُحفظ الرصيد العادي كفاتورة آجلة، دون حركة نقدية. إن أُدخل تاريخ الصلاحية فيجب أن يكون بصيغة YYYY-MM-DD.
              </div>
              ${canNet ? `<label class="erp-field"><span class="erp-label"><input type="checkbox" data-v2-opening-net> الوضع الصافي (إعادة ضبط المخزون)</span>
-               <span class="erp-text-sm erp-text-muted">يخصم المنصرف الفعلي من دفتر الصرف، ثم يعيّن رصيد المخزن الرئيسي = كمية البداية − المنصرف. هذا الإجراء للأدمن فقط.</span></label>` : ''}
+               <span class="erp-text-sm erp-text-muted">يخصم المنصرف الفعلي من دفتر الصرف، ثم يعيّن رصيد المخزن الرئيسي = كمية البداية − المنصرف. هذا الإجراء لمدير النظام فقط.</span></label>` : ''}
              <div class="erp-dash-controls">
                <button type="button" class="erp-btn erp-btn--sm" data-v2-opening-template>تحميل نموذج Excel</button>
                <label class="erp-btn erp-btn--sm" for="v2-opening-file">رفع Excel / CSV</label>
@@ -710,7 +709,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             return;
         }
         if (!OPENING_NET_ROLES.includes(role)) {
-            panelMsg('الوضع الصافي متاح للأدمن فقط');
+            panelMsg('الوضع الصافي متاح لمدير النظام فقط');
             return;
         }
         try {
@@ -1305,8 +1304,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
         }
         const gate = kind === 'direct' ? canDirect : (kind === 'merge' ? canMerge : canWrite);
         if (!gate) {
-            notify(kind === 'merge' ? 'الدمج متاح للأدمن فقط'
-                : (kind === 'direct' ? 'التعديل المباشر للأدمن فقط'
+            notify(kind === 'merge' ? 'الدمج متاح لمدير النظام فقط'
+                : (kind === 'direct' ? 'التعديل المباشر لمدير النظام فقط'
                     : 'وارد المخزون واستيراده للمخزن والمدير والإدارة فقط'));
             return;
         }

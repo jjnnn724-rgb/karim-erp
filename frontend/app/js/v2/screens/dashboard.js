@@ -26,9 +26,9 @@
  *   live wiring is Gate D — deliberately not faked here.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.181';
-import { setPref } from '../theme.js?v=4.9.181';
-import { hydrateStatusNodes } from '../status.js?v=4.9.181';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.185';
+import { setPref } from '../theme.js?v=4.9.185';
+import { hydrateStatusNodes } from '../status.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -115,7 +115,7 @@ const SALES_7 = [
     { day: 'الجمعة',   value: 18.4 },
 ];
 
-const TONE_HEX = { success: '#0b9e6c', info: '#2563eb', warning: '#d97706', danger: '#e5484d', neutral: '#667085' };
+const TONE_HEX = { success: '#0F7A57', info: '#2563EB', warning: '#B4690E', danger: '#C0392B', neutral: '#5B6B65' };
 
 const INVOICES = [
     { id: '#90412', main: 'طاولة 7',             sub: 'صالة العائلات · 13:42', amount: '245', badge: ['pos_order', 'issued'] },
@@ -232,7 +232,7 @@ function invoiceList(statusBadge) {
 }
 
 function pipeline() {
-    return `<ol class="erp-pipe" aria-label="خط سير فواتير اليوم (بيانات نموذجية)">`
+    return `<ol class="erp-pipe" tabindex="0" aria-label="خط سير فواتير اليوم (بيانات نموذجية)">`
         + PIPELINE.map((s, i) => `
       <li class="erp-pipe__step is-${s.state}"${s.state === 'current' ? ' aria-current="step"' : ''}>
         <span class="erp-pipe__dot" aria-hidden="true"><span class="erp-num" dir="ltr">${i + 1}</span></span>

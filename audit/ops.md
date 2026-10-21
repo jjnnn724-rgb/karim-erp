@@ -75,8 +75,8 @@
 | | `restart-erp-service.bat` | إعادة تشغيل الخدمة مع تسجيل + رفع صلاحية | يدوي | ✅ أفضل سكربت إعادة تشغيل (سجل `restart-history.log`) |
 | | `server-harden-admin.bat` | تفعيل Defender exclusions + مهمة Morning | admin | استثناءات واسعة + إنشاء مهمة صامت |
 | | `tune-windows.bat` / `takeown-f.bat` / `fix-rdp.bat` / `do-login.bat` / `run-server.bat` | تهيئة/صيانة | admin/يدوي | `fix-rdp.bat` يفتح RDP بشكل عدواني؛ `do-login.bat` يسجّل مخرجات دخول |
-| **CI** | `.github\workflows\ci.yml` | Node 20.x + Postgres 16 (mismatch مع compose: postgres:18) | CI | وظيفة `deploy-production` Placeholder فارغة |
-| **النشر** | `Dockerfile` (node:20-slim) / `docker-compose.yml` / `nginx.conf` / `package.json` | بناء ونشر | CI/يدوي | لا ينسخ `.env` (جيد)؛ nginx 5001-قديم؛ engines ≥18 |
+| **CI** | `.github\workflows\ci.yml` | Node 22.x + Postgres 16 (mismatch مع compose: postgres:18) | CI | وظيفة `deploy-production` Placeholder فارغة |
+| **النشر** | `Dockerfile` (node:20-slim) / `docker-compose.yml` / `nginx.conf` / `package.json` | بناء ونشر | CI/يدوي | لا ينسخ `.env` (جيد)؛ nginx 5001-قديم؛ engines ≥20 |
 
 ---
 

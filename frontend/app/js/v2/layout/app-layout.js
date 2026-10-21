@@ -21,9 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.181';
-import { mountDensityControl } from '../density.js?v=4.9.181';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.181';
+import { mountThemeControl } from '../theme.js?v=4.9.185';
+import { mountDensityControl } from '../density.js?v=4.9.185';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -112,12 +112,50 @@ export function mountAppLayout(container, options = {}) {
             <span class="erp-shell__integrations" data-erp-integrations hidden>
               ${Object.keys(BOUNDARIES).map((name) => boundaryMarkup(name)).join('')}
             </span>
-            <span class="erp-shell__sep" aria-hidden="true"></span>
-            <span data-erp-theme-slot></span>
-            <span class="erp-shell__sep" aria-hidden="true"></span>
-            <span data-erp-density-slot></span>
+            <button type="button" class="erp-icon-btn erp-shell__more-toggle"
+                    data-erp-more-toggle aria-controls="erp-more-panel" aria-expanded="false"
+                    aria-label="مركز التحكم" title="مركز التحكم">
+              <i class="ji" data-i="sliders" aria-hidden="true"></i>
+            </button>
           </div>
         </header>
+
+        <div class="erp-shell__more erp-no-print" id="erp-more-panel" data-erp-more hidden
+             role="dialog" aria-label="مركز التحكم">
+          <div class="erp-shell__more-head">
+            <span class="erp-shell__more-title">مركز التحكم</span>
+            <button type="button" class="erp-icon-btn" data-erp-more-close aria-label="إغلاق مركز التحكم">
+              <i class="ji" data-i="x" aria-hidden="true"></i>
+            </button>
+          </div>
+          <section class="erp-shell__more-section">
+            <h3 class="erp-shell__more-label">حالة النظام</h3>
+            <div class="erp-shell__more-status" data-erp-more-status></div>
+          </section>
+          <section class="erp-shell__more-section">
+            <h3 class="erp-shell__more-label">التفضيلات</h3>
+            <div class="erp-shell__more-row">
+              <span class="erp-shell__more-key">المظهر</span>
+              <span data-erp-theme-slot></span>
+            </div>
+            <div class="erp-shell__more-row">
+              <span class="erp-shell__more-key">كثافة العرض</span>
+              <span data-erp-density-slot></span>
+            </div>
+            <div class="erp-shell__more-row">
+              <span class="erp-shell__more-key">لغة الواجهة</span>
+              <span data-erp-more-lang></span>
+            </div>
+          </section>
+          <section class="erp-shell__more-section" data-erp-more-quick-section hidden>
+            <h3 class="erp-shell__more-label">روابط سريعة</h3>
+            <div class="erp-shell__more-quick" data-erp-more-quick></div>
+          </section>
+          <section class="erp-shell__more-section">
+            <h3 class="erp-shell__more-label">الحساب</h3>
+            <div class="erp-shell__more-account" data-erp-more-account></div>
+          </section>
+        </div>
 
         <div class="erp-toolbar" data-erp-toolbar hidden></div>
 
@@ -140,6 +178,9 @@ export function mountAppLayout(container, options = {}) {
         brandText: root.querySelector('.erp-shell__brand-text strong'),
         brandSub:  root.querySelector('.erp-shell__brand-text small'),
         drawerOpenBtn: root.querySelector('[data-erp-open-drawer]'),
+        morePanel: root.querySelector('[data-erp-more]'),
+        moreToggle: root.querySelector('[data-erp-more-toggle]'),
+        moreClose: root.querySelector('[data-erp-more-close]'),
     };
 
     /* ── Brand ──────────────────────────────────────────────────────── */
@@ -152,7 +193,7 @@ export function mountAppLayout(container, options = {}) {
         el.nav.innerHTML = tree.map((group) => `
           <div class="erp-nav-group" data-group="${esc(group.id)}">
             <div class="erp-nav-group__title" id="erp-nav-g-${esc(group.id)}">${esc(group.title)}</div>
-            <ul class="erp-nav-list" role="group" aria-labelledby="erp-nav-g-${esc(group.id)}">
+            <ul class="erp-nav-list" aria-labelledby="erp-nav-g-${esc(group.id)}">
               ${group.items.map((item) => navItemMarkup(item)).join('')}
             </ul>
           </div>`).join('')
@@ -305,8 +346,64 @@ export function mountAppLayout(container, options = {}) {
     root.querySelectorAll('[data-erp-close-drawer]').forEach((b) =>
         b.addEventListener('click', () => setDrawer(false)));
 
+    /* ── Control centre (الحالة والتفضيلات والإجراءات الثانوية) ──────────
+       Every control that used to sit in a horizontal strip is now stacked
+       here. The old strip had to surrender width on narrow headers until it
+       reached zero, which silently removed the password and server status
+       (measured at 390 / 1024). A popover has a fixed, readable width at
+       every viewport and no control can be squeezed out of it. */
+    let moreOpen = false;
+    let moreReturnFocus = null;
+
+    function setMore(open, { returnFocus = true } = {}) {
+        if (!el.morePanel || !el.moreToggle) {return;}
+        moreOpen = !!open;
+        el.morePanel.hidden = !moreOpen;
+        el.moreToggle.setAttribute('aria-expanded', String(moreOpen));
+        if (moreOpen) {
+            /* The header may sit below the preview banner at scroll 0, so a
+               hard-coded `top` would paint the panel over it. Anchor to the
+               header's current bottom edge instead. */
+            const header = root.querySelector('.erp-shell__header');
+            const top = Math.max(8, Math.round((header ? header.getBoundingClientRect().bottom : 56) + 8));
+            el.morePanel.style.top = `${top}px`;
+            el.morePanel.style.maxHeight = `${Math.max(220, window.innerHeight - top - 16)}px`;
+            moreReturnFocus = document.activeElement;
+            const first = el.morePanel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            (first || el.morePanel).focus?.({ preventScroll: true });
+        } else {
+            if (returnFocus && moreReturnFocus && typeof moreReturnFocus.focus === 'function') {
+                moreReturnFocus.focus({ preventScroll: true });
+            }
+            moreReturnFocus = null;
+        }
+    }
+
+    el.moreToggle?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setMore(!moreOpen);
+    });
+    el.moreClose?.addEventListener('click', () => setMore(false));
+
+    const onDocClick = (event) => {
+        if (!moreOpen) {return;}
+        if (el.morePanel?.contains(event.target) || el.moreToggle?.contains(event.target)) {return;}
+        setMore(false, { returnFocus: false });
+    };
+    document.addEventListener('click', onDocClick);
+    state.disposers.push(() => document.removeEventListener('click', onDocClick));
+    const closeOnViewportChange = () => {
+        if (moreOpen) {setMore(false, { returnFocus: false });}
+    };
+    window.addEventListener('scroll', closeOnViewportChange, { passive: true });
+    window.addEventListener('resize', closeOnViewportChange);
+    state.disposers.push(() => window.removeEventListener('scroll', closeOnViewportChange));
+    state.disposers.push(() => window.removeEventListener('resize', closeOnViewportChange));
+
     /* ── Keyboard ───────────────────────────────────────────────────── */
     const onKeydown = (e) => {
+        // Escape closes the control centre (WCAG 2.1.2) before the drawer.
+        if (e.key === 'Escape' && moreOpen) {e.preventDefault(); setMore(false); return;}
         // Escape closes the drawer and returns focus (WCAG 2.1.2).
         if (e.key === 'Escape' && state.drawerOpen) {e.preventDefault(); setDrawer(false);}
     };
@@ -335,6 +432,7 @@ export function mountAppLayout(container, options = {}) {
         setBreadcrumbs(crumb) { state.breadcrumbs = crumb || { title: '', trail: [] }; renderCrumbs(); },
         setToolbar(items) { state.toolbar = items || []; renderToolbar(); },
         mountBoundary,
+        closeMore(options) { setMore(false, options); },
         refreshNav() { renderNav(); renderRole(); },
         setCompact(compact) {
             state.compact = !!compact;

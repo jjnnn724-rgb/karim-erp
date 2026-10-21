@@ -7,9 +7,9 @@
  * 8,000 rows; newest-first; client-side date filter (table/page also).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
-import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.181';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.185';
+import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.185';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.185';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };
@@ -38,9 +38,10 @@ function template(from, to) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
-            قراءة فقط — سجل حركات المخزون (<span class="erp-addr" dir="ltr">/api/inventoryTx</span>)،
-            والصلاحية قررها الخادم. حركات 8,000 الأحدث فقط (الأحدث أولاً).
-            أنواع variant Beyond "وارد/صادر/مرتجع/تسوية" تُعرض كما هي («افتتاحي»، legacy).
+            قراءة فقط — سجل حركات المخزون، والصلاحية محكومة بالأدوار. حركات
+            8,000 الأحدث فقط (الأحدث أولًا). أنواع الحركة الواردة والصادرة
+            والمرتجعة والتسوية تُعرض كما هي، ومنها «افتتاحي» وحركات مرحّلة من
+            النظام الأساسي.
           </p>
           <div data-v2-table></div>
         </div>

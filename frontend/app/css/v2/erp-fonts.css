@@ -1,129 +1,140 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   KARIM ERP — V2 SELF-HOSTED INTERFACE FACE  (Tajawal)
+   KARIM ERP — V2 SELF-HOSTED INTERFACE FACE  (IBM Plex Sans Arabic)
    ═══════════════════════════════════════════════════════════════════════
-   THE DEFECT THIS FILE CLOSES
-   ───────────────────────────
-   V2 shipped no face of its own. `.erp-v2` took
-   `--erp-font-sans` → `var(--karim-font)` → "IBM Plex Sans Arabic",
-   "Cairo", "Tajawal", "Segoe UI". The first three are names of fonts that
-   this repository never loads and that most client machines do not have
-   installed, so the face actually painted was decided by the device:
+   WHY THIS FACE
+   ─────────────
+   The first V2 face was Tajawal: a friendly geometric cut that reads
+   consumer-facing. An ERP that carries money, payroll, VAT and stock
+   decisions needs an institutional voice instead. IBM Plex Sans Arabic is
+   drawn for corporate interfaces — open counters, a Naskh-derived skeleton
+   with restrained terminals, a single-storey rhythm that survives 11px
+   table cells, and a Latin companion (Plex Sans) whose digits are sober
+   rather than rounded. One family therefore covers Arabic labels and the
+   English/numeric microcopy without a second personality entering the page.
 
-     · build/designer machine → Tajawal was installed → Arabic in Tajawal
-     · a fresh Windows client → none of the three → OS Arabic fallback
+   This is not a taste swap: it is the same "device decides the face" fix
+   the previous sheet made, re-stated for the new cut.
 
-   Identical markup, two different typographies. That is precisely the
-   "looks right on my machine" class of bug: no console error, no failing
-   test, just a product that changes with the hardware.
-
-   THE RULE THIS FILE FOLLOWS
-   ──────────────────────────
-   1. SELF-HOSTED ONLY. Every `src` is a file already in this repository
-      (`app/fonts/menu/`, the same five Tajawal files the menu board and the
-      menu screens use). Zero CDN, zero Google Fonts, zero new dependency —
-      the origin's CSP is unchanged and the app keeps working offline.
+   THE RULES THIS FILE KEEPS
+   ─────────────────────────
+   1. SELF-HOSTED ONLY. Every `src` is a file committed in this repository
+      (`app/fonts/v2/`). Zero CDN, zero Google Fonts, zero new runtime
+      dependency — the origin's CSP is unchanged and the app keeps working
+      offline. The files are the official Google Fonts woff2 builds of
+      IBM Plex Sans Arabic (SIL Open Font License 1.1).
    2. NO `local()`. A `local()` entry would let an installed font win and
-      would quietly re-open the very hole above, so the browser is forced to
-      fetch the repo file. That is also what makes the fix provable in
-      DevTools: the Network tab must show these woff2 files. tests/…
+      would quietly re-open the "looks right on my machine" hole. tests/
       v2-fonts.test.js pins that absence.
-   3. SUBSET-SPLIT LIKE THE REST OF THE REPO. `menu-fonts.css` splits each
-      family into arabic / latin faces with the same Google-generated
-      `unicode-range`s; this file reuses them verbatim instead of inventing
-      ranges. Splitting is not cosmetic: Arabic shaping controls
-      (U+200C-200E, U+2010-2011) sit in the arabic range, so they are pulled
-      from the same face as the joining letters they control — a fallback
-      face for those three code points is how broken Arabic shaping starts.
-   4. `font-display: swap`. The interface paints immediately in the fallback
-      face and re-paints once the file lands; it never blocks first paint.
+   3. SUBSET-SPLIT LIKE THE REST OF THE REPO. Each weight ships as arabic
+      and latin faces with Google's own `unicode-range`s. Arabic shaping
+      controls (U+200C-200E, U+2010-2011) sit in the arabic range, so they
+      are pulled from the same face as the joining letters they control.
+      The latin face carries U+0000-00FF and U+2212, i.e. the digits and the
+      minus sign every money column prints.
+   4. `font-display: swap`. The interface paints immediately in the
+      fallback face and re-paints once the file lands; it never blocks
+      first paint.
 
-   WEIGHTS — WHY THERE ARE ONLY THREE
-   ──────────────────────────────────
-   This file declares 400 / 500 / 700, exactly the three weights the V2
-   token scale can request (`--erp-fw-normal`, `--erp-fw-medium`,
-   `--erp-fw-bold`). Tajawal has no 600 cut, and `--erp-fw-semibold: 600` is
-   used in V2, so a semibold request resolves to the nearest available cut —
-   700, per the CSS font-matching order. Stated here rather than left
-   implicit: semibold text therefore paints as the bold file. This matches
-   what the reference machine already showed (Tajawal installed, no 600 cut,
-   same resolution) so adopting the local file changes *which device* gets
-   the approved look, not the look itself.
-
-   `font-synthesis-weight: none` is already set on `.erp-v2` (erp-base.css),
-   so the browser is not allowed to fake a 600 either. The alternatives
-   (synthesising, or letting a second family supply a false 600) both break
-   the Arabic weight rhythm more than they help.
+   WEIGHTS — FOUR REAL CUTS
+   ────────────────────────
+   400 / 500 / 600 / 700 exactly match the V2 weight scale
+   (`--erp-fw-normal`, `medium`, `semibold`, `bold`). Unlike Tajawal,
+   Plex ships a true 600, so semibold headings and KPI values no longer
+   resolve to the bold file; `font-synthesis-weight: none` on `.erp-v2`
+   (erp-base.css) still forbids any faked cut.
 
    SCOPE
    ─────
    Additive and V2-only: it declares faces, nothing else. Which family the
-   interface asks for is a token decision, and that lives in
-   `erp-tokens.css` (`--erp-font-sans` puts `"Tajawal"` first). Legacy pages
+   interface asks for is a token decision in `erp-tokens.css`
+   (`--erp-font-sans` puts `"IBM Plex Sans Arabic"` first). Legacy pages
    never load this sheet and never see these names.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Tajawal 400 (normal) ──────────────────────────────────────────────── */
+/* ── IBM Plex Sans Arabic 400 (normal — body, table cells, prose) ─────── */
 
 /* arabic */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-400-arabic.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-400-arabic.woff2) format('woff2');
   unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
 }
 
 /* latin */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-400-latin.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-400-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* ── Tajawal 500 (medium — labels, meta, quiet emphasis) ───────────────── */
+/* ── IBM Plex Sans Arabic 500 (medium — labels, meta, quiet emphasis) ─── */
 
 /* arabic */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-500-arabic.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-500-arabic.woff2) format('woff2');
   unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
 }
 
 /* latin */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-500-latin.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-500-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* ── Tajawal 700 (bold — money, KPI values, headings) ──────────────────── */
+/* ── IBM Plex Sans Arabic 600 (semibold — section heads, KPI values) ──── */
 
 /* arabic */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
-  font-weight: 700;
+  font-weight: 600;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-700-arabic.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-600-arabic.woff2) format('woff2');
   unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
 }
 
 /* latin */
 @font-face {
-  font-family: 'Tajawal';
+  font-family: 'IBM Plex Sans Arabic';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-600-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── IBM Plex Sans Arabic 700 (bold — page titles, money totals) ──────── */
+
+/* arabic */
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url(../../fonts/menu/tajawal-normal-700-latin.woff2) format('woff2');
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-700-arabic.woff2) format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE, U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../../fonts/v2/ibmplexsansarabic-normal-700-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
