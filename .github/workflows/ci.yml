@@ -242,6 +242,8 @@ jobs:
       postgres:
         image: postgres:16
         env:
+      # حارس سكربت الـsmoke: يرفض التشغيل بلا هدف صريح (حمايةً من الإنتاج).
+      KARIM_TEST_BASE_URL: http://localhost:3000
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: karim_erp_smoke
