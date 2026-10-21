@@ -15,6 +15,7 @@ const {
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { signAccessToken } = require('../backend/cashier-module/jwt-middleware');
+const { closeHttpServer } = require('./helpers/http-server');
 
 describe('canAccessDeptPanel — بوابة الهوية والدور معًا', () => {
     test('بلا هوية (null/undefined/بدون id) تُرفض 401 حتى لو الدور مسموح', () => {
@@ -169,8 +170,8 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
         if (createdExpenseIds.length) {
             await pool.query('DELETE FROM expenses WHERE id = ANY($1::bigint[])', [createdExpenseIds]);
         }
+        await closeHttpServer(server);
         await pool.end().catch(() => {});
-        server.close();
     });
 
     async function seedExpense(deptId, amount, adjustmentType, autoGen) {
@@ -185,7 +186,7 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
     }
 
     test('رئيس قسم السلطات يرى لوحة قسمه: نطاق مقفل + مصروفات مصنفة + أذونات', async () => {
-        const marker = `TEST-pnl-${Date.now()}`;
+        `TEST-pnl-${Date.now()}`;
         await seedExpense('salads', 25, 'dispatch', true);
         const res = await fetch(baseUrl + '/dept-panel', { headers: { Authorization: `Bearer ${headSaladsToken}` } });
         expect(res.status).toBe(200);
@@ -211,13 +212,19 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
         expect(anon.status).toBe(401);
     }, 20000);
 
-    test('الشيف العمومي يرى المطبخ مع أقسامه الفرعية العشرة، وadmin يطلب قسمًا بعينه', async () => {
+    test('الشيف العمومي يرى المطبخ مع كل أقسامه الفرعية (من القاعدة، لا قائمة ثابتة)، وadmin يطلب قسمًا بعينه', async () => {
         const chefToken = signAccessToken({ id: 9001, username: 'chef', role: 'kitchen', name: 'الشيف العمومي', dept_code: null });
         const chefRes = await fetch(baseUrl + '/dept-panel', { headers: { Authorization: `Bearer ${chefToken}` } });
         expect(chefRes.status).toBe(200);
         const chefBody = await chefRes.json();
         expect(chefBody.scope.deptCode).toBe('kitchen');
-        expect(chefBody.subDepartments.map(s => s.code).sort()).toEqual(['bakery', 'butcher', 'external_sales', 'fnb', 'hot_hall', 'hot_kitchen', 'kstore', 'open_buffet', 'salads', 'storeroom', 'sweets']);
+        /* قائمة الأبناء تُقرأ من القاعدة بنفس استعلام المسار
+           (warehouse-routes.js: SELECT code,name … WHERE parent_code=$1 ORDER BY code).
+           كانت مثبّتة يدويًا فانحرفت لمّا أُضيف B.F — والقائمة الحيّة هي الحقيقة. */
+        const rowsKids = (await pool.query('SELECT code FROM departments WHERE parent_code=$1 ORDER BY code', ['kitchen'])).rows;
+        expect(rowsKids.length).toBeGreaterThan(0);
+        expect(chefBody.subDepartments.map((s) => s.code).sort()).toEqual(rowsKids.map((r) => r.code).sort());
+        expect(chefBody.subDepartments.every((s) => typeof s.name === 'string' && s.name.length > 0)).toBe(true);
         const adminRes = await fetch(baseUrl + '/dept-panel?dept=sweets', { headers: { Authorization: `Bearer ${adminToken}` } });
         expect(adminRes.status).toBe(200);
         expect((await adminRes.json()).department.code).toBe('sweets');

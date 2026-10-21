@@ -65,6 +65,7 @@ describe('التوجيه — تحليل الهاش', () => {
         const m = esm();
         expect(m.keyFromHash('#/employees')).toBe('employees');
         expect(m.keyFromHash('#employees')).toBe('employees');
+        expect(m.keyFromHash('#goods-scan')).toBe('goods-scan');
         expect(m.keyFromHash('employees')).toBe('employees');
         expect(m.keyFromHash('#/wh-vs-pos')).toBe('wh-vs-pos');
         expect(m.keyFromHash('#/revenues?tab=2')).toBe('revenues');
@@ -239,13 +240,20 @@ describe('التوجيه — الوصل في المضيف', () => {
         expect(host).toMatch(/const ROUTE_KNOWN = knownKeys\(readNavGroups\(\)\);/);
     });
 
-    test('الاستماع للهاش والوصلة الأخيرة مشروطان بالعلم', () => {
-        expect(host).toMatch(/if \(ROUTING\) \{window\.addEventListener\('hashchange', applyRouteFromHash\);\}/);
-        expect(host).toMatch(/if \(ROUTING\) \{applyRouteFromHash\(\);\} else \{renderScreen\('dashboard'\);\}/);
+    test('الاستماع للهاش والوصلة الأخيرة مشروطان بالتوجيه أو رابط المسح', () => {
+        expect(host).toMatch(/if \(ROUTING \|\| GOODS_SCAN_DEEP_LINK\) \{window\.addEventListener\('hashchange', applyRouteFromHash\);\}/);
+        expect(host).toMatch(/if \(ROUTING \|\| GOODS_SCAN_DEEP_LINK\) \{applyRouteFromHash\(\);\} else \{renderScreen\('dashboard'\);\}/);
         expect(host).toMatch(/function applyKey\(key\) \{[\s\S]*?if \(ROUTING\) \{syncHash\(key\);\}/);
         // مسار التنقّل الواحد: onNavigate لم يعد يرسم مباشرة
         expect(host).toMatch(/onNavigate\(key\) \{\n\s*applyKey\(key\);\n\s*\},/);
         expect(host).not.toMatch(/onNavigate\(key\) \{[\s\S]{0,200}renderScreen\(key\);[\s\S]{0,40}\},/);
+    });
+
+    test('رابط فحص الباركود يعمل دون تفعيل التوجيه العام', () => {
+        expect(host).toMatch(/import \{[^}]*\bkeyFromHash\b[^}]*\} from '\.\/routing\.js\?v=/);
+        expect(host).toMatch(/const GOODS_SCAN_DEEP_LINK = keyFromHash\(window\.location\.hash\) === 'goods-scan';/);
+        expect(host).toMatch(/if \(!ROUTING && !GOODS_SCAN_DEEP_LINK\) \{return;\}/);
+        expect(host).toMatch(/if \(ROUTING \|\| GOODS_SCAN_DEEP_LINK\) \{applyRouteFromHash\(\);\} else \{renderScreen\('dashboard'\);\}/);
     });
 
     test('الرابط العميق لا يُدمَّر قبل انتهاء الصلاحيات', () => {
@@ -262,7 +270,7 @@ describe('التوجيه — الوصل في المضيف', () => {
         expect(host).toMatch(/state\.permissions\.deniedMenus/);
         expect(host).toMatch(/if \(state && state\.currentUser && state\.currentUser\.role === 'admin'\) \{return new Set\(\);\}/);
         // لا allow-list في قرار المسار: كانسيرف الـ7 شاشات الفرعية للأدمن
-        const call = host.slice(host.indexOf('function applyRouteFromHash'), host.indexOf("if (ROUTING) {window.addEventListener"));
+        const call = host.slice(host.indexOf('function applyRouteFromHash'), host.indexOf("if (ROUTING || GOODS_SCAN_DEEP_LINK) {window.addEventListener"));
         expect(call).not.toMatch(/allowed/);
         expect(call).toMatch(/denied: routeSettled/);
     });

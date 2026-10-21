@@ -46,6 +46,10 @@ const { validateOrderPayload, ORDER_PAYMENT_STATUSES } = require('../backend/cas
 const { canDecideLeave } = require('../backend/leave-workflow-routes');
 const { pool } = require('../backend/shared-pool');
 
+afterAll(async () => {
+    await pool.end();
+});
+
 // ─── 1) حرس حذف إذن الصرف ────────────────────────────────────────────────────
 describe('Round-2 — canDeleteDispatch (signed dispatch documents are not deletable)', () => {
     it('الطلب المعلّق pending قابل للحذف (إلغاء طلب خاطئ لم تحسمه أي جهة)', () => {
@@ -117,7 +121,7 @@ describe('Round-2 — maskEmployeeRowForRole (salary hidden from non-elevated ro
     });
 
     it('الإخفاء لا يعبث بالصف الأصلي ولا ينهار على قيم شاذة', () => {
-        const masked = maskEmployeeRowForRole(row, 'kitchen');
+        maskEmployeeRowForRole(row, 'kitchen');
         expect(row.salary).toBe(4500); // الأصل سليم
         expect(maskEmployeeRowForRole(null, 'kitchen')).toBeNull();
         expect(maskEmployeeRowForRole(undefined, 'admin')).toBeUndefined();

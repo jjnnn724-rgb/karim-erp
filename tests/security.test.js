@@ -196,7 +196,7 @@ describe('filterBody() - Payload Filtering', () => {
             role: 'admin'  // allowed
         };
         
-        const { filtered, errors, removedKeys } = filterBody('users', payload);
+        const { filtered, errors } = filterBody('users', payload);
         
         expect(filtered.id).toBeUndefined();
         expect(filtered.created_at).toBeUndefined();

@@ -14,7 +14,7 @@ const DWELL_DEFAULT = 14_000;   // مدة بقاء الصفحة الواحدة
 const DWELL_CURRENT = 20_000;   // مدة أطول لصفحة الفترة الحالية
 const POLL_MS = 30_000;
 const FETCH_TIMEOUT_MS = 5_000;
-const MAX_ITEMS_PER_PAGE = 8;   // صفحة تتسع لـ 8 أصناف (4 صفوف × عمودين)
+const MAX_ITEMS_PER_PAGE = 10;  // صفحة تتسع لـ 10 أصناف (5 صفوف × عمودين) — قرار المالك 2026-10-15
 const BOARD_CACHE_KEY = 'menu_board_last_successful_response';
 const BOARD_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const TV_PERFORMANCE_MODE = !/(?:^|[?&])tv=full(?:&|$)/.test(location.search);
@@ -34,7 +34,6 @@ let pages = [];                 // [{title, note, items, period?}]
 let loadError = false;
 let pageIdx = 0;
 let cycleTimer = null;
-let clockTimer = null;
 let periodNow = null;
 let language = readLanguagePreference();
 
@@ -58,17 +57,22 @@ function applyLanguage() {
         ? 'Al-Shorfa Al-Alami Restaurants — Menu'
         : 'مطاعم الشرفه العالمي — شاشة العرض';
     if (!board) {
-        setTickerText(text(
-            'الأسعار شاملة الضريبة · نتشرف بخدمتكم',
-            'Prices include tax · We are pleased to serve you'
-        ));
+        setTickerText('الأسعار شاملة الضريبة · Prices include tax · نتشرف بخدمتكم');
     }
-    const periodNames = language === 'en'
-        ? { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' }
-        : { breakfast: 'الفطار', lunch: 'الغداء', dinner: 'العشاء' };
+    /* ثنائي دائم (قرار المالك 2026-10-15): الفترة بالعربي والإنجليزي معاً،
+       والمختار أساسي والآخر صغيراً بجانبه. */
+    const periodNames = {
+        breakfast: { ar: 'الفطار', en: 'Breakfast' },
+        lunch: { ar: 'الغداء', en: 'Lunch' },
+        dinner: { ar: 'العشاء', en: 'Dinner' },
+    };
     document.querySelectorAll('.period').forEach(el => {
         const name = el.querySelector('.period-name');
-        if (name) { name.textContent = periodNames[el.dataset.period]; }
+        if (!name) { return; }
+        const p = periodNames[el.dataset.period] || { ar: '', en: '' };
+        name.innerHTML = language === 'en'
+            ? `${esc(p.en)}<small dir="rtl" lang="ar">${esc(p.ar)}</small>`
+            : `${esc(p.ar)}<small dir="ltr" lang="en">${esc(p.en)}</small>`;
     });
     setConn(!$('connState').classList.contains('off'));
     tickClock();
@@ -170,11 +174,11 @@ function applySettings(s) {
     stage.style.backgroundPosition = '';
     if (!TV_PERFORMANCE_MODE) { startAmbientTints(stage); }
     const buffetPrice = Number.isFinite(Number(s.buffet_price)) ? Number(s.buffet_price) : 75;
-    const priceLine = language === 'en'
-        ? `OPEN BUFFET · ${buffetPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })} SAR per person`
-        : `بوفيه مفتوح · OPEN BUFFET · ${buffetPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })} ريال للفرد`;
-    const defaultFooter = 'الأسعار شاملة الضريبة · نتشرف بخدمتكم على مدار اليوم';
-    const wish = text('نتمنى لكم زيارة سعيدة وطعامًا شهيًا', 'Have a pleasant visit and enjoy your meal');
+    /* ثنائي دائم: سطر البوفيه باللغتين في الوضعين */
+    const buffetN = buffetPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const priceLine = `بوفيه مفتوح · OPEN BUFFET · ${buffetN} ريال / SAR per person`;
+    const defaultFooter = 'الأسعار شاملة الضريبة · Prices include tax · نتشرف بخدمتكم على مدار اليوم';
+    const wish = 'نتمنى لكم زيارة سعيدة وطعامًا شهيًا · Have a pleasant visit and enjoy your meal';
     const configuredFooter = String(s.footer_text || '').trim();
     const footer = configuredFooter === defaultFooter || configuredFooter === wish ? '' : configuredFooter;
     setTickerText([priceLine, footer, wish].filter(Boolean).join('  ✦  ') + '  ✦');
@@ -261,7 +265,6 @@ function scheduleStarts(settings) {
 }
 
 /* ─── بناء الصفحات: تصنيف لكل صفحة (تقسيم لو زادت عن 8) ─── */
-const PERIOD_LABEL = { breakfast: 'الفطار', lunch: 'الغداء', dinner: 'العشاء' };
 const CAT_EN = {
     'فطار': 'BREAKFAST', 'الفطار': 'BREAKFAST', 'فطور': 'BREAKFAST', 'الإفطار': 'BREAKFAST',
     'غدا': 'LUNCH', 'غداء': 'LUNCH', 'الغداء': 'LUNCH',
@@ -326,11 +329,12 @@ function render() {
     if (board && board.buffet_sections && board.buffet_sections.enabled) {
         dots.style.display = 'none';
         const sections = board.buffet_sections;
+        /* ثنائي دائم: الأساسي حسب اللغة، واللغة الأخرى ظاهرة تحته دائماً */
         const renderItems = (items, className) => (items || []).map((item, index) => {
             const ar = item.name || '';
             const en = item.name_en || '';
             const primary = language === 'en' ? (en || ar) : ar;
-            const secondary = language === 'en' ? '' : (en || '');
+            const secondary = language === 'en' ? (ar && ar !== primary ? ar : '') : (en || '');
             return `
             <div class="${className}${item.sold_out ? ' sold-out' : ''}">
                 <span class="buffet-number">${String(index + 1).padStart(2, '0')}</span>
@@ -342,7 +346,7 @@ function render() {
             const ar = item.name || '';
             const en = item.name_en || '';
             const primary = language === 'en' ? (en || ar) : ar;
-            const secondary = language === 'en' ? '' : (en || '');
+            const secondary = language === 'en' ? (ar && ar !== primary ? ar : '') : (en || '');
             return `<span class="buffet-item-name">${esc(primary)}${secondary ? `<em class="buffet-item-en">${esc(secondary)}</em>` : ''}${item.sold_out ? `<small>${text('نفدت الكمية', 'Sold out')}</small>` : ''}</span>`;
         };
         const has = x => Array.isArray(x) && x.length > 0;
@@ -409,8 +413,8 @@ function render() {
                     <span class="item-bullet">${String(j + 1).padStart(2, '0')}</span>
                     ${it.image ? `<img class="item-thumb" src="${esc(it.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
                     <div class="item-copy">
-                    <span class="item-name">${esc(it.name)}${it.sold_out && language === 'ar' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>
-                    <span class="item-en">${esc(it.name_en || (language === 'en' ? it.name : ''))}${it.sold_out && language === 'en' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>
+                    <span class="item-name">${esc(language === 'en' ? (it.name_en || it.name) : it.name)}${it.sold_out && language === 'ar' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>
+                    <span class="item-en">${esc(language === 'en' ? (it.name || '') : (it.name_en || ''))}${it.sold_out && language === 'en' ? `<span class="sold-note">${text('نفدت الكمية', 'Sold out')}</span>` : ''}</span>
                     </div>
                 </div>
             </div>`).join('');
@@ -470,7 +474,7 @@ function updateRibbons() {
     });
 }
 
-function scheduleCycle(reset) {
+function scheduleCycle(_reset) {
     if (cycleTimer) { clearTimeout(cycleTimer); cycleTimer = null; }
     if (!pages.length || (board && board.buffet_sections && board.buffet_sections.enabled)) { return; }
     // نلتزم بصفحات فترة الوجبة الحالية — الانقلاب يحدث تلقائيًا عند تغيّر الوقت
@@ -542,8 +546,12 @@ function restoreCachedBoard() {
 
 /* ─── التحديث: طلب واحد فقط وإعادة البناء عند تغيّر البصمة ─── */
 let refreshInProgress = false;
+let refreshQueued = false;
 async function refresh({ background = false } = {}) {
-    if (refreshInProgress) { return; }
+    if (refreshInProgress) {
+        refreshQueued = true;
+        return;
+    }
     refreshInProgress = true;
     try {
         const data = await fetchBoard();
@@ -563,6 +571,10 @@ async function refresh({ background = false } = {}) {
         if (background && !board && !pages.length) {
             render();
         }
+        if (refreshQueued) {
+            refreshQueued = false;
+            void refresh({ background: true });
+        }
     }
 }
 
@@ -575,10 +587,6 @@ function setConn(ok) {
 function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-function fN(n) {
-    return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 /* ─── اللحظية: بث تعديلات منيو الكاشير + فحص دوري ─── */
 function listenRealtime() {
     setInterval(refresh, POLL_MS);
@@ -594,7 +602,7 @@ function listenRealtime() {
 function connectRealtime() {
     try {
         const socket = io({ transports: ['websocket', 'polling'] });
-        socket.on('connect', () => { setConn(true); if (!board) { refresh(); } });
+        socket.on('connect', () => { setConn(true); void refresh({ background: true }); });
         socket.on('disconnect', () => { setConn(false); });
         socket.on('entity_changed', (p) => {
             if (p && p.entity === 'posProducts') { refresh(); }
@@ -618,7 +626,7 @@ function start() {
         applyLanguage();
     });
     tickClock();
-    clockTimer = setInterval(tickClock, 1000);
+    setInterval(tickClock, 1000);
     refresh({ background: true });
     listenRealtime();
     // إبقاء الشاشة مستيقظة (شاشات العرض)

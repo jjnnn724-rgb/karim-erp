@@ -10,8 +10,9 @@
  *     'manager', 'warehouse'). The server matches items by normalized name,
  *     recomputes discount/VAT/payment status, refuses duplicate numbers
  *     (409 DUPLICATE_INVOICE_NUMBER) and same-user/supplier/amount repeats
- *     within ten minutes (409 DUPLICATE_INVOICE), and rejects any line
- *     without a valid expiry date (422 EXPIRY_DATE_REQUIRED — سياسة 2026-10-19).
+ *     within ten minutes (409 DUPLICATE_INVOICE), and rejects a line only
+ *     when its expiry date is present but invalid (422 INVALID_EXPIRY_DATE —
+ *     سياسة 2026-10-20: التاريخ اختياري).
  *   PUT /warehouse/purchase-invoices/:id
  *     backend/warehouse-routes.js:2155 — same roles. Refuses any invoice
  *     with a recorded payment (409 INVOICE_HAS_PAYMENTS); the UI never
@@ -31,8 +32,8 @@
  * authority on roles, balances and the confirmation phrase.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.181';
 
 /** Mirrors requireRole('admin','manager','warehouse') on POST/PUT. */
 export const INVOICE_CREATE_ROLES = ['admin', 'manager', 'warehouse'];
@@ -92,7 +93,7 @@ export function invoiceEditable(inv = {}) {
 }
 
 /** Form model → POST/PUT body. Same fields and defaults the legacy form sent,
- *  plus the mandatory per-line expiry date; invalid lines are dropped exactly
+ *  plus the optional per-line expiry date; invalid lines are dropped exactly
  *  where the legacy save dropped them. */
 export function purchaseInvoicePayload(form = {}) {
     const items = (Array.isArray(form.items) ? form.items : [])

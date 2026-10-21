@@ -22,6 +22,75 @@
 .erp-v2 .erp-filterbar .erp-select,
 .erp-v2 .erp-filterbar .erp-input { inline-size: auto; min-inline-size: 9rem; }
 
+/* Reports: separate the page identity from the controls, then give each
+   filter a stable label and grid slot instead of compressing everything into
+   the dashboard header's flex row. */
+.erp-v2 .erp-v2-reports [hidden] { display: none !important; }
+.erp-v2 .erp-v2-reports__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-4);
+  padding: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+.erp-v2 .erp-v2-reports__filters {
+  display: grid;
+  flex: 1 1 760px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: var(--erp-space-3);
+  min-width: 0;
+}
+.erp-v2 .erp-v2-reports__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  min-width: 0;
+}
+.erp-v2 .erp-v2-reports__field > .erp-input { width: 100%; min-width: 0; }
+.erp-v2 .erp-v2-reports__label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-v2-reports__field [data-v2-periodseg],
+.erp-v2 .erp-v2-reports__field [data-v2-groupseg] { min-width: 0; }
+.erp-v2 .erp-v2-reports__field .erp-seg {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--erp-radius-lg);
+}
+.erp-v2 .erp-v2-reports__field .erp-seg button {
+  min-block-size: 38px;
+  padding-inline: var(--erp-space-3);
+}
+.erp-v2 .erp-v2-reports__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-v2-reports__actions .erp-btn { min-block-size: 40px; }
+.erp-v2 .erp-v2-reports__actions .erp-btn:disabled { opacity: .7; cursor: wait; }
+.erp-v2 .erp-v2-reports > [data-v2-pos] { margin-block-start: var(--erp-space-4); }
+.erp-v2 .erp-v2-reports [data-v2-extra-wrap] { margin-block-start: var(--erp-space-4); }
+.erp-v2 .erp-v2-reports [data-v2-extra][aria-busy="true"] { opacity: .72; }
+.erp-v2 .erp-v2-reports [data-v2-extra] h4 {
+  margin: var(--erp-space-4) 0 var(--erp-space-2);
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-md);
+}
+.erp-v2 .erp-v2-reports [data-v2-table] .erp-table__grid,
+.erp-v2 .erp-v2-reports [data-v2-extra] .erp-table__grid { min-width: 960px; }
+.erp-v2 .erp-v2-reports .erp-kpis { margin-block-end: var(--erp-space-4); }
+
 /* الأسطر تحت الأشرطة: حالة واحدة لكل سطر، بلا لون خلفية. */
 .erp-v2 [data-v2-legend] .erp-legend { margin-block-start: var(--erp-space-4); }
 
@@ -55,6 +124,15 @@
    شاشة التقارير تحمل شريطَي فترة وتجميع معًا، فتزداد حركتان: تصغير حشو
    أزرار الشريطين، ونزول كل شريط سطره حتى لا تُقصَّ آخر زر. */
 @media (max-width: 640px) {
+  .erp-v2 .erp-v2-reports__toolbar { align-items: stretch; padding: var(--erp-space-3); }
+  .erp-v2 .erp-v2-reports__filters { flex-basis: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-v2-reports__field--segments,
+  .erp-v2 .erp-v2-reports__field--type { grid-column: 1 / -1; }
+  .erp-v2 .erp-v2-reports__field .erp-seg { width: 100%; }
+  .erp-v2 .erp-v2-reports__field .erp-seg button { flex: 1 1 auto; }
+  .erp-v2 .erp-v2-reports__actions { width: 100%; }
+  .erp-v2 .erp-v2-reports__actions .erp-btn { flex: 1 1 0; }
+
   .erp-v2-attendance .erp-dash-head,
   .erp-v2-employees .erp-dash-head,
   .erp-v2-warehouse .erp-dash-head,

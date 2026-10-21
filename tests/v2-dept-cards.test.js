@@ -5,7 +5,7 @@
  * القسم بالكاشير المعين». المثبّت هنا:
  *   1) مستودع الروابط: تطبيع رقم الكاشير، قواعد التحقق، مصدر الأرقام
  *      (روابط 103 أولًا، والخريطة المدمجة احتياطًا) — بلا خلط المصدرين.
- *   2) علم كتابة مستقل v2deptcashier (OFF افتراضيًا، والـURL يغلب المخزّن).
+ *   2) علم v2deptcashier ظاهرٌ افتراضيًا و`=0` يُخفيه (طلب المالك: الأوبشن في الواجهة).
  *   3) قاعدة 103 + تسجيل الكيان في الباب العام + حرس الخادم في المسارين.
  *   4) الشاشة: البطاقات تُستخدم نفس حساب القديم، ولا معالج مضمّن (on=…).
  */
@@ -86,7 +86,8 @@ function repoCtx(extra = {}) {
         ...extra,
     }, ['normalizeCashierNo', 'isValidCashierNo', 'validateLinkForm', 'deptLinkRows',
         'deptCashierNos', 'deptNameOf', 'createDeptCashierLink', 'deleteDeptCashierLink',
-        'updateDeptCashierLink', 'LINKS_ENTITY', 'DEPT_CASHIER_WRITE_ROLES']);
+        'updateDeptCashierLink', 'LINKS_ENTITY', 'DEPT_CASHIER_WRITE_ROLES',
+        'fetchYaraCashiers', 'cashierNameOf', 'cashierLabel']);
     ctx.__calls = calls;
     return ctx;
 }
@@ -163,21 +164,82 @@ describe('مستودع روابط الكاشير — التحقق والمصدر
     });
 });
 
-describe('علم v2deptcashier — OFF افتراضيًا والـURL يغلب', () => {
-    const load = () => loadEsm(FLAGS, {}, ['deptCashierWriteEnabled', 'DEPT_CASHIER_WRITE_FLAG']);
+describe('دليل كاشيرات يارا سوفت — الباب القائم بلا اسم مُختَرع', () => {
+    /** apiFetch مزوّر يُرجئ صفوف cashiers-live كما يُرجعها الخادم. */
+    function dirCtx(cashiers) {
+        const paths = [];
+        const apiFetch = jest.fn(async (p) => { paths.push(p); return {cashiers}; });
+        const ctx = loadEsm(REPO, {
+            apiFetch,
+            fetchEntityNewest: jest.fn(async () => []),
+            deptWithChildren,
+            CASHIER_DEPT_MAP: {},
+        }, ['fetchYaraCashiers', 'cashierNameOf', 'cashierLabel', 'normalizeCashierNo']);
+        ctx.__paths = paths;
+        return ctx;
+    }
 
-    test('غياب العلم = مغلق، والقراءة الممنوعة لا ترمي', () => {
-        const ctx = load();
-        expect(ctx.DEPT_CASHIER_WRITE_FLAG).toBe('v2deptcashier');
-        expect(ctx.deptCashierWriteEnabled('', null)).toBe(false);
-        expect(ctx.deptCashierWriteEnabled(undefined, {getItem: () => {throw new Error('denied');}})).toBe(false);
+    test('الباب cashiers-live نفسه: لا مسار خادم جديد للروابط', async () => {
+        const ctx = dirCtx([{cashier_no: '9', name: 'الكافيه', dept_code: 'CAF'}]);
+        const out = await ctx.fetchYaraCashiers();
+        expect(ctx.__paths).toEqual(['/yara-reports/cashiers-live']);
+        expect(out).toEqual([{no: '9', name: 'الكافيه', deptCode: 'CAF', invoices: 0, total: 0}]);
     });
 
-    test('المخزّن يفتح للـstaging، و=0 في الـURL يغلب المخزّن', () => {
+    test('الترقيم رقمي تصاعدي، والصفوف غير الرقمية تُطرح — لا رقم فاسد في المنتقي', async () => {
+        const ctx = dirCtx([
+            {cashier_no: '10', name: 'ب', dept_code: 'X', today_invoices: 3, today_total: 450.5},
+            {cashier_no: '2', name: 'أ', dept_code: 'Y'},
+            {cashier_no: '9999999', name: 'طويل', dept_code: 'Z'},
+            {cashier_no: '٥', name: 'عربي', dept_code: 'Z'},
+            {cashier_no: '', name: 'فارغ', dept_code: 'Z'},
+            null,
+        ]);
+        const out = await ctx.fetchYaraCashiers();
+        expect(out.map((c) => c.no)).toEqual(['2', '10']);
+        expect(out[1]).toMatchObject({invoices: 3, total: 450.5});
+    });
+
+    test('الاسم قد يغيب: null لا سلسلة فارغة، والوسم لا يخترع اسمًا', async () => {
+        const ctx = dirCtx([{cashier_no: '4', name: '', dept_code: 'G'}, {cashier_no: '6', name: 'الجري', dept_code: 'G'}]);
+        const out = await ctx.fetchYaraCashiers();
+        expect(out.map((c) => c.name)).toEqual([null, 'الجري']);
+        expect(ctx.cashierNameOf('4', out)).toBeNull();
+        expect(ctx.cashierNameOf('99', out)).toBeNull();
+        expect(ctx.cashierLabel('4', out)).toBe('كاشير 4');
+        expect(ctx.cashierLabel('6', out)).toBe('كاشير 6 — الجري');
+        expect(ctx.cashierLabel(' 6 ', out)).toBe('كاشير 6 — الجري');
+    });
+
+    test('قراءة بلا صفوف أو بقراءة فارغة = دليل فارغ لا استثناء', async () => {
+        const empty = dirCtx([]);
+        expect(await empty.fetchYaraCashiers()).toEqual([]);
+        const nullish = loadEsm(REPO, {
+            apiFetch: jest.fn(async () => null),
+            fetchEntityNewest: jest.fn(async () => []),
+            deptWithChildren,
+            CASHIER_DEPT_MAP: {},
+        }, ['fetchYaraCashiers']);
+        expect(await nullish.fetchYaraCashiers()).toEqual([]);
+    });
+});
+
+describe('علم v2deptcashier — ظاهر افتراضيًا، و=0 يُخفيه (طلب المالك)', () => {
+    const load = () => loadEsm(FLAGS, {}, ['deptCashierWriteEnabled', 'DEPT_CASHIER_WRITE_FLAG']);
+
+    test('غياب العلم = ظاهر (الأوبشن في الواجهة)، والقراءة الممنوعة لا ترمي', () => {
         const ctx = load();
-        expect(ctx.deptCashierWriteEnabled('', {getItem: (k) => (k === 'karim_v2_dept_cashier_write' ? '1' : null)})).toBe(true);
-        expect(ctx.deptCashierWriteEnabled('?v2deptcashier=1', {getItem: () => null})).toBe(true);
+        expect(ctx.DEPT_CASHIER_WRITE_FLAG).toBe('v2deptcashier');
+        expect(ctx.deptCashierWriteEnabled('', null)).toBe(true);
+        expect(ctx.deptCashierWriteEnabled(undefined, {getItem: () => {throw new Error('denied');}})).toBe(true);
+    });
+
+    test('=0 صريح يُخفيه، و=1 يفتحه، والـURL يغلب المخزّن', () => {
+        const ctx = load();
         expect(ctx.deptCashierWriteEnabled('?v2deptcashier=0', {getItem: () => '1'})).toBe(false);
+        expect(ctx.deptCashierWriteEnabled('', {getItem: (k) => (k === 'karim_v2_dept_cashier_write' ? '0' : null)})).toBe(false);
+        expect(ctx.deptCashierWriteEnabled('?v2deptcashier=1', {getItem: () => '0'})).toBe(true);
+        expect(ctx.deptCashierWriteEnabled('', {getItem: () => null})).toBe(true);
     });
 });
 
@@ -257,10 +319,14 @@ describe('شاشة الأقسام — البطاقات الثيمية', () => {
         expect(screen).toMatch(/canLink \? `<button type="button" class="erp-btn erp-btn--sm" data-v2-link=/);
     });
 
-    test('حساب البطاقة = حساب القديم: إيراد القسم + إيراد كاشيراته فوق المصروف', () => {
-        expect(screen).toMatch(/calcDeptStats\(revenues, expenses, rows, String\(r\.code\), null, null\)/);
-        expect(screen).toMatch(/const rev = s\.rev \+ cashRev;/);
-        expect(screen).toMatch(/costRatio: rev > 0 \? \(s\.exp \/ rev\) \* 100 : 0/);
+    test('إيراد البطاقة ومعدل التكلفة شهريان ويعتمدان صافي يارا سوفت المباشر', () => {
+        expect(screen).toContain('function monthToDateRange()');
+        expect(screen).toContain('fetchYaraCashierItems({from, to, view:');
+        expect(screen).toContain('actualCashierRevenue.get(String(no))');
+        expect(screen).toMatch(/const rev = localRevenue \+ cashRev;/);
+        expect(screen).toContain("new Set(['1', '3', '4', '5', '9'])");
+        expect(screen).toContain('لا تُعرض أصفار بديلة');
+        expect(screen).toContain('كاشيرات بلا إسناد موثّق');
     });
 
     test('الروابط تُقرأ بلا كسر حين لا يكون 103 مطبَّقًا (fallback الخريطة)', () => {
@@ -272,5 +338,126 @@ describe('شاشة الأقسام — البطاقات الثيمية', () => {
     test('تقليل الحركة مكفول كما في erp-motion.css', () => {
         expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
         expect(css).toMatch(/transform: none;/);
+    });
+});
+
+describe('شاشة الأقسام — منتقي كاشيرات يارا سوفت (بند #8)', () => {
+    const screen = read(SCREEN);
+
+    test('اللوحة تعرض المنتقي بدل الرقم وحده، واليدوي يبقى مخرجًا', () => {
+        expect(screen).toMatch(/function linkPickerHtml\(code\)/);
+        expect(screen).toMatch(/\+ linkPickerHtml\(code\)/);
+        expect(screen).toMatch(/<select class="erp-select" data-v2-link-pick>/);
+        expect(screen).toMatch(/<option value="__manual__">/);
+        expect(screen).toMatch(/manual\(true\)/);
+        expect(screen).toMatch(/manual\(false\)/);
+    });
+
+    test('الدليل يُقرأ بعد السجل ويَفشل بصمت: لا شاشة بلا روابط عند تعذّر الباب', async () => {
+        expect(screen).toMatch(/cashDir = await fetchYaraCashiers\(\);/);
+        expect(screen).toMatch(/cashDirFailed = true;/);
+        expect(screen).toMatch(/} catch \{\s*\n\s*\/\* نفس احتياط روابط 103/);
+    });
+
+    test('القيمة المرسلة: اختيار الدليل أولًا، واليدوي فقط حين يُطلب', () => {
+        expect(screen).toMatch(/function pickedCashierNo\(\)/);
+        expect(screen).toMatch(/if \(v === '__manual__'\) \{return q\('\[data-v2-link-no\]'\)\?\.value \?\? '';\}/);
+        expect(screen).toMatch(/cashier_no: pickedCashierNo\(\),/);
+        expect(screen).not.toMatch(/cashier_no: q\('\[data-v2-link-no\]'\)\?\.value/);
+    });
+
+    test('تبديل المنتقي يُظهر اليدوي ويُفرغه فلا يعلق رقم خلف اختيار الدليل', () => {
+        expect(screen).toMatch(/matches\('\[data-v2-link-pick\]'\)/);
+        expect(screen).toMatch(/manual\.hidden = !manualOn;/);
+        expect(screen).toMatch(/if \(noInput && !manualOn\) \{noInput\.value = '';\}/);
+    });
+
+    test('اسم الكاشير من الدليل في الشارة وصفّ الربط — والرقم لا يُستبدل به', () => {
+        expect(screen).toMatch(/const nm = cashierNameOf\(l\.cashierNo, cashDir\);/);
+        expect(screen).toMatch(/erp-dept-cashier__name/);
+        expect(screen).toMatch(/title="\$\{esc\(cashierLabel\(l\.cashierNo, cashDir\)\)\}/);
+        expect(screen).toMatch(/كاشير <span class="erp-mono" dir="ltr">\$\{esc\(l\.cashierNo\)\}/);
+    });
+
+    test('المربوط هنا معطّل في القائمة والمربوط بغير القسم يُذكر صاحبه', () => {
+        expect(screen).toMatch(/const here = new Set\(deptCashierNos\(code, \{links, departments: rows\}\)\.nos\);/);
+        expect(screen).toMatch(/\$\{linkedHere \? ' disabled' : ''\}/);
+        expect(screen).toMatch(/— مربوط بـ \$\{owner\}/);
+        expect(screen).toMatch(/— مربوط هنا/);
+    });
+
+    test('المنتقي لا يمدّ اللوحة: min-inline-size:0 في erp-departments.css', () => {
+        const css = read(CSS);
+        expect(css).toMatch(/\[data-v2-link-pick\] \{[\s\S]*?min-inline-size: 0;/);
+    });
+});
+
+describe('طيّ الأقسام المرآتية وتفريع الأبناء داخل الأب (طلب المالك 2026-10-19)', () => {
+    const screen = read(SCREEN);
+    const css = read(CSS);
+
+    test('isMirrorDept: بادئة ys_ وحدها، وحالة الأحرف لا تفرق', () => {
+        const m = screen.match(/const MIRROR_DEPT_RE = (\/\^ys_\/i);[\s\S]*?function isMirrorDept\(code\) \{ ([^\n]+) \}/);
+        expect(m).toBeTruthy();
+        const fn = new Function(`const MIRROR_DEPT_RE = ${m[1]};\nfunction isMirrorDept(code) { ${m[2]} }\nreturn isMirrorDept;`)();
+        expect(fn('ys_cc_1')).toBe(true);
+        expect(fn('ys_b4_ext')).toBe(true);
+        expect(fn('YS_CC_9')).toBe(true);
+        expect(fn('kitchen')).toBe(false);
+        expect(fn('external_sales')).toBe(false);
+        expect(fn('B.F')).toBe(false);
+        expect(fn(null)).toBe(false);
+        expect(fn(undefined)).toBe(false);
+    });
+
+    test('المرآتية تُطوى افتراضيًا طيّ عرضٍ فقط، والمفتاح يعيدها بلا معالج مضمّن', () => {
+        expect(screen).toMatch(/let showMirrors = false;/);
+        expect(screen).toMatch(/const visibleRows = \(\) => \(showMirrors \? rows : rows\.filter\(\(d\) => !isMirrorDept\(d\.code\)\)\);/);
+        expect(screen).toMatch(/data-v2-mirrors/);
+        expect(screen).toMatch(/if \(ev\.target\.matches\('\[data-v2-mirrors\]'\)\) \{showMirrors = !!ev\.target\.checked; paint\(\); return;\}/);
+        expect(screen).not.toMatch(/(?:^|\s)on[a-z]+="/);
+    });
+
+    test('العدّادات تتبع المعروض لا الكل، والملخّص يذكر المطوي بلا حذف', () => {
+        expect(screen).toMatch(/const shown = visibleRows\(\)\.length;/);
+        expect(screen).toMatch(/const roots = shown\.filter\(\(d\) => !d\.parent_code\)\.length;/);
+        expect(screen).toMatch(/قسم مبيعات مرآتي مطوي/);
+        expect(screen).toMatch(/table\.setRows\(familyOrder\(visibleRows\(\)\)\);/);
+        expect(screen).toMatch(/data-v2-mirrors-label/);
+    });
+
+    test('الفرعية تُرسم داخل بطاقة أبيها: لا بطاقة عليا لكل فرع', () => {
+        expect(screen).toMatch(/const roots = list\.filter\(\(d\) => !d\.parent_code \|\| !byCode\.has\(String\(d\.parent_code\)\)\);/);
+        expect(screen).toMatch(/`<ul class="erp-dept-kids\$\{cls\}">/);
+        expect(screen).toMatch(/cards\.length \|\| orphans\.length/);
+        expect(screen).toMatch(/const orphans = list\.filter\(\(d\) => !covered\.has\(String\(d\.code\)\)\);/);
+        expect(screen).not.toMatch(/familyOrder\(rows\)\.map\(deptCardHtml\)/);
+        expect(screen).toMatch(/const kids = visibleRows\(\)\.filter\(\(d\) => String\(d\.parent_code \|\| ''\) === code\)\.length;/);
+    });
+
+    test('الأنماط: الأبناء صفوفٌ مضغوطة داخل البطاقة بلا لون حرفي', () => {
+        expect(screen).toMatch(/function deptChildRowHtml\(r\)/);
+        expect(screen).toMatch(/erp-dept-child__row/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-kids \{/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-child__row \{/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-viewbar \{/);
+        expect(css).toMatch(/border-inline-start: 2px solid color-mix\(in srgb, var\(--dept-accent\)/);
+        expect(css).not.toMatch(/\.erp-dept-kids \.erp-dept-card/);
+    });
+
+    test('طيّ الأقسام الفرعية: الزر يعدّ ويُفرد، والقائمة تُطوى بـ CSS ولا تُحذف', () => {
+        expect(screen).toMatch(/const kidsOpen = new Set\(\);/);
+        expect(screen).toMatch(/function deptKidsBarHtml\(code, count, open\)/);
+        expect(screen).toMatch(/data-v2-kids="\$\{esc\(code\)\}"/);
+        expect(screen).toMatch(/aria-expanded="\$\{open \? 'true' : 'false'\}"/);
+        expect(screen).toMatch(/\(kids \? deptKidsBarHtml\(code, kids, kidsOpen\.has\(code\)\) : ''\)/);
+        expect(screen).toMatch(/const kidsBtn = ev\.target\.closest\('\[data-v2-kids\]'\);/);
+        expect(screen).toMatch(/const cls = kidsOpen\.has\(code\) \? '' : ' is-collapsed';/);
+        expect((screen.match(/kidsOpen\.has\(/g) || []).length).toBeGreaterThanOrEqual(2);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-kids\.is-collapsed \{ display: none; \}/);
+        expect(css).toMatch(/\.erp-v2 \.erp-dept-kids-bar \{/);
+        expect(css).toMatch(/@media print \{[\s\S]*?\.erp-v2 \.erp-dept-kids\.is-collapsed \{ display: flex; \}/);
+        // الطيّ لا يحذف من الـDOM: القائمة تُبنى دائمًا في render
+        expect(screen).toMatch(/`<ul class="erp-dept-kids\$\{cls\}">/);
     });
 });

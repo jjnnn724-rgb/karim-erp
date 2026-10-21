@@ -156,7 +156,7 @@ function clearFormErrors(formElement) {
 
 /** إضافة مستمع تحقق تلقائي للنموذج */
 function attachAutoValidation(formElement, tableName, options = {}) {
-  const { onSubmit = true, onBlur = true, onChange = false } = options;
+  const { onSubmit = true, onBlur = true } = options;
   
   if (onSubmit) {
     formElement.addEventListener('submit', async (e) => {

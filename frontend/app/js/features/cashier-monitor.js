@@ -72,7 +72,7 @@ async function renderCashierMonitor(){
     if (!box) {return;}
     if (!CMSTATE.date) {CMSTATE.date = cmToday();}
     box.innerHTML = '<div class="mcard u-empty"><div class="spinner"></div> جاري تحميل متابعة الكاشير…</div>';
-    let summary = { cashiers: [] }, orders = { orders: [], total: 0 };
+    let summary, orders;
     try {
         [summary, orders] = await Promise.all([
             apiFetch(`/cashier-monitor/summary?date=${CMSTATE.date}`),

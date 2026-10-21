@@ -11,25 +11,19 @@
  * Run: npm test
  */
 
-const { describe, it, expect, beforeAll, afterAll, beforeEach } = require('@jest/globals');
+const { describe, it, expect, beforeEach } = require('@jest/globals');
 
 // Import modules under test
 const {
     parsePaginationParams,
     buildPaginatedQuery,
-    paginationMiddleware,
     DEFAULT_PAGE,
     DEFAULT_LIMIT,
     MAX_LIMIT,
-    MAX_OFFSET,
 } = require('../backend/pagination');
 
 const {
     createRateLimiter,
-    generalLimiter,
-    authLimiter,
-    stateLimiter,
-    crudLimiter,
     MemoryStore,
     DEFAULT_CONFIGS,
     _memoryStore,

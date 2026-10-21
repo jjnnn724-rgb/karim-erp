@@ -14,7 +14,7 @@ const totalSalaries = STATE.employees.reduce((s,e)=>s+(e.salary||0),0);
 const lateToday = STATE.attendance.filter(a=>a.date===today()&&a.checkIn&&a.late).length;
 const absentToday = activeEmployees - presentToday;
 const _mStart=(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;})();
-let monthGaps=0; try{ monthGaps=attGapsData(_mStart,today()).length; }catch(_){ monthGaps=0; }
+let monthGaps; try{ monthGaps=attGapsData(_mStart,today()).length; }catch(_){ monthGaps=0; }
 setTimeout(()=>{ renderHRCharts(); },100);
 return `
 <div class="metrics-grid">
@@ -371,7 +371,7 @@ box.innerHTML=`<div class="tbl-wrap" style="margin-top:14px;border:1px solid var
 <div class="u-row-wrap"><input type="search" class="inp" id="attGapsSearch" placeholder="بحث بالاسم أو الكود..." value="${esc(STATE.attGapsQ||'')}" oninput="attGapsSearch(this.value)" style="max-width:200px"><small class="text-muted">العطلات الأسبوعية ظاهرة أيضًا — عدّها بعينك قبل المعالجة</small><button class="btn btn-sm" onclick="STATE.attGapsQ='';attGapsToggle()">إخفاء ✕</button></div></div>
 <div class="tbl-scroll" style="max-height:380px;overflow:auto"><table>
 <thead><tr><th>التاريخ</th><th>اليوم</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead>
-<tbody>${gaps.slice(0,300).map((g,i)=>{ const m=typeMeta[g.type]; const absent=g.type==='absent'; return `<tr${absent?' style="background:rgba(231,76,60,.06)"':''}>
+<tbody>${gaps.slice(0,300).map((g,_i)=>{ const m=typeMeta[g.type]; const absent=g.type==='absent'; return `<tr${absent?' style="background:rgba(231,76,60,.06)"':''}>
 <td class="text-muted">${fD(g.date)}</td><td class="fw-bold">${attWeekday(g.date)}</td><td class="fw-bold">${esc(g.emp.name)}</td>
 <td><span class="badge ${m[1]}">${m[0]}</span></td>
 <td class="c-green">${!absent&&g.rec?.checkIn?esc(g.rec.checkIn):'—'}</td>
@@ -429,7 +429,7 @@ const rec=STATE.attendance.find(a=>String(a.id)===String(recordId));
 await persistUpdate('attendance', recordId, { checkIn: ci||null, checkOut: co||null, workMinutes, late, notes: [rec?.notes, audit].filter(Boolean).join(' | ') });
 Object.assign(rec||{}, { checkIn: ci||null, checkOut: co||null, workMinutes, late });
 }else{
-const saved=await persistCreate('attendance',(s)=>STATE.attendance.push(s),{ employeeId: String(empId), date, checkIn: ci||null, checkOut: co||null, workMinutes, late, notes: audit });
+await persistCreate('attendance',(s)=>STATE.attendance.push(s),{ employeeId: String(empId), date, checkIn: ci||null, checkOut: co||null, workMinutes, late, notes: audit });
 }
 toast('تمت تعبئة البصمة','success');
 }else if(type==='excuse'){
@@ -514,7 +514,7 @@ closeModal(); renderPage(); toast('تم اعتماد التصحيح','success');
 }
 async function checkInOutByScan(qrText){
 let data;
-try{ data = typeof qrText === 'string' ? JSON.parse(qrText) : qrText; }catch(e){ toast('الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي','error'); return; }
+try{ data = typeof qrText === 'string' ? JSON.parse(qrText) : qrText; }catch(_){ toast('الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي','error'); return; }
 if(!data || (data.system!==CONFIG.APP_NAME && data.system!=='Karim ERP') || data.type!=='employee_card' || !data.token || !data.signature){ toast('الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي','error'); return; }
 try{
 const result = await apiFetch('/hr/attendance/scan', {method:'POST', body: JSON.stringify({qr_payload:data})});
@@ -581,13 +581,13 @@ async function refreshLeaveWorkflow(){if(leaveWorkflowLoading){return;}leaveWork
 function workflowForLeave(id){return leaveWorkflowData.find(l=>String(l.id)===String(id))||STATE.leaveRequests.find(l=>String(l.id)===String(id));}
 function leaveCanAct(leave){if(!leave||leave.workflow_status!=='in_progress'){return false;}const role=STATE.currentUser?.role;if(role==='admin'){return true;}if(role==='hr'&&leave.current_stage==='hr'){return true;}if(role==='manager'&&['direct_manager','general_manager'].includes(leave.current_stage)){return true;}if(role==='dept_head'&&leave.current_stage==='direct_manager'){return true;}return false;}
 function renderLeavesPage(){
- const isPrivileged=['admin','hr','manager'].includes(STATE.currentUser.role);if(!leaveWorkflowLoaded&&!leaveWorkflowLoading){setTimeout(refreshLeaveWorkflow,0);}
+ if(!leaveWorkflowLoaded&&!leaveWorkflowLoading){setTimeout(refreshLeaveWorkflow,0);}
  const leavesToShow=leaveWorkflowLoaded?leaveWorkflowData:STATE.leaveRequests;const pendingCount=leavesToShow.filter(l=>l.workflow_status==='in_progress'||(!l.workflow_status&&l.status==='pending')).length;
  return `<div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=calendar></i> ${t('lv.total')}</div><div class="mcard-val c-gold">${fN(leavesToShow.length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=hourglass></i> ${t('lv.pending')}</div><div class="mcard-val c-orange">${fN(pendingCount)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-check></i> ${t('lv.approved')}</div><div class="mcard-val c-green">${fN(leavesToShow.filter(l=>l.workflow_status==='completed'||l.status==='approved').length)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=circle-x></i> مرفوضة</div><div class="mcard-val c-red">${fN(leavesToShow.filter(l=>l.workflow_status==='rejected'||l.status==='rejected').length)}</div></div></div><div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=calendar></i> دورة اعتماد الإجازات</h3><button class="btn btn-gold" onclick="showAddLeaveModal()"><i class=ji data-i=plus></i> طلب إجازة</button></div><div class="workflow-banner"><strong><i class=ji data-i=git-branch></i> مسار الاعتماد:</strong> الموظف ← المدير المباشر (رئيس القسم) ← المدير العام ← شؤون العاملين (تقفل الطلب)</div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> متابعة الطلبات</h3><small class="text-muted">المرحلة الحالية والملاحظات والإجراء المطلوب تظهر في كل طلب.</small></div><div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>نوع الإجازة</th><th>الفترة</th><th>المرحلة الحالية</th><th>الحالة</th><th>آخر ملاحظة</th><th>إجراءات</th></tr></thead><tbody>${leavesToShow.slice().reverse().map(l=>{const emp=findEmployeeById(l.employeeId);const type=STATE.leaveTypes.find(t=>String(t.id)===String(l.leaveTypeId));const days=Math.ceil((new Date(l.endDate)-new Date(l.startDate))/86400000)+1;const canAct=leaveCanAct(l);return `<tr><td class="fw-bold">${esc(l.employee_name||emp?.name||'—')}</td><td>${l.leave_type_icon||type?.icon||''} ${esc(l.leave_type_name||type?.name||'—')}</td><td>${fD(l.startDate)} — ${fD(l.endDate)}<small class="text-muted" style="display:block">${days} يوم</small></td><td><span class="badge ${canAct?'bdg-blue':'bdg-purple'}">${LEAVE_STAGE_LABELS[l.current_stage]||'—'}</span></td><td><span class="badge ${leaveWorkflowStatusClass(l.workflow_status||l.status)}">${leaveWorkflowStatusLabel(l.workflow_status||l.status)}</span></td><td class="u-maxw-260">${esc(l.current_note||l.reason||'—')}</td><td style="display:flex;gap:5px;flex-wrap:wrap">${canAct?`<button class="btn btn-green btn-sm" onclick="advanceLeaveWorkflow('${l.id}','approve')"><i class=ji data-i=circle-check></i> اعتماد</button><button class="btn btn-red btn-sm" onclick="advanceLeaveWorkflow('${l.id}','reject')"><i class=ji data-i=circle-x></i> رفض</button><button class="btn btn-sm" onclick="advanceLeaveWorkflow('${l.id}','return')"><i class=ji data-i=corner-up-left></i> إعادة</button>`:''}<button class="btn btn-blue btn-sm" onclick="viewLeaveDetails('${l.id}')"><i class=ji data-i=eye></i> عرض</button></td></tr>`;}).join('')||'<tr><td colspan="7" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`;
 }
 function showAddLeaveModal(){
 const isAdmin=['admin','hr','manager'].includes(STATE.currentUser.role);
-let empOptions='';
+let empOptions;
 if(isAdmin){
 empOptions=STATE.employees.filter(e=>e.status==='active').map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
 }else{
@@ -684,7 +684,7 @@ showModal(`
 }
 async function addHRDept(){
 const name=document.getElementById('hrDeptName')?.value.trim();
-const code=document.getElementById('hrDeptCode')?.value.trim().toUpperCase();
+let code=document.getElementById('hrDeptCode')?.value.trim().toUpperCase();
 const manager=document.getElementById('hrDeptManager')?.value.trim();
 if(!name||!code){ toast('أدخل الاسم والكود','error'); return; }
 if(STATE.hrDepartments.find(d=>d.code===code)){ toast('الكود موجود بالفعل','error'); return; }
@@ -1020,7 +1020,6 @@ async function applyShiftsFromPanel(){
       try {
         const analysis = await apiFetch('/hr/shifts/analysis?month=' + new Date().toISOString().slice(0, 7));
         const wrong = (analysis.items || []).filter(x => Math.abs(x.driftMinutes) >= 30);
-        const manual = text2.toLowerCase();
         const extra = wrong.filter(x => {
           const n = (x.name || '').toLowerCase();
           return !text2.includes(n) && !text2.includes('emp-' + String(x.id)) && !(new RegExp('emp-\s*' + String(x.id) + '\b', 'i')).test(text2) && !(x.name || '').split(' ').some(w => w.length >= 3 && text2.includes(w));

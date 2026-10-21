@@ -36,6 +36,16 @@ function loadEsm(file, injections = {}, collect = []) {
     return context;
 }
 
+function loadTemplate(file) {
+    const source = read(file)
+        .replace(/^import[\s\S]*?\s+from\s+['"][^'"]+['"];?\s*$/gm, '')
+        .replace(/^export\s+/gm, '');
+    const context = { Date, String };
+    vm.createContext(context);
+    vm.runInContext(`${source}\n;globalThis.template = template;`, context, { filename: file });
+    return context.template;
+}
+
 function repoStub(impl) {
     const calls = [];
     const apiFetch = jest.fn(async (p, opts) => {
@@ -84,6 +94,15 @@ describe('الرواتب — الأبواب', () => {
 
 describe('الرواتب — عقد الشاشة', () => {
     const src = () => read(SCREEN);
+
+    test('بطاقات الشاشة داخل جذر واحد يشمل الجدول وكل أقسام الإدارة', () => {
+        const template = loadTemplate(SCREEN);
+        const html = template(true);
+        expect(html).toMatch(/^<div class="erp-v2-payroll-root">/);
+        expect(html).toContain('data-v2-table');
+        expect(html).toContain('data-v2-ev-list');
+        expect(html.trimEnd()).toMatch(/<\/section>\s*<\/div>$/);
+    });
 
     test('المنظومة كاملة حاضرة', () => {
         const s = src();

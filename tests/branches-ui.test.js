@@ -109,7 +109,8 @@ describe('أسلاك التثبيت: karim-i18n + صفحة الفروع', () => 
     const keys = (await sw.stored()).map((s) => s.key);
     expect(keys).toContain(`/app/js/karim-i18n.js?v=${VER}`);
     expect(keys).toContain(`/app/js/features/branches.js?v=${VER}`);
-    expect(SW).toMatch(/CACHE_VERSION='4\.25\.5[2-9]'/);
+    // الإصدار رقمٌ يتقدّم كل دفعة (4.25.61+) — الحراسة تتحقق من الصيغة لا من الرقم
+    expect(SW).toMatch(/CACHE_VERSION='\d+\.\d+\.\d+'/);
   });
 
   test('branches.js يستدعي عقد الخلفية الأربعة (GET/POST/PATCH/DELETE)', () => {

@@ -120,7 +120,7 @@ describe('سلاسة الإقلاع: لا موجة 429 ولا ذيل متسلس�
         expect(STORAGE).toContain('refreshProcurementData()');
         expect(STORAGE).toContain('const tail = await tailBatch;');
         // لم يبقَ أي انتظار متسلسل على حدة بعد الدفعة
-        expect(STORAGE).not.toMatch(/try \{ STATE\.kitchenOps = await apiFetch\('\/kitchen\/overview'\); \} catch \(e\) \{ console\.warn\('Could not load kitchen overview:', e\.message\); \}\n    await refreshProcurementData\(\);/);
+        expect(STORAGE).not.toMatch(/try \{ STATE\.kitchenOps = await apiFetch\('\/kitchen\/overview'\); \} catch \(e\) \{ console\.warn\('Could not load kitchen overview:', e\.message\); \}\n {4}await refreshProcurementData\(\);/);
     });
 
     test('مسارات يارا تستخدم البوابة ومهلة أقصر مع مجمع أوسع', () => {

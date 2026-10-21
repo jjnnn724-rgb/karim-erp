@@ -27,7 +27,6 @@ const MOBILE_BP = '(max-width: 900px)';
 
 let _punchStatus = null;       // كاش حالة البوابة من السيرفر
 let _punchBusy = false;        // قفل منع النقر المزدوج أثناء الطلب
-let _navRendered = false;
 let _lastPunchResult = null;   // آخر نتيجة بصمة {cls:'ok'|'err', text} — تنجو من إعادة الرندر
 
 // ─── أدوات ───────────────────────────────────────────────────────────────────
@@ -85,7 +84,6 @@ function renderMobileNav() {
         document.body.classList.remove('mobile-shell-on');
         const nav = document.getElementById('mobileNav');
         if (nav) {nav.remove();}
-        _navRendered = false;
         return;
     }
     document.body.classList.add('mobile-shell-on');
@@ -107,7 +105,6 @@ function renderMobileNav() {
     nav.querySelectorAll('.mnav-item').forEach((b) => {
         b.addEventListener('click', () => mobileNavClick(b));
     });
-    _navRendered = true;
 }
 
 function mobileNavClick(el) {
@@ -387,7 +384,6 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
                     const det = res?.detections?.[0];
                     const bb = det?.boundingBox;
                     if (bb && (det?.categories?.[0]?.score ?? 1) >= 0.35) {
-                        const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
                         // BlazeFace يعيد إحداثيات بكسل + mirrored بسبب scaleX(-1) للعرض فقط — القص متماثل
                         return { box: { x: bb.originX, y: bb.originY, width: bb.width, height: bb.height }, descriptor: null };
                     }
@@ -406,10 +402,9 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
         };
         const samplesImg = [];
         const samplesDesc = [];
-        let hasDescriptorEngine = false;
         const finishResolve = (lastBox, lastDesc) => {
             const video = document.getElementById('faceVideo');
-            let lastCrop = lastBox && video ? cropFaceToJpeg(video, lastBox) : (video ? cropCenterToJpeg(video) : null);
+            const lastCrop = lastBox && video ? cropFaceToJpeg(video, lastBox) : (video ? cropCenterToJpeg(video) : null);
             if (target > 1) {
                 if (lastCrop) {samplesImg.push(lastCrop); if (lastDesc) {samplesDesc.push(lastDesc);}}
                 const images = samplesImg.slice(0, target);
@@ -437,10 +432,10 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000)),
             ]); } catch (_) { mpDetector = null; }
             if (!mpDetector) {
-                try { fapi = await loadFaceApiLib(); fapiOpts = new fapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); hasDescriptorEngine = true; }
+                try { fapi = await loadFaceApiLib(); fapiOpts = new fapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); }
                 catch (_) { fapi = null; }
             } else { // BlazeFace جاهز — حمّل face-api أيضًا بالخلفية للـ descriptor الاختياري
-                loadFaceApiLib().then((f) => { fapi = f; fapiOpts = new f.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); hasDescriptorEngine = true; }).catch(() => {});
+                loadFaceApiLib().then((f) => { fapi = f; fapiOpts = new f.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); }).catch(() => {});
             }
             if (!mpDetector && !fapi && !stream) {
                 say('تعذر تشغيل الكاميرا والمحركات — ارفع صورة واضحة للوجه بالزر بالأسفل');
@@ -461,14 +456,13 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
                 } catch (e) { say(e.message || 'تعذر قراءة الصورة'); }
             });
             // حلقة كشف حية للعرض فقط (تحديث الرسالة) — الالتقاط عند الضغط
-            let lastBox = null, lastDesc = null, lastSeen = 0, autoCount = 0, lastAutoAt = 0;
+            let lastSeen = 0, lastAutoAt = 0;
             const loop = async () => {
                 if (stopped || !stream) {return;}
                 try {
                     if (video.videoWidth > 0) {
                         const d = await detect(video);
                         if (d) {
-                            lastBox = d.box; if (d.descriptor) {lastDesc = d.descriptor;}
                             lastSeen = Date.now();
                             if (target > 1) {
                                 // التقاط تلقائي متنوع كل ~900ms
@@ -476,7 +470,7 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
                                     const crop = cropFaceToJpeg(video, d.box);
                                     if (crop) {
                                         samplesImg.push(crop); if (d.descriptor) {samplesDesc.push(d.descriptor);}
-                                        autoCount++; lastAutoAt = Date.now(); setProg(samplesImg.length);
+                                        lastAutoAt = Date.now(); setProg(samplesImg.length);
                                         say(`ممتاز — اللقطة ${samplesImg.length}/${target} — حرّك رأسك قليلًا…`);
                                         if (samplesImg.length >= target) {finishResolve(d.box, d.descriptor); return;}
                                     }
@@ -863,7 +857,7 @@ async function mobileDoPunch(intent) {
                                 allowDeviceCredential: false,
                             });
                         }
-                    } catch (bioErr) {
+                    } catch (_) {
                         finish();
                         setResult('err', '✋ لم يتم تأكيد بصمة الجهاز — أعد المحاولة');
                         return;
@@ -935,7 +929,6 @@ function mobileShellRefresh() {
 function resetMobileShellSession() {
     _punchStatus = null;
     _lastPunchResult = null;
-    _navRendered = false;
 }
 
 /**
@@ -966,7 +959,7 @@ function initMobileShell() {
     // اللف حول go(): مزامنة حالة عنصر الشريط النشط بعد كل تنقل
     if (typeof window.go === 'function' && !window.go.__mobileWrapped) {
         const origGo = window.go;
-        window.go = function (page, el) {
+        window.go = function (_page, _el) {
             const r = origGo.apply(this, arguments);
             try {renderMobileNav();} catch (_) {}
             return r;

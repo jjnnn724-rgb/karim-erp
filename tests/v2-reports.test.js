@@ -423,6 +423,36 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(setType).toMatch(/reload\(\);/);
     });
 
+    test('the toolbar refreshes whichever report type is currently selected', () => {
+        const s = screen();
+        expect(s).toMatch(/function refreshActive\(\) \{\s*return extraType \? loadExtra\(\) : reload\(\);/);
+        expect(s).toMatch(/data-v2-reload.*refreshActive\(\); return;/);
+        expect(s).toMatch(/reload: refreshActive/);
+    });
+
+    test('POS grouping and report-type controls always describe the same server query', () => {
+        const s = screen();
+        expect(s).toMatch(/q\('\[data-v2-type\]'\)\.value = `pos-\$\{groupBy\}`;/);
+        expect(s).toMatch(/data-v2-group-field/);
+        expect(s).toMatch(/if \(groupField\) \{groupField\.hidden = !on;\}/);
+    });
+
+    test('late async extra-report responses cannot replace a newer filter selection', () => {
+        const s = screen();
+        expect(s).toMatch(/let extraLoadSequence = 0;/);
+        expect(s).toMatch(/const sequence = \+\+extraLoadSequence;/);
+        expect(s.split('sequence !== extraLoadSequence').length - 1).toBe(2);
+    });
+
+    test('the report toolbar exposes labels and truthful in-progress feedback', () => {
+        const s = screen();
+        expect(s).toMatch(/class="erp-v2-reports__toolbar erp-no-print" aria-label="إعدادات التقرير"/);
+        expect(s).toMatch(/class="erp-v2-reports__label">نوع التقرير/);
+        expect(s).toMatch(/reloadLabel\.textContent = 'جارٍ التحديث…';/);
+        expect(s).toMatch(/reloadButton\.disabled = true;/);
+        expect(css()).toMatch(/\.erp-v2 \.erp-v2-reports \[hidden\] \{ display: none !important; \}/);
+    });
+
     test('only allowlisted fields reach the table columns', () => {
         const keys = [...screen().matchAll(/\bkey: '([a-zA-Z]+)'/g)].map((m) => m[1]);
         expect(new Set(keys)).toEqual(new Set(['dimensionName', 'departmentName', 'invoiceCount',
@@ -574,11 +604,17 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(s).toMatch(/currencyRead \? Promise\.resolve\(currency\)/);
     });
 
-    test('printing states its own limits and the button is the only print call', () => {
+    test('printing is a branded A4 document, never a raw browser print of the screen', () => {
         const s = screen();
-        expect((s.match(/window\.print\(\)/g) || []).length).toBe(1);
+        // لا طباعة شاشة خام (window.print) — باب طباعة واحد (printDoc) يمرّ
+        // عبره كل التقارير (POS والإضافية) إلى عارض A4 بهوية الشركة.
+        expect((s.match(/window\.print\(\)/g) || []).length).toBe(0);
+        expect((s.match(/openInAppReport\(/g) || []).length).toBe(1);
         expect(s).toMatch(/data-v2-print-note/);
-        expect(s).toMatch(/المطبوعة تعرض الصفحة الحالية من الجدول، لا الفترة كاملة/);
+        expect(s).toMatch(/المطبوعة مستند A4 بهوية الشركة يعرض الفترة كاملة/);
+        // المستند يحمل توقيعات وترويسة، والطباعة من شريط العارض وحده.
+        expect(s).toMatch(/rp-sig/);
+        expect(s).toMatch(/rp-foot/);
     });
 
     test('the screen is read-only: it builds no request of its own', () => {
@@ -608,6 +644,8 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(block[0]).toMatch(/\.erp-v2-warehouse/);
         expect(block[0]).toMatch(/\.erp-v2-employees/);
         expect(block[0]).toMatch(/\.erp-v2-attendance/);
+        expect(block[0]).toMatch(/\.erp-v2-reports__filters/);
+        expect(block[0]).toMatch(/\.erp-v2-reports__actions/);
     });
 
     test('two segments each get their own line, and touch targets stay finger-sized', () => {

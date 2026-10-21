@@ -17,6 +17,7 @@ const APP = path.join(__dirname, '..', 'frontend', 'app');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const REPO_SRC = read(path.join(APP, 'js', 'v2', 'data', 'scan-repo.js'));
 const SCREEN_SRC = read(path.join(APP, 'js', 'v2', 'screens', 'goods-scan.js'));
+const SHELL_EXTRAS_SRC = read(path.join(APP, 'js', 'v2', 'layout', 'shell-extras.js'));
 const CSS_SRC = read(path.join(APP, 'css', 'v2', 'erp-scan.css'));
 const TOKENS_SRC = read(path.join(APP, 'css', 'v2', 'erp-tokens.css'));
 const HOST_SRC = read(path.join(APP, 'js', 'v2', 'preview.js'));
@@ -79,6 +80,31 @@ describe('1. المفتاح: مطفأٌ حتى يقرره المالك', () => {
         expect(offAt).toBeGreaterThan(-1);
         expect(liveAt).toBeGreaterThan(offAt);
         expect(SCREEN_SRC).toMatch(/scanEnabledModel\(window\.location\.search, window\.localStorage\.getItem\('karim_v2_scan'\)\)/);
+    });
+
+    test('زر مسح البضاعة يفعّل الشاشة لهذا الجهاز فقط عند اختياره', () => {
+        expect(SHELL_EXTRAS_SRC).toMatch(/if \(k === 'goods-scan'\) \{window\.localStorage\.setItem\('karim_v2_scan', '1'\);\}/);
+        expect(SHELL_EXTRAS_SRC).toContain('shell.navigate(k)');
+        expect(REPO_SRC).toContain("return { enabled: false, source: 'default' }");
+    });
+
+    test('كل مسح يفرّغ حقل الكود قبل المسح التالي لقارئ USB/QR', () => {
+        expect(SCREEN_SRC).toMatch(/function submit\(raw\) \{[\s\S]{0,220}codeInput\.value = '';[\s\S]{0,80}handle\(code\);/);
+    });
+
+    test('كاميرا الجوال تستخدم الكاميرا الخلفية، وتدعم QR ومساحة مسح مناسبة للهاتف', () => {
+        expect(SCREEN_SRC).toContain('window.isSecureContext === false');
+        expect(SCREEN_SRC).toContain('window.innerWidth - 32');
+        expect(SCREEN_SRC).toContain('window.innerHeight * 0.35');
+        expect(SCREEN_SRC).toContain('F.QR_CODE');
+        expect(SCREEN_SRC).toContain("{ facingMode: 'environment' }");
+    });
+
+    test('واجهة المسح تلتف للجوال وتعرض جداول الجلسة داخل تمرير واضح', () => {
+        expect(CSS_SRC).toContain('.erp-v2-scan [data-v2-mode]');
+        expect(CSS_SRC).toContain('@media (max-width: 640px)');
+        expect(CSS_SRC).toContain('.erp-v2-scan .gs-table-wrap');
+        expect(SCREEN_SRC).toContain('class="gs-table-wrap"');
     });
 });
 
@@ -398,4 +424,61 @@ describe('9. عقود المصدر والتوصيل', () => {
     });
 });
 
+describe('10. وضع الصرف (أذون) — لا يُخترع بابًا ولا يتجاوز توقيعًا', () => {
+    const DISPATCH_SRC = read(path.join(APP, 'js', 'v2', 'data', 'dispatch-repo.js'));
 
+    test('الوضع مُسجَّل في MODES بعد الوارد، ولّوحة مخصّصة له', () => {
+        expect(SCREEN_SRC).toMatch(/\{ key: 'out', ar: 'صرف \(أذون\)', en: 'Goods OUT' \}/);
+        expect(SCREEN_SRC).toContain('data-v2-panel="out"');
+        // التوجيه في handle(): كودٌ يُحلّ أولًا ثم يُدفع حسب الوضع.
+        expect(SCREEN_SRC).toMatch(/if \(mode === 'out'\) \{await onScanOut\(found, res\); return;\}/);
+    });
+
+    test('لا شبكة مباشرة: الإنشاء والأقسام عبر أبواب dispatch-repo', () => {
+        expect(SCREEN_SRC).not.toMatch(/\bapiFetch\s*\(/);
+        expect(SCREEN_SRC).not.toMatch(/[^.\w]fetch\s*\(/);
+        for (const door of ['createDispatch', 'fetchDepartmentOptions', 'CREATE_ROLES']) {
+            expect(SCREEN_SRC).toContain(door);
+            expect(DISPATCH_SRC).toMatch(new RegExp(`export (?:async )?function ${door}\\b|export const ${door}\\b`));
+        }
+    });
+
+    test('بوابة الإنشاء مرآة CREATE_ROLES لا تضييق canWrite', () => {
+        // الخادم يقبل admin/manager/warehouse/kitchen/sous_chef/dept_head (server.js:1547)،
+        // فلو قيّدنا المسح بـ invWriteVisible (مخزن فقط) لحرمنا الشيف ورئيس القسم.
+        expect(SCREEN_SRC).toMatch(/const canDispatch = CREATE_ROLES\.includes\(role\)/);
+        expect(DISPATCH_SRC).toMatch(/export const CREATE_ROLES = \['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'\]/);
+        expect(SCREEN_SRC).not.toMatch(/const canDispatch = canWrite/);
+    });
+
+    test('بوابة الرصيد هي mainQty (المخزن الرئيسي) — صفرًا فلا يُصرَّف', () => {
+        // dispatchStockGate (:450) يحسب على المخزن الرئيسي نفسه، فنعكسه في العميل:
+        // صنفٌ بلا أي رصيدٍ بالرئيسي يُرفض قبل الإنشاء، والخادم يعيد الفحص.
+        expect(SCREEN_SRC).toMatch(/function addOutItem\(item, scanned = false\)/);
+        expect(SCREEN_SRC).toMatch(/const avail = Number\(item\.mainQty\) \|\| 0;/);
+        expect(SCREEN_SRC).toMatch(/if \(avail <= 0\) \{[\s\S]{0,120}لا يُصرَّف/);
+    });
+
+    test('الصرف يدعم إضافة صنف يدويًا بالبحث، بنفس الدور والرصيد ومسار الإذن', () => {
+        expect(SCREEN_SRC).toContain('data-v2-osearch');
+        expect(SCREEN_SRC).toContain('searchItems(term)');
+        expect(SCREEN_SRC).toMatch(/matches\.filter\(\(item\) => Number\(item\.mainQty\) > 0\)/);
+        expect(SCREEN_SRC).toContain('data-v2-oadd');
+        expect(SCREEN_SRC).toMatch(/if \(oadd\) \{[\s\S]{0,260}addOutItem\(item\)/);
+        expect(SCREEN_SRC).toMatch(/addOutItem\(found\.items\[0\], true\)/);
+        expect(SCREEN_SRC).toMatch(/outLines = bumpLine\(outLines, key\)/);
+        expect(SCREEN_SRC).toMatch(/await createDispatch\(\{ deptCode: outDept, deptName, items, notes: outNotes, status: 'pending', date: iso \}\)/);
+    });
+
+    test('الحمولة كما تقبلها شاشة الأذون حرفًا: pending ولا حقل مخترع', () => {
+        // status:'pending' صريح — لا يُقفز على «صرف» ولا يستبدل سلسلة الاعتماد.
+        expect(SCREEN_SRC).toMatch(/\{ deptCode: outDept, deptName, items, notes: outNotes, status: 'pending', date: iso \}/);
+        expect(SCREEN_SRC).toMatch(/\{ itemName: m\.name, qty: l\.qty, unit: m\.unit \}/);
+        expect(SCREEN_SRC).not.toMatch(/status:\s*'(approved|received|rejected)'/);
+    });
+
+    test('لا توقيع ولا اعتماد في المسح: الأذون يُنشأ معلّقًا وتكمل الواجهة الراهنة', () => {
+        expect(SCREEN_SRC).not.toMatch(/chefApproveDispatch|approveDispatch|receiveDispatch|signature/i);
+        expect(SCREEN_SRC).toMatch(/بانتظار الاعتماد/);
+    });
+});

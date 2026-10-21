@@ -328,7 +328,7 @@ function renderPnl(){
 if(!checkMenuAccessLocal('pnl')) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لا تملك صلاحية الوصول</div>';}
 if(!PNL_DATA&&!PNL_LOADING){ setTimeout(pnlLoad,0); return '<div class="u-empty"><div class="spinner"></div></div>'; }
 if(!PNL_DATA) {return '<div class="u-empty"><div class="spinner"></div></div>';}
-const st=PNL_DATA.statement, cmp=PNL_DATA.comparison||{};
+const st=PNL_DATA.statement;
 const rev=st.revenue, gp=st.gross_profit, np=st.net_profit;
 const otherCosts=Number((st.shrinkage.amount||0))+Number(st.operating.total||0)+Number(st.payroll.total||0);
 const cogsPct=rev.total>0?((st.cogs.net/rev.total)*100):0;
@@ -342,7 +342,6 @@ const deptRows=(st.by_department||[]).map(d=>`<tr>
 <td class="c-orange">${fC(d.operating)}</td>
 <td class="fw-bold ${d.net>=0?'c-green':'c-red'}">${fC(d.net)}</td>
 <td class="c-orange">${d.margin_pct==null?'—':fN(Number(d.margin_pct).toFixed(1))+'%'}</td></tr>`).join('');
-const daily=st.daily_series||[];
 return `
 <div class="u-row-between u-mb12"><div class="fr" style="align-items:end">
 <div class="fr" style="gap:6px;flex-wrap:wrap">
@@ -453,7 +452,7 @@ async function pnlPrint(){
     frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(frame);
     frame.contentDocument.open(); frame.contentDocument.write(html); frame.contentDocument.close();
-    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){} setTimeout(()=>frame.remove(),2000); },500);
+    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },500);
   }catch(e){ toast(e.message||'تعذر الطباعة','error'); }
 }
 function pnlExportExcel(){

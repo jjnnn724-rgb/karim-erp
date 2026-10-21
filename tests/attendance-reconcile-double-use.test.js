@@ -81,13 +81,13 @@ function wire({ rows, logs, claims }) {
     api.reset();
     const claimRows = claims || rows;
     api.responder = (sql) => {
-        if (sql.includes('FROM attendance WHERE date >= $1')) return { rows: rows() };
-        if (/FROM attendance WHERE "employeeId" = \$1 AND \("checkInAt"/.test(sql)) return {
+        if (sql.includes('FROM attendance WHERE date >= $1')) {return { rows: rows() };}
+        if (/FROM attendance WHERE "employeeId" = \$1 AND \("checkInAt"/.test(sql)) {return {
             rows: claimRows().map((r) => ({ id: r.id, ci: r.checkInAt, co: r.checkOutAt })),
-        };
-        if (sql.includes('attendance_logs WHERE "employeeId" IS NULL')) return { rows: [] };
-        if (sql.includes('FROM attendance_logs')) return { rows: logs() };
-        if (sql.includes('FROM employees')) return { rows: [SHIFT] };
+        };}
+        if (sql.includes('attendance_logs WHERE "employeeId" IS NULL')) {return { rows: [] };}
+        if (sql.includes('FROM attendance_logs')) {return { rows: logs() };}
+        if (sql.includes('FROM employees')) {return { rows: [SHIFT] };}
         return { rows: [] };
     };
 }

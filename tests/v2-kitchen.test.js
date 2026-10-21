@@ -786,8 +786,8 @@ describe('kitchen.js — الشاشة: دورة المطبخ الكاملة بل
         expect(govErr).not.toMatch(/table\.setError/);
         expect(govErr).not.toMatch(/batches = \[\]/);
         // والفتح والتحديث يقرآن الاثنين معًا — إعادة التحميل لا تترك سجلًا قديمًا
-        expect(s).toMatch(/if \(event\.target\.closest\('\[data-v2-reload\]'\)\) \{reload\(\); readGovernance\(\); return;\}/);
-        expect(s).toMatch(/reload\(\);\n {4}readGovernance\(\);/);
+        expect(s).toMatch(/if \(event\.target\.closest\('\[data-v2-reload\]'\)\) \{reload\(\); readGovernance\(\); readCostCards\(\); return;\}/);
+        expect(s).toMatch(/reload\(\);\n {4}readGovernance\(\);\n {4}readCostCards\(\);/);
     });
 
     test('مرشّح «ملغى» ميت: الباب لا يرسله (status IN draft,open,closed)', () => {

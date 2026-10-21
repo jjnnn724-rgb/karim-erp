@@ -35,7 +35,7 @@ async function apiFetch(path, options = {}) {
             res = await fetch(API_BASE + path, Object.assign({}, options, { headers: buildHeaders() }));
             if (res.status !== 401) {
                 let data2 = null;
-                try { data2 = await res.json(); } catch (e) { /* 204 */ }
+                try { data2 = await res.json(); } catch (_) { /* 204 */ }
                 if (!res.ok) {throw new Error((data2 && (data2.message || data2.error)) || `فشل الطلب (${res.status})`);}
                 return data2;
             }
@@ -48,7 +48,7 @@ async function apiFetch(path, options = {}) {
         throw new Error('UNAUTHORIZED');
     }
     let data = null;
-    try { data = await res.json(); } catch (e) { /* e.g. 204 No Content */ }
+    try { data = await res.json(); } catch (_) { /* e.g. 204 No Content */ }
     if (!res.ok) {
         const info = serverErrorInfo(data);
         const err = new Error(info.message || (info.code && SERVER_CODE_AR[info.code]) || `فشل الطلب (${res.status})`);

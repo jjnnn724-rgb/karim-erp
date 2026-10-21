@@ -18,9 +18,11 @@
  *   ?v2fiscalwrite=1 | 0    → السنوات المالية: إنشاء/إقفال/السنة التالية (P2-4)
  *   ?v2invoicevoid=1 | 0    → إلغاء فاتورة شراء فردي وحذف جماعي (ذيل P1-4)
  *   ?v2invoicecreate=1 | 0  → إنشاء/تعديل فاتورة شراء (26c-2)
+ *                             استثناءٌ: ظاهرٌ افتراضيًا، و`=0` وحده يُخفيه
  *   ?v2bulkimport=1 | 0     → استيراد الموظفين/المستخدمين الجماعي (26د)
  *   ?v2chat=1 | 0           → الشات الداخلي (إرسال رسالة = كتابة، 2026-10-17)
  *   ?v2deptcashier=1 | 0    → ربط القسم بكاشيره المعيَّن (جدول 103، 2026-10-19)
+ *                             استثناءٌ: ظاهرٌ افتراضيًا، و`=0` وحده يُخفيه
  * وغياب الاثنين = OFF. المخزّن يبقى للـstaging كما في الأعلام الأخرى،
  * ولا يُكتب من هنا إطلاقًا؛ و`=0` في الـURL يغلب المخزّن دائمًا.
  */
@@ -101,8 +103,15 @@ export function invoiceVoidWriteEnabled(search, storage) {
     return readFlag(INVOICE_VOID_WRITE_FLAG, 'karim_v2_invoice_void_write', search, storage);
 }
 
+/**
+ * إنشاء/تعديل فاتورة شراء — ظاهرٌ افتراضيًا (طلب المالك 2026-10-20:
+ * «إضافة فواتير»). الحكم الأمني على الخادم بالدور (admin|manager|warehouse)
+ * وبفحص الحمولة في كل نداء، فهذا العلم رسمٌ فقط:
+ *   · `?v2invoicecreate=0` أو المخزّن '0' → يُخفي زرّ «فاتورة شراء جديدة»
+ *   · `=1` أو غياب الاثنين → ظاهر
+ */
 export function invoiceCreateWriteEnabled(search, storage) {
-    return readFlag(INVOICE_CREATE_WRITE_FLAG, 'karim_v2_invoice_create_write', search, storage);
+    return readFlagDefaultOn(INVOICE_CREATE_WRITE_FLAG, 'karim_v2_invoice_create_write', search, storage);
 }
 
 export function bulkImportWriteEnabled(search, storage) {
@@ -113,7 +122,34 @@ export function chatWriteEnabled(search, storage) {
     return readFlag(CHAT_WRITE_FLAG, 'karim_v2_chat', search, storage);
 }
 
-/** ربط القسم بكاشيره (103) — كتابة على جدول جديد، فعلمه مستقل به. */
+/**
+ * علمٌ ظاهرٌ افتراضيًا: `?name=0` أو المخزّن '0' يُغلقه، وغياب الاثنين = مفتوح.
+ * يُستخدم حين يكون الخيار جزءًا من الواجهة لا ميزة staging — والقرار الأمني
+ * يبقى على الخادم (الدور)، فهذا العلم رسمٌ فقط.
+ */
+function readFlagDefaultOn(name, storageKey, search, storage) {
+    const query = search !== undefined
+        ? search
+        : (typeof location !== 'undefined' ? location.search : '');
+    const match = String(query || '').match(new RegExp(`(?:^|[?&])${name}=([^&]*)`));
+    if (match) {return match[1] !== '0';}
+    try {
+        const store = storage !== undefined
+            ? storage
+            : (typeof localStorage !== 'undefined' ? localStorage : null);
+        return !store || store.getItem(storageKey) !== '0';
+    } catch {
+        return true;
+    }
+}
+
+/**
+ * ربط القسم بكاشيره (103) — ظاهرٌ افتراضيًا (طلب المالك 2026-10-19: «عايز
+ * الأوبشن ده موجود في الواجهة»). الحكم الأمني على الخادم بالدور (admin|manager)
+ * وبتوليد المعرّف والتحقق، فهذا العلم واجهةٌ فقط:
+ *   · `?v2deptcashier=0` أو المخزّن '0' → يُخفيه
+ *   · `=1` أو غياب الاثنين → ظاهر (اختياري المتصفح يفتحه صراحةً)
+ */
 export function deptCashierWriteEnabled(search, storage) {
-    return readFlag(DEPT_CASHIER_WRITE_FLAG, 'karim_v2_dept_cashier_write', search, storage);
+    return readFlagDefaultOn(DEPT_CASHIER_WRITE_FLAG, 'karim_v2_dept_cashier_write', search, storage);
 }

@@ -46,8 +46,15 @@ for (const f of files) {
     const rel = path.relative(ROOT, f).split(path.sep).join('/');
     const src = fs.readFileSync(f, 'utf8');
     const isHtml = f.endsWith('.html');
-    const handlers = (src.match(HANDLER_ATTR_RE) || []).length;
-    const inlineScripts = isHtml ? (src.match(INLINE_SCRIPT_RE) || []).length : 0;
+    // نتجاهل التعليقات (أمثلة التوثيق) — ما يُنفَّذ فقط هو ما يُحتسب
+    const code = src.split('\n')
+        .filter((l) => {
+            const t = l.trim();
+            return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('<!--') || t.startsWith('#'));
+        })
+        .join('\n');
+    const handlers = (code.match(HANDLER_ATTR_RE) || []).length;
+    const inlineScripts = isHtml ? (code.match(INLINE_SCRIPT_RE) || []).length : 0;
     if (handlers || inlineScripts) {
         pages.push({ file: rel, handlers, inlineScripts });
         totalHandlers += handlers;
@@ -125,4 +132,26 @@ if (process.argv.includes('--check-inline-scripts')) {
         process.exit(1);
     }
     console.log('✓ لا سكربتات inline في الواجهة (0)');
+}
+
+// ── بوابة التفويض: صفحة فيها data-karim-action تحمّل الموزّع ──
+// بدون الموزّع، أزرار الصفحة صامتة (لا استجابة) — العطل لا يظهر في الاختبارات.
+if (process.argv.includes('--check-dispatch')) {
+    const missing = [];
+    for (const f of files.filter((x) => x.endsWith('.html'))) {
+        const src = fs.readFileSync(f, 'utf8');
+        const usesDispatch = /data-karim-(action|also)\s*=/.test(src);
+        const usesMediaFlip = /data-media-always/.test(src);
+        if (!usesDispatch && !usesMediaFlip) {continue;}
+        if (!/action-dispatch\.js/.test(src)) {
+            missing.push(`${path.relative(ROOT, f).split(path.sep).join('/')}`);
+        }
+    }
+    if (missing.length) {
+        console.error('✗ صفحات تستخدم التفويض بلا تحميل الموزّع (أزرار صامتة):');
+        for (const m of missing) {console.error(`   • ${m}`);}
+        console.error('   الحل: أضف <script src="js/core/action-dispatch.js" defer></script>.');
+        process.exit(1);
+    }
+    console.log('✓ كل صفحة تستخدم التفويض تحمّل الموزّع');
 }

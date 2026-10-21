@@ -15,7 +15,7 @@
  * سواء جاء من هنا أو من هناك.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 /** بوابة الكتابة مرآة للخادم: requireRole('dept_head') في الأبواب الأربعة. */
 export const DEPT_EMP_WRITE_ROLES = ['dept_head'];

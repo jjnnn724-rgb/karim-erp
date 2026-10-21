@@ -24,10 +24,10 @@ function fakeClient(responses) {
         reads,
         async query(sql, params) {
             const isWrite = /^\s*(INSERT|UPDATE|DELETE)/i.test(sql);
-            if (isWrite) writes.push({ sql: sql.trim().split('\n')[0], params });
-            else reads.push(sql);
+            if (isWrite) {writes.push({ sql: sql.trim().split('\n')[0], params });}
+            else {reads.push(sql);}
             for (const [match, rows] of responses) {
-                if (sql.includes(match)) return { rows: typeof rows === 'function' ? rows(params) : rows };
+                if (sql.includes(match)) {return { rows: typeof rows === 'function' ? rows(params) : rows };}
             }
             return { rows: [] };
         },

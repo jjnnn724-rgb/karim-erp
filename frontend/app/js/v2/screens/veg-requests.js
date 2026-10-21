@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { openInAppReport } from '../report-viewer.js?v=4.9.169';
-import { statusBadge } from '../status.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { statusBadge } from '../status.js?v=4.9.181';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
     vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
     createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.169';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.169';
+} from '../data/veg-repo.js?v=4.9.181';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -118,7 +118,7 @@ td.name { font-weight: 700; } td.note { color: #666; font-size: 12px; }
 .controls button.secondary { background: #555; color: #fff; }
 @media print { .sheet { max-width: none; } .controls { display: none !important; } }
 </style></head><body>
-<div class="controls"><button onclick="window.print()">🖨 طباعة</button><button class="secondary" onclick="window.close()">إغلاق</button></div>
+<div class="controls"><button type="button" data-v2-print>🖨 طباعة</button><button type="button" class="secondary" data-v2-close>إغلاق</button></div>
 <div class="sheet">
   <div class="head">
     <div class="brand">
@@ -790,6 +790,8 @@ export function mountVegScreen(host, ctx = {}) {
             w.document.open();
             w.document.write(doc);
             w.document.close();
+            w.document.querySelector('[data-v2-print]')?.addEventListener('click', () => w.print());
+            w.document.querySelector('[data-v2-close]')?.addEventListener('click', () => w.close());
             w.focus();
             w.print();
         })();

@@ -56,7 +56,7 @@ describe('mobile-shell — الحساب الخالص والعناصر', () => {
         expect(items[0]).toEqual({ page: 'employee-portal', label: 'الرئيسية', icon: 'home', key: 'home' });
         expect(items[1]).toEqual({ page: 'employee-portal', label: 'بصمتي', icon: 'clock', key: 'punch', punch: true });
         expect(items[2]).toEqual({ page: 'payroll', label: 'رواتبي', icon: 'wallet', key: 'payroll' });
-        expect(items[3]).toEqual({ page: 'leaves', label: 'طلبي', icon: 'calendar', key: 'leaves' });
+        expect(items[3]).toEqual({ page: 'leaves', label: 'الإجازات', icon: 'calendar', key: 'leaves' });
         expect(items[4]).toEqual({ page: '__more', label: 'المزيد', icon: 'menu', key: '__more' });
     });
 
@@ -172,7 +172,7 @@ describe('mobile-shell — التركيب والتفاعل في DOM', () => {
         dummyContainer.querySelector = () => null;
 
         const navigated = [];
-        let drawerToggled = false;
+        const drawerToggled = jest.fn();
 
         const shell = ctx.mountMobileShell({
             container: dummyContainer,
@@ -180,11 +180,12 @@ describe('mobile-shell — التركيب والتفاعل في DOM', () => {
             getMenus: () => ['employee-portal', 'payroll'],
             getPage: () => 'employee-portal',
             onNavigate: (p) => navigated.push(p),
-            onToggleDrawer: () => { drawerToggled = true; },
+            onToggleDrawer: drawerToggled,
         });
 
         expect(shell.isMounted()).toBe(true);
         expect(fakeBody.classList.contains('erp-mobile-shell-on')).toBe(true);
+        expect(drawerToggled).not.toHaveBeenCalled();
 
         shell.destroy();
         expect(fakeBody.classList.contains('erp-mobile-shell-on')).toBe(false);

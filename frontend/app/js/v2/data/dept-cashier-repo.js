@@ -9,16 +9,16 @@
  * /api/dept_cashier_links (server.js: entities + schema-registry:270).
  * لا باب خادم جديد، ولا تغيير مسار. الأدوار حُكمها الخادم
  * (OPEN_ENTITY_WRITE_ROLES = admin|manager) وهذا العميل يعرض الأزرار فقط.
- * الكتابة كلها خلف علم v2deptcashier (OFF افتراضيًا).
+ * الكتابة كلها خلف علم v2deptcashier (ظاهرٌ افتراضيًا، و`=0` يُخفيه — طلب المالك: الأوبشن في الواجهة).
  *
  * تكافؤ الأرقام: جدول 103 مبذور بنفس الخريطة المكتوبة، فإذا غابت الروابط
  * (الميجريشن لم يُطبَّق بعد، أو قراءة غير متاحة) يرجع الحساب للخريطة كما في
  * القديم حرفيًا — لا يختفي إيراد الكاشير من البطاقة في أي حال.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { fetchEntityNewest, deptWithChildren } from './finance-repo.js?v=4.9.169';
-import { CASHIER_DEPT_MAP } from './dept-detail.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { fetchEntityNewest, deptWithChildren } from './finance-repo.js?v=4.9.181';
+import { CASHIER_DEPT_MAP } from './dept-detail.js?v=4.9.181';
 
 export const LINKS_ENTITY = 'dept_cashier_links';
 export const DEPT_CASHIER_WRITE_ROLES = ['admin', 'manager'];
@@ -107,4 +107,45 @@ export function deptCashierNos(deptCode, {links = [], departments = []} = {}) {
 export function deptNameOf(code, departments = []) {
     const hit = (departments || []).find((d) => norm(d.code) === norm(code));
     return hit ? norm(hit.name) : norm(code);
+}
+
+/**
+ * دليل كاشيرات يارا سوفت الحي — بند #8 من طلب المالك: «أربط القسم بالكاشير
+ * المعين» بلا رقم يُكتب من الذاكرة.
+ *
+ * بابه GET /api/yara-reports/cashiers-live (yara-reports.js:37): صفوف
+ * yarasoft_revenue_map حيث src_table='CC' — أي الكاشيرات المعتمدة فعليًا في
+ * خريطة الإيراد، برقمها الخام واسمها العربي وإيراد اليوم. لا Oracle حيّ ولا
+ * نداء خارجي: الباب يقرأ القاعدة نفسها، ومن لا يقرأه لا يفتح شاشة الأقسام أصلًا
+ * (حرسه admin/manager/accountant/auditor وقائمة الأقسام admin/manager/accountant).
+ *
+ * الدليل قد يفشل (خريطة فارغة في بيئة جديدة): الشاشة تُكمل بالإدخال اليدوي،
+ * ولا تُخترع أسماء لرقم غير معروف.
+ */
+export async function fetchYaraCashiers() {
+    const data = await apiFetch('/yara-reports/cashiers-live');
+    const list = Array.isArray(data && data.cashiers) ? data.cashiers : [];
+    return list
+        .filter((c) => c && typeof c === 'object')
+        .map((c) => ({
+            no: normalizeCashierNo(c.cashier_no),
+            name: norm(c.name) || null,
+            deptCode: norm(c.dept_code) || null,
+            invoices: Number(c.today_invoices || 0),
+            total: Number(c.today_total || 0),
+        }))
+        .filter((c) => isValidCashierNo(c.no))
+        .sort((a, b) => a.no.localeCompare(b.no, 'en', {numeric: true}));
+}
+
+/** رقم الكاشير → اسمه في الدليل، أو null لرقم لا يعرفه الدليل. */
+export function cashierNameOf(no, directory = []) {
+    const hit = (directory || []).find((c) => c.no === normalizeCashierNo(no));
+    return hit ? hit.name : null;
+}
+
+/** «كاشير 1 — الكافيه» بلا اختراع اسم: الرقم يُعرض دائمًا. */
+export function cashierLabel(no, directory = []) {
+    const name = cashierNameOf(no, directory);
+    return name ? `كاشير ${normalizeCashierNo(no)} — ${name}` : `كاشير ${normalizeCashierNo(no)}`;
 }

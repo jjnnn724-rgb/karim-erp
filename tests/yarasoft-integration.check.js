@@ -36,7 +36,7 @@ process.env.YARASOFT_SHARE = SHARE;
 process.env.YARASOFT_LOCATION_CODE = 'MAIN-WAREHOUSE';
 
 const { pool } = require('../backend/shared-pool');
-const { logger } = require('../backend/logger');
+require('../backend/logger');
 
 let pass = 0, fail = 0;
 function ok(cond, name) {

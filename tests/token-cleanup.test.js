@@ -7,8 +7,6 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { pool } = require('../backend/cashier-module/db-pool');
 const { purgeExpiredTokens } = require('../backend/cashier-module/token-cleanup');
 
-const TAG = 'zztest-token-cleanup'; // (مستبدل بـ TAG_JSON أدناه — عمود device_info jsonb)
-
 afterAll(async () => {
     await pool.end().catch(() => {});
 });

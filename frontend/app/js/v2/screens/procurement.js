@@ -13,15 +13,15 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { statusBadge } from '../status.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { statusBadge } from '../status.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
 import {
     fetchProcurementSummary, fetchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
     deleteSupplier, fetchSupplierStatement,
-} from '../data/procurement-repo.js?v=4.9.169';
+} from '../data/procurement-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -540,6 +540,11 @@ export function mountProcurementScreen(host, ctx = {}) {
             if (actBtn.disabled) {return;}
             if (actBtn.dataset.v2Act === 'statement') {
                 openStatement(actBtn.dataset.id);
+                return;
+            }
+            if (actBtn.dataset.v2Act === 'edit') {
+                const row = rows.find((item) => String(item.id) === String(actBtn.dataset.id));
+                if (row) {openForm(row);}
                 return;
             }
             runAction(actBtn.dataset.v2Act, actBtn.dataset.id, actBtn.dataset.name || '');

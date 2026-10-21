@@ -168,7 +168,7 @@ function renderPosSalesReportHtml(data,periodLabel,reportTitle){
 const summary=data.summary||{};
 const rows=Array.isArray(data.rows)?data.rows:[];
 const generatedAt=fDT(new Date().toISOString());
-let tableHtml='';
+let tableHtml;
 if(data.group_by==='department'){
 tableHtml=`
 <div class="report-section">
@@ -305,7 +305,7 @@ return `<tr>
 </div>
 `;
 }
-function generateDepartmentReport(startDate,endDate){
+function generateDepartmentReport(_startDate,_endDate){
 return `
 <div class="report-summary-grid">
 <div class="report-summary-card"><h4><i class=ji data-i=building></i> عدد الأقسام النشطة</h4><div class="value c-blue">${STATE.departments.length}</div></div>
@@ -387,7 +387,7 @@ ${returns.length>0?returns.map(ret=>`<tr>
 </div>
 `;
 }
-function generateWarehouseReport(startDate,endDate){
+function generateWarehouseReport(_startDate,_endDate){
 const totalInventoryValue=STATE.inventory.reduce((s,i)=>s+(i.qty*i.avgCost),0);
 const lowStockItems=STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty));
 const totalWeight=STATE.inventory.reduce((s,i)=>s+(i.weight||0),0);
@@ -562,7 +562,7 @@ const rows=Array.isArray(data.rows)?data.rows:[];
 const isInv=data.view==='invoices';
 const generatedAt=fDT(new Date().toISOString());
 const cashierOpts=`<option value="">كل الكاشيرية</option>`+cashiers.map(c=>`<option value="${esc(c.no)}" ${String(YCASH.cashier)===String(c.no)?'selected':''}>${esc(c.name)}</option>`).join('');
-let tableHtml='';
+let tableHtml;
 if(!isInv){
 tableHtml=`
 <div class="report-section">

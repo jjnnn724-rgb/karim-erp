@@ -41,8 +41,9 @@
   display: flex;
   align-items: center;
   gap: var(--erp-space-3);
-  height: var(--erp-header-height);
+  min-height: 68px;
   padding-inline: var(--erp-space-4);
+  padding-block: var(--erp-space-2);
   border-block-end: 1px solid var(--erp-border);
   flex-shrink: 0;
 }
@@ -51,14 +52,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--erp-radius-md);
-  background: var(--erp-brand);
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
   color: var(--erp-text-inverse);
   flex-shrink: 0;
 }
 .erp-shell__brand-mark .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+.erp-shell__brand-mark [data-v2-shell-logo] {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+  background: var(--erp-surface);
+}
 
 .erp-shell__brand-text {
   display: flex;
@@ -269,6 +279,15 @@
   background: var(--erp-border);
 }
 
+.erp-shell__integrations {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding-inline-end: var(--erp-space-2);
+  border-inline-end: 1px solid var(--erp-border);
+}
+.erp-shell__integrations[hidden] { display: none; }
+
 /* An unmounted boundary: visible affordance, clearly inert, never implying
    a feature exists. Pointer-events stay on so the tooltip explains it. */
 .erp-boundary {
@@ -327,6 +346,12 @@
 .erp-shell.is-compact .erp-shell__role span:not(.erp-role__dot) {
   display: none;
 }
+.erp-shell.is-compact .erp-shell__brand {
+  min-height: 60px;
+  justify-content: center;
+  padding-inline: var(--erp-space-1);
+}
+.erp-shell.is-compact .erp-shell__brand-mark { width: 36px; height: 36px; }
 .erp-shell.is-compact .erp-nav-item { justify-content: center; padding-inline: 0; }
 .erp-shell.is-compact .erp-nav-group__title::after { display: none; }
 .erp-shell.is-compact .erp-nav-group + .erp-nav-group {

@@ -114,6 +114,12 @@ jobs:
       - name: No inline <script> blocks — they are blocked by CSP and silently never run
         run: npm run test:inline-scripts:gate
 
+      - name: Delegation gate — pages using data-karim-action must load the dispatcher
+        run: npm run test:dispatch:gate
+
+      - name: Frontend version gate — changed frontend files require a version bump
+        run: npm run test:frontend-version
+
       - name: Container security gate — non-root, no baked secrets, fail-fast entrypoints
         run: npm run test:docker:gate
 

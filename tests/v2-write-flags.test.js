@@ -27,10 +27,10 @@ function loadFlags() {
 const store = (value) => ({ getItem: () => value });
 const throwingStore = { getItem: () => { throw new Error('denied'); } };
 
-describe('write-flags — الافتراضي مغلق', () => {
+describe('write-flags — الافتراضي مغلق (باستثناء إضافات المالك)', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام الثلاثة عشر', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام — عدا الأقسام-كاشير وإضافة الفواتير', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
         expect(ctx.recipeWriteEnabled('', null)).toBe(false);
         expect(ctx.departmentWriteEnabled('', null)).toBe(false);
@@ -42,7 +42,9 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.faceWriteEnabled('', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('', null)).toBe(false);
-        expect(ctx.invoiceCreateWriteEnabled('', null)).toBe(false);
+        /* قرار المالك 2026‑10‑20: «إضافة فواتير» وظيفة أساسية ⇒ ظاهرة افتراضيًا */
+        expect(ctx.invoiceCreateWriteEnabled('', null)).toBe(true);
+        expect(ctx.deptCashierWriteEnabled('', null)).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', null)).toBe(false);
         expect(ctx.financeWriteEnabled(undefined, null)).toBe(false);
     });
@@ -63,7 +65,8 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.invoiceVoidWriteEnabled('', throwingStore)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.invoiceCreateWriteEnabled('', store('0'))).toBe(false);
-        expect(ctx.invoiceCreateWriteEnabled('', throwingStore)).toBe(false);
+        /* ظاهرٌ افتراضيًا: تعذّر قراءة المخزّن لا يُخفي وظيفة (الحكم للخادم) */
+        expect(ctx.invoiceCreateWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.bulkImportWriteEnabled('', throwingStore)).toBe(false);
@@ -119,9 +122,9 @@ describe('write-flags — الافتراضي مغلق', () => {
         expect(ctx.faceWriteEnabled('?v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
-        expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1&v2invoicecreate=0', null)).toBe(false);
         expect(ctx.bulkImportWriteEnabled('?v2invoicecreate=1&v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
-        expect(ctx.invoiceCreateWriteEnabled('?v2bulkimport=1', null)).toBe(false);
+        expect(ctx.invoiceCreateWriteEnabled('?v2bulkimport=1&v2invoicecreate=0', null)).toBe(false);
     });
 });
 

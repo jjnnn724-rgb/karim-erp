@@ -14,11 +14,31 @@
  * وضع URL: window.openInAppReport('إيصال', url) — يعرض رابطًا جاهزًا.
  */
 import { esc } from '../core/utils.js?v=4.9.13';
+import { addCompanyPrintLogo } from '../core/print-branding.js?v=4.9.163';
 
 let overlayEl = null;
+let frameLoaded = false;
+let pendingPrint = false;
+
+function requestReportPrint() {
+    const frame = document.getElementById('inAppReportFrame');
+    if (!frame) {return;}
+    if (!frameLoaded) {
+        pendingPrint = true;
+        return;
+    }
+    try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    } catch (_) {
+        if (typeof window.toast === 'function') { window.toast('الطباعة غير مدعومة داخل التطبيق — التقط لقطة شاشة أو افتح من متصفح الجهاز', 'warning'); }
+    }
+}
 
 function ensureOverlay(title) {
     if (overlayEl) { overlayEl.remove(); overlayEl = null; }
+    frameLoaded = false;
+    pendingPrint = false;
     overlayEl = document.createElement('div');
     overlayEl.id = 'inAppReportOverlay';
     overlayEl.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;flex-direction:column';
@@ -31,24 +51,28 @@ function ensureOverlay(title) {
         <iframe id="inAppReportFrame" style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
     document.body.appendChild(overlayEl);
     overlayEl.querySelector('[data-act="close"]').addEventListener('click', () => closeReportOverlay());
-    overlayEl.querySelector('[data-act="print"]').addEventListener('click', () => {
-        const f = document.getElementById('inAppReportFrame');
-        try {
-            f.contentWindow.focus();
-            f.contentWindow.print();
-        } catch (_) {
-            if (typeof window.toast === 'function') { window.toast('الطباعة غير مدعومة داخل التطبيق — التقط لقطة شاشة أو افتح من متصفح الجهاز', 'warning'); }
+    const frame = overlayEl.querySelector('#inAppReportFrame');
+    frame.addEventListener('load', () => {
+        if (frame.contentDocument) { addCompanyPrintLogo(frame.contentDocument); }
+        frameLoaded = true;
+        if (pendingPrint) {
+            pendingPrint = false;
+            requestReportPrint();
         }
     });
-    return overlayEl.querySelector('#inAppReportFrame');
+    overlayEl.querySelector('[data-act="print"]').addEventListener('click', requestReportPrint);
+    return frame;
 }
 
 export function closeReportOverlay() {
     if (overlayEl) { overlayEl.remove(); overlayEl = null; }
+    frameLoaded = false;
+    pendingPrint = false;
 }
 
 function renderReportOverlay(html, title) {
     const frame = ensureOverlay(title);
+    frameLoaded = false;
     frame.srcdoc = html;
 }
 
@@ -56,8 +80,9 @@ function renderReportOverlay(html, title) {
 export function openInAppReport(title, url) {
     if (url) {
         const frame = ensureOverlay(title);
+        frameLoaded = false;
         frame.src = url;
-        return { document: { write() {}, writeln() {}, close() {} }, print() {}, focus() {}, close() { closeReportOverlay(); } };
+        return { document: { write() {}, writeln() {}, close() {} }, print: requestReportPrint, focus() {}, close() { closeReportOverlay(); } };
     }
     const chunks = [];
     return {
@@ -66,15 +91,7 @@ export function openInAppReport(title, url) {
             writeln: (...a) => chunks.push(a.join('') + '\n'),
             close: () => renderReportOverlay(chunks.join(''), title),
         },
-        print: () => {
-            const f = document.getElementById('inAppReportFrame');
-            try {
-                f.contentWindow.focus();
-                f.contentWindow.print();
-            } catch (_) {
-                if (typeof window.toast === 'function') { window.toast('الطباعة غير مدعومة داخل التطبيق — التقط لقطة شاشة', 'warning'); }
-            }
-        },
+        print: requestReportPrint,
         focus() {},
         close() { closeReportOverlay(); },
     };

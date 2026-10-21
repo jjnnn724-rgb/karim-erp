@@ -45,6 +45,20 @@ const MODULE_SPEC_RE = /['"](\.[^'"]*?\.(?:js|css|mjs|json)(?:\?v=[0-9.]+)?)['"]
 const PRECACHE_LIMIT = 200;
 const MAX_REVISIONS_PER_PATH = 2;
 
+/* صفحة تُعرض عند انقطاع الشبكة وعدم وجود نسخة صالحة في الكاش.
+   الأهم: صفحة إخطار مفهومة بدل شاشة بيضاء (العميل يظن أن التطبيق مكسور). */
+const OFFLINE_PAGE = `<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لا يوجد اتصال</title>
+<style>body{font-family:Tajawal,system-ui,sans-serif;background:#0f1115;color:#eee;display:grid;place-items:center;height:100vh;margin:0;text-align:center}main{max-width:420px;padding:24px}h1{font-size:22px;margin:0 0 10px}a{background:#c9a227;color:#111;border-radius:10px;padding:12px 22px;font-size:16px;text-decoration:none;display:inline-block}</style>
+</head><body><main>
+<h1>تعذّر الوصول إلى الخادم</h1>
+<p>لا يوجد اتصال بالسيرفر، ولا توجد نسخة محفوظة من هذه الشاشة على هذا الجهاز.</p>
+<p>اتصل بشبكة المطعم ثم أعد المحاولة.</p>
+<a href="">إعادة المحاولة</a>
+</main></body></html>`;
+
 // API_TTL أُزيل: بيانات /api/ لا تُخزَّن في الكاش إطلاقًا (سياسة bypass).
 const STATIC_TTL = 30 * 24 * 60 * 60 * 1000;
 
@@ -238,11 +252,30 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(req)
                 .then((res) => {
-                    const copy = res.clone();
-                    caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+                    // لا تُخزّن استجابة فارغة أو خطأ: كاش فاسد = صفحة بيضاء
+                    // لكل العملاء (قِيس فعلاً: استجابة 200 فارغة أثناء إعادة
+                    // تشغيل الخادم ⇒ الSW يخدمها لاحقًا عند انقطاع الشبكة).
+                    if (res && res.ok) {
+                        const copy = res.clone();
+                        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+                    }
                     return res;
                 })
-                .catch(() => caches.match(req).then((hit) => hit || caches.match('/app/index.html')))
+                .catch(async () => {
+                    // دون اتصال: نخدم نسخة مخزّنة **صالحة** فقط، وإلا صفحة
+                    // إخطار مفهومة بدل شاشة بيضاء.
+                    const hit = (await caches.match(req)) || (await caches.match('/app/index.html'));
+                    if (hit && hit.ok) {
+                        try {
+                            const body = await hit.clone().text();
+                            if (body && body.trim().length > 200) { return hit; }
+                        } catch (_) { /* لا نقدر نقرأ ⇒ لا نخدمه */ }
+                    }
+                    return new Response(OFFLINE_PAGE, {
+                        status: 503,
+                        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+                    });
+                })
         );
         return;
     }

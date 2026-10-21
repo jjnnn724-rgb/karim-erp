@@ -7,10 +7,11 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { formatInt } from '../data/reports-repo.js?v=4.9.169';
-import { fetchWhVsPos, rangeError } from '../data/yara-reports-repo.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {
@@ -57,6 +58,23 @@ function template(from, to) {
           <input class="erp-input erp-input--ltr" id="v2wv-from" type="date" value="${esc(from)}">
           <label class="erp-text-sm erp-text-muted" for="v2wv-to">إلى</label>
           <input class="erp-input erp-input--ltr" id="v2wv-to" type="date" value="${esc(to)}" max="${esc(todayIso(0))}">
+          <span class="erp-seg" role="group" aria-label="فترة مسبقة">
+            <button type="button" data-v2-preset="today">اليوم</button>
+            <button type="button" data-v2-preset="yesterday">أمس</button>
+            <button type="button" data-v2-preset="7">7 أيام</button>
+            <button type="button" data-v2-preset="30" class="is-active">30 يوم</button>
+          </span>
+          <label class="erp-text-sm erp-text-muted" style="display:inline-flex;gap:4px;align-items:center">
+            <input type="checkbox" data-v2-diffonly> المختلفة فقط
+          </label>
+          <label class="erp-text-sm erp-text-muted" for="v2wv-item">بحث صنف</label>
+          <span style="position:relative;min-inline-size:180px">
+            <input class="erp-input" id="v2wv-item" type="search" placeholder="مثال: أرز، شاورما…" autocomplete="off">
+            <div data-v2-suggest style="display:none;position:absolute;top:100%;inset-inline:0;background:var(--erp-surface,#fff);border:1px solid var(--erp-border,#ddd);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:var(--erp-z-drawer,50);box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+          </span>
+          <label class="erp-text-sm erp-text-muted" style="display:inline-flex;gap:4px;align-items:center">
+            <input type="checkbox" data-v2-auto> تحديث تلقائي <span class="erp-text-sm erp-text-muted" data-v2-countdown></span>
+          </label>
         </div>
 
         <div data-v2-kpis></div>
@@ -72,7 +90,8 @@ function template(from, to) {
             <p class="erp-text-sm erp-text-muted">
               قراءة فقط — يُطابق صرف المخزن مع مبيعات الكاشيرية بالاسم
               (<span class="erp-addr" dir="ltr">/api/yara-reports/wh-vs-pos</span>)،
-              والتحديث يجري خلفيًا كل دقيقة عند الخادم — الرقم هنا بوصمة الخادم.
+              وبحث الصنف يقترح من <span class="erp-addr" dir="ltr">/item-suggest</span>،
+              والتحديث التلقائي يقرأ كل 60 ثانية عند تفعيله.
             </p>
             <p class="erp-text-sm" data-v2-fresh hidden></p>
             <div data-v2-table></div>
@@ -85,7 +104,12 @@ export function mountWhVsPosScreen(host, ctx = {}) {
     let rows = [];
     let loading = false;
     let exporting = false;
-    const suggestTimer = null;
+    let suggestTimer = null;
+    let suggestSeq = 0;
+    let autoTimer = null;
+    let autoLeft = 0;
+    let filterText = '';
+    let diffOnly = false;
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 wh-vs-pos]', m);
 
     host.insertAdjacentHTML('beforeend', template(todayIso(-7), todayIso(0)));
@@ -117,6 +141,13 @@ export function mountWhVsPosScreen(host, ctx = {}) {
     });
     q('[data-v2-table]').appendChild(table.el);
 
+    /** الصفوف المعروضة: بحث عربي متسامح + «المختلفة فقط» — نفس قاعدة القديم. */
+    function visibleRows() {
+        const term = String(filterText || '').trim();
+        return rows.filter((r) => (!diffOnly || r.diff !== 0)
+            && (!term || arSearchIncludes(r.label, term) || arSearchIncludes(r.code, term)));
+    }
+
     function paint() {
         const f = filters();
         scopeLine.textContent = `${f.from} ← ${f.to}`;
@@ -130,8 +161,79 @@ export function mountWhVsPosScreen(host, ctx = {}) {
                 <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span></div>
                 <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${k.value}</span></div>
               </li>`).join('') + `</ul>`;
-        table.setRows(rows);
-        q('[data-v2-count]').textContent = rows.length ? `(${formatInt(rows.length)})` : '';
+        const shown = visibleRows();
+        table.setRows(shown);
+        q('[data-v2-count]').textContent = shown.length
+            ? `(${formatInt(shown.length)}${shown.length !== rows.length ? ` من ${formatInt(rows.length)}` : ''})`
+            : '';
+    }
+
+    /* ── الفترات المسبقة / بحث الصنف / التحديث التلقائي (وظائف القديم) ── */
+
+    function applyPreset(key) {
+        const map = {
+            today: [todayIso(0), todayIso(0)],
+            yesterday: [todayIso(-1), todayIso(-1)],
+            7: [todayIso(-6), todayIso(0)],
+            30: [todayIso(-29), todayIso(0)],
+        };
+        const range = map[String(key)];
+        if (!range) {return;}
+        q('#v2wv-from').value = range[0];
+        q('#v2wv-to').value = range[1];
+        el.querySelectorAll('[data-v2-preset]').forEach((b) => {
+            const on = b.dataset.v2Preset === String(key);
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        reload();
+    }
+
+    function hideSuggest() {
+        const box = q('[data-v2-suggest]');
+        if (box) {box.style.display = 'none'; box.innerHTML = '';}
+    }
+
+    async function suggestItems(term) {
+        const box = q('[data-v2-suggest]');
+        if (!box) {return;}
+        if (String(term).trim().length < 2) {hideSuggest(); return;}
+        const seq = ++suggestSeq;
+        let list;
+        try {
+            list = await fetchItemSuggestions(term);
+        } catch (_) {
+            list = [];
+        }
+        if (seq !== suggestSeq || !el.isConnected) {return;}   // آخر كتابة تفوز
+        if (!list.length) {hideSuggest(); return;}
+        box.innerHTML = list.slice(0, 12).map((name) => `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-suggest-item="${esc(name)}" style="display:block;inline-size:100%;text-align:start">${esc(name)}</button>`).join('');
+        box.style.display = 'block';
+    }
+
+    function stopAuto() {
+        if (autoTimer) {clearInterval(autoTimer); autoTimer = null;}
+        autoLeft = 0;
+        const c = q('[data-v2-countdown]');
+        if (c) {c.textContent = '';}
+    }
+
+    function startAuto() {
+        stopAuto();
+        autoLeft = 60;
+        const tick = () => {
+            if (!el.isConnected) {stopAuto(); return;}
+            const c = q('[data-v2-countdown]');
+            if (c) {c.textContent = `(${autoLeft}s)`;}
+            if (autoLeft <= 0) {
+                autoLeft = 60;
+                reload();                       // القراءة التالية لا تنتظر النقرة
+                return;
+            }
+            autoLeft -= 1;
+        };
+        tick();
+        autoTimer = setInterval(tick, 1000);
     }
 
     function filters() {
@@ -151,13 +253,15 @@ export function mountWhVsPosScreen(host, ctx = {}) {
             const f = filters();
             const data = [['الصنف', 'مصروف من المخزن', 'مبيع بالكاشيرية', 'الفرق', 'النسبة %',
                 'قيمة المبيع الصافي', 'قيمة المبيع الإجمالي', 'عدد الأذونات', 'عدد الفواتير', 'القسم', 'الحالة']];
-            rows.forEach((r) => data.push([
+            const exported = visibleRows();
+            exported.forEach((r) => data.push([
                 r.label, r.wh_qty, r.pos_qty, r.diff, r.pct == null ? '' : r.pct,
                 r.pos_net, r.pos_gross, r.wh_docs, r.pos_invoices, r.dept, STATUS_AR[r.status] || r.status,
             ]));
             const ws = window.XLSX.utils.aoa_to_sheet(data);
             const wb = window.XLSX.utils.book_new();
             window.XLSX.utils.book_append_sheet(wb, ws, 'المقارنة');
+            prepareReportWorkbook(window.XLSX, wb, `تقرير المخزن مع الكاشيرية ${f.from} إلى ${f.to}`);
             window.XLSX.writeFile(wb, `wh-vs-pos_${f.from}_${f.to}.xlsx`);
             notify('تم تصدير Excel');
         } finally {
@@ -178,7 +282,7 @@ export function mountWhVsPosScreen(host, ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.169').then((m) => m.fetchCurrency()).catch(() => '')]);
+            const [data] = await Promise.allSettled([fetchWhVsPos(f), import('../data/reports-repo.js?v=4.9.181').then((m) => m.fetchCurrency()).catch(() => '')]);
             if (!el.isConnected) {return;}
             const raw = data.status === 'fulfilled' ? (data.value.rows || data.value.comparison || []) : [];
             rows = raw.map((r) => ({
@@ -218,13 +322,36 @@ export function mountWhVsPosScreen(host, ctx = {}) {
     }
 
     el.addEventListener('click', (event) => {
+        const preset = event.target.closest('[data-v2-preset]');
+        if (preset) {applyPreset(preset.dataset.v2Preset); return;}
+        const sug = event.target.closest('[data-v2-suggest-item]');
+        if (sug) {
+            const name = sug.dataset.v2SuggestItem || '';
+            q('#v2wv-item').value = name;
+            filterText = name;
+            hideSuggest();
+            paint();
+            return;
+        }
+        if (!event.target.closest('[data-v2-suggest]') && !event.target.closest('#v2wv-item')) {hideSuggest();}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-v2-excel]')) {exportExcel(); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
+    el.addEventListener('input', (event) => {
+        if (!event.target.matches('#v2wv-item')) {return;}
+        filterText = event.target.value;
+        paint();                                  // فلترة فورية على المعروض
+        if (suggestTimer) {clearTimeout(suggestTimer);}
+        suggestTimer = setTimeout(() => suggestItems(filterText), 250);
+    });
     el.addEventListener('change', (event) => {
-        if (event.target.matches('#v2wv-from, #v2wv-to')) {reload();}
+        if (event.target.matches('#v2wv-from, #v2wv-to')) {reload(); return;}
+        if (event.target.matches('[data-v2-diffonly]')) {diffOnly = !!event.target.checked; paint(); return;}
+        if (event.target.matches('[data-v2-auto]')) {
+            if (event.target.checked) {startAuto();} else {stopAuto();}
+        }
     });
 
     reload();
@@ -233,8 +360,10 @@ export function mountWhVsPosScreen(host, ctx = {}) {
         el,
         reload,
         getRows: () => rows,
+        getVisibleRows: () => visibleRows(),
         destroy() {
             if (suggestTimer) {clearTimeout(suggestTimer);}
+            stopAuto();
             table.destroy();
             el.remove();
         },

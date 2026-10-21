@@ -10,7 +10,7 @@
 (function (global) {
     'use strict';
 
-    var DICT = {
+    const DICT = {
         ar: {
             save: 'حفظ', delete: 'حذف', confirm: 'تأكيد', cancel: 'إلغاء',
             loading: 'جارٍ التحميل…', search: 'بحث', add: 'إضافة', edit: 'تعديل',
@@ -26,18 +26,18 @@
     };
 
     // رموز العملات للعرض العربي الفخم؛ Intl يتولاها تلقائيًا للبقية
-    var SYMBOLS = { SAR: 'ر.س', EGP: 'ج.م', AED: 'د.إ', USD: '$', EUR: '€', GBP: '£', TRY: '₺' };
+    const SYMBOLS = { SAR: 'ر.س', EGP: 'ج.م', AED: 'د.إ', USD: '$', EUR: '€', GBP: '£', TRY: '₺' };
 
-    var state = {
+    const state = {
         lang: (function () { try { return localStorage.getItem('karim_lang') || 'ar'; } catch (_) { return 'ar'; } })(),
         currency: null,
         taxRate: 0.15,
         branches: [],
     };
 
-    var CONFIG_URL = '/api/i18n/config';
+    const CONFIG_URL = '/api/i18n/config';
 
-    var ready = fetch(CONFIG_URL, { credentials: 'same-origin' })
+    const ready = fetch(CONFIG_URL, { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (cfg) {
             if (cfg && typeof cfg === 'object') {
@@ -57,25 +57,25 @@
         });
 
     function t(key, vars) {
-        var table = DICT[state.lang] || DICT.ar;
-        var out = table[key] != null ? table[key] : (DICT.ar[key] != null ? DICT.ar[key] : key);
+        const table = DICT[state.lang] || DICT.ar;
+        let out = table[key] != null ? table[key] : (DICT.ar[key] != null ? DICT.ar[key] : key);
         if (vars) {Object.keys(vars).forEach(function (k) {out = out.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);});}
         return out;
     }
 
     function money(amount, opts) {
         opts = opts || {};
-        var value = Number(amount);
+        let value = Number(amount);
         if (!isFinite(value)) {value = 0;}
-        var currency = (opts.currency || state.currency || 'SAR').toUpperCase();
+        const currency = (opts.currency || state.currency || 'SAR').toUpperCase();
         try {
-            var locale = state.lang === 'en' ? 'en-US' : 'ar-SA-u-nu-latn';
-            var fmt = new Intl.NumberFormat(locale, {
+            const locale = state.lang === 'en' ? 'en-US' : 'ar-SA-u-nu-latn';
+            const fmt = new Intl.NumberFormat(locale, {
                 style: 'currency', currency: currency,
                 minimumFractionDigits: opts.decimals != null ? opts.decimals : 2,
                 maximumFractionDigits: opts.decimals != null ? opts.decimals : 2,
             });
-            var s = fmt.format(value);
+            const s = fmt.format(value);
             // رمز مخصص للعملات الخليجية/المصرية إن دفعته الواجهة
             if (opts.customSymbol && SYMBOLS[currency] && state.lang !== 'en') {
                 return String(value.toFixed(opts.decimals != null ? opts.decimals : 2)).replace(/\.?0+$/, function (m) {return m; }) + ' ' + SYMBOLS[currency];
@@ -100,12 +100,12 @@
 
     function applyDom() {
         if (typeof document === 'undefined') {return;}
-        var els = document.querySelectorAll('[data-i18n]');
-        for (var i = 0; i < els.length; i++) {
+        const els = document.querySelectorAll('[data-i18n]');
+        for (let i = 0; i < els.length; i++) {
             els[i].textContent = t(els[i].getAttribute('data-i18n'));
         }
-        var ph = document.querySelectorAll('[data-i18n-placeholder]');
-        for (var j = 0; j < ph.length; j++) {
+        const ph = document.querySelectorAll('[data-i18n-placeholder]');
+        for (let j = 0; j < ph.length; j++) {
             ph[j].setAttribute('placeholder', t(ph[j].getAttribute('data-i18n-placeholder')));
         }
     }

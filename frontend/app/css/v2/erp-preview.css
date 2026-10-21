@@ -33,12 +33,13 @@ body {
 .erp-preview-banner {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 9px 18px;
+  gap: 12px;
+  min-height: 48px;
+  flex-wrap: nowrap;
+  padding: 7px 18px;
   background: #101828;
   color: #e4e7ec;
-  font-size: 12.5px;
+  font-size: 12px;
   border-block-end: 1px solid rgba(255, 255, 255, .12);
   position: sticky;
   inset-block-start: 0;
@@ -63,7 +64,11 @@ body {
 
 .erp-preview-banner span {
   flex: 1 1 320px;
-  line-height: 1.5;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .erp-preview-banner em {
@@ -76,6 +81,7 @@ body {
   color: #7cb8ff;
   text-decoration: none;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .erp-preview-banner a:hover { text-decoration: underline; }
@@ -87,5 +93,19 @@ body {
 }
 
 @media (max-width: 640px) {
-  .erp-preview-banner { padding: 8px 12px; font-size: 12px; }
+  .erp-preview-banner { gap: 8px; min-height: 42px; padding: 6px 10px; font-size: 11px; }
+  .erp-preview-banner strong { padding: 3px 7px; font-size: 10px; }
+  .erp-preview-banner span { flex-basis: 90px; }
+  .erp-preview-banner a { font-size: 10px; }
+}
+
+#erp-v2-root .erp-shell__content {
+  padding: clamp(12px, 2vw, 24px);
+}
+
+#erp-v2-root .erp-toolbar {
+  gap: 8px;
+  padding: 8px clamp(12px, 2vw, 24px);
+  background: transparent;
+  border: 0;
 }

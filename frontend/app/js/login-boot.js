@@ -93,7 +93,7 @@ window.toggleLoginPassword = toggleLoginPassword;
             try { if (data.refresh_token) { localStorage.setItem(RT_KEY, data.refresh_token); } } catch (_) {}
             window._jwt = data.access_token;
             location.reload();
-        } catch (e) {
+        } catch (_) {
             setBusy(btn, false, orig);
             showErr('فشل الاتصال بالخادم');
         }

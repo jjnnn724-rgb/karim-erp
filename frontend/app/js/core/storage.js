@@ -47,7 +47,7 @@ async function _doSaveOnce() {
                 const data = await response.json();
                 const m = serverMessage(data, null);
                 if (m) {message = m;}
-            } catch (e) {}
+            } catch (_) {}
             // خطأ 4xx: لا نُعيد المحاولة
             if (response.status >= 400 && response.status < 500) {
                 throw new Error(message);
@@ -128,7 +128,7 @@ async function loadData() {
                 if (data.theme) {STATE.theme = data.theme;}
             }
         }
-    } catch (e) { /* non-fatal — settings table below is authoritative anyway */ }
+    } catch (_) { /* non-fatal — settings table below is authoritative anyway */ }
 
     // Settings: real row in the `settings` table (id = 'main_settings').
     try {

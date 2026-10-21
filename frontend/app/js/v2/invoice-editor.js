@@ -16,21 +16,21 @@
  * بقائمة مطابقة عربية متسامحة مع ↑↓/Enter/Esc، ويعبّئ الوحدة والسعر
  * والوزن عند الاختيار — كما القديم.
  *
- * تاريخ الصلاحية (طلب المالك 2026-10-19): حقل إلزامي لكل سطر يدخل المخزن؛
- * المحرر يمنع الإرسال برسالة الخادم نفسها عبر `data/expiry-policy.js`،
- * والخادم يرفض 422 في الباب العام على أي حال.
+ * تاريخ الصلاحية (سياسة المالك 2026-10-20): حقل اختياري لكل سطر يدخل المخزن؛
+ * المحرر يمنع الإرسال عند الصيغة الفاسدة فقط عبر `data/expiry-policy.js`،
+ * والخادم يرفض 422 INVALID_EXPIRY_DATE على أي حال.
  */
 
-import { formatMoney } from './data/reports-repo.js?v=4.9.169';
+import { formatMoney } from './data/reports-repo.js?v=4.9.181';
 import {
     createPurchaseInvoice, updatePurchaseInvoice,
     invoiceFormFromRow,
     isDuplicateInvoiceError, TAX_CATEGORIES,
-} from './data/purchase-invoices-write-repo.js?v=4.9.169';
-import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.169';
+} from './data/purchase-invoices-write-repo.js?v=4.9.181';
+import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.181';
 import {
     rankItemMatches, normalizeItemText, smartSearchEnabled, setSmartSearchEnabled,
-} from './item-search.js?v=4.9.169';
+} from './item-search.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -190,7 +190,7 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
             <div class="erp-text-sm erp-text-muted">
               الوحدة مرنة ويمكن كتابتها مثل: كجم، شوال، علبة أو كرتون.
               الوزن الإجمالي اختياري بالكيلوجرام.
-              <strong class="erp-vi-expiry-hint">تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن.</strong>
+              <strong class="erp-vi-expiry-hint">تاريخ الصلاحية اختياري، وإن أُدخل فيجب أن يكون بصيغة YYYY-MM-DD.</strong>
             </div>
             <datalist id="erp-vi-units">
               ${UNIT_OPTIONS.map((u) => `<option value="${esc(u)}"></option>`).join('')}
@@ -311,8 +311,8 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
             <input class="erp-input erp-input--ltr" data-vi-item="weight" data-idx="${idx}" type="number" min="0" step="0.001" value="${esc(item.weight)}" placeholder="اختياري">
           </label>
           <label class="erp-field erp-vi-expiry" data-vi-expiry="${idx}">
-            <span class="erp-label">تاريخ الصلاحية <span class="erp-req" aria-hidden="true">*</span></span>
-            <input class="erp-input erp-input--ltr" data-vi-item="expiryDate" data-idx="${idx}" type="date" value="${esc(item.expiryDate)}" aria-required="true" aria-label="تاريخ الصلاحية للصنف ${idx + 1}" title="YYYY-MM-DD — إلزامي لكل صنف يدخل المخزن">
+            <span class="erp-label">تاريخ الصلاحية</span>
+            <input class="erp-input erp-input--ltr" data-vi-item="expiryDate" data-idx="${idx}" type="date" value="${esc(item.expiryDate)}" aria-required="false" aria-label="تاريخ الصلاحية للصنف ${idx + 1}" title="اختياري — YYYY-MM-DD">
           </label>
           <label class="erp-field erp-vi-price">
             <span class="erp-label">سعر الوحدة</span>
@@ -346,16 +346,16 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
         paintExpiryMarks();
     }
 
-    /** الأسطر الناقصة الصلاحية تُعلَّم بعد محاولة الحفظ فقط — لا صراخ قبل الأوان. */
+    /** الصيغة الفاسدة تُعلَّم بعد محاولة الحفظ فقط — الغياب مقبول (اختياري). */
     function paintExpiryMarks() {
         rows.forEach((item, idx) => {
             const wrap = q(`[data-vi-expiry="${idx}"]`);
             if (!wrap) {return;}
-            const missing = expiryChecked && String(item.itemName || '').trim() !== ''
-                && num(item.qty) > 0 && !normalizeExpiryDate(item.expiryDate);
-            wrap.classList.toggle('is-missing', missing);
+            const raw = String(item.expiryDate ?? '').trim();
+            const bad = expiryChecked && raw !== '' && !normalizeExpiryDate(item.expiryDate);
+            wrap.classList.toggle('is-missing', bad);
             const input = wrap.querySelector('[data-vi-item="expiryDate"]');
-            if (input) {input.setAttribute('aria-invalid', missing ? 'true' : 'false');}
+            if (input) {input.setAttribute('aria-invalid', bad ? 'true' : 'false');}
         });
     }
 
@@ -648,7 +648,7 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
             fail('قيمة الخصم غير صحيحة');
             return;
         }
-        // سياسة المالك: لا بضاعة تدخل المخزن بلا تاريخ صلاحية — نفس قرار الخادم 422.
+        // سياسة 2026-10-20: الغياب مقبول — نرفض فقط الصيغة الفاسدة (نفس قرار الخادم).
         const expiryGate = checkExpiryOnLines(valid);
         if (!expiryGate.ok) {
             expiryChecked = true;

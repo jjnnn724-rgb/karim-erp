@@ -543,6 +543,13 @@ describe('P1-4 — كشف الحساب والدفعة الجزئية: الباب
         expect(src).toMatch(/from '.*procurement-repo\.js\?v=[0-9.]+'/);
     });
 
+    test('شاشة 05: زر التعديل يفتح النموذج بسجل المورد الخام ولا يمر بمسار الإجراءات', () => {
+        const src = screenSrc['procurement.js'];
+        expect(src).toMatch(/data-v2-act="edit" data-id=/);
+        expect(src).toMatch(/if \(actBtn\.dataset\.v2Act === 'edit'\) \{\s*const row = rows\.find\(\(item\) => String\(item\.id\) === String\(actBtn\.dataset\.id\)\);\s*if \(row\) \{openForm\(row\);\}\s*return;/);
+        expect(src).toMatch(/const raw = row \? rawById\.get\(String\(row\.id\)\) : null;\s*editing = raw \? \{ \.\.\.raw \} : null;/);
+    });
+
     test('اللوحة تُغلق عند التنقل: closeStatement تفكك النقر خارج ثم تزيل — ولا تعلّق عقدة ميتة', () => {
         const src = screenSrc['procurement.js'];
         // الدالة الموحّدة: تفكّك المعالج ثم تزيل اللوحة، وتُستدعى من destroy

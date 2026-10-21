@@ -8,17 +8,19 @@ const { idempotency } = require('../backend/middleware/idempotency');
 function reqRes({ method = 'POST', key = null, body = {} } = {}) {
     const req = { method, headers: {}, body };
     if (key) {req.headers['x-idempotency-key'] = key;}
+    let complete;
+    const completion = new Promise((resolve) => { complete = resolve; });
     const res = {
         statusCode: 200,
         headers: {},
         setHeader(k, v) {this.headers[k] = v;},
         status(c) {this.statusCode = c;return this;},
-        json(b) {this.sentBody = b;return this;},
-        end() {return this;},
+        json(b) {this.sentBody = b;complete();return this;},
+        end() {complete();return this;},
     };
     const nextCalls = [];
     const next = (e) => {nextCalls.push(e || null);};
-    return { req, res, next, nextCalls };
+    return { req, res, next, nextCalls, completion };
 }
 
 // run handler through middleware like express would
@@ -51,9 +53,11 @@ describe('idempotency middleware (memory store)', () => {
         const key = `t-${Date.now()}-same`;
         const r1 = reqRes({ key, body: { total: 100 } });
         await through(mw, r1, async (req, res) => res.status(201).json({ id: 1 }));
+        await r1.completion;
         expect(r1.res.sentBody).toEqual({ id: 1 });
         const r2 = reqRes({ key, body: { total: 100 } });
         await mw(r2.req, r2.res, r2.next);
+        await r2.completion;
         expect(r2.res.headers['X-Idempotency-Replay']).toBe('true');
         expect(r2.res.sentBody).toEqual({ id: 1 });
         expect(r2.res.statusCode).toBe(201);

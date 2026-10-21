@@ -158,10 +158,11 @@ describe('لوحة رئيس القسم — نطاق القسم', () => {
     const D = loadRepo();
     const snapshot = {
         dispatches: [
-            { id: 1, deptCode: 'K', status: 'pending', needsChefApproval: true, items: [{ itemName: 'أرز' }] },
-            { id: 2, deptCode: 'K', status: 'chef_approved', items: [] },
-            { id: 3, deptCode: 'K', status: 'approved', items: [] },
+            /* desc كما تعيده fetchDispatches الآن: الأحدث أولًا. */
             { id: 4, deptCode: 'X', status: 'pending', needsChefApproval: true, items: [] },
+            { id: 3, deptCode: 'K', status: 'approved', items: [] },
+            { id: 2, deptCode: 'K', status: 'chef_approved', items: [] },
+            { id: 1, deptCode: 'K', status: 'pending', needsChefApproval: true, items: [{ itemName: 'أرز' }] },
         ],
         panel: {
             department: { name: 'المطبخ' },

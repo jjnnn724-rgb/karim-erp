@@ -34,12 +34,12 @@
  * THIS FILE NEVER WRITES.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.169';
-import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.169';
-import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.169';
-import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.169';
-import { fetchCurrency } from './reports-repo.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.181';
+import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.181';
+import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.181';
+import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.181';
+import { fetchCurrency } from './reports-repo.js?v=4.9.181';
 
 const n = (v) => {
     const x = Number(v);
@@ -293,7 +293,7 @@ export function buildDeptHeadView(snapshot = {}, user = {}) {
         deptCode: String((user && user.deptCode) || ''),
         currency: String(snapshot.currency || ''),
         deptName: String((panel && panel.department && panel.department.name)
-            || (mine.length && mine[mine.length - 1].deptName)
+            || (mine.length && mine[0].deptName)
             || (user && user.deptCode) || '—'),
         counts,
         cost: expenseSummary ? n(expenseSummary.total) : null,
@@ -306,7 +306,8 @@ export function buildDeptHeadView(snapshot = {}, user = {}) {
             tone: DISPATCH_STATUS_TONE[key] || 'neutral',
             value: n(count),
         })).sort((a, b) => b.value - a.value),
-        recent: mine.slice().reverse().slice(0, 8).map((d) => ({
+        /* fetchDispatches ترجع الأحدث أولًا (desc) — بلا reverse. */
+        recent: mine.slice(0, 8).map((d) => ({
             id: d && d.id,
             itemsText: itemsSummary(d && d.items),
             date: String((d && d.date) || '').slice(0, 10),

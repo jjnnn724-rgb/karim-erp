@@ -203,6 +203,9 @@
   color: var(--erp-danger-text);
 }
 
+/* علامة الحقل الإلزامي — تُقرأ مع Label ولا تحمل معلومة وحدها (النص يقول «إلزامي»). */
+.erp-v2 .erp-req { color: var(--erp-danger-text); font-weight: var(--erp-fw-bold); }
+
 /* ── Theme control (segmented radio group) ───────────────────────────── */
 .erp-v2 .erp-theme-control {
   display: inline-flex;
@@ -286,6 +289,9 @@
 /* ── Shell extras (W5): lamps, bell, quick cluster, FAB, notifs, offline ── */
 .erp-v2 .erp-shell__extras, .erp-v2 .erp-shell__quick { display: inline-flex; align-items: center; gap: 8px; }
 .erp-v2 .erp-shell__lamps { display: inline-flex; align-items: center; gap: 6px; }
+.erp-v2 .erp-server-info { color: var(--erp-text-muted); white-space: nowrap; }
+.erp-v2 .erp-server-info[data-current="1"] { color: var(--erp-success-text); }
+.erp-v2 .erp-server-info[data-current="0"] { color: var(--erp-danger-text); }
 .erp-v2 .erp-lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--erp-neutral); display: inline-block; }
 .erp-v2 .erp-lamp[data-ok="1"] { background: var(--erp-success-text); }
 .erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
@@ -336,3 +342,27 @@
   .erp-fab-host .erp-fab { width: 44px; height: 44px; }
 }
 .erp-v2 .erp-link { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: var(--erp-brand-text); text-decoration: underline; }
+
+/* ── Department identity cell (شاشة الأقسام) ────────────────────────────
+   دائرة ملوّنة تحمل أيقونة القسم (SVG أو رمز تعبية قديم) + الاسم والكود.
+   اللون يأتي من بيانات القسم نفسها (hex صالح من القاعدة) — لا متغيّر نظام. */
+.erp-v2 .erp-dept-identity { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.erp-v2 .erp-dept-ico { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border-radius: 10px; color: var(--erp-text-inverse); flex: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--erp-text-inverse) 18%, transparent); }
+.erp-v2 .erp-dept-ico .ji, .erp-v2 .erp-dept-ico svg { inline-size: 18px; block-size: 18px; }
+.erp-v2 .erp-dept-ico__emoji { font-size: 17px; line-height: 1; }
+.erp-v2 .erp-dept-identity__body { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.erp-v2 .erp-dept-identity__name { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erp-v2 .erp-dept-identity__code { font-size: 11px; color: var(--erp-text-muted); }
+.erp-v2 .erp-dept-parent { color: var(--erp-text-secondary); }
+.erp-v2 .erp-dept-swatch { display: inline-block; inline-size: 22px; block-size: 22px; border-radius: 7px; border: 1px solid var(--erp-border); vertical-align: middle; }
+.erp-v2 .erp-dept-kpis { margin-block-end: 2px; }
+/* 4 مؤشرات ثابتة — auto-fit يمنع كسر 3+1 الذي تفرضه قاعدة ≤1439px في erp-dashboard. */
+.erp-v2 .erp-dept-kpis.erp-kpis { grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); }
+/* ترويسة طباعة السجل: مخفية على الشاشة — الشعار الرسمي يرفعه beforeprint
+   (core/print-branding.js) على مستوى الصفحة، فهذه تحمل هوية التقرير فقط. */
+.erp-v2 .erp-print-head { display: none; }
+@media print {
+  .erp-v2 .erp-print-head { display: block; text-align: center; margin: 0 0 10px; }
+  .erp-v2 .erp-print-head__title { font-size: 16px; font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); }
+  .erp-v2 .erp-print-head__meta { font-size: 11px; color: var(--erp-text-secondary); margin-top: 2px; }
+}

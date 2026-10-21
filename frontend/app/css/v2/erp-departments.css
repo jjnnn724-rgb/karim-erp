@@ -9,7 +9,8 @@
    ═══════════════════════════════════════════════════════════════════════ */
 .erp-v2 .erp-dept-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(296px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  align-items: start;
   gap: var(--erp-space-4);
   margin: 0;
   padding: 0;
@@ -59,6 +60,7 @@
    الأطفال المباشرون يُرفعون درجة واحدة فوقها فلا يغطّي النمط نصًّا. */
 .erp-v2 .erp-dept-card__rail,
 .erp-v2 .erp-dept-card__head,
+.erp-v2 .erp-dept-card__signals,
 .erp-v2 .erp-dept-card__stats,
 .erp-v2 .erp-dept-card__ratio,
 .erp-v2 .erp-dept-card__cashiers,
@@ -250,11 +252,57 @@
   background: transparent;
 }
 .erp-v2 .erp-dept-cashier__star { font-size: 10px; opacity: .8; }
+/* اسم الكاشير من دليل يارا سوفت: يُقرأ إن عُرف، ويغيب إن لم يُعرف — لا اختراع. */
+.erp-v2 .erp-dept-cashier__name {
+  font-weight: var(--erp-fw-normal);
+  color: var(--erp-text-secondary);
+}
 .erp-v2 .erp-dept-card__unassigned {
   font-size: var(--erp-text-sm, 12px);
   color: var(--erp-text-faint);
   font-style: italic;
 }
+/* ─── شرائح معلومات البطاقة: أصناف · موظفون · معلّق · آخر صرف ─── */
+.erp-v2 .erp-dept-card__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  align-items: center;
+}
+.erp-v2 .erp-dept-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--erp-radius-full);
+  border: 1px solid color-mix(in srgb, var(--dept-accent) 26%, var(--erp-border));
+  background: color-mix(in srgb, var(--dept-accent) 9%, var(--erp-surface));
+  font-size: 11px;
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+}
+.erp-v2 .erp-dept-signal .ji,
+.erp-v2 .erp-dept-signal svg {
+  inline-size: 13px;
+  block-size: 13px;
+  color: color-mix(in srgb, var(--dept-accent) 72%, var(--erp-text-primary));
+}
+.erp-v2 .erp-dept-signal.is-muted {
+  font-weight: var(--erp-fw-normal);
+  color: var(--erp-text-faint);
+  border-color: var(--erp-border-subtle);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2 .erp-dept-signal.is-muted .ji,
+.erp-v2 .erp-dept-signal.is-muted svg { color: var(--erp-text-faint); }
+.erp-v2 .erp-dept-signal.is-alert {
+  border-color: color-mix(in srgb, var(--erp-warning) 50%, var(--erp-border));
+  background: color-mix(in srgb, var(--erp-warning) 14%, var(--erp-surface));
+  color: var(--erp-warning-text);
+}
+.erp-v2 .erp-dept-signal.is-alert .ji,
+.erp-v2 .erp-dept-signal.is-alert svg { color: var(--erp-warning-text); }
 /* ─── تذييل الإجراءات ─── */
 .erp-v2 .erp-dept-card__foot {
   display: flex;
@@ -308,6 +356,17 @@
   gap: var(--erp-space-2);
 }
 .erp-v2 .erp-dept-link-form label { display: flex; flex-direction: column; gap: 3px; }
+/* مُنتقي الدليل الحيّ: أعرض عنصر في اللوحة، وينكمش على الهاتف بدل أن يمدّها. */
+.erp-v2 .erp-dept-link-form [data-v2-link-pick] {
+  inline-size: min(22rem, 100%);
+  min-inline-size: 0;
+}
+.erp-v2 .erp-dept-link-picker--note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--erp-text-sm, 12px);
+  color: var(--erp-text-faint);
+}
 .erp-v2 .erp-dept-check { display: inline-flex; align-items: center; gap: 6px; font-size: var(--erp-text-sm, 12px); }
 /* ─── محوّل العرض (بطاقات/جدول) ─── */
 .erp-v2 .erp-dept-switch {
@@ -342,6 +401,111 @@
   box-shadow: var(--erp-shadow-sm);
 }
 .erp-v2 .erp-dept-switch button:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: 2px; }
+/* ─── شريط العرض: محوّل البطاقات/الجدول + مفتاح الأقسام المرآتية ─── */
+.erp-v2 .erp-dept-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-dept-mirrors {
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+}
+/* ─── الأقسام الفرعية: صفوف مضغوطة داخل بطاقة أبيها (طيّ الزحمة بلا حذف) ─── */
+.erp-v2 .erp-dept-kids {
+  position: relative;
+  z-index: calc(var(--erp-z-base) + 1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  margin: 0;
+  margin-block-start: var(--erp-space-2);
+  padding: 0;
+  padding-inline-start: var(--erp-space-3);
+  list-style: none;
+  border-inline-start: 2px solid color-mix(in srgb, var(--dept-accent) 28%, var(--erp-border));
+}
+.erp-v2 .erp-dept-kids--nested { margin-block-start: var(--erp-space-2); }
+/* الطيّ عرضٌ فقط: القائمة موجودة في الـDOM دائمًا، والطبع يفردها */
+.erp-v2 .erp-dept-kids.is-collapsed { display: none; }
+/* ─── شريط الأقسام الفرعية: يطوي القائمة ويفردها بضغطة ─── */
+.erp-v2 .erp-dept-kids-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  align-self: stretch;
+  min-block-size: 38px;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  color: color-mix(in srgb, var(--dept-accent) 74%, var(--erp-text-primary));
+  font-family: inherit;
+  font-size: var(--erp-text-sm, 12px);
+  font-weight: var(--erp-fw-semibold);
+  background: color-mix(in srgb, var(--erp-surface) 90%, var(--dept-accent));
+  border: 1px dashed color-mix(in srgb, var(--dept-accent) 34%, var(--erp-border));
+  border-radius: var(--erp-radius-lg);
+  cursor: pointer;
+  transition: background var(--erp-duration-base) var(--erp-ease-standard),
+    border-color var(--erp-duration-base) var(--erp-ease-standard);
+}
+.erp-v2 .erp-dept-kids-bar:hover,
+.erp-v2 .erp-dept-kids-bar:focus-visible {
+  border-color: color-mix(in srgb, var(--dept-accent) 58%, var(--erp-border));
+  background: color-mix(in srgb, var(--erp-surface) 82%, var(--dept-accent));
+}
+.erp-v2 .erp-dept-kids-bar.is-open { border-style: solid; }
+.erp-v2 .erp-dept-kids-bar .ji { inline-size: 16px; block-size: 16px; }
+.erp-v2 .erp-dept-child {
+  --dept-accent: var(--erp-brand);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--dept-accent) 20%, var(--erp-border));
+  border-radius: var(--erp-radius-lg);
+  background: color-mix(in srgb, var(--erp-surface) 92%, var(--dept-accent));
+  transition: border-color var(--erp-duration-base) var(--erp-ease-standard),
+    background var(--erp-duration-base) var(--erp-ease-standard);
+}
+.erp-v2 .erp-dept-child:hover,
+.erp-v2 .erp-dept-child:focus-within {
+  border-color: color-mix(in srgb, var(--dept-accent) 46%, var(--erp-border));
+}
+.erp-v2 .erp-dept-child.is-expanded { border-color: color-mix(in srgb, var(--dept-accent) 56%, var(--erp-border)); }
+.erp-v2 .erp-dept-child__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2) var(--erp-space-3);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  min-width: 0;
+}
+.erp-v2 .erp-dept-child__medal { flex: none; display: inline-flex; }
+.erp-v2 .erp-dept-child .erp-dept-medal { inline-size: 40px; block-size: 40px; }
+.erp-v2 .erp-dept-child .erp-dept-medal .ji,
+.erp-v2 .erp-dept-child .erp-dept-medal svg { inline-size: 20px; block-size: 20px; }
+.erp-v2 .erp-dept-child .erp-dept-medal__emoji { font-size: 18px; }
+.erp-v2 .erp-dept-child__id { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.erp-v2 .erp-dept-child__name { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); overflow-wrap: anywhere; }
+.erp-v2 .erp-dept-child__code { font-size: 11px; color: var(--erp-text-faint); }
+.erp-v2 .erp-dept-child__signals { font-size: var(--erp-text-sm, 12px); color: var(--erp-text-muted); white-space: nowrap; }
+.erp-v2 .erp-dept-child__cashiers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.erp-v2 .erp-dept-child .erp-dept-cashier { padding-block: 3px; font-size: var(--erp-text-sm, 12px); }
+.erp-v2 .erp-dept-child__unassigned { font-size: var(--erp-text-sm, 12px); color: var(--erp-text-faint); }
+.erp-v2 .erp-dept-child__amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  margin-inline-start: auto;
+}
+.erp-v2 .erp-dept-child__net { font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); white-space: nowrap; }
+.erp-v2 .erp-dept-child__net.is-positive { color: var(--erp-success-text); }
+.erp-v2 .erp-dept-child__net.is-negative { color: var(--erp-danger-text); }
+.erp-v2 .erp-dept-child__ratio { font-size: 11px; color: var(--erp-text-faint); white-space: nowrap; }
+.erp-v2 .erp-dept-child__actions { display: inline-flex; align-items: center; gap: var(--erp-space-2); }
+.erp-v2 .erp-dept-child .erp-dept-link-panel { margin: 0 var(--erp-space-3) var(--erp-space-3); }
 /* البطاقة المفتوحة بلوحة الربط تأخذ عرض الصف كاملًا */
 .erp-v2 .erp-dept-card.is-expanded { grid-column: 1 / -1; }
 /* ─── حالة الفراغ والخطأ ─── */
@@ -358,6 +522,9 @@
 @media (max-width: 720px) {
   .erp-v2 .erp-dept-grid { grid-template-columns: 1fr; gap: var(--erp-space-3); }
   .erp-v2 .erp-dept-card { padding: var(--erp-space-4); }
+  .erp-v2 .erp-dept-kids { padding-inline-start: var(--erp-space-2); }
+  .erp-v2 .erp-dept-child__amounts { margin-inline-start: 0; align-items: flex-start; }
+  .erp-v2 .erp-dept-child__signals { white-space: normal; }
   .erp-v2 .erp-dept-card__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 400px) {
@@ -379,4 +546,8 @@
   .erp-v2 .erp-dept-card { box-shadow: none; border-color: var(--erp-border-strong); break-inside: avoid; }
   .erp-v2 .erp-dept-card::after { display: none; }
   .erp-v2 .erp-dept-card__foot { display: none; }
+  .erp-v2 .erp-dept-child__actions { display: none; }
+  /* الطبع يرى كل الأقسام الفرعية: الطيّ عرضُ شاشةٍ لا حجبُ تقرير */
+  .erp-v2 .erp-dept-kids-bar { display: none; }
+  .erp-v2 .erp-dept-kids.is-collapsed { display: flex; }
 }

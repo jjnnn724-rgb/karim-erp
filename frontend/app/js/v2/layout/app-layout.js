@@ -21,9 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.169';
-import { mountDensityControl } from '../density.js?v=4.9.169';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.169';
+import { mountThemeControl } from '../theme.js?v=4.9.181';
+import { mountDensityControl } from '../density.js?v=4.9.181';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -76,7 +76,8 @@ export function mountAppLayout(container, options = {}) {
       <aside class="erp-shell__sidebar" id="erp-sidebar" aria-label="التنقل الرئيسي">
         <div class="erp-shell__brand">
           <span class="erp-shell__brand-mark" aria-hidden="true">
-            <i class="ji" data-i="layout-dashboard"></i>
+            <img data-v2-shell-logo src="assets/al-shurfa-logo.png" alt="">
+            <i class="ji" data-v2-shell-logo-fallback data-i="layout-dashboard" hidden></i>
           </span>
           <span class="erp-shell__brand-text">
             <strong class="erp-truncate"></strong>
@@ -108,7 +109,9 @@ export function mountAppLayout(container, options = {}) {
           <nav class="erp-crumbs" aria-label="مسار التنقل"></nav>
 
           <div class="erp-shell__actions erp-no-print">
-            ${Object.keys(BOUNDARIES).map((name) => boundaryMarkup(name)).join('')}
+            <span class="erp-shell__integrations" data-erp-integrations hidden>
+              ${Object.keys(BOUNDARIES).map((name) => boundaryMarkup(name)).join('')}
+            </span>
             <span class="erp-shell__sep" aria-hidden="true"></span>
             <span data-erp-theme-slot></span>
             <span class="erp-shell__sep" aria-hidden="true"></span>
@@ -256,7 +259,7 @@ export function mountAppLayout(container, options = {}) {
     function boundaryMarkup(name) {
         const meta = BOUNDARIES[name];
         return `<button type="button" class="erp-boundary" data-erp-boundary="${esc(name)}"
-                        title="${esc(meta.label)} — حدّ تكامل غير موصول">
+                        title="${esc(meta.label)} — حدّ تكامل غير موصول" hidden>
             <i class="ji" data-i="${esc(meta.icon)}" aria-hidden="true"></i>
             <span class="erp-sr-only">${esc(meta.label)}</span>
         </button>`;
@@ -275,6 +278,8 @@ export function mountAppLayout(container, options = {}) {
         if (!node) {return false;}
         slot.replaceWith(node);
         node.setAttribute('data-erp-boundary', name);
+        const integrations = root.querySelector('[data-erp-integrations]');
+        if (integrations) {integrations.hidden = false;}
         return true;
     }
 

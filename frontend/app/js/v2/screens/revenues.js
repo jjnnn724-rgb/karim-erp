@@ -10,8 +10,9 @@
  * LEGACY PARITY (features/finance.js:9-32 · :135-164)
  *   Default lens = current month (owner request 2026-10-08, finance.js:35);
  *   filters: dept (code), from, to, free search; net-shown total card;
- *   print. Newest first. The walk cap (newest 8,000 rows) is stated in
- *   the UI. التعديل والحذف ببوابة finance.edit (أدناه)، والإنشاء ليس هنا.
+ *   print. Newest first. Server reads are month-filtered and bounded to
+ *   the newest 8,000 rows. التعديل والحذف ببوابة finance.edit (أدناه)،
+ *   والإنشاء ليس هنا.
  *
  * P1-2 (عقد الإكمال بند ٢ — «4 كتابات + تصحيح أدوار»):
  *   عمود إجراءات يُرسم فقط لدور FINANCE_WRITE_ROLES =
@@ -22,12 +23,12 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { fetchRevenues, fetchDepartments, isoDay, firstOfMonth } from '../data/finance-repo.js?v=4.9.169';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.169';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.181';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.181';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -56,9 +57,9 @@ function template(from, to) {
           <label class="erp-text-sm erp-text-muted" for="v2rev-dept">القسم</label>
           <select class="erp-input" id="v2rev-dept"><option value="all">كل الأقسام</option></select>
           <label class="erp-text-sm erp-text-muted" for="v2rev-from">من</label>
-          <input class="erp-input erp-input--ltr" id="v2rev-from" type="date" value="${esc(from)}">
+          <input class="erp-input erp-input--ltr" id="v2rev-from" type="date" value="${esc(from)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
           <label class="erp-text-sm erp-text-muted" for="v2rev-to">إلى</label>
-          <input class="erp-input erp-input--ltr" id="v2rev-to" type="date" value="${esc(to)}" max="${esc(isoDay(0))}">
+          <input class="erp-input erp-input--ltr" id="v2rev-to" type="date" value="${esc(to)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
           <label class="erp-text-sm erp-text-muted" for="v2rev-search">بحث</label>
           <input class="erp-input" id="v2rev-search" type="search" placeholder="المصدر أو ملاحظات…">
           <button type="button" class="erp-btn erp-btn--sm" data-v2-clear hidden>عرض الكل</button>
@@ -77,8 +78,8 @@ function template(from, to) {
             إلا لدور <span class="erp-addr" dir="ltr">finance.edit</span>
             (admin|manager|accountant) والخادم يعيد فحص كل نداء؛ الإضافة من
             زر «إيراد +» في تفاصيل القسم (10) لأن إنشاء الإيراد بابٌ آخر.
-            الافتراضي الشهر الحالي؛ إفراغ التاريخين يعرض الكل. يُقرأ الأحدث
-            حتى 8,000 حركة ثم تُطبَّق الفرزات محليًا.
+            تعرض الواجهة أحدث 8,000 حركة من الشهر الحالي؛ وتبقى الحركات
+            الأقدم محفوظة دون تحميلها أو تعديلها.
           </p>
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
@@ -108,7 +109,7 @@ export function mountRevenuesScreen(host, ctx = {}) {
     let saving = false;
     let editing = null;          // raw row whose form is open (null when closed)
 
-    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0)));
+    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const countEl = q('[data-v2-count]');

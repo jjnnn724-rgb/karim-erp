@@ -6,7 +6,7 @@ const https = require('https');
 const { Client } = require('pg');
 const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
 const PORT = 5002;
-const DEPT = 99901, PRODUCT = 999001, ING = 999001, SHIFT = 999001;
+const DEPT = 99901, PRODUCT = 999001, SHIFT = 999001;
 let failed = 0;
 const record = (n, ok, d) => { console.log((ok ? 'PASS' : 'FAIL') + ' | ' + n + ' | ' + d); if (!ok) { failed++; } };
 

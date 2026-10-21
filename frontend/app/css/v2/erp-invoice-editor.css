@@ -89,7 +89,7 @@
 
 .erp-v2 .erp-vi-name { position: relative; }
 
-/* تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن (سياسة المالك 2026-10-19) */
+/* تاريخ الصلاحية اختياري في مداخل المخزون (سياسة 2026-10-20) */
 .erp-v2 .erp-vi-expiry input[type="date"] { min-inline-size: 8.5rem; }
 .erp-v2 .erp-vi-expiry.is-missing .erp-label { color: var(--erp-danger-text); }
 .erp-v2 .erp-vi-expiry.is-missing input[type="date"] {

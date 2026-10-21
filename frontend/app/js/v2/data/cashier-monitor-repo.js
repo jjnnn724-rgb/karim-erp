@@ -11,7 +11,7 @@
  * live=1 لليوم الحالي فقط وتشغّل مزامنة خفيفة بحد 45 ثانية (:27-46).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 /** Riyadh YYYY-MM-DD — مرآة cmToday (features/cashier-monitor.js:15). */
 export function mirrorToday() {

@@ -128,6 +128,19 @@ describe('القشرة — صلاحيات القائمة موصولة بالمض
 describe('القشرة — عقد الوحدة', () => {
     const src = () => read(EXTRAS);
 
+    test('لا تعرض إجراء تصدير عامًا بلا تنفيذ — لكل شاشة تصديرها المدعوم', () => {
+        const host = read(HOST);
+        expect(host).not.toMatch(/label:\s*'تصدير'[\s\S]{0,180}console\.info/);
+        expect(host).not.toContain('[V2 preview] export is a boundary, not implemented');
+    });
+
+    test('حدود التكامل غير الموصولة لا تظهر كأزرار قبل تركيب ميزة حقيقية', () => {
+        const layout = read(path.join(V2, 'layout', 'app-layout.js'));
+        expect(layout).toMatch(/data-erp-integrations hidden/);
+        expect(layout).toMatch(/data-erp-boundary="\$\{esc\(name\)\}"[\s\S]*?hidden/);
+        expect(layout).toMatch(/integrations\.hidden = false/);
+    });
+
     test('العناصر الستة حاضرة بنفس أدوار القديم', () => {
         const s = src();
         for (const k of ['karim_lang', 'data-v2-bell', 'data-v2-notif-readall',
@@ -137,6 +150,13 @@ describe('القشرة — عقد الوحدة', () => {
             expect(s).toContain(k);
         }
         expect(s).toContain("'admin', 'manager', 'hr', 'accountant', 'dept_head'");
+    });
+
+    test('زر الكاشير السريع يبقى داخل V2 ويظهر للمدير', () => {
+        const extras = read(EXTRAS);
+        expect(extras).toContain("const posRoles = ['admin', 'manager', 'accountant', 'cashier'];");
+        expect(extras).toContain('shell.navigate(k);');
+        expect(extras).not.toContain("window.open('/app/pos.html'");
     });
 
     test('بلا شبكة مباشرة ولا معالج سطري', () => {
@@ -153,7 +173,11 @@ describe('القشرة — عقد الوحدة', () => {
         const health = block('async function paintHealth()', 'const healthTimer');
         expect(health).toMatch(/if \(!live\(\)\) \{return;\}/);
         const bell = block('async function paintBell()', 'async function openNotifPanel');
-        expect(bell).toMatch(/if \(!live\(\) \|\| !isAdmin\)/);
+        /* الجرس لكل دور مصادق (لا قيد الأدمن القديم app.js:255): الخادم يوجّه
+           إشعارات الاعتماد لـ kitchen/warehouse ويبصرّها على مالك الجلسة وحده. */
+        expect(bell).toMatch(/if \(!live\(\)\) \{bellWrap\.innerHTML = ''; return;\}/);
+        expect(bell).not.toMatch(/isAdmin|NOTIF_ADMIN_ROLES|NOTIF_BELL_ROLES/);
+        expect(src()).not.toMatch(/NOTIF_ADMIN_ROLES|NOTIF_BELL_ROLES/);
         const poll = block('function startNotifPoll()', '/* ── Quick buttons');
         expect(poll).toMatch(/if \(!live\(\)\) \{return;\}/);
         const refresh = block('function refresh()', 'refresh();');

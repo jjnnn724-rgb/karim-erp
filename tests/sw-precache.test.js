@@ -16,6 +16,8 @@ const V2 = fs.readFileSync(path.join(APP_DIR, 'v2.html'), 'utf8');
 const LEGACY_REV = (INDEX.match(/js\/main\.js\?v=([\d.]+)/) || [])[1];
 const POS_REV = (POS.match(/js\/pos\.js\?v=([\d.]+)/) || [])[1];
 const V2_REV = (V2.match(/js\/v2\/preview\.js\?v=([\d.]+)/) || [])[1];
+// v2.html تحولت إلى وسم لكل ملف (per-file) — قراءة وسم erp-hr نفسه لا من preview REV
+const HR_REV = (V2.match(/css\/v2\/erp-hr\.css\?v=([\d.]+)/) || [])[1];
 const BOARD = fs.readFileSync(path.join(APP_DIR, 'menu-board.html'), 'utf8');
 const BOARD_REV = (BOARD.match(/js\/menu-board\.js\?v=([\d.]+)/) || [])[1];
 const PRECACHE_LIMIT = Number((SW.match(/PRECACHE_LIMIT = (\d+)/) || [])[1]);
@@ -92,7 +94,8 @@ describe('الكاش المُسبق على المستودع الحقيقي: لا
         has(`/app/js/features/branches.js?v=${LEGACY_REV}`);
         has(`/app/js/pos.js?v=${POS_REV}`);
         has(`/app/js/v2/preview.js?v=${V2_REV}`);
-        has(`/app/css/v2/erp-hr.css?v=${V2_REV}`);
+        expect(HR_REV).toBeDefined();   // وسمٌ حاضر لا مطابقةٌ لغيره
+        has(`/app/css/v2/erp-hr.css?v=${HR_REV}`);
         has(`/app/js/menu-board.js?v=${BOARD_REV}`);
     });
 
@@ -324,7 +327,9 @@ describe('ما لم يلمسه البندُ ٧: سياسةُ الجُلب كما
     test('نسخةُ الكاش مرفوعة كي تُمحى أكشاشُ 4.25.55 بمفاتيحها الميتة', () => {
         const version = (SW.match(/CACHE_VERSION='([\d.]+)'/) || [])[1];
         expect(version).not.toBe('4.25.55');
-        expect(version).toMatch(/^4\.25\.5\d$/);
+        const [major, minor, patch] = version.split('.').map(Number);
+        expect([major, minor]).toEqual([4, 25]);
+        expect(patch).toBeGreaterThan(55);
         for (const name of makeSw({ files: {} }).names()) {expect(name).toContain(version);}
     });
 });

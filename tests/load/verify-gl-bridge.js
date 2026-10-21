@@ -1,6 +1,5 @@
 ﻿// ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط¬ط³ط± ظٹط§ط±ط³ظˆظپطھ ط§ظ„ظ„ط­ط¸ظٹ (R3) ط¹ظ„ظ‰ drill â€” ظ†ط³ط®ط© ظ†ط¸ظٹظپط©
 'use strict';
-const { Pool } = require('pg');
 const pool = new (require('pg').Pool)({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp_drill', max: 3 });
 let failed = 0;
 const record = (n, ok, d) => { console.log((ok ? 'PASS' : 'FAIL') + ' | ' + n + ' | ' + d); if (!ok) { failed++; } };

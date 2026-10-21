@@ -73,14 +73,14 @@ body {
 .login-crest img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
 .login-card h1 { font-size: 23px; font-weight: 900; color: var(--gold); }
 .login-card > p { font: 600 10.5px 'Outfit', sans-serif; color: var(--muted); letter-spacing: 3.4px; margin: 5px 0 20px; }
-.login-card label, .form-grid label { display: block; text-align: right; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 13px; }
-.login-card input, .form-grid input, .form-grid textarea, .ed-carving select {
+.login-card label, .form-grid label, .meal-schedule label { display: block; text-align: right; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 13px; }
+.login-card input, .form-grid input, .form-grid textarea, .meal-schedule input, .meal-schedule select, .ed-carving select {
     width: 100%; margin-top: 6px; padding: 11px 13px;
     font: 600 14px var(--font); color: var(--cream);
     background: rgba(3, 14, 22, .8); border: 1px solid var(--line);
     border-radius: 11px; outline: none; transition: border-color .18s, box-shadow .18s;
 }
-.login-card input:focus, .form-grid input:focus, .form-grid textarea:focus, .ed-carving select:focus {
+.login-card input:focus, .form-grid input:focus, .form-grid textarea:focus, .meal-schedule input:focus, .meal-schedule select:focus, .ed-carving select:focus {
     border-color: var(--line-strong); box-shadow: 0 0 0 3px rgba(255, 212, 105, .14);
 }
 .login-card input::placeholder { color: rgba(167, 185, 201, .5); }
@@ -320,6 +320,19 @@ body {
 .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .form-grid .span2 { grid-column: span 2; }
 .form-grid textarea { resize: vertical; line-height: 1.7; }
+.meal-schedule-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.meal-schedule {
+    padding: 14px; border: 1px solid var(--line); border-radius: 14px;
+    background: linear-gradient(155deg, rgba(255, 212, 105, .07), rgba(3, 14, 22, .34));
+}
+.meal-schedule h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; color: var(--gold-lt); font-size: 15px; }
+.meal-schedule h3 small { color: var(--cyan); font: 700 9px 'Outfit', sans-serif; letter-spacing: 1.4px; }
+.meal-schedule label:last-child { margin-bottom: 0; }
+.meal-schedule-grid + .form-grid { padding-top: 14px; border-top: 1px solid var(--line); }
+.translation-status { min-height: 18px; margin-top: 9px; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
+.translation-status.is-pending { color: var(--cyan); }
+.translation-status.is-success { color: var(--emerald); }
+.translation-status.is-error { color: var(--amber); }
 input[type="time"], input[type="number"] { font-family: 'Outfit', var(--font); }
 
 /* ═══════ شريط الحفظ الثابت ═══════ */
@@ -358,12 +371,20 @@ input[type="time"], input[type="number"] { font-family: 'Outfit', var(--font); }
     .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .pane, .pane.active, #pane-theme { grid-template-columns: minmax(0, 1fr); }
     .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .meal-schedule-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
     body { padding: 12px 12px 92px; }
     .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .topbar { flex-direction: column; align-items: stretch; }
-    .topbar-right { justify-content: space-between; }
+    .topbar { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; gap: 8px; }
+    .brand { gap: 9px; }
+    .crest { width: 42px; height: 42px; border-radius: 11px; }
+    .brand-copy h1 { font-size: 16px; }
+    .brand-copy p { display: none; }
+    .topbar-right { flex: 1 1 100%; justify-content: space-between; gap: 8px; }
+    .clock span { font-size: 19px; }
+    .clock small { font-size: 10px; }
+    .badge { padding: 6px 10px; font-size: 11px; }
     .form-grid { grid-template-columns: minmax(0, 1fr); }
     .form-grid .span2 { grid-column: span 1; }
     .save-bar { width: calc(100vw - 24px); justify-content: space-between; }

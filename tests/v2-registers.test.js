@@ -38,6 +38,16 @@ function loadEsm(file, injections = {}, collect = []) {
     return context;
 }
 
+function loadTemplate(file) {
+    const source = read(file)
+        .replace(/^import[\s\S]*?\s+from\s+['"][^'"]+['"];?\s*$/gm, '')
+        .replace(/^export\s+/gm, '');
+    const context = { Date, String };
+    vm.createContext(context);
+    vm.runInContext(`${source}\n;globalThis.template = template;`, context, { filename: file });
+    return context.template;
+}
+
 const SCREENS = ['hr-dashboard', 'revenues', 'expenses', 'wh-moves', 'recipes',
     'departments', 'hr-departments', 'payroll', 'cost-analysis', 'pnl'];
 
@@ -54,8 +64,8 @@ describe('سجلات القراءة — عقد المشي المحدود وأب�
         expect(rows).toHaveLength(1000);
         // الصفحة الأولى ممتلئة (1000) → يمشي للثانية، والثانية فارغة → يتوقف
         expect(calls).toEqual([
-            '/revenues?page=1&limit=1000&sort=id&order=desc',
-            '/revenues?page=2&limit=1000&sort=id&order=desc',
+            '/revenues?page=1&limit=1000&sort=id&order=desc&v2_period=month',
+            '/revenues?page=2&limit=1000&sort=id&order=desc&v2_period=month',
         ]);
     });
 
@@ -92,11 +102,35 @@ describe('سجلات القراءة — عقد المشي المحدود وأب�
             fin.fetchExpenses(), fin.fetchDepartments(), fin.fetchPnl('2026-10-01', '2026-10-15'),
             hr.fetchHrDepartments(), rec.fetchRecipes(), rec.fetchRecipesCatalog(),
         ]);
-        expect(calls).toContain('/expenses?page=1&limit=1000&sort=id&order=desc');
+        expect(calls).toContain('/expenses?page=1&limit=1000&sort=id&order=desc&v2_period=month');
         expect(calls).toContain('/departments?page=1&limit=1000&sort=id&order=desc');
         expect(calls).toContain('/finance/pnl?from=2026-10-01&to=2026-10-15');
         expect(calls).toContain('/hrDepartments?page=1&limit=1000&sort=id&order=desc');
         expect(calls).toContain('/pos/recipes/catalog');
+    });
+
+    test('السجلات التاريخية تطلب شهر الرياض من الخادم قبل الترقيم', async () => {
+        const calls = [];
+        const apiFetch = jest.fn(async (p) => { calls.push(p); return { data: [] }; });
+        const dispatch = loadEsm(path.join(V2, 'data', 'dispatch-repo.js'), { apiFetch }, ['fetchDispatches']);
+        const warehouse = loadEsm(path.join(V2, 'data', 'warehouse-repo.js'), { apiFetch },
+            ['fetchInventoryTx', 'fetchKitchenReturns']);
+        const invoices = loadEsm(path.join(V2, 'data', 'purchase-invoices-repo.js'), { apiFetch },
+            ['fetchPurchaseInvoices']);
+        await Promise.all([
+            dispatch.fetchDispatches(), warehouse.fetchInventoryTx(),
+            warehouse.fetchKitchenReturns(), invoices.fetchPurchaseInvoices(),
+        ]);
+        for (const entity of ['dispatches', 'inventoryTx', 'kitchenReturns', 'purchaseInvoices']) {
+            expect(calls).toContain(`/${entity}?page=1&limit=1000&sort=id&order=${entity === 'purchaseInvoices' ? 'asc' : 'desc'}&v2_period=month`);
+        }
+    });
+
+    test('حدود الشهر واليوم تتبع تقويم الرياض عند عبور منتصف الليل', () => {
+        const ctx = loadEsm(path.join(V2, 'data', 'finance-repo.js'), {}, ['riyadhToday', 'firstOfMonth']);
+        const afterMidnightInRiyadh = new Date('2026-01-31T22:00:00.000Z');
+        expect(ctx.riyadhToday(afterMidnightInRiyadh)).toBe('2026-02-01');
+        expect(ctx.firstOfMonth(afterMidnightInRiyadh)).toBe('2026-02-01');
     });
 
     test('fetchPnl يتاريخان أو لا شيء — الخادم يرفض الواحد 400', async () => {
@@ -125,6 +159,16 @@ describe('عقد الشاشات السبع — CSP/هدم/أمانة الفشل'
 
 describe('لوحة الموارد (12) — كل مصدر اختياري ومُسمّى عند فشله', () => {
     const repo = read(path.join(V2, 'data', 'hr-dashboard-repo.js'));
+
+    test('القالب متعدد البطاقات داخل جذر واحد كي تبقى مراجع العرض صالحة', () => {
+        const template = loadTemplate(path.join(V2, 'screens', 'hr-dashboard.js'));
+        const html = template();
+        expect(html.trimStart()).toMatch(/^<div class="erp-v2-hrdash-root">/);
+        expect((html.match(/<section\b/g) || [])).toHaveLength(2);
+        expect(html).toContain('data-v2-kpis');
+        expect(html).toContain('data-v2-table');
+        expect(html.trimEnd()).toMatch(/<\/section>\s*<\/div>$/);
+    });
 
     test('المستودع يجمع أربعة مصادر ويحمل فشل كل منها كاسم لا كسر', () => {
         expect(repo).toMatch(/Promise\.allSettled/);

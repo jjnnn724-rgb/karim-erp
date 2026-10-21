@@ -37,9 +37,9 @@
  * (features/warehouse.js:2384). Nothing else may POST/PUT/DELETE.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { formatMoney } from './reports-repo.js?v=4.9.169';
-import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { formatMoney } from './reports-repo.js?v=4.9.181';
+import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.181';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];
@@ -383,8 +383,8 @@ export function auditReadVisible(role) {return roleIn(role, AUDIT_READ_ROLES);}
    القديم (warehouse.js:1324-1345): الكمية من الحقل، والسعر الفارغ/غير الصالح
    (أو صفرًا) يرجع إلى متوسط التكلفة الحالي — `parseFloat(x) || item.avgCost`.
    الخادم يعيد فحص qty>0 و price>=0 ووحدة الصنف (UNIT_MISMATCH :1602).
-   سياسة الصلاحية 2026-10-19: الخادم يرفض 422 بلا تاريخ صلاحية — الحقل رابع
-   في الباني وتصل null حين يغيب فيقول الخادم رسالته ولا يُخترع تاريخ. */
+   سياسة الصلاحية 2026-10-20: التاريخ اختياري — يصل null حين يغيب،
+   ويُرفض فقط إن جاء بصيغة فاسدة. */
 
 export function receiptPayload(item = {}, qtyRaw, priceRaw, expiryRaw) {
     const qty = Number(qtyRaw) || 0;
@@ -471,7 +471,7 @@ export function sheetExpiryCell(value) {
  * صفوف المخزون من الورقة — inventoryImportRowsFromSheet :2454.
  * الصف الأول رأس إن حمل أي خلية بأحد أسماء العمود؛ ولا يُشترط وجوده.
  * العمود السابع (ف) تاريخ الصلاحية — اختياري في الورقة، وتُطبق سياسة
- * المالك 2026-10-19 عبر applySheetExpiry بالورقة كلها قبل الإرسال.
+ * 2026-10-20 عبر applySheetExpiry بالورقة كلها قبل الإرسال.
  * @param {any[][]} rows
  * @returns {Array<{name:string,category:string,unit:string,qty:number,price:number,minQty:number,expiryDate:(string|Date|null)}>}
  */
@@ -557,6 +557,32 @@ export async function createInventoryItem(payload) {
     });
 }
 
+/** POST /inventory with an optional opening-balance batch expiry (سياسة 2026-10-20). */
+export async function createOpeningInventoryItem(payload = {}) {
+    const name = String(payload.name || '').trim();
+    const qty = Number(payload.qty);
+    const avgCost = Number(payload.avgCost);
+    const expiryDate = normalizeExpiryDate(payload.expiryDate);
+    if (!name || !Number.isFinite(qty) || qty < 0 || !Number.isFinite(avgCost) || avgCost < 0) {
+        throw new Error('بيانات الصنف أو الرصيد الصافي غير صالحة');
+    }
+    if (String(payload.expiryDate ?? '').trim() && !expiryDate) {
+        throw new Error('تاريخ الصلاحية غير صحيح — الصيغة المطلوبة YYYY-MM-DD');
+    }
+    return apiFetch('/inventory', {
+        method: 'POST',
+        body: JSON.stringify({
+            name,
+            category: String(payload.category || '').trim() || 'عام',
+            unit: String(payload.unit || '').trim() || 'كجم',
+            qty,
+            avgCost,
+            minQty: 0,
+            expiryDate,
+        }),
+    });
+}
+
 /** الخادم يرد 409 بـ`error` لا `code` (server.js:1657) — الفحص على الاثنين. */
 export function duplicateNameError(e) {
     return !!(e && (e.code === 'DUPLICATE_ITEM_NAME'
@@ -610,6 +636,25 @@ export async function directEditInventoryItem(id, payload) {
             avgCost: Number(payload?.avgCost),
             reason: String(payload?.reason || '').trim(),
         }),
+    });
+}
+
+/** Admin-only opening net mode: adjust the main warehouse without rewriting department balances. */
+export async function setOpeningMainWarehouseBalance(id, payload = {}) {
+    const itemId = Number(id);
+    const mainQty = Number(payload.mainQty);
+    const avgCost = Number(payload.avgCost);
+    const expiryDate = normalizeExpiryDate(payload.expiryDate);
+    const reason = String(payload.reason || '').trim().slice(0, 200);
+    if (!Number.isInteger(itemId) || itemId <= 0
+        || !Number.isFinite(mainQty) || mainQty < 0
+        || !Number.isFinite(avgCost) || avgCost < 0
+        || !reason) {
+        throw new Error('بيانات تعيين الرصيد الافتتاحي الصافي غير صالحة');
+    }
+    return apiFetch(`/warehouse/inventory/${encodeURIComponent(String(itemId))}/direct`, {
+        method: 'PUT',
+        body: JSON.stringify({ mainQty, avgCost, expiryDate, reason }),
     });
 }
 

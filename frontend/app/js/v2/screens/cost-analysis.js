@@ -3,11 +3,9 @@
  * ═══════════════════════════════════════════════════════════════════════
  *
  * LEGACY PARITY (features/finance.js:252-273 + auth-navigation.js:398-451)
- *   The legacy screen has NO endpoint — it is a pure computation over
- *   STATE.revenues + STATE.expenses + STATE.departments. V2 mirrors the
- *   SAME calculators (deptWithChildren / deptExpenseBreakdown /
- *   calcDeptStats live in v2/data/finance-repo.js, copied field-by-field)
- *   and fetches the three sources itself in parallel.
+ *   The legacy screen computes over STATE.revenues + STATE.expenses +
+ *   STATE.departments. V2 uses /finance/cost-analysis to apply the same
+ *   department-tree and expense-bucket rules in one aggregated read.
  *   Buckets per department: صرف مخزون (stock movement, net of returns via
  *   the Math.max(0, …) legacy rule) / فرق جرد (count_correction) /
  *   تشغيلية (the rest). KPI thresholds: <50 green, <75 orange, else red
@@ -20,13 +18,12 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { barChart, donutChart } from '../charts.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { barChart, donutChart } from '../charts.js?v=4.9.181';
 import {
-    fetchRevenues, fetchExpenses, fetchDepartments,
-    buildCostRows, isoDay, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.169';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.169';
+    fetchCostAnalysis, firstOfMonth, riyadhToday,
+} from '../data/finance-repo.js?v=4.9.181';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,35 +64,46 @@ function template(from, to) {
     return `
       <section class="erp-card erp-v2-cost">
         <div class="erp-card__head">
-          <h3 class="erp-card__title">تحليل التكاليف
-            <span class="erp-eyebrow" dir="ltr" lang="en">Cost Analysis</span>
-          </h3>
-          <span class="erp-grow"></span>
-          <label class="erp-text-sm erp-text-muted" for="v2cost-from">من</label>
-          <input class="erp-input erp-input--ltr" id="v2cost-from" type="date" value="${esc(from)}">
-          <label class="erp-text-sm erp-text-muted" for="v2cost-to">إلى</label>
-          <input class="erp-input erp-input--ltr" id="v2cost-to" type="date" value="${esc(to)}" max="${esc(isoDay(0))}">
-          <button type="button" class="erp-btn erp-btn--sm" data-v2-all>كل الفترة</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة التحليل">
-            <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
-          </button>
-          <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
-            <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة الحساب</span>
-          </button>
+          <div class="erp-v2-cost__heading">
+            <h3 class="erp-card__title">تحليل التكاليف
+              <span class="erp-eyebrow" dir="ltr" lang="en">Cost Analysis</span>
+            </h3>
+            <p>ملخص الإيرادات والتكاليف حسب القسم والفترة المحددة.</p>
+          </div>
+          <div class="erp-v2-cost__filters" role="group" aria-label="فترة تحليل التكاليف">
+            <label class="erp-v2-cost__date" for="v2cost-from">
+              <span>من تاريخ</span>
+              <input class="erp-input erp-input--ltr" id="v2cost-from" type="date" value="${esc(from)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
+            </label>
+            <label class="erp-v2-cost__date" for="v2cost-to">
+              <span>إلى تاريخ</span>
+              <input class="erp-input erp-input--ltr" id="v2cost-to" type="date" value="${esc(to)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
+            </label>
+            <div class="erp-v2-cost__actions">
+              <button type="button" class="erp-btn erp-btn--sm" data-v2-month>بداية الشهر</button>
+              <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة التحليل">
+                <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
+              </button>
+              <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
+                <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة الحساب</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="erp-card__body erp-stack">
-          <p class="erp-text-sm erp-text-muted">
-            قراءة فقط — حساب محلي من نفس مصادر النظام
-            (<span class="erp-addr" dir="ltr">/api/revenues</span> +
-            <span class="erp-addr" dir="ltr">/api/expenses</span> +
-            <span class="erp-addr" dir="ltr">/api/departments</span>)،
-            بنفس قواعد التصنيف القديمة (شجرة الأقسام + صافي المرتجعات).
-            لا يُطلب أي شيء من مسار كتابة. الرسوم SVG محلية بلا مكتبة خارجية.
-          </p>
+          <details class="erp-v2-cost__method">
+            <summary>عن طريقة احتساب التقرير</summary>
+            <p>قراءة وتجميع مباشر في الخادم من بداية الشهر الحالي حتى اليوم. الحركات الأقدم لا تدخل في طلب الشاشة؛ لا ينفذ التقرير أي تغييرات على البيانات ولا ينقل تفاصيل الحركات إلى المتصفح.</p>
+          </details>
           <ul class="erp-kpis" data-v2-kpis></ul>
           <div class="erp-v2-chart-grid" data-v2-charts></div>
-          <div data-v2-summary role="status" aria-live="polite" class="erp-text-sm erp-text-muted"></div>
-          <div data-v2-table></div>
+          <section class="erp-v2-cost__register" aria-labelledby="v2cost-table-title">
+            <div class="erp-v2-cost__register-head">
+              <h4 id="v2cost-table-title">تفصيل التكاليف حسب القسم</h4>
+              <p data-v2-summary role="status" aria-live="polite" class="erp-text-sm erp-text-muted"></p>
+            </div>
+            <div data-v2-table></div>
+          </section>
         </div>
       </section>`;
 }
@@ -106,14 +114,13 @@ function template(from, to) {
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getTotals: ()=>object|null, destroy: ()=>void}}
  */
 export function mountCostAnalysisScreen(host, _ctx = {}) {
-    let revenues = [];
-    let expenses = [];
-    let departments = [];
+    let rows = [];
+    let categories = [];
     let currency = '';
     let totals = null;
     let loading = false;
 
-    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0)));
+    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
@@ -179,7 +186,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
     }
 
     function paint() {
-        if (!departments.length) {
+        if (!rows.length) {
             summaryEl.textContent = 'لا توجد أقسام مسجلة.';
             kpisEl.innerHTML = '';
             chartsEl.innerHTML = '';
@@ -188,34 +195,27 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         }
         const from = q('#v2cost-from').value;
         const to = q('#v2cost-to').value;
-        const { rows, totals: t } = buildCostRows(revenues, expenses, departments, from, to);
-        totals = t;
-        paintKpis(t);
-
-        const inPeriod = (e) => {
-            const d = String((e && e.date) || '').slice(0, 10);
-            if (!d) {return false;}
-            if (from && d < from) {return false;}
-            if (to && d > to) {return false;}
-            return true;
-        };
-        const categories = new Map();
-        expenses.filter(inPeriod).forEach((e) => {
-            const label = e && e.category ? String(e.category) : 'أخرى';
-            categories.set(label, (categories.get(label) || 0) + num(e && e.amount));
-        });
+        const result = totals;
+        paintKpis(result);
         const moneyText = (v) => {
             const m = formatMoney(v, currency);
             return `${m.amount}${m.hasUnit ? ` ${m.unit}` : ''}`;
         };
+        const chartRows = rows.slice()
+            .sort((a, b) => (num(b.rev) + num(b.exp)) - (num(a.rev) + num(a.exp)))
+            .slice(0, 8);
         chartsEl.innerHTML = [
             barChart({
-                title: 'الإيرادات مقابل التكلفة حسب القسم',
-                ariaLabel: 'أعمدة الإيرادات والتكلفة الإجمالية لكل قسم',
-                labels: rows.map((r) => r.name),
+                title: rows.length > chartRows.length
+                    ? `مقارنة أعلى ${chartRows.length} أقسام — الجدول يعرض الجميع`
+                    : 'الإيرادات مقابل التكلفة حسب القسم',
+                ariaLabel: rows.length > chartRows.length
+                    ? `أعمدة الإيرادات والتكلفة لأعلى ${chartRows.length} أقسام، والجدول يعرض جميع الأقسام`
+                    : 'أعمدة الإيرادات والتكلفة الإجمالية لكل قسم',
+                labels: chartRows.map((r) => r.name),
                 series: [
-                    { label: 'الإيرادات', tone: 'success', values: rows.map((r) => r.rev) },
-                    { label: 'التكلفة الإجمالية', tone: 'danger', values: rows.map((r) => r.exp) },
+                    { label: 'الإيرادات', tone: 'success', values: chartRows.map((r) => r.rev) },
+                    { label: 'التكلفة الإجمالية', tone: 'danger', values: chartRows.map((r) => r.exp) },
                 ],
                 formatValue: moneyText,
                 emptyText: 'لا أقسام في هذه الفترة',
@@ -223,7 +223,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             donutChart({
                 title: 'توزيع بنود التكلفة بالتصنيف',
                 ariaLabel: 'رسم دائري لنسب تصنيفات المصروفات في الفترة',
-                slices: [...categories.entries()].map(([label, value]) => ({ label, value })),
+                slices: categories,
                 centerLabel: 'إجمالي المصروفات',
                 formatValue: moneyText,
                 maxSlices: 8,
@@ -232,26 +232,37 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         ].join('');
 
         summaryEl.textContent = `${formatInt(rows.length)} قسمًا`
-            + `${from || to ? ` · الفترة ${from || 'البداية'} → ${to || 'اليوم'}` : ' · كل الفترات'}`
-            + ' · الحساب محلي من الحركات المسجّلة فقط';
+            + ` · الفترة ${from || firstOfMonth()} → ${to || riyadhToday()}`
+            + ' · تجميع مباشر من قاعدة البيانات';
         table.setRows(rows);
     }
 
     async function reload() {
         if (loading) {return;}
+        const from = q('#v2cost-from').value;
+        const to = q('#v2cost-to').value;
+        if (Boolean(from) !== Boolean(to)) {
+            summaryEl.textContent = 'أدخل تاريخ البداية والنهاية معًا، أو امسح التاريخين لعرض كل الفترة.';
+            return;
+        }
         loading = true;
         table.setLoading(true);
-        summaryEl.textContent = 'جارٍ تحميل المصادر…';
+        summaryEl.textContent = 'جارٍ تجميع البيانات في الخادم…';
+        q('#v2cost-from').disabled = true;
+        q('#v2cost-to').disabled = true;
+        q('[data-v2-reload]').disabled = true;
+        q('[data-v2-month]').disabled = true;
         try {
-            const [revs, exps, deps, cur] = await Promise.all([
-                fetchRevenues(), fetchExpenses(), fetchDepartments(),
+            const [result, cur] = await Promise.all([
+                fetchCostAnalysis(from, to),
                 fetchCurrency().catch(() => ''),
             ]);
             if (!el.isConnected) {return;}          // destroyed while in flight
             currency = String(cur ?? '');
-            revenues = revs;
-            expenses = exps;
-            departments = deps;
+            rows = Array.isArray(result && result.rows) ? result.rows : [];
+            categories = Array.isArray(result && result.categories) ? result.categories : [];
+            totals = result && result.totals ? result.totals : null;
+            if (!totals) {throw new Error('استجابة تحليل التكاليف غير مكتملة من الخادم');}
             paint();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -267,14 +278,20 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
                     : `تعذّر حساب التحليل: ${(e && e.message) || 'خطأ'}`));
         } finally {
             loading = false;
+            if (el.isConnected) {
+                q('#v2cost-from').disabled = false;
+                q('#v2cost-to').disabled = false;
+                q('[data-v2-reload]').disabled = false;
+                q('[data-v2-month]').disabled = false;
+            }
         }
     }
 
     el.addEventListener('click', (event) => {
-        if (event.target.closest('[data-v2-all]')) {
-            q('#v2cost-from').value = '';
-            q('#v2cost-to').value = '';
-            paint();
+        if (event.target.closest('[data-v2-month]')) {
+            q('#v2cost-from').value = firstOfMonth();
+            q('#v2cost-to').value = riyadhToday();
+            reload();
             return;
         }
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
@@ -282,7 +299,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
     el.addEventListener('change', (event) => {
-        if (event.target.matches('#v2cost-from, #v2cost-to')) {paint();}
+        if (event.target.matches('#v2cost-from, #v2cost-to')) {reload();}
     });
 
     reload();

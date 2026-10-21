@@ -115,7 +115,7 @@ describe('dispatch-repo — الباب الواحد: قراءة من السجل 
         const rows = await repo.fetchDispatches();
         expect(rows).toHaveLength(5000);
         expect(calls).toHaveLength(5);
-        expect(calls[0]).toBe('/dispatches?page=1&limit=1000&sort=id&order=asc');
+        expect(calls[0]).toBe('/dispatches?page=1&limit=1000&sort=id&order=desc&v2_period=month');
         const bare = repoStub([{ id: 1 }, { id: 2 }]);
         expect(await bare.repo.fetchDispatches()).toHaveLength(2);
         const short = repoStub({ data: [{ id: 1 }], pagination: { total: 1, totalPages: 1 } });
@@ -405,16 +405,16 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
         expect(s).not.toMatch(/['"`]\/warehouse\/dispatches/);
     });
 
-    test('لا معالج سطري إلا زرا ورقة الطباعة — المنسوخان من القديم', () => {
+    test('تستخدم ورقة الطباعة مستمعات أحداث بدل المعالجات السطرية', () => {
         const s = src();
-        const handlers = s.match(/\son[a-z]+=/g) || [];
-        expect(handlers).toHaveLength(2);
-        expect(s).toContain('onclick="window.print()"');
-        expect(s).toContain('onclick="window.close()"');
+        const handlers = s.match(/<[a-z][^>]*\son[a-z]+\s*=/gi) || [];
+        expect(handlers).toEqual([]);
         expect(s).not.toMatch(/window\.(prompt|alert)\(/);
         const note = s.slice(s.indexOf('async function printNote'), s.indexOf('/* ── القراءة والرسم'));
-        expect(note).toContain('onclick="window.print()"');
-        expect(note).toContain('onclick="window.close()"');
+        expect(note).toContain('data-v2-print');
+        expect(note).toContain('data-v2-close');
+        expect(note).toContain("querySelector('[data-v2-print]')?.addEventListener");
+        expect(note).toContain("querySelector('[data-v2-close]')?.addEventListener");
     });
 
     test('الكتابات الثماني من أبوابها: كل اسم باب مستدعى في الشاشة', () => {

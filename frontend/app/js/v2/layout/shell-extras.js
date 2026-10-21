@@ -12,15 +12,17 @@
  */
 
 import {
-    NOTIF_ADMIN_ROLES, fetchNotifications, markNotificationsRead,
-    markAllNotificationsRead, clearNotifications, fetchHealth, changePassword,
-} from '../data/shell-repo.js?v=4.9.169';
+    fetchNotifications, markNotificationsRead,
+    markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
+} from '../data/shell-repo.js?v=4.9.181';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const HEALTH_MS = 60_000;
+const SERVER_INFO_MS = 5 * 60_000;
 const NOTIF_MS = 60_000;
 
 const FAB_ACTIONS = [
@@ -54,6 +56,10 @@ export function mountShellExtras(shell, ctx = {}) {
         target.addEventListener(ev, fn);
         disposers.push(() => target.removeEventListener(ev, fn));
     };
+    on(window, 'v2:realtime-version', (event) => {
+        const version = event.detail || {};
+        toast(`نسخة العميل غير متوافقة — الحد الأدنى ${version.minClientVersion || 'غير معروف'}؛ حدّث التطبيق`);
+    });
 
     /* ── Language switch (same key as legacy) ─────────────────────────── */
     const langBtn = document.createElement('button');
@@ -81,6 +87,38 @@ export function mountShellExtras(shell, ctx = {}) {
     lamps.setAttribute('role', 'status');
     lamps.setAttribute('aria-label', 'حالة الخادم وقاعدة البيانات');
     const dot = (ok, label) => `<span class="erp-lamp" data-ok="${ok === true ? '1' : (ok === false ? '0' : 'x')}" title="${esc(label)}" aria-label="${esc(label)}"></span>`;
+    const serverInfo = document.createElement('span');
+    serverInfo.className = 'erp-server-info erp-text-sm';
+    serverInfo.setAttribute('role', 'status');
+    serverInfo.setAttribute('aria-live', 'polite');
+    serverInfo.textContent = 'حالة إصدار الخادم غير معروفة';
+    const formatServerTime = (value) => {
+        if (!value || Number.isNaN(new Date(value).getTime())) {return '—';}
+        return new Date(value).toLocaleString(currentLang() === 'en' ? 'en-US' : 'ar-EG', {
+            dateStyle: 'short', timeStyle: 'short',
+        });
+    };
+    async function paintServerInfo() {
+        if (!live()) {serverInfo.textContent = ''; return;}
+        serverInfo.textContent = 'جارٍ فحص إصدار الخادم…';
+        try {
+            const info = await fetchServerInfo();
+            if (info.upToDate) {
+                serverInfo.dataset.current = '1';
+                serverInfo.textContent = `الخادم محدّث · يعمل منذ ${formatServerTime(info.startedAt)}`;
+                serverInfo.title = `آخر تعديل للكود: ${formatServerTime(info.codeMtime)}`;
+            } else {
+                serverInfo.dataset.current = '0';
+                serverInfo.textContent = `الخادم يعمل بكود قديم · منذ ${formatServerTime(info.startedAt)}`;
+                serverInfo.title = `يوجد كود أحدث على القرص (${formatServerTime(info.codeMtime)}). أعد تشغيل خدمة الخادم ثم حدّث الصفحة.`;
+            }
+        } catch (error) {
+            serverInfo.dataset.current = 'x';
+            serverInfo.textContent = 'تعذّر فحص إصدار الخادم';
+            serverInfo.title = error && error.message ? error.message : 'تعذّر الاتصال بخدمة حالة الخادم';
+            console.warn('[V2 shell] server version check failed:', error);
+        }
+    }
     async function paintHealth() {
         if (!live()) {return;}
         try {
@@ -96,8 +134,15 @@ export function mountShellExtras(shell, ctx = {}) {
         paintHealth();
     }, HEALTH_MS);
     disposers.push(() => clearInterval(healthTimer));
+    const serverInfoTimer = setInterval(() => {
+        if (!live() || document.hidden) {return;}
+        paintServerInfo();
+    }, SERVER_INFO_MS);
+    disposers.push(() => clearInterval(serverInfoTimer));
 
-    /* ── Notifications bell (admin only, like legacy) ─────────────────── */
+    /* ── Notifications bell (every authenticated session — the server
+       scopes the list to its owner, notification-routes.js:52, and routes
+       approval notices to kitchen/warehouse via dispatch-notifier.js) ── */
     const bellWrap = document.createElement('span');
     bellWrap.className = 'erp-shell__bell';
     let notifTimer = null;
@@ -111,8 +156,7 @@ export function mountShellExtras(shell, ctx = {}) {
     }
 
     async function paintBell() {
-        const isAdmin = NOTIF_ADMIN_ROLES.includes(String(getRole() || ''));
-        if (!live() || !isAdmin) {bellWrap.innerHTML = ''; return;}
+        if (!live()) {bellWrap.innerHTML = ''; return;}
         let unread = 0;
         try {
             const n = await fetchNotifications();
@@ -197,23 +241,57 @@ export function mountShellExtras(shell, ctx = {}) {
     }
     disposers.push(() => { if (notifTimer) {clearInterval(notifTimer);} });
 
+    /* ── دفع فوري لإشعارات الاعتماد (سوكت) ──────────────────────────────
+       الاعتمادات تُبثّ عبر حدث notification إلى غرفة user:<id>
+       (notification-service.js:160-174) — الـ polling وحده كان يأخّر الجرس
+       حتى دقيقة. الجسر (v2/realtime.js) يفتح الاتصال بنفس عقد المصافحة
+       ويعيد register_user عند كل reconnect؛ هنا نشترك ونجدّد الجرس فورًا.
+       في وضع fixture لا يُفتح اتصال إطلاقًا (عقد السطر 77). */
+    let rtSocket = null;
+    let rtBound = false;
+    function onPushedNotification(row) {
+        paintBell();
+        const t = row && (row.title || row.message);
+        if (!document.hidden && t) {toast(String(t));}
+    }
+    async function startNotifPush() {
+        if (!live() || rtBound) {return;}
+        const s = await ensureRealtimeSocket();
+        if (!s || rtBound) {return;}
+        rtSocket = s;
+        rtBound = true;
+        s.on('notification', onPushedNotification);
+    }
+    function stopNotifPush() {
+        if (rtSocket && rtBound) {
+            try {rtSocket.off('notification', onPushedNotification);} catch { try {rtSocket.removeListener('notification', onPushedNotification);} catch { /* detached */ } }
+        }
+        rtSocket = null;
+        rtBound = false;
+    }
+    disposers.push(stopNotifPush);
+
     /* ── Quick buttons: POS / menu boards / dispatch ──────────────────── */
     const quick = document.createElement('span');
     quick.className = 'erp-shell__quick';
     function paintQuick() {
         const role = String(getRole() || '');
-        const posRoles = ['admin', 'accountant', 'cashier'];
+        const posRoles = ['admin', 'manager', 'accountant', 'cashier'];
         const disRoles = ['admin', 'manager', 'kitchen', 'sous_chef', 'dept_head', 'warehouse'];
         quick.innerHTML = ''
             + (posRoles.includes(role) ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="pos"><i class="ji" data-i="receipt" aria-hidden="true"></i><span>الكاشير</span></button>` : '')
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="menu-board"><i class="ji" data-i="eye" aria-hidden="true"></i><span>شاشات المنيو</span></button>`
-            + (disRoles.includes(role) ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="dispatch"><i class="ji" data-i="package" aria-hidden="true"></i><span>طلب صرف</span></button>` : '');
+            + (disRoles.includes(role) ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="dispatch"><i class="ji" data-i="package" aria-hidden="true"></i><span>طلب صرف</span></button>` : '')
+            /* البند ٩ قرّر «لا بطاقة في القائمة» لمسح الباركود — الزر السريع
+               باب اكتشاف لا يخترق مرآة الصلاحيات؛ اختيار المستخدم يفعّل
+               المسح على هذا الجهاز فقط، والشاشة تتحقق من الدور والخادم. */
+            + (disRoles.includes(role) ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-quick="goods-scan"><i class="ji" data-i="barcode" aria-hidden="true"></i><span>مسح بضاعة</span></button>` : '');
     }
     quick.addEventListener('click', (event) => {
         const b = event.target.closest('[data-v2-quick]');
         if (!b) {return;}
         const k = b.dataset.v2Quick;
-        if (k === 'pos') {window.open('/app/pos.html', '_blank'); return;}
+        if (k === 'goods-scan') {window.localStorage.setItem('karim_v2_scan', '1');}
         shell.navigate(k);
     });
 
@@ -309,7 +387,7 @@ export function mountShellExtras(shell, ctx = {}) {
         if (actions) {
             const cluster = document.createElement('span');
             cluster.className = 'erp-shell__extras';
-            cluster.append(lamps, langBtn, quick, pwBtn);
+            cluster.append(lamps, langBtn, quick, serverInfo, pwBtn);
             actions.insertBefore(cluster, themeSlot || null);
             disposers.push(() => cluster.remove());
         }
@@ -323,12 +401,15 @@ export function mountShellExtras(shell, ctx = {}) {
         if (!live()) {
             bellWrap.innerHTML = '';
             lamps.innerHTML = '';
+            serverInfo.textContent = '';
             startNotifPoll();
             return;
         }
         paintBell();
         paintHealth();
+        paintServerInfo();
         startNotifPoll();
+        startNotifPush();
     }
     refresh();
 

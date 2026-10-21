@@ -18,9 +18,6 @@ const {
     validate,
     getEntitySchema,
     partialSchema,
-    emailSchema,
-    phoneSchema,
-    positiveNumber,
 } = require('../backend/zod-schemas');
 
 describe('Phase 3.1: Zod Validation System', () => {

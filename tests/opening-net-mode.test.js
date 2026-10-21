@@ -42,7 +42,7 @@ describe('الوضع الصافي: «يتخصم أذونات الصرف من ا�
     test('resolveOpeningNetItems: الصافي = البداية − المنصرف (باسم الصنف بلا حساسية لحالة الحروف)', () => {
         const { m } = build(new Map([['دجاج بلدي', 30], ['طماطم', 5]]), []);
         m.openingNet.on = true;
-        const { resolved, negatives } = m.resolveOpeningNetItems([
+        const { resolved } = m.resolveOpeningNetItems([
             { name: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, category: 'لحوم' },
             { name: '  طماطم ', qty: 20, unit: 'كجم', price: 4, category: 'خضار' },
         ]);
@@ -92,20 +92,19 @@ describe('الوضع الصافي: «يتخصم أذونات الصرف من ا�
         expect(calls[0].body.reason).toContain('بداية 100');
         expect(calls[0].body.reason).toContain('منصرف 30');
         expect(calls[1].url).toContain('/inventory'); // إنشاء الصنف الجديد
-        // سياسة المالك 2026-10-19: الصنف الجديد يدخل المخزن برصيد — فلا يدخل بلا صلاحيته
+        // سياسة 2026-10-20: الصنف الجديد يدخل المخزن برصيد، والصلاحية اختيارية وتُحفظ إن وُجدت
         expect(calls[1].body.expiryDate).toBe('2027-04-15');
     });
 
-    test('سياسة الصلاحية: بندٌ بلا تاريخ يمنع الحفظ قبل أي نداء شبكة', async () => {
+    test('سياسة الصلاحية: بندٌ بلا تاريخ يُقبل، والفساد وحده يمنع', async () => {
         const calls = [];
         const { m } = build(new Map([['دجاج بلدي', 30]]), calls);
         m.openingNet.on = true;
         m.openingRows.splice(0, m.openingRows.length,
             { name: 'دجاج بلدي', qty: 100, unit: 'كجم', price: 30, boxes: '', category: 'لحوم', expiry: '' });
         await m.saveOpeningNet();
-        expect(calls).toHaveLength(0);
-        expect(m.openingExpiryError([{ name: 'دجاج بلدي', qty: 5, expiry: '' }]))
-            .toBe('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف دجاج بلدي');
+        expect(calls.length).toBeGreaterThan(0);
+        expect(m.openingExpiryError([{ name: 'دجاج بلدي', qty: 5, expiry: '' }])).toBeNull();
         expect(m.openingExpiryError([{ name: 'دجاج بلدي', qty: 5, expiry: '2026-11-30' }])).toBeNull();
         // لا تاريخ يُخترع: الصيغة الخاطئة تُذكر كفسادٍ لا كنقص — وبنصّ الخادم نفسه
         expect(m.openingExpiryError([{ name: 'لبن', qty: 5, expiry: '30/11/2026' }]))

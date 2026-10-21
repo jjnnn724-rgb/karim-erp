@@ -19,6 +19,8 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
+import { addV2PrintBranding } from './print-branding.js?v=4.9.181';
+
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';
 const TITLE_ID = 'erp-report-viewer-title';
@@ -124,6 +126,7 @@ function ensureHost(title) {
     frame.setAttribute('referrerpolicy', 'no-referrer');
 
     frame.addEventListener('load', () => {
+        if (frame.contentDocument) {addV2PrintBranding(frame.contentDocument);}
         loadedSeq = renderSeq;
         try {frame.contentDocument.addEventListener('keydown', onEscape);} catch (_) { /* مستند غير متاح */ }
         if (printPending) {

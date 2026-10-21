@@ -1,10 +1,10 @@
 /**
  * V2 — سياسة تاريخ الصلاحية (مرآة backend/expiry-policy.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * طلب المالك 2026-10-19: لا يدخل صنف المخزن بلا تاريخ صلاحية.
- * الخادم هو الحكم دائمًا (422 EXPIRY_DATE_REQUIRED / INVALID_EXPIRY_DATE)،
- * وهذه الطبقة تعطي العامل الرسالة نفسها قبل الإرسال حتى لا ينتظر دورة شبكة.
- * الصيغة الوحيدة المقبولة YYYY-MM-DD — لا تاريخ يُخترع ولا يُعاد ترتيبه.
+ * سياسة المالك 2026-10-20: تاريخ الصلاحية اختياري في الفواتير ومداخل المخزون.
+ * الخادم هو الحكم دائمًا (INVALID_EXPIRY_DATE عند الصيغة الفاسدة)، وهذه الطبقة
+ * تعطي العامل الرسالة نفسها قبل الإرسال. الصيغة الوحيدة المقبولة YYYY-MM-DD.
+ * لا يوجد وضع «إلزامي» — الغياب مقبول دائمًا.
  */
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -40,31 +40,22 @@ export function readExpiryField(source, keys = EXPIRY_KEYS) {
 }
 
 /**
- * فحص أسطر البضاعة الجديدة — نفس قرار الخادم ونفس نص الرسالة.
+ * فحص أسطر البضاعة الجديدة — الغياب مقبول (اختياري)، والصيغة الفاسدة مرفوضة.
  * @returns {{ok:boolean, code?:string, message?:string, missing:string[], invalid:string[]}}
  */
 export function checkExpiryOnLines(lines = [], nameOf = (line) => String(line?.itemName || line?.name || '')) {
-    const missing = [];
     const invalid = [];
     for (const line of lines) {
         const raw = readExpiryField(line);
         if (normalizeExpiryDate(raw)) {continue;}
-        (raw === null ? missing : invalid).push(nameOf(line));
-    }
-    if (missing.length) {
-        return {
-            ok: false,
-            code: 'EXPIRY_DATE_REQUIRED',
-            message: `تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف ${missing.slice(0, 5).join('، ')}${missing.length > 5 ? ` (+${missing.length - 5} صنفًا)` : ''}`,
-            missing, invalid,
-        };
+        if (raw !== null) {invalid.push(nameOf(line));}
     }
     if (invalid.length) {
         return {
             ok: false,
             code: 'INVALID_EXPIRY_DATE',
             message: `تاريخ الصلاحية غير صحيح للصنف ${invalid.slice(0, 5).join('، ')} — الصيغة المطلوبة YYYY-MM-DD`,
-            missing, invalid,
+            missing: [], invalid,
         };
     }
     return { ok: true, missing: [], invalid: [] };

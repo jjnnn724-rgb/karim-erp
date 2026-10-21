@@ -19,7 +19,6 @@ process.env.DB_USER = process.env.DB_USER || 'postgres';
 process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'karim_local_preview_2026_secure_password';
 
 const net = require('net');
-const assert = require('assert');
 const { ZKClient } = require('../backend/zkteco/client');
 const proto = require('../backend/zkteco/protocol');
 const { AttendanceSyncEngine, matchUserToEmployee } = require('../backend/zkteco/engine');
@@ -304,7 +303,7 @@ async function main() {
     const r2 = await engine.syncDeviceById(deviceId);
     check(`مزامنة ثانية: جديد=${r2.inserted} (البصمات الجديدة فقط)`, r2.inserted === 2);
     const att2 = await pool.query(`SELECT * FROM attendance WHERE "employeeId" = 900000000003`);
-    const manual = att2.rows.find(a => true);
+    const manual = att2.rows.find(_a => true);
     check('الحضور اليدوي 07:30 لم يُمس بالبصمة 08:00', manual.checkIn === '07:30' && manual.source === 'manual');
     check('الجهاز ملأ الانصراف فقط (16:30)', manual.checkOut === '16:30');
     check('ملاحظة المصدر في السجل', (manual.notes || '').includes('بصمة'));

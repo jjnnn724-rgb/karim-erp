@@ -19,15 +19,16 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو من مُنح inventory-inquiry.view).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { barChart, donutChart } from '../charts.js?v=4.9.169';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { barChart, donutChart } from '../charts.js?v=4.9.181';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.181';
 import {
     fetchInquiryItems, fetchInquiryDepartments, engineKpis, expiryState,
     toExportAoa, deptCostSummary, rangeError, INQ_FILTERS,
-} from '../data/inventory-inquiry-repo.js?v=4.9.169';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+} from '../data/inventory-inquiry-repo.js?v=4.9.181';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -403,6 +404,7 @@ export function mountQueryScreen(host, ctx = {}) {
                 d.name, d.issuedQty, d.issuedCost, d.expenseOperating, d.expenseStock, d.costTotal, d.revenueManual, d.revenuePos,
             ]));
             window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(deptAoa), 'تكلفة الأقسام');
+            prepareReportWorkbook(window.XLSX, wb, `تقرير استعلام المخزون ${f.from} إلى ${f.to}`);
             window.XLSX.writeFile(wb, `inventory-inquiry_${f.from}_${f.to}.xlsx`);
             notify('تم تصدير Excel');
         } finally {

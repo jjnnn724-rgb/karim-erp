@@ -3,6 +3,11 @@
  */
 
 const path = require('path');
+const { pool } = require('../backend/shared-pool');
+
+afterAll(async () => {
+    await pool.end();
+});
 
 function loadPerms() {
     delete require.cache[path.resolve(__dirname, '..', 'backend', 'permissions.js')];
@@ -60,7 +65,6 @@ const db = (keys) => fakeDb({ 3: keys });
     });
     test('role in list → true without grant lookup', async () => {
         const { userHasPerm } = loadPerms();
-        const never = { query: jest.fn(async () => { throw new Error('must not query'); }) };
         await expect(userHasPerm({ id: 2, role: 'hr' }, 'hr.view', ['hr'])).resolves.toBe(true);
     });
     test('grant adds access beyond role', async () => {
@@ -114,7 +118,7 @@ describe('requireRoleOrPerm — middleware', () => {
         expect(res.statusCode).toBe(403);
     });
     test('deny → 403 even when role matches', async () => {
-        const { requireRoleOrPerm } = loadPerms();
+        loadPerms();
         // seed cache via real query path is complex here; assert via userHasPerm layer instead:
         const { userHasPerm } = loadPerms();
         const deniedDb = { query: jest.fn(async () => ({ rows: [{ perm_key: 'hr.view', effect: 'deny' }] })) };

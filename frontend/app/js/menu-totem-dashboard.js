@@ -17,6 +17,7 @@ let LAYOUT = {
     soups: [], desserts: [], appetizers: [], salads: [], carving_by_day: [],
 };
 let SETTINGS = null;
+let BOARD_CATEGORIES = [];
 let SOCKET = null;
 let DIRTY = false;              // تغييرات غير محفوظة
 let AUTO_SAVE = null;           // مؤقّت الحفظ اللحظي التلقائي (800ms)
@@ -194,7 +195,8 @@ const SECTIONS = [
     { id: 'salads', ar: 'سلطات محلية وعالمية', en: 'SALADS', max: 8, hint: 'سلطات محلية وعالمية' },
 ];
 let TR_TIMER = null;        // مؤقّت الترجمة الفورية
-let TR_LAST_AR = '';        // آخر نص عربي تُرجم (لمنع التكرار)
+let TR_REQUEST = 0;         // يمنع نتيجة ترجمة قديمة من استبدال النص الحالي
+let TR_CONTROLLER = null;
 let EN_TOUCHED = false;     // هل عدّل المستخدم الإنجليزية يدويًا؟
 
 /* ════════════ الترجمة الذكية للطعام ════════════
@@ -304,7 +306,7 @@ function smartTranslate(ar) {
         if (AR_NORM(k) === nt) {return DISH_DICT[k];}
     }
     /* تركيب ذكي: لحم + طريقة + جزء + إضافات */
-    let meat = '', cook = '', part = '', extras = [];
+    let meat = '', cook = '', part = ''; const extras = [];
     for (const [re, en] of MEAT_MAP) { if (re.test(t)) { meat = en; break; } }
     for (const [re, en] of COOK_MAP) { if (re.test(t)) { cook = en; break; } }
     for (const [re, en] of PART_MAP) { if (re.test(t)) { part = en; break; } }
@@ -344,25 +346,66 @@ async function autoTranslate(ar) {
     const en = $('newEn');
     if (!en || EN_TOUCHED) { return; }
     const t = (ar || '').trim();
-    if (t.length < 2 || t === TR_LAST_AR) { return; }
-    TR_LAST_AR = t;
+    const request = TR_REQUEST;
+    if (t.length < 2) { return; }
     const smart = smartTranslate(t);
-    if (smart) { en.value = smart; en.placeholder = 'الاسم بالإنجليزية (ترجمة ذكية ✓)'; return; }
+    if (smart) {
+        if (request === TR_REQUEST && $('newAr').value.trim() === t && !EN_TOUCHED) {
+            en.value = smart;
+            en.placeholder = 'الاسم بالإنجليزية (ترجمة ذكية ✓)';
+            $('translationStatus').textContent = 'تمت الترجمة الذكية — يمكنك تعديل الاسم الإنجليزي قبل الإضافة.';
+            $('translationStatus').className = 'translation-status is-success';
+        }
+        return;
+    }
     en.placeholder = 'جارٍ الترجمة…';
+    $('translationStatus').textContent = 'جارٍ ترجمة الصنف إلى الإنجليزية…';
+    $('translationStatus').className = 'translation-status is-pending';
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    TR_CONTROLLER = controller;
+    const timeout = controller ? setTimeout(() => controller.abort(), 8000) : null;
     try {
         const r = await fetch('https://api.mymemory.translated.net/get?q='
-            + encodeURIComponent(t) + '&langpair=ar|en');
-        const j = await r.json().catch(() => ({}));
+            + encodeURIComponent(t) + '&langpair=ar|en', controller ? { signal: controller.signal } : {});
+        if (!r.ok) { throw new Error('خدمة الترجمة غير متاحة الآن'); }
+        const j = await r.json();
         const out = (j && j.responseData && j.responseData.translatedText || '').trim();
-        if (out && !/MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID/i.test(out) && !EN_TOUCHED) {
+        if (request !== TR_REQUEST || $('newAr').value.trim() !== t || EN_TOUCHED) { return; }
+        if (out && !/MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID/i.test(out)) {
             en.value = out;
+            en.placeholder = 'الاسم بالإنجليزية (تُرجم تلقائيًا)';
+            $('translationStatus').textContent = 'تمت الترجمة تلقائيًا — راجع الاسم قبل إضافة الصنف.';
+            $('translationStatus').className = 'translation-status is-success';
+        } else {
+            $('translationStatus').textContent = 'لم تتوفر ترجمة لهذا الاسم. اكتب الاسم الإنجليزي يدويًا قبل الإضافة.';
+            $('translationStatus').className = 'translation-status is-error';
         }
-    } catch (_) { /* بلا إنترنت = كتابة يدوية */ }
-    finally { en.placeholder = 'الاسم بالإنجليزية (يُترجم تلقائيًا)'; }
+    } catch (error) {
+        if (request === TR_REQUEST && $('newAr').value.trim() === t) {
+            $('translationStatus').textContent = 'تعذّرت الترجمة التلقائية. اكتب الاسم الإنجليزي يدويًا قبل الإضافة.';
+            $('translationStatus').className = 'translation-status is-error';
+            console.warn('Menu item translation failed:', error.message);
+        }
+    } finally {
+        if (timeout) { clearTimeout(timeout); }
+        if (TR_CONTROLLER === controller) { TR_CONTROLLER = null; }
+        if (request === TR_REQUEST) { en.placeholder = 'الاسم بالإنجليزية (يُترجم تلقائيًا)'; }
+    }
 }
 
 function scheduleTranslate() {
     clearTimeout(TR_TIMER);
+    TR_REQUEST += 1;
+    if (TR_CONTROLLER) { TR_CONTROLLER.abort(); TR_CONTROLLER = null; }
+    if (!EN_TOUCHED) { $('newEn').value = ''; }
+    const query = $('newAr') ? $('newAr').value.trim() : '';
+    const status = $('translationStatus');
+    if (status) {
+        status.textContent = EN_TOUCHED
+            ? 'سيبقى الاسم الإنجليزي الذي كتبته يدويًا دون تغيير.'
+            : (query.length >= 2 ? 'سيُترجم الاسم تلقائيًا أثناء الكتابة.' : '');
+        status.className = 'translation-status';
+    }
     TR_TIMER = setTimeout(() => autoTranslate($('newAr') ? $('newAr').value : ''), 650);
 }
 
@@ -390,32 +433,20 @@ async function addMenuItem() {
                 arr.push(Number(item.id));
             }
             $('newAr').value = ''; $('newEn').value = '';
-            TR_LAST_AR = ''; EN_TOUCHED = false;
+            TR_REQUEST += 1;
+            if (TR_CONTROLLER) { TR_CONTROLLER.abort(); TR_CONTROLLER = null; }
+            EN_TOUCHED = false;
             renderBuffetEditor();
             markDirty();
             toast('✓ أُضيف الصنف', true);
+            $('translationStatus').textContent = '';
+            $('translationStatus').className = 'translation-status';
         }
     } catch (e) { toast('تعذّر الإضافة: ' + e.message, false); }
     finally { btn.disabled = false; btn.innerHTML = '＋ إضافة الصنف'; }
 }
 
 /* حذف صنف من المنيو (جدول مستقل — لا يمس الكاشير) */
-async function deleteMenuItem(id) {
-    id = Number(id);
-    const it = ITEMS.find(x => Number(x.id) === id);
-    if (!it) { return; }
-    if (!confirm(`حذف «${it.name_ar || it.name_en || 'الصنف'}» من منيو الشاشة نهائيًا؟`)) { return; }
-    try {
-        await api('DELETE', '/api/menu-board/items/' + id);
-        ITEMS = ITEMS.filter(x => Number(x.id) !== id);
-        SECTIONS.forEach(s => { LAYOUT[s.id] = (LAYOUT[s.id] || []).filter(x => Number(x) !== id); });
-        MAIN_MEALS.forEach(meal => { LAYOUT[meal.id] = (LAYOUT[meal.id] || []).filter(x => Number(x) !== id); });
-        renderBuffetEditor();
-        markDirty();
-        toast('حُذف الصنف', true);
-    } catch (e) { toast('تعذّر الحذف: ' + e.message, false); }
-}
-
 const group = (id, label, en, values, max, hint, catalogSection = id) => {
     /* طلب المالك 2026-10-12: كل قسم يعرض «أصنافه فقط» — لا تختلط الأطباق
        الساخنة (mains) مع الشوربات ولا أي قسم مع آخر. الصنف المُضاف يظهر
@@ -459,6 +490,7 @@ function renderBuffetEditor() {
                 </label>
                 <button type="button" id="btnAddItem" class="btn btn-gold">＋ إضافة الصنف</button>
             </div>
+            <p id="translationStatus" class="translation-status" aria-live="polite"></p>
         </div>`;
     if (!ITEMS.length) {
         host.innerHTML = addForm + '<p class="empty">لا توجد أصناف بعد — أضِف أول صنف من النموذج أعلاه.</p>';
@@ -507,7 +539,13 @@ function bindAddForm() {
         ar.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); addMenuItem(); } };
     }
     if (en) {
-        en.oninput = () => { EN_TOUCHED = true; };
+        en.oninput = () => {
+            EN_TOUCHED = !!en.value.trim();
+            if (EN_TOUCHED) {
+                $('translationStatus').textContent = 'تم إدخال الاسم الإنجليزي يدويًا.';
+                $('translationStatus').className = 'translation-status';
+            } else { scheduleTranslate(); }
+        };
         en.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); addMenuItem(); } };
     }
     const btn = $('btnAddItem');
@@ -529,7 +567,7 @@ function bindChips(host) {
     host.querySelectorAll('.ed-chips').forEach(box => box.querySelectorAll('.chip').forEach(chip => chip.onclick = () => {
         const field = box.dataset.field, max = Number(box.dataset.max) || 99;
         const id = Number(chip.dataset.id);
-        let arr = LAYOUT[field];
+        const arr = LAYOUT[field];
         const at = arr.indexOf(id);
         if (at >= 0) { arr.splice(at, 1); }
         else {
@@ -583,6 +621,22 @@ function renderSchedule(s) {
     $('setBreakfastStart').value = rd(s.breakfast_start, '05:00');
     $('setLunchStart').value = rd(s.lunch_start, '12:00');
     $('setDinnerStart').value = rd(s.dinner_start, '17:00');
+    const categories = [...new Set(BOARD_CATEGORIES
+        .map(category => typeof category === 'string' ? category : category && category.name)
+        .filter(name => typeof name === 'string' && name.trim())
+        .map(name => name.trim()))];
+    [
+        ['setBreakfastCategory', s.breakfast_category],
+        ['setLunchCategory', s.lunch_category],
+        ['setDinnerCategory', s.dinner_category],
+    ].forEach(([id, selected]) => {
+        const select = $(id);
+        const names = categories.slice();
+        if (selected && !names.includes(selected)) { names.push(selected); }
+        select.innerHTML = '<option value="">تلقائي حسب اسم القسم</option>' +
+            names.map(name => `<option value="${escAttr(name)}">${escHtml(name)}</option>`).join('');
+        select.value = selected || '';
+    });
     document.querySelectorAll('#pane-schedule input,#pane-schedule select,#pane-schedule textarea').forEach(el => {
         el.oninput = el.onchange = () => markDirty();
     });
@@ -599,6 +653,19 @@ async function saveAndDisplay(opts) {
         lunch: $('setLunchStart').value,
         dinner: $('setDinnerStart').value,
     };
+    const categories = {
+        breakfast: $('setBreakfastCategory').value,
+        lunch: $('setLunchCategory').value,
+        dinner: $('setDinnerCategory').value,
+    };
+    const chosenCategories = Object.values(categories).filter(Boolean);
+    if (new Set(chosenCategories).size !== chosenCategories.length) {
+        if (!live) {
+            toast('اختر قسمًا مختلفًا لكل وجبة، أو اتركه على الاختيار التلقائي', false);
+            showTab('schedule');
+        }
+        return;
+    }
     const badTime = !Object.values(starts).every(v => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v)) ||
         !(starts.breakfast < starts.lunch && starts.lunch < starts.dinner);
     if (badTime) {
@@ -609,6 +676,9 @@ async function saveAndDisplay(opts) {
         title: $('setTitle').value,
         subtitle: $('setSubtitle').value,
         breakfast_start: starts.breakfast, lunch_start: starts.lunch, dinner_start: starts.dinner,
+        breakfast_category: categories.breakfast || null,
+        lunch_category: categories.lunch || null,
+        dinner_category: categories.dinner || null,
         breakfast_hours: `${starts.breakfast} - ${starts.lunch}`,
         lunch_hours: `${starts.lunch} - ${starts.dinner}`,
         dinner_hours: `${starts.dinner} - ${starts.breakfast}`,
@@ -709,7 +779,12 @@ async function loadAll() {
     // بيانات الشاشة العامة (عامة — بدون مصادقة)
     try {
         const r = await fetch('/api/menu-board/public', { cache: 'no-store' });
-        if (r.ok) { renderStats(await r.json()); }
+        if (r.ok) {
+            const board = await r.json();
+            BOARD_CATEGORIES = Array.isArray(board.categories) ? board.categories : [];
+            renderStats(board);
+            renderSchedule(SETTINGS);
+        }
     } catch (_) { $('connBadge').className = 'badge badge-off'; $('connBadge').textContent = '● غير متصل'; }
 }
 

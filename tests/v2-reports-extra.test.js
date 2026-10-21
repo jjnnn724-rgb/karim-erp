@@ -14,6 +14,7 @@ const APP = path.join(__dirname, '..', 'frontend', 'app');
 const V2 = path.join(APP, 'js', 'v2');
 const REPO = path.join(V2, 'data', 'reports-extra.js');
 const SCREEN = path.join(V2, 'screens', 'reports.js');
+const YARA_REPORTS = path.join(__dirname, '..', 'backend', 'yarasoft', 'yara-reports.js');
 const V2_HTML = path.join(APP, 'v2.html');
 const REV = (fs.readFileSync(V2_HTML, 'utf8').match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
 
@@ -55,12 +56,29 @@ describe('التقارير الإضافية — الأبواب', () => {
         ]);
         await ctx.fetchYaraDepartments({ from: '2026-10-01', to: '2026-10-15', group: 'day' });
         await ctx.fetchYaraCashierItems({ from: '2026-10-01', to: '2026-10-15', view: 'invoices', cashier: '1', limit: 100, page: 2 });
+        await ctx.fetchYaraCashierItems({ from: '2026-10-01', to: '2026-10-15', view: 'invoices', cashiers: ['1', '3', '4', '5', '9'], limit: 50, page: 1 });
+        await ctx.fetchYaraCashierItems({ from: '2026-10-01', to: '2026-10-15', view: 'invoices', cashiers: ['1', '3', '4', '5', '9'], summaryOnly: true, live: true });
         await ctx.fetchYaraInvoiceDetail('1280596');
         expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
             'GET /yara-reports/departments?from=2026-10-01&to=2026-10-15&group=day',
             'GET /yara-reports/cashier-items?from=2026-10-01&to=2026-10-15&view=invoices&limit=100&cashier=1&page=2',
+            'GET /yara-reports/cashier-items?from=2026-10-01&to=2026-10-15&view=invoices&limit=50&cashiers=1%2C3%2C4%2C5%2C9&page=1',
+            'GET /yara-reports/cashier-items?from=2026-10-01&to=2026-10-15&view=invoices&limit=100&cashiers=1%2C3%2C4%2C5%2C9&summary_only=1&live=1&page=1',
             'GET /yarasoft/sections/invoice-detail?ref=ora%3ACC%3A1280596',
         ]);
+    });
+
+    test('فلترة عدة كاشيرات تُبنى بمتغيرات bind وتُحدّث كاش الفترة الحالية كل 10 ثوانٍ', () => {
+        const server = read(YARA_REPORTS);
+        expect(server).toContain('const CI_LIVE_CACHE_MS = 10 * 1000;');
+        expect(server).toContain('const liveRefresh = String(req.query.live || \'\') === \'1\';');
+        expect(server).toContain("error: 'INVALID_CASHIERS'");
+        expect(server).toContain("const summaryOnly = String(req.query.summary_only || '') === '1';");
+        expect(server).toContain("kind: 'summary'");
+        expect(server).toContain('cashiers.map((_, i) => `:cashier${i}`)');
+        expect(server).toMatch(/TRIM\(b\.CSHR_NO\) IN \(\$\{cashiers\.map/);
+        expect(server).toMatch(/cashiers\.map\(\(no, i\) => \[`cashier\$\{i\}`, no\]\)/);
+        expect(server).toMatch(/liveRefresh && \(summaryOnly \|\| view === 'invoices'\)/);
     });
 
     test('الحسابات المحلية: الشامل والمطبخ والمرتجعات والمخزون', () => {

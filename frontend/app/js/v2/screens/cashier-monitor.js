@@ -1,31 +1,34 @@
 /**
  * V2 — Cashier-monitor screen · متابعة الكاشير للمالك (قراءة فقط)
  * ═══════════════════════════════════════════════════════════════════════
- * Behavior mirror of features/cashier-monitor.js (275 lines, read fully):
- * بطاقات الكاشيرية (نقر = فلتر) + أوردرات اليوم بترقيم خادمي + تفاصيل
- * فاتورة + طباعة تقرير + Excel + حلقة لايف 30 ثانية بمقارنة لقطة + ختم
- * حداثة المرآة (45 دقيقة). لا كتابة إطلاقًا — والخادم يحسم النطاق.
+ * قراءة مباشرة من Oracle عبر أبواب GET القائمة: الكاشيرات 1/3/4/5/9،
+ * فواتير اليوم بترقيم خادمي، تفاصيل الفاتورة، طباعة التقرير وExcel.
+ * التحديث كل 10 ثوانٍ، بلا كتابة لبيانات يارا سوفت.
  *
  * World-class deltas (no behavior change): KPI strip + EnterpriseDataTable
  * styling + Latin digits (en-US, per Arabic UX rule — legacy printed ar-EG
- * digits) + delegation-safe print buttons. Socket hook mirrors legacy
- * (window.socket 'yarasoft:mirror' when present, released on destroy).
+ * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.169';
-import { openInAppReport } from '../report-viewer.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
-import {
-    mirrorToday, fetchMonitorSummary, fetchMonitorOrders, fetchMonitorOrder,
-    summarizeCashiers, mirrorFreshness,
-} from '../data/cashier-monitor-repo.js?v=4.9.169';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const LIMIT = 50;
-const LIVE_MS = 30_000;
+const LIVE_MS = 10_000;
+const CASHIER_NOS = ['1', '3', '4', '5', '9'];
+
+function riyadhToday() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+}
 
 function fD(v) {
     return v ? new Date(`${v}T12:00:00`).toLocaleDateString('ar-EG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -59,15 +62,15 @@ function template() {
           <div>
             <h2 class="erp-dash-title">متابعة الكاشير
               <span class="erp-eyebrow" dir="ltr" lang="en">Cashier Monitor</span>
-              <span class="erp-badge" data-tone="success" title="البيانات تتحدث تلقائيًا كل 30 ثانية">مباشر</span>
+              <span class="erp-badge" data-tone="success" data-v2-live-badge title="قراءة مباشرة من يارا سوفت كل 10 ثوانٍ">مباشر</span>
             </h2>
             <div class="erp-dash-sub" role="status" aria-live="polite" data-v2-note></div>
           </div>
           <div class="erp-dash-controls">
             <span class="erp-text-sm erp-text-muted">آخر تحديث <b data-v2-stamp dir="ltr">—</b></span>
             <span data-v2-sync></span>
-            <label class="erp-text-sm erp-text-muted" for="v2cm-date">اليوم</label>
-            <input class="erp-input erp-input--ltr" id="v2cm-date" type="date" value="${mirrorToday()}" data-v2-date>
+            <label class="erp-text-sm erp-text-muted" for="v2cm-date">التاريخ</label>
+            <input class="erp-input erp-input--ltr" id="v2cm-date" type="date" value="${riyadhToday()}" data-v2-date>
             <button type="button" class="erp-btn erp-btn--sm" data-v2-reload aria-label="تحديث">
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
             </button>
@@ -106,17 +109,17 @@ function template() {
 export function mountCashierMonitorScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 cashier-monitor]', m);
 
-    let date = mirrorToday();
+    let date = riyadhToday();
     let cashier = '';
     let summary = [];
     let orders = [];
     let total = 0;
     let offset = 0;
     let updatedAt = null;
-    let lastSnap = null;
     let loading = false;
+    let reloadQueued = false;
+    let loadError = '';
     let timer = null;
-    let socketHandler = null;
 
     host.insertAdjacentHTML('beforeend', template());
     const el = host.lastElementChild;
@@ -126,49 +129,53 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
     const say = (m) => { if (noteEl) {noteEl.textContent = m;} notify(m); };
 
     function syncBadge() {
-        const f = mirrorFreshness(summary);
         const box = q('[data-v2-sync]');
         if (!box) {return;}
-        if (f.state === 'none') {box.innerHTML = '<span class="erp-badge" data-tone="danger">لا توجد مزامنة بعد</span>';}
-        else if (f.state === 'stale') {box.innerHTML = `<span class="erp-badge" data-tone="danger">المرآة متوقفة منذ ${formatInt(f.ageMin)} دقيقة — تأكد أن جهاز يارسوفت يعمل</span>`;}
-        else {box.innerHTML = `<span class="erp-badge" data-tone="success">مزامنة حية (منذ ${formatInt(f.ageMin)} دقيقة)</span>`;}
+        box.innerHTML = loadError
+            ? '<span class="erp-badge" data-tone="danger">تعذّرت القراءة الحية · آخر بيانات ناجحة معروضة</span>'
+            : '<span class="erp-badge" data-tone="success">قراءة Oracle مباشرة · للعرض فقط</span>';
     }
 
     function paint() {
-        const t = summarizeCashiers(summary);
+        const liveBadge = q('[data-v2-live-badge]');
+        if (liveBadge) {
+            const isToday = date === riyadhToday();
+            liveBadge.textContent = isToday ? 'مباشر' : 'تاريخ';
+            liveBadge.dataset.tone = isToday ? 'success' : 'neutral';
+            liveBadge.title = isToday ? 'قراءة مباشرة من يارا سوفت كل 10 ثوانٍ' : 'عرض تاريخي — لا يتم تحديثه تلقائيًا';
+        }
+        const invoices = summary.reduce((sum, c) => sum + Number(c.invoices || 0), 0);
+        const revenue = summary.reduce((sum, c) => sum + Number(c.revenue || 0), 0);
+        const discounts = summary.reduce((sum, c) => sum + Number(c.discount || 0), 0);
         q('[data-v2-kpis]').innerHTML = kpiStrip([
-            { icon: 'receipt', label: 'إجمالي الفواتير', en: 'Invoices', html: `<span class="erp-num" dir="ltr">${formatInt(t.invoices)}</span>`, hint: `${formatInt(summary.length)} كاشير في المرآة` },
-            { icon: 'banknote', label: 'الإيراد (شامل الضريبة)', en: 'Revenue', html: `<span class="erp-num" dir="ltr">${formatQty(t.revenue)}</span>`, color: 'var(--erp-success-text)', hint: `قبل الضريبة: ${formatQty(t.revenueEx)}` },
-            { icon: 'wallet', label: 'نقدًا', en: 'Cash', html: `<span class="erp-num" dir="ltr">${formatQty(t.cash)}</span>`, color: 'var(--erp-info-text)', hint: 'مدفوعات نقدية' },
-            { icon: 'credit-card', label: 'شبكة/محفظة', en: 'Network', html: `<span class="erp-num" dir="ltr">${formatQty(t.network)}</span>`, color: 'var(--erp-brand-text)', hint: 'مدفوعات شبكية' },
+            { icon: 'receipt', label: 'إجمالي الفواتير', en: 'Invoices', html: `<span class="erp-num" dir="ltr">${formatInt(invoices)}</span>`, hint: `${formatInt(summary.length)} كاشير · من يارا سوفت مباشرة` },
+            { icon: 'banknote', label: 'صافي الإيراد', en: 'Net revenue', html: `<span class="erp-num" dir="ltr">${formatQty(revenue)}</span>`, color: 'var(--erp-success-text)', hint: `الفترة: ${esc(fD(date))}` },
+            { icon: 'receipt', label: 'الخصومات', en: 'Discounts', html: `<span class="erp-num" dir="ltr">${formatQty(discounts)}</span>`, color: 'var(--erp-info-text)', hint: 'إجمالي الخصم المسجل' },
         ]);
         syncBadge();
         q('[data-v2-cards]').innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">` + summary.map((c) => `
           <button type="button" class="erp-card" style="cursor:pointer;min-width:210px;flex:1;text-align:start;padding:12px 14px;${String(cashier) === String(c.cashier_no) ? 'border:2px solid var(--erp-brand-text);' : ''}" data-v2-cashier="${esc(String(c.cashier_no))}" aria-pressed="${String(cashier) === String(c.cashier_no)}">
             <div class="erp-text-sm erp-text-muted">كاشير ${esc(String(c.cashier_no))} ${String(cashier) === String(c.cashier_no) ? '✓' : ''}</div>
             <div style="font-size:20px;font-weight:800" class="erp-num" dir="ltr">${formatQty(c.revenue)}</div>
-            <div class="erp-text-sm erp-text-muted">${formatInt(c.invoices)} فاتورة · متوسط ${formatQty(c.avg)}<br>
-            قبل الضريبة: ${formatQty(c.revenue_ex_vat)}<br>
-            نقدًا ${formatQty(c.pay_cash)} · شبكة ${formatQty(c.pay_network)}<br>
-            آخر فاتورة: ${esc(String(c.last_time || '—').slice(0, 5))}</div>
+            <div class="erp-text-sm erp-text-muted">${esc(c.name || '')}<br>${formatInt(c.invoices)} فاتورة · متوسط ${formatQty(c.avg)}<br>
+            الخصومات: ${formatQty(c.discount)}</div>
           </button>`).join('') + `</div>`;
         const pages = Math.max(1, Math.ceil(total / LIMIT));
         const page = Math.floor(offset / LIMIT) + 1;
-        q('[data-v2-orders-title]').textContent = `أوردرات ${cashier ? `كاشير ${cashier}` : 'كل الكاشيرية'} — ${formatInt(total)} أوردر`;
+        q('[data-v2-orders-title]').textContent = `فواتير ${cashier ? `كاشير ${cashier}` : 'الكاشيرية المحددة'} — ${formatInt(total)} فاتورة`;
         q('[data-v2-unfilter]').innerHTML = cashier ? '<button type="button" class="erp-btn erp-btn--sm" data-v2-unfilter-btn>إلغاء الفلتر</button>' : '';
         const rows = orders.map((o) => `<tr data-v2-order-row="${esc(String(o.doc_no))}" style="cursor:pointer">`
             + `<td class="erp-td erp-mono" dir="ltr"><b>${esc(String(o.doc_no))}</b></td>`
             + `<td class="erp-td"><span class="erp-badge" data-tone="info">كاشير ${esc(String(o.cashier_no))}</span></td>`
-            + `<td class="erp-td erp-mono" dir="ltr">${esc(String(o.doc_time || '').slice(0, 5))}</td>`
-            + `<td class="erp-td">${esc(o.shift_no || '—')}</td>`
+            + `<td class="erp-td erp-mono" dir="ltr">${esc(String(o.time || '').slice(0, 8) || String(o.day || '').slice(0, 10))}</td>`
+            + `<td class="erp-td">${esc(o.shift || '—')}</td>`
             + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.net)}</td>`
             + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.total)}</td>`
-            + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.payed)}</td>`
-            + `<td class="erp-td erp-num" dir="ltr">${formatInt(o.lines_count)}</td>`
-            + `<td class="erp-td erp-text-muted">${esc(o.zone_name || '—')}</td></tr>`).join('');
+            + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.paid)}</td>`
+            + `<td class="erp-td erp-num" dir="ltr">${formatInt(o.lines || 0)}</td></tr>`).join('');
         q('[data-v2-orders]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>`
-            + `<th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الوردية</th><th>شامل الضريبة</th><th>قبل الضريبة</th><th>مدفوع</th><th>الأصناف</th><th>المنطقة</th>`
-            + `</tr></thead><tbody>${rows || '<tr><td class="erp-td" colspan="9">لا توجد أوردرات في هذا اليوم</td></tr>'}</tbody></table></div>`;
+            + `<th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الوردية</th><th>الصافي</th><th>الإجمالي</th><th>المدفوع</th><th>الأصناف</th>`
+            + `</tr></thead><tbody>${rows || '<tr><td class="erp-td" colspan="8">لا توجد فواتير في هذا اليوم</td></tr>'}</tbody></table></div>`;
         q('[data-v2-page]').textContent = `صفحة ${formatInt(page)} من ${formatInt(pages)}`;
         q('[data-v2-prev]').disabled = page <= 1;
         q('[data-v2-next]').disabled = page >= pages;
@@ -177,101 +184,122 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
     }
 
     async function load(live = false) {
-        if (loading) {return;}
+        if (loading) {reloadQueued = true; return;}
         loading = true;
+        const requestedDate = date;
+        const requestedCashier = cashier;
+        const requestedOffset = offset;
         try {
-            const [s, o] = await Promise.all([
-                fetchMonitorSummary(date, live && date === mirrorToday()),
-                fetchMonitorOrders({ date, cashier, limit: LIMIT, offset }),
-            ]);
-            if (!el.isConnected) {return;}
-            summary = s;
-            orders = o.orders;
-            total = o.total;
+            const baseParams = {
+                from: requestedDate,
+                to: requestedDate,
+                view: 'invoices',
+                cashiers: CASHIER_NOS,
+                limit: LIMIT,
+                live: requestedDate === riyadhToday(),
+            };
+            let summaryResult;
+            let pageResult;
+            if (requestedCashier) {
+                [summaryResult, pageResult] = await Promise.all([
+                    fetchYaraCashierItems({...baseParams, limit: 10, summaryOnly: true}),
+                    fetchYaraCashierItems({
+                        from: requestedDate, to: requestedDate, view: 'invoices',
+                        cashier: requestedCashier, limit: LIMIT,
+                        page: Math.floor(requestedOffset / LIMIT) + 1,
+                        live: requestedDate === riyadhToday(),
+                    }),
+                ]);
+            } else {
+                summaryResult = await fetchYaraCashierItems({
+                    ...baseParams, page: Math.floor(requestedOffset / LIMIT) + 1,
+                });
+                pageResult = summaryResult;
+            }
+            if (!el.isConnected || requestedDate !== date || requestedCashier !== cashier || requestedOffset !== offset) {return;}
+            const byCashier = new Map(summaryResult.cashiers
+                .filter((c) => CASHIER_NOS.includes(String(c.no)))
+                .map((c) => [String(c.no), c]));
+            summary = CASHIER_NOS.map((no) => {
+                const c = byCashier.get(no) || {};
+                const invoices = Number(c.invoices) || 0;
+                const revenue = Number(c.net) || 0;
+                return {
+                    cashier_no: no, name: c.name || '',
+                    invoices, revenue, discount: Number(c.discount) || 0,
+                    avg: invoices ? revenue / invoices : 0,
+                };
+            });
+            orders = pageResult.rows;
+            total = pageResult.total;
             updatedAt = new Date();
+            loadError = '';
+            if (noteEl) {noteEl.textContent = '';}
             paint();
-            lastSnap = JSON.stringify([summary, orders]);
         } catch (e) {
-            if (!el.isConnected) {return;}
-            say(e && e.message === 'UNAUTHORIZED'
+            if (!el.isConnected || requestedDate !== date || requestedCashier !== cashier || requestedOffset !== offset) {return;}
+            const message = e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && e.code === 'FORBIDDEN'
                     ? 'لا صلاحية لمتابعة الكاشير بهذا الحساب — القرار للخادم وحده.'
-                    : `تعذّر تحميل البيانات: ${(e && e.message) || 'خطأ'}`));
+                    : `تعذّر قراءة Oracle من يارا سوفت: ${(e && e.message) || 'خطأ'}`);
+            loadError = message;
+            syncBadge();
+            if (live) {
+                if (noteEl) {noteEl.textContent = `${message} آخر قراءة ناجحة: ${updatedAt ? clock(updatedAt) : 'لا توجد'}`;}
+            } else {
+                say(message);
+            }
         } finally {
             loading = false;
+            if (reloadQueued && el.isConnected) {
+                reloadQueued = false;
+                void load(false);
+            }
         }
     }
 
     async function liveTick() {
         if (!el.isConnected) {stopLive(); return;}
-        if (loading) {return;}
-        try {
-            const [s, o] = await Promise.all([
-                fetchMonitorSummary(date, date === mirrorToday()),
-                fetchMonitorOrders({ date, cashier, limit: LIMIT, offset }),
-            ]);
-            if (!el.isConnected) {return;}
-            const snap = JSON.stringify([s, o.orders]);
-            if (snap !== lastSnap) {
-                summary = s;
-                orders = o.orders;
-                total = o.total;
-                updatedAt = new Date();
-                lastSnap = snap;
-                paint();
-                return;
-            }
-            updatedAt = new Date();
-            const stamp = q('[data-v2-stamp]');
-            if (stamp) {stamp.textContent = clock(updatedAt);}
-        } catch { /* اللايف صامت — الخطأ يظهر عند التحديث اليدوي */ }
+        if (loading || date !== riyadhToday()) {return;}
+        await load(true);
     }
 
     function stopLive() {
         if (timer) {clearInterval(timer); timer = null;}
-        try {
-            const s = typeof window !== 'undefined' ? window.socket : null;
-            if (s && socketHandler && typeof s.off === 'function') {s.off('yarasoft:mirror', socketHandler);}
-        } catch { /* no-op */ }
-        socketHandler = null;
     }
 
     function startLive() {
         stopLive();
         timer = setInterval(liveTick, LIVE_MS);
-        try {
-            const s = typeof window !== 'undefined' ? window.socket : null;
-            if (s && typeof s.on === 'function') {
-                socketHandler = () => { if (el.isConnected) {liveTick();} };
-                s.on('yarasoft:mirror', socketHandler);
-            }
-        } catch { /* no-op */ }
     }
 
     async function openOrder(docNo) {
         const box = q('[data-v2-order]');
         box.innerHTML = '<p class="erp-text-sm erp-text-muted">جارٍ جلب تفاصيل الفاتورة…</p>';
         try {
-            const o = await fetchMonitorOrder(docNo);
+            const detail = await fetchYaraInvoiceDetail(docNo);
             if (!el.isConnected) {return;}
-            const lines = o.lines.map((l, i) => `<tr><td class="erp-td erp-num">${formatInt(i + 1)}</td>`
-                + `<td class="erp-td">${esc(l.name || l.item || l.desc || '—')}</td>`
-                + `<td class="erp-td erp-num">${formatQty(l.qty || l.quantity || 0)}</td>`
-                + `<td class="erp-td erp-num">${formatQty(l.price || l.unit_price)}</td>`
-                + `<td class="erp-td erp-num">${formatQty(l.total || l.amount)}</td></tr>`).join('');
+            const header = detail.header || {};
+            const value = (key) => header[key] ?? header[key.toUpperCase()] ?? '';
+            if (!Object.keys(header).length) {throw new Error('لم يتم العثور على الفاتورة في يارا سوفت');}
+            const lines = detail.lines.map((l, i) => `<tr><td class="erp-td erp-num">${formatInt(i + 1)}</td>`
+                + `<td class="erp-td">${esc(l.name || '—')}</td>`
+                + `<td class="erp-td erp-num">${formatQty(l.qty)}</td>`
+                + `<td class="erp-td erp-num">${esc(l.unit || '—')}</td>`
+                + `<td class="erp-td erp-num">${formatQty(l.price)}</td>`
+                + `<td class="erp-td erp-num">${formatQty(l.discount)}</td>`
+                + `<td class="erp-td erp-num">${formatQty(l.total)}</td></tr>`).join('');
             box.innerHTML = `<section class="erp-card"><div class="erp-card__head">`
-                + `<h3 class="erp-card__title">فاتورة <span class="erp-mono" dir="ltr">${esc(String(o.doc_no))}</span> — كاشير ${esc(String(o.cashier_no))}</h3>`
+                + `<h3 class="erp-card__title">فاتورة <span class="erp-mono" dir="ltr">${esc(String(value('DOC_NO') || docNo))}</span> — كاشير ${esc(String(value('CSHR') || '—'))}</h3>`
                 + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-order-x>إغلاق</button></div>`
                 + `<div class="erp-card__body erp-stack">`
-                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>الصافي</th><th>الخصم</th><th>الضريبة</th><th>نقدًا</th><th>شبكة</th><th>مطبوع</th></tr></thead>`
-                + `<tbody><tr><td class="erp-td erp-mono" dir="ltr">${esc(String(o.doc_time || '').slice(0, 5))}</td><td class="erp-td">${esc(o.shift_no || '—')}</td>`
-                + `<td class="erp-td erp-num">${formatQty(o.total)}</td><td class="erp-td erp-num">${formatQty(o.net)}</td>`
-                + `<td class="erp-td erp-num">${formatQty(o.discount)}</td><td class="erp-td erp-num">${formatQty(o.vat)}</td>`
-                + `<td class="erp-td erp-num">${formatQty(o.pay_cash)}</td><td class="erp-td erp-num">${formatQty(o.pay_network)}</td>`
-                + `<td class="erp-td">${o.printed ? 'نعم' : 'لا'}</td></tr></tbody></table></div>`
-                + (lines ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>`
-                    : '<p class="erp-text-sm erp-text-muted">لا سطور مفصلة لهذه الفاتورة في المرآة</p>')
+                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الوردية</th><th>الإجمالي</th><th>الصافي</th><th>الخصم</th><th>المدفوع</th></tr></thead>`
+                + `<tbody><tr><td class="erp-td erp-mono" dir="ltr">${esc(String(value('DOC_DATE') || '').slice(0, 10))}</td><td class="erp-td">${esc(String(value('SHFT_NO') || '—'))}</td>`
+                + `<td class="erp-td erp-num">${formatQty(value('TOTAL_VAL'))}</td><td class="erp-td erp-num">${formatQty(value('NET_VAL'))}</td>`
+                + `<td class="erp-td erp-num">${formatQty(value('DSCNT_VL'))}</td><td class="erp-td erp-num">${formatQty(value('PAYED'))}</td></tr></tbody></table></div>`
+                + (lines ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>السعر</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>`
+                    : '<p class="erp-text-sm erp-text-muted">لا توجد تفاصيل أصناف لهذه الفاتورة في يارا سوفت</p>')
                 + `</div></section>`;
             box.scrollIntoView({ block: 'nearest' });
         } catch (e) {
@@ -283,9 +311,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
     function reportRows() {
         return summary.map((c) => ({
             cashier: c.cashier_no, invoices: Number(c.invoices || 0), revenue: Number(c.revenue || 0),
-            exVat: Number(c.revenue_ex_vat || 0), avg: Number(c.avg || 0),
-            cash: Number(c.pay_cash || 0), network: Number(c.pay_network || 0),
-            last: c.last_time || '—',
+            discount: Number(c.discount || 0), avg: Number(c.avg || 0),
         }));
     }
 
@@ -301,9 +327,9 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
             + `@media print{.controls{display:none}body{padding:0}}</style></head><body>`
             + `<div class="controls"><button type="button" class="btn-print" data-pl-print>طباعة</button><button type="button" class="btn-close" data-pl-close>إغلاق</button></div>`
             + `<h1>تقرير إيرادات الكاشيرية — ${esc(fD(date))}</h1><h2>مطاعم الشرفه العالمي · ${esc(new Date().toLocaleString('ar-EG'))}</h2>`
-            + `<table><thead><tr><th>الكاشير</th><th>الفواتير</th><th>الإيراد (شامل)</th><th>قبل الضريبة</th><th>المتوسط</th><th>نقدًا</th><th>شبكة</th><th>آخر فاتورة</th></tr></thead><tbody>`
-            + rows.map((r) => `<tr><td><b>كاشير ${esc(String(r.cashier))}</b></td><td>${formatInt(r.invoices)}</td><td>${formatQty(r.revenue)}</td><td>${formatQty(r.exVat)}</td><td>${formatQty(r.avg)}</td><td>${formatQty(r.cash)}</td><td>${formatQty(r.network)}</td><td dir="ltr">${esc(String(r.last))}</td></tr>`).join('')
-            + `</tbody><tfoot><tr><td>الإجمالي (${formatInt(rows.length)} كاشير)</td><td>${formatInt(totN)}</td><td>${formatQty(totR)}</td><td colspan="5"></td></tr></tfoot></table></body></html>`);
+            + `<table><thead><tr><th>الكاشير</th><th>الفواتير</th><th>صافي الإيراد</th><th>الخصومات</th><th>متوسط الفاتورة</th></tr></thead><tbody>`
+            + rows.map((r) => `<tr><td><b>كاشير ${esc(String(r.cashier))}</b></td><td>${formatInt(r.invoices)}</td><td>${formatQty(r.revenue)}</td><td>${formatQty(r.discount)}</td><td>${formatQty(r.avg)}</td></tr>`).join('')
+            + `</tbody><tfoot><tr><td>الإجمالي (${formatInt(rows.length)} كاشير)</td><td>${formatInt(totN)}</td><td>${formatQty(totR)}</td><td colspan="2"></td></tr></tfoot></table></body></html>`);
         w.document.close();
         const bp = w.document.querySelector('[data-pl-print]');
         if (bp) {bp.addEventListener('click', () => w.print());}
@@ -317,11 +343,12 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
         const ready = await ensureXlsx();
         if (!ready || typeof window.XLSX === 'undefined') {say('مكتبة Excel غير محمّلة — حدّث الصفحة'); return;}
         const rows = reportRows();
-        const data = [['الكاشير', 'الفواتير', 'الإيراد شامل', 'قبل الضريبة', 'المتوسط', 'نقدًا', 'شبكة', 'آخر فاتورة']];
-        rows.forEach((r) => data.push([r.cashier, r.invoices, r.revenue, r.exVat, r.avg, r.cash, r.network, r.last]));
+        const data = [['الكاشير', 'الفواتير', 'صافي الإيراد', 'الخصومات', 'متوسط الفاتورة']];
+        rows.forEach((r) => data.push([r.cashier, r.invoices, r.revenue, r.discount, r.avg]));
         const ws = window.XLSX.utils.aoa_to_sheet(data);
         const wb = window.XLSX.utils.book_new();
         window.XLSX.utils.book_append_sheet(wb, ws, 'الكاشيرية');
+        prepareReportWorkbook(window.XLSX, wb, 'تقرير إيرادات الكاشيرية');
         window.XLSX.writeFile(wb, `cashiers_${date || 'report'}.xlsx`);
         say('اتصدّر ملف Excel');
     }
@@ -335,6 +362,12 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
         if (event.target.matches('[data-v2-date]') && event.target.value) {
             date = event.target.value;
             offset = 0;
+            summary = [];
+            orders = [];
+            total = 0;
+            updatedAt = null;
+            loadError = '';
+            paint();
             load(false);
         }
     });

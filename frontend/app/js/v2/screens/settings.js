@@ -12,9 +12,10 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.169';
-import { formatInt } from '../data/reports-repo.js?v=4.9.169';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.169';
+import { canWrite } from '../session.js?v=4.9.181';
+import { formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.181';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.181';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -25,7 +26,7 @@ import {
     removePunchFace, fetchPunchDevices, unbindPunchDevice,
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
-} from '../data/settings-repo.js?v=4.9.169';
+} from '../data/settings-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -512,6 +513,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             main = await fetchMainSettingsFull().catch(() => null);
             if (!el.isConnected) {return;}
             if (Array.isArray(main)) {main = main[0] || {};}
+            setV2PrintLogo(main && main.logoB64);
             paintMain();
             say('الإعدادات — الأقسام التفصيلية تُحمَّل عند الطلب.');
         } catch {
@@ -571,6 +573,7 @@ export function mountSettingsScreen(host, ctx = {}) {
                     await updateMainSettings({ logoB64 });
                     if (!el.isConnected) {return;}
                     main = { ...(main || {}), logoB64 };
+                    setV2PrintLogo(typeof logoB64 === 'string' ? logoB64 : '');
                     paintMain();
                     say('تم رفع الشعار وحفظه في قاعدة البيانات');
                 } catch (e) {
@@ -627,6 +630,7 @@ export function mountSettingsScreen(host, ctx = {}) {
                 await updateMainSettings({ logoB64: null });
                 if (!el.isConnected) {return;}
                 main = { ...(main || {}), logoB64: null };
+                setV2PrintLogo('');
                 paintMain();
                 say('تمت إزالة الشعار من قاعدة البيانات');
             } catch (e) {

@@ -690,7 +690,7 @@ describe('V2 inventory write layer — six doors + audit studio (W1-6)', () => {
         const row = repo.inventoryToRow({ id: 1, name: 'أرز', qty: 1, unit: 'كجم', avgCost: 9.5 });
         expect(row.avgCost).toBeUndefined();                                 // سقط في قائمة السماح
         expect(repo.receiptPayload(row, '1', '').price).toBe(0);             // فلا تعبئة تلقائية بآخر تكلفة
-        // سياسة المالك 2026-10-19: الصلاحية تُرسل كما كُتبت، والتالف يصير null لا تاريخًا مخترعًا.
+        // سياسة 2026-10-20: الصلاحية اختيارية؛ تُرسل كما كُتبت، والتالف يصير null لا تاريخًا مخترعًا.
         expect(repo.receiptPayload({}, '1', '2', '2026-11-30').expiryDate).toBe('2026-11-30');
         expect(repo.receiptPayload({}, '1', '2', '30/11/2026').expiryDate).toBeNull();
     });
@@ -713,8 +713,9 @@ describe('V2 inventory write layer — six doors + audit studio (W1-6)', () => {
         const { repo } = auditRepo();
         const rows = repo.bulkReceiptRows([{ name: 'لبن', qty: '4', price: '10', expiryDate: '2027-01-05' }]);
         expect(EXPIRY.checkExpiryOnLines(rows).ok).toBe(true);
-        expect(EXPIRY.checkExpiryOnLines(repo.bulkReceiptRows([{ name: 'لبن', qty: '4', price: '10' }])).code)
-            .toBe('EXPIRY_DATE_REQUIRED');
+        expect(EXPIRY.checkExpiryOnLines(repo.bulkReceiptRows([{ name: 'لبن', qty: '4', price: '10' }])).ok).toBe(true);
+        expect(EXPIRY.checkExpiryOnLines([{ name: 'لبن', qty: '4', price: '10', expiryDate: '30/01/2027' }]).code)
+            .toBe('INVALID_EXPIRY_DATE');
         // الاستيراد من ورقة: العمود السابع أولًا، وتاريخ الورقة للصفوف الناقصة فقط.
         const sheet = repo.inventoryImportRowsFromSheet([['اسم الصنف', 'الفئة', 'الوحدة', 'الكمية', 'سعر الشراء', 'الحد الأدنى', 'تاريخ الصلاحية'],
             ['دجاج', 'لحوم', 'كجم', 10, 25, 5, '2026-11-30'], ['أرز', 'حبوب', 'كيس', 20, 4, 5, '']]);

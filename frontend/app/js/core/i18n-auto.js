@@ -103,7 +103,7 @@
     requestAnimationFrame(function () {
       pending = false;
       lang = currentLang();
-      try { walk(document.body); } catch (e) { /* تجاهل — دورة قادمة تعيد المحاولة */ }
+      try { walk(document.body); } catch (_) { /* تجاهل — دورة قادمة تعيد المحاولة */ }
     });
   }
 

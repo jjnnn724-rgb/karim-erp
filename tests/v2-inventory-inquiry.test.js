@@ -44,6 +44,7 @@ const ICONS = path.join(APP, 'js', 'icons.js');
 const CONFIG = path.join(APP, 'js', 'core', 'config.js');
 const ROUTER = path.join(APP, 'js', 'features', 'page-router.js');
 const MAIN = path.join(APP, 'js', 'main.js');
+const INDEX = path.join(APP, 'index.html');
 const I18N = path.join(APP, 'js', 'core', 'i18n.js');
 const NAV = path.join(APP, 'js', 'features', 'auth-navigation.js');
 
@@ -298,7 +299,11 @@ describe('الواجهة القديمة — نفس المفتاحين، ونفس
     });
 
     test('المُوزِّع القديم يركّب كل صفحة، والجسر يصدّر كل اسم تُناديه', () => {
-        expect(read(MAIN)).toContain("await safeBridge('./features/inventory-inquiry.js?v=4.9.77', 'BRIDGE-INQ');");
+        // النسخة تُقرأ من الصفحة (لا رقم مثبّت): كل رفع لإصدار الواجهة
+        // كان يكسر هذا الاختبار بلا سبب حقيقي.
+        const rev = (read(INDEX).match(/js\/main\.js\?v=([\d.]+)/) || [])[1];
+        expect(rev).toBeTruthy();
+        expect(read(MAIN)).toContain(`await safeBridge('./features/inventory-inquiry.js?v=${rev}', 'BRIDGE-INQ');`);
         const router = read(ROUTER);
         expect(router).toMatch(/case 'query':[\s\S]{0,200}await renderInventoryQueryPage\(\);/);
         expect(router).toMatch(/case 'professional':[\s\S]{0,200}await renderItemCardPage\(\);/);

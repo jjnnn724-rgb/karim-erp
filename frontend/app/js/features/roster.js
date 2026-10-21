@@ -9,10 +9,6 @@
 // الأسبوع يبدأ السبت (طلب المالك 2026-10-04) — الترتيب يطابق weekday: 0..6 من السيرفر
 const ROSTER_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
-function rosterRiyadhToday(){
-    const t = new Date(Date.now() + 3 * 3600 * 1000);
-    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
-}
 function rosterWeekStart(offset){
     const t = new Date(Date.now() + 3 * 3600 * 1000);
     const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()));
@@ -323,7 +319,6 @@ async function printRoster(){
         const hrSig = approved
             ? '<span style="color:#16a34a;font-weight:700">توقيع شؤون العاملين: ' + esc(ap.approved_name) + ' — ' + esc(String(ap.approved_at || '').replace('T', ' ').slice(0, 16)) + ' ✓</span>'
             : '<span>توقيع شؤون العاملين: ........................</span>';
-        let thead = '<thead><tr><th class="emp">الموظف</th>';
         let tbody = '<tbody>';
         for (const row of grid) {
             tbody += '<tr><td class="emp"><b>' + esc(row.name) + '</b><br><small>' + esc(row.employeeId || '') + (row.position ? ' · ' + esc(row.position) : '') + '</small></td>';

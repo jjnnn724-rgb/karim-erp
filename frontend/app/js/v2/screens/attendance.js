@@ -56,9 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { statusBadge } from '../status.js?v=4.9.169';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { statusBadge } from '../status.js?v=4.9.181';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -76,9 +77,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.169';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.169';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.169';
+} from '../data/attendance-repo.js?v=4.9.181';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.181';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -997,6 +998,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
         const ws = window.XLSX.utils.aoa_to_sheet(matrix);
         const wb = window.XLSX.utils.book_new();
         window.XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
+        prepareReportWorkbook(window.XLSX, wb, `تقرير الحضور ${from} إلى ${to}`);
         window.XLSX.writeFile(wb, exportFileName(from, to));
         say(`تم تصدير ${formatInt(rows.length)} سجل`);
     }

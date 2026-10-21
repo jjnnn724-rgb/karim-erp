@@ -11,8 +11,8 @@
  *   • البحث الذكي منقول عن features/smart-item-search.js: التطبيع العربي،
  *     ترتيب 120/100/80/60، كل الكلمات شرط، والسقف 30.
  *   • الشاشة لا شبكة فيها، والمحرر لا يكتب إلا عبر مستودع الكتابة.
- *   • الصلاحية (سياسة المالك 2026-10-19): حقل إلزامي على كل سطر، وبوابته
- *     في المحرر تُصدر رسالة الخادم نفسها قبل القفل والشبكة.
+ *   • الصلاحية (سياسة 2026-10-20): حقل اختياري على كل سطر، وبوابته
+ *     في المحرر تُصدر رسالة الخادم نفسها عند الفساد قبل القفل والشبكة.
  */
 const fs = require('fs');
 const path = require('path');
@@ -415,14 +415,14 @@ describe('المحرر — أمين على القديم', () => {
         expect(editorSrc).toMatch(/if \(saveBtn\) \{saveBtn\.disabled = true;\}/);
     });
 
-    test('الصلاحية حقلٌ على كل سطر: إلزامي موسوم، وعلامته لا تسبق محاولة الحفظ', () => {
+    test('الصلاحية حقلٌ اختياري على كل سطر: لا وسم إلزام، وعلامته لا تسبق محاولة الحفظ', () => {
         expect(editorSrc).toMatch(/import \{ checkExpiryOnLines, normalizeExpiryDate \} from '\.\/data\/expiry-policy\.js\?v=/);
         expect(editorSrc).toContain('data-vi-expiry="${idx}"');
-        expect(editorSrc).toContain('aria-required="true"');
-        expect(editorSrc).toContain('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن.');
+        expect(editorSrc).toContain('aria-required="false"');
+        expect(editorSrc).toContain('تاريخ الصلاحية اختياري');
         expect(editorSrc).toMatch(/let expiryChecked = false;/);
-        // العلامة لا تُرسم إلا بعد فشلٍ واحد، وعلى الأسطر الصالحة للكمية فقط.
-        expect(editorSrc).toMatch(/const missing = expiryChecked && String\(item\.itemName \|\| ''\)\.trim\(\) !== ''\s*&& num\(item\.qty\) > 0 && !normalizeExpiryDate\(item\.expiryDate\);/);
+        // العلامة لا تُرسم إلا بعد فشلٍ واحد، وعلى الصيغة الفاسدة فقط.
+        expect(editorSrc).toMatch(/const bad = expiryChecked && raw !== '' && !normalizeExpiryDate\(item\.expiryDate\);/);
         expect(editorSrc).toMatch(/else if \(key === 'expiryDate'\) \{row\.expiryDate = node\.value;\}/);
         expect(editorSrc).toContain('paintExpiryMarks();');
     });

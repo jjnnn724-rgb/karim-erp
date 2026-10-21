@@ -4,31 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مطاعم الشرفه العالمي — شاشة العرض</title>
-    <meta name="theme-color" content="#050a14">
+    <meta name="theme-color" content="#f6f2e9">
     <link rel="icon" href="assets/karim-logo.ico">
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cinzel:wght@600;700&family=Outfit:wght@400;500;600;700&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="css/menu-board.css?v=5.16.0">
-    <link rel="stylesheet" href="css/menu-board-islamic.css?v=1.18.0">
+    <!-- 2026-10-15 (النسخة الفاتحة): قرار المالك — ألوان فاتحة احترافية وأداء أعلى
+         على شاشات TV الضعيفة. CSS واحد نحيف بلا هالات/blur/noise.
+         الرجوع الفوري: أعد ربط css/menu-board-bundle.css (النوار الفاخر، محفوظ). -->
+    <!-- 2026-10-15 (v1.1): الطابع الإسلامي — قبة ذهبية تحتضن الشعار، محاريب،
+         نقشة نجمة ثمانية ثابتة، ورواق أقواس — كلها SVG/CSS ثابت بلا فلاتر. -->
+    <link rel="preload" href="fonts/menu/tajawal-normal-400-arabic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/menu-fonts.css?v=1.0.0">
+    <link rel="stylesheet" href="css/menu-board-light.css?v=1.2.0">
 </head>
 <body>
     <div id="letterbox">
         <div id="stage" data-theme="emerald" data-background="noir">
-            <!-- ═══ خلفية ملكية متحركة ═══ -->
-            <div class="bg-base"></div>
-            <div class="orb orb-cyan"></div>
-            <div class="orb orb-fuchsia"></div>
-            <div class="orb orb-amber"></div>
-            <div class="orb orb-emerald"></div>
-            <div class="bg-grid"></div>
-            <div class="bg-lattice"></div>
-            <div class="bg-arabesque"></div>
-            <div class="bg-noise"></div>
-            <div class="bg-vignette"></div>
-            <div class="bg-frame"><span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span></div>
-            <div class="specks">
-                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-            </div>
-
             <!-- ═══ شريط الحالة العلوي ═══ -->
             <div class="status-bar">
                 <span id="connState" class="conn live">● مباشر</span>
@@ -40,11 +29,18 @@
                 </div>
             </div>
 
-            <!-- ═══ الترويسة الملكية — قوس زجاجي بحدود قوسية ═══ -->
+            <!-- ═══ الترويسة — القبة الذهبية تحتضن الشعار (قبة + هلال، SVG ثابت) ═══ -->
             <header class="mb-header">
               <div class="arch">
-                <div class="crest brand-logo pulse-aura">
-                    <img src="assets/al-shurfa-logo.png" alt="شعار الشرفه العالمي">
+                <div class="mihrab">
+                  <svg class="mihrab-crown" viewBox="0 0 300 132" aria-hidden="true" focusable="false">
+                    <path d="M158 2a11 11 0 1 0 0 20 9 9 0 1 1 0-20Z" fill="#b45309"/>
+                    <path d="M150 22c0 12-12 16-22 22-32 16-56 36-60 76h164c-4-40-28-60-60-76-10-6-22-10-22-22Z" fill="#b45309" opacity=".92"/>
+                    <rect x="58" y="120" width="184" height="10" rx="5" fill="#92400e"/>
+                  </svg>
+                  <div class="crest brand-logo">
+                    <img src="assets/al-shurfa-logo.png" alt="شعار الشرفه العالمي" fetchpriority="high" decoding="async">
+                  </div>
                 </div>
               </div>
             </header>
@@ -64,7 +60,7 @@
                 </div>
             </div>
 
-            <div class="gold-rule shimmer"></div>
+            <div class="gold-rule"></div>
 
             <main id="pageHost">
                 <div class="page active empty">
@@ -74,7 +70,7 @@
 
             <div class="page-dots" id="pageDots"></div>
 
-            <!-- ═══ التذييل: رواق أقواس + شريط إخباري متحرك ═══ -->
+            <!-- ═══ التذييل: شريط إخباري متحرك ═══ -->
             <footer class="mb-footer">
                 <div class="arcade" aria-hidden="true"></div>
                 <div class="ticker">
@@ -95,6 +91,6 @@
         </div>
     </div>
 
-    <script src="js/menu-board.js?v=5.27.0"></script>
+    <script src="js/menu-board.js?v=5.27.2"></script>
 </body>
 </html>

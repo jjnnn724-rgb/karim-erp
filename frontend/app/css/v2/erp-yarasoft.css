@@ -1,0 +1,94 @@
+.erp-v2-yarasoft .erp-wa-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  align-items: center;
+}
+
+.erp-v2-yarasoft .erp-wa-tabs button {
+  min-block-size: 2.5rem;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text);
+}
+
+.erp-v2-yarasoft .erp-wa-tabs button[aria-selected="true"] {
+  border-color: var(--erp-primary);
+  background: var(--erp-primary-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-bold);
+}
+
+.erp-v2-yarasoft .erp-ys-product-picker {
+  min-inline-size: 14rem;
+}
+
+.erp-v2-yarasoft .erp-wa-form,
+.erp-v2-yarasoft .erp-wa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-yarasoft .erp-wa-form .erp-field {
+  flex: 1 1 12rem;
+}
+
+.erp-v2-yarasoft .erp-wa-actions {
+  align-items: center;
+}
+
+.erp-v2-yarasoft [data-ys-rename-form] {
+  min-inline-size: 12rem;
+}
+
+.erp-v2-yarasoft .erp-ys-preview-text {
+  min-block-size: 14rem;
+  resize: vertical;
+  font-family: var(--erp-font-mono, monospace);
+}
+
+.erp-v2-yarasoft .erp-ys-mirror-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-yarasoft .erp-ys-mirror-card {
+  display: grid;
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+  border: 1px solid var(--erp-border);
+  color: var(--erp-text);
+  text-align: start;
+  cursor: pointer;
+}
+
+.erp-v2-yarasoft .erp-ys-mirror-card[aria-pressed="true"] {
+  border-color: var(--erp-primary);
+  background: var(--erp-primary-soft);
+}
+
+.erp-v2-yarasoft pre {
+  max-block-size: 24rem;
+  overflow: auto;
+  padding: var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+
+@media (max-width: 40rem) {
+  .erp-v2-yarasoft .erp-wa-form,
+  .erp-v2-yarasoft .erp-wa-actions {
+    align-items: stretch;
+  }
+
+  .erp-v2-yarasoft .erp-wa-form > button,
+  .erp-v2-yarasoft .erp-wa-actions > button {
+    inline-size: 100%;
+  }
+}

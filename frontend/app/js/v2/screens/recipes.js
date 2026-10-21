@@ -29,18 +29,18 @@
  * extended_cost يرد من GET /pos/products/:id/ingredients (shift-routes.js:402).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.169';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.169';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { recipeWriteEnabled } from '../write-flags.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.181';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { recipeWriteEnabled } from '../write-flags.js?v=4.9.181';
 import {
     RECIPE_WRITE_ROLES, RECIPE_BOM_ROLES, costRatioPercent,
     ingredientLine, newIngredientLine, createRecipe, updateRecipe, removeRecipe,
     syncRecipeToCashier, fetchProductIngredients, fetchRecipeInventory,
     fetchRecipeUnits, saveProductIngredients, uploadProductImage, removeProductImage,
-} from '../data/recipes-edit-repo.js?v=4.9.169';
+} from '../data/recipes-edit-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return '<span class="erp-num" dir="ltr">' + m.amount + '</span>' + (m.hasUnit ? ' <span class="erp-text-sm erp-text-muted">' + esc(m.unit) + '</span>' : ''); };
@@ -218,7 +218,7 @@ export function mountRecipesScreen(host, ctx = {}) {
             const id = editing ? editing.id : (saved && saved.id);
             closePanel();
             notify(editing ? 'تم التحديث' : 'تم إضافة الوصفة');
-            syncQuiet(id);
+            await syncQuiet(id);
             await reload();
         } catch (e) {
             if (el.isConnected) { editorMsg((e && e.message) || 'تعذر حفظ الوصفة'); }
@@ -226,9 +226,13 @@ export function mountRecipesScreen(host, ctx = {}) {
     }
 
     /** دفعة المزامنة مع الكاشير: لأدوار وحدة الكاشير وحدها (shift-routes.js:362). */
-    function syncQuiet(id) {
+    async function syncQuiet(id) {
         if (!canBom || id == null) { return; }
-        syncRecipeToCashier(id).catch(() => notify('تم حفظ الوصفة لكن تعذر مزامنتها مع الكاشير'));
+        try {
+            await syncRecipeToCashier(id);
+        } catch (error) {
+            notify(`تم حفظ الوصفة لكن تعذر مزامنتها مع الكاشير: ${error.message || 'خطأ غير معروف'}`);
+        }
     }
 
     async function doDelete(id) {

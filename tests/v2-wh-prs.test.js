@@ -22,7 +22,7 @@
  *     لوحة ترسم توقيعها بمعرّفها الثابت، ورفضٌ بلا سببٍ مكتوب لا يقرأ توقيعًا
  *   • الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة A4 منسوخة من
  *     printPR (kitchen.js:638-645) ببنتها الذهبية #c9a227 وأربع خانات توقيع
- *   • الشاشة: لا fetch/apiFetch، لا معالج سطري إلا زرا ورقة الطباعة، حارس
+ *   • الشاشة: لا fetch/apiFetch، ولا معالجات HTML سطرية، حارس
  *     أحدث قراءة + isConnected + busy قرار واحد + destroy() يُتلف الجدول
  *   • status.js: حالات purchase_request:* السبع كلها مسجلة، وكل أيقونة في
  *     السجل المشترك (65 سطرًا في كل النطاقات) موجودة فعلًا في icons.js —
@@ -455,16 +455,18 @@ describe('شاشة 21 — العقد المصدَّر من المصدر', () => 
         expect(s).not.toMatch(/warehouse-receive|receivePR|receiveDispatch/);
     });
 
-    test('لا معالج سطري إلا زرا ورقة الطباعة — المنسوخان من القديم', () => {
+    test('تستخدم ورقة الطباعة مستمعات أحداث بدل المعالجات السطرية', () => {
         const s = src();
-        const handlers = s.match(/\son[a-z]+=/g) || [];
-        expect(handlers).toHaveLength(2);
-        expect(s).toContain('onclick="window.print()"');
-        expect(s).toContain('onclick="window.close()"');
+        const handlers = s.match(/<[a-z][^>]*\son[a-z]+\s*=/gi) || [];
+        expect(handlers).toEqual([]);
+        expect(s).toContain('data-v2-print');
+        expect(s).toContain('data-v2-close');
+        expect(s).toContain("querySelector('[data-v2-print]')?.addEventListener");
+        expect(s).toContain("querySelector('[data-v2-close]')?.addEventListener");
         expect(s).not.toMatch(/window\.(prompt|alert)\(/);
         const note = s.slice(s.indexOf('async function printNote'), s.indexOf('/* ── القراءة والرسم'));
-        expect(note).toContain('onclick="window.print()"');
-        expect(note).toContain('onclick="window.close()"');
+        expect(note).toContain('data-v2-print');
+        expect(note).toContain('data-v2-close');
     });
 
     test('الكتابات السبعة من أبوابها: كل اسم باب مستدعى في الشاشة', () => {

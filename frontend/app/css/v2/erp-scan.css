@@ -14,25 +14,75 @@
 
 /* سطر المسح: حقلٌ عريض ثم أزراره في صفٍّ واحد، وينخفض تلقائيًا على الشاشات
    الضيقة بلا نقطة قطعَ مكسورة — flex-wrap مع حدٍّ أدنى للحقل. */
-.erp-v2-scan .gs-line {
+.erp-v2-scan .erp-card__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-scan .erp-card__title {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  align-items: baseline;
   gap: var(--erp-space-2);
 }
 
-.erp-v2-scan .gs-line > .erp-label { flex: 0 0 auto; }
+.erp-v2-scan [data-v2-mode] {
+  min-block-size: 40px;
+  white-space: nowrap;
+}
+
+.erp-v2-scan .erp-card__body { gap: var(--erp-space-4); }
+
+.erp-v2-scan .gs-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--erp-space-2) var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+
+.erp-v2-scan .gs-line > .erp-label { flex: 0 0 100%; }
 
 /* الكود يُقرأ بالأحرف اللاتينية دائمًا، والأرقام تباعد ثابت لا يتراقص. */
 .erp-v2-scan .gs-code {
-  flex: 1 1 16rem;
-  min-inline-size: 10rem;
+  flex: 1 1 18rem;
+  min-inline-size: min(100%, 12rem);
+  min-block-size: 44px;
   font-family: var(--erp-font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: .04em;
 }
 
+.erp-v2-scan .gs-line .erp-btn { min-block-size: 40px; }
+
+.erp-v2-scan [data-v2-note]:empty { display: none; }
+
+.erp-v2-scan [data-v2-note]:not(:empty) {
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-inline-start: 3px solid var(--erp-brand);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+  line-height: var(--erp-leading-base);
+}
+
+.erp-v2-scan [data-v2-wedge] {
+  max-inline-size: 78ch;
+  line-height: var(--erp-leading-base);
+}
+
 .erp-v2-scan .gs-panel:not([hidden]) { display: block; }
+
+.erp-v2-scan .gs-manual-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
 
 .erp-v2-scan .gs-box {
   display: flex;
@@ -104,6 +154,15 @@
   font-size: var(--erp-text-sm);
 }
 
+.erp-v2-scan .gs-table-wrap {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2-scan .gs-table { min-inline-size: 680px; }
+
 .erp-v2-scan .gs-table th {
   text-align: start;
   padding: var(--erp-space-1) var(--erp-space-2);
@@ -122,6 +181,7 @@
 .erp-v2-scan .gs-table .gs-qty { inline-size: 7rem; }
 .erp-v2-scan .gs-table .gs-tnum { font-variant-numeric: tabular-nums; direction: ltr; }
 .erp-v2-scan .gs-actions { display: flex; gap: var(--erp-space-2); flex-wrap: wrap; }
+.erp-v2-scan .gs-actions .erp-btn { min-block-size: 40px; }
 
 /* مقاييس الحملة: أربعة أرقام تُقرأ من نظرة — المربوط، بلا كود، مكرر، مكسور التحقق. */
 .erp-v2-scan .gs-kpis { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); }
@@ -161,7 +221,7 @@
 
 .erp-v2-scan .gs-cam .erp-scan {
   inline-size: min(100%, 480px);
-  min-block-size: 240px;
+  min-block-size: clamp(200px, 35vh, 320px);
   border: thin solid var(--erp-border);
   border-radius: var(--erp-radius-md);
   overflow: hidden;
@@ -175,4 +235,13 @@
   .erp-v2-scan .gs-cam,
   .erp-v2-scan [data-v2-mode] { display: none !important; }
   .erp-v2-scan .gs-box { border: none; background: none; }
+}
+
+@media (max-width: 640px) {
+  .erp-v2-scan .erp-card__head { align-items: stretch; }
+  .erp-v2-scan [data-v2-mode] { flex: 1 1 calc(50% - var(--erp-space-2)); }
+  .erp-v2-scan .gs-line .gs-code { flex-basis: calc(100% - 1px); }
+  .erp-v2-scan .gs-line .erp-btn { flex: 1 1 auto; }
+  .erp-v2-scan .gs-table { min-inline-size: 640px; }
+  .erp-v2-scan .gs-actions { display: grid; grid-template-columns: 1fr; }
 }

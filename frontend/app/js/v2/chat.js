@@ -13,9 +13,11 @@
  * session is not live; it never fabricates a local session.
  */
 
-import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.169';
-import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.169';
-import { chatWriteEnabled } from './write-flags.js?v=4.9.169';
+import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.181';
+import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.181';
+import { chatWriteEnabled } from './write-flags.js?v=4.9.181';
+
+const CHAT_POLL_MS = 15_000;
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -174,6 +176,7 @@ export function mountChat(ctx = {}) {
     }
 
     let audioCtx = null;
+    let lastPollError = '';
     function primeAudio() {
         try {
             const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -237,6 +240,33 @@ export function mountChat(ctx = {}) {
         if (!socket) {return;}
         st.socket = socket;
         socket.on('chat:new', onNew);
+    }
+
+    async function pollOpenChat() {
+        if (!isLive() || !st.open || (st.socket && st.socket.connected)) {return;}
+        try {
+            if (st.peer) {
+                const history = await fetchChatHistory(st.peer);
+                history.forEach((message) => {
+                    if (!st.messages.some((existing) => String(existing.id) === String(message.id))) {
+                        onNew(message);
+                    }
+                });
+            } else {
+                st.users = await fetchChatUsers();
+                renderUsers();
+            }
+            if (lastPollError) {
+                console.info('[V2 chat] polling recovered');
+                lastPollError = '';
+            }
+        } catch (error) {
+            const message = String(error && error.message ? error.message : error);
+            if (message !== lastPollError) {
+                console.warn('[V2 chat] fallback polling failed:', error);
+                lastPollError = message;
+            }
+        }
     }
 
     async function openPanel() {
@@ -317,10 +347,12 @@ export function mountChat(ctx = {}) {
     }
 
     refresh();
+    const chatPollTimer = setInterval(() => {void pollOpenChat();}, CHAT_POLL_MS);
 
     return {
         refresh,
         destroy() {
+            clearInterval(chatPollTimer);
             if (st.socket) {
                 try {st.socket.off('chat:new', onNew);} catch (_) { /* detached */ }
                 closeRealtimeSocket();

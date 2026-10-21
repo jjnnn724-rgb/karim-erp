@@ -85,16 +85,15 @@ describe('استبدال الرصيد الافتتاحي — إلغاء القد
         expect(calls[1].body.items[1].expiryDate).toBe('2027-01-20');
     });
 
-    test('سياسة الصلاحية: بندٌ بلا تاريخ يوقف الاستبدال قبل إلغاء القديم', async () => {
+    test('سياسة الصلاحية: بندٌ بلا تاريخ يُقبل ويستمر الاستبدال', async () => {
         const calls = [];
         const { m } = build(calls);
         m.openingReplace.invoiceId = 501;
         m.openingReplace.rows = m.buildOpeningReplaceRows(REPORT_INVOICE);
         m.openingReplace.rows[1].expiry = '';
         await m.confirmOpeningReplace();
-        // لا نداء شبكة إطلاقًا: الرصيد القديم يبقى سليمًا حتى تُستكمل الصلاحية
-        expect(calls).toHaveLength(0);
-        expect(m.openingReplace.oldVoided).toBe(false);
+        expect(calls.length).toBe(2); // إلغاء القديم ثم حفظ الجديد
+        expect(calls[1].url).toContain('/purchase-invoices');
     });
 
     test('لو الإلغاء فشل لأن القديم أُلغي سلفًا → يكمل الحفظ عادي (إعادة محاولة آمنة)', async () => {

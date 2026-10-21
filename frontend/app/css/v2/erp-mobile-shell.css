@@ -11,13 +11,16 @@
   body.erp-mobile-shell-on .erp-mobile-nav {
     display: flex;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    right: auto;
+    width: min(600px, calc(100% - 24px));
+    transform: translateX(-50%);
     z-index: var(--erp-z-fab);
     background: var(--erp-surface);
-    border-top: 1px solid var(--erp-border);
-    padding: var(--erp-space-1) var(--erp-space-2) calc(var(--erp-space-1) + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-xl);
+    padding: var(--erp-space-1);
     justify-content: space-around;
     align-items: stretch;
     box-shadow: var(--erp-shadow-lg);
@@ -26,7 +29,7 @@
   /* تفريغ مساحة كافية أسفل المحتوى لمنع حجب البيانات بالشريط */
   body.erp-mobile-shell-on .erp-shell__content,
   body.erp-mobile-shell-on #erp-main {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
 }
 

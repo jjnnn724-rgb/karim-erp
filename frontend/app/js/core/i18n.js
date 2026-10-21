@@ -293,7 +293,6 @@ function applyLangAttrs(){
   applyLoginI18n();
 }
 function applyLoginI18n(){
-  const en = STATE.lang === 'en';
   const set = (id, txt) => { const el = document.getElementById(id); if(el) {el.textContent = txt;} };
   const setPh = (id, txt) => { const el = document.getElementById(id); if(el) {el.placeholder = txt;} };
   set('loginTitle', t('login.title'));

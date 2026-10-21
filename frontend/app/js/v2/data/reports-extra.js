@@ -21,15 +21,15 @@
  * التي لا تشملها STOCK_TYPES في finance-repo (تُركت هناك لعقدها).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats } from './finance-repo.js?v=4.9.169';
-import { fetchDispatches } from './dispatch-repo.js?v=4.9.169';
-import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.169';
-import { fetchInventory } from './inventory-repo.js?v=4.9.169';
-import { fetchRecipes } from './recipes-repo.js?v=4.9.169';
-import { fetchEmployees } from './employees-repo.js?v=4.9.169';
-import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.169';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats } from './finance-repo.js?v=4.9.181';
+import { fetchDispatches } from './dispatch-repo.js?v=4.9.181';
+import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.181';
+import { fetchInventory } from './inventory-repo.js?v=4.9.181';
+import { fetchRecipes } from './recipes-repo.js?v=4.9.181';
+import { fetchEmployees } from './employees-repo.js?v=4.9.181';
+import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.181';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.181';
 
 export const EXTRA_REPORT_TYPES = [
     'general', 'department', 'kitchen', 'returns', 'warehouse', 'hr',
@@ -178,9 +178,14 @@ export async function fetchYaraDepartments({ from, to, group }) {
     };
 }
 
-export async function fetchYaraCashierItems({ from, to, view = 'items', cashier = '', limit = 100, page = 1 }) {
+export async function fetchYaraCashierItems({
+    from, to, view = 'items', cashier = '', cashiers = [], limit = 100, page = 1, summaryOnly = false, live = false,
+}) {
     const p = new URLSearchParams({ from, to, view, limit: String(limit) });
     if (cashier) {p.set('cashier', cashier);}
+    if (!cashier && cashiers.length) {p.set('cashiers', cashiers.join(','));}
+    if (summaryOnly) {p.set('summary_only', '1');}
+    if (live) {p.set('live', '1');}
     if (view === 'invoices') {p.set('page', String(page));}
     const data = await apiFetch(`/yara-reports/cashier-items?${p.toString()}`);
     return {

@@ -14,25 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.169';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.181';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.181';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.169';
+} from '../data/departments-write-repo.js?v=4.9.181';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
-    updateDeptCashierLink,
-} from '../data/dept-cashier-repo.js?v=4.9.169';
+    updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
+} from '../data/dept-cashier-repo.js?v=4.9.181';
 import {
-    cashierRevenueIn, deptIdentityColor,
+    CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.169';
+} from '../data/dept-detail.js?v=4.9.181';
+/* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
+ * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
+ * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
+ * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.181';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.181';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.181';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.181';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -41,18 +50,36 @@ const esc = (v) => String(v ?? '')
 /* ترتيب عائلي: الأب أولاً ثم أبناؤه باسمهم، بمقارن عربي — الأبناء اللي أبهم
    مفقود من السجل يظهر سطرهم بشارة تحذير بدل كود خام. */
 const AR_COLLATOR = new Intl.Collator('ar', { numeric: true });
+const byDeptName = (a, b) => AR_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
 function familyOrder(list) {
     const byCode = new Map(list.map((d) => [String(d.code), d]));
     const kidsOf = (code) => list.filter((d) => String(d.parent_code || '') === code);
-    const byName = (a, b) => AR_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
     const out = [];
     const roots = list.filter((d) => !d.parent_code || !byCode.has(String(d.parent_code)));
-    for (const root of roots.slice().sort(byName)) {
+    for (const root of roots.slice().sort(byDeptName)) {
         out.push(root);
-        for (const kid of kidsOf(String(root.code)).sort(byName)) { out.push(kid); }
+        for (const kid of kidsOf(String(root.code)).sort(byDeptName)) { out.push(kid); }
     }
     for (const d of list) { if (!out.includes(d)) { out.push(d); } }
     return out;
+}
+
+/* أقسام المبيعات المرآتية: يولّدها تكامل يارا سوفت (ys_cc_* «مبيعات كاشير N»،
+   ys_b4_ext «مبيعات بيع خارجي») لتحمل إيراد الكاشير. هي ليست أقسامًا تشغيلية،
+   فتُطوى من بطاقات الأقسام افتراضيًا (طلب المالك 2026-10-19: «مش عايز زحمة»).
+   طيّ عرضٍ فقط: لا حذف ولا تعديل — صفوف الإيراد تبقى في القاعدة كما هي،
+   والمفتاح في شريط العرض يعيدها فورًا. البادئة ys_ هي مساحة الأسماء التي
+   يولّدها التكامل وحده، ولا قسم يدوي يبدأ بها. */
+const MIRROR_DEPT_RE = /^ys_/i;
+const LIVE_CASHIER_NOS = new Set(['1', '3', '4', '5', '9']);
+const CASHIER_REFRESH_MS = 10_000;
+export function isMirrorDept(code) { return MIRROR_DEPT_RE.test(String(code ?? '')); }
+
+function monthToDateRange() {
+    const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    return { from: `${today.slice(0, 7)}-01`, to: today };
 }
 
 /* مفاتيح الأيقونات الحقيقية وقت التشغيل — تُحقن مرة واحدة عند التركيب. */
@@ -60,6 +87,11 @@ let KNOWN_ICON_KEYS = null;
 
 function kpiHtml(label, value) {
     return `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">${esc(label)}</span></div><div class="erp-kpi__value">${esc(value)}</div></li>`;
+}
+
+/** مؤشر مالي: القيمة HTML جاهزة من money() فلا تُهرَّب ثانية. */
+function kpiMoneyHtml(label, value, cur) {
+    return `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">${esc(label)}</span></div><div class="erp-kpi__value">${money(value, cur)}</div></li>`;
 }
 
 /** شريحة أيقونة القسم: دائرة ملوّنة بلون الهوية + الأيقونة (SVG أو تعبية). */
@@ -129,11 +161,15 @@ function template(canManage) {
         + '</div>'
         + '<div class="erp-card__body erp-stack">'
         + '<ul class="erp-kpis erp-dept-kpis" data-v2-kpis hidden></ul>'
+        + '<div class="erp-dept-viewbar">'
         + '<div class="erp-dept-switch" role="group" aria-label="طريقة عرض الأقسام">'
         + '<button type="button" data-v2-view="cards" aria-pressed="true"><i class="ji" data-i="store" aria-hidden="true"></i><span>بطاقات</span></button>'
         + '<button type="button" data-v2-view="table" aria-pressed="false"><i class="ji" data-i="clipboard-list" aria-hidden="true"></i><span>جدول</span></button>'
         + '</div>'
+        + '<label class="erp-dept-check erp-dept-mirrors"><input type="checkbox" data-v2-mirrors><span data-v2-mirrors-label>إظهار أقسام المبيعات المرآتية</span></label>'
+        + '</div>'
         + '<p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>'
+        + '<p class="erp-text-sm erp-text-muted" data-v2-yara-status role="status" aria-live="polite"></p>'
         + '<div data-v2-dept-form></div>'
         + '<ul class="erp-dept-grid" data-v2-cards></ul>'
         + '<div data-v2-table></div></div></section>'
@@ -162,8 +198,31 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     let expenses = [];
     let links = [];
     let linksLoaded = false;
+    /* دليل كاشيرات يارا سوفت الحي (بند #8): الأرقام والأسماء التي تُعرف أنها
+       كاشيرات فعلية، فلا يُكتب رقم من الذاكرة. */
+    let cashDir = [];
+    let cashDirFailed = false;
+    let actualCashierRevenue = new Map();
+    let actualCashierReady = false;
+    let actualCashierError = '';
+    let actualCashierUpdatedAt = null;
+    let actualCashierLoading = false;
+    let cashierRefreshTimer = null;
+    /* معلومات الأعمال (2026-10-19): أصناف القسم وموظفوه وأذونه — تُحمّل بعد
+       السجل وتبقى صفرًا بأمان إن غابت الصلاحية أو الجدول. */
+    let staff = [];
+    let recipes = [];
+    let dispatches = [];
+    let signalsReady = false;
+    let financeReady = false;
     let view = 'cards';
     let linkingCode = '';
+    /* طيّ أقسام المبيعات المرآتية (ys_*) افتراضيًا: عرضٌ فقط بلا حذف بيانات،
+       والمفتاح في شريط العرض يعيدها. */
+    let showMirrors = false;
+    /* أكواد الأقسام الآباء المفتوحة قائمة أبنائها (طلب المالك: «مش عايز زحمة»).
+       الطيّ عرضٌ فقط — العدد على الزر دائمًا، والفتح بضغطة. */
+    const kidsOpen = new Set();
 
     host.insertAdjacentHTML('beforeend', template(canManage));
     const el = host.lastElementChild;
@@ -182,6 +241,10 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const p = rows.find((d) => String(d.code) === String(code));
         return p ? String(p.name) : String(code);
     };
+
+    /** الصفوف المعروضة: المرآتية (ys_*) مطويّة افتراضيًا — طيُّ عرضٍ فقط. */
+    const visibleRows = () => (showMirrors ? rows : rows.filter((d) => !isMirrorDept(d.code)));
+    const mirrorCount = () => rows.reduce((n, d) => n + (isMirrorDept(d.code) ? 1 : 0), 0);
 
     const table = createDataTable({
         caption: 'سجل الأقسام — بيانات حية', mode: 'client', pageSize: 50, stickyHeader: true,
@@ -238,14 +301,73 @@ export function mountDepartmentsScreen(host, ctx = {}) {
 
     /** إحصاءات البطاقة بنفس حساب القديم (features/departments.js:92-96): إيراد
      *  القسم + إيراد كاشيراته المسندة، ومصروف أذون الصرف والحركات، والصافي. */
+    function deptCardCashierNos(code) {
+        const linked = deptCashierNos(code, {links, departments: rows});
+        const nos = linked.nos.filter((no) => LIVE_CASHIER_NOS.has(String(no)));
+        const mirrorMatch = String(code).match(/^ys_cc_(\d+)$/i);
+        if (mirrorMatch && LIVE_CASHIER_NOS.has(mirrorMatch[1]) && !nos.includes(mirrorMatch[1])) {
+            nos.push(mirrorMatch[1]);
+        }
+        const savedLinks = new Set((links || []).map((l) => String(l.cashier_no || '')));
+        for (const cashier of cashDir) {
+            if (!LIVE_CASHIER_NOS.has(String(cashier.no)) || !cashier.deptCode
+                || !deptIsWithin(String(cashier.deptCode), String(code))
+                || savedLinks.has(String(cashier.no))) {continue;}
+            if (!nos.includes(String(cashier.no))) {nos.push(String(cashier.no));}
+        }
+        return nos;
+    }
+
+    function deptIsWithin(candidateCode, ancestorCode) {
+        let current = rows.find((d) => String(d.code) === candidateCode);
+        const seen = new Set();
+        while (current && current.parent_code && !seen.has(String(current.code))) {
+            const parentCode = String(current.parent_code);
+            if (parentCode === ancestorCode) {return true;}
+            seen.add(String(current.code));
+            current = rows.find((d) => String(d.code) === parentCode);
+        }
+        return candidateCode === ancestorCode;
+    }
+
     function deptCardStats(r, nos) {
-        const s = calcDeptStats(revenues, expenses, rows, String(r.code), null, null);
-        const cashRev = nos.length ? cashierRevenueIn(revenues, nos, null, null) : 0;
-        const rev = s.rev + cashRev;
+        const {from, to} = monthToDateRange();
+        const s = calcDeptStats(revenues, expenses, rows, String(r.code), from, to);
+        const cashierMirror = String(r.code).match(/^ys_cc_(\d+)$/i);
+        const mirrorIsIncluded = cashierMirror && LIVE_CASHIER_NOS.has(cashierMirror[1]);
+        const localRevenue = mirrorIsIncluded ? 0 : s.rev;
+        const cashRev = actualCashierReady
+            ? nos.reduce((sum, no) => sum + (actualCashierRevenue.get(String(no)) || 0), 0)
+            : 0;
+        const rev = localRevenue + cashRev;
         return {
             rev, exp: s.exp, profit: rev - s.exp,
             costRatio: rev > 0 ? (s.exp / rev) * 100 : 0,
+            verified: actualCashierReady,
         };
+    }
+
+    /** معلومات الأعمال لكل قسم — نداء الدالة الخالصة deptSignalsOf. */
+    function deptSignals(code) {
+        return deptSignalsOf(code, recipes, staff, dispatches);
+    }
+
+    /** شرائح معلومات البطاقة: أصناف · موظفون · معلّق · آخر صرف. */
+    function deptSignalsHtml(code) {
+        if (!signalsReady) {
+            return '<div class="erp-dept-card__signals"><span class="erp-dept-signal is-muted" title="جارٍ تحميل معلومات القسم">جارٍ التحميل…</span></div>';
+        }
+        const s = deptSignals(code);
+        return '<div class="erp-dept-card__signals">'
+            + `<span class="erp-dept-signal" title="عدد الأصناف (الوصفات) المسندة لهذا القسم"><i class="ji" data-i="utensils" aria-hidden="true"></i>${formatInt(s.itemCount)} صنف</span>`
+            + `<span class="erp-dept-signal" title="عدد الموظفين المسندين لهذا القسم"><i class="ji" data-i="users" aria-hidden="true"></i>${formatInt(s.staffCount)} موظف</span>`
+            + (s.pending
+                ? `<span class="erp-dept-signal is-alert" title="أذون صرف بانتظار الاعتماد"><i class="ji" data-i="clock" aria-hidden="true"></i>${formatInt(s.pending)} معلّق</span>`
+                : '')
+            + (s.last
+                ? `<span class="erp-dept-signal is-muted" title="تاريخ آخر إذن صرف"><i class="ji" data-i="calendar" aria-hidden="true"></i>آخر صرف ${esc(fD(s.last))}</span>`
+                : '<span class="erp-dept-signal is-muted">بلا صرف مسجَّل</span>')
+            + '</div>';
     }
 
     function deptStatCell(label, iconKey, value, extraClass) {
@@ -254,15 +376,46 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `<span class="erp-dept-stat__value">${money(value, currency)}</span></span>`;
     }
 
-    /** شارة كاشير على البطاقة — أساسي بنجمة، ثانوي بحد منقّط، الوارث باسم قسمه. */
+    /** شارة كاشير على البطاقة — أساسي بنجمة، ثانوي بحد منقّط، الوارث باسم قسمه.
+     *  اسم الكاشير من دليل يارا سوفت الحي؛ لا اسم لرقم لا يعرفه الدليل. */
     function deptCashierChip(l) {
-        const rev = cashierRevenueIn(revenues, [l.cashierNo], null, null);
+        const rev = actualCashierRevenue.get(String(l.cashierNo));
         const owner = l.inherited ? ` · ${esc(deptNameOf(l.deptCode, rows))}` : '';
-        return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}" title="كاشير ${esc(l.cashierNo)}${owner}">`
+        const nm = cashierNameOf(l.cashierNo, cashDir);
+        return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}" title="${esc(cashierLabel(l.cashierNo, cashDir))}${owner}">`
             + `<i class="ji" data-i="receipt" aria-hidden="true"></i>كاشير <span class="erp-mono" dir="ltr">${esc(l.cashierNo)}</span>`
+            + (nm ? `<span class="erp-dept-cashier__name">${esc(nm)}</span>` : '')
             + `${l.isPrimary ? '<span class="erp-dept-cashier__star" title="الكاشير الأساسي للقسم">★</span>' : ''}`
-            + (rev ? `<span class="erp-dept-cashier__amount erp-num" dir="ltr">${formatInt(rev)}</span>` : '')
+            + `<span class="erp-dept-cashier__amount erp-num" dir="ltr">${actualCashierReady ? formatInt(rev || 0) : '—'}</span>`
             + `${owner}</span>`;
+    }
+
+    /** مُنتقي لوحة الربط: كاشيرات يارا سوفت الحيّة أولًا، واليدوي مخرجًا دائمًا.
+     *  الرقم المربوط هنا يُعطَّل في القائمة؛ المربوط بقسمٍ آخر يُذكر صاحبه
+     *  ليختار المالك بعلم — فالخادم هو الحكم، والعميل لا يمنع ما لم يُمنع. */
+    function linkPickerHtml(code) {
+        const manual = (hidden) => `<label class="erp-text-sm erp-text-muted"${hidden ? ' hidden' : ''} data-v2-link-manual>`
+            + 'رقم الكاشير<input class="erp-input erp-input--ltr" data-v2-link-no inputmode="numeric" maxlength="6" placeholder="مثال: 12"></label>';
+        if (!cashDir.length) {
+            const note = cashDirFailed
+                ? 'تعذّرت قراءة دليل الكاشيرات — أدخل الرقم يدويًا.'
+                : 'لا كاشير معتمد في الخريطة بعد — أدخل الرقم يدويًا.';
+            return `<p class="erp-dept-link-picker erp-dept-link-picker--note">${esc(note)}</p>` + manual(false);
+        }
+        const here = new Set(deptCashierNos(code, {links, departments: rows}).nos);
+        const opts = cashDir.map((c) => {
+            const linkedHere = here.has(c.no);
+            const other = linkedHere ? null : links.find((l) => String(l.cashier_no ?? '').trim() === c.no);
+            const owner = other ? deptNameOf(String(other.dept_code ?? '').trim(), rows) : '';
+            const mark = linkedHere ? ' — مربوط هنا' : (owner ? ` — مربوط بـ ${owner}` : '');
+            const nm = c.name ? ` — ${c.name}` : '';
+            return `<option value="${esc(c.no)}"${linkedHere ? ' disabled' : ''}>${esc(`كاشير ${c.no}${nm}${mark}`)}</option>`;
+        }).join('');
+        return `<label class="erp-text-sm erp-text-muted">كاشير من يارا سوفت`
+            + `<select class="erp-select" data-v2-link-pick>`
+            + `<option value="">— اختر من ${formatInt(cashDir.length)} كاشير —</option>${opts}`
+            + '<option value="__manual__">رقم آخر — إدخال يدوي</option></select></label>'
+            + manual(true);
     }
 
     /** لوحة ربط الكاشير داخل البطاقة (تحت علم v2deptcashier وحده). */
@@ -272,6 +425,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const list = rowsOfDept.length
             ? rowsOfDept.map((l) => `<div class="erp-dept-link-row">`
                 + `<span class="erp-dept-link-row__name">كاشير <span class="erp-mono" dir="ltr">${esc(l.cashierNo)}</span>`
+                + (cashierNameOf(l.cashierNo, cashDir) ? ` <span class="erp-text-muted">${esc(cashierNameOf(l.cashierNo, cashDir))}</span>` : '')
                 + (l.inherited ? ` <span class="erp-badge" data-tone="neutral">من ${esc(deptNameOf(l.deptCode, rows))}</span>` : '')
                 + `</span>`
                 + (l.isPrimary ? '<span class="erp-badge" data-tone="brand">أساسي</span>'
@@ -284,7 +438,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `<span class="erp-text-sm erp-text-muted">${known.source === 'db' ? 'من قاعدة البيانات' : 'من الخريطة المدمجة (لم تُحفظ روابط بعد)'}</span></div>`
             + list
             + `<div class="erp-dept-link-form">`
-            + `<label class="erp-text-sm erp-text-muted">رقم الكاشير<input class="erp-input erp-input--ltr" data-v2-link-no inputmode="numeric" maxlength="6" placeholder="مثال: 12"></label>`
+            + linkPickerHtml(code)
             + `<label class="erp-dept-check"><input type="checkbox" data-v2-link-primary-flag><span>كاشير أساسي</span></label>`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-link-add="${esc(code)}"><i class="ji" data-i="plus" aria-hidden="true"></i><span>ربط</span></button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-link-x><span>إغلاق</span></button>`
@@ -296,16 +450,21 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     function deptCardHtml(r) {
         const code = String(r.code);
         const accent = deptIdentityColor(r);
-        const link = deptCashierNos(code, {links, departments: rows});
-        const s = deptCardStats(r, link.nos);
+        const cashierNos = deptCardCashierNos(code);
+        const s = deptCardStats(r, cashierNos);
         const linkRows = deptLinkRows(code, links, rows);
-        const chips = linkRows.length
-            ? linkRows.map((l) => deptCashierChip(l)).join('')
-            : (link.nos.length
-                ? link.nos.map((no) => deptCashierChip({cashierNo: no, isPrimary: true, deptCode: code, inherited: false})).join('')
+        const chipRows = linkRows.filter((l) => LIVE_CASHIER_NOS.has(String(l.cashierNo)));
+        const chipNos = new Set(chipRows.map((l) => String(l.cashierNo)));
+        const chips = [
+            ...chipRows.map((l) => deptCashierChip(l)),
+            ...cashierNos.filter((no) => !chipNos.has(String(no))).map((no) => deptCashierChip({
+                cashierNo: no, isPrimary: true, deptCode: code, inherited: false,
+            })),
+        ].join('') || (cashierNos.length
+            ? cashierNos.map((no) => deptCashierChip({cashierNo: no, isPrimary: true, deptCode: code, inherited: false})).join('')
                 : '<span class="erp-dept-card__unassigned">بلا كاشير مسند — اربطه من «ربط كاشير»</span>');
         const parent = rows.find((d) => String(d.code) === String(r.parent_code));
-        const kids = rows.filter((d) => String(d.parent_code || '') === code).length;
+        const kids = visibleRows().filter((d) => String(d.parent_code || '') === code).length;
         const netClass = s.profit >= 0 ? 'is-positive' : 'is-negative';
         const ratioPct = Math.max(0, Math.min(100, s.costRatio));
         const expanded = linkingCode === code;
@@ -320,16 +479,17 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + (parent ? `<span class="erp-dept-parent" title="${esc(String(parent.code))}">${esc(String(parent.name))}</span>`
                 : '<span class="erp-badge" data-tone="neutral">قسم رئيسي</span>')
             + (kids ? `<span class="erp-badge" data-tone="info">${formatInt(kids)} قسم فرعي</span>` : '')
-            + '</span></span></div>'
+            + '</span></div></div>'
+            + deptSignalsHtml(code)
             + `<div class="erp-dept-card__stats">`
-            + deptStatCell('الإيراد', 'banknote', s.rev, 'erp-dept-stat--rev')
+            + deptStatCell('إيراد الشهر', 'banknote', s.rev, 'erp-dept-stat--rev')
             + deptStatCell('المصروف', 'package', s.exp, 'erp-dept-stat--exp')
             + `<span class="erp-dept-stat erp-dept-stat--net"><span class="erp-dept-stat__label"><i class="ji" data-i="gem" aria-hidden="true"></i>الصافي</span>`
             + `<span class="erp-dept-stat__value ${netClass}">${money(s.profit, currency)}</span></span>`
             + '</div>'
             + `<div class="erp-dept-card__ratio${s.costRatio > 100 ? ' is-high' : ''}">`
             + `<span class="erp-dept-card__ratio-track"><span class="erp-dept-card__ratio-fill" style="width:${ratioPct.toFixed(1)}%"></span></span>`
-            + `<span class="erp-dept-card__ratio-label">نسبة التكلفة <span class="erp-num" dir="ltr">${formatInt(Math.round(s.costRatio))}%</span></span>`
+            + `<span class="erp-dept-card__ratio-label">نسبة التكلفة <span class="erp-num" dir="ltr">${s.verified ? `${formatInt(Math.round(s.costRatio))}%` : '—'}</span></span>`
             + '</div>'
             + `<div class="erp-dept-card__cashiers">${chips}</div>`
             + `<div class="erp-dept-card__foot">`
@@ -342,14 +502,102 @@ export function mountDepartmentsScreen(host, ctx = {}) {
                 : '')
             + '</div>'
             + (expanded ? deptLinkPanelHtml(code) : '')
+            + (kids ? deptKidsBarHtml(code, kids, kidsOpen.has(code)) : '')
             + '</li>';
     }
 
+    /** شريط أقسام القسم الفرعية: يطوي القائمة ويفردها (طلب المالك: «مش عايز
+     *  زحمة»). الطيّ عرضٌ فقط — العدد ظاهرٌ على الزر دائمًا فلا تختفي معلومة. */
+    function deptKidsBarHtml(code, count, open) {
+        return `<button type="button" class="erp-dept-kids-bar${open ? ' is-open' : ''}" data-v2-kids="${esc(code)}" aria-expanded="${open ? 'true' : 'false'}">`
+            + `<i class="ji" data-i="${open ? 'chevron-up' : 'chevron-down'}" aria-hidden="true"></i>`
+            + `<i class="ji" data-i="layers" aria-hidden="true"></i>`
+            + `<span>${open ? 'طيّ' : 'عرض'} الأقسام الفرعية (${formatInt(count)})</span>`
+            + '</button>';
+    }
+
+    /* بطاقات المستوى الأول فقط، وكل قسم فرعي يُرسم داخل بطاقة أبيه (طلب المالك:
+       «مش عايز زحمة») فلا يظهر الفرع مرتين. الأب يبقى يعرض كاشيراته الموروثة
+       كما كانت — الطيّ في البطاقة لا في الأرقام. */
+    /** صفّ قسم فرعي مضغوط داخل بطاقة أبيه — سطر واحد على الشاشات الواسعة
+     *  يلتفّ على الهاتف، فلا تُضخَّم بطاقة الأب ببطاقات كاملة متكررة
+     *  (طلب المالك: «مش عايز زحمة»). نفس الأرقام والإجراءات، حجم أقل. */
+    function deptChildRowHtml(r) {
+        const code = String(r.code);
+        const accent = deptIdentityColor(r);
+        const cashierNos = deptCardCashierNos(code);
+        const s = deptCardStats(r, cashierNos);
+        const linkRows = deptLinkRows(code, links, rows);
+        const chipRows = linkRows.filter((l) => LIVE_CASHIER_NOS.has(String(l.cashierNo)));
+        const chipNos = new Set(chipRows.map((l) => String(l.cashierNo)));
+        const chips = [
+            ...chipRows.map((l) => deptCashierChip(l)),
+            ...cashierNos.filter((no) => !chipNos.has(String(no))).map((no) => deptCashierChip({
+                cashierNo: no, isPrimary: true, deptCode: code, inherited: false,
+            })),
+        ].join('') || (cashierNos.length
+            ? cashierNos.map((no) => deptCashierChip({cashierNo: no, isPrimary: true, deptCode: code, inherited: false})).join('')
+                : '<span class="erp-dept-child__unassigned">بلا كاشير</span>');
+        const sig = deptSignals(code);
+        const expanded = linkingCode === code;
+        const netClass = s.profit >= 0 ? 'is-positive' : 'is-negative';
+        const grandKids = visibleRows().filter((d) => String(d.parent_code || '') === code).sort(byDeptName);
+        return `<li class="erp-dept-child${expanded ? ' is-expanded' : ''}" style="--dept-accent:${esc(accent)}" data-v2-dept-code="${esc(code)}">`
+            + '<div class="erp-dept-child__row">'
+            + `<span class="erp-dept-child__medal" aria-hidden="true">${deptMedalHtml(r)}</span>`
+            + `<span class="erp-dept-child__id"><span class="erp-dept-child__name">${esc(String(r.name))}</span>`
+            + `<span class="erp-dept-child__code erp-mono" dir="ltr">${esc(code)}</span></span>`
+            + `<span class="erp-dept-child__signals">${signalsReady
+                ? `${formatInt(sig.itemCount)} صنف · ${formatInt(sig.staffCount)} موظف${sig.pending ? ` · ${formatInt(sig.pending)} معلّق` : ''}`
+                : 'جارٍ التحميل…'}</span>`
+            + `<span class="erp-dept-child__cashiers">${chips}</span>`
+            + '<span class="erp-dept-child__amounts">'
+            + `<span class="erp-dept-child__net ${netClass}">${money(s.profit, currency)}</span>`
+            + `<span class="erp-dept-child__ratio">تكلفة <span class="erp-num" dir="ltr">${formatInt(Math.round(s.costRatio))}%</span></span>`
+            + '</span>'
+            + '<span class="erp-dept-child__actions">'
+            + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-detail="${esc(code)}"><i class="ji" data-i="eye" aria-hidden="true"></i><span>تفاصيل</span></button>`
+            + (canLink ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-link="${esc(code)}"><i class="ji" data-i="users" aria-hidden="true"></i><span>${expanded ? 'إغلاق' : 'كاشير'}</span></button>` : '')
+            + (canManage
+                ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-dept-edit="${esc(String(r.id))}" aria-label="تعديل القسم"><i class="ji" data-i="pencil" aria-hidden="true"></i></button>`
+                    + `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-dept-del="${esc(String(r.id))}" aria-label="حذف القسم"><i class="ji" data-i="trash" aria-hidden="true"></i></button>`
+                : '')
+            + '</span></div>'
+            + (expanded ? deptLinkPanelHtml(code) : '')
+            + (grandKids.length ? `<ul class="erp-dept-kids erp-dept-kids--nested${kidsOpen.has(code) ? '' : ' is-collapsed'}">${grandKids.map(deptChildRowHtml).join('')}</ul>` : '')
+            + '</li>';
+    }
+
+    /* بطاقات المستوى الأول فقط، وكل قسم فرعي يُرسم صفًّا مضغوطًا داخل بطاقة
+       أبيه (طلب المالك: «مش عايز زحمة») فلا يظهر الفرع مرتين. الأب يبقى يعرض
+       كاشيراته الموروثة كما كانت — الطيّ في البطاقة لا في الأرقام. */
     function paintCards() {
         const holder = q('[data-v2-cards]');
         if (!holder) {return;}
-        holder.innerHTML = rows.length
-            ? familyOrder(rows).map(deptCardHtml).join('')
+        const list = visibleRows();
+        const byCode = new Map(list.map((d) => [String(d.code), d]));
+        const kidsOf = (code) => list.filter((d) => String(d.parent_code || '') === code);
+        const roots = list.filter((d) => !d.parent_code || !byCode.has(String(d.parent_code)));
+        const render = (r) => {
+            const code = String(r.code);
+            const kids = kidsOf(code);
+            const html = deptCardHtml(r);
+            if (!kids.length) {return html;}
+            /* القائمة تُرسم دائمًا وتُطوى بـ CSS: الطبع يراها كاملة، والعرض
+               يستطيع فردها بضغطة، ولا تُفقد معلومة من الـDOM. */
+            const cls = kidsOpen.has(code) ? '' : ' is-collapsed';
+            return html.replace(/<\/li>$/, `<ul class="erp-dept-kids${cls}">${kids.slice().sort(byDeptName).map(deptChildRowHtml).join('')}</ul></li>`);
+        };
+        const covered = new Set();
+        const cards = roots.slice().sort(byDeptName).map((r) => {
+            covered.add(String(r.code));
+            kidsOf(String(r.code)).forEach((k) => covered.add(String(k.code)));
+            return render(r);
+        });
+        /* لا يسقط صفّ: ما لم يُرسم (أب مفقود أو دورة بيانات) يظهر بطاقةً كما كان. */
+        const orphans = list.filter((d) => !covered.has(String(d.code)));
+        holder.innerHTML = (cards.length || orphans.length)
+            ? cards.join('') + orphans.map(deptCardHtml).join('')
             : '<li class="erp-dept-empty">لا توجد أقسام مسجلة بعد — أضف قسمًا من زر «إضافة قسم».</li>';
     }
 
@@ -364,14 +612,25 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         if (view === 'cards') {paintCards();}
     }
 
-    /** مصاريع البطاقات — تُحمّل بعد السجل وتفشل بصمت. */
+    /** مصاريع البطاقات — تُحمّل بعد السجل وتفشل بصمت: أصناف القسم وموظفوه
+     *  وأذونه (معلومات البطاقة)، وإيراده/مصروفه (لوحة التفاصيل)، وروابط الكاشير.
+     *  كل مصدرٍ يُبتلع خطؤه وحده فلا يُسقط الباقي، والرسم يُعاد بعد الوصول. */
     async function loadCardData() {
-        try {
-            const [rev, exp] = await Promise.all([fetchRevenues(), fetchExpenses()]);
-            if (!el.isConnected) {return;}
-            revenues = rev;
-            expenses = exp;
-        } catch { /* المؤشرات تبقى في لوحة التفاصيل */ }
+        const [rev, exp, emp, rec, dis] = await Promise.all([
+            fetchRevenues().catch(() => []),
+            fetchExpenses().catch(() => []),
+            fetchEmployees().catch(() => []),
+            fetchRecipes().catch(() => []),
+            fetchDispatches().catch(() => []),
+        ]);
+        if (!el.isConnected) {return;}
+        revenues = Array.isArray(rev) ? rev : [];
+        expenses = Array.isArray(exp) ? exp : [];
+        staff = Array.isArray(emp) ? emp : [];
+        recipes = Array.isArray(rec) ? rec : [];
+        dispatches = Array.isArray(dis) ? dis : [];
+        financeReady = true;
+        signalsReady = true;
         try {
             links = await fetchDeptCashierLinks();
             linksLoaded = true;
@@ -381,7 +640,72 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             links = [];
             linksLoaded = false;
         }
-        if (el.isConnected && view === 'cards') {paintCards();}
+        try {
+            cashDir = await fetchYaraCashiers();
+            cashDirFailed = false;
+        } catch {
+            /* نفس احتياط روابط 103: الدليل وسيلة لا غرض. إن تعذرت قراءته
+               تعود اللوحة للإدخال اليدوي وحده — لا تختفي البطاقة ولا تُخترع أسماء. */
+            cashDir = [];
+            cashDirFailed = true;
+        }
+        await refreshActualCashierRevenue();
+        if (!el.isConnected) {return;}
+        paintKpis();
+        if (view === 'cards') {paintCards();}
+        if (!cashierRefreshTimer) {
+            cashierRefreshTimer = setInterval(() => {
+                if (el.isConnected && document.visibilityState !== 'hidden') {
+                    void refreshActualCashierRevenue();
+                }
+            }, CASHIER_REFRESH_MS);
+        }
+    }
+
+    async function refreshActualCashierRevenue() {
+        if (actualCashierLoading || !el.isConnected) {return;}
+        actualCashierLoading = true;
+        const {from, to} = monthToDateRange();
+        try {
+            const result = await fetchYaraCashierItems({from, to, view: 'invoices', summaryOnly: true, live: true});
+            if (!el.isConnected) {return;}
+            actualCashierRevenue = new Map((result.cashiers || [])
+                .filter((c) => LIVE_CASHIER_NOS.has(String(c.no)))
+                .map((c) => [String(c.no), Number(c.net) || 0]));
+            actualCashierReady = true;
+            actualCashierError = '';
+            actualCashierUpdatedAt = new Date();
+        } catch (error) {
+            actualCashierError = (error && error.message) || 'تعذّر الاتصال بيارا سوفت';
+        } finally {
+            actualCashierLoading = false;
+        }
+        const status = q('[data-v2-yara-status]');
+        if (status) {
+            const range = monthToDateRange();
+            const linkedNos = new Set((links || []).map((l) => String(l.cashier_no || '')));
+            const unmapped = cashDir.filter((c) => LIVE_CASHIER_NOS.has(String(c.no))
+                && !linkedNos.has(String(c.no))
+                && (!c.deptCode || !rows.some((d) => String(d.code) === String(c.deptCode))))
+                .map((c) => String(c.no));
+            const directoryNos = new Set(cashDir.map((c) => String(c.no)));
+            for (const no of LIVE_CASHIER_NOS) {
+                if (!cashDirFailed && !linkedNos.has(no) && !directoryNos.has(no) && !CASHIER_DEPT_MAP[no]) {
+                    unmapped.push(no);
+                }
+            }
+            const mappingNote = cashDirFailed
+                ? 'تعذّر تحميل دليل أقسام الكاشير؛ لم يتم تخمين إسناد لأي قسم.'
+                : (unmapped.length ? `كاشيرات بلا إسناد موثّق: ${unmapped.join('، ')}.` : '');
+            if (!actualCashierReady) {
+                status.textContent = `إيراد الكاشير الفعلي من يارا سوفت غير متاح — لا تُعرض أصفار بديلة. ${actualCashierError} ${mappingNote}`;
+            } else if (actualCashierError) {
+                status.textContent = `تعذّر تحديث إيراد يارا سوفت؛ المعروض آخر قراءة ناجحة ${actualCashierUpdatedAt.toLocaleTimeString('ar-EG')}. ${actualCashierError} ${mappingNote}`;
+            } else {
+                status.textContent = `إيراد الكاشير الفعلي من ${range.from} إلى ${range.to} · تحديث كل 10 ثوانٍ · الكاشير 2 مستبعد حسب إعداد يارا سوفت. ${mappingNote}`;
+            }
+        }
+        if (view === 'cards') {paintCards();}
     }
 
     /* ── ربط الكاشير (جدول 103) — خلف علم v2deptcashier والدور معًا ── */
@@ -391,11 +715,20 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         notify(message);
     }
 
+    function pickedCashierNo() {
+        const sel = q('[data-v2-link-pick]');
+        if (!sel) {return q('[data-v2-link-no]')?.value ?? '';}
+        const v = sel.value;
+        if (!v) {return '';}
+        if (v === '__manual__') {return q('[data-v2-link-no]')?.value ?? '';}
+        return v;
+    }
+
     function addLink(code) {
         if (saving) {return;}
         const v = validateLinkForm({
             dept_code: code,
-            cashier_no: q('[data-v2-link-no]')?.value ?? '',
+            cashier_no: pickedCashierNo(),
             is_primary: !!q('[data-v2-link-primary-flag]')?.checked,
         });
         if (!v.ok) {linkFail(v.message); return;}
@@ -443,22 +776,53 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     }
 
     function paint() {
-        const total = rows.length;
-        summaryEl.textContent = formatInt(total) + ' قسمًا';
-        countEl.textContent = total ? '(' + formatInt(total) + ')' : '';
-        const roots = rows.filter((d) => !d.parent_code).length;
-        const groups = new Set(rows.filter((d) => d.parent_code).map((d) => String(d.parent_code))).size;
+        const shown = visibleRows().length;
+        const hidden = rows.length - shown;
+        summaryEl.textContent = formatInt(shown) + ' قسمًا'
+            + (hidden ? ` — ${formatInt(hidden)} قسم مبيعات مرآتي مطوي (طيّ عرضٍ فقط، بلا حذف)` : '');
+        countEl.textContent = shown ? '(' + formatInt(shown) + ')' : '';
+        const mirrorLabel = q('[data-v2-mirrors-label]');
+        if (mirrorLabel) {
+            mirrorLabel.textContent = showMirrors
+                ? 'إخفاء أقسام المبيعات المرآتية'
+                : `إظهار أقسام المبيعات المرآتية (${formatInt(mirrorCount())})`;
+        }
+        const mirrorBox = q('[data-v2-mirrors]');
+        if (mirrorBox) {mirrorBox.checked = showMirrors;}
+        paintKpis();
+        table.setRows(familyOrder(visibleRows()));
+        applyView();
+    }
+
+    /** المؤشرات العلوية: هيكل الأقسام + معلومات أعمال حقيقية (إيراد/مصروف/صافي/
+     *  موظفون/أصناف/أذون معلّقة). تُعاد النداء بعد وصول البيانات الثقيلة فيُستبدل
+     *  الصفر بمجموع فعلي — والحساب كله من صفوفٍ محمَّلة أصلًا، بلا طلبٍ جديد. */
+    function paintKpis() {
+        const shown = visibleRows();
+        const total = shown.length;
         const kpiEl = q('[data-v2-kpis]');
+        if (!kpiEl) {return;}
+        const roots = shown.filter((d) => !d.parent_code).length;
+        const totalRev = revenues.reduce((a, r) => a + (Number(r && r.amount) || 0), 0);
+        const totalExp = expenses.reduce((a, e) => a + (Number(e && e.amount) || 0), 0);
+        const pending = dispatches.filter((d) => String((d && d.status) || '') === 'pending').length;
+        const totals = deptSignalTotals(rows, recipes, staff);
+        const fin = (label, value) => (financeReady ? kpiMoneyHtml(label, value, currency) : kpiHtml(label, '—'));
         kpiEl.innerHTML = !total ? '' : kpiHtml('إجمالي الأقسام', formatInt(total))
-            + kpiHtml('أقسام رئيسية', formatInt(roots))
-            + kpiHtml('أقسام فرعية', formatInt(total - roots))
-            + kpiHtml('مجموعات أبوية', formatInt(groups));
+            + kpiHtml('رئيسية / فرعية', `${formatInt(roots)} / ${formatInt(total - roots)}`)
+            + fin('إجمالي الإيراد', totalRev)
+            + fin('إجمالي المصروف', totalExp)
+            + fin('صافي الربح', totalRev - totalExp)
+            + kpiHtml('الموظفون', signalsReady ? formatInt(totals.people) : '—')
+            + kpiHtml('الأصناف', signalsReady ? formatInt(totals.items) : '—')
+            + kpiHtml('أذون معلّقة', signalsReady ? formatInt(pending) : '—');
         kpiEl.hidden = !total;
         const issued = new Date().toLocaleDateString('ar-EG', { day: '2-digit', month: 'long', year: 'numeric' });
-        q('[data-v2-print-head]').innerHTML = !total ? '' : '<div class="erp-print-head__title">سجل الأقسام</div>'
-            + `<div class="erp-print-head__meta">إجمالي ${formatInt(total)} قسمًا — رئيسي ${formatInt(roots)} · فرعي ${formatInt(total - roots)} · صادر في ${esc(issued)}</div>`;
-        table.setRows(familyOrder(rows));
-        applyView();
+        const headEl = q('[data-v2-print-head]');
+        if (headEl) {
+            headEl.innerHTML = !total ? '' : '<div class="erp-print-head__title">سجل الأقسام</div>'
+                + `<div class="erp-print-head__meta">إجمالي ${formatInt(total)} قسمًا — رئيسي ${formatInt(roots)} · فرعي ${formatInt(total - roots)} · صادر في ${esc(issued)}</div>`;
+        }
     }
 
     async function reload() {
@@ -708,6 +1072,13 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             applyView();
             return;
         }
+        const kidsBtn = ev.target.closest('[data-v2-kids]');
+        if (kidsBtn) {
+            const code = String(kidsBtn.dataset.v2Kids);
+            if (kidsOpen.has(code)) {kidsOpen.delete(code);} else {kidsOpen.add(code);}
+            paint();
+            return;
+        }
         const linkBtn = ev.target.closest('[data-v2-link]');
         if (linkBtn) {
             const code = String(linkBtn.dataset.v2Link);
@@ -795,10 +1166,26 @@ export function mountDepartmentsScreen(host, ctx = {}) {
     });
 
     el.addEventListener('change', (ev) => {
+        if (ev.target.matches('[data-v2-mirrors]')) {showMirrors = !!ev.target.checked; paint(); return;}
         if (ev.target.matches('[data-v2-dfrom]')) {detailFrom = ev.target.value; openDetail(detailCode, false); return;}
-        if (ev.target.matches('[data-v2-dto]')) {detailTo = ev.target.value; openDetail(detailCode, false);}
+        if (ev.target.matches('[data-v2-dto]')) {detailTo = ev.target.value; openDetail(detailCode, false); return;}
+        if (ev.target.matches('[data-v2-link-pick]')) {
+            const manual = q('[data-v2-link-manual]');
+            const noInput = q('[data-v2-link-no]');
+            const manualOn = ev.target.value === '__manual__';
+            if (manual) {manual.hidden = !manualOn;}
+            /* حقل اليدوي لا يُرسل إن كان مُخفىً: يفرغ كي لا يعلق رقمٌ قديم خلف اختيار الدليل */
+            if (noInput && !manualOn) {noInput.value = '';}
+        }
     });
 
     reload();
-    return { el, reload, getRows: () => rows, destroy() { table.destroy(); el.remove(); } };
+    return {
+        el, reload, getRows: () => rows,
+        destroy() {
+            if (cashierRefreshTimer) {clearInterval(cashierRefreshTimer); cashierRefreshTimer = null;}
+            table.destroy();
+            el.remove();
+        },
+    };
 }

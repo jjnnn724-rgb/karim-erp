@@ -11,18 +11,13 @@
 }
 .erp-v2 .erp-login-card { inline-size: 100%; max-inline-size: 430px; }
 .erp-v2 .erp-login-brand { display: flex; justify-content: center; }
-.erp-v2 .erp-login-mark {
-  inline-size: 56px;
-  block-size: 56px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--erp-brand-soft);
-  color: var(--erp-dash-accent-text, var(--erp-brand-text));
-  box-shadow: var(--erp-shadow-sm);
+.erp-v2 .erp-login-logo {
+  display: block;
+  inline-size: min(100%, 144px);
+  block-size: 112px;
+  object-fit: contain;
+  object-position: center;
 }
-.erp-v2 .erp-login-mark .ji { font-size: 26px; }
 .erp-v2 .erp-login-title {
   margin: 0;
   text-align: center;

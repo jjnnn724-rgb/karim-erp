@@ -6,6 +6,11 @@
  */
 
 const { validateChecks } = require('../backend/db-constraints');
+const { pool } = require('../backend/shared-pool');
+
+afterAll(async () => {
+    await pool.end();
+});
 
 function fakeConstraints(def) {
     return { suppliers: { columns: {}, constraints: [{ type: 'c', name: 'suppliers_tax_status_chk', def }] } };

@@ -50,7 +50,7 @@ if(body) {body.innerHTML = `<div class="mcard u-empty">تعذر تحميل بي�
 async function ysLoadOracleBox(){
   const box = document.getElementById('ysOracleBox');
   if(!box) {return;}
-  let o = null;
+  let o;
   try{ o = await apiFetch('/yarasoft/oracle/status').catch(()=>null); }catch(_){ o = null; }
   const d = o?.oracle;
   if(!d){ box.innerHTML = ''; return; }
@@ -125,7 +125,7 @@ box.innerHTML=`<div class="mcard" style="margin-bottom:8px">${j.running?'<span c
 ${chunks?`<div class="tbl-scroll" style="max-height:220px;overflow:auto"><table><thead><tr><th>المقطع</th><th>الحالة</th><th>منشور</th></tr></thead><tbody>${chunks}</tbody></table></div>`:''}
 <div style="padding-top:8px"><button class="btn btn-blue btn-sm" onclick="ysReconcile()"><i class=ji data-i=chart></i> فحص الفجوات بعد المزامنة</button></div>`;
 if(j.running && loop!==false) {setTimeout(()=>{ if(document.getElementById('ysSyncDocBody')) {ysCatchUpStatus(true);} },5000);}
-}catch(e){ /* صامت */ }
+}catch(_){ /* صامت */ }
 }
 async function ysOracleTest(){  showLoad();
   try{
@@ -679,7 +679,7 @@ await ysLoadSections(document.getElementById('ysBody'));
 // ─── مخازن يارا سوفت (نسخ الأصناف + الأرصدة بمصفاة جودة) ───
 async function ysLoadWarehouse(el){
 el.innerHTML='<div class="mcard u-empty"><div class="spinner"></div></div>';
-let cat=null, quar=[];
+let cat, quar;
 try{
 cat = await apiFetch('/yarasoft/oracle/catalog-status').catch(()=>null);
 quar = await apiFetch('/yarasoft/quality/quarantine').catch(()=>[]);

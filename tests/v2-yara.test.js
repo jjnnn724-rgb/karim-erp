@@ -59,11 +59,12 @@ describe('عائلة يارا — مرآة الخادم', () => {
         expect(src).not.toMatch(/method:\s*'(POST|PUT|DELETE)'/);
     });
 
-    test('الأبواب السبعة مساراتها وبارامتراتها كما يخدمها الخادم', async () => {
+    test('الأبواب الأحد عشر مساراتها وبارامتراتها كما يخدمها الخادم', async () => {
         const { apiFetch, calls } = repoStub(() => ({}));
         const ctx = loadEsm(REPO, { apiFetch }, [
             'fetchItemSales', 'fetchYaraOrders', 'fetchReceivedItems', 'fetchReceivedDispatches',
             'fetchItemOutflow', 'fetchItemSuggestions', 'fetchWhVsPos',
+            'fetchCashiersLive', 'fetchCashiersToday', 'fetchOrderDetail', 'fetchReceivedDispatchDetail',
         ]);
         await ctx.fetchItemSales({ from: '2026-10-01', to: '2026-10-15', group: 'item', cashier: '4', item: 'شاورما' });
         await ctx.fetchYaraOrders({ from: '2026-10-01', to: '2026-10-15', cashier: '', limit: 50, offset: 0 });
@@ -72,6 +73,10 @@ describe('عائلة يارا — مرآة الخادم', () => {
         await ctx.fetchItemOutflow({ from: '2026-10-01', to: '2026-10-15' });
         await ctx.fetchItemSuggestions('شاور');
         await ctx.fetchWhVsPos({ from: '2026-10-01', to: '2026-10-15' });
+        await ctx.fetchCashiersLive({ date: '2026-10-15' });
+        await ctx.fetchCashiersToday({ date: '2026-10-15' });
+        await ctx.fetchOrderDetail('ORD-1234');
+        await ctx.fetchReceivedDispatchDetail('DISP-567');
         expect(calls).toEqual([
             '/yara-reports/item-sales?from=2026-10-01&to=2026-10-15&group=item&cashier=4&item=%D8%B4%D8%A7%D9%88%D8%B1%D9%85%D8%A7',
             '/yara-reports/orders?from=2026-10-01&to=2026-10-15&limit=50&offset=0',
@@ -80,12 +85,25 @@ describe('عائلة يارا — مرآة الخادم', () => {
             '/yara-reports/item-outflow?from=2026-10-01&to=2026-10-15',
             '/yara-reports/item-suggest?q=%D8%B4%D8%A7%D9%88%D8%B1',
             '/yara-reports/wh-vs-pos?from=2026-10-01&to=2026-10-15',
+            '/yara-reports/cashiers-live?date=2026-10-15',
+            '/yara-reports/cashiers-today?date=2026-10-15',
+            '/yara-reports/order-detail/ORD-1234',
+            '/yara-reports/received-dispatch-detail/DISP-567',
         ]);
         // المسارات مسماة في الخادم حرفياً
         for (const door of ['item-sales', 'orders', 'received-items', 'received-dispatches',
-            'item-outflow', 'item-suggest', 'wh-vs-pos']) {
+            'item-outflow', 'item-suggest', 'wh-vs-pos', 'cashiers-live', 'cashiers-today',
+            'order-detail/:docNo', 'received-dispatch-detail/:id']) {
             expect(srv).toContain(`'/${door}'`);
         }
+    });
+
+    test('تطبيع البحث العربي arSearchKey يطابق جدول المشروع الرسمي', () => {
+        const ctx = loadEsm(REPO, {}, ['arSearchKey', 'arSearchIncludes']);
+        expect(ctx.arSearchKey('باذنجان بلدي')).toBe(ctx.arSearchKey('بازنجان بلدي'));
+        expect(ctx.arSearchKey('سكر أبيض')).toBe(ctx.arSearchKey('سكر ابيض'));
+        expect(ctx.arSearchIncludes('باذنجان رومي طازج', 'بازنجان')).toBe(true);
+        expect(ctx.arSearchIncludes('لحم مفروم', 'دجاج')).toBe(false);
     });
 
     test('بوابة المدى المحلية: المعكوس والواسع يُرفضان بجملة الخادم قبل أي طلب', () => {

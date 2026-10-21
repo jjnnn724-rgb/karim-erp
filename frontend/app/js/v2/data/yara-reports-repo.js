@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];
@@ -105,7 +105,44 @@ export async function fetchWhVsPos({ from, to } = {}) {
     return apiFetch(`/yara-reports/wh-vs-pos${qs({ from, to })}`);
 }
 
+/** GET /cashiers-live — الكاشيرية اللحظية وفواتير وإيرادات اليوم. */
+export async function fetchCashiersLive({ date = '' } = {}) {
+    return apiFetch(`/yara-reports/cashiers-live${qs({ date })}`);
+}
+
+/** GET /cashiers-today — مبيعات الكاشيرية اليوم مباشرة من أوراكل. */
+export async function fetchCashiersToday({ date = '' } = {}) {
+    return apiFetch(`/yara-reports/cashiers-today${qs({ date })}`);
+}
+
+/** GET /order-detail/:docNo — تفاصيل أوردر محدد وسطور الأصناف. */
+export async function fetchOrderDetail(docNo) {
+    return apiFetch(`/yara-reports/order-detail/${encodeURIComponent(docNo)}`);
+}
+
+/** GET /received-dispatch-detail/:id — تفاصيل إذن صرف مستلم وفروقات الأصناف. */
+export async function fetchReceivedDispatchDetail(id) {
+    return apiFetch(`/yara-reports/received-dispatch-detail/${encodeURIComponent(id)}`);
+}
+
 /* ── Pure transforms — قابلة للاختبار بلا متصفح ── */
+
+/** جدول الحروف نفسه في core/utils.js:165-172 و employees-repo.js:318 */
+export function arSearchKey(s) {
+    return String(s || '').toLowerCase()
+        .replace(/[\u064B-\u065F\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ىئی]/g, 'ي').replace(/ؤ/g, 'و').replace(/ک/g, 'ك')
+        .replace(/[ذز]/g, 'ز').replace(/[ضص]/g, 'ص').replace(/[ظط]/g, 'ط').replace(/[شس]/g, 'س')
+        .replace(/[ثت]/g, 'ت').replace(/[خج]/g, 'ح').replace(/[قف]/g, 'ف').replace(/[غع]/g, 'ع')
+        .replace(/\s+/g, ' ').trim();
+}
+
+/** فحص احتواء عربي متسامح */
+export function arSearchIncludes(hay, q) {
+    const h = arSearchKey(hay);
+    const n = arSearchKey(q);
+    return n.length > 0 && h.includes(n);
+}
 
 /** صف تحليل مجمّع: التسمية حسب التجميع كما يبنيها القديم (sales-analyzer.js). */
 export function analysisLabel(row = {}, group = 'item') {

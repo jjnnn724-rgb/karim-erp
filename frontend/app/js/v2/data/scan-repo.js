@@ -32,17 +32,17 @@
  *   فالتفريد هنا فحصٌ في النموذج لا وهمٌ بقيد الخادم.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { fetchInventory } from './inventory-repo.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { fetchInventory } from './inventory-repo.js?v=4.9.181';
 
 /** سقوف الخادم: `barcode VARCHAR(100)` (010_inventory_barcode.sql:5) وmaxLength
  *  100 في السجل (schema-registry.js:348) — لا نرسل أطول مما يقبل. */
 export const BARCODE_MAX = 100;
 
 /* ── المفتاح (نموذجٌ خالص: الشاشة تقرأ window وتحمل له القيم) ─────────────
-   نمطُ `boardV2Enabled` في screens/menu-board.js:21 — العنوان يغلب المخزَّن،
-   وغياب الاثنين يعني إطفاءً. لا جديد يعمل بلا قرار من المالك. واللقطة `#`
-   مستبعدة من القيمة لأن callers يمرّر أحيانًا عنوانًا كاملًا بوسمه. */
+   العنوان يغلب المخزَّن، وغياب الاثنين يعني إطفاءً. لا جديد يعمل بلا قرار
+   من المالك. واللقطة `#` مستبعدة من القيمة لأن callers يمرّرون أحيانًا
+   عنوانًا كاملًا بوسمه. */
 
 const FLAG_TRUE = new Set(['1', 'true', 'on']);
 
@@ -271,9 +271,9 @@ export function dropLine(lines, key) {
 }
 
 /**
- * تاريخ الصلاحية على السطر (سياسة المالك 2026-10-19: لا بضاعة تدخل المخزن
- * بلا صلاحيته). يُخزَّن كما كتب أمين المخزن — الفراغ يبقى null فيرفضه
- * الخادم 422 بصفحته، ولا تاريخ يُخترع من اليوم.
+ * تاريخ الصلاحية على السطر (سياسة 2026-10-20: اختياري، والغياب null).
+ * يُخزَّن كما كتب أمين المخزن — والفساد وحده يرفضه الخادم 422،
+ * ولا تاريخ يُخترع من اليوم.
  */
 export function setLineExpiry(lines, key, expiryRaw) {
     const value = String(expiryRaw ?? '').trim();

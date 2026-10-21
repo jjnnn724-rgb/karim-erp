@@ -7,19 +7,20 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.169';
-import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.169';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.181';
+import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.181';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.181';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+} from '../data/payroll-suite.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -35,7 +36,7 @@ function curMonth() {
 }
 
 function template(canPost) {
-    return '<section class="erp-card erp-v2-payroll">'
+    return '<div class="erp-v2-payroll-root"><section class="erp-card erp-v2-payroll">'
         + '<div class="erp-card__head"><h3 class="erp-card__title">مسيرات الرواتب <span class="erp-eyebrow" dir="ltr" lang="en">Payroll</span> <span class="erp-text-muted erp-text-sm" data-v2-count></span></h3>'
         + '<span class="erp-grow"></span>'
         + '<button type="button" class="erp-btn erp-btn--sm" data-v2-print><i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span></button>'
@@ -71,7 +72,7 @@ function template(canPost) {
         + '<div class="erp-card__body erp-stack"><div data-v2-con-form></div><div data-v2-con-list></div></div></section>'
         + '<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">التقييمات</h3></div>'
         + '<div class="erp-card__body erp-stack"><div data-v2-ev-form></div><div data-v2-ev-list></div></div></section>'
-        : '');
+        : '') + '</div>';
 }
 
 export function mountPayrollScreen(host, ctx = {}) {
@@ -321,6 +322,7 @@ export function mountPayrollScreen(host, ctx = {}) {
                 const ws = window.XLSX.utils.aoa_to_sheet(data);
                 const wb = window.XLSX.utils.book_new();
                 window.XLSX.utils.book_append_sheet(wb, ws, 'الرواتب');
+                prepareReportWorkbook(window.XLSX, wb, 'تقرير الرواتب');
                 window.XLSX.writeFile(wb, `payroll_${new Date().toISOString().slice(0, 10)}.xlsx`);
                 say(`تم التصدير (${formatInt(sheetEmps.length)} موظف)`);
             })();

@@ -21,10 +21,10 @@ function zkVerifyName(v){
 return {1:'بصمة',2:'بطاقة',15:'وجه'}[v]||'أخرى';
 }
 function zkFmtTime(iso){
-try{ return new Date(iso).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',hour12:false}); }catch(e){ return '—'; }
+try{ return new Date(iso).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',hour12:false}); }catch(_){ return '—'; }
 }
 function zkFmtDate(iso){
-try{ return fD(new Date(iso).toISOString().slice(0,10)); }catch(e){ return '—'; }
+try{ return fD(new Date(iso).toISOString().slice(0,10)); }catch(_){ return '—'; }
 }
 async function renderZktecoPage(){
 const content = document.getElementById('content');
@@ -91,7 +91,7 @@ showModal(`
 finally{ hideLoad(); }
 }
 // استخدام جهاز مكتشف: تحديث عنوان IP للجهاز الحالي أو إنشاء جهاز جديد
-async function zkUseFoundDevice(ip,port,serial){
+async function zkUseFoundDevice(ip,port,_serial){
 const devs = ZKSTATE.devices || [];
 // إذا كان هناك جهاز واحد غير متصل، حدّث عنوانه
 const offline = devs.find(d=>d.status!=='online');

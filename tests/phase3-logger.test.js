@@ -218,8 +218,6 @@ describe('Phase 3.2: Structured Logging System', () => {
             const timer = createTimer('quick-op');
             
             // Simulate some work
-            let sum = 0;
-            for (let i = 0; i < 1000; i++) {sum += i;}
             
             const duration = timer.end();
             
@@ -352,13 +350,11 @@ describe('Phase 3.2: Structured Logging System', () => {
             let nextCalled = false;
             const next = () => { nextCalled = true; };
             
-            let endCalled = false;
             const res = {
                 statusCode: 201,
                 setHeader: () => res,
                 getHeader: () => '256',
                 end: function() {
-                    endCalled = true;
                     return this;
                 },
             };

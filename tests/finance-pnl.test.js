@@ -10,7 +10,6 @@ const {
     roundMoney,
     normalizeDay,
     monthStartOf,
-    daysBetween,
     computePreviousPeriod,
     pctChange,
     isCogsExpense,
@@ -22,7 +21,11 @@ const {
     buildPnlStatement,
     buildComparison,
     renderPnlPrintHtml,
+    resolveCostAnalysisPeriod,
+    costAnalysisSql,
+    buildCostAnalysisResult,
 } = require('../backend/finance-routes');
+const { riyadhToday } = require('../backend/riyadh-date');
 
 // نفس تقريب الصف الواحد في aggregatePayroll (سطر لكل مسير) — لمطابقة التجميع
 const round6 = (v) => Math.round(v * 100) / 100;
@@ -48,6 +51,78 @@ describe('roundMoney و normalizeDay — التطهير الأساسي', () => {
         expect(normalizeDay(new Date('2026-08-30T10:00:00Z'))).toBe('2026-08-30');
         expect(normalizeDay('garbage')).toBe('');
         expect(normalizeDay(null)).toBe('');
+    });
+});
+
+describe('تحليل التكاليف — تجميع خادمي محدود بقراءة واحدة', () => {
+    test('النطاق الافتراضي هو الشهر الحالي ويرفض أي فترة أقدم', () => {
+        const today = riyadhToday();
+        const monthStart = `${today.slice(0, 7)}-01`;
+        expect(resolveCostAnalysisPeriod({ from: monthStart, to: today }))
+            .toEqual({ from: monthStart, to: today });
+        expect(resolveCostAnalysisPeriod({})).toEqual({ from: monthStart, to: today });
+        expect(() => resolveCostAnalysisPeriod({ from: '2026-02-30', to: '2026-03-01' }))
+            .toThrow('صيغة التاريخ غير صالحة');
+        expect(() => resolveCostAnalysisPeriod({ from: '2026-01-01', to: today }))
+            .toThrow('من بداية الشهر الحالي');
+        expect(() => resolveCostAnalysisPeriod({ from: today, to: monthStart }))
+            .toThrow('تاريخ البداية يجب أن يكون');
+    });
+
+    test('يبني استعلامًا تجميعيًا واحدًا مع نطاق شامل وآمن بالمعاملات', () => {
+        const query = costAnalysisSql('2026-10-01', '2026-10-20');
+        expect(query.params).toEqual([
+            '2026-10-01', '2026-10-21',
+            '2026-10-01', '2026-10-21',
+            '2026-10-01', '2026-10-21',
+        ]);
+        expect(query.text).toContain('WITH RECURSIVE dept_tree');
+        expect(query.text).toContain('overall_totals AS');
+        expect(query.text).toContain('direct_expense_totals AS');
+        expect(query.text).toContain('JSON_AGG');
+        expect(query.text).toContain('dispatch_return');
+        expect(query.text).toContain('count_correction');
+        expect(query.text).not.toMatch(/\bLIMIT\b/i);
+        expect(costAnalysisSql('', '').params).toEqual([]);
+    });
+
+    test('شكل الملخص يطابق الواجهة القديمة ويعرض النسب والفئات', () => {
+        const result = buildCostAnalysisResult([{
+            code: 'KITCHEN', name: 'المطبخ', revenue: '1000',
+            materials: '400', count_adj: '-10', operating: '110',
+            total_revenue: '1000', total_materials: '400',
+            total_count_adj: '-10', total_operating: '110',
+            row_count: 8, categories: [{ label: 'إيجار', value: 110 }],
+        }]);
+        expect(result.rows[0]).toMatchObject({
+            code: 'KITCHEN', rev: 1000, exp: 500, profit: 500,
+            costRatio: 50, materials: 400, countAdj: -10, operating: 110,
+        });
+        expect(result.totals).toEqual({ rev: 1000, exp: 500, mat: 400, cnt: -10, ops: 110, avgCost: 50 });
+        expect(result.categories).toEqual([{ label: 'إيجار', value: 110 }]);
+    });
+
+    test('الإجمالي العام يجمع النشاط المباشر ولا يكرر إجماليات الأقسام الفرعية', () => {
+        const result = buildCostAnalysisResult([
+            {
+                code: 'ROOT', name: 'الإدارة', revenue: '1500',
+                materials: '600', count_adj: '-10', operating: '140',
+                total_revenue: '1500', total_materials: '600',
+                total_count_adj: '-10', total_operating: '140',
+            },
+            {
+                code: 'CHILD', name: 'المطبخ', revenue: '500',
+                materials: '200', count_adj: '-5', operating: '40',
+                total_revenue: '1500', total_materials: '600',
+                total_count_adj: '-10', total_operating: '140',
+            },
+        ]);
+
+        expect(result.rows.map((row) => row.rev)).toEqual([1500, 500]);
+        expect(result.totals).toEqual({
+            rev: 1500, exp: 730, mat: 600, cnt: -10, ops: 140,
+            avgCost: (730 / 1500) * 100,
+        });
     });
 });
 

@@ -245,7 +245,7 @@ const POS_ORDERS = {
             const result = await api(`/api/pos/orders/export?${params.toString()}`), orders = result.data || [];
             const rows = orders.map(o => `<tr><td>#${o.invoice_counter}</td><td>${this.escape(o.department_name || '—')}</td><td>${this.fmtDateTime(o.created_at)}</td><td>${this.escape(o.cashier_name || '—')}</td><td>${o.status === 'issued' ? 'صادرة' : 'ملغاة'}</td><td>${Number(o.total_amount || 0).toFixed(2)}</td><td>${(o.items || []).map(i => `${this.escape(i.product_name)} × ${this.num(i.quantity)}`).join('، ')}</td></tr>`).join('');
             this.printHtml(`<h1>تقرير كل فواتير الكاشير</h1><p>مطاعم الشرفه العالمي — عدد الفواتير: ${orders.length}</p><table><thead><tr><th>الفاتورة</th><th>القسم</th><th>التاريخ</th><th>الكاشير</th><th>الحالة</th><th>الإجمالي</th><th>الأصناف</th></tr></thead><tbody>${rows || '<tr><td colspan="7">لا توجد فواتير</td></tr>'}</tbody></table>`);
-        } catch (e) { window.toast?.('فشل تجهيز طباعة الفواتير', 'error'); }
+        } catch (_) { window.toast?.('فشل تجهيز طباعة الفواتير', 'error'); }
     },
 
     printItemSales() {
@@ -349,7 +349,7 @@ const POS_ORDERS = {
         if (!screen || screen.classList.contains('hidden')) {return;}
         clearTimeout(this._rtTimer);
         this._rtTimer = setTimeout(async () => {
-            try { await this.loadOrders(); await this.loadStats(); } catch (e) { /* silent */ }
+            try { await this.loadOrders(); await this.loadStats(); } catch (_) { /* silent */ }
         }, 700);
     },
 
@@ -358,7 +358,7 @@ const POS_ORDERS = {
         try {
             const order = await api(`/api/pos/orders/${id}`);
             this.showInvoiceModal(order);
-        } catch(e) {
+        } catch(_) {
             window.toast?.('فشل تحميل تفاصيل الفاتورة', 'error');
         }
     },
@@ -443,7 +443,7 @@ const POS_ORDERS = {
             w.document.close();
             setTimeout(() => { try { w.print(); } catch(_){} }, 500);
             window.toast?.('جارٍ فتح الإيصال للطباعة', 'info');
-        } catch(e) {
+        } catch(_) {
             window.toast?.('فشل الطباعة', 'error');
         }
     },
@@ -453,7 +453,7 @@ const POS_ORDERS = {
         try {
             await api(`/api/pos/orders/${id}/reprint`, { method: 'POST' });
             window.toast?.('تم إرسال أمر الطباعة إلى الطابعة الحرارية', 'success');
-        } catch(e) {
+        } catch(_) {
             window.toast?.('فشل إرسال أمر الطباعة', 'error');
         }
     },

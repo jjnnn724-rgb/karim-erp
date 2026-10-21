@@ -54,8 +54,8 @@
  *   the server (requireSignature, :331-332) — this file only carries them.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-import { formatInt } from './reports-repo.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
+import { formatInt } from './reports-repo.js?v=4.9.181';
 
 const num = (v) => {
     const n = Number(v);
@@ -76,6 +76,29 @@ export async function fetchKitchenOverview() {
         exceptions: arr(o.exceptions),
         policies: arr(o.policies),
         distributions: arr(o.distributions),
+    };
+}
+
+/**
+ * بطاقات التكلفة — الصرف الفعلي مقابل الإيراد الفعلي.
+ * `GET /kitchen/production/cost-cards?from&to` (kitchen-production-routes.js:170):
+ * الخادم يحسم النطاق الافتراضي (أول الشهر → اليوم بتوقيت الرياض) ويرفض
+ * النطاق المعكوس بـ422، ويعيد بطاقتين ثابتتين (البيع الخارجي + البوفيه المفتوح).
+ * القراءة فقط — لا كتابة هنا.
+ * @param {{from?: string, to?: string}} [range]
+ * @returns {Promise<{from: string, to: string, cards: any[]}>}
+ */
+export async function fetchKitchenCostCards({ from = '', to = '' } = {}) {
+    const qs = new URLSearchParams();
+    if (from) {qs.set('from', from);}
+    if (to) {qs.set('to', to);}
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const res = await apiFetch(`/kitchen/production/cost-cards${suffix}`);
+    const o = res && typeof res === 'object' ? res : {};
+    return {
+        from: String(o.from || from || ''),
+        to: String(o.to || to || ''),
+        cards: Array.isArray(o.cards) ? o.cards : [],
     };
 }
 

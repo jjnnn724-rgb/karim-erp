@@ -17,7 +17,7 @@ const AudioEngine = {
     init() {
         try {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        } catch(e) { console.warn('Audio not supported'); }
+        } catch(_) { console.warn('Audio not supported'); }
     },
     // Professional chime sound
     playNotification() {
@@ -111,7 +111,6 @@ const AudioEngine = {
     // Chat message — gentle "pling" with subtle harmonics
     playChat() {
         if (!this.ctx) {return;}
-        const now = this.ctx.currentTime;
         // Fundamental + harmonics for a rich "pling" timbre
         const notes = [
             { freq: 880, type: 'sine', gain: 0.15, dur: 0.35 },   // A5
@@ -198,8 +197,7 @@ function buildUI() {
 }
 
 // ── Show sync toast ──
-const toastTimer = null;
-function showSyncToast(msg, icon = '', duration = 3000) { /* notifications disabled */ return; }
+function showSyncToast(msg, _icon = '', _duration = 3000) { /* notifications disabled */ return; }
 
 // ── Update badge state ──
 function setBadgeState(state, label) {
@@ -260,8 +258,6 @@ let connectedClientCount = 0;
 
 // ── Initialize Socket.io ──
 let socket = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT = 10;
 let isSyncing = false;
 
 // ─── Durable channel (TASK 6): sequence-tracked domain_event + resume/ack ───
@@ -388,7 +384,6 @@ function initSocket() {
 
     // ── Connected ──
     socket.on('connect', () => {
-        reconnectAttempts = 0;
         AudioEngine.playConnect();
         setBadgeState('connected', `متصل · ${deviceName.split(' (')[0]}`);
         console.log('%c<i class=ji data-i=zap></i> Real-time: Connected', 'color:#2ecc71;font-weight:bold');
@@ -414,7 +409,7 @@ function initSocket() {
     });
 
     // ── Pong (latency) ──
-    socket.on('pong_check', (data) => {
+    socket.on('pong_check', (_data) => {
         if (lastPing) {
             const latency = Date.now() - lastPing;
             const el = document.getElementById('rt-latency');
@@ -426,7 +421,7 @@ function initSocket() {
     });
 
     // ── Disconnected ──
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', (_reason) => {
         if (pingInterval) {clearInterval(pingInterval);}
         AudioEngine.playDisconnect();
         setBadgeState('', 'انقطع الاتصال');
@@ -435,7 +430,6 @@ function initSocket() {
 
     // ── Reconnecting ──
     socket.on('reconnect_attempt', (n) => {
-        reconnectAttempts = n;
         // Refresh handshake JWT (rotates every 24h; stale token → anonymous fallback).
         // HARDENED 2026-10-08: لو التوكن نفسه منتهي أثناء الانقطاع، جدده أولًا
         try {
@@ -506,7 +500,7 @@ function initSocket() {
             await loadData();
             // Re-render the UI if the main app has loaded
             if (typeof window.renderPage === 'function') {
-                try { await window.renderPage(); } catch (e) {}
+                try { await window.renderPage(); } catch (_) {}
             }
             setBadgeState('connected', connectedClientCount > 0 ? `${connectedClientCount} جهاز متصل` : 'متصل');
             if (rtNotifAdmin() && window.toast) {
@@ -558,7 +552,7 @@ function initSocket() {
             if (window.STATE?.page === 'veg-requests' && typeof window.loadVegRequestsLog === 'function') {
                 window.loadVegRequestsLog();
             }
-        } catch (e) {}
+        } catch (_) {}
     });
     // ── تحديث حالة طلب خضار (استلام/إلغاء) ──
     socket.on('veg_request:update', () => {
@@ -566,7 +560,7 @@ function initSocket() {
             if (window.STATE?.page === 'veg-requests' && typeof window.loadVegRequestsLog === 'function') {
                 window.loadVegRequestsLog();
             }
-        } catch (e) {}
+        } catch (_) {}
     });
 
     // ── أوردر جديد من الزائر على كاشير يارسوفت — نغمة فورية عند الكاشير
@@ -583,7 +577,7 @@ function initSocket() {
                 clearTimeout(window.__ysNewOrdersRefresh);
                 window.__ysNewOrdersRefresh = setTimeout(() => {window.renderCashierMonitor().catch(() => {});}, 300);
             }
-        } catch (e) {}
+        } catch (_) {}
     });
 
     // ── Yarasoft revenue posted (مبيعات الكاشيرات تسمع في أقسامها مباشرة) ──
@@ -593,7 +587,7 @@ function initSocket() {
             const label = data && data.source ? ` — ${data.source}` : '';
             showSyncToast(`إيراد يارا سوفت جديد${label}: ${(Number(data.total) || 0).toFixed(2)}`, '<i class=ji data-i=banknote></i>', 5000);
             if (rtNotifAdmin() && window.toast) {toast(`فاتورة ${data.invoiceNumber || ''} سُجّلت في ${data.source || 'قسمها'}`, 'success');}
-        } catch (e) {}
+        } catch (_) {}
         if (typeof window.loadData === 'function') {
             clearTimeout(window.__ysImportRefreshTimer);
             window.__ysImportRefreshTimer = setTimeout(async () => {
@@ -626,7 +620,7 @@ function initSocket() {
                 try {
                     await window.loadData();
                     if (typeof window.renderPage === 'function') {await window.renderPage();}
-                } catch (e) {}
+                } catch (_) {}
             }, 300);
         }
     });
@@ -640,15 +634,15 @@ function initSocket() {
             if (data && data.action) {
                 showSyncToast(`${what} جديد — ${who}`, '<i class=ji data-i=user-check></i>', 4500);
             }
-        } catch (e) { /* لا تعطل الواجهة */ }
+        } catch (_) { /* لا تعطل الواجهة */ }
         // منطق العرض المخصص (بوابة الموظف / صفحة البصمة) في app.js
         if (typeof window.zkPortalPunchHandler === 'function') {
-            try { window.zkPortalPunchHandler(data || {}); } catch (e) { /* تجاهل */ }
+            try { window.zkPortalPunchHandler(data || {}); } catch (_) { /* تجاهل */ }
         }
     });
     socket.on('biometric:synced', (data) => {
         if (typeof window.zkPortalPunchHandler === 'function') {
-            try { window.zkPortalPunchHandler({ summary: true, ...(data || {}) }); } catch (e) { /* تجاهل */ }
+            try { window.zkPortalPunchHandler({ summary: true, ...(data || {}) }); } catch (_) { /* تجاهل */ }
         }
     });
     socket.on('biometric:unmapped', () => {
@@ -678,7 +672,7 @@ function initSocket() {
         const row = data.data;
         // Procurement center: full refresh (computed balances live server-side)
         if (entity === 'procurement' && typeof window.refreshProcurementData === 'function') {
-            try { window.refreshProcurementData(); } catch (e) { /* non-critical */ }
+            try { window.refreshProcurementData(); } catch (_) { /* non-critical */ }
             return;
         }
         if (!entity || !window.STATE || !window.STATE[entity]) {return;}
@@ -702,10 +696,10 @@ function initSocket() {
 
             // Re-render UI if available (debounced: only for visible pages)
             if (typeof window.renderPage === 'function') {
-                try { window.renderPage(); } catch (e) { /* non-critical */ }
+                try { window.renderPage(); } catch (_) { /* non-critical */ }
             }
             if (typeof window.buildNav === 'function') {
-                try { window.buildNav(); } catch (e) {}
+                try { window.buildNav(); } catch (_) {}
             }
         } catch (e) {
             console.warn('[realtime] entity_changed sync failed:', e.message);
@@ -784,7 +778,7 @@ async function checkDbHealth() {
         if (!dbOk) {
             showSyncToast('<i class=ji data-i=alert-triangle></i> قاعدة البيانات غير متصلة', '<i class=ji data-i=dot-red></i>', 4000);
         }
-    } catch (e) {
+    } catch (_) {
         if (dot) {
             dot.className = 'down';
             dot.title = 'تعذر الوصول إلى الخادم أو قاعدة البيانات';
@@ -834,7 +828,7 @@ function startRealtime() {
             if (socket && socket.connected && Number.isInteger(userId) && userId > 0) {
                 socket.emit('register_user', { userId });
             }
-        } catch (e) { /* non-fatal */ }
+        } catch (_) { /* non-fatal */ }
     };
     window._rtRegisterUser();
 

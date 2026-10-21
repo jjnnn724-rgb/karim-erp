@@ -28,7 +28,6 @@ const baseSettings = resolvePunchSettings([
     { key: 'punch_restaurant_lng', value: String(RESTAURANT.lng) },
 ]);
 
-const goodLocation = { lat: 24.7142, lng: 46.6760, accuracy: 12, fixAgeS: 2 };
 // التحصين الجديد يفرض قراءات متعددة — مولّد 3 إصلاحات مع اهتزاز طبيعي
 const fixesAt = (lat, lng, accuracy = 12) => [
     { lat, lng, accuracy, fixAgeS: 1 },

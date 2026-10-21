@@ -34,22 +34,22 @@
  *     The print button calls window.print() like screens 03/04.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { statusBadge } from '../status.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { statusBadge } from '../status.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
 import {
     fetchPurchaseInvoices, invoiceToRow, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.169';
+} from '../data/purchase-invoices-repo.js?v=4.9.181';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, rangeError,
-} from '../data/procurement-repo.js?v=4.9.169';
-import { fetchInventory } from '../data/inventory-repo.js?v=4.9.169';
+} from '../data/procurement-repo.js?v=4.9.181';
+import { fetchInventory } from '../data/inventory-repo.js?v=4.9.181';
 import {
     INVOICE_CREATE_ROLES, EDIT_LOCKED_MESSAGE, invoiceEditable,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.169';
-import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.169';
-import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.169';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.181';
+import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.181';
+import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -118,9 +118,9 @@ function template(from, to, canCreate) {
             (<span class="erp-addr" dir="ltr">/api/purchaseInvoices</span>)،
             والصلاحية قررها الخادم وحده. الافتراضي الشهر الحالي بطلب سابق؛
             إفراغ التاريخين يعرض الكل. هنا نموذج القديم نفسه: إنشاء فاتورة
-            وتعديلها (قبل أي دفعة مسجلة) للأدوار الثلاثة وخلف العلم المستقل
-            <span class="erp-addr" dir="ltr">v2invoicecreate</span> (OFF
-            افتراضيًا)، مع البحث الذكي الذي يعبّئ الوحدة والسعر من المخزون.
+            وتعديلها (قبل أي دفعة مسجلة) للأدوار الثلاثة — الزر ظاهر افتراضيًا،
+            و<span class="erp-addr" dir="ltr">?v2invoicecreate=0</span> يخفيه —
+            مع البحث الذكي الذي يعبّئ الوحدة والسعر من المخزون.
             تسديد الكامل متاح لحساب المشتريات/المحاسبة عند الخادم.
             شاشة فواتير الموردين (06) تقرأ نفس السجل بعدسة المورد لا الشهر، وفيها
             الإلغاء والحذف الجماعي؛ ودليل الموردين هو شاشة (05).

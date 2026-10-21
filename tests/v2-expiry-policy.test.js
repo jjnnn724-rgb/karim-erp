@@ -1,14 +1,14 @@
 /**
- * v2-expiry-policy.test.js — عقد إلزام تاريخ الصلاحية عند دخول البضاعة للمخزن
+ * v2-expiry-policy.test.js — عقد تاريخ الصلاحية الاختياري في مداخل المخزون
  * ═══════════════════════════════════════════════════════════════════════════
- * طلب المالك 2026-10-19: «عند إضافة أي فاتورة شراء لازم تاريخ الصلاحية…
- * لا تقبل بدون تاريخ صلاحيه دخول المنتج للمخزن»، والنطاق المختار:
- * كل مداخل المخزون.
+ * سياسة المالك 2026-10-20: تاريخ الصلاحية **اختياري** في الفواتير ومداخل
+ * المخزون. يبقى محفوظًا ومُتحقَّقًا منه عند إدخاله، ويُرفض فقط إذا كانت
+ * صيغته فاسدة (INVALID_EXPIRY_DATE) — لا يُخترع تاريخ ولا يُمنع الاستلام.
  *
  * القاعدة المُثبَّتة هنا على شقين:
- *   • مدخل بضاعة جديدة ⇒ رفض 422 (EXPIRY_DATE_REQUIRED / INVALID_EXPIRY_DATE).
- *   • حركة داخلية ⇒ حمل تاريخ الدُفعة المسجل (latestExpiryFor) بلا رفض،
- *     لأن الرفض في الجرد والمرتجعات يعطّل العمل دون فائدة.
+ *   • مدخل بضاعة جديدة بلا تاريخ ⇒ مقبول ويُحفظ null.
+ *   • تاريخ حاضر بصيغة فاسدة ⇒ رفض 422 INVALID_EXPIRY_DATE.
+ *   • حركة داخلية ⇒ حمل تاريخ الدُفعة المسجل (latestExpiryFor) بلا رفض.
  *
  * الاختبار يعاين وحدة السياسة + أبواب الخادم مصدرياً (لا DOM ولا قاعدة).
  */
@@ -85,19 +85,18 @@ describe('checkExpiryOnLines', () => {
         expect(r).toEqual({ ok: true, missing: [], invalid: [] });
     });
 
-    test('ناقص ⇒ EXPIRY_DATE_REQUIRED مع أسماء الأصناف', () => {
+    test('اختياري دائمًا — الناقص مقبول ولا يوجد وضع إلزامي', () => {
+        expect(policy.isExpiryRequired).toBeUndefined();
         const r = checkExpiryOnLines([{ itemName: 'دجاج' }, { itemName: 'كبيس', expiryDate: '2026-11-05' }]);
-        expect(r.ok).toBe(false);
-        expect(r.code).toBe('EXPIRY_DATE_REQUIRED');
-        expect(r.missing).toEqual(['دجاج']);
-        expect(r.message).toContain('دجاج');
-        expect(r.message).toContain('تاريخ الصلاحية إلزامي');
+        expect(r.ok).toBe(true);
+        expect(r.missing).toEqual([]);
+        expect(r.invalid).toEqual([]);
     });
 
-    test('أكثر من خمسة أصناف ناقصة ⇒ إحصار +N صنفًا', () => {
-        const r = checkExpiryOnLines(Array.from({ length: 7 }, (_, i) => ({ itemName: `صنف${i + 1}` })));
-        expect(r.missing).toHaveLength(7);
-        expect(r.message).toContain('(+2 صنفًا)');
+    test('أكثر من خمسة أصناف تالفة ⇒ إحصار الأسماء الخمسة الأولى', () => {
+        const r = checkExpiryOnLines(Array.from({ length: 7 }, (_, i) => ({ itemName: `صنف${i + 1}`, expiryDate: 'خطأ' })));
+        expect(r.ok).toBe(false);
+        expect(r.invalid).toHaveLength(7);
         expect(r.message).toContain('صنف5');
         expect(r.message).not.toContain('صنف6');
     });
@@ -111,15 +110,15 @@ describe('checkExpiryOnLines', () => {
         expect(r.message).toContain('YYYY-MM-DD');
     });
 
-    test('ناقص وتالِف معًا: النقص أولى في الرسالة', () => {
+    test('ناقص وتالِف معًا: التالف وحده يوقف', () => {
         const r = checkExpiryOnLines([{ name: 'بصل', expiryDate: 'خطأ' }, { name: 'ثوم' }]);
-        expect(r.code).toBe('EXPIRY_DATE_REQUIRED');
-        expect(r.missing).toEqual(['ثوم']);
+        expect(r.code).toBe('INVALID_EXPIRY_DATE');
+        expect(r.missing).toEqual([]);
         expect(r.invalid).toEqual(['بصل']);
     });
 
     test('nameOf مخصص للاسم في باب مختلف', () => {
-        const r = checkExpiryOnLines([{ label: 'زيت' }], (l) => String(l.label || ''));
+        const r = checkExpiryOnLines([{ label: 'زيت', expiryDate: 'خطأ' }], (l) => String(l.label || ''));
         expect(r.message).toContain('زيت');
     });
 
@@ -150,7 +149,7 @@ describe('latestExpiryFor', () => {
     });
 });
 
-// ─── 5) باب الاستيراد: كل صف برصيد يحتاج صلاحية ───────────────────────────────
+// ─── 5) باب الاستيراد: الصلاحية اختيارية وتُرفض الصيغة الفاسدة فقط ─────────────
 describe('validateRow — سياسة الصلاحية في الاستيراد', () => {
     test('كمية > 0 بصلاحية صحيحة ⇒ مقبول والتاريخ في data', () => {
         const r = run({ name: 'دجاج طازج', qty: '50', expiryDate: '2026-11-30' });
@@ -158,10 +157,11 @@ describe('validateRow — سياسة الصلاحية في الاستيراد', 
         expect(r.data.expiryDate).toBe('2026-11-30');
     });
 
-    test('كمية > 0 بلا صلاحية ⇒ رفض صريح باسم الحقل', () => {
+    test('كمية > 0 بلا صلاحية ⇒ مقبول (اختياري) والتاريخ null', () => {
         const r = run({ name: 'دجاج طازج', qty: 50 });
-        expect(r.isValid).toBe(false);
-        expect(expiryError(r).message).toContain('تاريخ الصلاحية مطلوب');
+        expect(r.isValid).toBe(true);
+        expect(r.data.expiryDate).toBeNull();
+        expect(expiryError(r)).toBeUndefined();
     });
 
     test('صلاحية تالفة ⇒ رفض بصيغة التاريخ لا بالغياب', () => {
@@ -214,8 +214,9 @@ describe('حرس الخادم على مداخل المخزون', () => {
         expect(warehouse).toMatch(/const expiryGateEdit = checkExpiryOnLines\([\s\S]{0,200}?!expiryGateEdit\.ok[\s\S]{0,180}return fail\(res, 422, expiryGateEdit\.code/);
     });
 
-    test('الإضافة اليدوية والاستيراد الجماعي: رفض 422 قبل الكتابة', () => {
-        expect(warehouse).toMatch(/return fail\(res, 422, rawReceiptExpiry \? 'INVALID_EXPIRY_DATE' : 'EXPIRY_DATE_REQUIRED'/);
+    test('الإضافة اليدوية: صيغة فاسدة تُرفض، والغياب مقبول', () => {
+        expect(warehouse).toMatch(/if \(rawReceiptExpiry && !receiptExpiry\)[\s\S]{0,160}'INVALID_EXPIRY_DATE'/);
+        expect(warehouse).not.toMatch(/EXPIRY_DATE_REQUIRED|isExpiryRequired/);
         expect(warehouse).toMatch(/const bulkExpiry = checkExpiryOnLines\([\s\S]{0,240}?!bulkExpiry\.ok[\s\S]{0,140}return fail\(res, 422, bulkExpiry\.code/);
     });
 
@@ -250,10 +251,10 @@ describe('حرس الخادم على مداخل المخزون', () => {
         expect(warehouse).not.toMatch(/INSUFFICIENT_EXPIRY|EXPIRY_DATE_REQUIRED[\s\S]{0,80}transfer_in/);
     });
 
-    test('السياسة موثقة في رأس الوحدة: رفض للجديد وحمل للداخلي', () => {
+    test('السياسة موثقة في رأس الوحدة: اختيارية دائمًا بلا مفتاح إلزام', () => {
         const src = read('backend/expiry-policy.js');
-        expect(src).toMatch(/كل مداخل المخزون/);
-        expect(src).toMatch(/لا يُخترع تاريخ أبدا/);
-        expect(src).toMatch(/يُرفض الطلب 422/);
+        expect(src).toMatch(/اختياري/);
+        expect(src).not.toMatch(/EXPIRY_DATE_POLICY=required|isExpiryRequired/);
+        expect(src).toMatch(/لا يُخترع تاريخ/);
     });
 });

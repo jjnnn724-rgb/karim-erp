@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { openInAppReport } from '../report-viewer.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.169';
+} from '../data/reports-repo.js?v=4.9.181';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.169';
+} from '../data/reports-extra.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -191,11 +191,19 @@ function template(period, groupBy) {
             </h2>
             <div class="erp-dash-sub" data-v2-scope-line role="status" aria-live="polite"></div>
           </div>
-          <div class="erp-dash-controls">
-            <span data-v2-periodseg>${periodSeg(period)}</span>
-            <span data-v2-groupseg>${groupSeg(groupBy)}</span>
-            <span class="erp-filterbar erp-no-print">
-              <label class="erp-text-sm erp-text-muted" for="v2rp-type">التقرير</label>
+        </div>
+        <section class="erp-v2-reports__toolbar erp-no-print" aria-label="إعدادات التقرير">
+          <div class="erp-v2-reports__filters">
+            <div class="erp-v2-reports__field erp-v2-reports__field--segments">
+              <span class="erp-v2-reports__label">الفترة</span>
+              <span data-v2-periodseg>${periodSeg(period)}</span>
+            </div>
+            <div class="erp-v2-reports__field erp-v2-reports__field--segments" data-v2-group-field>
+              <span class="erp-v2-reports__label">تجميع النتائج</span>
+              <span data-v2-groupseg>${groupSeg(groupBy)}</span>
+            </div>
+            <label class="erp-v2-reports__field erp-v2-reports__field--type" for="v2rp-type">
+              <span class="erp-v2-reports__label">نوع التقرير</span>
               <select class="erp-input" id="v2rp-type" data-v2-type>
                 <option value="pos-department">مبيعات POS حسب القسم</option>
                 <option value="pos-cashier">مبيعات POS حسب الكاشير</option>
@@ -210,25 +218,29 @@ function template(period, groupBy) {
                 <option value="yara-departments">إيرادات الأقسام من يارا</option>
                 <option value="yara-cashiers">مبيعات الكاشيرية من يارا</option>
               </select>
-              <span data-v2-deptsel hidden>
-                <label class="erp-text-sm erp-text-muted" for="v2rp-dept">القسم</label>
-                <select class="erp-input" id="v2rp-dept" data-v2-dept></select>
-              </span>
-            </span>
-            <span class="erp-filterbar erp-no-print">
-              <label class="erp-text-sm erp-text-muted" for="v2rp-from">من</label>
-              <input class="erp-input" id="v2rp-from" type="date" data-v2-from>
-              <label class="erp-text-sm erp-text-muted" for="v2rp-to">إلى</label>
-              <input class="erp-input" id="v2rp-to" type="date" data-v2-to>
-            </span>
+            </label>
+            <label class="erp-v2-reports__field" data-v2-deptsel for="v2rp-dept" hidden>
+              <span class="erp-v2-reports__label">القسم</span>
+              <select class="erp-input" id="v2rp-dept" data-v2-dept></select>
+            </label>
+            <label class="erp-v2-reports__field" for="v2rp-from">
+              <span class="erp-v2-reports__label">من تاريخ</span>
+              <input class="erp-input erp-input--ltr" id="v2rp-from" type="date" data-v2-from>
+            </label>
+            <label class="erp-v2-reports__field" for="v2rp-to">
+              <span class="erp-v2-reports__label">إلى تاريخ</span>
+              <input class="erp-input erp-input--ltr" id="v2rp-to" type="date" data-v2-to>
+            </label>
+          </div>
+          <div class="erp-v2-reports__actions">
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-reload aria-label="تحديث">
-              <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
+              <i class="ji" data-i="refresh" aria-hidden="true"></i><span data-v2-reload-label>تحديث التقرير</span>
             </button>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-print aria-label="طباعة">
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
             </button>
           </div>
-        </div>
+        </section>
 
         <div data-v2-kpis data-v2-pos></div>
 
@@ -333,6 +345,9 @@ export function mountReportsScreen(host, ctx = {}) {
     const scopeNote = q('[data-v2-scope-note]');
     const fromInput = q('[data-v2-from]');
     const toInput = q('[data-v2-to]');
+    const reloadButton = q('[data-v2-reload]');
+    const reloadLabel = q('[data-v2-reload-label]');
+    const groupField = q('[data-v2-group-field]');
 
     /* ── Table: one column set per dimension ───────────────────────────── */
 
@@ -472,17 +487,24 @@ export function mountReportsScreen(host, ctx = {}) {
             scopeNote.textContent = `الخادم حصر النتيجة على المعرّف ${formatInt(echo)} (${meta.filters.cashierId ? 'كاشير' : 'قسم'}) — هذا قراره، لا فلتر من هذه الشاشة.`;
         }
 
-        printNote.textContent = `تقرير ${label} (${meta.startDate} ← ${meta.endDate}) حسب ${GROUP_AR[groupBy]} — ${formatInt(rows.length)} صفًا. المطبوعة تعرض الصفحة الحالية من الجدول، لا الفترة كاملة.`;
+        printNote.textContent = `تقرير ${label} (${meta.startDate} ← ${meta.endDate}) حسب ${GROUP_AR[groupBy]} — ${formatInt(rows.length)} صفًا. المطبوعة مستند A4 بهوية الشركة يعرض الفترة كاملة (كل الصفوف)، لا صفحة الجدول المرئية.`;
         filterNote.hidden = period === 'month' && groupBy === 'department';
         if (!filterNote.hidden) {
             filterNote.textContent = `التقرير مطلوب بالفترة «${label}» (${meta.startDate} ← ${meta.endDate}) وبُعد ${GROUP_AR[groupBy]} — المجاميع من الخادم على هذا الطلب وحده، والمؤشرات لا تُشتق من الصفوف المرئية.`;
         }
     }
 
+    function refreshActive() {
+        return extraType ? loadExtra() : reload();
+    }
+
     /* ── Load ─────────────────────────────────────────────────────────── */
     async function reload() {
         if (loading) {queued = true; return;}       // never stack two reports
         loading = true;
+        el.setAttribute('aria-busy', 'true');
+        reloadButton.disabled = true;
+        reloadLabel.textContent = 'جارٍ التحديث…';
         table.setLoading(true);
         // What THIS request asks for. A newer intent can only arrive through
         // reload(), and it sets `queued`, so dropping a late answer here is
@@ -542,6 +564,9 @@ export function mountReportsScreen(host, ctx = {}) {
         } finally {
             table.setLoading(false);
             loading = false;
+            el.removeAttribute('aria-busy');
+            reloadButton.disabled = false;
+            reloadLabel.textContent = 'تحديث التقرير';
             if (queued && el.isConnected) {
                 queued = false;
                 reload();                            // the newest request wins
@@ -551,7 +576,7 @@ export function mountReportsScreen(host, ctx = {}) {
 
     /* ── Wiring (delegated; no inline handlers) ───────────────────────── */
     el.addEventListener('click', (event) => {
-        if (event.target.closest('[data-v2-reload]')) {reload(); return;}
+        if (event.target.closest('[data-v2-reload]')) {refreshActive(); return;}
         if (event.target.closest('[data-v2-print]')) {printActive(); return;}
         const yprev = event.target.closest('[data-v2-y_prev]');
         if (yprev && !yprev.disabled) {yPage = Math.max(1, yPage - 1); loadExtra(); return;}
@@ -578,6 +603,7 @@ export function mountReportsScreen(host, ctx = {}) {
         if (grp) {
             groupBy = grp.getAttribute('data-v2-group');
             q('[data-v2-groupseg]').innerHTML = groupSeg(groupBy);
+            q('[data-v2-type]').value = `pos-${groupBy}`;
             mountTable();                            // new dimension, new columns
             reload();
             return;
@@ -611,6 +637,7 @@ export function mountReportsScreen(host, ctx = {}) {
     let yView = 'items';
     let yCashier = '';
     let yPage = 1;
+    let extraLoadSequence = 0;
 
     const EXTRA_AR = {
         general: 'التقرير الشامل', department: 'تقرير الأقسام', kitchen: 'تقرير المطبخ',
@@ -630,11 +657,15 @@ export function mountReportsScreen(host, ctx = {}) {
         return { icon, label, en, value, unit, pill: { aria: hint, text: hint }, hint };
     }
 
-    function xTable(heads, rowsHtml, emptyText) {
+    /** صفوف HTML جاهزة تُركب في tfoot — تظهر على الشاشة وفي الطباعة معًا،
+     *  ولا تُركب إلا مع صفوف فعلية (rowsHtml) فلا إجمالي لجدول فارغ. */
+    function xTable(heads, rowsHtml, emptyText, footHtml = '') {
         return `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>`
             + heads.map((h) => `<th>${esc(h)}</th>`).join('') + `</tr></thead><tbody>`
             + (rowsHtml || `<tr><td class="erp-td" colspan="${heads.length}">${esc(emptyText)}</td></tr>`)
-            + `</tbody></table></div>`;
+            + `</tbody>`
+            + (rowsHtml && footHtml ? `<tfoot><tr>${footHtml}</tr></tfoot>` : '')
+            + `</table></div>`;
     }
 
     function xHead(subtitle) {
@@ -647,6 +678,7 @@ export function mountReportsScreen(host, ctx = {}) {
         for (const n of el.querySelectorAll('[data-v2-pos]')) {n.hidden = !on;}
         const wrap = q('[data-v2-extra-wrap]');
         if (wrap) {wrap.hidden = on;}
+        if (groupField) {groupField.hidden = !on;}
         const ds = q('[data-v2-deptsel]');
         if (ds) {ds.hidden = !(extraType === 'dept-specific');}
     }
@@ -700,12 +732,22 @@ export function mountReportsScreen(host, ctx = {}) {
             const row = list[0];
             const head = t === 'dept-specific' && row
                 ? `<h4>${esc(row.name)} <span class="erp-text-muted erp-mono" dir="ltr">${esc(row.code)}</span></h4>` : '';
+            const acc = (k) => list.reduce((sum, x) => sum + (Number(x[k]) || 0), 0);
+            const aRev = acc('rev');
+            const aExp = acc('exp');
+            const deptFoot = list.length
+                ? `<td>الإجمالي (${esc(formatInt(list.length))} قسم)</td>`
+                    + `<td class="erp-td">${extraMoney(aRev)}</td>`
+                    + `<td class="erp-td">${extraMoney(aExp)}</td>`
+                    + `<td class="erp-td">${extraMoney(acc('profit'))}</td>`
+                    + `<td class="erp-td erp-num" dir="ltr">${esc((aRev > 0 ? (aExp / aRev) * 100 : 0).toFixed(1))}%</td>`
+                : '';
             return xHead(EXTRA_AR[t])
                 + (t === 'department' ? kpiStrip([xKpi('building', 'الأقسام النشطة', 'Departments', formatInt(rows.length), '', 'حسب دليل الأقسام')], 'الأقسام') : '')
                 + head
                 + xTable(['القسم', 'الإيرادات', 'المصاريف', 'الصافي', 'التكلفة%'],
                     list.map((x) => `<tr><td class="erp-td"><b>${esc(x.name)}</b></td><td class="erp-td">${extraMoney(x.rev)}</td><td class="erp-td">${extraMoney(x.exp)}</td><td class="erp-td">${extraMoney(x.profit)}</td><td class="erp-td erp-num" dir="ltr">${esc(Number(x.costRatio).toFixed(1))}%</td></tr>`).join(''),
-                    t === 'dept-specific' ? 'القسم غير موجود' : 'لا أقسام');
+                    t === 'dept-specific' ? 'القسم غير موجود' : 'لا أقسام', deptFoot);
         }
         if (t === 'kitchen') {
             const k = computeKitchen(b, r.startDate, r.endDate);
@@ -718,7 +760,8 @@ export function mountReportsScreen(host, ctx = {}) {
                 + `<h4>سجل صرف المطبخ المعتمد</h4>`
                 + xTable(['التاريخ', 'القسم الطالب', 'الأصناف', 'القيمة'],
                     k.rows.map((x) => `<tr><td class="erp-td">${esc(fD2(x.date))}</td><td class="erp-td">${esc(x.dept)}</td><td class="erp-td"><small>${esc(x.itemsText)}</small></td><td class="erp-td">${extraMoney(x.value)}</td></tr>`).join(''),
-                    'لا توجد عمليات صرف معتمدة في هذه الفترة');
+                    'لا توجد عمليات صرف معتمدة في هذه الفترة',
+                    k.rows.length ? `<td>الإجمالي (${esc(formatInt(k.rows.length))} صرف)</td><td class="erp-td" colspan="2"></td><td class="erp-td">${extraMoney(k.rows.reduce((sum, x) => sum + (Number(x.value) || 0), 0))}</td>` : '');
         }
         if (t === 'returns') {
             const k = computeReturns(b, r.startDate, r.endDate);
@@ -730,7 +773,8 @@ export function mountReportsScreen(host, ctx = {}) {
                 + `<h4>سجل المرتجعات</h4>`
                 + xTable(['التاريخ', 'القسم', 'الأصناف', 'السبب', 'القيمة'],
                     k.rows.map((x) => `<tr><td class="erp-td">${esc(fD2(x.date))}</td><td class="erp-td">${esc(x.deptName || '—')}</td><td class="erp-td"><small>${esc((x.items || []).map((i) => `${i.name || i.itemName} (${i.qty})`).join('، '))}</small></td><td class="erp-td">${esc(x.reason || '—')}</td><td class="erp-td">${extraMoney(x.totalValue || 0)}</td></tr>`).join(''),
-                    'لا توجد مرتجعات في هذه الفترة');
+                    'لا توجد مرتجعات في هذه الفترة',
+                    k.rows.length ? `<td>الإجمالي (${esc(formatInt(k.rows.length))} مرتجع)</td><td class="erp-td" colspan="3"></td><td class="erp-td">${extraMoney(k.rows.reduce((sum, x) => sum + (Number(x.totalValue) || 0), 0))}</td>` : '');
         }
         if (t === 'warehouse') {
             const k = computeWarehouse(b);
@@ -759,7 +803,8 @@ export function mountReportsScreen(host, ctx = {}) {
                 + `<h4>قائمة الموظفين</h4>`
                 + xTable(['الرقم', 'الاسم', 'القسم', 'المنصب', 'الراتب', 'الحضور'],
                     k.rows.map((x) => `<tr><td class="erp-td erp-mono" dir="ltr">${esc(x.id || '—')}</td><td class="erp-td"><b>${esc(x.name)}</b></td><td class="erp-td">${esc(x.dept || '—')}</td><td class="erp-td">${esc(x.position || '—')}</td><td class="erp-td">${extraMoney(x.salary)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.days)} يوم</td></tr>`).join(''),
-                    'لا موظفين');
+                    'لا موظفين',
+                    k.rows.length ? `<td>الإجمالي (${esc(formatInt(k.rows.length))} موظف)</td><td class="erp-td" colspan="3"></td><td class="erp-td">${extraMoney(k.rows.reduce((sum, x) => sum + (Number(x.salary) || 0), 0))}</td><td class="erp-td erp-num" dir="ltr">${formatInt(k.rows.reduce((sum, x) => sum + (Number(x.days) || 0), 0))} يوم</td>` : '');
         }
         if (t === 'yara-departments') {
             const group = period === 'month' ? 'month' : (period === 'year' ? 'year' : 'day');
@@ -774,7 +819,12 @@ export function mountReportsScreen(host, ctx = {}) {
                 ], 'يارا')
                 + xTable(['الفترة', 'القسم', 'الإيراد', 'المرتجعات', 'الصافي', 'الفواتير'],
                     d.rows.map((x) => `<tr><td class="erp-td">${esc(x.period || '—')}</td><td class="erp-td"><b>${esc(x.dept_name || '—')}</b></td><td class="erp-td">${extraMoney(x.gross || 0)}</td><td class="erp-td">${extraMoney(x.refund || 0)}</td><td class="erp-td">${extraMoney(x.net || 0)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.invoices || 0)}</td></tr>`).join(''),
-                    'لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد Yarasoft');
+                    'لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد Yarasoft',
+                    d.rows.length ? `<td>الإجمالي (${esc(formatInt(d.rows.length))} سطر)</td><td class="erp-td"></td>`
+                        + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.gross) || 0), 0))}</td>`
+                        + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.refund) || 0), 0))}</td>`
+                        + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.net) || 0), 0))}</td>`
+                        + `<td class="erp-td erp-num" dir="ltr">${formatInt(d.rows.reduce((sum, x) => sum + (Number(x.invoices) || 0), 0))}</td>` : '');
         }
         if (t === 'yara-cashiers') {
             const d = await fetchYaraCashierItems({ from: r.startDate, to: r.endDate, view: yView, cashier: yCashier, limit: 100, page: yPage });
@@ -788,6 +838,19 @@ export function mountReportsScreen(host, ctx = {}) {
                 }
                 return `<tr><td class="erp-td"><button type="button" class="erp-btn erp-btn--sm erp-mono" dir="ltr" data-v2-yinv="${esc(String(x.doc_no))}"><b>${esc(String(x.doc_no))}</b></button></td><td class="erp-td">${esc(x.day || '—')}</td><td class="erp-td">${esc(x.cashier_name || '—')}</td><td class="erp-td">${esc(x.shift ?? '—')}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.lines || 0)}</td><td class="erp-td">${extraMoney(x.total || 0)}</td><td class="erp-td">${extraMoney(x.discount || 0)}</td><td class="erp-td">${extraMoney(x.net || 0)}</td><td class="erp-td">${extraMoney(x.paid || 0)}</td></tr>`;
             }).join('');
+            /* الجداولان صفحةٌ من صفحات الخادم (limit 100) — المجموع مجموع الصفحة
+               المعروضة ويُسمّى باسمه، لا إجمالي فترة يُدّعى. */
+            const pageSum = (k) => d.rows.reduce((sum, x) => sum + (Number(x[k]) || 0), 0);
+            const pageLabel = `مجموع الصفحة ${formatInt(d.page)}/${formatInt(d.pages)}`;
+            const cashInv = d.cashiers.reduce((sum, c) => sum + (Number(c.invoices) || 0), 0);
+            const cashNet = d.cashiers.reduce((sum, c) => sum + (Number(c.net) || 0), 0);
+            const cashFoot = d.cashiers.length
+                ? `<td>الإجمالي (${esc(formatInt(d.cashiers.length))} كاشير)</td>`
+                    + `<td class="erp-td erp-num" dir="ltr">${formatInt(cashInv)}</td>`
+                    + `<td class="erp-td">${extraMoney(cashNet)}</td>`
+                    + `<td class="erp-td">${extraMoney(d.cashiers.reduce((sum, c) => sum + (Number(c.discount) || 0), 0))}</td>`
+                    + `<td class="erp-td">${extraMoney(cashInv ? cashNet / cashInv : 0)}</td>`
+                : '';
             return xHead(EXTRA_AR[t])
                 + `<div class="erp-dash-controls erp-no-print">`
                 + `<label class="erp-text-sm erp-text-muted">الكاشير</label><select class="erp-input" data-v2-y_cashier>${cashierOpts}</select>`
@@ -800,16 +863,28 @@ export function mountReportsScreen(host, ctx = {}) {
                 ], 'الكاشيرية')
                 + xTable(['الكاشير', 'الفواتير', 'الصافي', 'الخصم', 'متوسط الفاتورة'],
                     d.cashiers.map((c) => `<tr><td class="erp-td"><b>${esc(c.name)}</b></td><td class="erp-td erp-num" dir="ltr">${formatInt(c.invoices || 0)}</td><td class="erp-td">${extraMoney(c.net || 0)}</td><td class="erp-td">${extraMoney(c.discount || 0)}</td><td class="erp-td">${extraMoney(c.invoices ? c.net / c.invoices : 0)}</td></tr>`).join(''),
-                    'لا توجد مبيعات كاشيرية ضمن الفترة')
+                    'لا توجد مبيعات كاشيرية ضمن الفترة', cashFoot)
                 + (isInv
                     ? `<h4>فواتير الكاشيرية (الأحدث أولًا — اضغط الرقم للتفصيل)</h4>`
-                        + xTable(['الفاتورة', 'اليوم', 'الكاشير', 'الوردية', 'الأصناف', 'الإجمالي', 'الخصم', 'الصافي', 'المدفوع'], detailRows, 'لا توجد فواتير ضمن الفترة')
+                        + xTable(['الفاتورة', 'اليوم', 'الكاشير', 'الوردية', 'الأصناف', 'الإجمالي', 'الخصم', 'الصافي', 'المدفوع'], detailRows, 'لا توجد فواتير ضمن الفترة',
+                            d.rows.length ? `<td>${esc(pageLabel)}</td><td class="erp-td" colspan="4"></td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('total'))}</td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('discount'))}</td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('net'))}</td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('paid'))}</td>` : '')
                         + `<div class="erp-dash-controls erp-no-print"><button type="button" class="erp-btn erp-btn--sm" data-v2-y_prev${d.page <= 1 ? ' disabled' : ''}>السابق</button>`
                         + `<span class="erp-text-sm erp-text-muted">صفحة ${formatInt(d.page)} من ${formatInt(d.pages)} — ${formatInt(d.total)} فاتورة</span>`
                         + `<button type="button" class="erp-btn erp-btn--sm" data-v2-y_next${d.page >= d.pages ? ' disabled' : ''}>التالي</button></div>`
                         + `<div data-v2-y_detail></div>`
                     : `<h4>المباع تفصيلًا: الكاشير × الصنف</h4>`
-                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب يارا'))
+                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب يارا',
+                            d.rows.length ? `<td>${esc(pageLabel)}</td><td class="erp-td" colspan="2"></td>`
+                                + `<td class="erp-td erp-num" dir="ltr">${formatInt(pageSum('invoices'))}</td>`
+                                + `<td class="erp-td erp-num" dir="ltr">${formatQty(pageSum('qty'))}</td>`
+                                + `<td class="erp-td"></td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('net'))}</td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('discount'))}</td>`
+                                + `<td class="erp-td">${extraMoney(pageSum('vat'))}</td>` : ''))
                 + `<p class="erp-text-sm erp-text-muted">المصدر: قاعدة يارا سوفت Oracle مباشرة — الكاشير 2 الداخلي مستثنى.</p>`;
         }
         return '';
@@ -817,22 +892,35 @@ export function mountReportsScreen(host, ctx = {}) {
 
     async function loadExtra() {
         const t = extraType;
+        const sequence = ++extraLoadSequence;
         const box = q('[data-v2-extra]');
         const titleEl = q('[data-v2-extra-title]');
         if (titleEl) {titleEl.textContent = EXTRA_AR[t] || 'التقرير';}
+        reloadButton.disabled = true;
+        reloadLabel.textContent = 'جارٍ التحديث…';
+        box.setAttribute('aria-busy', 'true');
         box.innerHTML = '<p class="erp-text-sm erp-text-muted">جارٍ إعداد التقرير…</p>';
         try {
             const html = await buildExtraHtml();
-            if (t !== extraType || !el.isConnected) {return;}
+            if (sequence !== extraLoadSequence || t !== extraType || !el.isConnected) {return;}
             box.innerHTML = html;
         } catch (e) {
-            if (t !== extraType || !el.isConnected) {return;}
+            if (sequence !== extraLoadSequence || t !== extraType || !el.isConnected) {return;}
             box.innerHTML = `<p class="erp-text-sm erp-text-muted">تعذّر إنشاء التقرير: ${esc((e && e.message) || 'خطأ')}</p>`;
+        } finally {
+            if (sequence === extraLoadSequence && el.isConnected) {
+                box.removeAttribute('aria-busy');
+                reloadButton.disabled = false;
+                reloadLabel.textContent = 'تحديث التقرير';
+            }
         }
     }
 
     function setType(v) {
         if (v && v.startsWith('pos-')) {
+            extraLoadSequence += 1;
+            reloadButton.disabled = false;
+            reloadLabel.textContent = 'تحديث التقرير';
             extraType = '';
             const g = v.slice(4);
             if (groupBy !== g) {
@@ -850,31 +938,133 @@ export function mountReportsScreen(host, ctx = {}) {
         loadExtra();
     }
 
-    function printDoc(title, bodyHtml) {
+    /* ── الطباعة: مستند A4 واحد بهوية الشركة لكل التقارير ──────────────────
+     *  شريط العارض (report-viewer.js) هو مصدر الطباعة والإغلاق الوحيد، ويضيف
+     *  الشعار تلقائيًا (print-branding.js عبر addCompanyPrintLogo على load).
+     *  هنا نُكسي المحتوى بهيئة A4 موحّدة: عنوان + سطر نطاق + جداول مسطّرة +
+     *  توقيعات، بدل طباعة الشاشة الخام (window.print) أو قالب عادي. */
+    const PRINT_CSS = `
+      @page { size: A4; margin: 15mm 13mm 18mm;
+        @bottom-center { content: "صفحة " counter(page) " من " counter(pages);
+          font-family: Tahoma, Arial, sans-serif; font-size: 8.5pt; color: #756d5a; } }
+      * { box-sizing: border-box; }
+      body { font-family: 'Cairo','Tajawal',Tahoma,Arial,sans-serif; direction: rtl; color: #1a1a1a; font-size: 10pt; margin: 0; }
+      .rp-title { text-align: center; font-size: 16pt; color: #18352b; margin: 2px 0 3px; }
+      .rp-sub { text-align: center; color: #756d5a; font-size: 9.5pt; margin: 0 0 12px; line-height: 1.65; }
+      h3 { font-size: 11.5pt; color: #18352b; margin: 15px 0 6px; border-bottom: 2px solid #d7c99f; padding-bottom: 3px; break-after: avoid; page-break-after: avoid; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+      th, td { border: 1px solid #c9bfa6; padding: 6px 8px; text-align: right; }
+      th { background: #f4ead2; color: #18352b; font-weight: 700; }
+      tbody tr:nth-child(even) { background: #faf7ef; }
+      tfoot td { background: #f4ead2; color: #18352b; font-weight: 700; }
+      .rp-num { text-align: center; font-variant-numeric: tabular-nums; }
+      .rp-kpis { width: 100%; }
+      .rp-kpis td { border: 1px solid #c9bfa6; padding: 8px; text-align: center; width: 33.3%; }
+      .rp-kpis td span { display: block; color: #756d5a; font-size: 8.5pt; }
+      .rp-kpis td b { display: block; font-size: 13pt; color: #18352b; margin-top: 2px; }
+      .rp-sig { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 12px; border-top: 1px solid #d7c99f; font-size: 10pt; color: #18352b; }
+      .rp-foot { text-align: center; color: #756d5a; font-size: 8.5pt; margin-top: 10px; }
+      @media print {
+        .rp-break { break-inside: avoid; page-break-inside: avoid; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr { break-inside: avoid; page-break-inside: avoid; }
+        th, tfoot td { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      }
+    `;
+
+    /**
+     * يفتح مستند A4 مهيّأ داخل العارض. الشريط يملك الطباعة والإغلاق، فلا زر
+     * ميت داخل المستند (querySelector في العارض يعيد null عن قصد).
+     * @param {string} title عنوان التقرير
+     * @param {string} subtitle سطر النطاق (الفترة · البُعد)
+     * @param {string} bodyHtml متن الجداول/المؤشرات (يُنزع منه أزرار الإدخال)
+     */
+    function printDoc(title, subtitle, bodyHtml) {
         const w = openInAppReport(title);
         const tmp = document.createElement('div');
         tmp.innerHTML = bodyHtml;
         tmp.querySelectorAll('.erp-no-print,button,select,input').forEach((n) => n.remove());
+        const stamp = new Date().toLocaleString('ar-EG');
+        const by = ctx.userName ? ` · أعدّه ${ctx.userName}` : '';
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`
-            + `<style>body{font-family:'Cairo','Tajawal',sans-serif;padding:28px;color:#1a1a1a;direction:rtl;font-size:10pt}`
-            + `h4{font-size:12pt;color:#92400e;margin:14px 0 8px}table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #999;padding:6px;text-align:right}th{background:#f4ead2}`
-            + `.erp-kpis{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0}.erp-kpi{border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center}.controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}`
-            + `@media print{.controls{display:none}body{padding:0}}</style></head><body>`
-            + `<div class="controls"><button type="button" class="btn-print" data-pl-print>طباعة</button><button type="button" class="btn-close" data-pl-close>إغلاق</button></div>`
-            + `<h2 style="text-align:center">${esc(title)}</h2>${tmp.innerHTML}</body></html>`);
+            + `<style>${PRINT_CSS}</style></head><body>`
+            + `<h1 class="rp-title">${esc(title)}</h1>`
+            + `<p class="rp-sub">${esc(subtitle)}<br>أُصدر ${esc(stamp)}${esc(by)}</p>`
+            + tmp.innerHTML
+            + `<div class="rp-sig"><span>أعدّه: ${esc(ctx.userName || '________________')}</span><span>راجعه: ________________</span><span>اعتمده: ________________</span></div>`
+            + `<p class="rp-foot">مطاعم الشرفة العالمي — مستند داخلي طُبع من نظام كريم ERP، ولا يُعتد به إلا بختم وتوقيع.</p>`
+            + `</body></html>`);
         w.document.close();
-        const bp = w.document.querySelector('[data-pl-print]');
-        if (bp) {bp.addEventListener('click', () => w.print());}
-        const bc = w.document.querySelector('[data-pl-close]');
-        if (bc) {bc.addEventListener('click', () => w.close());}
         w.focus();
     }
 
+    /** متن طباعة تقرير POS كامل: مؤشرات + طرق دفع + ترتيب البُعد + سجل الفترة
+     *  كاملًا (كل الصفوف لا صفحة الجدول المرئية) — الطباعة أمانةٌ للفترة كلها. */
+    function buildPosPrintHtml() {
+        const label = range().label;
+        const kpis = buildReportKpis(summary, { currency, scopeLabel: label, capped: meta.capped });
+        const kpiCells = kpis.map((k) => `<td><span>${esc(k.label)}</span><b>${esc(k.value)}${k.unit ? ` ${esc(k.unit)}` : ''}</b></td>`);
+        const kpiRows = [];
+        for (let i = 0; i < kpiCells.length; i += 3) {kpiRows.push(`<tr>${kpiCells.slice(i, i + 3).join('')}</tr>`);}
+        const kpiHtml = `<table class="rp-kpis"><tbody>${kpiRows.join('')}</tbody></table>`;
+        const pay = paymentBreakdown(summary.payment_methods);
+        const payHtml = pay.rows.length
+            ? `<h3 class="rp-break">طرق الدفع</h3><table class="rp-table"><thead><tr><th>الطريقة</th><th>المبلغ</th><th>النسبة من المدفوع</th></tr></thead><tbody>`
+            + pay.rows.map((p) => {
+                const pct = pay.total > 0 ? `${((p.amount / pay.total) * 100).toFixed(1)}%` : '—';
+                return `<tr><td>${esc(p.label)}</td><td class="rp-num">${esc(formatMoney(p.amount, currency).amount)}</td><td class="rp-num">${esc(pct)}</td></tr>`;
+            }).join('') + `</tbody></table>`
+            : '';
+        const money = (v) => esc(formatMoney(v, currency).amount);
+        const dimsHtml = `<h3 class="rp-break">${esc(GROUP_AR[groupBy])} — الأعلى صافيًا</h3>`
+            + `<table class="rp-table"><thead><tr><th>${esc(DIM_LABEL[groupBy])}</th><th>الفواتير</th><th>الصافي</th></tr></thead><tbody>`
+            + rows.slice(0, TOP_PORTLET).map((r) => `<tr><td>${esc(r.nameResolved ? r.dimensionName : `#${r.dimensionId ?? '؟'}`)}</td><td class="rp-num">${esc(formatInt(r.invoiceCount))}</td><td class="rp-num">${money(r.netSales)}</td></tr>`).join('')
+            + `</tbody></table>`;
+        const isItem = groupBy === 'item';
+        /* الإجمالي من summary — مجاميع SQL للخادم على الفترة كاملة، لا مجموع
+           صفوف الجدول (بُعد الأصناف محصور بأول 200، ومجموعها لا يساوي الفترة). */
+        const s = summary || {};
+        const fMoney = (v) => esc(formatMoney(v, currency).amount);
+        const regFoot = `<tfoot><tr>`
+            + `<td colspan="${isItem ? 2 : 1}">الإجمالي — مجاميع الخادم للفترة كاملة</td>`
+            + `<td class="rp-num">${esc(formatInt(s.invoice_count))}</td>`
+            + `<td class="rp-num">${esc(formatQty(s.items_qty))}</td>`
+            + `<td class="rp-num">${fMoney(s.subtotal_sales)}</td>`
+            + `<td class="rp-num">${fMoney(s.discount_total)}</td>`
+            + `<td class="rp-num">${fMoney(s.tax_total)}</td>`
+            + `<td class="rp-num">${fMoney(s.net_sales)}</td>`
+            + `</tr></tfoot>`;
+        const regHtml = `<h3 class="rp-break">سجل الفترة كاملًا — ${esc(formatInt(rows.length))} صفًا</h3>`
+            + `<table class="rp-table"><thead><tr>`
+            + [DIM_LABEL[groupBy], ...(isItem ? ['القسم'] : []), 'الفواتير', 'الكمية', 'قبل الضريبة', 'الخصم', 'الضريبة', 'الصافي']
+                .map((c) => `<th>${esc(c)}</th>`).join('')
+            + `</tr></thead><tbody>`
+            + rows.map((r) => `<tr>`
+                + `<td>${esc(r.nameResolved ? r.dimensionName : `#${r.dimensionId ?? '؟'}`)}${r.dimensionCode ? ` <small dir="ltr">(${esc(r.dimensionCode)})</small>` : ''}</td>`
+                + (isItem ? `<td>${esc(r.departmentName || 'بلا قسم')}</td>` : '')
+                + `<td class="rp-num">${esc(formatInt(r.invoiceCount))}</td>`
+                + `<td class="rp-num">${esc(formatQty(isItem ? r.quantitySold : r.itemsQty))}</td>`
+                + `<td class="rp-num">${money(r.subtotalSales)}</td>`
+                + `<td class="rp-num">${money(r.discountTotal)}</td>`
+                + `<td class="rp-num">${money(r.taxTotal)}</td>`
+                + `<td class="rp-num">${money(r.netSales)}</td>`
+                + `</tr>`).join('')
+            + `</tbody>${regFoot}</table>`;
+        return kpiHtml + payHtml + dimsHtml + regHtml;
+    }
+
     function printActive() {
-        if (!extraType) {window.print(); return;}
+        const r = range();
+        const scope = `${r.label} (${r.startDate} ← ${r.endDate}) · حسب ${GROUP_AR[groupBy]}`;
+        if (!extraType) {
+            if (!rows.length) {notify('لا بيانات لطباعة هذه الفترة.'); return;}
+            printDoc(`تقرير المبيعات — ${GROUP_AR[groupBy]}`, scope, buildPosPrintHtml());
+            return;
+        }
         const box = q('[data-v2-extra]');
         if (!box || !box.innerHTML.trim()) {notify('يرجى إنشاء التقرير أولاً'); return;}
-        printDoc(EXTRA_AR[extraType] || 'التقرير', box.innerHTML);
+        printDoc(EXTRA_AR[extraType] || 'التقرير', scope, box.innerHTML);
     }
 
     async function openYInvoice(docNo) {
@@ -908,7 +1098,7 @@ export function mountReportsScreen(host, ctx = {}) {
 
     return {
         el,
-        reload,
+        reload: refreshActive,
         getRows: () => rows,
         destroy() {
             queued = false;

@@ -4,7 +4,8 @@
  * ═══════════════════════════════════════════════════════════════════════
  *
  * CONTRACT COPIED FROM THE SERVER, NOT INVENTED
- *   GET /revenues|/expenses?page=&limit=&sort=&order=& → { data, pagination }
+ *   GET /revenues|/expenses?page=&limit=&sort=&order=&v2_period=month
+ *     → { data, pagination } filtered to the current Riyadh month
  *     (generic entity list, server.js:1454-1521. Sensitive read gate
  *     admin|manager|accountant|auditor, server.js:1240-1241.)
  *   GET /departments → same { data, pagination } shape.
@@ -26,26 +27,28 @@
  *     (including empty) = operating.
  *
  * BOUNDED WALK — READ BEFORE CHANGING
- *   Revenues are tens of thousands of rows (POS feeds them per order).
- *   The walk is capped (WALK_PAGES × 1000) and reads NEWEST FIRST
- *   (sort=id&order=desc) so the default current-month lens is always
- *   covered; the cap is stated in the UI, never hidden.
+ *   Revenue and expense screens ask the server for the current Riyadh month
+ *   before pagination. Historical records remain stored and untouched.
  *
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  * Write doors (finance.edit roles admin|manager|accountant, schema-registry
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
-/** Walk cap: newest 8,000 rows per register (documented in every screen). */
+/** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;
 
-/** Bounded entity walk, newest first. */
-export async function fetchEntityNewest(entity) {
+/** Bounded entity walk, newest first; finance registers can be month-scoped server-side. */
+export async function fetchEntityNewest(entity, options = {}) {
     const rows = [];
     for (let page = 1; page <= WALK_PAGES; page += 1) {
-        const res = await apiFetch(`/${entity}?page=${page}&limit=1000&sort=id&order=desc`);
+        const params = new URLSearchParams({
+            page: String(page), limit: '1000', sort: 'id', order: 'desc',
+        });
+        if (options.currentMonth) {params.set('v2_period', 'month');}
+        const res = await apiFetch(`/${entity}?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data
             : (Array.isArray(res) ? res : []);
         rows.push(...batch);
@@ -55,9 +58,18 @@ export async function fetchEntityNewest(entity) {
     return rows;
 }
 
-export const fetchRevenues = () => fetchEntityNewest('revenues');
-export const fetchExpenses = () => fetchEntityNewest('expenses');
+export const fetchRevenues = () => fetchEntityNewest('revenues', { currentMonth: true });
+export const fetchExpenses = () => fetchEntityNewest('expenses', { currentMonth: true });
 export const fetchDepartments = () => fetchEntityNewest('departments');
+
+/** Server-side aggregation for the cost-analysis screen; no transaction rows cross the API. */
+export async function fetchCostAnalysis(from, to) {
+    const params = new URLSearchParams();
+    if (from) {params.set('from', from);}
+    if (to) {params.set('to', to);}
+    const query = params.toString();
+    return apiFetch(`/finance/cost-analysis${query ? `?${query}` : ''}`);
+}
 
 /** Newest rows of one register — one page, for dashboards that show a short
  *  "latest" list. Not a walk: the caller must not total these rows. */
@@ -190,8 +202,19 @@ export function isoDay(offsetDays = 0, base = new Date()) {
 }
 
 export function firstOfMonth(now = new Date()) {
-    const p = (n) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}-${p(now.getMonth() + 1)}-01`;
+    return `${riyadhToday(now).slice(0, 7)}-01`;
+}
+
+/** Current business day in Riyadh, matching the server's V2 date bounds. */
+export function riyadhToday(now = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
 }
 
 /** P&L presets copied from features/finance.js:279-292 (same ranges). */

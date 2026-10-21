@@ -13,14 +13,14 @@
  * Quick links navigate to migrated HR screens only (employees/attendance/leaves).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { statusBadge } from '../status.js?v=4.9.169';
-import { donutChart, lineChart } from '../charts.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { statusBadge } from '../status.js?v=4.9.181';
+import { donutChart, lineChart } from '../charts.js?v=4.9.181';
 import {
     fetchHrSnapshot, buildHrKpis, pendingLeaveRows,
     departmentDistribution, weeklyAttendance,
-} from '../data/hr-dashboard-repo.js?v=4.9.169';
-import { employeeMap } from '../data/employees-repo.js?v=4.9.169';
+} from '../data/hr-dashboard-repo.js?v=4.9.181';
+import { employeeMap } from '../data/employees-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -42,6 +42,7 @@ function kpiStrip(kpis) {
 
 function template(_day) {
     return `
+      <div class="erp-v2-hrdash-root">
       <section class="erp-card erp-v2-hrdash">
         <div class="erp-card__head">
           <h3 class="erp-card__title">لوحة الموارد البشرية
@@ -80,7 +81,8 @@ function template(_day) {
         <div class="erp-card__body">
           <div data-v2-table></div>
         </div>
-      </section>`;
+      </section>
+      </div>`;
 }
 
 /**

@@ -7,6 +7,7 @@
 const net = require('net');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { closeHttpServer } = require('./helpers/http-server');
 
 const {
     kindOfPrinterId,
@@ -208,7 +209,7 @@ describe('tcpProbe — فحص TCP حقيقي على مقبس محلي', () => {
         const result = await tcpProbe('127.0.0.1', port, 1000);
         expect(result.reachable).toBe(true);
         expect(typeof result.latency_ms).toBe('number');
-        server.close();
+        await closeHttpServer(server);
     });
     test('منفذ مغلق → reachable=false مع رمز الخطأ', async () => {
         const result = await tcpProbe('127.0.0.1', 1, 800);

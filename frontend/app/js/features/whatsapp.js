@@ -17,7 +17,7 @@ return `<span class="badge ${map[s]||'bdg-gray'}">${ar[s]||s||'—'}</span>`;
 }
 async function renderWhatsappPage(){
 if(!['admin','manager'].includes(STATE.currentUser?.role)){ document.getElementById('content').innerHTML='<div class="mcard">لا تملك صلاحية الوصول</div>'; return; }
-try{ WASTATE.status=await apiFetch('/whatsapp/status'); }catch(e){ WASTATE.status=null; }
+try{ WASTATE.status=await apiFetch('/whatsapp/status'); }catch(_){ WASTATE.status=null; }
 waRenderBody();
 if(WASTATE.timer) {clearInterval(WASTATE.timer);}
 WASTATE.timer=setInterval(()=>{ if(STATE.page!=='whatsapp'){ clearInterval(WASTATE.timer); WASTATE.timer=null; waQrStop(); return; } waRefreshStatus(true); },10000);
@@ -229,7 +229,6 @@ if(action==='cancel'&&!confirm('إلغاء الحملة؟')){return;}
 try{await apiFetch(`/whatsapp/campaigns/${id}/${action}`,{method:'POST'});toast('تم تحديث الحملة','success');waLoadCampaigns(document.getElementById('waBody'));}catch(e){toast(e.message||'فشل تحديث الحملة','error');}
 }
 async function waChatMetaSave(encodedJid, messageId){
-const jid=decodeURIComponent(encodedJid);
 const status=document.getElementById('waChatStatus_'+messageId)?.value;
 const priority=document.getElementById('waChatPriority_'+messageId)?.value;
 const assigned=document.getElementById('waChatAssignee_'+messageId)?.value;
@@ -319,7 +318,7 @@ try{ await apiFetch('/whatsapp/managers/'+encodeURIComponent(n),{method:'DELETE'
 catch(e){ toast(e.message||'فشل','error'); }finally{ hideLoad(); }
 }
 // ─── استعلامات النظام ───
-async function waRenderQueryTab(el,canWrite){
+async function waRenderQueryTab(el,_canWrite){
 const cats = await apiFetch('/whatsapp/query/categories').catch(()=>null);
 const categories = cats?.categories || [];
 el.innerHTML=`

@@ -80,7 +80,7 @@
         try { localStorage.setItem(FLAG, on ? '1' : '0'); } catch (_) {}
     }
 
-    let dropdown = null;
+    const dropdown = null;
     let results = [];
     let highlight = -1;
     let highlightExplicit = false;

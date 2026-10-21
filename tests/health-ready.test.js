@@ -6,6 +6,7 @@
 const express = require('express');
 const http = require('http');
 const { createHealthRouter, registerCheck } = require('../backend/middleware/health');
+const { closeHttpServer } = require('./helpers/http-server');
 
 function serve(router) {
     const app = express();
@@ -29,7 +30,7 @@ describe('health endpoints (TASK 8)', () => {
             const r = await get('/live');
             expect(r.status).toBe(200);
             expect(r.body.status).toBe('ok');
-        } finally { srv.close(); }
+        } finally { await closeHttpServer(srv); }
     });
 
     test('/ready 200 when checks ok', async () => {
@@ -39,7 +40,7 @@ describe('health endpoints (TASK 8)', () => {
             const r = await get('/ready');
             expect(r.status).toBe(200);
             expect(['ok', 'warn']).toContain(r.body.status);
-        } finally { srv.close(); }
+        } finally { await closeHttpServer(srv); }
     });
 
     test('/ready 503 when outbox fails', async () => {
@@ -49,7 +50,7 @@ describe('health endpoints (TASK 8)', () => {
             const r = await get('/ready');
             expect(r.status).toBe(503);
             expect(r.body.status).toBe('fail');
-        } finally { srv.close(); }
+        } finally { await closeHttpServer(srv); }
     });
 
     test('/ready 503 when websocket down', async () => {
@@ -58,6 +59,6 @@ describe('health endpoints (TASK 8)', () => {
         try {
             const r = await get('/ready');
             expect(r.status).toBe(503);
-        } finally { srv.close(); }
+        } finally { await closeHttpServer(srv); }
     });
 });

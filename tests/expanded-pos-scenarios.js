@@ -12,6 +12,7 @@ const TEST_AGENT = TEST_PROTOCOL === 'https'
   ? new https.Agent({ rejectUnauthorized: false, keepAlive: true })
   : undefined;
 const TEST_DB_NAME = String(process.env.KARIM_TEST_DB_NAME || '');
+const SCENARIO_ID = crypto.randomUUID();
 const DB_CONFIG = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT || 5432),
@@ -87,10 +88,26 @@ async function cleanup(db) {
     const orderIds = orders.rows.map((row) => row.id);
     if (orderIds.length) {
       const orderPatterns = orderIds.map((id) => `%order=${id}%`);
-      await db.query('DELETE FROM revenues WHERE notes LIKE ANY($1::text[])', [orderPatterns]);
+      await db.query('DELETE FROM revenues WHERE pos_order_id = ANY($1::uuid[]) OR notes LIKE ANY($2::text[])', [orderIds, orderPatterns]);
       await db.query('DELETE FROM pos_invoice_payments WHERE order_id = ANY($1::uuid[])', [orderIds]);
       await db.query('DELETE FROM pos_order_items WHERE order_id = ANY($1::uuid[])', [orderIds]);
-      await db.query('DELETE FROM pos_idempotency_keys WHERE order_id = ANY($1::uuid[]) OR key LIKE \'test-%\'', [orderIds]);
+      const journalEntries = await db.query(
+        `SELECT id FROM journal_entries WHERE source_type = 'pos_sale' AND source_id = ANY($1::text[])`,
+        [orderIds]
+      );
+      const journalEntryIds = journalEntries.rows.map((row) => row.id);
+      if (journalEntryIds.length) {
+        await db.query('DELETE FROM journal_lines WHERE entry_id = ANY($1::bigint[])', [journalEntryIds]);
+        await db.query('DELETE FROM journal_entries WHERE id = ANY($1::bigint[])', [journalEntryIds]);
+      }
+      await db.query(
+        'DELETE FROM event_outbox WHERE aggregate_id = ANY($1::text[]) OR payload::text LIKE ANY($2::text[])',
+        [orderIds, orderPatterns]
+      );
+      await db.query(
+        'DELETE FROM pos_idempotency_keys WHERE order_id = ANY($1::uuid[]) OR key LIKE $2',
+        [orderIds, `test-${SCENARIO_ID}-%`]
+      );
       const stateResult = await db.query('SELECT state_data FROM app_state WHERE id = 1 FOR UPDATE');
       const state = stateResult.rows[0]?.state_data || {};
       if (Array.isArray(state.revenues)) {
@@ -99,7 +116,7 @@ async function cleanup(db) {
       }
       await db.query('DELETE FROM pos_orders WHERE id = ANY($1::uuid[])', [orderIds]);
     } else {
-      await db.query("DELETE FROM pos_idempotency_keys WHERE key LIKE 'test-%'");
+      await db.query('DELETE FROM pos_idempotency_keys WHERE key LIKE $1', [`test-${SCENARIO_ID}-%`]);
     }
     await db.query('DELETE FROM pos_shift_sessions WHERE id = $1', [created.sessionId]);
   }
@@ -144,23 +161,71 @@ async function main() {
     const duplicate = await request('POST', '/api/pos/shifts/open', { department_id: departmentId, opening_balance: 100 }, token);
     check('منع فتح وردية مكررة', duplicate.status === 409, `HTTP ${duplicate.status}`);
 
-    const cash = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'cash', amount: 115 }] }), token, { 'Idempotency-Key': `test-cash-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const cash = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'cash', amount: 115 }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-cash-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع نقدي مباشر', cash.status === 201 && cash.json?.order_id, `HTTP ${cash.status}`);
 
-    const card = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'card', amount: 115, reference: 'TEST-CARD' }] }), token, { 'Idempotency-Key': `test-card-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const card = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'card', amount: 115, reference: 'TEST-CARD' }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-card-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع بالبطاقة', card.status === 201 && card.json?.order_id, `HTTP ${card.status}`);
 
-    const wallet = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'wallet', amount: 115, reference: 'TEST-WALLET' }] }), token, { 'Idempotency-Key': `test-wallet-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const wallet = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'wallet', amount: 115, reference: 'TEST-WALLET' }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-wallet-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع بالمحفظة', wallet.status === 201 && wallet.json?.order_id, `HTTP ${wallet.status}`);
 
-    const bank = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'bank_transfer', amount: 115, reference: 'TEST-BANK' }] }), token, { 'Idempotency-Key': `test-bank-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const bank = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'bank_transfer', amount: 115, reference: 'TEST-BANK' }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-bank-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع بالتحويل البنكي', bank.status === 201 && bank.json?.order_id, `HTTP ${bank.status}`);
 
-    const split = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'cash', amount: 50 }, { method: 'card', amount: 65, reference: 'TEST-SPLIT' }] }), token, { 'Idempotency-Key': `test-split-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const split = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, payments: [{ method: 'cash', amount: 50 }, { method: 'card', amount: 65, reference: 'TEST-SPLIT' }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-split-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع متعدد طرق الدفع', split.status === 201 && split.json?.order_id, `HTTP ${split.status}`);
 
-    const discounted = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, discount: 10, payments: [{ method: 'cash', amount: 103.5 }] }), token, { 'Idempotency-Key': `test-discount-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
+    const discounted = await request('POST', '/api/sales/complete', salePayload({ departmentId, productId: created.productId, sessionId: created.sessionId, discount: 10, payments: [{ method: 'cash', amount: 103.5 }] }), token, { 'Idempotency-Key': `test-${SCENARIO_ID}-discount-${crypto.randomUUID()}`, 'X-Shift-Session-Id': String(created.sessionId) });
     check('بيع مع خصم', discounted.status === 201 && Number(discounted.json?.discount_total) === 10, `HTTP ${discounted.status}`);
+
+    const successfulOrders = [cash, card, wallet, bank, split, discounted].map((response) => response.json?.order_id).filter(Boolean);
+    const reconciliation = await db.query(`
+      WITH payment_totals AS (
+        SELECT order_id, COUNT(*)::int AS payment_count, SUM(amount) AS paid_total
+          FROM pos_invoice_payments
+         WHERE order_id = ANY($1::uuid[])
+         GROUP BY order_id
+      ), journal_totals AS (
+        SELECT je.source_id, COUNT(DISTINCT je.id)::int AS entry_count,
+               COALESCE(SUM(jl.debit), 0) AS debits,
+               COALESCE(SUM(jl.credit), 0) AS credits
+          FROM journal_entries je
+          LEFT JOIN journal_lines jl ON jl.entry_id = je.id
+         WHERE je.source_type = 'pos_sale' AND je.source_id = ANY($1::text[])
+         GROUP BY je.source_id
+      )
+      SELECT p.id, p.total_amount, r.amount AS revenue_amount,
+             (r.id IS NOT NULL)::int AS revenue_count,
+             COALESCE(pt.payment_count, 0) AS payment_count,
+             COALESCE(pt.paid_total, 0) AS paid_total,
+             COALESCE(jt.entry_count, 0) AS journal_count,
+             COALESCE(jt.debits, 0) AS debits,
+             COALESCE(jt.credits, 0) AS credits,
+             (SELECT COUNT(*)::int
+                FROM app_state s
+                CROSS JOIN LATERAL jsonb_array_elements(
+                  CASE WHEN jsonb_typeof(s.state_data->'revenues') = 'array'
+                       THEN s.state_data->'revenues' ELSE '[]'::jsonb END
+                ) AS items(value)
+               WHERE s.id = 1 AND items.value #>> '{pos,order_id}' = p.id::text) AS mirror_count
+        FROM pos_orders p
+        LEFT JOIN revenues r ON r.pos_order_id = p.id
+        LEFT JOIN payment_totals pt ON pt.order_id = p.id
+        LEFT JOIN journal_totals jt ON jt.source_id = p.id::text
+       WHERE p.id = ANY($1::uuid[])
+    `, [successfulOrders]);
+    const reconciled = reconciliation.rows.length === 6 && reconciliation.rows.every((row) => (
+      Number(row.revenue_count) === 1
+      && Math.abs(Number(row.total_amount) - Number(row.revenue_amount)) < 0.01
+      && Math.abs(Number(row.total_amount) - Number(row.paid_total)) < 0.01
+      && Number(row.payment_count) >= 1
+      && Number(row.journal_count) === 1
+      && Number(row.debits) > 0
+      && Math.abs(Number(row.debits) - Number(row.credits)) < 0.01
+      && Number(row.mirror_count) === 1
+    ));
+    check('مصالحة الإيراد والتحصيل والقيد والمرآة', reconciled, `orders=${reconciliation.rows.length}`);
 
     const held = await request('POST', '/api/pos/held-orders', { session_id: created.sessionId, department_id: departmentId, items: [{ product_id: created.productId, quantity: 1, unit_price: 100, discount: 0 }], cart_discount: { type: 'amount', value: 0 } }, token);
     created.heldId = held.json?.id;

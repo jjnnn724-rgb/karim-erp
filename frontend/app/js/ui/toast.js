@@ -4,7 +4,7 @@
  * External dependency: enhancedToast() — top-level declaration in app.js (classic auto-global), resolved
  * from window at call time. esc() — BRIDGE-003.
  */
-function toast(msg,type='success'){ try{ enhancedToast(esc(msg),type); }catch(e){} }
+function toast(msg,type='success'){ try{ enhancedToast(esc(msg),type); }catch(_){} }
 function showLoad(){ const l=document.getElementById('loading'); if(l) {l.classList.add('show');} }
 function hideLoad(){ const l=document.getElementById('loading'); if(l) {l.classList.remove('show');} }
 

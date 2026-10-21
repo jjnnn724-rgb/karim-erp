@@ -30,7 +30,7 @@ export const BACKOFFICE_NAV_CANDIDATES = Object.freeze([
 
 export const FIELD_NAV_CANDIDATES = Object.freeze([
     ['payroll', 'رواتبي', 'wallet'],
-    ['leaves', 'طلبي', 'calendar'],
+    ['leaves', 'الإجازات', 'calendar'],
     ['dashboard', 'لوحتي', 'chart'],
 ]);
 

@@ -22,15 +22,15 @@
  *   (زر «مصروف +» في تفاصيل القسم — شاشة 10).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
-    EXPENSE_KIND_AR, EXPENSE_KIND_TONE, isoDay, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.169';
-import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.169';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.169';
+    EXPENSE_KIND_AR, EXPENSE_KIND_TONE, riyadhToday, firstOfMonth,
+} from '../data/finance-repo.js?v=4.9.181';
+import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.181';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,9 +67,9 @@ function template(from, to) {
           <label class="erp-text-sm erp-text-muted" for="v2exp-dept">القسم</label>
           <select class="erp-input" id="v2exp-dept"><option value="all">كل الأقسام</option></select>
           <label class="erp-text-sm erp-text-muted" for="v2exp-from">من</label>
-          <input class="erp-input erp-input--ltr" id="v2exp-from" type="date" value="${esc(from)}">
+          <input class="erp-input erp-input--ltr" id="v2exp-from" type="date" value="${esc(from)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
           <label class="erp-text-sm erp-text-muted" for="v2exp-to">إلى</label>
-          <input class="erp-input erp-input--ltr" id="v2exp-to" type="date" value="${esc(to)}" max="${esc(isoDay(0))}">
+          <input class="erp-input erp-input--ltr" id="v2exp-to" type="date" value="${esc(to)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
           <button type="button" class="erp-btn erp-btn--sm" data-v2-clear hidden>عرض الكل</button>
           <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة الكشف">
             <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
@@ -88,7 +88,8 @@ function template(from, to) {
             <span class="erp-addr" dir="ltr">finance.edit</span>
             (admin|manager|accountant)، والسجلات التلقائية تبقى مقفولة لا
             تُعدَّل ولا تُحذف (نفس قفل legacy). الإضافة من زر «مصروف +»
-            في تفاصيل القسم (10). يُقرأ الأحدث حتى 8,000 حركة.
+            في تفاصيل القسم (10). تعرض الواجهة أحدث 8,000 حركة من الشهر
+            الحالي؛ وتبقى الحركات الأقدم محفوظة دون تحميلها أو تعديلها.
           </p>
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
@@ -117,7 +118,7 @@ export function mountExpensesScreen(host, ctx = {}) {
     let saving = false;
     let editing = null;          // raw row whose form is open (null when closed)
 
-    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0)));
+    host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const countEl = q('[data-v2-count]');

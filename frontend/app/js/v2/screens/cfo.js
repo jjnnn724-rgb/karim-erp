@@ -14,11 +14,12 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { canWrite } from '../session.js?v=4.9.169';
-import { openInAppReport } from '../report-viewer.js?v=4.9.169';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { canWrite } from '../session.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -28,7 +29,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.169';
+} from '../data/cfo-repo.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -361,6 +362,7 @@ export function mountCfoScreen(host, ctx = {}) {
         ws['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
         const wb = window.XLSX.utils.book_new();
         window.XLSX.utils.book_append_sheet(wb, ws, 'TB');
+        prepareReportWorkbook(window.XLSX, wb, 'ميزان المراجعة');
         window.XLSX.writeFile(wb, `trial-balance_${q('[data-v2-from]').value}_${q('[data-v2-to]').value}.xlsx`);
         say('تم تحميل ميزان المراجعة');
     }

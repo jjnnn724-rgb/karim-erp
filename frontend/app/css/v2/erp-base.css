@@ -70,6 +70,7 @@
 .erp-v2 .erp-text-secondary { color: var(--erp-text-secondary); }
 .erp-v2 .erp-text-muted    { color: var(--erp-text-muted); }
 .erp-v2 .erp-text-faint    { color: var(--erp-text-faint); }
+.erp-v2 .erp-text-center   { text-align: center; }
 /* Status-text helpers use the measured AA tokens (erp-tokens.css), not the
    raw status colours — the same values the badges carry. */
 .erp-v2 .erp-text-success  { color: var(--erp-success-text); }
@@ -161,6 +162,79 @@
 
 /* ── Print ──────────────────────────────────────────────────────────── */
 @media print {
+  @page { margin: 12mm 10mm; }
+  html, body { background: #fff !important; color: #111827 !important; overflow: visible !important; }
+  body { font-size: 10pt; }
   .erp-v2 { font-size: 11pt; }
   .erp-v2 a[href]::after { content: ""; }
+  .erp-preview-banner,
+  .erp-shell__sidebar,
+  .erp-shell__header,
+  .erp-shell__scrim,
+  .erp-shell__actions,
+  .erp-toolbar,
+  .erp-login-wrap,
+  .erp-no-print { display: none !important; }
+  .erp-v2 .erp-shell,
+  .erp-v2 .erp-shell__main {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  .erp-v2 .erp-shell__content {
+    max-width: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .erp-v2 .erp-card,
+  .erp-v2 .erp-table,
+  .erp-v2 .erp-v2-reports__toolbar {
+    box-shadow: none !important;
+    break-inside: auto;
+  }
+  .erp-v2 .erp-card {
+    border-color: #d1d5db !important;
+    background: #fff !important;
+  }
+  .erp-v2 .erp-card__head {
+    background: #f3f4f6 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .erp-v2 .erp-table__scroll,
+  .erp-v2 .erp-table__wrap,
+  .erp-v2 [data-v2-table] {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .erp-v2 table,
+  .erp-v2 .erp-table__grid {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+  .erp-v2 thead { display: table-header-group; }
+  .erp-v2 tfoot { display: table-footer-group; }
+  .erp-v2 th,
+  .erp-v2 td {
+    padding: 4px 6px !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+  }
+  .erp-v2 th {
+    background: #eef1f5 !important;
+    font-weight: 700 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .erp-v2 tr { break-inside: avoid; page-break-inside: avoid; }
+  .erp-v2 .erp-kpi,
+  .erp-v2 .erp-chart-card { break-inside: avoid; }
+  .erp-v2 .erp-kpi,
+  .erp-v2 .erp-chart-card,
+  .erp-v2 .erp-state { box-shadow: none !important; }
 }

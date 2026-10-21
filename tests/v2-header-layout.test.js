@@ -108,7 +108,7 @@ describe('V2 رأس الشل — لا دفع للمستند ولا إخراج ل
         const extras = read(path.join(APP, 'js', 'v2', 'layout', 'shell-extras.js'));
         expect(extras).toMatch(/pwBtn\.setAttribute\('aria-label', 'تغيير كلمة المرور'\)/);
         // والمُحدِّد `:last-child` يشير إليه فعلًا: كلمة المرور آخر ما يُضاف للعنقود.
-        expect(extras).toMatch(/cluster\.append\(lamps, langBtn, quick, pwBtn\)/);
+        expect(extras).toMatch(/cluster\.append\(lamps, langBtn, quick, serverInfo, pwBtn\)/);
     });
 
     test('≤1400px: نصّ خيار الثيم يُخفى بصريًّا لا يُحذف — الاسم يبقى لـAT', () => {

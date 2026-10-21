@@ -396,12 +396,14 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).not.toMatch(/['"`]\/api\//);
     });
 
-    test('لا معالج سطري إلا زرا ورقة الطباعة — وwindow.prompt القديم صار حقلًا', () => {
+    test('تستخدم ورقة الطباعة مستمعات أحداث — وwindow.prompt القديم صار حقلًا', () => {
         const s = src();
-        const handlers = s.match(/\son[a-z]+=/g) || [];
-        expect(handlers).toHaveLength(2);
-        expect(s).toContain('onclick="window.print()"');
-        expect(s).toContain('onclick="window.close()"');
+        const handlers = s.match(/<[a-z][^>]*\son[a-z]+\s*=/gi) || [];
+        expect(handlers).toEqual([]);
+        expect(s).toContain('data-v2-print');
+        expect(s).toContain('data-v2-close');
+        expect(s).toContain("querySelector('[data-v2-print]')?.addEventListener");
+        expect(s).toContain("querySelector('[data-v2-close]')?.addEventListener");
         expect(s).not.toMatch(/window\.(prompt|alert)\(/);
         // القديم كان يسأل :546 — V2 يقرأ السبب من لوحة الإلغاء نفسها
         expect(legacyOf()).toContain("window.prompt('سبب الإلغاء (اختياري):')");

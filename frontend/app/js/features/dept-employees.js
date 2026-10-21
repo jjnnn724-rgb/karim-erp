@@ -65,7 +65,6 @@ function deptEmpAddModal() {
 }
 
 function deptEmpEditModal(id) {
-    const d = window.STATE && null;
     deptEmpFetch('').then(r => {
         const emp = (r.employees || []).find(x => String(x.id) === String(id));
         if (!emp) {window.toast && toast('الموظف غير موجود في قسمك', 'error'); return;}

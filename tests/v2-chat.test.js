@@ -58,7 +58,18 @@ describe('الشات الداخلي — اللحظي والعلم', () => {
         expect(s).toContain('auth: { token: window._jwt }');
         expect(s).toContain("s.emit('register_user')");
         expect(s).toContain('window._rtSocket');
+        expect(s).toContain('/api/rt/events?since=');
+        expect(s).toContain('/api/rt/ack');
+        expect(s).toContain('/api/rt/version?clientContract=');
+        expect(s).toContain('startRecoveryPolling()');
         expect(read(SERVER)).toContain("io.to(`user:${row.from_user_id}`).emit('chat:new', row)");
+    });
+
+    test('استقصاء المحادثة المفتوحة يعيد الرسائل عند تعذر socket', () => {
+        const c = read(CHAT);
+        expect(c).toContain('const CHAT_POLL_MS = 15_000');
+        expect(c).toContain('async function pollOpenChat()');
+        expect(c).toContain('history.forEach((message) =>');
     });
 
     test('العلم v2chat OFF افتراضيًّا وغيابه يلغي التركيب', () => {

@@ -91,8 +91,12 @@ describe('متابعة الكاشير — عقد الشاشة من المصدر'
         const s = src().replace(/\/\*[\s\S]*?\*\//g, '');
         expect(s).not.toMatch(/\bapiFetch\b/);
         expect(s).not.toMatch(/[^a-zA-Z]fetch\(/);
-        expect(s).toMatch(/from '\.\.\/data\/cashier-monitor-repo\.js\?v=/);
-        expect(s).not.toMatch(/['"`]\/cashier-monitor/);
+        expect(s).toMatch(/from '\.\.\/data\/reports-extra\.js\?v=/);
+        expect(s).toContain('fetchYaraCashierItems');
+        expect(s).toContain('fetchYaraInvoiceDetail');
+        expect(s).toContain('const LIVE_MS = 10_000');
+        expect(s).toContain("const CASHIER_NOS = ['1', '3', '4', '5', '9']");
+        expect(s).not.toContain('mirrorFreshness');
     });
 
     test('لا معالج سطري — واللايف يُنظَّف عند التدمير', () => {

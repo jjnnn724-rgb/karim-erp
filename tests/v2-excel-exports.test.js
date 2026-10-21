@@ -111,7 +111,8 @@ describe('sales-analyzer — تصدير التبويب النشط', () => {
 
     test('الاختيار بالتبويب الحالي لا بتبويب ثابت', () => {
         expect(body).toContain("if (tab === 'orders')");
-        expect((body.match(/window\.XLSX\.writeFile/g) || []).length).toBe(2);
+        expect(body).toContain('prepareReportWorkbook(window.XLSX, wb, exportTitle)');
+        expect((body.match(/window\.XLSX\.writeFile/g) || []).length).toBe(1);
     });
 });
 

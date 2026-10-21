@@ -3,7 +3,7 @@
  * ═══════════════════════════════════════════════════════════════════════
  *
  * CONTRACT COPIED FROM THE SERVER, NOT INVENTED
- *   GET /dispatches?page=&limit=&sort=id&order=asc → { data, pagination }
+ *   GET /dispatches?page=&limit=&sort=id&order=desc → { data, pagination }
  *     (generic entity list, app.js:81 apiList shape. The server stays the
  *     authority on who may read dispatch orders.)
  *   dispatches columns (DB, read-only SELECT verified 2026-10-14):
@@ -44,13 +44,17 @@
  *   remains the authority on every gate — this file only names the paths.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
-/** Bounded entity walk (5 × 1000), same shape as the other registers. */
+/** Bounded current-month entity walk (5 × 1000), newest first. */
 export async function fetchDispatches() {
     const rows = [];
     for (let page = 1; page <= 5; page += 1) {
-        const res = await apiFetch(`/dispatches?page=${page}&limit=1000&sort=id&order=asc`);
+        const params = new URLSearchParams({
+            page: String(page), limit: '1000', sort: 'id', order: 'desc',
+            v2_period: 'month',
+        });
+        const res = await apiFetch(`/dispatches?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data
             : (Array.isArray(res) ? res : []);
         rows.push(...batch);

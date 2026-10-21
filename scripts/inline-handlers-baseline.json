@@ -1,6 +1,6 @@
 {
   "_comment": "ميزانية المعالجات السطرية لكل ملف — لا تُرفع. أي زيادة تفشل CI. تُخفض مع كل دفعة تحويل إلى addEventListener.",
-  "totalHandlers": 1158,
+  "totalHandlers": 1135,
   "totalInlineScripts": 0,
   "files": {
     "frontend/app/js/features/warehouse.js": 203,
@@ -19,7 +19,6 @@
     "frontend/app/js/features/veg-requests.js": 24,
     "frontend/app/js/features/departments.js": 23,
     "frontend/app/js/features/bulk-import.js": 22,
-    "frontend/app/index.html": 21,
     "frontend/app/js/features/sales-analyzer.js": 17,
     "frontend/app/menu-admin.html": 17,
     "frontend/app/js/features/roster.js": 15,
@@ -28,8 +27,8 @@
     "frontend/app/js/features/wh-vs-pos.js": 14,
     "frontend/app/js/features/cashier-monitor.js": 12,
     "frontend/app/js/pos-orders.js": 11,
-    "frontend/app/js/pos.js": 10,
     "frontend/app/js/menu-admin.js": 9,
+    "frontend/app/js/pos.js": 9,
     "frontend/app/js/app.js": 8,
     "frontend/app/js/features/branches.js": 8,
     "frontend/app/js/features/auth-navigation.js": 7,
@@ -45,7 +44,6 @@
     "frontend/app/js/features/page-router.js": 1,
     "frontend/app/js/menu-board.js": 1,
     "frontend/app/js/v2/layout/app-layout.js": 1,
-    "frontend/app/js/v2/screens/branches.js": 1,
     "frontend/app/js/v2/theme.js": 1,
     "frontend/app/pos.html": 1
   }

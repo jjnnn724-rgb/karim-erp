@@ -96,8 +96,8 @@ const saleBody = (qty, price) => ({
 
     // â•گâ•گâ•گ T4: ظ‚ط·ط¹ ظ…ظ†طھطµظپ ط§ظ„ظ…ط¹ط§ظ…ظ„ط© (ط­طھظ…ظٹ: ظ‚ظپظ„ ط§ظ„ظˆط±ط¯ظٹط© ط«ظ… ظ‚طھظ„ ط§ظ„ط§طھطµط§ظ„) â•گâ•گâ•گ
     {
-        const topUp = await q(`UPDATE inventory SET qty=3 WHERE id=$1 RETURNING qty`, [ING]);
-        const balRow = await q(`UPDATE inventory_location_balances SET on_hand=3 WHERE inventory_id=$1 RETURNING on_hand`, [ING]);
+        await q(`UPDATE inventory SET qty=3 WHERE id=$1 RETURNING qty`, [ING]);
+        await q(`UPDATE inventory_location_balances SET on_hand=3 WHERE inventory_id=$1 RETURNING on_hand`, [ING]);
         const c = dbClient();
         await c.connect();
         await c.query('BEGIN');

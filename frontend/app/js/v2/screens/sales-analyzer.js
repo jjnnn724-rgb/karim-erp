@@ -7,13 +7,15 @@
  * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
 import {
-    fetchItemSales, fetchYaraOrders, rangeError, analysisLabel, safeTotals,
-    SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.169';
-import { ensureXlsx } from '../vendor.js?v=4.9.169';
+    fetchItemSales, fetchYaraOrders, fetchOrderDetail, arSearchIncludes,
+    rangeError, analysisLabel, safeTotals, SA_GROUPS,
+} from '../data/yara-reports-repo.js?v=4.9.181';
+import { ensureXlsx } from '../vendor.js?v=4.9.181';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.181';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -88,6 +90,7 @@ function template(from, to) {
               سقف المدى 93 يومًا بقرار الخادم؛ المبيعات صافي بعد المرتجعات.
             </p>
             <div data-v2-table></div>
+            <div data-v2-order-detail></div>
           </div>
         </section>
       </div>`;
@@ -135,13 +138,18 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
         emptyMessage: 'لا أوردرات في هذا المدى', rowKey: (r) => r.doc_no || r.id,
         columns: [
             { key: 'doc_no', header: 'الفاتورة', sortable: true, width: '130px', className: 'erp-mono',
-                render: (r) => `<span class="erp-num" dir="ltr">${esc(r.doc_no ?? r.id ?? '—')}</span>` },
+                render: (r) => `<button type="button" class="erp-link-btn" data-v2-order-view="${esc(r.doc_no ?? r.id)}"><span class="erp-num" dir="ltr">${esc(r.doc_no ?? r.id ?? '—')}</span></button>` },
             { key: 'doc_date', header: 'التاريخ', sortable: true, width: '120px', align: 'center', className: 'erp-tnum' },
             { key: 'cashier_name', header: 'الكاشير', sortable: true, filterable: true },
             { key: 'lines_count', header: 'أصناف', type: 'number', width: '100px', align: 'end', value: (r) => r.lines_count ?? 0,
                 render: (r) => `<span class="erp-num" dir="ltr">${formatInt(r.lines_count ?? 0)}</span>` },
             { key: 'net', header: 'الصافي', type: 'number', width: '140px', align: 'end', value: (r) => r.net,
                 render: (r) => money(r.net, currency) },
+            { key: 'actions', header: 'إجراءات', width: '110px', align: 'center', className: 'erp-no-print',
+                render: (r) => `<span class="erp-row-wrap" style="gap:4px">`
+                    + `<button type="button" class="erp-btn erp-btn--subtle erp-btn--xs" data-v2-order-view="${esc(r.doc_no ?? r.id)}" title="عرض التفاصيل"><i class="ji" data-i="eye" aria-hidden="true"></i></button>`
+                    + `<button type="button" class="erp-btn erp-btn--subtle erp-btn--xs" data-v2-order-print="${esc(r.doc_no ?? r.id)}" title="طباعة"><i class="ji" data-i="printer" aria-hidden="true"></i></button>`
+                    + `</span>` },
         ],
     });
     q('[data-v2-table]').appendChild(analysisTable.el);
@@ -222,7 +230,9 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
             }
             const f = filters();
             const wb = window.XLSX.utils.book_new();
+            let exportTitle;
             if (tab === 'orders') {
+                exportTitle = `تقرير الأوردرات ${f.from} إلى ${f.to}`;
                 const data = [['الفاتورة', 'الكاشير', 'التاريخ', 'الوقت', 'الوردية', 'الصافي', 'الإجمالي',
                     'الخصم', 'الضريبة', 'مدفوع', 'نقدًا', 'شبكة', 'الأصناف', 'المنطقة']];
                 orders.forEach((o) => data.push([
@@ -232,16 +242,18 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
                     o.lines_count, o.zone_name || o.table_name || '',
                 ]));
                 window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(data), 'الأوردرات');
-                window.XLSX.writeFile(wb, `orders_${f.from}_${f.to}.xlsx`);
             } else {
+                exportTitle = `تحليل المبيعات ${f.from} إلى ${f.to}`;
                 const grpLabel = { item: 'الصنف', cashier: 'الكاشير', day: 'اليوم' }[f.group];
                 const data = [[grpLabel, 'فواتير', 'الكمية', 'الصافي', 'الضريبة', 'الإجمالي']];
                 rows.forEach((r) => data.push([
                     r.label, r.invoices, r.qty, r.net, r.vat, Number(r.net) + Number(r.vat),
                 ]));
                 window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(data), 'تحليل المبيعات');
-                window.XLSX.writeFile(wb, `item-sales_${f.from}_${f.to}.xlsx`);
             }
+            prepareReportWorkbook(window.XLSX, wb, exportTitle);
+            window.XLSX.writeFile(wb, tab === 'orders'
+                ? `orders_${f.from}_${f.to}.xlsx` : `item-sales_${f.from}_${f.to}.xlsx`);
             notify('تم تصدير Excel');
         } finally {
             exporting = false;
@@ -272,12 +284,16 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
             } else {
                 const data = await fetchItemSales(f);
                 if (!el.isConnected) {return;}
-                rows = (data.rows || []).map((r) => ({
+                let rawRows = (data.rows || []).map((r) => ({
                     label: analysisLabel(r, f.group),
                     code: f.group === 'item' && r.item_code ? String(r.item_code) : '',
                     invoices: Number(r.invoices) || 0, qty: Number(r.qty) || 0,
                     net: Number(r.net) || 0, vat: Number(r.vat) || 0,
                 }));
+                if (f.item && f.group === 'item') {
+                    rawRows = rawRows.filter((r) => arSearchIncludes(r.label, f.item));
+                }
+                rows = rawRows;
                 paintKpis(data.totals);
             }
             cashierOptions();
@@ -296,7 +312,119 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
         }
     }
 
+    async function openOrderDetail(docNo) {
+        const detailHost = q('[data-v2-order-detail]');
+        if (!detailHost) {return;}
+        detailHost.innerHTML = '<div class="erp-card erp-card--subtle" style="margin-top:14px"><div class="erp-card__body erp-text-center"><span class="erp-spinner" aria-hidden="true"></span> جارٍ جلب تفاصيل الفاتورة…</div></div>';
+        try {
+            const data = await fetchOrderDetail(docNo);
+            if (!el.isConnected) {return;}
+            const o = (data && data.order) || {};
+            const lines = Array.isArray(o.lines) ? o.lines : [];
+            const linesHtml = lines.map((l, i) => `<tr>
+                <td>${i + 1}</td>
+                <td style="text-align:start">${esc(l.name || '—')}</td>
+                <td><span class="erp-num" dir="ltr">${formatInt(l.qty)}</span></td>
+                <td>${money(l.price, currency)}</td>
+                <td>${money(l.total, currency)}</td>
+            </tr>`).join('');
+            detailHost.innerHTML = `
+              <div class="erp-card erp-card--subtle" style="margin-top:16px">
+                <div class="erp-card__head">
+                  <h4 class="erp-card__title">
+                    <i class="ji" data-i="receipt" aria-hidden="true"></i>
+                    فاتورة رقم <span class="erp-mono" dir="ltr">${esc(o.doc_no || docNo)}</span>
+                    — <span class="erp-badge" data-tone="brand">${esc(o.cashier_name || ('كاشير ' + (o.cashier_no || '')))}</span>
+                    — <span class="erp-tnum">${esc(o.doc_date || '')}</span>
+                  </h4>
+                  <span class="erp-grow"></span>
+                  <button type="button" class="erp-btn erp-btn--sm" data-v2-order-print="${esc(o.doc_no || docNo)}">
+                    <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة الإيصال</span>
+                  </button>
+                  <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-order-close>
+                    <i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span>
+                  </button>
+                </div>
+                <div class="erp-card__body erp-stack">
+                  <div class="erp-emp-stats">
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الوقت</span><span class="erp-emp-stat__v erp-tnum" dir="ltr">${esc(String(o.doc_time || '').slice(0, 5))}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الوردية</span><span class="erp-emp-stat__v">${esc(o.shift_no || '—')}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">المنطقة</span><span class="erp-emp-stat__v">${esc(o.zone_name || o.table_name || '—')}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الإجمالي</span><span class="erp-emp-stat__v">${money(o.total, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الصافي</span><span class="erp-emp-stat__v">${money(o.net, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الخصم</span><span class="erp-emp-stat__v">${money(o.discount, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الضريبة</span><span class="erp-emp-stat__v">${money(o.vat, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">المدفوع</span><span class="erp-emp-stat__v">${money(o.payed, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">نقدًا</span><span class="erp-emp-stat__v">${money(o.pay_cash, currency)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">شبكة</span><span class="erp-emp-stat__v">${money(o.pay_network, currency)}</span></div>
+                  </div>
+                  <div class="erp-tbl-wrap" style="overflow-x:auto">
+                    <table class="erp-tbl">
+                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+                      <tbody>${linesHtml || '<tr><td colspan="5" class="erp-text-muted erp-text-center">لا توجد سطور مفصلة</td></tr>'}</tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>`;
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            detailHost.innerHTML = `<div class="erp-card erp-card--subtle" style="margin-top:14px"><div class="erp-card__body erp-text-danger">تعذر جلب تفاصيل الفاتورة: ${esc((e && e.message) || 'خطأ')}</div></div>`;
+        }
+    }
+
+    async function printOrderReceipt(docNo) {
+        try {
+            const data = await fetchOrderDetail(docNo);
+            const o = (data && data.order) || {};
+            const lines = Array.isArray(o.lines) ? o.lines : [];
+            const linesHtml = lines.map((l, i) => `
+              <tr><td>${i + 1}</td><td style="text-align:start">${esc(l.name || '—')}</td>
+              <td>${formatInt(l.qty)}</td><td>${formatMoney(l.price).amount}</td><td>${formatMoney(l.total).amount}</td></tr>`).join('');
+            const w = openInAppReport(`فاتورة ${esc(o.doc_no || docNo)}`);
+            if (!w) { notify('تعذر فتح عارض الطباعة'); return; }
+            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>فاتورة ${esc(o.doc_no || docNo)}</title>
+            <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:20px;max-width:400px;margin:0 auto;color:#111}
+            h2{text-align:center;font-size:18px;margin:4px 0}h3{text-align:center;font-size:13px;color:#555;margin:2px 0 10px}
+            table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th,td{border:1px solid #333;padding:4px 6px;text-align:center}
+            th{background:#f0f0f0}.meta{font-size:12px;line-height:1.8}.meta b{display:inline-block;min-width:70px}
+            .tot{margin-top:10px;border:2px solid #333;padding:8px;font-size:13px}.tot div{display:flex;justify-content:space-between;margin:2px 0}
+            @media print{body{padding:0}}</style></head><body>
+            <h2>مطاعم الشرفة العالمي</h2><h3>فاتورة رقم: ${esc(o.doc_no || docNo)}</h3>
+            <div class="meta">
+              <div><b>التاريخ:</b> ${esc(o.doc_date || '')} — <b dir="ltr">${esc(String(o.doc_time || '').slice(0, 5))}</b></div>
+              <div><b>الكاشير:</b> ${esc(o.cashier_name || o.cashier_no || '')}</div>
+              <div><b>الوردية:</b> ${esc(o.shift_no || '—')}</div>
+              <div><b>المنطقة:</b> ${esc(o.zone_name || o.table_name || '—')}</div>
+            </div>
+            <table><thead><tr><th>#</th><th>الصنف</th><th>كمية</th><th>سعر</th><th>إجمالي</th></tr></thead><tbody>${linesHtml}</tbody></table>
+            <div class="tot">
+              <div><span>الإجمالي:</span><b>${formatMoney(o.total).amount}</b></div>
+              <div><span>الخصم:</span><b>${formatMoney(o.discount).amount}</b></div>
+              <div><span>الضريبة:</span><b>${formatMoney(o.vat).amount}</b></div>
+              <div><span>الصافي:</span><b>${formatMoney(o.net).amount}</b></div>
+              <div style="border-top:1px solid #333;padding-top:4px;margin-top:4px"><span>المدفوع:</span><b style="font-size:15px">${formatMoney(o.payed).amount}</b></div>
+              <div><span>نقدًا:</span><b>${formatMoney(o.pay_cash).amount}</b></div>
+              <div><span>شبكة:</span><b>${formatMoney(o.pay_network).amount}</b></div>
+            </div>
+            <p style="text-align:center;font-size:11px;margin-top:10px;color:#777">تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</p>
+            </body></html>`);
+            w.document.close();
+            w.focus();
+        } catch (e) {
+            notify('تعذر طباعة الأوردر: ' + ((e && e.message) || 'خطأ'));
+        }
+    }
+
     el.addEventListener('click', (event) => {
+        const viewBtn = event.target.closest('[data-v2-order-view]');
+        if (viewBtn) {openOrderDetail(viewBtn.dataset.v2OrderView); return;}
+        const printBtn = event.target.closest('[data-v2-order-print]');
+        if (printBtn) {printOrderReceipt(printBtn.dataset.v2OrderPrint); return;}
+        if (event.target.closest('[data-v2-order-close]')) {
+            const host3 = q('[data-v2-order-detail]');
+            if (host3) {host3.innerHTML = '';}
+            return;
+        }
         const t = event.target.closest('[data-v2-tab]');
         if (t) {
             tab = t.dataset.v2Tab;

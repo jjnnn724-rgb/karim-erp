@@ -16,10 +16,14 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
-const fileIdx = args.findIndex((a) => !a.startsWith('--'));
-const file = fileIdx > -1 ? args[fileIdx] : path.join(ROOT, 'logs', 'csp-violations.jsonl');
-const daysIdx = args.indexOf('--days');
-const days = daysIdx > -1 ? Number(args[daysIdx + 1]) || 7 : 7;
+let file = path.join(ROOT, 'logs', 'csp-violations.jsonl');
+let days = 7;
+for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--days') {days = Number(args[i + 1]) || 7; i++; continue;}
+    if (a.startsWith('--')) {continue;}
+    file = a;
+}
 
 if (!fs.existsSync(file)) {
     console.log(`لا يوجد ملف مخالفات بعد: ${file}`);

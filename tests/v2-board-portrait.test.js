@@ -16,7 +16,6 @@ const BOARD = path.join(APP, 'js', 'v2', 'board');
 const DATA_SRC = fs.readFileSync(path.join(BOARD, 'board-data.js'), 'utf8');
 const PORTRAIT_SRC = fs.readFileSync(path.join(BOARD, 'portrait.js'), 'utf8');
 const BOOT_SRC = fs.readFileSync(path.join(BOARD, 'boot.js'), 'utf8');
-const HTML_SRC = fs.readFileSync(path.join(APP, 'menu-board-v2.html'), 'utf8');
 const CSS_SRC = fs.readFileSync(path.join(APP, 'css', 'v2', 'erp-board.css'), 'utf8');
 const SCREEN_SRC = fs.readFileSync(path.join(APP, 'js', 'v2', 'screens', 'menu-board.js'), 'utf8');
 const LEGACY_SRC = fs.readFileSync(path.join(APP, 'js', 'menu-board.js'), 'utf8');
@@ -371,13 +370,12 @@ describe('الملفات — الفصل والعقود', () => {
         expect(DATA_SRC).not.toMatch(/document\.|window\.|localStorage|fetch\(/);
     });
 
-    test('الـHTML يربط أصوله بنسخة مراجعة، والشاشة تبقى مضيفةً للإدارة القديمة', () => {
-        expect(HTML_SRC).toMatch(/css\/v2\/erp-board\.css\?v=\d/);
-        expect(HTML_SRC).toMatch(/js\/v2\/board\/boot\.js\?v=\d/);
-        expect(HTML_SRC).not.toMatch(/\son[a-z]+\s*=\s*["']/);
+    test('الشاشة تبقى مضيفةً للإدارة القديمة وصفحة العرض القديمة', () => {
         expect(SCREEN_SRC).toContain('/app/menu-admin.html');
         expect(SCREEN_SRC).toContain('/app/menu-board.html');
-        expect(SCREEN_SRC).toContain('/app/menu-board-v2.html');
+        /* صفحة المنيو V2 حُذفت بقرار المالك — لا زرّ ولا رابط يشير إليها */
+        expect(SCREEN_SRC).not.toContain('menu-board-v2.html');
+        expect(SCREEN_SRC).not.toContain('v2board');
     });
 
     test('البوفيه صفحة واحدة: مقياسٌ محلي لا تقطيع، والملحَقة هي المقروءة لا المبتورة', () => {
@@ -396,16 +394,6 @@ describe('الملفات — الفصل والعقود', () => {
         expect(CSS_SRC).toMatch(/\.kb-bf-probe\s*\{[^}]*align-items:\s*flex-start/);
         expect(CSS_SRC).toMatch(/#board\[data-bf="1"\] \.kb-periods[^}]*display: none/);
         expect(CSS_SRC).toMatch(/\.kb-price-strip\s*\{[^}]*flex:\s*none/);
-    });
-
-    test('المفتاح مطفأ افتراضيًا ويقرأ من العنوان أولًا', () => {
-        const src = SCREEN_SRC.replace(/^export\s+/gm, '');
-        const api = new Function(`${src}\nreturn { boardV2Enabled };`)();
-        expect(api.boardV2Enabled('', null)).toBe(false);
-        expect(api.boardV2Enabled('', '1')).toBe(true);
-        expect(api.boardV2Enabled('', 'on')).toBe(true);
-        expect(api.boardV2Enabled('?v2board=0', '1')).toBe(false);
-        expect(api.boardV2Enabled('?x=1&v2board=true', null)).toBe(true);
     });
 
     test('نقاط الربط في portrait.js صحيحة ومطابقة لـ board-data', () => {

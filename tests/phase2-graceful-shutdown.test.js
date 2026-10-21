@@ -84,7 +84,6 @@ describe('Phase 2.4: Graceful Shutdown System', () => {
             // but we can verify the middleware structure
             
             // Create a mock that simulates shutdown state
-            const originalFn = isShuttingDown;
             // Since we can't modify the module's internal state easily,
             // we'll just verify the middleware exists and has right structure
             expect(typeof rejectDuringShutdown).toBe('function');

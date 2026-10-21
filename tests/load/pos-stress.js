@@ -42,7 +42,7 @@ if (!DB_NAME || DB_NAME === 'karim_erp') {
 }
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 256, rejectUnauthorized: false });
-function request(method, p, { token, body, headers } = {}) {
+function request(method, p, { token: _token, body, headers } = {}) {
     return new Promise((resolve) => {
         const data = body ? JSON.stringify(body) : null;
         const started = process.hrtime.bigint();

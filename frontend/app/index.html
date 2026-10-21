@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<script src="js/login-boot.js?v=4.9.77" defer></script>
+<script src="js/login-boot.js?v=4.9.82" defer></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -23,28 +23,28 @@
   <link rel="preload" as="style" href="css/offline-fonts.css">
   <link rel="stylesheet"
         href="css/offline-fonts.css"
-        media="print" onload="this.media='all'">
+        media="print" data-media-always>
   <noscript>
     <link rel="stylesheet"
           href="css/offline-fonts.css">
   </noscript>
 
-  <link rel="preload" as="style" href="css/design-tokens.css?v=4.9.77">
-  <link rel="preload" as="style" href="css/styles.css?v=4.9.77">
-  <link rel="preload" as="script" href="/app/js/app.js?v=4.9.77">
+  <link rel="preload" as="style" href="css/design-tokens.css?v=4.9.82">
+  <link rel="preload" as="style" href="css/styles.css?v=4.9.82">
+  <link rel="preload" as="script" href="/app/js/app.js?v=4.9.82">
   <link rel="preload" as="script" href="/app/js/icons.js">
 
-  <link rel="stylesheet" href="css/design-tokens.css?v=4.9.77">
-  <link rel="stylesheet" href="css/styles.css?v=4.9.77">
-  <link rel="stylesheet" href="css/mobile.css?v=4.9.77">
-  <link rel="stylesheet" href="css/realtime.css" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/scanner.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/design-tokens.css?v=4.9.82">
+  <link rel="stylesheet" href="css/styles.css?v=4.9.82">
+  <link rel="stylesheet" href="css/mobile.css?v=4.9.82">
+  <link rel="stylesheet" href="css/realtime.css" media="print" data-media-always>
+  <link rel="stylesheet" href="css/scanner.css" media="print" data-media-always>
   <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
-  <link rel="stylesheet" href="css/pro-theme.css?v=4.9.77">
+  <link rel="stylesheet" href="css/pro-theme.css?v=4.9.82">
 
-  <script src="/app/vendor/chart.umd.min.js?v=4.9.77" async></script>
-  <script src="/app/vendor/xlsx.full.min.js?v=4.9.77" async></script>
-  <script src="/app/vendor/html5-qrcode.min.js?v=4.9.77" async></script>
+  <script src="/app/vendor/chart.umd.min.js?v=4.9.82" async></script>
+  <script src="/app/vendor/xlsx.full.min.js?v=4.9.82" async></script>
+  <script src="/app/vendor/html5-qrcode.min.js?v=4.9.82" async></script>
   <script src="/socket.io/socket.io.js" defer></script>
 </head>
 
@@ -73,32 +73,32 @@
     </div>
   </div>
 
-  <button class="fab" id="fabBtn" onclick="toggleFabMenu()" data-tooltip="إجراءات سريعة" aria-label="إجراءات سريعة">
+  <button class="fab" id="fabBtn" data-karim-action="toggleFabMenu" data-tooltip="إجراءات سريعة" aria-label="إجراءات سريعة">
     <i class="ji" data-i="plus"></i>
   </button>
 
   <div class="fab-menu" id="fabMenu">
-    <div class="fab-action" onclick="go('dashboard',null);toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="لوحة التحكم">
+    <div class="fab-action" data-karim-action="go" data-karim-args='["dashboard",null]' data-karim-also="toggleFabMenu" role="button" tabindex="0" data-kb-activate aria-label="لوحة التحكم">
       <div class="fab-action-icon"><i class="ji" data-i="chart"></i></div>
       <span>لوحة التحكم</span>
     </div>
 
-    <div class="fab-action" onclick="showDispatchRequestModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="طلب صرف">
+    <div class="fab-action" data-karim-action="showDispatchRequestModal" data-karim-also="toggleFabMenu" role="button" tabindex="0" data-kb-activate aria-label="طلب صرف">
       <div class="fab-action-icon"><i class="ji" data-i="package"></i></div>
       <span>طلب صرف</span>
     </div>
 
-    <div class="fab-action" onclick="showAddRevenueModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إضافة إيراد">
+    <div class="fab-action" data-karim-action="showAddRevenueModal" data-karim-also="toggleFabMenu" role="button" tabindex="0" data-kb-activate aria-label="إضافة إيراد">
       <div class="fab-action-icon"><i class="ji" data-i="banknote"></i></div>
       <span>إضافة إيراد</span>
     </div>
 
-    <div class="fab-action" onclick="showAddExpenseModal();toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إضافة مصروف">
+    <div class="fab-action" data-karim-action="showAddExpenseModal" data-karim-also="toggleFabMenu" role="button" tabindex="0" data-kb-activate aria-label="إضافة مصروف">
       <div class="fab-action-icon"><i class="ji" data-i="wallet"></i></div>
       <span>إضافة مصروف</span>
     </div>
 
-    <div class="fab-action fab-action-danger" onclick="toggleFabMenu()" role="button" tabindex="0" data-kb-activate aria-label="إغلاق">
+    <div class="fab-action fab-action-danger" data-karim-action="toggleFabMenu" role="button" tabindex="0" data-kb-activate aria-label="إغلاق">
       <div class="fab-action-icon"><i class="ji" data-i="x"></i></div>
       <span>إغلاق</span>
     </div>
@@ -136,7 +136,7 @@
           >
           <button type="button" class="pwd-eye" id="lpEye" aria-label="إظهار كلمة المرور"
             style="position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0"
-            onclick="toggleLoginPassword(this)">
+            data-karim-action="toggleLoginPassword">
             <i class="ji" data-i="eye" style="font-size:17px"></i>
           </button>
         </div>
@@ -151,13 +151,13 @@
       </button>
 
       <div style="text-align:center;margin-top:14px">
-        <a href="#" onclick="showForgotPasswordModal();return false;" style="color:var(--gold,#c9a227);font-size:13px;text-decoration:none">
+        <a href="#" data-karim-action="showForgotPasswordModal" data-karim-prevent style="color:var(--gold,#c9a227);font-size:13px;text-decoration:none">
           <i class="ji" data-i="key"></i> نسيت كلمة المرور؟
         </a>
       </div>
 
       <div style="text-align:center;margin-top:10px">
-        <button class="btn btn-sm" id="pwaInstallBtn" onclick="pwaInstall()" style="display:none"><i class="ji" data-i="arrow-down"></i> ثبّت التطبيق على الجهاز</button>
+        <button class="btn btn-sm" id="pwaInstallBtn" data-karim-action="pwaInstall" style="display:none"><i class="ji" data-i="arrow-down"></i> ثبّت التطبيق على الجهاز</button>
       </div>
 
       <div class="login-hint">
@@ -184,17 +184,17 @@
         <div id="navContainer"></div>
 
         <div class="sidebar-footer">
-          <button class="sb-toggle" onclick="toggleLang()">
+          <button class="sb-toggle" data-karim-action="toggleLang">
             <i class="ji" data-i="globe"></i> English
           </button>
-          <button class="sb-toggle" onclick="toggleTheme()">
+          <button class="sb-toggle" data-karim-action="toggleTheme">
             <i class="ji" data-i="sun"></i> <span id="themeToggleLabel">الوضع الفاتح</span>
           </button>
-          <button class="sb-toggle" onclick="toggleSidebar()">
+          <button class="sb-toggle" data-karim-action="toggleSidebar">
             <i class="ji" data-i="menu"></i> القائمة
           </button>
 
-          <button class="sb-toggle sb-logout" onclick="doLogout()">
+          <button class="sb-toggle sb-logout" data-karim-action="doLogout">
             <i class="ji" data-i="log-out"></i> خروج
           </button>
         </div>
@@ -205,14 +205,14 @@
           <div class="page-title" id="pageTitle">لوحة التحكم</div>
 
           <div class="topbar-right">
-            <div class="notification-bell" onclick="showNotifications()" data-tooltip="الإشعارات" role="button" tabindex="0" data-kb-activate aria-label="الإشعارات">
+            <div class="notification-bell" data-karim-action="showNotifications" data-tooltip="الإشعارات" role="button" tabindex="0" data-kb-activate aria-label="الإشعارات">
               <i class="ji" data-i="bell"></i>
               <span class="badge bdg-red" id="notifBadge" style="display:none">0</span>
             </div>
 
-            <div class="topbar-btn" onclick="toggleLang()" role="button" tabindex="0" data-kb-activate aria-label="تبديل اللغة"><i class="ji" data-i="globe"></i> EN</div>
-            <div class="topbar-btn" onclick="toggleTheme()" data-tooltip="تبديل المظهر" role="button" tabindex="0" data-kb-activate aria-label="تبديل المظهر"><i class="ji" data-i="moon"></i></div>
-            <div class="topbar-btn" onclick="showChangeMyPasswordModal()" data-tooltip="تغيير كلمة المرور" role="button" tabindex="0" data-kb-activate aria-label="تغيير كلمة المرور"><i class="ji" data-i="key"></i></div>
+            <div class="topbar-btn" data-karim-action="toggleLang" role="button" tabindex="0" data-kb-activate aria-label="تبديل اللغة"><i class="ji" data-i="globe"></i> EN</div>
+            <div class="topbar-btn" data-karim-action="toggleTheme" data-tooltip="تبديل المظهر" role="button" tabindex="0" data-kb-activate aria-label="تبديل المظهر"><i class="ji" data-i="moon"></i></div>
+            <div class="topbar-btn" data-karim-action="showChangeMyPasswordModal" data-tooltip="تغيير كلمة المرور" role="button" tabindex="0" data-kb-activate aria-label="تغيير كلمة المرور"><i class="ji" data-i="key"></i></div>
 
             <a
               href="/app/v2.html?live=1"
@@ -249,7 +249,7 @@
             <button
               class="btn btn-gold btn-sm"
               id="quickDispatchBtn"
-              onclick="showDispatchRequestModal()"
+              data-karim-action="showDispatchRequestModal"
               style="display:none"
             >
               <i class="ji" data-i="package"></i> طلب صرف
@@ -266,15 +266,17 @@
   <div id="modals"></div>
 
   <script src="js/icons.js" defer></script>
-  <script src="js/vendor/qrcode.min.js?v=4.9.77" defer></script>
+  <script src="js/vendor/qrcode.min.js?v=4.9.82" defer></script>
   <script src="js/db-constraints-client.js" defer></script>
-  <script src="js/karim-i18n.js?v=4.9.77" defer></script>
+  <script src="js/karim-i18n.js?v=4.9.82" defer></script>
       <!-- حراسة قراءة Excel: حدّ حجم/صفوف قبل القراءة (يفشل بلا صمت) -->
+    <script src="js/core/action-dispatch.js?v=4.9.82" defer></script>
+
     <script src="js/core/xlsx-guard.js?v=4.9.181"></script>
-    <script type="module" src="js/main.js?v=4.9.77"></script>
-  <script src="js/app.js?v=4.9.77" defer></script>
+    <script type="module" src="js/main.js?v=4.9.82"></script>
+  <script src="js/app.js?v=4.9.82" defer></script>
   <script src="js/scanner.js" defer></script>
-  <script src="js/realtime.js?v=4.9.77" defer></script>
+  <script src="js/realtime.js?v=4.9.82" defer></script>
   <script src="js/core/i18n-auto-catalog.js" defer></script>
   <script src="js/core/i18n-auto.js" defer></script>
 </body>

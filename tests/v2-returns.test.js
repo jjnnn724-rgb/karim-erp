@@ -118,7 +118,7 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
     test('مشي الصفحات: الصفحة القصيرة تقصر — وtotalPages يقفل', async () => {
         const big = repoStub({ data: Array.from({ length: 1000 }, (_, i) => ({ id: i })), pagination: { totalPages: 1 } });
         await big.repo.fetchKitchenReturns();
-        expect(big.calls).toEqual(['/kitchenReturns?page=1&limit=1000&sort=id&order=desc']);
+        expect(big.calls).toEqual(['/kitchenReturns?page=1&limit=1000&sort=id&order=desc&v2_period=month']);
         const short = repoStub({ data: [{ id: 1 }] });
         await short.repo.fetchInventoryTx();
         expect(short.calls).toHaveLength(1);

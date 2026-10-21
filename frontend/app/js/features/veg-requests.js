@@ -13,7 +13,6 @@ let _vegPriority = 'normal';    // 'normal' | 'urgent'
 let _vegCatalog = null;         // {categories:[{key,label,items:[{name,unit}]}], units:[]}
 let _vegCustomSeq = 0;
 let _vegFilter = '';            // فلتر سجل الطلبات
-let _vegLastCreated = null;     // آخر طلب أُرسل (شاشة النجاح)
 
 function vegCanCreate() { return ['sous_chef', 'admin', 'owner'].includes(STATE.currentUser?.role); }
 function vegCanPrice() { return ['warehouse', 'admin', 'owner'].includes(STATE.currentUser?.role); }
@@ -137,7 +136,7 @@ function vegRenderNewTab() {
     const catsHtml = (_vegCatalog?.categories || []).map((cat) => `
       <div class="veg-cat-title"><i class=ji data-i=leaf></i> ${esc(cat.label)}</div>
       <div class="veg-grid">
-        ${cat.items.map((it, i) => `
+        ${cat.items.map((it, _i) => `
           <div class="veg-item" data-veg-item="${esc(it.name)}" data-veg-cat="${esc(cat.key)}">
             <div class="vi-name"><span>${esc(it.name)}</span><span class="vi-unit">${esc(it.unit)}</span></div>
             <div class="veg-row">
@@ -261,7 +260,6 @@ async function vegSendRequest() {
             method: 'POST',
             body: JSON.stringify({ items, notes, priority: _vegPriority }),
         });
-        _vegLastCreated = res.request;
         toast(`تم إرسال الطلب ${res.request.request_no} للمخازن ✔`, 'success');
         vegShowSuccess(res.request);
         vegLoadStats();

@@ -15,6 +15,7 @@ const VIEWER = path.join(V2, 'report-viewer.js');
 const CSS = path.join(APP, 'css', 'v2', 'erp-report-viewer.css');
 const PAGE = path.join(APP, 'v2.html');
 const LEGACY = path.join(APP, 'js', 'features', 'report-viewer.js');
+const PRINT_BRANDING = path.join(APP, 'js', 'core', 'print-branding.js');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const pageRev = () => (read(PAGE).match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
@@ -92,6 +93,37 @@ describe('عارض المستندات — الطباعة والوصولية', ()
         expect(v).not.toContain('insertAdjacentHTML');
     });
 
+    test('adds the restaurant logo to generated and same-origin report documents', () => {
+        const branding = read(PRINT_BRANDING);
+        expect(branding).toContain("const LOGO_PATH = 'assets/al-shurfa-logo.png'");
+        expect(branding).toContain("doc.querySelector('[data-company-print-logo]");
+        expect(branding).toContain("window.addEventListener('beforeprint'");
+        expect(read(VIEWER)).toContain(`import { addV2PrintBranding } from './print-branding.js?v=${pageRev()}'`);
+        expect(read(VIEWER)).toContain('addV2PrintBranding(frame.contentDocument)');
+        expect(read(LEGACY)).toMatch(/import \{ addCompanyPrintLogo \} from '\.\.\/core\/print-branding\.js\?v=\d+\.\d+\.\d+'/);
+        expect(read(LEGACY)).toContain('addCompanyPrintLogo(frame.contentDocument)');
+    });
+
+    test('V2 print uses the uploaded settings logo without changing legacy branding', () => {
+        const branding = read(path.join(V2, 'print-branding.js'));
+        expect(branding).toContain('export function setV2PrintLogo(value)');
+        expect(branding).toContain('export function installV2PrintBranding()');
+        expect(branding).toContain('configuredLogo');
+        expect(branding).toContain("document.querySelector('[data-v2-shell-logo]')");
+        const layout = read(path.join(V2, 'layout', 'app-layout.js'));
+        expect(layout).toContain('data-v2-shell-logo');
+        expect(layout).toContain('src="assets/al-shurfa-logo.png"');
+        expect(layout).toContain('data-v2-shell-logo-fallback');
+        expect(layout).toContain('data-v2-shell-logo-fallback data-i="layout-dashboard" hidden');
+        expect(branding).toContain('image.hidden = false');
+        expect(branding).toContain('image.onerror = () =>');
+        expect(branding).toContain("image.src = logoSource();");
+        const preview = read(path.join(V2, 'preview.js'));
+        expect(preview).toContain('fetchMainSettingsFull');
+        expect(preview).toContain('setV2PrintLogo(current && current.logoB64)');
+        expect(preview).toContain('installV2PrintBranding()');
+    });
+
     test('العارض واجهة فقط — لا شبكة ولا fetch', () => {
         const v = read(VIEWER).replace(/\/\*[\s\S]*?\*\//g, '');
         expect(v).not.toMatch(/[^a-zA-Z]fetch\(/);
@@ -144,7 +176,7 @@ describe('عارض المستندات — الربط بالشاشات', () => {
         expect(src).not.toContain("'_blank', 'noopener'");
     });
 
-    test('العارض القديم لم يُمسّ', () => {
+    test('يبقى العارض القديم متوافقًا مع الواجهة العامة', () => {
         expect(read(LEGACY)).toContain('export function openInAppReport(title, url)');
         expect(read(LEGACY)).toContain("window.openInAppReport = openInAppReport");
     });

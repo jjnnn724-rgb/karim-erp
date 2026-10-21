@@ -175,6 +175,17 @@
 
 .erp-th--sel, .erp-td--sel { width: 40px; text-align: center !important; padding-inline: 0; }
 
+/* Totals row — the extra report tables paint their sums here on screen, and
+   the same markup prints inside the report document (reports.js xTable). */
+.erp-table__grid tfoot td {
+  height: 36px;
+  background: var(--erp-surface-sunken);
+  border-block-start: 2px solid var(--erp-border-strong);
+  border-block-end: 0;
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-semibold);
+}
+
 /* Sticky first column only when the row is horizontally scrollable —
    keeps the identity column visible without a JS offset. */
 .erp-table__grid th:first-child,

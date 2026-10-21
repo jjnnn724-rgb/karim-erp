@@ -17,7 +17,8 @@
  *     kitchenReturns row columns (schema-registry.js:459):
  *       id, date, items, status, notes, reason, dispatchId, deptCode,
  *       deptName, totalValue, createdBy.
- *     walk caps at 8 pages newest-first (documented in the UI).
+ *     walk is filtered to the current Riyadh month before pagination and
+ *     caps at 8 pages newest-first (documented in the UI).
  *
  *  B) purchase-requests registers moved OUT of this file (W1-3): the whole
  *     PR cycle — reads AND the seven write doors — lives in
@@ -46,7 +47,7 @@
  *   approval data we keep as RAW read-only facts.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 export function isoDay(offsetDays = 0, base = new Date()) {
     const d = new Date(base);
@@ -62,10 +63,14 @@ export function firstOfMonth(now = new Date()) {
 
 export const WALK_PAGES = 8;
 
-async function walkEntity(entity) {
+async function walkEntity(entity, options = {}) {
     const rows = [];
     for (let page = 1; page <= WALK_PAGES; page += 1) {
-        const res = await apiFetch(`/${entity}?page=${page}&limit=1000&sort=id&order=desc`);
+        const params = new URLSearchParams({
+            page: String(page), limit: '1000', sort: 'id', order: 'desc',
+        });
+        if (options.currentMonth) {params.set('v2_period', 'month');}
+        const res = await apiFetch(`/${entity}?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data
             : (Array.isArray(res) ? res : []);
         rows.push(...batch);
@@ -75,8 +80,8 @@ async function walkEntity(entity) {
     return rows;
 }
 
-export const fetchInventoryTx = () => walkEntity('inventoryTx');
-export const fetchKitchenReturns = () => walkEntity('kitchenReturns');
+export const fetchInventoryTx = () => walkEntity('inventoryTx', { currentMonth: true });
+export const fetchKitchenReturns = () => walkEntity('kitchenReturns', { currentMonth: true });
 
 const num = (v) => {
     const n = Number(v);

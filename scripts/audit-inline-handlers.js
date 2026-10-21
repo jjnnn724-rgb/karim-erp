@@ -148,12 +148,20 @@ for (const f of classicFiles) {
 
 /** ٥) المسح: كل معالج سطري يشير إلى معرّف */
 const findings = [];
+/** سطر داخل تعليق (توثيق/شرح) لا ينفَّذ ⇒ لا يُفحص. */
+function isCommentLine(src, index) {
+    const lineStart = src.lastIndexOf('\n', index) + 1;
+    const lineEnd = src.indexOf('\n', index);
+    const line = src.slice(lineStart, lineEnd < 0 ? src.length : lineEnd).trim();
+    return line.startsWith('*') || line.startsWith('//') || line.startsWith('<!--') || line.startsWith('#');
+}
 for (const f of files) {
     const src = fs.readFileSync(f, 'utf8');
     if (!HANDLER_RE.test(src)) {continue;}
     HANDLER_RE.lastIndex = 0;
     let hit;
     while ((hit = HANDLER_RE.exec(src))) {
+        if (isCommentLine(src, hit.index)) {continue;}
         const name = hit[1];
         if (BUILTINS.has(name)) {continue;}
         const line = src.slice(0, hit.index).split('\n').length;
@@ -190,6 +198,37 @@ for (const f of files) {
         const fromExposed = [...exposedModules.entries()].some(([, set]) => set.has(name));
         if (!fromClassic && !fromExposed && !explicitGlobals.has(name)) {
             findings.push({ file: rel(f), line, handler: name, reason: 'لا تُعرف في أي نطاق عام' });
+        }
+    }
+}
+
+/** ٦) أوامر التفويض (data-karim-action / data-karim-also) — نفس منطق المعالجات
+ *  السطرية: اسم غير موجود = زر صامت لا يفعل شيئًا. */
+for (const f of files) {
+    const src = fs.readFileSync(f, 'utf8');
+    for (const attr of ['data-karim-action', 'data-karim-also']) {
+        const re = new RegExp(`${attr}\\s*=\\s*["']([A-Za-z_$][\\w$]*)["']`, 'g');
+        let hit;
+        while ((hit = re.exec(src))) {
+            if (isCommentLine(src, hit.index)) {continue;}
+            const name = hit[1];
+            if (BUILTINS.has(name)) {continue;}
+            const line = src.slice(0, hit.index).split('\n').length;
+            const inThisFile = (definedIn.get(f) || new Set()).has(name);
+            if (inThisFile && classicFiles.has(f)) {continue;}
+            if (explicitGlobals.has(name)) {continue;}
+            const exported = exposedModules.get(f);
+            if (exported) {
+                if (!exported.has(name)) {
+                    findings.push({ file: rel(f), line, handler: name, reason: 'وحدة تُنسخ إلى window — والدالة غير مُصدَّرة' });
+                }
+                continue;
+            }
+            const ok = [...classicGlobals.values()].some((set) => set.has(name))
+                || [...exposedModules.values()].some((set) => set.has(name));
+            if (!ok) {
+                findings.push({ file: rel(f), line, handler: name, reason: 'أمر تفويض يشير إلى دالة غير موجودة' });
+            }
         }
     }
 }

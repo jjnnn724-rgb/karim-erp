@@ -46,7 +46,7 @@
     {
       "name": "كاشير المطعم",
       "short_name": "الكاشير",
-      "url": "/app/pos.html",
+      "url": "/app/cashier/",
       "icons": [
         {
           "src": "/app/assets/icon-192.png",

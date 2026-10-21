@@ -26,7 +26,7 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 const num = (v) => {
     const n = Number(v);
@@ -39,11 +39,15 @@ export function invoiceRemaining(inv = {}) {
     return Math.max(0, num(inv.totalAmount) - num(inv.paidAmount));
 }
 
-/** Bounded entity walk (5 × 1000), same shape as the other registers. */
+/** Bounded walk for current-month invoices (5 × 1000). */
 export async function fetchPurchaseInvoices() {
     const rows = [];
     for (let page = 1; page <= 5; page += 1) {
-        const res = await apiFetch(`/purchaseInvoices?page=${page}&limit=1000&sort=id&order=asc`);
+        const params = new URLSearchParams({
+            page: String(page), limit: '1000', sort: 'id', order: 'asc',
+            v2_period: 'month',
+        });
+        const res = await apiFetch(`/purchaseInvoices?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data
             : (Array.isArray(res) ? res : []);
         rows.push(...batch);

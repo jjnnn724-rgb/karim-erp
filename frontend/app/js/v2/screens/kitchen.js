@@ -30,26 +30,27 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.169';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.169';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.169';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.181';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.181';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.181';
+import { openInAppReport } from '../report-viewer.js?v=4.9.181';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
     capNote, KITCHEN_WINDOW,
     KITCHEN_WRITE_ROLES, KITCHEN_APPROVE_ROLES, GOVERNANCE_LIMITS,
     fetchKitchenStock, fetchProductionMaterials, fetchProductionDestinations, fetchProductionProducts,
-    fetchKitchenAudits, fetchKitchenDocuments,
+    fetchKitchenAudits, fetchKitchenDocuments, fetchKitchenCostCards,
     createProduction, receiveKitchenTransfer, createKitchenAudit,
     countKitchenAudit, submitKitchenAudit, approveKitchenAudit,
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.169';
+} from '../data/kitchen-repo.js?v=4.9.181';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.169';
+} from '../signature.js?v=4.9.181';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -173,7 +174,28 @@ function writeBtn(attr, icon, label) {
             </button>`;
 }
 
-function template(canWrite) {
+/** أول الشهر → اليوم (تقويم الجهاز) — نفس أساس صفحة المطبخ القديمة. */
+function costDefaultRange() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const ym = `${d.getFullYear()}-${p(d.getMonth() + 1)}`;
+    return { from: `${ym}-01`, to: `${ym}-${p(d.getDate())}` };
+}
+
+/** عتبات صفحة المطبخ القديمة: >85 أحمر (خسارة)، >75 برتقالي، وإلا أخضر. */
+function costTone(pct) {
+    if (pct == null) {return 'erp-text-muted';}
+    if (pct > 85) {return 'erp-text-danger';}
+    if (pct > 75) {return 'erp-text-warning';}
+    return 'erp-text-success';
+}
+
+function costMoney(v) {
+    const m = formatMoney(v);
+    return `<span class="erp-num" dir="ltr">${m.amount}</span>`;
+}
+
+function template(canWrite, costFrom, costTo) {
     return `
       <div class="erp-v2-kitchen">
         <div class="erp-dash-head">
@@ -216,6 +238,40 @@ function template(canWrite) {
               تُنشأ من زر «أمر إنتاج» أعلاه: ثلاث خطوات، والباب يحسم الرصيد والتوزيع.
             </p>
             <div data-v2-batches></div>
+          </div>
+        </section>
+
+        <section class="erp-card erp-v2-cost" data-v2-costcards>
+          <div class="erp-card__head">
+            <div class="erp-v2-cost__heading">
+              <h3 class="erp-card__title">بطاقات التكلفة
+                <span class="erp-eyebrow" dir="ltr" lang="en">Cost Cards</span>
+              </h3>
+              <p>الصرف الفعلي (أذون الصرف − المرتجعات + مكوّنات أوامر الإنتاج) مقابل الإيراد الفعلي من الكاشير.</p>
+            </div>
+            <div class="erp-v2-cost__filters" role="group" aria-label="فترة بطاقات التكلفة">
+              <label class="erp-v2-cost__date" for="v2kit-cost-from">
+                <span>من تاريخ</span>
+                <input class="erp-input erp-input--ltr" id="v2kit-cost-from" type="date" value="${esc(costFrom)}" data-v2-cost-from>
+              </label>
+              <label class="erp-v2-cost__date" for="v2kit-cost-to">
+                <span>إلى تاريخ</span>
+                <input class="erp-input erp-input--ltr" id="v2kit-cost-to" type="date" value="${esc(costTo)}" data-v2-cost-to>
+              </label>
+              <div class="erp-v2-cost__actions">
+                <button type="button" class="erp-btn erp-btn--sm erp-btn--primary erp-no-print" data-v2-cost-reload>
+                  <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="erp-card__body erp-stack">
+            <p class="erp-text-sm erp-text-muted erp-no-print">
+              قراءة فقط من <span class="erp-addr" dir="ltr">/api/kitchen/production/cost-cards</span>
+              (kitchen-production-routes.js:170) — الصرف من دفتر الحركات بمتوسط التكلفة وقت الاعتماد،
+              والإيراد من إيرادات الكاشير المرتبطة بالقسم.
+            </p>
+            <div data-v2-costcards-board aria-live="polite"></div>
           </div>
         </section>
 
@@ -330,8 +386,14 @@ export function mountKitchenScreen(host, ctx = {}) {
     let busy = false;            // one decision at a time
     let prodState = null;        // نموذج أمر الإنتاج: قوائم الخادم + صفوف الحالة
     let transferState = null;    // نموذج الاستلام: الرصيد + الصفوف
+    const costInit = costDefaultRange();
+    let costFrom = costInit.from;
+    let costTo = costInit.to;
+    let costCards = [];
+    let costLoading = false;
+    let costError = '';
 
-    host.insertAdjacentHTML('beforeend', template(canWrite));
+    host.insertAdjacentHTML('beforeend', template(canWrite, costFrom, costTo));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
@@ -348,6 +410,7 @@ export function mountKitchenScreen(host, ctx = {}) {
     const auditCountEl = q('[data-v2-auditcount]');
     const docCountEl = q('[data-v2-doccount]');
     const govNoteEl = q('[data-v2-gov-note]');
+    const costBoardEl = q('[data-v2-costcards-board]');
 
     const table = createDataTable({
         caption: 'أوامر الإنتاج — أحدث ما أرسله الخادم',
@@ -702,6 +765,213 @@ export function mountKitchenScreen(host, ctx = {}) {
                 readGovernance();
             }
         }
+    }
+
+    /* ── بطاقات التكلفة (قراءة فقط): الصرف الفعلي مقابل الإيراد ─────────── */
+
+    function costQty(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? formatQty(n) : '—';
+    }
+
+    function costMoneyText(v) {
+        return formatMoney(v).amount;
+    }
+
+    function costKpi(label, body, icon, hint) {
+        return `<li class="erp-kpi">
+          <div class="erp-kpi__top">
+            <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(icon)}"></i></span>
+            <span class="erp-kpi__label">${esc(label)}</span>
+          </div>
+          <div class="erp-kpi__value">${body}</div>
+          <div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(hint)}</span></div>
+        </li>`;
+    }
+
+    function costCardHtml(c) {
+        const cons = c.consumption || {};
+        const prod = c.production || {};
+        const items = Array.isArray(cons.items) ? cons.items : [];
+        const lines = Array.isArray(prod.lines) ? prod.lines : [];
+        const ratio = c.costRatio == null ? null : Number(c.costRatio);
+        const ratioText = ratio == null ? '<span class="erp-text-muted">—</span>'
+            : `<span class="erp-num ${costTone(ratio)}" dir="ltr">${Math.round(ratio * 10) / 10}%</span>`;
+
+        const linesHtml = lines.length ? `
+            <div class="erp-table__scroll" style="max-height:320px;overflow:auto">
+              <table class="erp-table__grid">
+                <thead><tr><th>أمر إنتاج</th><th>التوزيع (موزّع / مخطط)</th><th>تكلفة الدفعة</th><th>نصيب الجهة</th><th>التاريخ</th></tr></thead>
+                <tbody>${lines.map((p) => `<tr>
+                  <td>${esc(p.product_name || `دفعة #${p.batch_id}`)}</td>
+                  <td class="erp-tnum" dir="ltr">${costQty(p.allocated_qty)} / ${costQty(p.planned_qty)}</td>
+                  <td class="erp-tnum" dir="ltr">${costMoney(p.batch_cost)}</td>
+                  <td class="erp-tnum" dir="ltr">${costMoney(p.cost)}</td>
+                  <td class="erp-tnum" dir="ltr">${esc(String(p.prod_date || '').slice(0, 10))}</td>
+                </tr>`).join('')}</tbody>
+              </table>
+            </div>` : '';
+
+        const itemsHtml = items.length ? `
+            <div class="erp-table__scroll" style="max-height:360px;overflow:auto">
+              <table class="erp-table__grid">
+                <thead><tr><th>الصنف المصروف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>التاريخ</th><th>الإذن</th></tr></thead>
+                <tbody>${items.slice(0, 25).map((x) => `<tr>
+                  <td>${esc(x.name)}</td>
+                  <td class="erp-tnum" dir="ltr">${costQty(x.qty)} ${esc(x.unit || '')}</td>
+                  <td class="erp-tnum" dir="ltr">${costMoney(x.cost)}</td>
+                  <td class="erp-tnum" dir="ltr">${costMoney(x.value)}</td>
+                  <td class="erp-tnum" dir="ltr">${esc(String(x.date || '').slice(0, 10))}</td>
+                  <td class="erp-tnum" dir="ltr">#${esc(String(x.dispatch_no || ''))}</td>
+                </tr>`).join('')}</tbody>
+              </table>
+            </div>` : '<p class="erp-text-sm erp-text-muted">لا صرف مسجل في هذه الفترة.</p>';
+
+        const meta = `أصناف الصرف: ${formatInt(items.length)} · أوامر الإنتاج الموزعة: ${formatInt(lines.length)}`
+            + (Number(cons.returned) ? ` · مرتجعات مخصومة: ${costMoney(cons.returned)}` : '');
+
+        return `<article class="erp-card erp-card--subtle" style="border-block-start:4px solid ${esc(c.color || '#c9a227')}">
+          <div class="erp-card__head">
+            <div class="erp-v2-cost__heading">
+              <h4 class="erp-card__title">${esc(c.icon || '')} ${esc(c.name || c.code)}
+                <span class="erp-text-sm erp-text-muted">(${esc(c.from || costFrom)} — ${esc(c.to || costTo)})</span>
+              </h4>
+              <p>${esc(meta)}</p>
+            </div>
+            <span class="erp-grow"></span>
+            <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-cost-print="${esc(c.code)}">
+              <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة البطاقة</span>
+            </button>
+          </div>
+          <div class="erp-card__body erp-stack">
+            <ul class="erp-kpis">
+              ${costKpi('الصرف الفعلي (بعد المرتجعات)', costMoney(cons.gross), 'package', 'أذون الصرف − مرتجعات المطبخ')}
+              ${costKpi('تكلفة أوامر الإنتاج', costMoney(prod.cost), 'cooking-pot', 'تكلفة الدفتر × نسبة التوزيع')}
+              ${costKpi('الإيراد الفعلي', costMoney(c.revenue), 'banknote', 'إيرادات الكاشير المرتبطة بالقسم')}
+              ${costKpi('نسبة التكلفة / الصافي', ratioText, 'chart', `صافي ${costMoneyText(c.net)}`)}
+            </ul>
+            ${linesHtml}
+            ${itemsHtml}
+          </div>
+        </article>`;
+    }
+
+    function paintCostCards() {
+        if (!costBoardEl) {return;}
+        if (costError) {
+            costBoardEl.innerHTML = `<div class="erp-state" role="alert">
+              <span class="erp-state__title">تعذّر تحميل بطاقات التكلفة</span>
+              <span>${esc(costError)}</span>
+              <button type="button" class="erp-btn erp-btn--sm" data-v2-cost-reload>إعادة المحاولة</button>
+            </div>`;
+            return;
+        }
+        if (costLoading && !costCards.length) {
+            costBoardEl.innerHTML = '<p class="erp-text-sm erp-text-muted" role="status">جارٍ تحميل بطاقات التكلفة…</p>';
+            return;
+        }
+        if (!costCards.length) {
+            costBoardEl.innerHTML = `<div class="erp-state" role="status">
+              <span class="erp-state__title">لا بطاقات في هذه الفترة</span>
+              <span>الخادم لم يُرجع بطاقة — لا رقم مخترع لصف غائب.</span>
+            </div>`;
+            return;
+        }
+        costBoardEl.innerHTML = costCards.map(costCardHtml).join('');
+    }
+
+    async function readCostCards() {
+        if (costLoading) {return;}
+        const fromEl = q('[data-v2-cost-from]');
+        const toEl = q('[data-v2-cost-to]');
+        if (fromEl && fromEl.value) {costFrom = fromEl.value;}
+        if (toEl && toEl.value) {costTo = toEl.value;}
+        if (costFrom && costTo && costFrom > costTo) {
+            costError = 'تاريخ البداية بعد النهاية — صحّح الفترة.';
+            paintCostCards();
+            return;
+        }
+        costLoading = true;
+        costError = '';
+        paintCostCards();
+        try {
+            const res = await fetchKitchenCostCards({ from: costFrom, to: costTo });
+            if (!el.isConnected) {return;}
+            costCards = res.cards;
+            if (res.from) {costFrom = res.from;}
+            if (res.to) {costTo = res.to;}
+            paintCostCards();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            costCards = [];
+            costError = readErrorMessage(e, 'بطاقات التكلفة');
+            paintCostCards();
+        } finally {
+            costLoading = false;
+        }
+    }
+
+    function printCostCard(code) {
+        const c = costCards.find((x) => String(x.code) === String(code));
+        if (!c) {notify('حمّل البطاقات أولًا ثم أعد الطباعة'); return;}
+        const cons = c.consumption || {};
+        const prod = c.production || {};
+        const items = Array.isArray(cons.items) ? cons.items : [];
+        const lines = Array.isArray(prod.lines) ? prod.lines : [];
+        const ratio = c.costRatio == null ? '—' : `${Math.round(Number(c.costRatio) * 10) / 10}%`;
+        const prodRows = lines.map((p) => `<tr>
+            <td>${esc(p.product_name || `دفعة #${p.batch_id}`)}</td>
+            <td>${costQty(p.allocated_qty)} / ${costQty(p.planned_qty)}</td>
+            <td>${costMoneyText(p.batch_cost)}</td>
+            <td>${costMoneyText(p.cost)}</td>
+            <td>${esc(String(p.prod_date || '').slice(0, 10))}</td>
+          </tr>`).join('');
+        const itemRows = items.map((x) => `<tr>
+            <td>${esc(x.name)}</td>
+            <td>${costQty(x.qty)} ${esc(x.unit || '')}</td>
+            <td>${costMoneyText(x.cost)}</td>
+            <td>${costMoneyText(x.value)}</td>
+            <td>${esc(String(x.date || '').slice(0, 10))}</td>
+            <td>#${esc(String(x.dispatch_no || ''))}</td>
+          </tr>`).join('') || '<tr><td colspan="6">لا صرف</td></tr>';
+
+        const w = openInAppReport(`بطاقة تكلفة — ${c.name || c.code}`);
+        if (!w) {notify('اسمح بالنوافذ المنبثقة لطباعة البطاقة'); return;}
+        w.document.open();
+        w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<title>بطاقة تكلفة — ${esc(c.name || c.code)}</title><style>
+body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;margin:0;color:#1a1a2e}
+.header{background:#0f172a;color:#fff;padding:18px 26px}
+.header h1{margin:0;font-size:19px;color:#f5d76e}
+.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+.container{padding:18px 26px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
+.summary .card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:center}
+.summary small{display:block;color:#64748b;font-size:11px}
+.summary b{display:block;font-size:16px;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{background:#0f172a;color:#f5d76e;padding:7px;font-size:11px}
+td{padding:6px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
+h3{margin:14px 0 0;font-size:13px}
+p.foot{margin-top:14px;text-align:center;color:#94a3b8;font-size:11px}
+@media print{.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+</style></head><body>
+<div class="header"><h1>بطاقة تكلفة — ${esc(c.name || c.code)}</h1>
+<p>الفترة ${esc(c.from || costFrom)} — ${esc(c.to || costTo)}</p></div>
+<div class="container">
+<div class="summary">
+  <div class="card"><small>الصرف الفعلي (بعد المرتجعات)</small><b style="color:#c0392b">${costMoneyText(cons.gross)}</b></div>
+  <div class="card"><small>تكلفة أوامر الإنتاج</small><b style="color:#8B5CF6">${costMoneyText(prod.cost)}</b></div>
+  <div class="card"><small>الإيراد الفعلي</small><b style="color:#9a7417">${costMoneyText(c.revenue)}</b></div>
+  <div class="card"><small>نسبة التكلفة</small><b>${esc(ratio)}</b><small>الصافي ${costMoneyText(c.net)}</small></div>
+</div>
+${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3><table><thead><tr><th>أمر إنتاج</th><th>التوزيع</th><th>تكلفة الدفعة</th><th>نصيب الجهة</th><th>التاريخ</th></tr></thead><tbody>${prodRows}</tbody></table>` : ''}
+<h3>الصرف المفصل من أذون الصرف</h3>
+<table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>التاريخ</th><th>الإذن</th></tr></thead><tbody>${itemRows}</tbody></table>
+<p class="foot">المرتجعات المسجلة: ${costMoneyText(cons.returned)} (مخصومة) · تم التوليد: ${esc(new Date().toLocaleString('ar-EG'))}</p>
+</div></body></html>`);
+        w.document.close();
+        w.print();
     }
 
     /* ── اللوحة: غلاف ومكوّنات مشتركة (نفس نمط شاشة 13) ────────────────── */
@@ -1349,6 +1619,10 @@ export function mountKitchenScreen(host, ctx = {}) {
     /* ── التفويض: نقرة/كتابة واحدة تخدم كل اللوحات (CSP: لا معالج سطري) ── */
 
     el.addEventListener('click', (event) => {
+        const costReload = event.target.closest('[data-v2-cost-reload]');
+        if (costReload) {readCostCards(); return;}
+        const costPrint = event.target.closest('[data-v2-cost-print]');
+        if (costPrint) {printCostCard(costPrint.dataset.v2CostPrint); return;}
         const stateBtn = event.target.closest('[data-v2-state]');
         if (stateBtn) {
             if (stateBtn.dataset.v2State === stateFilter) {return;}
@@ -1416,8 +1690,8 @@ export function mountKitchenScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
-        if (event.target.closest('[data-v2-reload]')) {reload(); readGovernance(); return;}
-        if (event.target.closest('[data-erp-retry]')) {reload(); readGovernance();}
+        if (event.target.closest('[data-v2-reload]')) {reload(); readGovernance(); readCostCards(); return;}
+        if (event.target.closest('[data-erp-retry]')) {reload(); readGovernance(); readCostCards();}
     });
 
     el.addEventListener('input', (event) => {
@@ -1454,6 +1728,7 @@ export function mountKitchenScreen(host, ctx = {}) {
 
     el.addEventListener('change', (event) => {
         const t = event.target;
+        if (t.matches('[data-v2-cost-from]') || t.matches('[data-v2-cost-to]')) {readCostCards(); return;}
         if (t.matches('[data-f="product"]')) {syncProdProduct(); return;}
         if (t.matches('[data-f="m-inv"]')) {
             const i = Number(t.dataset.i);
@@ -1473,6 +1748,7 @@ export function mountKitchenScreen(host, ctx = {}) {
 
     reload();
     readGovernance();
+    readCostCards();
 
     return {
         el,

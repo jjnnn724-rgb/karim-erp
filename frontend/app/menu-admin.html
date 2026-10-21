@@ -6,7 +6,7 @@
     <title>لوحة تحكم شاشات المنيو — مطاعم الشرفه العالمي</title>
     <meta name="theme-color" content="#071c18">
     <link rel="icon" href="assets/karim-logo.ico">
-    <link rel="stylesheet" href="css/menu-admin.css?v=6.1.1">
+    <link rel="stylesheet" href="css/menu-admin.css?v=6.1.4">
 </head>
 <body>
     <!-- ═══ الدخول ═══ -->
@@ -198,11 +198,12 @@
                     <div class="card-head">
                         <h2>محاكاة شاشة المطعم المباشرة</h2>
                         <button class="btn ghost sm" onclick="reloadPreview()">↻ تحديث المعاينة</button>
+                        <button class="btn gold sm" id="btnPreviewFullscreen" type="button" onclick="togglePreviewFullscreen()" aria-label="تكبير معاينة شاشة سامسونج الطولية">⛶ تكبير المعاينة</button>
                     </div>
                     <div class="preview-stage">
                         <iframe id="previewFrame" src="/app/menu-board.html" title="معاينة الشاشة" loading="lazy"></iframe>
-                        <div class="preview-frame-label">1080 × 1920 · Portrait Totem</div>
                     </div>
+                    <div class="preview-frame-label">SAMSUNG PORTRAIT · 9:16 · 1080 × 1920</div>
                 </div>
             </section>
 
@@ -233,6 +234,6 @@
 
     <div id="toast" class="toast hidden"></div>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/menu-admin.js?v=5.12.0"></script>
+    <script src="js/menu-admin.js?v=5.14.1"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@ const encoder = new TextEncoder();
 const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
 const hashArray = Array.from(new Uint8Array(hashBuffer));
 return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('').substring(0,16).toUpperCase();
-}catch(e){ return generateFingerprintSync(emp); }
+}catch(_){ return generateFingerprintSync(emp); }
 }
 function findEmployeeById(id){ return STATE.employees.find(e=>String(e.id)===String(id)) || (STATE.deptEmployees||[]).find(e=>String(e.id)===String(id)); }
 // شارة الدوام المجدول (2026-10-01): التعديل بتاريخ مستقبلي لا يسمع في البطاقة
@@ -69,7 +69,7 @@ const key = `${text}_${size}`;
 if(qrCache.has(key)){return qrCache.get(key);}
 if(typeof QRCode === 'undefined') {return null;}
 try{ const url = await QRCode.toDataURL(text, { width: size, margin: 1, color: { dark: '#0a0b0d', light: '#ffffff' }, errorCorrectionLevel: 'M' }); qrCache.set(key, url); return url; }
-catch(e){ return null; }
+catch(_){ return null; }
 }
 function getEmployeeQRData(emp){
 return JSON.stringify(emp.qrPayload || { system:CONFIG.APP_NAME, version:CONFIG.VERSION, type:'employee_card', cardId:emp.cardId, employeeId:emp.employeeId, employeeName:emp.name, department:emp.department, position:emp.position, fingerprint:emp.digitalFingerprint, issued:new Date().toISOString().split('T')[0] });
@@ -143,9 +143,7 @@ const monthPrefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,
 const myAttendance = (STATE.attendance||[]).filter(a=>a.employeeId===emp.id && a.checkIn && String(a.date||'').startsWith(monthPrefix));
 const myLeaves = (STATE.leaveRequests||[]).filter(l=>l.employeeId===emp.id);
 const approvedLeaves = myLeaves.filter(l=>l.status==='approved').length;
-const pendingLeaves = myLeaves.filter(l=>l.status==='pending').length;
 const totalDaysWorked = myAttendance.length;
-const WORK_DAY_MINUTES = (Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10) * 60;
 const shiftStartStr = String(emp.shift_start || '09:00');
 const shiftMatch = shiftStartStr.match(/^(\d{1,2}):(\d{2})$/);
 const shiftStartMin = shiftMatch ? parseInt(shiftMatch[1]) * 60 + parseInt(shiftMatch[2]) : 540;
@@ -180,7 +178,6 @@ const totalLateMinutes = myAttendance.reduce((sum, a) => {
     return sum + arrival + early;
 }, 0);
 const lateDays = lateRecords.length;
-const lateRemainingHours = ((totalLateMinutes % WORK_DAY_MINUTES) / 60).toFixed(2);
 const attendanceRate = totalDaysWorked > 0 ? ((totalDaysWorked - lateDays) / totalDaysWorked * 100).toFixed(1) : 100;
 const onTimeRate = totalDaysWorked > 0 ? (((totalDaysWorked - lateDays) / totalDaysWorked) * 100).toFixed(1) : 100;
 const initials = String(emp.name || '؟').split(' ').map(n=>n[0]).join('').substring(0,2);
@@ -318,7 +315,6 @@ ${qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="max-width:200px;width:100%;h
 console.error('[renderSmartCard]', e);
 return `<div class="mcard"><i class=ji data-i=circle-x></i> تعذر عرض بطاقة الموظف — ${esc(e.message || 'خطأ غير متوقع')}</div>`;
 }
-try{ setTimeout(()=>fillScheduledShiftBadge(emp.id), 50); }catch(_){}
 }
 async function showFullQRModal(empId){
 const emp = findEmployeeById(empId);
@@ -394,12 +390,12 @@ const minutes = Number(totalMinutes || 0);
 if (!Number.isFinite(minutes) || minutes <= 0) {return `0.${'0'.repeat(digits)} ساعة` ;}
 return `${(minutes / 60).toFixed(digits)} ساعة`;
 }
-function formatLateSummary({ totalMinutes = 0, lateDays = 0 } = {}) {
+function formatLateSummary({ totalMinutes = 0, _lateDays = 0 } = {}) {
 const minutes = Number(totalMinutes || 0);
 if (!Number.isFinite(minutes) || minutes <= 0) {return '—';}
 return `${formatHoursFromMinutes(minutes, 1)} <small>(${Math.round(minutes)} دقيقة)</small>`;
 }
-function formatLateRow({ lateMinutes = 0, lateDays = 0 } = {}) {
+function formatLateRow({ lateMinutes = 0, _lateDays = 0 } = {}) {
 const minutes = Number(lateMinutes || 0);
 if (!Number.isFinite(minutes) || minutes <= 0) {return '—';}
 if (minutes < 60) {return `${Math.round(minutes)} دقيقة`;}
@@ -560,7 +556,6 @@ const WORK_DAY = Number(data.workDayMinutes || 600);
 const totDeficitMin = emps.reduce((s,e)=>s+Number(e.deficitMinutes||0),0);
 const totShortDays = emps.reduce((s,e)=>s+Number(e.shortDays||0),0);
 const totCompleteDays = emps.reduce((s,e)=>s+Number(e.completeWorkDays||0),0);
-const totLateInDays = emps.reduce((s,e)=>s+Number(e.lateInDays||0),0);
 const totLateMin = totDeficitMin;   // توافق مع أسماء القالب أدناه
 const totLateDays = totShortDays;
 const totReviewDays = emps.reduce((s,e)=>s+Number(e.reviewDays||0),0);
@@ -643,10 +638,8 @@ const dayDetail = (e, counter) => {
 const rows=emps.map(e=>{
 const lm = Number(e.deficitMinutes||0);
 const sd = Number(e.shortDays||0);
-const ld = sd;
 const lv = Number(e.leaveDays||0);
 const rv = Number(e.reviewDays||0);
-const lateText = formatLateRow({ lateMinutes: lm, lateDays: ld });
 const deficitCell = sd>0?`<span style="color:#c0392b;font-weight:700">${sd} يوم • ${formatLateRow({ lateMinutes: lm })}${rv > 0 ? ` <small>+${rv} قيد المراجعة</small>` : ''}</span>`:(rv > 0 ? `<span style="color:#f59e0b;font-weight:700">${rv} قيد المراجعة</span>`:'<span style="color:#27ae60">✓ كامل</span>');
 const ctr = { n: 0 };
 const detHtml = dayDetail(e, ctr);

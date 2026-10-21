@@ -71,4 +71,12 @@ describe('مصرف مخالفات CSP', () => {
         expect(() => log.append({ directive: 'x', document: 'http://h/a' })).not.toThrow();
         await log.flush();
     });
+
+    test('المسار النسبي يُثبَّت على جذر المشروع (لا على مجلد التشغيل)', () => {
+        const log = createCspViolationLog('logs/csp-violations.jsonl');
+        expect(path.isAbsolute(log.path)).toBe(true);
+        expect(log.path).toContain(`${path.sep}logs${path.sep}csp-violations.jsonl`);
+        // جذر المشروع = المجلد الأب ل backend/
+        expect(log.path).toBe(path.resolve(__dirname, '..', 'logs', 'csp-violations.jsonl'));
+    });
 });

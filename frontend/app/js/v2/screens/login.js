@@ -33,9 +33,9 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.169';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.169';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.169';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.181';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.181';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.181';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -55,8 +55,8 @@ function template(canResume) {
       <div class="erp-login-wrap">
         <section class="erp-card erp-login-card" aria-labelledby="v2login-title">
           <div class="erp-card__body erp-stack">
-            <div class="erp-login-brand" aria-hidden="true">
-              <span class="erp-login-mark"><i class="ji" data-i="layout-dashboard"></i></span>
+            <div class="erp-login-brand">
+              <img class="erp-login-logo" src="assets/al-shurfa-logo.png" alt="مطاعم الشرفة العالمي">
             </div>
             <h2 class="erp-login-title" id="v2login-title">تسجيل الدخول
               <span class="erp-eyebrow" dir="ltr" lang="en">Sign In</span>

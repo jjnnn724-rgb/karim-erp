@@ -44,12 +44,26 @@ const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace
                              طبقيٍّ واحد؛ لا مكانُها في مقياسٍ عالمي.
    · .erp-preview-banner     كروم v2.html خارج `#erp-v2-root`، فلا تُحلُّ أسماءُ
                              المقياس عنده؛ يتغيّر إلى متغيّرٍ محليّ.
+   · erp-board.css           لوحةُ المنيو صفحةٌ مستقلّةٌ تُفتح بـ window.open
+                             (menu-board.js:82) بوثيقةٍ خاصةٍ بها لا تحملُ
+                             erp-tokens.css أصلًا؛ فقيمُ 0/1/2 ترتيبٌ محليٌّ
+                             داخل #board (الإطار خلف، الزخارف فوقه، المحتوى
+                             فوقها) لا تُقارَنُ بالعالم الخارجي أبدًا. ومنطقُ
+                             البند ١٣ نفسه: طبقةٌ على عنصرٍ لا يُرسَم = صفرُ
+                             فائدة، فلإدخال مقياسِ التطبيق على وثيقةٍ لا تقرأه
+                             تُنتج `auto` صامتًا ويختفي ترتيبُ الزخارف.
    البند ١٣ حذفَ الاستثناءَ الثالث (.erp-pop): الغلافُ صار يحمل .erp-v2، فالقاعدة
    حيّةٌ ورقمُها على المقياس — وانظر الحراسةَ في الأسفل: استثناءٌ يُحذَف بلا
    إصلاحِ التركيب يترك لوحةً بلا أيِّ تنسيق. */
 const EXCEPTIONS = [
     { file: 'erp-dashboard.css', sel: '.erp-v2 .erp-pipe__dot', value: '1' },
     { file: 'erp-preview.css', sel: '.erp-preview-banner', value: 'var(--v2-preview-z-banner)' },
+    { file: 'erp-board.css', sel: '.kb-frame', value: '0' },
+    { file: 'erp-board.css', sel: '.kb-corner', value: '1' },
+    { file: 'erp-board.css', sel: '.kb-border-top', value: '1' },
+    { file: 'erp-board.css', sel: '.kb-border-bottom', value: '1' },
+    { file: 'erp-board.css', sel: '.kb-top, .kb-header-wrap, .kb-periods, .kb-rule, #kbStage, .kb-progress, .kb-footer', value: '2' },
+    { file: 'erp-board.css', sel: '.kb-skyline', value: '0' },
 ];
 
 /** [{sel, body, at[]}] لكل قاعدة، غائصًا داخل @media بمطابقة الأقواس. */
@@ -134,6 +148,12 @@ describe('مقياسُ الطبقات في V2 — البندان ١٢ و١٣', (
             exempt: [
                 'erp-dashboard.css|.erp-v2 .erp-pipe__dot|1',
                 'erp-preview.css|.erp-preview-banner|var(--v2-preview-z-banner)',
+                'erp-board.css|.kb-frame|0',
+                'erp-board.css|.kb-corner|1',
+                'erp-board.css|.kb-border-top|1',
+                'erp-board.css|.kb-border-bottom|1',
+                'erp-board.css|.kb-top, .kb-header-wrap, .kb-periods, .kb-rule, #kbStage, .kb-progress, .kb-footer|2',
+                'erp-board.css|.kb-skyline|0',
             ].sort(),
         });
         // استثناءٌ لا يعود موجودًا = مكانٌ vacant يُخفي فيه رقمٌ جديدًا لاحقًا.

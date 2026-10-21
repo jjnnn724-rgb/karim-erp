@@ -1,14 +1,11 @@
 // ────────────────────────────────────────────────────────────────────────────
-// legacy-expiry-doors.test.js — سياسة المالك 2026-10-19 في الواجهة القديمة
-// «لا يقبل بدون تاريخ صلاحيه دخول المنتج للمخزن» — على كل مداخل المخزون.
-//
-// الخادم هو الحاكم (422 EXPIRY_DATE_REQUIRED / INVALID_EXPIRY_DATE)، لكن العلم
-// ما زال OFF فكل الكتابة تمر بالنماذج القديمة: لو أرسلت بلا صلاحية لانكشف
-// أمین المخزون على رفضٍ لا يملك له حقلاً. لذلك تُثبَّت هنا:
-//   • أدوات الصلاحية القديمة بنفس نصوص الخادم حرفيًا.
-//   • كل بابٍ يرسل expiryDate، وبوابته تقفل قبل أي نداء شبكة.
-//   • لا تاريخ يُخترع: الاستثناء الوحيد رصيدٌ بصفر، والتعديل العام يُجرّده.
-//   • القالبون (الافتتاحي + الاستيراد) بالعمود السابع.
+// legacy-expiry-doors.test.js — سياسة 2026-10-20 في الواجهة القديمة
+// تاريخ الصلاحية اختياري في كل مداخل المخزون: الغياب مقبول ويُحفظ null،
+// والصيغة الفاسدة وحدها تُرفض (INVALID_EXPIRY_DATE) قبل الشبكة.
+// تُثبَّت هنا:
+//   • أدوات الصلاحية القديمة بنفس نصوص الخادم.
+//   • كل بابٍ يرسل expiryDate (أو null)، وبوابته لا تقفل إلا على الفساد.
+//   • لا تاريخ يُخترع، والقالبان (الافتتاحي + الاستيراد) بالعمود السابع.
 // يُقيَّم مصدر warehouse.js الحقيقي — لا مرآة يدوية.
 // ────────────────────────────────────────────────────────────────────────────
 const fs = require('fs');
@@ -88,25 +85,24 @@ describe('أدوات الصلاحية القديمة — لا تُخترع تو�
         expect(m.openingExpiryCell(null)).toBeNull();
     });
 
-    test('requireExpiryDate: صفرُ كمية لا شرط فيه، والنقص والفساد لهما رسالتان', () => {
+    test('requireExpiryDate: الغياب اختياري، والفساد وحده له رسالة', () => {
         const { m: mm, toasts } = build();
         expect(mm.requireExpiryDate('2026-11-30', 5, 'لبن')).toBe('2026-11-30');
-        expect(mm.requireExpiryDate('', 0, 'لبن')).toBeNull();          // لا بضاعة → لا رسالة
+        expect(mm.requireExpiryDate('', 0, 'لبن')).toBe('');
+        expect(mm.requireExpiryDate('', 5, 'لبن')).toBe('');
         expect(toasts).toHaveLength(0);
-        expect(mm.requireExpiryDate('', 5, 'لبن')).toBeNull();
         expect(mm.requireExpiryDate('11/30/2026', 5, 'لبن')).toBeNull();
         expect(toasts.map((x) => x.msg)).toEqual([
-            'تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف لبن (YYYY-MM-DD)',
             'تاريخ الصلاحية غير صحيح (11/30/2026) — الصيغة المطلوبة YYYY-MM-DD',
         ]);
     });
 
-    test('openingExpiryError: النقص قبل الفساد، وخمسة أسماء ثم العدّ', () => {
+    test('openingExpiryError: الغياب مقبول، والفساد وحده يمنع', () => {
         const { m: mm } = build();
         const many = Array.from({ length: 7 }, (_, i) => ({ name: `صنف ${i}`, expiry: '' }));
-        expect(mm.openingExpiryError(many)).toContain('(+2 صنفًا)');
+        expect(mm.openingExpiryError(many)).toBeNull();
         expect(mm.openingExpiryError([{ name: 'أ', expiry: '' }, { name: 'ب', expiry: '31/12/2026' }]))
-            .toBe('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف أ');
+            .toBe('تاريخ الصلاحية غير صحيح للصنف ب — الصيغة المطلوبة YYYY-MM-DD');
         expect(mm.openingExpiryError([{ name: 'ج', expiry: '31/12/2026' }]))
             .toBe('تاريخ الصلاحية غير صحيح للصنف ج — الصيغة المطلوبة YYYY-MM-DD');
         expect(mm.openingExpiryError([{ name: 'د', expiry: '2026-11-30' }])).toBeNull();
@@ -119,12 +115,12 @@ describe('أدوات الصلاحية القديمة — لا تُخترع تو�
 describe('الاستلام السريع (POST /warehouse/inventory/:id/receipt)', () => {
     const item = { id: 7, name: 'لبن', unit: 'لتر', qty: 10, avgCost: 20 };
 
-    test('بلا تاريخ: لا نداء شبكة إطلاقًا — والرسالة نفسها', async () => {
+    test('بلا تاريخ: يُقبل ويُرسل expiryDate = null', async () => {
         const { m, calls, toasts } = build({ inventory: [item], over: { quickStockQty: '2', quickStockPrice: '20', quickStockExpiry: '' } });
         await m.confirmQuickStockIn(7);
-        expect(calls).toHaveLength(0);
-        expect(toasts[0].msg).toContain('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن');
-        expect(toasts[0].msg).toContain('لبن');
+        expect(calls).toHaveLength(1);
+        expect(calls[0].body).toEqual({ qty: 2, price: 20, unit: 'لتر', expiryDate: null });
+        expect(toasts.filter((x) => x.msg.includes('الصلاحية'))).toHaveLength(0);
     });
 
     test('بتاريخٍ صحيح: الباب يرسل expiryDate مع الكمية والسعر', async () => {
@@ -159,14 +155,15 @@ describe('الاستلام السريع (POST /warehouse/inventory/:id/receipt)'
 /* ─── باب الصنف الجديد (POST /api/inventory) ─────────────────────────────── */
 
 describe('الصنف الجديد برصيد افتتاحي (الباب العام /inventory)', () => {
-    test('رصيدٌ أكبر من صفر بلا صلاحية → لا إنشاء', async () => {
+    test('رصيدٌ أكبر من صفر بلا صلاحية → يُنشأ والتاريخ null', async () => {
         const { m, calls, toasts } = build({
             over: { itemName: 'سمن', itemQty: '12', itemPrice: '40', itemExpiry: '' },
         });
         await m.addInventoryItem();
-        expect(calls).toHaveLength(0);
-        expect(toasts[0].msg).toContain('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن');
-        expect(toasts[0].msg).toContain('لصنف سمن');
+        const create = calls.find((c) => c.url.includes('/api/inventory'));
+        expect(create).toBeTruthy();
+        expect(create.body.expiryDate).toBeNull();
+        expect(toasts.filter((x) => x.msg.includes('الصلاحية'))).toHaveLength(0);
     });
 
     test('الصلاحية تُرسل في جسم الإنشاء ويصل بها القيد في الدفتر', async () => {
@@ -209,15 +206,16 @@ describe('فاتورة الشراء (POST /warehouse/purchase-invoices)', () => 
         return ctx;
     }
 
-    test('سطرٌ بلا صلاحية يوقف الحفظ برسالةٍ تسمّيه، وبلا أي شبكة', async () => {
+    test('سطرٌ بلا صلاحية يُحفظ والتاريخ null، وبلا رسالة إلزام', async () => {
         const { m, calls, toasts } = withRows([
             { itemName: 'دجاج', qty: 2, price: 30, unit: 'كجم', total: 60 },
             { itemName: 'أرز', qty: 5, price: 12, unit: 'كجم', total: 60, expiryDate: '2027-01-31' },
         ]);
         await m.savePurchaseInvoice();
-        expect(calls).toHaveLength(0);
-        expect(toasts[0].msg).toBe('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف دجاج');
-        expect(toasts[0].msg).not.toContain('أرز');   // الصحيح لا يُذكر
+        expect(calls).toHaveLength(1);
+        expect(calls[0].body.items[0].expiryDate).toBeNull();
+        expect(calls[0].body.items[1].expiryDate).toBe('2027-01-31');
+        expect(toasts.filter((x) => x.msg.includes('الصلاحية'))).toHaveLength(0);
     });
 
     test('حقل التاريخ في السطر يكتب في الموديل — بلا هذا الفرع لا ينجو سطرٌ أبدًا', () => {
@@ -257,10 +255,11 @@ describe('فاتورة الشراء (POST /warehouse/purchase-invoices)', () => 
         expect(calls[0].body.items).toHaveLength(1);
     });
 
-    test('أكثر من خمسة أسطر ناقصة: خمسة أسماء ثم العدّ — كنص الخادم', async () => {
-        const rows = Array.from({ length: 7 }, (_, i) => ({ itemName: `صنف ${i}`, qty: 1, price: 1, total: 1 }));
+    test('أكثر من خمسة أسطر فاسدة: خمسة أسماء ثم العدّ — والغياب لا يُمنع', async () => {
+        const rows = Array.from({ length: 7 }, (_, i) => ({ itemName: `صنف ${i}`, qty: 1, price: 1, total: 1, expiryDate: '31/12/2026' }));
         const { m, toasts } = withRows(rows);
         await m.savePurchaseInvoice();
+        expect(toasts[0].msg).toContain('غير صحيح');
         expect(toasts[0].msg).toContain('(+2 صنفًا)');
     });
 });
@@ -300,22 +299,22 @@ describe('استيراد المخزون بالـExcel (POST /warehouse/inventory
         expect(src).toContain("['اسم الصنف','الوحدة','كمية فعلية','سعر الشراء','الكراتين','الفئة','تاريخ الصلاحية']");
     });
 
-    test('جدول الافتتاحي وشبكة الاستبدال: عمود صلاحية في كلٍّ', () => {
+    test('جدول الافتتاحي وشبكة الاستبدال: عمود صلاحية اختياري في كلٍّ', () => {
         const src = fs.readFileSync(LEGACY, 'utf8');
-        expect((src.match(/تاريخ الصلاحية \*<\/th>/g) || []).length).toBe(2);   // الافتتاحي + الاستبدال
-        expect(src).toContain('<label>تاريخ الصلاحية *</label>');               // الاستلام السريع
-        expect(src).toContain('تاريخ الصلاحية *</small>');                      // سطر فاتورة الشراء
+        expect((src.match(/تاريخ الصلاحية<\/th>/g) || []).length).toBeGreaterThanOrEqual(2);   // الافتتاحي + الاستبدال
+        expect(src).toContain('<label>تاريخ الصلاحية</label>');               // الاستلام السريع
+        expect(src).toContain('تاريخ الصلاحية</small>');                      // سطر فاتورة الشراء
         expect(src).toContain('openingExpiry_${idx}');
         expect(src).toContain("updateOpeningReplaceRow(${idx},'expiry',this.value)");
     });
 
-    test('استيراد الرصيد الافتتاحي: الصف بلا عمود صلاحية لا يُرفض في المعاينة — يُنبَّه ويُنتظر الجدول', () => {
+    test('استيراد الرصيد الافتتاحي: الصف بلا عمود صلاحية يُقبل (اختياري)', () => {
         const { m } = build();
         const parsed = m.parseOpeningSheetRows([['اسم الصنف', 'الكمية', 'سعر الشراء'], ['لبن', 5, 20]]);
         expect(parsed.rows).toHaveLength(1);
         expect(parsed.rows[0].expiry).toBe('');
         expect(parsed.errors).toHaveLength(0);
-        expect(m.openingExpiryError(parsed.rows)).toContain('لبن');
+        expect(m.openingExpiryError(parsed.rows)).toBeNull();
         const withCol = m.parseOpeningSheetRows([['اسم الصنف', 'الكمية', 'سعر الشراء', 'تاريخ الصلاحية'], ['لبن', 5, 20, '2026-12-01']]);
         expect(withCol.rows[0].expiry).toBe('2026-12-01');
         expect(m.openingExpiryError(withCol.rows)).toBeNull();
@@ -328,11 +327,11 @@ describe('استيراد المخزون بالـExcel (POST /warehouse/inventory
 /* ─── العقد مع الخادم: الخادم يبقى الحاكم ────────────────────────────────── */
 
 describe('العقد مع الخادم', () => {
-    test('رسائل النقص والفساد القديمة حرفية في مصدر الخادم', () => {
+    test('لا رسائل إلزام قديمة في الخادم — الرفض للصيغة الفاسدة فقط', () => {
         const policy = fs.readFileSync(path.join(__dirname, '..', 'backend', 'expiry-policy.js'), 'utf8');
-        expect(policy).toContain('تاريخ الصلاحية إلزامي لكل صنف يدخل المخزن — أضِف تاريخ الصلاحية للصنف');
-        expect(fs.readFileSync(SERVER, 'utf8'))
-            .toContain('تاريخ الصلاحية إلزامي عند إدخال صنف للمخزن برصيد — أضِف تاريخ الصلاحية (YYYY-MM-DD)');
+        expect(policy).toContain('تاريخ الصلاحية غير صحيح للصنف');
+        expect(policy).not.toContain('تاريخ الصلاحية إلزامي لكل صنف');
+        expect(fs.readFileSync(SERVER, 'utf8')).not.toContain('EXPIRY_DATE_REQUIRED');
     });
 
     test('الباب العام يجرّد حقول الصلاحية ولا عمود phantom في inventory', () => {
@@ -344,7 +343,7 @@ describe('العقد مع الخادم', () => {
     test('أبواب المخزون الثلاثة تُغلق بالـ422، والحركات الداخلية تحمل آخر صلاحية', () => {
         const routes = fs.readFileSync(WAREHOUSE_ROUTES, 'utf8');
         expect((routes.match(/checkExpiryOnLines\(/g) || []).length).toBe(3);
-        expect(routes).toContain("EXPIRY_DATE_REQUIRED");
+        expect(routes).not.toContain('EXPIRY_DATE_REQUIRED');
         expect(routes).toContain('latestExpiryFor(');
     });
 

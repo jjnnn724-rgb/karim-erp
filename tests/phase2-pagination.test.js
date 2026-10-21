@@ -286,6 +286,28 @@ describe('Phase 2.2: Pagination & Sorting System', () => {
             expect(q.params).toEqual([1, 50, 0]);
         });
 
+        test('date range filters apply to both page data and count', () => {
+            const q = buildPaginatedQuery('revenues', { page: 2, limit: 100, offset: 100, sort: 'id', order: 'DESC' }, {
+                dateRange: { column: 'date', from: '2026-10-01', toExclusive: '2026-11-01' },
+            });
+            expect(q.dataQuery).toContain('WHERE "date" >= $1 AND "date" < $2');
+            expect(q.dataQuery).toContain('LIMIT $3 OFFSET $4');
+            expect(q.countQuery).toContain('WHERE "date" >= $1 AND "date" < $2');
+            expect(q.params).toEqual(['2026-10-01', '2026-11-01', 100, 100]);
+            expect(q.countParams).toEqual(['2026-10-01', '2026-11-01']);
+        });
+
+        test('branch and date filters share correctly numbered parameters', () => {
+            const q = buildPaginatedQuery('expenses', { page: 1, limit: 50, offset: 0, sort: 'id', order: 'ASC' }, {
+                branchId: 7,
+                dateRange: { column: 'date', from: '2026-10-01', toExclusive: '2026-11-01' },
+            });
+            expect(q.dataQuery).toContain('WHERE "branch_id" = $1 AND "date" >= $2 AND "date" < $3');
+            expect(q.dataQuery).toContain('LIMIT $4 OFFSET $5');
+            expect(q.params).toEqual([7, '2026-10-01', '2026-11-01', 50, 0]);
+            expect(q.countParams).toEqual([7, '2026-10-01', '2026-11-01']);
+        });
+
         test('non-branch entities never receive a branch predicate', () => {
             const q = buildPaginatedQuery('departments', { page: 1, limit: 10, offset: 0, sort: 'id', order: 'ASC' }, {});
             expect(q.dataQuery).not.toContain('branch_id');

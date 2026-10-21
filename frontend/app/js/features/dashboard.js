@@ -62,7 +62,7 @@ el.innerHTML=`
 <div class="mini-chart-header"><div><div class="u-sub-strong">بصمة الحضور — علامة الربط</div></div><div class="kpi-chip"><i class=ji data-i=user-check></i></div></div>
 <div style="font-size:17px;font-weight:800;color:${stateCls};display:flex;align-items:center;gap:8px">${dot} ${stateTxt}</div>
 <div class="u-sub">أجهزة متصلة: ${fN(online)}/${fN(devices.length)} · موظفون مربوطون: ${fN(t.linkedEmployees||0)}${unlinked}</div>`;
-}catch(e){
+}catch(_){
 el.innerHTML=`<div class="mini-chart-header"><div><div class="u-sub-strong">بصمة الحضور — علامة الربط</div></div><div class="kpi-chip"><i class=ji data-i=user-check></i></div></div><div class="u-sub" style="color:var(--orange)">تعذر جلب حالة البصمة — راجع صفحة بصمة الحضور</div>`;
 }
 }
@@ -134,7 +134,6 @@ if(role==='hr'){ return renderHRDashboard(); }
 let totalRev=0,totalExp=0;
 const deptStats = STATE.departments.map(d=>{const s=calcStats(d.code);totalRev+=s.rev;totalExp+=s.exp;return{...d,...s};});
 const profit = totalRev-totalExp;
-const costRatio = totalRev>0?(totalExp/totalRev*100):0;
 const pendingDisp = STATE.dispatches.filter(d=>d.status==='pending').length;
 const lowStock = STATE.inventory.filter(i=>Number(i.qty)<Number(i.minQty)).length;
 const today = new Date();

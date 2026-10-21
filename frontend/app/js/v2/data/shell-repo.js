@@ -3,8 +3,14 @@
  * ═══════════════════════════════════════════════════════════════════════
  * CONTRACT COPIED FROM legacy counterparts, NOT INVENTED
  *   GET  /notifications            → { notifications[50], unread_count }
+ *     الخادم يُصوّر الاستعلام على مالك الجلسة وحده
+ *     (notification-routes.js:52 `WHERE (n.user_id = $1 OR user_id IS NULL)`)
+ *     فلا رؤية لغير إشعاراتك. ولأن أبواب الاعتماد الموجّهة تصلك على دورك
+ *     (dispatch-notifier.js:34-48 ينادي kitchen/sous_chef/warehouse)،
+ *     فجرس v2 يظهر لكل دور مصادق في الوضع الحيّ — لا قيد الأدمن القديم
+ *     (app.js:255 سياسةُ البثّ العام القديمة وقد سبقها التوجيه الموجّه).
  *   POST /notifications/read {ids} · POST /notifications/read-all ·
- *     DELETE /notifications (app.js:278-331 — الجرس للأدمن وحده :255)
+ *     DELETE /notifications (notification-routes.js:102/129/154)
  *   GET  /api/health[/ready]        → { status, checks } بلا مصادقة
  *     (middleware/health.js — انظر التعليق :7-17)
  *   POST /api/auth/change-password {current_password, new_password}
@@ -14,9 +20,7 @@
  *     تقرأ صلاحياتها. legacy يستدعيها بعد الدخول مباشرة auth-navigation.js:198)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.169';
-
-export const NOTIF_ADMIN_ROLES = ['admin'];
+import { apiFetch } from '../../core/api.js?v=4.9.181';
 
 export async function fetchNotifications() {
     const data = await apiFetch('/notifications');
@@ -73,6 +77,18 @@ export async function fetchHealth() {
             return { ok: false, server: false, db: null, status: 'down' };
         }
     }
+}
+
+export async function fetchServerInfo() {
+    const info = await apiFetch('/system/server-info');
+    if (!info || typeof info !== 'object' || typeof info.upToDate !== 'boolean') {
+        throw new Error('صيغة حالة إصدار الخادم غير صالحة');
+    }
+    return {
+        upToDate: info.upToDate,
+        startedAt: info.startedAt || null,
+        codeMtime: info.codeMtime || null,
+    };
 }
 
 function normalizeHealth(r = {}) {
