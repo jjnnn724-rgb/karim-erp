@@ -128,7 +128,7 @@ async function migrateFromCashierOnce() {
         [JSON.stringify(newLayout), SETTINGS_ID]);
     await pool.query(`INSERT INTO menu_board_settings_meta (key, value)
         VALUES ('migrated_from_cashier', $1) ON CONFLICT DO NOTHING`, [`${prods.length}-items`]);
-    try { logger.info(`[menu-board] migrated ${prods.length} items from cashier to independent table`); } catch (_) {}
+    try { logger.info(`[menu-board] migrated ${prods.length} items from cashier to independent table`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     return true;
 }
 
@@ -244,7 +244,7 @@ async function loadSettings() {
                 const raw = s.board_categories;
                 const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : null);
                 if (Array.isArray(arr)) {cats = arr.map(x => String(x || '').trim()).filter(Boolean).slice(0, 60);}
-            } catch (_) {}
+            } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             return {
                 title: s.title,
                 subtitle: s.subtitle,
@@ -407,7 +407,7 @@ async function loadBoard() {
         if (w.rows[0] && Array.isArray(w.rows[0].items) && w.rows[0].items.length) {
             weeklyToday = { title: w.rows[0].title, note: w.rows[0].note, items: w.rows[0].items };
         }
-    } catch (_) {}
+    } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     return { version, settings, categories, buffet_sections: buffetSections, weekly_today: weeklyToday };
 }
 
@@ -426,8 +426,8 @@ function register(app, opts = {}) {
     /* جدول المنيو المستقل + ترحيل لمرة واحدة من الكاشير (قراءة فقط) */
     ensureMenuItemsTable()
         .then(() => migrateFromCashierOnce())
-        .then(() => { try { opts.io.emit('menu_board_changed', { at: new Date().toISOString() }); } catch (_) {} })
-        .catch(e => { try { logger.error('[menu-board] independent table init failed:', e.message); } catch (_) {} });
+        .then(() => { try { opts.io.emit('menu_board_changed', { at: new Date().toISOString() }); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } })
+        .catch(e => { try { logger.error('[menu-board] independent table init failed:', e.message); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } });
     // ─── عام: بيانات العرض للشاشة (معلومات منيو علنية بطبيعتها — معروضة في المول) ───
     app.get('/api/menu-board/public', async (req, res) => {
         try {
@@ -585,7 +585,7 @@ function register(app, opts = {}) {
                     updated_at = NOW()
             `, [SETTINGS_ID, row.title, row.subtitle, row.breakfast_hours, row.lunch_hours, row.dinner_hours, row.footer_text, savedCategories === null ? null : JSON.stringify(savedCategories), row.buffet_price, row.background_style, row.custom_background, row.theme_style, row.breakfast_start, row.lunch_start, row.dinner_start, row.breakfast_category, row.lunch_category, row.dinner_category, JSON.stringify(row.buffet_layout), categoriesProvided]);
             publicBoardCache.expiresAt = 0;
-            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) {}
+            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ...row, board_categories: savedCategories });
         } catch (e) {
             logger.error('[menu-board] settings save failed:', e.message);
@@ -638,7 +638,7 @@ function register(app, opts = {}) {
                     [c.dow, c.title, JSON.stringify(c.items), c.note]);
             }
             publicBoardCache.expiresAt = 0;
-            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) {}
+            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, days: clean.length });
         } catch (e) {
             logger.error('[menu-board] weekly save failed:', e.message);
@@ -689,7 +689,7 @@ function register(app, opts = {}) {
                   WHERE id = $1 RETURNING id, name_ar, name_en, section, sort_order, is_active, image_url`, vals);
             if (!r.rows.length) {return res.status(404).json({ error: 'NOT_FOUND' });}
             publicBoardCache.expiresAt = 0;
-            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) {}
+            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json(r.rows[0]);
         } catch (e) {
             logger.error('[menu-board] item patch failed:', e.message);
@@ -714,7 +714,7 @@ function register(app, opts = {}) {
                  VALUES ($1, $2, $3, $4, true) RETURNING id, name_ar, name_en, section, sort_order, is_active, image_url`,
                 [nm, nameEn, sec, maxOrder + 1]);
             publicBoardCache.expiresAt = 0;
-            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) {}
+            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.status(201).json(r.rows[0]);
         } catch (e) {
             logger.error('[menu-board] item create failed:', e.message);
@@ -730,7 +730,7 @@ function register(app, opts = {}) {
             const r = await pool.query(`DELETE FROM menu_board_items WHERE id = $1 RETURNING id`, [pid]);
             if (!r.rows.length) {return res.status(404).json({ error: 'NOT_FOUND' });}
             publicBoardCache.expiresAt = 0;
-            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) {}
+            try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, id: pid });
         } catch (e) {
             logger.error('[menu-board] item delete failed:', e.message);

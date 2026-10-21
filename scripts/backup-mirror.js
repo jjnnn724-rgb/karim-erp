@@ -40,8 +40,11 @@ function readBackupPassphrase() {
 function encryptBackupFile(srcFile) {
     const outputFile = `${srcFile}.gpg`;
     const checksumFile = `${outputFile}.sha256`;
-    if (fs.existsSync(outputFile) || fs.existsSync(checksumFile)) {
-        throw new Error(`Encrypted backup already exists; refusing to overwrite it: ${outputFile}`);
+    // إعادة التشغيل (نفس الليلة/بعد فشل) يجب أن تنجح: ننظّف البقايا بدل
+    // الفشل بـEEXIST. (الم refusal كان يُخفي السبب الحقيقي: EEXIST لا سبب
+    // تشفير ✗ ⇒ بدا كأن التشفير معطّل.)
+    for (const stale of [outputFile, checksumFile, `${srcFile}.kbak`, `${srcFile}.kbak.sha256`]) {
+        try { if (fs.existsSync(stale)) {fs.unlinkSync(stale);} } catch (_) {}
     }
 
     // Preferred path: passphrase (no key file to move around — a secret the
@@ -58,7 +61,7 @@ function encryptBackupFile(srcFile) {
             throw new Error(`Passphrase encryption failed for ${srcFile}: ${String(e.message || e).slice(0, 200)}`, { cause: e });
         }
         const digest = sha256File(passphraseOutput);
-        fs.writeFileSync(`${passphraseOutput}.sha256`, `${digest}  ${path.basename(passphraseOutput)}\n`, { encoding: 'utf8', flag: 'wx' });
+        fs.writeFileSync(`${passphraseOutput}.sha256`, `${digest}  ${path.basename(passphraseOutput)}\n`, { encoding: 'utf8' });
         return passphraseOutput;
     }
 

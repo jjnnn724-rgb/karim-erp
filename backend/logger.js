@@ -43,7 +43,7 @@ function getTransport() {
     // growing unbounded on disk. Rotate at 50MB, keep 5 backups.
     if (isProduction) {
         const logDir = require('path').join(__dirname, '..', 'logs');
-        try { require('fs').mkdirSync(logDir, { recursive: true }); } catch (_) {}
+        try { require('fs').mkdirSync(logDir, { recursive: true }); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         const logFile = require('path').join(logDir, 'app-out.log');
         // Rotate if file exceeds 50MB
         try {

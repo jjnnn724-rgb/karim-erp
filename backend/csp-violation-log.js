@@ -58,7 +58,7 @@ function createCspViolationLog(filePath, options = {}) {
             const st = fs.statSync(target);
             if (st.size < maxBytes) {return;}
             const old = `${target}.${KEEP_ROTATIONS}`;
-            try {fs.rmSync(old, { force: true });} catch (_) {}
+            try {fs.rmSync(old, { force: true });} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             fs.renameSync(target, old);
         } catch (_) { /* الملف غير موجود — لا دوران */ }
     }

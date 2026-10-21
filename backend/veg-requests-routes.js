@@ -296,7 +296,7 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
             rejected: [...rejections].length || undefined,
             directApproved: directApprove ? directApprove.total : undefined,
         });
-        try { if (req.io) { req.io.emit('veg_request:update', { id, status: upd.rows[0].status }); } } catch (_) {}
+        try { if (req.io) { req.io.emit('veg_request:update', { id, status: upd.rows[0].status }); } } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         return res.json({ ok: true, request: upd.rows[0],
             ...(directApprove ? { expenseId: upd.rows[0].expense_id, total: directApprove.total } : {} )});
     } catch (e) { next(e); }
@@ -359,7 +359,7 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
             logger.info('[veg-requests] تسعير طلب + مصروف على قسم المطبخ', {
                 request_no: row.request_no, total: checked.total, expense_id: exp.rows[0].id,
             });
-            try { if (req.io) { req.io.emit('veg_request:update', { id, status: 'priced' }); } } catch (_) {}
+            try { if (req.io) { req.io.emit('veg_request:update', { id, status: 'priced' }); } } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             return res.json({ ok: true, request: upd.rows[0], expenseId: exp.rows[0].id, total: checked.total });
         } catch (txnErr) {
             await client.query('ROLLBACK').catch(() => {});
@@ -421,7 +421,7 @@ router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES), async (req, res, n
                 ` [تعديل كميات ${new Date().toISOString().slice(0, 16).replace('T', ' ')} بواسطة ${cleanText(req.user.name || req.user.username, 60)}]`]
         );
         logger.info('[veg-requests] تعديل كميات طلب', { id, by: req.user.username });
-        try { if (req.io) { req.io.emit('veg_request:update', { id, action: 'items_edited' }); } } catch (_) {}
+        try { if (req.io) { req.io.emit('veg_request:update', { id, action: 'items_edited' }); } } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         return res.json({ ok: true, request: upd.rows[0] });
     } catch (e) { next(e); }
 });
@@ -453,7 +453,7 @@ router.post('/:id/cancel', jwtAuth, requireRole(...READ_ROLES), async (req, res,
             [id, req.user.id, cleanText(req.user.name || req.user.username, 120), reason]
         );
         logger.info('[veg-requests] إلغاء طلب', { request_no: row.request_no, by: req.user.username });
-        try { if (req.io) { req.io.emit('veg_request:update', { id, status: 'cancelled' }); } } catch (_) {}
+        try { if (req.io) { req.io.emit('veg_request:update', { id, status: 'cancelled' }); } } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         return res.json({ ok: true, request: upd.rows[0] });
     } catch (e) { next(e); }
 });

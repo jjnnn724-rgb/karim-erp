@@ -35,7 +35,7 @@ function writeMaintenance(file, state, meta = {}) {
 }
 
 function clearMaintenance(file) {
-    try {fs.rmSync(file, { force: true });} catch (_) {}
+    try {fs.rmSync(file, { force: true });} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
 }
 
 /**

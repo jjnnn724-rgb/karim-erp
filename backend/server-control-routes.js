@@ -28,7 +28,7 @@ function readSecret() {
     try {
         const raw = fs.readFileSync(SECRET_FILE, 'utf8').trim();
         if (/^[a-f0-9]{64}$/i.test(raw)) {value = raw;}
-    } catch (_) {}
+    } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     secretCache = { value, at: Date.now() };
     return value;
 }
@@ -55,11 +55,11 @@ function callControl(method, pathname, body, timeoutMs) {
             res.on('data', (chunk) => { raw += chunk; if (raw.length > 256 * 1024) {req.destroy();} });
             res.on('end', () => {
                 let data = null;
-                try {data = raw ? JSON.parse(raw) : null;} catch (_) {}
+                try {data = raw ? JSON.parse(raw) : null;} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
                 resolve({ ok: true, status: res.statusCode || 502, data });
             });
         });
-        req.on('timeout', () => { try { req.destroy(); } catch (_) {} resolve({ ok: false, timeout: true }); });
+        req.on('timeout', () => { try { req.destroy(); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } resolve({ ok: false, timeout: true }); });
         req.on('error', () => resolve({ ok: false, offline: true }));
         if (payload) {req.write(payload);}
         req.end();

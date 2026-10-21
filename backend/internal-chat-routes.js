@@ -95,7 +95,7 @@ function register(app, opts = {}) {
             try {
                 io.to(`user:${row.from_user_id}`).emit('chat:new', row);
                 io.to(`user:${row.to_user_id}`).emit('chat:new', row);
-            } catch (_) {}
+            } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.status(201).json({ ok: true, message: row });
         } catch (e) {
             const map = { EMPTY_MESSAGE: [422, 'الرسالة فارغة'], PEER_REQUIRED: [422, 'حدد الموظف'], SELF_CHAT: [422, 'لا تراسل نفسك'], PEER_NOT_FOUND: [404, 'الموظف غير موجود'], TOO_FAST: [429, 'تمهل ثانيتين بين الرسائل'] };

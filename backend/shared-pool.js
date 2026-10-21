@@ -105,7 +105,7 @@ async function reinitPool() {
     // Test the new pool
     await _pool.query('SELECT 1');
     // Drain old pool (best-effort)
-    try { await old.end(); } catch (_) {}
+    try { await old.end(); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     logger.info('[shared-pool] pool re-initialized after restore');
     return _pool;
 }

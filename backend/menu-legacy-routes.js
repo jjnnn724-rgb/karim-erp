@@ -128,7 +128,7 @@ function register(app, opts = {}) {
             fs.writeFileSync(BUFFET_DATA_FILE, JSON.stringify(safe, null, 2), 'utf8');
             try {
                 io.emit('buffet_menu_updated', safe);
-            } catch (_) {}
+            } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, timestamp: Date.now() });
         } catch (e) {
             logger.error('[buffet-menu] Save error:', e.message);

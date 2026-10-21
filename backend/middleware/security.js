@@ -237,7 +237,7 @@ function createCspReportCollector(options = {}) {
                     // تجاوز الحدّ: نعدّ فقط ولا نخزّن مفتاحًا جديدًا
                     overflowCount += 1;
                     if (sink) {
-                        try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) {}
+                        try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
                     }
                     return { directive, blocked, document: doc, overflow: true };
                 }
@@ -250,7 +250,7 @@ function createCspReportCollector(options = {}) {
                 if (!entry.sources.includes(where)) {entry.sources.push(where);}
             }
             if (sink) {
-                try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) {}
+                try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             }
             return { directive, blocked, document: doc };
         },

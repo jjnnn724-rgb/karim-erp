@@ -607,8 +607,8 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         // إعادة تفعيل الـ triggers في حالة فشل
-        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) {}
-        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) {}
+        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
+        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         logger.error('[system_reset_all]', error?.message || error);
         console.error('[system_reset_all] FULL ERROR:', error?.message, error?.stack?.slice(0,200));
         res.status(500).json({ error: 'SYSTEM_RESET_FAILED', message: 'تعذر تنفيذ التصفير؛ لم يتم تطبيق أي تغيير', detail: error?.message?.slice(0,120) });

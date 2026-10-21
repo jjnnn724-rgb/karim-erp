@@ -71,7 +71,7 @@ function parseCookies(header) {
     String(header || '').split(';').forEach((part) => {
         const index = part.indexOf('=');
         if (index <= 0) {return;}
-        try {out[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim());} catch (_) {}
+        try {out[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim());} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     });
     return out;
 }
@@ -165,7 +165,7 @@ function createControlServer(options = {}) {
         try {
             const existing = fs.readFileSync(secretFile, 'utf8').trim();
             if (/^[a-f0-9]{64}$/i.test(existing)) {secret = existing;}
-        } catch (_) {}
+        } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         if (!secret) {
             secret = crypto.randomBytes(32).toString('hex');
             fs.writeFileSync(secretFile, secret, { mode: 0o600 });
@@ -240,7 +240,7 @@ function createControlServer(options = {}) {
                     } catch (_) {resolve(null);}
                 });
             });
-            req.on('timeout', () => { try { req.destroy(); } catch (_) {} resolve(null); });
+            req.on('timeout', () => { try { req.destroy(); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } resolve(null); });
             req.on('error', () => resolve(null));
         });
     }
@@ -291,9 +291,9 @@ function createControlServer(options = {}) {
         try {
             try {
                 if (fs.statSync(auditFile).size > 5 * 1024 * 1024) {
-                    try {fs.renameSync(auditFile, `${auditFile}.1`);} catch (_) {}
+                    try {fs.renameSync(auditFile, `${auditFile}.1`);} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
                 }
-            } catch (_) {}
+            } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             fs.appendFileSync(auditFile, `${JSON.stringify(row)}\n`, 'utf8');
         } catch (error) {log.warn(`audit write failed: ${safeError(error)}`);}
         return row;
@@ -315,7 +315,7 @@ function createControlServer(options = {}) {
         if (saved && saved.lastOperation && ACTIONS.has(String(saved.lastOperation.action))) {
             operation = { ...saved.lastOperation, state: saved.lastOperation.state === 'running' ? 'failed' : saved.lastOperation.state };
         }
-    } catch (_) {}
+    } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
 
     function publicOperation(op) {
         if (!op) {return null;}
@@ -345,7 +345,7 @@ function createControlServer(options = {}) {
         const deadline = now() + timeoutMs;
         return new Promise((resolve) => {
             const tick = async () => {
-                try {if (await check()) {return resolve(true);}} catch (_) {}
+                try {if (await check()) {return resolve(true);}} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
                 if (now() >= deadline) {return resolve(false);}
                 setTimeout(tick, intervalMs);
             };
@@ -400,7 +400,7 @@ function createControlServer(options = {}) {
                 } else {
                     clearMaintenance(maintFile);
                 }
-            } catch (_) {}
+            } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             finishOperation(op, 'failed');
             log.error(`${op.action} failed: ${op.error}`);
         }
@@ -542,7 +542,7 @@ function createControlServer(options = {}) {
                 size += chunk.length;
                 if (size > BODY_LIMIT) {
                     reject(Object.assign(new Error('BODY_TOO_LARGE'), { status: 413 }));
-                    try {req.destroy();} catch (_) {}
+                    try {req.destroy();} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
                     return;
                 }
                 chunks.push(chunk);
@@ -816,7 +816,7 @@ function createControlServer(options = {}) {
     server.requestTimeout = 25_000;
     server.keepAliveTimeout = 5000;
     server.on('clientError', (_error, socket) => {
-        try {socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');} catch (_) {}
+        try {socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     });
 
     // ── فرض وضع الصيانة: من أوقفه يبقى موقوفًا حتى يُطلب التشغيل ───────────
@@ -832,7 +832,7 @@ function createControlServer(options = {}) {
                 log.warn('service is RUNNING while maintenance=stopped — enforcing stop');
                 startOperation('stop', 'النظام (فرض الصيانة)', 'watchdog', 'local');
             }
-        } catch (_) {}
+        } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
     }
 
     async function start() {
@@ -858,7 +858,7 @@ function createControlServer(options = {}) {
         actionLimiter.stop();
         clearInterval(sessionTimer);
         await new Promise((resolve) => server.close(() => resolve()));
-        if (pool) {try {await pool.end();} catch (_) {}}
+        if (pool) {try {await pool.end();} catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }}
     }
 
     return { server, start, close, snapshot, _internals: {sessions, audit, enforceDesiredState, secret, maintFile, auditFile} };

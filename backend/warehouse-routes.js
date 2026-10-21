@@ -3029,7 +3029,7 @@ router.post('/purchase-invoices/clear-all', jwtAuth, requireRole('admin'), async
             voidedJournals = vj.rowCount;
         }
         await client.query('COMMIT');
-        try { emit(req, 'purchaseInvoices', 'reset', {}); emit(req, 'inventory', 'reset', {}); emit(req, 'inventoryTx', 'reset', {}); } catch (_) {}
+        try { emit(req, 'purchaseInvoices', 'reset', {}); emit(req, 'inventory', 'reset', {}); emit(req, 'inventoryTx', 'reset', {}); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         logger.warn(`[PURCHASE_INVOICES] admin ${req.user?.id} حذف كل الفواتير (${del.rowCount}) وعكس ${led.rowCount} قيد مخزون وأبطأ ${voidedJournals} قيد محاسبي`);
         res.json({ ok: true, deletedInvoices: del.rowCount, reversedLedgerRows: led.rowCount, deletedTransactions: txDeleted, voidedJournals });
     } catch (e) {

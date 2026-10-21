@@ -65,7 +65,14 @@ const { Client } = require('pg');
 
     // 7) القرص
     let freeMB = -1;
-    try { const df = execSync('df -k /c | tail -1').toString().trim().split(/\s+/); freeMB = Math.round(Number(df[3]) / 1024); } catch (_) {}
+    // free space via statfs (Windows + Linux) — the previous implementation used
+    // `df` (Linux only) and always reported -1 MB on Windows.
+    try {
+        const st = fs.statfsSync(process.env.KARIM_DISK_PATH || ROOT);
+        freeMB = Math.floor((st.bavail * st.bsize) / (1024 * 1024));
+    } catch (_) {
+        try { const df = execSync('df -k / | tail -1').toString().trim().split(/\s+/); freeMB = Math.round(Number(df[3]) / 1024); } catch (__) {}
+    }
     gate('القرص — مساحة حرة ≥ 500MB', freeMB >= 500, `الحرة=${freeMB}MB`);
 
     const fails = results.filter((r) => !r.pass);

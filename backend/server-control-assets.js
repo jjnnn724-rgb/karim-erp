@@ -307,7 +307,7 @@ const JS = `
     $('userbox').hidden = true;
     $('loginerr').textContent = message || '';
     var u = $('u');
-    if (u) { setTimeout(function () { try { u.focus(); } catch (e) {} }, 30); }
+    if (u) { setTimeout(function () { try { u.focus(); } catch (_e) { /* best-effort: الخطأ لا يوقف المسار */ } }, 30); }
   }
 
   function showDash(user) {
@@ -506,7 +506,7 @@ const JS = `
     $('minput').value = '';
     $('merr').textContent = '';
     $('modal').hidden = false;
-    setTimeout(function () { try { (phrase ? $('minput') : $('mconfirm')).focus(); } catch (e) {} }, 30);
+    setTimeout(function () { try { (phrase ? $('minput') : $('mconfirm')).focus(); } catch (_e) { /* best-effort: الخطأ لا يوقف المسار */ } }, 30);
   }
   function closeModal() {
     $('modal').hidden = true;
@@ -557,7 +557,7 @@ const JS = `
   });
 
   $('logout').addEventListener('click', function () {
-    api('/api/logout', { method: 'POST', body: {} }).catch(function () {}).then(function () { showLogin(''); });
+    api('/api/logout', { method: 'POST', body: {} }).catch(_function () { /* best-effort: الخطأ لا يوقف المسار */ }).then(function () { showLogin(''); });
   });
   $('refresh').addEventListener('click', function () { loadStatus(); });
   $('start').addEventListener('click', function () { openModal('start'); });

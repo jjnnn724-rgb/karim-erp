@@ -155,7 +155,7 @@ async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHI
         }
         // أوردر جديد من الزائر → حدث فوري تسمعه نغمة الكاشير (realtime.js)
         if (io && out.newDocs.length > 0) {
-            try { io.emit('yarasoft:new-orders', { count: out.newDocs.length, orders: out.newDocs.slice(0, 10), at: new Date().toISOString() }); } catch (_) {}
+            try { io.emit('yarasoft:new-orders', { count: out.newDocs.length, orders: out.newDocs.slice(0, 10), at: new Date().toISOString() }); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         }
         return out;
     } catch (e) {

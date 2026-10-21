@@ -12,7 +12,7 @@ const path = require('path');
 if (global.__karimOtelStarted) {return;}
 
 // .env قد يكون مُحمَّلًا بالفعل (require من server.js) — تأمين للطريقين.
-try { require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true }); } catch (_) {}
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true }); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
 
 if (process.env.OTEL_ENABLED === 'true') {
     global.__karimOtelStarted = true;
