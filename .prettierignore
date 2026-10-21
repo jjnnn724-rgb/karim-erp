@@ -37,3 +37,14 @@ add-*.js
 
 # Vendor
 frontend/app/js/vendor/
+
+# مخرجات مولَّدة (ليست كودًا مصدريًا — وقد تحتوي HTML غير مُغلق)
+tools/employee-card/out/
+audit-results/
+var/
+runtime/
+playwright-report/
+coverage/
+
+# مخرجات مولَّدة
+logs/

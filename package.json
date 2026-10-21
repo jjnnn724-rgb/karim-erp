@@ -54,7 +54,7 @@
     "csp:report": "node scripts/summarize-csp-violations.js",
     "test:secrets:gate": "node scripts/check-secrets.js",
     "test:v2-revision": "node scripts/v2-revision.js --check",
-    "test:format": "npx prettier --check . --ignore-path .prettierignore",
+    "test:format": "npx prettier --check .",
     "test:type": "npm run typecheck && npm run typecheck:strict",
     "test:type:gate": "node scripts/type-gate.js",
     "test:all": "npm run test:lint && npm run test:type && npm run test",

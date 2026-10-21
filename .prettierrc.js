@@ -10,7 +10,6 @@ module.exports = {
   arrowParens: 'avoid',
   endOfLine: 'lf',
   plugins: [],
-  ignorePath: '.prettierignore',
   overrides: [
     {
       files: '*.json',

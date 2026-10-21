@@ -225,3 +225,11 @@ npm test
 ---
 
 *آخر تحديث: 2026-07-17*
+
+## فحص التنسيق (Prettier) — إ.reportي حاليًا
+
+- `npm run test:format` يفشل حاليًا على **1304 ملفًا** (المستودع لم يُنسَّق بـPrettier قط).
+- تشغيله حاجبًا يعني تنسيق المشروع كاملًا = تغيير ضخم عالي المخاطرة ⇒ قرار منفصل.
+- لذلك هو `continue-on-error` في الـCI، بينما **البوابات الحقيقية حاجبة**:
+  lint-gate · secrets · handlers · inline-scripts · dispatch · docker · frontend-version · الاختبارات.
+- لإصلاحه تدريجيًا: `npx prettier --write <ملف>` مع commit مستقل لكل دفعة.
