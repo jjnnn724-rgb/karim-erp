@@ -1,7 +1,8 @@
 #!/bin/sh
 # مطاعم الشرفة العالمي — Karim ERP Docker Startup
 # ينشئ قاعدة البيانات ويستورد النسخة الكاملة ثم يشغل السيرفر
-set -e
+# SECURITY: set -euo pipefail ⇒ أي فشل في خطوة يوقف الإقلاع بدل المتابعة على خطأ.
+set -euo pipefail
 export PGPASSWORD="$DB_PASSWORD"
 
 echo "=== Karim ERP Docker Startup ==="

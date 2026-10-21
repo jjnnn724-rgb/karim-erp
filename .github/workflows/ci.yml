@@ -114,6 +114,9 @@ jobs:
       - name: No inline <script> blocks — they are blocked by CSP and silently never run
         run: npm run test:inline-scripts:gate
 
+      - name: Container security gate — non-root, no baked secrets, fail-fast entrypoints
+        run: npm run test:docker:gate
+
       - name: Secret scanner — no hardcoded credentials in tracked files
         run: npm run test:secrets:gate
 

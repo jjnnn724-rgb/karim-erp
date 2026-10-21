@@ -46,6 +46,7 @@
     "test:handlers:gate": "node scripts/audit-inline-handlers.js",
     "test:handlers:budget": "node scripts/audit-csp-inline-handlers.js --check scripts/inline-handlers-baseline.json",
     "test:inline-scripts:gate": "node scripts/audit-csp-inline-handlers.js --check-inline-scripts",
+    "test:docker:gate": "node scripts/check-docker.js",
     "csp:report": "node scripts/summarize-csp-violations.js",
     "test:secrets:gate": "node scripts/check-secrets.js",
     "test:v2-revision": "node scripts/v2-revision.js --check",
