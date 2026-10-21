@@ -314,7 +314,7 @@ export function mountRecipesScreen(host, ctx = {}) {
             + '<button type="button" class="erp-btn erp-btn--sm" data-v2-bom-upload><i class="ji" data-i="camera" aria-hidden="true"></i><span>رفع الصورة</span></button>'
             + (p.imageUrl ? '<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-bom-imgdel>حذف الصورة</button>' : '')
             + '</div>'
-            + '<div class="erp-table__scroll"><table class="erp-table__grid">'
+            + '<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">'
             + '<thead><tr><th>المكوّن</th><th>الكمية</th><th>الوحدة</th><th>الهدر %</th><th>تكلفة السطر</th><th>حذف</th></tr></thead>'
             + '<tbody data-v2-bom-rows>' + bomRowsHtml(p) + '</tbody></table></div>'
             + '<div class="erp-dash-controls">'

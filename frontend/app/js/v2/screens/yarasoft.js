@@ -68,7 +68,7 @@ function stateMessage(title, message, tone = '') {
 
 function table(headers, body, empty, count) {
     const th = headers.map((item) => `<th scope="col">${esc(item)}</th>`).join('');
-    return `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${count}" class="erp-td erp-text-muted">${esc(empty)}</td></tr>`}</tbody></table></div>`;
+    return `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${count}" class="erp-td erp-text-muted">${esc(empty)}</td></tr>`}</tbody></table></div>`;
 }
 
 function template(canWrite) {

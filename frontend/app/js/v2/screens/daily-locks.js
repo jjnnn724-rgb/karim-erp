@@ -72,8 +72,8 @@ export function mountDailyLocksScreen(host, ctx = {}) {
                 + `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">فاتورة</span></div><div class="erp-kpi__value"><span class="erp-num" dir="ltr">${formatInt(d.totalInv)}</span></div></li>`
                 + `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">صافي</span></div><div class="erp-kpi__value"><span class="erp-num" dir="ltr">${formatQty(d.totalNet)}</span></div></li>`
                 + `</ul>`
-                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>القسم</th><th>مقفّل</th><th>إيراد</th><th>مرتجع</th><th>صافي</th><th>فاتورة</th><th>مرتجعات</th></tr></thead><tbody>`
-                + (d.rows.map((x) => `<tr${x.lock_count > 0 ? '' : ' style="opacity:.55"'}>`
+                + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>القسم</th><th>مقفّل</th><th>إيراد</th><th>مرتجع</th><th>صافي</th><th>فاتورة</th><th>مرتجعات</th></tr></thead><tbody>`
+                + (d.rows.map((x) => `<tr${x.lock_count > 0 ? '' : ' style="background:var(--erp-surface-hover)"'}>`
                     + `<td class="erp-td"><b>${esc(x.dept_name)}</b> <span class="erp-mono erp-text-muted" dir="ltr">${esc(x.dept_code)}</span></td>`
                     + `<td class="erp-td"><span class="erp-badge" data-tone="${x.lock_count > 0 ? 'success' : 'danger'}">${x.lock_count > 0 ? 'مقفّل' : 'مفتوح'}</span></td>`
                     + `<td class="erp-td erp-num" dir="ltr">${formatQty(x.gross)}</td>`

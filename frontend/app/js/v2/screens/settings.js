@@ -271,7 +271,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             const d = await fetchZatcaQueue(20);
             if (!el.isConnected) {return;}
             const rows = Array.isArray(d.data) ? d.data : [];
-            box.innerHTML = rows.length ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الفاتورة</th><th>القسم</th><th>الإجمالي</th><th>الحالة</th><th>المحاولات</th><th>آخر خطأ</th><th>أُبلغت</th></tr></thead><tbody>`
+            box.innerHTML = rows.length ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الفاتورة</th><th>القسم</th><th>الإجمالي</th><th>الحالة</th><th>المحاولات</th><th>آخر خطأ</th><th>أُبلغت</th></tr></thead><tbody>`
                 + rows.map((r) => `<tr><td class="erp-td erp-mono" dir="ltr">#${esc(String(r.invoice_counter))}</td><td class="erp-td">${esc(r.department_name || '—')}</td>`
                     + `<td class="erp-td erp-num" dir="ltr">${formatInt(r.total_amount)} ${esc(main?.currency || '')}</td>`
                     + `<td class="erp-td"><span class="erp-badge" data-tone="${r.status === 'reported' ? 'success' : (r.status === 'failed' || r.status === 'dead_letter') ? 'danger' : 'neutral'}">${esc(ZATCA_STATUS_AR[r.status] || r.status)}</span></td>`
@@ -422,7 +422,7 @@ export function mountSettingsScreen(host, ctx = {}) {
         ];
         sumBox.innerHTML = `<ul class="erp-kpis">` + items.map(([l, v]) => `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">${esc(l)}</span></div><div class="erp-kpi__value"><span class="erp-num" dir="ltr">${formatInt(v)}</span></div></li>`).join('') + `</ul>`;
         const rows = punch.attempts || [];
-        tbl.innerHTML = rows.length ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>المستخدم</th><th>القرار</th><th>السبب</th><th>المسافة</th><th>الدقة</th><th>الثقة</th><th>IP</th></tr></thead><tbody>`
+        tbl.innerHTML = rows.length ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>المستخدم</th><th>القرار</th><th>السبب</th><th>المسافة</th><th>الدقة</th><th>الثقة</th><th>IP</th></tr></thead><tbody>`
             + rows.map((a) => {
                 const ok = a.decision === 'accepted';
                 const trust = a.trust_score !== null && a.trust_score !== undefined ? Number(a.trust_score) : null;
@@ -463,7 +463,7 @@ export function mountSettingsScreen(host, ctx = {}) {
         try {
             const rows = await fetchPunchDevices();
             if (!el.isConnected) {return;}
-            box.innerHTML = rows.length ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>المستخدم</th><th>الجهاز</th><th>IP الربط</th><th>آخر ظهور</th><th></th></tr></thead><tbody>`
+            box.innerHTML = rows.length ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>المستخدم</th><th>الجهاز</th><th>IP الربط</th><th>آخر ظهور</th><th></th></tr></thead><tbody>`
                 + rows.map((d) => {
                     const when = d.last_seen_at || d.bound_at;
                     return `<tr><td class="erp-td"><b>${esc(d.name || d.username || `مستخدم #${d.user_id}`)}</b>${d.username ? `<br><small class="erp-text-muted" dir="ltr">${esc(d.username)}</small>` : ''}</td>`
@@ -510,7 +510,7 @@ export function mountSettingsScreen(host, ctx = {}) {
                 + `<button type="button" class="erp-btn erp-btn--sm" data-v2-bk-pick>رفع نسخة خارجية</button>`
                 + `<button type="button" class="erp-btn erp-btn--sm" data-v2-bk-list>تحديث القائمة</button></div>`
                 + `<small class="erp-text-sm erp-text-muted">النسخة تشمل قاعدة البيانات كاملة + الإعدادات — انسخ أحدث ملف على فلاشة خارجية. الاستعادة تمسح الحالي (نسخة أمان تلقائية أولًا).</small>`
-                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th>السلامة</th><th>المحتوى</th><th></th></tr></thead><tbody>`
+                + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th>السلامة</th><th>المحتوى</th><th></th></tr></thead><tbody>`
                 + (files.map(fmtBackupRow).join('') || '<tr><td class="erp-td" colspan="6">لا نسخ بعد — دوس نسخة احتياطية الآن</td></tr>')
                 + `</tbody></table></div>`
                 + (d.dir ? `<small class="erp-text-sm erp-text-muted">مجلد النسخ: <code dir="ltr">${esc(d.dir)}</code></small>` : '')
@@ -616,7 +616,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             + (actionsOn ? '' : '<p class="erp-text-sm" style="color:var(--erp-warning-text)">الأوامر معطّلة في الخدمة المرافقة — أعد تثبيتها بالوضع الخدمي.</p>')
             + `<div data-v2-sc-panel></div>`
             + (audit.length
-                ? `<details><summary class="erp-text-sm erp-text-muted">آخر الأوامر (${audit.length})</summary><div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الأمر</th><th>النتيجة</th></tr></thead><tbody>`
+                ? `<details><summary class="erp-text-sm erp-text-muted">آخر الأوامر (${audit.length})</summary><div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الأمر</th><th>النتيجة</th></tr></thead><tbody>`
                     + audit.map((a) => `<tr><td class="erp-td erp-text-xs" dir="ltr">${esc(String(a.at || '').slice(5, 16).replace('T', ' '))}</td>`
                         + `<td class="erp-td">${esc(a.actor || '—')}</td>`
                         + `<td class="erp-td">${esc(SC_ACTION_AR[a.action] || a.action || '—')}</td>`

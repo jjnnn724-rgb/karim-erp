@@ -206,6 +206,22 @@
 /* علامة الحقل الإلزامي — تُقرأ مع Label ولا تحمل معلومة وحدها (النص يقول «إلزامي»). */
 .erp-v2 .erp-req { color: var(--erp-danger-text); font-weight: var(--erp-fw-bold); }
 
+/* أهداف اللمس: مربّع اختيار 13px داخل صفٍّ نصّي لا يُصاب بإصبع.
+   على أجهزة اللمس يُكبَّر المربّع ويُمنح الصفّ 44px كاملة. */
+@media (pointer: coarse) {
+  .erp-v2 input[type="checkbox"],
+  .erp-v2 input[type="radio"] {
+    inline-size: 24px;
+    block-size: 24px;
+    flex: 0 0 auto;
+  }
+  .erp-v2 label:has(> input[type="checkbox"]),
+  .erp-v2 label:has(> input[type="radio"]) {
+    min-block-size: 44px;
+    align-items: center;
+  }
+}
+
 /* ── Theme control (segmented radio group) ───────────────────────────── */
 .erp-v2 .erp-theme-control {
   display: inline-flex;
@@ -258,11 +274,15 @@
 
 .erp-v2 .erp-card__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  row-gap: var(--erp-space-2);
   gap: var(--erp-space-3);
   padding: var(--erp-space-4);
   border-block-end: 1px solid var(--erp-border);
+  min-inline-size: 0;
 }
+.erp-v2 .erp-card__head > * { min-inline-size: 0; }
 
 .erp-v2 .erp-card__title {
   font-size: var(--erp-text-md);

@@ -35,6 +35,20 @@ const HR_CSS = path.join(APP, 'css', 'v2', 'erp-hr.css');
 const MIGRATION = path.join(V2, 'MIGRATION.md');
 const PREVIEW = path.join(V2, 'preview.js');
 
+/* عقد CSS يثبت النية لا الصياغة: إخفاء تسمية الزرّ إما display:none أو
+   النمط البصري (sr-only: position:absolute + مقاس 1px + clip-path). */
+const ruleBody = (cssText, selector) => {
+    const i = cssText.indexOf(selector);
+    if (i < 0) return '';
+    const open = cssText.indexOf('{', i);
+    const close = cssText.indexOf('}', open);
+    return open < 0 || close < 0 ? '' : cssText.slice(open + 1, close);
+};
+const hidesLabel = (body) => /display:\s*none/.test(body)
+    || (/position:\s*absolute/.test(body)
+        && /inline-size:\s*1px/.test(body)
+        && /clip-path:\s*inset\(50%\)/.test(body));
+
 function loadEsm(file, injections = {}, collect = []) {
     const stripped = fs.readFileSync(file, 'utf8')
         .split('\n')
@@ -351,8 +365,15 @@ describe('V2 roster screen (source contract)', () => {
         const c = css();
         const last640 = c.lastIndexOf('@media (max-width: 640px)');
         const block = c.slice(last640, c.indexOf('\n}', last640));
-        expect(block).toMatch(/\.erp-v2-roster \.erp-dash-controls \.erp-btn > span \{ display: none; \}/);
-        expect(block).toMatch(/span\[data-v2-dirty-count\] \{ display: inline; \}/);
+        // إخفاء تسمية الزرّ: display:none أو النمط البصري (sr-only) — النية واحدة:
+        // النصّ يختفي بصريًا ويبقى الرمز، وaria-label يسمّي الزرّ لقارئ الشاشة.
+        const labelRule = ruleBody(block, '.erp-v2-roster .erp-dash-controls .erp-btn > span');
+        expect(labelRule).not.toBe('');
+        expect(hidesLabel(labelRule)).toBe(true);
+        // الاستثناء: عدّاد الخلايا المعدَّلة معلومةٌ لا يقولها رمز — فيبقى ظاهرًا.
+        const countRule = ruleBody(block, '.erp-v2-roster .erp-dash-controls .erp-btn > span[data-v2-dirty-count]');
+        expect(countRule).not.toBe('');
+        expect(/position:\s*static/.test(countRule) || /clip-path:\s*none/.test(countRule)).toBe(true);
         expect(block).toMatch(/min-block-size: var\(--erp-space-8\)/);
     });
 

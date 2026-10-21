@@ -1101,13 +1101,13 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `</ul>`
             + `<div class="erp-dash-controls"><h4>آخر الإيرادات</h4><span class="erp-grow"></span>`
             + (canPost ? '<button type="button" class="erp-btn erp-btn--sm" data-v2-rev-add>إيراد +</button>' : '') + `</div>`
-            + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>البيان</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>`
+            + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>البيان</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>`
             + (d.revenues.map((r) => `<tr><td class="erp-td"><b>${esc(r.source)}</b></td><td class="erp-td">${money(r.amount, currency)}</td><td class="erp-td erp-text-muted">${esc(fD(r.date))}</td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="3">لا إيرادات</td></tr>')
             + `</tbody></table></div>`
             + `<div class="erp-dash-controls"><h4>آخر المصاريف</h4><span class="erp-grow"></span>`
             + (canPost ? '<button type="button" class="erp-btn erp-btn--sm" data-v2-exp-add>مصروف +</button>' : '') + `</div>`
-            + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>البيان</th><th>النوع</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>`
+            + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>البيان</th><th>النوع</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>`
             + (d.expenses.map((e) => {
                 const [tone, label] = expKind(e);
                 const neg = Number(e.amount || 0) < 0;
@@ -1115,7 +1115,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             }).join('') || '<tr><td class="erp-td" colspan="4">لا مصاريف</td></tr>')
             + `</tbody></table></div>`
             + `<h4>أذون الصرف للقسم <span class="erp-badge" data-tone="info">${formatInt(d.dispatches.length)} إذن</span></h4>`
-            + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>`
+            + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>`
             + (d.dispatches.map((x, i) => `<tr><td class="erp-td erp-num" dir="ltr">${i + 1}</td><td class="erp-td">${esc((x.items || []).map((it) => `${it.itemName || it.name || '—'} (${it.approvedQty ?? it.qty ?? 0})`).join('، ') || '—')}</td><td class="erp-td erp-text-muted">${esc(fD(x.date))}</td><td class="erp-td">${esc(x.status || '—')}</td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="4">لا أذون صرف لهذا القسم</td></tr>')
             + `</tbody></table></div>`

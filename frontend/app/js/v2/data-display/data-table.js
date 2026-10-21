@@ -137,7 +137,7 @@ export function createDataTable(options = {}) {
           <span class="erp-table__count" data-erp-count aria-live="polite"></span>
         </div>
       </div>
-      <div class="erp-table__scroll" data-erp-scroll></div>
+      <div class="erp-table__scroll" tabindex="0" data-erp-scroll></div>
       <div class="erp-table__pager erp-no-print" data-erp-pager hidden></div>`;
 
     const el = {

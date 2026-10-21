@@ -487,7 +487,15 @@
 
   /* الطباعة/التحديث: aria-label على الزرّ نفسه، فالنصّ المكرر يُخفى ويُبقى
      الرمز — نفس حركة طبقتي 01–04 و05–08. */
-  .erp-v2-leaves .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-leaves .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
   /* أزرار الرأس وشريط الحالة وأزرار القرار داخل الصفوف وزرّ «الأعمدة»
      وأزرار الترقيم وحقل «صفوف الصفحة» ولوحة سبب الرفض: هدفُ إصبعٍ لا
@@ -527,8 +535,21 @@
      النصوص تُخفى وتبقى الرموز (aria-label يسمّيها) — إلا عدّاد الخلايا
      المعدَّلة، فهو معلومة العملية الوحيدة التي لا يقولها رمز. */
   .erp-v2-roster .erp-dash-controls { gap: var(--erp-space-2); }
-  .erp-v2-roster .erp-dash-controls .erp-btn > span { display: none; }
-  .erp-v2-roster .erp-dash-controls .erp-btn > span[data-v2-dirty-count] { display: inline; }
+  .erp-v2-roster .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .erp-v2-roster .erp-dash-controls .erp-btn > span[data-v2-dirty-count] {
+    position: static;
+    inline-size: auto; block-size: auto;
+    margin: 0; overflow: visible;
+    clip-path: none; white-space: normal;
+  }
 
   /* أزرار الرأس وزرّ «نسخ الصف» في الصفوف: هدف إصبعٍ لا هدف بصر. */
   .erp-v2-roster .erp-dash-controls .erp-btn,
@@ -539,7 +560,15 @@
 
   /* موظفو القسم (طبقة الشاشة المصغرة): نصوص الأزرار تختفي وتبقى الأيقونات،
      وهدف لمس بحجم الإصبع — بنفس قاعدة الموجات السابقة. */
-  .erp-v2-deptemp .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-deptemp .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-deptemp .erp-dash-controls .erp-btn { min-block-size: 40px; }
 
   /* شاشة الحضور (W2-3): أزرار اللوحات — اعتماد المعالجة/العذر/التصحيح
@@ -657,8 +686,17 @@
   display: inline-flex;
   align-items: center;
   gap: var(--erp-space-1);
+  min-block-size: 24px;
   font-size: var(--erp-text-xs);
   color: var(--erp-text-muted);
+  cursor: pointer;
+}
+.erp-ros-off input[type="checkbox"] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--erp-brand);
 }
 .erp-ros-static {
   display: flex;

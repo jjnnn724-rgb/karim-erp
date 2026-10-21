@@ -256,7 +256,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
         const targets = employees.filter((e) => e.userId != null && String(e.userId) !== '');
         const picker = targets.length
             ? `<label class="erp-field"><span class="erp-text-sm erp-text-muted">الموظف</span>
-                <select class="erp-select" data-v2-face-user>
+                <select class="erp-select" data-v2-face-user aria-label="الموظف">
                   <option value="">— اختر الموظف —</option>
                   ${targets.map((e) => `<option value="${esc(String(e.userId))}"${String(e.userId) === faceUserId ? ' selected' : ''}>${esc(e.name)} — ${esc(e.employeeId || '')}</option>`).join('')}
                 </select></label>
@@ -311,7 +311,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
         }
         if (isAdmin && employees.length > 1) {
             q('[data-v2-switch]').innerHTML = `<label class="erp-text-sm erp-text-muted">الموظف</label> `
-                + `<select class="erp-select" data-v2-emp style="max-width:280px">`
+                + `<select class="erp-select" data-v2-emp style="max-width:280px" aria-label="الموظف">`
                 + employees.map((e) => `<option value="${esc(String(e.id))}"${String(e.id) === String(emp.id) ? ' selected' : ''}>${esc(e.name)} — ${esc(e.employeeId || '')}</option>`).join('')
                 + `</select>`;
         }
@@ -345,7 +345,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             + `<input class="erp-input erp-input--ltr" type="month" data-v2-month value="${todayIso().slice(0, 7)}" aria-label="شهر الكشف">`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-print-day>اليوم</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-print-month>الشهر كامل</button></div>`
-            + `<div class="erp-card__body erp-stack"><div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>المصدر</th><th>الحالة</th></tr></thead><tbody>`
+            + `<div class="erp-card__body erp-stack"><div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>المصدر</th><th>الحالة</th></tr></thead><tbody>`
             + (withIn.slice().reverse().map((a) => {
                 const h = a.checkIn && a.checkOut ? (portalWorkHours(a) ?? 0).toFixed(2) : '—';
                 return `<tr><td class="erp-td">${esc(fD(a.date))}</td>`
@@ -356,7 +356,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             }).join('') || '<tr><td class="erp-td" colspan="6">لا توجد سجلات</td></tr>')
             + `</tbody></table></div></div></section>`
             + `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">سجل الإجازات</h3></div>`
-            + `<div class="erp-card__body erp-stack"><div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody>`
+            + `<div class="erp-card__body erp-stack"><div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead><tbody>`
             + (myLeaves.slice().reverse().map((l) => {
                 const days = Math.ceil((new Date(l.endDate) - new Date(l.startDate)) / 86400000) + 1;
                 const st = l.status === 'approved' ? ['success', 'معتمد'] : (l.status === 'rejected' ? ['danger', 'مرفوض'] : ['warning', 'معلق']);

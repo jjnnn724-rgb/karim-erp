@@ -274,7 +274,7 @@ function fiscalTableHtml(rows, caps, currency) {
             </tr>`;
         }).join('')
         : `<tr><td colspan="${cols}" class="erp-text-muted">لا سنوات مالية مسجّلة${caps.fiscalCreate ? ' — أنشئ الأولى من زر «سنة مالية جديدة».' : '.'}</td></tr>`;
-    return `<div class="erp-table__scroll">
+    return `<div class="erp-table__scroll" tabindex="0">
       <table class="erp-table__grid">
         <caption class="erp-sr-only">السنوات المالية — الحالة ولقطة الإقفال</caption>
         <thead><tr><th>السنة</th><th>الفترة</th><th>الحالة</th><th>ملخص الإقفال</th>${caps.fiscalClose ? '<th>الإجراء</th>' : ''}</tr></thead>
@@ -322,7 +322,7 @@ function openingListHtml(invoices, currency) {
       </summary>
       <div class="erp-wgov__inv-body">
         ${invoice.notes ? `<p class="erp-text-sm erp-text-muted">${esc(invoice.notes)}</p>` : ''}
-        ${invoice.items.length ? `<div class="erp-table__scroll">
+        ${invoice.items.length ? `<div class="erp-table__scroll" tabindex="0">
           <table class="erp-table__grid">
             <caption class="erp-sr-only">بنود الرصيد الافتتاحي ${esc(invoice.number)}</caption>
             <thead><tr><th>الصنف</th><th>الفئة</th><th>المسجّل افتتاحًا</th><th>المنصرف منذ الفاتورة</th><th>الرصيد الحالي</th><th>سعر البند</th><th>الحالة</th></tr></thead>
@@ -337,7 +337,7 @@ function healthHtml(h) {
     if (!h) {return '';}
     const tone = h.ok ? 'success' : 'danger';
     const anomalies = h.anomalies.length
-        ? `<div class="erp-table__scroll">
+        ? `<div class="erp-table__scroll" tabindex="0">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">ملاحظات فحص النظام</caption>
               <thead><tr><th>الصنف</th><th>الملاحظة</th></tr></thead>

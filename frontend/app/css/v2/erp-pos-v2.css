@@ -39,7 +39,17 @@
 .erp-pos-v2-open label,
 .erp-pos-v2-payments label {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
     gap: var(--erp-space-1);
+}
+.erp-pos-v2-search .erp-input,
+.erp-pos-v2-open .erp-input,
+.erp-pos-v2-payments .erp-input,
+.erp-pos-v2-search .erp-select,
+.erp-pos-v2-open .erp-select {
+    inline-size: 100%;
+    min-inline-size: 0;
 }
 
 .erp-pos-v2-categories {

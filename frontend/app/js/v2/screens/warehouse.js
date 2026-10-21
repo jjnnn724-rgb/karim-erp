@@ -616,7 +616,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
         const target = panelEl.querySelector('[data-v2-opening-rows]');
         if (!target) {return;}
         const netHeads = openingNetMode ? '<th>المنصرف فعليًا</th><th>الصافي المعتمد</th>' : '';
-        target.innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid">
+        target.innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
           <caption class="erp-sr-only">جدول إدخال الرصيد الافتتاحي</caption>
           <thead><tr><th>اسم الصنف</th><th>الوحدة</th><th>كمية فعلية</th><th>سعر الشراء</th>${netHeads}<th>تاريخ الصلاحية</th><th>الكراتين</th><th>الفئة</th><th>إجراءات</th></tr></thead>
           <tbody>${openingRows.map(openingRowMarkup).join('')}</tbody></table></div>`;

@@ -71,7 +71,7 @@ export function mountOracleDataScreen(host, ctx = {}) {
             + `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">جدول</span></div><div class="erp-kpi__value"><span class="erp-num" dir="ltr">${formatInt(tables.length)}</span></div></li>`
             + `<li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">صف إجمالًا</span></div><div class="erp-kpi__value"><span class="erp-num" dir="ltr">${formatInt(totalRows)}</span></div></li>`
             + `</ul>`;
-        q('[data-v2-tables]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الجدول (Oracle)</th><th>الجدول (karim)</th><th>الصفوف</th><th></th></tr></thead><tbody>`
+        q('[data-v2-tables]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الجدول (Oracle)</th><th>الجدول (karim)</th><th>الصفوف</th><th></th></tr></thead><tbody>`
             + (list.map((t) => `<tr><td class="erp-td"><b>${esc(t.oracle_name || '')}</b></td>`
                 + `<td class="erp-td erp-mono" dir="ltr">${esc(t.pg_name || '')}</td>`
                 + `<td class="erp-td"><span class="erp-badge" data-tone="info">${formatInt(t.live_count || 0)}</span></td>`
@@ -94,7 +94,7 @@ export function mountOracleDataScreen(host, ctx = {}) {
             + `<div class="erp-card__body erp-stack">`
             + `<div class="erp-dash-controls"><input class="erp-input" data-v2-dsearch value="${esc(detail.search)}" placeholder="بحث..." aria-label="بحث داخل الجدول" style="max-width:400px">`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-dgo>بحث</button></div>`
-            + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>`
+            + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>`
             + (d.rows.map((row) => `<tr>${cols.map((c) => `<td class="erp-td" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(String(row[c] ?? ''))}">${esc(String(row[c] ?? ''))}</td>`).join('')}</tr>`).join('')
                 || `<tr><td class="erp-td" colspan="${Math.max(cols.length, 1)}">لا صفوف</td></tr>`)
             + `</tbody></table></div>`

@@ -658,7 +658,7 @@ export function mountReportsScreen(host, ctx = {}) {
     /** صفوف HTML جاهزة تُركب في tfoot — تظهر على الشاشة وفي الطباعة معًا،
      *  ولا تُركب إلا مع صفوف فعلية (rowsHtml) فلا إجمالي لجدول فارغ. */
     function xTable(heads, rowsHtml, emptyText, footHtml = '') {
-        return `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>`
+        return `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr>`
             + heads.map((h) => `<th>${esc(h)}</th>`).join('') + `</tr></thead><tbody>`
             + (rowsHtml || `<tr><td class="erp-td" colspan="${heads.length}">${esc(emptyText)}</td></tr>`)
             + `</tbody>`
@@ -1073,7 +1073,7 @@ export function mountReportsScreen(host, ctx = {}) {
             const d = await fetchYaraInvoiceDetail(docNo);
             if (!el.isConnected || extraType !== 'yara-cashiers') {return;}
             const h = d.header || {};
-            box.innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>الضريبة</th></tr></thead><tbody>`
+            box.innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>الضريبة</th></tr></thead><tbody>`
                 + (d.lines.map((l) => `<tr><td class="erp-td"><b>${esc(l.name || '—')}</b></td><td class="erp-td erp-num" dir="ltr">${formatQty(l.qty || 0)} ${esc(l.unit || '')}</td><td class="erp-td">${extraMoney(l.price || 0)}</td><td class="erp-td">${extraMoney(l.total || 0)}</td><td class="erp-td">${extraMoney(l.vat || 0)}</td></tr>`).join('')
                     || '<tr><td class="erp-td" colspan="5">بلا أصناف مسجلة</td></tr>')
                 + `</tbody></table></div><p class="erp-text-sm erp-text-muted">فاتورة #${esc(String(docNo))} — الكاشير: ${esc(`كاشير ${(h.CSHR || '').trim()}`)} — الصافي: ${extraMoney(h.NET_VAL || 0)} — الخصم: ${extraMoney(h.DSCNT_VL || 0)}</p>`;

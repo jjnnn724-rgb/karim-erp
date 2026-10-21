@@ -293,7 +293,7 @@ export function mountRosterScreen(host, ctx = {}) {
               </button>
             </td>
           </tr>`).join('');
-        gridHolder.innerHTML = `<div class="erp-table__scroll">
+        gridHolder.innerHTML = `<div class="erp-table__scroll" tabindex="0">
           <table class="erp-table__grid erp-ros-grid">
             <caption class="erp-sr-only">شبكة دوام الأسبوع — كل خلية محفوظة تُطبق في تاريخها عبر مجدول المحرك</caption>
             <thead>${head}</thead><tbody>${body}</tbody>
@@ -443,7 +443,7 @@ export function mountRosterScreen(host, ctx = {}) {
             const rows = await fetchRosterPending(d.weekStart);
             if (!el.isConnected || d !== data) {return;}
             pendingEl.innerHTML = rows.length
-                ? `<div class="erp-table__scroll"><table class="erp-table__grid">
+                ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
                      <caption class="erp-sr-only">طلبات اعتماد دوامات بانتظار توقيع شؤون العاملين</caption>
                      <thead><tr>
                        <th class="erp-th" scope="col">القسم</th><th class="erp-th" scope="col">الطالب</th>

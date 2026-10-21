@@ -127,7 +127,7 @@ export function mountPayrollScreen(host, ctx = {}) {
         const box = q('[data-v2-gen-runs]');
         if (!box) {return;}
         const runs = rows.slice().sort((a, b) => String(b.month).localeCompare(String(a.month))).slice(0, 6);
-        box.innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الشهر</th><th>الموظفون</th><th>الأساسي</th><th>أوفرتايم</th><th>علاوات</th><th>جزاءات</th><th>سلف</th><th>الصافي</th></tr></thead><tbody>`
+        box.innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الشهر</th><th>الموظفون</th><th>الأساسي</th><th>أوفرتايم</th><th>علاوات</th><th>جزاءات</th><th>سلف</th><th>الصافي</th></tr></thead><tbody>`
             + (runs.map((r) => `<tr><td class="erp-td"><b class="erp-mono" dir="ltr">${esc(r.month)}</b></td><td class="erp-td erp-num" dir="ltr">${formatInt(r.count)}</td><td class="erp-td">${money(r.basic, currency)}</td><td class="erp-td">${money(r.overtime, currency)}</td><td class="erp-td">${money(r.bonuses, currency)}</td><td class="erp-td">${money(r.penalties, currency)}</td><td class="erp-td">${money(r.advances, currency)}</td><td class="erp-td"><b>${money(r.net, currency)}</b></td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="8">لا مسيرات مولدة بعد</td></tr>')
             + `</tbody></table></div>`;
@@ -137,7 +137,7 @@ export function mountPayrollScreen(host, ctx = {}) {
         const box = q('[data-v2-sheet]');
         if (!box) {return;}
         const total = sheetEmps.reduce((s, e) => s + (Number(e.salary) || 0), 0);
-        box.innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>القسم</th><th>المنصب</th><th>الأساسي</th><th>أيام الحضور</th><th>الصافي</th></tr></thead><tbody>`
+        box.innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>القسم</th><th>المنصب</th><th>الأساسي</th><th>أيام الحضور</th><th>الصافي</th></tr></thead><tbody>`
             + (sheetEmps.map((e) => {
                 const d = sheetDepts.get(String(e.department));
                 const days = sheetDays.get(String(e.id)) || 0;
@@ -152,13 +152,13 @@ export function mountPayrollScreen(host, ctx = {}) {
         const adv = suite.advances || [];
         q('[data-v2-adv-count]').textContent = `(${formatInt(adv.length)})`;
         q('[data-v2-adv-form]').innerHTML = `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="advEmp">${empOptions()}</select>`
-            + `<label class="erp-text-sm erp-text-muted">المبلغ</label><input class="erp-input erp-input--ltr" data-v2-f="advAmt" type="number" step="0.01">`
-            + `<label class="erp-text-sm erp-text-muted">القسط الشهري (0 = دفعة واحدة)</label><input class="erp-input erp-input--ltr" data-v2-f="advInst" type="number" step="0.01" value="0">`
-            + `<label class="erp-text-sm erp-text-muted">التاريخ</label><input class="erp-input erp-input--ltr" data-v2-f="advDate" type="date" value="${new Date().toISOString().slice(0, 10)}">`
+            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="advEmp" aria-label="الموظف">${empOptions()}</select>`
+            + `<label class="erp-text-sm erp-text-muted">المبلغ</label><input class="erp-input erp-input--ltr" data-v2-f="advAmt" type="number" step="0.01" aria-label="مبلغ السلفة">`
+            + `<label class="erp-text-sm erp-text-muted">القسط الشهري (0 = دفعة واحدة)</label><input class="erp-input erp-input--ltr" data-v2-f="advInst" type="number" step="0.01" value="0" aria-label="القسط الشهري">`
+            + `<label class="erp-text-sm erp-text-muted">التاريخ</label><input class="erp-input erp-input--ltr" data-v2-f="advDate" type="date" value="${new Date().toISOString().slice(0, 10)}" aria-label="تاريخ السلفة">`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-adv-save>سلفة</button></div>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-adv-err role="alert"></div>`;
-        q('[data-v2-adv-list]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>المبلغ</th><th>القسط</th><th>المتبقي</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>`
+        q('[data-v2-adv-list]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>المبلغ</th><th>القسط</th><th>المتبقي</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>`
             + (adv.slice().reverse().slice(0, 30).map((a) => `<tr><td class="erp-td"><b>${esc(empName(a.employeeId))}</b></td><td class="erp-td">${money(a.amount, currency)}</td><td class="erp-td">${money(a.monthly_deduction, currency)}</td><td class="erp-td"><b>${money(a.remaining, currency)}</b></td><td class="erp-td">${a.status === 'active' ? '<span class="erp-badge" data-tone="success">نشطة</span>' : '<span class="erp-badge" data-tone="neutral">مغلقة</span>'}</td><td class="erp-td erp-text-muted">${esc(String(a.date || '').slice(0, 10))}</td><td class="erp-td"><button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="adv:${esc(String(a.id))}" aria-label="حذف السلفة"><i class="ji" data-i="trash" aria-hidden="true"></i></button></td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="7">لا سلف</td></tr>')
             + `</tbody></table></div>`;
@@ -166,28 +166,28 @@ export function mountPayrollScreen(host, ctx = {}) {
         const kinds = [['penalty', 'جزاء'], ['bonus', 'علاوة'], ['deduction', 'خصم'], ['allowance', 'بدل']];
         const adj = suite.adjustments || [];
         q('[data-v2-adj-form]').innerHTML = `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="adjEmp">${empOptions()}</select>`
-            + `<label class="erp-text-sm erp-text-muted">الشهر</label><input class="erp-input erp-input--ltr" data-v2-f="adjMonth" type="month" value="${curMonth()}">`
-            + `<label class="erp-text-sm erp-text-muted">النوع</label><select class="erp-select" data-v2-f="adjKind">${kinds.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
-            + `<label class="erp-text-sm erp-text-muted">المبلغ</label><input class="erp-input erp-input--ltr" data-v2-f="adjAmt" type="number" step="0.01">`
-            + `<label class="erp-text-sm erp-text-muted">السبب</label><input class="erp-input" data-v2-f="adjReason">`
+            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="adjEmp" aria-label="الموظف">${empOptions()}</select>`
+            + `<label class="erp-text-sm erp-text-muted">الشهر</label><input class="erp-input erp-input--ltr" data-v2-f="adjMonth" type="month" value="${curMonth()}" aria-label="شهر البند">`
+            + `<label class="erp-text-sm erp-text-muted">النوع</label><select class="erp-select" data-v2-f="adjKind" aria-label="نوع البند">${kinds.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`
+            + `<label class="erp-text-sm erp-text-muted">المبلغ</label><input class="erp-input erp-input--ltr" data-v2-f="adjAmt" type="number" step="0.01" aria-label="مبلغ البند">`
+            + `<label class="erp-text-sm erp-text-muted">السبب</label><input class="erp-input" data-v2-f="adjReason" aria-label="سبب البند">`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-adj-save>بند</button></div>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-adj-err role="alert"></div>`;
         const kindAr = { penalty: 'جزاء', bonus: 'علاوة', deduction: 'خصم', allowance: 'بدل' };
-        q('[data-v2-adj-list]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الشهر</th><th>النوع</th><th>المبلغ</th><th>السبب</th><th></th></tr></thead><tbody>`
+        q('[data-v2-adj-list]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الشهر</th><th>النوع</th><th>المبلغ</th><th>السبب</th><th></th></tr></thead><tbody>`
             + (adj.slice().reverse().slice(0, 30).map((a) => `<tr><td class="erp-td"><b>${esc(empName(a.employeeId))}</b></td><td class="erp-td erp-mono" dir="ltr">${esc(a.month)}</td><td class="erp-td"><span class="erp-badge" data-tone="${a.kind === 'penalty' || a.kind === 'deduction' ? 'danger' : 'success'}">${esc(kindAr[a.kind] || a.kind)}</span></td><td class="erp-td">${money(a.amount, currency)}</td><td class="erp-td erp-text-muted">${esc(a.reason || '—')}</td><td class="erp-td"><button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="adj:${esc(String(a.id))}" aria-label="حذف البند"><i class="ji" data-i="trash" aria-hidden="true"></i></button></td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="6">لا بنود</td></tr>')
             + `</tbody></table></div>`;
 
         const cons = suite.contracts || [];
         q('[data-v2-con-form]').innerHTML = `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="conEmp">${empOptions()}</select>`
-            + `<label class="erp-text-sm erp-text-muted">من</label><input class="erp-input erp-input--ltr" data-v2-f="conFrom" type="date" value="${new Date().toISOString().slice(0, 10)}">`
-            + `<label class="erp-text-sm erp-text-muted">إلى</label><input class="erp-input erp-input--ltr" data-v2-f="conTo" type="date">`
-            + `<label class="erp-text-sm erp-text-muted">الراتب التعاقدي</label><input class="erp-input erp-input--ltr" data-v2-f="conSalary" type="number" step="0.01">`
+            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="conEmp" aria-label="الموظف">${empOptions()}</select>`
+            + `<label class="erp-text-sm erp-text-muted">من</label><input class="erp-input erp-input--ltr" data-v2-f="conFrom" type="date" value="${new Date().toISOString().slice(0, 10)}" aria-label="بداية العقد">`
+            + `<label class="erp-text-sm erp-text-muted">إلى</label><input class="erp-input erp-input--ltr" data-v2-f="conTo" type="date" aria-label="نهاية العقد">`
+            + `<label class="erp-text-sm erp-text-muted">الراتب التعاقدي</label><input class="erp-input erp-input--ltr" data-v2-f="conSalary" type="number" step="0.01" aria-label="الراتب التعاقدي">`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-con-save>عقد</button></div>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-con-err role="alert"></div>`;
-        q('[data-v2-con-list]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>من</th><th>إلى</th><th>الحالة</th><th></th></tr></thead><tbody>`
+        q('[data-v2-con-list]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>من</th><th>إلى</th><th>الحالة</th><th></th></tr></thead><tbody>`
             + (cons.slice().sort((a, b) => String(a.end_date).localeCompare(String(b.end_date))).slice(0, 30).map((k) => {
                 const left = Math.ceil((new Date(k.end_date) - new Date()) / 86400000);
                 const badge = left < 0 ? '<span class="erp-badge" data-tone="danger">منتهٍ</span>'
@@ -198,14 +198,14 @@ export function mountPayrollScreen(host, ctx = {}) {
 
         const evs = suite.evaluations || [];
         q('[data-v2-ev-form]').innerHTML = `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="evEmp">${empOptions()}</select>`
-            + `<label class="erp-text-sm erp-text-muted">الفترة</label><input class="erp-input erp-input--ltr" data-v2-f="evPeriod" type="month" value="${curMonth()}">`
-            + `<label class="erp-text-sm erp-text-muted">التقييم (1-5)</label><select class="erp-select" data-v2-f="evScore"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>`
-            + `<label class="erp-text-sm erp-text-muted">المقيّم</label><input class="erp-input" data-v2-f="evBy">`
-            + `<label class="erp-text-sm erp-text-muted">ملاحظات</label><input class="erp-input" data-v2-f="evNotes">`
+            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-f="evEmp" aria-label="الموظف">${empOptions()}</select>`
+            + `<label class="erp-text-sm erp-text-muted">الفترة</label><input class="erp-input erp-input--ltr" data-v2-f="evPeriod" type="month" value="${curMonth()}" aria-label="فترة التقييم">`
+            + `<label class="erp-text-sm erp-text-muted">التقييم (1-5)</label><select class="erp-select" data-v2-f="evScore" aria-label="درجة التقييم"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>`
+            + `<label class="erp-text-sm erp-text-muted">المقيّم</label><input class="erp-input" data-v2-f="evBy" aria-label="المقيّم">`
+            + `<label class="erp-text-sm erp-text-muted">ملاحظات</label><input class="erp-input" data-v2-f="evNotes" aria-label="ملاحظات التقييم">`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-ev-save>تقييم</button></div>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-ev-err role="alert"></div>`;
-        q('[data-v2-ev-list]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الفترة</th><th>التقييم</th><th>ملاحظات</th><th></th></tr></thead><tbody>`
+        q('[data-v2-ev-list]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الفترة</th><th>التقييم</th><th>ملاحظات</th><th></th></tr></thead><tbody>`
             + (evs.slice().reverse().slice(0, 30).map((v) => `<tr><td class="erp-td"><b>${esc(empName(v.employeeId))}</b></td><td class="erp-td erp-mono" dir="ltr">${esc(v.period)}</td><td class="erp-td" dir="ltr">${'★'.repeat(Number(v.score) || 0)}${'☆'.repeat(5 - (Number(v.score) || 0))}</td><td class="erp-td erp-text-muted">${esc(v.notes || '—')}</td><td class="erp-td"><button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="ev:${esc(String(v.id))}" aria-label="حذف التقييم"><i class="ji" data-i="trash" aria-hidden="true"></i></button></td></tr>`).join('')
                 || '<tr><td class="erp-td" colspan="5">لا تقييمات</td></tr>')
             + `</tbody></table></div>`;
@@ -356,7 +356,7 @@ export function mountPayrollScreen(host, ctx = {}) {
                     box.innerHTML = `<p><span class="erp-badge" data-tone="danger">تأخير: ${money(r.totals?.late, currency)}</span> `
                         + `<span class="erp-badge" data-tone="warning">غياب: ${money(r.totals?.absent, currency)}</span> `
                         + `<span class="erp-badge" data-tone="brand">الإجمالي: ${money(r.totals?.total, currency)}</span></p>`
-                        + `<div class="erp-table__scroll" style="max-height:320px"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الراتب</th><th>حضور</th><th>تأخير</th><th>خصم التأخير</th><th>غياب</th><th>خصم الغياب</th><th>الإجمالي</th></tr></thead><tbody>${rowsHtml || '<tr><td class="erp-td" colspan="8">لا خصومات — كل الموظفين ملتزمون بدوامهم</td></tr>'}</tbody></table></div>`
+                        + `<div class="erp-table__scroll" tabindex="0" style="max-height:320px"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>الراتب</th><th>حضور</th><th>تأخير</th><th>خصم التأخير</th><th>غياب</th><th>خصم الغياب</th><th>الإجمالي</th></tr></thead><tbody>${rowsHtml || '<tr><td class="erp-td" colspan="8">لا خصومات — كل الموظفين ملتزمون بدوامهم</td></tr>'}</tbody></table></div>`
                         + `<small class="erp-text-sm erp-text-muted">السياسة: يوم الغياب = الراتب÷30 • دقيقة التأخير = الراتب÷30÷ساعات الوردية • الإجازات المعتمدة مستثناة${r.skipFridays ? ' • الجمعة مستثناة' : ''}</small>`
                         + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-ded-apply>تطبيق الخصومات</button></div>`;
                 } catch (e) {

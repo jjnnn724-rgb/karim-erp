@@ -1322,7 +1322,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${stat('إجمالي التأخير', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
             ${stat('إجمالي الساعات', String(s.totalKarim))}
           </div>
-          <div class="erp-table__scroll erp-emp-att__scroll">
+          <div class="erp-table__scroll erp-emp-att__scroll" tabindex="0">
             <table class="erp-table__grid">
               <thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
               <tbody>${body}</tbody>

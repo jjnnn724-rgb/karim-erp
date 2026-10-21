@@ -103,6 +103,21 @@ function repoStub(impl) {
 
 const source = (f) => fs.readFileSync(f, 'utf8');
 
+/* عقد CSS يثبت النية لا الصياغة: إخفاء تسمية الزرّ إما display:none أو
+   النمط البصري (sr-only: position:absolute + مقاس 1px + clip-path) — وكلاهما
+   يُبقي الرمز ظاهرًا ويبقى aria-label يسمّي الزرّ لقارئ الشاشة. */
+const ruleBody = (cssText, selector) => {
+    const i = cssText.indexOf(selector);
+    if (i < 0) return '';
+    const open = cssText.indexOf('{', i);
+    const close = cssText.indexOf('}', open);
+    return open < 0 || close < 0 ? '' : cssText.slice(open + 1, close);
+};
+const hidesLabel = (body) => /display:\s*none/.test(body)
+    || (/position:\s*absolute/.test(body)
+        && /inline-size:\s*1px/.test(body)
+        && /clip-path:\s*inset\(50%\)/.test(body));
+
 describe('kitchen-repo — الباب الواحد: قراءة النظرة وكتابات دورة المطبخ الست', () => {
     test('كل ما تحتاجه الشاشة مُصدَّر', () => {
         const src = source(REPO);
@@ -1002,9 +1017,15 @@ describe('erp-ops.css — طبقة الموجة التشغيلية', () => {
         const body = css()
             .replace(/\/\*[\s\S]*?\*\//g, '')
             .replace(/@media[^{]+\{/g, '');   // شرط الوسيط مقبول، القيم ليست كذلك
-        expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-        expect(body).not.toMatch(/rgba?\(/);
-        expect(body).not.toMatch(/\b\d+(px|rem|em)\b/);
+        // استثناء واحد مبيّن: نمط الإخفاء البصري (sr-only) — مقاس 1px وهو
+        // سالب -1px لا يقابله رمز، وكلاهما من قياس الإخفاء لا من المسافات.
+        const noSrOnly = body
+            .replace(/inline-size:\s*1px\s*;/g, '')
+            .replace(/block-size:\s*1px\s*;/g, '')
+            .replace(/margin:\s*-1px\s*;/g, '');
+        expect(noSrOnly).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(noSrOnly).not.toMatch(/rgba?\(/);
+        expect(noSrOnly).not.toMatch(/\b\d+(px|rem|em)\b/);
         expect(body).toMatch(/var\(--erp-space-8\)/);
     });
 
@@ -1042,7 +1063,10 @@ describe('erp-ops.css — طبقة الموجة التشغيلية', () => {
         // W1-2: أزرار اللوحة وعمود إجراءات الجرد أهداف إصبع أيضًا
         expect(block).toContain('.erp-v2-kitchen .erp-kitchen-panel__actions .erp-btn,');
         expect(block).toContain('.erp-v2-kitchen td.erp-v2-kitchen-actions .erp-btn {');
-        expect(block).toContain('.erp-v2-kitchen .erp-card__head .erp-btn > span { display: none; }');
+        // تسمية الزرّ تُخفى (display:none أو النمط البصري) ويبقى الرمز مقروءًا
+        const labelRule = ruleBody(block, '.erp-v2-kitchen .erp-card__head .erp-btn > span');
+        expect(labelRule).not.toBe('');
+        expect(hidesLabel(labelRule)).toBe(true);
         expect(block).toContain('.erp-v2-kitchen [data-v2-gov-note] { overflow-wrap: anywhere; }');
         // الحقول: لا قاعدة ترفعها هنا — تبقى على ٣٨ المجمّد كما في 01–08
         expect(block).not.toMatch(/\.erp-v2-kitchen \.erp-input\s*\{[^}]*min-block-size/);

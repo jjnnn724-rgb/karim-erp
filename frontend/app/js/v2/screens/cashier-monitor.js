@@ -173,7 +173,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
             + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.total)}</td>`
             + `<td class="erp-td erp-num" dir="ltr">${formatQty(o.paid)}</td>`
             + `<td class="erp-td erp-num" dir="ltr">${formatInt(o.lines || 0)}</td></tr>`).join('');
-        q('[data-v2-orders]').innerHTML = `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr>`
+        q('[data-v2-orders]').innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr>`
             + `<th>الفاتورة</th><th>الكاشير</th><th>الوقت</th><th>الوردية</th><th>الصافي</th><th>الإجمالي</th><th>المدفوع</th><th>الأصناف</th>`
             + `</tr></thead><tbody>${rows || '<tr><td class="erp-td" colspan="8">لا توجد فواتير في هذا اليوم</td></tr>'}</tbody></table></div>`;
         q('[data-v2-page]').textContent = `صفحة ${formatInt(page)} من ${formatInt(pages)}`;
@@ -294,11 +294,11 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
                 + `<h3 class="erp-card__title">فاتورة <span class="erp-mono" dir="ltr">${esc(String(value('DOC_NO') || docNo))}</span> — كاشير ${esc(String(value('CSHR') || '—'))}</h3>`
                 + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-order-x>إغلاق</button></div>`
                 + `<div class="erp-card__body erp-stack">`
-                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الوردية</th><th>الإجمالي</th><th>الصافي</th><th>الخصم</th><th>المدفوع</th></tr></thead>`
+                + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الوردية</th><th>الإجمالي</th><th>الصافي</th><th>الخصم</th><th>المدفوع</th></tr></thead>`
                 + `<tbody><tr><td class="erp-td erp-mono" dir="ltr">${esc(String(value('DOC_DATE') || '').slice(0, 10))}</td><td class="erp-td">${esc(String(value('SHFT_NO') || '—'))}</td>`
                 + `<td class="erp-td erp-num">${formatQty(value('TOTAL_VAL'))}</td><td class="erp-td erp-num">${formatQty(value('NET_VAL'))}</td>`
                 + `<td class="erp-td erp-num">${formatQty(value('DSCNT_VL'))}</td><td class="erp-td erp-num">${formatQty(value('PAYED'))}</td></tr></tbody></table></div>`
-                + (lines ? `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>السعر</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>`
+                + (lines ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>السعر</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>`
                     : '<p class="erp-text-sm erp-text-muted">لا توجد تفاصيل أصناف لهذه الفاتورة في يارا سوفت</p>')
                 + `</div></section>`;
             box.scrollIntoView({ block: 'nearest' });

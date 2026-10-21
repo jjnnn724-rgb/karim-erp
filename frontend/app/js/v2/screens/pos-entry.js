@@ -304,7 +304,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-pos-history-apply>بحث</button>
           </div>
           <p class="erp-text-sm erp-text-muted" role="status" aria-live="polite">${pagination.total} فاتورة · الصفحة ${pagination.page} من ${pagination.totalPages || 1}</p>
-          ${rows.length ? `<div class="erp-table__scroll"><table class="erp-table__grid">
+          ${rows.length ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
             <caption class="erp-sr-only">سجل فواتير الكاشير</caption>
             <thead><tr><th scope="col">رقم الفاتورة</th><th scope="col">القسم</th><th scope="col">التاريخ</th><th scope="col">الكاشير</th><th scope="col">الأصناف</th><th scope="col">الإجمالي</th><th scope="col">الحالة</th><th scope="col">التفاصيل</th></tr></thead>
             <tbody>${rows.map((order) => `<tr>
@@ -338,7 +338,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
             <li class="erp-kpi"><span class="erp-kpi__label">التاريخ</span><span class="erp-kpi__value erp-mono" dir="ltr">${esc(order.created_at || '—')}</span></li>
             <li class="erp-kpi"><span class="erp-kpi__label">الحالة</span><span class="erp-kpi__value">${esc(orderStatusLabel(order.status))}</span></li>
           </ul>
-          <div class="erp-table__scroll"><table class="erp-table__grid">
+          <div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
             <caption class="erp-sr-only">أصناف الفاتورة</caption>
             <thead><tr><th scope="col">الصنف</th><th scope="col">الكمية</th><th scope="col">سعر الوحدة</th><th scope="col">الخصم</th><th scope="col">الإجمالي</th></tr></thead>
             <tbody>${items.length ? items.map((item) => `<tr>
@@ -355,7 +355,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--sm" data-pos-kot="${esc(order.id)}" data-pos-kot-counter="${esc(order.invoice_counter ?? '')}">تذاكر المطبخ</button>
           </div>
           <h4>وسائل الدفع</h4>
-          ${paymentsList.length ? `<div class="erp-table__scroll"><table class="erp-table__grid">
+          ${paymentsList.length ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
             <thead><tr><th scope="col">الوسيلة</th><th scope="col">المبلغ</th><th scope="col">المرجع</th></tr></thead>
             <tbody>${paymentsList.map((payment) => `<tr><td class="erp-td">${esc(payment.method || '—')}</td><td class="erp-td">${money(payment.amount)}</td><td class="erp-td erp-mono">${esc(payment.reference || '—')}</td></tr>`).join('')}</tbody>
           </table></div>` : '<p class="erp-text-sm erp-text-muted">لا توجد تفاصيل دفع مسجلة.</p>'}
@@ -602,23 +602,23 @@ export function mountPosEntryScreen(host, ctx = {}) {
             ${kpi('معلقة بالكاشير', `${formatInt(t.still_held?.count || 0)} · ${esc(moneyText(t.still_held?.amount || 0))}`)}
           </ul>
           <h4>حسب الفئة</h4>
-          <div class="erp-table__scroll"><table class="erp-table__grid"><caption class="erp-sr-only">تقرير البوفيه حسب الفئة</caption>
+          <div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><caption class="erp-sr-only">تقرير البوفيه حسب الفئة</caption>
             <thead><tr><th scope="col">الفئة</th><th scope="col">أفراد</th><th scope="col">الإيراد الصافي</th><th scope="col">متوسط الفرد</th><th scope="col">فواتير</th></tr></thead>
             <tbody>${reportTiersRows(buffetReport)}</tbody></table></div>
           <h4>التوزيع الساعي</h4>
-          <div class="erp-table__scroll"><table class="erp-table__grid"><caption class="erp-sr-only">تقرير البوفيه حسب الساعة</caption>
+          <div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><caption class="erp-sr-only">تقرير البوفيه حسب الساعة</caption>
             <thead><tr><th scope="col">الساعة</th><th scope="col">فواتير</th><th scope="col">أفراد</th><th scope="col">الإيراد</th></tr></thead>
             <tbody>${reportHourlyRows(buffetReport)}</tbody></table></div>
           <div class="erp-row-wrap">
-            <div class="erp-grow"><h4>طرق الدفع</h4><div class="erp-table__scroll"><table class="erp-table__grid">
+            <div class="erp-grow"><h4>طرق الدفع</h4><div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
               <thead><tr><th scope="col">الطريقة</th><th scope="col">عدد</th><th scope="col">المبلغ</th></tr></thead>
               <tbody>${reportPaymentRows(buffetReport)}</tbody></table></div></div>
-            <div class="erp-grow"><h4>أداء الكاشيرين</h4><div class="erp-table__scroll"><table class="erp-table__grid">
+            <div class="erp-grow"><h4>أداء الكاشيرين</h4><div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid">
               <thead><tr><th scope="col">الكاشير</th><th scope="col">فواتير</th><th scope="col">الإيراد</th></tr></thead>
               <tbody>${reportCashierRows(buffetReport)}</tbody></table></div></div>
           </div>
           <h4>فواتير البوفيه</h4>
-          <div class="erp-table__scroll"><table class="erp-table__grid"><caption class="erp-sr-only">فواتير البوفيه</caption>
+          <div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><caption class="erp-sr-only">فواتير البوفيه</caption>
             <thead><tr><th scope="col">رقم الفاتورة</th><th scope="col">التاريخ</th><th scope="col">أفراد</th><th scope="col">الفئات</th><th scope="col">الإجمالي</th><th scope="col">الحالة</th><th scope="col">الكاشير</th></tr></thead>
             <tbody>${reportInvoiceRows()}</tbody></table></div>`;
     }
@@ -1009,7 +1009,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
                 const shifts = d.shifts || [];
                 if (!el.isConnected) {return;}
                 body.insertAdjacentHTML('beforeend', shifts.length
-                    ? `<div class="erp-table__scroll"><table class="erp-table__grid"><caption class="erp-sr-only">الورديات المفتوحة</caption><thead><tr><th scope="col">وردية</th><th scope="col">الكاشير</th><th scope="col">القسم</th><th scope="col">اليوم</th><th scope="col">العهدة</th><th scope="col">المتوقع</th><th scope="col">الحركة</th></tr></thead><tbody>`
+                    ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><caption class="erp-sr-only">الورديات المفتوحة</caption><thead><tr><th scope="col">وردية</th><th scope="col">الكاشير</th><th scope="col">القسم</th><th scope="col">اليوم</th><th scope="col">العهدة</th><th scope="col">المتوقع</th><th scope="col">الحركة</th></tr></thead><tbody>`
                     + shifts.map((s) => `<tr><td class="erp-td erp-mono">#${esc(s.id)}</td><td class="erp-td">${esc(s.cashier_name || '—')}</td><td class="erp-td">${esc(s.dept_name || '—')}</td><td class="erp-td erp-mono">${esc(s.biz_date || '—')}${s.biz_date !== s.today ? ' <span class="erp-badge" data-tone="warning">يوم سابق</span>' : ''}</td><td class="erp-td">${money(s.opening_balance)}</td><td class="erp-td">${money(s.expected_cash)}</td><td class="erp-td">${formatInt(s.invoice_count)} فاتورة</td></tr>`).join('')
                     + '</tbody></table></div><p class="erp-text-sm erp-text-muted">الإغلاق المركزي من لوحة المدير المالي.</p>'
                     : '<p class="erp-text-sm erp-text-muted">لا ورديات مفتوحة — كل الكاشيريات مغلقة.</p>');

@@ -798,7 +798,7 @@ export function mountKitchenScreen(host, ctx = {}) {
             : `<span class="erp-num ${costTone(ratio)}" dir="ltr">${Math.round(ratio * 10) / 10}%</span>`;
 
         const linesHtml = lines.length ? `
-            <div class="erp-table__scroll" style="max-height:320px;overflow:auto">
+            <div class="erp-table__scroll" tabindex="0" style="max-height:320px;overflow:auto">
               <table class="erp-table__grid">
                 <thead><tr><th>أمر إنتاج</th><th>التوزيع (موزّع / مخطط)</th><th>تكلفة الدفعة</th><th>نصيب الجهة</th><th>التاريخ</th></tr></thead>
                 <tbody>${lines.map((p) => `<tr>
@@ -812,7 +812,7 @@ export function mountKitchenScreen(host, ctx = {}) {
             </div>` : '';
 
         const itemsHtml = items.length ? `
-            <div class="erp-table__scroll" style="max-height:360px;overflow:auto">
+            <div class="erp-table__scroll" tabindex="0" style="max-height:360px;overflow:auto">
               <table class="erp-table__grid">
                 <thead><tr><th>الصنف المصروف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>التاريخ</th><th>الإذن</th></tr></thead>
                 <tbody>${items.slice(0, 25).map((x) => `<tr>

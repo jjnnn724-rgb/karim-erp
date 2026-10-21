@@ -202,7 +202,15 @@
 
   /* الطباعة/التحديث: aria-label موجود على الزرّ نفسه، فالنصّ المكرر يُخفى
      ويُبقى الرمز — نفس حركة طبقة 01–04. */
-  .erp-v2-kitchen .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-kitchen .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
   /* أزرار الرأس وشريط الحالة وزرّ «الأعمدة» وأزرار الترقيم وحقل «صفوف
      الصفحة»: هدفُ إصبعٍ لا هدفِ بصر. ٣٠–٣٤px المجمّدة تُرفع إلى ٤٠px
@@ -235,7 +243,15 @@
   /* أزرار رؤوس البطاقات (أمر إنتاج/جرد جديد/استلام مواد) وأزرار اللوحة
      وعمود إجراءات الجرد: الرمز يقول الوظيفة وaria-label يقولها للقارئ؛
      الاسم يأكل السطر على ٣٢٠px — نفس حركة طبقة W1-1. */
-  .erp-v2-kitchen .erp-card__head .erp-btn > span { display: none; }
+  .erp-v2-kitchen .erp-card__head .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .erp-v2-kitchen .erp-kitchen-panel__actions .erp-btn,
   .erp-v2-kitchen td.erp-v2-kitchen-actions .erp-btn {
@@ -485,7 +501,15 @@
 
 @media (max-width: 640px) {
   /* الرمز يقول الوظيفة وaria-label يقولها للقارئ؛ الاسم يأكل الشريط. */
-  .erp-v2-dispatch .erp-card__head .erp-btn > span { display: none; }
+  .erp-v2-dispatch .erp-card__head .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-dispatch .erp-card__head .erp-btn,
   .erp-v2-dispatch .erp-dispatch-panel__actions .erp-btn,
   .erp-v2-dispatch td.erp-v2-dispatch-actions .erp-btn,
@@ -503,7 +527,15 @@
   /* W1-3 — شاشة 21 (طلبات الشراء): نفس حركة W1-1 بحصر هذه الشاشة:
      الاسم يأكل الشريط فالرمز يكفي مع aria-label، وأزرار الرأس واللوحة
      وعمود الإجراءات والترقيم أهداف أصابع ٤٠px، والحقول تبقى بحجمها. */
-  .erp-v2-wh-prs .erp-card__head .erp-btn > span { display: none; }
+  .erp-v2-wh-prs .erp-card__head .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-wh-prs .erp-card__head .erp-btn,
   .erp-v2-wh-prs .erp-wh-prs-panel__actions .erp-btn,
   .erp-v2-wh-prs td.erp-v2-wh-prs-actions .erp-btn,
@@ -521,7 +553,15 @@
   .erp-v2-wh-prs .erp-card__body p { overflow-wrap: anywhere; }
 
   /* W1-4 — شاشة 14 (طلبات الخضار): نفس حركة W1-1/W1-3 بحصر هذه الشاشة. */
-  .erp-v2-veg .erp-card__head .erp-btn > span { display: none; }
+  .erp-v2-veg .erp-card__head .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-veg .erp-card__head .erp-btn,
   .erp-v2-veg .erp-veg-panel__actions .erp-btn,
   .erp-v2-veg td.erp-v2-veg-actions .erp-btn,
@@ -538,7 +578,15 @@
   .erp-v2-veg div.erp-veg-grid { grid-template-columns: 1fr 1fr; }
 
   /* W1-5 — شاشة 20 (مرتجعات المطبخ): نفس حركة W1-1/W1-3/W1-4 بحصرها. */
-  .erp-v2-wh-returns .erp-card__head .erp-btn > span { display: none; }
+  .erp-v2-wh-returns .erp-card__head .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-wh-returns .erp-card__head .erp-btn,
   .erp-v2-wh-returns .erp-returns-panel__actions .erp-btn,
   .erp-v2-wh-returns .erp-returns-row .erp-btn,
@@ -571,7 +619,15 @@
      قاعدة W1-3/W1-4/W1-5/W1-6). */
   .erp-v2-sa .erp-dash-controls .erp-btn > span,
   .erp-v2-ra .erp-dash-controls .erp-btn > span,
-  .erp-v2-wv .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-wv .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-sa .erp-dash-controls .erp-btn,
   .erp-v2-ra .erp-dash-controls .erp-btn,
   .erp-v2-wv .erp-dash-controls .erp-btn {
@@ -583,7 +639,15 @@
      الميزان والرفوف أهداف أصابع. مدمجة هنا (لا كتلة وسائط جديدة — نفس عقد
      W1-3/W1-4/W1-5/W1-6). */
   .erp-v2-shelves .erp-dash-controls .erp-btn > span,
-  .erp-v2-weight .erp-dash-controls .erp-btn > span { display: none; }
+  .erp-v2-weight .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .erp-v2-shelves .erp-shelf__actions .erp-btn,
   .erp-v2-shelves .erp-shelf-form__actions .erp-btn,
   .erp-v2-weight .erp-scale__steps .erp-btn,

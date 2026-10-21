@@ -171,7 +171,7 @@ function todayBlock(data, opts = {}) {
         return `<section class="erp-card erp-no-print" data-v2-today-card>${head}`
             + `<div class="erp-card__body"><p class="erp-text-sm erp-text-muted">لا استثناءات اليوم — البصمات مكتملة.</p></div></section>`;
     }
-    const body = `<div class="erp-table__scroll" style="max-height:280px;overflow:auto">`
+    const body = `<div class="erp-table__scroll" tabindex="0" style="max-height:280px;overflow:auto">`
         + `<table class="erp-table__grid"><thead><tr>`
         + `<th>الموظف</th><th>القسم</th><th>النوع</th><th>التفصيل</th><th>الساعات</th>${opts.withAction ? '<th></th>' : ''}`
         + `</tr></thead><tbody>`
@@ -603,7 +603,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
             `${formatInt(gapsData.total)} ناقصًا — لم يحضر: ${formatInt(c.absent || 0)} · نسي خروج: ${formatInt(c.missOut || 0)} · نسي دخول: ${formatInt(c.missIn || 0)}`
             + (gapsData.truncated ? ` — أول ${formatInt(gapsData.cappedAt)} معروضة، ضيّق الفترة` : '')
             + (seesFullPeriod(ctx.role) ? '' : ' — سجلاتك المحمّلة وحدها مصدر الحقيقة');
-        q('[data-v2-gaps]').innerHTML = `<div class="erp-table__scroll" style="max-height:380px;overflow:auto"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead><tbody>`
+        q('[data-v2-gaps]').innerHTML = `<div class="erp-table__scroll" tabindex="0" style="max-height:380px;overflow:auto"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الموظف</th><th>النوع</th><th>الحضور</th><th>الانصراف</th><th></th></tr></thead><tbody>`
             + (list.map((g) => `<tr${g.type === 'absent' ? ' class="erp-tr--danger"' : ''}>`
                 + `<td class="erp-td erp-text-muted">${esc(g.date)}</td>`
                 + `<td class="erp-td"><b>${esc(g.weekday || '')}</b>${g.weeklyOff ? ' <span class="erp-text-muted">(راحة)</span>' : ''}</td>`
@@ -1149,7 +1149,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
                 + `<div class="erp-kpi__top"><span class="erp-kpi__label">${esc(label)}</span></div>`
                 + `<div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(value)}</span></div></li>`).join('')
             + `</ul>`
-            + `<div class="erp-table__scroll" style="max-height:420px;overflow:auto"><table class="erp-table__grid"><thead><tr>`
+            + `<div class="erp-table__scroll" tabindex="0" style="max-height:420px;overflow:auto"><table class="erp-table__grid"><thead><tr>`
             + `<th>الموظف</th><th>أيام الحضور</th><th>مكتملة الدوام</th><th>نقص الدوام (يوم/د)</th>`
             + `<th>أيام بعجز</th><th>إجازات</th><th>بلا بصمة</th><th>الساعات</th>`
             + `</tr></thead><tbody>${rows}</tbody></table></div>`
@@ -1204,7 +1204,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<td class="erp-td erp-tnum">${formatInt(r.count)}</td></tr>`).join('')
             || `<tr><td class="erp-td" colspan="3">لا نتائج</td></tr>`;
         return `<p class="erp-text-sm erp-text-muted">شهر <span dir="ltr">${esc(month)}</span> — الفحص يجري على الخادم، والأرقام كما وردت منه.</p>`
-            + `<div class="erp-table__scroll" style="max-height:420px;overflow:auto"><table class="erp-table__grid">`
+            + `<div class="erp-table__scroll" tabindex="0" style="max-height:420px;overflow:auto"><table class="erp-table__grid">`
             + `<thead><tr><th>الفحص</th><th>الحالة</th><th>العدد</th></tr></thead><tbody>${rows}</tbody></table></div>`
             + `<div class="erp-audit-verdict" data-tone="${sum.ok ? 'success' : 'danger'}">`
             + (sum.ok ? 'كل الفحوصات سليمة — البيانات معتمدة' : 'يوجد فشل — راجع البنود أعلاه قبل الاعتماد')

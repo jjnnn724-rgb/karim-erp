@@ -81,6 +81,10 @@
 }
 /* Latin digits/amounts inside RTL text: isolate direction, never guess. */
 .erp-v2 .erp-num { display: inline-block; direction: ltr; unicode-bidi: isolate; }
+/* الرقم قد يكون خلية جدول: `inline-block` يكسر محاذاة الأعمدة لأن الخلية
+   تخرج من خوارزمية الجدول، فتعود table-cell ويبقى اتجاه LTR والعزل. */
+.erp-v2 td.erp-num,
+.erp-v2 th.erp-num { display: table-cell; }
 .erp-v2 .erp-kpi__unit { font-size: var(--erp-text-sm); color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
 .erp-v2 .erp-kpi__foot { display: flex; align-items: center; gap: var(--erp-space-2); }
 .erp-v2 .erp-delta {

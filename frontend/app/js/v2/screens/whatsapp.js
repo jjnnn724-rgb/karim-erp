@@ -74,18 +74,18 @@ function pageTemplate(isAdmin) {
       </div>
       <div class="erp-card__body erp-stack">
         <p class="erp-text-sm erp-text-muted" data-wa-notice role="status" aria-live="polite"></p>
-        <nav class="erp-wa-tabs" aria-label="أقسام WhatsApp">
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="connection" aria-selected="true">الربط وQR</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="inbox" aria-selected="false">الوارد</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="templates" aria-selected="false">القوالب</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="campaigns" aria-selected="false">الحملات</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="outbox" aria-selected="false">الصادر</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="rules" aria-selected="false">قواعد الرد</button>
-          ${isAdmin ? '<button type="button" class="erp-btn erp-btn--sm" data-wa-tab="managers" aria-selected="false">أرقام الإدارة</button><button type="button" class="erp-btn erp-btn--sm" data-wa-tab="automation" aria-selected="false">التنبيهات</button>' : ''}
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="logs" aria-selected="false">سجل الأحداث</button>
-          <button type="button" class="erp-btn erp-btn--sm" data-wa-tab="query" aria-selected="false">اسأل النظام</button>
-        </nav>
-        <div data-wa-panel aria-live="polite"></div>
+        <div class="erp-wa-tabs" role="tablist" aria-label="أقسام WhatsApp">
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" data-wa-tab="connection" aria-selected="true" aria-controls="wa-panel" tabindex="0">الربط وQR</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="inbox" aria-selected="false" aria-controls="wa-panel">الوارد</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="templates" aria-selected="false" aria-controls="wa-panel">القوالب</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="campaigns" aria-selected="false" aria-controls="wa-panel">الحملات</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="outbox" aria-selected="false" aria-controls="wa-panel">الصادر</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="rules" aria-selected="false" aria-controls="wa-panel">قواعد الرد</button>
+          ${isAdmin ? '<button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="managers" aria-selected="false" aria-controls="wa-panel">أرقام الإدارة</button><button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="automation" aria-selected="false" aria-controls="wa-panel">التنبيهات</button>' : ''}
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="logs" aria-selected="false" aria-controls="wa-panel">سجل الأحداث</button>
+          <button type="button" role="tab" class="erp-btn erp-btn--sm" tabindex="-1" data-wa-tab="query" aria-selected="false" aria-controls="wa-panel">اسأل النظام</button>
+        </div>
+        <div id="wa-panel" data-wa-panel role="tabpanel" aria-live="polite"></div>
       </div>
     </section>`;
 }
@@ -663,6 +663,7 @@ export function mountWhatsappScreen(host, ctx = {}) {
             activeTab = button.dataset.waTab;
             el.querySelectorAll('[data-wa-tab]').forEach((tab) => {
                 tab.setAttribute('aria-selected', String(tab === button));
+                tab.tabIndex = tab === button ? 0 : -1;
             });
             await loadTab();
             return;
@@ -749,7 +750,24 @@ export function mountWhatsappScreen(host, ctx = {}) {
         if (action === 'stop') {await runAction(stopWhatsapp, 'تم إيقاف المحرك');}
     }
 
+    async function handleTabKeys(event) {
+        const tab = event.target.closest('[data-wa-tab]');
+        if (!tab) {return;}
+        const tabs = [...el.querySelectorAll('[data-wa-tab]')];
+        const i = tabs.indexOf(tab);
+        let next = -1;
+        if (event.key === 'ArrowLeft') {next = i + 1;}
+        else if (event.key === 'ArrowRight') {next = i - 1;}
+        else if (event.key === 'Home') {next = 0;}
+        else if (event.key === 'End') {next = tabs.length - 1;}
+        if (next < 0 || next >= tabs.length) {return;}
+        event.preventDefault();
+        tabs[next].focus();
+        await handleClick({ target: tabs[next], preventDefault() {} });
+    }
+
     el.addEventListener('click', handleClick);
+    el.addEventListener('keydown', handleTabKeys);
     void loadTab();
     statusTimer = setInterval(() => {
         if (!destroyed && activeTab === 'connection') {void refreshStatus();}
@@ -763,6 +781,7 @@ export function mountWhatsappScreen(host, ctx = {}) {
             if (statusTimer) {clearInterval(statusTimer); statusTimer = null;}
             if (qrTimer) {clearInterval(qrTimer); qrTimer = null;}
             el.removeEventListener('click', handleClick);
+            el.removeEventListener('keydown', handleTabKeys);
             el.remove();
         },
     };

@@ -422,7 +422,7 @@ export function mountZktecoScreen(host, ctx = {}) {
                   </button></td>` : ''}
                 </tr>`;
             }).join('');
-            rowsHost.innerHTML = `<div class="erp-table__scroll" style="max-height:520px">
+            rowsHost.innerHTML = `<div class="erp-table__scroll" tabindex="0" style="max-height:520px">
               <table class="erp-table__grid">
                 <caption class="erp-sr-only">ربط الموظفين بأرقام البصمة</caption>
                 <thead><tr><th>الموظف</th><th>الرقم الوظيفي</th><th>القسم</th><th>علامة الربط</th><th>رقم البصمة على الجهاز</th><th>بصمات اليوم</th>${writable ? '<th></th>' : ''}</tr></thead>
@@ -438,7 +438,7 @@ export function mountZktecoScreen(host, ctx = {}) {
               <td>${u.lastPunch ? esc(fmtDate(u.lastPunch) + ' · ' + fmtTime(u.lastPunch)) : '—'}</td>
               <td>${writable ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-map-user="${esc(u.deviceUserId)}">اختر موظفًا…</button>` : '—'}</td>
             </tr>`).join('');
-            unmappedHost.innerHTML = `<div class="erp-table__scroll" style="max-height:320px">
+            unmappedHost.innerHTML = `<div class="erp-table__scroll" tabindex="0" style="max-height:320px">
               <table class="erp-table__grid">
                 <caption class="erp-sr-only">أرقام بصمات غير مرتبطة بموظف</caption>
                 <thead><tr><th>رقم البصمة</th><th>عدد البصمات</th><th>آخر بصمة</th><th></th></tr></thead>
@@ -633,7 +633,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-close><i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span></button>
           </div>
           <p class="erp-text-sm erp-text-muted">المحدد سيُنشأ كموظف: الاسم من الجهاز + الرقم الوظيفي = رقم البصمة + مربوط تلقائيًا. الخادم يعيد فحص التعارض.</p>
-          <div class="erp-table__scroll" style="max-height:340px">
+          <div class="erp-table__scroll" tabindex="0" style="max-height:340px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">مستخدمو الجهاز قبل الاستيراد</caption>
               <thead><tr><th>#</th><th>رقم البصمة</th><th>الاسم على الجهاز</th><th>الحالة</th></tr></thead>
@@ -714,7 +714,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             </button>
             <span class="erp-text-sm erp-text-muted">أحدث ${intFmt(logs.length)} بصمة خام — التصدير يحترم التاريخين</span>
           </div>
-          <div class="erp-table__scroll" style="max-height:560px">
+          <div class="erp-table__scroll" tabindex="0" style="max-height:560px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">سجل البصمات الخام</caption>
               <thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>الرقم الوظيفي</th><th>الحركة</th><th>طريقة التحقق</th><th>الجهاز</th></tr></thead>
@@ -815,7 +815,7 @@ export function mountZktecoScreen(host, ctx = {}) {
           </div>
           ${unmappedBox}
           <h4 class="erp-zk__section-title">الموظفون الذين يحتاجون معالجة (${intFmt(problems.length)})</h4>
-          <div class="erp-table__scroll" style="max-height:480px">
+          <div class="erp-table__scroll" tabindex="0" style="max-height:480px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">تغطية البصمات — مشاكل</caption>
               <thead><tr><th>الموظف</th><th>القسم</th><th>رقم الجهاز</th><th>وجه (تطبيق)</th><th>آخر بصمة</th><th>أيام حضور</th><th>التشخيص</th><th>الإجراء</th></tr></thead>
@@ -823,7 +823,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             </table>
           </div>
           ${ok.length ? `<details class="erp-zk__details"><summary>الموظفون السليمون (${intFmt(ok.length)})</summary>
-            <div class="erp-table__scroll" style="max-height:360px">
+            <div class="erp-table__scroll" tabindex="0" style="max-height:360px">
               <table class="erp-table__grid">
                 <caption class="erp-sr-only">تغطية البصمات — سليم</caption>
                 <thead><tr><th>الموظف</th><th>القسم</th><th>رقم الجهاز</th><th>وجه (تطبيق)</th><th>آخر بصمة</th><th>أيام حضور</th></tr></thead>
@@ -1083,7 +1083,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-close><i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span></button>
           </div>
           <p class="erp-text-sm erp-text-muted">الشبكات الممسوحة: <span class="erp-mono" dir="ltr">${esc((result.subnets || []).join(', ') || '—')}</span> على المنفذ ${esc(result.port || 4370)}</p>
-          <div class="erp-table__scroll" style="max-height:340px">
+          <div class="erp-table__scroll" tabindex="0" style="max-height:340px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">أجهزة البصمة المكتشفة على الشبكة</caption>
               <thead><tr><th>عنوان IP</th><th>المنفذ</th><th>الرقم التسلسلي</th><th>اسم الجهاز</th><th>الفيرموير</th><th></th></tr></thead>

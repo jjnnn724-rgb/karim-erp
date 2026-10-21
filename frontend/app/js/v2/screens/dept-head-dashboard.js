@@ -103,7 +103,7 @@ export function mountDeptHeadDashboardScreen(host, ctx = {}) {
         if (!rows.length) {
             return `<div class="erp-state"><span class="erp-state__title">لا أذونات لهذا القسم بعد</span></div>`;
         }
-        return `<div class="erp-table__scroll" style="max-height:420px">
+        return `<div class="erp-table__scroll" tabindex="0" style="max-height:420px">
           <table class="erp-table__grid">
           <caption class="erp-sr-only">أحدث أذونات القسم</caption>
           <thead><tr><th>#</th><th>الأصناف</th><th>التاريخ</th><th>المرحلة</th><th>الحالة</th></tr></thead>

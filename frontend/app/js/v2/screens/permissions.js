@@ -142,7 +142,7 @@ export function mountPermissionsScreen(host, ctx = {}) {
                 + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-save${dirty && !saving ? '' : ' disabled'}>`
                 + `<i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ الصلاحيات</span></button></div>`)
             + (audit.length ? `<div class="erp-card__head"><h3 class="erp-card__title"><i class="ji" data-i="history" aria-hidden="true"></i> سجل التدقيق (آخر 50)</h3></div>`
-                + `<div class="erp-table__scroll"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الصلاحية</th><th>الإجراء</th><th>بواسطة</th><th>السبب</th></tr></thead><tbody>`
+                + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>الصلاحية</th><th>الإجراء</th><th>بواسطة</th><th>السبب</th></tr></thead><tbody>`
                 + audit.map((a) => {
                     const lbl = auditActionLabel(a.action);
                     return `<tr><td class="erp-td erp-text-sm">${esc(String(a.created_at || '').slice(0, 19).replace('T', ' '))}</td>`
