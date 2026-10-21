@@ -20,35 +20,44 @@
 القياس مُفعَّل على الإنتاج بـ `CSP_STRICT_REPORT_ONLY=true` في `.env` (Report-Only ⇒ صفر تغيير سلوكي).
 ملاحظة مهمة: **تقرير المتصفح جزئي** (بلّغ 3 معالجات في صفحة واحدة بينما الحقيقي 1158)،
 لذا الرقم الحاسم جاء من **مدقّق ثابت** (`npm run test:handlers:budget`) لا من المتصفح.
-## 2. ما الذي يمنع فرض السياسة الصارمة الآن؟
+## 2. حالة اليوم: **الصفر وصل**
 
-| المخالفة | قبل | بعد الترحيل | الأثر |
-|---|---|---|---|
-| `script-src-attr` (معالجات `onclick=…`) | **1158** | **74** | **الحاجز المتبقي أمام الفرض** |
-| `script-src-elem` (سكربتات inline) | 3 | **0** | أُصلحت (نُقلت لملفات خارجية) |
-| `script-src` (سكربت Cloudflare beacon) | 1 | 1 | يحتاج `https://static.cloudflareinsights.com` صريحًا |
-| `script-src-elem` (سكربت يحقنه Cloudflare على الحافة) | 1 | 1 | يُحجب اليوم أيضًا (سلوك سابق) |
-| `frame-ancestors` على `/` | 3 | 3 | أثر ضئيل — ملاحظة |
+| المخالفة | قبل | الآن |
+|---|---|---|
+| `script-src-attr` (معالجات `onclick=…`) | 1158 | **0** |
+| `script-src-elem` (سكربتات inline) | 3 | **0** |
+| `script-src` (سكربت Cloudflare beacon) | 1 | مسموح صراحةً |
+| `frame-ancestors` على `/` | 3 | ملاحظة |
 
-**الخلاصة:** نزلنا من 1158 إلى **74** معالجًا سطريًا (1061 محوَّلًا = 94%).
-الباقي 74 في 25 ملفًا ويحتاج **قراءة الدالة من العنصر** بدل `this` (دفعة يدوية).
+**السياسة المطبَّقة الآن على الإنتاج:**
 
-### كيف تم الترحيل (بلا eval)
+```
+script-src 'self' 'nonce-…' 'unsafe-hashes' https://static.cloudflareinsights.com
+script-src-attr 'none'   ← المعالجات السطرية ممنوعة نهائيًا
+style-src  'self' 'unsafe-inline' https://fonts.googleapis.com
+default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+```
+
+⇒ **أي حقن HTML لم يعد يستطيع تنفيذ JavaScript** (لا `onerror=` ولا `onclick=`).
+
+### كيف تم الترحيل (بلا eval، بلا new Function)
 
 - `data-karim-action="fn"` + `data-karim-args` (JSON) أو `data-karim-argN`.
-- `data-karim-pass="value|checked|files.0|element"` ⇒ يمرّر قيم العنصر،
-  **فلا نحتاج تعديل أي دالة** (المعامل `this` يصير من العنصر).
+- `data-karim-pass="value|checked|files.0|element|event"` ⇒ يمرّر قيم العنصر
+  أو الحدث، **فلا نحتاج تعديل أي دالة**.
 - `data-karim-set="name:value"` (تعيين `window.X` قبل الإجراء) · `data-karim-stop` ·
-  `data-karim-event` (change/input/…) · `data-karim-prevent`.
-- الموزّع: `frontend/app/js/core/action-dispatch.js` — بلا `eval` ولا `new Function`
-  ⇒ يعمل تحت CSP بلا `'unsafe-eval'`.
+  `data-karim-event` (click/change/input/mousedown) · `data-karim-imgerror` ·
+  `data-karim-hover` (بديل onmouseover/onmouseout).
+- المعالجات التي تعدّل **حالة داخلية** للوحدة: تُولَّد لها دالة إجراء داخل
+  نفس الوحدة (`kd*`) ⇒ تصل إلى نطاقها.
+- الموزّع: `frontend/app/js/core/action-dispatch.js`.
 
-**الأدوات:** `scripts/migrate-handlers-to-delegation.js` + `scripts/lib/parse-handler-call.js`
-(يفهم template literals و regex داخل interpolations والتعيينات).
+**البوابات التي تمنع العودة:**
 
-**البوابات:** `npm run test:handlers:budget` (ميزانية لكل ملف) ·
-`npm run test:inline-scripts:gate` (صفر سكربت inline) ·
-`npm run test:dispatch:gate` (كل صفحة تفويض تحمّل الموزّع).
+- `npm run test:handlers:budget` — ميزانية **0** (أي معالج سطري جديد = فشل).
+- `npm run test:inline-scripts:gate` — صفر سكربت inline.
+- `npm run test:dispatch:gate` — كل صفحة تفويض تحمّل الموزّع.
+- `npm run test:handlers:gate` — لا أمر تفويض يشير إلى دالة غير موجودة.
 
 ## 3. المسار المقترح (قرار المالك)
 
