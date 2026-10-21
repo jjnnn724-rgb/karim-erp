@@ -44,7 +44,9 @@ describe('v2-revision --check', () => {
             const s = fs.readFileSync(path.join(ROOT, f), 'utf8');
             const stale = [...s.matchAll(/(?:\/app)?\/(?:css|js)\/v2\/[^"'`)\s]+?\?v=([0-9.]+)/g)]
                 .filter((m) => m[1] !== rev);
-            expect(stale, `مراجع قديمة في ${f}`).toEqual([]);
+            if (stale.length) {
+                throw new Error(`مراجع قديمة في ${f} (الهدف ${rev}): ${stale.map((m) => m[0]).join(' | ')}`);
+            }
         }
     });
 });
