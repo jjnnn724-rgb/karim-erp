@@ -236,7 +236,8 @@ jobs:
     name: 🔥 Smoke Test (Startup + Health)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [unit-tests]
+    # مستقل عن Unit Tests (يبني قاعدته بنفسه) ⇒ يعمل بالتوازي ويكشف أعطاله مبكرًا
+    needs: []
     services:
       postgres:
         image: postgres:16
