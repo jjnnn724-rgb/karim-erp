@@ -22,6 +22,7 @@ const { createBrotliStatic } = require('./middleware/brotli-static');
 const { createBrotliMetrics } = require('./middleware/brotli-metrics');
 const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-cache-policy');
 const { securityHeaders, hppGuard, buildV2Csp, buildStrictCsp, createCspReportCollector } = require('./middleware/security');
+const { createCspViolationLog } = require('./csp-violation-log');
 const { posChannelMeter, getMeter: getPosChannelMeter } = require('./middleware/pos-channel-meter');
 const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
@@ -310,6 +311,11 @@ app.use(securityHeaders({
 const cspReports = createCspReportCollector();
 const cspMeasurementEnabled = String(process.env.CSP_STRICT_REPORT_ONLY || '').toLowerCase() === 'true';
 if (cspMeasurementEnabled) {
+    // مصرف دائم على القرص: العدّاد في الذاكرة يُفقد عند كل إعادة تشغيل
+    // الخدمة، والقياس المقصود يستمر أيامًا ⇒ ملف JSONL بلا كتابة في القاعدة.
+    const cspLog = createCspViolationLog(
+        process.env.CSP_VIOLATION_LOG || path.join(__dirname, '..', 'logs', 'csp-violations.jsonl'));
+    cspReports.setSink((entry) => cspLog.append(entry));
     app.use((req, res, next) => {
         // V2 له CSP صارم خاص به — لا نلمسه
         if (String(req.path || '').endsWith('/v2.html')) {return next();}
@@ -318,7 +324,7 @@ if (cspMeasurementEnabled) {
             buildStrictCsp({ nonce: req.cspNonce, reportUri: '/api/security/csp-report' }));
         next();
     });
-    logger.info('[csp] قياس الانتهاكات مفعّل (Report-Only) — التقارير على /api/security/csp-report');
+    logger.info(`[csp] CSP measurement ON (Report-Only) — log: ${cspLog.path}`);
 }
 
 // 5 ════ HPP (HTTP Parameter Pollution) guard ════════════
@@ -451,6 +457,9 @@ if (cspMeasurementEnabled) {
     // محلّل JSON الافتراضي، فنقرأ النص ونحلّله بأنفسنا.
     app.post('/api/security/csp-report',
         express.text({ type: ['application/csp-report', 'application/json', 'text/plain'], limit: '64kb' }),
+        // حدّ معدّل (600/دقيقة لكل IP) — النقطة مفتوحة للإنترنت، ومن
+        // بلا حدّ يصبح الضخّ وسيلة لتضخيم العدادات واستهلاك المعالج.
+        generalLimiter,
         (req, res) => {
             try {
                 const raw = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});

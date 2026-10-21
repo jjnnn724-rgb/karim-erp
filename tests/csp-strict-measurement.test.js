@@ -87,4 +87,32 @@ describe('سياسة CSP الصارمة (قياس قبل الفرض)', () => {
         c.reset();
         expect(c.total()).toBe(0);
     });
+
+    test('سقف المفاتيح يمنع تضخيم الذاكرة (نقطة مفتوحة للإنترنت)', () => {
+        const c = createCspReportCollector({ maxKeys: 10 });
+        for (let i = 0; i < 50; i++) {
+            c.record({ 'violated-directive': 'script-src-attr', 'blocked-uri': `inline-${i}`, 'document-uri': `http://host/p${i}.html` });
+        }
+        const snap = c.snapshot();
+        // 10 مفاتيح فعلية + دلو الفائض = 11
+        expect(Object.keys(snap)).toHaveLength(11);
+        expect(snap.__overflow__.count).toBe(40);
+        // المجموع يبقى صحيحًا (لا نفقد العدّ)
+        expect(c.total()).toBe(50);
+    });
+
+    test('reset يصفّر الفائض أيضًا', () => {
+        const c = createCspReportCollector({ maxKeys: 2 });
+        for (let i = 0; i < 6; i++) {c.record({ 'blocked-uri': `x${i}` });}
+        expect(c.total()).toBe(6);
+        c.reset();
+        expect(c.total()).toBe(0);
+        expect(c.snapshot()).toEqual({});
+    });
+
+    test('السقف الافتراضي موجود (حماية افتراضية عند غياب الخيار)', () => {
+        const c = createCspReportCollector();
+        for (let i = 0; i < 600; i++) {c.record({ 'blocked-uri': `u${i}` });}
+        expect(Object.keys(c.snapshot()).length).toBeLessThanOrEqual(501);
+    });
 });

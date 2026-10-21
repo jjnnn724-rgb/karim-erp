@@ -202,9 +202,15 @@ function buildStrictCsp(opts = {}) {
  * جامع تقارير CSP — يعدّ المخالفات بدل تخزينها (لا بيانات شخصية).
  * يُستخدم مع Content-Security-Policy-Report-Only أثناء مرحلة القياس.
  */
-function createCspReportCollector() {
+function createCspReportCollector(options = {}) {
     // المفتاح: التوجيه + ما حُجب + المستند. القيمة: العدد + مواضع المصدر.
     const counters = new Map();
+    // حدّ أقصى للمفاتيح: نقطة الاستقبال مفتوحة للإنترنت ⇒ لولا الحدّ لأمكن
+    // ضخّ مفاتيح لا نهائية والتضخيم الذاكرة (Memory DoS). excesses تُحصر.
+    const MAX_KEYS = Number(options.maxKeys) > 0 ? Number(options.maxKeys) : 500;
+    // مصرف دائم اختياري (ملف) — العدّاد في الذاكرة يُفقد عند إعادة تشغيل الخدمة.
+    let sink = typeof options.sink === 'function' ? options.sink : null;
+    let overflowCount = 0;
     return {
         /** يقرأ تقريرًا واحدًا (من المتصفح) ويحدّث العدادات. */
         record(report) {
@@ -220,6 +226,14 @@ function createCspReportCollector() {
             const key = `${directive}|${blocked.split('?')[0]}|${doc}`;
             let entry = counters.get(key);
             if (!entry) {
+                if (counters.size >= MAX_KEYS) {
+                    // تجاوز الحدّ: نعدّ فقط ولا نخزّن مفتاحًا جديدًا
+                    overflowCount += 1;
+                    if (sink) {
+                        try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) {}
+                    }
+                    return { directive, blocked, document: doc, overflow: true };
+                }
                 entry = { count: 0, sources: [] };
                 counters.set(key, entry);
             }
@@ -227,6 +241,9 @@ function createCspReportCollector() {
             if (file && entry.sources.length < 12) {
                 const where = `${file}${line ? `:${line}` : ''}`;
                 if (!entry.sources.includes(where)) {entry.sources.push(where);}
+            }
+            if (sink) {
+                try {sink({ directive, blocked, document: doc, source: file ? `${file}:${line}` : '' });} catch (_) {}
             }
             return { directive, blocked, document: doc };
         },
@@ -236,15 +253,18 @@ function createCspReportCollector() {
             for (const [k, v] of counters) {
                 out[k] = { count: v.count, sources: v.sources };
             }
+            if (overflowCount) {out['__overflow__'] = { count: overflowCount, sources: [] };}
             return out;
         },
         /** عدد المخالفات الكلي. */
         total() {
-            let n = 0;
+            let n = overflowCount;
             for (const v of counters.values()) {n += v.count;}
             return n;
         },
-        reset() {counters.clear();},
+        reset() {counters.clear(); overflowCount = 0;},
+        /** يبدّل المصرف الدائم (يُستدعى بعد الإنشاء). */
+        setSink(fn) {sink = typeof fn === 'function' ? fn : null;},
     };
 }
 
