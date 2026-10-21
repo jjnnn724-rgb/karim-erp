@@ -138,6 +138,98 @@ function buildCspDirectives(opts, nonce) {
 }
 
 /**
+ * V2 has no inline application scripts or event handlers. Keep its document
+ * stricter than the legacy shell without changing the legacy CSP contract.
+ */
+function buildV2Csp() {
+    return [
+        "default-src 'self'",
+        "script-src 'self'",
+        "script-src-attr 'none'",
+        "style-src 'self' 'unsafe-inline'",
+        "style-src-attr 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self' ws: wss:",
+        "frame-src 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "worker-src 'self' blob:",
+        "manifest-src 'self'",
+    ].join('; ');
+}
+
+/**
+ * سياسة legacy **صارمة** — للقياس قبل الفرض.
+ *
+ * الواجهة القديمة فيها ~1100 معالج سطري (onclick="...") وسكربتات inline،
+ * فلا يمكن فرض script-src 'self' دفعة واحدة دون كسر الواجهة. الطريق
+ * الصحيح: تُرسل هذه السياسة كـReport-Only فيُبلّغ المتصفح عن كل مخالفة
+ * **دون منعها**، فنعرف بالضبط ما الذي يكسر قبل أن نفرض.
+ *
+ * ما تختلفه عن سياسة legacy الحالية:
+ *   · script-src بلا 'unsafe-inline' (يبقى الـnonce و'unsafe-hashes' فقط)
+ *   · script-src-attr 'none'      ← الإجراء الذي يمنع حقن HTML
+ *   · object-src 'none' + base-uri 'self' + form-action 'self'
+ */
+function buildStrictCsp() {
+    return [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-hashes' 'nonce-__NONCE__'",
+        "script-src-attr 'none'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "style-src-attr 'unsafe-inline'",
+        "img-src 'self' data: blob: https:",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "connect-src 'self' ws: wss: http: https:",
+        "frame-src 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+    ].join('; ');
+}
+
+/**
+ * جامع تقارير CSP — يعدّ المخالفات بدل تخزينها (لا بيانات شخصية).
+ * يُستخدم مع Content-Security-Policy-Report-Only أثناء مرحلة القياس.
+ */
+function createCspReportCollector() {
+    const counters = new Map();
+    return {
+        /** يقرأ تقريرًا واحدًا (من المتصفح) ويحدّث العدادات. */
+        record(report) {
+            // المتصفح يرسل { 'csp-report': {...} } — نقبل الصيغتين
+            const src = report && typeof report === 'object' && report['csp-report'] && typeof report['csp-report'] === 'object'
+                ? report['csp-report']
+                : (report && typeof report === 'object' ? report : {});
+            const doc = String(src.documenturi || src['document-uri'] || '').slice(0, 200);
+            const directive = String(src['violated-directive'] || src.violatedDirective || 'unknown');
+            const blocked = String(src['blocked-uri'] || src.blockedURI || '').slice(0, 200);
+            const key = `${directive}|${blocked.split('?')[0]}`;
+            counters.set(key, (counters.get(key) || 0) + 1);
+            return { directive, blocked, document: doc };
+        },
+        /** لقطة العدادات (للفحص الدوري). */
+        snapshot() {
+            const out = {};
+            for (const [k, v] of counters) {out[k] = v;}
+            return out;
+        },
+        /** عدد المخالفات الكلي. */
+        total() {
+            let n = 0;
+            for (const v of counters.values()) {n += v;}
+            return n;
+        },
+        reset() {counters.clear();},
+    };
+}
+
+
+/**
  * Build the Permissions-Policy header string from the key-val map.
  */
 function buildPermissionsPolicy(map) {
@@ -298,6 +390,9 @@ function csrfDoubleSubmit(options = {}) {
 module.exports = {
     securityHeaders,
     buildCspDirectives,
+    buildV2Csp,
+    buildStrictCsp,
+    createCspReportCollector,
     hppGuard,
     csrfDoubleSubmit,
     generateNonce,

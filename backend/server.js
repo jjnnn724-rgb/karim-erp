@@ -21,7 +21,7 @@ const { correlationMiddleware } = require('./middleware/correlation');
 const { createBrotliStatic } = require('./middleware/brotli-static');
 const { createBrotliMetrics } = require('./middleware/brotli-metrics');
 const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-cache-policy');
-const { securityHeaders, hppGuard, buildV2Csp } = require('./middleware/security');
+const { securityHeaders, hppGuard, buildV2Csp, buildStrictCsp, createCspReportCollector } = require('./middleware/security');
 const { posChannelMeter, getMeter: getPosChannelMeter } = require('./middleware/pos-channel-meter');
 const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
@@ -302,6 +302,23 @@ app.use(securityHeaders({
     permittedCrossDomainPolicies: 'none',
 }));
 
+// 4b ════ قياس CSP قبل الفرض (Phase: تقوية الـCSP) ═══════════════
+// الواجهة القديمة فيها ~1100 معالج سطري، ففرض script-src-attr 'none'
+// دفعة واحدة يكسرها. لذلك: تُرسل سياسة صارمة كـReport-Only (لا تمنع
+// شيئًا) وتُستقبل التقارير فتُعرف بالضبط ما الذي يكسر قبل الفرض.
+// مُعطّل افتراضيًا (CSP_STRICT_REPORT_ONLY) ⇒ صفر تغيير في السلوك.
+const cspReports = createCspReportCollector();
+const cspMeasurementEnabled = String(process.env.CSP_STRICT_REPORT_ONLY || '').toLowerCase() === 'true';
+if (cspMeasurementEnabled) {
+    app.use((req, res, next) => {
+        // V2 له CSP صارم خاص به — لا نلمسه
+        if (String(req.path || '').endsWith('/v2.html')) {return next();}
+        res.setHeader('Content-Security-Policy-Report-Only', buildStrictCsp().replace('__NONCE__', ''));
+        next();
+    });
+    logger.info('[csp] قياس الانتهاكات مفعّل (Report-Only) — التقارير على /api/security/csp-report');
+}
+
 // 5 ════ HPP (HTTP Parameter Pollution) guard ════════════
 app.use(hppGuard({ arrayKeys: ['ids', 'tags', 'selected[]', 'items[]'] }));
 
@@ -425,6 +442,20 @@ app.use('/api/inventory/import', express.json({ limit: '10mb' }));
 // حد عام مشدّد (2MB): يقطع هجمات الحشو مبكرًا بدل سحب الذاكرة على 50MB لكل طلب
 app.use(express.json({ limit: '2mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+// ─── استقبال تقارير CSP (بعد محلّل الجسم وإلا وصل req.body فارغًا) ────────
+if (cspMeasurementEnabled) {
+    app.post('/api/security/csp-report', (req, res) => {
+        try {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            cspReports.record(body['csp-report'] || body);
+        } catch (_) { /* تقرير تالف — نتجاهله */ }
+        res.status(204).end();
+    });
+    app.get('/api/security/csp-report', (req, res) => {
+        res.json({ ok: true, total: cspReports.total(), counters: cspReports.snapshot() });
+    });
+}
 // FIX 2026-10-03 (اختبار ضغط): أُزيل morgan('combined') — كان يسجّل كل طلب
 // مرتين (httpLogger المنظم يغطي البداية والنهاية بتفاصيل أكبر)، والتحذير
 // للطلبات البطيئة موجود أصلًا في httpLogger (slowThresholdMs). العمل المكرر
