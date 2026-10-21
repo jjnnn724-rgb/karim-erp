@@ -403,7 +403,8 @@ jobs:
     name: 🎭 E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [smoke-test]
+    # مستقلة عن Unit Tests (تبني قاعدتها بنفسها) ⇒ تعمل بالتوازي وتكشف أعطالها مبكرًا
+    needs: [lint-and-typecheck]
     services:
       postgres:
         image: postgres:16
