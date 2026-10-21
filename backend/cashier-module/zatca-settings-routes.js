@@ -57,11 +57,22 @@ function ensureZatcaSchema() {
         schemaReady = (async () => {
             // New enum states the void flow + poller need. ALTER TYPE cannot run
             // inside a transaction — execute one statement per call.
+            //
+            // 2026-10-21: ملكية النوع انتقلت لدور التطبيق (ترحيل 114)، لكن
+            // الـALTER ما ينفعش يوقّف الإقلاع: قيمة enum ناقصة = تكامل ZATCA
+            // محدود، لا خادم ميت. فالفشل يُسجَّل بصوت عالٍ وتُكمل بقية المخطط.
+            // والسبب يُرفق كحقل (pino لا يضع سلسلة ثانية في السجل — تُهمَل).
             for (const value of ['skipped_cancelled', 'skipped_disabled']) {
                 try {
                     await pool.query(`ALTER TYPE pos_zatca_status ADD VALUE IF NOT EXISTS '${value}';`);
                 } catch (e) {
-                    if (e.code !== '42710' && !/already exists/i.test(e.message)) {throw e;}
+                    if (e.code !== '42710' && !/already exists/i.test(e.message)) {
+                        logger.warn({
+                            err: e,
+                            value,
+                            hint: 'قيمة enum ناقصة — طبّق database/migrations/114_type_ownership.sql',
+                        }, '[zatca-settings] تعذّرت إضافة قيمة enum (التكامل محدود، لا تعطّل)');
+                    }
                 }
             }
             await pool.query(`
@@ -605,7 +616,7 @@ async function zatcaQueueTick() {
                       WHERE id = $1;`,
                     [job.id, attempts, maxAttempts, String(err.message || 'submit failed').slice(0, 500), backoffMs]
                 );
-                logger.warn(`[zatca-poller] ✗ ${job.order_id} attempt ${attempts}: ${err.message}`);
+                logger.warn({ err, attempt: attempts }, `[zatca-poller] ✗ ${job.order_id}`);
             }
         }
     } finally {
@@ -622,7 +633,7 @@ function startPoller() {
     }
     pollerStarted = true;
     setInterval(() => {
-        zatcaQueueTick().catch((e) => logger.error('[zatca-poller]', e.message));
+        zatcaQueueTick().catch((e) => logger.error({ err: e }, '[zatca-poller]'));
     }, POLL_INTERVAL_MS).unref();
     logger.info(`[zatca-poller] in-server ZATCA poller started (every ${POLL_INTERVAL_MS}ms, processes only while enabled)`);
 }
@@ -631,7 +642,7 @@ function register(app) {
     app.use('/api/zatca', router);
     // Provision the settings table at boot — the sale path and receipt reads
     // CROSS JOIN zatca_settings, so it must exist before the first invoice.
-    ensureZatcaSchema().catch((e) => logger.error('[zatca-settings] boot schema failed:', e.message));
+    ensureZatcaSchema().catch((e) => logger.error({ err: e }, '[zatca-settings] boot schema failed'));
     startPoller();
     logger.info('    /api/zatca/settings          (GET/PUT — ZATCA integration hub)');
     logger.info('    POST /api/zatca/toggle|test|csr|csid|csid/manual|apply-vat');
