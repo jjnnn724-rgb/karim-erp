@@ -13,11 +13,9 @@
 const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn, exec, execFile } = require('child_process');
+const { spawn, exec, execFileSync } = require('child_process');
 const os = require('os');
 const http = require('http');
-const crypto = require('crypto');
-const net = require('net');
 
 // Load .env — سلسلة البحث (الأول الموجود يفوز، والمتغيرات الخارجية تسبق الجميع):
 //   1) بجانب الـ exe (ملف إعدادات الجهاز — يبقى موجودًا بعد أي تحديث)
@@ -167,11 +165,11 @@ let isDbReady = false;
 // bootstrap, Express env, backups) must go through activeDbPassword()/activePgCtl().
 let SYSTEM_DB = null;
 function activeDbPassword() {
-    if (SYSTEM_DB && SYSTEM_DB.password) return SYSTEM_DB.password;
+    if (SYSTEM_DB && SYSTEM_DB.password) {return SYSTEM_DB.password;}
     return getOrCreateDbPassword();
 }
 function activePgCtl() {
-    if (SYSTEM_DB && SYSTEM_DB.pgCtlPath) return SYSTEM_DB.pgCtlPath;
+    if (SYSTEM_DB && SYSTEM_DB.pgCtlPath) {return SYSTEM_DB.pgCtlPath;}
     return findPgCtl();
 }
 
@@ -256,17 +254,16 @@ function findPgCtl() {
  */
 function findSystemPgCtl() {
     // Search for ANY PostgreSQL 16+ installation — works for any recent version
-    const possiblePaths = [];
     // Check common installation locations
     try {
         const pgDirs = sh('dir /b /s /o-d "C:\\Program Files\\PostgreSQL" 2>nul') || '';
         const pgVersions = pgDirs.split('\n').filter(d => {
-            const v = d.match(/PostgreSQL[\\\/](\d+)/);
+            const v = d.match(/PostgreSQL[\\/](\d+)/);
             return v && parseInt(v[1]) >= 16;
         });
         for (const dir of pgVersions) {
             const candidate = dir.trim() + '\\bin\\pg_ctl.exe';
-            if (existsSync(candidate)) return candidate;
+            if (existsSync(candidate)) {return candidate;}
         }
     } catch (_) {}
     // Try common paths explicitly
@@ -276,7 +273,7 @@ function findSystemPgCtl() {
             `C:\\Program Files\\PostgreSQL\\${v}\\bin\\pg_ctl.exe`,
             `C:\\Program Files (x86)\\PostgreSQL\\${v}\\bin\\pg_ctl.exe`,
         ]) {
-            if (existsSync(p)) return p;
+            if (existsSync(p)) {return p;}
         }
     }
     // Try system PATH
@@ -284,7 +281,7 @@ function findSystemPgCtl() {
         const where = spawnSync('where', ['pg_ctl.exe'], { encoding: 'utf-8', timeout: 5000 });
         if (where.status === 0) {
             const p = where.stdout.trim().split('\n')[0].trim();
-            if (p) return p;
+            if (p) {return p;}
         }
     } catch (_) {}
     return null;
@@ -310,8 +307,7 @@ function getPostgresRuntime(pgCtlPath) {
  * لا تستخدم أبدًا مصادقة بلا كلمة مرور أو استماعًا على كل الواجهات لقاعدة البيانات.
  */
 function getOrCreateDbPassword() {
-    const crypto = require('crypto');
-    const secretPath = path.join(CONFIG.PERSISTENT_PATH, 'db-secret.json');
+        const secretPath = path.join(CONFIG.PERSISTENT_PATH, 'db-secret.json');
     let secret = { password: '' };
     try {
         if (fs.existsSync(secretPath)) {
@@ -448,10 +444,10 @@ function configurePostgresLocalOnly(dataDir) {
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const kept = text.split('\n').filter(line => {
                 const t = line.trim();
-                if (t.startsWith('#') || t === '') return true;
-                if (/^listen_addresses\s*=/.test(t)) return false;
-                if (/^port\s*=/.test(t)) return false;
-                if (/^log_statement\s*=/.test(t)) return false;
+                if (t.startsWith('#') || t === '') {return true;}
+                if (/^listen_addresses\s*=/.test(t)) {return false;}
+                if (/^port\s*=/.test(t)) {return false;}
+                if (/^log_statement\s*=/.test(t)) {return false;}
                 return true;
             });
             const tail = [
@@ -488,10 +484,10 @@ async function trySystemPostgres() {
     // When packaged as EXE, default to system PostgreSQL
     const envMode = String(process.env.DB_MODE || '').toLowerCase();
     const mode = envMode || (app.isPackaged ? 'system' : 'auto');
-    if (mode === 'portable') return false;
+    if (mode === 'portable') {return false;}
     const strict = mode === 'system';
     const fail = (msg) => {
-        if (strict) throw new Error(msg);
+        if (strict) {throw new Error(msg);}
         console.warn(`[PostgreSQL] ${msg} — متابعة بالمحمولة.`);
         return false;
     };
@@ -499,27 +495,27 @@ async function trySystemPostgres() {
     const bundledRoots = [CONFIG.RESOURCE_PATH, CONFIG.APP_PATH].map(p => String(p || '').toLowerCase());
     const candidates = [];
     const consider = (p) => {
-        if (!p || !existsSync(p)) return;
-        if (bundledRoots.some(r => r && String(p).toLowerCase().startsWith(r))) return;
-        if (!candidates.includes(p)) candidates.push(p);
+        if (!p || !existsSync(p)) {return;}
+        if (bundledRoots.some(r => r && String(p).toLowerCase().startsWith(r))) {return;}
+        if (!candidates.includes(p)) {candidates.push(p);}
     };
     if (process.platform === 'win32') {
         for (const root of ['C:\\Program Files\\PostgreSQL', 'C:\\Program Files (x86)\\PostgreSQL']) {
-            if (!existsSync(root)) continue;
+            if (!existsSync(root)) {continue;}
             let vers = [];
             try { vers = fs.readdirSync(root).sort().reverse(); } catch (_) {}
-            for (const v of vers) consider(path.join(root, v, 'bin', 'pg_ctl.exe'));
+            for (const v of vers) {consider(path.join(root, v, 'bin', 'pg_ctl.exe'));}
         }
     } else if (existsSync('/usr/lib/postgresql')) {
         let vers = [];
         try { vers = fs.readdirSync('/usr/lib/postgresql').sort().reverse(); } catch (_) {}
-        for (const v of vers) consider(path.join('/usr/lib/postgresql', v, 'bin', 'pg_ctl'));
+        for (const v of vers) {consider(path.join('/usr/lib/postgresql', v, 'bin', 'pg_ctl'));}
     }
-    if (!candidates.length) return fail('لا توجد PostgreSQL مثبتة على النظام');
+    if (!candidates.length) {return fail('لا توجد PostgreSQL مثبتة على النظام');}
     const sysCtl = candidates[0];
     const sysBin = path.dirname(sysCtl);
     const sysPsql = path.join(sysBin, process.platform === 'win32' ? 'psql.exe' : 'psql');
-    if (!existsSync(sysPsql)) return fail('ثنائيات النظام ناقصة (psql)');
+    if (!existsSync(sysPsql)) {return fail('ثنائيات النظام ناقصة (psql)');}
     // 2) المنفذ مفتوح؟
     const portOpen = await new Promise((resolve) => {
         const s = require('net').createConnection({ port: Number(CONFIG.DB_PORT), host: '127.0.0.1' });
@@ -527,7 +523,7 @@ async function trySystemPostgres() {
         s.on('error', () => resolve(false));
         setTimeout(() => { try { s.destroy(); } catch (_) {} resolve(false); }, 2000);
     });
-    if (!portOpen) return fail(`المثبتة لا تستمع على المنفذ ${CONFIG.DB_PORT} (تأكد من خدمتها وأن DB_PORT يطابقها)`);
+    if (!portOpen) {return fail(`المثبتة لا تستمع على المنفذ ${CONFIG.DB_PORT} (تأكد من خدمتها وأن DB_PORT يطابقها)`);}
     // 3) المصادقة — كلمة مرور النظام من DB_PASSWORD حصرًا (لا تخمين)
     const sysPassword = process.env.DB_PASSWORD || '';
     if (!sysPassword) {
@@ -602,8 +598,6 @@ async function startPostgreSQL() {
     const { binDir, runtimeEnv } = getPostgresRuntime(pgCtlPath);
     
     return new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        
         pgProcess = spawn(pgCtlPath, [
             'start',
             '-D', dataDir,
@@ -719,19 +713,19 @@ async function runPsql(psqlPath, args, env, cwd) {
 async function runAutomaticMigrations(pgCtlPath) {
     const { binDir, runtimeEnv } = getPostgresRuntime(pgCtlPath);
     const psqlPath = path.join(binDir, 'psql.exe');
-    if (!existsSync(psqlPath)) throw new Error('ملف psql.exe غير موجود داخل PostgreSQL Portable.');
+    if (!existsSync(psqlPath)) {throw new Error('ملف psql.exe غير موجود داخل PostgreSQL Portable.');}
     const migrationDirs = [
         path.join(CONFIG.RESOURCE_PATH, 'database', 'migrations'),
         path.join(CONFIG.APP_PATH, 'database', 'migrations'),
     ];
     const migrationsDir = migrationDirs.find(existsSync);
-    if (!migrationsDir) throw new Error('مجلد migrations غير موجود داخل حزمة التطبيق.');
+    if (!migrationsDir) {throw new Error('مجلد migrations غير موجود داخل حزمة التطبيق.');}
 
     const migrationDataDir = path.join(CONFIG.PERSISTENT_PATH, 'database');
     ensureDir(migrationDataDir);
     const lockPath = path.join(migrationDataDir, '.migrations_applied.json');
     let applied = [];
-    try { if (existsSync(lockPath)) applied = JSON.parse(fs.readFileSync(lockPath, 'utf8')); } catch (_) { applied = []; }
+    try { if (existsSync(lockPath)) {applied = JSON.parse(fs.readFileSync(lockPath, 'utf8'));} } catch (_) { applied = []; }
 
     const dbPassword = activeDbPassword();
     const dbEnv = { ...runtimeEnv, PGPASSWORD: dbPassword };
@@ -745,7 +739,7 @@ async function runAutomaticMigrations(pgCtlPath) {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
         .filter(f => f !== '006_demo_seed.sql');
     for (const file of files) {
-        if (applied.includes(file)) continue;
+        if (applied.includes(file)) {continue;}
         console.log(`[Migrations] Applying ${file}`);
         await runPsql(psqlPath, [...common, '-d', 'karim_erp', '-v', 'ON_ERROR_STOP=1', '-f', path.join(migrationsDir, file)], dbEnv, binDir);
         applied.push(file);
@@ -760,7 +754,7 @@ async function runPasswordSecurityBootstrap() {
         path.join(CONFIG.RESOURCE_PATH, 'scripts', 'migrate-plaintext-passwords.js'),
     ];
     const scriptPath = scripts.find(existsSync);
-    if (!scriptPath) throw new Error('سكربت تهيئة كلمات المرور غير موجود داخل حزمة التطبيق.');
+    if (!scriptPath) {throw new Error('سكربت تهيئة كلمات المرور غير موجود داخل حزمة التطبيق.');}
 
     const env = {
         ...process.env,
@@ -785,16 +779,16 @@ async function runPasswordSecurityBootstrap() {
 
 async function runScheduledBackup() {
     const pgCtlPath = activePgCtl();
-    if (!pgCtlPath) throw new Error('تعذر العثور على PostgreSQL Portable للنسخ الاحتياطي.');
+    if (!pgCtlPath) {throw new Error('تعذر العثور على PostgreSQL Portable للنسخ الاحتياطي.');}
     const { binDir } = getPostgresRuntime(pgCtlPath);
     const pgDumpPath = path.join(binDir, 'pg_dump.exe');
-    if (!existsSync(pgDumpPath)) throw new Error('ملف pg_dump.exe غير موجود داخل PostgreSQL Portable.');
+    if (!existsSync(pgDumpPath)) {throw new Error('ملف pg_dump.exe غير موجود داخل PostgreSQL Portable.');}
     const candidates = [
         path.join(CONFIG.APP_PATH, 'database', 'scripts', 'backup.js'),
         path.join(CONFIG.RESOURCE_PATH, 'database', 'scripts', 'backup.js'),
     ];
     const scriptPath = candidates.find(existsSync);
-    if (!scriptPath) throw new Error('سكربت النسخ الاحتياطي غير موجود داخل حزمة التطبيق.');
+    if (!scriptPath) {throw new Error('سكربت النسخ الاحتياطي غير موجود داخل حزمة التطبيق.');}
 
     ensureDir(CONFIG.BACKUPS_PATH);
     const env = {
@@ -825,8 +819,8 @@ async function runScheduledBackup() {
 /**
  * بيئة تشغيل العمليات الفرعية (backend/workers):
  * Node الحقيقي أولًا — require(ESM) (baileys وغيره) مدعوم من Node 20.19+/22.12+
- * بينما Node 18 المدمج في إلكترون 28 يرفضه ويسقط الخادم. عند غياب Node على
- * الجهاز نرجو لإلكترون كـ Node (يعمل بفضل حماية التحميل المحمي في server.js).
+ * بينما Electron 44 يوفّر Node 22 عند غياب Node خارجي. حماية التحميل في server.js
+ * تبقي الخادم عاملًا إن تعذر تحميل تكامل اختياري.
  */
 function findBackendRuntime() {
     try {
@@ -868,8 +862,7 @@ async function startExpressServer() {
         // sessions survive restarts. SKIP_BULLMQ=1 disables the optional
         // Redis-backed ZATCA queue (the SQL queue + polling worker still
         // works without Redis).
-        const crypto = require('crypto');
-        const secretPath = path.join(CONFIG.PERSISTENT_PATH, 'jwt-secrets.json');
+                const secretPath = path.join(CONFIG.PERSISTENT_PATH, 'jwt-secrets.json');
         let secrets = { access: '', refresh: '' };
         try {
             if (fs.existsSync(secretPath)) {
@@ -973,7 +966,7 @@ async function startExpressServer() {
 /**
  * Polling للتحقق من جاهزية السيرفر
  */
-async function pollServerReady(resolve, reject) {
+async function pollServerReady(resolve, _reject) {
     const maxAttempts = 30;  // 15 seconds total
     const url = `http://127.0.0.1:${CONFIG.PORT}/api/health`;
     
@@ -1018,7 +1011,7 @@ async function stopExpressServer() {
     
     return new Promise((resolve) => {
         // Send SIGTERM for graceful shutdown
-        let forceTimeout;
+        let forceTimeout = null;
         
         const onExit = (code) => {
             clearTimeout(forceTimeout);
@@ -1032,7 +1025,7 @@ async function stopExpressServer() {
         // First try graceful shutdown
         try {
             serverProcess.kill('SIGTERM');
-        } catch (e) {
+        } catch (_e) {
             // Process might already be dead
             isServerReady = false;
             resolve(true);
@@ -1044,7 +1037,7 @@ async function stopExpressServer() {
             console.log('[Server] Force killing...');
             try {
                 serverProcess.kill('SIGKILL');
-            } catch (e) { /* already dead */ }
+            } catch (_e) { /* already dead */ }
             isServerReady = false;
             resolve(false);
         }, 10000);  // 10 seconds for graceful shutdown
@@ -1066,7 +1059,7 @@ function executeCommand(command, options = {}) {
             windowsHide: true,
             maxBuffer: 1024 * 512,
             ...(env ? { env } : {}),
-        }, (error, stdout, stderr) => {
+        }, (error, stdout, _stderr) => {
             if (error && !ignoreError) {
                 reject(error);
             } else {
@@ -1111,9 +1104,9 @@ function createMainWindow() {
     // + 60+ migrations). 200 × 1.5s = 5 دقائق صبر كافٍ لأول تشغيل حقيقي.
     let loadRetryCount = 0;
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, isMainFrame) => {
-        if (!isMainFrame) return;
-        if (errorCode === -3) return; // ERR_ABORTED — intentional navigation, not a failure
-        if (loadRetryCount >= 200) return;
+        if (!isMainFrame) {return;}
+        if (errorCode === -3) {return;} // ERR_ABORTED — intentional navigation, not a failure
+        if (loadRetryCount >= 200) {return;}
         loadRetryCount++;
         console.log(`[Window] Backend not ready yet (${errorDescription}) — retry ${loadRetryCount}/200 in 1.5s`);
         setTimeout(() => { try { mainWindow.loadURL(indexPath); } catch (_) {} }, 1500);
@@ -1215,8 +1208,8 @@ function createTray() {
     if (iconPath) {
         try {
             trayIcon = nativeImage.createFromPath(iconPath);
-            if (trayIcon.isEmpty()) trayIcon = null;
-        } catch (e) {
+            if (trayIcon.isEmpty()) {trayIcon = null;}
+        } catch (_e) {
             trayIcon = null;
         }
     }
@@ -1247,9 +1240,8 @@ function createTray() {
             label: `الخادم: ${isServerReady ? 'يعمل ✓' : 'لا يعمل ✗'}`
         },
         {
-            label: 'قاعدة البيانات',
-            enabled: false,
-            label: `PostgreSQL: ${isDbReady ? 'تعمل ✓' : 'لا تعمل ✗'}`
+            label: `قاعدة البيانات: ${isDbReady ? 'تعمل ✓' : 'لا تعمل ✗'}`,
+            enabled: false
         },
         { type: 'separator' },
         {
@@ -1313,7 +1305,7 @@ function createTray() {
  * تحديث قائمة Tray بحالة جديدة
  */
 function updateTrayMenu() {
-    if (!tray) return;
+    if (!tray) {return;}
     
     const contextMenu = Menu.buildFromTemplate([
         {
@@ -1417,7 +1409,7 @@ function showIpAddressDialog() {
 /**
  * إنشاء أيقونة بسيطة (PNG buffer) كـ fallback
  */
-function createSimpleIcon(size = 16) {
+function createSimpleIcon(_size = 16) {
     // Simple 16x16 green circle icon (minimal PNG)
     // This is a valid minimal PNG with a green filled circle
     const pngData = Buffer.from(
@@ -1468,7 +1460,7 @@ function registerIpcHandlers() {
         // arbitrary schemes on the host
         try {
             const parsed = new URL(String(url || ''));
-            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {return;}
             require('electron').shell.openExternal(parsed.toString()).catch(() => {});
         } catch (_) { /* invalid URL — ignore */ }
     });
@@ -1502,7 +1494,7 @@ function probeExistingLocalService(timeoutMs = 1800) {
 }
 
 function isWindowsServiceInstalled() {
-    if (process.platform !== 'win32') return Promise.resolve(false);
+    if (process.platform !== 'win32') {return Promise.resolve(false);}
     return new Promise((resolve) => {
         const child = spawn('sc.exe', ['query', WINDOWS_SERVICE_NAME], { windowsHide: true });
         child.once('error', () => resolve(false));
@@ -1513,7 +1505,7 @@ function isWindowsServiceInstalled() {
 async function waitForWindowsServiceHealth(timeoutMs = 90000) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-        if (await probeExistingLocalService(1500)) return true;
+        if (await probeExistingLocalService(1500)) {return true;}
         await sleep(1000);
     }
     return false;
@@ -1565,7 +1557,7 @@ async function startAllServices() {
         console.log('✅ Express Server ready!\n');
         
             // Update tray menu only for the interactive desktop process.
-        if (!IS_SERVICE_MODE) updateTrayMenu();
+        if (!IS_SERVICE_MODE) {updateTrayMenu();}
         
         // Notify renderer
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1636,7 +1628,7 @@ async function shutdownAllServices() {
         console.log('[Client] Closing UI only; the Windows service remains running.');
         return { server: true, db: true, attached: true };
     }
-    if (isShuttingDown) return;
+    if (isShuttingDown) {return;}
     isShuttingDown = true;
     
     console.log('\n========================================');
@@ -1702,10 +1694,79 @@ async function forceQuitApp() {
 
 // ─── Auto-Updater Setup ─────────────────────────────────────
 /**
+ * سياسة التوقيع: prefer (افتراضي) | required | off
+ * والبيانات منKARIM_UPDATE_EXPECTED_PUBLISHER (CN المتوقع للمُوقِّع).
+ */
+const UPDATE_SIGNATURE_MODE = process.env.KARIM_UPDATE_SIGNATURE_MODE || 'prefer';
+const UPDATE_EXPECTED_PUBLISHER = process.env.KARIM_UPDATE_EXPECTED_PUBLISHER || '';
+
+/** يستخرج مسار الملف المُنزَّل من حدث electron-updater. */
+function downloadedFilePath(info) {
+    if (!info) {return '';}
+    if (info.downloadedFile) {return String(info.downloadedFile);}
+    const files = Array.isArray(info.files) ? info.files : [];
+    for (const f of files) {
+        if (f && f.path) {return String(f.path);}
+    }
+    return '';
+}
+
+/**
+ * يفحص توقيع Authenticode للملف المُنزَّل (ويندوز فقط).
+ * نمرّر المسار عبر متغير بيئة بدل插入ه في نص الأمر ⇒ لا حقن أوامر.
+ * @returns {{status:string, signerSubject:string}}
+ */
+function readAuthenticodeSignature(filePath) {
+    if (process.platform !== 'win32') {
+        return { status: 'Unsupported', signerSubject: '' };
+    }
+    if (!filePath || !fs.existsSync(filePath)) {
+        return { status: 'Unknown', signerSubject: '' };
+    }
+    const ps = 'Get-AuthenticodeSignature -LiteralPath $env:KARIM_SIGNATURE_TARGET | ' +
+        'Select-Object Status,@{n=\'Subject\';e={if($_.SignerCertificate){$_.SignerCertificate.Subject}else{""}}} | ' +
+        'ConvertTo-Json -Compress';
+    try {
+        const out = execFileSync('powershell.exe',
+            ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+            {
+                encoding: 'utf8', timeout: 20000, windowsHide: true,
+                env: { ...process.env, KARIM_SIGNATURE_TARGET: filePath },
+            });
+        const parsed = JSON.parse(String(out || '').trim() || '{}');
+        const status = parsed && parsed.Status ? String(parsed.Status) : 'Unknown';
+        const subject = parsed && parsed.Subject ? String(parsed.Subject) : '';
+        return { status, signerSubject: subject };
+    } catch (e) {
+        console.warn('[AutoUpdate] signature check failed:', e.message);
+        return { status: 'Error', signerSubject: '' };
+    }
+}
+
+/**
+ * البوابة الكاملة: تفحص ثم تقرر (ترجع قرار التثبيت).
+ */
+function verifyDownloadedUpdate(info) {
+    const { decideUpdateInstall } = require('./update-signature-policy');
+    const filePath = downloadedFilePath(info);
+    if (!filePath) {
+        // لا مسار ⇒ لا فحص ممكن (لا نمنع: نفس سلوك اليوم)
+        return decideUpdateInstall({ status: 'Unknown', mode: UPDATE_SIGNATURE_MODE });
+    }
+    const sig = readAuthenticodeSignature(filePath);
+    return decideUpdateInstall({
+        status: sig.status,
+        signerSubject: sig.signerSubject,
+        mode: UPDATE_SIGNATURE_MODE,
+        expectedPublisher: UPDATE_EXPECTED_PUBLISHER,
+    });
+}
+
+/**
  * توصيل أحداث التحديث (مشترك بين وضعي السيرفر والعميل)
  */
 function wireAutoUpdaterEvents() {
-    if (!autoUpdater) return;
+    if (!autoUpdater) {return;}
 
     autoUpdater.on('checking-for-update', () => {
         console.log('[AutoUpdate] Checking for updates...');
@@ -1748,6 +1809,27 @@ function wireAutoUpdaterEvents() {
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('update-downloaded', info);
         }
+        // ─── حارس التوقيع: لا تثبيت قبل التحقق ───
+        // التحديثات غير موقّعة اليوم ⇒ لا نمنع التحديث (يكسر التحديثات)،
+        // لكننا نرفض العبث (HashMismatch/NotTrusted) ونمنعPublisher المزيّف،
+        // ونمنع التثبيت الصامت عند الرفض (autoInstallOnAppQuit=false).
+        const gate = verifyDownloadedUpdate(info);
+        if (!gate.allow) {
+            console.error('[AutoUpdate] BLOCKED:', gate.code, '-', gate.reason);
+            if (autoUpdater) {autoUpdater.autoInstallOnAppQuit = false;}
+            dialog.showMessageBox(mainWindow, {
+                type: 'error',
+                title: 'تعذّر تثبيت التحديث',
+                message: `تم رفض تحديث الإصدار ${info.version} لأسباب أمنية.`,
+                detail: `${gate.reason}\n\n(رمز: ${gate.code})`,
+                buttons: ['حسنًا'],
+                defaultId: 0
+            }).catch(() => {});
+            return;
+        }
+        if (gate.action === 'warn') {
+            console.warn('[AutoUpdate] WARNING:', gate.code, '-', gate.reason);
+        }
         // Ask user to restart
         dialog.showMessageBox(mainWindow, {
             type: 'info',
@@ -1771,7 +1853,7 @@ function wireAutoUpdaterEvents() {
  * NODE_EXTRA_CA_CERTS قبل أول اتصال TLS — وإلا فشل الفحص يُسجل فقط.
  */
 function setupClientLanUpdater() {
-    if (!autoUpdater) return;
+    if (!autoUpdater) {return;}
     try {
         const caPath = path.join(process.resourcesPath || CONFIG.APP_PATH, 'Karim-Local-CA.crt');
         if (existsSync(caPath)) {
@@ -1798,9 +1880,7 @@ function setupClientLanUpdater() {
  * يتطلب: electron-updater + electron-log + إصدار موقع
  */
 function setupAutoUpdater() {
-    if (!autoUpdater) return;
-
-    const feedUrl = 'https://github.com/karim-erp/karim-desktop/releases/latest';
+    if (!autoUpdater) {return;}
 
     wireAutoUpdaterEvents();
     autoUpdater.setFeedURL({
@@ -1963,9 +2043,9 @@ function createClientWindow() {
     mainWindow.loadURL(RESOLVED_SERVER_URL);
     // السيرفر غير جاهز/غير متاح → إعادة محاولة لطيفة بدل صفحة خطأ ميتة
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-        if (!isMainFrame || errorCode === -3) return;
+        if (!isMainFrame || errorCode === -3) {return;}
         mainWindow.__clientRetries = (mainWindow.__clientRetries || 0) + 1;
-        if (mainWindow.__clientRetries > 30) return;
+        if (mainWindow.__clientRetries > 30) {return;}
         console.log(`[Client] السيرفر غير متاح (${errorDescription}) — إعادة ${mainWindow.__clientRetries}/30 بعد 2 ث`);
         setTimeout(() => { try { mainWindow.loadURL(RESOLVED_SERVER_URL); } catch (_) {} }, 2000);
     });
@@ -2059,7 +2139,7 @@ app.whenReady().then(async () => {
     }
     
     // macOS: recreate window when dock icon is clicked (desktop mode only).
-    if (IS_SERVICE_MODE) return;
+    if (IS_SERVICE_MODE) {return;}
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createMainWindow();
@@ -2077,7 +2157,7 @@ app.on('window-all-closed', () => {
     console.log('[App] All windows closed.');
     
     // A headless service must stay alive without windows; WinSW owns its lifecycle.
-    if (IS_SERVICE_MODE) return;
+    if (IS_SERVICE_MODE) {return;}
     // On macOS, keep app running
     if (process.platform !== 'darwin') {
         // If we have a tray, don't quit
@@ -2095,7 +2175,7 @@ app.on('before-quit', async (event) => {
         console.log('[Client] UI closed; Windows service continues running.');
         return;
     }
-    if (isShuttingDown) return;  // Already shutting down
+    if (isShuttingDown) {return;}  // Already shutting down
     
     // Prevent default quit to handle cleanup
     event.preventDefault();

@@ -13,16 +13,18 @@ module.exports = [
       },
     },
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['warn', 'error', 'log', 'info'] }],
       'prefer-const': 'error',
       'no-var': 'error',
-      'eqeqeq': ['warn', 'always'],
+      'eqeqeq': ['warn', 'always', { null: 'ignore' }],
       'curly': ['warn', 'all'],
       'no-duplicate-imports': 'error',
       'no-unreachable': 'error',
       'no-constant-condition': 'warn',
-      'no-empty': 'warn',
+      // كل حالات no-empty في المشروع (495) هي catch فارغة مقصودة (تجاهل بلا
+      // حجب تشغيلي)؛ المُعلِّل الحقيقي هو كتلة فارغة من غير catch.
+      'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-undef': 'off',
     },
   },
@@ -63,6 +65,16 @@ module.exports = [
     },
   },
   {
+    /* Screens are pure modules: every dependency must be imported. An
+       undeclared assignment (`panelKind = 'x'`) throws ReferenceError in a
+       module and kills the handler before it renders — ESLint is the only
+       gate that sees it, since source-contract tests cannot execute them. */
+    files: ['frontend/app/js/v2/screens/**/*.js'],
+    rules: {
+      'no-undef': 'error',
+    },
+  },
+  {
     ignores: [
       'node_modules/',
       'dist/',
@@ -78,10 +90,15 @@ module.exports = [
       '*.log',
       '.env*',
       'coverage/',
+      'var/',
+      'test-results/',
+      'playwright-report/',
       'frontend/app/vendor/',
       'frontend/app/js/vendor/',
       'frontend/app/js/app.js',
-      'electron/',
+      // electron/ كان مستثنىً من الفحص كود التطبيق strawsib ≠ آمن:
+      // كود main process privileged بلا مراجعة lint. أُدخل النطاق بعد
+      // تصفير التحذيرات (policy: no new warnings).
       'tools/',
       'database/scripts/',
       'scripts/*.mjs',
