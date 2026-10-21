@@ -13,7 +13,7 @@ const flat = (s) => s.replace(/\r\n/g, '\n');
 
 const ruleBody = (cssText, selector) => {
     const i = cssText.indexOf(selector);
-    if (i < 0) return '';
+    if (i < 0) { return ''; }
     const open = cssText.indexOf('{', i);
     const close = cssText.indexOf('}', open);
     return open < 0 || close < 0 ? '' : cssText.slice(open + 1, close);
