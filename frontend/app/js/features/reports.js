@@ -27,8 +27,8 @@ return `
 <option value="pos-department">مبيعات POS حسب القسم</option>
 <option value="pos-cashier">مبيعات POS حسب الكاشير</option>
 <option value="pos-item">مبيعات POS حسب الصنف</option>
-<option value="yara-departments">إيرادات الأقسام من يارا (يومي/شهري/سنوي)</option>
-<option value="yara-cashiers">مبيعات الكاشيرية من يارا (تفصيلي per كاشير)</option>
+<option value="yara-departments">إيرادات الأقسام (يومي/شهري/سنوي)</option>
+<option value="yara-cashiers">مبيعات الكاشيرية (تفصيلي per كاشير)</option>
 </select>
 </div>
 <div class="fg" id="deptSelectGroup" style="display:none">
@@ -112,7 +112,7 @@ const reportTypeNames={general:'الشامل',department:'الأقسام الم�
 let html=`
 <div class="report-header">
 <div class="report-logo">${logoMarkup('report-logo-image')}</div>
-<h1>${STATE.settings.name}</h1>
+<h1>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</h1>
 <div class="subtitle">تقرير ${reportTypeNames[type]} احترافي</div>
 <div class="meta">
 <span><i class=ji data-i=calendar></i> الفترة: <strong>${periodLabel}</strong></span>
@@ -129,7 +129,7 @@ else if(type==='returns') {html+=generateReturnsReport(startDate,endDate);}
 else if(type==='warehouse') {html+=generateWarehouseReport(startDate,endDate);}
 else if(type==='hr') {html+=generateHRReport(startDate,endDate);}
 else if(type==='dept-specific'){ const deptCode=document.getElementById('reportDeptSelect').value; html+=generateSpecificDeptReport(deptCode,startDate,endDate); }
-html+=`<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=chart></i> تم إنشاء هذا التقرير بواسطة <strong>${STATE.settings.name}</strong></div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${fDT(new Date().toISOString())} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
+html+=`<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=chart></i> تم إنشاء هذا التقرير بواسطة <strong>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</strong></div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${fDT(new Date().toISOString())} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
 liveContainer.innerHTML=html;
 }catch(repErr){
 console.error('[generateReport]', repErr);
@@ -227,7 +227,7 @@ ${rows.length?rows.map(row=>`<tr>
 return `
 <div class="report-header">
 <div class="report-logo">${logoMarkup('report-logo-image')}</div>
-<h1>${STATE.settings.name}</h1>
+<h1>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</h1>
 <div class="subtitle">${reportTitle} — مباشر من قاعدة البيانات</div>
 <div class="meta">
 <span><i class=ji data-i=calendar></i> الفترة: <strong>${periodLabel}</strong></span>
@@ -255,10 +255,20 @@ ${tableHtml}
 function formatRevenueNote(note){
 const raw=String(note||'').trim();
 if(!raw){return '—';}
-if(!raw.includes('[AUTO:POS]')){return raw;}
+const isPos=raw.includes('[AUTO:POS]');
+const isCashierDb=raw.includes('[AUTO:YARASOFT]');
+if(!isPos&&!isCashierDb){return raw;}
 const invoice=(raw.match(/invoice=([^|]+)/)||[])[1]?.trim();
-const cashier=(raw.match(/cashier=([^|]+)/)||[])[1]?.trim();
 const items=(raw.match(/items=([^|]+)/)||[])[1]?.trim();
+if(isCashierDb){
+const sec=(raw.match(/sec=([^|]+)/)||[])[1]?.trim();
+const parts=['مبيعات الكاشير'];
+if(invoice){parts.push(`فاتورة #${invoice}`);}
+if(sec){parts.push(`الجهة: ${sec}`);}
+if(items){parts.push(`الأصناف: ${items}`);}
+return parts.join(' — ');
+}
+const cashier=(raw.match(/cashier=([^|]+)/)||[])[1]?.trim();
 const parts=['بيع من الكاشير'];
 if(invoice){parts.push(`فاتورة #${invoice}`);}
 if(cashier){parts.push(`الكاشير: ${cashier}`);}
@@ -497,8 +507,8 @@ const t=data.totals||{};
 container.innerHTML=`
 <div class="report-header">
 <div class="report-logo">${logoMarkup('report-logo-image')}</div>
-<h1>${STATE.settings.name}</h1>
-<div class="subtitle">إيرادات الأقسام من يارا سوفت (${groupNames[group]})</div>
+<h1>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</h1>
+<div class="subtitle">إيرادات الأقسام (${groupNames[group]})</div>
 <div class="meta">
 <span><i class=ji data-i=calendar></i> الفترة: <strong>${periodLabel}</strong></span>
 <span><i class=ji data-i=calendar-days></i> من: <strong>${fD(startDate)}</strong></span>
@@ -530,11 +540,11 @@ ${rows.length?rows.map(row=>`<tr>
 <td class="amount-cell c-orange">${fC(row.refund||0)}</td>
 <td class="amount-cell amount-gold"><strong>${fC(row.net||0)}</strong></td>
 <td>${fN(row.invoices||0)}</td>
-</tr>`).join(''):`<tr><td colspan="6" class="u-empty-sm">لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد Yarasoft</td></tr>`}
+</tr>`).join(''):`<tr><td colspan="6" class="u-empty-sm">لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد المبيعات</td></tr>`}
 </tbody>
 </table>
 </div>
-<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=chart></i> تم إنشاء هذا التقرير بواسطة <strong>${STATE.settings.name}</strong></div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${fDT(new Date().toISOString())} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
+<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=chart></i> تم إنشاء هذا التقرير بواسطة <strong>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</strong></div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${fDT(new Date().toISOString())} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
 }catch(err){
 console.error('Yara dept report error:',err);
 container.innerHTML=`<div class="u-empty-sm">تعذر تحميل التقرير: ${esc(err.message||err)}</div>`;
@@ -551,7 +561,7 @@ const data=await apiFetch('/yara-reports/cashier-items?'+params.toString());
 container.innerHTML=renderYaraCashiersHtml(data,startDate,endDate,periodLabel);
 }catch(err){
 console.error('Yara cashiers report error:',err);
-container.innerHTML=`<div class="mcard" style="padding:24px;text-align:center"><div style="font-weight:800;margin-bottom:8px">تعذر تحميل تقرير الكاشيرية</div><div class="u-faint">${esc(err.message||'تحقق من اتصال قاعدة يارا سوفت')}</div></div>`;
+container.innerHTML=`<div class="mcard" style="padding:24px;text-align:center"><div style="font-weight:800;margin-bottom:8px">تعذر تحميل تقرير الكاشيرية</div><div class="u-faint">${esc(err.message||'تحقق من اتصال قاعدة المبيعات')}</div></div>`;
 toast(err.message||'تعذر تحميل تقرير الكاشيرية','error');
 }
 }
@@ -580,7 +590,7 @@ ${rows.length?rows.map(r=>`<tr>
 <td class="amount-cell amount-gold"><strong>${fC(r.net||0)}</strong></td>
 <td class="amount-cell c-red">${fC(r.discount||0)}</td>
 <td class="amount-cell c-orange">${fC(r.vat||0)}</td>
-</tr>`).join(''):`<tr><td colspan="9" class="u-empty-sm">لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب يارا</td></tr>`}
+</tr>`).join(''):`<tr><td colspan="9" class="u-empty-sm">لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب المبيعات</td></tr>`}
 </tbody>
 </table>
 </div>`;
@@ -615,8 +625,8 @@ ${pg}
 return `
 <div class="report-header">
 <div class="report-logo">${logoMarkup('report-logo-image')}</div>
-<h1>${STATE.settings.name}</h1>
-<div class="subtitle">مبيعات الكاشيرية من يارا سوفت — حي من قاعدة الكاشير</div>
+<h1>${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</h1>
+<div class="subtitle">مبيعات الكاشيرية — حي من قاعدة الكاشير</div>
 <div class="meta">
 <span><i class=ji data-i=calendar></i> الفترة: <strong>${periodLabel}</strong></span>
 <span><i class=ji data-i=calendar-days></i> من: <strong>${fD(startDate)}</strong></span>
@@ -653,7 +663,7 @@ ${cashiers.length?cashiers.map(c=>`<tr>
 </table>
 </div>
 ${tableHtml}
-<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=shopping-cart></i> المصدر: قاعدة يارا سوفت Oracle مباشرة (CC_BILLS3 + CC_BILL_ENTER3) — الكاشير 2 الداخلي مستثنى</div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${generatedAt} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
+<div class="report-footer"><div style="margin-bottom:8px"><i class=ji data-i=shopping-cart></i> المصدر: قاعدة مبيعات الكاشيرية — الكاشير 2 الداخلي مستثنى</div><div><i class=ji data-i=calendar></i> تاريخ الإنشاء: ${generatedAt} | <i class=ji data-i=user></i> بواسطة: ${STATE.currentUser?.name||'النظام'}</div></div>`;
 }
 async function ysCashierInvoiceDetail(docNo){
 try{
@@ -673,7 +683,7 @@ const reportContent=document.getElementById('reportContent');
 if(!reportContent||!reportContent.innerHTML.trim()){ toast('يرجى إنشاء التقرير أولاً','warning'); return; }
 const printWindow=(window.openInAppReport ? window.openInAppReport('تقرير') : window.open('', '_blank'));
 const reportHTML=reportContent.innerHTML;
-printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير - ${STATE.settings.name}</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tajawal',sans-serif;background:white;color:#000;direction:rtl;padding:10px;font-size:9pt;line-height:1.45}.report-header{text-align:center;padding:16px 12px;margin-bottom:14px;border-bottom:2px double #000}.report-header h1{font-size:18pt;color:#d4a843;margin-bottom:4px;font-weight:800}.report-header .subtitle{font-size:10pt;color:#333;margin-bottom:4px;font-weight:600}.report-header .meta{display:flex;justify-content:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid #ddd;font-size:8pt;color:#555;flex-wrap:wrap}.report-logo{width:44px;height:44px;margin:0 auto 8px;border-radius:10px;border:1px solid #d4a843;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}.report-logo img{width:100%;height:100%;object-fit:cover}.report-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}.report-summary-card{border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;border-top:2px solid #d4a843;break-inside:avoid}.report-summary-card h4{font-size:7.5pt;color:#555;text-transform:uppercase;margin-bottom:4px;font-weight:700}.report-summary-card .value{font-size:13pt;font-weight:800;color:#000}.report-section{margin:14px 0;break-inside:avoid}.report-section h3{font-size:11pt;font-weight:800;color:#d4a843;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid #d4a843}.report-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:8.5pt;line-height:1.3}.report-table th{background:#f0f0f0;color:#000;font-weight:800;padding:5px 6px;text-align:right;border:1px solid #000;font-size:8pt}.report-table td{padding:5px 6px;border:1px solid #ddd;color:#000}.report-table tbody tr:nth-child(even){background:#f9f9f9}.report-table tfoot td{background:#e0e0e0;font-weight:800;color:#000;border:1px solid #000;padding:6px 8px;font-size:9pt}.report-footer{margin-top:12px;padding:8px;background:#f9f9f9;border-radius:6px;text-align:center;font-size:7.5pt;color:#555;border:1px solid #ddd}svg.ji,i.ji{width:14px!important;height:14px!important;display:inline-block;vertical-align:-0.2em;flex:none}.report-summary-card svg.ji,.report-section h3 svg.ji,.report-table th svg.ji,.report-table td svg.ji{width:12px!important;height:12px!important}.c-gold,.amount-gold{color:#d4a843!important}.c-red,.amount-red{color:#e74c3c!important}.c-green,.amount-green{color:#2ecc71!important}.c-orange{color:#f39c12!important}.c-blue{color:#3498db!important}.c-teal{color:#1abc9c!important}.badge{display:inline-block;padding:2px 8px;border-radius:15px;font-size:8pt;font-weight:700;border:1px solid}.bdg-green{background:rgba(46,204,113,0.1);color:#2ecc71;border-color:rgba(46,204,113,0.3)}.bdg-red{background:rgba(231,76,60,0.1);color:#e74c3c;border-color:rgba(231,76,60,0.3)}.fw-bold{font-weight:700}.print-controls{text-align:center;margin-bottom:20px;padding:15px;background:#f0f0f0;border-radius:8px}.print-controls button{padding:10px 25px;margin:0 10px;border:none;border-radius:6px;font-size:12pt;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif}.btn-print{background:#2ecc71;color:white}.btn-close{background:#e74c3c;color:white}@media print{@page{size:A4;margin:1cm}body{padding:0}.print-controls{display:none!important}}</style></head><body><div class="print-controls"><button class="btn-print" data-karim-action="print"><i class=ji data-i=printer></i> طباعة التقرير</button><button class="btn-close" data-karim-action="closeWindow"><i class=ji data-i=circle-x></i> إغلاق</button></div>${reportHTML}</body></html>`);
+printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير - ${STATE.settings?.name || 'مطاعم الشرفه العالمي'}</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tajawal',sans-serif;background:white;color:#000;direction:rtl;padding:10px;font-size:9pt;line-height:1.45}.report-header{text-align:center;padding:16px 12px;margin-bottom:14px;border-bottom:2px double #000}.report-header h1{font-size:18pt;color:#d4a843;margin-bottom:4px;font-weight:800}.report-header .subtitle{font-size:10pt;color:#333;margin-bottom:4px;font-weight:600}.report-header .meta{display:flex;justify-content:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid #ddd;font-size:8pt;color:#555;flex-wrap:wrap}.report-logo{width:44px;height:44px;margin:0 auto 8px;border-radius:10px;border:1px solid #d4a843;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}.report-logo img{width:100%;height:100%;object-fit:cover}.report-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}.report-summary-card{border:1px solid #ddd;border-radius:6px;padding:8px;text-align:center;border-top:2px solid #d4a843;break-inside:avoid}.report-summary-card h4{font-size:7.5pt;color:#555;text-transform:uppercase;margin-bottom:4px;font-weight:700}.report-summary-card .value{font-size:13pt;font-weight:800;color:#000}.report-section{margin:14px 0;break-inside:avoid}.report-section h3{font-size:11pt;font-weight:800;color:#d4a843;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid #d4a843}.report-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:8.5pt;line-height:1.3}.report-table th{background:#f0f0f0;color:#000;font-weight:800;padding:5px 6px;text-align:right;border:1px solid #000;font-size:8pt}.report-table td{padding:5px 6px;border:1px solid #ddd;color:#000}.report-table tbody tr:nth-child(even){background:#f9f9f9}.report-table tfoot td{background:#e0e0e0;font-weight:800;color:#000;border:1px solid #000;padding:6px 8px;font-size:9pt}.report-footer{margin-top:12px;padding:8px;background:#f9f9f9;border-radius:6px;text-align:center;font-size:7.5pt;color:#555;border:1px solid #ddd}svg.ji,i.ji{width:14px!important;height:14px!important;display:inline-block;vertical-align:-0.2em;flex:none}.report-summary-card svg.ji,.report-section h3 svg.ji,.report-table th svg.ji,.report-table td svg.ji{width:12px!important;height:12px!important}.c-gold,.amount-gold{color:#d4a843!important}.c-red,.amount-red{color:#e74c3c!important}.c-green,.amount-green{color:#2ecc71!important}.c-orange{color:#f39c12!important}.c-blue{color:#3498db!important}.c-teal{color:#1abc9c!important}.badge{display:inline-block;padding:2px 8px;border-radius:15px;font-size:8pt;font-weight:700;border:1px solid}.bdg-green{background:rgba(46,204,113,0.1);color:#2ecc71;border-color:rgba(46,204,113,0.3)}.bdg-red{background:rgba(231,76,60,0.1);color:#e74c3c;border-color:rgba(231,76,60,0.3)}.fw-bold{font-weight:700}.print-controls{text-align:center;margin-bottom:20px;padding:15px;background:#f0f0f0;border-radius:8px}.print-controls button{padding:10px 25px;margin:0 10px;border:none;border-radius:6px;font-size:12pt;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif}.btn-print{background:#2ecc71;color:white}.btn-close{background:#e74c3c;color:white}@media print{@page{size:A4;margin:1cm}body{padding:0}.print-controls{display:none!important}}</style></head><body><div class="print-controls"><button class="btn-print" data-karim-action="print"><i class=ji data-i=printer></i> طباعة التقرير</button><button class="btn-close" data-karim-action="closeWindow"><i class=ji data-i=circle-x></i> إغلاق</button></div>${reportHTML}</body></html>`);
 printWindow.document.close();
 setTimeout(()=>{ printWindow.focus(); },500);
 }

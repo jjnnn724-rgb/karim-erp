@@ -298,7 +298,7 @@ async function runCommand(engine, hit, rec) {
                        LEFT JOIN (SELECT DISTINCT ON (dept_code) dept_code, display_ar FROM yarasoft_revenue_map WHERE active=true ORDER BY dept_code, id) m ON m.dept_code = pd.code
                       WHERE d.revenue_date = $1 ${codeFilter} GROUP BY 1, 2 ORDER BY 3 DESC`, params),
                     cfg.erpTimeoutMs, 'ERP');
-                if (!r.rows.length) {return `لا يوجد تقفيل مسجل ليوم ${day} — شغّل تعبئة الإغلاق من صفحة استيراد Yarasoft.`;}
+                if (!r.rows.length) {return `لا يوجد تقفيل مسجل ليوم ${day} — شغّل تعبئة الإغلاق من صفحة استيراد المبيعات.`;}
                 const lines = [`تقفيل ${day}`];
                 for (const x of r.rows.slice(0, 20)) {lines.push(`- ${x.name} [${x.method}]: ${f(x.gross)} (${f(x.n)} فاتورة)`);}
                 return lines.join('\n').slice(0, 3500);

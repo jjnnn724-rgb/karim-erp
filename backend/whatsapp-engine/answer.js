@@ -44,7 +44,7 @@ function helpText() {
         '• مصاريف اليوم / مصاريف أمس / مصاريف هذا الشهر / أكبر بنود المصروفات',
         '• مبيعات اليوم / إيراد أمس / تقفيل [كاشير N] [أمس] / كاشير 4 أمس',
         '• الكاشيرية — لوحة حية مرتبة لكل كاشير / كاشير 4 / كاشير 9 أمس',
-        '• البصمة — حالة الجهاز ومزامنة اليوم / المزامنة — سحب يارا سوفت',
+        '• البصمة — حالة الجهاز ومزامنة اليوم / المزامنة — سحب بيانات الكاشير',
         '• مخزون <صنف> — رصيده وتكلفته وقيمته وحالته / المنتجات / نواقص',
         '• المخزن — الصورة الكاملة: كل النافذ والمنخفض والقيم',
         '• المخازن — ملخص كل مستودع: كم صنف ونافذ/منخفض/قيمة',
@@ -214,10 +214,10 @@ async function ysStatusAnswer(cfg, rec) {
     const stuck = (await erp.withTimeout(pool.query(
         `SELECT COUNT(*)::int AS c FROM yarasoft_unmapped_sections WHERE resolved = false`), cfg.erpTimeoutMs, 'ERP')).rows[0].c;
     try { await store.logEvent('erp_command', rec.remoteJid, 'ys_status'); } catch (_) {}
-    const lines = ['🔄 يارا سوفت — المزامنة'];
+    const lines = ['🔄 المزامنة — بيانات الكاشير'];
     lines.push(`المحرك: ${eng.running ? '🟢 يعمل' : '⚪ متوقف'} — آخر سحب ناجح: ${eng.lastOk ? String(eng.lastOk).slice(11, 16) : '—'}${eng.lastError ? ` — ⚠ ${String(eng.lastError).slice(0, 80)}` : ''}`);
     lines.push(`آخر 24 ساعة: مرحّل ${fnum(by.COMPLETED || 0)} | مكرر ${fnum(by.DUPLICATE || 0)} | عالق ${fnum((by.NEEDS_MAPPING || 0) + (by.FAILED || 0) + (by.PROCESSING || 0))}`);
-    lines.push(`أقسام تنتظر اعتماد: ${fnum(stuck)}${Number(stuck) ? ' — اعتمدها من صفحة يارا سوفت' : ' ✓'}`);
+    lines.push(`أقسام تنتظر اعتماد: ${fnum(stuck)}${Number(stuck) ? ' — اعتمدها من صفحة استيراد المبيعات' : ' ✓'}`);
     return lines.join('\n').slice(0, 3800);
 }
 
@@ -599,7 +599,7 @@ async function approveSectionExecute(cfg, id, rec) {
     } catch (e) {
         try { await client.query('ROLLBACK'); } catch (_) {}
         logger.warn('[WHATSAPP] wa-approve failed: ' + String(e.message).slice(0, 150));
-        return 'تعذر تنفيذ الاعتماد — حاول من صفحة يارا سوفت.';
+        return 'تعذر تنفيذ الاعتماد — حاول من صفحة استيراد المبيعات.';
     } finally { try { client.release(); } catch (_) {} }
 }
 

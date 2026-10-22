@@ -24,9 +24,9 @@
  *   لا يُجمعان في رقم واحد أبدًا؛ من يعرضهما يسمّي كل واحد بمصدره.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.193';
-import { rangeError, spanDays } from './yara-reports-repo.js?v=4.9.193';
-import { formatInt, formatQty, formatMoney } from './reports-repo.js?v=4.9.193';
+import { apiFetch } from '../../core/api.js?v=4.9.194';
+import { rangeError, spanDays } from './yara-reports-repo.js?v=4.9.194';
+import { formatInt, formatQty, formatMoney } from './reports-repo.js?v=4.9.194';
 
 export { rangeError, spanDays };
 
@@ -114,7 +114,7 @@ export const EXPORT_COLUMNS = [
     { header: 'قيمة المخزون', get: (r) => r.stockValue },
     { header: 'مبيع بالعدد (POS — معرّف)', get: (r) => r.soldPos },
     { header: 'إيراد POS', get: (r) => r.revenuePos },
-    { header: 'مبيع بالعدد (مرآة يارا — اسم)', get: (r) => r.soldYara },
+    { header: 'مبيع بالعدد (مرآة المبيعات — اسم)', get: (r) => r.soldYara },
     { header: 'أقرب صلاحية', get: (r) => r.nearestExpiry || '' },
 ];
 

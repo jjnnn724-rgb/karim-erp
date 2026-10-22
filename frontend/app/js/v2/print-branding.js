@@ -53,6 +53,12 @@ function logoSource() {
     return new URL(value, window.location.href).href;
 }
 
+function brandName() {
+    const configured = typeof window !== 'undefined' && window.STATE && window.STATE.settings
+        ? window.STATE.settings.name : '';
+    return typeof configured === 'string' && configured.trim() ? configured.trim() : 'مطاعم الشرفه العالمي';
+}
+
 export function addV2PrintBranding(doc) {
     if (!doc || !doc.head || !doc.body) {return false;}
     if (doc.querySelector('[data-v2-print-brand]')) {return false;}
@@ -64,16 +70,17 @@ export function addV2PrintBranding(doc) {
         doc.head.appendChild(style);
     }
 
+    const title = brandName();
     const brand = doc.createElement('header');
     brand.className = 'erp-v2-print-brand';
     brand.setAttribute('data-v2-print-brand', '');
     const image = doc.createElement('img');
     image.src = logoSource();
-    image.alt = 'شعار مطاعم الشرفة العالمي';
+    image.alt = `شعار ${title}`;
     const text = doc.createElement('div');
     text.className = 'erp-v2-print-brand__text';
     const name = doc.createElement('strong');
-    name.textContent = 'مطاعم الشرفة العالمي';
+    name.textContent = title;
     const englishName = doc.createElement('span');
     englishName.textContent = 'AL SHURFA AL ALAMI RESTAURANTS';
     text.append(name, englishName);

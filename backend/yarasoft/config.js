@@ -71,10 +71,10 @@ function loadConfig() {
 
         // ─── المحاسبة ───
         defaultDeptCode: process.env.YARASOFT_DEPT_CODE || 'yarasoft_pos',
-        defaultDeptName: process.env.YARASOFT_DEPT_NAME || 'مبيعات نقاط البيع (Yarasoft)',
+        defaultDeptName: process.env.YARASOFT_DEPT_NAME || 'مبيعات نقاط البيع',
         locationCode: process.env.YARASOFT_LOCATION_CODE || 'MAIN-WAREHOUSE',
         locationIdOverride: process.env.YARASOFT_LOCATION_ID ? Number(process.env.YARASOFT_LOCATION_ID) : null,
-        sourceName: process.env.YARASOFT_SOURCE_NAME || 'Yarasoft POS',
+        sourceName: process.env.YARASOFT_SOURCE_NAME || 'مبيعات نقاط البيع',
 
         // ─── الأجهزة (مجلد فرعي لكل كاشير داخل Invoices) ───
         // Cashier1 → «كاشير 1» تلقائيًا؛ تجاوز اختياري:

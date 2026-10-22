@@ -248,7 +248,7 @@ function formatWhatsapp(b) {
     const sh = b.syncHealth || {};
     const ys = sh.ysLog || {};
     const stuck = Number(ys.NEEDS_MAPPING || 0) + Number(ys.FAILED || 0) + Number(ys.PROCESSING || 0);
-    lines.push(`🔄 المزامنة: بصمة ${Number(sh.zkOnline || 0)}/${Number(sh.zkTotal || 0)} متصلة (${f(sh.punchesToday)} بصمة اليوم) • يارا: مرحّل ${f(ys.COMPLETED || 0)}${stuck ? ` • ⚠ عالق ${stuck}` : ' ✓'}`);
+    lines.push(`🔄 المزامنة: بصمة ${Number(sh.zkOnline || 0)}/${Number(sh.zkTotal || 0)} متصلة (${f(sh.punchesToday)} بصمة اليوم) • قاعدة الكاشير: مرحّل ${f(ys.COMPLETED || 0)}${stuck ? ` • ⚠ عالق ${stuck}` : ' ✓'}`);
     const p = b.pending || {};
     const pendTotal = Number(p.leavesPending || 0) + Number(p.unmappedSections || 0) + Number(p.reviewItems || 0) + Number(p.openShifts || 0);
     lines.push(pendTotal

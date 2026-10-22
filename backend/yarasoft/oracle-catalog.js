@@ -245,7 +245,7 @@ async function organizeCategories() {
         // الأطول أولًا: كود 010101 يتبع 0101 لا 01
         const ordered = [...groups.entries()].sort((a, b) => b[0].length - a[0].length);
         out.groups = groups.size;
-        if (!groups.size) {return { ok: false, error: 'لا مجموعات في يارا سوفت', ...out };}
+        if (!groups.size) {return { ok: false, error: 'لا مجموعات في قاعدة الكاشير', ...out };}
         const items = await pool.query(`SELECT id, external_code, category FROM inventory WHERE external_code IS NOT NULL`);
         for (const inv of items.rows) {
             const code = String(inv.external_code).trim();

@@ -64,7 +64,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         });
     } catch (error) {
         logger.error('[yarasoft/status]', error);
-        res.status(500).json({ error: 'YARASOFT_STATUS_FAILED', message: 'تعذر جلب حالة تكامل Yarasoft' });
+        res.status(500).json({ error: 'YARASOFT_STATUS_FAILED', message: 'تعذر جلب حالة تكامل قاعدة الكاشير' });
     }
 });
 

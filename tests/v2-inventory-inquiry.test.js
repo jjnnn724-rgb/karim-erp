@@ -168,13 +168,13 @@ describe('لا ازدواج تكلفة ولا مزج مصدرين', () => {
         const { m } = loadRepo();
         const headers = m.EXPORT_COLUMNS.map((c) => c.header);
         expect(headers.filter((h) => /POS/.test(h))).toHaveLength(2);
-        expect(headers.some((h) => /POS/.test(h) && /يارا/.test(h))).toBe(false);
+        expect(headers.some((h) => /يارا|Yarasoft/.test(h))).toBe(false);
         expect(headers).toContain('مبيع بالعدد (POS — معرّف)');
-        expect(headers).toContain('مبيع بالعدد (مرآة يارا — اسم)');
+        expect(headers).toContain('مبيع بالعدد (مرآة المبيعات — اسم)');
         const aoa = m.toExportAoa([{ itemName: 'طماطم', soldPos: 4, soldYara: 7, nearestExpiry: null }]);
         expect(aoa[0]).toEqual(headers);
         expect(aoa[1][headers.indexOf('مبيع بالعدد (POS — معرّف)')]).toBe(4);
-        expect(aoa[1][headers.indexOf('مبيع بالعدد (مرآة يارا — اسم)')]).toBe(7);
+        expect(aoa[1][headers.indexOf('مبيع بالعدد (مرآة المبيعات — اسم)')]).toBe(7);
         expect(aoa[1][headers.indexOf('أقرب صلاحية')]).toBe('');
         expect(read(SERVER)).toContain('لا يُجمعان في رقم واحد');
     });

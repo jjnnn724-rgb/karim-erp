@@ -12,10 +12,10 @@
  * نسخة ثانية من العقد في مكان ثانٍ، ولا شاشة ميتة في شجرة screens/.
  */
 
-import { createDataTable } from './data-table.js?v=4.9.193';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.193';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.193';
-import { fetchInquiryItem, expiryState } from '../data/inventory-inquiry-repo.js?v=4.9.193';
+import { createDataTable } from './data-table.js?v=4.9.194';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.194';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.194';
+import { fetchInquiryItem, expiryState } from '../data/inventory-inquiry-repo.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -289,7 +289,7 @@ export function mountItemDossier(host, { itemId, from, to, ctx = {}, compact = f
 
         const salesHost = document.createElement('div');
         panels.insertAdjacentHTML('beforeend', section('خطوط بيع الكاشيرية', 'POS Lines', '<div data-v2-sales></div>',
-            '<span class="erp-text-sm erp-text-muted">الربط بمعرّف الصنف لا بالاسم. مرآة يارا تُقرأ بالاسم وحده ولا تُجمع مع هذا الرقم.</span>'));
+            '<span class="erp-text-sm erp-text-muted">الربط بمعرّف الصنف لا بالاسم. مرآة المبيعات تُقرأ بالاسم وحده ولا تُجمع مع هذا الرقم.</span>'));
         panels.querySelector('[data-v2-sales]').appendChild(salesHost);
         addTable(salesHost, {
             caption: 'أسطر البيع من نظام الكاشير', mode: 'client', pageSize: 10, stickyHeader: true,

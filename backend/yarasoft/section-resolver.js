@@ -44,7 +44,7 @@ function normLoose(s) {
 function legacyDevice(config) {
     return {
         key: 'ORA',
-        sourceName: 'Yarasoft Oracle',
+        sourceName: 'قاعدة الكاشير',
         deptCode: config.defaultDeptCode,
         totalsOnly: true,
         skipInventory: true,

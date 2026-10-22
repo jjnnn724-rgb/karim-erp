@@ -43,16 +43,16 @@ module.exports = [
     {
         id: 'integ.yarasoft_oracle',
         domain: 'integrations',
-        title: 'اتصال Oracle/Yarasoft (إن كان مُفعّلًا)',
-        description: 'عند تفعيل YARASOFT_ORACLE_ENABLED يجب توفّر Host/Service/User/Password.',
+        title: 'اتصال قاعدة الكاشير (إن كان مُفعّلًا)',
+        description: 'عند تفعيل الربط المباشر يجب توفّر Host/Service/User/Password.',
         severity: 'MEDIUM',
         detect: (ctx) => {
             const on = String(ctx.envValue('YARASOFT_ORACLE_ENABLED') || '').toLowerCase() === 'true';
-            if (!on) {return { status: 'info', detail: 'الربط المباشر بـ Oracle معطّل' };}
+            if (!on) {return { status: 'info', detail: 'الربط المباشر بقاعدة الكاشير معطّل' };}
             const need = ['YARASOFT_ORACLE_HOST', 'YARASOFT_ORACLE_SERVICE', 'YARASOFT_ORACLE_USER', 'YARASOFT_ORACLE_PASSWORD'];
             const missing = need.filter((k) => !ctx.isSet(k));
-            if (!missing.length) {return { status: 'pass', detail: 'إعدادات Oracle مكتملة' };}
-            return { status: 'warn', severity: 'MEDIUM', detail: `Oracle مُفعّل لكن ينقص: ${missing.join(', ')}`, evidence: { missing }, remediation: 'أكمل بيانات اتصال Oracle في .env أو عطّل YARASOFT_ORACLE_ENABLED' };
+            if (!missing.length) {return { status: 'pass', detail: 'إعدادات الاتصال مكتملة' };}
+            return { status: 'warn', severity: 'MEDIUM', detail: `الربط مُفعّل لكن ينقص: ${missing.join(', ')}`, evidence: { missing }, remediation: 'أكمل بيانات الاتصال في .env أو عطّل مزامنة قاعدة الكاشير' };
         },
     },
 

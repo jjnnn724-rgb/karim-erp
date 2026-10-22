@@ -609,7 +609,7 @@ router.get('/item/:id', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), async
                     orderId: String(r.order_id), day: String(r.day).slice(0, 10), dept: r.dept,
                     cashier: r.cashier, qty: round(r.qty, 3), unitPrice: round(r.unit_price), lineTotal: round(r.line_total),
                 })),
-                note: 'المبيع هنا من أسطر POS المُربوطة بالمعرّف — رقم لا اسم؛ مرآة يارا تُقرأ من /items ولا تُخلط به',
+                note: 'المبيع هنا من أسطر POS المُربوطة بالمعرّف — رقم لا اسم؛ مرآة المبيعات تُقرأ من /items ولا تُخلط به',
             },
         });
     } catch (error) {

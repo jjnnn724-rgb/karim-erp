@@ -174,7 +174,7 @@ async function iqReload(silent) {
             const y = (IQ.meta && IQ.meta.yara) || {};
             scope.textContent = `${IQ.from} ← ${IQ.to}${IQ.dept ? ` · مخزن القسم ${IQ.dept}` : ' · كل المواقع'}`
                 + ` · ${IQ.rows.length} صنفًا من ${iqNum((IQ.totals || {}).items || IQ.rows.length)}`
-                + ` · مرآة يارا: ${iqNum(y.qtyMatched || 0)} من ${iqNum(y.qtyTotal || 0)} مطابقة بالاسم`;
+                + ` · مرآة المبيعات: ${iqNum(y.qtyMatched || 0)} من ${iqNum(y.qtyTotal || 0)} مطابقة بالاسم`;
         }
     } catch (e) {
         IQ.rows = []; IQ.totals = null; IQ.depts = null;
@@ -268,12 +268,12 @@ function iqRenderTable() {
         <table class="tbl">
           <thead><tr>
             <th>#</th><th>الصنف</th><th>الوحدة</th><th>الرصيد</th><th>دخل من الفواتير</th><th>المنصرف</th><th>صافي الحركة</th>
-            <th>مبيع (POS · معرّف)</th><th>مبيع (يارا · اسم)</th><th>كوست الشراء</th><th>تكلفة المنصرف</th><th>قيمة المخزون</th><th>الصلاحية</th><th></th>
+            <th>مبيع (POS · معرّف)</th><th>مبيع (مرآة · اسم)</th><th>كوست الشراء</th><th>تكلفة المنصرف</th><th>قيمة المخزون</th><th>الصلاحية</th><th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <p class="u-dim" style="font-size:12px;margin-top:8px">
-          عمودا المبيع لا يُجمعان: الكاشيرية مربوطة بالمعرّف (حقيقة) ومرآة يارا مربوطة بالاسم المطبَّع (تقريب).
+          عمودا المبيع لا يُجمعان: الكاشيرية مربوطة بالمعرّف (حقيقة) ومرآة المبيعات مربوطة بالاسم المطبَّع (تقريب).
           «دخل من الفواتير» صافٍ مُوقَّع يشمل عكوس الإلغاء والتعديل.
         </p>
       </div>`;
@@ -517,7 +517,7 @@ function iqExportExcel() {
     if (typeof XLSX === 'undefined') { toast('مكتبة Excel غير محمّلة — حدّث الصفحة', 'error'); return; }
     const head = ['الصنف', 'التصنيف', 'الوحدة', 'الرصيد بالمخزن', 'داخل من الفواتير (صافي)', 'داخل آخر', 'المنصرف كله',
         'صرف للأقسام', 'مستهلك في البيع', 'صافي الحركة', 'كوست الشراء', 'تكلفة المنصرف', 'قيمة المخزون',
-        'مبيع بالعدد (POS — معرّف)', 'إيراد POS', 'مبيع بالعدد (مرآة يارا — اسم)', 'أقرب صلاحية'];
+        'مبيع بالعدد (POS — معرّف)', 'إيراد POS', 'مبيع بالعدد (مرآة المبيعات — اسم)', 'أقرب صلاحية'];
     const data = [head, ...IQ.rows.map((r) => [r.itemName, r.category, r.unit, r.onHand, r.qtyInPurchases, r.qtyInOther,
         r.qtyOutTotal, r.qtyOutDispatch, r.qtyOutSale, r.qtyNet, r.purchaseCost, r.outCost, r.stockValue,
         r.soldPos, r.revenuePos, r.soldYara, r.nearestExpiry || ''])];
@@ -548,14 +548,15 @@ function iqPrintReport() {
     .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
-    <h1>تقرير استعلامات المخزون</h1>
+    <h1>${iqEsc((typeof STATE !== 'undefined' && STATE.settings && STATE.settings.name) || 'مطاعم الشرفه العالمي')}</h1>
+    <h2 style="color:#111;font-size:18px;margin-bottom:6px">تقرير استعلامات المخزون</h2>
     <h2>من ${iqEsc(IQ.from)} إلى ${iqEsc(IQ.to)}${IQ.dept ? ' · مخزن قسم: ' + iqEsc(IQ.dept) : ''}</h2>
     <div class="summary"><div>الأصناف: <b>${iqNum(t.items)}</b></div><div>قيمة المخزون: <b>${iqMoney(t.stockValue)}</b></div>
       <div>دخل: <b>${iqSigned(t.qtyInPurchases)}</b></div><div>انصرف: <b>${iqNum(t.qtyOutTotal)}</b></div>
       <div>كوست الشراء: <b>${iqMoney(t.purchaseCost)}</b></div><div>مبيع POS: <b>${iqNum(t.qtySoldPos)}</b></div></div>
-    <table><thead><tr><th>#</th><th>الصنف</th><th>الرصيد</th><th>دخل</th><th>انصرف</th><th>مبيع POS</th><th>مبيع يارا</th>
+    <table><thead><tr><th>#</th><th>الصنف</th><th>الرصيد</th><th>دخل</th><th>انصرف</th><th>مبيع POS</th><th>مبيع المرآة</th>
       <th>كوست شراء</th><th>تكلفة منصرف</th><th>قيمة مخزون</th><th>صلاحية</th></tr></thead><tbody>${rows}</tbody></table>
-    <p style="text-align:center;margin-top:14px;font-size:12px;color:#777">أرقام الدفتر لا تُجمع مع مرآة يارا · تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</p>
+    <p style="text-align:center;margin-top:14px;font-size:12px;color:#777">أرقام الدفتر لا تُجمع مع مرآة المبيعات · تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</p>
     </body></html>`);
     w.document.close();
     w.focus();

@@ -19,16 +19,16 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو من مُنح inventory-inquiry.view).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.193';
-import { barChart, donutChart } from '../charts.js?v=4.9.193';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.193';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
+import { barChart, donutChart } from '../charts.js?v=4.9.194';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.194';
 import {
     fetchInquiryItems, fetchInquiryDepartments, engineKpis, expiryState,
     toExportAoa, deptCostSummary, rangeError, INQ_FILTERS,
-} from '../data/inventory-inquiry-repo.js?v=4.9.193';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.193';
-import { ensureXlsx } from '../vendor.js?v=4.9.193';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.193';
+} from '../data/inventory-inquiry-repo.js?v=4.9.194';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.194';
+import { ensureXlsx } from '../vendor.js?v=4.9.194';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -132,7 +132,7 @@ function template(from, to) {
             <p class="erp-text-sm erp-text-muted">
               قراءة فقط من دفتر المخزون — انقر صنفًا أو اضغط Enter لفتح بطاقته
               الكاملة بالأسفل. المبيع بالعدد في الكاشيرية مرتبط بالمعرّف،
-              ومقابله في مرآة يارا مرتبط بالاسم: عمودان مسمّيان لا رقم واحد.
+              ومقابله في مرآة المبيعات مرتبط بالاسم: عمودان مسمّيان لا رقم واحد.
             </p>
             <div data-v2-table></div>
           </div>
@@ -199,7 +199,7 @@ export function mountQueryScreen(host, ctx = {}) {
                 render: (r) => `<span class="erp-num ${r.qtyNet < 0 ? 'erp-text-danger' : 'erp-text-success'}" dir="ltr">${formatQty(r.qtyNet)}</span>` },
             { key: 'soldPos', header: 'مبيع (POS · معرّف)', type: 'number', width: '150px', align: 'end', value: (r) => r.soldPos,
                 render: (r) => `<span class="erp-num" dir="ltr">${formatQty(r.soldPos)}</span>` },
-            { key: 'soldYara', header: 'مبيع (يارا · اسم)', type: 'number', width: '150px', align: 'end', value: (r) => r.soldYara,
+            { key: 'soldYara', header: 'مبيع (مرآة · اسم)', type: 'number', width: '150px', align: 'end', value: (r) => r.soldYara,
                 render: (r) => `<span class="erp-num erp-text-muted" dir="ltr">${formatQty(r.soldYara)}</span>`
                     + (r.yaraMatched ? '' : ' <span class="erp-badge" data-tone="neutral">بلا مطابقة</span>') },
             { key: 'purchaseCost', header: 'كوست الشراء', type: 'number', width: '140px', align: 'end', value: (r) => r.purchaseCost,

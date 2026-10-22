@@ -585,7 +585,7 @@ function initSocket() {
         try {
             AudioEngine.playSale();
             const label = data && data.source ? ` — ${data.source}` : '';
-            showSyncToast(`إيراد يارا سوفت جديد${label}: ${(Number(data.total) || 0).toFixed(2)}`, '<i class=ji data-i=banknote></i>', 5000);
+            showSyncToast(`إيراد كاشير جديد${label}: ${(Number(data.total) || 0).toFixed(2)}`, '<i class=ji data-i=banknote></i>', 5000);
             if (rtNotifAdmin() && window.toast) {toast(`فاتورة ${data.invoiceNumber || ''} سُجّلت في ${data.source || 'قسمها'}`, 'success');}
         } catch (_) {}
         if (typeof window.loadData === 'function') {
@@ -606,13 +606,13 @@ function initSocket() {
     });
     socket.on('yarasoft:needs-mapping', (data) => {
         if (rtNotifAdmin() && window.toast) {
-            toast(`قسم جديد في يارا سوفت يحتاج اعتماد: ${data.section || ''}`, 'warning');
+            toast(`قسم جديد في المبيعات يحتاج اعتماد: ${data.section || ''}`, 'warning');
         }
     });
     socket.on('yarasoft:oracle-sync', (data) => {
         if (!data) {return;}
         if (rtNotifAdmin() && window.toast && ((data.posted || 0) > 0 || (data.needsMapping || 0) > 0)) {
-            toast(`مزامنة يارا سوفت: ${data.posted || 0} فاتورة مرحلة${(data.needsMapping || 0) ? ` — ${data.needsMapping} بانتظار قسم` : ''}`, 'info');
+            toast(`مزامنة المبيعات: ${data.posted || 0} فاتورة مرحلة${(data.needsMapping || 0) ? ` — ${data.needsMapping} بانتظار قسم` : ''}`, 'info');
         }
         if ((data.posted || 0) > 0 && typeof window.loadData === 'function') {
             clearTimeout(window.__ysImportRefreshTimer);

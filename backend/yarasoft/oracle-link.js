@@ -69,7 +69,7 @@ function guardOracle() {
         oracleBreaker.failures = ORACLE_BREAKER_THRESHOLD - 1;
         return;
     }
-    const err = new Error(`ORACLE_UNREACHABLE: قاعدة يارا سوفت غير متاحة الآن (${oracleBreaker.lastError || 'آخر فشل غير مسجّل'})`);
+    const err = new Error(`ORACLE_UNREACHABLE: قاعدة الكاشير غير متاحة الآن (${oracleBreaker.lastError || 'آخر فشل غير مسجّل'})`);
     err.code = 'ORACLE_UNREACHABLE';
     err.oracleCircuitOpen = true;
     throw err;
@@ -131,7 +131,7 @@ async function oracleConnect(acquire) {
 function assertOracleReadOnly(sql) {
     const s = String(sql == null ? '' : sql).trim().replace(/^\(+/, '');
     if (!/^(SELECT|WITH)\b/i.test(s)) {
-        throw new Error('ORACLE_READ_ONLY: مسموح بـ SELECT فقط على قاعدة يارا سوفت — رُفضت جملة من نوع آخر');
+        throw new Error('ORACLE_READ_ONLY: مسموح بـ SELECT فقط على قاعدة الكاشير — رُفضت جملة من نوع آخر');
     }
     // منع تكديس جمل متعددة بفاصلة منقوطة
     const body = s.replace(/'([^']|'')*'/g, "''");
@@ -208,7 +208,7 @@ function getDriver() {
 async function connectOnce(timeoutSec = 8) {
     const cfg = loadOracleConfig();
     const sets = credentialSets();
-    if (!sets.length) {throw new Error('YARASOFT_ORACLE_USER غير مضبوط في .env');}
+    if (!sets.length) {throw new Error('بيانات مستخدم قاعدة الكاشير غير مضبوطة في إعدادات الاتصال');}
     const oracledb = getDriver();
     // ابدأ من آخر مجموعة ناجحة (تدوير ذكي)، ثم جرّب البقية عند ORA-01017
     const order = sets.map((_, i) => i);
@@ -298,10 +298,10 @@ async function testConnection() {
     } catch (e) {
         const raw = String(e.message || e);
         const hint = raw.includes('NJS-138')
-            ? 'قاعدة قديمة (< 12c) — ثبّت Instant Client 12.2 واضبط YARASOFT_ORACLE_IC_PATH ثم أعد الفحص'
-            : raw.includes('NJS-518') ? 'اسم الخدمة غير مسجل — راجع YARASOFT_ORACLE_SERVICE'
+            ? 'قاعدة قديمة (< 12c) — ثبّت Instant Client 12.2 واضبط مساره في إعدادات الاتصال ثم أعد الفحص'
+            : raw.includes('NJS-518') ? 'اسم الخدمة غير مسجل — راجع إعدادات الاتصال'
             : raw.includes('ORA-01017') ? 'اسم المستخدم أو كلمة المرور مرفوضة من القاعدة'
-            : raw.includes('ORA-12541') || raw.includes('NJS-5') ? 'لا وصول للخادم/المنفذ — تحقق أن جهاز اليارسوفت يعمل'
+            : raw.includes('ORA-12541') || raw.includes('NJS-5') ? 'لا وصول للخادم/المنفذ — تحقق أن جهاز قاعدة الكاشير يعمل'
             : '';
         return { ok: false, ms: Date.now() - started, error: sanitizeError(raw), hint, host: cfg.host, port: cfg.port, service: cfg.service, user: cfg.user };
     } finally {

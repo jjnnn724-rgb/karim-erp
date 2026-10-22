@@ -37,8 +37,8 @@ import {
     searchYarasoftProducts,
     startYarasoftOracleCatchUp,
     testYarasoftOracle,
-} from '../data/yarasoft-repo.js?v=4.9.193';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.193';
+} from '../data/yarasoft-repo.js?v=4.9.194';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.194';
 
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -72,18 +72,18 @@ function table(headers, body, empty, count) {
 }
 
 function template(canWrite) {
-    return `<section class="erp-v2-yarasoft erp-stack" aria-label="إدارة تكامل Yarasoft">
-      <header class="erp-dash-head"><div><h2 class="erp-dash-title">تكامل Yarasoft</h2><p class="erp-dash-sub">حالة الاستيراد، مراجعة الأصناف والأقسام المعلقة.</p></div>
+    return `<section class="erp-v2-yarasoft erp-stack" aria-label="إدارة تكامل قاعدة الكاشير">
+      <header class="erp-dash-head"><div><h2 class="erp-dash-title">تكامل قاعدة الكاشير</h2><p class="erp-dash-sub">حالة الاستيراد، مراجعة الأصناف والأقسام المعلقة.</p></div>
         <div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--sm" data-ys-reload>تحديث</button>${canWrite ? '<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-ys-run>تشغيل دورة الاستيراد</button>' : ''}</div>
       </header>
       <p class="erp-text-sm erp-text-muted" data-ys-notice role="status" aria-live="polite"></p>
-      <nav class="erp-wa-tabs" role="tablist" aria-label="أقسام تكامل Yarasoft">
+      <nav class="erp-wa-tabs" role="tablist" aria-label="أقسام تكامل قاعدة الكاشير">
         <button type="button" role="tab" aria-selected="true" data-ys-tab="status">الحالة والسجل</button>
         <button type="button" role="tab" aria-selected="false" data-ys-tab="review">مراجعة الأصناف</button>
         <button type="button" role="tab" aria-selected="false" data-ys-tab="sections">الأقسام المعلقة</button>
         <button type="button" role="tab" aria-selected="false" data-ys-tab="mappings">ربط المنتجات</button>
-        <button type="button" role="tab" aria-selected="false" data-ys-tab="oracle">ربط Oracle</button>
-        <button type="button" role="tab" aria-selected="false" data-ys-tab="quality">جودة بيانات Oracle</button>
+        <button type="button" role="tab" aria-selected="false" data-ys-tab="oracle">ربط قاعدة الكاشير</button>
+        <button type="button" role="tab" aria-selected="false" data-ys-tab="quality">جودة بيانات قاعدة الكاشير</button>
         <button type="button" role="tab" aria-selected="false" data-ys-tab="tools">معاينة الصيغة</button>
         <button type="button" role="tab" aria-selected="false" data-ys-tab="mirror">مرآة الكاشيرية</button>
       </nav>
@@ -192,7 +192,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
               <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">سجل الاستيراد</h3><span class="erp-grow"></span><span class="erp-text-sm erp-text-muted">آخر ${formatInt(logRows.length)} سجل</span></div><div class="erp-card__body">${table(['الملف', 'رقم الفاتورة', 'الحالة', 'الأصناف', 'الإجمالي', 'الخطأ', 'إجراءات'], rows, 'لا توجد سجلات استيراد بعد.', 7)}</div></section>
             </div>`;
         } catch (error) {
-            if (!destroyed && tab === 'status') {panel.innerHTML = stateMessage('تعذّر جلب حالة Yarasoft', error?.message || 'خطأ غير معروف', 'danger');}
+            if (!destroyed && tab === 'status') {panel.innerHTML = stateMessage('تعذّر جلب حالة قاعدة الكاشير', error?.message || 'خطأ غير معروف', 'danger');}
         }
     }
 
@@ -272,7 +272,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
         </tr>`).join('');
         const targets = sectionMap.filter((target) => target.active && String(target.id) !== String(section.id))
             .map((target) => `<option value="${esc(target.id)}">${esc(target.display_ar)} (${esc(target.src_table)})</option>`).join('');
-        const detail = sectionInvoiceDetail ? `<section class="erp-card"><div class="erp-card__head"><h4 class="erp-card__title">تفاصيل ${esc(sectionInvoiceDetail.ref)}</h4><span class="erp-grow"></span><span class="erp-badge" data-tone="${sectionInvoiceDetail.live ? 'success' : 'neutral'}">${sectionInvoiceDetail.live ? 'مباشر من Oracle' : 'من السجل المحلي'}</span><button type="button" class="erp-btn erp-btn--sm" data-ys-close-detail>إغلاق</button></div><div class="erp-card__body">${sectionInvoiceDetail.header ? `<p class="erp-text-sm">الكاشير: ${esc(sectionInvoiceDetail.header.CSHR || '—')} · الوردية: ${esc(sectionInvoiceDetail.header.SHFT_NO || '—')} · التاريخ: ${esc(sectionInvoiceDetail.local?.date || sectionInvoiceDetail.header.DOC_DATE || '—')}</p>` : ''}${table(['الكود', 'الصنف', 'الكمية', 'الوحدة', 'السعر', 'الإجمالي', 'الضريبة'], arr(sectionInvoiceDetail.lines).map((line) => `<tr><td class="erp-td">${esc(line.code || '—')}</td><td class="erp-td">${esc(line.name || '—')}</td><td class="erp-td">${formatQty(Number(line.qty) || 0)}</td><td class="erp-td">${esc(line.unit || '—')}</td><td class="erp-td">${esc(money(Number(line.price) || 0))}</td><td class="erp-td">${esc(money(Number(line.total) || 0))}</td><td class="erp-td">${esc(money(Number(line.vat) || 0))}</td></tr>`).join(''), 'لا توجد أصناف محفوظة لهذه الفاتورة.', 7)}</div></section>` : '';
+        const detail = sectionInvoiceDetail ? `<section class="erp-card"><div class="erp-card__head"><h4 class="erp-card__title">تفاصيل ${esc(sectionInvoiceDetail.ref)}</h4><span class="erp-grow"></span><span class="erp-badge" data-tone="${sectionInvoiceDetail.live ? 'success' : 'neutral'}">${sectionInvoiceDetail.live ? 'مباشر من قاعدة الكاشير' : 'من السجل المحلي'}</span><button type="button" class="erp-btn erp-btn--sm" data-ys-close-detail>إغلاق</button></div><div class="erp-card__body">${sectionInvoiceDetail.header ? `<p class="erp-text-sm">الكاشير: ${esc(sectionInvoiceDetail.header.CSHR || '—')} · الوردية: ${esc(sectionInvoiceDetail.header.SHFT_NO || '—')} · التاريخ: ${esc(sectionInvoiceDetail.local?.date || sectionInvoiceDetail.header.DOC_DATE || '—')}</p>` : ''}${table(['الكود', 'الصنف', 'الكمية', 'الوحدة', 'السعر', 'الإجمالي', 'الضريبة'], arr(sectionInvoiceDetail.lines).map((line) => `<tr><td class="erp-td">${esc(line.code || '—')}</td><td class="erp-td">${esc(line.name || '—')}</td><td class="erp-td">${formatQty(Number(line.qty) || 0)}</td><td class="erp-td">${esc(line.unit || '—')}</td><td class="erp-td">${esc(money(Number(line.price) || 0))}</td><td class="erp-td">${esc(money(Number(line.total) || 0))}</td><td class="erp-td">${esc(money(Number(line.vat) || 0))}</td></tr>`).join(''), 'لا توجد أصناف محفوظة لهذه الفاتورة.', 7)}</div></section>` : '';
         const pages = Math.max(1, Number(data.pages) || 1);
         return `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">فواتير ${esc(section.display_ar)} (${formatInt(Number(data.total) || 0)})</h3><span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm" data-ys-close-invoices>إغلاق الفواتير</button></div>
           <div class="erp-card__body erp-stack"><div class="erp-wa-form">
@@ -310,7 +310,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
     }
 
     async function loadMappings() {
-        panel.innerHTML = stateMessage('جارٍ التحميل', 'يتم جلب روابط منتجات Yarasoft…');
+        panel.innerHTML = stateMessage('جارٍ التحميل', 'يتم جلب روابط منتجات الكاشير…');
         try {
             mappings = arr(await fetchYarasoftMappings());
             if (destroyed || tab !== 'mappings') {return;}
@@ -323,14 +323,14 @@ export function mountYarasoftScreen(host, ctx = {}) {
             panel.innerHTML = `<div class="erp-stack">
               <p class="erp-text-sm erp-text-muted">ترتيب المطابقة التلقائي لدى الخادم يبدأ بالباركود ثم الكود الخارجي ثم الروابط الصريحة. التعطيل لا يحذف سجل الربط.</p>
               ${canWrite ? `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">إضافة ربط صريح</h3></div><div class="erp-card__body"><div class="erp-wa-form">
-                <label class="erp-field"><span class="erp-label">كود Yarasoft</span><input class="erp-input" data-ys-map-code maxlength="120"></label>
-                <label class="erp-field"><span class="erp-label">باركود Yarasoft</span><input class="erp-input" data-ys-map-barcode maxlength="120"></label>
+                <label class="erp-field"><span class="erp-label">كود الكاشير</span><input class="erp-input" data-ys-map-code maxlength="120"></label>
+                <label class="erp-field"><span class="erp-label">باركود الكاشير</span><input class="erp-input" data-ys-map-barcode maxlength="120"></label>
                 <label class="erp-field"><span class="erp-label">بحث عن منتج المخزون</span><input class="erp-input" data-ys-map-search autocomplete="off"></label>
                 <button type="button" class="erp-btn erp-btn--sm" data-ys-map-find>بحث</button>
                 <label class="erp-field"><span class="erp-label">المنتج الداخلي</span><select class="erp-input" data-ys-map-product><option value="">ابحث واختر منتجاً</option></select></label>
                 <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-ys-map-save>حفظ الربط</button>
               </div></div></section>` : ''}
-              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">روابط المنتجات (${formatInt(mappings.length)})</h3><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث</button></div><div class="erp-card__body">${table(['كود Yarasoft', 'باركود Yarasoft', 'منتج المخزون', 'الحالة', 'إجراء'], rows, 'لا توجد روابط صريحة؛ تظل المطابقة الآلية فعالة.', 5)}</div></section>
+              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">روابط المنتجات (${formatInt(mappings.length)})</h3><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث</button></div><div class="erp-card__body">${table(['كود الكاشير', 'باركود الكاشير', 'منتج المخزون', 'الحالة', 'إجراء'], rows, 'لا توجد روابط صريحة؛ تظل المطابقة الآلية فعالة.', 5)}</div></section>
             </div>`;
         } catch (error) {
             if (!destroyed && tab === 'mappings') {panel.innerHTML = stateMessage('تعذّر جلب روابط المنتجات', error?.message || 'خطأ غير معروف', 'danger');}
@@ -338,7 +338,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
     }
 
     async function loadOracle() {
-        panel.innerHTML = stateMessage('جارٍ التحميل', 'يتم فحص حالة ربط Oracle ومهمة المزامنة…');
+        panel.innerHTML = stateMessage('جارٍ التحميل', 'يتم فحص حالة ربط قاعدة الكاشير ومهمة المزامنة…');
         try {
             const [nextStatus, nextJob] = await Promise.all([
                 fetchYarasoftOracleStatus(),
@@ -358,7 +358,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const preview = oracleItemPreview ? `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">معاينة استيراد دليل الأصناف</h3><span class="erp-grow"></span>${statusBadge(oracleItemPreview.ok === false ? 'FAILED' : 'COMPLETED')}</div><div class="erp-card__body">
               ${oracleItemPreview.ok === false ? stateMessage('تعذرت المعاينة', oracleItemPreview.error || 'تعذر قراءة قائمة الأصناف.', 'danger') : `<p>الإجمالي: ${formatInt(Number(oracleItemPreview.total) || 0)} · أصناف جديدة: ${formatInt(Number(oracleItemPreview.fresh) || 0)} · موجودة/متخطاة: ${formatInt(Number(oracleItemPreview.skipped) || 0)} · مجموعات مستبعدة: ${formatInt(Number(oracleItemPreview.groups) || 0)}</p>${canWrite && Number(oracleItemPreview.fresh) > 0 ? '<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-ys-oracle-import>استيراد الأصناف الجديدة فقط</button>' : ''}`}</div></section>` : '';
             panel.innerHTML = `<div class="erp-stack">
-              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">اتصال Yarasoft Oracle</h3><span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث الحالة</button></div><div class="erp-card__body">
+              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">اتصال قاعدة الكاشير</h3><span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث الحالة</button></div><div class="erp-card__body">
                 <ul class="erp-kpis">
                   <li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">المزامنة مفعلة</span></div><div class="erp-kpi__value">${connection.enabled ? 'نعم' : 'لا'}</div></li>
                   <li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">برنامج التشغيل</span></div><div class="erp-kpi__value">${connection.driver === null ? 'لم يُفحص' : connection.driver ? 'متاح' : 'غير متاح'}</div></li>
@@ -370,11 +370,11 @@ export function mountYarasoftScreen(host, ctx = {}) {
                 <div class="erp-wa-actions">${canWrite ? '<button type="button" class="erp-btn erp-btn--sm" data-ys-oracle-test>فحص الاتصال</button><button type="button" class="erp-btn erp-btn--sm" data-ys-oracle-poll>سحب الآن</button><button type="button" class="erp-btn erp-btn--sm" data-ys-oracle-preview>معاينة استيراد الأصناف</button>' : ''}</div>
               </div></section>
               <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">مقارنة المزامنة</h3><span class="erp-grow"></span><label class="erp-field"><span class="erp-label">الفترة بالأيام</span><input type="number" class="erp-input" data-ys-oracle-days value="14" min="1" max="90"></label><button type="button" class="erp-btn erp-btn--sm" data-ys-oracle-reconcile>مقارنة الآن</button>${canWrite ? '<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-ys-oracle-catchup>بدء اللحاق بالفجوات</button>' : ''}</div>
-                <div class="erp-card__body erp-stack">${oracleReconcile ? `<p>${oracleReconcile.overall === 'ok' ? '<span class="erp-badge" data-tone="success">المقارنة ضمن هامش التفاوت المعتمد بالخادم</span>' : '<span class="erp-badge" data-tone="warning">توجد فجوات حسب نتيجة الخادم</span>'} · Oracle: ${formatInt(Number(oracleReconcile.totalOra) || 0)} · محلي: ${formatInt(Number(oracleReconcile.totalLocal) || 0)} · ${formatInt(Number(oracleReconcile.days) || 0)} يوم</p>${table(['اليوم', 'فواتير CC', 'فواتير BILLS4', 'محلي', 'النتيجة'], reconcileRows, 'لا توجد بيانات مقارنة.', 5)}` : stateMessage('المقارنة لم تُشغّل', 'شغّل المقارنة لطلب النتيجة المباشرة من الخادم.')}
+                <div class="erp-card__body erp-stack">${oracleReconcile ? `<p>${oracleReconcile.overall === 'ok' ? '<span class="erp-badge" data-tone="success">المقارنة ضمن هامش التفاوت المعتمد بالخادم</span>' : '<span class="erp-badge" data-tone="warning">توجد فجوات حسب نتيجة الخادم</span>'} · قاعدة الكاشير: ${formatInt(Number(oracleReconcile.totalOra) || 0)} · محلي: ${formatInt(Number(oracleReconcile.totalLocal) || 0)} · ${formatInt(Number(oracleReconcile.days) || 0)} يوم</p>${table(['اليوم', 'فواتير CC', 'فواتير BILLS4', 'محلي', 'النتيجة'], reconcileRows, 'لا توجد بيانات مقارنة.', 5)}` : stateMessage('المقارنة لم تُشغّل', 'شغّل المقارنة لطلب النتيجة المباشرة من الخادم.')}
                   <p class="erp-text-sm erp-text-muted">حالة مهمة اللحاق: ${job.running ? 'قيد التنفيذ' : job.finishedAt ? `انتهت ${esc(job.finishedAt)}` : 'لا توجد مهمة'} · أُرسلت ${formatInt(Number(job.posted) || 0)} · مكررات ${formatInt(Number(job.dups) || 0)}${job.error ? ` · ${esc(job.error)}` : ''}</p></div>
               </section>${preview}</div>`;
         } catch (error) {
-            if (!destroyed && tab === 'oracle') {panel.innerHTML = stateMessage('تعذّر جلب حالة Oracle', error?.message || 'خطأ غير معروف', 'danger');}
+            if (!destroyed && tab === 'oracle') {panel.innerHTML = stateMessage('تعذّر جلب حالة قاعدة الكاشير', error?.message || 'خطأ غير معروف', 'danger');}
         }
     }
 
@@ -420,9 +420,9 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const purchases = catalogData.purchases || {};
             const quarantinedValue = quarantineRows.reduce((sum, row) => sum + (Number(row.value_amount) || 0), 0);
             panel.innerHTML = `<div class="erp-stack">
-              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">جودة بيانات Oracle</h3><span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث</button></div>
+              <section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">جودة بيانات قاعدة الكاشير</h3><span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm" data-ys-refresh-tab>تحديث</button></div>
                 <div class="erp-card__body erp-stack">
-                  <p class="erp-text-sm erp-text-muted">مؤشرات قراءة فقط من دليل الأصناف في Oracle. البنود التي يتعذر ترحيلها تُحجز هنا بدل إسقاطها بصمت؛ راجعها ثم أعد معالجة الفواتير من تبويب الحالة.</p>
+                  <p class="erp-text-sm erp-text-muted">مؤشرات قراءة فقط من دليل الأصناف في قاعدة الكاشير. البنود التي يتعذر ترحيلها تُحجز هنا بدل إسقاطها بصمت؛ راجعها ثم أعد معالجة الفواتير من تبويب الحالة.</p>
                   <ul class="erp-kpis">
                     <li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">أصناف بكمية</span></div><div class="erp-kpi__value">${formatInt(Number(catalogData.withQty) || 0)}</div></li>
                     <li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">أصناف بكمية صفر</span></div><div class="erp-kpi__value">${formatInt(Number(catalogData.zeroQty) || 0)}</div></li>
@@ -432,7 +432,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
                     <li class="erp-kpi"><div class="erp-kpi__top"><span class="erp-kpi__label">بنود الحجر (قيمة)</span></div><div class="erp-kpi__value">${formatInt(quarantineRows.length)} · ${money(quarantinedValue)}</div></li>
                   </ul>
                   ${canWrite ? `<div class="erp-wa-actions">
-                    <button type="button" class="erp-btn erp-btn--sm" data-ys-quality-organize>تنظيم الأقسام من دليل Oracle</button>
+                    <button type="button" class="erp-btn erp-btn--sm" data-ys-quality-organize>تنظيم الأقسام من دليل الكاشير</button>
                     <button type="button" class="erp-btn erp-btn--sm" data-ys-quality-sync>مزامنة الأرصدة (دون تجاوز)</button>
                     <button type="button" class="erp-btn erp-btn--sm" data-ys-quality-sync-force>مزامنة إجبارية</button>
                   </div>` : stateMessage('التنفيذ مقصور على الإدارة', 'يلزم دور admin أو manager لتنظيم الأقسام أو مزامنة الأرصدة.')}
@@ -444,7 +444,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const body = panel.querySelector('.erp-table__grid tbody');
             if (body) {body.setAttribute('data-ys-quarantine-body', '');}
         } catch (error) {
-            if (!destroyed && tab === 'quality') {panel.innerHTML = stateMessage('تعذّر جلب جودة بيانات Oracle', error?.message || 'خطأ غير معروف', 'danger');}
+            if (!destroyed && tab === 'quality') {panel.innerHTML = stateMessage('تعذّر جلب جودة بيانات قاعدة الكاشير', error?.message || 'خطأ غير معروف', 'danger');}
         }
     }
 
@@ -581,7 +581,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
         if (button.hasAttribute('data-ys-reload') || button.hasAttribute('data-ys-refresh-tab')) {await loadTab(); return;}
         if (button.hasAttribute('data-ys-quality-organize')) {
             if (!canWrite) {return;}
-            if (!confirmFn('تنظيم أقسام الأصناف من دليل Oracle؟ قد تُعاد تسمية أقسام موجودة وفق الدليل.')) {return;}
+            if (!confirmFn('تنظيم أقسام الأصناف من دليل الكاشير؟ قد تُعاد تسمية أقسام موجودة وفق الدليل.')) {return;}
             await action(organizeYarasoftCategories, (result) => (result && result.ok
                 ? `تم التنظيم: ${formatInt(Number(result.categorized) || 0)} صنف في ${formatInt(Number(result.groups) || 0)} مجموعة (سليم ${formatInt(Number(result.alreadyOk) || 0)} · غير مربوط ${formatInt(Number(result.unmapped) || 0)}).`
                 : (result?.error || 'تعذر تنظيم الأقسام.')));
@@ -592,7 +592,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const force = button.hasAttribute('data-ys-quality-sync-force');
             if (!confirmFn(force
                 ? 'مزامنة إجبارية تتجاوز حماية الأصناف المعدّلة محليًا. متابعة؟'
-                : 'مزامنة أرصدة الأصناف غير المعدّلة محليًا من Oracle؟')) {return;}
+                : 'مزامنة أرصدة الأصناف غير المعدّلة محليًا من قاعدة الكاشير؟')) {return;}
             await action(() => syncYarasoftBalances(force), (result) => (result && result.ok
                 ? `تمت المزامنة: ${formatInt(Number(result.applied) || 0)} مطبّق · ${formatInt(Number(result.quarantined) || 0)} محجوز · ${formatInt(Number(result.unmapped) || 0)} غير مربوط.`
                 : (result?.error || 'تعذرت مزامنة الأرصدة.')));
@@ -747,7 +747,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             const externalCode = panel.querySelector('[data-ys-map-code]')?.value.trim();
             const externalBarcode = panel.querySelector('[data-ys-map-barcode]')?.value.trim();
             const internalProductId = Number(panel.querySelector('[data-ys-map-product]')?.value);
-            if (!externalCode && !externalBarcode) {say('أدخل كود Yarasoft أو باركوداً واحداً على الأقل.'); return;}
+            if (!externalCode && !externalBarcode) {say('أدخل كود الكاشير أو باركوداً واحداً على الأقل.'); return;}
             if (!internalProductId) {say('ابحث واختر المنتج الداخلي أولاً.'); return;}
             if (!confirmFn(`ربط الكود "${externalCode || '—'}" والباركود "${externalBarcode || '—'}" بالمنتج المحدد؟ سيؤثر الربط على المطابقة الحالية واللاحقة.`)) {return;}
             await action(() => saveYarasoftMapping({ externalCode, externalBarcode, internalProductId }), () => 'تم حفظ الربط الصريح.');
@@ -764,13 +764,13 @@ export function mountYarasoftScreen(host, ctx = {}) {
             if (!canWrite) {return;}
             await action(async () => {
                 const result = await testYarasoftOracle();
-                if (result?.ok === false) {throw new Error(result.message || result.error || 'فشل فحص اتصال Oracle.');}
+                if (result?.ok === false) {throw new Error(result.message || result.error || 'فشل فحص اتصال قاعدة الكاشير.');}
                 return result;
             }, (result) => `نجح فحص الاتصال${result.ms ? ` خلال ${formatInt(result.ms)} مللي ثانية` : ''}.`);
             return;
         }
         if (button.hasAttribute('data-ys-oracle-poll')) {
-            if (!canWrite || !confirmFn('بدء سحب فوري من Oracle؟ قد يستغرق ذلك وقتاً بحسب حجم البيانات والاتصال.')) {return;}
+            if (!canWrite || !confirmFn('بدء سحب فوري من قاعدة الكاشير؟ قد يستغرق ذلك وقتاً بحسب حجم البيانات والاتصال.')) {return;}
             await action(async () => {
                 const result = await pollYarasoftOracleNow();
                 if (result?.ok === false) {throw new Error(result.message || result.error || 'فشل السحب الفوري.');}
@@ -782,7 +782,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             if (!canWrite) {return;}
             await action(async () => {
                 const result = await previewYarasoftOracleItems();
-                if (result?.ok === false) {throw new Error(result.message || result.error || 'تعذرت معاينة أصناف Oracle.');}
+                if (result?.ok === false) {throw new Error(result.message || result.error || 'تعذرت معاينة أصناف قاعدة الكاشير.');}
                 oracleItemPreview = result;
                 return result;
             }, (result) => `اكتملت المعاينة: ${formatInt(Number(result.fresh) || 0)} صنف جديد، بلا كتابة للمخزون.`);
@@ -815,7 +815,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             if (!canWrite) {return;}
             const days = Number(panel.querySelector('[data-ys-oracle-days]')?.value);
             if (!Number.isInteger(days) || days < 1 || days > 90) {say('حدد فترة من يوم إلى 90 يوماً.'); return;}
-            if (!confirmFn(`بدء مهمة لحاق بفجوات المزامنة حتى ${formatInt(days)} يوماً؟ تعمل المهمة في الخلفية، وقد تتصل بـ Oracle لفترة طويلة.`)) {return;}
+            if (!confirmFn(`بدء مهمة لحاق بفجوات المزامنة حتى ${formatInt(days)} يوماً؟ تعمل المهمة في الخلفية، وقد تتصل بقاعدة الكاشير لفترة طويلة.`)) {return;}
             await action(async () => {
                 const result = await startYarasoftOracleCatchUp(days);
                 if (result?.ok === false) {throw new Error(result.message || result.error || 'تعذر بدء مهمة اللحاق.');}
@@ -896,7 +896,7 @@ export function mountYarasoftScreen(host, ctx = {}) {
             return;
         }
         if (button.hasAttribute('data-ys-mirror-refresh')) {
-            if (!canWrite || !confirmFn('تحديث المرآة من بيانات Yarasoft الآن؟ سيجلب الخادم حركات اليومين الأخيرين.')) {return;}
+            if (!canWrite || !confirmFn('تحديث المرآة من بيانات الكاشير الآن؟ سيجلب الخادم حركات اليومين الأخيرين.')) {return;}
             await action(async () => {
                 const result = await refreshYarasoftMirror();
                 if (result?.ok === false) {throw new Error(result.message || result.error || 'تعذر تحديث المرآة.');}

@@ -158,7 +158,7 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     if (posTotal === 0 && cashTotal > 0 && posEverActive) {
         alerts.push(`انفصال مصادر: نقاط البيع ${money(posTotal)} وسجل الإيرادات ${money(cashTotal)} — المبيعات غير مغطّاة بالكامل، وأي هامش يُبنى عليها مضلّل.`);
     } else if (posTotal === 0 && cashTotal > 0 && !posEverActive) {
-        lines.push('- ملاحظة: نقاط البيع بلا حركة طوال الأسبوع — المبيعات مسجَّلة في سجل الإيرادات (YaraSoft). لا إنذار على ذلك.');
+        lines.push('- ملاحظة: نقاط البيع بلا حركة طوال الأسبوع — المبيعات مسجَّلة في سجل الإيرادات (قاعدة الكاشير). لا إنذار على ذلك.');
     }
     // (٢) صفر مبيعات في يوم تشغيل
     if (posTotal === 0 && cashTotal === 0) {
@@ -256,7 +256,7 @@ async function cfoReview(pool, day = riyadhToday()) {
     const deadline = new Promise((resolve) => {
         const timer = setTimeout(() => resolve({
             day,
-            facts: `تعذّر جمع المراجعة المالية ضمن ${Math.round(DEADLINE_MS / 1000)} ثوانٍ (القاعدة مشغولة بمزامنة YaraSoft) — أعد المحاولة بعد قليل.`,
+            facts: `تعذّر جمع المراجعة المالية ضمن ${Math.round(DEADLINE_MS / 1000)} ثوانٍ (القاعدة مشغولة بمزامنة المبيعات) — أعد المحاولة بعد قليل.`,
             alerts: [],
             lines: [],
             degraded: true,

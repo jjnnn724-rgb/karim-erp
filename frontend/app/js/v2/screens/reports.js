@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.193';
-import { openInAppReport } from '../report-viewer.js?v=4.9.193';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
+import { openInAppReport } from '../report-viewer.js?v=4.9.194';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.193';
+} from '../data/reports-repo.js?v=4.9.194';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.193';
+} from '../data/reports-extra.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -215,8 +215,8 @@ function template(period, groupBy) {
                 <option value="warehouse">تقرير المخازن والمخزون</option>
                 <option value="hr">تقرير الموارد البشرية</option>
                 <option value="dept-specific">تقرير قسم محدد</option>
-                <option value="yara-departments">إيرادات الأقسام من يارا</option>
-                <option value="yara-cashiers">مبيعات الكاشيرية من يارا</option>
+                <option value="yara-departments">إيرادات الأقسام</option>
+                <option value="yara-cashiers">مبيعات الكاشيرية</option>
               </select>
             </label>
             <label class="erp-v2-reports__field" data-v2-deptsel for="v2rp-dept" hidden>
@@ -641,7 +641,7 @@ export function mountReportsScreen(host, ctx = {}) {
         general: 'التقرير الشامل', department: 'تقرير الأقسام', kitchen: 'تقرير المطبخ',
         returns: 'تقرير المرتجعات', warehouse: 'تقرير المخازن والمخزون',
         hr: 'تقرير الموارد البشرية', 'dept-specific': 'تقرير قسم محدد',
-        'yara-departments': 'إيرادات الأقسام من يارا', 'yara-cashiers': 'مبيعات الكاشيرية من يارا',
+        'yara-departments': 'إيرادات الأقسام', 'yara-cashiers': 'مبيعات الكاشيرية',
     };
 
     function fD2(v) {
@@ -814,10 +814,10 @@ export function mountReportsScreen(host, ctx = {}) {
                     xKpi('banknote', 'إجمالي الإيراد', 'Gross', formatMoney(tt.gross || 0, currency).amount, currency, ''),
                     xKpi('tag', 'المرتجعات', 'Refunds', formatMoney(tt.refund || 0, currency).amount, currency, ''),
                     xKpi('gem', 'الصافي', 'Net', formatMoney(tt.net || 0, currency).amount, currency, `${formatInt(tt.invoices || 0)} فاتورة`),
-                ], 'يارا')
+                ], 'المبيعات')
                 + xTable(['الفترة', 'القسم', 'الإيراد', 'المرتجعات', 'الصافي', 'الفواتير'],
                     d.rows.map((x) => `<tr><td class="erp-td">${esc(x.period || '—')}</td><td class="erp-td"><b>${esc(x.dept_name || '—')}</b></td><td class="erp-td">${extraMoney(x.gross || 0)}</td><td class="erp-td">${extraMoney(x.refund || 0)}</td><td class="erp-td">${extraMoney(x.net || 0)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.invoices || 0)}</td></tr>`).join(''),
-                    'لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد Yarasoft',
+                    'لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد المبيعات',
                     d.rows.length ? `<td>الإجمالي (${esc(formatInt(d.rows.length))} سطر)</td><td class="erp-td"></td>`
                         + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.gross) || 0), 0))}</td>`
                         + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.refund) || 0), 0))}</td>`
@@ -875,7 +875,7 @@ export function mountReportsScreen(host, ctx = {}) {
                         + `<button type="button" class="erp-btn erp-btn--sm" data-v2-y_next${d.page >= d.pages ? ' disabled' : ''}>التالي</button></div>`
                         + `<div data-v2-y_detail></div>`
                     : `<h4>المباع تفصيلًا: الكاشير × الصنف</h4>`
-                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب يارا',
+                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب المبيعات',
                             d.rows.length ? `<td>${esc(pageLabel)}</td><td class="erp-td" colspan="2"></td>`
                                 + `<td class="erp-td erp-num" dir="ltr">${formatInt(pageSum('invoices'))}</td>`
                                 + `<td class="erp-td erp-num" dir="ltr">${formatQty(pageSum('qty'))}</td>`
@@ -883,7 +883,7 @@ export function mountReportsScreen(host, ctx = {}) {
                                 + `<td class="erp-td">${extraMoney(pageSum('net'))}</td>`
                                 + `<td class="erp-td">${extraMoney(pageSum('discount'))}</td>`
                                 + `<td class="erp-td">${extraMoney(pageSum('vat'))}</td>` : ''))
-                + `<p class="erp-text-sm erp-text-muted">المصدر: قاعدة يارا سوفت Oracle مباشرة — الكاشير 2 الداخلي مستثنى.</p>`;
+                + `<p class="erp-text-sm erp-text-muted">المصدر: قاعدة مبيعات الكاشيرية — الكاشير 2 الداخلي مستثنى.</p>`;
         }
         return '';
     }

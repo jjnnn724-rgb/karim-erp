@@ -23,12 +23,12 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.193';
-import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.193';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.193';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.193';
-import { canWrite } from '../session.js?v=4.9.193';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.193';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
+import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.194';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.194';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.194';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -51,7 +51,7 @@ function noteText(raw) {
     const text = String(raw ?? '').trim();
     if (!text || !text.startsWith('[AUTO:YARASOFT]')) {return text;}
     const parts = text.split('|').map((p) => p.trim()).filter(Boolean).slice(1);
-    return parts.map((part) => {
+    const facts = parts.map((part) => {
         const m = part.match(/^([a-z_]+)=(.*)$/i);
         if (!m) {return part;}
         const val = m[2].trim();
@@ -59,7 +59,8 @@ function noteText(raw) {
         if (m[1].toLowerCase() === 'sec') {return `الجهة: ${val}`;}
         if (m[1].toLowerCase() === 'items') {return `الأصناف: ${val}`;}
         return val;
-    }).join(' · ');
+    });
+    return ['مبيعات الكاشير', ...facts].join(' · ');
 }
 
 function template(from, to) {

@@ -169,7 +169,7 @@ async function checkAlerts(engine) {
         if (s.alertUnmapped) {
             const r = await store.pool.query(`SELECT COUNT(*)::int AS c FROM yarasoft_unmapped_sections WHERE resolved = false`);
             if (Number(r.rows[0]?.c || 0) > 0) {
-                await once('unmapped', `⚠ يوجد ${r.rows[0].c} قسم جديد من ياراسوفت بانتظار الاعتماد (صفحة واتساب ← أقسام الإيرادات).`);
+                await once('unmapped', `⚠ يوجد ${r.rows[0].c} قسم جديد في المبيعات بانتظار الاعتماد (صفحة واتساب ← أقسام الإيرادات).`);
             } else { await clear('unmapped'); }
         }
     } catch (e) { logger.warn('[WHATSAPP] alert unmapped check failed: ' + String(e.message).slice(0, 120)); }
@@ -179,7 +179,7 @@ async function checkAlerts(engine) {
             const r = await store.pool.query(
                 `SELECT COUNT(*)::int AS c FROM invoice_import_log WHERE status = 'FAILED' AND created_at::date = CURRENT_DATE`);
             if (Number(r.rows[0]?.c || 0) > 0) {
-                await once(`failed-${riyadhNow().day}`, `⚠ يوجد ${r.rows[0].c} فاتورة فاشلة اليوم في استيراد ياراسوفت — راجع السجل.`);
+                await once(`failed-${riyadhNow().day}`, `⚠ يوجد ${r.rows[0].c} فاتورة فاشلة اليوم في استيراد المبيعات — راجع السجل.`);
             }
         }
     } catch (e) { logger.warn('[WHATSAPP] alert failed check failed: ' + String(e.message).slice(0, 120)); }

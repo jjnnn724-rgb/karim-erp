@@ -12,11 +12,11 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.193';
-import { formatInt } from '../data/reports-repo.js?v=4.9.193';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.193';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.193';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.193';
+import { canWrite } from '../session.js?v=4.9.194';
+import { formatInt } from '../data/reports-repo.js?v=4.9.194';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.194';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.194';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.194';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -28,7 +28,7 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.193';
+} from '../data/settings-repo.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -74,7 +74,7 @@ const NAV_LABELS_AR = {
     'attendance': 'الحضور', 'zkteco': 'جهاز البصمة', 'payroll': 'الرواتب',
     'hr-departments': 'أقسام الموارد البشرية', 'employee-portal': 'بوابة الموظف',
     'roster': 'الدوام', 'reports': 'التقارير', 'users': 'المستخدمون',
-    'permissions': 'الصلاحيات', 'yarasoft': 'Yarasoft', 'oracle-data': 'بيانات أوراكل',
+    'permissions': 'الصلاحيات', 'yarasoft': 'استيراد فواتير الكاشير', 'oracle-data': 'بيانات أوراكل',
     'whatsapp': 'واتساب',
 };
 

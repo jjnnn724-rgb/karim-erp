@@ -14,34 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.193';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.193';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.193';
-import { canWrite } from '../session.js?v=4.9.193';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.193';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.194';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.194';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.194';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.193';
+} from '../data/departments-write-repo.js?v=4.9.194';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
     updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
-} from '../data/dept-cashier-repo.js?v=4.9.193';
+} from '../data/dept-cashier-repo.js?v=4.9.194';
 import {
     CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.193';
+} from '../data/dept-detail.js?v=4.9.194';
 /* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
  * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
  * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
  * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.193';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.193';
-import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.193';
-import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.193';
-import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.193';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.194';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.194';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.194';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -402,10 +402,10 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const unposted = live !== null && live > 0 && posted <= 0;
         const amount = posted > 0 ? formatInt(posted) : (unposted ? formatInt(live) : '—');
         const source = unposted
-            ? `حي من يارا: ${formatInt(live)} — غير مرحّل إلى قاعدة المرايا وغير مشمول في إجمالي البطاقة`
+            ? `حيّ من قاعدة الكاشير: ${formatInt(live)} — غير مرحّل إلى قاعدة المرايا وغير مشمول في إجمالي البطاقة`
             : (live !== null && Math.abs(live - posted) > 0.01
                 ? `المرحّل: ${formatInt(posted)} · الحي: ${formatInt(live)}`
-                : (actualCashierReady ? '' : 'من سجل الإيرادات المرحّل — يارا سوفت غير متاح'));
+                : (actualCashierReady ? '' : 'من سجل الإيرادات المرحّل — قاعدة الكاشير غير متاحة'));
         const owner = l.inherited ? ` · ${esc(deptNameOf(l.deptCode, rows))}` : '';
         const nm = cashierNameOf(l.cashierNo, cashDir);
         return `<span class="erp-dept-cashier${l.isPrimary ? '' : ' is-secondary'}${unposted ? ' is-unposted' : ''}" title="${esc(cashierLabel(l.cashierNo, cashDir))}${owner}">`
@@ -438,7 +438,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             const nm = c.name ? ` — ${c.name}` : '';
             return `<option value="${esc(c.no)}"${linkedHere ? ' disabled' : ''}>${esc(`كاشير ${c.no}${nm}${mark}`)}</option>`;
         }).join('');
-        return `<label class="erp-text-sm erp-text-muted">كاشير من يارا سوفت`
+        return `<label class="erp-text-sm erp-text-muted">كاشير من قاعدة الكاشير`
             + `<select class="erp-select" data-v2-link-pick>`
             + `<option value="">— اختر من ${formatInt(cashDir.length)} كاشير —</option>${opts}`
             + '<option value="__manual__">رقم آخر — إدخال يدوي</option></select></label>'
@@ -715,7 +715,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             actualCashierError = '';
             actualCashierUpdatedAt = new Date();
         } catch (error) {
-            actualCashierError = (error && error.message) || 'تعذّر الاتصال بيارا سوفت';
+            actualCashierError = (error && error.message) || 'تعذّر الاتصال بقاعدة الكاشير';
         } finally {
             actualCashierLoading = false;
         }
@@ -737,11 +737,11 @@ export function mountDepartmentsScreen(host, ctx = {}) {
                 ? 'تعذّر تحميل دليل أقسام الكاشير؛ لم يتم تخمين إسناد لأي قسم.'
                 : (unmapped.length ? `كاشيرات بلا إسناد موثّق: ${unmapped.join('، ')}.` : '');
             if (!actualCashierReady) {
-                status.textContent = `إيراد الكاشير الفعلي من يارا سوفت غير متاح — البطاقات تُقرأ من سجل الإيراد المرحّل، لا أصفار بديلة. ${actualCashierError} ${mappingNote}`;
+                status.textContent = `إيراد الكاشير الفعلي من قاعدة الكاشير غير متاح — البطاقات تُقرأ من سجل الإيراد المرحّل، لا أصفار بديلة. ${actualCashierError} ${mappingNote}`;
             } else if (actualCashierError) {
-                status.textContent = `تعذّر تحديث إيراد يارا سوفت؛ آخر قراءة ناجحة ${actualCashierUpdatedAt.toLocaleTimeString('ar-EG')}. ${actualCashierError} ${mappingNote}`;
+                status.textContent = `تعذّر تحديث إيراد الكاشير؛ آخر قراءة ناجحة ${actualCashierUpdatedAt.toLocaleTimeString('ar-EG')}. ${actualCashierError} ${mappingNote}`;
             } else {
-                status.textContent = `إيراد الكاشير الفعلي من ${range.from} إلى ${range.to} · تحديث كل 10 ثوانٍ · أرقام البطاقات من السجل المرحّل، والحي للمطابقة وكشف غير المرحّل · الكاشير 2 مستبعد حسب إعداد يارا سوفت. ${mappingNote}`;
+                status.textContent = `إيراد الكاشير الفعلي من ${range.from} إلى ${range.to} · تحديث كل 10 ثوانٍ · أرقام البطاقات من السجل المرحّل، والحي للمطابقة وكشف غير المرحّل · الكاشير 2 مستبعد حسب إعداد قاعدة الكاشير. ${mappingNote}`;
             }
         }
         paintSummary();

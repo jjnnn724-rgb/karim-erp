@@ -10,11 +10,11 @@
  * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.193';
-import { openInAppReport } from '../report-viewer.js?v=4.9.193';
-import { ensureXlsx } from '../vendor.js?v=4.9.193';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.193';
-import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.193';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.194';
+import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { ensureXlsx } from '../vendor.js?v=4.9.194';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -62,7 +62,7 @@ function template() {
           <div>
             <h2 class="erp-dash-title">متابعة الكاشير
               <span class="erp-eyebrow" dir="ltr" lang="en">Cashier Monitor</span>
-              <span class="erp-badge" data-tone="success" data-v2-live-badge title="قراءة مباشرة من يارا سوفت كل 10 ثوانٍ">مباشر</span>
+              <span class="erp-badge" data-tone="success" data-v2-live-badge title="تحديث مباشر من قاعدة الكاشير كل 10 ثوانٍ">مباشر</span>
             </h2>
             <div class="erp-dash-sub" role="status" aria-live="polite" data-v2-note></div>
           </div>
@@ -133,7 +133,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
         if (!box) {return;}
         box.innerHTML = loadError
             ? '<span class="erp-badge" data-tone="danger">تعذّرت القراءة الحية · آخر بيانات ناجحة معروضة</span>'
-            : '<span class="erp-badge" data-tone="success">قراءة Oracle مباشرة · للعرض فقط</span>';
+            : '<span class="erp-badge" data-tone="success">قراءة مباشرة من قاعدة الكاشير · للعرض فقط</span>';
     }
 
     function paint() {
@@ -142,13 +142,13 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
             const isToday = date === riyadhToday();
             liveBadge.textContent = isToday ? 'مباشر' : 'تاريخ';
             liveBadge.dataset.tone = isToday ? 'success' : 'neutral';
-            liveBadge.title = isToday ? 'قراءة مباشرة من يارا سوفت كل 10 ثوانٍ' : 'عرض تاريخي — لا يتم تحديثه تلقائيًا';
+            liveBadge.title = isToday ? 'تحديث مباشر من قاعدة الكاشير كل 10 ثوانٍ' : 'عرض تاريخي — لا يتم تحديثه تلقائيًا';
         }
         const invoices = summary.reduce((sum, c) => sum + Number(c.invoices || 0), 0);
         const revenue = summary.reduce((sum, c) => sum + Number(c.revenue || 0), 0);
         const discounts = summary.reduce((sum, c) => sum + Number(c.discount || 0), 0);
         q('[data-v2-kpis]').innerHTML = kpiStrip([
-            { icon: 'receipt', label: 'إجمالي الفواتير', en: 'Invoices', html: `<span class="erp-num" dir="ltr">${formatInt(invoices)}</span>`, hint: `${formatInt(summary.length)} كاشير · من يارا سوفت مباشرة` },
+            { icon: 'receipt', label: 'إجمالي الفواتير', en: 'Invoices', html: `<span class="erp-num" dir="ltr">${formatInt(invoices)}</span>`, hint: `${formatInt(summary.length)} كاشير · من قاعدة الكاشير مباشرة` },
             { icon: 'banknote', label: 'صافي الإيراد', en: 'Net revenue', html: `<span class="erp-num" dir="ltr">${formatQty(revenue)}</span>`, color: 'var(--erp-success-text)', hint: `الفترة: ${esc(fD(date))}` },
             { icon: 'receipt', label: 'الخصومات', en: 'Discounts', html: `<span class="erp-num" dir="ltr">${formatQty(discounts)}</span>`, color: 'var(--erp-info-text)', hint: 'إجمالي الخصم المسجل' },
         ]);
@@ -242,7 +242,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && e.code === 'FORBIDDEN'
                     ? 'لا صلاحية لمتابعة الكاشير بهذا الحساب — القرار للخادم وحده.'
-                    : `تعذّر قراءة Oracle من يارا سوفت: ${(e && e.message) || 'خطأ'}`);
+                    : `تعذّر قراءة قاعدة الكاشير: ${(e && e.message) || 'خطأ'}`);
             loadError = message;
             syncBadge();
             if (live) {
@@ -282,7 +282,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}
             const header = detail.header || {};
             const value = (key) => header[key] ?? header[key.toUpperCase()] ?? '';
-            if (!Object.keys(header).length) {throw new Error('لم يتم العثور على الفاتورة في يارا سوفت');}
+            if (!Object.keys(header).length) {throw new Error('لم يتم العثور على الفاتورة في قاعدة الكاشير');}
             const lines = detail.lines.map((l, i) => `<tr><td class="erp-td erp-num">${formatInt(i + 1)}</td>`
                 + `<td class="erp-td">${esc(l.name || '—')}</td>`
                 + `<td class="erp-td erp-num">${formatQty(l.qty)}</td>`
@@ -299,7 +299,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
                 + `<td class="erp-td erp-num">${formatQty(value('TOTAL_VAL'))}</td><td class="erp-td erp-num">${formatQty(value('NET_VAL'))}</td>`
                 + `<td class="erp-td erp-num">${formatQty(value('DSCNT_VL'))}</td><td class="erp-td erp-num">${formatQty(value('PAYED'))}</td></tr></tbody></table></div>`
                 + (lines ? `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>السعر</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>${lines}</tbody></table></div>`
-                    : '<p class="erp-text-sm erp-text-muted">لا توجد تفاصيل أصناف لهذه الفاتورة في يارا سوفت</p>')
+                    : '<p class="erp-text-sm erp-text-muted">لا توجد تفاصيل أصناف لهذه الفاتورة في قاعدة الكاشير</p>')
                 + `</div></section>`;
             box.scrollIntoView({ block: 'nearest' });
         } catch (e) {

@@ -63,7 +63,7 @@ const PERMISSIONS = [
     { key: 'accounting.view', ar: 'عرض الحسابات', group: 'المالية',
       menus: ['cfo'], entitiesRead: [], entitiesWrite: [] },
     // التكامل
-    { key: 'yarasoft.view', ar: 'عرض يارا سوفت', group: 'التكامل',
+    { key: 'yarasoft.view', ar: 'عرض استيراد فواتير الكاشير', group: 'التكامل',
       menus: ['yarasoft', 'oracle-data'], entitiesRead: [], entitiesWrite: [] },
     { key: 'zk.view', ar: 'عرض البصمة', group: 'التكامل',
       menus: ['zkteco'], entitiesRead: [], entitiesWrite: [] },

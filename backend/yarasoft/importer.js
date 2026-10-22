@@ -423,7 +423,7 @@ async function processOneInvoice({ invoice, meta, filePath, config, importer: _i
             const it = invoice.items[idx];
             const qty = Math.abs(Number(it.quantity ?? 0));
             if (qty > 0) {
-                if (!locationId) {throw new Error('NO_INVENTORY_LOCATION: لا يوجد موقع مخزون نشط — أضف MAIN-WAREHOUSE أو حدّد YARASOFT_LOCATION_ID');}
+                if (!locationId) {throw new Error('NO_INVENTORY_LOCATION: لا يوجد موقع مخزون نشط — أضف MAIN-WAREHOUSE أو حدّد موقع الاستيراد في الإعدادات');}
                 await postInventoryLedgerEntry(client, {
                     transactionType: 'sale_consumption',
                     inventoryId: mapping.inventoryId,
@@ -435,7 +435,7 @@ async function processOneInvoice({ invoice, meta, filePath, config, importer: _i
                     referenceType: 'yarasoft_invoice',
                     referenceId: invoiceNumber,
                     businessDate: date,
-                    reason: `استهلاك بيع Yarasoft — فاتورة ${invoiceNumber}`,
+                    reason: `استهلاك بيع الكاشير — فاتورة ${invoiceNumber}`,
                     metadata: { externalCode: it.externalCode, barcode: it.barcode, fileName: filePath },
                 });
             }

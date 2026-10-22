@@ -37,7 +37,7 @@
  *     is jwtAuth. The 403 comes from the backend and is displayed as-is.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.193';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
 
 /** Stored values of pos_invoice_payments.method. Unknown methods are shown
  *  verbatim — relabelling a method the app does not know would be inventing. */
@@ -363,7 +363,7 @@ export function buildAlerts(briefing) {
         out.push({ tone: 'info', text: `${formatInt(pending.leavesPending)} إجازة بانتظار القرار`, sub: 'الموارد البشرية' });
     }
     if (n(pending.reviewItems) > 0) {
-        out.push({ tone: 'info', text: `${formatInt(pending.reviewItems)} بند يارا سوفت يحتاج مراجعة`, sub: 'التكامل المحاسبي' });
+        out.push({ tone: 'info', text: `${formatInt(pending.reviewItems)} بند مبيعات يحتاج مراجعة`, sub: 'التكامل المحاسبي' });
     }
     if (n(att.missing_out) > 0) {
         out.push({ tone: 'warning', text: `${formatInt(att.missing_out)} موظف نسي تسجيل الخروج`, sub: 'الحضور' });

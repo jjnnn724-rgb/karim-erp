@@ -26,14 +26,14 @@
 
 import {
     formatInt, formatQty, localDateOnly,
-} from '../data/reports-repo.js?v=4.9.193';
-import { canWrite } from '../session.js?v=4.9.193';
-import { weightWriteEnabled } from '../write-flags.js?v=4.9.193';
+} from '../data/reports-repo.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.194';
+import { weightWriteEnabled } from '../write-flags.js?v=4.9.194';
 import {
     WEIGHT_WRITE_ROLES, WEIGHT_INVENTORY_ROLES, WEIGHT_UNITS, WEIGHT_UNIT_AR,
     fetchWeightReadings, fetchWeightInventory, readingToRow, readingsSummary,
     validateReading, buildReadingPayload, createWeightReading, addWeightToItem,
-} from '../data/weight-repo.js?v=4.9.193';
+} from '../data/weight-repo.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
