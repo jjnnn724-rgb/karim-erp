@@ -61,11 +61,14 @@ describe('المساعد — قراءة فقط', () => {
         expect(src).not.toMatch(/postJournal|postSaleToLedger|postPurchaseToLedger|completeSale|updateInventory|setInventory/i);
     });
 
-    test('بوابة المساعد: POST واحد (السؤال) ولا شيء غيره', () => {
+    test('بوابة المساعد: أسئلة + مسوّدات فقط (لا كتابة مباشرة)', () => {
         const src = fs.readFileSync(path.join(DIR, 'routes.js'), 'utf8');
         const posts = [...src.matchAll(/router\.post\('([^']+)'/g)].map((m) => m[1]);
-        expect(posts).toEqual(['/ask']);
+        // المسموح: السؤال، وتطبيق/رفض مسوّدة (يمرّ ببوابة النظام بصلاحية المالك)
+        expect(posts.sort()).toEqual(['/ask', '/drafts/:id/apply', '/drafts/:id/reject']);
         const puts = [...src.matchAll(/router\.(put|delete|patch)\(/g)];
         expect(puts).toEqual([]);
+        // ولا كتابة في القاعدة من المساعد نفسه
+        expect(src).not.toMatch(/\bpool\.query\(\s*`\s*(INSERT|UPDATE|DELETE)/i);
     });
 });

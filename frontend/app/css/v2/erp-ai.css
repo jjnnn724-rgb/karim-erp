@@ -110,7 +110,7 @@
   gap: var(--erp-space-2);
   padding: var(--erp-space-2) var(--erp-space-3);
   background: var(--erp-warning-soft);
-  border: 1px solid var(--erp-warning);
+  border: thin solid var(--erp-warning);
   border-radius: var(--erp-radius-md);
   font-size: var(--erp-text-sm);
   color: var(--erp-text-primary);
