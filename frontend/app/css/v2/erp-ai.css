@@ -97,6 +97,19 @@
   gap: var(--erp-space-2);
 }
 
+.erp-ai__draft-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+  padding-bottom: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+}
+
+.erp-ai__draft-form .erp-input {
+  min-inline-size: 6ch;
+  flex: 1 1 6ch;
+}
+
 .erp-ai__drafts-title {
   margin: 0;
   font-size: var(--erp-text-xs);

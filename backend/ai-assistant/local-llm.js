@@ -107,8 +107,9 @@ async function chat(input) {
         keep_alive: '10m',
         options: {
             temperature: typeof input.temperature === 'number' ? input.temperature : 0.2,
-            num_predict: input.maxTokens || 900,
-            num_ctx: 4096,
+            // ميزانيةٌ مضبوطة: المعالج بلا GPU، فسياقٌ طويل = انتظارٌ طويل.
+            num_predict: input.maxTokens || 420,
+            num_ctx: 2048,
         },
     }, TIMEOUT_MS);
     if (res.status !== 200) {

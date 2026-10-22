@@ -64,8 +64,8 @@ describe('المساعد — قراءة فقط', () => {
     test('بوابة المساعد: أسئلة + مسوّدات فقط (لا كتابة مباشرة)', () => {
         const src = fs.readFileSync(path.join(DIR, 'routes.js'), 'utf8');
         const posts = [...src.matchAll(/router\.post\('([^']+)'/g)].map((m) => m[1]);
-        // المسموح: السؤال، وتطبيق/رفض مسوّدة (يمرّ ببوابة النظام بصلاحية المالك)
-        expect(posts.sort()).toEqual(['/ask', '/drafts/:id/apply', '/drafts/:id/reject']);
+        // المسموح: السؤال، وإنشاء مسوّدة، وتطبيقها/رفضها (يمرّ ببوابة النظام بصلاحية المالك)
+        expect(posts.sort()).toEqual(['/ask', '/drafts', '/drafts/:id/apply', '/drafts/:id/reject']);
         const puts = [...src.matchAll(/router\.(put|delete|patch)\(/g)];
         expect(puts).toEqual([]);
         // ولا كتابة في القاعدة من المساعد نفسه

@@ -200,10 +200,20 @@ export function mountAiAssistant(shell, ctx = {}) {
         try {
             const r = await apiFetch('/ai-assistant/drafts');
             const list = (r && r.drafts) || [];
-            if (!list.length) { host.innerHTML = ''; host.hidden = true; return; }
-            host.hidden = false;
-            host.innerHTML = `<h4 class="erp-ai__drafts-title">تعديلات مقترحة (لم تُنفَّذ)</h4>`
-                + list.map((d) => `
+            const form = `
+              <form class="erp-ai__draft-form" data-erp-ai-draft-form>
+                <select class="erp-input" data-erp-ai-kind aria-label="نوع التعديل">
+                  <option value="expense">مصروف</option>
+                  <option value="revenue">إيراد</option>
+                </select>
+                <input class="erp-input" data-erp-ai-amount type="number" step="0.01" min="0" placeholder="المبلغ" aria-label="المبلغ" required>
+                <input class="erp-input" data-erp-ai-dept type="text" placeholder="القسم" aria-label="القسم">
+                <input class="erp-input" data-erp-ai-note type="text" placeholder="بيان" aria-label="بيان">
+                <button type="submit" class="erp-btn erp-btn--sm">اقترح</button>
+              </form>`;
+            host.innerHTML = form
+                + (list.length ? `<h4 class="erp-ai__drafts-title">تعديلات مقترحة (لم تُنفَّذ)</h4>`
+                    + list.map((d) => `
                     <div class="erp-ai__draft" data-draft="${esc(d.id)}">
                         <span class="erp-ai__draft-label">${esc(d.kind === 'expense' ? 'مصروف' : 'إيراد')} — ${esc(d.payload.date || '')} · ${esc(d.payload.deptId || '')} · ${esc(d.payload.amount || '')}</span>
                         <span class="erp-ai__draft-note">${esc(d.payload.note || '')}</span>
@@ -211,7 +221,29 @@ export function mountAiAssistant(shell, ctx = {}) {
                           <button type="button" class="erp-btn erp-btn--sm" data-draft-apply="${esc(d.id)}">تطبيق</button>
                           <button type="button" class="erp-btn erp-btn--sm" data-draft-reject="${esc(d.id)}">رفض</button>
                         </span>
-                    </div>`).join('');
+                    </div>`).join('') : '');
+            host.hidden = false;
+            const f = host.querySelector('[data-erp-ai-draft-form]');
+            if (f) {
+                f.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const amount = Number(host.querySelector('[data-erp-ai-amount]').value);
+                    if (!Number.isFinite(amount) || amount <= 0) { toast('اكتب مبلغًا صحيحًا'); return; }
+                    try {
+                        await apiFetch('/ai-assistant/drafts', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                kind: host.querySelector('[data-erp-ai-kind]').value,
+                                amount,
+                                deptId: host.querySelector('[data-erp-ai-dept]').value,
+                                note: host.querySelector('[data-erp-ai-note]').value,
+                            }),
+                        });
+                        toast('أُضيفت المسوّدة — راجعها ثم طبّقها');
+                        await refreshDrafts();
+                    } catch (_err) { toast('تعذّر إنشاء المسوّدة'); }
+                });
+            }
             host.querySelectorAll('[data-draft-apply]').forEach((b) => {
                 b.addEventListener('click', async () => {
                     b.disabled = true;

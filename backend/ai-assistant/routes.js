@@ -20,6 +20,7 @@ const { logger } = require('../logger');
 const assistant = require('./assistant');
 const localLlm = require('./local-llm');
 const tools = require('./tools');
+const { riyadhToday } = require('../riyadh-date');
 
 const router = express.Router();
 
@@ -57,6 +58,25 @@ router.get('/status', jwtAuth, requireRole('admin'), async (req, res) => {
         maxQuestion: assistant.MAX_QUESTION,
     });
 });
+
+/** إنشاء مسوّدة مباشرة (بلا نموذج): المالك يملأ الحقول بنفسه. */
+router.post('/drafts', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const kind = body.kind === 'revenue' ? 'revenue' : 'expense';
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(422).json({ error: 'AMOUNT_INVALID', message: 'المبلغ مطلوب ويجب أن يكون أكبر من صفر.' });
+    }
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? String(body.date) : riyadhToday();
+    const d = tools.draft(kind, {
+        date,
+        deptId: String(body.deptId || '').slice(0, 60),
+        amount: Math.round(amount * 100) / 100,
+        method: String(body.method || 'cash').slice(0, 40),
+        note: String(body.note || '').slice(0, 200),
+    });
+    return res.json({ draft: d, ok: true });
+}));
 
 /** المسوّدات المعلّقة (تعديلات مقترحة لم تُنفَّذ بعد). */
 router.get('/drafts', jwtAuth, requireRole('admin'), (req, res) => {

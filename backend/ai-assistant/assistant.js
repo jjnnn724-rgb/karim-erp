@@ -42,6 +42,8 @@ const MAX_FILES = 3;
 const MAX_LINES = 60;
 
 const MODES = ['knowledge', 'diagnose', 'code', 'cfo'];
+/** ميزانية النموذج المحلي (مللي ثانية) — بعدها نُكمل قواعديًّا فورًا. */
+const LOCAL_BUDGET_MS = Number(process.env.LOCAL_LLM_BUDGET_MS || 12000);
 
 /* ما يُقرأ من القرص: كود المشروع فقط. لا إعدادات ولا أسرار ولا نماذج. */
 const READABLE_ROOTS = [
@@ -264,8 +266,9 @@ async function localAnswer({ question, mode, context }) {
         content: context ? `${question}\n\n— بيانات النظام المرفقة —\n${context}` : question,
     }];
     let model = null;
-    for (let turn = 0; turn < 4; turn += 1) {
-        const r = await localLlm.chat({ system: localSystemPrompt(mode), messages, tools: tools.TOOL_DEFS });
+    // جولتان من الأدوات تكفي لنموذجٍ صغير؛ أربعٌ تُغرقه فتضيع.
+    for (let turn = 0; turn < 2; turn += 1) {
+        const r = await localLlm.chat({ system: localSystemPrompt(mode), messages, tools: tools.TOOL_DEFS, maxTokens: 420 });
         model = r.model;
         if (!r.toolCalls.length) {
             return { text: r.text || 'لم يصل ردّ من النموذج المحلي.', model };
@@ -310,8 +313,9 @@ async function ask(input = {}) {
         grounded = snippets.length > 0;
     } else {
         const map = projectMap();
-        parts.push('خريطة المشروع (سجل الترحيل):', map.registry.join('\n'));
-        parts.push('القواعد الثابتة:', map.rules.join('\n'));
+        // النموذج الصغير يغرق في السياق الطويل ⇒ خريطةٌ مختصرة تكفي.
+        parts.push('شاشات المشروع (سجل الترحيل):', map.registry.slice(0, 18).join('\n'));
+        parts.push('القواعد الثابتة:', map.rules.slice(0, 6).join('\n'));
         const ctx = screenContext(input.screen);
         if (ctx) {parts.push('الشاشة الحالية:', ctx); grounded = true;}
     }
@@ -322,7 +326,14 @@ async function ask(input = {}) {
     const localOk = await localLlm.available().catch(() => false);
     if (localOk) {
         try {
-            const r = await localAnswer({ question, mode, context: dataText });
+            // ميزانيةُ وقتٍ صارمة: نموذجٌ صغيرٌ على معالجٍ بلا GPU قد يتأخر
+            // نصف دقيقة — والانتظار أسوأ من ردٍّ فوري قواعدي.
+            const budget = new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(null), LOCAL_BUDGET_MS);
+                if (typeof timer.unref === 'function') {timer.unref();}
+            });
+            const r = await Promise.race([localAnswer({ question, mode, context: dataText }), budget]);
+            if (!r) {throw new Error('LOCAL_LLM_SLOW');}
             return { text: r.text || '(ردّ فارغ)', mode, model: r.model || localLlm.MODEL, fallback: false, grounded, local: true };
         } catch (e) {
             logger.warn('[ai-assistant] النموذج المحلي تعذّر: ' + String(e.message).slice(0, 120));
