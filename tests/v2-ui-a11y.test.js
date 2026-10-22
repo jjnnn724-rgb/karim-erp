@@ -46,10 +46,23 @@ describe('V2 UI a11y guards', () => {
         const css = read('css/v2/erp-shell.css');
         const block = css.match(/@media \(pointer: coarse\)\s*\{([\s\S]*?)\n\}/);
         expect(block).not.toBeNull();
-        for (const sel of ['.erp-search-trigger', '.erp-nav-group__title', '.erp-theme-option', '.erp-density-option', '.erp-btn--sm']) {
+        for (const sel of ['.erp-search-trigger', '.erp-nav-group__title', '.erp-theme-option', '.erp-density-option', '.erp-btn']) {
             expect(block[1]).toContain(sel);
         }
-        expect(block[1]).toMatch(/min-height:\s*44px/);
+        // الرقمُ يأتي من رمزٍ واحد: ٤٤ على المؤشِّر الخشن، ٠ على الفأرة.
+        expect(block[1]).toMatch(/min-height:\s*var\(--erp-touch-target\)/);
+        // والأرضيةُ تُغطّي كلَّ هدف: الأزرار والأدوار والحقول — بتخصيصٍ
+        // (٠،٤،٠) يغلب قواعدَ الشاشات (٠،٣،٠) فلم يبقَ هدفٌ دون ٤٤.
+        expect(block[1]).toMatch(/\.erp-v2 :is\(button,/);
+        expect(block[1]).toMatch(/\[role="button"\]/);
+        expect(block[1]).toMatch(/min-block-size:\s*var\(--erp-touch-target\)/);
+        expect(block[1]).toMatch(/min-inline-size:\s*var\(--erp-touch-target\)/);
+        // مربّعاتُ الاختيار استثناءٌ مقصود: هدفُها التسميةُ حولها.
+        expect(block[1]).toMatch(/input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/);
+
+        const tokens = read('css/v2/erp-tokens.css');
+        expect(tokens).toMatch(/--erp-touch-target:\s*0px/);
+        expect(tokens).toMatch(/@media \(pointer: coarse\)[\s\S]*?--erp-touch-target:\s*44px/);
     });
 
     test('نص اسم العلامة في الشريط الجانبي يرث حبر الشريط لا حبر الصفحة', () => {

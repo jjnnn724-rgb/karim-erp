@@ -80,7 +80,7 @@
   flex-wrap: wrap;
   gap: var(--erp-space-2);
 }
-.erp-v2 .erp-v2-reports__actions .erp-btn { min-block-size: 40px; }
+.erp-v2 .erp-v2-reports__actions .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
 .erp-v2 .erp-v2-reports__actions .erp-btn:disabled { opacity: .7; cursor: wait; }
 .erp-v2 .erp-v2-reports > [data-v2-pos] { margin-block-start: var(--erp-space-4); }
 .erp-v2 .erp-v2-reports [data-v2-extra-wrap] { margin-block-start: var(--erp-space-4); }
@@ -211,7 +211,7 @@
      يبقى هدف اللمس كما هو. */
   .erp-v2-reports .erp-seg button {
     padding-inline: var(--erp-space-2);
-    min-block-size: 40px;
+    min-block-size: max(40px, var(--erp-touch-target));
   }
 
   /* كل شريط يملك سطره، فلا يتقاطع شريطا الفترة والتجميع عند أصغر عرض.
@@ -301,7 +301,7 @@
   .erp-v2-invoices .erp-table__pager .erp-btn,
   .erp-v2-payments .erp-table__pager .erp-btn,
   .erp-v2-whinvoices .erp-table__pager .erp-btn {
-    min-block-size: var(--erp-space-8);
+    min-block-size: max(var(--erp-space-8), var(--erp-touch-target));
     min-inline-size: var(--erp-space-8);
   }
 
@@ -569,7 +569,7 @@
     white-space: nowrap;
     border: 0;
   }
-  .erp-v2-deptemp .erp-dash-controls .erp-btn { min-block-size: 40px; }
+  .erp-v2-deptemp .erp-dash-controls .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
 
   /* شاشة الحضور (W2-3): أزرار اللوحات — اعتماد المعالجة/العذر/التصحيح
      وتطبيق الورديات ومسح بطاقة أخرى وعرض الكشف/التدقيق — أزرار كتابة

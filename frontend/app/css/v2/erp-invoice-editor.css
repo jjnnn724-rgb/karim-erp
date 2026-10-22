@@ -269,7 +269,7 @@
   .erp-v2 .erp-vi [data-vi-add],
   .erp-v2 .erp-vi-smart,
   .erp-v2 .erp-vi-remove,
-  .erp-v2 .erp-vi .erp-card__head .erp-btn { min-block-size: var(--erp-space-8); min-inline-size: var(--erp-space-8); }
+  .erp-v2 .erp-vi .erp-card__head .erp-btn { min-block-size: max(var(--erp-space-8), var(--erp-touch-target)); min-inline-size: max(var(--erp-space-8), var(--erp-touch-target)); }
   .erp-v2 .erp-vi-actions .erp-btn { flex: 1 1 auto; }
 }
 

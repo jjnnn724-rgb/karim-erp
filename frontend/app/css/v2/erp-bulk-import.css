@@ -356,7 +356,7 @@
   flex-wrap: wrap;
   gap: var(--erp-space-2);
 }
-.erp-v2 .erp-bulk__exports .erp-btn { min-block-size: var(--erp-space-8); }
+.erp-v2 .erp-bulk__exports .erp-btn { min-block-size: max(var(--erp-space-8), var(--erp-touch-target)); }
 
 /* ── الملاحظات والتذييل ────────────────────────────────────────────── */
 .erp-v2 .erp-bulk__note {
@@ -394,7 +394,7 @@
   padding-block-start: var(--erp-space-3);
   border-block-start: thin solid var(--erp-border-subtle);
 }
-.erp-v2 .erp-bulk__actions .erp-btn { min-block-size: var(--erp-space-8); }
+.erp-v2 .erp-bulk__actions .erp-btn { min-block-size: max(var(--erp-space-8), var(--erp-touch-target)); }
 
 .erp-v2 .erp-bulk :is(button, input, select, textarea):focus-visible {
   outline: 2px solid var(--erp-focus-ring);
@@ -408,7 +408,7 @@
   .erp-v2 .erp-bulk__drop { min-block-size: 9rem; padding: var(--erp-space-4) var(--erp-space-2); }
   .erp-v2 .erp-bulk__stats { grid-template-columns: 1fr 1fr; }
   .erp-v2 .erp-bulk__exports .erp-btn { flex: 1 1 46%; justify-content: center; }
-  .erp-v2 .erp-bulk__actions .erp-btn { min-block-size: var(--erp-space-8); }
+  .erp-v2 .erp-bulk__actions .erp-btn { min-block-size: max(var(--erp-space-8), var(--erp-touch-target)); }
   .erp-v2 .erp-bulk__table { min-inline-size: 38rem; }
-  .erp-v2 .erp-bulk :is(button, input:not([type="file"]), select) { min-block-size: var(--erp-space-8); }
+  .erp-v2 .erp-bulk :is(button, input:not([type="file"]), select) { min-block-size: max(var(--erp-space-8), var(--erp-touch-target)); }
 }

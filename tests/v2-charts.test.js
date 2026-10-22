@@ -115,6 +115,16 @@ describe('الدائري', () => {
         expect(html.match(/<circle /g)).toHaveLength(4); // خلفية + 3 شرائح
     });
 
+    test('المفتاحُ يذكر المبلغَ والنسبةَ معًا', () => {
+        const html = C.donutChart({
+            slices: [{ label: 'نقدي', value: 250 }],
+            formatValue: (v) => `${v} ر.س`,
+        });
+        expect(html).toContain('erp-chart__legend-amt');
+        expect(html).toContain('250 ر.س');
+        expect(html).toContain('100.0%');
+    });
+
     test('الشرائح الزائدة تُدمج في «أخرى» والكل صفر = فراغ', () => {
         const html = C.donutChart({
             slices: [1, 2, 3, 4, 5].map((v, i) => ({ label: `ص${i}`, value: v })),
@@ -128,8 +138,34 @@ describe('الدائري', () => {
     });
 });
 
-describe('العقد المصدري — لا مكتبة ولا شبكة ولا حقن', () => {
-    const charts = read(path.join(V2, 'charts.js'));
+/* V2 صفحةٌ عربيةٌ واحدة (dir="rtl")، فمحورُ الفئاتِ يبدأُ من اليمين:
+   أولُ يومٍ على اليمين وآخرُ يومٍ على اليسار. الرسمُ الذي يبدأ من اليسار
+   في صفحةٍ عربيةٍ يقطعُ قراءةَ صاحبِ اللوحةِ نصفَين. */
+describe('اتجاه المحور (RTL)', () => {
+    const C = loadCharts();
+
+    test('أولُ فئةٍ على اليمين: مواضعُ الأعمدة تنعكس', () => {
+        const html = C.barChart({
+            labels: ['أ', 'ب', 'ج'],
+            series: [{ label: 'س', values: [1, 2, 3] }],
+        });
+        const xs = [...html.matchAll(/<rect x="([0-9.]+)"/g)].map((m) => Number(m[1]));
+        expect(xs).toHaveLength(3);
+        expect(xs[0]).toBeGreaterThan(xs[2]);
+    });
+
+    test('نقاطُ الخطّ تنعكس كذلك', () => {
+        const html = C.lineChart({
+            labels: ['أ', 'ب', 'ج'],
+            series: [{ label: 'س', values: [1, 2, 3] }],
+        });
+        const xs = [...html.matchAll(/<circle cx="([0-9.]+)"/g)].map((m) => Number(m[1]));
+        expect(xs).toHaveLength(3);
+        expect(xs[0]).toBeGreaterThan(xs[2]);
+    });
+});
+
+describe('العقد المصدري — لا مكتبة ولا شبكة ولا حقن', () => {    const charts = read(path.join(V2, 'charts.js'));
 
     test('charts.js نقي: لا fetch/apiFetch/Chart.js/DOM/تخزين', () => {
         expect(charts).not.toMatch(/\b(fetch|apiFetch)\s*\(/);

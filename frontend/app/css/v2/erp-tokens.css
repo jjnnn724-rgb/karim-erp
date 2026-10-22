@@ -191,6 +191,12 @@
   --erp-control-md: 38px;
   --erp-control-lg: 46px;
 
+  /* هدفُ اللمس: صفرٌ على الفأرة (فالحجمُFrozen عُنصرُ تصميمٍ لا قاعدة)،
+     و٤٤ بكسل على المؤشِّرِ الخشن. يُقانَن به مع أيِّ ارتفاعٍ مُثبَّت:
+     max(ارتفاعُ التصميم، هدفُ اللمس) — فلا ينزل الأصلُ عن مقاسه
+     ولا يبقى تحتَ إصبعِ المستخدم. */
+  --erp-touch-target: 0px;
+
   --erp-icon-sm: 14px;
   --erp-icon-md: 18px;
   --erp-icon-lg: 22px;
@@ -224,4 +230,14 @@
   --erp-duration-slow:    260ms;
   --erp-ease-standard:    cubic-bezier(.2, 0, 0, 1);
   --erp-ease-out:         var(--karim-ease-out, cubic-bezier(0, 0, .2, 1));
+}
+
+/* على المؤشِّرِ الخشن (لمس) يصير هدفُ اللمس ٤٤ بكسل — وهو الحدُّ الذي
+   تعلنه Apple في HIG، وهو أوسعُ من أدنى ما يشترطه WCAG 2.5.8. الفأرةُ
+   لا تُمسَ: هدفُها صفرٌ فلا يتحرّك فيها شيء. */
+@media (pointer: coarse) {
+  .erp-v2,
+  .erp-fab-host,
+  .erp-offline-bar,
+  .erp-pal-backdrop { --erp-touch-target: 44px; }
 }

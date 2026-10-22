@@ -86,7 +86,16 @@
 .erp-v2 td.erp-num,
 .erp-v2 th.erp-num { display: table-cell; }
 .erp-v2 .erp-kpi__unit { font-size: var(--erp-text-sm); color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
-.erp-v2 .erp-kpi__foot { display: flex; align-items: center; gap: var(--erp-space-2); }
+/* The foot row carries the context line and the comparison chip. It must
+   wrap: a six-tile row leaves ~172px per tile, and an unwrapped flex row
+   pushed the chip past the tile's own border. */
+.erp-v2 .erp-kpi__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+.erp-v2 .erp-kpi__foot > * { min-width: 0; }
 .erp-v2 .erp-delta {
   display: inline-flex;
   align-items: center;

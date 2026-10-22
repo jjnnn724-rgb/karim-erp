@@ -15,9 +15,30 @@
        "warning" (amber), which the old gold-on-gold palette blurred.
      · BRASS is jewellery, not paint: focus rings, the active navigation
        spine, KPI accents and the logo frame. It comes from the logo.
+     · COPPER is the data voice: charts and figures get their own colour,
+       so a chart never competes with the colour of the button beside it.
      · A DEEP PETROL SIDEBAR in light mode. This is the single largest
        identity move: the app reads as a bound ledger (dark spine, paper
        pages) instead of another white admin template.
+
+   STUDIO GRADE (2026-10-22)
+   ─────────────────────────
+   The first cut was handsome but read "cream", not "professional": the
+   canvas (#F6F2EA) and the cards (#FFFDF8) were almost the same value, so
+   the whole page collapsed into one warm wash with no hierarchy — and the
+   KPI tiles wore a brass gradient that yellowed them. The fix is not a
+   new hue but a new ORDER OF VALUE:
+     · the canvas steps DOWN (#EFECE4) and the cards step UP (#FFFFFF),
+       so every card now floats on the page instead of dissolving into it;
+     · the petrol deepens one notch (#0B5A5F) — a heavier spine, a truer
+       ink for actions;
+     · a categorical chart ramp is introduced (petrol → copper → indigo →
+       olive → plum → slate), every stop ≥ 3:1 on both surfaces in both
+       themes, so charts are no longer a single grey-blue mush;
+     · brass keeps only the jewellery roles, and the tiles lose their
+       wash.
+   Measured again after the change (see CONTRAST below and
+   tests/v2-identity.test.js, which recomputes every number from this file).
 
    HOW IT WORKS
    ────────────
@@ -36,13 +57,14 @@
    CONTRAST
    ────────
    Every text pair below was measured before it was written (WCAG 2.1):
-     light  primary 16.26 · secondary 10.26 · muted 6.06 · faint 4.98
-            on the card, and ≥4.54 for every grade on the canvas.
+     light  primary 17.72 · secondary 11.72 · muted 6.74 · faint 5.52
+            on the card; faint 4.68 on the canvas (the lowest in the UI).
      dark   primary 15.59 · secondary 11.21 · muted 7.69 · faint 5.81.
-     sidebar 13.55 / 10.62 / 7.29 / 5.35 · accent 7.72 · active label 11.10.
-     brand text 10.21 on card · white on petrol 7.92 · focus 3.90 (≥3).
-     brass as text 6.66 on card (the jewellery brass stays for ≥3:1 marks).
-     every status badge text ≥5.03 on its own soft tint.
+     sidebar 14.31 / 11.22 / 7.70 / 5.65 · accent 8.16 · accent-text 11.72.
+     brand text 10.40 on card · white on petrol 7.95 · focus 3.97 (≥3).
+     brass as text 6.77 on card (the jewellery brass stays for ≥3:1 marks).
+     every status badge text ≥5.10 on its own soft tint.
+     every chart stop ≥ 3:1 on the card and on the canvas, both themes.
    tests/v2-identity.test.js recomputes these from this file, so the sheet
    cannot drift lighter than the numbers above without failing.
 
@@ -67,29 +89,39 @@
 .erp-offline-bar,
 .erp-pal-backdrop {
   /* ── Primitives ─────────────────────────────────────────────────── */
-  --erp-c-canvas:        #F6F2EA;
-  --erp-c-surface:       #FFFDF8;
+  /* درجة الاستوديو: الورقة أعمق قليلًا من أبيض البطاقة، فالورقة تُقرأ
+     مسطّحة والبطاقة تقفز عليها. في النسخة الأولى كان الاثنان warms بلا
+     فرق محسوس (#F6F2EA مقابل #FFFDF8) فبدا كل شيء عجينةً واحدة بلا
+     تدرّج هرمي — وهذا ما يجعل اللوحة تُقرأ "رخيصة" لا "محترفة". */
+  --erp-c-canvas:        #EFECE4;
+  --erp-c-surface:       #FFFFFF;
   --erp-c-raised:        #FFFFFF;
-  --erp-c-sunken:        #EDE6D8;
-  --erp-c-hover:         #F6F0E4;
-  --erp-c-active:        #EDE2D0;
-  --erp-c-line:          #E3DACB;
-  --erp-c-line-strong:   #CFC2AC;
+  --erp-c-sunken:        #E7E3D8;
+  --erp-c-hover:         #F5F3EE;
+  --erp-c-active:        #EBE7DD;
+  --erp-c-line:          #E2DED3;
+  --erp-c-line-strong:   #CCC6B6;
 
-  --erp-c-ink:           #16211E;
-  --erp-c-ink-2:         #33433E;
-  --erp-c-ink-muted:     #55655E;
-  --erp-c-ink-faint:     #63726A;  /* 4.98 card · 4.54 canvas */
+  --erp-c-ink:           #111A18;
+  --erp-c-ink-2:         #2D3B37;
+  --erp-c-ink-muted:     #4F5F59;
+  --erp-c-ink-faint:     #5D6C66;  /* 5.52 card · 4.68 canvas */
 
-  --erp-c-petrol:        #0E5A60;
-  --erp-c-petrol-hover:  #136C73;
-  --erp-c-petrol-active: #0A464B;
-  --erp-c-petrol-text:   #0B474D;
+  --erp-c-petrol:        #0B5A5F;
+  --erp-c-petrol-hover:  #106E74;
+  --erp-c-petrol-active: #07484C;
+  --erp-c-petrol-text:   #0A474C;
 
   --erp-c-brass:         #A9761B;
-  --erp-c-brass-text:    #7A5410;  /* 6.66 card · 6.06 canvas */
+  --erp-c-brass-text:    #7A5410;  /* 6.77 card · 5.73 canvas */
   --erp-c-brass-bright:  #D9B266;
   --erp-c-brass-soft:    rgba(169, 118, 27, .12);
+  --erp-c-brass-line:    rgba(169, 118, 27, .30);
+
+  /* النحاس: لون البيانات. البترول يقول "افعل" والنحاس يقول "انظر" — ثم
+     تبقى الرسوم مستقلة عن لون الفعل فلا تتزاحم معه. */
+  --erp-c-copper:        #B4632A;
+  --erp-c-copper-text:   #8A4A1C;
 
   --erp-c-success:       #0F7A57;
   --erp-c-success-text:  #0A5B41;
@@ -97,18 +129,18 @@
   --erp-c-warning-text:  #8F5208;
   --erp-c-danger:        #C0392B;
   --erp-c-danger-text:   #9B2C21;
-  --erp-c-info:          #2563EB;
-  --erp-c-info-text:     #1D4ED8;
+  --erp-c-info:          #2F5FD0;
+  --erp-c-info-text:     #2447A8;
   --erp-c-neutral:       #5B6B65;
   --erp-c-neutral-text:  #47554F;
 
   --erp-c-inverse:       #FFFFFF;
   --erp-c-highlight:     rgba(255, 255, 255, .75);
-  --erp-c-brand-shadow:  rgba(14, 90, 96, .24);
+  --erp-c-brand-shadow:  rgba(11, 90, 95, .24);
   --erp-c-plaque-line:   rgba(217, 178, 102, .45);
 
   /* Sidebar primitives — a petrol spine in BOTH themes. */
-  --erp-c-sidebar:          #0B2927;
+  --erp-c-sidebar:          #0A2422;
   --erp-c-sidebar-line:     rgba(255, 255, 255, .10);
   --erp-c-sidebar-line-2:   rgba(255, 255, 255, .20);
   --erp-c-sidebar-ink:      #F4F0E5;
@@ -122,7 +154,7 @@
   --erp-c-sidebar-wash:     rgba(217, 178, 102, .15);
   --erp-c-sidebar-success:  #6EE7A8;
   --erp-c-sidebar-plaque:   #FAF7F1;
-  --erp-c-sidebar-plaque-ink: #0B474D;
+  --erp-c-sidebar-plaque-ink: #0A474C;
 
   /* ── Semantic surfaces ──────────────────────────────────────────── */
   --erp-background:        var(--erp-c-canvas);
@@ -167,7 +199,28 @@
   --erp-brass-text:        var(--erp-c-brass-text);
   --erp-brass-bright:      var(--erp-c-brass-bright);
   --erp-brass-soft:        var(--erp-c-brass-soft);
+  --erp-brass-line:        var(--erp-c-brass-line);
   --erp-plaque-line:       var(--erp-c-plaque-line);
+
+  /* ── Copper (data accent — charts and figures) ─────────────────── */
+  --erp-copper:            var(--erp-c-copper);
+  --erp-copper-text:       var(--erp-c-copper-text);
+  --erp-copper-soft:       color-mix(in srgb, var(--erp-copper) 12%, transparent);
+
+  /* ── Chart ramp ─────────────────────────────────────────────────── */
+  /* سُلَّم فئويٌّ للرسوم: بترولٌ أولًا (لأن البترول لونُ الهوية)، ثم
+     نحاسٌ وإ Indigo وزيتوني وبلوري ورمادي. كل درجة ≥ 3:1 على السطح
+     والكانفس في الوضعين ((non-text contrast) 1.4.11) — وال между كل
+     درجتين فرقٌ في الدرجة اللونية لا في السطوع وحده. */
+  --erp-chart-1:           var(--erp-c-petrol);
+  --erp-chart-2:           var(--erp-c-copper);
+  --erp-chart-3:           #3B4E8F;
+  --erp-chart-4:           #6B7A2E;
+  --erp-chart-5:           #8E3F63;
+  --erp-chart-6:           #4A5A66;
+  --erp-chart-track:       var(--erp-c-sunken);
+  --erp-chart-grid:        var(--erp-c-line);
+  --erp-chart-label:       var(--erp-c-ink-faint);
 
   /* ── Status ────────────────────────────────────────────────────── */
   --erp-success:           var(--erp-c-success);
@@ -261,6 +314,24 @@
   --erp-c-brass-text:    #E7B65C;
   --erp-c-brass-bright:  #F0C877;
   --erp-c-brass-soft:    rgba(231, 182, 92, .12);
+  --erp-c-brass-line:    rgba(231, 182, 92, .34);
+
+  /* النحاس في الداكن: أفتحُ من نظيره الفاتح، لأن السطح نفسه أغمق
+     فيرتفع العزمُ اللوني بلا أن يفقد الحدّ 3:1. */
+  --erp-c-copper:        #E08B4B;
+  --erp-c-copper-text:   #E9A468;
+
+  /* سُلَّم الرسوم في الداكن: نفس الترتيب، بدرجاتٍ أفتح (desaturated
+     lifts) — لا قلبٍ للألوان، فالرسم يبقى هو هو بين الوضعين. */
+  --erp-chart-1:         #5CBFB5;
+  --erp-chart-2:         #E08B4B;
+  --erp-chart-3:         #93A4EE;
+  --erp-chart-4:         #B7C766;
+  --erp-chart-5:         #DE8AAE;
+  --erp-chart-6:         #9FB3C2;
+  --erp-chart-track:     #172723;
+  --erp-chart-grid:      rgba(255, 255, 255, .10);
+  --erp-chart-label:     var(--erp-c-ink-faint);
 
   --erp-c-success:       #4ADE80;
   --erp-c-success-text:  #4ADE80;
@@ -359,18 +430,33 @@ html[data-theme="dark"] .erp-v2 {
   box-shadow: var(--erp-shadow-sm), inset 0 1px 0 var(--erp-highlight);
 }
 
-/* KPI tiles catch the light from the brass corner; the value wears the
-   numeral face. */
+/* KPI tiles are sheets of white paper with a hairline edge — no wash. The
+   brass is jewellery: it lives in the icon chip only, so the six tiles read
+   as one sheet of data instead of six beige cards. */
 .erp-v2 .erp-kpi {
-  background-image: linear-gradient(160deg, var(--erp-brass-soft), transparent 46%);
+  background: var(--erp-surface);
 }
 .erp-v2 .erp-kpi__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-1);
   font-family: var(--erp-font-num);
   font-weight: 600;
   letter-spacing: -.015em;
+  line-height: var(--erp-leading-tight);
 }
 .erp-v2 .erp-kpi__icon {
   border-radius: var(--erp-radius-md);
+  background: var(--erp-brass-soft);
+  color: var(--erp-brass-text);
+  box-shadow: inset 0 0 0 1px var(--erp-brass-line);
+}
+/* The unit rides the value on the same baseline, one cut smaller. */
+.erp-v2 .erp-kpi__unit {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  font-weight: var(--erp-fw-medium);
 }
 
 .erp-v2 .erp-num,
@@ -406,9 +492,18 @@ html[data-theme="dark"] .erp-v2 {
   border-block-end-color: var(--erp-border-strong);
 }
 
-/* Primary action sits one hair above the surface. */
+/* Primary action: the only filled surface in the shell, so it carries the
+   light — a hairline highlight where the light lands, a soft lift beneath. */
 .erp-v2 .erp-btn--primary {
-  box-shadow: 0 1px 2px var(--erp-brand-shadow);
+  background: var(--erp-brand);
+  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand) 58%);
+  border-color: var(--erp-brand);
+  box-shadow: 0 1px 2px var(--erp-brand-shadow), 0 8px 20px -12px var(--erp-brand-shadow);
+}
+.erp-v2 .erp-btn--primary:hover:not(:disabled) {
+  background: var(--erp-brand-hover);
+  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand-active) 58%);
+  border-color: var(--erp-brand-hover);
 }
 
 /* Sign-in: a brass rule caps the porcelain card, like a ledger heading. */

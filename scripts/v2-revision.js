@@ -31,8 +31,10 @@ const EXT = String.raw`js|mjs|css|json`;
 const REV_IN_SPEC = new RegExp(String.raw`(['"])(\.[^'"]*?\.(?:${EXT}))\?v=([0-9][0-9.]*)(?=['"])`, 'g');
 /* المساراتُ المطلقة: تطبيقُ الكاشير يستدعي عائلة V2 بمسارٍ مطلق
    (`/app/js/v2/screens/pos-entry.js?v=…`) — وكان خارجًا عن الأداة، فبقيت
-   مراجعُه على رقمٍ قديم وكسرت العقدان v2-pos-buffet وv2-identity. */
-const REV_IN_ABS = new RegExp(String.raw`(['"])(/app/(?:css|js)/v2/[^'"]*?\.(?:${EXT}))\?v=([0-9][0-9.]*)(?=['"])`, 'g');
+   مراجعُه على رقمٍ قديم وكسرت العقدان v2-pos-buffet وv2-identity.
+   (JS فقط: روابط CSS المطلقة تليها LINK_IN_HTML، وقاعدتها أن تتقدّم
+   على الصفحة لا أن تساويها.) */
+const REV_IN_ABS = new RegExp(String.raw`(['"])(/app/js/v2/[^'"]*?\.(?:${EXT}))\?v=([0-9][0-9.]*)(?=['"])`, 'g');
 const LINK_IN_HTML = /(href="(?:css\/v2|\/app\/css\/v2)[^"]*?\.css\?v=)([0-9][0-9.]*)(")/g;
 const SCRIPT_IN_HTML = /(src="(?:js\/v2|\/app\/js\/v2)[^"]*?\.js\?v=)([0-9][0-9.]*)(")/g;
 const PAGE_REV = /js\/v2\/preview\.js\?v=([0-9][0-9.]*)/;

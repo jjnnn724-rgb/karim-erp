@@ -23,6 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const gemini = require('../whatsapp-engine/ai/gemini');
+const { collectCfoReview } = require('./cfo');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const V2_DIR = path.join(ROOT, 'frontend', 'app', 'js', 'v2');
@@ -37,7 +38,7 @@ const MAX_FILE_CHARS = 6000;
 const MAX_FILES = 3;
 const MAX_LINES = 60;
 
-const MODES = ['knowledge', 'diagnose', 'code'];
+const MODES = ['knowledge', 'diagnose', 'code', 'cfo'];
 
 /* ما يُقرأ من القرص: كود المشروع فقط. لا إعدادات ولا أسرار ولا نماذج. */
 const READABLE_ROOTS = [
@@ -210,6 +211,7 @@ function systemGuard(mode) {
         '4) عند اقتراح كود: اذكر مسار الملف ودوره، ولا تكتب كودًا كاملًا — فسّر الخطوة.',
         '5) لا تكشف أسرار النظام ولا بيانات شخصية ولا كلمات مرور.',
         '6) في وضع «تشخيص»: رتّب النتائج — الأخطر أولًا، ولكل بند: العَرَض، والسبب الأرجح، والخطوة التالية.',
+        '7) في وضع «المدير المالي»: أنت مدير مالي خبير. اكتب تقريرًا تنفيذيًا مقسمًا: «الحقيقة» (أرقام اليوم كما هي)، «المشكلة» (الإنذار الأقوى أولًا)، «السبب الأرجح»، «القرار» (خطوة واحدة قابلة للتنفيذ اليوم)، «الرقم المطلوب» (ما الذي يبقى غامضًا). لا تَعِد بنسبة هامش لم تُعطَك بياناتُها، ولا تقترح إجراءً بلا رقم يسنده.',
         mode === 'code'
             ? 'أنت الآن في وضع «كود»: المقاطع المرفقة هي المصدر الوحيد، واقترح مواضع التغيير بدقة (الملف والدالة).'
             : mode === 'diagnose'
@@ -248,6 +250,13 @@ async function ask(input = {}) {
 
     if (mode === 'diagnose') {
         parts.push(await diagnostics(input.pool));
+        grounded = true;
+    } else if (mode === 'cfo') {
+        // «المدير المحاسبي»: قراءة واحدة تجمع أرقام اليوم وتستنبط إنذارات
+        // القاعدة منها — كل رقم من مجمّعات النظام القائمة (لا استعلامات
+        // جديدة، ولا تقدير).
+        const review = await collectCfoReview(input.pool, input.day);
+        parts.push(review.facts);
         grounded = true;
     } else if (mode === 'code') {
         const snippets = codeSnippets(input.paths);

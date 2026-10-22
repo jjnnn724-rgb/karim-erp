@@ -42,11 +42,17 @@ describe('مساعد V2 — العقد', () => {
         expect(Array.isArray(m.MODES)).toBe(true);
     });
 
-    test('الأوضاع الثلاثة: معرفة/تشخيص/كود', () => {
+    test('الأوضاع: معرفة/تشخيص/المحاسبة/كود', () => {
         const m = loadModule();
-        expect(m.MODES.map((x) => x.id)).toEqual(['knowledge', 'diagnose', 'code']);
-        expect(m.MODES.map((x) => x.label)).toEqual(['معرفة', 'تشخيص', 'كود']);
+        expect(m.MODES.map((x) => x.id)).toEqual(['knowledge', 'diagnose', 'cfo', 'code']);
+        expect(m.MODES.map((x) => x.label)).toEqual(['معرفة', 'تشخيص', 'المحاسبة', 'كود']);
         for (const mode of m.MODES) {expect(mode.label).toMatch(/[؀-ۿ]/);}
+    });
+
+    test('وضع «المحاسبة» موجود: مراجعة المدير المالي للأرقام', () => {
+        const m = loadModule();
+        expect(m.MODES.map((x) => x.id)).toContain('cfo');
+        expect(m.MODES.find((x) => x.id === 'cfo').label).toBe('المحاسبة');
     });
 
     test('لا معالجات inline — CSP makes them inert', () => {

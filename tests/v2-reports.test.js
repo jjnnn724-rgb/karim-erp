@@ -653,7 +653,7 @@ describe('V2 reports screen + layer (source contract)', () => {
         const block = css().match(/@media \(max-width: 640px\) \{[\s\S]*?\n\}/);
         expect(block[0]).toMatch(/\.erp-v2-reports \[data-v2-periodseg\]/);
         expect(block[0]).toMatch(/flex: 1 1 100%/);
-        expect(block[0]).toMatch(/\.erp-v2-reports \.erp-seg button \{[\s\S]*?min-block-size: 40px;/);
+        expect(block[0]).toMatch(/\.erp-v2-reports \.erp-seg button \{[\s\S]*?min-block-size: max\(40px, var\(--erp-touch-target\)\);/);
         // Measured: a nowrap segment is 314px of min-content, which is wider
         // than a 320px phone and made the whole page pan sideways.
         expect(block[0]).toMatch(/\.erp-v2-reports \.erp-seg \{ flex-wrap: wrap; \}/);

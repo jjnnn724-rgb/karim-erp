@@ -40,23 +40,182 @@
 /* SVG text scales with the viewBox, so a narrow card would shrink 12px to
    ~6px. The container tiers raise the *unit* size exactly where the plot is
    narrow, keeping rendered labels >= ~10px from 320 up. */
+/* direction:ltr — the axis speaks numbers, and in an RTL page a compact
+   figure like "2.5K" would be reordered to "K2.5". Arabic labels stay
+   correct: an Arabic run keeps its own direction inside an LTR line. */
 .erp-v2 .erp-chart__plot text {
-  fill: var(--erp-text-faint);
+  fill: var(--erp-chart-label);
   font-family: var(--erp-font-sans);
   font-size: var(--erp-text-xs);
+  direction: ltr;
 }
+
+/* The number on the mark is the reason the reader came — it gets its own
+   cut and its own ink, and it must not be flattened by the axis scale.
+   The extra class lifts it above the `text` rule (0,3,0 beats 0,2,1). */
+.erp-v2 .erp-chart__plot .erp-chart__value {
+  fill: var(--erp-text-primary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The highest tick of the ladder is the scale's ceiling — it is the one
+   number the reader compares against, so it carries more weight. */
+.erp-v2 .erp-chart__plot .erp-chart__tick { font-variant-numeric: tabular-nums; }
+.erp-v2 .erp-chart__plot .erp-chart__tick--max {
+  fill: var(--erp-text-muted);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-chart__plot .erp-chart__xlabel { fill: var(--erp-chart-label); }
 
 @container (max-width: 420px) {
   .erp-v2 .erp-chart__plot text { font-size: var(--erp-text-md); }
+  .erp-v2 .erp-chart__plot .erp-chart__value { font-size: var(--erp-text-lg); }
 }
 
 @container (max-width: 320px) {
   .erp-v2 .erp-chart__plot text { font-size: var(--erp-text-lg); }
+  .erp-v2 .erp-chart__plot .erp-chart__value { font-size: var(--erp-text-xl); }
+}
+
+/* One continuous line the eye can trust (the zero), and a dashed ladder
+   above it that stays out of the way. */
+.erp-v2 .erp-chart__axis {
+  stroke: var(--erp-border-strong);
+  stroke-width: 1.25;
 }
 
 .erp-v2 .erp-chart__grid {
-  stroke: var(--erp-border-subtle);
+  stroke: var(--erp-chart-grid);
   stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+/* Inside a card the figure IS the card: no second frame, no second
+   padding, no second border competing with the card's own edge. */
+.erp-v2 .erp-chart--bare {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* البطاقةُ تكبرُ مع أطولِ بطاقةٍ في صفِّها، فجسمُها يتمدّدُ ليملأ
+   الفراغَ لا يتركه. والرسومُ داخلها يتمدّدُ هو الآخر: لا فراغَ تحت
+   الدائري ولا تحتَ الأعمدة، وحالةُ الفراغِ نفسها تتوسّطُ البطاقة. */
+.erp-v2 .erp-card:has(> .erp-card__body > .erp-chart),
+.erp-v2 .erp-card:has(> .erp-card__body > .erp-state) {
+  display: flex;
+  flex-direction: column;
+}
+.erp-v2 .erp-card:has(> .erp-card__body > .erp-chart) > .erp-card__body,
+.erp-v2 .erp-card:has(> .erp-card__body > .erp-state) > .erp-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-card__body > .erp-chart { flex: 1; min-block-size: 0; }
+.erp-v2 .erp-card__body > .erp-chart--donut { justify-content: center; }
+.erp-v2 .erp-card__body > .erp-state { flex: 1; }
+.erp-v2 .erp-chart__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+/* الدائريُّ بطلُ البطاقة: الحلقةُ تكبرُ مع ارتفاعِ المتاحِ حتى تملأ
+   فراغَها، والمفتاحُ بجانبِها. */
+.erp-v2 .erp-card__body > .erp-chart--donut .erp-chart__donut-wrap {
+  flex: 1;
+  min-block-size: 0;
+}
+.erp-v2 .erp-card__body > .erp-chart--donut .erp-chart__donut {
+  block-size: 100%;
+  inline-size: auto;
+  aspect-ratio: 1;
+  min-block-size: calc(var(--erp-space-7) * 4);
+  max-block-size: 240px;
+  max-inline-size: 100%;
+}
+
+/* The plot is one focus stop; its ring is brass so it never reads as the
+   petrol of an action. */
+.erp-v2 .erp-chart__plot:focus-visible,
+.erp-v2 .erp-chart__donut-wrap:focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--erp-radius-sm);
+}
+
+/* The crosshair that follows the keyboard cursor on a line chart. */
+.erp-v2 .erp-chart__cursor {
+  stroke: var(--erp-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* The mark under the cursor answers the eye before the tooltip does. */
+.erp-v2 .erp-chart [data-v2-chart-mark][data-v2-chart-active] {
+  filter: brightness(1.12) saturate(1.06);
+}
+.erp-v2 .erp-chart [data-v2-chart-mark="donut"][data-v2-chart-active] {
+  stroke-width: 19;
+}
+
+/* ── The tooltip ──────────────────────────────────────────────────────
+   One card for every chart in the app: ink on paper, hairline edge, and
+   it never takes the pointer — the mark keeps the hover. It is purely
+   visual; the spoken value travels through the aria-live region instead,
+   so a screen reader is not read two numbers at once. */
+.erp-v2 .erp-chart-tip {
+  position: fixed;
+  z-index: var(--erp-z-tooltip);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-0);
+  max-inline-size: 260px;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-text-primary);
+  color: var(--erp-surface);
+  box-shadow: var(--erp-shadow-lg);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--erp-duration-fast) var(--erp-ease-standard),
+              visibility 0s linear var(--erp-duration-fast);
+}
+
+.erp-v2 .erp-chart-tip.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--erp-duration-fast) var(--erp-ease-standard),
+              visibility 0s;
+}
+
+.erp-v2 .erp-chart-tip__label {
+  font-size: var(--erp-text-xs);
+  color: color-mix(in srgb, var(--erp-surface) 74%, transparent);
+}
+
+/* The extra line a mark carries (invoice count, date): quieter than the
+   value, quieter than the label — it is context, not the answer. */
+.erp-v2 .erp-chart-tip__note {
+  font-size: var(--erp-text-xs);
+  color: color-mix(in srgb, var(--erp-surface) 62%, transparent);
+}
+.erp-v2 .erp-chart-tip__note[hidden] { display: none; }
+
+.erp-v2 .erp-chart-tip__value {
+  font-family: var(--erp-font-num);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-surface);
 }
 
 .erp-v2 .erp-chart__legend {
@@ -149,10 +308,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.erp-v2 .erp-chart__legend-val {
+/* المبلغُ في المفتاحِ صاحبُ الحصة: يظهرُ بعد اسمِ الطريقة وقبلَ
+   النسبة، ويُقرأ من اليسارِ لئلا ينقلب. */
+.erp-v2 .erp-chart__legend-amt {
   margin-inline-start: auto;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-chart__legend-val {
   font-variant-numeric: tabular-nums;
   color: var(--erp-text-muted);
+  min-inline-size: 4ch;
+  text-align: end;
 }
 
 /* Cost analysis: a dedicated filter row and a readable, horizontally

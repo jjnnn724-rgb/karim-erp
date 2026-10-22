@@ -519,8 +519,24 @@
   .erp-v2 .erp-theme-option,
   .erp-v2 .erp-density-control .erp-density-option,
   .erp-v2 .erp-shell__more .erp-btn,
-  .erp-v2 .erp-btn--sm { min-height: 44px; }
+  .erp-v2 .erp-btn { min-height: var(--erp-touch-target); }
   .erp-v2 .erp-icon-btn,
   .erp-v2 .erp-boundary,
   .erp-v2 .erp-search-trigger { min-width: 44px; }
+
+  /* أرضيةُ اللمس: كلُّ هدفِ مؤشرٍ داخل التطبيق لا يقلّ عن ٤٤ بكسل.
+     هذه القاعدة تسبق قواعدَ الشاشات في التخصيص (٠،٣،٠) لا في النَفَس
+     — فSpecificity تُقدَّم على ترتيب الملفات — فصارت (٠،٤،٠) لتغلبها.
+     بدونها بقيت أزرارُ الشرائط (٣٤) وأزرارُ رؤوس الجداول (٣٨) وحقولُ
+     النماذج (٣٨) أصغرَ من الإصبع على الهاتف: قِيست على ٥١ شاشة.
+     مربّعاتُ الاختيارradio/checkbox تبقى ٢٤ (حدُّ WCAG AA) لأن هدفَها
+     الحقيقي هو التسميةُ حولها. */
+  .erp-v2 :is(button,
+              [role="button"],
+              select,
+              textarea,
+              input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"])) {
+    min-block-size: var(--erp-touch-target);
+    min-inline-size: var(--erp-touch-target);
+  }
 }

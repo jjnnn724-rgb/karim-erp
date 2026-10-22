@@ -228,7 +228,9 @@ describe('V2 briefing repository — honesty of the numbers', () => {
         // net 9500 vs yesterday's 10000 − 1000 = 9000 → up, and up is good.
         expect(net.delta).toMatchObject({ sign: 'up', favor: 'good' });
         const att = kpis.find((k) => k.id === 'attendance');
-        expect(att.unit).toBe('/ 30');
+        // The ratio rides as one LTR run — split in two, RTL prints it backwards.
+        expect(att.value).toBe('25 / 30');
+        expect(att.unit).toBe('');
         expect(att.delta.favor).toBe('flat');
         expect(kpis.find((k) => k.id === 'expenses').delta.favor).toBe('bad');
     });
@@ -367,10 +369,14 @@ describe('V2 briefing screen + host (source contract)', () => {
         expect(s).toMatch(/aria-label="\$\{esc\(d\.aria\)\}"/);
     });
 
-    test('the donut paints from tokens, so a theme switch keeps it readable', () => {
+    test('the charts come from the engine, so a theme switch keeps them readable', () => {
         const s = screen();
-        expect(s).toMatch(/var\(--erp-success\)/);
+        expect(s).toMatch(/from '\.\.\/charts\.js\?v=/);
+        /* اللونُ شأنُ المحرّك: الشاشةُ تسمّي النغمةَ ولا تصبغ بنفسها. */
+        expect(s).toMatch(/tone: `chart-/);
         expect(s).not.toMatch(/#[0-9a-f]{6}/i);
+        /* ولا رسومَ مرسومةً باليد — كلُّها من المحرّك. */
+        expect(s).not.toMatch(/erp-bars|erp-donut/);
     });
 
     test('one click cannot stack two loads, and a detached screen stops writing', () => {

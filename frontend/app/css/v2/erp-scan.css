@@ -30,7 +30,7 @@
 }
 
 .erp-v2-scan [data-v2-mode] {
-  min-block-size: 40px;
+  min-block-size: max(40px, var(--erp-touch-target));
   white-space: nowrap;
 }
 
@@ -59,7 +59,7 @@
   letter-spacing: .04em;
 }
 
-.erp-v2-scan .gs-line .erp-btn { min-block-size: 40px; }
+.erp-v2-scan .gs-line .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
 
 .erp-v2-scan [data-v2-note]:empty { display: none; }
 
@@ -181,7 +181,7 @@
 .erp-v2-scan .gs-table .gs-qty { inline-size: 7rem; }
 .erp-v2-scan .gs-table .gs-tnum { font-variant-numeric: tabular-nums; direction: ltr; }
 .erp-v2-scan .gs-actions { display: flex; gap: var(--erp-space-2); flex-wrap: wrap; }
-.erp-v2-scan .gs-actions .erp-btn { min-block-size: 40px; }
+.erp-v2-scan .gs-actions .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
 
 /* مقاييس الحملة: أربعة أرقام تُقرأ من نظرة — المربوط، بلا كود، مكرر، مكسور التحقق. */
 .erp-v2-scan .gs-kpis { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); }

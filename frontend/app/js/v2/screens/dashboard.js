@@ -26,9 +26,10 @@
  *   live wiring is Gate D — deliberately not faked here.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.187';
-import { setPref } from '../theme.js?v=4.9.187';
-import { hydrateStatusNodes } from '../status.js?v=4.9.187';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.193';
+import { setPref } from '../theme.js?v=4.9.193';
+import { hydrateStatusNodes } from '../status.js?v=4.9.193';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.193';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -47,9 +48,9 @@ const PERIODS = {
             { icon: 'trending-up', label: 'صافي اليوم',     en: 'Net Profit',    value: '6,120',  unit: 'ر.س',  delta: { dir: 'up',   text: '5.6%' },  hint: 'بعد المصروفات' },
         ],
         payments: [
-            { label: 'نقدي',  value: 6200, tone: 'success' },
-            { label: 'شبكة',  value: 9800, tone: 'info' },
-            { label: 'تحويل', value: 2450, tone: 'warning' },
+            { label: 'نقدي',  value: 6200, tone: 'chart-1' },
+            { label: 'شبكة',  value: 9800, tone: 'chart-2' },
+            { label: 'تحويل', value: 2450, tone: 'chart-3' },
         ],
         tops: [
             { name: 'مشكل مشاوي',       count: 1240 },
@@ -70,9 +71,9 @@ const PERIODS = {
             { icon: 'trending-up', label: 'صافي الأسبوع',   en: 'Net Profit',    value: '38,400',  unit: 'ر.س', delta: { dir: 'up',   text: '6.8%' },  hint: 'بعد المصروفات' },
         ],
         payments: [
-            { label: 'نقدي',  value: 41200, tone: 'success' },
-            { label: 'شبكة',  value: 63900, tone: 'info' },
-            { label: 'تحويل', value: 16200, tone: 'warning' },
+            { label: 'نقدي',  value: 41200, tone: 'chart-1' },
+            { label: 'شبكة',  value: 63900, tone: 'chart-2' },
+            { label: 'تحويل', value: 16200, tone: 'chart-3' },
         ],
         tops: [
             { name: 'مشكل مشاوي',       count: 8060 },
@@ -93,9 +94,9 @@ const PERIODS = {
             { icon: 'trending-up', label: 'صافي الشهر',     en: 'Net Profit',    value: '152,700', unit: 'ر.س', delta: { dir: 'up',   text: '8.3%' },  hint: 'بعد المصروفات' },
         ],
         payments: [
-            { label: 'نقدي',  value: 168400, tone: 'success' },
-            { label: 'شبكة',  value: 251300, tone: 'info' },
-            { label: 'تحويل', value: 67200,  tone: 'warning' },
+            { label: 'نقدي',  value: 168400, tone: 'chart-1' },
+            { label: 'شبكة',  value: 251300, tone: 'chart-2' },
+            { label: 'تحويل', value: 67200,  tone: 'chart-3' },
         ],
         tops: [
             { name: 'مشكل مشاوي',       count: 32150 },
@@ -115,7 +116,9 @@ const SALES_7 = [
     { day: 'الجمعة',   value: 18.4 },
 ];
 
-const TONE_HEX = { success: '#0F7A57', info: '#2563EB', warning: '#B4690E', danger: '#C0392B', neutral: '#5B6B65' };
+/* سقفُ محور مبيعات الأسبوع: خطوةٌ لطيفة (٢٥ لا ٣٠)، فتأخذ الأعمدةُ
+   المساحةَ كلَّها بدل أن تترك نصفَ اللوحةِ فراغًا. */
+const SALES_MAX = niceCeiling(Math.max(...SALES_7.map((d) => d.value)));
 
 const INVOICES = [
     { id: '#90412', main: 'طاولة 7',             sub: 'صالة العائلات · 13:42', amount: '245', badge: ['pos_order', 'issued'] },
@@ -161,50 +164,32 @@ function kpiStrip(kpis) {
         + `</ul>`;
 }
 
+/* الرسمان يُرسمان بمحرّك الرسوم نفسه (charts.js): محورٌ بقيمٍ حقيقية،
+   تدرّجٌ على الأعمدة، أرقامٌ فوقها، وتلميحٌ ومؤشّرُ لوحةٍ مفاتيح من
+   طبقة التفاعل. لا divs ولا SVG مكتوبٌ بيده — فتبقى الألوانُ توكناتٌ
+   تعيد حلّها في الوضعين، ويبقى الرسمُ واحدًا في كل الشاشات. */
 function salesBars() {
-    const max = Math.max(...SALES_7.map((d) => d.value));
-    const top = 110;
-    return `<div class="erp-bars" role="img" aria-label="مبيعات آخر 7 أيام بالألف (بيانات نموذجية)">`
-        + SALES_7.map((d) => {
-            const isMax = d.value === max;
-            const h = Math.max(8, Math.round((d.value / max) * top));
-            return `<div class="erp-bar${isMax ? ' erp-bar--max' : ''}">
-          <span class="erp-bar__val"><span class="erp-num" dir="ltr">${d.value.toFixed(1)}</span></span>
-          <span class="erp-bar__track" style="block-size:${h}px" title="${esc(d.day)}: ${d.value.toFixed(1)} ألف"></span>
-          <span class="erp-bar__day">${esc(d.day)}</span>
-        </div>`;
-        }).join('')
-        + `</div>`;
+    return barChart({
+        ariaLabel: 'مبيعات آخر 7 أيام بالألف ريال (بيانات نموذجية)',
+        labels: SALES_7.map((d) => d.day),
+        series: [{ label: 'المبيعات', tone: 'brand', values: SALES_7.map((d) => d.value) }],
+        max: SALES_MAX,
+        formatValue: (v) => `${v.toFixed(1)} ألف ر.س`,
+        formatMark: (v) => v.toFixed(1),
+        bare: true,
+    });
 }
 
 function payDonut(payments) {
     const total = payments.reduce((a, p) => a + p.value, 0);
-    const r = 54, c = 2 * Math.PI * r;
-    let start = 0;
-    const segs = payments.map((p) => {
-        const len = (p.value / total) * c;
-        const s = `<circle cx="66" cy="66" r="${r}" fill="none" stroke-width="16"
-            style="stroke:${TONE_HEX[p.tone]}" stroke-dasharray="${len.toFixed(1)} ${c.toFixed(1)}"
-            stroke-dashoffset="${(-start).toFixed(1)}" transform="rotate(-90 66 66)">
-          <title>${esc(p.label)}: ${p.value.toLocaleString('en-US')}</title></circle>`;
-        start += len;
-        return s;
-    }).join('');
-    const legend = payments.map((p) => {
-        const pct = ((p.value / total) * 100).toFixed(1);
-        return `<li><span class="erp-legend__dot" style="background:${TONE_HEX[p.tone]}" aria-hidden="true"></span>`
-            + `<span>${esc(p.label)}</span>`
-            + `<span class="erp-legend__val"><span class="erp-num" dir="ltr">${pct}%</span></span></li>`;
-    }).join('');
-    return `<div class="erp-donut-wrap">
-      <div class="erp-donut" role="img" aria-label="توزيع طرق الدفع (بيانات نموذجية)">
-        <svg viewBox="0 0 132 132" aria-hidden="true">
-          <circle cx="66" cy="66" r="${r}" fill="none" stroke-width="16" style="stroke:var(--erp-surface-sunken)" />${segs}
-        </svg>
-        <div class="erp-donut__center"><span class="erp-donut__total"><span class="erp-num" dir="ltr">${total.toLocaleString('en-US')}</span></span><span class="erp-donut__cap">إجمالي (ر.س)</span></div>
-      </div>
-      <ul class="erp-legend">${legend}</ul>
-    </div>`;
+    return donutChart({
+        ariaLabel: 'توزيع طرق الدفع (بيانات نموذجية)',
+        slices: payments,
+        centerLabel: 'إجمالي (ر.س)',
+        centerValue: total.toLocaleString('en-US'),
+        formatValue: (v) => `${v.toLocaleString('en-US')} ر.س`,
+        bare: true,
+    });
 }
 
 function topItems(tops) {

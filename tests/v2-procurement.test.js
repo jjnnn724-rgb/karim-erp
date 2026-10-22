@@ -428,7 +428,7 @@ describe('طبقة erp-hr.css — موجة المشتريات', () => {
     test('أهداف اللمس 40px لأزرار الرؤوس وصفوف الإجراءات في الأربع', () => {
         const block = css().match(/\/\* موجة المشتريات على الموبايل[\s\S]*?\n\}/);
         expect(block).not.toBeNull();
-        expect(block[0]).toMatch(/min-block-size: var\(--erp-space-8\);/);
+        expect(block[0]).toMatch(/min-block-size: max\(var\(--erp-space-8\), var\(--erp-touch-target\)\);/);
         for (const s of ['procurement', 'invoices', 'payments', 'whinvoices']) {
             expect(block[0]).toContain(`.erp-v2-${s}`);
         }

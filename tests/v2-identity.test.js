@@ -173,11 +173,11 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
     });
 
     test('theme-color على البترول الجديد في الصفحتين، ومانيفست الكاشير يلبس الهوية', () => {
-        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#0E5A60">');
-        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#0E5A60">');
+        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#0B5A5F">');
+        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#0B5A5F">');
         const manifest = JSON.parse(read(path.join(APP, 'cashier', 'manifest.json')));
-        expect(manifest.theme_color).toBe('#0E5A60');
-        expect(manifest.background_color).toBe('#F6F2EA');
+        expect(manifest.theme_color).toBe('#0B5A5F');
+        expect(manifest.background_color).toBe('#EFECE4');
     });
 
     test('سلّم النص الفاتح: كل درجة ≥ 4.5 على السطح والكانفس، وبترتيب لمعانٍ صارم', () => {
@@ -191,9 +191,9 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
             expect(onSurface[i]).toBeLessThan(onSurface[i - 1]);
         }
         // القيم الموثّقة في رأس الملف: انزياحٌ بمقدار 0.05 يستوجب تحديثها معًا.
-        expect(onSurface[0]).toBeCloseTo(16.26, 1);
-        expect(onSurface[3]).toBeCloseTo(4.98, 1);
-        expect(onCanvas[3]).toBeCloseTo(4.54, 1);
+        expect(onSurface[0]).toBeCloseTo(17.72, 1);
+        expect(onSurface[3]).toBeCloseTo(5.52, 1);
+        expect(onCanvas[3]).toBeCloseTo(4.68, 1);
     });
 
     test('سلّم النص الداكن: كل درجة ≥ 4.5 على سطحه وكانفسه', () => {
@@ -228,6 +228,20 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
             expect(contrast(t('--erp-brass'), t('--erp-surface'))).toBeGreaterThanOrEqual(3);
         }
         expect(palette('light')('--erp-dash-accent-text')).toBe('#7A5410');
+    });
+
+    test('سُلَّم الرسوم: كل درجةٍ تُرى على الورقة والكانفس (حدّ 1.4.11 = 3:1)', () => {
+        for (const theme of ['light', 'dark']) {
+            const t = palette(theme);
+            for (let i = 1; i <= 6; i += 1) {
+                for (const bg of ['--erp-surface', '--erp-background']) {
+                    expect({ theme, stop: i, bg, ok: contrast(t(`--erp-chart-${i}`), t(bg)) >= 3 })
+                        .toEqual({ theme, stop: i, bg, ok: true });
+                }
+            }
+            // نحاس البيانات: لونُ الأرقام لا لونُ الفعل.
+            expect(contrast(t('--erp-copper'), t('--erp-surface'))).toBeGreaterThanOrEqual(3);
+        }
     });
 
     test('الداكن يعيد إعلان ما تتجاوزه طبقة الثيمات — وإلا عاد الحبر الأزرق القديم', () => {
@@ -327,13 +341,22 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
         }
     });
 
-    test('ألوان المخططات في dashboard.js هي ألوان الهوية نفسها', () => {
+    test('ألوان الرسوم في لوحة القيادة توكناتُ الهوية لا حرفية', () => {
+        /* العقدُ بعد نقل الرسوم إلى محرّكٍ مشترك: لا حرفيةَ لونٍ في الشاشة
+           إطلاقًا — كلُّ لونٍ يمرّ عبر var(--erp-*) فيُعاد حلُّه في الوضعين.
+           ومعرّفاتُ الفواتير ('#90412') خمسةُ أرقامٍ فلا تُحسب حرفيةَ لونٍ،
+           فحدُّ الفحص ستّةُ أرقامٍ فأكثر (والثمانيةُ hexٌ شفافٌ لا لونٌ). */
         const src = read(path.join(APP, 'js', 'v2', 'screens', 'dashboard.js'));
-        const tone = src.match(/const TONE_HEX = \{([^}]+)\}/);
-        expect(tone).not.toBeNull();
-        const hexes = [...tone[1].matchAll(/#[0-9A-Fa-f]{6}/g)].map((m) => m[0].toUpperCase());
-        expect(hexes.length).toBe(5);
-        const identity = stripCssComments(IDENTITY_SRC).toUpperCase();
-        expect({ missing: hexes.filter((h) => !identity.includes(h)) }).toEqual({ missing: [] });
+        const hexes = [...src.matchAll(/#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{8}\b/g)].map((m) => m[0]);
+        expect({ hexes }).toEqual({ hexes: [] });
+        expect(src).toContain("from '../charts.js?v=" + pageRevision() + "'");
+        const engine = read(path.join(APP, 'js', 'v2', 'charts.js'));
+        const palette = new Set([...engine.matchAll(/^\s{4}'?([a-z0-9-]+)'?:\s*'var\(--erp-/gm)].map((m) => m[1]));
+        const tones = [...src.matchAll(/tone: '([a-z0-9-]+)'/g)].map((m) => m[1]);
+        const offScale = tones.filter((t) => !palette.has(t));
+        expect({ offScale }).toEqual({ offScale: [] });
+        const ramp = [...stripCssComments(IDENTITY_SRC).matchAll(/--erp-chart-([1-6]):/g)];
+        expect(ramp.length).toBe(12);
     });
+
 });

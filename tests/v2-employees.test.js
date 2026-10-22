@@ -378,7 +378,7 @@ describe('V2 employees screen + layer (source contract)', () => {
         // الإخفاء الآن بصري (visually-hidden) لا display:none ⇒ يبقى النص
         // لقارئات الشاشة (إتاحة أفضل) مع فكّoccupation بصريًا.
         expect(block).toMatch(/\.erp-v2-employees \.erp-dash-controls \.erp-btn > span[,\s][^}]*\{[^}]*position:\s*absolute;[^}]*\}/);
-        expect(block).toMatch(/min-block-size: 40px/);
+        expect(block).toMatch(/min-block-size: max\(40px, var\(--erp-touch-target\)\)/);
         expect(block).toMatch(/order: 1/);
         expect(block).toMatch(/\.erp-v2-attendance/);
     });

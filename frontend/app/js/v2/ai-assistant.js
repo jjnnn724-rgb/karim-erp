@@ -13,11 +13,12 @@
  *   • وضع «قواعدي» يظهر حين لا يوجد مفتاح: الحقائق تُعرض كما هي.
  *   • vm-friendly: لا DOM وقت الاستيراد — كل شيء داخل mount.
  */
-import { apiFetch } from '../core/api.js?v=4.9.187';
+import { apiFetch } from '../core/api.js?v=4.9.193';
 
 const MODES = [
     { id: 'knowledge', label: 'معرفة', icon: 'file-text', hint: 'الشاشات والعقود' },
     { id: 'diagnose', label: 'تشخيص', icon: 'activity', hint: 'قراءات حيّة' },
+    { id: 'cfo', label: 'المحاسبة', icon: 'banknote', hint: 'مراجعة أرقام اليوم' },
     { id: 'code', label: 'كود', icon: 'layers', hint: 'ملفات المشروع' },
 ];
 
@@ -201,7 +202,7 @@ export function mountAiAssistant(shell, ctx = {}) {
         paintModes();
         paintContext();
         paintStatus();
-        push('bot', 'اسألني عن أي شاشة أو عقد في V2 — أو اختر «تشخيص» لأقرأ حالة النظام الحيّة.');
+        push('bot', 'اسألني عن أي شاشة أو عقد في V2 — أو اختر «المحاسبة» لأراجع أرقام اليوم، أو «تشخيص» لأقرأ حالة النظام الحيّة.');
         askStatus();
 
         drawer.addEventListener('mousedown', (e) => { if (e.target === drawer) {close();} });

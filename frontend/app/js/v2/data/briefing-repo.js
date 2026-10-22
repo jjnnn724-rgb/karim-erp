@@ -37,7 +37,7 @@
  *     is jwtAuth. The 403 comes from the backend and is displayed as-is.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.187';
+import { apiFetch } from '../../core/api.js?v=4.9.193';
 
 /** Stored values of pos_invoice_payments.method. Unknown methods are shown
  *  verbatim — relabelling a method the app does not know would be inventing. */
@@ -157,7 +157,10 @@ export function buildKpis(briefing, stats, currency = '') {
         },
         {
             id: 'attendance', icon: 'users', label: 'الحضور اليوم', en: 'Attendance',
-            value: formatInt(att.checked_in), unit: `/ ${formatInt(att.with_record)}`,
+            // النسبةُ رقمٌ واحدٌ لا رقمان: «٢٥ من ٣٠». لو انشطرت على
+            // spanَين لقلبها تدفّقُ RTL فظهرت «٣٠ / ٢٥»، فتسير في
+            // مقطعٍ واحدٍ لاتينيٍّ معزول — كما المالُ بالضبط.
+            value: `${formatInt(att.checked_in)} / ${formatInt(att.with_record)}`, unit: '',
             hint: `نسي الخروج ${formatInt(att.missing_out)} • نسي الدخول ${formatInt(att.missing_in)}`,
             // The day is still running: a "vs yesterday" percentage would compare
             // a partial day against a full one and always look like a collapse.

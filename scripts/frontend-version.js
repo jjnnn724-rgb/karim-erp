@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const APP = path.join(ROOT, 'frontend', 'app');
@@ -40,30 +41,24 @@ function collectFiles(dir, out = []) {
 }
 
 /**
- * محتوى الملف كما هو في الفهرس (المودَع) — يعود للقرص إن لم يكن متتبَّعًا.
- * السبب: CI يبني من commit ⇒ البصمة يجب أن تقيس المحتوى المودّع، وإلا
- * فشل أي تعديل غير مودّع (WIP) البوابة على GitHub بينما تنجح محليًا.
+ * محتوى الملف كما سيُودَع: بايتات القرص حرفيًا.
+ * السبب: البصمة يجب أن تقيس ما سيلاه CI على لينكس بعد الـcommit،
+ * وهذا المستودع `core.autocrlf=false` بلا تحويل أسطر (انظر .gitattributes)
+ * ⇒ بايتات القرص = بايتات الـblob بالضبط. وكان يُقرأ من فهرس Git
+ * فقاست البصمةُ المحتوىَ المُودَع *قبل* الزيادة ⇒ تفشل البوابة دائمًا.
  */
-function indexContent(absPath) {
-    const rel = path.relative(ROOT, absPath).split(path.sep).join('/');
-    try {
-        return execFileSync('git', ['show', ':' + rel], {
-            cwd: ROOT, encoding: 'buffer', maxBuffer: 64 * 1024 * 1024,
-        });
-    } catch (_) {
-        // غير متتبَّع (لن يكون في الـcommit) ⇒ لا يؤثر في البصمة
-        return Buffer.from('untracked');
-    }
+function contentOf(absPath) {
+    return fs.readFileSync(absPath);
 }
 
-/** بصمة محتوى مستقرة (ترتيب ثابت + hash لكل ملف) — على المحتوى المودَع. */
+/** بصمة محتوى مستقرة (ترتيب ثابت + hash لكل ملف) — على ما سيُودَع. */
 function contentHash() {
     const files = collectFiles(APP).sort();
     const h = crypto.createHash('sha256');
     for (const f of files) {
         h.update(path.relative(APP, f).split(path.sep).join('/'));
         h.update('\0');
-        h.update(indexContent(f));
+        h.update(contentOf(f));
         h.update('\0');
     }
     return h.digest('hex').slice(0, 16);
@@ -162,12 +157,15 @@ if (mode === 'compute') {
             return execFileSync('git', ['status', '--porcelain', '--', 'frontend/app'], { cwd: ROOT, encoding: 'utf8' }).trim().length > 0;
         } catch (_) {return false;}
     })();
-    if (dirty) {
-        console.log('ℹ شجرة العمل فيها تعديلات غير مودّعة ⇒ فحص البصمة يُؤجَّل (CI يفحصه على commit نظيف).');
-    } else if (state.hash !== hash) {
+    // البوابة لا تُعفى بشجرة عمل غير نظيفة: أي تعديل على ملفات الواجهة
+    // يُلزم بزيادة النسخة — مودَعًا كان أو غير مودّع — وهذا ما يعنيه الاختبار.
+    if (state.hash !== hash) {
         console.error('✗ تغيّرت ملفات الواجهة بعد آخر زيادة — العملاء سيبقون على نسخة قديمة.');
         console.error('   شغّل: node scripts/frontend-version.js --bump');
         process.exit(1);
+    }
+    if (dirty) {
+        console.log('ℹ شجرة العمل فيها تعديلات غير مودّعة — البصمة قِيست على الأقراص كما ستراها بعد الـcommit.');
     }
     console.log(`✓ إصدار الواجهة ${version} متسق مع محتوى الملفات (${hash})`);
 } else {

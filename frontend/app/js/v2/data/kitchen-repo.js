@@ -54,8 +54,8 @@
  *   the server (requireSignature, :331-332) — this file only carries them.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.187';
-import { formatInt } from './reports-repo.js?v=4.9.187';
+import { apiFetch } from '../../core/api.js?v=4.9.193';
+import { formatInt } from './reports-repo.js?v=4.9.193';
 
 const num = (v) => {
     const n = Number(v);

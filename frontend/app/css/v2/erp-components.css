@@ -43,6 +43,17 @@
   text-overflow: ellipsis;
 }
 
+/* Inside a KPI tile the badge carries a comparison sentence ("▼ إيراد
+   166,509.29 SAR (10.6%)"), which is wider than the tile itself: six
+   tiles in one row leaves ~172px per tile. With the badge locked to one
+   line the text ran past the tile edge and overlapped the neighbouring
+   card (measured on the P&L screen: 52px past the border). Here the
+   badge may wrap, so the tile keeps its own bounds. */
+.erp-v2 .erp-kpi__foot .erp-badge {
+  white-space: normal;
+  text-align: start;
+}
+
 /* Tones — background tint + tone-specific text (contrast measured, see
    erp-tokens.css). Border gives a second non-colour cue at low tint. */
 .erp-v2 .erp-badge[data-tone="success"] {
@@ -364,7 +375,15 @@
      revenues, expenses, wh-moves, payroll). Measured at 360px against live
      data. The segmented control wraps inside the head for the same reason. */
   .erp-v2 .erp-card__head { flex-wrap: wrap; row-gap: var(--erp-space-2); }
-  .erp-v2 .erp-card__head .erp-seg { flex-wrap: wrap; }
+  /* الشريطُ المنكسرُ على الهاتف يصير شريطًا لا حبّة: نصفُ القطرِ
+     الكامل (999px) على حاويةٍ طويلةٍ ضيّقةٍ يرسمُ عدسةً مشوّهة، لا
+     شريطًا. لغةُ النظام في الهاتف: الحاويةُ بنصفِ قطرٍ متوسّط
+     والتبويباتُ بنصفِ قطرٍ صغير. */
+  .erp-v2 .erp-card__head .erp-seg {
+    flex-wrap: wrap;
+    border-radius: var(--erp-radius-md);
+  }
+  .erp-v2 .erp-card__head .erp-seg button { border-radius: var(--erp-radius-sm); }
 }
 .erp-v2 .erp-link { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: var(--erp-brand-text); text-decoration: underline; }
 

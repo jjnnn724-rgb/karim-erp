@@ -5,14 +5,21 @@
  * WHAT THIS IS
  *   The V2 executive dashboard reading two production endpoints through
  *   v2/data/briefing-repo.js. Same visual language as the sample dashboard
- *   (erp-kpis / erp-delta / erp-bars / erp-donut / erp-tops / erp-pipe /
- *   erp-minis from css/v2/erp-dashboard.css), different source: every number
- *   on this screen is a row the legacy app already asks the database for.
+ *   (erp-kpis / erp-delta / erp-tops / erp-pipe / erp-minis from
+ *   css/v2/erp-dashboard.css), different source: every number on this
+ *   screen is a row the legacy app already asks the database for.
  *
  * WHY IT LOOKS LIKE THE PREVIEW
  *   Reusing the existing classes is the point. If the real-data screen and
  *   the sample screen disagree about spacing or colour, the stylesheet is
  *   being changed to fit the demo — and the demo then ships.
+ *
+ * THE TWO CHARTS
+ *   The sales bars and the payments donut are drawn by js/v2/charts.js —
+ *   the same engine as the sample dashboard — so the production screen and
+ *   the preview can never drift apart in colour, scale or behaviour.
+ *   The engine's interaction layer (charts-live.js) gives both charts a
+ *   hover tooltip, keyboard navigation and a spoken value for free.
  *
  * RULES THIS FILE FOLLOWS
  *   • No network of its own — every call goes through the repository.
@@ -32,29 +39,20 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.187';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.193';
 import {
     fetchBriefing,
     fetchTodayStats,
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.187';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.187';
+} from '../data/briefing-repo.js?v=4.9.193';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.193';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.193';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-/** Tokens, not hexes: the donut must survive a theme switch. */
-const TONE_VAR = {
-    success: 'var(--erp-success)',
-    info: 'var(--erp-info)',
-    warning: 'var(--erp-warning)',
-    danger: 'var(--erp-danger)',
-    neutral: 'var(--erp-neutral)',
-};
-const TONE_ORDER = ['success', 'info', 'warning', 'danger', 'neutral'];
 
 /* ── Markup builders ─────────────────────────────────────────────────── */
 
@@ -81,62 +79,51 @@ function kpiStrip(kpis) {
         + `</ul>`;
 }
 
+/**
+ * منحنى المبيعات: أعمدةٌ SVG بمحورٍ يعرف مداه. القيمُ بالألوف — فيبقى
+ * المحورُ مقروءًا (٠ … ٢٥) بدل أرقامٍ بعشرات الآلاف، والمالُ الكاملُ في
+ * التلميح والنطق.
+ */
 function barsBlock(bars) {
     if (!bars.length) {
         return `<div class="erp-state"><span class="erp-state__title">لا مبيعات في آخر ٧ أيام</span></div>`;
     }
-    const max = Math.max(...bars.map((b) => b.value), 1);
-    const top = 110;
-    const aria = `مبيعات آخر ${bars.length} أيام، أعلاها ${formatMoney(max)}`;
-    return `<div class="erp-bars" role="img" aria-label="${esc(aria)}">`
-        + bars.map((b) => {
-            const isMax = b.value === max;
-            const h = Math.max(8, Math.round((b.value / max) * top));
-            return `<div class="erp-bar${isMax ? ' erp-bar--max' : ''}">
-          <span class="erp-bar__val"><span class="erp-num" dir="ltr">${(b.value / 1000).toFixed(1)}</span></span>
-          <span class="erp-bar__track" style="block-size:${h}px"
-                title="${esc(`${b.date}: ${formatMoney(b.value)} — ${formatInt(b.invoices)} فاتورة`)}"></span>
-          <span class="erp-bar__day">${esc(b.label)}</span>
-        </div>`;
-        }).join('')
-        + `</div>`;
+    const values = bars.map((b) => b.value / 1000);
+    const peak = Math.max(...bars.map((b) => b.value));
+    return barChart({
+        ariaLabel: `مبيعات آخر ${bars.length} أيام، أعلاها ${formatMoney(peak)}`,
+        labels: bars.map((b) => b.label),
+        series: [{ label: 'المبيعات', tone: 'brand', values }],
+        notes: bars.map((b) => `${formatInt(b.invoices)} فاتورة · ${b.date}`),
+        max: niceCeiling(Math.max(...values, 0.1)),
+        formatValue: (v) => `${formatMoney(v * 1000)} ر.س`,
+        formatMark: (v) => v.toFixed(1),
+        bare: true,
+    });
 }
 
+/**
+ * توزيع طرق الدفع: شرائحٌ بسُلَّمٍ لونيٍّ متدرّج (لا لونٌ دلاليّ — فالطرق
+ * فئاتٌ لا أحكام)، وفجوةٌ بين كل شريحتين فلا يتلامس جاران.
+ */
 function donutBlock(payments) {
     const total = payments.reduce((a, p) => a + p.value, 0);
     if (!(total > 0)) {
         return `<div class="erp-state"><span class="erp-state__title">لا مدفوعات مسجّلة اليوم</span>
           <span>يظهر التوزيع فور إغلاق أول فاتورة.</span></div>`;
     }
-    const r = 54;
-    const c = 2 * Math.PI * r;
-    let start = 0;
-    const segs = payments.map((p, i) => {
-        const len = (p.value / total) * c;
-        const tone = TONE_ORDER[i % TONE_ORDER.length];
-        const seg = `<circle cx="66" cy="66" r="${r}" fill="none" stroke-width="16"
-            style="stroke:${TONE_VAR[tone]}" stroke-dasharray="${len.toFixed(1)} ${c.toFixed(1)}"
-            stroke-dashoffset="${(-start).toFixed(1)}" transform="rotate(-90 66 66)">
-          <title>${esc(p.label)}: ${esc(formatMoney(p.value))}</title></circle>`;
-        start += len;
-        return seg;
-    }).join('');
-    const legend = payments.map((p, i) => {
-        const tone = TONE_ORDER[i % TONE_ORDER.length];
-        const pct = ((p.value / total) * 100).toFixed(1);
-        return `<li><span class="erp-legend__dot" style="background:${TONE_VAR[tone]}" aria-hidden="true"></span>`
-            + `<span>${esc(p.label)}</span>`
-            + `<span class="erp-legend__val"><span class="erp-num" dir="ltr">${esc(pct)}%</span></span></li>`;
-    }).join('');
-    return `<div class="erp-donut-wrap">
-      <div class="erp-donut" role="img" aria-label="توزيع طرق الدفع اليوم بإجمالي ${esc(formatMoney(total))}">
-        <svg viewBox="0 0 132 132" aria-hidden="true">
-          <circle cx="66" cy="66" r="${r}" fill="none" stroke-width="16" style="stroke:var(--erp-surface-sunken)" />${segs}
-        </svg>
-        <div class="erp-donut__center"><span class="erp-donut__total"><span class="erp-num" dir="ltr">${esc(formatMoney(total))}</span></span><span class="erp-donut__cap">إجمالي (ر.س)</span></div>
-      </div>
-      <ul class="erp-legend">${legend}</ul>
-    </div>`;
+    return donutChart({
+        ariaLabel: `توزيع طرق الدفع اليوم بإجمالي ${formatMoney(total)}`,
+        slices: payments.map((p, i) => ({
+            label: p.label,
+            value: p.value,
+            tone: `chart-${(i % 6) + 1}`,
+        })),
+        centerLabel: 'إجمالي (ر.س)',
+        centerValue: formatMoney(total),
+        formatValue: (v) => `${formatMoney(v)} ر.س`,
+        bare: true,
+    });
 }
 
 function topsBlock(tops) {
@@ -291,7 +278,7 @@ function sourceLine(view, failures) {
  */
 function bodyHTML(view, failures, opts = {}) {
     const flow = [
-        card('منحنى المبيعات', 'Last 7 Days', 'من جدول الإيرادات', barsBlock(view.bars), { i: 0 }),
+        card('منحنى المبيعات', 'Last 7 Days', 'من جدول الإيرادات · بالألوف', barsBlock(view.bars), { i: 0 }),
         card('طرق الدفع', 'Payments Today', 'مبالغ واردة فقط', donutBlock(view.payments), { i: 1 }),
         card('الأعلى مبيعًا', 'Best Sellers', 'بقيمة أسطر اليوم', topsBlock(view.tops), { i: 2 }),
         card('حركة الفواتير', 'Invoice Flow', 'حالتها الفعلية الآن', pipeBlock(view.pipeline), { i: 3 }),

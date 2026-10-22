@@ -133,7 +133,7 @@ describe('بوابة المساعد — session + admin + سقف', () => {
         expect(r.status).toBe(200);
         expect(r.body.free).toBe(true);
         expect(r.body.enabled).toBe(false);   // لا مفتاح في بيئة الاختبار ⇒ وضع قواعدي
-        expect(r.body.modes).toEqual(['knowledge', 'diagnose', 'code']);
+        expect(r.body.modes).toEqual(['knowledge', 'diagnose', 'code', 'cfo']);
     });
 
     test('سقف الطلبات: الطلب الثالث عشر → 429', () => {
