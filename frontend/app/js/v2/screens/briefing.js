@@ -48,6 +48,7 @@ import {
     formatInt,
 } from '../data/briefing-repo.js?v=4.9.193';
 import { fetchCurrency } from '../data/reports-repo.js?v=4.9.193';
+import { apiFetch } from '../../core/api.js?v=4.9.193';
 import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.193';
 
 const esc = (v) => String(v ?? '')
@@ -206,6 +207,7 @@ function sandPortlet(recent, day, i) {
         <h3 class="erp-card__title">أحدث الفواتير
           <span class="erp-eyebrow" dir="ltr" lang="en">Latest Orders</span></h3>
         <span class="erp-sand__day" dir="ltr">${esc(day || '—')}</span>
+        <button type="button" class="erp-btn erp-btn--sm" data-v2-all-orders>كل الفواتير</button>
       </div>
       ${body}
       ${tearEdge()}
@@ -318,6 +320,66 @@ function template() {
 }
 
 /**
+ * «كل الفواتير» — لوحة بتفاصيل كل سند (رقم · وقت · صافي · ضريبة · خصم ·
+ * دفعات · كاشير) من مرآة YaraSoft،的范围 يختاره المالك.
+ */
+async function openAllOrders(day) {
+    const layer = document.createElement('div');
+    layer.className = 'erp-allorders';
+    layer.setAttribute('role', 'dialog');
+    layer.setAttribute('aria-modal', 'true');
+    layer.setAttribute('aria-label', 'كل الفواتير');
+    layer.innerHTML = `
+      <div class="erp-allorders__panel">
+        <header class="erp-allorders__head">
+          <strong>كل الفواتير</strong>
+          <input class="erp-allorders__date" type="date" value="${esc(day || '')}" aria-label="التاريخ">
+          <button type="button" class="erp-icon-btn" data-v2-close-orders aria-label="إغلاق">&times;</button>
+        </header>
+        <div class="erp-allorders__body" data-v2-orders-body><p class="erp-state">جارٍ جلب السندات…</p></div>
+      </div>`;
+    document.body.appendChild(layer);
+    const bodyEl = layer.querySelector('[data-v2-orders-body]');
+    const dateEl = layer.querySelector('.erp-allorders__date');
+    const close = () => layer.remove();
+    layer.querySelector('[data-v2-close-orders]').addEventListener('click', close);
+    layer.addEventListener('mousedown', (e) => { if (e.target === layer) {close();}});
+
+    const load = async () => {
+        const d = dateEl.value || day || '';
+        bodyEl.innerHTML = '<p class="erp-state">جارٍ جلب السندات…</p>';
+        try {
+            const r = await apiFetch(`/pos/orders/list?from=${encodeURIComponent(d)}&to=${encodeURIComponent(d)}&limit=500`);
+            const rows = Array.isArray(r && r.rows) ? r.rows : [];
+            const t = (r && r.totals) || {};
+            if (!rows.length) {
+                bodyEl.innerHTML = '<p class="erp-state">لا فواتير في هذا اليوم.</p>';
+                return;
+            }
+            bodyEl.innerHTML = `
+              <p class="erp-allorders__totals">${rows.length} فاتورة · الإجمالي ${Math.round(Number(t.total || 0) * 100) / 100} ر.س · ضريبة ${Math.round(Number(t.vat || 0) * 100) / 100} · نقد ${Math.round(Number(t.cash || 0) * 100) / 100} · شبكة ${Math.round(Number(t.network || 0) * 100) / 100}</p>
+              <table class="erp-allorders__table">
+                <thead><tr><th>السند</th><th>الوقت</th><th>القسم</th><th>صافي</th><th>ضريبة</th><th>خصم</th><th>المدفوع</th><th>الكاشير</th></tr></thead>
+                <tbody>${rows.map((x) => `<tr>
+                  <td dir="ltr">${esc(x.invoice_counter)}</td>
+                  <td dir="ltr">${esc(String(x.doc_time || '').slice(0, 5))}</td>
+                  <td>${esc(x.department_name || x.dept_id || '—')}</td>
+                  <td dir="ltr">${Math.round(Number(x.net_amount || 0) * 100) / 100}</td>
+                  <td dir="ltr">${Math.round(Number(x.vat_amount || 0) * 100) / 100}</td>
+                  <td dir="ltr">${Math.round(Number(x.discount_amount || 0) * 100) / 100}</td>
+                  <td dir="ltr">${Math.round(Number(x.paid_amount || 0) * 100) / 100}</td>
+                  <td dir="ltr">${esc(x.cashier_no || '—')}</td>
+                </tr>`).join('')}</tbody>
+              </table>`;
+        } catch (e) {
+            bodyEl.innerHTML = `<p class="erp-state">تعذّر جلب الفواتير: ${esc((e && e.message) || 'خطأ')}</p>`;
+        }
+    };
+    dateEl.addEventListener('change', load);
+    load();
+}
+
+/**
  * @param {HTMLElement} host
  * @param {{ notify?: (msg: string) => void }} [ctx]
  * @returns {{el: HTMLElement, reload: () => void, getView: () => object|null, destroy: () => void}}
@@ -328,6 +390,13 @@ export function mountBriefingScreen(host, ctx = {}) {
 
     const body = el.querySelector('[data-v2-brief-body]');
     const when = el.querySelector('[data-v2-when]');
+
+    // تفويضٌ واحد: زرّ «كل الفواتير» (البورتليت يُعاد رسمه مع كل تحديث)
+    el.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-v2-all-orders]');
+        if (!btn) {return;}
+        openAllOrders(view && view.meta ? view.meta.day : '');
+    });
 
     let loading = false;
     let view = null;

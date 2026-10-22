@@ -254,20 +254,25 @@ export function buildPipeline(stats) {
     };
 }
 
-/** Five latest POS orders, straight from `recent_orders`. */
+/**
+ * أحدث السندات (من مرآة YaraSoft — مصدرُ المبيعات الحقيقي).
+ * ملاحظة: pos_orders عندنا فارغ (البيع من YaraSoft)، فالسندات تُقرأ من
+ * ys_mirror_orders عبر /pos/orders/stats/today.
+ */
 export function buildRecent(stats) {
     const rows = Array.isArray(stats?.recent_orders) ? stats.recent_orders : [];
-    return rows.slice(0, 5).map((o) => {
-        const raw = String(o.created_at ?? '');
-        const d = new Date(raw);
+    return rows.slice(0, 8).map((o) => {
+        const time = String(o.doc_time ?? '');
         return {
-            id: o.id,
+            id: o.invoice_counter,
             counter: String(o.invoice_counter ?? '—'),
             amount: n(o.total_amount),
-            status: String(o.status ?? ''),
-            dept: String(o.department_name ?? '—'),
-            cashier: String(o.cashier_name ?? '—'),
-            time: Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            net: n(o.net_amount),
+            vat: n(o.vat_amount),
+            status: 'issued',
+            dept: String(o.department_name || o.dept_id || '—'),
+            cashier: String(o.cashier_no ?? ''),
+            time: time ? time.slice(0, 5) : '',
         };
     });
 }

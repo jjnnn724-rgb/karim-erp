@@ -14,6 +14,7 @@
  */
 const express = require('express');
 const { logger } = require('../logger');
+const { riyadhToday } = require('../riyadh-date');
 const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { generalLimiter, crudLimiter } = require('../rate-limiter');
@@ -179,61 +180,67 @@ router.get('/item-summary', jwtAuth, generalLimiter, async (req, res) => {
 // ─── GET /api/pos/orders/stats/today — dashboard statistics ────────
 router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
     try {
+        // يوم العمل بالرياض (تقويم النظام التجاري) — لا CURRENT_DATE (UTC):
+        // بعد منتصف الليل بالرياض يصبح «اليوم» مختلفًا عن يوم الخادم.
+        const day = riyadhToday();
         const stats = await pool.query(`
             SELECT
                 COUNT(*)::int AS orders_count,
-                COALESCE(SUM(total_amount) FILTER (WHERE status IN ('issued','reported')), 0) AS total_revenue,
-                COALESCE(AVG(total_amount) FILTER (WHERE status IN ('issued','reported')), 0) AS avg_order_value,
-                COUNT(*) FILTER (WHERE status = 'issued')::int AS issued_count,
-                COUNT(*) FILTER (WHERE status = 'reported')::int AS reported_count,
-                COUNT(*) FILTER (WHERE status = 'cancelled')::int AS voided_count,
-                COALESCE(SUM(tax_total) FILTER (WHERE status IN ('issued','reported')), 0) AS total_tax,
-                COALESCE(SUM(discount_total) FILTER (WHERE status IN ('issued','reported')), 0) AS total_discounts
-            FROM pos_orders
-            WHERE created_at::date = CURRENT_DATE
-        `);
-        
+                COALESCE(SUM(total), 0)::float AS total_revenue,
+                COALESCE(AVG(total), 0)::float AS avg_order_value,
+                COUNT(*)::int AS issued_count,
+                0::int AS reported_count,
+                0::int AS voided_count,
+                COALESCE(SUM(vat), 0)::float AS total_tax,
+                COALESCE(SUM(discount), 0)::float AS total_discounts
+            FROM ys_mirror_orders
+            WHERE doc_date = $1::date
+        `, [day]);
+
         // Department breakdown
         const deptBreakdown = await pool.query(`
             SELECT
-                pd.name_ar AS department_name,
+                COALESCE(zone_name, 'غير محدَّد') AS department_name,
                 COUNT(*)::int AS orders_count,
-                COALESCE(SUM(po.total_amount), 0) AS total_revenue
-            FROM pos_orders po
-            JOIN pos_departments pd ON po.department_id = pd.id
-            WHERE po.created_at::date = CURRENT_DATE AND po.status = 'issued'
-            GROUP BY pd.id, pd.name_ar
+                COALESCE(SUM(total), 0)::float AS total_revenue
+            FROM ys_mirror_orders po
+            WHERE po.doc_date = $1::date
+            GROUP BY po.zone_name
             ORDER BY total_revenue DESC
-        `);
+        `, [day]);
         
-        // Payment method breakdown — incoming money only; change 'out' rows
-        // would otherwise be summed INTO the cash total (inflating it).
+        // Payment method breakdown — من مرآة YaraSoft (طرق الدفع الأربع)
         const paymentBreakdown = await pool.query(`
-            SELECT
-                pip.method,
-                COUNT(*)::int AS count,
-                COALESCE(SUM(pip.amount), 0) AS total
-            FROM pos_invoice_payments pip
-            JOIN pos_orders po ON pip.order_id = po.id
-            WHERE po.created_at::date = CURRENT_DATE AND po.status = 'issued' AND pip.direction = 'in'
-            GROUP BY pip.method
+            SELECT 'نقد' AS method, COUNT(*)::int AS count, COALESCE(SUM(pay_cash),0)::float AS total
+              FROM ys_mirror_orders WHERE doc_date = $1::date
+            UNION ALL
+            SELECT 'شبكة' AS method, COUNT(*)::int AS count, COALESCE(SUM(pay_network),0)::float AS total
+              FROM ys_mirror_orders WHERE doc_date = $1::date
+            UNION ALL
+            SELECT 'آجل' AS method, COUNT(*)::int AS count, COALESCE(SUM(pay_credit),0)::float AS total
+              FROM ys_mirror_orders WHERE doc_date = $1::date
+            UNION ALL
+            SELECT 'جوال' AS method, COUNT(*)::int AS count, COALESCE(SUM(pay_mobile),0)::float AS total
+              FROM ys_mirror_orders WHERE doc_date = $1::date
             ORDER BY total DESC
-        `);
+        `, [day]);
         
         // Recent 5 orders
         const recent = await pool.query(`
-            SELECT po.id, po.invoice_counter, po.total_amount, po.status, po.created_at,
-                   pd.name_ar AS department_name, u.name AS cashier_name
-            FROM pos_orders po
-            LEFT JOIN pos_departments pd ON po.department_id = pd.id
-            LEFT JOIN users u ON po.cashier_id = u.id
-            WHERE po.created_at::date = CURRENT_DATE
-            ORDER BY po.created_at DESC
+            SELECT po.doc_no AS invoice_counter, po.total AS total_amount, po.net AS net_amount,
+                   po.vat AS vat_amount, po.discount AS discount_amount, po.payed AS paid_amount,
+                   po.doc_time::time AS doc_time, po.cashier_no, po.zone_name AS department_name,
+                   (po.doc_date::date + po.doc_time::time)::timestamptz AS created_at,
+                   COALESCE(r."deptId", po.zone_name) AS dept_id
+            FROM ys_mirror_orders po
+            LEFT JOIN revenues r ON r.external_ref = po.doc_no AND r.date = po.doc_date::date::text
+            WHERE po.doc_date = $1::date
+            ORDER BY po.doc_time::time DESC
             LIMIT 5
-        `);
+        `, [day]);
         
         res.json({
-            date: new Date().toISOString().split('T')[0],
+            date: day,
             summary: stats.rows[0],
             department_breakdown: deptBreakdown.rows,
             payment_breakdown: paymentBreakdown.rows,
@@ -241,6 +248,40 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] stats failed');
+        res.status(500).json({ error: 'INTERNAL', message: err.message });
+    }
+});
+
+// ─── GET /api/pos/orders/list — كل الفواتير بتفاصيلها (نطاق تواريخ) ───
+// مصدرُها مرآة YaraSoft (ys_mirror_orders) — وهي مصدر المبيعات الحقيقي عندنا؛
+// pos_orders جدولُ نقاط البيع المحلية (فارغ عندنا لأن البيع من YaraSoft).
+router.get('/list', jwtAuth, generalLimiter, async (req, res) => {
+    try {
+        const from = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from || '')) ? String(req.query.from) : riyadhToday();
+        const to = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to || '')) ? String(req.query.to) : from;
+        const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+        const rows = await pool.query(`
+            SELECT po.doc_no AS invoice_counter, po.doc_date::date AS day, po.doc_time::time AS doc_time,
+                   po.total AS total_amount, po.net AS net_amount, po.vat AS vat_amount,
+                   po.discount AS discount_amount, po.payed AS paid_amount,
+                   po.pay_cash AS cash, po.pay_network AS network, po.pay_credit AS credit, po.pay_mobile AS mobile,
+                   po.cashier_no, po.zone_name AS department_name, po.table_name, po.printed,
+                   COALESCE(r."deptId", po.zone_name) AS dept_id
+              FROM ys_mirror_orders po
+              LEFT JOIN revenues r ON r.external_ref = po.doc_no AND r.date = po.doc_date::date::text
+             WHERE po.doc_date BETWEEN $1::date AND $2::date
+             ORDER BY po.doc_date DESC, po.doc_time::time DESC
+             LIMIT $3
+        `, [from, to, limit]);
+        const totals = await pool.query(`
+            SELECT COUNT(*)::int AS count, COALESCE(SUM(total),0)::float AS total,
+                   COALESCE(SUM(vat),0)::float AS vat, COALESCE(SUM(discount),0)::float AS discount,
+                   COALESCE(SUM(pay_cash),0)::float AS cash, COALESCE(SUM(pay_network),0)::float AS network
+              FROM ys_mirror_orders WHERE doc_date BETWEEN $1::date AND $2::date
+        `, [from, to]);
+        res.json({ from, to, totals: totals.rows[0], rows: rows.rows });
+    } catch (err) {
+        logger.error({ err: err.message }, '[pos-orders] list failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
 });

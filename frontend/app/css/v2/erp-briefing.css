@@ -53,7 +53,7 @@
   gap: var(--erp-space-3);
   padding: var(--erp-space-4) var(--erp-space-4) var(--erp-space-3);
   margin-block-end: var(--erp-space-4);
-  border-block-end: 1px solid var(--erp-border-subtle);
+  border-block-end: thin solid var(--erp-border-subtle);
 }
 .erp-v2 .erp-brief__lock::before {
   content: '';
@@ -98,7 +98,7 @@
 .erp-v2 .erp-sand {
   position: relative;
   background: var(--erp-surface);
-  border: 1px solid var(--erp-border-subtle);
+  border: thin solid var(--erp-border-subtle);
   border-block-start: 3px solid var(--erp-brand);
   /* الحافة السفلية ورقٌ مقطوع، فلا خط مستقيم يغلقها. */
   border-block-end: 0;
@@ -256,4 +256,84 @@
   .erp-v2 .erp-sand__tear { display: none; }
   .erp-v2 .erp-brief--in .erp-kpi,
   .erp-v2 .erp-brief--in .erp-card { animation: none; }
+}
+
+/* ── «كل الفواتير»: لوحة بتفاصيل كل سند (رقم · وقت · صافي · ضريبة · خصم ·
+   دفعات · كاشير) — المصدر مرآة YaraSoft، واليوم بالرياض. */
+.erp-allorders {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-modal);
+  background: var(--erp-scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--erp-space-4);
+}
+
+.erp-allorders__panel {
+  inline-size: min(100%, 72ch);
+  max-block-size: 86vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-4);
+  background: var(--erp-surface);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-xl);
+  box-shadow: var(--erp-shadow-xl);
+}
+
+.erp-allorders__head {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-lg);
+  color: var(--erp-text-primary);
+}
+
+.erp-allorders__head strong {
+  margin-inline-end: auto;
+}
+
+.erp-allorders__date {
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+  background: var(--erp-surface);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  padding: var(--erp-space-1) var(--erp-space-2);
+}
+
+.erp-allorders__body {
+  overflow: auto;
+}
+
+.erp-allorders__totals {
+  margin: 0 0 var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.erp-allorders__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+
+.erp-allorders__table th,
+.erp-allorders__table td {
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-allorders__table th {
+  color: var(--erp-text-muted);
+  font-weight: var(--erp-fw-semibold);
+  position: sticky;
+  inset-block-start: 0;
+  background: var(--erp-surface);
 }
