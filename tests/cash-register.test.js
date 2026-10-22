@@ -34,6 +34,13 @@ describe('سجلّ الصرف + إذن الصرف', () => {
         expect(backend).toMatch(/substring\(e\.notes from 'طلب صرف #\(\[0-9\]\+\)'\)/);
     });
 
+    test('مرشّح القسم يذكر d."deptCode" — فكل استعلامٍ يحمله يصل الأذون', () => {
+        // استعلامٌ يقحم المرشّح بلا وصل dispatches يسقط عند التشغيل بـ
+        // missing FROM-clause entry for table "d" — وقعت فعلًا في توزيعَي
+        // الأنواع والأصناف حين اختير قسم.
+        expect(backend).not.toMatch(/FROM expenses e \$\{[fp]\.clause\}/);
+    });
+
     test('الترقيم صادق: صفحة من الخادم وعددٌ كليٌّ من الخادم', () => {
         expect(backend).toMatch(/LIMIT \$\{limit\} OFFSET \$\{offset\}/);
         expect(backend).toMatch(/page: \{ limit, offset \}/);

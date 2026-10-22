@@ -223,13 +223,17 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req,
         const top = await pool.query(`
             SELECT COALESCE(NULLIF(e."category",''),'غير مصنَّف') AS category,
                    COUNT(*)::int AS n, COALESCE(SUM(e.amount),0)::float AS total
-              FROM expenses e ${f.clause}
+              FROM expenses e
+              LEFT JOIN dispatches d ON d.id::text = substring(e.notes from 'طلب صرف #([0-9]+)')
+              ${f.clause}
              GROUP BY 1 ORDER BY total DESC LIMIT 8
         `, f.params);
 
         const types = await pool.query(`
             SELECT COALESCE(NULLIF(e."adjustmentType",''),'يدوي') AS type, COUNT(*)::int AS n
-              FROM expenses e ${f.clause} GROUP BY 1 ORDER BY n DESC LIMIT 10
+              FROM expenses e
+              LEFT JOIN dispatches d ON d.id::text = substring(e.notes from 'طلب صرف #([0-9]+)')
+              ${f.clause} GROUP BY 1 ORDER BY n DESC LIMIT 10
         `, f.params);
 
         /* الفترة المماثلة السابقة: نفس الطول قبل `from` — لا تُقارن إلا إذا
