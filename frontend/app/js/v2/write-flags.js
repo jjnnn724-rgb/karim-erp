@@ -8,6 +8,7 @@
  * القراءة من الـURL تسبق المخزّن (نفس نمط v2toast/v2overlay):
  *   ?v2financewrite=1 | 0   → كتابات 15/16
  *   ?v2recipewrite=1 | 0    → دورة الوصفات (بما فيها المكوّنات)
+ *                             استثناءٌ: ظاهرٌ افتراضيًا، و`=0` وحده يُخفيه
  *   ?v2deptwrite=1 | 0      → CRUD الأقسام التشغيلية (P1-3)
  *   ?v2hrdeptwrite=1 | 0    → CRUD أقسام الموارد البشرية (P1-3)
  *   ?v2shelfwrite=1 | 0     → CRUD الرفوف (P2-5)
@@ -63,8 +64,17 @@ export function financeWriteEnabled(search, storage) {
     return readFlag(FINANCE_WRITE_FLAG, 'karim_v2_finance_write', search, storage);
 }
 
+/**
+ * دورة الوصفات — ظاهرةٌ افتراضيًا (طلب المالك 2026-10-22: «في الوصفات مش عارف أضيف»).
+ * الحكم الأمني على الخادم وحده: أدوار OPEN_ENTITY_WRITE_ROLES.recipes
+ * (schema-registry.js:819 — admin|manager|kitchen|sous_chef) لإنشاء/تعديل/حذف
+ * الوصفة، وrequireRole('manager','admin') لمسار المكوّنات وصورة المنتج
+ * (cashier-module/shift-routes.js:380 · :405 · :497) — فهذا العلم رسمٌ فقط:
+ *   · `?v2recipewrite=0` أو المخزّن '0' → يُخفي الأزرار
+ *   · `=1` أو غياب الاثنين → ظاهرة
+ */
 export function recipeWriteEnabled(search, storage) {
-    return readFlag(RECIPE_WRITE_FLAG, 'karim_v2_recipe_write', search, storage);
+    return readFlagDefaultOn(RECIPE_WRITE_FLAG, 'karim_v2_recipe_write', search, storage);
 }
 
 export function departmentWriteEnabled(search, storage) {

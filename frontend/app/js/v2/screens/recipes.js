@@ -70,7 +70,8 @@ function template(canEdit) {
 export function mountRecipesScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 recipes]', m);
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn : (m) => window.confirm(m);
-    /* دورة الوصفات كلها (بما فيها المكوّنات) خلف علم كتابة مستقل OFF افتراضيًا. */
+    /* دورة الوصفات كلها (بما فيها المكوّنات) خلف علمها المستقل — ظاهرٌ افتراضيًا
+       بطلب المالك 2026-10-22، و?v2recipewrite=0 يُخفيه؛ القرار للخادم بالدور. */
     const writesOpen = recipeWriteEnabled();
     const canEdit = canWrite(ctx.role, RECIPE_WRITE_ROLES) && writesOpen;
     const canBom = canWrite(ctx.role, RECIPE_BOM_ROLES) && writesOpen;

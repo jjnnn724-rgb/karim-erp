@@ -3,7 +3,9 @@
  * ═══════════════════════════════════════════════════════════════════════
  * عقد الإكمال (ص 80): كل كيان علمه المستقل، ولا يُفعَّل قبل عيّنة rollback.
  * المثبَّت: غياب العلم = لا أزرار كتابة؛ والـURL يغلب المخزّن؛ والخادم يبقى
- * الحاكم (الشاشات لا تستورد الكتابة إلا وراء الدور + العلم).
+ * الحاكم (الشاشات لا تستورد الكتابة إلا وراء الدور + العلم). الاستثناءات
+ * المسجَّلة بطلب المالك — إضافة فاتورة شراء، ربط القسم بكاشيره، ودورة الوصفات —
+ * ظاهرةٌ افتراضيًا بـ`=0` يُخفيها: العلم رسم، والقرار الأمني على الخادم.
  */
 const fs = require('fs');
 const path = require('path');
@@ -30,9 +32,10 @@ const throwingStore = { getItem: () => { throw new Error('denied'); } };
 describe('write-flags — الافتراضي مغلق (باستثناء إضافات المالك)', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام — عدا الأقسام-كاشير وإضافة الفواتير', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام — عدا الأقسام-كاشير وإضافة الفواتير ودورة الوصفات', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
-        expect(ctx.recipeWriteEnabled('', null)).toBe(false);
+        /* قرار المالك 2026‑10‑22: «في الوصفات مش عارف أضيف» ⇒ الأزرار ظاهرة افتراضيًا */
+        expect(ctx.recipeWriteEnabled('', null)).toBe(true);
         expect(ctx.departmentWriteEnabled('', null)).toBe(false);
         expect(ctx.hrDepartmentWriteEnabled('', null)).toBe(false);
         expect(ctx.shelfWriteEnabled('', null)).toBe(false);
@@ -67,6 +70,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.invoiceCreateWriteEnabled('', store('0'))).toBe(false);
         /* ظاهرٌ افتراضيًا: تعذّر قراءة المخزّن لا يُخفي وظيفة (الحكم للخادم) */
         expect(ctx.invoiceCreateWriteEnabled('', throwingStore)).toBe(true);
+        expect(ctx.recipeWriteEnabled('', store('0'))).toBe(false);
+        expect(ctx.recipeWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.bulkImportWriteEnabled('', throwingStore)).toBe(false);
@@ -112,7 +117,7 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
 
     test('كل علم لا يفتح الآخر', () => {
         expect(ctx.financeWriteEnabled('?v2recipewrite=1&v2deptwrite=1&v2hrdeptwrite=1&v2shelfwrite=1&v2weightwrite=1&v2zkwrite=1', null)).toBe(false);
-        expect(ctx.recipeWriteEnabled('?v2financewrite=1', null)).toBe(false);
+        expect(ctx.recipeWriteEnabled('?v2financewrite=1&v2recipewrite=0', null)).toBe(false);
         expect(ctx.departmentWriteEnabled('?v2hrdeptwrite=1', null)).toBe(false);
         expect(ctx.hrDepartmentWriteEnabled('?v2deptwrite=1', null)).toBe(false);
         expect(ctx.shelfWriteEnabled('?v2weightwrite=1&v2financewrite=1', null)).toBe(false);
