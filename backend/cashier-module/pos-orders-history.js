@@ -252,6 +252,143 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
     }
 });
 
+
+/* ─── YaraSoft: تفصيل سند واحد + إيصاله للطباعة ─────────────────────────
+   مصدرُ الفواتير عندنا هو مرآة YaraSoft (ys_mirror_orders) —|pos_orders
+   جدولُ نقاط البيع المحلية وهو فارغ. فالتفصيل والطباعة من المرآة:
+   كل سندٍ يحمل أصنافه في lines (jsonb) ومدفوعاته في أعمدة الدفع. */
+router.get('/ys/:docNo', jwtAuth, async (req, res) => {
+    try {
+        const docNo = String(req.params.docNo || '').trim();
+        const slipRes = await pool.query(`
+            SELECT po.doc_no, po.doc_date::date AS day, po.doc_time::time AS doc_time,
+                   po.net, po.total, po.vat, po.discount, po.payed,
+                   po.pay_cash, po.pay_network, po.pay_credit, po.pay_mobile,
+                   po.cashier_no, po.table_name, po.zone_name, po.printed, po.lines,
+                   (po.doc_date::date + po.doc_time::time)::timestamptz AS created_at,
+                   COALESCE(rv."deptId", po.zone_name) AS dept_id
+              FROM ys_mirror_orders po
+              LEFT JOIN revenues rv ON rv.external_ref = po.doc_no AND rv.date = po.doc_date::date::text
+             WHERE po.doc_no = $1
+             ORDER BY po.doc_date DESC
+             LIMIT 1
+        `, [docNo]);
+        if (!slipRes.rows.length) {
+            return res.status(404).json({ error: 'NOT_FOUND', message: 'السند غير موجود' });
+        }
+        const slip = slipRes.rows[0];
+        const z = await pool.query(`
+            SELECT inv_no, doc_no, issuedate, issuetime, payableamount, prepaidamount,
+                   taxcategory_percent, isvalid, uuid, qrcode, pih
+              FROM ora_e_invoices WHERE doc_no = $1 LIMIT 1
+        `, [docNo]);
+        const items = Array.isArray(slip.lines) ? slip.lines : [];
+        const payments = [];
+        if (Number(slip.pay_cash || 0) > 0) {payments.push({ method: 'نقد', amount: Number(slip.pay_cash) });}
+        if (Number(slip.pay_network || 0) > 0) {payments.push({ method: 'شبكة', amount: Number(slip.pay_network) });}
+        if (Number(slip.pay_credit || 0) > 0) {payments.push({ method: 'آجل', amount: Number(slip.pay_credit) });}
+        if (Number(slip.pay_mobile || 0) > 0) {payments.push({ method: 'جوال', amount: Number(slip.pay_mobile) });}
+        res.json({
+            ...slip,
+            invoice_counter: slip.doc_no,
+            items,
+            payments,
+            vat_amount: Number(slip.vat || 0),
+            net_amount: Number(slip.net || 0),
+            total_amount: Number(slip.total || 0),
+            discount_amount: Number(slip.discount || 0),
+            paid_amount: Number(slip.payed || 0),
+            zatca: z.rows[0] || null,
+        });
+    } catch (err) {
+        logger.error({ err: err.message }, '[pos-orders] GET /ys/:docNo failed');
+        res.status(500).json({ error: 'INTERNAL', message: err.message });
+    }
+});
+
+// ─── GET /api/pos/orders/ys/:docNo/receipt-html — إيصال للطباعة ──────────
+router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashier'), async (req, res) => {
+    try {
+        const docNo = String(req.params.docNo || '').trim();
+        const slipRes = await pool.query(`
+            SELECT po.doc_no, po.doc_date::date AS day, po.doc_time::time AS doc_time,
+                   po.net, po.total, po.vat, po.discount, po.payed,
+                   po.pay_cash, po.pay_network, po.pay_credit, po.pay_mobile,
+                   po.cashier_no, po.table_name, po.zone_name, po.lines
+              FROM ys_mirror_orders po WHERE po.doc_no = $1
+             ORDER BY po.doc_date DESC LIMIT 1
+        `, [docNo]);
+        if (!slipRes.rows.length) {return res.status(404).send('السند غير موجود');}
+        const slip = slipRes.rows[0];
+        const items = Array.isArray(slip.lines) ? slip.lines : [];
+        const z = await pool.query('SELECT qrcode, pih, inv_no, isvalid FROM ora_e_invoices WHERE doc_no = $1 LIMIT 1', [docNo]);
+        const zata = z.rows[0] || {};
+        let qrImage = null;
+        if (zata.qrcode) {
+            try { qrImage = await QRCode.toDataURL(String(zata.qrcode), { errorCorrectionLevel: 'M', margin: 1, width: 220 }); }
+            catch (_e) { logger.warn('[pos-orders] QR render failed'); }
+        }
+        const num = (v) => Number(v || 0).toFixed(2);
+        const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const stamp = `${String(slip.day).slice(0, 10)} ${String(slip.doc_time || '').slice(0, 5)}`;
+        const vatRate = items.length && items[0].vat_rate != null ? items[0].vat_rate : 15;
+        const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فاتورة #${esc(slip.doc_no)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Cairo','Segoe UI',Tahoma,sans-serif; font-size:13px; color:#1a1a1a; max-width:80mm; margin:0 auto; padding:8px; }
+  .center{text-align:center} .bold{font-weight:800}
+  .header{margin-bottom:8px;border-bottom:1px dashed #999;padding-bottom:6px}
+  .brand-logo{width:58px;height:58px;object-fit:contain;background:#fff;border:1px solid #d4a843;border-radius:9px;padding:4px;margin-bottom:4px}
+  .header h2{font-size:16px;margin-bottom:2px} .header .sub{font-size:11px;color:#666}
+  .divider{border-top:1px dashed #999;margin:6px 0}
+  .row{display:flex;justify-content:space-between;margin:2px 0} .row .label{color:#555}
+  .item-row{margin:4px 0} .item-row .name{font-weight:600}
+  .item-row .detail{display:flex;justify-content:space-between;font-size:12px;color:#555}
+  .total-row{font-size:16px;font-weight:900;margin-top:4px}
+  .payment-row{font-size:11px;color:#444}
+  .footer{margin-top:10px;text-align:center;font-size:11px;color:#888;border-top:1px dashed #999;padding-top:6px}
+  .qr-section{text-align:center;margin:8px 0} .qr-section img{width:110px;height:110px}
+  .tag{display:inline-block;border:1px solid #b58a2b;color:#7a5c14;border-radius:6px;padding:1px 8px;font-size:11px}
+  @media print { body { margin:0; padding:4px; } .noprint{display:none} }
+</style></head><body>
+  <div class="header center">
+    <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
+    <h2>مطاعم الشرفه العالمي</h2>
+    <div class="sub">فاتورة ضريبية مبسّطة</div>
+    <div class="sub">رقم السند: <span dir="ltr">${esc(slip.doc_no)}</span></div>
+    <div class="sub">${esc(stamp)} · كاشير <span dir="ltr">${esc(slip.cashier_no || '—')}</span></div>
+    ${slip.table_name || slip.zone_name ? `<div class="sub">${esc(slip.table_name || slip.zone_name)}</div>` : ''}
+  </div>
+  <div class="divider"></div>
+  ${items.map((it) => `<div class="item-row">
+    <div class="name">${esc(it.name || '')}</div>
+    <div class="detail"><span>${it.qty} × ${num(it.price)}</span><span>${num(it.total)}</span></div>
+  </div>`).join('')}
+  <div class="divider"></div>
+  <div class="row"><span class="label">قبل الضريبة</span><span>${num(slip.net)}</span></div>
+  <div class="row"><span class="label">ضريبة القيمة المضافة (${vatRate}%)</span><span>${num(slip.vat)}</span></div>
+  ${Number(slip.discount || 0) > 0 ? `<div class="row"><span class="label">الخصم</span><span>${num(slip.discount)}</span></div>` : ''}
+  <div class="row total-row"><span>الإجمالي</span><span>${num(slip.total)}</span></div>
+  <div class="row payment-row"><span class="label">المدفوع</span><span>${num(slip.payed)}</span></div>
+  <div class="divider"></div>
+  ${[['نقد', slip.pay_cash], ['شبكة', slip.pay_network], ['آجل', slip.pay_credit], ['جوال', slip.pay_mobile]]
+    .filter(([, v]) => Number(v || 0) > 0)
+    .map(([m, v]) => `<div class="row payment-row"><span class="label">${m}</span><span>${num(v)}</span></div>`).join('')}
+  ${qrImage ? `<div class="qr-section"><img src="${qrImage}" alt="رمز الاستجابة السريعة"><div class="sub">${zata.isvalid ? 'فاتورة معتمدة (فاتورة)' : 'فاتورة غير معتمدة'}</div></div>` : ''}
+  <div class="footer">شكرًا لزيارتكم · مطاعم الشرفه العالمي</div>
+  <p class="center noprint" style="margin-top:10px"><button class="btn" onclick="window.print()" style="font:inherit;padding:8px 18px;border:1px solid #333;border-radius:8px;background:#fff;cursor:pointer">طباعة</button></p>
+</body></html>`;
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (err) {
+        logger.error({ err: err.message }, '[pos-orders] receipt-html (ys) failed');
+        res.status(500).json({ error: 'INTERNAL', message: err.message });
+    }
+});
+
 // ─── GET /api/pos/orders/list — كل الفواتير بتفاصيلها (نطاق تواريخ) ───
 // مصدرُها مرآة YaraSoft (ys_mirror_orders) — وهي مصدر المبيعات الحقيقي عندنا؛
 // pos_orders جدولُ نقاط البيع المحلية (فارغ عندنا لأن البيع من YaraSoft).

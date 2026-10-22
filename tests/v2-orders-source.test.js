@@ -58,4 +58,16 @@ describe('مصدر الفواتير — مرآة YaraSoft لا pos_orders', () =
         expect(screen).toMatch(/erp-allorders__table/);
         expect(css).toMatch(/\.erp-allorders/);
     });
+    test('تفصيل السند: مسار YaraSoft + إيصال للطباعة', () => {
+        expect(backend).toMatch(/router\.get\('\/ys\/:docNo'/);
+        expect(backend).toMatch(/router\.get\('\/ys\/:docNo\/receipt-html'/);
+        expect(backend).toMatch(/po\.lines/);
+        expect(backend).toMatch(/items/);
+        expect(backend).toMatch(/ora_e_invoices/);
+        // المستودع يطلب التفاصيل، والشاشة تعرضها
+        expect(repo).toMatch(/export async function fetchOrderDetail/);
+        expect(screen).toMatch(/fetchOrderDetail\(/);
+        expect(screen).toMatch(/طباعة الإيصال/);
+        expect(screen).toMatch(/data-order/);
+    });
 });

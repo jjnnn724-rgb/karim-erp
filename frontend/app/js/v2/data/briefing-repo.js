@@ -255,6 +255,14 @@ export function buildPipeline(stats) {
 }
 
 /**
+ * تفصيل سند واحد (أصنافه ومدفوعاته وبياناته الضريبية) — من مرآة YaraSoft.
+ * @param {string|number} docNo رقم السند
+ */
+export async function fetchOrderDetail(docNo) {
+    return apiFetch(`/pos/orders/ys/${encodeURIComponent(String(docNo))}`);
+}
+
+/**
  * كل الفواتير بتفاصيلها (نطاق تواريخ) — من مرآة YaraSoft.
  * @param {{from?:string, to?:string, limit?:number}} [opts]
  * @returns {Promise<{from:string, to:string, totals:object, rows:Array}>}

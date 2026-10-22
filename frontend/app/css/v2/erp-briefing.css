@@ -337,3 +337,35 @@
   inset-block-start: 0;
   background: var(--erp-surface);
 }
+
+/* ── سطر الفاتورة: قابلٌ للفتح (التفاصيل + الطباعة) ─────────────────── */
+.erp-allorders__row {
+  cursor: pointer;
+}
+
+.erp-allorders__row:hover,
+.erp-allorders__row:focus-visible {
+  background: var(--erp-surface-hover);
+  outline: none;
+}
+
+.erp-allorders__detail {
+  border-top: 1px solid var(--erp-border);
+  padding-top: var(--erp-space-2);
+  margin-top: var(--erp-space-2);
+}
+
+.erp-allorders__detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.erp-allorders__detail-head strong {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-base);
+}

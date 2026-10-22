@@ -44,6 +44,7 @@ import {
     fetchBriefing,
     fetchTodayStats,
     fetchAllOrders,
+    fetchOrderDetail,
     buildBriefingView,
     formatMoney,
     formatInt,
@@ -338,6 +339,7 @@ async function openAllOrders(day) {
           <button type="button" class="erp-icon-btn" data-v2-close-orders aria-label="إغلاق">&times;</button>
         </header>
         <div class="erp-allorders__body" data-v2-orders-body><p class="erp-state">جارٍ جلب السندات…</p></div>
+        <div class="erp-allorders__detail" data-v2-order-detail hidden></div>
       </div>`;
     document.body.appendChild(layer);
     const bodyEl = layer.querySelector('[data-v2-orders-body]');
@@ -345,6 +347,42 @@ async function openAllOrders(day) {
     const close = () => layer.remove();
     layer.querySelector('[data-v2-close-orders]').addEventListener('click', close);
     layer.addEventListener('mousedown', (e) => { if (e.target === layer) {close();}});
+
+    const openDetail = async (docNo) => {
+        const panel = layer.querySelector('[data-v2-order-detail]');
+        if (!panel) {return;}
+        panel.hidden = false;
+        panel.innerHTML = '<p class="erp-state">جارٍ فتح السند…</p>';
+        try {
+            const d = await fetchOrderDetail(docNo);
+            const items = Array.isArray(d.items) ? d.items : [];
+            const payments = Array.isArray(d.payments) ? d.payments : [];
+            const m = (v) => Math.round(Number(v || 0) * 100) / 100;
+            panel.innerHTML = `
+              <div class="erp-allorders__detail-head">
+                <strong>سند ${esc(d.invoice_counter || docNo)}</strong>
+                <span>${esc(String(d.day || '').slice(0, 10))} ${esc(String(d.doc_time || '').slice(0, 5))}</span>
+                <span>كاشير ${esc(d.cashier_no || '—')}</span>
+                <a class="erp-btn erp-btn--sm" target="_blank" rel="noopener"
+                   href="/api/pos/orders/ys/${encodeURIComponent(d.invoice_counter || docNo)}/receipt-html">طباعة الإيصال</a>
+                <button type="button" class="erp-icon-btn" data-v2-close-detail aria-label="إغلاق">×</button>
+              </div>
+              <table class="erp-allorders__table">
+                <thead><tr><th>الصنف</th><th>كمية</th><th>سعر</th><th>ضريبة</th><th>إجمالي</th></tr></thead>
+                <tbody>${items.map((it) => `<tr>
+                  <td>${esc(it.name || '')}</td><td>${esc(it.qty)}</td><td>${m(it.price)}</td>
+                  <td>${m(it.vat)}</td><td>${m(it.total)}</td></tr>`).join('')
+                  || '<tr><td colspan="5">لا أصناف</td></tr>'}</tbody>
+              </table>
+              <p class="erp-allorders__totals">
+                الصافي ${m(d.net_amount)} · الضريبة ${m(d.vat_amount)} · الخصم ${m(d.discount_amount)} · الإجمالي ${m(d.total_amount)} · المدفوع ${m(d.paid_amount)}
+                ${payments.length ? ' · ' + payments.map((p) => esc(p.method) + ' ' + m(p.amount)).join(' · ') : ''}
+              </p>`;
+            panel.querySelector('[data-v2-close-detail]')?.addEventListener('click', () => {panel.hidden = true;});
+        } catch (e) {
+            panel.innerHTML = `<p class="erp-state">تعذّر فتح السند: ${esc((e && e.message) || 'خطأ')}</p>`;
+        }
+    };
 
     const load = async () => {
         const d = dateEl.value || day || '';
@@ -361,7 +399,7 @@ async function openAllOrders(day) {
               <p class="erp-allorders__totals">${rows.length} فاتورة · الإجمالي ${Math.round(Number(t.total || 0) * 100) / 100} ر.س · ضريبة ${Math.round(Number(t.vat || 0) * 100) / 100} · نقد ${Math.round(Number(t.cash || 0) * 100) / 100} · شبكة ${Math.round(Number(t.network || 0) * 100) / 100}</p>
               <table class="erp-allorders__table">
                 <thead><tr><th>السند</th><th>الوقت</th><th>القسم</th><th>صافي</th><th>ضريبة</th><th>خصم</th><th>المدفوع</th><th>الكاشير</th></tr></thead>
-                <tbody>${rows.map((x) => `<tr>
+                <tbody>${rows.map((x) => `<tr class="erp-allorders__row" data-order="${esc(x.invoice_counter)}" tabindex="0" role="button">
                   <td dir="ltr">${esc(x.invoice_counter)}</td>
                   <td dir="ltr">${esc(String(x.doc_time || '').slice(0, 5))}</td>
                   <td>${esc(x.department_name || x.dept_id || '—')}</td>
@@ -376,6 +414,15 @@ async function openAllOrders(day) {
             bodyEl.innerHTML = `<p class="erp-state">تعذّر جلب الفواتير: ${esc((e && e.message) || 'خطأ')}</p>`;
         }
     };
+    bodyEl.addEventListener('click', (ev) => {
+        const row = ev.target.closest('[data-order]');
+        if (row) {openDetail(row.dataset.order);}
+    });
+    bodyEl.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') {return;}
+        const row = ev.target.closest('[data-order]');
+        if (row) {ev.preventDefault(); openDetail(row.dataset.order);}
+    });
     dateEl.addEventListener('change', load);
     load();
 }
