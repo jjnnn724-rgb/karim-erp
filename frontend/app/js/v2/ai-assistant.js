@@ -325,7 +325,7 @@ export function mountAiAssistant(shell, ctx = {}) {
         busy = true;
         input.value = '';
         push('me', question);
-        const pending = push('bot', '…');
+        const pending = push('bot', '⏳ أجمع الأرقام من النظام…');
         const body = buildRequest({
             question,
             mode,
@@ -337,6 +337,30 @@ export function mountAiAssistant(shell, ctx = {}) {
             pending.textContent = clean(r && r.text) || 'لا يوجد رد.';
             if (r && r.fallback) {
                 pending.classList.add('erp-ai__msg--fallback');
+            }
+            // «تحليل أعمق»: النموذج المحلي يلخّص ما قرأه (اختيار المالك —
+            // على معالجٍ بلا GPU يحتاج ٢٠–٦٠ ثانية، فلا نفرضه على أحد).
+            if (r && r.canDeep) {
+                const deepBtn = document.createElement('button');
+                deepBtn.type = 'button';
+                deepBtn.className = 'erp-btn erp-btn--sm erp-ai__deep';
+                deepBtn.textContent = 'تحليل أعمق (النموذج المحلي)';
+                deepBtn.addEventListener('click', async () => {
+                    deepBtn.disabled = true;
+                    deepBtn.textContent = '⏳ يفكّر النموذج المحلي…';
+                    const line = push('bot', '…');
+                    try {
+                        const deep = await apiFetch('/ai-assistant/ask/deep', { method: 'POST', body: JSON.stringify(body) });
+                        line.textContent = clean(deep && deep.text) || 'لا يوجد ردّ أعمق.';
+                    } catch (err) {
+                        line.textContent = `تعذّر التحليل العميق: ${(err && err.message) || 'خطأ'}`;
+                    } finally {
+                        deepBtn.remove();
+                        const box2 = log();
+                        if (box2) {box2.scrollTop = box2.scrollHeight;}
+                    }
+                });
+                pending.insertAdjacentElement('afterend', deepBtn);
             }
         } catch (e) {
             pending.textContent = `تعذّر إتمام الطلب: ${(e && e.message) || 'خطأ غير معروف'}`;

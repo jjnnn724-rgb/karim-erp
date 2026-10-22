@@ -21,14 +21,14 @@
  * bridge tracked in docs/esm-migration/DEPRECATION_LOG.md.
  */
 
-import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.9.111';
-import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.9.111';
-import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.9.111';
-import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.9.111';
-import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.9.111';
-import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.9.111';
-import { CONFIG, ROLES } from './core/config.js?v=4.9.111';
-import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.9.111';
+import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.9.112';
+import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.9.112';
+import { uid, esc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.9.112';
+import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.9.112';
+import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.9.112';
+import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.9.112';
+import { CONFIG, ROLES } from './core/config.js?v=4.9.112';
+import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.9.112';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -124,72 +124,72 @@ async function safeBridge(path, tag) {
   try { Object.assign(window, await import(path)); }
   catch (e) { console.error('[BRIDGE-FAIL]', tag, path, e); }
 }
-await safeBridge('./features/smart-card.js?v=4.9.111', 'BRIDGE-008');
+await safeBridge('./features/smart-card.js?v=4.9.112', 'BRIDGE-008');
 
-await safeBridge('./features/bulk-import.js?v=4.9.111', 'BRIDGE-009');
+await safeBridge('./features/bulk-import.js?v=4.9.112', 'BRIDGE-009');
 
-await safeBridge('./features/zkteco.js?v=4.9.111', 'BRIDGE-010');
+await safeBridge('./features/zkteco.js?v=4.9.112', 'BRIDGE-010');
 
-await safeBridge('./features/kitchen.js?v=4.9.111', 'BRIDGE-013');
+await safeBridge('./features/kitchen.js?v=4.9.112', 'BRIDGE-013');
 
-await safeBridge('./features/finance.js?v=4.9.111', 'BRIDGE-014');
+await safeBridge('./features/finance.js?v=4.9.112', 'BRIDGE-014');
 
-await safeBridge('./features/hr.js?v=4.9.111', 'BRIDGE-015');
+await safeBridge('./features/hr.js?v=4.9.112', 'BRIDGE-015');
 
-await safeBridge('./features/yarasoft.js?v=4.9.111', 'BRIDGE-016');
+await safeBridge('./features/yarasoft.js?v=4.9.112', 'BRIDGE-016');
 
-await safeBridge('./features/cashier-monitor.js?v=4.9.111', 'BRIDGE-027');
-await safeBridge('./features/sales-analyzer.js?v=4.9.111', 'BRIDGE-SA');
-await safeBridge('./features/received-analyzer.js?v=4.9.111', 'BRIDGE-RA');
-await safeBridge('./features/wh-vs-pos.js?v=4.9.111', 'BRIDGE-WV');
-await safeBridge('./features/inventory-inquiry.js?v=4.9.111', 'BRIDGE-INQ');
+await safeBridge('./features/cashier-monitor.js?v=4.9.112', 'BRIDGE-027');
+await safeBridge('./features/sales-analyzer.js?v=4.9.112', 'BRIDGE-SA');
+await safeBridge('./features/received-analyzer.js?v=4.9.112', 'BRIDGE-RA');
+await safeBridge('./features/wh-vs-pos.js?v=4.9.112', 'BRIDGE-WV');
+await safeBridge('./features/inventory-inquiry.js?v=4.9.112', 'BRIDGE-INQ');
 
-await safeBridge('./features/whatsapp.js?v=4.9.111', 'BRIDGE-017');
+await safeBridge('./features/whatsapp.js?v=4.9.112', 'BRIDGE-017');
 
-await safeBridge('./features/departments.js?v=4.9.111', 'BRIDGE-018');
+await safeBridge('./features/departments.js?v=4.9.112', 'BRIDGE-018');
 
-await safeBridge('./features/reports.js?v=4.9.111', 'BRIDGE-019');
+await safeBridge('./features/reports.js?v=4.9.112', 'BRIDGE-019');
 
-await safeBridge('./features/settings-users.js?v=4.9.111', 'BRIDGE-020');
+await safeBridge('./features/settings-users.js?v=4.9.112', 'BRIDGE-020');
 
-await safeBridge('./features/permissions.js?v=4.9.111', 'BRIDGE-PERM');
+await safeBridge('./features/permissions.js?v=4.9.112', 'BRIDGE-PERM');
 
-await safeBridge('./features/cfo.js?v=4.9.111', 'BRIDGE-021');
+await safeBridge('./features/cfo.js?v=4.9.112', 'BRIDGE-021');
 
-await safeBridge('./features/dashboard.js?v=4.9.111', 'BRIDGE-022');
+await safeBridge('./features/dashboard.js?v=4.9.112', 'BRIDGE-022');
 
-await safeBridge('./features/employee-portal.js?v=4.9.111', 'BRIDGE-023');
+await safeBridge('./features/employee-portal.js?v=4.9.112', 'BRIDGE-023');
 
-await safeBridge('./ui/enhancement.js?v=4.9.111', 'BRIDGE-024');
+await safeBridge('./ui/enhancement.js?v=4.9.112', 'BRIDGE-024');
 
-await safeBridge('./features/auth-navigation.js?v=4.9.111', 'BRIDGE-026');
+await safeBridge('./features/auth-navigation.js?v=4.9.112', 'BRIDGE-026');
 
-await safeBridge('./features/roster.js?v=4.9.111', 'BRIDGE-ROSTER');
+await safeBridge('./features/roster.js?v=4.9.112', 'BRIDGE-ROSTER');
 
 // BRIDGE-028: طلبات شراء الخضار (المطبخ → المخازن) — 2026-10-04
-await safeBridge('./features/veg-requests.js?v=4.9.111', 'BRIDGE-028');
+await safeBridge('./features/veg-requests.js?v=4.9.112', 'BRIDGE-028');
 
 // BRIDGE-BR: إدارة الفروع (multi-branch — migration 102) — 2026-10-13
-await safeBridge('./features/branches.js?v=4.9.111', 'BRIDGE-BR');
+await safeBridge('./features/branches.js?v=4.9.112', 'BRIDGE-BR');
 
 // BRIDGE-031: عارض التقارير داخل التطبيق — يُحمَّل قبل استخدام التقارير
 // (حتى تعمل التقارير داخل WebView أندرويد بدل الصفحة البيضاء)
-const reportViewer = await import('./features/report-viewer.js?v=4.9.111');
+const reportViewer = await import('./features/report-viewer.js?v=4.9.112');
 Object.assign(window, reportViewer);   // openInAppReport / closeReportOverlay
 
-await safeBridge('./features/page-router.js?v=4.9.111', 'BRIDGE-027');
+await safeBridge('./features/page-router.js?v=4.9.112', 'BRIDGE-027');
 
 // BRIDGE-029: mobile shell — تجربة الجوال + البصمة الذاتية (SPEC-employee-pwa-attendance-geofence-v1)
-const mobileShell = await import('./features/mobile-shell.js?v=4.9.111');
+const mobileShell = await import('./features/mobile-shell.js?v=4.9.112');
 Object.assign(window, mobileShell);
 
-const deptEmployees = await import('./features/dept-employees.js?v=4.9.111');
+const deptEmployees = await import('./features/dept-employees.js?v=4.9.112');
 Object.assign(window, deptEmployees);   // BRIDGE-030: إدارة موظفي القسم لرئيس القسم
 
-const employees = await import('./features/employees.js?v=4.9.111');
+const employees = await import('./features/employees.js?v=4.9.112');
 Object.assign(window, employees);   // BRIDGE-011
 
-const warehouse = await import('./features/warehouse.js?v=4.9.111');
+const warehouse = await import('./features/warehouse.js?v=4.9.112');
 Object.assign(window, warehouse);   // BRIDGE-012
 
 // BRIDGE-033: مؤشر حالة الخادم في الشريط العلوي (طلب المالك 2026-10-06:

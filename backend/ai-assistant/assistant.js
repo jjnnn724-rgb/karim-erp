@@ -23,7 +23,6 @@
 const fs = require('fs');
 const path = require('path');
 const gemini = require('../whatsapp-engine/ai/gemini');
-const { logger } = require('../logger');
 const { cfoReview } = require('./cfo');
 const localLlm = require('./local-llm');
 const tools = require('./tools');
@@ -42,8 +41,6 @@ const MAX_FILES = 3;
 const MAX_LINES = 60;
 
 const MODES = ['knowledge', 'diagnose', 'code', 'cfo'];
-/** ميزانية النموذج المحلي (مللي ثانية) — بعدها نُكمل قواعديًّا فورًا. */
-const LOCAL_BUDGET_MS = Number(process.env.LOCAL_LLM_BUDGET_MS || 12000);
 
 /* ما يُقرأ من القرص: كود المشروع فقط. لا إعدادات ولا أسرار ولا نماذج. */
 const READABLE_ROOTS = [
@@ -227,16 +224,15 @@ function systemGuard(mode) {
 
 /* رد قواعدي: الحقائق مباشرة، بلا نموذج — يعمل دائمًا ومجانيًا. */
 function ruleBasedAnswer(mode, context) {
-    if (mode === 'diagnose') {
-        return ['قراءات النظام الحيّة (بلا نموذج — الوضع القواعدي):', context].join('\n\n');
-    }
-    if (mode === 'code') {
-        return ['المقاطع المطلوبة (بلا تحليل — الوضع القواعدي):', context].join('\n\n');
-    }
+    const head = {
+        diagnose: 'قراءات النظام الحيّة (من قاعدة البيانات مباشرة):',
+        code: 'المقاطع المطلوبة (من المشروع مباشرة):',
+        cfo: 'المراجعة المالية (من دفتر القيود وقراءات التشغيل مباشرة):',
+    }[mode] || 'ما في النظام مباشرة:';
     return [
-        'ملخّص ما في المتاح (بلا نموذج — الوضع القواعدي):',
+        head,
         context,
-        'لأجل تحليل أعمق: فعّل مفتاح Gemini (المتغيّر GEMINI_API_KEY) مجانًا في .env.',
+        '— المصدر: النظام نفسه. (تحليلٌ لفظي أعمق يحتاج محرّكًا لغويًا: Gemini مجاني أو النموذج المحلي حين يسبق ضمن ميزانيته.)',
     ].join('\n\n');
 }
 
@@ -259,29 +255,31 @@ function localSystemPrompt(mode) {
     ].join('\n');
 }
 
-/** حلقة الأدوات مع النموذج المحلي (حتى ٤ جولات). */
-async function localAnswer({ question, mode, context }) {
+/**
+ * تحليلٌ أعمق: النموذج المحلي يقرأ بالأدوات ثم يلخّص — مسارٌ منفصل
+ * يختاره المالك (أبطأ: النموذج على معالجٍ بلا GPU يحتاج ٢٠–٦٠ ثانية).
+ */
+async function deepAnswer({ question, mode, context }) {
     const messages = [{
         role: 'user',
         content: context ? `${question}\n\n— بيانات النظام المرفقة —\n${context}` : question,
     }];
-    let model = null;
-    // جولتان من الأدوات تكفي لنموذجٍ صغير؛ أربعٌ تُغرقه فتضيع.
-    for (let turn = 0; turn < 2; turn += 1) {
-        const r = await localLlm.chat({ system: localSystemPrompt(mode), messages, tools: tools.TOOL_DEFS, maxTokens: 420 });
-        model = r.model;
-        if (!r.toolCalls.length) {
-            return { text: r.text || 'لم يصل ردّ من النموذج المحلي.', model };
-        }
-        for (const call of r.toolCalls) {
-            let out;
-            try { out = await tools.runTool(call.name, call.arguments); }
-            catch (e) { out = { ok: false, text: 'فشلت الأداة: ' + String(e.message).slice(0, 120) }; }
-            messages.push({ role: 'assistant', content: `استدعاء ${call.name} ${JSON.stringify(call.arguments)}` });
-            messages.push({ role: 'user', content: `النتيجة: ${out.text}` });
-        }
+    const first = await localLlm.chat({ system: localSystemPrompt(mode), messages, tools: tools.TOOL_DEFS, maxTokens: 220 });
+    if (!first.toolCalls.length) {
+        return { text: first.text || 'لم يصل ردّ من النموذج المحلي.', model: first.model };
     }
-    return { text: 'وصلتُ حدّ الجولات — هذه آخر خلاصة من الأدوات.', model };
+    const digests = [];
+    for (const call of first.toolCalls) {
+        let out;
+        try { out = await tools.runTool(call.name, call.arguments); }
+        catch (e) { out = { ok: false, text: 'فشلت الأداة: ' + String(e.message).slice(0, 120) }; }
+        digests.push(String(out.text).slice(0, 1500));
+        messages.push({ role: 'assistant', content: `استدعاء ${call.name} ${JSON.stringify(call.arguments)}` });
+        messages.push({ role: 'user', content: `النتيجة: ${out.text}` });
+    }
+    const final = await localLlm.chat({ system: localSystemPrompt(mode), messages, maxTokens: 300 });
+    const summary = final.text && final.text.trim() ? final.text.trim() : 'ما قرأته الأدوات:\n' + digests.join('\n\n');
+    return { text: summary, model: final.model || first.model };
 }
 
 /**
@@ -320,28 +318,20 @@ async function ask(input = {}) {
         if (ctx) {parts.push('الشاشة الحالية:', ctx); grounded = true;}
     }
 
-    const dataText = clip(parts.filter(Boolean).join('\n\n'), MAX_CONTEXT_CHARS);
-
-    // ① النموذج المحلي (بلا مفاتيح، على الجهاز) — إن توفّر فهو عقل النظام.
-    const localOk = await localLlm.available().catch(() => false);
-    if (localOk) {
-        try {
-            // ميزانيةُ وقتٍ صارمة: نموذجٌ صغيرٌ على معالجٍ بلا GPU قد يتأخر
-            // نصف دقيقة — والانتظار أسوأ من ردٍّ فوري قواعدي.
-            const budget = new Promise((resolve) => {
-                const timer = setTimeout(() => resolve(null), LOCAL_BUDGET_MS);
-                if (typeof timer.unref === 'function') {timer.unref();}
-            });
-            const r = await Promise.race([localAnswer({ question, mode, context: dataText }), budget]);
-            if (!r) {throw new Error('LOCAL_LLM_SLOW');}
-            return { text: r.text || '(ردّ فارغ)', mode, model: r.model || localLlm.MODEL, fallback: false, grounded, local: true };
-        } catch (e) {
-            logger.warn('[ai-assistant] النموذج المحلي تعذّر: ' + String(e.message).slice(0, 120));
-        }
-    }
+    const fullContext = clip(parts.filter(Boolean).join('\n\n'), MAX_CONTEXT_CHARS);
+    // ① النموذج المحلي: **ليس** في المسار السريع. على معالجٍ بلا GPU
+    //    يحتاج ٢٠–٦٠ ثانية ⇒ لا نفرض الانتظار على سؤالٍ عادي.
+    //    المسار السريع = الحقائق من النظام فورًا؛ والتحليلُ اللفظي مسارٌ
+    //    منفصل (/ask/deep) يختاره المالك.
+    const localAvailable = await localLlm.available().catch(() => false);
 
     if (!gemini.enabled()) {
-        return { text: ruleBasedAnswer(mode, dataText), mode, model: null, fallback: true, grounded };
+        // فوري: الحقائق من النظام، بلا انتظار نموذج.
+        return {
+            text: ruleBasedAnswer(mode, fullContext),
+            mode, model: null, fallback: true, grounded,
+            canDeep: localAvailable,
+        };
     }
 
     try {
@@ -367,6 +357,7 @@ async function ask(input = {}) {
 
 module.exports = {
     ask,
+    deep: deepAnswer,
     enabled: gemini.enabled,
     model: gemini.model,
     projectMap,

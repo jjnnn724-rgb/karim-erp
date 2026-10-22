@@ -30,14 +30,13 @@ describe('المساعد المحلي — بلا مفاتيح، وبصلاحيا
         expect(localLlm).not.toMatch(/generativelanguage|api\.openai|api\.anthropic/);
     });
 
-    test('النموذج المحلي هو brains الأول، والسحابي احتياط', () => {
+    test('النموذج المحلي: مسار «تحليل أعمق» منفصل — لا في المسار السريع', () => {
+        // المسار السريع = الحقائق فورًا (بلا نموذج) ⇒ لا انتظار ولا استهلكة.
         expect(assistant).toMatch(/localLlm\.available\(\)/);
-        expect(assistant).toMatch(/localAnswer\(/);
-        // الترتيب: المحلي قبل Gemini
-        const localAt = assistant.indexOf('localAnswer({');
-        const geminiAt = assistant.indexOf('gemini.generateWithRetry');
-        expect(localAt).toBeGreaterThan(-1);
-        expect(geminiAt).toBeGreaterThan(localAt);
+        expect(assistant).toMatch(/deepAnswer|deep:/);
+        // والتحليل العميق: النموذج مع الأدوات
+        expect(assistant).toMatch(/tools\.TOOL_DEFS/);
+        expect(routes).toMatch(/assistant\.deep\(/);
     });
 
     test('الأدوات: قراءة عامة + كود + مسوّدات', () => {
@@ -82,6 +81,15 @@ describe('المساعد المحلي — بلا مفاتيح، وبصلاحيا
         expect(ui).toMatch(/data-draft-apply/);
         expect(ui).toMatch(/data-draft-reject/);
         expect(ui).not.toMatch(/on(?:click|submit)\s*=\s*["']/);
+    });
+
+    test('الحقائق فورية، والتحليلُ العميق اختيارٌ للمالك (لا انتظارٌ مفروض)', () => {
+        // /ask ⇒ الحقائق من النظام (فورية) + علم «canDeep» يمرّ إلى الواجهة
+        expect(routes).toMatch(/canDeep/);
+        // /ask/deep ⇒ النموذج المحلي (أبطأ) — مسار منفصل لا ضمن /ask
+        expect(routes).toMatch(/router\.post\('\/ask\/deep'/);
+        expect(ui).toMatch(/تحليل أعمق/);
+        expect(ui).toMatch(/\/ai-assistant\/ask\/deep/);
     });
 
     test('الواجهة: الطلب يذهب إلى /ai-assistant (لا خدمة خارجية)', () => {

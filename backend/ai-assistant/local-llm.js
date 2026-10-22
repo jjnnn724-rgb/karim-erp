@@ -108,8 +108,8 @@ async function chat(input) {
         options: {
             temperature: typeof input.temperature === 'number' ? input.temperature : 0.2,
             // ميزانيةٌ مضبوطة: المعالج بلا GPU، فسياقٌ طويل = انتظارٌ طويل.
-            num_predict: input.maxTokens || 420,
-            num_ctx: 2048,
+            num_predict: input.maxTokens || 220,
+            num_ctx: 1536,
         },
     }, TIMEOUT_MS);
     if (res.status !== 200) {

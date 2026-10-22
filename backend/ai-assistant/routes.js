@@ -79,6 +79,29 @@ router.post('/drafts', jwtAuth, requireRole('admin'), asyncHandler(async (req, r
     return res.json({ draft: d, ok: true });
 }));
 
+/** تحليلٌ أعمق: النموذج المحلي يقرأ بالأدوات ثم يلخّص (اختيار المالك — أبطأ). */
+router.post('/ask/deep', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+    const question = String((req.body || {}).question || '').trim();
+    if (!question) {return res.status(400).json({ error: 'EMPTY_QUESTION', message: 'اكتب سؤالًا أولًا.' });}
+    if (!(await localLlm.available().catch(() => false))) {
+        return res.status(503).json({ error: 'LOCAL_LLM_UNAVAILABLE', message: 'النموذج المحلي غير متاح الآن.' });
+    }
+    const started = Date.now();
+    const mode = (req.body || {}).mode || 'knowledge';
+    // ميزانيةُ وقتٍ سخيّة: هذا مسار اختاره المالك (تحليلٌ أعمق بالنموذج
+    // المحلي على معالجٍ بلا GPU).
+    const budget = new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(null), 90000);
+        if (typeof timer.unref === 'function') {timer.unref();}
+    });
+    const r = await Promise.race([assistant.deep({ question, mode, screen: (req.body || {}).screen }), budget]);
+    if (!r) {
+        return res.status(504).json({ error: 'LOCAL_LLM_TIMEOUT', message: 'تجاوز النموذج المحلي الوقت — أعد المحاولة.' });
+    }
+    logger.info(`[ai-assistant] تحليل عميق mode=${mode} model=${r.model} ms=${Date.now() - started}`);
+    return res.json({ text: r.text, model: r.model, ms: Date.now() - started });
+}));
+
 /** المسوّدات المعلّقة (تعديلات مقترحة لم تُنفَّذ بعد). */
 router.get('/drafts', jwtAuth, requireRole('admin'), (req, res) => {
     // لا تخزين: قائمة المسوّدات تتغيّر بتطبيق/رفض ⇒ ذاكرةٌ قديمة تخدع المالك.
@@ -127,6 +150,8 @@ router.post('/ask', jwtAuth, requireRole('admin'), assistantLimiter, asyncHandle
         model: result.model,
         fallback: result.fallback,
         grounded: result.grounded,
+        // هل يمكن للعميل أن يطلب تحليلًا أعمق بالنموذج المحلي؟
+        canDeep: result.canDeep !== false,
     });
 }));
 

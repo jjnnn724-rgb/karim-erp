@@ -97,6 +97,11 @@
   gap: var(--erp-space-2);
 }
 
+.erp-ai__deep {
+  align-self: flex-start;
+  margin-block-start: var(--erp-space-1);
+}
+
 .erp-ai__draft-form {
   display: flex;
   flex-wrap: wrap;
