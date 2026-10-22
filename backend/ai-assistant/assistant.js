@@ -23,7 +23,10 @@
 const fs = require('fs');
 const path = require('path');
 const gemini = require('../whatsapp-engine/ai/gemini');
+const { logger } = require('../logger');
 const { cfoReview } = require('./cfo');
+const localLlm = require('./local-llm');
+const tools = require('./tools');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const V2_DIR = path.join(ROOT, 'frontend', 'app', 'js', 'v2');
@@ -235,9 +238,52 @@ function ruleBasedAnswer(mode, context) {
     ].join('\n\n');
 }
 
+/** هوية المساعد المحلي: مهندس صيانة + مدير مالي، بلا اختراع ولا تجاوز. */
+function localSystemPrompt(mode) {
+    return [
+        'أنت «مساعد Karim ERP» — مهندس صيانة ومدير مالي في نظام المطاعم، تعمل داخل الجهاز نفسه بلا إنترنت.',
+        'شخصيتك: مهندس صيانة دقيق ومسؤول، ثم محاسب لا يخمّن. العربية ثم الاختصار.',
+        'قواعد صارمة:',
+        '1) الأرقام من «بيانات النظام» المرفقة أو من أدوات الاستعلام — يُمنع اختراع أي رقم.',
+        '2) إن لم تعرف: قل بوضوح «غير متوفر» أو اسأل عن الجدول/الشاشة الصحيحة.',
+        '3) للقراءة: استخدم الأدوات (list_tables ثم read_table/search_table/search_code) — لا تخمّن أسماء جداول.',
+        '4) للكتابة: لا تنفّذ شيئًا. اصنع مسوّدة (draft_expense / draft_revenue) واترك المالك يطبّقها من اللوحة.',
+        '5) ممنوعٌ منعًا باتًا: تعديل أصناف المخزن أو وصفات الإنتاج أو أرصدة المخزون أو حذف أي صف — مخزن المالك خط أحمر.',
+        '6) في كل رد اذكر: ما تحقّقتَ منه، وما لم تتحقّق منه، والخطوة التالية المقترحة.',
+        '7) العربية المهنية المختصرة، بعناوين قصيرة و«•» للقوائم.',
+        mode === 'cfo'
+            ? 'أنت الآن في وضع «المحاسبة»: قدّم أرقام اليوم كما هي، ثم أخطر الأهم أولًا مع قرار واحد قابل للتنفيذ اليوم.'
+            : 'أنت الآن في وضع «معرفة/تشخيص»: أجيب عمّا سأل عنه المالك في النظام كلّه.',
+    ].join('\n');
+}
+
+/** حلقة الأدوات مع النموذج المحلي (حتى ٤ جولات). */
+async function localAnswer({ question, mode, context }) {
+    const messages = [{
+        role: 'user',
+        content: context ? `${question}\n\n— بيانات النظام المرفقة —\n${context}` : question,
+    }];
+    let model = null;
+    for (let turn = 0; turn < 4; turn += 1) {
+        const r = await localLlm.chat({ system: localSystemPrompt(mode), messages, tools: tools.TOOL_DEFS });
+        model = r.model;
+        if (!r.toolCalls.length) {
+            return { text: r.text || 'لم يصل ردّ من النموذج المحلي.', model };
+        }
+        for (const call of r.toolCalls) {
+            let out;
+            try { out = await tools.runTool(call.name, call.arguments); }
+            catch (e) { out = { ok: false, text: 'فشلت الأداة: ' + String(e.message).slice(0, 120) }; }
+            messages.push({ role: 'assistant', content: `استدعاء ${call.name} ${JSON.stringify(call.arguments)}` });
+            messages.push({ role: 'user', content: `النتيجة: ${out.text}` });
+        }
+    }
+    return { text: 'وصلتُ حدّ الجولات — هذه آخر خلاصة من الأدوات.', model };
+}
+
 /**
  * سؤال واحد ⇒ رد واحد.
- * @param {{question:string, mode?:string, screen?:string, paths?:string[], pool?:any}} input
+ * @param {{question:string, mode?:string, screen?:string, paths?:string[], pool?:any, ctx?:object}} input
  * @returns {Promise<{text:string, mode:string, model:string|null, fallback:boolean, grounded:boolean}>}
  */
 async function ask(input = {}) {
@@ -271,6 +317,17 @@ async function ask(input = {}) {
     }
 
     const dataText = clip(parts.filter(Boolean).join('\n\n'), MAX_CONTEXT_CHARS);
+
+    // ① النموذج المحلي (بلا مفاتيح، على الجهاز) — إن توفّر فهو عقل النظام.
+    const localOk = await localLlm.available().catch(() => false);
+    if (localOk) {
+        try {
+            const r = await localAnswer({ question, mode, context: dataText });
+            return { text: r.text || '(ردّ فارغ)', mode, model: r.model || localLlm.MODEL, fallback: false, grounded, local: true };
+        } catch (e) {
+            logger.warn('[ai-assistant] النموذج المحلي تعذّر: ' + String(e.message).slice(0, 120));
+        }
+    }
 
     if (!gemini.enabled()) {
         return { text: ruleBasedAnswer(mode, dataText), mode, model: null, fallback: true, grounded };

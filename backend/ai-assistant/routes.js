@@ -18,6 +18,8 @@ const { asyncHandler } = require('../errors/error-handler');
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
 const assistant = require('./assistant');
+const localLlm = require('./local-llm');
+const tools = require('./tools');
 
 const router = express.Router();
 
@@ -43,16 +45,34 @@ function assistantLimiter(req, res, next) {
     return next();
 }
 
-/** هل المساعد مجاني ومفعّل؟ (الواجهة تعرض ذلك للمدير بصراحة) */
-router.get('/status', jwtAuth, requireRole('admin'), (req, res) => {
+/** حالة المساعد: محلي أولًا (بلا مفاتيح) ثم سحابي اختياري. */
+router.get('/status', jwtAuth, requireRole('admin'), async (req, res) => {
+    const local = await localLlm.available().catch(() => false);
     res.json({
-        enabled: assistant.enabled(),
-        model: assistant.enabled() ? assistant.model() : null,
+        enabled: local || assistant.enabled(),
+        local,
+        model: local ? await localLlm.activeModel().catch(() => localLlm.MODEL) : (assistant.enabled() ? assistant.model() : null),
         free: true,
         modes: assistant.MODES,
         maxQuestion: assistant.MAX_QUESTION,
     });
 });
+
+/** المسوّدات المعلّقة (تعديلات مقترحة لم تُنفَّذ بعد). */
+router.get('/drafts', jwtAuth, requireRole('admin'), (req, res) => {
+    res.json({ drafts: tools.listDrafts() });
+});
+
+/** تنفيذ مسوّدة بموافقة المالك (بصلاحيته هو — بلا تجاوز). */
+router.post('/drafts/:id/apply', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+    const d = await tools.applyDraft(req.params.id, { token: req.headers.authorization, user: req.user });
+    res.json({ draft: d, ok: d.result && d.result.ok });
+}));
+
+/** رفض مسوّدة. */
+router.post('/drafts/:id/reject', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+    res.json({ draft: tools.rejectDraft(req.params.id) });
+}));
 
 /** سؤال واحد ⇒ رد واحد. */
 router.post('/ask', jwtAuth, requireRole('admin'), assistantLimiter, asyncHandler(async (req, res) => {
@@ -74,6 +94,7 @@ router.post('/ask', jwtAuth, requireRole('admin'), assistantLimiter, asyncHandle
         screen: body.screen,
         paths: body.paths,
         pool,
+        ctx: { token: req.headers.authorization, user: req.user },
     });
     // عيّن تشغيل بلا محتوى: الوضع والمدة والنموذج فقط.
     logger.info(`[ai-assistant] mode=${result.mode} model=${result.model || 'rule-based'} fallback=${result.fallback} ms=${Date.now() - started}`);

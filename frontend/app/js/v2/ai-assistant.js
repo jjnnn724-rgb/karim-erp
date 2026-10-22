@@ -114,6 +114,7 @@ export function mountAiAssistant(shell, ctx = {}) {
                 <i class="ji" data-i="${m.icon}" aria-hidden="true"></i><span>${esc(m.label)}</span></button>`).join('')}
             </div>
             <p class="erp-ai__ctx" data-erp-ai-context></p>
+            <div class="erp-ai__drafts" data-erp-ai-drafts hidden></div>
             <div class="erp-ai__log" data-erp-ai-log role="log" aria-live="polite"></div>
             <div class="erp-ai__files" data-erp-ai-files hidden>
               <label class="erp-ai__files-label" for="erp-ai-files">ملفات المشروع (اختياري — حتى ٣)</label>
@@ -156,7 +157,9 @@ export function mountAiAssistant(shell, ctx = {}) {
     function paintStatus() {
         const el = drawer ? drawer.querySelector('[data-erp-ai-status]') : null;
         if (!el) {return;}
-        el.textContent = status.enabled ? `مجاني · ${status.model || 'Gemini'}` : 'وضع قواعدي (بلا نموذج)';
+        if (status.local) { el.textContent = `محلي · ${status.model || 'نموذج على الجهاز'}`; return; }
+        if (status.enabled) { el.textContent = `مجاني · ${status.model || 'Gemini'}`; return; }
+        el.textContent = 'وضع قواعدي (بلا نموذج)';
     }
 
     function paintModes() {
@@ -175,11 +178,56 @@ export function mountAiAssistant(shell, ctx = {}) {
         statusAsked = true;
         try {
             const r = await apiFetch('/ai-assistant/status');
-            status = { enabled: !!(r && r.enabled), model: (r && r.model) || null };
+            status = { enabled: !!(r && r.enabled), local: !!(r && r.local), model: (r && r.model) || null };
         } catch (_e) {
-            status = { enabled: false, model: null };
+            status = { enabled: false, local: false, model: null };
         }
         paintStatus();
+    }
+
+    /* ── المسوّدات: تعديلات مقترحة لم تُنفَّذ — المالك يطبّقها أو يرفضها ── */
+    async function refreshDrafts() {
+        const host = drawer ? drawer.querySelector('[data-erp-ai-drafts]') : null;
+        if (!host) {return;}
+        try {
+            const r = await apiFetch('/ai-assistant/drafts');
+            const list = (r && r.drafts) || [];
+            if (!list.length) { host.innerHTML = ''; host.hidden = true; return; }
+            host.hidden = false;
+            host.innerHTML = `<h4 class="erp-ai__drafts-title">تعديلات مقترحة (لم تُنفَّذ)</h4>`
+                + list.map((d) => `
+                    <div class="erp-ai__draft" data-draft="${esc(d.id)}">
+                        <span class="erp-ai__draft-label">${esc(d.kind === 'expense' ? 'مصروف' : 'إيراد')} — ${esc(d.payload.date || '')} · ${esc(d.payload.deptId || '')} · ${esc(d.payload.amount || '')}</span>
+                        <span class="erp-ai__draft-note">${esc(d.payload.note || '')}</span>
+                        <span class="erp-ai__draft-actions">
+                          <button type="button" class="erp-btn erp-btn--sm" data-draft-apply="${esc(d.id)}">تطبيق</button>
+                          <button type="button" class="erp-btn erp-btn--sm" data-draft-reject="${esc(d.id)}">رفض</button>
+                        </span>
+                    </div>`).join('');
+            host.querySelectorAll('[data-draft-apply]').forEach((b) => {
+                b.addEventListener('click', async () => {
+                    b.disabled = true;
+                    try {
+                        const r2 = await apiFetch(`/ai-assistant/drafts/${encodeURIComponent(b.dataset.draftApply)}/apply`, { method: 'POST' });
+                        const ok = !!(r2 && r2.ok);
+                        toast(ok ? 'طُبِّق التعديل' : `تعذّر التطبيق: ${(r2 && r2.draft && r2.draft.result && r2.draft.result.message) || 'خطأ'}`);
+                        await refreshDrafts();
+                    } catch (_e) {
+                        toast('تعذّر تطبيق التعديل');
+                        b.disabled = false;
+                    }
+                });
+            });
+            host.querySelectorAll('[data-draft-reject]').forEach((b) => {
+                b.addEventListener('click', async () => {
+                    try {
+                        await apiFetch(`/ai-assistant/drafts/${encodeURIComponent(b.dataset.draftReject)}/reject`, { method: 'POST' });
+                        toast('رُفض التعديل');
+                        await refreshDrafts();
+                    } catch (_e) { toast('تعذّر الرفض'); }
+                });
+            });
+        } catch (_e) { /* لا مسوّدات أو تعذّر الفحص */ }
     }
 
     function close() {
@@ -257,6 +305,7 @@ export function mountAiAssistant(shell, ctx = {}) {
             busy = false;
             const box = log();
             if (box) {box.scrollTop = box.scrollHeight;}
+            await refreshDrafts();
         }
     }
 

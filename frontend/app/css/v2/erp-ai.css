@@ -91,6 +91,45 @@
   color: var(--erp-text-muted);
 }
 
+.erp-ai__drafts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+
+.erp-ai__drafts-title {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.erp-ai__draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  background: var(--erp-warning-soft);
+  border: 1px solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.erp-ai__draft-label {
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-ai__draft-note {
+  color: var(--erp-text-secondary);
+}
+
+.erp-ai__draft-actions {
+  margin-inline-start: auto;
+  display: inline-flex;
+  gap: var(--erp-space-1);
+}
+
 .erp-ai__log {
   flex: 1;
   overflow-y: auto;
