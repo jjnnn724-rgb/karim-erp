@@ -55,7 +55,7 @@ function fmtDuration(sec) {
     return `${m}د`;
 }
 
-const NAV_KEYS = ['cfo', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'departments',
+const NAV_KEYS = ['cfo', 'cash-register', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'departments',
     'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'kitchen', 'dispatch',
     'recipes', 'procurement', 'hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco',
     'payroll', 'hr-departments', 'employee-portal', 'roster', 'reports', 'users', 'permissions',
@@ -65,7 +65,7 @@ const NAV_KEYS = ['cfo', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'depart
    resolves these from ALL_PERMISSIONS.menus (readMenuLabels); this map only
    stops an English route key from reaching an Arabic admin screen. */
 const NAV_LABELS_AR = {
-    'cfo': 'المدير المالي', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
+    'cfo': 'المدير المالي', 'cash-register': 'سجلّ الصرف', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
     'cost-analysis': 'تحليل التكاليف', 'pnl': 'الأرباح والخسائر', 'departments': 'الأقسام',
     'warehouse': 'المخزون', 'wh-invoices': 'فواتير المخزن', 'wh-moves': 'حركات المخزون',
     'wh-returns': 'مرتجعات المخزون', 'wh-prs': 'طلبات الشراء', 'kitchen': 'المطبخ',

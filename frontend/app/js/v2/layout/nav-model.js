@@ -35,7 +35,7 @@
  *  is absent (standalone preview page). Same ids, same order, same keys. */
 const NAV_GROUPS_FALLBACK = [
     { id: 'main',    title: 'nav.grp.main',    keys: ['dashboard'] },
-    { id: 'finance', title: 'nav.grp.finance', keys: ['cfo', 'revenues', 'expenses', 'cost-analysis', 'pnl'] },
+    { id: 'finance', title: 'nav.grp.finance', keys: ['cfo', 'cash-register', 'revenues', 'expenses', 'cost-analysis', 'pnl'] },
     { id: 'ops',     title: 'nav.grp.ops',     keys: ['departments', 'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'veg-requests', 'shelves', 'weight', 'kitchen', 'dispatch', 'recipes', 'procurement'] },
     { id: 'hr',      title: 'nav.grp.hr',      keys: ['hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco', 'payroll', 'hr-departments', 'employee-portal', 'roster', 'dept-employees'] },
     { id: 'sys',     title: 'nav.grp.sys',     keys: ['reports', 'settings', 'users', 'branches', 'permissions', 'yarasoft', 'oracle-data', 'whatsapp', 'query', 'professional', 'sales-analyzer', 'received-analyzer', 'wh-vs-pos'] },

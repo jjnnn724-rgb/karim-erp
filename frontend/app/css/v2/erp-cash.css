@@ -1,0 +1,217 @@
+
+/* ── سجلّ الصرف + إذن الصرف ─────────────────────────────────────────────
+   لوحة واحدة: مرشّحات فوق، مؤشرات، جدول واضح، وإذن الصرف ينفتح في لوحة
+   جانبية. الحركة CSS فقط (لا JS) فلا تُبطأ الواجهة. */
+.cashreg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+
+.cashreg__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.cashreg__title {
+  margin: 0;
+  font-size: var(--erp-text-2xl);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__sub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__tools {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.cashreg__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__field input,
+.cashreg__field select,
+.cashreg__search {
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+  background: var(--erp-surface);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  min-block-size: var(--erp-control-md);
+}
+
+.cashreg__search {
+  min-inline-size: 20ch;
+}
+
+.cashreg__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13ch, 1fr));
+  gap: var(--erp-space-3);
+}
+
+.cashreg__tablewrap {
+  overflow-x: auto;
+}
+
+.cashreg__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+
+.cashreg__table th {
+  text-align: start;
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border);
+  white-space: nowrap;
+}
+
+.cashreg__table td {
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+  color: var(--erp-text-secondary);
+  vertical-align: middle;
+}
+
+.cashreg__row.is-open {
+  cursor: pointer;
+}
+
+.cashreg__row.is-open:hover,
+.cashreg__row.is-open:focus-visible {
+  background: var(--erp-surface-hover);
+  outline: none;
+}
+
+.cashreg__amount {
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-medium);
+  white-space: nowrap;
+}
+
+.cashreg__badge {
+  display: inline-block;
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  font-size: var(--erp-text-xs);
+  white-space: nowrap;
+  border: thin solid var(--erp-border);
+  color: var(--erp-text-secondary);
+  background: var(--erp-surface-sunken);
+}
+
+.cashreg__badge--success { color: var(--erp-success-text); background: var(--erp-success-soft); border-color: var(--erp-success); }
+.cashreg__badge--warning { color: var(--erp-warning-text); background: var(--erp-warning-soft); border-color: var(--erp-warning); }
+.cashreg__badge--danger  { color: var(--erp-danger-text);  background: var(--erp-danger-soft);  border-color: var(--erp-danger); }
+.cashreg__badge--info    { color: var(--erp-info-text);    background: var(--erp-info-soft);    border-color: var(--erp-info); }
+
+/* ── لوحة إذن الصرف ─────────────────────────────────────────────────── */
+.cashreg__drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-modal);
+  background: var(--erp-scrim);
+  display: flex;
+  justify-content: flex-end;
+  animation: erp-screen-in var(--erp-duration-fast) var(--erp-ease-out) both;
+}
+
+.cashreg__drawerpanel {
+  inline-size: min(100%, 64ch);
+  block-size: 100%;
+  overflow-y: auto;
+  background: var(--erp-surface);
+  border-inline-start: thin solid var(--erp-border);
+  box-shadow: var(--erp-shadow-xl);
+  padding: var(--erp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+
+.cashreg__drawerhead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  border-bottom: thin solid var(--erp-border);
+  padding-bottom: var(--erp-space-3);
+}
+
+.cashreg__drawertitle {
+  margin: 0;
+  font-size: var(--erp-text-xl);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__drawersub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__draweractions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.cashreg__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14ch, 1fr));
+  gap: var(--erp-space-3);
+  margin: 0;
+}
+
+.cashreg__facts div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+
+.cashreg__facts dt {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__facts dd {
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+}
+
+.cashreg__chain span {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-secondary);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-full);
+  padding: var(--erp-space-1) var(--erp-space-2);
+  background: var(--erp-surface-sunken);
+}

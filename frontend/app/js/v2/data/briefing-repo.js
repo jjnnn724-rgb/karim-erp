@@ -37,7 +37,7 @@
  *     is jwtAuth. The 403 comes from the backend and is displayed as-is.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.193';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.193';
 
 /** Stored values of pos_invoice_payments.method. Unknown methods are shown
  *  verbatim — relabelling a method the app does not know would be inventing. */
@@ -260,6 +260,30 @@ export function buildPipeline(stats) {
  */
 export async function fetchOrderDetail(docNo) {
     return apiFetch(`/pos/orders/ys/${encodeURIComponent(String(docNo))}`);
+}
+
+/**
+ * إيصال POS كتصميم طباعة HTML — نقطة النهاية محمية برؤوس المصادقة فقط،
+ * وقفزة المتصفح (href/target) لا تحمل x-api-key فترجع 401. لذلك يُجلب
+ * الرد خام بـ fetch برؤوس `window._jwt`/`window._appKey` (نفس نمط
+ * fetchLuxCardHtml في employee-card-repo.js) والشاشة تكتبه في عارض V2.
+ * @param {string|number} docNo رقم السند
+ * @returns {Promise<string>} صفحة الإيصال كما ولّدها الخادم
+ */
+export async function fetchReceiptHtml(docNo) {
+    const headers = {};
+    if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
+    const res = await fetch(`${API_BASE}/pos/orders/ys/${encodeURIComponent(String(docNo))}/receipt-html`, { headers });
+    if (!res.ok) {
+        let msg = `تعذر توليد الإيصال (${res.status})`;
+        try {
+            const e = await res.clone().json();
+            if (e && (e.message || e.error)) {msg = e.message || e.error;}
+        } catch (_) { /* صفحة HTML — يبقى الردّ العام + الرمز */ }
+        throw new Error(msg);
+    }
+    return res.text();
 }
 
 /**

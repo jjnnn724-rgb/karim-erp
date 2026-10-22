@@ -45,11 +45,13 @@ import {
     fetchTodayStats,
     fetchAllOrders,
     fetchOrderDetail,
+    fetchReceiptHtml,
     buildBriefingView,
     formatMoney,
     formatInt,
 } from '../data/briefing-repo.js?v=4.9.193';
 import { fetchCurrency } from '../data/reports-repo.js?v=4.9.193';
+import { openInAppReport } from '../report-viewer.js?v=4.9.193';
 
 import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.193';
 
@@ -348,6 +350,24 @@ async function openAllOrders(day) {
     layer.querySelector('[data-v2-close-orders]').addEventListener('click', close);
     layer.addEventListener('mousedown', (e) => { if (e.target === layer) {close();}});
 
+    /* إيصال POS محميّ برؤوس المصادقة فقط — مجرد تنقّل (href/target) لا يحمل
+       x-api-key فيرجع 401. جلب الورقة من المستودع (fetchReceiptHtml) وكتابتها
+       في عارض V2؛ شريط العارض هو مَن يطبع. */
+    const printReceipt = async (docNo) => {
+        try {
+            const html = await fetchReceiptHtml(docNo);
+            const w = openInAppReport('إيصال');
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+        } catch (e) {
+            if (typeof window !== 'undefined' && typeof window.toast === 'function') {
+                window.toast((e && e.message) || 'تعذر طباعة الإيصال', 'error');
+            }
+        }
+    };
+
     const openDetail = async (docNo) => {
         const panel = layer.querySelector('[data-v2-order-detail]');
         if (!panel) {return;}
@@ -364,10 +384,8 @@ async function openAllOrders(day) {
                 <span>${esc(String(d.day || '').slice(0, 10))} ${esc(String(d.doc_time || '').slice(0, 5))}</span>
                 <span>كاشير ${esc(d.cashier_no || '—')}</span>
                 <span>${esc(d.dept_name || d.department_name || '—')}</span>
-                <a class="erp-btn erp-btn--sm" target="_blank" rel="noopener"
-                   href="/api/pos/orders/ys/${encodeURIComponent(d.invoice_counter || docNo)}/receipt-html">طباعة الإيصال</a>
-                <button type="button" class="erp-icon-btn" data-v2-close-detail aria-label="إغلاق">×</button>
-              </div>
+                <button type="button" class="erp-btn erp-btn--sm" data-v2-print-receipt>طباعة الإيصال</button>
+                <button type="button" class="erp-icon-btn" data-v2-close-detail aria-label="إغلاق">×</button>              </div>
               <table class="erp-allorders__table">
                 <thead><tr><th>الصنف</th><th>كمية</th><th>سعر</th><th>ضريبة</th><th>إجمالي</th></tr></thead>
                 <tbody>${items.map((it) => `<tr>
@@ -380,6 +398,9 @@ async function openAllOrders(day) {
                 ${payments.length ? ' · ' + payments.map((p) => esc(p.method) + ' ' + m(p.amount)).join(' · ') : ''}
               </p>`;
             panel.querySelector('[data-v2-close-detail]')?.addEventListener('click', () => {panel.hidden = true;});
+            panel.querySelector('[data-v2-print-receipt]')?.addEventListener('click', () => {
+                printReceipt(d.invoice_counter || docNo);
+            });
         } catch (e) {
             panel.innerHTML = `<p class="erp-state">تعذّر فتح السند: ${esc((e && e.message) || 'خطأ')}</p>`;
         }

@@ -390,6 +390,28 @@ mountCommandPalette(shell);
    بالتفويض، فتبقى عاملةً بعد كل تبديلِ شاشةٍ بلا إعادة تركيب. */
 mountChartInteraction(shell.root);
 
+/* ── 5b5. سجلّ الصرف: وحدةٌ تُحمَّل كسولًا (import ديناميكي) */
+let cashRegisterMount = null;
+let cashRegisterHandle = null;
+async function renderCashRegisterScreen() {
+    shell.main.innerHTML = '<div data-v2-cashreg-host></div>';
+    const host = shell.main.querySelector('[data-v2-cashreg-host]');
+    try {
+        if (!cashRegisterMount) {
+            const mod = await import('./screens/cash-register.js?v=4.9.193');
+            cashRegisterMount = mod.mountCashRegister;
+        }
+        cashRegisterHandle = cashRegisterMount(host, { navigate: (k) => shell.navigate(k) });
+    } catch (e) {
+        console.warn('[V2] تعذّر تحميل سجل الصرف:', e);
+        host.innerHTML = '<div class="erp-state"><span class="erp-state__title">تعذّر تحميل السجل</span><span>أعد المحاولة.</span></div>';
+    }
+}
+function teardownCashRegisterScreen() {
+    if (cashRegisterHandle && typeof cashRegisterHandle.destroy === 'function') { try { cashRegisterHandle.destroy(); } catch (_) { /* ignore */ } }
+    cashRegisterHandle = null;
+}
+
 /* ── 5b4. موجز المدير: وحدةٌ تُحمَّل كسولًا (import ديناميكي) فلا وزن
    على إقلاع الصفحة — تفتح أول مرة فقط. */
 let executiveMount = null;
@@ -2226,6 +2248,7 @@ function renderScreen(key) {
     teardownBriefingScreen();
     teardownCfoScreen();
     teardownExecutiveScreen();
+    teardownCashRegisterScreen();
     teardownWarehouseScreen();
     teardownWarehouseGovScreen();
     teardownReportsScreen();
@@ -2292,6 +2315,11 @@ function renderScreen(key) {
 
     if (key === 'executive') {
         renderExecutiveScreen();
+        return;
+    }
+
+    if (key === 'cash-register') {
+        renderCashRegisterScreen();
         return;
     }
 

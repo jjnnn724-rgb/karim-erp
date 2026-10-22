@@ -673,6 +673,14 @@ ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_S
 // إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
 app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
 
+// ─── سجل الصرف + إذن الصرف (قراءة فقط: لا كتابة ولا تعديل) ───────────────
+try {
+    const { router: expenseRegisterRouter } = require('./expense-register-routes');
+    app.use('/api/expense-register', expenseRegisterRouter);
+} catch (e) {
+    logger.error('[EXPENSE_REGISTER] module failed to load — register disabled:', e.message);
+}
+
 // ─── موجز المدير: طلب واحد لكل أرقام اللوحة (قراءة فقط، الأدمن فقط) ─────
 try {
     const { router: executiveRouter } = require('./executive-routes');
