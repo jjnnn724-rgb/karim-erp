@@ -48,6 +48,7 @@ function assistantLimiter(req, res, next) {
 
 /** حالة المساعد: محلي أولًا (بلا مفاتيح) ثم سحابي اختياري. */
 router.get('/status', jwtAuth, requireRole('admin'), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
     const local = await localLlm.available().catch(() => false);
     res.json({
         enabled: local || assistant.enabled(),
@@ -80,6 +81,8 @@ router.post('/drafts', jwtAuth, requireRole('admin'), asyncHandler(async (req, r
 
 /** المسوّدات المعلّقة (تعديلات مقترحة لم تُنفَّذ بعد). */
 router.get('/drafts', jwtAuth, requireRole('admin'), (req, res) => {
+    // لا تخزين: قائمة المسوّدات تتغيّر بتطبيق/رفض ⇒ ذاكرةٌ قديمة تخدع المالك.
+    res.set('Cache-Control', 'no-store');
     res.json({ drafts: tools.listDrafts() });
 });
 
