@@ -681,6 +681,14 @@ try {
     logger.error('[EXPENSE_REGISTER] module failed to load — register disabled:', e.message);
 }
 
+// ─── مبيعات الكاشير: كل الفواتير وتفاصيل الأصناف (قراءة فقط من المرآة) ───
+try {
+    const { router: cashierSalesRouter } = require('./cashier-sales-routes');
+    app.use('/api/cashier-sales', cashierSalesRouter);
+} catch (e) {
+    logger.error('[CASHIER_SALES] module failed to load — sales register disabled:', e.message);
+}
+
 // ─── موجز المدير: طلب واحد لكل أرقام اللوحة (قراءة فقط، الأدمن فقط) ─────
 try {
     const { router: executiveRouter } = require('./executive-routes');

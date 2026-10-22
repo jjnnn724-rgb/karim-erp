@@ -412,6 +412,29 @@ function teardownCashRegisterScreen() {
     cashRegisterHandle = null;
 }
 
+/* ── 5b5b. مبيعات الكاشير: وحدةٌ تُحمَّل كسولًا — لوحةٌ وثلاثة جداول
+   ولوحةُ فاتورةٍ وملفُ صنف، فلا تُدفَع بياناتُها إلا عند فتح الشاشة. */
+let cashierSalesMount = null;
+let cashierSalesHandle = null;
+async function renderCashierSalesScreen() {
+    shell.main.innerHTML = '<div data-v2-csales-host></div>';
+    const host = shell.main.querySelector('[data-v2-csales-host]');
+    try {
+        if (!cashierSalesMount) {
+            const mod = await import('./screens/cashier-sales.js?v=4.9.193');
+            cashierSalesMount = mod.mountCashierSales;
+        }
+        cashierSalesHandle = cashierSalesMount(host);
+    } catch (e) {
+        console.warn('[V2] تعذّر تحميل مبيعات الكاشير:', e);
+        host.innerHTML = '<div class="erp-state"><span class="erp-state__title">تعذّر تحميل المبيعات</span><span>أعد المحاولة.</span></div>';
+    }
+}
+function teardownCashierSalesScreen() {
+    if (cashierSalesHandle && typeof cashierSalesHandle.destroy === 'function') { try { cashierSalesHandle.destroy(); } catch (_) { /* ignore */ } }
+    cashierSalesHandle = null;
+}
+
 /* ── 5b4. موجز المدير: وحدةٌ تُحمَّل كسولًا (import ديناميكي) فلا وزن
    على إقلاع الصفحة — تفتح أول مرة فقط. */
 let executiveMount = null;
@@ -2249,6 +2272,7 @@ function renderScreen(key) {
     teardownCfoScreen();
     teardownExecutiveScreen();
     teardownCashRegisterScreen();
+    teardownCashierSalesScreen();
     teardownWarehouseScreen();
     teardownWarehouseGovScreen();
     teardownReportsScreen();
@@ -2320,6 +2344,11 @@ function renderScreen(key) {
 
     if (key === 'cash-register') {
         renderCashRegisterScreen();
+        return;
+    }
+
+    if (key === 'cashier-sales') {
+        renderCashierSalesScreen();
         return;
     }
 

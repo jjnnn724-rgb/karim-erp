@@ -55,9 +55,9 @@ const PERMISSIONS = [
       menus: ['kitchen', 'recipes'], entitiesRead: ['recipes'], entitiesWrite: ['recipes'] },
     // المالية
     { key: 'finance.view', ar: 'عرض الإيرادات والمصاريف', group: 'المالية',
-      menus: ['revenues', 'expenses', 'cash-register'], entitiesRead: ['revenues', 'expenses'], entitiesWrite: [] },
+      menus: ['revenues', 'expenses', 'cash-register', 'cashier-sales'], entitiesRead: ['revenues', 'expenses'], entitiesWrite: [] },
     { key: 'finance.edit', ar: 'إدارة الإيرادات والمصاريف', group: 'المالية',
-      menus: ['revenues', 'expenses', 'cash-register'], entitiesRead: ['revenues', 'expenses'], entitiesWrite: ['revenues', 'expenses'] },
+      menus: ['revenues', 'expenses', 'cash-register', 'cashier-sales'], entitiesRead: ['revenues', 'expenses'], entitiesWrite: ['revenues', 'expenses'] },
     { key: 'reports.view', ar: 'عرض التقارير', group: 'المالية',
       menus: ['reports', 'cfo', 'cost-analysis', 'pnl'], entitiesRead: [], entitiesWrite: [] },
     { key: 'accounting.view', ar: 'عرض الحسابات', group: 'المالية',
