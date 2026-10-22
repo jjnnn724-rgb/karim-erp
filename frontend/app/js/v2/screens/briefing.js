@@ -363,6 +363,7 @@ async function openAllOrders(day) {
                 <strong>سند ${esc(d.invoice_counter || docNo)}</strong>
                 <span>${esc(String(d.day || '').slice(0, 10))} ${esc(String(d.doc_time || '').slice(0, 5))}</span>
                 <span>كاشير ${esc(d.cashier_no || '—')}</span>
+                <span>${esc(d.dept_name || d.department_name || '—')}</span>
                 <a class="erp-btn erp-btn--sm" target="_blank" rel="noopener"
                    href="/api/pos/orders/ys/${encodeURIComponent(d.invoice_counter || docNo)}/receipt-html">طباعة الإيصال</a>
                 <button type="button" class="erp-icon-btn" data-v2-close-detail aria-label="إغلاق">×</button>
@@ -402,7 +403,7 @@ async function openAllOrders(day) {
                 <tbody>${rows.map((x) => `<tr class="erp-allorders__row" data-order="${esc(x.invoice_counter)}" tabindex="0" role="button">
                   <td dir="ltr">${esc(x.invoice_counter)}</td>
                   <td dir="ltr">${esc(String(x.doc_time || '').slice(0, 5))}</td>
-                  <td>${esc(x.department_name || x.dept_id || '—')}</td>
+                  <td>${esc(x.department_name || x.dept_name || x.dept_id || '—')}</td>
                   <td dir="ltr">${Math.round(Number(x.net_amount || 0) * 100) / 100}</td>
                   <td dir="ltr">${Math.round(Number(x.vat_amount || 0) * 100) / 100}</td>
                   <td dir="ltr">${Math.round(Number(x.discount_amount || 0) * 100) / 100}</td>

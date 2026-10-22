@@ -291,7 +291,7 @@ export function buildRecent(stats) {
             net: n(o.net_amount),
             vat: n(o.vat_amount),
             status: 'issued',
-            dept: String(o.department_name || o.dept_id || '—'),
+            dept: String(o.department_name || o.dept_name || o.dept_id || '—'),
             cashier: String(o.cashier_no ?? ''),
             time: time ? time.slice(0, 5) : '',
         };

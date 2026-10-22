@@ -58,6 +58,12 @@ describe('مصدر الفواتير — مرآة YaraSoft لا pos_orders', () =
         expect(screen).toMatch(/erp-allorders__table/);
         expect(css).toMatch(/\.erp-allorders/);
     });
+    test('ربط القسم صحيح: external_ref بصيغة ora:CC:<السند>', () => {
+        expect(backend).toMatch(/r\.external_ref = 'ora:CC:' \|\| po\.doc_no/);
+        expect(backend).toMatch(/AS dept_name/);
+        expect(repo).toMatch(/dept_name/);
+    });
+
     test('تفصيل السند: مسار YaraSoft + إيصال للطباعة', () => {
         expect(backend).toMatch(/router\.get\('\/ys\/:docNo'/);
         expect(backend).toMatch(/router\.get\('\/ys\/:docNo\/receipt-html'/);

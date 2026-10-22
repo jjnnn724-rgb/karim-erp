@@ -185,7 +185,7 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
         const day = riyadhToday();
         const stats = await pool.query(`
             SELECT
-                COUNT(*)::int AS orders_count,
+                COUNT(DISTINCT doc_no)::int AS orders_count,
                 COALESCE(SUM(total), 0)::float AS total_revenue,
                 COALESCE(AVG(total), 0)::float AS avg_order_value,
                 COUNT(*)::int AS issued_count,
@@ -200,12 +200,13 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
         // Department breakdown
         const deptBreakdown = await pool.query(`
             SELECT
-                COALESCE(zone_name, 'غير محدَّد') AS department_name,
-                COUNT(*)::int AS orders_count,
+                COALESCE(NULLIF(zone_name, ''), 'غير محدَّد') AS department_name,
+                COUNT(DISTINCT po.doc_no)::int AS orders_count,
                 COALESCE(SUM(total), 0)::float AS total_revenue
             FROM ys_mirror_orders po
+            LEFT JOIN revenues r ON r.external_ref = 'ora:CC:' || po.doc_no AND r.date = po.doc_date::date::text
             WHERE po.doc_date = $1::date
-            GROUP BY po.zone_name
+            GROUP BY 1
             ORDER BY total_revenue DESC
         `, [day]);
         
@@ -231,9 +232,9 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
                    po.vat AS vat_amount, po.discount AS discount_amount, po.payed AS paid_amount,
                    po.doc_time::time AS doc_time, po.cashier_no, po.zone_name AS department_name,
                    (po.doc_date::date + po.doc_time::time)::timestamptz AS created_at,
-                   COALESCE(r."deptId", po.zone_name) AS dept_id
+                   r."deptId" AS dept_id, r.source AS dept_name
             FROM ys_mirror_orders po
-            LEFT JOIN revenues r ON r.external_ref = po.doc_no AND r.date = po.doc_date::date::text
+            LEFT JOIN revenues r ON r.external_ref = 'ora:CC:' || po.doc_no AND r.date = po.doc_date::date::text
             WHERE po.doc_date = $1::date
             ORDER BY po.doc_time::time DESC
             LIMIT 5
@@ -266,9 +267,9 @@ router.get('/ys/:docNo', jwtAuth, async (req, res) => {
                    po.pay_cash, po.pay_network, po.pay_credit, po.pay_mobile,
                    po.cashier_no, po.table_name, po.zone_name, po.printed, po.lines,
                    (po.doc_date::date + po.doc_time::time)::timestamptz AS created_at,
-                   COALESCE(rv."deptId", po.zone_name) AS dept_id
+                   rv."deptId" AS dept_id, rv.source AS dept_name
               FROM ys_mirror_orders po
-              LEFT JOIN revenues rv ON rv.external_ref = po.doc_no AND rv.date = po.doc_date::date::text
+              LEFT JOIN revenues rv ON rv.external_ref = 'ora:CC:' || po.doc_no AND rv.date = po.doc_date::date::text
              WHERE po.doc_no = $1
              ORDER BY po.doc_date DESC
              LIMIT 1
@@ -403,9 +404,9 @@ router.get('/list', jwtAuth, generalLimiter, async (req, res) => {
                    po.discount AS discount_amount, po.payed AS paid_amount,
                    po.pay_cash AS cash, po.pay_network AS network, po.pay_credit AS credit, po.pay_mobile AS mobile,
                    po.cashier_no, po.zone_name AS department_name, po.table_name, po.printed,
-                   COALESCE(r."deptId", po.zone_name) AS dept_id
+                   r."deptId" AS dept_id, r.source AS dept_name
               FROM ys_mirror_orders po
-              LEFT JOIN revenues r ON r.external_ref = po.doc_no AND r.date = po.doc_date::date::text
+              LEFT JOIN revenues r ON r.external_ref = 'ora:CC:' || po.doc_no AND r.date = po.doc_date::date::text
              WHERE po.doc_date BETWEEN $1::date AND $2::date
              ORDER BY po.doc_date DESC, po.doc_time::time DESC
              LIMIT $3
