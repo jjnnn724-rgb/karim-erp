@@ -122,9 +122,13 @@ describe('رسم وحدات V2 — لا اسم مستورد بلا تصدير', 
     test('المضيف يركّب كل شاشة مصدَّرة — لا شاشة ميتة في الشجرة', () => {
         const host = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         const mounted = [...host.matchAll(/from\s*'\.\/screens\/([\w-]+)\.js/g)].map((m) => m[1]);
+        // الشاشاتُ الكسولة (موجز المدير): تُركَّب بـimport ديناميكي عند أول
+        // فتح، فلا يدخل وزنُها حزمةَ الإقلاع — وهي مركَّبةٌ كذلك.
+        const lazy = [...host.matchAll(/import\('\.\/screens\/([\w-]+)\.js/g)].map((m) => m[1]);
         const present = fs.readdirSync(path.join(V2, 'screens')).map((f) => f.replace(/\.js$/, ''));
         for (const s of present) {
-            expect(mounted).toContain(s);
+            const ok = mounted.includes(s) || lazy.includes(s);
+            if (!ok) {throw new Error(`شاشة بلا تركيب في المضيف: ${s}`);}
         }
     });
 });

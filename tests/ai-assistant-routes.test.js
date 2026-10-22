@@ -27,6 +27,16 @@ jest.mock('../backend/whatsapp-engine/ai/gemini', () => ({
     systemGuard: () => 'test guard',
 }));
 
+/* النموذج المحلي: غير متوفّر في بيئة الاختبار ⇒ المساعد يقود إلى الوضع
+   القواعدي (الحقائق مباشرة) — مسارٌ حتمي بلا نموذج ولا شبكة. */
+jest.mock('../backend/ai-assistant/local-llm', () => ({
+    available: async () => false,
+    activeModel: async () => 'test-model',
+    chat: async () => { throw new Error('LOCAL_LLM_DISABLED'); },
+    MODEL: 'test-model',
+    HOST: 'http://127.0.0.1:11434',
+}));
+
 jest.mock('../backend/shared-pool', () => {
     const client = { query: async () => ({ rows: [{ ok: 1, n: 0 }] }), release: () => {} };
     return {
