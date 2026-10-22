@@ -398,6 +398,18 @@ describe('V2 briefing screen + host (source contract)', () => {
         expect(s).toMatch(/مباشر من قاعدة البيانات|مصدر الأرقام/);
     });
 
+    test('«كل الفواتير» تُلحَق بـdocument.body مغلّفة بـ.erp-v2 — وإلا انطبعت فوق اللوحة', () => {
+        const s = screen();
+        /* الطبقة خارج شجرة .erp-v2: بلا الغلاف تسقط كل قاعدة «.erp-v2 .erp-*»
+           وكل توكن --erp-*، فيُطبع الجدول بلا خلفية ولا حشو فوق لوحة التحكم. */
+        expect(s).toMatch(/layer\.className = 'erp-v2 erp-allorders'/);
+        expect(s).toMatch(/document\.body\.appendChild\(layer\)/);
+        /* مخرجٌ للكيبورد: اللوحة role=dialog aria-modal بلا Escape وعدٌ ناقص. */
+        expect(s).toMatch(/e\.key === 'Escape'/);
+        expect(s).toMatch(/addEventListener\('keydown', onKey\)/);
+        expect(s).toMatch(/removeEventListener\('keydown', onKey\)/);
+    });
+
     test('the host maps the executive nav key to the briefing screen and tears it down', () => {
         const p = fs.readFileSync(PREVIEW, 'utf8');
         expect(p).toMatch(/key === 'cfo'/);

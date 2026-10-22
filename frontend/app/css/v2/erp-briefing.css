@@ -272,7 +272,9 @@
 }
 
 .erp-allorders__panel {
-  inline-size: min(100%, 72ch);
+  /* 8 أعمدة (سند · وقت · قسم · صافي · ضريبة · خصم · مدفوع · كاشير): عند 72ch
+     كانت رؤوس الأعمدة تلتف فتصطف السطور بأطوال مختلفة وتبدو متداخلة. */
+  inline-size: min(100%, 96ch);
   max-block-size: 86vh;
   display: flex;
   flex-direction: column;

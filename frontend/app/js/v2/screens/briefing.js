@@ -325,11 +325,14 @@ function template() {
 
 /**
  * «كل الفواتير» — لوحة بتفاصيل كل سند (رقم · وقت · صافي · ضريبة · خصم ·
- * دفعات · كاشير) من مرآة YaraSoft،的范围 يختاره المالك.
+ * دفعات · كاشير) من مرآة YaraSoft، والنطاق يختاره المالك.
  */
 async function openAllOrders(day) {
     const layer = document.createElement('div');
-    layer.className = 'erp-allorders';
+    /* الطبقة تُلحَق بـdocument.body أي خارج شجرة .erp-v2، فبلا هذا الغلاف
+       تسقط كل قاعدة «.erp-v2 .erp-*» وكل توكن --erp-*: جدول بلا خلفية أو
+       حشو أو فواصل فيُطبع فوق لوحة التحكم مباشرة. نفس نمط chat.js وportal-face.js. */
+    layer.className = 'erp-v2 erp-allorders';
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-modal', 'true');
     layer.setAttribute('aria-label', 'كل الفواتير');
@@ -346,9 +349,14 @@ async function openAllOrders(day) {
     document.body.appendChild(layer);
     const bodyEl = layer.querySelector('[data-v2-orders-body]');
     const dateEl = layer.querySelector('.erp-allorders__date');
-    const close = () => layer.remove();
+    const onKey = (e) => { if (e.key === 'Escape') {close();} };
+    const close = () => {
+        document.removeEventListener('keydown', onKey);
+        layer.remove();
+    };
     layer.querySelector('[data-v2-close-orders]').addEventListener('click', close);
     layer.addEventListener('mousedown', (e) => { if (e.target === layer) {close();}});
+    document.addEventListener('keydown', onKey);
 
     /* إيصال POS محميّ برؤوس المصادقة فقط — مجرد تنقّل (href/target) لا يحمل
        x-api-key فيرجع 401. جلب الورقة من المستودع (fetchReceiptHtml) وكتابتها
