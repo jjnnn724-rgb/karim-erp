@@ -71,7 +71,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
     `, [from, today]);
     console.log('\n【٢】 التسوية النقدية (من مرآة YaraSoft — المتوقَّع من البيع)');
     console.log('   اليوم        فواتير     إجمالي      ضريبة       صافي        نقد        شبكة        أخرى');
-    let tot = { n: 0, gross: 0, cash: 0, card: 0 };
+    const tot = { n: 0, gross: 0, cash: 0, card: 0 };
     for (const d of recon.rows) {
         const other = money(d.credit + d.mobile);
         console.log(`   ${String(d.day).slice(0, 10)}  ${String(d.invoices).padStart(5)}  ${fmt(d.gross).padStart(11)} ${fmt(d.vat).padStart(10)} ${fmt(d.net).padStart(11)} ${fmt(d.cash).padStart(11)} ${fmt(d.card).padStart(11)} ${fmt(other).padStart(9)}`);
