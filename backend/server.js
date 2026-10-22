@@ -673,6 +673,14 @@ ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_S
 // إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
 app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
 
+// ─── موجز المدير: طلب واحد لكل أرقام اللوحة (قراءة فقط، الأدمن فقط) ─────
+try {
+    const { router: executiveRouter } = require('./executive-routes');
+    app.use('/api/executive', executiveRouter);
+} catch (e) {
+    logger.error('[EXECUTIVE] module failed to load — summary disabled:', e.message);
+}
+
 // ─── مساعد المشروع (V2) — الأدمن فقط ────────────────────────────────────
 // يجيب أسئلة المالك عن شاشات V2 وعقودها ويشخّص النظام الحي — مجانًا
 // (Gemini free tier) وبلا نموذج يعمل «قواعديًا». البوابة: session حيّة +

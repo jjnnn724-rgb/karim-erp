@@ -390,6 +390,29 @@ mountCommandPalette(shell);
    بالتفويض، فتبقى عاملةً بعد كل تبديلِ شاشةٍ بلا إعادة تركيب. */
 mountChartInteraction(shell.root);
 
+/* ── 5b4. موجز المدير: وحدةٌ تُحمَّل كسولًا (import ديناميكي) فلا وزن
+   على إقلاع الصفحة — تفتح أول مرة فقط. */
+let executiveMount = null;
+let executiveHandle = null;
+async function renderExecutiveScreen() {
+    shell.main.innerHTML = '<div data-v2-executive-host></div>';
+    const host = shell.main.querySelector('[data-v2-executive-host]');
+    try {
+        if (!executiveMount) {
+            const mod = await import('./screens/executive.js?v=4.9.193');
+            executiveMount = mod.mountExecutive;
+        }
+        executiveHandle = executiveMount(host, { navigate: (k) => shell.navigate(k) });
+    } catch (e) {
+        console.warn('[V2] تعذّر تحميل موجز المدير:', e);
+        host.innerHTML = '<div class="erp-state"><span class="erp-state__title">تعذّر تحميل الموجز</span><span>أعد المحاولة.</span></div>';
+    }
+}
+function teardownExecutiveScreen() {
+    if (executiveHandle && typeof executiveHandle.destroy === 'function') { try { executiveHandle.destroy(); } catch (_) { /* ignore */ } }
+    executiveHandle = null;
+}
+
 /* ── 5b3. مساعد V2 (الأدمن): معرفة المشروع + تشخيص حيّ + قراءة كود.
    Lives in the control center (مركز التحكم) beside «النظام الحالي».
    يُعلَن قبل الإسناد: الاستدعاء تحت أدناه يقع في نطاق زمني ميت (TDZ)
@@ -2202,6 +2225,7 @@ function renderScreen(key) {
     teardownEmployeesScreen();
     teardownBriefingScreen();
     teardownCfoScreen();
+    teardownExecutiveScreen();
     teardownWarehouseScreen();
     teardownWarehouseGovScreen();
     teardownReportsScreen();
@@ -2263,6 +2287,11 @@ function renderScreen(key) {
 
     if (key === 'cfo') {
         renderCfoScreen();
+        return;
+    }
+
+    if (key === 'executive') {
+        renderExecutiveScreen();
         return;
     }
 

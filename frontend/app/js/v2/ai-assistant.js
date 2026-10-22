@@ -74,6 +74,13 @@ export function mountAiAssistant(shell, ctx = {}) {
     trigger.setAttribute('data-erp-ai-open', '');
     trigger.innerHTML = '<i class="ji" data-i="message" aria-hidden="true"></i><span>المساعد</span>';
 
+    /* موجز المدير: زرٌّ في مركز التحكّم — يفتح اللوحة الكاملة. */
+    const execBtn = document.createElement('button');
+    execBtn.type = 'button';
+    execBtn.className = 'erp-btn erp-btn--sm';
+    execBtn.setAttribute('data-erp-exec-open', '');
+    execBtn.innerHTML = '<i class="ji" data-i="banknote" aria-hidden="true"></i><span>موجز المدير</span>';
+
     let section = null;
     function mountTrigger() {
         const panel = shell && shell.root ? shell.root.querySelector('[data-erp-more]') : null;
@@ -88,6 +95,7 @@ export function mountAiAssistant(shell, ctx = {}) {
         const row = document.createElement('div');
         row.className = 'erp-shell__more-row';
         row.appendChild(trigger);
+        row.appendChild(execBtn);
         section.appendChild(head);
         section.appendChild(row);
         panel.appendChild(section);
@@ -310,6 +318,10 @@ export function mountAiAssistant(shell, ctx = {}) {
     }
 
     trigger.addEventListener('click', open);
+    execBtn.addEventListener('click', () => {
+        try { shell.closeMore?.(); } catch (_) { /* host decides */ }
+        try { shell.navigate('executive'); } catch (e) { console.info('[V2 ai]', e); }
+    });
 
     function refresh() {
         const role = getRole();
