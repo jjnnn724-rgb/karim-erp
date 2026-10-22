@@ -669,7 +669,7 @@ export function mountReportsScreen(host, ctx = {}) {
     function xHead(subtitle) {
         const r = range();
         const by = ctx.userName ? ` · بواسطة ${ctx.userName}` : '';
-        return `<p class="erp-text-sm erp-text-muted">${esc(subtitle)} — الفترة ${esc(r.startDate)} ← ${esc(r.endDate)} · أُصدر ${esc(new Date().toLocaleString('ar-EG'))}${esc(by)}</p>`;
+        return `<p class="erp-text-sm erp-text-muted" data-v2-xhead>${esc(subtitle)} — الفترة ${esc(r.startDate)} ← ${esc(r.endDate)} · أُصدر ${esc(new Date().toLocaleString('ar-EG'))}${esc(by)}</p>`;
     }
 
     function setPosVisible(on) {
@@ -962,8 +962,30 @@ export function mountReportsScreen(host, ctx = {}) {
       .rp-kpis td b { display: block; font-size: 13pt; color: #18352b; margin-top: 2px; }
       .rp-sig { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 12px; border-top: 1px solid #d7c99f; font-size: 10pt; color: #18352b; }
       .rp-foot { text-align: center; color: #756d5a; font-size: 8.5pt; margin-top: 10px; }
+      /* التقارير الإضافية تُنسخ من الشاشة (box.innerHTML) فتحمل وسومًا بلا
+         تنسيقها: الرموز تصل svg بلا عرضٍ فتمدّدت لعرض الصفحة كله، وشرائح
+         المؤشرات تصل قائمةً عمودية. هنا تنسيق الطباعة وحده لها. */
+      svg { max-width: 100%; }
+      svg.ji { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: -0.12em; }
+      .erp-kpis { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; gap: 8px; break-inside: avoid; page-break-inside: avoid; }
+      .erp-kpi { flex: 1 1 0; min-width: 0; border: 1px solid #c9bfa6; border-radius: 4px; padding: 7px 9px; break-inside: avoid; page-break-inside: avoid; }
+      .erp-kpi__top { display: flex; align-items: center; gap: 6px; }
+      .erp-kpi__label { font-size: 9pt; color: #756d5a; }
+      .erp-eyebrow { display: block; font-size: 7.5pt; color: #8a8172; letter-spacing: .3px; font-weight: 400; }
+      .erp-kpi__value { font-size: 13pt; font-weight: 700; color: #18352b; margin-top: 2px; }
+      .erp-kpi__unit { font-size: 9pt; font-weight: 400; color: #756d5a; }
+      .erp-kpi__foot { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; font-size: 8pt; color: #756d5a; }
+      .erp-kpi__foot .erp-delta { display: none; }
+      .erp-delta { background: none; border: 0; padding: 0; color: #756d5a; }
+      .erp-table__scroll { overflow: visible; }
+      .erp-table__grid { width: 100%; border-collapse: collapse; }
+      .erp-text-sm { font-size: 8.5pt; }
+      .erp-text-muted { color: #756d5a; }
+      .erp-num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+      h4 { font-size: 11pt; color: #18352b; margin: 12px 0 5px; break-after: avoid; page-break-after: avoid; }
       @media print {
         .rp-break { break-inside: avoid; page-break-inside: avoid; }
+        .rp-title, .rp-sub { break-after: avoid; page-break-after: avoid; }
         thead { display: table-header-group; }
         tfoot { display: table-footer-group; }
         tr { break-inside: avoid; page-break-inside: avoid; }
@@ -982,7 +1004,9 @@ export function mountReportsScreen(host, ctx = {}) {
         const w = openInAppReport(title);
         const tmp = document.createElement('div');
         tmp.innerHTML = bodyHtml;
-        tmp.querySelectorAll('.erp-no-print,button,select,input').forEach((n) => n.remove());
+        /* سطرُ التقرير الإضافي يكرّر عنوان المستند ونطاقه وطابعه؛ يُحذف من
+           المطبوعة وحدها. */
+        tmp.querySelectorAll('.erp-no-print, [data-v2-xhead], button, select, input').forEach((n) => n.remove());
         const stamp = new Date().toLocaleString('ar-EG');
         const by = ctx.userName ? ` · أعدّه ${ctx.userName}` : '';
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`

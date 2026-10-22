@@ -6,6 +6,10 @@ let installed = false;
 const PRINT_STYLE = `
 @page { margin: 14mm 12mm; }
 body { color: #17231f; font-family: Tahoma, Arial, sans-serif; }
+/* الرموز تصل من الشاشة كوسوم svg بلا عرضٍ ولا ارتفاع (icons.js)؛ بلا هذه
+   القاعدة يتمدّد كلٌّ منها إلى عرض الصفحة (~1200px) فيصير رمزًا عملاقًا. */
+svg { max-width: 100%; }
+svg.ji { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .erp-v2-print-brand {
     display: none; align-items: center; justify-content: center; gap: 14px;
     margin: 0 auto 18px; padding: 0 0 12px; border-bottom: 2px solid #d7c99f;

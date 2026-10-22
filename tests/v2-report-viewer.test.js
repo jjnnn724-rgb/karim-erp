@@ -106,6 +106,10 @@ describe('عارض المستندات — الطباعة والوصولية', ()
 
     test('V2 print uses the uploaded settings logo without changing legacy branding', () => {
         const branding = read(path.join(V2, 'print-branding.js'));
+        // الرموز تصل إلى المستند المطبوع كوسوم svg بلا عرضٍ/ارتفاع (icons.js)؛
+        // بلا تقييدها تتمدّد إلى عرض الصفحة كله — قيس حيًّا 1200x1200 لكل رمز.
+        expect(branding).toMatch(/svg \{ max-width: 100%; \}/);
+        expect(branding).toMatch(/svg\.ji \{ width: 1em; height: 1em;/);
         expect(branding).toContain('export function setV2PrintLogo(value)');
         expect(branding).toContain('export function installV2PrintBranding()');
         expect(branding).toContain('configuredLogo');

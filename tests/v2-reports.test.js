@@ -616,6 +616,12 @@ describe('V2 reports screen + layer (source contract)', () => {
         // المستند يحمل توقيعات وترويسة، والطباعة من شريط العارض وحده.
         expect(s).toMatch(/rp-sig/);
         expect(s).toMatch(/rp-foot/);
+        // الإضافية تُنسخ من الشاشة: رموزها svg بلا عرض فتتمدّد لعرض الصفحة
+        // (~1200px) وتُفرد صفحةً أولى شبه فارغة، وشرائح مؤشراتها قائمة عمودية.
+        expect(s).toMatch(/svg\.ji \{ width: 1em; height: 1em;/);
+        expect(s).toMatch(/svg \{ max-width: 100%; \}/);
+        expect(s).toMatch(/\.erp-kpis \{ list-style: none;/);
+        expect(s).toMatch(/\[data-v2-xhead\]/);
     });
 
     test('the screen is read-only: it builds no request of its own', () => {
