@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const gemini = require('../whatsapp-engine/ai/gemini');
-const { collectCfoReview } = require('./cfo');
+const { cfoReview } = require('./cfo');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const V2_DIR = path.join(ROOT, 'frontend', 'app', 'js', 'v2');
@@ -255,7 +255,7 @@ async function ask(input = {}) {
         // «المدير المحاسبي»: قراءة واحدة تجمع أرقام اليوم وتستنبط إنذارات
         // القاعدة منها — كل رقم من مجمّعات النظام القائمة (لا استعلامات
         // جديدة، ولا تقدير).
-        const review = await collectCfoReview(input.pool, input.day);
+        const review = await cfoReview(input.pool, input.day);
         parts.push(review.facts);
         grounded = true;
     } else if (mode === 'code') {

@@ -25,7 +25,7 @@ describe('المدير المالي — المراجعة', () => {
         expect(assistant).toMatch(/const MODES = \['knowledge', 'diagnose', 'code', 'cfo'\]/);
         expect(assistant).toMatch(/require\('\.\/cfo'\)/);
         expect(assistant).toMatch(/mode === 'cfo'/);
-        expect(assistant).toMatch(/collectCfoReview\(input\.pool/);
+        expect(assistant).toMatch(/cfoReview\(input\.pool/);
     });
 
     test('يجمع من مجمّعات النظام القائمة (لا SQL جديد لترقام المبيعات)', () => {
@@ -59,11 +59,9 @@ describe('المدير المالي — المراجعة', () => {
         expect(cfo).toMatch(/Number\.isNaN\(t\) \? null/);   // تاريخ فاسد ⇒ لا «NaN يوم»
     });
 
-    test('لا أرقام مالية ثابتة في الكود (الحدود إنذارات فقط)', () => {
-        // ثوابت غير مالية: حساب التاريخ (مللي ثانية) وأطوال اقتطاع الرسائل
-        const CODE_CONSTANTS = new Set(['86400000', '60000', '3600000', '1000', '120', '80', '70', '60']);
-        const amounts = [...cfo.matchAll(/\b\d{2,}\b/g)].map((m) => Number(m[0]))
-            .filter((n) => n > 100 && !CODE_CONSTANTS.has(String(n)));
-        if (amounts.length) {throw new Error('مبالغ مكتوبة في كود المراجعة: ' + amounts.join(', '));}
+    test('لا مبالغ مكتوبة في الكود (كل رقم يأتي من القاعدة)', () => {
+        // لا مبلغ حرفي (رقم + ر.س) في الكود — المبالغ تُبنى من بياناتِ الاستعلام.
+        const literals = [...cfo.matchAll(/(\d+(?:\.\d+)?)\s*ر\.س/g)].map((m) => m[0]);
+        if (literals.length) {throw new Error('مبالغ مكتوبة في كود المراجعة: ' + literals.join(', '));}
     });
 });

@@ -47,16 +47,17 @@ async function collectCfoReview(pool, day = riyadhToday()) {
         ).catch(() => ({ rows: [] })),
         pool.query("SELECT COUNT(*)::int AS n FROM pos_shift_sessions WHERE status = 'open'").catch(() => ({ rows: [{ n: 0 }] })),
         // سلسلة ٧ أيام بمصدرين: نقاط البيع وسجل الإيرادات — للمقارنة بمصدر واحد
+        // (revenues.date نصّي ⇒ يُقارن بالنص لا بالتاريخ)
         pool.query(`
             SELECT d::date AS day,
                    COALESCE((SELECT SUM(o.total_amount)::float FROM pos_orders o
                               WHERE o.status IN ('issued','reported')
                                 AND (o.created_at AT TIME ZONE 'Asia/Riyadh')::date = d::date), 0) AS pos_total,
                    COALESCE((SELECT SUM(r.amount)::float FROM revenues r
-                              WHERE r.date = d::date AND r."deptId" != 'ys_b4_ext'), 0) AS rev_total
+                              WHERE r.date = d::date::text AND r."deptId" != 'ys_b4_ext'), 0) AS rev_total
               FROM generate_series((NOW() AT TIME ZONE 'Asia/Riyadh')::date - 6,
                                    (NOW() AT TIME ZONE 'Asia/Riyadh')::date, '1 day') AS d
-             ORDER BY d`).catch(() => ({ rows: [] })),
+             ORDER BY d`).catch((e) => ({ rows: [], error: String(e.message).slice(0, 120) })),
         // آخر إقفال مسجَّل — «منذ متى» سؤال المدقق الأول
         pool.query('SELECT MAX(close_date) AS last_close FROM pos_day_closes').catch(() => ({ rows: [{}] })),
         // الأصناف السالبة بقيمتها (الأثر على ثقة تكلفة البضاعة)
@@ -102,6 +103,11 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     const sinceClose = daysSince(lastCloseDay);
     // نقاط البيع: هل تحرّكت أصلًا خلال الأسبوع؟ (إلا فـ«انفصال المصادر» إيجابية كاذبة)
     const posEverActive = (series.rows || []).some((r) => num(r.pos_total) > 0);
+    // هل اكتمل اليوم؟ بعد العشاء (15:00) تكتمل一天的 مبيعات؛ وقبلها فاليوم
+    // ناقصٌ وقياس «انخفاض المبيعات» ظلمٌ (يقارن جزءًا بكامل).
+    const hourNow = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', hour12: false }).format(new Date()));
+    const dayComplete = hourNow >= 15;
+    const isoDay = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v || '').slice(0, 10));
 
     lines.push(`## اليوم ${day} (Asia/Riyadh)`);
     lines.push('### الأرقام');
@@ -120,7 +126,14 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     lines.push(`- أصناف رصيدها سالب: ${(brief.stockOut || []).length} · تحت الحد الأدنى: ${(brief.stockLow || []).length} · تغطيتها أقل من ${LIMITS.coverDays} أيام: ${(brief.forecast || []).length}`);
     lines.push(`- معلّق: ${num(pending.leavesPending)} إجازة · ${num(pending.reviewItems)} مراجعة · ${num(pending.unmappedSections)} قسم غير مطابَق`);
     if (series.rows && series.rows.length) {
-        lines.push('- آخر ٧ أيام (نقاط البيع | سجل الإيرادات): ' + series.rows.map((r) => `${String(r.day).slice(5)} ${money(r.pos_total)} | ${money(r.rev_total)}`).join(' · '));
+        lines.push('- آخر ٧ أيام (نقاط البيع | سجل الإيرادات): ' + series.rows.map((r) => `${isoDay(r.day).slice(5)} ${money(r.pos_total)} | ${money(r.rev_total)}`).join(' · '));
+    }
+    if (!dayComplete) {
+        lines.push(`- اليوم غير مكتمل (الساعة ${hourNow}:00 الرياض) — لا مقارنة بالأمس قبل اكتماله.`);
+    }
+    if (series.error) {
+        // قياسٌ فاشل يُعلن ولا يُخفى — وإلا بُني استنتاجٌ على قياسٍ ناقص.
+        lines.push(`- تعذّر قياس السلسلة الأسبوعية: ${series.error}`);
     }
     if ((negStock.rows || []).length) {
         const value = negStock.rows.reduce((s, r) => s + Math.abs(num(r.qty) * num(r.avg_cost)), 0);
@@ -153,7 +166,7 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     }
     // (٣) الإقفال: منذ متى
     if (!z) {
-        alerts.push(`إقفال اليوم لم يُسجَّل${sinceClose != null ? ` — وآخر إقفال قبل ${sinceClose} يوم (${lastCloseDay})` : ''}: النقد غير محسوب.`);
+        alerts.push(`إقفال اليوم لم يُسجَّل${sinceClose != null ? ` — وآخر إقفال قبل ${sinceClose} يوم (${lastCloseIso})` : ''}: النقد غير محسوب.`);
     } else if (Math.abs(num(z.total_variance)) > LIMITS.variance) {
         alerts.push(`فرق الإقفال ${money(z.total_variance)} ر.س يتجاوز الحدّ (${LIMITS.variance}) — فرقٌ كبير يستحق المراجعة.`);
     }
@@ -193,11 +206,11 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     if ((brief.forecast || []).length > 0) {
         alerts.push(`${brief.forecast.length} صنف تغطيته أقل من ${LIMITS.coverDays} أيام — سيتوقف البيع.`);
     }
-    // (٦) مقارنة بمصدر واحد: POS مع POS فقط
-    if (posYTotal > 0 && posTotal < posYTotal * (1 - LIMITS.salesDrop)) {
+    // (٦) مقارنة بمصدر واحد: POS مع POS فقط — ويومٌ غير مكتمل لا يُقارَن
+    if (dayComplete && posYTotal > 0 && posTotal < posYTotal * (1 - LIMITS.salesDrop)) {
         alerts.push(`مبيعات نقاط البيع انخفضت ${Math.round((1 - posTotal / posYTotal) * 100)}% عن أمس (حدّ الإنذار ${Math.round(LIMITS.salesDrop * 100)}%) — مقارنة بمصدر واحد.`);
     }
-    if (cashYTotal > 0 && cashTotal < cashYTotal * (1 - LIMITS.salesDrop)) {
+    if (dayComplete && cashYTotal > 0 && cashTotal < cashYTotal * (1 - LIMITS.salesDrop)) {
         alerts.push(`إيراد سجل الإيرادات انخفض ${Math.round((1 - cashTotal / cashYTotal) * 100)}% عن أمس (حدّ الإنذار ${Math.round(LIMITS.salesDrop * 100)}%) — مقارنة بمصدر واحد.`);
     }
     // (٧) المصروفات: الصفر المشبوه
@@ -223,4 +236,46 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     return { day, facts: facts.join('\n'), alerts, lines };
 }
 
-module.exports = { collectCfoReview, LIMITS };
+/** ذاكرة قصيرة للمراجعة: سؤالٌ متكرّر لا يعيد الحساب. */
+let cache = { at: 0, day: null, review: null };
+const CACHE_MS = Number(process.env.CFO_CACHE_MS || 180000);
+const DEADLINE_MS = Number(process.env.CFO_DEADLINE_MS || 12000);
+
+/**
+ * المراجعة بجهدٍ محدود: ميزانيةُ وقتٍ صارمة (لا انتظار خلف مزامنة
+ * YaraSoft الثقيلة) وذاكرة قصيرة. فإن تعذّر الفحص: يُقال ذلك صراحةً ولا
+ * تُفتعل أرقام.
+ *
+ * ملاحظة: تُجمع الاستعلامات عبر **المجموعة** (لا عميل واحد) — فالعميل
+ * الواحد لا يقبل استعلامات متوازية (سباقٌ يُنتج نتائج ناقصة).
+ * @param {any} pool
+ * @param {string} [day]
+ */
+async function cfoReview(pool, day = riyadhToday()) {
+    if (cache.day === day && cache.review && Date.now() - cache.at < CACHE_MS) {return cache.review;}
+    const deadline = new Promise((resolve) => {
+        const timer = setTimeout(() => resolve({
+            day,
+            facts: `تعذّر جمع المراجعة المالية ضمن ${Math.round(DEADLINE_MS / 1000)} ثوانٍ (القاعدة مشغولة بمزامنة YaraSoft) — أعد المحاولة بعد قليل.`,
+            alerts: [],
+            lines: [],
+            degraded: true,
+        }), DEADLINE_MS);
+        if (typeof timer.unref === 'function') {timer.unref();}
+    });
+    try {
+        const review = await Promise.race([collectCfoReview(pool, day), deadline]);
+        if (!review.degraded) {cache = { at: Date.now(), day, review };}
+        return review;
+    } catch (e) {
+        return {
+            day,
+            facts: `تعذّر جمع المراجعة المالية: ${String(e && e.message ? e.message : e).slice(0, 140)}`,
+            alerts: [],
+            lines: [],
+            degraded: true,
+        };
+    }
+}
+
+module.exports = { collectCfoReview, cfoReview, LIMITS };
