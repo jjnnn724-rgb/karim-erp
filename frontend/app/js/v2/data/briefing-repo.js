@@ -255,6 +255,19 @@ export function buildPipeline(stats) {
 }
 
 /**
+ * كل الفواتير بتفاصيلها (نطاق تواريخ) — من مرآة YaraSoft.
+ * @param {{from?:string, to?:string, limit?:number}} [opts]
+ * @returns {Promise<{from:string, to:string, totals:object, rows:Array}>}
+ */
+export async function fetchAllOrders({ from, to, limit = 500 } = {}) {
+    const q = new URLSearchParams();
+    if (from) {q.set('from', String(from));}
+    if (to) {q.set('to', String(to));}
+    q.set('limit', String(limit));
+    return apiFetch(`/pos/orders/list?${q.toString()}`);
+}
+
+/**
  * أحدث السندات (من مرآة YaraSoft — مصدرُ المبيعات الحقيقي).
  * ملاحظة: pos_orders عندنا فارغ (البيع من YaraSoft)، فالسندات تُقرأ من
  * ys_mirror_orders عبر /pos/orders/stats/today.

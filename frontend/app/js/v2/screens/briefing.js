@@ -43,12 +43,13 @@ import { statusBadge, resolveStatus } from '../status.js?v=4.9.193';
 import {
     fetchBriefing,
     fetchTodayStats,
+    fetchAllOrders,
     buildBriefingView,
     formatMoney,
     formatInt,
 } from '../data/briefing-repo.js?v=4.9.193';
 import { fetchCurrency } from '../data/reports-repo.js?v=4.9.193';
-import { apiFetch } from '../../core/api.js?v=4.9.193';
+
 import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.193';
 
 const esc = (v) => String(v ?? '')
@@ -349,7 +350,7 @@ async function openAllOrders(day) {
         const d = dateEl.value || day || '';
         bodyEl.innerHTML = '<p class="erp-state">جارٍ جلب السندات…</p>';
         try {
-            const r = await apiFetch(`/pos/orders/list?from=${encodeURIComponent(d)}&to=${encodeURIComponent(d)}&limit=500`);
+            const r = await fetchAllOrders({ from: d, to: d, limit: 500 });
             const rows = Array.isArray(r && r.rows) ? r.rows : [];
             const t = (r && r.totals) || {};
             if (!rows.length) {
