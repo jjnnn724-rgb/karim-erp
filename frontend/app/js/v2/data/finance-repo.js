@@ -35,7 +35,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.194';
+import { apiFetch } from '../../core/api.js?v=4.9.197';
 
 /** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;

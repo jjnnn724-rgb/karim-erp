@@ -10,11 +10,11 @@
  * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
-import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.194';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.197';
+import { openInAppReport } from '../report-viewer.js?v=4.9.197';
+import { ensureXlsx } from '../vendor.js?v=4.9.197';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.197';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.197';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

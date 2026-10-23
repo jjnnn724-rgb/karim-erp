@@ -12,11 +12,11 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.194';
-import { formatInt } from '../data/reports-repo.js?v=4.9.194';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.194';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.194';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.197';
+import { formatInt } from '../data/reports-repo.js?v=4.9.197';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.197';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.197';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.197';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -28,7 +28,7 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.194';
+} from '../data/settings-repo.js?v=4.9.197';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -55,7 +55,7 @@ function fmtDuration(sec) {
     return `${m}د`;
 }
 
-const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'departments',
+const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'monthly-comparison', 'departments',
     'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'kitchen', 'dispatch',
     'recipes', 'procurement', 'hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco',
     'payroll', 'hr-departments', 'employee-portal', 'roster', 'reports', 'users', 'permissions',
@@ -66,7 +66,7 @@ const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'revenues', 'expenses
    stops an English route key from reaching an Arabic admin screen. */
 const NAV_LABELS_AR = {
     'cfo': 'المدير المالي', 'cash-register': 'سجلّ الصرف', 'cashier-sales': 'مبيعات الكاشير', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
-    'cost-analysis': 'تحليل التكاليف', 'pnl': 'الأرباح والخسائر', 'departments': 'الأقسام',
+    'cost-analysis': 'تحليل التكاليف', 'pnl': 'الأرباح والخسائر', 'monthly-comparison': 'مقارنة الشهور', 'departments': 'الأقسام',
     'warehouse': 'المخزون', 'wh-invoices': 'فواتير المخزن', 'wh-moves': 'حركات المخزون',
     'wh-returns': 'مرتجعات المخزون', 'wh-prs': 'طلبات الشراء', 'kitchen': 'المطبخ',
     'dispatch': 'التوزيع', 'recipes': 'الوصفات', 'procurement': 'المشتريات',

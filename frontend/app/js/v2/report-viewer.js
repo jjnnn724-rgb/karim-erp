@@ -19,7 +19,7 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { addV2PrintBranding } from './print-branding.js?v=4.9.194';
+import { addV2PrintBranding } from './print-branding.js?v=4.9.197';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';

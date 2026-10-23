@@ -18,12 +18,12 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { barChart, donutChart } from '../charts.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.197';
+import { barChart, donutChart } from '../charts.js?v=4.9.197';
 import {
     fetchCostAnalysis, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.194';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.194';
+} from '../data/finance-repo.js?v=4.9.197';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.197';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

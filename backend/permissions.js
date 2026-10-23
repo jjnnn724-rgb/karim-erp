@@ -59,7 +59,7 @@ const PERMISSIONS = [
     { key: 'finance.edit', ar: 'إدارة الإيرادات والمصاريف', group: 'المالية',
       menus: ['revenues', 'expenses', 'cash-register', 'cashier-sales'], entitiesRead: ['revenues', 'expenses'], entitiesWrite: ['revenues', 'expenses'] },
     { key: 'reports.view', ar: 'عرض التقارير', group: 'المالية',
-      menus: ['reports', 'cfo', 'cost-analysis', 'pnl'], entitiesRead: [], entitiesWrite: [] },
+      menus: ['reports', 'cfo', 'cost-analysis', 'pnl', 'monthly-comparison'], entitiesRead: [], entitiesWrite: [] },
     { key: 'accounting.view', ar: 'عرض الحسابات', group: 'المالية',
       menus: ['cfo'], entitiesRead: [], entitiesWrite: [] },
     // التكامل

@@ -733,7 +733,8 @@ app.use('/api/yarasoft', (req, res, next) => { req.io = io; req.app.locals.yaras
 const oracleDataRouter = require('./yarasoft/oracle-data-routes');
 app.use('/api/oracle-data', oracleDataRouter);
 // ─── تقارير إيرادات الأقسام اليومية/الشهرية/السنوية (إغلاقات معتمدة) ────────
-app.use('/api/yara-reports', require('./yarasoft/yara-reports'));
+const { router: yaraReportsRouter } = require('./yarasoft/yara-reports');
+app.use('/api/yara-reports', yaraReportsRouter);
 // ─── محرك استعلامات المخزون (قراءة فقط — الدفتر هو المرجع، للمدير والسو-شيف) ──
 app.use('/api/inventory-inquiry', require('./inventory-inquiry').router);
 // ─── متابعة الكاشير للأونر (مرآة يارا سوفت 1/4/5/6/9 — قراءة فقط + بث حي) ──

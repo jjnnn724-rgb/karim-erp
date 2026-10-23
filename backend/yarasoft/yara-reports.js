@@ -172,6 +172,166 @@ async function _ciPoolGet(oracledb, cfg) {
     return _ciPool;
 }
 
+/**
+ * إيراد الكاشيرات من يارا — اكتشافٌ من الفواتير نفسها لا من الخريطة وحدها.
+ * كل كاشيرٍ له فاتورة معتمدة في الفترة يظهر (ومنهم 2 وأي رقمٍ جديد مثل 10)،
+ * ويُختار واحدٌ أو أكثر. التجميع يوميٌّ لكل كاشير كي تُقرأ الفترة المخصصة
+ * بدقة (نصف شهر = أيامه وحدها) بدل تقريب الشهر كاملًا.
+ * options.cashiers: مصفوفة أرقام مختارة؛ غيابها = كل المكتشَفين.
+ */
+async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
+    let cashierRows;
+    try {
+        cashierRows = (await pool.query(
+            `SELECT TRIM(src_name) AS cashier_no, display_ar AS name
+               FROM yarasoft_revenue_map
+              WHERE src_table = 'CC' AND active = true
+                AND NULLIF(TRIM(src_name), '') IS NOT NULL
+              ORDER BY src_name`
+        )).rows || [];
+    } catch (e) {
+        logger.error('[YARASOFT] linked cashier map read failed:', e.message);
+        const err = new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.');
+        err.statusCode = 503;
+        err.code = 'LINKED_CASHIER_MAP_UNAVAILABLE';
+        throw err;
+    }
+    const cashierMap = new Map();
+    for (const row of cashierRows) {
+        const no = String(row.cashier_no || '').trim();
+        if (!/^\d{1,8}$/.test(no)) {continue;}
+        cashierMap.set(no, { no, name: String(row.name || `كاشير ${no}`) });
+    }
+
+    const { loadOracleConfig, oraExecute, oracleConnect, sanitizeError } = require('./oracle-link');
+    const cfg = loadOracleConfig();
+    if (!cfg.enabled) {
+        const err = new Error('ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.');
+        err.statusCode = 503;
+        err.code = 'YARASOFT_REVENUE_UNAVAILABLE';
+        throw err;
+    }
+
+    let conn = null;
+    try {
+        const oracledb = require('oracledb');
+        conn = await oracleConnect(() => _ciPoolGet(oracledb, cfg).then((p) => p.getConnection()));
+
+        const discovered = await oraExecute(conn,
+            `SELECT DISTINCT TRIM(b.CSHR_NO) AS cashier_no
+               FROM CC_BILLS3 b
+              WHERE b.DOC_DATE >= TO_DATE(:dfrom, 'YYYY-MM-DD')
+                AND b.DOC_DATE < TO_DATE(:dto, 'YYYY-MM-DD') + 1
+                AND b.PSTD = 'Y'
+                AND NVL(b.NET_VAL, 0) > 0`,
+            { dfrom: from, dto: to },
+            { outFormat: oracledb.OBJECT });
+        const discoveredNos = Array.from(new Set((discovered.rows || [])
+            .map((row) => String(row.CASHIER_NO ?? '').trim())
+            .filter((no) => /^\d{1,8}$/.test(no))))
+            .sort((a, b) => Number(a) - Number(b));
+
+        const requested = Array.isArray(options.cashiers)
+            ? Array.from(new Set(options.cashiers.map((no) => String(no).trim()).filter(Boolean)))
+            : null;
+        if (requested && requested.length) {
+            const missing = requested.filter((no) => !discoveredNos.includes(no));
+            if (missing.length) {
+                const err = new Error(`كاشيرات غير موجودة في فواتير هذه الفترة: ${missing.join('، ')}`);
+                err.statusCode = 400;
+                err.code = 'INVALID_CASHIERS';
+                throw err;
+            }
+        }
+        const selectedNos = requested && requested.length ? requested : discoveredNos;
+        const cashiers = discoveredNos.map((no) => {
+            const known = cashierMap.get(no);
+            return {
+                no,
+                name: known ? known.name : `كاشير ${no}`,
+                linked: Boolean(known),
+                selected: selectedNos.includes(no),
+            };
+        });
+        const selected = cashiers.filter((cashier) => cashier.selected);
+
+        const daily = [];
+        if (selectedNos.length) {
+            const cashierBinds = Object.fromEntries(selectedNos.map((no, i) => [`cashier${i}`, no]));
+            const inList = selectedNos.map((_, i) => `:cashier${i}`).join(', ');
+            const result = await oraExecute(conn,
+                `SELECT TRIM(b.CSHR_NO) AS cashier_no,
+                        TO_CHAR(b.DOC_DATE, 'YYYY-MM-DD') AS day_key,
+                        COUNT(*) AS invoices,
+                        SUM(NVL(b.NET_VAL, 0)) AS net,
+                        SUM(NVL(b.TOTAL_VAL, 0)) AS gross,
+                        SUM(NVL(b.DSCNT_VL, 0)) AS discount
+                   FROM CC_BILLS3 b
+                  WHERE b.DOC_DATE >= TO_DATE(:dfrom, 'YYYY-MM-DD')
+                    AND b.DOC_DATE < TO_DATE(:dto, 'YYYY-MM-DD') + 1
+                    AND b.PSTD = 'Y'
+                    AND NVL(b.NET_VAL, 0) > 0
+                    AND TRIM(b.CSHR_NO) IN (${inList})
+                  GROUP BY TRIM(b.CSHR_NO), TO_CHAR(b.DOC_DATE, 'YYYY-MM-DD')`,
+                { dfrom: from, dto: to, ...cashierBinds },
+                { outFormat: oracledb.OBJECT });
+            for (const row of result.rows || []) {
+                const no = String(row.CASHIER_NO ?? '').trim();
+                const day = String(row.DAY_KEY || '');
+                const net = Number(row.NET);
+                const gross = Number(row.GROSS);
+                const discount = Number(row.DISCOUNT);
+                const invoices = Number(row.INVOICES);
+                if (!/^\d{1,8}$/.test(no) || !/^\d{4}-\d{2}-\d{2}$/.test(day)
+                    || ![net, gross, discount, invoices].every(Number.isFinite)) {
+                    throw new Error('YaraSoft returned an invalid cashier daily summary.');
+                }
+                daily.push({ no, day, net, gross, discount, invoices });
+            }
+        }
+
+        const byMonth = new Map();
+        const byCashier = new Map(selected.map((cashier) => [cashier.no, {
+            no: cashier.no, name: cashier.name, linked: cashier.linked,
+            net: 0, gross: 0, discount: 0, invoices: 0,
+        }]));
+        daily.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : Number(a.no) - Number(b.no)));
+        for (const row of daily) {
+            const month = row.day.slice(0, 7);
+            const monthHit = byMonth.get(month) || { net: 0, gross: 0, discount: 0, invoices: 0 };
+            monthHit.net += row.net;
+            monthHit.gross += row.gross;
+            monthHit.discount += row.discount;
+            monthHit.invoices += row.invoices;
+            byMonth.set(month, monthHit);
+            const cashierHit = byCashier.get(row.no);
+            if (cashierHit) {
+                cashierHit.net += row.net;
+                cashierHit.gross += row.gross;
+                cashierHit.discount += row.discount;
+                cashierHit.invoices += row.invoices;
+            }
+        }
+        return {
+            cashiers,
+            selected,
+            byMonth,
+            byCashier: Array.from(byCashier.values()),
+            days: daily,
+        };
+    } catch (e) {
+        if (e && e.statusCode) {throw e;}
+        const safeMessage = sanitizeError(e && e.message);
+        logger.error('[YARASOFT] monthly linked cashier revenue failed:', safeMessage);
+        const err = new Error(`تعذّر قراءة إيرادات الكاشيرات المرتبطة مباشرة من يارا سوفت: ${safeMessage}`);
+        err.statusCode = 503;
+        err.code = 'YARASOFT_REVENUE_UNAVAILABLE';
+        throw err;
+    } finally {
+        try { if (conn) {await conn.close();} } catch (_) {}
+    }
+}
+
 // التاريخ الحالي يُحدّث كل 10 ثوانٍ للوحة الحية؛ الفترات التاريخية تبقى 90 ثانية.
 const _ciCache = new Map(); // key -> { at, body }
 const CI_CACHE_MS = 90 * 1000;
@@ -1154,4 +1314,4 @@ router.get('/wh-vs-pos', requireRole('sous_chef', 'admin', 'owner'), async (req,
     }
 });
 
-module.exports = router;
+module.exports = { router, loadMonthlyLinkedCashierRevenue };

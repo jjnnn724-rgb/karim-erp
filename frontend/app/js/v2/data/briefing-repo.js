@@ -37,7 +37,7 @@
  *     is jwtAuth. The 403 comes from the backend and is displayed as-is.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.197';
 
 /** Stored values of pos_invoice_payments.method. Unknown methods are shown
  *  verbatim — relabelling a method the app does not know would be inventing. */

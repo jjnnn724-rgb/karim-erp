@@ -21,13 +21,13 @@
  *   before the request; the screen never claims otherwise.
  */
 
-import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.194';
-import { canWrite } from '../session.js?v=4.9.194';
-import { shelfWriteEnabled } from '../write-flags.js?v=4.9.194';
+import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.197';
+import { canWrite } from '../session.js?v=4.9.197';
+import { shelfWriteEnabled } from '../write-flags.js?v=4.9.197';
 import {
     SHELF_WRITE_ROLES, fetchShelves, fetchShelfInventory,
     shelfStats, shelfItems, validateShelfForm, createShelf, updateShelf, deleteShelf,
-} from '../data/shelves-repo.js?v=4.9.194';
+} from '../data/shelves-repo.js?v=4.9.197';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
