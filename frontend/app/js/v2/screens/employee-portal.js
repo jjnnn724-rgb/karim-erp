@@ -21,19 +21,19 @@
  * V2's own (same content, not pixel-parity).
  */
 
-import { canWrite } from '../session.js?v=4.9.130';
-import { openInAppReport } from '../report-viewer.js?v=4.9.130';
-import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.130';
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.130';
+import { canWrite } from '../session.js?v=4.9.131';
+import { openInAppReport } from '../report-viewer.js?v=4.9.131';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.131';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
 import {
     fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
     faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
     reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
-} from '../data/portal-repo.js?v=4.9.130';
-import { captureFace } from '../portal-face.js?v=4.9.130';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.130';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.130';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.130';
+} from '../data/portal-repo.js?v=4.9.131';
+import { captureFace } from '../portal-face.js?v=4.9.131';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.131';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.131';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

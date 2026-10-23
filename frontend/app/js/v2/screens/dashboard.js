@@ -26,10 +26,10 @@
  *   live wiring is Gate D — deliberately not faked here.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.130';
-import { setPref } from '../theme.js?v=4.9.130';
-import { hydrateStatusNodes } from '../status.js?v=4.9.130';
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.130';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.131';
+import { setPref } from '../theme.js?v=4.9.131';
+import { hydrateStatusNodes } from '../status.js?v=4.9.131';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

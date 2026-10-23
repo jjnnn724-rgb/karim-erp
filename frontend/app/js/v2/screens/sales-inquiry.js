@@ -19,13 +19,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.130';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.130';
-import { openInAppReport } from '../report-viewer.js?v=4.9.130';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.131';
+import { openInAppReport } from '../report-viewer.js?v=4.9.131';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
     rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.130';
+} from '../data/yara-reports-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,8 +67,7 @@ function template() {
             <h2 class="salesinq__title">استعلام المبيعات
               <span class="erp-eyebrow" dir="ltr" lang="en">Sales Inquiry</span>
             </h2>
-            <p class="salesinq__sub">كل مبيعات الكاشيرية — صنفٌ صنفٌ، وفاتورةً فاتورة، وأرقام من المرآة مباشرة.
-              <span data-v2-scope-line></span></p>
+            <p class="salesinq__sub"><span data-v2-scope-line></span></p>
           </div>
           <div class="salesinq__presets erp-no-print" role="group" aria-label="فترات سريعة">
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--xs" data-v2-preset="today">اليوم</button>
@@ -88,15 +87,15 @@ function template() {
           <label class="erp-text-sm erp-text-muted" for="v2sq-item">صنف</label>
           <div class="salesinq__search">
             <input class="erp-input" id="v2sq-item" type="search" autocomplete="off"
-              placeholder="اسم الصنف أو كوده…" aria-describedby="v2sq-hint">
+              placeholder="اسم الصنف أو كوده…">
             <div class="salesinq__suggest" data-v2-suggest hidden role="listbox" aria-label="اقتراحات الأصناف"></div>
           </div>
           <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-run>
             <i class="ji" data-i="search" aria-hidden="true"></i><span>استعلام</span>
           </button>
           <button type="button" class="erp-btn erp-btn--ghost erp-btn--sm" data-v2-clear>مسح</button>
+          <span class="erp-text-sm erp-text-muted" id="v2sq-hint">أقصى فترة ${YARA_MAX_SPAN_DAYS} يومًا</span>
         </div>
-        <p class="erp-text-sm erp-text-muted" id="v2sq-hint">قراءة فقط من مرآة المبيعات · سقف المدى ${YARA_MAX_SPAN_DAYS} يومًا · الافتراضي من أول الشهر.</p>
 
         <div data-v2-kpis></div>
 
@@ -214,9 +213,10 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     }
 
     function scopeLine() {
-        q('[data-v2-scope-line]').textContent = ` ${state.from} ← ${state.to}`
-            + (state.cashier ? ` · كاشير ${state.cashier}` : '')
-            + (state.selected ? ` · صنف: ${state.selected}` : '');
+        const parts = [`${state.from} — ${state.to}`];
+        if (state.cashier) {parts.push(`كاشير ${state.cashier}`);}
+        if (state.selected) {parts.push(state.selected);}
+        q('[data-v2-scope-line]').textContent = parts.join(' · ');
     }
 
     /* ── جدول الأصناف ───────────────────────────────────────────────── */

@@ -29,84 +29,84 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.130';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.130';
-import { initTheme, currentTheme } from './theme.js?v=4.9.130';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.130';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.130';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.130';
-import { mountChartInteraction } from './charts-live.js?v=4.9.130';
-import { mountAiAssistant } from './ai-assistant.js?v=4.9.130';
-import { mountChat } from './chat.js?v=4.9.130';
-import { mountMobileShell } from './mobile-shell.js?v=4.9.130';
-import { createDataTable } from './data-display/data-table.js?v=4.9.130';
-import { ensureSession } from './session.js?v=4.9.130';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.130';
-import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.130';
-import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.130';
-import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.130';
-import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.130';
-import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.130';
-import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.130';
-import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.130';
-import { mountBranchesScreen } from './screens/branches.js?v=4.9.130';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.130';
-import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.130';
-import { mountEmployeesScreen } from './screens/employees.js?v=4.9.130';
-import { mountLoginScreen } from './screens/login.js?v=4.9.130';
-import { mountBriefingScreen } from './screens/briefing.js?v=4.9.130';
-import { mountCfoScreen } from './screens/cfo.js?v=4.9.130';
-import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.130';
-import { mountWarehouseGovScreen } from './screens/warehouse-gov.js?v=4.9.130';
-import { mountReportsScreen } from './screens/reports.js?v=4.9.130';
-import { mountProcurementScreen } from './screens/procurement.js?v=4.9.130';
-import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.130';
-import { mountPaymentsScreen } from './screens/payments.js?v=4.9.130';
-import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.130';
-import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.130';
-import { mountLeavesScreen } from './screens/leaves.js?v=4.9.130';
-import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.130';
-import { mountVegScreen } from './screens/veg-requests.js?v=4.9.130';
-import { mountRosterScreen } from './screens/roster.js?v=4.9.130';
-import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.130';
-import { mountSettingsScreen } from './screens/settings.js?v=4.9.130';
-import { mountUsersScreen } from './screens/users.js?v=4.9.130';
-import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.130';
-import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.130';
-import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.130';
-import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.130';
-import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.130';
-import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.130';
-import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.130';
-import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.130';
-import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.130';
-import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.130';
-import { mountPayrollScreen } from './screens/payroll.js?v=4.9.130';
-import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.130';
-import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.130';
-import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.130';
-import { mountGoodsScanScreen } from './screens/goods-scan.js?v=4.9.130';
-import { mountRecipesScreen } from './screens/recipes.js?v=4.9.130';
-import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.130';
-import { mountExpensesScreen } from './screens/expenses.js?v=4.9.130';
-import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.130';
-import { mountPnlScreen } from './screens/pnl.js?v=4.9.130';
-import { mountMonthlyComparisonScreen } from './screens/monthly-comparison.js?v=4.9.130';
-import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.130';
-import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.130';
-import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.130';
-import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.130';
-import { mountSalesInquiryScreen } from './screens/sales-inquiry.js?v=4.9.130';
-import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.130';
-import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.130';
-import { mountQueryScreen } from './screens/inventory-inquiry.js?v=4.9.130';
-import { mountProfessionalScreen } from './screens/inventory-inquiry-pro.js?v=4.9.130';
-import { mountShelvesScreen } from './screens/shelves.js?v=4.9.130';
-import { mountWeightScreen } from './screens/weight.js?v=4.9.130';
-import { mountAccountantDashboardScreen } from './screens/accountant-dashboard.js?v=4.9.130';
-import { mountWarehouseDashboardScreen } from './screens/warehouse-dashboard.js?v=4.9.130';
-import { mountDeptHeadDashboardScreen } from './screens/dept-head-dashboard.js?v=4.9.130';
-import { dashboardKind } from './role-dashboard.js?v=4.9.130';
+import { ROLES } from '../core/config.js?v=4.9.131';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.131';
+import { initTheme, currentTheme } from './theme.js?v=4.9.131';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.131';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.131';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.131';
+import { mountChartInteraction } from './charts-live.js?v=4.9.131';
+import { mountAiAssistant } from './ai-assistant.js?v=4.9.131';
+import { mountChat } from './chat.js?v=4.9.131';
+import { mountMobileShell } from './mobile-shell.js?v=4.9.131';
+import { createDataTable } from './data-display/data-table.js?v=4.9.131';
+import { ensureSession } from './session.js?v=4.9.131';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.131';
+import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.131';
+import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.131';
+import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.131';
+import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.131';
+import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.131';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.131';
+import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.131';
+import { mountBranchesScreen } from './screens/branches.js?v=4.9.131';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.131';
+import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.131';
+import { mountEmployeesScreen } from './screens/employees.js?v=4.9.131';
+import { mountLoginScreen } from './screens/login.js?v=4.9.131';
+import { mountBriefingScreen } from './screens/briefing.js?v=4.9.131';
+import { mountCfoScreen } from './screens/cfo.js?v=4.9.131';
+import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.131';
+import { mountWarehouseGovScreen } from './screens/warehouse-gov.js?v=4.9.131';
+import { mountReportsScreen } from './screens/reports.js?v=4.9.131';
+import { mountProcurementScreen } from './screens/procurement.js?v=4.9.131';
+import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.131';
+import { mountPaymentsScreen } from './screens/payments.js?v=4.9.131';
+import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.131';
+import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.131';
+import { mountLeavesScreen } from './screens/leaves.js?v=4.9.131';
+import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.131';
+import { mountVegScreen } from './screens/veg-requests.js?v=4.9.131';
+import { mountRosterScreen } from './screens/roster.js?v=4.9.131';
+import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.131';
+import { mountSettingsScreen } from './screens/settings.js?v=4.9.131';
+import { mountUsersScreen } from './screens/users.js?v=4.9.131';
+import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.131';
+import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.131';
+import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.131';
+import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.131';
+import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.131';
+import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.131';
+import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.131';
+import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.131';
+import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.131';
+import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.131';
+import { mountPayrollScreen } from './screens/payroll.js?v=4.9.131';
+import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.131';
+import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.131';
+import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.131';
+import { mountGoodsScanScreen } from './screens/goods-scan.js?v=4.9.131';
+import { mountRecipesScreen } from './screens/recipes.js?v=4.9.131';
+import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.131';
+import { mountExpensesScreen } from './screens/expenses.js?v=4.9.131';
+import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.131';
+import { mountPnlScreen } from './screens/pnl.js?v=4.9.131';
+import { mountMonthlyComparisonScreen } from './screens/monthly-comparison.js?v=4.9.131';
+import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.131';
+import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.131';
+import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.131';
+import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.131';
+import { mountSalesInquiryScreen } from './screens/sales-inquiry.js?v=4.9.131';
+import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.131';
+import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.131';
+import { mountQueryScreen } from './screens/inventory-inquiry.js?v=4.9.131';
+import { mountProfessionalScreen } from './screens/inventory-inquiry-pro.js?v=4.9.131';
+import { mountShelvesScreen } from './screens/shelves.js?v=4.9.131';
+import { mountWeightScreen } from './screens/weight.js?v=4.9.131';
+import { mountAccountantDashboardScreen } from './screens/accountant-dashboard.js?v=4.9.131';
+import { mountWarehouseDashboardScreen } from './screens/warehouse-dashboard.js?v=4.9.131';
+import { mountDeptHeadDashboardScreen } from './screens/dept-head-dashboard.js?v=4.9.131';
+import { dashboardKind } from './role-dashboard.js?v=4.9.131';
 
 // Enable the embedded cashier while retaining the standalone POS fallback.
 const V2_FEATURE_FLAGS = Object.freeze({ embeddedPos: true, salesEnabled: true });
@@ -420,7 +420,7 @@ async function renderCashRegisterScreen() {
     const host = shell.main.querySelector('[data-v2-cashreg-host]');
     try {
         if (!cashRegisterMount) {
-            const mod = await import('./screens/cash-register.js?v=4.9.130');
+            const mod = await import('./screens/cash-register.js?v=4.9.131');
             cashRegisterMount = mod.mountCashRegister;
         }
         cashRegisterHandle = cashRegisterMount(host, { navigate: (k) => shell.navigate(k) });
@@ -443,7 +443,7 @@ async function renderCashierSalesScreen() {
     const host = shell.main.querySelector('[data-v2-csales-host]');
     try {
         if (!cashierSalesMount) {
-            const mod = await import('./screens/cashier-sales.js?v=4.9.130');
+            const mod = await import('./screens/cashier-sales.js?v=4.9.131');
             cashierSalesMount = mod.mountCashierSales;
         }
         cashierSalesHandle = cashierSalesMount(host);
@@ -466,7 +466,7 @@ async function renderExecutiveScreen() {
     const host = shell.main.querySelector('[data-v2-executive-host]');
     try {
         if (!executiveMount) {
-            const mod = await import('./screens/executive.js?v=4.9.130');
+            const mod = await import('./screens/executive.js?v=4.9.131');
             executiveMount = mod.mountExecutive;
         }
         executiveHandle = executiveMount(host, { navigate: (k) => shell.navigate(k) });
@@ -1092,44 +1092,22 @@ function strip(body, role) {
 }
 
 function liveModeStrip() {
-    // Three states, stated out loud: logged-out preview (no requests at
-    // all), ?live=1 resolving/failed, and a real session — whether it came
-    // from ?live=1 rotation or from the Gate C sign-in form below.
-    if (!LIVE && sessionState.status !== 'ready') {
-        return strip(`
-          <h3 class="erp-card__title">وضع المعاينة — بيانات نموذجية</h3>
-          <p class="erp-text-sm erp-text-muted">
-            لا يُطلب أي شيء من الشبكة في هذا الوضع. لقراءة بيانات حقيقية بالجلسة
-            المسجّلة في هذا المتصفح: <a href="v2.html?live=1">الوضع الحيّ</a>
-            — الوضع يبدّل مصدر البيانات فقط، ولا يُنشئ جلسة ولا يغيّر كلمة مرور.
-          </p>`);
-    }
+    // المالك (2026-10-23): لا شروح مكتوبة فوق الشاشات. الوضع يُقرأ من عنوان
+    // التبويب، وكل شاشة تقول ما ينقصها بنفسها. يبقى سطرٌ واحد فقط حين
+    // يحتاج المستخدم تدخّلًا: جلسة قيد التحقق، أو جلسة غائبة.
+    if (!LIVE || sessionState.status === 'ready') {return '';}
     if (sessionState.status === 'pending') {
-        return strip(`
-          <h3 class="erp-card__title">جارٍ التحقق من الجلسة…</h3>
-          <p class="erp-text-sm erp-text-muted">جارٍ التحقق من الجلسة المسجّلة في هذا المتصفح…</p>`,
-        'status');
+        return strip(`<div class="erp-row">
+            <span class="erp-dot erp-dot--info" aria-hidden="true"></span>
+            <span class="erp-text-sm erp-text-muted">جارٍ التحقق من الجلسة…</span>
+          </div>`, 'status');
     }
-    if (sessionState.status === 'none') {
-        return strip(`
-          <h3 class="erp-card__title">لا توجد جلسة في هذا المتصفح</h3>
-          <p class="erp-text-sm erp-text-muted">
-            الوضع الحيّ لا يُنشئ جلسة — لا توجد وسيلة آمنة لتسجيل الدخول من هنا.
-            سجّل الدخول في النظام الحالي ثم أعد فتح
-            <a href="v2.html?live=1">الوضع الحيّ</a>.
-          </p>
-          <a class="erp-btn erp-btn--sm" href="index.html">الذهاب لتسجيل الدخول</a>`,
-        'alert');
-    }
-    const info = sessionState.info || {};
-    return strip(`
-      <h3 class="erp-card__title">وضع البيانات الحية</h3>
-      <p class="erp-text-sm erp-text-muted">
-        جلسة حقيقية بصلاحية
-        <strong>${esc((ROLES[info.role] && ROLES[info.role].name) || 'مستخدم')}</strong> —
-        القيم المعروضة تُقرأ من واجهات النظام نفسها، والصلاحية للخادم وحده.
-      </p>`,
-    'status');
+    return strip(`<div class="erp-row-wrap">
+        <span class="erp-dot erp-dot--warning" aria-hidden="true"></span>
+        <span class="erp-text-sm">لا جلسة في هذا المتصفح</span>
+        <a class="erp-btn erp-btn--sm" href="index.html">تسجيل الدخول</a>
+        <a class="erp-btn erp-btn--ghost erp-btn--sm" href="v2.html?live=1">إعادة المحاولة</a>
+      </div>`, 'alert');
 }
 
 /** Live read of /api/branches — or an honest statement of why there is none. */

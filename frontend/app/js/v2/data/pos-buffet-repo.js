@@ -5,7 +5,7 @@
  * Reads and writes match backend/cashier-module/buffet-routes.js; the server
  * remains authoritative for prices, roles and reporting.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.130';
+import { apiFetch } from '../../core/api.js?v=4.9.131';
 
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'];
 const BUFFET_CODES = ['erp_open_buffet', 'open_buffet'];

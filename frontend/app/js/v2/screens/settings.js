@@ -12,11 +12,11 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.130';
-import { formatInt } from '../data/reports-repo.js?v=4.9.130';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.130';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.130';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.130';
+import { canWrite } from '../session.js?v=4.9.131';
+import { formatInt } from '../data/reports-repo.js?v=4.9.131';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.131';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.131';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.131';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -28,7 +28,7 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.130';
+} from '../data/settings-repo.js?v=4.9.131';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
