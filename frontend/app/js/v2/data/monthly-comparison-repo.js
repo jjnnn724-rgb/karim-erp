@@ -37,7 +37,7 @@
  * هامشًا. وهو الباب الوحيد للشبكة — الشاشة لا تعرف العنوان ولا الرؤوس.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.197';
+import { apiFetch } from '../../core/api.js?v=4.9.130';
 
 export const MONTHS_DEFAULT = 12;
 export const MONTHS_MIN = 1;

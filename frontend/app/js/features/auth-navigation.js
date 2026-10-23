@@ -278,7 +278,7 @@ if(loginLogo) {loginLogo.innerHTML = logoMarkup('login-brand-logo');}
 const NAV_HIDDEN_PAGES = []; // احتياطي فقط — مصدر الإخفاء: settings.hidden_nav_pages (يُدار من شاشة الإعدادات)
 const NAV_GROUPS = [
  {id:'main', title:'nav.grp.main', keys:['dashboard']},
- {id:'finance', title:'nav.grp.finance', keys:['cfo','cash-register','cashier-sales','revenues','expenses','cost-analysis','pnl','monthly-comparison']},
+ {id:'finance', title:'nav.grp.finance', keys:['cfo','cash-register','cashier-sales','sales-inquiry','revenues','expenses','cost-analysis','pnl','monthly-comparison']},
   {id:'ops', title:'nav.grp.ops', keys:['departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','veg-requests','shelves','weight','kitchen','dispatch','recipes','procurement']},
  {id:'hr', title:'nav.grp.hr', keys:['hr-dashboard','employees','leaves','attendance','zkteco','payroll','hr-departments','employee-portal','roster','dept-employees']},
   {id:'sys', title:'nav.grp.sys', keys:['reports','settings','users','branches','permissions','yarasoft','oracle-data','whatsapp','query','professional','sales-analyzer','received-analyzer','wh-vs-pos']},

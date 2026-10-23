@@ -27,7 +27,7 @@ const { logger } = require('../logger');
 const { ZKError } = require('./client');
 
 const router = express.Router();
-const READ_ROLES = ['admin', 'hr', 'manager', 'accountant'];
+const READ_ROLES = ['admin', 'hr', 'manager', 'accountant', 'owner'];
 const WRITE_ROLES = ['admin', 'hr'];
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;

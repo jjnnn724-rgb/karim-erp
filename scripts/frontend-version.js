@@ -26,13 +26,24 @@ const ROOT = path.resolve(__dirname, '..');
 const APP = path.join(ROOT, 'frontend', 'app');
 const STATE_FILE = path.join(ROOT, 'scripts', 'frontend-version.json');
 
-const IGNORED_DIRS = new Set(['node_modules', 'vendor', '.git', 'coverage', 'logs', 'uploads', 'data']);
+/* أسماء تُستثنى في أي عمق (تبعيات/حِزم جاهزة). */
+const IGNORED_ANYWHERE = new Set(['node_modules', 'vendor', '.git']);
+/* أسماء تُستثنى في جذر الواجهة فقط. السبب (بج 2026-10-23): «data» كان
+   يُستثنى في أي عمق، فطبقة js/v2/data كلها خرجت من البصمة ومن إعادة
+   ترقيم ?v= — تغييراتها لا تصل للعميل أبدًا رغم أن الملفات تُخدم منه. */
+const IGNORED_AT_ROOT = new Set(['coverage', 'logs', 'uploads', 'data', '%BK%']);
+
+/** هل يُستثنى هذا المجلد؟ الجذر وحده يحمل استثناءات data/logs/uploads. */
+function skipDir(parent, name) {
+    if (IGNORED_ANYWHERE.has(name)) {return true;}
+    return path.resolve(parent) === path.resolve(APP) && IGNORED_AT_ROOT.has(name);
+}
 
 /** ملفات الواجهة المؤثرة على الكاش (تُستثنى ملفاتها غير المتأثرة). */
 function collectFiles(dir, out = []) {
     if (!fs.existsSync(dir)) {return out;}
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (IGNORED_DIRS.has(e.name)) {continue;}
+        if (skipDir(dir, e.name)) {continue;}
         const full = path.join(dir, e.name);
         if (e.isDirectory()) {collectFiles(full, out);}
         else if (/\.(html|js|css|json|webmanifest)$/.test(e.name)) {out.push(full);}
@@ -89,7 +100,7 @@ function rewriteVersion(oldV, newV) {
     const collect = (dir, depth) => {
         if (depth > 3) {return;}
         for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (IGNORED_DIRS.has(e.name)) {continue;}
+            if (skipDir(dir, e.name)) {continue;}
             const full = path.join(dir, e.name);
             if (e.isDirectory()) {collect(full, depth + 1);}
             else if (/\.(html|js)$/.test(e.name)) {files.push(full);}

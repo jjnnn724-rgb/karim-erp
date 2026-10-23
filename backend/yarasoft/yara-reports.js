@@ -737,11 +737,14 @@ router.get('/item-sales', requireRole('sous_chef', 'admin', 'owner'), async (req
             selectGrp = `o.doc_date`;
             groupGrp = `1`;
         } else {
-            selectGrp = `e->>'code', e->>'name'`;
+            // تسمية الأعمدة صريحة: بلا alias يفقد node-pg الاسمين تحت مفتاح
+            // «?column?» الواحد، فتصل الشاشة بلا كود صنف. الاسم هنا هو نفسه
+            // الذي تقرأه sales-analyzer (item_code / item_name).
+            selectGrp = `e->>'code' AS item_code, e->>'name' AS item_name`;
             groupGrp = `1, 2`;
         }
         const rows = (await pool.query(
-            `SELECT ${selectGrp}${group === 'item' ? ', MAX(e->>\'name\') AS item_name' : ''},
+            `SELECT ${selectGrp},
                     COUNT(DISTINCT o.doc_no)::int AS invoices,
                     COALESCE(SUM((e->>'qty')::numeric), 0)::float AS qty,
                     COALESCE(SUM((e->>'total')::numeric), 0)::float AS net,
@@ -861,6 +864,107 @@ router.get('/order-detail/:docNo', requireRole('sous_chef', 'admin', 'owner'), a
     } catch (e) {
         logger.error('[order-detail]', e);
         res.status(500).json({ ok: false, error: 'ORDER_DETAIL_FAILED' });
+    }
+});
+
+/**
+ * GET /api/yara-reports/item-invoices — فواتير صنفٍ واحد بكل تفاصيلها
+ * ?item=&from=&to=[&cashier=&limit=&offset=]
+ *
+ * لماذا بابٌ مستقل: «أي صنف استعلم عنه تطلع كميته وفواتيره» لا تُخدم بـ
+ * /orders ثم فلترة في المتصفح — الشهر الواحد ≈ آلاف الفواتير. التفكيك
+ * jsonb_array_elements مع شرط الصنف يعيد فقط الفواتير التي بيع فيها، ومعها
+ * كمية الصنف وسعره وإجماليه داخل تلك الفاتورة + إجمالياتها ودفعاتها.
+ *
+ * قواعد العائلة كما هي: أدوار القراءة الثلاثة، سقف 93 يومًا، تطبيع البحث
+ * العربي (إسقاط «ال» وكل كلمة على حدة)، وCache-Control: no-store.
+ */
+router.get('/item-invoices', requireRole('sous_chef', 'admin', 'owner'), async (req, res) => {
+    try {
+        const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+        const from = dayRe.test(String(req.query.from || '')) ? req.query.from : riyadhDay(-29);
+        const to = dayRe.test(String(req.query.to || '')) ? req.query.to : riyadhDay(0);
+        if (from > to) {return res.status(422).json({ ok: false, error: 'INVALID_RANGE' });}
+        const spanDays = Math.round((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000) + 1;
+        if (spanDays > 93) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 93 يومًا' });}
+        const item = String(req.query.item || '').trim().slice(0, 60);
+        if (!item) {return res.status(422).json({ ok: false, error: 'ITEM_REQUIRED', message: 'اسم الصنف أو كوده مطلوب' });}
+        const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 300, 1), 1000);
+        const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+        // تطبيع البحث العربي — نفس قاعدة /item-sales حرفًا بحرف
+        const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
+        const terms = words.length ? words : [item];
+        const params = [from, to];
+        const ors = terms.map((w) => {
+            params.push('%' + w + '%');
+            return `((e->>'name') ILIKE $${params.length} OR (e->>'code') ILIKE $${params.length})`;
+        }).join(' OR ');
+        let match = `(${ors})`;
+        if (cashier) {params.push(cashier); match += ` AND o.cashier_no::text = $${params.length}`;}
+
+        const names = new Map((await pool.query(
+            `SELECT TRIM(src_name) AS no, display_ar FROM yarasoft_revenue_map WHERE src_table='CC' AND active=true`
+        )).rows.map(r => [r.no, r.display_ar]));
+
+        // إجماليات الصنف على المدى كله (قبل LIMIT) — الأرقام لا تتغير بالترقيم
+        const totals = (await pool.query(
+            `SELECT COUNT(DISTINCT o.doc_no)::int AS invoices,
+                    COALESCE(SUM((e->>'qty')::numeric), 0)::float AS qty,
+                    COALESCE(SUM((e->>'total')::numeric), 0)::float AS net,
+                    COALESCE(SUM((e->>'vat')::numeric), 0)::float AS vat
+               FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 AND ${match}`,
+            params
+        )).rows[0] || { invoices: 0, qty: 0, net: 0, vat: 0 };
+
+        params.push(limit, offset);
+        const rows = (await pool.query(
+            `SELECT o.doc_no, o.cashier_no::text AS cashier_no, o.doc_date, o.doc_time,
+                    o.net, o.total, o.discount, o.vat, o.payed,
+                    o.pay_cash, o.pay_network, o.pay_credit, o.pay_mobile,
+                    o.table_name, o.zone_name,
+                    SUM((e->>'qty')::numeric)::float AS item_qty,
+                    SUM((e->>'total')::numeric)::float AS item_net,
+                    SUM(COALESCE((e->>'discount')::numeric, 0))::float AS item_discount,
+                    SUM(COALESCE((e->>'vat')::numeric, 0))::float AS item_vat,
+                    MAX(e->>'name') AS item_name,
+                    MAX(e->>'code') AS item_code,
+                    MAX(COALESCE((e->>'price')::numeric, 0))::float AS item_price,
+                    COUNT(*)::int AS item_lines
+               FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 AND ${match}
+              GROUP BY o.doc_no
+              ORDER BY o.doc_date DESC, o.doc_no DESC
+              LIMIT $${params.length - 1} OFFSET $${params.length}`,
+            params
+        )).rows;
+
+        const invoices = rows.map((r) => ({
+            doc_no: r.doc_no,
+            cashier_no: String(r.cashier_no),
+            cashier_name: names.get(String(r.cashier_no).trim()) || ('كاشير ' + r.cashier_no),
+            doc_date: r.doc_date, doc_time: r.doc_time,
+            net: Number(r.net || 0), total: Number(r.total || 0), discount: Number(r.discount || 0),
+            vat: Number(r.vat || 0), payed: Number(r.payed || 0),
+            pay_cash: Number(r.pay_cash || 0), pay_network: Number(r.pay_network || 0),
+            pay_credit: Number(r.pay_credit || 0), pay_mobile: Number(r.pay_mobile || 0),
+            table_name: r.table_name, zone_name: r.zone_name,
+            item_name: r.item_name, item_code: r.item_code,
+            item_qty: Number(r.item_qty || 0), item_net: Number(r.item_net || 0),
+            item_price: Number(r.item_price || 0), item_discount: Number(r.item_discount || 0),
+            item_vat: Number(r.item_vat || 0), item_lines: Number(r.item_lines || 0),
+        }));
+        res.set('Cache-Control', 'no-store');
+        res.json({ ok: true, from, to, item, invoices, totals: {
+            invoices: Number(totals.invoices || 0), qty: Number(totals.qty || 0),
+            net: Math.round(Number(totals.net || 0) * 100) / 100,
+            vat: Math.round(Number(totals.vat || 0) * 100) / 100,
+        }, limit, offset });
+    } catch (e) {
+        logger.error('[item-invoices]', e);
+        res.status(500).json({ ok: false, error: 'ITEM_INVOICES_FAILED' });
     }
 });
 

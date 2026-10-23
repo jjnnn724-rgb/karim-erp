@@ -31,8 +31,8 @@
  * re-checks every call, so a gate here is button hygiene, never security.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.197';
-import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.197';
+import { apiFetch } from '../../core/api.js?v=4.9.130';
+import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.130';
 
 export { fetchCurrency, formatMoney, formatInt };
 

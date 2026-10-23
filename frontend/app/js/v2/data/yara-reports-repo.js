@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.197';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.130';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];
@@ -118,6 +118,41 @@ export async function fetchCashiersToday({ date = '' } = {}) {
 /** GET /order-detail/:docNo — تفاصيل أوردر محدد وسطور الأصناف. */
 export async function fetchOrderDetail(docNo) {
     return apiFetch(`/yara-reports/order-detail/${encodeURIComponent(docNo)}`);
+}
+
+/**
+ * GET /item-invoices — فواتير صنفٍ واحد داخل مدى، بكميته وسعره في كل فاتورة.
+ * @param {{from?:string,to?:string,item:string,cashier?:string,limit?:number,offset?:number}} f
+ * @returns {Promise<{ok:boolean,from:string,to:string,item:string,
+ *   invoices:Array<object>,totals:{invoices:number,qty:number,net:number,vat:number},
+ *   limit:number,offset:number}>}
+ */
+export async function fetchItemInvoices({ from, to, item, cashier = '', limit = 300, offset = 0 } = {}) {
+    return apiFetch(`/yara-reports/item-invoices${qs({ from, to, item, cashier, limit, offset })}`);
+}
+
+/**
+ * HTML إيصال فاتورة من المرآة — نقطة /api/pos/orders/ys/:docNo/receipt-html.
+ * تُجلب بـ fetch خام وبرؤوس المصادقة: فتحها في تبويب `<a target="_blank">`
+ * لا يحمل الهيدر فيرجع 401 حتمًا، فالطريق هو العارض داخل التطبيق
+ * (report-viewer.js) ثم document.write — نفس نمط expense-register-repo.
+ * @param {string} docNo
+ * @returns {Promise<string>} HTML كامل جاهز للطباعة
+ */
+export async function fetchReceiptHtml(docNo) {
+    const headers = {};
+    if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
+    const res = await fetch(`${API_BASE}/pos/orders/ys/${encodeURIComponent(String(docNo))}/receipt-html`, { headers });
+    if (!res.ok) {
+        let msg = `تعذّر جلب الإيصال (${res.status})`;
+        try {
+            const e = await res.clone().json();
+            if (e && (e.message || e.error)) {msg = e.message || e.error;}
+        } catch (_) { /* النص ليس JSON */ }
+        throw new Error(msg);
+    }
+    return res.text();
 }
 
 /** GET /received-dispatch-detail/:id — تفاصيل إذن صرف مستلم وفروقات الأصناف. */

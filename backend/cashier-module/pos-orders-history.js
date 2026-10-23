@@ -308,7 +308,9 @@ router.get('/ys/:docNo', jwtAuth, async (req, res) => {
 });
 
 // ─── GET /api/pos/orders/ys/:docNo/receipt-html — إيصال للطباعة ──────────
-router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashier'), async (req, res) => {
+// owner/sous_chef: يقرآن مرآة المبيعات (yara-reports) ويطبعان إيصالًا
+// للاستعلام — طباعةٌ فقط، لا كتابة ولا تعديل. نفس قرار بابهما.
+router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashier', 'owner', 'sous_chef'), async (req, res) => {
     try {
         const docNo = String(req.params.docNo || '').trim();
         const slipRes = await pool.query(`

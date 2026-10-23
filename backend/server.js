@@ -514,6 +514,9 @@ function apiKeyMiddleware(req, res, next) {
     if (req.path === '/menu-board/public' || req.path === '/menu-board/background' || req.path === '/buffet-menu') {
         return next();
     }
+    if (req.method === 'GET' && req.path === '/menu-board/v2-state') {
+        return next();
+    }
     // إعداد اللغة/العملة العام للواجهات قبل تسجيل الدخول — بيانات عرض فقط
     if (req.path === '/i18n/config') {
         return next();
@@ -2744,6 +2747,17 @@ app.use((req, res, next) => {
 app.use('/app/menu.html', (req, res) => {
     res.redirect(302, '/app/menu-board.html');
 });
+
+// ─── اعتماد V2 كواجهة رسمية (2026-10-23) ─────────────────────────────────
+// قرار المالك بعد مقارنة القديم/الجديد: كل قوائم القديم (43) لها مسار في V2
+// (tests/v2-adoption.test.js يثبّت التكافؤ). جذر /app/ يحوّل إلى V2 مباشرة،
+// والقديمة تبقى على /app/index.html للطوارئ — داخلها زر V2، وداخل V2 رابط
+// «الرجوع للواجهة القديمة» (preview.js). لا تُمس pos.html / menu.html /
+// menu-board.html — شاشات تشغيلية مستقلة بمداخلها.
+app.get(['/app', '/app/'], (req, res) => {
+    res.redirect(302, '/app/v2.html?live=1');
+});
+
 app.use('/app', appBrotli);
 app.use('/app/js/vendor', express.static(VENDOR_DIR, {
     maxAge: '365d',
