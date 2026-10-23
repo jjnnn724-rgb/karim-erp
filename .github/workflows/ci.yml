@@ -61,6 +61,7 @@ jobs:
 
       - name: Upload npm audit artifact
         if: always()
+        continue-on-error: true  # تشخيص فقط: البوابة الفعلية خطوة "Fail on moderate+" أدناه
         uses: actions/upload-artifact@v4
         with:
           name: npm-audit-report
@@ -224,6 +225,7 @@ jobs:
 
       - name: Upload system audit report
         if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
         uses: actions/upload-artifact@v4
         with:
           name: system-audit-report
@@ -236,6 +238,7 @@ jobs:
 
       - name: Upload test coverage (if generated)
         if: always()
+        continue-on-error: true  # تشخيص فقط: بوابة التغطية هي jest نفسه
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-coverage
@@ -320,6 +323,7 @@ jobs:
 
       - name: Upload smoke test logs
         if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-logs
@@ -411,6 +415,7 @@ jobs:
 
       - name: Upload integration logs
         if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-logs
@@ -505,6 +510,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -521,6 +527,9 @@ jobs:
     timeout-minutes: 60
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [smoke-test]
+    permissions:
+      contents: read
+      actions: write        # لازم لحذف لقطات البناء السابقة (حصة تخزين GitHub 500MB)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -538,6 +547,26 @@ jobs:
         run: npm run electron:build:nsis
         env:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+
+      # حصة GitHub للتخزين المجاني 500MB فقط، ولقطة البناء وحدها ~210MB.
+      # نحذف اللقطات السابقة (بعد بناءٍ ناجح) قبل الرفع كي لا يسقط الرفع
+      # بـ "Artifact storage quota has been hit" — حذفُ لقطاتٍ لا حذفُ كود.
+      - name: Prune previous build artifacts
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = "application/vnd.github+json"; 'User-Agent' = 'karim-ci' }
+          foreach ($n in @('KarimERP-Setup', 'karim-release-verified')) {
+            $r = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?name=$n&per_page=100" -Headers $h
+            foreach ($a in @($r.artifacts)) {
+              try {
+                Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$($a.id)" -Headers $h
+                Write-Host "pruned $n $($a.id)"
+              } catch { Write-Host "skip $n $($a.id): $($_.Exception.Message)" }
+            }
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
