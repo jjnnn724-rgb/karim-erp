@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.131';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.131';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.132';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.132';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,17 +81,17 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.131';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.131';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.131';
+} from '../data/employees-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.132';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.132';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.132';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.131';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.131';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.131';
+} from '../data/employee-card-repo.js?v=4.9.132';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.132';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -277,16 +277,8 @@ function template() {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              عرض الموظفين وإضافتهم وتعديلهم وحذفهم واستيرادهم متاح لأدوار
-              الإدارة والموارد البشرية، والنظام يتحقق من الصلاحية عند كل
-              إجراء ويعرض رسالة الرفض كما هي. الجدول يعرض قائمة السماح وحدها،
-              وبطاقات العرض تضيف الراتب ورقم البصمة والوردية، أما الهوية
-              والرموز فلا تظهر أبدًا. التصدير يتبع أعمدة قالب الاستيراد
-              الاثني عشر نفسها، لكنه لا يحمل البصمة الرقمية ولا رقم البطاقة.
-              <span data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</span>
-              <span data-v2-curnote hidden>تعذّرت قراءة وحدة المال — الرواتب بلا وحدة.</span>
-            </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</p>
+            <p class="erp-text-sm erp-text-muted" data-v2-curnote hidden>تعذّرت قراءة وحدة المال — الرواتب بلا وحدة.</p>
             <p class="erp-text-sm erp-text-muted" data-v2-filter-note hidden></p>
             <p class="erp-print-note" data-v2-print-note></p>
             <div data-v2-table></div>

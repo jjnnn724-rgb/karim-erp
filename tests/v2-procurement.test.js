@@ -381,8 +381,9 @@ describe('الشاشات الأربع — عقد المصدر', () => {
         const src = screenSrc['wh-invoices.js'];
         expect(src).not.toContain('Write buttons (new invoice, pay, delete-all) do not exist here');
         expect(src).not.toMatch(/<p[\s\S]*?قراءة فقط/);
-        expect(src).toMatch(/شاشة فواتير الموردين \(06\) تقرأ نفس السجل بعدسة/);
-        expect(src).toMatch(/ودليل الموردين هو شاشة \(05\)/);
+        // 2026-10-23: الإحالات المكتوبة أُزيلت؛ يُقاس ما كانت تقوله: محرر
+        // الإنشاء/التعديل نفسه موجود في 08، لا في شاشة أخرى.
+        expect(src).toMatch(/data-v2-editor-host/);
     });
 
     test('شاشة 08 تحمل سطر مطبوعةٍ يقول المدى والعدد — وزرّ الطباعة موجود', () => {
@@ -475,8 +476,12 @@ describe('الرسوم والثوابت — لا انفجار تخزيني ول�
         expect(screenSrc['wh-invoices.js']).not.toMatch(/deleteSupplier|deletePayment/);
     });
 
-    test('05 تقول صراحةً إن فواتير 06 ومدفوعات 07 شاشتان مستقلتان — لا طيّ صامت', () => {
-        expect(screenSrc['procurement.js']).toMatch(/شاشتان مستقلتان \(06\/07\)/);
+    test('06 و07 شاشتان مستقلتان — لا طيّ صامت', () => {
+        // 2026-10-23: الجملة أُزيلت من 05؛ يُقاس الاستقلال نفسه: لكل شاشة
+        // بابها — 06 تسدّد، 07 تقرأ المدفوعات ولا تسدّد.
+        expect(screenSrc['invoices.js']).toMatch(/payInvoiceFull/);
+        expect(screenSrc['payments.js']).toMatch(/fetchPurchaseInvoices/);
+        expect(screenSrc['payments.js']).not.toMatch(/payInvoiceFull/);
     });
 
     test('المضيف يمرّر confirmFn لشاشة الموردين — لا سقوط صامت إلى نافذة المتصفح الخام', () => {

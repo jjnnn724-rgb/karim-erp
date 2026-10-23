@@ -22,15 +22,15 @@
  *   (زر «مصروف +» في تفاصيل القسم — شاشة 10).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
     EXPENSE_KIND_AR, EXPENSE_KIND_TONE, riyadhToday, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.131';
-import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.131';
+} from '../data/finance-repo.js?v=4.9.132';
+import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -80,15 +80,6 @@ function template(from, to) {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
-          <p class="erp-text-sm erp-text-muted">
-            سجل المصروفات المعروض من النظام مباشرة. عمود النوع مشتق من طبيعة
-            القيد وعلامة التوليد التلقائي، وليس قيمة مخزنة. عمود الإجراءات لا
-            يظهر إلا لمن يملك صلاحية تعديل المصروفات (مدير النظام أو المدير أو
-            المحاسب)، والسجلات التلقائية تبقى مقفولة لا تُعدَّل ولا تُحذف.
-            الإضافة من زر «مصروف +» في تفاصيل القسم (10). تعرض الواجهة أحدث
-            8,000 حركة من الشهر الحالي؛ وتبقى الحركات الأقدم محفوظة دون
-            تحميلها أو تعديلها.
-          </p>
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
         </div>

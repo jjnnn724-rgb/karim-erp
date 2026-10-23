@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.131';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.132';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.131';
+} from '../data/kitchen-repo.js?v=4.9.132';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.131';
+} from '../signature.js?v=4.9.132';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -232,11 +232,6 @@ function template(canWrite, costFrom, costTo) {
             <span class="erp-text-sm erp-text-muted" data-v2-orders-note></span>
           </div>
           <div class="erp-card__body">
-            <p class="erp-text-sm erp-text-muted erp-no-print">
-              أوامر الإنتاج تُعرض من النظام مباشرة، والصلاحية محكومة بالأدوار.
-              تُنشأ من زر «أمر إنتاج» أعلاه: ثلاث خطوات، ويحسم النظام الرصيد
-              والتوزيع.
-            </p>
             <div data-v2-batches></div>
           </div>
         </section>
@@ -266,10 +261,6 @@ function template(canWrite, costFrom, costTo) {
             </div>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted erp-no-print">
-              عرض للقراءة فقط: الصرف من دفتر الحركات بمتوسط التكلفة وقت
-              الاعتماد، والإيراد من إيرادات الكاشير المرتبطة بالقسم.
-            </p>
             <div data-v2-costcards-board aria-live="polite"></div>
           </div>
         </section>

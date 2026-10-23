@@ -56,10 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.131';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.132';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -77,9 +77,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.131';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.131';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.131';
+} from '../data/attendance-repo.js?v=4.9.132';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.132';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -326,14 +326,8 @@ function template(from, to) {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              يعرض هذا السجل حضور الموظفين كما سجّله النظام، ورؤساء الأقسام
-              يرون أقسامهم فقط. الإجراءات أعلاه محكومة بالصلاحيات — كل إجراء
-              يتطلب سببًا إجباريًا يُحفظ في ملاحظات السجل باسم المستخدم،
-              ويتحقق النظام من الصلاحية قبل التنفيذ.
-              <span data-v2-names-note hidden>تعذّر تحميل الأسماء — تُعرض أرقام الموظفين.</span>
-              <span data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</span>
-            </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-names-note hidden>تعذّر تحميل الأسماء — تُعرض أرقام الموظفين.</p>
+            <p class="erp-text-sm erp-text-muted" data-v2-dept-note hidden>تعذّر تحميل أسماء الأقسام — تُعرض أكوادها.</p>
             <p class="erp-text-sm erp-text-muted" data-v2-filter-note hidden></p>
             <p class="erp-print-note" data-v2-print-note></p>
             <div data-v2-table></div>

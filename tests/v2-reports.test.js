@@ -464,8 +464,10 @@ describe('V2 reports screen + layer (source contract)', () => {
     test('the table is client mode over server-grouped rows, and both search boxes are declared', () => {
         const s = screen();
         expect(s).toMatch(/mode: 'client'/);
-        expect(s).toMatch(/الفترة والتجميع يُسألان/);
-        expect(s).toMatch(/مربع البحث\s+داخل الجدول يضيق/);
+        // 2026-10-23: الوصف أُزيل؛ يُقاس السلوك: تغيير الفترة أو البُعد يعيد
+        // السؤال من الخادم بدل إعادة تصفية ما في اليد.
+        expect(s).toMatch(/asked\.groupBy !== groupBy/);
+        expect(s).toMatch(/asked\.startDate !== r\.startDate/);
     });
 
     test('a dimension change rebuilds the table because its headers would lie', () => {
@@ -503,10 +505,10 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(s).toMatch(/تعذّرت قراءة وحدة المال/);
     });
 
-    test('the status rule is stated in user words, not internal enums', () => {
+    test('the status rule never leaks internal enums into the table', () => {
         const s = screen();
-        expect(s).toMatch(/فواتير صادرة أو مُبلَّغ عنها فقط/);
-        expect(s).toMatch(/المرتجعات والملغاة ليست/);
+        // 2026-10-23: قاعدة التقرير (issued/reported فقط) في الخادم، ولم تعد
+        // تُشرح على الشاشة؛ الذي يُقاس هنا: لا enums خامة داخل الخلايا.
         expect(s).not.toMatch(/issued<\/span>|reported<\/span>/);
     });
 

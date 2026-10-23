@@ -7,15 +7,15 @@
  * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
 import {
     fetchItemSales, fetchYaraOrders, fetchOrderDetail, arSearchIncludes,
     rangeError, analysisLabel, safeTotals, SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.131';
-import { ensureXlsx } from '../vendor.js?v=4.9.131';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.131';
+} from '../data/yara-reports-repo.js?v=4.9.132';
+import { ensureXlsx } from '../vendor.js?v=4.9.132';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -83,11 +83,6 @@ function template(from, to) {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — المصدر مرآة المبيعات المحلية؛ لا اتصال مباشر بالنظام
-              الخارجي ولا كتابة. سقف المدى 93 يومًا؛ المبيعات صافي بعد
-              المرتجعات.
-            </p>
             <div data-v2-table></div>
             <div data-v2-order-detail></div>
           </div>

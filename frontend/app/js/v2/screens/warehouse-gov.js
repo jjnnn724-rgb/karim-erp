@@ -33,10 +33,10 @@
  *   screen does not own (P2-4 is the read report plus the fiscal lifecycle).
  */
 
-import { canWrite } from '../session.js?v=4.9.131';
-import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
+import { canWrite } from '../session.js?v=4.9.132';
+import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
 import {
     FISCAL_READ_ROLES, FISCAL_CREATE_ROLES, FISCAL_CLOSE_ROLES,
     OPENING_READ_ROLES, HEALTH_READ_ROLES,
@@ -44,7 +44,7 @@ import {
     fetchOpeningBalanceReport, fetchSystemHealth,
     validateFiscalYearForm, normalizeFiscalYearForm,
     fiscalYearToRow, fiscalSummary, openingToInvoice, openingTotals, healthSummary,
-} from '../data/warehouse-gov-repo.js?v=4.9.131';
+} from '../data/warehouse-gov-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -143,13 +143,6 @@ function openingCardHtml(caps) {
         <span class="erp-text-sm erp-text-muted" data-v2-opening-note role="status" aria-live="polite"></span>
       </div>
       <div class="erp-card__body erp-stack">
-        <p class="erp-text-sm erp-text-muted">
-          قراءة فقط لفواتير الرصيد الافتتاحي للإدارة والمدير والمخزن. «الرصيد
-          الحالي» هو رقم سجل المخزون نفسه، و«المنصرف منذ الفاتورة» مجموع قيود
-          الصرف من تاريخها؛ الشاشة لا تطرح ولا تجمع لتستنتج رصيدًا. التعديل
-          والاستبدال والإلغاء من شاشة الرصيد الافتتاحي في النظام الأساسي —
-          هذه الشاشة لا تكتب في المخزون.
-        </p>
         <div data-v2-opening-kpis></div>
         <div data-v2-opening-list></div>
       </div>

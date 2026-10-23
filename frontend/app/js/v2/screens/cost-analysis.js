@@ -10,20 +10,26 @@
  *   the Math.max(0, …) legacy rule) / فرق جرد (count_correction) /
  *   تشغيلية (the rest). KPI thresholds: <50 green, <75 orange, else red
  *   (finance.js:273).
- *   Charts (bar + pie) are drawn by js/v2/charts.js as SVG — no external
- *   library, no CSP change. The bar reads the same rows the table shows;
- *   the pie folds the same categories the legacy screen counted.
+ *   Charts (bar + donut) are drawn by js/v2/charts.js as SVG — no external
+ *   library, no CSP change.
  *   Read gate on the sources: admin|manager|accountant|auditor.
+ *
+ * PRINTING
+ *   The print action opens /finance/cost-analysis/print in the in-app
+ *   report viewer: the server renders the full A4 sheet (logo, brand
+ *   header, composition, departments, categories, totals, footer) from the
+ *   same aggregate query. The screen never re-computes a number for print.
  *
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { barChart, donutChart } from '../charts.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { barChart, donutChart } from '../charts.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
 import {
-    fetchCostAnalysis, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+    costAnalysisPrintUrl, fetchCostAnalysis, firstOfMonth, riyadhToday,
+} from '../data/finance-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -42,11 +48,22 @@ function costTone(pct) {
     return 'erp-text-danger';
 }
 
+function toneName(pct) {
+    if (pct < 50) {return 'success';}
+    if (pct < 75) {return 'warning';}
+    return 'danger';
+}
+
 function moneyCell(v, currency, signed = false) {
     const m = formatMoney(v, currency);
     const cls = signed && Number(v) < 0 ? ' erp-text-success' : (signed && Number(v) > 0 ? ' erp-text-danger' : '');
     return `<span class="erp-num${cls}" dir="ltr">${m.amount}</span>`
         + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : '');
+}
+
+function moneyText(v, currency) {
+    const m = formatMoney(v, currency);
+    return `${m.amount}${m.hasUnit ? ` ${m.unit}` : ''}`;
 }
 
 /** بنية المعيار المصدّق (نفس عقد المطبخ): ul.erp-kpis > li.erp-kpi — لا ديفات. */
@@ -58,6 +75,17 @@ function kpiCard(label, body, icon) {
       </div>
       <div class="erp-kpi__value"><span data-v2-kpi="${esc(label)}">${body}</span></div>
     </li>`;
+}
+
+function statCard({ label, value, note, icon, tone }) {
+    return `<article class="erp-v2-cost__stat" data-tone="${esc(tone)}">
+      <span class="erp-v2-cost__stat-icon" aria-hidden="true"><i class="ji" data-i="${esc(icon)}"></i></span>
+      <div class="erp-v2-cost__stat-body">
+        <span class="erp-v2-cost__stat-label">${esc(label)}</span>
+        <strong class="erp-v2-cost__stat-value" data-v2-stat="${esc(label)}">${value}</strong>
+        <span class="erp-v2-cost__stat-note">${esc(note)}</span>
+      </div>
+    </article>`;
 }
 
 function template(from, to) {
@@ -91,12 +119,33 @@ function template(from, to) {
           </div>
         </div>
         <div class="erp-card__body erp-stack">
-          <details class="erp-v2-cost__method">
-            <summary>عن طريقة احتساب التقرير</summary>
-            <p>قراءة وتجميع مباشر في الخادم من بداية الشهر الحالي حتى اليوم. الحركات الأقدم لا تدخل في طلب الشاشة؛ لا ينفذ التقرير أي تغييرات على البيانات ولا ينقل تفاصيل الحركات إلى المتصفح.</p>
-          </details>
-          <ul class="erp-kpis" data-v2-kpis></ul>
+          <section class="erp-v2-cost__hero" data-v2-hero aria-label="المؤشرات الرئيسية">
+            ${statCard({ label: 'إجمالي الإيرادات', value: '—', note: ' ', icon: 'banknote', tone: 'brand' })}
+            ${statCard({ label: 'إجمالي التكاليف', value: '—', note: ' ', icon: 'wallet', tone: 'danger' })}
+            ${statCard({ label: 'صافي الربح', value: '—', note: ' ', icon: 'trending-up', tone: 'success' })}
+            ${statCard({ label: 'نسبة التكلفة', value: '—', note: ' ', icon: 'pie', tone: 'warning' })}
+          </section>
+          <ul class="erp-kpis erp-v2-cost__kpis" data-v2-kpis></ul>
+
+          <div class="erp-v2-cost__split">
+            <section class="erp-v2-cost__panel" aria-labelledby="v2cost-mix-title">
+              <header class="erp-v2-cost__panel-head">
+                <h4 id="v2cost-mix-title">تركيب التكلفة</h4>
+                <span class="erp-v2-cost__panel-note" data-v2-mix-total></span>
+              </header>
+              <ul class="erp-v2-cost__mix" data-v2-mix></ul>
+            </section>
+            <section class="erp-v2-cost__panel" aria-labelledby="v2cost-rank-title">
+              <header class="erp-v2-cost__panel-head">
+                <h4 id="v2cost-rank-title">أعلى الأقسام تكلفة</h4>
+                <span class="erp-v2-cost__panel-note" data-v2-rank-note></span>
+              </header>
+              <ol class="erp-v2-cost__rank" data-v2-rank></ol>
+            </section>
+          </div>
+
           <div class="erp-v2-chart-grid" data-v2-charts></div>
+
           <section class="erp-v2-cost__register" aria-labelledby="v2cost-table-title">
             <div class="erp-v2-cost__register-head">
               <h4 id="v2cost-table-title">تفصيل التكاليف حسب القسم</h4>
@@ -123,12 +172,15 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
     host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
+    const heroEl = q('[data-v2-hero]');
     const kpisEl = q('[data-v2-kpis]');
+    const mixEl = q('[data-v2-mix]');
+    const rankEl = q('[data-v2-rank]');
     const chartsEl = q('[data-v2-charts]');
     const summaryEl = q('[data-v2-summary]');
 
     const table = createDataTable({
-        caption: 'تكلفة الأقسام — بيانات حية',
+        caption: 'تكلفة الأقسام',
         mode: 'client',
         pageSize: 50,
         stickyHeader: true,
@@ -162,7 +214,22 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
                 render: (row) => `<span class="erp-num ${costTone(row.costRatio)}" dir="ltr">${round1(row.costRatio)}%</span>`,
             },
             {
-                key: 'profit', header: 'التقييم', sortable: true, width: '110px', align: 'center',
+                key: 'profit', header: 'صافي الربح', type: 'number', sortable: true,
+                align: 'end', value: (row) => row.profit,
+                render: (row) => `<span class="erp-num ${row.profit >= 0 ? 'erp-text-success' : 'erp-text-danger'}" dir="ltr">${moneyText(row.profit, currency)}</span>`,
+            },
+            {
+                key: 'margin', header: 'هامش الربح', type: 'number', sortable: true,
+                width: '110px', align: 'end', value: (row) => row.margin,
+                render: (row) => `<span class="erp-num erp-text-muted" dir="ltr">${round1(row.margin)}%</span>`,
+            },
+            {
+                key: 'rowCount', header: 'الحركات', type: 'number', sortable: true,
+                width: '90px', align: 'end', value: (row) => row.rowCount,
+                render: (row) => `<span class="erp-num erp-text-muted" dir="ltr">${formatInt(row.rowCount)}</span>`,
+            },
+            {
+                key: 'status', header: 'التقييم', sortable: true, width: '110px', align: 'center',
                 value: (row) => row.profit,
                 render: (row) => (row.profit >= 0
                     ? `<span class="erp-badge" data-tone="success">مربح</span>`
@@ -173,51 +240,133 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
 
     q('[data-v2-table]').appendChild(table.el);
 
-    function paintKpis(t) {
-        kpisEl.innerHTML = [
-            kpiCard('إجمالي الإيرادات', moneyCell(t.rev, currency), 'banknote'),
-            kpiCard('إجمالي التكاليف', moneyCell(t.exp, currency), 'wallet'),
-            kpiCard('متوسط نسبة التكلفة',
-                `<span class="erp-num ${costTone(t.avgCost)}" dir="ltr">${round1(t.avgCost)}%</span>`, 'chart'),
-            kpiCard('صرف مخزون (صافي المرتجعات)', moneyCell(t.mat, currency), 'package'),
-            kpiCard('عجز / زيادة الجرد', moneyCell(t.cnt, currency, true), 'clipboard-list'),
-            kpiCard('مصروفات تشغيلية', moneyCell(t.ops, currency), 'pen-tool'),
+    function withMargin(list) {
+        return list.map((row) => ({
+            ...row,
+            margin: row.rev > 0 ? (row.profit / row.rev) * 100 : 0,
+        }));
+    }
+
+    function paintHero(t) {
+        const net = num(t.rev) - num(t.exp);
+        const shareOfRev = num(t.rev) > 0 ? (num(t.exp) / num(t.rev)) * 100 : 0;
+        const margin = num(t.rev) > 0 ? (net / num(t.rev)) * 100 : 0;
+        heroEl.innerHTML = [
+            statCard({
+                label: 'إجمالي الإيرادات',
+                value: moneyCell(t.rev, currency),
+                note: `${formatInt(rows.length)} قسمًا مسجلًا`,
+                icon: 'banknote', tone: 'brand',
+            }),
+            statCard({
+                label: 'إجمالي التكاليف',
+                value: moneyCell(t.exp, currency),
+                note: `${round1(shareOfRev)}% من الإيراد`,
+                icon: 'wallet', tone: 'danger',
+            }),
+            statCard({
+                label: 'صافي الربح',
+                value: moneyCell(net, currency),
+                note: `هامش الربح ${round1(margin)}%`,
+                icon: net >= 0 ? 'trending-up' : 'trending-down',
+                tone: net >= 0 ? 'success' : 'danger',
+            }),
+            statCard({
+                label: 'نسبة التكلفة',
+                value: `<span class="erp-num ${costTone(shareOfRev)}" dir="ltr">${round1(shareOfRev)}%</span>`,
+                note: 'التكلفة ÷ الإيراد',
+                icon: 'pie', tone: toneName(shareOfRev),
+            }),
         ].join('');
     }
 
+    function paintKpis(t) {
+        kpisEl.innerHTML = [
+            kpiCard('صرف مخزون (صافي المرتجعات)', moneyCell(t.mat, currency), 'package'),
+            kpiCard('عجز / زيادة الجرد', moneyCell(t.cnt, currency, true), 'clipboard-list'),
+            kpiCard('مصروفات تشغيلية', moneyCell(t.ops, currency), 'pen-tool'),
+            kpiCard('تصنيفات المصروف', `<span class="erp-num" dir="ltr">${formatInt(categories.length)}</span>`, 'layers'),
+        ].join('');
+    }
+
+    function paintMix(t) {
+        const total = num(t.exp);
+        const items = [
+            { label: 'صرف المخزون', value: num(t.mat), tone: 'brand' },
+            { label: 'فروق الجرد', value: num(t.cnt), tone: 'warning' },
+            { label: 'مصروفات تشغيلية', value: num(t.ops), tone: 'success' },
+        ];
+        q('[data-v2-mix-total]').textContent = `الإجمالي ${moneyText(total, currency)}`;
+        mixEl.innerHTML = items.map((item) => {
+            const ofCost = total > 0 ? (item.value / total) * 100 : 0;
+            const ofRev = num(t.rev) > 0 ? (item.value / num(t.rev)) * 100 : 0;
+            const bar = Math.max(0, Math.min(100, ofCost));
+            return `<li class="erp-v2-cost__mix-row" data-tone="${item.tone}">
+              <div class="erp-v2-cost__mix-top">
+                <span class="erp-v2-cost__mix-label">${esc(item.label)}</span>
+                <span class="erp-v2-cost__mix-value">${moneyCell(item.value, currency)}</span>
+              </div>
+              <div class="erp-v2-cost__mix-bar"><span style="--mix:${round1(bar)}%"></span></div>
+              <div class="erp-v2-cost__mix-meta">
+                <span>${round1(ofCost)}% من التكلفة</span>
+                <span>${round1(ofRev)}% من الإيراد</span>
+              </div>
+            </li>`;
+        }).join('');
+    }
+
+    function paintRank() {
+        const ranked = rows.slice()
+            .filter((row) => num(row.exp) > 0)
+            .sort((a, b) => num(b.exp) - num(a.exp))
+            .slice(0, 5);
+        q('[data-v2-rank-note]').textContent = ranked.length ? `أعلى ${formatInt(ranked.length)}` : '';
+        rankEl.innerHTML = ranked.length
+            ? ranked.map((row, index) => `
+              <li class="erp-v2-cost__rank-row">
+                <span class="erp-v2-cost__rank-no" aria-hidden="true">${index + 1}</span>
+                <span class="erp-v2-cost__rank-body">
+                  <span class="erp-v2-cost__rank-name">${esc(row.name)}</span>
+                  <span class="erp-v2-cost__rank-sub">${moneyText(row.exp, currency)} · ${round1(row.costRatio)}% من الإيراد</span>
+                </span>
+                <span class="erp-badge" data-tone="${row.profit >= 0 ? 'success' : 'danger'}">${row.profit >= 0 ? 'مربح' : 'خاسر'}</span>
+              </li>`).join('')
+            : '<li class="erp-v2-cost__rank-empty">لا تكاليف مسجلة في هذه الفترة</li>';
+    }
+
     function paint() {
+        const from = q('#v2cost-from').value;
+        const to = q('#v2cost-to').value;
+        const t = totals || { rev: 0, mat: 0, cnt: 0, ops: 0, exp: 0, avgCost: 0 };
+        paintHero(t);
+        paintKpis(t);
+        paintMix(t);
+        paintRank();
+
         if (!rows.length) {
-            summaryEl.textContent = 'لا توجد أقسام مسجلة.';
-            kpisEl.innerHTML = '';
             chartsEl.innerHTML = '';
+            summaryEl.textContent = 'لا توجد أقسام مسجلة.';
             table.setRows([]);
             return;
         }
-        const from = q('#v2cost-from').value;
-        const to = q('#v2cost-to').value;
-        const result = totals;
-        paintKpis(result);
-        const moneyText = (v) => {
-            const m = formatMoney(v, currency);
-            return `${m.amount}${m.hasUnit ? ` ${m.unit}` : ''}`;
-        };
+
         const chartRows = rows.slice()
             .sort((a, b) => (num(b.rev) + num(b.exp)) - (num(a.rev) + num(a.exp)))
             .slice(0, 8);
         chartsEl.innerHTML = [
             barChart({
                 title: rows.length > chartRows.length
-                    ? `مقارنة أعلى ${chartRows.length} أقسام — الجدول يعرض الجميع`
+                    ? `مقارنة أعلى ${formatInt(chartRows.length)} أقسام`
                     : 'الإيرادات مقابل التكلفة حسب القسم',
                 ariaLabel: rows.length > chartRows.length
-                    ? `أعمدة الإيرادات والتكلفة لأعلى ${chartRows.length} أقسام، والجدول يعرض جميع الأقسام`
+                    ? `أعمدة الإيرادات والتكلفة لأعلى ${chartRows.length} أقسام`
                     : 'أعمدة الإيرادات والتكلفة الإجمالية لكل قسم',
                 labels: chartRows.map((r) => r.name),
                 series: [
                     { label: 'الإيرادات', tone: 'success', values: chartRows.map((r) => r.rev) },
                     { label: 'التكلفة الإجمالية', tone: 'danger', values: chartRows.map((r) => r.exp) },
                 ],
-                formatValue: moneyText,
+                formatValue: (v) => moneyText(v, currency),
                 emptyText: 'لا أقسام في هذه الفترة',
             }),
             donutChart({
@@ -225,15 +374,13 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
                 ariaLabel: 'رسم دائري لنسب تصنيفات المصروفات في الفترة',
                 slices: categories,
                 centerLabel: 'إجمالي المصروفات',
-                formatValue: moneyText,
+                formatValue: (v) => moneyText(v, currency),
                 maxSlices: 8,
                 emptyText: 'لا مصروفات في هذه الفترة',
             }),
         ].join('');
 
-        summaryEl.textContent = `${formatInt(rows.length)} قسمًا`
-            + ` · الفترة ${from || firstOfMonth()} → ${to || riyadhToday()}`
-            + ' · تجميع مباشر من قاعدة البيانات';
+        summaryEl.textContent = `${formatInt(rows.length)} قسمًا · ${from || firstOfMonth()} → ${to || riyadhToday()}`;
         table.setRows(rows);
     }
 
@@ -242,12 +389,12 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         const from = q('#v2cost-from').value;
         const to = q('#v2cost-to').value;
         if (Boolean(from) !== Boolean(to)) {
-            summaryEl.textContent = 'أدخل تاريخ البداية والنهاية معًا، أو امسح التاريخين لعرض كل الفترة.';
+            summaryEl.textContent = 'تاريخ البداية والنهاية مطلوبان معًا.';
             return;
         }
         loading = true;
         table.setLoading(true);
-        summaryEl.textContent = 'جارٍ تجميع البيانات في الخادم…';
+        summaryEl.textContent = 'جارٍ التجميع…';
         q('#v2cost-from').disabled = true;
         q('#v2cost-to').disabled = true;
         q('[data-v2-reload]').disabled = true;
@@ -259,7 +406,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             ]);
             if (!el.isConnected) {return;}          // destroyed while in flight
             currency = String(cur ?? '');
-            rows = Array.isArray(result && result.rows) ? result.rows : [];
+            rows = withMargin(Array.isArray(result && result.rows) ? result.rows : []);
             categories = Array.isArray(result && result.categories) ? result.categories : [];
             totals = result && result.totals ? result.totals : null;
             if (!totals) {throw new Error('استجابة تحليل التكاليف غير مكتملة من الخادم');}
@@ -267,14 +414,14 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         } catch (e) {
             if (!el.isConnected) {return;}
             totals = null;
-            kpisEl.innerHTML = '';
-            chartsEl.innerHTML = '';
-            table.setRows([]);
+            rows = [];
+            categories = [];
+            paint();
             summaryEl.textContent = '';
             table.setError(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && e.code === 'FORBIDDEN'
-                    ? 'لا صلاحية لعرض تحليل التكاليف بهذا الحساب — القرار للخادم وحده.'
+                    ? 'لا صلاحية لعرض تحليل التكاليف بهذا الحساب.'
                     : `تعذّر حساب التحليل: ${(e && e.message) || 'خطأ'}`));
         } finally {
             loading = false;
@@ -294,7 +441,12 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             reload();
             return;
         }
-        if (event.target.closest('[data-v2-print]')) {window.print(); return;}
+        if (event.target.closest('[data-v2-print]')) {
+            const from = q('#v2cost-from').value;
+            const to = q('#v2cost-to').value;
+            openInAppReport('تحليل التكاليف', costAnalysisPrintUrl(from, to));
+            return;
+        }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });

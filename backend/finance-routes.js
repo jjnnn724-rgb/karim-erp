@@ -1655,11 +1655,244 @@ function buildCostAnalysisResult(rows) {
     };
 }
 
+/* ── تحليل التكاليف — مستند A4 مستقل بهوية المطعم ────────────────────────
+   العارض في V2 يطبع هذا المستند؛ العلامة data-v2-print-brand تمنع حقن
+   ترويسة ثانية فوق ترويسة المستند الأصلية. */
+const COST_PRINT_STYLE = `
+@page { size: A4; margin: 11mm 10mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0; padding: 16px; background: #eef1f6; color: #17231f;
+  font-family: "IBM Plex Sans Arabic", "Cairo", Tahoma, Arial, sans-serif;
+  font-size: 11.5px; line-height: 1.55; direction: rtl;
+}
+.sheet { max-width: 200mm; margin: 0 auto; background: #fff; border: 1px solid #dfe3ea;
+         border-radius: 14px; box-shadow: 0 14px 40px rgba(15, 23, 42, .10); overflow: hidden; }
+.brand { display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+         background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+         border-bottom: 3px solid #c9a227; }
+.brand img { width: 62px; height: 62px; object-fit: contain; background: #fff;
+             border: 2px solid #c9a227; border-radius: 12px; padding: 4px; }
+.brand__t { flex: 1; min-width: 0; }
+.brand__t h1 { margin: 0; font-size: 17px; color: #f5d76e; font-weight: 700; }
+.brand__t p { margin: 2px 0 0; font-size: 10.5px; color: #cbd5e1; letter-spacing: .3px; }
+.brand__id .no { display: inline-block; background: rgba(245, 215, 110, .14);
+                 border: 1px solid #c9a227; border-radius: 999px; padding: 3px 14px;
+                 font-size: 12px; font-weight: 700; color: #f5d76e;
+                 font-variant-numeric: tabular-nums; direction: ltr; white-space: nowrap; }
+.doc { text-align: center; padding: 14px 20px 2px; }
+.doc h2 { margin: 0; font-size: 20px; color: #0f172a; letter-spacing: .4px; }
+.doc .sub { margin-top: 3px; font-size: 11px; color: #64748b; }
+.body { padding: 4px 20px 18px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #e5e7eb;
+        border-radius: 10px; overflow: hidden; margin-top: 10px; }
+.cell { padding: 8px 11px; border-inline-start: 1px solid #eef1f5; border-top: 1px solid #eef1f5; }
+.cell:nth-child(4n+1) { border-inline-start: 0; }
+.cell:nth-child(-n+4) { border-top: 0; }
+.cell b { display: block; font-size: 10px; color: #8a6d1b; font-weight: 700; }
+.cell span { display: block; margin-top: 2px; font-size: 13px; color: #0f172a;
+             font-weight: 700; font-variant-numeric: tabular-nums; }
+.cell small { display: block; margin-top: 1px; font-size: 9.5px; color: #64748b; }
+h3.sec { margin: 16px 0 6px; padding-inline-start: 9px; border-inline-start: 4px solid #c9a227;
+         font-size: 12.5px; color: #0f172a; }
+table.t { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.t th, table.t td { padding: 5px 7px; border-bottom: 1px solid #edf0f4; text-align: right; }
+table.t th { background: #0f172a; color: #f5d76e; font-size: 10.5px; font-weight: 700;
+             text-align: center; white-space: nowrap; }
+table.t td.c { text-align: center; }
+table.t td.n { text-align: left; direction: ltr; unicode-bidi: embed; white-space: nowrap; }
+table.t tbody tr:nth-child(even) td { background: #f8fafc; }
+table.t tbody tr { break-inside: avoid; page-break-inside: avoid; }
+table.t tfoot td { background: #eef2f7; border-top: 2px solid #c9a227; border-bottom: 0;
+                   font-weight: 800; color: #0f172a; font-size: 11.5px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9.5px;
+        font-weight: 700; white-space: nowrap; border: 1px solid #dbe1ea;
+        background: #f2f4f7; color: #475467; }
+.pill--success { border-color: #0b9e6c; background: rgba(11, 158, 108, .10); color: #055f3a; }
+.pill--danger { border-color: #e5484d; background: rgba(229, 72, 77, .10); color: #b42318; }
+.pos { color: #055f3a; font-weight: 700; }
+.neg { color: #b42318; font-weight: 700; }
+.foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px;
+        border-top: 1px solid #e5e7eb; padding-top: 7px; font-size: 9.5px; color: #94a3b8; }
+.empty { text-align: center; color: #94a3b8; padding: 10px; }
+@media print {
+  body { background: #fff; padding: 0; }
+  .sheet { border: 0; border-radius: 0; box-shadow: none; max-width: none; }
+  table.t thead { display: table-header-group; }
+}`;
+
+async function financePrintBrand() {
+    const fallback = {
+        name: await restaurantDisplayName(),
+        currency: 'SAR',
+        logo: '/app/assets/al-shurfa-logo.png',
+    };
+    try {
+        const result = await pool.query(
+            `SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`,
+        );
+        const row = result.rows[0] || {};
+        const logo = String(row.logoB64 || '');
+        return {
+            name: String(row.name || '').trim() || fallback.name,
+            currency: String(row.currency || '').trim() || fallback.currency,
+            logo: /^data:image\//i.test(logo) ? logo : fallback.logo,
+        };
+    } catch (error) {
+        logger.warn(`[finance] print brand unavailable: ${error.message}`);
+        return fallback;
+    }
+}
+
+/** مستند تحليل التكاليف: الأرقام نفسها التي تعرضها الشاشة، بلا أي حساب جديد. */
+function renderCostAnalysisPrintHtml(payload, opts = {}) {
+    const rows = Array.isArray(payload && payload.rows) ? payload.rows.slice() : [];
+    const totals = (payload && payload.totals) || { rev: 0, mat: 0, cnt: 0, ops: 0, exp: 0, avgCost: 0 };
+    const categories = Array.isArray(payload && payload.categories) ? payload.categories.slice() : [];
+    const period = (payload && payload.period) || {};
+    const brand = {
+        name: opts.restaurantName || 'النظام المالي',
+        logo: opts.logo || '/app/assets/al-shurfa-logo.png',
+        currency: opts.currency || 'SAR',
+    };
+    const generatedAt = opts.generatedAt || new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const generatedBy = opts.generatedBy || '—';
+    const money = (v) => fmtMoney(v);
+    const share = (part, base) => (Number(base) > 0 ? `${roundMoney((Number(part) / Number(base)) * 100)}%` : '—');
+    const signedClass = (v) => (Number(v) < 0 ? 'neg' : 'pos');
+
+    const composition = [
+        ['صرف المخزون (صافي المرتجعات)', totals.mat],
+        ['فروق الجرد', totals.cnt],
+        ['مصروفات تشغيلية', totals.ops],
+    ].map(([label, value]) => `
+        <tr>
+            <td>${escHtml(label)}</td>
+            <td class="n">${money(value)}</td>
+            <td class="c">${share(value, totals.exp)}</td>
+            <td class="c">${share(value, totals.rev)}</td>
+        </tr>`).join('');
+
+    const deptRows = rows
+        .slice()
+        .sort((a, b) => (num(b.exp) - num(a.exp)) || (num(b.rev) - num(a.rev)))
+        .map((row, index) => `
+        <tr>
+            <td class="c">${index + 1}</td>
+            <td>${escHtml(row.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(row.code)}</span></td>
+            <td class="n">${money(row.rev)}</td>
+            <td class="n">${money(row.materials)}</td>
+            <td class="n">${money(row.countAdj)}</td>
+            <td class="n">${money(row.operating)}</td>
+            <td class="n"><strong>${money(row.exp)}</strong></td>
+            <td class="c">${share(row.exp, row.rev)}</td>
+            <td class="n ${signedClass(row.profit)}">${money(row.profit)}</td>
+            <td class="c"><span class="pill pill--${row.profit >= 0 ? 'success' : 'danger'}">${row.profit >= 0 ? 'مربح' : 'خاسر'}</span></td>
+        </tr>`).join('');
+
+    const categoryRows = categories
+        .slice()
+        .sort((a, b) => num(b.value) - num(a.value))
+        .map((category, index) => `
+        <tr>
+            <td class="c">${index + 1}</td>
+            <td>${escHtml(category.label || 'أخرى')}</td>
+            <td class="n">${money(category.value)}</td>
+            <td class="c">${share(category.value, totals.exp)}</td>
+        </tr>`).join('');
+
+    const net = num(totals.rev) - num(totals.exp);
+    return `<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحليل التكاليف — ${escHtml(period.from || '')} → ${escHtml(period.to || '')}</title>
+<style>${COST_PRINT_STYLE}</style></head><body>
+<main class="sheet">
+  <header class="brand" data-v2-print-brand>
+    <img src="${escHtml(brand.logo)}" alt="شعار ${escHtml(brand.name)}">
+    <div class="brand__t">
+      <h1>${escHtml(brand.name)}</h1>
+      <p>تحليل التكاليف · COST ANALYSIS</p>
+    </div>
+    <div class="brand__id"><span class="no">${escHtml(period.from || '')} → ${escHtml(period.to || '')}</span></div>
+  </header>
+  <div class="doc">
+    <h2>تحليل التكاليف</h2>
+    <div class="sub">ملخص الإيرادات والتكاليف حسب القسم والفترة المحددة</div>
+  </div>
+  <div class="body">
+    <section class="grid">
+      <div class="cell"><b>إجمالي الإيرادات</b><span>${money(totals.rev)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>إجمالي التكاليف</b><span>${money(totals.exp)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>صافي الربح</b><span class="${signedClass(net)}">${money(net)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>نسبة التكلفة</b><span>${roundMoney(totals.avgCost)}%</span><small>التكلفة ÷ الإيراد</small></div>
+      <div class="cell"><b>صرف المخزون</b><span>${money(totals.mat)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>فروق الجرد</b><span>${money(totals.cnt)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>مصروفات تشغيلية</b><span>${money(totals.ops)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>النطاق</b><span>${rows.length} قسم</span><small>${categories.length} تصنيف مصروف</small></div>
+    </section>
+
+    <h3 class="sec">توزيع التكلفة</h3>
+    <table class="t">
+      <thead><tr><th style="width:46%">البند</th><th style="width:20%">المبلغ</th>
+        <th style="width:17%">% من التكلفة</th><th style="width:17%">% من الإيراد</th></tr></thead>
+      <tbody>${composition}</tbody>
+      <tfoot><tr><td>إجمالي التكلفة</td><td class="n">${money(totals.exp)}</td>
+        <td class="c">100%</td><td class="c">${share(totals.exp, totals.rev)}</td></tr></tfoot>
+    </table>
+
+    <h3 class="sec">تفصيل الأقسام</h3>
+    <table class="t">
+      <thead><tr><th style="width:4%">#</th><th>القسم</th><th>الإيرادات</th><th>صرف المخزون</th>
+        <th>فروق الجرد</th><th>تشغيلية</th><th>التكلفة</th><th>النسبة</th>
+        <th>الصافي</th><th>التقييم</th></tr></thead>
+      <tbody>${deptRows || `<tr><td colspan="10" class="empty">لا أقسام في هذه الفترة</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="2">الإجمالي</td><td class="n">${money(totals.rev)}</td>
+        <td class="n">${money(totals.mat)}</td><td class="n">${money(totals.cnt)}</td>
+        <td class="n">${money(totals.ops)}</td><td class="n">${money(totals.exp)}</td>
+        <td class="c">${roundMoney(totals.avgCost)}%</td>
+        <td class="n ${signedClass(net)}">${money(net)}</td><td></td></tr></tfoot>
+    </table>
+
+    <h3 class="sec">تصنيفات المصروفات</h3>
+    <table class="t">
+      <thead><tr><th style="width:8%">#</th><th>التصنيف</th>
+        <th style="width:22%">المبلغ</th><th style="width:18%">% من التكلفة</th></tr></thead>
+      <tbody>${categoryRows || `<tr><td colspan="4" class="empty">لا تصنيفات في هذه الفترة</td></tr>`}</tbody>
+    </table>
+
+    <div class="foot">
+      <span>${escHtml(brand.name)} — تحليل التكاليف · ${escHtml(period.from || '')} → ${escHtml(period.to || '')}</span>
+      <span>أُنشئ ${escHtml(generatedAt)} · ${escHtml(generatedBy)}</span>
+    </div>
+  </div>
+</main>
+</body></html>`;
+}
+
 router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
     const result = await pool.query(query.text, query.params);
     res.json({ ...buildCostAnalysisResult(result.rows), period: { from, to } });
+}));
+
+router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+    const { from, to } = resolveCostAnalysisPeriod(req.query);
+    const query = costAnalysisSql(from, to);
+    const result = await pool.query(query.text, query.params);
+    const brand = await financePrintBrand();
+    res.type('html').send(renderCostAnalysisPrintHtml(
+        { ...buildCostAnalysisResult(result.rows), period: { from, to } },
+        {
+            restaurantName: brand.name,
+            logo: brand.logo,
+            currency: brand.currency,
+            generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+            generatedBy: req.user?.username || req.user?.name || '—',
+        },
+    ));
 }));
 
 router.use(jwtAuth, requireRole(...READ_ROLES));
@@ -1991,6 +2224,7 @@ module.exports = {
     resolveCostAnalysisPeriod,
     costAnalysisSql,
     buildCostAnalysisResult,
+    renderCostAnalysisPrintHtml,
     // المقارنة الشهرية (مصدَّرة للاختبارات)
     MONTHLY_DEFAULT_MONTHS,
     MONTHLY_MAX_MONTHS,

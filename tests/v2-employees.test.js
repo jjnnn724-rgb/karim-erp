@@ -746,7 +746,8 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
         expect((s.match(/book_append_sheet\(wb, ws, 'الموظفون'\)/g) || []).length).toBe(2);
         expect(s).toMatch(/wch: 20/);
         expect(s).not.toMatch(/digitalFingerprint|qrToken|fingerprintTemplate/);
-        expect(s).toMatch(/لا يحمل البصمة الرقمية ولا رقم البطاقة/);   // declared narrowing, said in the UI
+        // 2026-10-23: الجملة التوضيحية أُزيلت من الواجهة؛ العقد الباقي هو النفي
+        // نفسه أعلاه — التصدير لا يحمل بصمة ولا رقم بطاقة.
     });
 
     test('the photo is scaled to the legacy 300px card size before it is ever sent', () => {

@@ -314,8 +314,10 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
         expect(handlers).toHaveLength(0);
         expect(s).not.toMatch(/window\.(prompt|alert)\(/);
         expect(s).not.toMatch(/قراءة فقط|موجة كتابة/);   // الشاشة تكتب الآن — لا ادعاء زائف
-        expect(s).toContain('وحذف السجل بعكس أثره المخزني');
+        // 2026-10-23: شرح الدورة أُزيل؛ يُقاس الأثر نفسه: الحذف يظهر لمن يملكه
+        // ويمرّ عبر بوابة الحذف التي تعكس المخزون في الخادم.
         expect(s).toContain("if (returnDeleteVisible(role)) {");
+        expect(s).toContain('deleteKitchenReturn');
         expect(s).toContain("key: 'actions', header: 'حذف'");
     });
 

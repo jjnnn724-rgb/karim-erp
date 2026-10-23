@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,20 +114,20 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.131';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.131';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.131';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.131';
+} from '../data/inventory-repo.js?v=4.9.132';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.132';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.132';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.131';
-import { ensureXlsx } from '../vendor.js?v=4.9.131';
+} from '../data/opening-balance-repo.js?v=4.9.132';
+import { ensureXlsx } from '../vendor.js?v=4.9.132';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.131';
+} from '../signature.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -367,25 +367,7 @@ function template(stock, can) {
             </span>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              الصلاحيات محكومة بالأدوار: الوارد والاستيراد والحذف للمخزن والمدير
-              والإدارة، والتعديل المباشر والدمج لمدير النظام، والحذف النهائي مع
-              الحركات للمخزن والإدارة.
-              وجرد المخزون استوديو كامل من زر «جرد المخزون»: الجلسة والعدّ والاعتماد
-              بتوقيع مقفل باسم الحساب — قراءته للمخزن والمدير والإدارة والمحاسبة،
-              وكتاباته للثلاثة الأولى.
-              الأرقام كما هي مخزّنة: الرصيد الرئيسي
-              من ربط المخزن الرئيسي، وما لدى الأقسام هو الفرق، والإجمالي كما في
-              السجل. تكلفة الأصناف وقيمتها ليستا معروضتين في السجل؛
-              التكلفة تدخل فقط بما يكتبه المستخدم في نماذج الكتابة
-              (سعر شراء «وارد سريع»، وتكلفة «التعديل المباشر»).
-              وفي استوديو الجرد وحدها تظهر قيم فروقات الجرد بعملة النظام
-              من إعداداتها.
-              <span class="erp-text-muted">مربع «بحث» فوق الجدول يسأل الخادم عن الاسم أو
-              الباركود أو الفئة ويتسامح مع الحروف المتشابهة؛ ومربع البحث داخل الجدول يضيق
-              ما تم تحميله منه وحده.</span>
-              <span data-v2-shelf-note hidden>تعذّر تحميل أسماء الرفوف — تُعرض أرقامها.</span>
-            </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-shelf-note hidden>تعذّر تحميل أسماء الرفوف — تُعرض أرقامها.</p>
             <p class="erp-text-sm erp-text-muted" data-v2-filter-note hidden></p>
             <p class="erp-print-note" data-v2-print-note></p>
             <div data-v2-table></div>

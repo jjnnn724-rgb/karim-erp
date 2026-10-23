@@ -35,7 +35,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.131';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.132';
 
 /** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;
@@ -73,6 +73,41 @@ export async function fetchCostAnalysis(from, to) {
     if (to) {params.set('to', to);}
     const query = params.toString();
     return apiFetch(`/finance/cost-analysis${query ? `?${query}` : ''}`);
+}
+
+function printQuery(from, to) {
+    const params = new URLSearchParams();
+    if (from) {params.set('from', from);}
+    if (to) {params.set('to', to);}
+    return params.toString();
+}
+
+/** A4 document URL — same rows, no client math. */
+export function costAnalysisPrintUrl(from, to) {
+    const query = printQuery(from, to);
+    return `/api/finance/cost-analysis/print${query ? `?${query}` : ''}`;
+}
+
+/**
+ * The sheet itself, fetched with the same credentials as every other read.
+ * An iframe src jump carries no Authorization header, so the viewer receives
+ * the HTML as text — exactly as the voucher and register sheets do.
+ */
+export async function fetchCostAnalysisPrintHtml(from, to) {
+    const headers = {};
+    if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
+    const query = printQuery(from, to);
+    const res = await fetch(`${API_BASE}/finance/cost-analysis/print${query ? `?${query}` : ''}`, { headers });
+    if (!res.ok) {
+        let msg = `تعذر توليد مستند التحليل (${res.status})`;
+        try {
+            const body = await res.clone().json();
+            if (body && (body.message || body.error)) {msg = body.message || body.error;}
+        } catch (_) { /* HTML error page — keep the generic text */ }
+        throw new Error(msg);
+    }
+    return res.text();
 }
 
 /** Newest rows of one register — one page, for dashboards that show a short

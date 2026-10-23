@@ -24,15 +24,15 @@
  *   • قارئ عمود «حذف» كما :657 — يظهر لحامله فقط ووظيفته عكس الأثر كاملًا.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
 import {
     fetchKitchenReturns, kitchenReturnToRow,
     returnCreateVisible, returnDeleteVisible,
     fetchReturnDispatches, fetchReturnDepartments, fetchReturnInventory,
     directReturnDepartments, deptLabelOf, returnDeptCodesOf,
     returnCreatePayload, createKitchenReturn, deleteKitchenReturn,
-} from '../data/warehouse-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.131';
+} from '../data/warehouse-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };
@@ -57,12 +57,6 @@ function template(canCreate) {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
-          <p class="erp-text-sm erp-text-muted">
-            الدورة كاملة من هنا: إرجاع جديد من إذن صرف معتمد أو إرجاع مباشر من قسم
-            (كلاهما يعكس مصروف القسم ويعيد الكميات للمخزن)، وحذف السجل بعكس أثره المخزني.
-            الصلاحية محكومة بالأدوار (الإنشاء للمطبخ والمخزن والإدارة، والحذف
-            للمخزن والإدارة). كل مرتجع يُسجَّل معتمدًا من لحظة الإنشاء.
-          </p>
           <div data-v2-table></div>
           <div data-v2-panel hidden></div>
         </div>

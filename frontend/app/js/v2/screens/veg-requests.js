@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
     vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
     createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+} from '../data/veg-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -177,13 +177,7 @@ function template(canCreate) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <div data-v2-statusseg></div>
-          <p class="erp-text-sm erp-text-muted">
-            الدورة كاملة من هنا: إنشاء من قايمة الخضار المعتمدة · استلام الأصناف
-            (سليم/مرفوض + أسعار المندوب للاعتماد المباشر) · تسعير المخزن
-            (يُحمَّل مصروف قسم المطبخ) · تعديل الكميات قبل الاعتماد · إلغاء · طباعة.
-            القرار للخادم وحده: الشيف العمومي ومدير النظام والمالك يعتمدون، والمخزن يقرأ فقط — ولا توقيع في هذه الدورة.
-            <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-          </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
           <div data-v2-table></div>
           <div data-v2-panel hidden></div>
         </div>

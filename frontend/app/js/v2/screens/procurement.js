@@ -13,15 +13,15 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
 import {
     fetchProcurementSummary, fetchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
     deleteSupplier, fetchSupplierStatement,
-} from '../data/procurement-repo.js?v=4.9.131';
+} from '../data/procurement-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -94,12 +94,7 @@ function template(writable) {
         </div>
         <div class="erp-card__body erp-stack">
           <div data-v2-kpis></div>
-          <p class="erp-text-sm erp-text-muted">
-            الدليل والملخص من النظام مباشرة، والصلاحية محكومة بالأدوار.
-            المستحق = الافتتاحي + المشتريات − المدفوعات. فواتير الموردين
-            ومدفوعاتهم شاشتان مستقلتان (06/07).
-            <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-          </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
         </div>

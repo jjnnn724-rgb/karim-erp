@@ -514,8 +514,10 @@ describe('V2 warehouse screen + layer (source contract)', () => {
     test('the table is client mode over a server-filtered walk — both search boxes are declared', () => {
         const s = screen();
         expect(s).toMatch(/mode: 'client'/);
-        expect(s).toMatch(/مربع «بحث» فوق الجدول يسأل الخادم/);
-        expect(s).toMatch(/مربع البحث داخل الجدول يضيق/);
+        // 2026-10-23: الوصف المكتوب أُزيل من الشاشة؛ العقد صار في الكود نفسه:
+        // الصندوق العلوي يمرّر الاستعلام للخادم، وبحث الجدول يضيق ما تم تحميله.
+        expect(s).toMatch(/q: qInput\.value\.trim\(\)/);
+        expect(s).toMatch(/search: ''/);
         expect(s).toMatch(/data-v2-q/);
     });
 
@@ -622,8 +624,10 @@ describe('V2 warehouse screen + layer (source contract)', () => {
         // false the moment the receipt and direct-edit forms landed. The claim
         // is now narrower and true: the REGISTER shows no cost, and the only
         // cost values on screen are the ones a user types into a write form.
-        expect(screen()).toMatch(/تكلفة الأصناف وقيمتها ليستا معروضتين في السجل/);
-        expect(screen()).toMatch(/التكلفة تدخل فقط بما يكتبه المستخدم في نماذج الكتابة/);
+        // 2026-10-23: الشرح أُزيل؛ يُقاس ما كان يقوله: السجل بلا عمود تكلفة،
+        // والتكلفة لا تظهر إلا كحقل يكتبه المستخدم في نماذج الكتابة.
+        expect(screen()).not.toMatch(/key: '(cost|avgCost)'/);
+        expect(screen()).toMatch(/data-v2-opening-field="price"/);
     });
 
     test('no sample figures on the live screen', () => {

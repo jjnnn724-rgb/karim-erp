@@ -18,9 +18,9 @@
  *   بوابة الشاشة هي بوابة الخادم (admin|manager|accountant).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
-import { barChart, lineChart } from '../charts.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { barChart, lineChart } from '../charts.js?v=4.9.132';
 import {
     fetchMonthlyComparison,
     fetchMonthlyDetail,
@@ -30,8 +30,8 @@ import {
     monthLabel,
     MONTHS_CHOICES,
     MONTHS_DEFAULT,
-} from '../data/monthly-comparison-repo.js?v=4.9.131';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.131';
+} from '../data/monthly-comparison-repo.js?v=4.9.132';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -2,7 +2,7 @@
  * V2 — POS doors. Writes use the established cashier routes; the server
  * remains authoritative for stock, VAT, shift ownership, ZATCA and printing.
  */
-import { API_BASE, apiFetch } from '../../core/api.js?v=4.9.131';
+import { API_BASE, apiFetch } from '../../core/api.js?v=4.9.132';
 
 const ORDER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

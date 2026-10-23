@@ -34,22 +34,22 @@
  *     The print button calls window.print() like screens 03/04.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
 import {
     fetchPurchaseInvoices, invoiceToRow, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.131';
+} from '../data/purchase-invoices-repo.js?v=4.9.132';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, rangeError,
-} from '../data/procurement-repo.js?v=4.9.131';
-import { fetchInventory } from '../data/inventory-repo.js?v=4.9.131';
+} from '../data/procurement-repo.js?v=4.9.132';
+import { fetchInventory } from '../data/inventory-repo.js?v=4.9.132';
 import {
     INVOICE_CREATE_ROLES, EDIT_LOCKED_MESSAGE, invoiceEditable,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.131';
-import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.131';
-import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.131';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.132';
+import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -113,16 +113,7 @@ function template(from, to, canCreate) {
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <div data-v2-editor-host></div>
-          <p class="erp-text-sm erp-text-muted">
-            سجل فواتير الشراء المعروض من النظام مباشرة، والصلاحية محكومة
-            بالأدوار. الافتراضي الشهر الحالي؛ إفراغ التاريخين يعرض الكل. هنا
-            نموذج الإنشاء والتعديل نفسه: إنشاء فاتورة وتعديلها (قبل أي دفعة
-            مسجلة) للأدوار الثلاثة، مع البحث الذكي الذي يعبّئ الوحدة والسعر من
-            المخزون. تسديد الكامل متاح لحساب المشتريات أو المحاسبة.
-            شاشة فواتير الموردين (06) تقرأ نفس السجل بعدسة المورد لا الشهر، وفيها
-            الإلغاء والحذف الجماعي؛ ودليل الموردين هو شاشة (05).
-            <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-          </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
           <div data-v2-table></div>
           <p class="erp-print-note" data-v2-print-note></p>
         </div>

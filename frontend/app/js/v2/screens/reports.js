@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.131';
+} from '../data/reports-repo.js?v=4.9.132';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.131';
+} from '../data/reports-extra.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -278,17 +278,9 @@ function template(period, groupBy) {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — التقرير يُحسب في النظام مباشرة، والصلاحية محكومة
-              بالأدوار. الأرقام مجاميع على الفترة المطلوبة، ولا تُعدّ هنا من
-              الجدول المرئي. ما يُعدّ: فواتير صادرة أو مُبلَّغ عنها فقط —
-              المرتجعات والملغاة ليست في هذا التقرير.
-              <span class="erp-text-muted">الفترة والتجميع يُسألان من جديد؛ ومربع البحث
-              داخل الجدول يضيق ما عاد منه وحده.</span>
-              <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-              <span data-v2-cap-note hidden>بُعد الأصناف مقيد بأول 200 صنف — الجدول لا يعرض كله، والمؤشرات من الفترة كاملة.</span>
-              <span data-v2-scope-note hidden></span>
-            </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
+            <p class="erp-text-sm erp-text-muted" data-v2-cap-note hidden>بُعد الأصناف مقيد بأول 200 صنف — الجدول لا يعرض كله، والمؤشرات من الفترة كاملة.</p>
+            <p class="erp-text-sm erp-text-muted" data-v2-scope-note hidden></p>
             <p class="erp-text-sm erp-text-muted" data-v2-filter-note hidden></p>
             <p class="erp-print-note" data-v2-print-note></p>
             <div data-v2-table></div>

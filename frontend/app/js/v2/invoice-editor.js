@@ -21,16 +21,16 @@
  * والخادم يرفض 422 INVALID_EXPIRY_DATE على أي حال.
  */
 
-import { formatMoney } from './data/reports-repo.js?v=4.9.131';
+import { formatMoney } from './data/reports-repo.js?v=4.9.132';
 import {
     createPurchaseInvoice, updatePurchaseInvoice,
     invoiceFormFromRow,
     isDuplicateInvoiceError, TAX_CATEGORIES,
-} from './data/purchase-invoices-write-repo.js?v=4.9.131';
-import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.131';
+} from './data/purchase-invoices-write-repo.js?v=4.9.132';
+import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.132';
 import {
     rankItemMatches, normalizeItemText, smartSearchEnabled, setSmartSearchEnabled,
-} from './item-search.js?v=4.9.131';
+} from './item-search.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -140,11 +140,6 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
           </button>
         </div>
         <div class="erp-card__body erp-stack">
-          <p class="erp-text-sm erp-text-muted">
-            الخادم يعيد حساب الخصم والضريبة وحالة السداد عند الحفظ، ويطابق
-            الأصناف بتطبيع الاسم. الأصناف غير الموجودة تُنشأ برصيد صفر ثم
-            يضيفها استلام الفاتورة.
-          </p>
           <div class="erp-vi-grid">
             <label class="erp-field">
               <span class="erp-label">رقم الفاتورة</span>

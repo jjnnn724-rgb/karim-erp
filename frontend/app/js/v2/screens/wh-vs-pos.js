@@ -7,12 +7,12 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.131';
-import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.131';
-import { ensureXlsx } from '../vendor.js?v=4.9.131';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.131';
-import { openInAppReport } from '../report-viewer.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.132';
+import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.132';
+import { ensureXlsx } from '../vendor.js?v=4.9.132';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
+import { openInAppReport } from '../report-viewer.js?v=4.9.132';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {
@@ -115,11 +115,6 @@ function template(from, to) {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              قراءة فقط — يُطابق صرف المخزن مع مبيعات الكاشيرية بالاسم، وبحث
-              الصنف يقترح من السجل، والتحديث التلقائي يقرأ كل 60 ثانية عند
-              تفعيله.
-            </p>
             <p class="erp-text-sm" data-v2-fresh hidden></p>
             <div data-v2-table></div>
           </div>

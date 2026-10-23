@@ -25,20 +25,20 @@
  * behind the independent v2invoicecreate flag — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.131';
+} from '../data/purchase-invoices-repo.js?v=4.9.132';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.131';
+} from '../data/procurement-repo.js?v=4.9.132';
 import {
     voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.131';
-import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.131';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.132';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -82,17 +82,7 @@ function template() {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
-          <p class="erp-text-sm erp-text-muted">
-            السجل يُعرض من النظام مباشرة، والصلاحية محكومة بالأدوار. الكتابة
-            هنا: تسديد كامل المتبقي، أو دفعة جزئية مرتبطة بالفاتورة (يرفض
-            النظام ما يتجاوز المتبقي ويعيد حساب حالة السداد؛ والعكس متاح
-            لاحقًا من شاشة المدفوعات لحساب مدير النظام). الإنشاء والتعديل في
-            صفحة فواتير الشراء (08)؛ والإلغاء الفردي والحذف الجماعي لمدير
-            النظام وحده، ويتحقق النظام من الصلاحية وعبارة التأكيد. المتبقي =
-            الإجمالي − المسدد (بحد صفر). حالة السداد المحفوظة تُعرض بعدّتها،
-            والغائب يُقرأ «غير مسددة».
-            <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-          </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
           <div data-v2-pay-form></div>
           <div data-v2-table></div>
           <div data-v2-danger></div>

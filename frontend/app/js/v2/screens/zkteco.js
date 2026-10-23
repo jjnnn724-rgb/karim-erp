@@ -22,11 +22,11 @@
  *   repo is the only door). It never touches inline handlers (CSP).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { statusBadge } from '../status.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
-import { zkWriteEnabled } from '../write-flags.js?v=4.9.131';
-import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { statusBadge } from '../status.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
+import { zkWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.132';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     fetchZkMappings, mappingStats, fetchZkLogs, fetchZkCoverage, coverageStats,
@@ -36,7 +36,7 @@ import {
     testDevice, syncDevice, createDevice, updateDevice, deleteDevice,
     scanNetwork, saveMapping, autoLinkMappings, importDeviceUsers,
     downloadZkLogsCsv,
-} from '../data/zkteco-repo.js?v=4.9.131';
+} from '../data/zkteco-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -632,7 +632,6 @@ export function mountZktecoScreen(host, ctx = {}) {
             <h4>مستخدمو جهاز البصمة (${intFmt(users.length)}) — جديد: ${intFmt(fresh)}</h4>
             <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-close><i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span></button>
           </div>
-          <p class="erp-text-sm erp-text-muted">المحدد سيُنشأ كموظف: الاسم من الجهاز + الرقم الوظيفي = رقم البصمة + مربوط تلقائيًا. الخادم يعيد فحص التعارض.</p>
           <div class="erp-table__scroll" tabindex="0" style="max-height:340px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">مستخدمو الجهاز قبل الاستيراد</caption>

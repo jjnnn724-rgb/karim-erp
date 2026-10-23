@@ -18,14 +18,14 @@
  * undo). Recording a NEW payment is not this screen's door.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { canWrite } from '../session.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.132';
 import {
     fetchSupplierPayments, fetchSuppliers, paymentToRow,
     fetchCurrency, formatMoney, formatInt, PAYMENT_DELETE_ROLES,
     deletePayment,
-} from '../data/procurement-repo.js?v=4.9.131';
-import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.131';
+} from '../data/procurement-repo.js?v=4.9.132';
+import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -84,14 +84,7 @@ function template(from, to) {
         </div>
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
-          <p class="erp-text-sm erp-text-muted">
-            السجل من النظام مباشرة، والفلاتر (المورد والمدة) تُطبق قبل العرض —
-            آخر 500 دفعة حدّ أقصى ويُعلن عند بلوغه. رقم الفاتورة المرتبطة يُحلّ
-            من السجل، ورقمها الخام عند تعذّر الحل. الكتابة الوحيدة هنا عكس
-            دفعة مسجّلة، لمن يملك صلاحيتها، وتُعاد الفاتورة المرتبطة حوسبتها
-            تلقائيًا.
-            <span data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</span>
-          </p>
+            <p class="erp-text-sm erp-text-muted" data-v2-currency-note hidden>تعذّرت قراءة وحدة المال من الإعدادات — المبالغ تُعرض بلا وحدة.</p>
           <div data-v2-table></div>
         </div>
       </section>`;

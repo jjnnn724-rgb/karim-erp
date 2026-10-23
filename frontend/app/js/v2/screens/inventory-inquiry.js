@@ -19,16 +19,16 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو من مُنح inventory-inquiry.view).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.131';
-import { barChart, donutChart } from '../charts.js?v=4.9.131';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.131';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { barChart, donutChart } from '../charts.js?v=4.9.132';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.132';
 import {
     fetchInquiryItems, fetchInquiryDepartments, engineKpis, expiryState,
     toExportAoa, deptCostSummary, rangeError, INQ_FILTERS,
-} from '../data/inventory-inquiry-repo.js?v=4.9.131';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.131';
-import { ensureXlsx } from '../vendor.js?v=4.9.131';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.131';
+} from '../data/inventory-inquiry-repo.js?v=4.9.132';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.132';
+import { ensureXlsx } from '../vendor.js?v=4.9.132';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -129,11 +129,6 @@ function template(from, to) {
             </h3>
           </div>
           <div class="erp-card__body erp-stack">
-            <p class="erp-text-sm erp-text-muted">
-              قراءة فقط من دفتر المخزون — انقر صنفًا أو اضغط Enter لفتح بطاقته
-              الكاملة بالأسفل. المبيع بالعدد في الكاشيرية مرتبط بالمعرّف،
-              ومقابله في مرآة المبيعات مرتبط بالاسم: عمودان مسمّيان لا رقم واحد.
-            </p>
             <div data-v2-table></div>
           </div>
         </section>

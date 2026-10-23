@@ -19,9 +19,9 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو inventory-inquiry.view).
  */
 
-import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.131';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.131';
-import { formatInt } from '../data/reports-repo.js?v=4.9.131';
+import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.132';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.132';
+import { formatInt } from '../data/reports-repo.js?v=4.9.132';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -82,11 +82,6 @@ function template(from, to) {
           </label>
         </div>
 
-        <p class="erp-text-sm erp-text-muted">
-          البطاقة تعرض كارتكس الصنف برصيد جارٍ من كامل التاريخ: فواتير الشراء
-          الموقّعة، صرف الأقسام، دُفعات الصلاحية، وأسطر الكاشيرية بربط المعرّف.
-          الشاشة للقراءة فقط — لا تُكتب هنا أي بيانات.
-        </p>
 
         <div data-v2-dossier></div>
       </div>`;

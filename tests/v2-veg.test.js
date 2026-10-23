@@ -415,7 +415,8 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
     test('لا توقيع إلكتروني في دورة الخضار — توقيع الورقة خطّي وحده', () => {
         const s = src();
         expect(s).not.toMatch(/signaturePad|readSig|signatureData/);
-        expect(s).toContain('ولا توقيع في هذه الدورة');
+        // 2026-10-23: الجملة التي كانت تعلن ذلك أُزيلت مع الشروح؛ العقد الفني
+        // باقٍ: لا أثر لتوقيع إلكتروني في المصدر أو في الوحدة المحمّلة.
         expect(stripComments(source(VR))).not.toMatch(/signatureData/);
     });
 
