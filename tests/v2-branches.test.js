@@ -258,8 +258,9 @@ describe('V2 branches screen + host (source contract)', () => {
     });
 
     test('a missing session is stated, not papered over with sample rows', () => {
-        expect(preview).toMatch(/لا توجد جلسة/);
-        expect(preview).toMatch(/لا جلسة/);
+        // 2026-10-23: المالك أزال اللافتات المشروحة؛ الحالة صارت سطرًا واحدًا
+        // مختصرًا يحمل نفس المعنى: غياب الجلسة مذكور صراحة لا مغطّى ببيانات نموذجية.
+        expect(preview).toMatch(/لا جلسة في هذا المتصفح/);
         expect(preview).toMatch(/if \(!session\) \{/);
     });
 
