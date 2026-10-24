@@ -135,6 +135,9 @@ jobs:
         continue-on-error: true
         run: npm run test:frontend-version
 
+      - name: Design color gate — css/v2 reads --erp-* tokens only (documented exemptions)
+        run: npm run test:color:gate
+
       - name: Container security gate — non-root, no baked secrets, fail-fast entrypoints
         run: npm run test:docker:gate
 

@@ -13,9 +13,17 @@
    Literal fallbacks exist only so V2 still renders if the legacy sheet
    fails to load; they are never the active value in the real app.
 
+   THE CROWN LAYER
+   ───────────────
+   css/v2/erp-identity.css («بورسلين ونحاس») loads LAST in v2.html and
+   re-aliases every --erp-* semantic to its own primitives. It is the
+   visual identity; this sheet is the neutral semantic contract underneath
+   it (names, scales, z-order, motion) and the degradation path if the
+   identity link is ever removed — which is exactly the rollback story.
+
    ISOLATION
    ─────────
-   Every token is declared on `.erp-v2` (plus the two body-mounted layer hosts
+   Every token is declared on `.erp-v2` (plus the body-mounted layer hosts
    listed at the rule itself, which sit outside it). Legacy pages never see
    these names, and V2 never touches a legacy selector. Removing the .erp-v2
    wrapper removes the entire design system — that is the rollback.
@@ -24,20 +32,26 @@
    see js/v2/status.js for the persisted-value → presentation adapter.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* .erp-fab-host, .erp-offline-bar and .erp-pal-backdrop can be appended to
-   document.body, i.e. they live OUTSIDE the .erp-v2 subtree, so none of these
-   names resolve for them. Measured live on the running page before this rule
-   existed: the FAB painted `background: rgba(0,0,0,0)` with a white glyph on
-   the #f4f5f7 canvas (≈1.0:1) and its four quick-action pills had no background
-   and no border. js/v2/screens/dashboard.js:392 mounts the palette on
-   `shell.root || document.body`, so the backdrop needs the same treatment on
-   that fallback path. Listing the hosts here ships them the token layer only —
-   custom properties are inert until read, so no typography, background or box
-   rule reaches these elements. */
+/* .erp-fab-host, .erp-offline-bar, .erp-pal-backdrop and .erp-preview-banner
+   live OUTSIDE the .erp-v2 subtree (mounted on document.body), so none of
+   these names resolve for them. Measured live on the running page before
+   this rule existed: the FAB painted `background: rgba(0,0,0,0)` with a
+   white glyph on the #f4f5f7 canvas (≈1.0:1) and its four quick-action pills
+   had no background and no border. js/v2/screens/dashboard.js:392 mounts the
+   palette on `shell.root || document.body`, so the backdrop needs the same
+   treatment on that fallback path. The preview banner is preview-only CSS
+   (v2.html deliberately ships no banner markup — v2-mode-banner.test.js pins
+   that) that would mount as a body child above #erp-v2-root. `body` joins for
+   the preview page itself, which erp-preview.css paints with the porcelain
+   canvas. Listing the hosts here ships them the token layer only — custom
+   properties are inert until read, so no typography, background or box rule
+   reaches these elements. */
 .erp-v2,
 .erp-fab-host,
 .erp-offline-bar,
-.erp-pal-backdrop {
+.erp-pal-backdrop,
+.erp-preview-banner,
+body {
   /* ── Surfaces ─────────────────────────────────────────────────────── */
   --erp-background:        var(--karim-bg,       #f4f5f7);
   --erp-surface:           var(--karim-surface,  #ffffff);
@@ -130,23 +144,26 @@
   --erp-space-10: 64px;
 
   /* ── Radii ────────────────────────────────────────────────────────── */
-  --erp-radius-sm:   var(--karim-radius-sm,   4px);
-  --erp-radius-md:   var(--karim-radius-md,   6px);
+  /* Fallbacks mirror the legacy ladder in design-tokens.css (6/8/10/12/14);
+     the identity layer overrides the whole scale with its own 6/10/14/18/22. */
+  --erp-radius-sm:   var(--karim-radius-sm,   6px);
+  --erp-radius-md:   var(--karim-radius-md,   8px);
   --erp-radius-lg:   var(--karim-radius-lg,   10px);
-  --erp-radius-xl:   var(--karim-radius-xl,   14px);
-  --erp-radius-2xl:  var(--karim-radius-2xl,  20px);
+  --erp-radius-xl:   var(--karim-radius-xl,   12px);
+  --erp-radius-2xl:  var(--karim-radius-2xl,  14px);
   --erp-radius-full: var(--karim-radius-full, 999px);
 
   /* ── Typography ───────────────────────────────────────────────────── */
-  /* "IBM Plex Sans Arabic" stands FIRST and is the face V2 actually ships:
-     css/v2/erp-fonts.css self-hosts 400/500/600/700 from app/fonts/v2/.
-     It is the corporate cut of the Plex family — Naskh-derived Arabic with
-     open counters, and a Latin companion whose digits stay sober in money
-     columns. Tajawal remains second only as a bundled fallback; the rest of
-     the inherited --karim-font chain is preserved behind it, so a missing
-     sheet degrades to the pre-identity behaviour instead of a system face
-     that differs per machine. */
-  --erp-font-sans:  "IBM Plex Sans Arabic", "Tajawal", var(--karim-font, "Cairo", system-ui, sans-serif);
+  /* One explicit chain, one owner. "IBM Plex Sans Arabic" stands FIRST and
+     is the face V2 actually ships: css/v2/erp-fonts.css self-hosts
+     400/500/600/700 from app/fonts/v2/. It is the corporate cut of the Plex
+     family — Naskh-derived Arabic with open counters, and a Latin companion
+     whose digits stay sober in money columns. Tajawal remains second as a
+     bundled fallback, then Cairo and Segoe UI. The chain used to re-embed
+     var(--karim-font), which itself starts with IBM Plex Sans Arabic — the
+     computed list contained the family twice. Plain literal chain, no
+     indirection. */
+  --erp-font-sans:  "IBM Plex Sans Arabic", "Tajawal", "Cairo", "Segoe UI", sans-serif;
   --erp-font-mono:  var(--karim-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
 
   --erp-text-xs:   11px;
@@ -239,5 +256,6 @@
   .erp-v2,
   .erp-fab-host,
   .erp-offline-bar,
-  .erp-pal-backdrop { --erp-touch-target: 44px; }
+  .erp-pal-backdrop,
+  .erp-preview-banner { --erp-touch-target: 44px; }
 }

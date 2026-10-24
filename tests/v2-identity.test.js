@@ -301,7 +301,16 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
     });
 
     test('العزل: كل مُحدِّدٍ داخل طبقات V2، والورقة لا تُربط في صفحة قديمة', () => {
-        const HOSTS = ['.erp-v2', '.erp-fab-host', '.erp-offline-bar', '.erp-pal-backdrop'];
+        /* مضيفو الرموز: جذر V2 + الطبقات المركّبة على <body> + جسد صفحة
+           المعاينة + :root لألوان الورق. body دخل مع توحيد شريط المعاينة
+           على رموز الهوية — erp-preview.css يرسمه بالكانفس الخزفية، والورقة
+           لا تُربط إلا في v2.html و cashier/index.html (انظر الفحص أدناه).
+           :root يحمل --erp-print-* وحدها: قواعد الطباعة في erp-base/erp-table
+           تمس html/body خارج الجذر، والرموز خاملة حتى تُقرأ. */
+        const HOSTS = [
+            '.erp-v2', '.erp-fab-host', '.erp-offline-bar', '.erp-pal-backdrop',
+            '.erp-preview-banner', 'body', ':root',
+        ];
         const scoped = (part) => {
             let s = part.trim().replace(/^html(?=\[)/, '');
             s = s.replace(/^\[data-theme="dark"\]\s*/, '');

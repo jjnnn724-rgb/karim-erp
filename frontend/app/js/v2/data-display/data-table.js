@@ -255,8 +255,8 @@ export function createDataTable(options = {}) {
         // ── Non-table states win outright ──────────────────────────────
         if (state.error) {
             el.scroll.innerHTML = `
-              <div class="erp-state" role="alert">
-                <span class="erp-state__icon" aria-hidden="true">⚠️</span>
+              <div class="erp-state erp-state--error" role="alert">
+                <span class="erp-state__icon"><i class="ji" data-i="alert-triangle" aria-hidden="true"></i></span>
                 <span class="erp-state__title">تعذّر تحميل البيانات</span>
                 <span>${esc(state.error)}</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-erp-retry>
@@ -274,11 +274,34 @@ export function createDataTable(options = {}) {
         }
 
         if (state.loading) {
+            /* Skeleton table: the REAL headers stay on screen and the body
+               fills with bars at the same row rhythm, so the payload landing
+               cannot shift the layout. Screen readers get one polite status
+               line instead of a wall of decorative cells. */
+            const cols = visibleColumns();
+            const skelHead = cols.map((col) => {
+                const align = col.align || 'start';
+                return `<th scope="col" class="erp-th"
+                            style="${col.width ? `width:${esc(col.width)};` : ''}text-align:${align};">
+                          ${esc(col.header)}</th>`;
+            }).join('');
+            const WIDTHS = ['62%', '40%', '74%', '50%', '58%', '44%', '68%', '48%'];
+            const rowCount = Math.min(8, Math.max(3, Number(state.pageSize) || 6));
+            const selHead = opts.selectable ? '<th scope="col" class="erp-th erp-th--sel"></th>' : '';
+            const selCell = opts.selectable ? '<td class="erp-td erp-td--sel"></td>' : '';
+            const skelBody = Array.from({ length: rowCount }, () => {
+                const cells = cols.map((col, i) =>
+                    `<td class="erp-td" style="text-align:${col.align || 'start'};">
+                       <span class="erp-skeleton" style="inline-size:${WIDTHS[i % WIDTHS.length]};"></span>
+                     </td>`).join('');
+                return `<tr class="erp-tr erp-tr--skeleton" aria-hidden="true">${selCell}${cells}</tr>`;
+            }).join('');
             el.scroll.innerHTML = `
-              <div class="erp-state" role="status" aria-live="polite">
-                <span class="erp-state__icon" aria-hidden="true">⏳</span>
-                <span class="erp-state__title">جارٍ التحميل…</span>
-              </div>`;
+              <div class="erp-sr-only" role="status" aria-live="polite">جارٍ التحميل…</div>
+              <table class="erp-table__grid erp-table__grid--loading" role="grid" aria-busy="true">
+                <thead><tr>${selHead}${skelHead}</tr></thead>
+                <tbody>${skelBody}</tbody>
+              </table>`;
             el.count.textContent = '';
             el.pager.hidden = true;
             return;
@@ -304,7 +327,7 @@ export function createDataTable(options = {}) {
         if (!rows.length) {
             el.scroll.innerHTML = `
               <div class="erp-state">
-                <span class="erp-state__icon" aria-hidden="true">🗒️</span>
+                <span class="erp-state__icon"><i class="ji" data-i="inbox" aria-hidden="true"></i></span>
                 <span class="erp-state__title">${esc(opts.emptyMessage || 'لا توجد بيانات')}</span>
                 <span>${esc(state.query || Object.values(state.columnFilters).some(Boolean)
                     ? (opts.emptyHint || 'جرّب تعديل البحث أو الفلاتر.')

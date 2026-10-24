@@ -14,34 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.132';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.151';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.151';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.132';
+} from '../data/departments-write-repo.js?v=4.9.151';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
     updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
-} from '../data/dept-cashier-repo.js?v=4.9.132';
+} from '../data/dept-cashier-repo.js?v=4.9.151';
 import {
     CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.132';
+} from '../data/dept-detail.js?v=4.9.151';
 /* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
  * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
  * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
  * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.132';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.132';
-import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.132';
-import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.132';
-import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.132';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.151';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.151';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.151';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.151';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

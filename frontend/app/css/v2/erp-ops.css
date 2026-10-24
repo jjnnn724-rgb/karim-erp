@@ -182,7 +182,7 @@
   margin-block-start: var(--erp-space-2);
   border: thin dashed var(--erp-border-strong);
   border-radius: var(--erp-radius-md);
-  background: white;
+  background: var(--erp-print-paper);
 }
 
 /* عمود الإجراءات: زرّا «عرض/عد» و«اعتماد» ينثنيان أسطرًا لا يُقصّان. */
@@ -493,7 +493,7 @@
   margin-block-start: var(--erp-space-2);
   border: thin dashed var(--erp-border-strong);
   border-radius: var(--erp-radius-md);
-  background: white;
+  background: var(--erp-print-paper);
 }
 
 /* عمود الإجراءات: ستة أزرار في أسوأ صف — تنثني أسطرًا بدل أن تُقصّ. */
@@ -844,7 +844,7 @@
   margin-block-start: var(--erp-space-2);
   border: thin dashed var(--erp-border-strong);
   border-radius: var(--erp-radius-md);
-  background: white;
+  background: var(--erp-print-paper);
 }
 
 /* عمود الإجراءات: سبعة أزرار في أسوأ صف — تنثني أسطرًا بدل أن تُقصّ. */

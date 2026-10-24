@@ -753,7 +753,8 @@ describe('شاشة 21 — السجل المشترك والمضيف والطبق�
             expect(css).toContain(`.erp-v2-wh-prs .erp-flow-note[data-tone="${tone}"]`);
         }
         expect(css).toContain('@supports not (color-mix(in srgb, red 10%, transparent))');
-        expect(css).toMatch(/\.erp-v2-wh-prs \.erp-signature canvas \{[\s\S]*?background: white;/);
+        // الورق أبيض في الوضعين (حبر التوقيع داكن) — عبر رمز الطباعة لا لون حرفي
+        expect(css).toMatch(/\.erp-v2-wh-prs \.erp-signature canvas \{[\s\S]*?background: var\(--erp-print-paper\);/);
         // الأساس كله بعد آخر وسيط والوسائط لا تعود بعده — الإلحاق في آخر كتلة أعلاه
         const tail = css.slice(css.indexOf('.erp-v2-wh-prs .erp-card__head { flex-wrap: wrap; }'));
         expect(tail).not.toMatch(/@media/);

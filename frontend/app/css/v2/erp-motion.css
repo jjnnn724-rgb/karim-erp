@@ -30,6 +30,15 @@
   .erp-v2 .erp-shell__content > * {
     animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-standard) both;
   }
+  /* Orchestrated arrival: the screen's own children (head, toolbar, first
+     card) step in at 35ms intervals instead of all at once. Safe by the
+     rule above — these containers are created once per navigation; the
+     painters replace their *inner* HTML, so the cascade cannot re-fire on
+     a keystroke. Capped at the 5th child: a long page must not feel slow. */
+  .erp-v2 .erp-shell__content > *:nth-child(2) { animation-delay: 35ms; }
+  .erp-v2 .erp-shell__content > *:nth-child(3) { animation-delay: 70ms; }
+  .erp-v2 .erp-shell__content > *:nth-child(4) { animation-delay: 105ms; }
+  .erp-v2 .erp-shell__content > *:nth-child(n+5) { animation-delay: 140ms; }
 
   /* ── 2. Interactive state transitions ─────────────────────────────── */
   .erp-v2 .erp-btn,

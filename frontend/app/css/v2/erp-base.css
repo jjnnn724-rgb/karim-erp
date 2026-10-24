@@ -164,9 +164,11 @@
 }
 
 /* ── Print ──────────────────────────────────────────────────────────── */
+/* كل ألوان الورق عبر --erp-print-* (المعرّفة في erp-identity.css على :root):
+   هذه القواعد تمس html/body خارج .erp-v2، فلا تصلها سوى tokens على :root. */
 @media print {
   @page { margin: 12mm 10mm; }
-  html, body { background: #fff !important; color: #111827 !important; overflow: visible !important; }
+  html, body { background: var(--erp-print-paper) !important; color: var(--erp-print-ink-strong) !important; overflow: visible !important; }
   body { font-size: 10pt; }
   .erp-v2 { font-size: 11pt; }
   .erp-v2 a[href]::after { content: ""; }
@@ -183,7 +185,7 @@
     display: block !important;
     min-height: 0 !important;
     height: auto !important;
-    background: #fff !important;
+    background: var(--erp-print-paper) !important;
     overflow: visible !important;
   }
   .erp-v2 .erp-shell__content {
@@ -198,11 +200,11 @@
     break-inside: auto;
   }
   .erp-v2 .erp-card {
-    border-color: #d1d5db !important;
-    background: #fff !important;
+    border-color: var(--erp-print-grid) !important;
+    background: var(--erp-print-paper) !important;
   }
   .erp-v2 .erp-card__head {
-    background: #f3f4f6 !important;
+    background: var(--erp-print-head-soft) !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -225,11 +227,11 @@
   .erp-v2 th,
   .erp-v2 td {
     padding: 4px 6px !important;
-    border: 1px solid #d1d5db !important;
-    color: #111827 !important;
+    border: 1px solid var(--erp-print-grid) !important;
+    color: var(--erp-print-ink-strong) !important;
   }
   .erp-v2 th {
-    background: #eef1f5 !important;
+    background: var(--erp-print-head) !important;
     font-weight: 700 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;

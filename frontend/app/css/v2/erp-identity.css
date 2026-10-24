@@ -3,7 +3,8 @@
    ═══════════════════════════════════════════════════════════════════════
    A new visual identity for V2 ONLY. Legacy keeps its own palette because
    this sheet is never linked there and every rule is scoped to `.erp-v2`
-   (plus the three V2-owned body layers that already carry the token scope).
+   (plus the V2-owned body-mounted layers and the preview body, which
+   already carry the token scope).
 
    THE IDEA
    ────────
@@ -84,10 +85,15 @@
    switch personality between a label and the number beside it. */
 
 /* ═══════════ Layer 1 + 2 — palette and semantics (light) ═══════════ */
+/* body يدخل قائمة المضيفين لصفحة المعاينة فقط: هذه الورقة لا تُربط إلا
+   بـv2.html، وجسدُ تلك الصفحة خارجُ أي غلاف، فيرسمه erp-preview.css
+   بالكانفس الخزفية بدل رمادي الإرث. الرموز خاملةٌ حتى تُقرأ. */
 .erp-v2,
 .erp-fab-host,
 .erp-offline-bar,
-.erp-pal-backdrop {
+.erp-pal-backdrop,
+.erp-preview-banner,
+body {
   /* ── Primitives ─────────────────────────────────────────────────── */
   /* درجة الاستوديو: الورقة أعمق قليلًا من أبيض البطاقة، فالورقة تُقرأ
      مسطّحة والبطاقة تقفز عليها. في النسخة الأولى كان الاثنان warms بلا
@@ -153,6 +159,7 @@
   --erp-c-sidebar-paper:    #F1D8A4;
   --erp-c-sidebar-wash:     rgba(217, 178, 102, .15);
   --erp-c-sidebar-success:  #6EE7A8;
+  --erp-c-sidebar-info:     #7CB8FF;  /* روابط/تركيز على العمود البترولي — درجة الداكن الساطعة */
   --erp-c-sidebar-plaque:   #FAF7F1;
   --erp-c-sidebar-plaque-ink: #0A474C;
 
@@ -290,7 +297,9 @@
 [data-theme="dark"] .erp-v2,
 [data-theme="dark"] .erp-fab-host,
 [data-theme="dark"] .erp-offline-bar,
-[data-theme="dark"] .erp-pal-backdrop {
+[data-theme="dark"] .erp-pal-backdrop,
+[data-theme="dark"] .erp-preview-banner,
+[data-theme="dark"] body {
   --erp-c-canvas:        #08110F;
   --erp-c-surface:       #0E1B18;
   --erp-c-raised:        #14241F;
@@ -519,6 +528,18 @@ html[data-theme="dark"] .erp-v2 {
 }
 
 /* ═══════════ Print — paper is paper, whatever the theme ═══════════ */
+/* حبر الورق Tokens على :root (لا على .erp-v2): قواعد الطباعة في
+   erp-base/erp-table تمس html/body وعناصر خارج الجذر، وتحتاجها قبل
+   أي سكوب. الخصائص المخصصة خاملة بذاتها فلا ترسم شيئًا خارج الطباعة.
+   كل ألوان الورق تعيش هنا فقط — ملفات المكونات بلا أي حرفية. */
+:root {
+  --erp-print-ink:        #000000;
+  --erp-print-ink-strong: #111827;
+  --erp-print-paper:      #ffffff;
+  --erp-print-head:       #eef1f5;
+  --erp-print-head-soft:  #f3f4f6;
+  --erp-print-grid:       #d1d5db;
+}
 @media print {
   .erp-v2 {
     --erp-background: #ffffff;

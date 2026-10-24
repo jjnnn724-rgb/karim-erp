@@ -8,9 +8,9 @@
 
 [🌐 Website](https://karim-erp.com) • [📖 Documentation](docs/) • [🐛 Issues](https://github.com/karim-erp/karim-desktop/issues) • [💬 Support](mailto:support@karim-erp.com)
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-4.9.2-blue.svg)](package.json)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](LICENSE.txt)
-[![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](package.json)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](package.json)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)]()
 
 </div>
@@ -64,7 +64,7 @@
 
 | التقنية | الاستخدام |
 |---------|----------|
-| **Electron 28** | تطبيق سطح مكتب |
+| **Electron 44** | تطبيق سطح مكتب |
 | **Express 5** | خادم API |
 | **PostgreSQL 16** | قاعدة البيانات |
 | **Socket.io** | اتصالات فورية (Real-time) |
@@ -85,7 +85,7 @@
 
 1. **حمّل ملف التثبيت**
    ```bash
-   Karim-ERP-Setup-2.1.0.exe
+   KarimERP-Setup-4.9.2-x64.exe
    ```
 
 2. **شغّل المعالج**
@@ -143,6 +143,24 @@ karim-erp/
 │   └── installer.nsh     # NSIS Installer
 └── 📁 docs/              # التوثيق
 ```
+
+---
+
+## 🎨 نظام التصميم (V2)
+
+هوية V2 «بورسلين ونحاس» موثّقة كعقد قابل للقراءة آلياً في
+[`DESIGN.md`](DESIGN.md): الألوان، الطباعة، الأشكال، المكوّنات، وقواعد
+«افعل/لا تفعل» للواجهة الجديدة.
+
+- مصدر الحقيقة الوحيد للقيم اللونية: `frontend/app/css/v2/erp-identity.css`
+  (يُحمّل آخراً في `v2.html`) و`erp-tokens.css`. بقية ملفات `css/v2` تقرأ
+  `var(--erp-*)` فقط.
+- بوابة الألوان: `npm run test:color:gate` تُسقط البناء على أي hex/rgb في
+  ملفات `css/v2` بلا استثناء موثّق.
+- بوابة الأيقونات: `tests/v2-icons-registry.test.js` تمنع أي `data-i` بلا
+  أيقونة مسجّلة في `js/icons.js`.
+- الواجهة القديمة (V1) لها لوحتها المستقلة في `css/design-tokens.css` —
+  **لا تُعدّلها لتطابق V2.**
 
 ---
 

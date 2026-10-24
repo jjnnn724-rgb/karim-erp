@@ -11,6 +11,14 @@
    nonce, which makes 'unsafe-inline' inert for scripts; keeping *all*
    presentation external means the page keeps working if that policy is ever
    tightened to cover styles too.
+
+   COLOUR: the banner rules below are dormant preview chrome — v2.html
+   deliberately ships no banner markup (v2-mode-banner.test.js pins that);
+   the CSS stays for a future mode banner. When mounted it is a body-level
+   token host (erp-identity.css host list) and paints exclusively with
+   --erp-* identity tokens — petrol spine, brass jewellery. The preview
+   BODY also paints from the identity tokens (porcelain canvas), so the
+   page carries zero painted literals.
    ═══════════════════════════════════════════════════════════════════════ */
 
 * { box-sizing: border-box; }
@@ -19,9 +27,12 @@ html, body { height: 100%; }
 
 body {
   margin: 0;
-  background: var(--karim-bg, #f4f5f7);
-  color: var(--karim-text, #101828);
-  font-family: var(--karim-font, "IBM Plex Sans Arabic", system-ui, sans-serif);
+  /* body من مضيفي الرموز في erp-identity.css (هذه الصفحة وحدها تصلها
+     الهوية) — فتُرسم الكانفس الخزفية نفسها لا الرمادي القديم، ويبقى
+     --karim-* طريقَ الرجوع إن غابت طبقة الهوية. */
+  background: var(--erp-background, var(--karim-bg));
+  color: var(--erp-text-primary, var(--karim-text));
+  font-family: var(--erp-font-sans, var(--karim-font));
   font-size: 13px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -29,7 +40,12 @@ body {
 
 /* ── Preview banner ───────────────────────────────────────────────────
    States out loud that this is a preview with sample data, and offers the
-   way back to the running system. Not part of the V2 shell. */
+   way back to the running system. Not part of the V2 shell.
+   Paints with the identity tokens: the banner is one of the body-mounted
+   token hosts (see the host list in erp-identity.css), so --erp-* names
+   resolve here even though it sits outside #erp-v2-root. It wears the
+   petrol spine and the brass jewellery of the identity — the preview is
+   the first impression of the ledger. */
 .erp-preview-banner {
   display: flex;
   align-items: center;
@@ -37,25 +53,25 @@ body {
   min-height: 48px;
   flex-wrap: nowrap;
   padding: 7px 18px;
-  background: #101828;
-  color: #e4e7ec;
+  background: var(--erp-sidebar-bg);
+  color: var(--erp-sidebar-ink-2);
   font-size: 12px;
-  border-block-end: 1px solid rgba(255, 255, 255, .12);
+  border-block-end: 1px solid var(--erp-sidebar-line);
   position: sticky;
   inset-block-start: 0;
-  /* Local token, deliberately NOT --erp-z-*: this banner is a child of <body>
-     in v2.html:93, outside #erp-v2-root, so no --erp-* name resolves for it
-     and `z-index: var(--erp-z-…)` would compute to auto. It must clear the
-     sticky shell header it shares the top edge with (--erp-z-sticky = 100,
-     later in DOM order) and stay below the drawer tier (600); 150 is that
-     slot. The old 9999 floated page chrome above open modals and toasts. */
+  /* Local token for the z slot only: 150 must clear the sticky shell header
+     it shares the top edge with (--erp-z-sticky = 100, later in DOM order)
+     and stay below the drawer tier (600); 150 is that slot. The old 9999
+     floated page chrome above open modals and toasts. A local token, not
+     --erp-z-*: erp-tokens.css doesn't define a 150 tier, and inventing one
+     in the shared scale would let a preview-only chrome shape the system. */
   --v2-preview-z-banner: 150;
   z-index: var(--v2-preview-z-banner);
 }
 
 .erp-preview-banner strong {
-  background: #b45309;
-  color: #fff;
+  background: var(--erp-sidebar-plaque);
+  color: var(--erp-sidebar-plaque-ink);
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -72,7 +88,7 @@ body {
 }
 
 .erp-preview-banner em {
-  color: #fdb022;
+  color: var(--erp-sidebar-accent);
   font-style: normal;
   font-weight: 700;
 }
@@ -82,7 +98,7 @@ body {
   align-items: center;
   min-block-size: 24px;
   padding-block: 2px;
-  color: #7cb8ff;
+  color: var(--erp-c-sidebar-info);
   text-decoration: none;
   white-space: nowrap;
   font-weight: 600;
@@ -91,7 +107,7 @@ body {
 .erp-preview-banner a:hover { text-decoration: underline; }
 
 .erp-preview-banner a:focus-visible {
-  outline: 2px solid #7cb8ff;
+  outline: 2px solid var(--erp-c-sidebar-info);
   outline-offset: 2px;
   border-radius: 3px;
 }

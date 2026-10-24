@@ -115,6 +115,32 @@ describe('mobile-shell — التنسيقات والتوكنات', () => {
     });
 });
 
+describe('mobile-shell — المضيف (preview.js)', () => {
+    const HOST = read(path.join(JS_V2, 'preview.js'));
+
+    test('النقر في الشريط يمرّ عبر applyKey لا renderScreen وحدها', () => {
+        // renderScreen() لا يحدّث navStatus، وكل شاشة حيّة تعيد الرسم فقط
+        // إذا بقي navStatus على مفتاحها — وإلا بقيت بطاقة الانتظار للأبد.
+        expect(HOST).toMatch(/onNavigate:\s*\(page\)\s*=>\s*applyKey\(page\)/);
+    });
+
+    test('الشريط يُرسم مرة أخرى بعد حلّ الجلسة (كان يُركَّب بلا دور)', () => {
+        const boot = HOST.slice(
+            HOST.indexOf('let sessionPromise = LIVE'),
+            HOST.indexOf(': Promise.resolve(null);'),
+        );
+        expect(boot).toMatch(/mobileShell\.update\(\)/);
+    });
+
+    test('غياب الجلسة يجعل التوجيه محسومًا ويطبّق الرابط العميق', () => {
+        const boot = HOST.slice(
+            HOST.indexOf('let sessionPromise = LIVE'),
+            HOST.indexOf(': Promise.resolve(null);'),
+        );
+        expect(boot).toMatch(/routeSettled = true;[\s\S]{0,120}applyRouteFromHash\(\);/);
+    });
+});
+
 describe('mobile-shell — التركيب والتفاعل في DOM', () => {
     test('تركيب الهيكل، تفعيل الأزرار، والتبديل عند تغير الصفحة', () => {
         const listeners = {};

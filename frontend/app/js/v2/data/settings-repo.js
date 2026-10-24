@@ -29,8 +29,8 @@
  * ترويسة القديم (Authorization وحده) ولا شيء غيره.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.132';
-import { fetchMainSettings } from './portal-repo.js?v=4.9.132';
+import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { fetchMainSettings } from './portal-repo.js?v=4.9.151';
 
 export const SETTINGS_WRITE_ROLES = ['admin', 'manager'];
 export const ZATCA_WRITE_ROLES = ['admin', 'manager'];

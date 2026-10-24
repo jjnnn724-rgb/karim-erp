@@ -129,9 +129,13 @@ describe('V2 الخط المحلي — الوجه يتبع الملف لا ال�
         expect(chain).toMatch(/^"IBM Plex Sans Arabic"\s*,/);
         // الوجه المُعلَن هنا هو نفسه الذي تحمّله erp-fonts.css من ملف.
         expect([...new Set(faces().map((f) => f.family))]).toEqual(['IBM Plex Sans Arabic']);
-        // Tajawal يبقى بديلًا محليًا، والسلسلة القديمة وراءهما.
+        // Tajawal يبقى بديلًا محليًا، ثم سلّم النظام القديم صراحةً.
         expect(chain).toContain('"Tajawal"');
-        expect(chain).toContain('--karim-font');
+        expect(chain).toMatch(/"Tajawal"\s*,\s*"Cairo"\s*,\s*"Segoe UI"\s*,\s*sans-serif\s*$/);
+        // لا التفافَ ولا تكرار: كانت var(--karim-font) تعيد «IBM Plex Sans
+        // Arabic» ثانيةً في السلسلة المحسوبة (الاسم مرتين متتاليتين).
+        expect(chain.match(/"IBM Plex Sans Arabic"/g)).toHaveLength(1);
+        expect(chain).not.toContain('var(--karim-font');
         // والتوكن بلا مستهلكٍ اسمٌ ميت.
         const root = stripComments(read(BASE)).match(/\.erp-v2\s*\{([^}]*)\}/);
         expect(root).not.toBeNull();

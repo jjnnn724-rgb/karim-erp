@@ -1031,7 +1031,8 @@ describe('erp-ops.css — طبقة الموجة التشغيلية', () => {
             expect(full).toContain(`.erp-v2-kitchen .erp-flow-note[data-tone="${tone}"]`);
         }
         expect(full).toContain('@supports not (color-mix(in srgb, red 10%, transparent))');
-        expect(full).toMatch(/\.erp-v2-kitchen \.erp-signature canvas \{[\s\S]*?background: white;/);
+        // الورق أبيض في الوضعين (حبر التوقيع داكن) — عبر رمز الطباعة لا لون حرفي
+        expect(full).toMatch(/\.erp-v2-kitchen \.erp-signature canvas \{[\s\S]*?background: var\(--erp-print-paper\);/);
         // وترتيب السلطة: قواعد اللوحة قبل أول @media كي لا تُلغيها الوسائط بلا قصد
         const panelAt = full.indexOf('.erp-v2-kitchen .erp-kitchen-panel {');
         const firstMedia = full.indexOf('@media (max-width: 640px)');

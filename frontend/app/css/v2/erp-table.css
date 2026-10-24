@@ -227,6 +227,6 @@
 
 @media print {
   .erp-table__scroll { max-height: none; overflow: visible; border: 0; }
-  .erp-th { position: static; background: #f0f0f0 !important; }
-  .erp-tr:nth-child(even) { background: #fff; }
+  .erp-th { position: static; background: var(--erp-print-head) !important; }
+  .erp-tr:nth-child(even) { background: var(--erp-print-paper); }
 }

@@ -314,8 +314,36 @@
   color: var(--erp-text-muted);
 }
 
-.erp-v2 .erp-state__icon { font-size: var(--erp-text-2xl); line-height: 1; }
+.erp-v2 .erp-state__icon { font-size: var(--erp-text-2xl); line-height: 1; color: var(--erp-brass-text); }
+.erp-v2 .erp-state--error .erp-state__icon { color: var(--erp-danger-text); }
 .erp-v2 .erp-state__title { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }
+
+/* ── Skeleton (structure before data) ─────────────────────────────────
+   Shown while a first payload is in flight. The sheet that draws it keeps
+   the REAL column headers on screen and fills the body with bars at the
+   same row rhythm, so the table does not jump when data lands (CLS 0).
+   Colours are the sunken/hover tokens — same paper, one step quieter —
+   and the sweep stops dead under prefers-reduced-motion. */
+.erp-v2 .erp-skeleton {
+  display: block;
+  min-block-size: 11px;
+  border-radius: var(--erp-radius-sm);
+  background: linear-gradient(90deg,
+      var(--erp-surface-sunken) 25%,
+      var(--erp-surface-hover) 37%,
+      var(--erp-surface-sunken) 63%);
+  background-size: 400% 100%;
+  animation: erp-skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes erp-skeleton-sweep {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+.erp-v2 .erp-table__grid--loading { pointer-events: none; }
+.erp-v2 .erp-table__grid--loading .erp-th { color: var(--erp-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 .erp-skeleton { animation: none; }
+}
 
 /* ── Shell extras (W5): lamps, bell, quick cluster, FAB, notifs, offline ── */
 .erp-v2 .erp-shell__quick { display: inline-flex; align-items: center; gap: 8px; }
@@ -342,7 +370,10 @@
    sticky sidebar at --erp-z-sticky=100 on this same inline-start edge — at the
    old 60 the sidebar won the point under the button, i.e. the FAB was
    unclickable at every viewport above the 1024px drawer breakpoint. */
-.erp-fab-host { position: fixed; bottom: 20px; inset-inline-start: 20px; z-index: var(--erp-z-fab); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+/* على الحافة المنطقية المقابلة للعمود الجانبي: بـRTL كان
+   `inset-inline-start` يضع الزر فوق كعب القائمة (قياس حيّ على 1066px)،
+   فيغطّي آخر عنصر واسم الدور. `inline-end` يبقى داخل المحتوى في الاتجاهين. */
+.erp-fab-host { position: fixed; bottom: 20px; inset-inline-end: 20px; z-index: var(--erp-z-fab); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: 26px; line-height: 1; cursor: pointer; }
 .erp-fab-host .erp-fab-menu { display: flex; flex-direction: column; gap: 8px; }
 /* `[hidden]` was losing to the rule above (UA `[hidden]{display:none}` is a

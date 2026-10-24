@@ -128,6 +128,29 @@ function rewriteVersion(oldV, newV) {
     return changed;
 }
 
+/**
+ * يُزامن رقم الإصدار المعروض للمستخدم مع نسخة الكاش.
+ * السبب (تدقيق الواجهة): `CONFIG.VERSION` بقي 4.9.2 بينما الوسوم 4.9.136،
+ * فظهر رقم قديم في شاشة الدخول. الربط هنا يمنع الانزياح مستقبلًا.
+ */
+function syncDisplayVersion(newV) {
+    const pairs = [
+        [path.join(APP, 'js', 'core', 'config.js'), /(VERSION:\s*')[\d.]+(')/],
+        [path.join(APP, 'index.html'), /(<span id="loginVersion"[^>]*>)[^<]*(<\/span>)/],
+    ];
+    let changed = 0;
+    for (const [file, pattern] of pairs) {
+        if (!fs.existsSync(file)) {continue;}
+        const src = fs.readFileSync(file, 'utf8');
+        const out = src.replace(pattern, `$1${newV}$2`);
+        if (out !== src) {
+            fs.writeFileSync(file, out, 'utf8');
+            changed += 1;
+        }
+    }
+    return changed;
+}
+
 function readState() {
     try {return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));} catch (_) {return null;}
 }
@@ -152,6 +175,7 @@ if (mode === 'compute') {
     }
     const next = bumpPatch(version);
     const changed = rewriteVersion(version, next);
+    syncDisplayVersion(next);
     writeState({ version: next, hash: contentHash(), updatedAt: new Date().toISOString() });
     console.log(`الإصدار: ${version} → ${next} (عُدّلت ${changed} صفحة)`);
 } else if (mode === 'check') {

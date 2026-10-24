@@ -709,6 +709,18 @@ body.csales-open { overflow: hidden; }
 
 .csales__pager .erp-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* ── خاناتُ اللوحة سبع: تُرصُّ أربعًا ثم ثلاثًا على الشاشات الواسعة ───────
+   الشبكةُ المشتركة تملأ الصفَّ ستًّا ثم تُنزل السابعةَ وحيدة؛ وهنا العددُ
+   سبعة، فالشبكةُ اثنتا عشرةَ وحدة: الأربعُ الأولى ثُلاثياتٌ (٤ في الصف)
+   والثلاثُ الأخيرة رباعياتٌ (٣ في الصف) — صفّان ممتلئان لا خانةَ يتيمة. */
+@media (min-width: 1200px) {
+  .erp-v2 [data-sa-board] > .erp-kpis {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .erp-v2 [data-sa-board] > .erp-kpis > .erp-kpi { grid-column: span 3; }
+  .erp-v2 [data-sa-board] > .erp-kpis > .erp-kpi:nth-child(n + 5) { grid-column: span 4; }
+}
+
 /* ── الهاتف: اللوحة تأخذ العرضَ كلَّه والشريطُ يتراصّ ───────────────────── */
 @media (max-width: 720px) {
   .csales__head { align-items: flex-start; }

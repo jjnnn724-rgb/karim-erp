@@ -122,6 +122,18 @@
     'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
     'chevron-down': '<path d="m6 9 6 6 6-6"/>',
     'chevron-up': '<path d="m18 15-6-6-6 6"/>',
+    /* كانت مستخدمة في الشاشات بلا تسجيل هنا، فكان المُهيّئ يرسم «؟»
+       (P[name] || P['circle-help']) بدل الأيقونة. مسجّلة الآن. */
+    'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+    'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+    'chevrons-left': '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
+    'chevrons-right': '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>',
+    'arrow-up-down': '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+    'arrow-left-right': '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+    'columns': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>',
+    'pen-line': '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>',
+    'tv': '<rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/>',
+    'x-circle': '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
     'camera': '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
     'scan': '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>',
     'barcode': '<path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/>',
@@ -165,10 +177,15 @@
     'dot-gray': '<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>'
   };
 
-  function svg(name, size) {
+  const warnedMissing = new Set();
+  function svg(name, size, extra) {
+    if (!P[name] && !warnedMissing.has(name)) {
+      warnedMissing.add(name);
+      console.warn('[icons] unknown icon "' + name + '" — fell back to circle-help');
+    }
     const body = P[name] || P['circle-help'];
     const s = size ? ' width="' + size + '" height="' + size + '"' : '';
-    return '<svg class="ji" xmlns="http://www.w3.org/2000/svg"' + s +
+    return '<svg class="ji" xmlns="http://www.w3.org/2000/svg"' + s + (extra || '') +
       ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"' +
       ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
   }
@@ -178,7 +195,17 @@
     for (let i = 0; i < nodes.length; i++) {
       const el = nodes[i];
       el.setAttribute('data-done', '1');
-      el.outerHTML = svg(el.getAttribute('data-i'));
+      /* `hidden` and `data-*` markers must survive the tag swap: dropping
+         them made a hidden fallback icon paint a stray "?" beside the
+         sidebar plaque and broke runtime lookups by data attribute. */
+      let extra = '';
+      for (const attr of el.attributes) {
+        const n = attr.name;
+        if (n === 'class' || n === 'data-i' || n === 'data-done') {continue;}
+        if (n !== 'hidden' && !n.startsWith('data-')) {continue;}
+        extra += ` ${n}` + (attr.value === '' ? '' : `="${attr.value.replace(/"/g, '&quot;')}"`);
+      }
+      el.outerHTML = svg(el.getAttribute('data-i'), null, extra);
     }
   }
 

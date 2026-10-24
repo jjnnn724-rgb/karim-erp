@@ -58,7 +58,7 @@ describe('القشرة — الأبواب', () => {
         await ctx.markNotificationsRead([3]);
         await ctx.markAllNotificationsRead();
         await ctx.clearNotifications();
-        await ctx.changePassword({ current_password: 'a', new_password: 'Abcd1234' });
+        await ctx.changePassword({ current_password: 'a', new_password: 'Abcd12345678' });
         expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
             'GET /notifications',
             'POST /notifications/read',
@@ -67,7 +67,7 @@ describe('القشرة — الأبواب', () => {
             'POST /auth/change-password',
         ]);
         expect(JSON.parse(calls[1].body)).toEqual({ ids: [3] });
-        expect(JSON.parse(calls[4].body)).toEqual({ current_password: 'a', new_password: 'Abcd1234' });
+        expect(JSON.parse(calls[4].body)).toEqual({ current_password: 'a', new_password: 'Abcd12345678' });
     });
 
     test('الصحة بلا مصادقة مسبقة — والسقوط معلن', async () => {

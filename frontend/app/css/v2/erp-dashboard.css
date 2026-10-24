@@ -203,20 +203,20 @@
 .erp-pal {
   inline-size: 100%; max-inline-size: 560px; max-block-size: 60vh;
   display: flex; flex-direction: column; overflow: hidden;
-  background: var(--erp-surface, #fff); color: var(--erp-text-primary, #101828);
-  border: 1px solid var(--erp-border, #e4e7ec); border-radius: 14px;
-  box-shadow: var(--erp-shadow-xl, 0 24px 56px rgba(16,24,40,.16));
+  background: var(--erp-surface); color: var(--erp-text-primary);
+  border: 1px solid var(--erp-border); border-radius: 14px;
+  box-shadow: var(--erp-shadow-xl);
 }
-.erp-pal__input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-block-end: 1px solid var(--erp-border, #e4e7ec); }
-.erp-pal__input-row .ji { font-size: 18px; color: var(--erp-text-muted, #667085); flex: none; }
+.erp-pal__input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-block-end: 1px solid var(--erp-border); }
+.erp-pal__input-row .ji { font-size: 18px; color: var(--erp-text-muted); flex: none; }
 .erp-pal__input {
   flex: 1 1 auto; border: 0; outline: 0; background: transparent; color: inherit;
   font: inherit; font-size: 15px; min-width: 0;
 }
-.erp-pal__input::placeholder { color: var(--erp-text-faint, #98a2b3); }
+.erp-pal__input::placeholder { color: var(--erp-text-faint); }
 .erp-pal__kbd {
   flex: none; font-family: var(--erp-font-mono, monospace); font-size: 11px;
-  color: var(--erp-text-muted, #667085); border: 1px solid var(--erp-border, #e4e7ec);
+  color: var(--erp-text-muted); border: 1px solid var(--erp-border);
   border-block-end-width: 2px; border-radius: 6px; padding: 1px 7px;
 }
 .erp-pal__list { overflow-y: auto; padding: 6px; margin: 0; list-style: none; }
@@ -225,12 +225,12 @@
   padding: 10px; border: 0; border-radius: 8px; background: transparent; color: inherit;
   font: inherit; font-size: 14px; cursor: pointer; text-align: start; min-block-size: 44px;
 }
-.erp-pal__opt .ji { font-size: 17px; color: var(--erp-text-muted, #667085); flex: none; }
-.erp-pal__opt.is-active { background: var(--erp-brand-soft, rgba(180,83,9,.12)); }
-.erp-pal__opt.is-active .ji { color: var(--erp-brand-text, #92400e); }
+.erp-pal__opt .ji { font-size: 17px; color: var(--erp-text-muted); flex: none; }
+.erp-pal__opt.is-active { background: var(--erp-brand-soft); }
+.erp-pal__opt.is-active .ji { color: var(--erp-brand-text); }
 .erp-pal__label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.erp-pal__group { flex: none; font-size: 11px; color: var(--erp-text-faint, #98a2b3); }
-.erp-pal__empty { padding: 18px; text-align: center; font-size: 13px; color: var(--erp-text-muted, #667085); }
+.erp-pal__group { flex: none; font-size: 11px; color: var(--erp-text-faint); }
+.erp-pal__empty { padding: 18px; text-align: center; font-size: 13px; color: var(--erp-text-muted); }
 
 /* Search trigger that replaces the inert boundary slot (keeps its data attr). */
 .erp-v2 .erp-search-trigger {
@@ -289,6 +289,11 @@
       overlays drop out, cards avoid breaking across pages.
    ═══════════════════════════════════════════════════════════════════════ */
 .erp-v2 { --erp-dash-accent-text: var(--erp-brand-text); }
+/* design-color-audit:allow-begin — لوحة white-label مشروعة: سمة
+   data-brand على جذر .erp-v2 تعيد تلوين لوحة القيادة لعلامات عملاء
+   (الذهبي الملكي الافتراضي / الأزرق المؤسسي). ألوانُ علامةٍ بديلة،
+   لا انجرافًا: تُفعَّل بسمةٍ واحدة وتُقرأ عبر --erp-dash-accent-* و
+   --erp-brand-*، وكل لونٍ في الوضع الافتراضي (بلا سمة) من الهوية. */
 html[data-theme="dark"] .erp-v2 { --erp-dash-accent-text: #f2b73c; }
 .erp-v2[data-brand="corporate"] {
   --erp-brand:        #1e40af;
@@ -298,6 +303,7 @@ html[data-theme="dark"] .erp-v2 { --erp-dash-accent-text: #f2b73c; }
   --erp-dash-accent-text: #1e3a8a;
 }
 html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text: #93c5fd; }
+/* design-color-audit:allow-end */
 
 .erp-v2 .erp-eyebrow {
   display: block;

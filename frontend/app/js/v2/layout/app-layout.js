@@ -21,9 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.132';
-import { mountDensityControl } from '../density.js?v=4.9.132';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.132';
+import { mountThemeControl } from '../theme.js?v=4.9.151';
+import { mountDensityControl } from '../density.js?v=4.9.151';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -76,8 +76,8 @@ export function mountAppLayout(container, options = {}) {
       <aside class="erp-shell__sidebar" id="erp-sidebar" aria-label="التنقل الرئيسي">
         <div class="erp-shell__brand">
           <span class="erp-shell__brand-mark" aria-hidden="true">
-            <img data-v2-shell-logo src="assets/al-shurfa-logo.png" alt="">
-            <i class="ji" data-v2-shell-logo-fallback data-i="layout-dashboard" hidden></i>
+            <img data-v2-shell-logo src="assets/al-shurfa-mark.png" alt="">
+            <i class="ji" data-v2-shell-logo-fallback data-i="store" hidden></i>
           </span>
           <span class="erp-shell__brand-text">
             <strong class="erp-truncate"></strong>
@@ -106,6 +106,8 @@ export function mountAppLayout(container, options = {}) {
             <i class="ji" data-i="menu" aria-hidden="true"></i>
           </button>
 
+          <span class="erp-shell__page-title erp-truncate" data-erp-page-title></span>
+
           <nav class="erp-crumbs" aria-label="مسار التنقل"></nav>
 
           <div class="erp-shell__actions erp-no-print">
@@ -128,6 +130,10 @@ export function mountAppLayout(container, options = {}) {
               <i class="ji" data-i="x" aria-hidden="true"></i>
             </button>
           </div>
+          <section class="erp-shell__more-section erp-shell__more-tools" data-erp-more-tools hidden>
+            <h3 class="erp-shell__more-label">إجراءات الصفحة</h3>
+            <div class="erp-shell__more-tool-list" data-erp-more-tool-host></div>
+          </section>
           <section class="erp-shell__more-section">
             <h3 class="erp-shell__more-label">حالة النظام</h3>
             <div class="erp-shell__more-status" data-erp-more-status></div>
@@ -170,7 +176,10 @@ export function mountAppLayout(container, options = {}) {
         nav:       root.querySelector('#erp-nav'),
         scrim:     root.querySelector('.erp-shell__scrim'),
         crumbs:    root.querySelector('.erp-crumbs'),
+        pageTitle: root.querySelector('[data-erp-page-title]'),
         toolbar:   root.querySelector('[data-erp-toolbar]'),
+        moreTools: root.querySelector('[data-erp-more-tools]'),
+        moreToolHost: root.querySelector('[data-erp-more-tool-host]'),
         main:      root.querySelector('#erp-main'),
         role:      root.querySelector('[data-erp-role]'),
         themeSlot: root.querySelector('[data-erp-theme-slot]'),
@@ -197,7 +206,7 @@ export function mountAppLayout(container, options = {}) {
               ${group.items.map((item) => navItemMarkup(item)).join('')}
             </ul>
           </div>`).join('')
-          || `<div class="erp-state"><span class="erp-state__icon" aria-hidden="true">🔒</span>
+          || `<div class="erp-state"><span class="erp-state__icon" aria-hidden="true"><i class="ji" data-i="lock"></i></span>
                <span class="erp-state__title">لا توجد صفحات متاحة</span>
                <span>لا توجد قوائم مسنودة لهذا الدور.</span></div>`;
 
@@ -270,6 +279,9 @@ export function mountAppLayout(container, options = {}) {
             return `<li class="erp-crumb">${inner}</li>`;
         });
         if (title && !trail.length) {parts.push(`<li class="erp-crumb"><span aria-current="page">${esc(title)}</span></li>`);}
+        /* Phones hide the trail (it is redundant in one column); this carries
+           its last step as the header's page name. */
+        el.pageTitle.textContent = (trail.length ? trail[trail.length - 1].label : title) || '';
         el.crumbs.innerHTML = parts.length
             ? `<ol class="erp-crumbs__list">${parts.join('<li class="erp-crumb-sep" aria-hidden="true">/</li>')}</ol>`
             : '';
@@ -283,16 +295,31 @@ export function mountAppLayout(container, options = {}) {
     /* ── Toolbar ────────────────────────────────────────────────────── */
     function renderToolbar() {
         const items = state.toolbar.filter((t) => t && typeof t.onClick === 'function');
-        if (!items.length) {el.toolbar.hidden = true; el.toolbar.innerHTML = ''; return;}
+        if (!items.length) {
+            el.toolbar.hidden = true;
+            el.toolbar.innerHTML = '';
+            el.moreTools.hidden = true;
+            el.moreToolHost.innerHTML = '';
+            return;
+        }
         el.toolbar.hidden = false;
-        el.toolbar.innerHTML = items.map((t, i) => `
+        el.moreTools.hidden = false;
+        const markup = (t, i) => `
           <button type="button" class="erp-btn ${t.primary ? 'erp-btn--primary' : ''} erp-btn--sm"
                   data-erp-tool="${i}">
             ${t.icon ? `<i class="ji" data-i="${esc(t.icon)}" aria-hidden="true"></i>` : ''}
             <span>${esc(t.label)}</span>
-          </button>`).join('');
-        el.toolbar.querySelectorAll('[data-erp-tool]').forEach((b) => {
-            b.addEventListener('click', () => items[Number(b.dataset.erpTool)].onClick());
+          </button>`;
+        el.toolbar.innerHTML = items.map(markup).join('');
+        /* Phones hide the toolbar row (it was a second full-width bar under a
+           one-line header); the same actions live in the control centre. */
+        el.moreToolHost.innerHTML = items.map(markup).join('');
+        root.querySelectorAll('[data-erp-tool]').forEach((b) => {
+            b.addEventListener('click', () => {
+                const inPanel = el.moreToolHost.contains(b);
+                if (inPanel) {setMore(false, { returnFocus: false });}
+                items[Number(b.dataset.erpTool)].onClick();
+            });
         });
     }
 

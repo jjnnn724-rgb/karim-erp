@@ -413,7 +413,7 @@
     width: 0.55rem;
     height: 0.55rem;
     flex: 0 0 auto;
-    background: var(--erp-success, #16a34a);
+    background: var(--erp-success);
     border-radius: 50%;
     animation: erp-pos-v2-pulse 2.4s ease-in-out infinite;
 }
@@ -604,8 +604,8 @@
         inset: 0;
         width: 100%;
         padding: 1rem;
-        color: #000;
-        background: #fff;
+        color: var(--erp-print-ink);
+        background: var(--erp-print-paper);
         border: 0;
     }
 }

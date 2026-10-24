@@ -48,6 +48,7 @@
     "test:inline-scripts:gate": "node scripts/audit-csp-inline-handlers.js --check-inline-scripts",
     "test:dispatch:gate": "node scripts/audit-csp-inline-handlers.js --check-dispatch",
     "test:frontend-version": "node scripts/frontend-version.js --check",
+    "test:color:gate": "node scripts/design-color-audit.js",
     "frontend:version:bump": "node scripts/frontend-version.js --bump",
     "build:electron": "node scripts/build-electron.js",
     "test:docker:gate": "node scripts/check-docker.js",

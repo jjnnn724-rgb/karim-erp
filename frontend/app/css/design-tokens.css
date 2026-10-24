@@ -10,6 +10,12 @@
 
    NOTE: legacy variable names (--gold, --bg1..4, --text*, --karim-*)
    are preserved as aliases so all existing views keep working.
+
+   NOTE 2: the V2 visual identity («بورسلين ونحاس») lives in
+   css/v2/erp-identity.css, which loads LAST on v2.html and re-aliases the
+   V2 semantic tokens from its own primitives. This sheet remains the
+   legacy/bronze palette only — do not "fix" it to match V2; the identity
+   layer is the single owner of the V2 look.
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
