@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<script src="js/login-boot.js?v=4.9.132" defer></script>
+<script src="js/login-boot.js?v=4.9.151" defer></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -29,26 +29,31 @@
           href="css/offline-fonts.css">
   </noscript>
 
-  <link rel="preload" as="style" href="css/design-tokens.css?v=4.9.132">
-  <link rel="preload" as="style" href="css/styles.css?v=4.9.132">
-  <link rel="preload" as="script" href="/app/js/app.js?v=4.9.132">
+  <link rel="preload" as="style" href="css/design-tokens.css?v=4.9.151">
+  <link rel="preload" as="style" href="css/styles.css?v=4.9.151">
+  <link rel="preload" as="script" href="/app/js/app.js?v=4.9.151">
   <link rel="preload" as="script" href="/app/js/icons.js">
 
-  <link rel="stylesheet" href="css/design-tokens.css?v=4.9.132">
-  <link rel="stylesheet" href="css/styles.css?v=4.9.132">
-  <link rel="stylesheet" href="css/mobile.css?v=4.9.132">
+  <link rel="stylesheet" href="css/design-tokens.css?v=4.9.151">
+  <link rel="stylesheet" href="css/styles.css?v=4.9.151">
+  <link rel="stylesheet" href="css/mobile.css?v=4.9.151">
   <link rel="stylesheet" href="css/realtime.css" media="print" data-media-always>
   <link rel="stylesheet" href="css/scanner.css" media="print" data-media-always>
   <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
-  <link rel="stylesheet" href="css/pro-theme.css?v=4.9.132">
+  <link rel="stylesheet" href="css/pro-theme.css?v=4.9.151">
 
-  <script src="/app/vendor/chart.umd.min.js?v=4.9.132" async></script>
-  <script src="/app/vendor/xlsx.full.min.js?v=4.9.132" async></script>
-  <script src="/app/vendor/html5-qrcode.min.js?v=4.9.132" async></script>
+  <script src="/app/vendor/chart.umd.min.js?v=4.9.151" async></script>
+  <script src="/app/vendor/xlsx.full.min.js?v=4.9.151" async></script>
+  <script src="/app/vendor/html5-qrcode.min.js?v=4.9.151" async></script>
   <script src="/socket.io/socket.io.js" defer></script>
 </head>
 
-<body>
+<body class="legacy-sunset-on">
+
+  <div class="legacy-sunset" role="status">
+    <span class="legacy-sunset__text">هذه الواجهة ستُوقف خلال شهر — الواجهة الجديدة تعمل على نفس البيانات والصلاحيات.</span>
+    <a class="legacy-sunset__link" href="/app/v2.html?live=1" target="_blank" rel="noopener">الانتقال إلى الواجهة الجديدة</a>
+  </div>
 
   <div id="toasts"></div>
 
@@ -105,65 +110,95 @@
   </div>
 
   <div id="login">
-    <div class="login-box">
-      <div class="login-logo" id="loginLogo"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي" loading="eager"></div>
-
-      <div class="login-title" id="loginTitle">مطاعم الشرفه العالمي</div>
-      <div class="login-sub" id="loginSub">نظام إدارة المطاعم المتكامل · الإصدار <span id="loginVersion" class="mono">4.9.2</span></div>
-
-      <div class="fg">
-        <label id="luLabel" class="fg-label">
-          <i class="ji" data-i="user"></i>
-          اسم المستخدم
-        </label>
-        <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="username" autocapitalize="none" spellcheck="false" required aria-required="true">
-      </div>
-
-      <div class="fg">
-        <label id="lpLabel" class="fg-label">
-          <i class="ji" data-i="lock"></i>
-          كلمة المرور
-        </label>
-        <div class="pwd-wrap" style="position:relative">
-          <input
-            type="password"
-            id="lp"
-            placeholder="كلمة المرور"
-            autocomplete="current-password"
-            required
-            aria-required="true"
-            style="padding-inline-end:44px"
-          >
-          <button type="button" class="pwd-eye" id="lpEye" aria-label="إظهار كلمة المرور"
-            style="position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0"
-            data-karim-action="toggleLoginPassword">
-            <i class="ji" data-i="eye" style="font-size:17px"></i>
-          </button>
+    <div class="login-shell">
+      <aside class="login-aside">
+        <div class="login-brand">
+          <div class="login-logo" id="loginLogo"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي" loading="eager"></div>
+          <div class="login-brand__text">
+            <h1 class="login-title" id="loginTitle">مطاعم الشرفه العالمي</h1>
+            <p class="login-sub" id="loginSub">نظام إدارة المطاعم المتكامل · الإصدار <span id="loginVersion" class="mono">4.9.151</span></p>
+          </div>
         </div>
-      </div>
 
-      <div id="lerr" class="form-error" role="alert"></div>
-      <div id="capsWarn" class="caps-warn" role="status">زر Caps Lock مفعّل — تأكد من لغة الإدخال</div>
+        <div class="login-aside__pitch">
+          <span class="login-aside__eyebrow" dir="ltr" lang="en">AL SHURFA · ENTERPRISE</span>
+          <h2>كل أرقام المطعم<br>في شاشة واحدة.</h2>
+          <p>المبيعات والمخزون والتكاليف والرواتب — مقروءة بوضوح، ومحسوبة على الخادم.</p>
+        </div>
 
-      <button class="btn-premium" id="loginBtn" type="button">
-        <i class="ji" data-i="log-in"></i>
-        تسجيل الدخول
-      </button>
+        <ul class="login-aside__points">
+          <li><i class="ji" data-i="shield-check"></i><span>صلاحيات وسجل تدقيق لكل حركة</span></li>
+          <li><i class="ji" data-i="pie"></i><span>تحليل تكاليف وأرباح لحظي</span></li>
+          <li><i class="ji" data-i="printer"></i><span>تقارير وطباعة A4 بهوية الشركة</span></li>
+        </ul>
 
-      <div style="text-align:center;margin-top:14px">
-        <a href="#" data-karim-action="showForgotPasswordModal" data-karim-prevent style="color:var(--gold,#c9a227);font-size:13px;text-decoration:none">
-          <i class="ji" data-i="key"></i> نسيت كلمة المرور؟
-        </a>
-      </div>
+        <div class="login-aside__foot">
+          <span class="login-aside__dot" aria-hidden="true"></span>
+          <span>اتصال مشفّر · نسخ احتياطي تلقائي</span>
+        </div>
+      </aside>
 
-      <div style="text-align:center;margin-top:10px">
-        <button class="btn btn-sm" id="pwaInstallBtn" data-karim-action="pwaInstall" style="display:none"><i class="ji" data-i="arrow-down"></i> ثبّت التطبيق على الجهاز</button>
-      </div>
+      <section class="login-box" aria-labelledby="login-card-title">
+        <header class="login-card__head">
+          <span class="login-card__eyebrow" dir="ltr" lang="en">SIGN IN</span>
+          <h2 class="login-card__title" id="login-card-title">تسجيل الدخول</h2>
+          <p class="login-card__sub">أدخل بيانات حسابك للمتابعة إلى مساحة العمل.</p>
+        </header>
 
-      <div class="login-hint">
-        <span class="kbd">Ctrl + K</span>
-        للبحث السريع بعد الدخول
-      </div>
+        <div class="fg">
+          <label id="luLabel" class="fg-label">
+            <i class="ji" data-i="user"></i>
+            اسم المستخدم
+          </label>
+          <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="username" autocapitalize="none" spellcheck="false" required aria-required="true">
+        </div>
+
+        <div class="fg">
+          <label id="lpLabel" class="fg-label">
+            <i class="ji" data-i="lock"></i>
+            كلمة المرور
+          </label>
+          <div class="pwd-wrap" style="position:relative">
+            <input
+              type="password"
+              id="lp"
+              placeholder="كلمة المرور"
+              autocomplete="current-password"
+              required
+              aria-required="true"
+              style="padding-inline-end:44px"
+            >
+            <button type="button" class="pwd-eye" id="lpEye" aria-label="إظهار كلمة المرور"
+              style="position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0"
+              data-karim-action="toggleLoginPassword">
+              <i class="ji" data-i="eye" style="font-size:17px"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="lerr" class="form-error" role="alert"></div>
+        <div id="capsWarn" class="caps-warn" role="status">زر Caps Lock مفعّل — تأكد من لغة الإدخال</div>
+
+        <button class="btn-premium" id="loginBtn" type="button">
+          <i class="ji" data-i="log-in"></i>
+          تسجيل الدخول
+        </button>
+
+        <div class="login-card__links">
+          <a href="#" data-karim-action="showForgotPasswordModal" data-karim-prevent>
+            <i class="ji" data-i="key"></i> نسيت كلمة المرور؟
+          </a>
+        </div>
+
+        <div class="login-card__pwa">
+          <button class="btn btn-sm" id="pwaInstallBtn" data-karim-action="pwaInstall" style="display:none"><i class="ji" data-i="arrow-down"></i> ثبّت التطبيق على الجهاز</button>
+        </div>
+
+        <div class="login-hint">
+          <span class="kbd">Ctrl + K</span>
+          للبحث السريع بعد الدخول
+        </div>
+      </section>
     </div>
   </div>
 
@@ -266,17 +301,17 @@
   <div id="modals"></div>
 
   <script src="js/icons.js" defer></script>
-  <script src="js/vendor/qrcode.min.js?v=4.9.132" defer></script>
+  <script src="js/vendor/qrcode.min.js?v=4.9.151" defer></script>
   <script src="js/db-constraints-client.js" defer></script>
-  <script src="js/karim-i18n.js?v=4.9.132" defer></script>
+  <script src="js/karim-i18n.js?v=4.9.151" defer></script>
       <!-- حراسة قراءة Excel: حدّ حجم/صفوف قبل القراءة (يفشل بلا صمت) -->
-    <script src="js/core/action-dispatch.js?v=4.9.132" defer></script>
+    <script src="js/core/action-dispatch.js?v=4.9.151" defer></script>
 
     <script src="js/core/xlsx-guard.js?v=4.9.181"></script>
-    <script type="module" src="js/main.js?v=4.9.132"></script>
-  <script src="js/app.js?v=4.9.132" defer></script>
+    <script type="module" src="js/main.js?v=4.9.151"></script>
+  <script src="js/app.js?v=4.9.151" defer></script>
   <script src="js/scanner.js" defer></script>
-  <script src="js/realtime.js?v=4.9.132" defer></script>
+  <script src="js/realtime.js?v=4.9.151" defer></script>
   <script src="js/core/i18n-auto-catalog.js" defer></script>
   <script src="js/core/i18n-auto.js" defer></script>
 </body>

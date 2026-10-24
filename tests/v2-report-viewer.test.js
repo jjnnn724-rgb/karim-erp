@@ -116,12 +116,14 @@ describe('عارض المستندات — الطباعة والوصولية', ()
         expect(branding).toContain("document.querySelector('[data-v2-shell-logo]')");
         const layout = read(path.join(V2, 'layout', 'app-layout.js'));
         expect(layout).toContain('data-v2-shell-logo');
-        expect(layout).toContain('src="assets/al-shurfa-logo.png"');
+        expect(layout).toContain('src="assets/al-shurfa-mark.png"');
         expect(layout).toContain('data-v2-shell-logo-fallback');
-        expect(layout).toContain('data-v2-shell-logo-fallback data-i="layout-dashboard" hidden');
-        expect(branding).toContain('image.hidden = false');
+        expect(layout).toContain('data-v2-shell-logo-fallback data-i="store" hidden');
         expect(branding).toContain('image.onerror = () =>');
-        expect(branding).toContain("image.src = logoSource();");
+        expect(branding).toContain('image.hidden = true;');
+        // The 46px plaque keeps the emblem mark; the configured logo is print-only.
+        expect(branding).not.toContain('image.src = src;');
+        expect(branding).toContain('image.src = logoSource();');
         const preview = read(path.join(V2, 'preview.js'));
         expect(preview).toContain('fetchMainSettingsFull');
         expect(preview).toContain('setV2PrintLogo(current && current.logoB64)');

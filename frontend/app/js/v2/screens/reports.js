@@ -30,19 +30,19 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.132';
+} from '../data/reports-repo.js?v=4.9.151';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.132';
+} from '../data/reports-extra.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -474,13 +474,13 @@ export function mountReportsScreen(host, ctx = {}) {
         const echo = meta.filters.cashierId ?? meta.filters.departmentId;
         scopeNote.hidden = !echo;
         if (echo) {
-            scopeNote.textContent = `الخادم حصر النتيجة على المعرّف ${formatInt(echo)} (${meta.filters.cashierId ? 'كاشير' : 'قسم'}) — هذا قراره، لا فلتر من هذه الشاشة.`;
+            scopeNote.textContent = `النتيجة مقصورة على المعرّف ${formatInt(echo)} (${meta.filters.cashierId ? 'كاشير' : 'قسم'}).`;
         }
 
-        printNote.textContent = `تقرير ${label} (${meta.startDate} ← ${meta.endDate}) حسب ${GROUP_AR[groupBy]} — ${formatInt(rows.length)} صفًا. المطبوعة مستند A4 بهوية الشركة يعرض الفترة كاملة (كل الصفوف)، لا صفحة الجدول المرئية.`;
+        printNote.textContent = `تقرير ${label} · ${meta.startDate} ← ${meta.endDate} · ${GROUP_AR[groupBy]} · ${formatInt(rows.length)} صفًا`;
         filterNote.hidden = period === 'month' && groupBy === 'department';
         if (!filterNote.hidden) {
-            filterNote.textContent = `التقرير مطلوب بالفترة «${label}» (${meta.startDate} ← ${meta.endDate}) وبُعد ${GROUP_AR[groupBy]} — المجاميع من الخادم على هذا الطلب وحده، والمؤشرات لا تُشتق من الصفوف المرئية.`;
+            filterNote.textContent = `الفترة «${label}» · ${meta.startDate} ← ${meta.endDate} · ${GROUP_AR[groupBy]}`;
         }
     }
 
@@ -855,7 +855,7 @@ export function mountReportsScreen(host, ctx = {}) {
                     d.cashiers.map((c) => `<tr><td class="erp-td"><b>${esc(c.name)}</b></td><td class="erp-td erp-num" dir="ltr">${formatInt(c.invoices || 0)}</td><td class="erp-td">${extraMoney(c.net || 0)}</td><td class="erp-td">${extraMoney(c.discount || 0)}</td><td class="erp-td">${extraMoney(c.invoices ? c.net / c.invoices : 0)}</td></tr>`).join(''),
                     'لا توجد مبيعات كاشيرية ضمن الفترة', cashFoot)
                 + (isInv
-                    ? `<h4>فواتير الكاشيرية (الأحدث أولًا — اضغط الرقم للتفصيل)</h4>`
+                    ? `<h4>فواتير الكاشيرية</h4>`
                         + xTable(['الفاتورة', 'اليوم', 'الكاشير', 'الوردية', 'الأصناف', 'الإجمالي', 'الخصم', 'الصافي', 'المدفوع'], detailRows, 'لا توجد فواتير ضمن الفترة',
                             d.rows.length ? `<td>${esc(pageLabel)}</td><td class="erp-td" colspan="4"></td>`
                                 + `<td class="erp-td">${extraMoney(pageSum('total'))}</td>`
@@ -867,15 +867,14 @@ export function mountReportsScreen(host, ctx = {}) {
                         + `<button type="button" class="erp-btn erp-btn--sm" data-v2-y_next${d.page >= d.pages ? ' disabled' : ''}>التالي</button></div>`
                         + `<div data-v2-y_detail></div>`
                     : `<h4>المباع تفصيلًا: الكاشير × الصنف</h4>`
-                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة — وسّع الفترة أو تحقق من سحب المبيعات',
+                        + xTable(['الكاشير', 'الصنف', 'الوحدة', 'الفواتير', 'الكمية', 'متوسط السعر', 'الصافي', 'الخصم', 'الضريبة'], detailRows, 'لا توجد أصناف مباعة ضمن الفترة',
                             d.rows.length ? `<td>${esc(pageLabel)}</td><td class="erp-td" colspan="2"></td>`
                                 + `<td class="erp-td erp-num" dir="ltr">${formatInt(pageSum('invoices'))}</td>`
                                 + `<td class="erp-td erp-num" dir="ltr">${formatQty(pageSum('qty'))}</td>`
                                 + `<td class="erp-td"></td>`
                                 + `<td class="erp-td">${extraMoney(pageSum('net'))}</td>`
                                 + `<td class="erp-td">${extraMoney(pageSum('discount'))}</td>`
-                                + `<td class="erp-td">${extraMoney(pageSum('vat'))}</td>` : ''))
-                + `<p class="erp-text-sm erp-text-muted">المصدر: قاعدة مبيعات الكاشيرية — الكاشير 2 الداخلي مستثنى.</p>`;
+                                + `<td class="erp-td">${extraMoney(pageSum('vat'))}</td>` : ''));
         }
         return '';
     }

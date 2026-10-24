@@ -7,9 +7,9 @@
  * 8,000 rows; newest-first; client-side date filter (table/page also).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.132';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.151';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };
@@ -49,7 +49,7 @@ export function mountWhMovesScreen(host, _ctx = {}) {
     const countEl = q('[data-v2-count]'); const summaryEl = q('[data-v2-summary]'); const clearBtn = q('[data-v2-clear]');
     const table = createDataTable({
         caption: 'حركات المخزون — بيانات حية', mode: 'client', pageSize: 50, stickyHeader: true,
-        emptyMessage: 'لا توجد حركات في الفترة', emptyHint: 'وسّع الفترة.', rowKey: (r) => r.id,
+        emptyMessage: 'لا توجد حركات في الفترة', rowKey: (r) => r.id,
         columns: [
             { key: 'date', header: 'التاريخ', sortable: true, width: '110px', align: 'center', className: 'erp-tnum' },
             { key: 'itemName', header: 'الصنف', sortable: true, filterable: true },

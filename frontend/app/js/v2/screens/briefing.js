@@ -39,7 +39,7 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.132';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.151';
 import {
     fetchBriefing,
     fetchTodayStats,
@@ -49,11 +49,11 @@ import {
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.132';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+} from '../data/briefing-repo.js?v=4.9.151';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.132';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -261,15 +261,10 @@ function card(titleAr, titleEn, note, content, opts = {}) {
     </section>`;
 }
 
-function sourceLine(view, failures) {
-    const answered = [
-        view.sources.briefing === 'ok' ? 'موجز المدير' : null,
-        view.sources.stats === 'ok' ? 'إحصاء فواتير اليوم' : null,
-    ].filter(Boolean).join(' · ');
-    const head = `<p class="erp-text-xs erp-text-muted">مصدر الأرقام: ${esc(answered || 'لا مصدر استجاب')}</p>`;
-    if (!failures.length) {return head;}
+function sourceLine(failures) {
+    if (!failures.length) {return '';}
     // Stated, not swallowed: a missing source is a fact about the dashboard.
-    return `${head}<div class="erp-error" role="alert">
+    return `<div class="erp-error" role="alert">
         ${failures.map((f) => `<span>${esc(f)}</span>`).join('<br>')}
       </div>`;
 }
@@ -292,7 +287,7 @@ function bodyHTML(view, failures, opts = {}) {
         card('أداء الأقسام', 'Departments', 'كل قسم مقابل أمس', departmentsBlock(view.departments), { i: 5 }),
     ].join('');
     return `<div class="${opts.animate ? 'erp-brief erp-brief--in' : 'erp-brief'}">
-      ${sourceLine(view, failures)}
+      ${sourceLine(failures)}
       ${kpiStrip(view.kpis)}
       <div class="erp-dash-grid">${flow}</div>
       ${card('يحتاج قرارًا', 'Needs A Decision', `${view.alerts.length} بند`, alertsBlock(view.alerts), { cls: 'erp-brief__decisions', i: 6 })}

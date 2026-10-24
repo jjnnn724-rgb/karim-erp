@@ -13,7 +13,9 @@
  *   POST /attendance/portal/face/enroll         → enrollFaceV1
  *   POST /attendance/portal/face/enroll-v2      → enrollFaceV2
  * البصمة كلها وراء دور الخادم + علم v2portalwrite، وقوالب الوجه وراء
- * admin/hr + علم v2facewrite. العلمان OFF افتراضيًا، والخادم يبقى الحاكم.
+ * admin/hr + علم v2facewrite. العلمان ظاهران افتراضيًا بطلب المالك
+ * 2026-10-24 (بصمة الوجه موجودة في القديم)، و`=0` يُخفيهما — والخادم
+ * يبقى الحاكم.
  *
  * Data doors (read): employees + attendance report + leave workflow/types
  * + my punches + portal status. Bounded deviation: attendance window is
@@ -21,19 +23,19 @@
  * V2's own (same content, not pixel-parity).
  */
 
-import { canWrite } from '../session.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
-import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.132';
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.151';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
 import {
     fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
     faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
     reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
-} from '../data/portal-repo.js?v=4.9.132';
-import { captureFace } from '../portal-face.js?v=4.9.132';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.132';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.132';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.132';
+} from '../data/portal-repo.js?v=4.9.151';
+import { captureFace } from '../portal-face.js?v=4.9.151';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.151';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.151';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

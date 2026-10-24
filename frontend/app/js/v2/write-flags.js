@@ -15,7 +15,10 @@
  *   ?v2weightwrite=1 | 0    → قراءات الميزان وإضافتها لصنف (P2-5)
  *   ?v2zkwrite=1 | 0        → أجهزة البصمة وربطها واستيرادها (P2-2)
  *   ?v2portalwrite=1 | 0    → البصمة الذاتية للموظف وتوثيق رفضها (P2-3)
+ *                             استثناءٌ: ظاهرةٌ افتراضيًا (طلب المالك 2026-10-24:
+ *                             «مفيش بصمة الوجه في v2 موجود في القديم»)
  *   ?v2facewrite=1 | 0      → تسجيل قوالب الوجه وإزالتها (P2-3)
+ *                             استثناءٌ: ظاهرٌ افتراضيًا بالطلب نفسه
  *   ?v2fiscalwrite=1 | 0    → السنوات المالية: إنشاء/إقفال/السنة التالية (P2-4)
  *   ?v2invoicevoid=1 | 0    → إلغاء فاتورة شراء فردي وحذف جماعي (ذيل P1-4)
  *   ?v2invoicecreate=1 | 0  → إنشاء/تعديل فاتورة شراء (26c-2)
@@ -97,12 +100,19 @@ export function zkWriteEnabled(search, storage) {
     return readFlag(ZK_WRITE_FLAG, 'karim_v2_zk_write', search, storage);
 }
 
+/**
+ * البصمة الذاتية — ظاهرةٌ افتراضيًا (طلب المالك 2026-10-24: البصمة والوجه
+ * موجودان في القديم وغائبان عن V2). الخادم يبقى الحاكم: الدور + بوابة
+ * البصمة + الجيوفانس + الوجه وقرار القبول. و`=0` في الـURL أو المخزّن
+ * يُخفي الواجهة كما كان.
+ */
 export function portalWriteEnabled(search, storage) {
-    return readFlag(PORTAL_WRITE_FLAG, 'karim_v2_portal_write', search, storage);
+    return readFlagDefaultOn(PORTAL_WRITE_FLAG, 'karim_v2_portal_write', search, storage);
 }
 
+/** تسجيل قوالب الوجه وإزالتها — ظاهرٌ افتراضيًا بالطلب نفسه؛ القرار للخادم (admin/hr). */
 export function faceWriteEnabled(search, storage) {
-    return readFlag(FACE_WRITE_FLAG, 'karim_v2_face_write', search, storage);
+    return readFlagDefaultOn(FACE_WRITE_FLAG, 'karim_v2_face_write', search, storage);
 }
 
 export function fiscalWriteEnabled(search, storage) {

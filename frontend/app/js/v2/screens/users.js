@@ -15,17 +15,17 @@
  * and the independent `v2bulkimport` flag (OFF by default).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.132';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.132';
-import { formatInt } from '../data/reports-repo.js?v=4.9.132';
-import { ROLES } from '../../core/config.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.151';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.151';
+import { formatInt } from '../data/reports-repo.js?v=4.9.151';
+import { ROLES } from '../../core/config.js?v=4.9.151';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
     linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.132';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.132';
+} from '../data/users-repo.js?v=4.9.151';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -206,7 +206,7 @@ export function mountUsersScreen(host, ctx = {}) {
           </div>
           <div class="erp-dash-controls">
             <label class="erp-text-sm erp-text-muted">كلمة المرور${isEdit ? ' الجديدة' : ''}</label>
-            <input class="erp-input" data-v2-f="password" type="password" placeholder="${isEdit ? 'فارغة = دون تغيير' : '8 حروف على الأقل مع حرف ورقم'}" autocomplete="new-password">
+            <input class="erp-input" data-v2-f="password" type="password" placeholder="${isEdit ? 'فارغة = دون تغيير' : '12 حرفًا على الأقل مع حرف ورقم'}" autocomplete="new-password">
             <label class="erp-text-sm erp-text-muted">الدور</label>
             <select class="erp-select" data-v2-f="role">${roleOptions(isEdit ? user.role : '')}</select>
           </div>

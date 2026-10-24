@@ -19,9 +19,9 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو inventory-inquiry.view).
  */
 
-import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.132';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.132';
-import { formatInt } from '../data/reports-repo.js?v=4.9.132';
+import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.151';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.151';
+import { formatInt } from '../data/reports-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -116,8 +116,8 @@ export function mountProfessionalScreen(host, ctx = {}) {
             : '<option value="">لا صنف يطابق البحث</option>';
         if (wanted && items.some((r) => String(r.itemId) === wanted)) {picker.value = wanted;}
         scopeLine.textContent = items.length
-            ? `${formatInt(items.length)} صنفًا في نتائج البحث · اختر صنفًا لعرض بطاقته الكاملة`
-            : 'لا نتائج — جرّب اسمًا آخر أو وسّع المدى';
+            ? `${formatInt(items.length)} صنفًا في نتائج البحث`
+            : 'لا نتائج';
     }
 
     function mountDossier(id) {
@@ -126,7 +126,7 @@ export function mountProfessionalScreen(host, ctx = {}) {
         if (dossier) {dossier.destroy();}
         host2.innerHTML = '';
         if (!id) {
-            host2.innerHTML = '<p class="erp-text-sm erp-text-muted">اختر صنفًا لعرض بطاقته.</p>';
+            host2.innerHTML = '<p class="erp-text-sm erp-text-muted">لا صنف مختار.</p>';
             return;
         }
         currentId = id;

@@ -31,26 +31,29 @@ export function setV2PrintLogo(value) {
     configuredLogo = typeof value === 'string' ? value.trim() : '';
     const image = typeof document !== 'undefined' ? document.querySelector('[data-v2-shell-logo]') : null;
     const fallback = typeof document !== 'undefined' ? document.querySelector('[data-v2-shell-logo-fallback]') : null;
+    /* The 46px plaque keeps the emblem mark: the owner's logo is a full
+       lockup whose name is unreadable at this size, and the shell already
+       prints the name beside it. The configured logo is used on print. */
     if (image) {
-        image.hidden = false;
-        image.removeAttribute('src');
         image.onerror = () => {
             image.hidden = true;
             if (fallback) {fallback.hidden = false;}
         };
-        image.src = logoSource();
     }
-    if (fallback) {fallback.hidden = true;}
 }
 
-function logoSource() {
+function configuredLogoSource() {
     const value = configuredLogo
         || (typeof window !== 'undefined' && typeof window.KARIM_V2_PRINT_LOGO === 'string'
             ? window.KARIM_V2_PRINT_LOGO.trim() : '');
-    if (!value) {return new URL(FALLBACK_LOGO, window.location.href).href;}
+    if (!value) {return '';}
     if (/^data:image\//i.test(value) || /^https?:\/\//i.test(value)) {return value;}
     if (/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {return `data:image/png;base64,${value}`;}
     return new URL(value, window.location.href).href;
+}
+
+function logoSource() {
+    return configuredLogoSource() || new URL(FALLBACK_LOGO, window.location.href).href;
 }
 
 function brandName() {

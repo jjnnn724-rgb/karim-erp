@@ -392,10 +392,11 @@ describe('V2 briefing screen + host (source contract)', () => {
         expect(s).toMatch(/erp-error/);
     });
 
-    test('no sample figures on the live screen — the label says where numbers come from', () => {
+    test('no sample figures and no source caption on the live screen', () => {
         const s = screen();
         expect(s).not.toMatch('بيانات نموذجية');
-        expect(s).toMatch(/مباشر من قاعدة البيانات|مصدر الأرقام/);
+        expect(s).not.toMatch(/مصدر الأرقام/);
+        expect(s).not.toMatch(/مباشر من قاعدة البيانات|لا مصدر استجاب/);
     });
 
     test('«كل الفواتير» تُلحَق بـdocument.body مغلّفة بـ.erp-v2 — وإلا انطبعت فوق اللوحة', () => {

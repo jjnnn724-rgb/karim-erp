@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,20 +114,20 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.132';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.132';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.132';
+} from '../data/inventory-repo.js?v=4.9.151';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.151';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.151';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.132';
-import { ensureXlsx } from '../vendor.js?v=4.9.132';
+} from '../data/opening-balance-repo.js?v=4.9.151';
+import { ensureXlsx } from '../vendor.js?v=4.9.151';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.132';
+} from '../signature.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -674,8 +674,8 @@ export function mountWarehouseScreen(host, ctx = {}) {
             openingPreview = parseOpeningSheetRows(rows);
             renderOpeningPreview();
             panelMsg(openingPreview.errors.length
-                ? `تمت معاينة ${openingPreview.rows.length} صف صالح مع ${openingPreview.errors.length} ملاحظة؛ راجعها قبل الإضافة.`
-                : `تمت معاينة ${openingPreview.rows.length} صف — اضغط «إضافة الصفوف الصالحة للجدول».`);
+                ? `تمت معاينة ${openingPreview.rows.length} صف صالح مع ${openingPreview.errors.length} ملاحظة.`
+                : `تمت معاينة ${openingPreview.rows.length} صف صالح.`);
         } catch (error) {
             panelMsg(`تعذّر قراءة ملف الرصيد الافتتاحي: ${readErrorText(error)}`);
         } finally {
@@ -813,12 +813,6 @@ export function mountWarehouseScreen(host, ctx = {}) {
                <input class="erp-input" type="number" min="0" step="0.01" data-v2-receipt-price placeholder="مطلوب"></label>
              <label class="erp-field"><span class="erp-label">تاريخ الصلاحية</span>
                <input class="erp-input" type="date" data-v2-receipt-expiry aria-required="false" title="اختياري — YYYY-MM-DD"></label>
-             <p class="erp-text-sm erp-text-muted">
-               الوحدة المسجلة: <span class="erp-addr" dir="ltr">${esc(row.unit || '—')}</span> —
-               الخادم يرفض أي وحدة أخرى. في القديم كان السعر يُملأ تلقائيًا بآخر تكلفة مسجّلة؛
-               هذه الشاشة لا تعرض التكلفة عمدًا، فاكتب السعر صراحةً — الفراغ أو الصفر يفسد متوسط التكلفة.
-               <strong>تاريخ الصلاحية اختياري</strong>، ويُرفض فقط إن جاء بصيغة فاسدة.
-             </p>
              ${panelActions('إضافة للمخزون', 'save')}`);
     }
 
@@ -861,12 +855,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             ? `حكم «جديد/محدَّث» محسوب على ${formatInt(allRows.length)} صنفًا محمّلًا من ${formatInt(registerTotal)} في السجل — خارج النافذة قد يكون الاسم موجودًا فيُحدَّث لا يُنشأ.`
             : `حكم «جديد/محدَّث» محسوب على السجل المحمّل (${formatInt(allRows.length)} صنفًا).`;
         return panelShell('استيراد المخزون', 'upload',
-            `<div class="erp-flow-note" data-tone="info">
-               إدخال يدوي سريع — للاستيراد من ملف استخدم زر «استيراد Excel».
-               الفئة الفارغة «عام»، والوحدة الفارغة «قطعة»، والحد الأدنى الفارغ 5 — نفس افتراضات الخادم.
-               الأسماء تُطابق بتطبيع الخادم، فالاسم المتشابه شكلًا يحدّث الصنف القائم بدل إنشاء مكرر.
-             </div>
-             <div class="erp-stack" data-v2-bulk-rows>
+            `<div class="erp-stack" data-v2-bulk-rows>
                ${bulkRowHtml()}${bulkRowHtml()}${bulkRowHtml()}
              </div>
              <div><button type="button" class="erp-btn erp-btn--sm" data-v2-add-bulk-row>

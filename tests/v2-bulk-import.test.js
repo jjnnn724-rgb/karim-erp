@@ -58,17 +58,17 @@ describe('bulk-import — الحساب الخالص', () => {
         expect(ctx.parseBulkFileText('أحمد,محمد;علي\nخالد')).toEqual(['أحمد', 'محمد', 'علي', 'خالد']);
     });
 
-    test('كلمة المرور 8 خانات: حرفان + 6 أرقام (شرط الخادم)', () => {
+    test('كلمة المرور 12 خانة: حرفان + 10 أرقام (شرط الخادم)', () => {
         for (let i = 0; i < 100; i += 1) {
             const password = ctx.generateBulkPassword();
             expect(password).toHaveLength(ctx.BULK_PASSWORD_LENGTH);
-            expect(password).toMatch(/^[a-z]{2}\d{6}$/);
+            expect(password).toMatch(/^[a-z]{2}\d{10}$/);
             expect(password).toMatch(/[a-z]/);
             expect(password).toMatch(/\d/);
         }
-        const seq = [0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99];
+        const seq = [0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99];
         let at = 0;
-        expect(ctx.generateBulkPassword(() => seq[at++])).toBe('zz999999');
+        expect(ctx.generateBulkPassword(() => seq[at++])).toBe('zz9999999999');
     });
 
     test('صيغ اسم المستخدم الأربعة + البادئة + لاحقة التعارض + سقف 30', () => {
@@ -121,7 +121,7 @@ describe('bulk-import — الحساب الخالص', () => {
         ];
         const roleNames = { employee: 'موظف', admin: 'مدير' };
         expect(ctx.bulkPreviewStats(rows)).toEqual({
-            total: 2, roles: 1, passwordLength: 8, uniqueUsernames: 2,
+            total: 2, roles: 1, passwordLength: 12, uniqueUsernames: 2,
         });
         expect(ctx.bulkToCopyText(rows)).toBe('1. Ahmad | ahmed1 | ab123456\n2. Mona | mona2 | cd654321');
         const csv = ctx.bulkToCsv([{ ...rows[0], name: 'A "B"' }], roleNames);

@@ -56,10 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { statusBadge } from '../status.js?v=4.9.132';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.132';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { statusBadge } from '../status.js?v=4.9.151';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.151';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.151';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -77,9 +77,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.132';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.132';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.132';
+} from '../data/attendance-repo.js?v=4.9.151';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.151';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -396,7 +396,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
         pageSize: 20,
         stickyHeader: true,
         emptyMessage: 'لا توجد سجلات في الفترة المحددة',
-        emptyHint: 'وسّع الفترة أو تحقق من صلاحية العرض.',
         rowKey: (row) => row.id,
         columns: [
             { key: 'employee', header: 'الموظف', sortable: true, filterable: true, render: employeeCell },
@@ -972,7 +971,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<h3 class="erp-card__title">مسح بطاقة موظف — تسجيل حضور/انصراف <span class="erp-eyebrow" dir="ltr" lang="en">Kiosk</span></h3>`
             + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
             + `<div class="erp-card__body erp-stack">`
-            + `<p class="erp-text-sm erp-text-muted">اطلب من الموظف توجيه بطاقته (QR) نحو الكاميرا. الخادم يحدد وحده: حضور أم انصراف، ويرفض البطاقة غير الصالحة أو المكتملة.</p>`
             + `<div class="erp-scan" id="v2att-scan" data-v2-scan-box></div>`
             + `<p class="erp-text-sm" data-v2-scan-msg role="status" aria-live="polite"></p>`
             + `<div><button type="button" class="erp-btn erp-btn--sm" data-v2-scan-again><i class="ji" data-i="camera" aria-hidden="true"></i><span>مسح بطاقة أخرى</span></button></div>`

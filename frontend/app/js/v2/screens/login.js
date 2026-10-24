@@ -33,9 +33,9 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.132';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.132';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.132';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.151';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.151';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.151';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -54,15 +54,17 @@ function template(canResume) {
     return `
       <div class="erp-login-wrap">
         <section class="erp-card erp-login-card" aria-labelledby="v2login-title">
-          <div class="erp-card__body erp-stack">
+          <header class="erp-login-hero">
+            <span class="erp-login-hero__eyebrow" dir="ltr" lang="en">AL SHURFA · ENTERPRISE</span>
             <div class="erp-login-brand">
               <img class="erp-login-logo" src="assets/al-shurfa-logo.png" alt="مطاعم الشرفة العالمي">
             </div>
             <h2 class="erp-login-title" id="v2login-title">تسجيل الدخول
               <span class="erp-eyebrow" dir="ltr" lang="en">Sign In</span>
             </h2>
-            <p class="erp-text-sm erp-text-muted erp-login-center">جلسة حقيقية على نفس خادم النظام —
-              لا حسابات تجريبية هنا.</p>
+            <p class="erp-login-hero__note">أدخل بيانات حسابك للوصول إلى مساحة العمل.</p>
+          </header>
+          <div class="erp-card__body erp-stack">
             <form data-v2-login-form novalidate>
               <div class="erp-field">
                 <label class="erp-label" for="v2login-user">اسم المستخدم
@@ -100,7 +102,7 @@ function template(canResume) {
                 <input class="erp-input erp-input--ltr" id="v2fp-code" data-v2-fp="code" type="text" inputmode="numeric" maxlength="6" placeholder="______" dir="ltr">
               </div>
               <div class="erp-field">
-                <label class="erp-label" for="v2fp-new">كلمة المرور الجديدة (8 حروف على الأقل مع حروف وأرقام)</label>
+                <label class="erp-label" for="v2fp-new">كلمة المرور الجديدة (12 حرفًا على الأقل مع حروف وأرقام)</label>
                 <input class="erp-input erp-input--ltr" id="v2fp-new" data-v2-fp="new" type="password" autocomplete="new-password" dir="ltr">
               </div>
               <div class="erp-field">
@@ -285,7 +287,7 @@ export function mountLoginScreen(host, ctx = {}) {
         if (!username || !code || !np) {fpFail('أكمل اسم المستخدم والرمز وكلمة المرور الجديدة'); return;}
         if (!/^\d{6}$/.test(code)) {fpFail('الرمز يتكون من 6 أرقام'); return;}
         if (np !== np2) {fpFail('كلمتا المرور غير متطابقتين'); return;}
-        if (np.length < 8 || !/[A-Za-z]/.test(np) || !/\d/.test(np)) {fpFail('الجديدة ضعيفة: 8 حروف على الأقل مع حرف ورقم'); return;}
+        if (np.length < 12 || !/[A-Za-z]/.test(np) || !/\d/.test(np)) {fpFail('الجديدة ضعيفة: 12 حرفًا على الأقل مع حرف ورقم'); return;}
         setBusy(true);
         fpFail('');
         try {

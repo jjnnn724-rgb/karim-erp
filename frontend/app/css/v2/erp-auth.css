@@ -1,15 +1,44 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   KARIM ERP — V2 Auth layer (Gate C) · v1.0.0
+   KARIM ERP — V2 Auth layer (Gate C) · v1.1.0
    ─────────────────────────────────────────────────────────────────────
-   Formal centered sign-in, same frozen language: erp-card, erp-field,
-   erp-btn, bilingual eyebrows. All colours --erp-* (dark mode inherited).
+   The sign-in card opens with the same petrol spine and brass rule as the
+   sidebar, then hands the form to porcelain. Same frozen language:
+   erp-card, erp-field, erp-btn, bilingual eyebrows. All colours resolve
+   from tokens, so the dark theme follows without a second palette.
    ═══════════════════════════════════════════════════════════════════════ */
 .erp-v2 .erp-login-wrap {
   display: flex;
   justify-content: center;
-  padding: var(--erp-space-7) var(--erp-space-3);
+  padding: var(--erp-space-6) var(--erp-space-3);
 }
-.erp-v2 .erp-login-card { inline-size: 100%; max-inline-size: 430px; }
+.erp-v2 .erp-login-card {
+  inline-size: 100%;
+  max-inline-size: 440px;
+  overflow: hidden;
+}
+
+/* ── Identity hero ───────────────────────────────────────────────────── */
+.erp-v2 .erp-login-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-6) var(--erp-space-5) var(--erp-space-5);
+  text-align: center;
+  color: var(--erp-sidebar-ink);
+  background:
+    radial-gradient(110% 130% at 50% -30%,
+      color-mix(in srgb, var(--erp-sidebar-accent) 26%, transparent) 0%,
+      transparent 62%),
+    var(--erp-sidebar-bg);
+  border-block-end: 2px solid var(--erp-brass);
+}
+.erp-v2 .erp-login-hero__eyebrow {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: .18em;
+  color: var(--erp-sidebar-accent);
+}
 .erp-v2 .erp-login-brand { display: flex; justify-content: center; }
 .erp-v2 .erp-login-logo {
   display: block;
@@ -19,20 +48,48 @@
   object-position: center;
 }
 .erp-v2 .erp-login-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   margin: 0;
   text-align: center;
   font-size: var(--erp-text-xl);
   font-weight: var(--erp-fw-bold);
-  color: var(--erp-text-primary);
+  color: var(--erp-sidebar-ink);
 }
-.erp-v2 .erp-login-title .erp-eyebrow { margin-block-start: 2px; }
+.erp-v2 .erp-login-title .erp-eyebrow {
+  margin-block-start: 2px;
+  color: var(--erp-sidebar-accent);
+}
+.erp-v2 .erp-login-hero__note {
+  margin: 0;
+  max-inline-size: 34ch;
+  font-size: var(--erp-text-sm);
+  line-height: var(--erp-leading-normal, 1.7);
+  color: var(--erp-sidebar-ink-2);
+}
+
+/* ── Form ────────────────────────────────────────────────────────────── */
+.erp-v2 .erp-login-card .erp-card__body {
+  padding-block: var(--erp-space-5);
+}
+/* Bilingual labels sit on one line: Arabic at the start, the English
+   eyebrow at the end. Stacked block eyebrows read as two labels. */
+.erp-v2 .erp-login-card .erp-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-login-card .erp-label .erp-eyebrow { font-size: 10px; }
 .erp-v2 .erp-login-center { text-align: center; }
 .erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
 .erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
 .erp-v2 .erp-login-submit {
   inline-size: 100%;
   justify-content: center;
-  min-block-size: 44px;
+  min-block-size: 46px;
 }
 .erp-v2 .erp-login-sep {
   display: flex;
@@ -49,3 +106,9 @@
   background: var(--erp-border);
 }
 .erp-v2 .erp-login-sep > span { padding-inline: var(--erp-space-1); }
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-login-wrap { padding: var(--erp-space-4) var(--erp-space-2); }
+  .erp-v2 .erp-login-hero { padding: var(--erp-space-5) var(--erp-space-4) var(--erp-space-4); }
+  .erp-v2 .erp-login-logo { block-size: 96px; }
+}

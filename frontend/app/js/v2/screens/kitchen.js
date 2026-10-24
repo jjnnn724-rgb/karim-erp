@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.132';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.151';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.132';
+} from '../data/kitchen-repo.js?v=4.9.151';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.132';
+} from '../signature.js?v=4.9.151';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -488,7 +488,6 @@ export function mountKitchenScreen(host, ctx = {}) {
         pageSize: 10,
         stickyHeader: true,
         emptyMessage: 'لا سياسات مخزنة',
-        emptyHint: 'قسم بلا سياسة يعني أن الباب لم يُضبط بعد — الوضع الافتراضي قرره الخادم لا هذه الشاشة.',
         rowKey: (row) => row.id,
         columns: [
             {

@@ -24,9 +24,9 @@
  *     convoy (dispatch approvals, 2026-10-13).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { statusBadge } from '../status.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { statusBadge } from '../status.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
 import {
     fetchBranches,
     createBranch,
@@ -34,7 +34,7 @@ import {
     deactivateBranch,
     reactivateBranch,
     validateBranch,
-} from '../data/branches-repo.js?v=4.9.132';
+} from '../data/branches-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -62,12 +62,6 @@ function template(writable) {
           </button>
         </div>
         <div class="erp-card__body erp-stack">
-          <p class="erp-text-muted erp-text-sm">
-            كل سجل (أمر بيع / مصروف / حضور / قيد) يُنسب إلى فرعه تلقائيًا لحظة
-            تسجيله. الإيقاف ليّن: السجلات التاريخية تبقى كما هي، والفرع الرئيسي
-            <strong>MAIN</strong> غير قابل للإيقاف.
-          </p>
-          ${writable ? '' : '<p class="erp-text-sm erp-text-muted">هذه الشاشة للقراءة فقط بصلاحيتك الحالية — الكتابة لمدير النظام.</p>'}
           <div data-v2-form hidden></div>
           <div data-v2-table></div>
         </div>

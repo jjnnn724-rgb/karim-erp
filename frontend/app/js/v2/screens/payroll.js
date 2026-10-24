@@ -7,20 +7,20 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.132';
-import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.132';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.151';
+import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.151';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.151';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
-import { ensureXlsx } from '../vendor.js?v=4.9.132';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
+} from '../data/payroll-suite.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
+import { ensureXlsx } from '../vendor.js?v=4.9.151';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -63,7 +63,7 @@ function template(canPost) {
         + '<input class="erp-input erp-input--ltr" type="month" data-v2-ded-month value="' + curMonth() + '" aria-label="شهر الخصومات">'
         + '<label class="erp-text-sm"><input type="checkbox" data-v2-ded-fri> استثناء الجمعة</label>'
         + '<button type="button" class="erp-btn erp-btn--sm" data-v2-ded-preview>معاينة</button>'
-        + '</div><div data-v2-ded-body><p class="erp-text-sm erp-text-muted">اختر الشهر واضغط «معاينة» — يُحسب التأخير والغياب من البصمات مع استبعاد أيام الإجازات المعتمدة.</p></div></div></section>'
+        + '</div><div data-v2-ded-body></div></div></section>'
         + '<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">السلف <span class="erp-text-muted erp-text-sm" data-v2-adv-count></span></h3></div>'
         + '<div class="erp-card__body erp-stack"><div data-v2-adv-form></div><div data-v2-adv-list></div></div></section>'
         + '<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">جزاءات وعلاوات الشهر</h3></div>'

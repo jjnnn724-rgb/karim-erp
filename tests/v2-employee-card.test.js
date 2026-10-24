@@ -417,7 +417,7 @@ describe('V2 employees screen — the card the كشف now paints', () => {
         const s = screen();
         expect(s).toMatch(/cardPayroll\(\{ salary: ex\.salary, lateMinutes: k\.lateMinutes, workDays: k\.workDays \}\)/);
         expect(s).toMatch(/صافي تقديري/);
-        expect(s).toMatch(/تقديري — الخصم المعتمد يُحتسب في كشف الرواتب\./);
+        expect(s).not.toMatch(/تقديري — الخصم المعتمد يُحتسب في كشف الرواتب\./);
     });
 
     test('one print call serves every paper mode — and only ONE mode rides it', () => {

@@ -152,6 +152,19 @@ describe('الإعدادات — عقد الشاشة', () => {
         expect(s).toContain('10 أحرف');
     });
 
+    test('تسجيل الوجه في V2 يعمل من الشاشة: كاميرا + مستودع، لا رسالة «قيد الربط»', () => {
+        const s = src();
+        expect(s).toMatch(/import \{ captureFace \} from '\.\.\/portal-face\.js\?v=/);
+        expect(s).toMatch(/import \{ enrollFaceV1, enrollFaceV2 \} from '\.\.\/data\/portal-repo\.js\?v=/);
+        expect(s).toMatch(/import \{ fetchEmployees \} from '\.\.\/data\/employees-repo\.js\?v=/);
+        expect(s).toContain('data-v2-pu-face-user');
+        expect(s).toContain('data-v2-pu-enroll');
+        expect(s).toMatch(/captureFace\(\{ title: `تسجيل وجه:/);
+        expect(s).toMatch(/enrollFaceV2\(userId, face\.images\)/);
+        expect(s).toMatch(/enrollFaceV1\(userId, face\.descriptors\)/);
+        expect(s).not.toContain('قيد الربط');
+    });
+
     test('بلا شبكة مباشرة ولا معالج سطري ولا حوار حاجب', () => {
         const s = src().replace(/\/\*[\s\S]*?\*\//g, '');
         expect(s).not.toMatch(/\bapiFetch\b/);

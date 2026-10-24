@@ -38,6 +38,7 @@ const SERVER = path.join(ROOT, 'backend', 'inventory-inquiry.js');
 const SERVER_JS = path.join(ROOT, 'backend', 'server.js');
 const PERMS = path.join(ROOT, 'backend', 'permissions.js');
 const ACCOUNTING = path.join(ROOT, 'backend', 'accounting-routes.js');
+const FINANCE = path.join(ROOT, 'backend', 'finance-routes.js');
 const DAILY = path.join(ROOT, 'backend', 'daily-report-service.js');
 const LEGACY = path.join(APP, 'js', 'features', 'inventory-inquiry.js');
 const ICONS = path.join(APP, 'js', 'icons.js');
@@ -157,8 +158,12 @@ describe('لا ازدواج تكلفة ولا مزج مصدرين', () => {
     test('قائمة الاستثناء المخزني/الجردي واحدة في الخدمات الثلاثة', () => {
         const inq = read(SERVER).match(/const STOCK_EXPENSE_TYPES = `\(([^)]*)\)`/)[1].replace(/\s/g, '');
         expect(inq).toBe(quoted);
-        // نفس القائمة الحرفية التي يستثنيها المحاسبة والتقرير اليومي — وإلا ضُوعفت التكلفة
-        expect(read(ACCOUNTING)).toContain(`NOT IN (${quoted})`);
+        // المحاسبة لم تعد تجمع المصروفات باستعلام خاص بها منذ توحيد أساس اللوحة
+        // (2026-10-24): تستدعي قائمة الدخل، وقائمة الدخل تحمل القائمة نفسها.
+        expect(read(ACCOUNTING)).toContain('buildPnlStatement');
+        const pnlList = read(FINANCE).match(/const STOCK_EXPENSE_TYPES = Object\.freeze\(\[([\s\S]*?)\]\);/)[1].replace(/\s/g, '');
+        expect(pnlList).toBe(quoted);
+        // نفس القائمة الحرفية التي يستثنيها التقرير اليومي — وإلا ضُوعفت التكلفة
         expect(read(DAILY)).toContain(`NOT IN (${quoted})`);
         // وفي باب الاستعلام تُستخدم عبر الثابت، لا نسخة مكتوبة داخل الـ SQL
         expect(read(SERVER)).toContain('NOT IN ${STOCK_EXPENSE_TYPES}');

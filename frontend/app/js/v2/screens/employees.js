@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.132';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.132';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.151';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.151';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.151';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,17 +81,17 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.132';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.132';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.132';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.132';
+} from '../data/employees-repo.js?v=4.9.151';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.151';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.151';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.151';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.132';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.132';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
+} from '../data/employee-card-repo.js?v=4.9.151';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.151';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1047,7 +1047,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${stat('ساعات تأخير', s.totalLateHours !== undefined ? String(s.totalLateHours) : '0')}
             ${Number(s.reviewDays) > 0 ? stat('قيد المراجعة', formatInt(s.reviewDays)) : ''}
           </div>
-          <p class="erp-text-sm erp-text-muted">الشهر الحالي — النطاق افتراضي من الخادم؛ الكشف الكامل والطباعة في شاشة الحضور.</p>`;
+          <p class="erp-text-sm erp-text-muted">الشهر الحالي</p>`;
         paintCardSummary(row, s);
     }
 
@@ -1093,8 +1093,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${raw('الأساسي', salaryText(pr.basic))}
             ${raw(`خصم تأخير (${formatInt(pr.deductionHours)} س)`, salaryText(pr.deduction))}
             ${raw('صافي تقديري', salaryText(pr.net))}
-          </div>
-          <p class="erp-text-sm erp-text-muted">تقديري — الخصم المعتمد يُحتسب في كشف الرواتب.</p>` : ''}`;
+          </div>` : ''}`;
     }
 
     /**

@@ -42,6 +42,7 @@ const {
     buildMonthlyComparison,
     buildMonthlyDetail,
     monthlyExpenseLedger,
+    renderMonthlyPrintHtml,
     renderMonthlyDetailPrintHtml,
     MONTHLY_DETAIL_ROW_CAP,
     monthWindowsInRange,
@@ -395,18 +396,23 @@ describe('مقارنة الشهور — الورقة المطبوعة بلا ط�
 
 describe('مقارنة الشهور — الباب الواحد والطباعة', () => {
     test('المستودع وحده يحمل المسارات؛ الشاشة لا تعرف الشبكة', () => {
-        expect(repo).toMatch(/import \{ apiFetch \} from '\.\.\/\.\.\/core\/api\.js/);
-        expect(repo).not.toMatch(/\bfetch\(/);
+        expect(repo).toMatch(/import \{ apiFetch, API_BASE \} from '\.\.\/\.\.\/core\/api\.js/);
+        expect(repo).toMatch(/async function fetchDocHtml/);
         expect(repo).toMatch(/apiFetch\(`\/finance\/monthly-comparison\$\{query \? `\?\$\{query\}` : ''\}`\)/);
         expect(repo).toMatch(/export function monthlyComparisonPrintUrl/);
         expect(repo).toMatch(/`\/api\/finance\/monthly-comparison\/print\$\{query \? `\?\$\{query\}` : ''\}`/);
 
-        expect(screen).not.toMatch(/apiFetch|core\/api\.js|fetch\(/);
+        expect(screen).not.toMatch(/apiFetch|core\/api\.js|\bfetch\(/);
         expect(screen).toMatch(/from '\.\.\/data\/monthly-comparison-repo\.js/);
     });
 
-    test('الطباعةُ عبر عارض V2 لا نافذةً خارجية', () => {
-        expect(screen).toMatch(/openInAppReport\('مقارنة الشهور', monthlyComparisonPrintUrl\(currentFilters\(\)\)\)/);
+    test('الطباعةُ عبر عارض V2 بنصٍّ موثَّق لا نافذةً خارجية', () => {
+        expect(screen).toMatch(/openPrintSheet/);
+        expect(screen).toMatch(/fetchMonthlyComparisonPrintHtml\(currentFilters\(\)\)/);
+        expect(screen).toMatch(/openInAppReport\(title\)/);
+        expect(screen).toMatch(/viewer\.document\.write\(html\)/);
+        expect(repo).toMatch(/export function fetchMonthlyComparisonPrintHtml/);
+        expect(repo).toMatch(/headers\.Authorization = `Bearer \$\{window\._jwt\}`/);
         expect(screen).not.toMatch(/target="_blank"/);
         expect(screen).not.toMatch(/href="\/api\//);
     });
@@ -607,6 +613,27 @@ describe('تفصيل الشهر — نقاطُ الخادم وبوابةُ pnl',
         expect(detailPrint).toMatch(/الحركة اليومية للكوست والمصروفات/);
     });
 
+    test('المستندان يحملان اللوجو والهوية ولا يكرّران الترويسة', () => {
+        const comparison = renderMonthlyPrintHtml([], {}, {
+            restaurantName: 'مطاعم الاختبار',
+            logo: 'data:image/png;base64,AAA',
+            from: '2026-09-01',
+            to: '2026-10-31',
+        });
+        const detail = renderMonthlyDetailPrintHtml(detailFixture(), {
+            restaurantName: 'مطاعم الاختبار',
+            logo: 'data:image/png;base64,AAA',
+        });
+        for (const html of [comparison, detail]) {
+            expect(html).toContain('data-v2-print-brand');
+            expect(html).toContain('class="logo"');
+            expect(html).toContain('data:image/png;base64,AAA');
+        }
+        expect(comparison).toContain('تحصيل الكاشيريات');
+        expect(comparison).not.toContain('يارا');
+        expect(monthlyPrint).not.toMatch(/window\.print/);
+    });
+
     test('الورقة A4 تهرب النص ولا تترك وسمًا حيًّا', () => {
         const hostile = detailFixture({
             inputs: {
@@ -645,8 +672,8 @@ describe('تفصيل الشهر — المستودع والدرج', () => {
         expect(screen).toMatch(/fetchMonthlyDetail/);
         expect(screen).toMatch(/data-v2-expenses-table/);
         expect(screen).toMatch(/caption: 'سطور المصروفات كما سُجّلت في الدفتر'/);
-        expect(screen).toMatch(/openInAppReport\(`قائمة \$\{monthLabel\(openMonthKey\)\}`/);
-        expect(screen).toMatch(/monthlyDetailPrintUrl\(openMonthKey, detailFilters\(\)\)/);
+        expect(screen).toMatch(/fetchMonthlyDetailPrintHtml\(openMonthKey, detailFilters\(\)\)/);
+        expect(screen).toMatch(/`قائمة \$\{monthLabel\(openMonthKey\)\}`/);
         expect(screen).toMatch(/detailTable\.destroy\(\)/);
     });
 
@@ -680,8 +707,8 @@ describe('مقارنة الشهور — واجهة الفترة والكاشير
         expect(screen).toMatch(/filters\.cashiers = cashiers/);
         expect(screen).toMatch(/fetchMonthlyComparison\(currentFilters\(\)\)/);
         expect(screen).toMatch(/fetchMonthlyDetail\(month, detailFilters\(\)\)/);
-        expect(screen).toMatch(/monthlyComparisonPrintUrl\(currentFilters\(\)\)/);
-        expect(screen).toMatch(/monthlyDetailPrintUrl\(openMonthKey, detailFilters\(\)\)/);
+        expect(screen).toMatch(/fetchMonthlyComparisonPrintHtml\(currentFilters\(\)\)/);
+        expect(screen).toMatch(/fetchMonthlyDetailPrintHtml\(openMonthKey, detailFilters\(\)\)/);
         expect(screen).toMatch(/detailCacheKey\(month\)/);
     });
 

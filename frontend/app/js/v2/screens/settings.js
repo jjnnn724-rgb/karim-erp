@@ -12,11 +12,14 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.132';
-import { formatInt } from '../data/reports-repo.js?v=4.9.132';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.132';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.132';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.132';
+import { canWrite } from '../session.js?v=4.9.151';
+import { formatInt } from '../data/reports-repo.js?v=4.9.151';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.151';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.151';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.151';
+import { captureFace } from '../portal-face.js?v=4.9.151';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.151';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.151';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -28,7 +31,7 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.132';
+} from '../data/settings-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -354,6 +357,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}
             paintPunch();
             loadPunchFacesBox();
+            loadFaceTargets();
             loadPunchDevicesBox();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -402,7 +406,11 @@ export function mountSettingsScreen(host, ctx = {}) {
             + (portalOn ? '<span style="color:var(--erp-success-text);font-weight:700">● الميزة مفعّلة — الموظفون يبصمون</span>' : '<span class="erp-text-sm erp-text-muted">● الميزة مغلقة</span>')
             + `</div>`
             + `<h4>تسجيل بصمة الوجه</h4><div data-v2-pu-faces><p class="erp-text-sm erp-text-muted">جارٍ التحميل…</p></div>`
-            + (isAdmin ? `<div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--sm" data-v2-pu-enroll>تسجيل الوجه بالكاميرا</button><span class="erp-text-sm erp-text-muted">يُخزن كأرقام فقط — لا صور.</span></div>` : '')
+            + (isAdmin ? `<div class="erp-dash-controls">`
+                + `<select class="erp-select" data-v2-pu-face-user aria-label="الموظف"><option value="">— اختر الموظف —</option></select>`
+                + `<button type="button" class="erp-btn erp-btn--sm" data-v2-pu-enroll>تسجيل الوجه بالكاميرا</button>`
+                + `<span class="erp-text-sm erp-text-muted">يُخزن كأرقام فقط — لا صور.</span></div>`
+                + `<p class="erp-text-sm" data-v2-pu-face-result role="status" aria-live="polite"></p>` : '')
             + `<h4>الأجهزة المربوطة</h4><div data-v2-pu-devices><p class="erp-text-sm erp-text-muted">جارٍ التحميل…</p></div>`
             + `<h4>سجل محاولات البصمة</h4>`
             + `<div class="erp-dash-controls"><select class="erp-select" data-v2-pu-filter><option value="">كل المحاولات</option><option value="rejected"${punchFilter === 'rejected' ? ' selected' : ''}>المرفوضة فقط</option><option value="accepted"${punchFilter === 'accepted' ? ' selected' : ''}>المقبولة فقط</option></select>`
@@ -454,6 +462,63 @@ export function mountSettingsScreen(host, ctx = {}) {
         } catch (e) {
             if (!el.isConnected) {return;}
             box.innerHTML = `<p class="erp-text-sm erp-text-muted">تعذر تحميل الوجوه: ${esc((e && e.message) || '')}</p>`;
+        }
+    }
+
+    /** قائمة الموظفين المرتبطين بحساب — نفس وجهة الكاميرا القديمة (mobile-shell :592). */
+    async function loadFaceTargets() {
+        const sel = el.querySelector('[data-v2-pu-face-user]');
+        if (!sel) {return;}
+        const cur = sel.value;
+        try {
+            const employees = await fetchEmployees();
+            if (!el.isConnected) {return;}
+            const targets = (Array.isArray(employees) ? employees : []).filter((e) => e && e.userId);
+            sel.innerHTML = '<option value="">— اختر الموظف —</option>'
+                + targets.map((e) => `<option value="${esc(String(e.userId))}">${esc(e.name || '')}${e.employeeId ? ` — ${esc(String(e.employeeId))}` : ''}</option>`).join('');
+            if (cur) {sel.value = cur;}
+        } catch (_) { /* القائمة اختيارية — الرسالة تظهر عند التسجيل بلا اختيار */ }
+    }
+
+    function faceEnrollMessage(saved) {
+        if (saved.v2 && saved.v1) {return 'تم تسجيل الوجه بالمحركين — البصمة جاهزة من أي كاميرا';}
+        if (saved.v2) {return 'تم تسجيل الوجه بالمحرك المتقدم' + (saved.v1Error ? ` (الأساسي: ${saved.v1Error})` : '');}
+        if (saved.v1) {return 'تم تسجيل الوجه بالمحرك الأساسي' + (saved.v2Error ? ` (المتقدم: ${saved.v2Error})` : '');}
+        return 'فشل التسجيل: ' + (saved.v2Error || saved.v1Error || 'لا لقطة صالحة');
+    }
+
+    /** تسجيل الوجه مزدوجًا — نفس خطوة القديم (saveFaceEnrollment) عبر مستودع V2. */
+    async function enrollFaceForTarget() {
+        const sel = el.querySelector('[data-v2-pu-face-user]');
+        const out = el.querySelector('[data-v2-pu-face-result]');
+        const btn = el.querySelector('[data-v2-pu-enroll]');
+        const put = (text, ok) => {
+            if (!out) {return;}
+            out.textContent = text;
+            out.className = `erp-text-sm ${ok ? 'erp-text-success' : 'erp-text-danger'}`;
+        };
+        const userId = Number(sel && sel.value);
+        if (!userId) {put('اختر الموظف أولًا', false); return;}
+        const name = (sel.selectedOptions && sel.selectedOptions[0] && sel.selectedOptions[0].textContent) || '';
+        if (btn) {btn.disabled = true; btn.textContent = 'افتح الكاميرا ووجّهها للوجه…';}
+        try {
+            const face = await captureFace({ title: `تسجيل وجه: ${name}`, target: 5, wantDescriptors: true });
+            const saved = { v2: false, v1: false };
+            if (face.images.length) {
+                try { await enrollFaceV2(userId, face.images); saved.v2 = true; }
+                catch (e) { saved.v2Error = (e && e.message) || 'فشل المحرك المتقدم'; }
+            }
+            if (face.descriptors.length) {
+                try { await enrollFaceV1(userId, face.descriptors); saved.v1 = true; }
+                catch (e) { saved.v1Error = (e && e.message) || 'فشل المحرك الأساسي'; }
+            }
+            if (!el.isConnected) {return;}
+            put(faceEnrollMessage(saved), saved.v2 || saved.v1);
+            if (saved.v2 || saved.v1) {loadPunchFacesBox();}
+        } catch (e) {
+            if ((e && e.message) !== 'FACE_CANCELLED') {put((e && e.message) || 'فشل التسجيل', false);}
+        } finally {
+            if (btn) {btn.disabled = false; btn.textContent = 'تسجيل الوجه بالكاميرا';}
         }
     }
 
@@ -1141,11 +1206,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-pu-enroll]')) {
-            if (typeof window.openFaceCameraForEnrollment !== 'function' || typeof window.saveFaceEnrollment !== 'function') {
-                say('تسجيل الوجه متاح من الشاشة الحالية (index) — الكاميرا غير مربوطة هنا بعد');
-                return;
-            }
-            say('تسجيل الوجه من هذه الشاشة قيد الربط — استخدم الشاشة الحالية مؤقتًا');
+            await enrollFaceForTarget();
             return;
         }
         const unf = event.target.closest('[data-v2-pu-unface]');

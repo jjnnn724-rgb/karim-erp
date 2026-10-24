@@ -51,11 +51,14 @@ describe('V2 cost-analysis layout', () => {
         expect(SCREEN).toContain('labels: chartRows.map((r) => r.name)');
     });
 
-    test('printing opens the server A4 document, never window.print', () => {
+    test('printing fetches the server A4 sheet with credentials, never window.print', () => {
         expect(SCREEN).not.toContain('window.print()');
-        expect(SCREEN).toContain("openInAppReport('تحليل التكاليف', costAnalysisPrintUrl(from, to))");
-        expect(REPO).toContain('export function costAnalysisPrintUrl(from, to)');
-        expect(REPO).toContain('/api/finance/cost-analysis/print');
+        expect(SCREEN).toContain('fetchCostAnalysisPrintHtml(');
+        expect(SCREEN).toContain("openInAppReport('تحليل التكاليف')");
+        expect(SCREEN).toContain('viewer.document.write(html)');
+        expect(REPO).toContain('export function fetchCostAnalysisPrintHtml(from, to)');
+        expect(REPO).toContain('/finance/cost-analysis/print');
+        expect(REPO).toContain("headers.Authorization = `Bearer ${window._jwt}`");
         expect(BACKEND).toContain("router.get('/cost-analysis/print'");
         expect(BACKEND).toContain('renderCostAnalysisPrintHtml');
         expect(BACKEND).toContain('data-v2-print-brand');
@@ -69,5 +72,15 @@ describe('V2 cost-analysis layout', () => {
         expect(STYLES).toContain('@media (max-width: 640px)');
         expect(STYLES).toContain('.erp-v2 .erp-v2-cost__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }');
         expect(STYLES).toContain('@media print');
+    });
+
+    test('the period band, metric rail and ranking bars are one system', () => {
+        expect(SCREEN).toContain('data-v2-range');
+        expect(SCREEN).toContain('data-v2-hero-grid');
+        expect(SCREEN).toContain('data-v2-register-total');
+        expect(SCREEN).toContain('class="erp-v2-cost__rank-bar"');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost__hero-grid {');
+        expect(STYLES).toContain('var(--erp-sidebar-bg)');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost__rank-bar > span');
     });
 });

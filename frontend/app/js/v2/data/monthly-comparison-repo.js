@@ -37,7 +37,7 @@
  * هامشًا. وهو الباب الوحيد للشبكة — الشاشة لا تعرف العنوان ولا الرؤوس.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.132';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.151';
 
 export const MONTHS_DEFAULT = 12;
 export const MONTHS_MIN = 1;
@@ -118,10 +118,36 @@ export async function fetchMonthlyComparison(filters) {
     return apiFetch(`/finance/monthly-comparison${query ? `?${query}` : ''}`);
 }
 
-/** رابط المستند المطبوع بنفس الفلاتر — يُمرَّر إلى عارض V2 لا إلى نافذة خارجية. */
+/** رابط المستند المطبوع بنفس الفلاتر. */
 export function monthlyComparisonPrintUrl(filters) {
     const query = monthlyComparisonQuery(filters);
     return `/api/finance/monthly-comparison/print${query ? `?${query}` : ''}`;
+}
+
+function authHeaders() {
+    const headers = {};
+    if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
+    return headers;
+}
+
+/** مستند HTML برؤوس المصادقة: قفزة iframe لا تحمل ترويسة، فيُسلَّم النص للعارض. */
+async function fetchDocHtml(url, failText) {
+    const path = String(url || '').replace(/^\/api/, '');
+    const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+    if (!res.ok) {
+        let msg = `${failText} (${res.status})`;
+        try {
+            const body = await res.clone().json();
+            if (body && (body.message || body.error)) {msg = body.message || body.error;}
+        } catch (_) { /* HTML error page — keep the generic text */ }
+        throw new Error(msg);
+    }
+    return res.text();
+}
+
+export function fetchMonthlyComparisonPrintHtml(filters) {
+    return fetchDocHtml(monthlyComparisonPrintUrl(filters), 'تعذر توليد مستند المقارنة');
 }
 
 /** مفتاح شهر صالح فقط — لا يُرسَل ما لا يطابق YYYY-MM. */
@@ -143,6 +169,10 @@ export function monthlyDetailPrintUrl(month, filters) {
     const key = normalizeMonthKey(month);
     const query = monthlyDetailQuery(filters);
     return `/api/finance/monthly-comparison/month/print?month=${encodeURIComponent(key)}${query ? `&${query}` : ''}`;
+}
+
+export function fetchMonthlyDetailPrintHtml(month, filters) {
+    return fetchDocHtml(monthlyDetailPrintUrl(month, filters), 'تعذر توليد قائمة الشهر');
 }
 
 const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',

@@ -10,11 +10,11 @@
  * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
-import { ensureXlsx } from '../vendor.js?v=4.9.132';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
-import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.132';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { ensureXlsx } from '../vendor.js?v=4.9.151';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.151';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -94,7 +94,6 @@ function template() {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-prev>السابق</button>
             <button type="button" class="erp-btn erp-btn--sm" data-v2-next>التالي</button>
             <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted">اضغط على أي بطاقة كاشير لعزل فواتيره</span>
           </div>
           <div data-v2-order></div>
         </div></section>

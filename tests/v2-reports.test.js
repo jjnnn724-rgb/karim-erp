@@ -524,7 +524,7 @@ describe('V2 reports screen + layer (source contract)', () => {
         const s = screen();
         expect(s).toMatch(/meta\.filters\.cashierId \?\? meta\.filters\.departmentId/);
         expect(s).toMatch(/scopeNote\.hidden = !echo/);
-        expect(s).toMatch(/هذا قراره، لا فلتر من هذه الشاشة/);
+        expect(s).toMatch(/النتيجة مقصورة على المعرّف/);
     });
 
     test('changing period or grouping costs exactly one reload and repaints only its segment', () => {
@@ -614,7 +614,7 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect((s.match(/window\.print\(\)/g) || []).length).toBe(0);
         expect((s.match(/openInAppReport\(/g) || []).length).toBe(1);
         expect(s).toMatch(/data-v2-print-note/);
-        expect(s).toMatch(/المطبوعة مستند A4 بهوية الشركة يعرض الفترة كاملة/);
+        expect(s).toMatch(/printNote\.textContent/);
         // المستند يحمل توقيعات وترويسة، والطباعة من شريط العارض وحده.
         expect(s).toMatch(/rp-sig/);
         expect(s).toMatch(/rp-foot/);

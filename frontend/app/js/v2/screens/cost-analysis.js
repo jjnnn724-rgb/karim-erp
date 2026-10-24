@@ -23,13 +23,13 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { barChart, donutChart } from '../charts.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { barChart, donutChart } from '../charts.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 import {
-    costAnalysisPrintUrl, fetchCostAnalysis, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.132';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
+    fetchCostAnalysis, fetchCostAnalysisPrintHtml, firstOfMonth, riyadhToday,
+} from '../data/finance-repo.js?v=4.9.151';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -52,6 +52,22 @@ function toneName(pct) {
     if (pct < 50) {return 'success';}
     if (pct < 75) {return 'warning';}
     return 'danger';
+}
+
+/** A department may hold revenue, cost, both, or neither. Calling a pure
+ *  cost centre «خاسر» would read as a loss when the company is profitable,
+ *  so the verdict names the centre itself unless both sides exist. */
+function verdict(row) {
+    const hasRev = num(row.rev) > 0;
+    const hasCost = num(row.exp) > 0;
+    if (hasRev && hasCost) {
+        return row.profit >= 0
+            ? { label: 'مربح', tone: 'success' }
+            : { label: 'خاسر', tone: 'danger' };
+    }
+    if (hasCost) {return { label: 'مركز تكلفة', tone: 'warning' };}
+    if (hasRev) {return { label: 'مركز إيراد', tone: 'brand' };}
+    return { label: 'بدون حركة', tone: 'neutral' };
 }
 
 function moneyCell(v, currency, signed = false) {
@@ -93,6 +109,7 @@ function template(from, to) {
       <section class="erp-card erp-v2-cost">
         <div class="erp-card__head">
           <div class="erp-v2-cost__heading">
+            <span class="erp-v2-cost__eyebrow" dir="ltr" lang="en">FINANCE · COST CONTROL</span>
             <h3 class="erp-card__title">تحليل التكاليف
               <span class="erp-eyebrow" dir="ltr" lang="en">Cost Analysis</span>
             </h3>
@@ -120,10 +137,16 @@ function template(from, to) {
         </div>
         <div class="erp-card__body erp-stack">
           <section class="erp-v2-cost__hero" data-v2-hero aria-label="المؤشرات الرئيسية">
-            ${statCard({ label: 'إجمالي الإيرادات', value: '—', note: ' ', icon: 'banknote', tone: 'brand' })}
-            ${statCard({ label: 'إجمالي التكاليف', value: '—', note: ' ', icon: 'wallet', tone: 'danger' })}
-            ${statCard({ label: 'صافي الربح', value: '—', note: ' ', icon: 'trending-up', tone: 'success' })}
-            ${statCard({ label: 'نسبة التكلفة', value: '—', note: ' ', icon: 'pie', tone: 'warning' })}
+            <div class="erp-v2-cost__hero-head">
+              <span class="erp-v2-cost__hero-kicker">ملخص الفترة</span>
+              <span class="erp-v2-cost__hero-range" data-v2-range></span>
+            </div>
+            <div class="erp-v2-cost__hero-grid" data-v2-hero-grid>
+              ${statCard({ label: 'إجمالي الإيرادات', value: '—', note: ' ', icon: 'banknote', tone: 'brand' })}
+              ${statCard({ label: 'إجمالي التكاليف', value: '—', note: ' ', icon: 'wallet', tone: 'danger' })}
+              ${statCard({ label: 'صافي الربح', value: '—', note: ' ', icon: 'trending-up', tone: 'success' })}
+              ${statCard({ label: 'نسبة التكلفة', value: '—', note: ' ', icon: 'pie', tone: 'warning' })}
+            </div>
           </section>
           <ul class="erp-kpis erp-v2-cost__kpis" data-v2-kpis></ul>
 
@@ -149,6 +172,7 @@ function template(from, to) {
           <section class="erp-v2-cost__register" aria-labelledby="v2cost-table-title">
             <div class="erp-v2-cost__register-head">
               <h4 id="v2cost-table-title">تفصيل التكاليف حسب القسم</h4>
+              <span class="erp-v2-cost__register-total" data-v2-register-total></span>
               <p data-v2-summary role="status" aria-live="polite" class="erp-text-sm erp-text-muted"></p>
             </div>
             <div data-v2-table></div>
@@ -162,7 +186,7 @@ function template(from, to) {
  * @param {{role?: string|null, notify?: (message:string, kind?:string)=>void}} [ctx]
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getTotals: ()=>object|null, destroy: ()=>void}}
  */
-export function mountCostAnalysisScreen(host, _ctx = {}) {
+export function mountCostAnalysisScreen(host, ctx = {}) {
     let rows = [];
     let categories = [];
     let currency = '';
@@ -172,7 +196,6 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
     host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
-    const heroEl = q('[data-v2-hero]');
     const kpisEl = q('[data-v2-kpis]');
     const mixEl = q('[data-v2-mix]');
     const rankEl = q('[data-v2-rank]');
@@ -211,7 +234,9 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             {
                 key: 'costRatio', header: 'نسبة التكلفة', type: 'number', sortable: true,
                 width: '120px', align: 'end', value: (row) => row.costRatio,
-                render: (row) => `<span class="erp-num ${costTone(row.costRatio)}" dir="ltr">${round1(row.costRatio)}%</span>`,
+                render: (row) => (num(row.rev) > 0
+                    ? `<span class="erp-num ${costTone(row.costRatio)}" dir="ltr">${round1(row.costRatio)}%</span>`
+                    : '<span class="erp-text-muted">—</span>'),
             },
             {
                 key: 'profit', header: 'صافي الربح', type: 'number', sortable: true,
@@ -221,7 +246,9 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             {
                 key: 'margin', header: 'هامش الربح', type: 'number', sortable: true,
                 width: '110px', align: 'end', value: (row) => row.margin,
-                render: (row) => `<span class="erp-num erp-text-muted" dir="ltr">${round1(row.margin)}%</span>`,
+                render: (row) => (num(row.rev) > 0
+                    ? `<span class="erp-num erp-text-muted" dir="ltr">${round1(row.margin)}%</span>`
+                    : '<span class="erp-text-muted">—</span>'),
             },
             {
                 key: 'rowCount', header: 'الحركات', type: 'number', sortable: true,
@@ -229,11 +256,12 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
                 render: (row) => `<span class="erp-num erp-text-muted" dir="ltr">${formatInt(row.rowCount)}</span>`,
             },
             {
-                key: 'status', header: 'التقييم', sortable: true, width: '110px', align: 'center',
+                key: 'status', header: 'التقييم', sortable: true, width: '120px', align: 'center',
                 value: (row) => row.profit,
-                render: (row) => (row.profit >= 0
-                    ? `<span class="erp-badge" data-tone="success">مربح</span>`
-                    : `<span class="erp-badge" data-tone="danger">خاسر</span>`),
+                render: (row) => {
+                    const v = verdict(row);
+                    return `<span class="erp-badge" data-tone="${v.tone}">${v.label}</span>`;
+                },
             },
         ],
     });
@@ -251,7 +279,13 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         const net = num(t.rev) - num(t.exp);
         const shareOfRev = num(t.rev) > 0 ? (num(t.exp) / num(t.rev)) * 100 : 0;
         const margin = num(t.rev) > 0 ? (net / num(t.rev)) * 100 : 0;
-        heroEl.innerHTML = [
+        const from = q('#v2cost-from').value || firstOfMonth();
+        const to = q('#v2cost-to').value || riyadhToday();
+        const rangeEl = q('[data-v2-range]');
+        if (rangeEl) {
+            rangeEl.innerHTML = `<span dir="ltr">${esc(from)}</span> ← <span dir="ltr">${esc(to)}</span>`;
+        }
+        q('[data-v2-hero-grid]').innerHTML = [
             statCard({
                 label: 'إجمالي الإيرادات',
                 value: moneyCell(t.rev, currency),
@@ -320,17 +354,26 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             .filter((row) => num(row.exp) > 0)
             .sort((a, b) => num(b.exp) - num(a.exp))
             .slice(0, 5);
+        const top = ranked.length ? num(ranked[0].exp) : 0;
         q('[data-v2-rank-note]').textContent = ranked.length ? `أعلى ${formatInt(ranked.length)}` : '';
         rankEl.innerHTML = ranked.length
-            ? ranked.map((row, index) => `
+            ? ranked.map((row, index) => {
+                const v = verdict(row);
+                const share = top > 0 ? Math.max(2, Math.min(100, (num(row.exp) / top) * 100)) : 0;
+                const ratio = num(row.rev) > 0
+                    ? `${round1(row.costRatio)}% من الإيراد`
+                    : 'مركز تكلفة';
+                return `
               <li class="erp-v2-cost__rank-row">
                 <span class="erp-v2-cost__rank-no" aria-hidden="true">${index + 1}</span>
                 <span class="erp-v2-cost__rank-body">
                   <span class="erp-v2-cost__rank-name">${esc(row.name)}</span>
-                  <span class="erp-v2-cost__rank-sub">${moneyText(row.exp, currency)} · ${round1(row.costRatio)}% من الإيراد</span>
+                  <span class="erp-v2-cost__rank-sub">${moneyText(row.exp, currency)} · ${ratio}</span>
+                  <span class="erp-v2-cost__rank-bar" aria-hidden="true"><span style="--rank:${round1(share)}%"></span></span>
                 </span>
-                <span class="erp-badge" data-tone="${row.profit >= 0 ? 'success' : 'danger'}">${row.profit >= 0 ? 'مربح' : 'خاسر'}</span>
-              </li>`).join('')
+                <span class="erp-badge" data-tone="${v.tone}">${v.label}</span>
+              </li>`;
+            }).join('')
             : '<li class="erp-v2-cost__rank-empty">لا تكاليف مسجلة في هذه الفترة</li>';
     }
 
@@ -342,6 +385,12 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
         paintKpis(t);
         paintMix(t);
         paintRank();
+        const totalEl = q('[data-v2-register-total]');
+        if (totalEl) {
+            totalEl.innerHTML = totals
+                ? `<span>إجمالي التكاليف</span><strong class="erp-num" dir="ltr">${moneyText(num(t.exp), currency)}</strong>`
+                : '';
+        }
 
         if (!rows.length) {
             chartsEl.innerHTML = '';
@@ -382,6 +431,22 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
 
         summaryEl.textContent = `${formatInt(rows.length)} قسمًا · ${from || firstOfMonth()} → ${to || riyadhToday()}`;
         table.setRows(rows);
+    }
+
+    async function printSheet(button) {
+        if (button) {button.disabled = true;}
+        try {
+            const html = await fetchCostAnalysisPrintHtml(
+                q('#v2cost-from').value, q('#v2cost-to').value,
+            );
+            const viewer = openInAppReport('تحليل التكاليف');
+            viewer.document.write(html);
+            viewer.document.close();
+        } catch (e) {
+            ctx.notify?.((e && e.message) || 'تعذر تجهيز المستند للطباعة', 'error');
+        } finally {
+            if (button && button.isConnected) {button.disabled = false;}
+        }
     }
 
     async function reload() {
@@ -442,9 +507,7 @@ export function mountCostAnalysisScreen(host, _ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-print]')) {
-            const from = q('#v2cost-from').value;
-            const to = q('#v2cost-to').value;
-            openInAppReport('تحليل التكاليف', costAnalysisPrintUrl(from, to));
+            printSheet(event.target.closest('[data-v2-print]'));
             return;
         }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}

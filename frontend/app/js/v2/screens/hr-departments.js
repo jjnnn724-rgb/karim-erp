@@ -4,15 +4,15 @@
  * (features/hr.js:695/:717/:725 — الكود يُولَّد لاتينيًا آمنًا إن كان عربيًا).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.132';
-import { formatInt } from '../data/reports-repo.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
-import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.151';
+import { formatInt } from '../data/reports-repo.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
+import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.151';
 import {
     HR_DEPARTMENT_WRITE_ROLES,
     validateHrDepartmentForm, createHrDepartment, updateHrDepartment, deleteHrDepartment,
-} from '../data/departments-write-repo.js?v=4.9.132';
+} from '../data/departments-write-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -26,9 +26,6 @@ function template(canManage) {
         + '</div>'
         + '<div class="erp-card__body erp-stack">'
         + '<p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>'
-        + (canManage
-            ? '<p class="erp-text-sm erp-text-muted">سجل أقسام الموارد مع عدّ الموظفين لكل قسم. الكتابة مفعّلة لهذه الجلسة.</p>'
-            : '<p class="erp-text-sm erp-text-muted">قراءة فقط — سجل أقسام الموارد مع عدّ الموظفين لكل قسم.</p>')
         + '<div data-v2-hrd-form></div>'
         + '<div data-v2-table></div></div></section>';
 }

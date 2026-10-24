@@ -198,6 +198,17 @@ describe('CFO — عقد الشاشة من المصدر', () => {
         expect(s).toMatch(/trial-balance_/);
     });
 
+    test('درج التسوية يعلن كل مستثنى — لا رقم يخرج من اللوحة بلا سطر', () => {
+        const s = src();
+        // المرآة/الدفتر والفرق وصفوف بلا قيد والمزدوجات المُلباة والبيع الخارجي
+        // والافتتاحي ويوم التحول — كلها أسطر، وحركات المخزون الداخلية كذلك:
+        // المستثنى من المصروفات يبقى مرقمًا حتى يُراجع، لا مختفيًا.
+        for (const key of ['mirror_revenue', 'ledger_revenue', 'difference', 'unposted_rows',
+            'voided_duplicates', 'external_revenue', 'pre_book_opening', 'cutover', 'inventory_moves']) {
+            expect(s).toContain(key);
+        }
+    });
+
     test('نسخة الوحدة الموحدة — لا stale خلف الكاش', () => {
         expect(REV).toBeTruthy();
         for (const f of [REPO, SCREEN]) {

@@ -72,18 +72,19 @@ describe('المستخدمون — مرآة الخادم', () => {
         expect(JSON.parse(calls[5].body)).toEqual({ username: 'k1' });
     });
 
-    test('قوة كلمة المرور مرآة jwt-middleware (8+ حرف+رقم)', () => {
+    test('قوة كلمة المرور مرآة jwt-middleware (12+ حرف+رقم)', () => {
         const ctx = loadEsm(REPO, {}, ['isStrongPasswordV2', 'validateUserForm']);
-        expect(ctx.isStrongPasswordV2('Abcd1234')).toBe(true);
-        expect(ctx.isStrongPasswordV2('12345678')).toBe(false);
-        expect(ctx.isStrongPasswordV2('Abcdefgh')).toBe(false);
+        expect(ctx.isStrongPasswordV2('Abcd12345678')).toBe(true);
+        expect(ctx.isStrongPasswordV2('Abcd1234')).toBe(false);
+        expect(ctx.isStrongPasswordV2('123456789012')).toBe(false);
+        expect(ctx.isStrongPasswordV2('Abcdefghijkl')).toBe(false);
         expect(ctx.isStrongPasswordV2('Ab1')).toBe(false);
-        expect(ctx.validateUserForm({ name: 'س', username: 'u', password: 'Abcd1234', role: 'cashier' }).ok).toBe(true);
+        expect(ctx.validateUserForm({ name: 'س', username: 'u', password: 'Abcd12345678', role: 'cashier' }).ok).toBe(true);
         expect(ctx.validateUserForm({ name: 'س', username: 'u', password: 'ضعيفة', role: 'cashier' }).errors)
-            .toContain('كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم');
+            .toContain('كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم');
         expect(ctx.validateUserForm({ name: 'س', username: 'u', role: 'cashier' }).errors)
             .toContain('كلمة المرور مطلوبة');
-        expect(ctx.validateUserForm({ name: 'س', username: 'u', password: 'Abcd1234', role: 'dept_head', dept_code: '' }).errors)
+        expect(ctx.validateUserForm({ name: 'س', username: 'u', password: 'Abcd12345678', role: 'dept_head', dept_code: '' }).errors)
             .toContain('اختر قسمًا واحدًا على الأقل لرئيس القسم');
         expect(ctx.validateUserForm({ name: 'س', role: 'cashier' }, { isEdit: true }).ok).toBe(true);
     });

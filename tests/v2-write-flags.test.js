@@ -4,8 +4,9 @@
  * عقد الإكمال (ص 80): كل كيان علمه المستقل، ولا يُفعَّل قبل عيّنة rollback.
  * المثبَّت: غياب العلم = لا أزرار كتابة؛ والـURL يغلب المخزّن؛ والخادم يبقى
  * الحاكم (الشاشات لا تستورد الكتابة إلا وراء الدور + العلم). الاستثناءات
- * المسجَّلة بطلب المالك — إضافة فاتورة شراء، ربط القسم بكاشيره، ودورة الوصفات —
- * ظاهرةٌ افتراضيًا بـ`=0` يُخفيها: العلم رسم، والقرار الأمني على الخادم.
+ * المسجَّلة بطلب المالك — إضافة فاتورة شراء، ربط القسم بكاشيره، دورة الوصفات،
+ * والبصمة الذاتية/الوجه — ظاهرةٌ افتراضيًا بـ`=0` يُخفيها: العلم رسم،
+ * والقرار الأمني على الخادم.
  */
 const fs = require('fs');
 const path = require('path');
@@ -32,7 +33,7 @@ const throwingStore = { getItem: () => { throw new Error('denied'); } };
 describe('write-flags — الافتراضي مغلق (باستثناء إضافات المالك)', () => {
     const ctx = loadFlags();
 
-    test('غياب الـURL والمخزّن = OFF للأعلام — عدا الأقسام-كاشير وإضافة الفواتير ودورة الوصفات', () => {
+    test('غياب الـURL والمخزّن = OFF للأعلام — عدا ما أظهره المالك', () => {
         expect(ctx.financeWriteEnabled('', null)).toBe(false);
         /* قرار المالك 2026‑10‑22: «في الوصفات مش عارف أضيف» ⇒ الأزرار ظاهرة افتراضيًا */
         expect(ctx.recipeWriteEnabled('', null)).toBe(true);
@@ -41,8 +42,9 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.shelfWriteEnabled('', null)).toBe(false);
         expect(ctx.weightWriteEnabled('', null)).toBe(false);
         expect(ctx.zkWriteEnabled('', null)).toBe(false);
-        expect(ctx.portalWriteEnabled('', null)).toBe(false);
-        expect(ctx.faceWriteEnabled('', null)).toBe(false);
+        /* قرار المالك 2026‑10‑24: «مفيش بصمة الوجه في v2 موجود في القديم» */
+        expect(ctx.portalWriteEnabled('', null)).toBe(true);
+        expect(ctx.faceWriteEnabled('', null)).toBe(true);
         expect(ctx.fiscalWriteEnabled('', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('', null)).toBe(false);
         /* قرار المالك 2026‑10‑20: «إضافة فواتير» وظيفة أساسية ⇒ ظاهرة افتراضيًا */
@@ -80,8 +82,9 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.faceWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.fiscalWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.financeWriteEnabled('', throwingStore)).toBe(false);
-        expect(ctx.portalWriteEnabled('', throwingStore)).toBe(false);
-        expect(ctx.faceWriteEnabled('', throwingStore)).toBe(false);
+        /* ظاهران افتراضيًا: تعذّر القراءة لا يُخفي البصمة (الحكم للخادم) */
+        expect(ctx.portalWriteEnabled('', throwingStore)).toBe(true);
+        expect(ctx.faceWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.fiscalWriteEnabled('', throwingStore)).toBe(false);
     });
 
@@ -123,8 +126,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.shelfWriteEnabled('?v2weightwrite=1&v2financewrite=1', null)).toBe(false);
         expect(ctx.weightWriteEnabled('?v2shelfwrite=1&v2recipewrite=1', null)).toBe(false);
         expect(ctx.zkWriteEnabled('?v2financewrite=1&v2shelfwrite=1&v2weightwrite=1', null)).toBe(false);
-        expect(ctx.portalWriteEnabled('?v2facewrite=1&v2zkwrite=1', null)).toBe(false);
-        expect(ctx.faceWriteEnabled('?v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
+        expect(ctx.portalWriteEnabled('?v2portalwrite=0&v2facewrite=1&v2zkwrite=1', null)).toBe(false);
+        expect(ctx.faceWriteEnabled('?v2facewrite=0&v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1&v2invoicecreate=0', null)).toBe(false);

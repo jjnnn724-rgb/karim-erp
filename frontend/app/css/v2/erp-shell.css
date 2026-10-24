@@ -41,27 +41,33 @@
   display: flex;
   align-items: center;
   gap: var(--erp-space-3);
-  min-height: 68px;
+  min-height: 72px;
   padding-inline: var(--erp-space-4);
   padding-block: var(--erp-space-2);
   border-block-end: 1px solid var(--erp-border);
   flex-shrink: 0;
 }
 
+/* The wordmark lockup is unreadable at 48px; the emblem alone sits on a
+   plaque the width of the sidebar spine. */
 .erp-shell__brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
   overflow: hidden;
-  border: 1px solid var(--erp-border);
-  border-radius: var(--erp-radius-lg);
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
   background: var(--erp-surface);
   color: var(--erp-text-inverse);
   flex-shrink: 0;
 }
 .erp-shell__brand-mark .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+/* `.ji { display:inline-block }` (design-tokens) outranks UA `[hidden]`, so
+   the fallback icon painted a stray "?" beside the plaque. */
+.erp-v2 .erp-shell__brand-mark [hidden] { display: none; }
 .erp-shell__brand-mark [data-v2-shell-logo] {
   width: 100%;
   height: 100%;
@@ -74,12 +80,23 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1.2;
+  line-height: 1.25;
 }
-.erp-shell__brand-text strong { font-size: var(--erp-text-md); font-weight: var(--erp-fw-bold); }
-.erp-shell__brand-text small  { font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
+.erp-shell__brand-text strong {
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: -.01em;
+}
+.erp-shell__brand-text small {
+  font-size: var(--erp-text-xs);
+  letter-spacing: .02em;
+  color: var(--erp-text-muted);
+}
 
-.erp-shell__drawer-close { display: none; }
+/* `.erp-v2 .erp-icon-btn` (0,2,0) outranks the bare class below, so the
+   drawer pair must be hidden at the same specificity or the burger and X
+   paint on desktop and squeeze the brand name. */
+.erp-v2 .erp-shell__drawer-close { display: none; }
 
 /* ── Nav ─────────────────────────────────────────────────────────────── */
 .erp-shell__nav {
@@ -216,7 +233,24 @@
   .erp-shell__header { background: var(--erp-surface); }
 }
 
-.erp-shell__drawer-open { display: none; }
+.erp-v2 .erp-shell__drawer-open { display: none; }
+
+/* One-line page name. The trail needs the width of several crumbs; a phone
+   has room for the current step only, so the header carries it instead of
+   showing a bare row of icons with no context. */
+.erp-shell__page-title {
+  display: none;
+  min-width: 0;
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+}
+
+/* The chart live region is appended to the shell root with no offsets, so
+   its static position lands past the inline edge and a 320px phone gets a
+   sideways scroll for one invisible pixel. */
+.erp-v2 > .erp-sr-only { inset-inline-start: 0; inset-block-start: 0; }
 
 /* ── Breadcrumbs ─────────────────────────────────────────────────────── */
 .erp-crumbs { flex: 1 1 auto; min-width: 0; }
@@ -438,6 +472,14 @@
 .erp-v2 .erp-shell__more .erp-server-info { white-space: normal; }
 .erp-shell__more-account .erp-btn { inline-size: 100%; justify-content: flex-start; }
 
+/* Page actions live in the toolbar on wide screens and in the control centre
+   on phones; they never render in both places at once. */
+.erp-v2 .erp-shell__more-tools { display: none; }
+.erp-v2 .erp-shell__more-tool-list .erp-btn {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
 /* ═══════════════ Responsive ═══════════════ */
 @media (max-width: 1024px) {
   .erp-shell,
@@ -460,8 +502,8 @@
 
   .erp-shell.is-drawer-open .erp-shell__sidebar { transform: translateX(0); }
 
-  .erp-shell__drawer-open,
-  .erp-shell__drawer-close { display: inline-flex; }
+  .erp-v2 .erp-shell__drawer-open,
+  .erp-v2 .erp-shell__drawer-close { display: inline-flex; }
 
   .erp-shell__scrim { display: block; }
 
@@ -472,6 +514,14 @@
 @media (max-width: 640px) {
   .erp-shell__brand-text small { display: none; }
   .erp-crumbs { display: none; }   /* breadcrumb trail is redundant on phones */
+  .erp-v2 .erp-shell__page-title { display: block; flex: 1 1 auto; }
+
+  /* A phone header is one line: menu, page name, then the four standing
+     controls. The refresh / classic-interface row was a second bar that ate
+     60px of every screen; those actions moved into the control centre. */
+  .erp-v2 .erp-toolbar { display: none; }
+  .erp-v2 .erp-shell__more-tools:not([hidden]) { display: flex; }
+
   .erp-shell__content {
     padding: var(--erp-space-3);
     /* The floating action button would sit on the last row otherwise. */

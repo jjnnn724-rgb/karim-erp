@@ -14,12 +14,12 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { canWrite } from '../session.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.132';
-import { ensureXlsx } from '../vendor.js?v=4.9.132';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { canWrite } from '../session.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.151';
+import { ensureXlsx } from '../vendor.js?v=4.9.151';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.151';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -29,7 +29,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.132';
+} from '../data/cfo-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -100,6 +100,15 @@ function template(canPost) {
           </div>
         </div>
         <div data-v2-kpis></div>
+        <section class="erp-card" data-v2-recon hidden><div class="erp-card__head">
+          <h3 class="erp-card__title">تسوية الدفتر مع يارسوفت
+            <span class="erp-eyebrow" dir="ltr" lang="en">Ledger parity</span>
+          </h3>
+          <span class="erp-grow"></span>
+          <span data-v2-recon-badge></span>
+        </div><div class="erp-card__body erp-stack">
+          <div data-v2-recon-body></div>
+        </div></section>
         <div data-v2-panel hidden></div>
         <section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title">ميزان المراجعة <span class="erp-eyebrow" dir="ltr" lang="en">Trial Balance</span></h3>
@@ -134,7 +143,7 @@ function template(canPost) {
           <input class="erp-input erp-input--ltr" type="date" value="${isoDay(0)}" data-v2-stmt-date aria-label="تاريخ القائمة">
           <button type="button" class="erp-btn erp-btn--sm" data-v2-balance>الميزانية العمومية</button>
           <button type="button" class="erp-btn erp-btn--sm" data-v2-cashflow>التدفق النقدي</button>
-        </div><div class="erp-card__body erp-stack"><div data-v2-stmt><p class="erp-text-sm erp-text-muted">اختر التاريخ ثم اعرض القائمة.</p></div></div></section>
+        </div><div class="erp-card__body erp-stack"><div data-v2-stmt></div></div></section>
         <section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title"><i class="ji" data-i="users" aria-hidden="true"></i> إغلاق ورديات الكاشير مركزيًا</h3>
           <span class="erp-grow"></span>
@@ -155,7 +164,7 @@ function template(canPost) {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-g="budgets">الموازنات</button>
             <button type="button" class="erp-btn erp-btn--sm" data-v2-g="alerts">سجل التنبيهات</button>
           </div>
-          <div data-v2-growth><p class="erp-text-sm erp-text-muted">اختر تقريرًا من الأزرار أعلاه.</p></div>
+          <div data-v2-growth></div>
         </div></section>
         ${canPost ? `<section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title"><i class="ji" data-i="banknote" aria-hidden="true"></i> ترحيل الرواتب</h3>
@@ -261,14 +270,47 @@ export function mountCfoScreen(host, ctx = {}) {
         if (!summary || !tb) {kpisEl.innerHTML = ''; return;}
         const s = summary;
         const money = (v) => moneyText(v);
+        const r = s.reconciliation || {};
+        const net = s.net_profit || { amount: s.net_approx || 0 };
+        const gross = s.gross_profit || { amount: 0 };
+        const parityTone = r.status === 'متوافق' ? TONE.green : TONE.red;
         kpisEl.innerHTML = kpiStrip([
-            { icon: 'banknote', label: 'الإيرادات', en: 'Revenue', html: money(s.revenue.total), color: TONE.green, hint: `${formatInt(s.revenue.count)} عملية` },
-            { icon: 'wallet', label: 'المصروفات', en: 'Expenses', html: money(s.expenses.total), color: TONE.red, hint: `${formatInt(s.expenses.count)} عملية` },
-            { icon: 'gem', label: 'الصافي', en: 'Net', html: money(s.net_approx), color: s.net_approx >= 0 ? TONE.green : TONE.red, hint: `إيراد − مصروف − رواتب مفتوحة ${formatMoney(s.payroll_open, currency).amount}` },
-            { icon: 'archive', label: 'النقدية', en: 'Cash', html: money(s.cash_position), color: TONE.blue, hint: `${formatInt(s.journal_entries)} قيدًا مرحّلًا` },
+            { icon: 'banknote', label: 'الإيرادات', en: 'Revenue', html: money(s.revenue.total), color: TONE.green, hint: `${formatInt(s.revenue.count)} حركة — صافي بلا ضريبة أو بيع خارجي` },
+            { icon: 'trending-up', label: 'مجمل الربح', en: 'Gross', html: money(gross.amount), color: TONE.green, hint: `بعد تكلفة المواد ${formatMoney(s.cogs ? s.cogs.net : 0, currency).amount} — هامش ${gross.margin_pct == null ? '—' : `${gross.margin_pct}%`}` },
+            { icon: 'wallet', label: 'المصروفات', en: 'Expenses', html: money(s.expenses.total), color: TONE.red, hint: `${formatInt(s.expenses.count)} سطرًا تشغيليًا — بلا صرف مخزون أو فروق جرد` },
+            { icon: 'gem', label: 'صافي الربح', en: 'Net', html: money(net.amount), color: net.amount >= 0 ? TONE.green : TONE.red, hint: `مجمل − فروق جرد − تشغيلية − رواتب (${formatMoney(s.payroll_open, currency).amount})` },
+            { icon: 'archive', label: 'النقدية', en: 'Cash', html: money(s.cash_position), color: TONE.blue, hint: `صندوق ${formatMoney((s.cash_ledger || {}).petty_cash, currency).amount} · بنك ${formatMoney((s.cash_ledger || {}).bank, currency).amount}` },
+            { icon: 'circle-check', label: 'تسوية الدفتر', en: 'Parity', html: `<span style="color:${parityTone}">${esc(r.status || '—')}</span>`, color: parityTone, hint: `فرق ${formatMoney(r.difference || 0, currency).amount} · ${formatInt(r.unposted_rows || 0)} صفًا بلا قيد` },
             { icon: 'receipt', label: 'فواتير POS', en: 'POS', html: money(s.pos.total), color: TONE.gold, hint: `${formatInt(s.pos.invoices)} فاتورة` },
-            { icon: 'scale', label: 'الميزان', en: 'TB', html: tb.balanced ? 'متوازن' : 'غير متوازن', color: tb.balanced ? TONE.green : TONE.red, hint: `مدين ${formatMoney(tb.total_debit, currency).amount} = دائن ${formatMoney(tb.total_credit, currency).amount}` },
+            { icon: 'scale', label: 'الميزان', en: 'TB', html: tb.balanced ? 'متوازن' : 'غير متوازن', color: tb.balanced ? TONE.green : TONE.red, hint: `${formatInt(s.journal_entries)} قيدًا مرحّلًا في الفترة` },
         ]);
+        paintRecon();
+    }
+
+    function paintRecon() {
+        const box = q('[data-v2-recon]');
+        const body = q('[data-v2-recon-body]');
+        const badge = q('[data-v2-recon-badge]');
+        if (!box || !body || !badge) {return;}
+        const r = (summary && summary.reconciliation) || null;
+        if (!r) {box.hidden = true; body.innerHTML = ''; badge.textContent = ''; return;}
+        const ok = r.status === 'متوافق';
+        box.hidden = false;
+        badge.innerHTML = `<span class="erp-badge" data-tone="${ok ? 'success' : 'danger'}">${esc(r.status || '—')}</span>`;
+        const row = (label, value, tone) => `<tr class="erp-tr"><td class="erp-td">${esc(label)}</td>`
+            + `<td class="erp-td erp-tnum" style="${tone ? `color:${tone}` : ''}" dir="ltr">${value}</td></tr>`;
+        const m = (v) => moneyText(v);
+        body.innerHTML = `<table class="erp-table__grid"><tbody>`
+            + row('إيراد المرآة (يهام الكاشير)', `${m(r.mirror_revenue)} · ${formatInt(r.mirror_rows)} صفًا`)
+            + row('المرحّل في الدفتر', `${m(r.ledger_revenue)} · ${formatInt(r.ledger_entries)} قيدًا`)
+            + row('الفرق', m(r.difference), ok ? TONE.green : TONE.red)
+            + row('صفوف بلا قيد', `${m(r.unposted_amount)} · ${formatInt(r.unposted_rows)} صفًا`, Number(r.unposted_rows) > 0 ? TONE.red : TONE.green)
+            + row('مزدوجات مُلغاة', `${m(r.voided_amount)} · ${formatInt(r.voided_duplicates)} قيدًا`)
+            + row('بيع خارجي (مُستثنى من القوائم)', `${m(r.external_revenue)} · ${formatInt(r.external_revenue_rows)} صفًا`)
+            + row('حركات مخزون داخلية (مُستثناة من المصروفات)', `${m((summary.inventory_moves || {}).amount)} · ${formatInt((summary.inventory_moves || {}).count)} حركة`)
+            + row('افتتاحي ما قبل الدفتر', `${m(r.pre_book_opening)} · ${formatInt(r.pre_book_months)} شهرًا`)
+            + row('بداية الترحيل اليومي', `<span dir="ltr">${esc(r.cutover || '—')}</span>`)
+            + `</tbody></table><p class="erp-text-sm erp-text-muted">${esc(r.note || '')}</p>`;
     }
 
     function paintTb() {
@@ -316,14 +358,24 @@ export function mountCfoScreen(host, ctx = {}) {
     function printSummary() {
         if (!summary) {return;}
         const s = summary;
+        const r = s.reconciliation || {};
         const kv = (k, v) => `<tr><td>${k}</td><td>${v}</td></tr>`;
         const m = (v) => { const x = formatMoney(v, currency); return `${x.amount}${x.hasUnit ? ` ${esc(x.unit)}` : ''}`; };
+        const pct = (v) => (v == null ? '—' : `${v}%`);
+        const profit = (o) => { const x = o || {}; return `${m(x.amount)} (${pct(x.margin_pct)})`; };
         printDoc('المدير المالي', `<table><tbody>`
-            + `${kv('الإيرادات', m(s.revenue.total))}${kv('المصروفات', m(s.expenses.total))}`
-            + `${kv('الصافي', m(s.net_approx))}${kv('النقدية', m(s.cash_position))}`
-            + `${kv('فواتير POS', `${m(s.pos.total)} (${s.pos.invoices})`)}`
-            + `${(s.top_expense_categories || []).map((c) => kv(`— ${esc(c.category)}`, m(c.total))).join('')}`
-            + `</tbody></table>`, `${q('[data-v2-from]').value} ← ${q('[data-v2-to]').value}`);
+            + kv('الإيرادات (أساس قائمة الدخل)', m(s.revenue.total))
+            + kv('تكلفة المواد', m((s.cogs || {}).net || 0))
+            + kv('مجمل الربح', profit(s.gross_profit))
+            + kv('فروق الجرد', m((s.shrinkage || {}).amount || 0))
+            + kv('المصروفات التشغيلية', m(s.expenses.total))
+            + kv('الرواتب', m(s.payroll_open))
+            + kv('صافي الربح', profit(s.net_profit))
+            + kv('النقدية (صندوق + بنك)', m(s.cash_position))
+            + kv('فواتير POS', `${m(s.pos.total)} (${s.pos.invoices})`)
+            + kv('تسوية الدفتر مع الكاشير', `${esc(r.status || '—')} — فرق ${m(r.difference || 0)} · ${Number(r.unposted_rows || 0)} صفًا بلا قيد`)
+            + (s.top_expense_categories || []).map((c) => kv(`— ${esc(c.category)}`, m(c.total))).join('')
+            + '</tbody></table>', `${q('[data-v2-from]').value} ← ${q('[data-v2-to]').value}`);
     }
 
     function printTb() {
@@ -389,7 +441,7 @@ export function mountCfoScreen(host, ctx = {}) {
             + `<input class="erp-input" data-v2-jl-memo placeholder="شرح القيد"></div>`
             + `<table class="erp-table__grid"><thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>`
             + `<tbody>${row(0)}${row(1)}${row(2)}${row(3)}</tbody></table>`
-            + `<p class="erp-text-sm erp-text-muted">اترك السطور الزائدة فارغة — يجب تساوي المدين والدائن. <span data-v2-jl-total></span></p>`
+            + `<p class="erp-text-sm erp-text-muted"><span data-v2-jl-total></span></p>`
             + `<div data-v2-panel-msg role="alert" class="erp-text-sm"></div>`
             + `<div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--sm" data-v2-jl-draft>حفظ كمسودة</button>`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-jl-post><i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ</span></button></div>`
@@ -730,6 +782,7 @@ export function mountCfoScreen(host, ctx = {}) {
             tbTable.setRows([]);
             journalTable.setRows([]);
             kpisEl.innerHTML = '';
+            paintRecon();
             say(e && e.message === 'UNAUTHORIZED'
                 ? 'انتهت الجلسة — سجّل الدخول في النظام الحالي ثم أعد فتح الوضع الحيّ.'
                 : (e && e.code === 'FORBIDDEN'

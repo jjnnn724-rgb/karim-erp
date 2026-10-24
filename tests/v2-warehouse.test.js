@@ -950,8 +950,8 @@ describe('V2 warehouse write surfaces + audit studio (source contract, W1-6)', (
 
     test('a quick receipt declares the deviation: no cost shown, the price is the user’s, and empty is refused', () => {
         const s = screen();
-        expect(s).toMatch(/في القديم كان السعر يُملأ تلقائيًا بآخر تكلفة مسجّلة؛/);
-        expect(s).toMatch(/هذه الشاشة لا تعرض التكلفة عمدًا، فاكتب السعر صراحةً/);
+        expect(s).not.toMatch(/في القديم كان السعر يُملأ تلقائيًا بآخر تكلفة مسجّلة؛/);
+        expect(s).not.toMatch(/هذه الشاشة لا تعرض التكلفة عمدًا، فاكتب السعر صراحةً/);
         expect(s).toMatch(/priceRaw === '' \|\| !Number\.isFinite\(price\) \|\| price < 0/);
         expect(s).toMatch(/والفراغ يُرفض معلنًا/);
         expect(s).toMatch(/notify\('أدخل كمية صحيحة'\)/);

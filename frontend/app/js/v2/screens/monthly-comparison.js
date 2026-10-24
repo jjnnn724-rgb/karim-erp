@@ -18,20 +18,20 @@
  *   بوابة الشاشة هي بوابة الخادم (admin|manager|accountant).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
-import { barChart, lineChart } from '../charts.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
+import { barChart, lineChart } from '../charts.js?v=4.9.151';
 import {
     fetchMonthlyComparison,
     fetchMonthlyDetail,
-    monthlyComparisonPrintUrl,
-    monthlyDetailPrintUrl,
+    fetchMonthlyComparisonPrintHtml,
+    fetchMonthlyDetailPrintHtml,
     normalizeDayKey,
     monthLabel,
     MONTHS_CHOICES,
     MONTHS_DEFAULT,
-} from '../data/monthly-comparison-repo.js?v=4.9.132';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.132';
+} from '../data/monthly-comparison-repo.js?v=4.9.151';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -242,7 +242,7 @@ function template() {
  * @param {{role?: string|null, notify?: (message:string, kind?:string)=>void}} [ctx]
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getData: ()=>object|null, destroy: ()=>void}}
  */
-export function mountMonthlyComparisonScreen(host, _ctx = {}) {
+export function mountMonthlyComparisonScreen(host, ctx = {}) {
     let data = null;
     let currency = '';
     let loading = false;
@@ -1039,6 +1039,19 @@ export function mountMonthlyComparisonScreen(host, _ctx = {}) {
     };
     document.addEventListener('keydown', onKey, true);
 
+    /* The sheet is fetched with credentials and handed to the viewer as text:
+       an iframe src jump carries no Authorization header and would 401. */
+    async function openPrintSheet(fetchHtml, title) {
+        try {
+            const html = await fetchHtml();
+            const viewer = openInAppReport(title);
+            viewer.document.write(html);
+            viewer.document.close();
+        } catch (e) {
+            ctx.notify?.((e && e.message) || 'تعذر تجهيز المستند للطباعة', 'error');
+        }
+    }
+
     el.addEventListener('click', (event) => {
         const w = event.target.closest('[data-v2-monthswin]');
         if (w) {
@@ -1071,13 +1084,21 @@ export function mountMonthlyComparisonScreen(host, _ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-panel-print]')) {
-            if (openMonthKey) {openInAppReport(`قائمة ${monthLabel(openMonthKey)}`, monthlyDetailPrintUrl(openMonthKey, detailFilters()));}
+            if (openMonthKey) {
+                openPrintSheet(
+                    () => fetchMonthlyDetailPrintHtml(openMonthKey, detailFilters()),
+                    `قائمة ${monthLabel(openMonthKey)}`,
+                );
+            }
             return;
         }
         if (event.target.closest('[data-v2-close]')) {closePanel(); return;}
         if (event.target.closest('[data-v2-scrim]')) {closePanel(); return;}
         if (event.target.closest('[data-v2-print-open]')) {
-            openInAppReport('مقارنة الشهور', monthlyComparisonPrintUrl(currentFilters()));
+            openPrintSheet(
+                () => fetchMonthlyComparisonPrintHtml(currentFilters()),
+                'مقارنة الشهور',
+            );
             return;
         }
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}

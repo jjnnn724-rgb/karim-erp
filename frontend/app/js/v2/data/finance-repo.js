@@ -35,7 +35,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.132';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.151';
 
 /** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;
@@ -89,18 +89,17 @@ export function costAnalysisPrintUrl(from, to) {
 }
 
 /**
- * The sheet itself, fetched with the same credentials as every other read.
+ * The sheets are fetched with the same credentials as every other read.
  * An iframe src jump carries no Authorization header, so the viewer receives
  * the HTML as text — exactly as the voucher and register sheets do.
  */
-export async function fetchCostAnalysisPrintHtml(from, to) {
+async function fetchSheetHtml(path, failText) {
     const headers = {};
     if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
     if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
-    const query = printQuery(from, to);
-    const res = await fetch(`${API_BASE}/finance/cost-analysis/print${query ? `?${query}` : ''}`, { headers });
+    const res = await fetch(`${API_BASE}${path}`, { headers });
     if (!res.ok) {
-        let msg = `تعذر توليد مستند التحليل (${res.status})`;
+        let msg = `${failText} (${res.status})`;
         try {
             const body = await res.clone().json();
             if (body && (body.message || body.error)) {msg = body.message || body.error;}
@@ -108,6 +107,25 @@ export async function fetchCostAnalysisPrintHtml(from, to) {
         throw new Error(msg);
     }
     return res.text();
+}
+
+export function fetchCostAnalysisPrintHtml(from, to) {
+    const query = printQuery(from, to);
+    return fetchSheetHtml(
+        `/finance/cost-analysis/print${query ? `?${query}` : ''}`,
+        'تعذر توليد مستند التحليل',
+    );
+}
+
+/** P&L sheet URL — same pair rule as fetchPnl (both or neither). */
+export function pnlPrintUrl(from, to) {
+    const query = printQuery(from, to);
+    return `/api/finance/pnl/print${query ? `?${query}` : ''}`;
+}
+
+export function fetchPnlPrintHtml(from, to) {
+    const query = printQuery(from, to);
+    return fetchSheetHtml(`/finance/pnl/print${query ? `?${query}` : ''}`, 'تعذر توليد قائمة الأرباح والخسائر');
 }
 
 /** Newest rows of one register — one page, for dashboards that show a short
