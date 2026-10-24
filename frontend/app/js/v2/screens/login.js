@@ -9,6 +9,11 @@
  *       dept_code?}, password_change_required? }
  *   → !ok or no access_token: { error, message } shown verbatim through
  *     SERVER_CODE_AR (core/api.js) with a fixed fallback — never a paraphrase.
+ *   → mfa_required / mfa_enrollment_required / webauthn_required carry a
+ *     short-lived mfa_token instead of a session (see webauthn-routes.js).
+ *     Passkey second factor: POST {mfa_token}/webauthn/login/options →
+ *     navigator.credentials.get() → POST .../login/verify → full session.
+ *     The password is still the first factor; a passkey never replaces it.
  *   Session semantics mirror doLogin exactly: access token in memory only
  *   (window._jwt), app key in memory (window._appKey), refresh token in
  *   localStorage['karim_rt_v1'] via KARIM_RTset (the owner's permanent-
@@ -33,9 +38,15 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.154';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.154';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.154';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.156';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.156';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.156';
+import {
+    isWebAuthnSupported,
+    toRequestOptions,
+    serializeAssertion,
+    describeWebAuthnError,
+} from '../data/webauthn-client.js?v=4.9.156';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -139,27 +150,39 @@ function template(canResume) {
               </div>
 
               <div data-v2-mfa-step="verify">
-                <div class="erp-field">
-                  <label class="erp-label" for="v2mfa-code">رمز المصادقة
-                    <span class="erp-eyebrow" dir="ltr" lang="en">6-digit code</span></label>
-                  <input class="erp-input erp-input--ltr erp-login-code" id="v2mfa-code"
-                         inputmode="numeric" autocomplete="one-time-code" maxlength="6"
-                         placeholder="••••••" dir="ltr">
+                <div data-v2-passkey-block hidden>
+                  <button type="button" class="erp-btn erp-btn--primary erp-login-submit" data-v2-passkey-login>
+                    <i class="ji" data-i="fingerprint" aria-hidden="true"></i>
+                    <span>الدخول بالبصمة / Face ID</span>
+                  </button>
+                  <p class="erp-text-xs erp-text-muted erp-login-center" data-v2-passkey-hint>
+                    سيطلب المتصفح تأكيد بصمتك أو Face ID.
+                  </p>
+                  <div class="erp-login-sep" data-v2-passkey-sep aria-hidden="true"><span>أو</span></div>
                 </div>
-                <div class="erp-field" data-v2-mfa-recovery hidden>
-                  <label class="erp-label" for="v2mfa-recovery-code">رمز الاسترداد</label>
-                  <input class="erp-input erp-input--ltr" id="v2mfa-recovery-code"
-                         type="text" autocomplete="off" spellcheck="false"
-                         placeholder="XXXXX-XXXXX" dir="ltr">
-                  <p class="erp-text-xs erp-text-muted">كل رمز يعمل مرة واحدة فقط.</p>
+                <div data-v2-totp-block>
+                  <div class="erp-field">
+                    <label class="erp-label" for="v2mfa-code">رمز المصادقة
+                      <span class="erp-eyebrow" dir="ltr" lang="en">6-digit code</span></label>
+                    <input class="erp-input erp-input--ltr erp-login-code" id="v2mfa-code"
+                           inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                           placeholder="••••••" dir="ltr">
+                  </div>
+                  <div class="erp-field" data-v2-mfa-recovery hidden>
+                    <label class="erp-label" for="v2mfa-recovery-code">رمز الاسترداد</label>
+                    <input class="erp-input erp-input--ltr" id="v2mfa-recovery-code"
+                           type="text" autocomplete="off" spellcheck="false"
+                           placeholder="XXXXX-XXXXX" dir="ltr">
+                    <p class="erp-text-xs erp-text-muted">كل رمز يعمل مرة واحدة فقط.</p>
+                  </div>
+                  <button type="button" class="erp-btn erp-btn--primary erp-login-submit" data-v2-mfa-verify>
+                    <span>تحقق ودخول</span>
+                  </button>
+                  <p class="erp-text-sm erp-login-center">
+                    <button type="button" class="erp-link" data-v2-mfa-recovery-toggle>أستخدم رمز استرداد</button>
+                  </p>
                 </div>
                 <div class="erp-error" data-v2-mfa-error role="alert"></div>
-                <button type="button" class="erp-btn erp-btn--primary erp-login-submit" data-v2-mfa-verify>
-                  <span>تحقق ودخول</span>
-                </button>
-                <p class="erp-text-sm erp-login-center">
-                  <button type="button" class="erp-link" data-v2-mfa-recovery-toggle>أستخدم رمز استرداد</button>
-                </p>
                 <p class="erp-text-sm erp-login-center">
                   <button type="button" class="erp-link" data-v2-mfa-back>رجوع لتسجيل الدخول</button>
                 </p>
@@ -264,7 +287,13 @@ export function mountLoginScreen(host, ctx = {}) {
         enroll: q('[data-v2-mfa-step="enroll"]'),
         codes: q('[data-v2-mfa-step="codes"]'),
     };
-    const mfaButtons = [q('[data-v2-mfa-verify]'), q('[data-v2-mfa-confirm]')].filter(Boolean);
+    const passkeyBlock = q('[data-v2-passkey-block]');
+    const totpBlock = q('[data-v2-totp-block]');
+    const passkeySep = q('[data-v2-passkey-sep]');
+    const passkeyBtn = q('[data-v2-passkey-login]');
+    const passkeyHint = q('[data-v2-passkey-hint]');
+    const mfaVerifyBtn = q('[data-v2-mfa-verify]');
+    const mfaButtons = [mfaVerifyBtn, q('[data-v2-mfa-confirm]'), passkeyBtn].filter(Boolean);
     let mfaToken = null;
     let recoveryMode = false;
     let pendingSession = null;
@@ -282,13 +311,39 @@ export function mountLoginScreen(host, ctx = {}) {
         mfaPane.hidden = false;
     }
 
-    function enterMfa(step, lede) {
+    /**
+     * @param {'verify'|'enroll'|'codes'} step
+     * @param {string} [lede]
+     * @param {{passkey?: boolean, totp?: boolean}} [options]
+     *   passkey = الحساب يملك جهازًا مسجّلًا، totp = الحساب يملك رمز تطبيق.
+     *   كلاهما معًا يعني طريقتين متاحتين، والافتراضي رمز التطبيق وحده.
+     */
+    function enterMfa(step, lede, options = {}) {
         passwordPane.hidden = true;
         mfaError.textContent = '';
         enrollError.textContent = '';
+        const wantsPasskey = options.passkey === true;
+        const totp = options.totp !== false;
+        const passkeyUsable = wantsPasskey && isWebAuthnSupported();
+        passkeyBlock.hidden = !passkeyUsable;
+        totpBlock.hidden = !totp;
+        passkeySep.hidden = !(passkeyUsable && totp);
+        if (mfaVerifyBtn) {mfaVerifyBtn.classList.toggle('erp-btn--primary', !passkeyUsable);}
+        if (passkeyUsable && passkeyHint) {
+            passkeyHint.textContent = totp
+                ? 'سيطلب المتصفح تأكيد بصمتك أو Face ID — أو استخدم رمز التطبيق بالأسفل.'
+                : 'سيطلب المتصفح تأكيد بصمتك أو Face ID على الجهاز المسجّل.';
+        }
+        if (wantsPasskey && !passkeyUsable) {
+            mfaError.textContent = totp
+                ? 'هذا المتصفح لا يدعم الدخول بالبصمة — أدخل رمز التطبيق بالأسفل.'
+                : 'هذا المتصفح لا يدعم الدخول بالبصمة — افتح النظام عبر HTTPS من عنوانه الرسمي، أو استخدم الجهاز الذي سجّلت عليه مفتاح المرور.';
+        }
         if (lede) {mfaLede.textContent = lede;}
         showMfaStep(step);
-        focusQuiet(step === 'enroll' ? enrollCodeInput : mfaCodeInput);
+        if (step === 'enroll') {focusQuiet(enrollCodeInput);}
+        else if (totp) {focusQuiet(mfaCodeInput);}
+        else if (passkeyUsable) {focusQuiet(passkeyBtn);}
     }
 
     function backToPassword(message) {
@@ -404,6 +459,64 @@ export function mountLoginScreen(host, ctx = {}) {
         }
     }
 
+    /**
+     * العامل الثاني بمفتاح مرور: الخادم يسلّم تحديًا، المتصفح يوقّعه
+     * بالبصمة/Face ID، والخادم يتحقق من التوقيع ثم يصدر الجلسة. التذكرة
+     * نفسها (5 دقائق) هي ما يربط الخطوتين — لا شيء يُخزَّن في المتصفح.
+     */
+    async function loginWithPasskey() {
+        if (busy) {return;}
+        if (!mfaToken) {
+            backToPassword('انتهت مهلة التحقق — أعد إدخال كلمة المرور.');
+            return;
+        }
+        setMfaBusy(true);
+        mfaError.textContent = '';
+        try {
+            if (!navigator.credentials || typeof navigator.credentials.get !== 'function') {
+                mfaError.textContent = 'هذا المتصفح لا يدعم الدخول بالبصمة — استخدم رمز التطبيق.';
+                return;
+            }
+            const { res, data } = await mfaPost('/auth/webauthn/login/options', {});
+            if (!res.ok || !data.options) {
+                if (ticketExpired(data)) {
+                    backToPassword('انتهت مهلة التحقق — أعد إدخال كلمة المرور.');
+                    return;
+                }
+                mfaError.textContent = serverMessage(data, 'تعذّر بدء التحقق بالجهاز — حاول مجددًا');
+                return;
+            }
+            let credential;
+            try {
+                credential = await navigator.credentials.get({ publicKey: toRequestOptions(data.options) });
+            } catch (e) {
+                mfaError.textContent = describeWebAuthnError(e);
+                return;
+            }
+            if (!credential) {
+                mfaError.textContent = 'لم يكتمل التحقق بالجهاز — أعد المحاولة.';
+                return;
+            }
+            const { res: verifyRes, data: verifyData } = await mfaPost(
+                '/auth/webauthn/login/verify', { response: serializeAssertion(credential) }
+            );
+            if (!verifyRes.ok || !verifyData.access_token) {
+                if (ticketExpired(verifyData)) {
+                    backToPassword('انتهت مهلة التحقق — أعد إدخال كلمة المرور.');
+                    return;
+                }
+                mfaError.textContent = serverMessage(verifyData, 'تعذّر التحقق من الجهاز — حاول مجددًا');
+                return;
+            }
+            publishAndEnter(verifyData);
+        } catch (e) {
+            mfaError.textContent = mfaNetworkError(e);
+        } finally {
+            if (el.isConnected) {setMfaBusy(false);}
+            else {busy = false;}
+        }
+    }
+
     async function submitEnrollment() {
         if (busy) {return;}
         const code = enrollCodeInput.value.trim();
@@ -490,10 +603,16 @@ export function mountLoginScreen(host, ctx = {}) {
             const data = await res.json().catch(() => ({}));
             // كلمة المرور صحيحة ⇢ عامل ثانٍ مطلوب. التذكرة قصيرة العمر ولا
             // تفتح أي واجهة برمجية أخرى — الجلسة تُصدر من خطوة التحقق فقط.
+            if (data && data.webauthn_required && data.mfa_token) {
+                mfaToken = data.mfa_token;
+                passInput.value = '';
+                enterMfa('verify', data.message, { passkey: true, totp: false });
+                return;
+            }
             if (data && data.mfa_required && data.mfa_token) {
                 mfaToken = data.mfa_token;
                 passInput.value = '';
-                enterMfa('verify', data.message);
+                enterMfa('verify', data.message, { passkey: data.webauthn_available === true, totp: true });
                 return;
             }
             if (data && data.mfa_enrollment_required && data.mfa_token) {
@@ -620,6 +739,7 @@ export function mountLoginScreen(host, ctx = {}) {
     });
 
     q('[data-v2-mfa-verify]')?.addEventListener('click', submitMfaCode);
+    q('[data-v2-passkey-login]')?.addEventListener('click', loginWithPasskey);
     q('[data-v2-mfa-confirm]')?.addEventListener('click', submitEnrollment);
     mfaCodeInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {e.preventDefault(); submitMfaCode();}

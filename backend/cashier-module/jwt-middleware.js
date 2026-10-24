@@ -24,6 +24,7 @@ const { encryptForVault } = require('../password-vault');
 const { pool } = require('./db-pool');
 const { updateUserContext } = require('../middleware/correlation');
 const { loadState: loadMfaState, mfaRequiredFor } = require('./mfa-store');
+const webauthnStore = require('./webauthn-store');
 
 // Known placeholder/template values from .env.example. These are PUBLIC
 // (shipped in the repo), so if a real deployment ends up using one of them
@@ -288,8 +289,10 @@ function publicUserOf(user) {
  */
 async function mfaGatePayload(user) {
     let state;
+    let passkeys;
     try {
         state = await loadMfaState(user.id);
+        passkeys = await webauthnStore.countCredentials(user.id);
     } catch (err) {
         const wrapped = new Error('MFA_STATE_UNAVAILABLE');
         wrapped.cause = err;
@@ -298,9 +301,22 @@ async function mfaGatePayload(user) {
     if (state && state.confirmedAt && state.secret) {
         return {
             mfa_required: true,
+            // مفتاح مرور مسجَّل يعطي بديلًا أسهل وأقوى من الرمز، لكنه لا
+            // يُلغي رمز التطبيق: كلاهما يقود إلى نفس تذكرة الـmfa.
+            webauthn_available: passkeys > 0,
             mfa_token: signMfaTicket(user, 'mfa'),
             user: publicUserOf(user),
-            message: 'أدخل رمز المصادقة الثنائية من تطبيق المصادقة.',
+            message: passkeys > 0
+                ? 'أكمل الدخول بالبصمة أو Face ID، أو أدخل رمز تطبيق المصادقة.'
+                : 'أدخل رمز المصادقة الثنائية من تطبيق المصادقة.',
+        };
+    }
+    if (passkeys > 0) {
+        return {
+            webauthn_required: true,
+            mfa_token: signMfaTicket(user, 'mfa'),
+            user: publicUserOf(user),
+            message: 'أكمل الدخول بالبصمة أو Face ID على الجهاز المسجّل.',
         };
     }
     if (mfaRequiredFor(user.role)) {

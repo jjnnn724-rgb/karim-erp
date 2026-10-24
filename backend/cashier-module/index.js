@@ -46,6 +46,10 @@ function register(app, opts = {}) {
     const mfaRoutes = require('./mfa-routes');
     mfaRoutes.register(app);
 
+    // مفاتيح المرور (WebAuthn): بصمة/Face ID بدل رمز التطبيق — نفس التذكرة.
+    const webauthnRoutes = require('./webauthn-routes');
+    webauthnRoutes.register(app);
+
     // الأجهزة والجلسات: عرض الجلسات النشطة وإبطال جهاز بعينه (البند ١٠).
     const sessionRoutes = require('./session-routes');
     sessionRoutes.register(app);

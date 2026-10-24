@@ -235,6 +235,16 @@
 }
 .erp-v2 .erp-login-codes + .erp-btn { margin-block-end: var(--erp-space-3); }
 
+/* ── مفاتيح المرور (بصمة / Face ID) ──────────────────────────────────── */
+/* The passkey button is the primary action when the account has a device;
+   the TOTP block stays visible underneath as the documented fallback. */
+.erp-v2 [data-v2-passkey-block] .erp-login-sep { margin-block: var(--erp-space-3); }
+.erp-v2 [data-v2-passkey-block] .erp-text-xs {
+  margin: var(--erp-space-2) 0 0;
+  line-height: var(--erp-leading-normal, 1.7);
+}
+.erp-v2 [data-v2-passkey-block] .ji { margin-inline-end: var(--erp-space-2); }
+
 @media (prefers-reduced-motion: reduce) {
   .erp-v2 [data-v2-mfa-pane] { animation: none; }
 }
@@ -264,4 +274,82 @@
   .erp-v2 .erp-v2-sessions .erp-card__head { align-items: stretch; }
   .erp-v2 .erp-v2-sessions .erp-card__head > .erp-grow { display: none; }
   .erp-v2 .erp-v2-sessions .erp-card__head > .erp-btn { flex: 1 1 auto; }
+}
+
+/* ── 8c. مفاتيح المرور (بصمة / Face ID) ─────────────────────────────────
+   نفس لغة بطاقة الجلسات: شرح لا يمتد بعرض الشاشة، وصفوف أجهزة مسطّحة،
+   ولوحة تأكيد الحذف داخل البطاقة نفسها (لا نافذة منبثقة ثانية). */
+.erp-v2 .erp-v2-passkeys .erp-card__body > .erp-text-sm {
+  max-inline-size: 62ch;
+  margin: 0;
+}
+.erp-v2 .erp-v2-passkeys .erp-card__head {
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-passkey-list {
+  display: grid;
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-v2 .erp-passkey-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 .erp-passkey-row__icon { color: var(--erp-brass-text); display: inline-flex; }
+.erp-v2 .erp-passkey-row__main {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-passkey-row__label {
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  overflow-wrap: anywhere;
+}
+.erp-v2 .erp-passkey-row__meta {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-passkey-row__actions {
+  display: flex;
+  gap: var(--erp-space-1);
+  margin-inline-start: auto;
+}
+.erp-v2 .erp-passkey-add {
+  display: grid;
+  gap: var(--erp-space-3);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: 1px solid var(--erp-border);
+}
+.erp-v2 .erp-passkey-add .erp-field,
+.erp-v2 [data-v2-passkey-remove-panel] .erp-field { margin: 0; }
+.erp-v2 .erp-passkey-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--erp-space-3);
+}
+.erp-v2 [data-v2-passkey-remove-panel] {
+  display: grid;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 [data-v2-passkey-remove-panel] .erp-text-sm { margin: 0; }
+@media (max-width: 640px) {
+  .erp-v2 .erp-passkey-grid { grid-template-columns: 1fr; }
+  .erp-v2 .erp-v2-passkeys .erp-card__head > .erp-grow { display: none; }
+  .erp-v2 .erp-v2-passkeys .erp-card__head > .erp-btn { flex: 1 1 auto; }
 }

@@ -1,51 +1,60 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   KARIM ERP — V2 IDENTITY · «بورسلين ونحاس»
+   KARIM ERP — V2 IDENTITY · «أونيكس وشامبانيا»
    ═══════════════════════════════════════════════════════════════════════
    A new visual identity for V2 ONLY. Legacy keeps its own palette because
    this sheet is never linked there and every rule is scoped to `.erp-v2`
    (plus the V2-owned body-mounted layers and the preview body, which
    already carry the token scope).
 
-   THE IDEA
-   ────────
-   The restaurant's menu board is warm paper and gold. The ERP should feel
-   like the ledger behind it — not a second, unrelated product:
-     · PORCELAIN canvas (warm, low-chroma) instead of cool grey.
-     · PETROL ink for actions: deep, quiet, unmistakably not the legacy
-       bronze. It also separates "brand" from "success" (green) and
-       "warning" (amber), which the old gold-on-gold palette blurred.
-     · BRASS is jewellery, not paint: focus rings, the active navigation
-       spine, KPI accents and the logo frame. It comes from the logo.
-     · COPPER is the data voice: charts and figures get their own colour,
-       so a chart never competes with the colour of the button beside it.
-     · A DEEP PETROL SIDEBAR in light mode. This is the single largest
-       identity move: the app reads as a bound ledger (dark spine, paper
-       pages) instead of another white admin template.
+   THE IDEA (2026-10-25 — اعتماد المستخدم: «أونيكس وذهب»)
+   ────────────────────────────────────────────────────────────────────────
+   ONE signature instead of a mix. The previous identity asked the reader
+   to hold three colour stories at once (porcelain warm + petrol/teal ink
+   + brass + copper + an indigo chart stop) and a second, dashboard-only
+   «identity» switcher re-branded half the screen — the user read the
+   result as لخبطة and approved a full re-identity plus deleting that
+   switcher. The new identity is a monochrome luxury system, the way a
+   five-star house prints its ledger:
+     · ONYX is the only ink. Espresso-black (#1C1710) owns every action:
+       primary buttons, active states, the FAB. One dark voice, no teal.
+     · CHAMPAGNE GOLD is jewellery, never paint: focus rings, the sidebar's
+       active spine, KPI icon chips, the login card's cap rule, charts.
+       It comes from the restaurant's gold mark — #A9821E light / #E2C274
+       dark, with a text-grade #7C5E0E for figures that must read ≥4.5.
+     · IVORY paper, not cream: canvas #F4F1EA sits clearly below the white
+       card so every sheet floats — the value ladder does the hierarchy.
+     · COPPER stays the data voice (#A05A26 light / #D9925A dark): a chart
+       never competes with the colour of the button beside it.
+     · An ESPRESSO SIDEBAR in both themes — near-black warm spine
+       (#16120D light / #0B0806 dark) with champagne active jewellery.
+     · Dark mode is TRUE ONYX: warm-black canvas #0B0907, the primary
+       button flips to a champagne fill with dark ink (the luxury CTA).
 
-   STUDIO GRADE (2026-10-22)
-   ─────────────────────────
-   The first cut was handsome but read "cream", not "professional": the
-   canvas (#F6F2EA) and the cards (#FFFDF8) were almost the same value, so
-   the whole page collapsed into one warm wash with no hierarchy — and the
-   KPI tiles wore a brass gradient that yellowed them. The fix is not a
-   new hue but a new ORDER OF VALUE:
-     · the canvas steps DOWN (#EFECE4) and the cards step UP (#FFFFFF),
-       so every card now floats on the page instead of dissolving into it;
-     · the petrol deepens one notch (#0B5A5F) — a heavier spine, a truer
-       ink for actions;
-     · a categorical chart ramp is introduced (petrol → copper → indigo →
-       olive → plum → slate), every stop ≥ 3:1 on both surfaces in both
-       themes, so charts are no longer a single grey-blue mush;
-     · brass keeps only the jewellery roles, and the tiles lose their
-       wash.
-   Measured again after the change (see CONTRAST below and
-   tests/v2-identity.test.js, which recomputes every number from this file).
+   MEASURED (WCAG 2.1 — نفس رياضيات tests/v2-identity.test.js، كلها ≥ الحد)
+   ────────────────────────────────────────────────────────────────────────
+     light  primary 18.49 · secondary 12.62 · muted 7.81 · faint 6.00
+            on the card; faint 5.32 on the canvas (the lowest in the UI).
+     dark   primary 16.26 · secondary 11.67 · muted 7.32 · faint 5.70.
+     sidebar light 16.54 / 12.29 / 8.18 / 6.45 · accent 9.33 · accent-text 13.79
+     sidebar dark  17.72 / 13.16 / 8.77 / 6.91 · accent 9.99 · accent-text 14.77
+     brand text 18.49 on card · white on onyx 17.81 · dark ink on
+     champagne 9.48 · focus 4.03 surface / 3.57 canvas (≥3).
+     brass text-grade 6.06 on card · 5.37 on canvas (jewellery brass stays
+     for ≥3:1 marks, 3.56). every status badge text ≥5.10 on its own tint.
+     every chart stop ≥ 3:1 on the card and on the canvas, both themes.
+   tests/v2-identity.test.js recomputes these from this file, so the sheet
+   cannot drift lighter than the numbers above without failing.
 
    HOW IT WORKS
    ────────────
    Two token layers, one file:
      1. PRIMITIVE  --erp-c-*   raw values, defined for light and redefined
-                               under [data-theme="dark"].
+                               under [data-theme="dark"]. The action-ink
+                               primitives keep the identity-internal names
+                               --erp-c-onyx* (this file is their only owner);
+                               every externally-consumed name — --erp-brass*,
+                               --erp-copper*, --erp-sidebar-*, --erp-c-* —
+                               keeps its exact published name.
      2. SEMANTIC   --erp-*     declared once, aliasing the primitives. CSS
                                resolves var() per element after the cascade,
                                so the dark block only swaps primitives and
@@ -53,41 +62,30 @@
    No component file is edited: components already read --erp-*, so they
    inherit the new identity from the names they already use. The few rules
    at the bottom are polish that needs a selector (the sidebar's local
-   token remap, the numeral face, the brass rule on the sign-in card).
-
-   CONTRAST
-   ────────
-   Every text pair below was measured before it was written (WCAG 2.1):
-     light  primary 17.72 · secondary 11.72 · muted 6.74 · faint 5.52
-            on the card; faint 4.68 on the canvas (the lowest in the UI).
-     dark   primary 15.59 · secondary 11.21 · muted 7.69 · faint 5.81.
-     sidebar 14.31 / 11.22 / 7.70 / 5.65 · accent 8.16 · accent-text 11.72.
-     brand text 10.40 on card · white on petrol 7.95 · focus 3.97 (≥3).
-     brass as text 6.77 on card (the jewellery brass stays for ≥3:1 marks).
-     every status badge text ≥5.10 on its own soft tint.
-     every chart stop ≥ 3:1 on the card and on the canvas, both themes.
-   tests/v2-identity.test.js recomputes these from this file, so the sheet
-   cannot drift lighter than the numbers above without failing.
+   token remap, the numeral face, the champagne rule on the sign-in card).
 
    ROLLBACK
    ────────
-   Remove the erp-identity.css <link>. Nothing else references this file,
-   and every declaration is a custom property or a V2-scoped override, so
-   deletion restores the pre-identity palette exactly.
+   Remove the erp-identity.css <link> (v2.html + cashier/index.html) and
+   the pre-identity palette returns exactly — nothing else references this
+   file, and every declaration is a custom property or a V2-scoped
+   override. (The removed dashboard white-label switcher is gone by user
+   decision; its data-brand block left erp-dashboard.css in the same pass.)
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── Faces ───────────────────────────────────────────────────────────
    One owner: css/v2/erp-fonts.css declares IBM Plex Sans Arabic
    (400/500/600/700 × arabic/latin), self-hosted from app/fonts/v2/.
-   This sheet used to add a Tajawal 800 display cut and an Outfit 600
-   numeral cut; both are gone. The institutional face carries Arabic copy,
-   English micro-labels and money digits itself, so the page does not
-   switch personality between a label and the number beside it. */
+   The identity keeps ONE institutional face on purpose — luxury here is
+   carried by the value ladder and the champagne jewellery, not by a
+   second personality switching between a heading and the number beside
+   it. This sheet declares no @font-face. */
 
 /* ═══════════ Layer 1 + 2 — palette and semantics (light) ═══════════ */
 /* body يدخل قائمة المضيفين لصفحة المعاينة فقط: هذه الورقة لا تُربط إلا
-   بـv2.html، وجسدُ تلك الصفحة خارجُ أي غلاف، فيرسمه erp-preview.css
-   بالكانفس الخزفية بدل رمادي الإرث. الرموز خاملةٌ حتى تُقرأ. */
+   بـv2.html وcashier/index.html، وجسدُ صفحة المعاينة خارجُ أي غلاف،
+   فيرسمه erp-preview.css بالكانفس العاجية بدل رمادي الإرث. الرموز
+   خاملةٌ حتى تُقرأ. */
 .erp-v2,
 .erp-fab-host,
 .erp-offline-bar,
@@ -95,39 +93,40 @@
 .erp-preview-banner,
 body {
   /* ── Primitives ─────────────────────────────────────────────────── */
-  /* درجة الاستوديو: الورقة أعمق قليلًا من أبيض البطاقة، فالورقة تُقرأ
-     مسطّحة والبطاقة تقفز عليها. في النسخة الأولى كان الاثنان warms بلا
-     فرق محسوس (#F6F2EA مقابل #FFFDF8) فبدا كل شيء عجينةً واحدة بلا
-     تدرّج هرمي — وهذا ما يجعل اللوحة تُقرأ "رخيصة" لا "محترفة". */
-  --erp-c-canvas:        #EFECE4;
+  /* سلّم القيم هو التسلسل الهرمي: الورقة (#F4F1EA) تحت البطاقة البيضاء
+     بوضوحٍ محسوس، فكل بطاقة تعوم بدل أن تذوب. في الهوية السابقة كان
+     الفارق كريميًّا خفيًّا؛ هنا خطوةُ قيمةٍ مقصودة. */
+  --erp-c-canvas:        #F4F1EA;
   --erp-c-surface:       #FFFFFF;
   --erp-c-raised:        #FFFFFF;
-  --erp-c-sunken:        #E7E3D8;
-  --erp-c-hover:         #F5F3EE;
-  --erp-c-active:        #EBE7DD;
-  --erp-c-line:          #E2DED3;
-  --erp-c-line-strong:   #CCC6B6;
+  --erp-c-sunken:        #EAE5DA;
+  --erp-c-hover:         #F6F3EC;
+  --erp-c-active:        #ECE8DD;
+  --erp-c-line:          #E3DED1;
+  --erp-c-line-strong:   #CDC6B4;
 
-  --erp-c-ink:           #111A18;
-  --erp-c-ink-2:         #2D3B37;
-  --erp-c-ink-muted:     #4F5F59;
-  --erp-c-ink-faint:     #5D6C66;  /* 5.52 card · 4.68 canvas */
+  --erp-c-ink:           #17130E;
+  --erp-c-ink-2:         #39322A;
+  --erp-c-ink-muted:     #5A5142;
+  --erp-c-ink-faint:     #6C6250;  /* 6.00 card · 5.32 canvas */
 
-  --erp-c-petrol:        #0B5A5F;
-  --erp-c-petrol-hover:  #106E74;
-  --erp-c-petrol-active: #07484C;
-  --erp-c-petrol-text:   #0A474C;
+  /* الأونيكس: حبرُ الفعل الوحيد. كلُّ زرٍّ وكل حالةٍ نشطة من عائلةٍ
+     espresso سوداء واحدة — بلا تركوازٍ ولا أزرق يزاحمها. */
+  --erp-c-onyx:          #1C1710;
+  --erp-c-onyx-hover:    #2E2718;
+  --erp-c-onyx-active:   #0F0C08;
+  --erp-c-onyx-text:     #17130E;
 
-  --erp-c-brass:         #A9761B;
-  --erp-c-brass-text:    #7A5410;  /* 6.77 card · 5.73 canvas */
-  --erp-c-brass-bright:  #D9B266;
-  --erp-c-brass-soft:    rgba(169, 118, 27, .12);
-  --erp-c-brass-line:    rgba(169, 118, 27, .30);
+  --erp-c-brass:         #A9821E;  /* 3.56 card — مجوهرات لا نصوص */
+  --erp-c-brass-text:    #7C5E0E;  /* 6.06 card · 5.37 canvas */
+  --erp-c-brass-bright:  #E0BC5C;
+  --erp-c-brass-soft:    rgba(169, 130, 30, .12);
+  --erp-c-brass-line:    rgba(169, 130, 30, .30);
 
-  /* النحاس: لون البيانات. البترول يقول "افعل" والنحاس يقول "انظر" — ثم
-     تبقى الرسوم مستقلة عن لون الفعل فلا تتزاحم معه. */
-  --erp-c-copper:        #B4632A;
-  --erp-c-copper-text:   #8A4A1C;
+  /* النحاس: لون البيانات. الأونيكس يقول "افعل" والنحاس يقول "انظر" —
+     ثم تبقى الرسوم مستقلة عن لون الفعل فلا تتزاحم معه. */
+  --erp-c-copper:        #A05A26;
+  --erp-c-copper-text:   #7E4419;
 
   --erp-c-success:       #0F7A57;
   --erp-c-success-text:  #0A5B41;
@@ -142,26 +141,26 @@ body {
 
   --erp-c-inverse:       #FFFFFF;
   --erp-c-highlight:     rgba(255, 255, 255, .75);
-  --erp-c-brand-shadow:  rgba(11, 90, 95, .24);
-  --erp-c-plaque-line:   rgba(217, 178, 102, .45);
+  --erp-c-brand-shadow:  rgba(23, 19, 14, .26);
+  --erp-c-plaque-line:   rgba(224, 188, 92, .50);
 
-  /* Sidebar primitives — a petrol spine in BOTH themes. */
-  --erp-c-sidebar:          #0A2422;
+  /* Sidebar primitives — an espresso spine in BOTH themes. */
+  --erp-c-sidebar:          #16120D;
   --erp-c-sidebar-line:     rgba(255, 255, 255, .10);
   --erp-c-sidebar-line-2:   rgba(255, 255, 255, .20);
-  --erp-c-sidebar-ink:      #F4F0E5;
-  --erp-c-sidebar-ink-2:    #CDD9D2;
-  --erp-c-sidebar-muted:    #A6B6AE;
-  --erp-c-sidebar-faint:    #8B9C94;
+  --erp-c-sidebar-ink:      #F5F1E8;
+  --erp-c-sidebar-ink-2:    #D9D1C1;
+  --erp-c-sidebar-muted:    #B5AB94;
+  --erp-c-sidebar-faint:    #A2977F;
   --erp-c-sidebar-hover:    rgba(255, 255, 255, .06);
   --erp-c-sidebar-active:   rgba(255, 255, 255, .11);
   --erp-c-sidebar-accent:   #D9B266;
-  --erp-c-sidebar-paper:    #F1D8A4;
+  --erp-c-sidebar-paper:    #F0DCAB;
   --erp-c-sidebar-wash:     rgba(217, 178, 102, .15);
   --erp-c-sidebar-success:  #6EE7A8;
-  --erp-c-sidebar-info:     #7CB8FF;  /* روابط/تركيز على العمود البترولي — درجة الداكن الساطعة */
-  --erp-c-sidebar-plaque:   #FAF7F1;
-  --erp-c-sidebar-plaque-ink: #0A474C;
+  --erp-c-sidebar-info:     #7CB8FF;  /* روابط/تركيز على العمود الأسود — درجة الداكن الساطعة */
+  --erp-c-sidebar-plaque:   #FAF6EC;
+  --erp-c-sidebar-plaque-ink: #17130E;
 
   /* ── Semantic surfaces ──────────────────────────────────────────── */
   --erp-background:        var(--erp-c-canvas);
@@ -185,23 +184,23 @@ body {
   --erp-border-subtle:     var(--erp-c-line);
   --erp-border-strong:     var(--erp-c-line-strong);
 
-  /* ── Focus: brass, never the brand fill (≥3:1 on both surfaces) ── */
+  /* ── Focus: champagne, never the brand fill (≥3:1 on both surfaces) ── */
   --erp-focus-ring:        var(--erp-c-brass);
   --erp-focus-ring-width:  2px;
   --erp-focus-ring-offset: var(--erp-surface);
 
   /* ── Brand ─────────────────────────────────────────────────────── */
-  --erp-brand:             var(--erp-c-petrol);
-  --erp-brand-hover:       var(--erp-c-petrol-hover);
-  --erp-brand-active:      var(--erp-c-petrol-active);
-  --erp-brand-text:        var(--erp-c-petrol-text);
+  --erp-brand:             var(--erp-c-onyx);
+  --erp-brand-hover:       var(--erp-c-onyx-hover);
+  --erp-brand-active:      var(--erp-c-onyx-active);
+  --erp-brand-text:        var(--erp-c-onyx-text);
   --erp-brand-soft:        color-mix(in srgb, var(--erp-brand) 12%, transparent);
   --erp-brand-soft-hover:  color-mix(in srgb, var(--erp-brand) 18%, transparent);
   --erp-primary:           var(--erp-brand);
   --erp-primary-soft:      var(--erp-brand-soft);
   --erp-brand-shadow:      var(--erp-c-brand-shadow);
 
-  /* ── Brass (identity accent — not the action colour) ───────────── */
+  /* ── Champagne (identity accent — not the action colour) ──────── */
   --erp-brass:             var(--erp-c-brass);
   --erp-brass-text:        var(--erp-c-brass-text);
   --erp-brass-bright:      var(--erp-c-brass-bright);
@@ -215,16 +214,16 @@ body {
   --erp-copper-soft:       color-mix(in srgb, var(--erp-copper) 12%, transparent);
 
   /* ── Chart ramp ─────────────────────────────────────────────────── */
-  /* سُلَّم فئويٌّ للرسوم: بترولٌ أولًا (لأن البترول لونُ الهوية)، ثم
-     نحاسٌ وإ Indigo وزيتوني وبلوري ورمادي. كل درجة ≥ 3:1 على السطح
-     والكانفس في الوضعين ((non-text contrast) 1.4.11) — وال между كل
-     درجتين فرقٌ في الدرجة اللونية لا في السطوع وحده. */
-  --erp-chart-1:           var(--erp-c-petrol);
+  /* سُلَّم فئويٌّ دافئ: أونيكسٌ أولًا (حبرُ الهوية)، ثم ذهبيٌّ عميق ونحاس
+     ونبيذي وزيتوني ورمادي دخاني. كل درجة ≥ 3:1 على السطح والكانفس في
+     الوضعين (non-text contrast 1.4.11) — وبين كل درجتين فرقٌ في الدرجة
+     اللونية لا في السطوع وحده. */
+  --erp-chart-1:           var(--erp-c-ink);
   --erp-chart-2:           var(--erp-c-copper);
-  --erp-chart-3:           #3B4E8F;
-  --erp-chart-4:           #6B7A2E;
-  --erp-chart-5:           #8E3F63;
-  --erp-chart-6:           #4A5A66;
+  --erp-chart-3:           #8F6E14;
+  --erp-chart-4:           #713A4B;
+  --erp-chart-5:           #5C6528;
+  --erp-chart-6:           #55606A;
   --erp-chart-track:       var(--erp-c-sunken);
   --erp-chart-grid:        var(--erp-c-line);
   --erp-chart-label:       var(--erp-c-ink-faint);
@@ -288,8 +287,8 @@ body {
   --erp-sidebar-plaque-line: var(--erp-plaque-line);
   --erp-sidebar-plaque-ink:  var(--erp-c-sidebar-plaque-ink);
 
-  /* Dashboard accents use brass, not the action petrol. The text-grade
-     brass is darker than the jewellery brass: it lands on 11px figures. */
+  /* Dashboard accents use the text-grade champagne, never the raw
+     jewellery brass: it lands on 11px figures. */
   --erp-dash-accent-text: var(--erp-brass-text);
 }
 
@@ -300,45 +299,48 @@ body {
 [data-theme="dark"] .erp-pal-backdrop,
 [data-theme="dark"] .erp-preview-banner,
 [data-theme="dark"] body {
-  --erp-c-canvas:        #08110F;
-  --erp-c-surface:       #0E1B18;
-  --erp-c-raised:        #14241F;
-  --erp-c-sunken:        #060D0B;
-  --erp-c-hover:         #132420;
-  --erp-c-active:        #192D27;
+  --erp-c-canvas:        #0B0907;
+  --erp-c-surface:       #151210;
+  --erp-c-raised:        #1C1814;
+  --erp-c-sunken:        #070505;
+  --erp-c-hover:         #1B1713;
+  --erp-c-active:        #241E18;
   --erp-c-line:          rgba(255, 255, 255, .09);
   --erp-c-line-strong:   rgba(255, 255, 255, .18);
 
-  --erp-c-ink:           #EDF2EE;
-  --erp-c-ink-2:         #C4D1CA;
-  --erp-c-ink-muted:     #9EAFA7;
-  --erp-c-ink-faint:     #869890;
+  --erp-c-ink:           #F3EFE7;
+  --erp-c-ink-2:         #D2CCC0;
+  --erp-c-ink-muted:     #ABA192;
+  --erp-c-ink-faint:     #978D7C;
 
-  --erp-c-petrol:        #5CBFB5;
-  --erp-c-petrol-hover:  #72D2C8;
-  --erp-c-petrol-active: #4AA89F;
-  --erp-c-petrol-text:   #86D8D0;
+  /* أونيكس الداكن: زرُّ الفعل يقلب شامبانيا — الحبرُ الداكن على تعبئةٍ
+     ذهبية هو توقيعُ الداكن الفاخر (نفسُ عقد الإرث: داكنٌ يحمل حبرًا
+     داكنًا على الذهب، لا أبيضَ على ذهب). */
+  --erp-c-onyx:          #D9B56A;
+  --erp-c-onyx-hover:    #E6C57F;
+  --erp-c-onyx-active:   #C8A457;
+  --erp-c-onyx-text:     #E6C882;
 
-  --erp-c-brass:         #E7B65C;
-  --erp-c-brass-text:    #E7B65C;
-  --erp-c-brass-bright:  #F0C877;
-  --erp-c-brass-soft:    rgba(231, 182, 92, .12);
-  --erp-c-brass-line:    rgba(231, 182, 92, .34);
+  --erp-c-brass:         #E2C274;
+  --erp-c-brass-text:    #E6C882;
+  --erp-c-brass-bright:  #F0D28A;
+  --erp-c-brass-soft:    rgba(226, 194, 116, .12);
+  --erp-c-brass-line:    rgba(226, 194, 116, .34);
 
   /* النحاس في الداكن: أفتحُ من نظيره الفاتح، لأن السطح نفسه أغمق
      فيرتفع العزمُ اللوني بلا أن يفقد الحدّ 3:1. */
-  --erp-c-copper:        #E08B4B;
-  --erp-c-copper-text:   #E9A468;
+  --erp-c-copper:        #D9925A;
+  --erp-c-copper-text:   #E5A871;
 
   /* سُلَّم الرسوم في الداكن: نفس الترتيب، بدرجاتٍ أفتح (desaturated
      lifts) — لا قلبٍ للألوان، فالرسم يبقى هو هو بين الوضعين. */
-  --erp-chart-1:         #5CBFB5;
-  --erp-chart-2:         #E08B4B;
-  --erp-chart-3:         #93A4EE;
-  --erp-chart-4:         #B7C766;
-  --erp-chart-5:         #DE8AAE;
-  --erp-chart-6:         #9FB3C2;
-  --erp-chart-track:     #172723;
+  --erp-chart-1:         #E0BE74;
+  --erp-chart-2:         #D9925A;
+  --erp-chart-3:         #B9C47E;
+  --erp-chart-4:         #CE9FB0;
+  --erp-chart-5:         #9FB6C4;
+  --erp-chart-6:         #C9BFAF;
+  --erp-chart-track:     #1C1814;
   --erp-chart-grid:      rgba(255, 255, 255, .10);
   --erp-chart-label:     var(--erp-c-ink-faint);
 
@@ -353,11 +355,11 @@ body {
   --erp-c-neutral:       #C4D1CA;
   --erp-c-neutral-text:  #C4D1CA;
 
-  --erp-c-inverse:       #0C111D;
+  --erp-c-inverse:       #17130E;
   --erp-c-highlight:     rgba(255, 255, 255, .05);
-  --erp-c-brand-shadow:  rgba(0, 0, 0, .38);
+  --erp-c-brand-shadow:  rgba(0, 0, 0, .40);
 
-  --erp-c-sidebar:          #06110F;
+  --erp-c-sidebar:          #0B0806;
   --erp-c-sidebar-line:     rgba(255, 255, 255, .08);
   --erp-c-sidebar-line-2:   rgba(255, 255, 255, .18);
 
@@ -372,7 +374,7 @@ body {
   --erp-surface-raised: var(--erp-c-raised);
   --erp-surface-sunken: var(--erp-c-sunken);
   --erp-text-inverse:   var(--erp-c-inverse);
-  --erp-brand-text:     var(--erp-c-petrol-text);
+  --erp-brand-text:     var(--erp-c-onyx-text);
   --erp-success-text:   var(--erp-c-success-text);
   --erp-warning-text:   var(--erp-c-warning-text);
   --erp-danger-text:    var(--erp-c-danger-text);
@@ -393,7 +395,7 @@ html[data-theme="dark"] .erp-v2 {
 
 /* ═══════════ Component polish — selectors, tokens only ═══════════ */
 
-/* The sidebar is a petrol spine in BOTH themes: remap the shared names
+/* The sidebar is an espresso spine in BOTH themes: remap the shared names
    locally so every existing nav rule (hover, active bar, group titles,
    role row) repaints without a single duplicated selector. */
 .erp-v2 .erp-shell__sidebar {
@@ -419,7 +421,7 @@ html[data-theme="dark"] .erp-v2 {
 }
 
 /* The logo file carries its own cream background, so it sits on a matching
-   porcelain plaque — a framed emblem rather than a pale square on petrol. */
+   ivory plaque — a framed emblem rather than a pale square on espresso. */
 .erp-v2 .erp-shell__brand-mark {
   background: var(--erp-sidebar-plaque);
   border-color: var(--erp-sidebar-plaque-line);
@@ -440,8 +442,8 @@ html[data-theme="dark"] .erp-v2 {
 }
 
 /* KPI tiles are sheets of white paper with a hairline edge — no wash. The
-   brass is jewellery: it lives in the icon chip only, so the six tiles read
-   as one sheet of data instead of six beige cards. */
+   champagne is jewellery: it lives in the icon chip only, so the six tiles
+   read as one sheet of data instead of six gilt cards. */
 .erp-v2 .erp-kpi {
   background: var(--erp-surface);
 }
@@ -484,13 +486,13 @@ html[data-theme="dark"] .erp-v2 {
   letter-spacing: -.01em;
 }
 
-/* Bilingual micro-labels stay quiet petrol: brass at 11px fails AA. */
+/* Bilingual micro-labels stay quiet onyx: jewellery brass at 11px fails AA. */
 .erp-v2 .erp-eyebrow {
   color: var(--erp-brand-text);
   letter-spacing: .12em;
 }
 
-/* Inputs answer in petrol, the action colour, not in grey. */
+/* Inputs answer in onyx, the action colour, not in grey. */
 .erp-v2 .erp-input:focus,
 .erp-v2 .erp-select:focus {
   border-color: var(--erp-brand);
@@ -515,7 +517,7 @@ html[data-theme="dark"] .erp-v2 {
   border-color: var(--erp-brand-hover);
 }
 
-/* Sign-in: a brass rule caps the porcelain card, like a ledger heading. */
+/* Sign-in: a champagne rule caps the ivory card, like a ledger heading. */
 .erp-v2 .erp-login-card {
   border-block-start: 3px solid var(--erp-brass);
 }
@@ -530,7 +532,7 @@ html[data-theme="dark"] .erp-v2 {
 /* ═══════════ Print — paper is paper, whatever the theme ═══════════ */
 /* حبر الورق Tokens على :root (لا على .erp-v2): قواعد الطباعة في
    erp-base/erp-table تمس html/body وعناصر خارج الجذر، وتحتاجها قبل
-   أي سكوب. الخصائص المخصصة خاملة بذاتها فلا ترسم شيئًا خارج الطباعة.
+   أي سكوب. الخصائص المخصصة خاملةٌ بذاتها فلا ترسم شيئًا خارج الطباعة.
    كل ألوان الورق تعيش هنا فقط — ملفات المكونات بلا أي حرفية. */
 :root {
   --erp-print-ink:        #000000;

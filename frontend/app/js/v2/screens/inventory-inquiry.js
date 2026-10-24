@@ -19,16 +19,16 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو من مُنح inventory-inquiry.view).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.154';
-import { barChart, donutChart } from '../charts.js?v=4.9.154';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.154';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
+import { barChart, donutChart } from '../charts.js?v=4.9.156';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.156';
 import {
     fetchInquiryItems, fetchInquiryDepartments, engineKpis, expiryState,
     toExportAoa, deptCostSummary, rangeError, INQ_FILTERS,
-} from '../data/inventory-inquiry-repo.js?v=4.9.154';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.154';
-import { ensureXlsx } from '../vendor.js?v=4.9.154';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.154';
+} from '../data/inventory-inquiry-repo.js?v=4.9.156';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.156';
+import { ensureXlsx } from '../vendor.js?v=4.9.156';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

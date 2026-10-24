@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.154';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.156';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];

@@ -446,6 +446,7 @@ function register(app) {
 
 module.exports = {
     register,
+    sendSession,
     statusHandler,
     setupHandler,
     confirmHandler,
