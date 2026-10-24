@@ -462,7 +462,7 @@ async function processOneInvoice({ invoice, meta, filePath, config, importer: _i
         // حصرًا وبأثر غير قاتل؛ أي فشل يلتقطه sweep دوري (gl-bridge).
         try {
             const { bridgeRevenueToGl } = require('./gl-bridge');
-            await bridgeRevenueToGl(pool, { revenueId, source: dev.sourceName, amount: total, date });
+            await bridgeRevenueToGl(pool, { revenueId, externalRef: extRef, source: dev.sourceName, amount: total, date });
         } catch (glError) {
             logger.warn(`[YARA-GL] تعذر الترحيل اللحظي لفاتورة ${invoiceNumber} (سيلتقطه sweep): ${glError.message}`);
         }

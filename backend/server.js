@@ -594,7 +594,10 @@ try {
         if (yaraGlSweepRunning) {return;}
         yaraGlSweepRunning = true;
         try {
-            await bridgeUnbridged(pool);
+            const out = await bridgeUnbridged(pool);
+            if (out?.remaining > 0) {
+                logger.warn(`[YARA-GL] sweep بقيت ${out.remaining} صفًا غير مرحّلة — راجع جسر الدفتر`);
+            }
         } catch (e) {
             logger.warn('[YARA-GL] sweep failed:', e.message);
         } finally {
