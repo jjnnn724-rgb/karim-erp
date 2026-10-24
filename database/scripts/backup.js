@@ -22,8 +22,15 @@ function writeStatus(backupDir, payload) {
 function secureBackupDirectory(backupDir) {
     if (!lib.IS_WIN) return;
     try {
-        // Admins/SYSTEM كامل + Users تعديل (بدونه النسخ اللاحقة تفشل بصلاحيات عادية)
-        spawnSync('icacls', [backupDir, '/inheritance:r', '/grant:r', 'Administrators:(OI)(CI)F', 'SYSTEM:(OI)(CI)F', 'BUILTIN\\Users:(OI)(CI)M'], { stdio: 'ignore', windowsHide: true });
+        // H-3 (تدقيق 2026-10-23): إزالة منح Users العام (M) — بلا إعادة ضبط كاملة
+        // (/inheritance:r) حتى لا تُمحى منحة حساب مهمة النسخ (DELL) المطبقة لمرة
+        // واحدة. المهمة المجدولة تعمل بحساب DELL التفاعلي.
+        const runAs = String(process.env.USERNAME || '').trim();
+        const grants = ['Administrators:(OI)(CI)F', 'SYSTEM:(OI)(CI)F'];
+        if (runAs && !/^(SYSTEM|ADMINISTRATOR)$/i.test(runAs)) {
+            grants.push(`${runAs}:(OI)(CI)M`);
+        }
+        spawnSync('icacls', [backupDir, '/remove:g', 'BUILTIN\\Users', '/grant:r', ...grants], { stdio: 'ignore', windowsHide: true });
     } catch (_) {
         log.warn('تعذر ضبط ACL لمجلد النسخ؛ راجع صلاحيات ProgramData يدويًا.');
     }

@@ -14,7 +14,7 @@
  * WHERE THE SESSION COMES FROM (لا اختلاق جلسة)
  *   1. `window._jwt` + `window._appKey` if the page already has both.
  *   2. A silent `POST /api/auth/refresh` with `localStorage['karim_rt_v1']`
- *      (the owner's permanent-session decision, 365 days). /api/auth/* is
+ *      (default lifetime 30 days — H-4, audit 2026-10-23). /api/auth/* is
  *      exempt from the x-api-key gate (server.js:490), so this needs no key,
  *      and the response carries both the new access token and `app_key`.
  *      The server ROTATES the refresh token, and the app re-reads it from
@@ -86,9 +86,13 @@ function memorySession() {
  * in app.js, which v2.html does not load, so without them the error path
  * itself throws a ReferenceError and hides the real failure.
  *
- * `doLogout` in V2 means "this page forgets its token". It must NOT tear
- * down the production SPA — it is not mounted in this document, and the
- * user's live session in index.html is a different page context.
+ * `doLogout` in V2 revokes the session server-side (H-4, audit
+ * 2026-10-23): POST /api/auth/logout deletes all of the user's refresh
+ * tokens, then the local RT is cleared because the server already killed
+ * it — leaving it in storage would only cause a doomed silent refresh.
+ * Both shells share `karim_rt_v1`, so a V2 logout ends the session for the
+ * production SPA too: one user, one session, one logout. That is the
+ * intended security behavior, not a side effect.
  */
 export function installApiFetchBridge() {
     if (typeof window.KARIM_RTget !== 'function') {
@@ -107,7 +111,19 @@ export function installApiFetchBridge() {
         window.toast = (message) => console.info('[V2]', message);
     }
     if (typeof window.doLogout !== 'function') {
-        window.doLogout = () => { window._jwt = null; };
+        window.doLogout = () => {
+            const oldJwt = window._jwt;
+            window._jwt = null;
+            window._appKey = null;
+            if (oldJwt) {
+                // H-4: الخروج الواعي يُبطل جلسة التجديد على الخادم (كل أجهزة المستخدم).
+                fetch(`${apiBase()}/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${oldJwt}` },
+                }).catch(() => {});
+            }
+            try { window.KARIM_RTclear && window.KARIM_RTclear(); } catch (_) { /* متجاهَل عمدًا */ }
+        };
     }
 }
 

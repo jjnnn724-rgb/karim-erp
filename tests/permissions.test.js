@@ -5,6 +5,15 @@
 const path = require('path');
 const { pool } = require('../backend/shared-pool');
 
+// المجموعة «fake DB»: أي اتصال بقاعدة بيانات حقيقية يُستبدل بمحاكاة فارغة
+// حتى لا تعتمد النتائج على تجهيز karim_erp_test المحلي (تنطبق في CI وبدونه).
+jest.mock('../backend/shared-pool', () => ({
+    pool: {
+        query: jest.fn(async () => ({ rows: [] })),
+        end: jest.fn(async () => {}),
+    },
+}));
+
 afterAll(async () => {
     await pool.end();
 });
@@ -63,9 +72,9 @@ const db = (keys) => fakeDb({ 3: keys });
         const never = { query: jest.fn(async () => { throw new Error('must not query'); }) };
         await expect(userHasPerm({ id: 1, role: 'admin' }, 'hr.edit', [], never)).resolves.toBe(true);
     });
-    test('role in list → true without grant lookup', async () => {
+    test('role in list with no deny rows → true', async () => {
         const { userHasPerm } = loadPerms();
-        await expect(userHasPerm({ id: 2, role: 'hr' }, 'hr.view', ['hr'])).resolves.toBe(true);
+        await expect(userHasPerm({ id: 2, role: 'hr' }, 'hr.view', ['hr'], db([]))).resolves.toBe(true);
     });
     test('grant adds access beyond role', async () => {
         const { userHasPerm } = loadPerms();
@@ -88,11 +97,12 @@ const db = (keys) => fakeDb({ 3: keys });
 });
 
 describe('requireRoleOrPerm — middleware', () => {
-    test('role match → next, no DB', async () => {
+    test('role match with no deny rows → next', async () => {
         const { requireRoleOrPerm } = loadPerms();
         const mw = requireRoleOrPerm(['hr'], 'hr.view');
         const next = jest.fn();
-        await mw({ user: { id: 1, role: 'hr' } }, {}, next);
+        const res = { statusCode: 200, status(c) { this.statusCode = c; return this; }, json(b) { this.body = b; return this; } };
+        await mw({ user: { id: 1, role: 'hr' } }, res, next);
         expect(next).toHaveBeenCalledWith();
     });
     test('grant match → next', async () => {

@@ -154,6 +154,11 @@ const PORT = process.env.PORT || 5000;
 // SAME `ALLOWED_ORIGINS` env var. No hardcoded '*' anywhere.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*';
 if (ALLOWED_ORIGINS === '*') {
+    if (process.env.NODE_ENV === 'production') {
+        // M-7/L-5 (تدقيق 2026-10-23): CORS مفتوح في الإنتاج غير مقبول — رفض الإقلاع.
+        logger.error('🚨 [FATAL] ALLOWED_ORIGINS is not set in production. Refusing to boot with open CORS. Set ALLOWED_ORIGINS=http://localhost:5000,http://192.168.1.* in .env.');
+        process.exit(1);
+    }
     logger.warn('[SECURITY] ALLOWED_ORIGINS=* (open CORS). This is unsafe outside a trusted LAN. Set ALLOWED_ORIGINS=http://localhost:5000,http://192.168.1.* in .env for production.');
 }
 
@@ -1901,7 +1906,7 @@ entities.forEach(entity => {
             if (periodBlockCreate) {return res.status(423).json(periodBlockCreate);}
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
-                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });}
+                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });}
                 // Privilege-escalation guard: only admins may mint accounts with elevated roles
                 if (req.user?.role !== 'admin' && 'role' in filtered) {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
@@ -2059,7 +2064,7 @@ entities.forEach(entity => {
             }
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
-                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });}
+                if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });}
                 // Privilege-escalation guard: role changes are admin-only
                 if (req.user?.role !== 'admin' && 'role' in filtered) {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
@@ -2188,7 +2193,7 @@ entities.forEach(entity => {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
                 }
                 if (filtered.password !== undefined && !isStrongPassword(String(filtered.password).trim())) {
-                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });
+                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });
                 }
                 // Privilege-escalation guard: role changes are admin-only
                 if ('role' in filtered && req.user?.role !== 'admin') {
@@ -2339,7 +2344,7 @@ entities.forEach(entity => {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
                 }
                 if (filtered.password !== undefined && !isStrongPassword(String(filtered.password).trim())) {
-                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم' });
+                    return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });
                 }
                 // Privilege-escalation guard: role changes are admin-only
                 if ('role' in filtered && req.user?.role !== 'admin') {

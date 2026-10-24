@@ -17,16 +17,16 @@
  *     (10 دقائق، استخدام واحد — features/auth-navigation.js:85-94)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.132';
-import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.132';
-import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.132';
+import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.151';
+import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.151';
 
 /** الإنشاء/الكتابة: admin يمنح الأدوار؛ manager ينشئ بلا تعيين دور (الخادم يحسم). */
 export const USERS_WRITE_ROLES = ['admin', 'manager'];
 
-/** قوة كلمة المرور — مرآة jwt-middleware.js:87 حرفًا بحرف. */
+/** قوة كلمة المرور — مرآة jwt-middleware.js حرفًا بحرف (12+ بعد تدقيق 2026-10-23). */
 export function isStrongPasswordV2(value) {
-    return typeof value === 'string' && value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value);
+    return typeof value === 'string' && value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }
 
 /**
@@ -41,9 +41,9 @@ export function validateUserForm(f = {}, { isEdit = false } = {}) {
     if (!isEdit && !username) {errors.push('أكمل اسم المستخدم');}
     if (!isEdit) {
         if (!String(f.password || '')) {errors.push('كلمة المرور مطلوبة');}
-        else if (!isStrongPasswordV2(String(f.password))) {errors.push('كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم');}
+        else if (!isStrongPasswordV2(String(f.password))) {errors.push('كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم');}
     } else if (f.password && !isStrongPasswordV2(String(f.password))) {
-        errors.push('كلمة المرور ضعيفة: 8 حروف على الأقل مع حرف ورقم');
+        errors.push('كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم');
     }
     if (!f.role) {errors.push('حدد الدور');}
     if (f.role === 'dept_head') {

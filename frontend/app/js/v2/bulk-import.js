@@ -7,8 +7,9 @@
  *
  * انحرافان معلنان، كلاهما لأن الخادم يرفض القديم حرفيًّا:
  *   • كلمة المرور: القديم يولّد 6 أرقام، والخادم يرفضها
- *     (`PASSWORD_TOO_WEAK`: 8 أحرف على الأقل مع حرف ورقم). نولّد 8 خانات:
- *     حرفان لاتينيان + 6 أرقام، فتبقى سهلة الحفظ وتُقبل من أول مرة.
+ *     (`PASSWORD_TOO_WEAK`). نولّد 12 خانة: حرفان لاتينيان + 10 أرقام
+ *     (سياسة 12+ حرفًا بعد تدقيق 2026-10-23)، فتبقى سهلة الحفظ وتُقبل من
+ *     أول مرة.
  *   • الدور الافتراضي: القديم يفتح على أول مفتاح في ROLES (admin)، وهو
  *     أخطر افتراضي ممكن لاستيراد جماعي. الافتراضي هنا `employee`، والقائمة
  *     نفسها تضم كل أدوار ROLES كما القديم.
@@ -16,7 +17,7 @@
  * فيفشل كل صف؛ المعالج يعرض اختيار القسم ويضمّه للحمولة.
  */
 
-export const BULK_PASSWORD_LENGTH = 8;
+export const BULK_PASSWORD_LENGTH = 12;
 export const BULK_DEFAULT_ROLE = 'employee';
 
 const AR_TO_LATIN = {
@@ -61,14 +62,14 @@ function pick(chars, random) {
 }
 
 /**
- * كلمة مرور مقبولة من الخادم: 8 خانات، حرفان لاتينيان + 6 أرقام.
+ * كلمة مرور مقبولة من الخادم: 12 خانة، حرفان لاتينيان + 10 أرقام.
  * @param {() => number} [random] injectable for tests
  */
 export function generateBulkPassword(random = Math.random) {
     const letters = 'abcdefghjkmnpqrstuvwxyz';
     const digits = '0123456789';
     let out = pick(letters, random) + pick(letters, random);
-    for (let i = 0; i < 6; i += 1) {out += pick(digits, random);}
+    for (let i = 0; i < BULK_PASSWORD_LENGTH - 2; i += 1) {out += pick(digits, random);}
     return out;
 }
 

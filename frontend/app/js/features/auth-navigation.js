@@ -6,7 +6,7 @@
 // AUTH & NAVIGATION
 // ============================================
 async function completeRequiredPasswordChange(accessToken, currentPassword){
-  const nextPassword = window.prompt('لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 8 حروف على الأقل وتحتوي على حروف وأرقام:');
+  const nextPassword = window.prompt('لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 12 حرفًا على الأقل وتحتوي على حروف وأرقام:');
   if(!nextPassword) {throw new Error('تم إلغاء تغيير كلمة المرور الإلزامي.');}
   const confirmPassword = window.prompt('أعد إدخال كلمة المرور الجديدة للتأكيد:');
   if(nextPassword !== confirmPassword) {throw new Error('كلمتا المرور غير متطابقتين.');}
@@ -23,7 +23,7 @@ async function completeRequiredPasswordChange(accessToken, currentPassword){
 
 // ─── تغيير كلمة المرور الذاتي (أي مستخدم مسجل — مدير أو موظف — من الشريط العلوي) ──
 function showChangeMyPasswordModal(){
-showModal(`<h3><i class=ji data-i=key></i> تغيير كلمة المرور</h3><div class="fr"><div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="cpCurrent" autocomplete="current-password"></div><div class="fg"><label>كلمة المرور الجديدة <small>(8 حروف على الأقل مع حروف وأرقام)</small></label><input type="password" id="cpNew" autocomplete="new-password"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="cpNew2" autocomplete="new-password"></div></div><div id="cpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" id="cpSubmitBtn" data-karim-action="submitChangeMyPassword"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> تغيير كلمة المرور</h3><div class="fr"><div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="cpCurrent" autocomplete="current-password"></div><div class="fg"><label>كلمة المرور الجديدة <small>(12 حرفًا على الأقل مع حروف وأرقام)</small></label><input type="password" id="cpNew" autocomplete="new-password"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="cpNew2" autocomplete="new-password"></div></div><div id="cpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" id="cpSubmitBtn" data-karim-action="submitChangeMyPassword"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
 setTimeout(()=>document.getElementById('cpCurrent')?.focus(),80);
 }
 function cpFail(message){
@@ -36,7 +36,7 @@ const cur=document.getElementById('cpCurrent')?.value||'';
 const np=document.getElementById('cpNew')?.value||'';
 const np2=document.getElementById('cpNew2')?.value||'';
 if(!cur||!np){ cpFail('أكمل كلمة المرور الحالية والجديدة'); return; }
-if(np.length<8||!/[A-Za-z]/.test(np)||!/\d/.test(np)){ cpFail('كلمة المرور الجديدة يجب أن تكون 8 حروف على الأقل مع حروف وأرقام'); return; }
+if(np.length<12||!/[A-Za-z]/.test(np)||!/\d/.test(np)){ cpFail('كلمة المرور الجديدة يجب أن تكون 12 حرفًا على الأقل مع حروف وأرقام'); return; }
 if(np!==np2){ cpFail('كلمتا المرور غير متطابقتين'); return; }
 if(np===cur){ cpFail('اختر كلمة مرور مختلفة عن كلمة المرور الحالية'); return; }
 const btn=document.getElementById('cpSubmitBtn');
@@ -58,7 +58,7 @@ finally { if(btn){ btn.disabled=false; } }
 
 // ─── استعادة كلمة المرور الذاتية (رمز لمرة واحدة يصدره المدير) ──────────────
 function showForgotPasswordModal(){
-showModal(`<h3><i class=ji data-i=key></i> استعادة كلمة المرور</h3><div class="workflow-banner">نسيت كلمة المرور؟ أدخل اسم المستخدم، ثم اطلب من المدير توليد <strong>رمز استعادة من 6 أرقام</strong> (صالح 10 دقائق)، وأدخل الرمز مع كلمة المرور الجديدة.</div><div class="fr"><div class="fg"><label>اسم المستخدم</label><input type="text" id="fpUsername" autocomplete="username" autocapitalize="none" spellcheck="false"></div><div class="fg"><label>رمز الاستعادة (6 أرقام)</label><input type="text" id="fpCode" inputmode="numeric" maxlength="6" placeholder="______"></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(8 حروف على الأقل مع حروف وأرقام)</small></label><input type="password" id="fpNew"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="fpNew2"></div></div><div id="fpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="submitForgotPassword"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> استعادة كلمة المرور</h3><div class="workflow-banner">نسيت كلمة المرور؟ أدخل اسم المستخدم، ثم اطلب من المدير توليد <strong>رمز استعادة من 6 أرقام</strong> (صالح 10 دقائق)، وأدخل الرمز مع كلمة المرور الجديدة.</div><div class="fr"><div class="fg"><label>اسم المستخدم</label><input type="text" id="fpUsername" autocomplete="username" autocapitalize="none" spellcheck="false"></div><div class="fg"><label>رمز الاستعادة (6 أرقام)</label><input type="text" id="fpCode" inputmode="numeric" maxlength="6" placeholder="______"></div></div><div class="fr"><div class="fg"><label>كلمة المرور الجديدة <small>(12 حرفًا على الأقل مع حروف وأرقام)</small></label><input type="password" id="fpNew"></div><div class="fg"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="fpNew2"></div></div><div id="fpError" class="form-error" style="display:none" role="alert"></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="submitForgotPassword"><i class=ji data-i=key></i> تغيير كلمة المرور</button></div>`);
 setTimeout(()=>document.getElementById('fpUsername')?.focus(),80);
 }
 function fpFail(message){

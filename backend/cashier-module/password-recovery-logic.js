@@ -38,7 +38,7 @@ const requestCodeSchema = z.object({
 const resetRequestSchema = z.object({
     username: z.string().trim().min(2, 'اسم المستخدم قصير جدًا').max(50, 'اسم المستخدم طويل جدًا'),
     code: z.string().regex(/^\d{6}$/, 'الرمز يتكون من 6 أرقام'),
-    new_password: z.string().refine(isStrongPassword, 'يجب أن تتكون كلمة المرور من 8 حروف على الأقل وتحتوي حروفًا وأرقامًا'),
+    new_password: z.string().refine(isStrongPassword, 'يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل وتحتوي حروفًا وأرقامًا'),
 });
 
 /**

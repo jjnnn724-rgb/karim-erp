@@ -14,8 +14,8 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.132';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.132';
+} from '../data/shell-repo.js?v=4.9.151';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -401,8 +401,8 @@ export function mountShellExtras(shell, ctx = {}) {
         const cur = pwPanelHost.querySelector('[data-v2-pw="cur"]')?.value || '';
         const next = pwPanelHost.querySelector('[data-v2-pw="next"]')?.value || '';
         const err = pwPanelHost.querySelector('[data-v2-pw-err]');
-        if (next.length < 8 || !/[A-Za-z]/.test(next) || !/\d/.test(next)) {
-            if (err) {err.textContent = 'الجديدة ضعيفة: 8 حروف على الأقل مع حرف ورقم';}
+        if (next.length < 12 || !/[A-Za-z]/.test(next) || !/\d/.test(next)) {
+            if (err) {err.textContent = 'الجديدة ضعيفة: 12 حرفًا على الأقل مع حرف ورقم';}
             return;
         }
         try {

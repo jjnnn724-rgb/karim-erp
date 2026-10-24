@@ -64,9 +64,9 @@ const ACCESS_SECRET  = (process.env.JWT_ACCESS_SECRET  && !accessSecretIsPlaceho
     ? process.env.JWT_REFRESH_SECRET
     : crypto.randomBytes(32).toString('hex');
 const ACCESS_TTL  = '24h';
-// مدة رمز التحديث (تجديد صامت للجلسة) — قرار المالك: جلسة مفتوحة دائمة (365 يوم افتراضيًا).
-// لتقصيرها: JWT_REFRESH_DAYS=7 في .env ثم إعادة تشغيل الخادم.
-const REFRESH_TTL_DAYS = Math.max(1, parseInt(process.env.JWT_REFRESH_DAYS || '365', 10) || 365);
+// مدة رمز التحديث — H-4 (تدقيق 2026-10-23): نافذة جلسة مسروقة ≤ 30 يومًا.
+// الافتراضي كان 365؛ خُفّض إلى 30. للتخصيص: JWT_REFRESH_DAYS في .env.
+const REFRESH_TTL_DAYS = Math.max(1, parseInt(process.env.JWT_REFRESH_DAYS || '30', 10) || 30);
 
 const BCRYPT_REGEX = /^\$2[aby]\$/;
 
@@ -85,7 +85,8 @@ async function ensureUserSecurityColumns(client) {
 }
 
 function isStrongPassword(value) {
-    return typeof value === 'string' && value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value);
+    // M-2 (تدقيق 2026-10-23): الحد الأدنى 12 حرفًا بدلًا من 8.
+    return typeof value === 'string' && value.length >= 12 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }
 
 if (!process.env.JWT_ACCESS_SECRET || accessSecretIsPlaceholder) {
@@ -304,7 +305,7 @@ async function changePasswordHandler(req, res) {
     if (!isStrongPassword(newPassword)) {
         return res.status(422).json({
             error: 'WEAK_PASSWORD',
-            message: 'يجب أن تتكون كلمة المرور من 8 حروف على الأقل وتحتوي حروفًا وأرقامًا.',
+            message: 'يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل وتحتوي حروفًا وأرقامًا.',
         });
     }
     if (currentPassword === newPassword) {

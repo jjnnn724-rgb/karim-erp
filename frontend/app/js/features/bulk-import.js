@@ -8,11 +8,15 @@
 let BULK_IMPORT_ROWS = [];
 const BULK_AR_TO_EN = {'أ':'a','ا':'a','إ':'e','آ':'aa','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh','د':'d','ذ':'z','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z','ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ى':'a','ة':'a','ء':'a','ئ':'y','ؤ':'w',' ':' ','_':'_','-':'-'};
 function bulkTransliterate(name){ return name.split('').map(c => BULK_AR_TO_EN[c] ?? c).join('').toLowerCase().replace(/[^a-z0-9\s._-]/g,'').trim(); }
-// توليد كلمة مرور من 6 أرقام (الحد الأدنى المقبول في السيرفر) لسهولة الحفظ
+// توليد كلمة مرور مقبولة من الخادم: 12 خانة (حرفان لاتينيان + 10 أرقام) — سياسة 12+ بعد تدقيق 2026-10-23
 function bulkGenPassword(){
+const letters = 'abcdefghjkmnpqrstuvwxyz';
 const digits = '0123456789';
 let pass = '';
-for(let i=0; i<6; i++){
+for(let i=0; i<2; i++){
+pass += letters[Math.floor(Math.random()*letters.length)];
+}
+for(let i=0; i<10; i++){
 pass += digits[Math.floor(Math.random()*digits.length)];
 }
 return pass;

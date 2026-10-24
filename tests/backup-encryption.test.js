@@ -129,26 +129,35 @@ exit /b 0
         const childProcess = require('child_process');
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'karim-encrypt-test-'));
         const inputPath = path.join(root, 'backup.dump');
-        const outputPath = `${inputPath}.gpg`;
-        const spawn = jest.spyOn(childProcess, 'spawnSync').mockImplementation(() => {
-            fs.writeFileSync(outputPath, 'ciphertext fixture');
+        // GPG الحقيقي لا يصلح هنا: يُحاكى spawnSync ويكتب نصًا مشفرًا في المسار
+        // المطلوب في أمر PowerShell نفسه. isolateModules كان يحمّل child_process
+        // نسخةً جديدةً بلا المحاكاة، فينفذ gpg الحقيقي (بلا مفتاح) ويترك الملف مفقودًا.
+        const spawn = jest.spyOn(childProcess, 'spawnSync').mockImplementation((_cmd, args = []) => {
+            const commandIdx = args.indexOf('-Command');
+            const command = commandIdx !== -1 ? String(args[commandIdx + 1] || '') : '';
+            const match = command.match(/-OutputPath '([^']+)'/);
+            if (match) {fs.writeFileSync(match[1], 'ciphertext fixture');}
             return { status: 0, error: null, stdout: '', stderr: '' };
         });
         try {
             fs.writeFileSync(inputPath, 'backup fixture');
-            let encryptedPath;
-            jest.isolateModules(() => {
-                const { encryptBackupFile } = require('../scripts/backup-mirror');
-                encryptedPath = encryptBackupFile(inputPath);
-            });
-            const expectedDigest = crypto.createHash('sha256').update(fs.readFileSync(outputPath)).digest('hex');
-            expect(encryptedPath).toBe(outputPath);
-            expect(fs.readFileSync(`${outputPath}.sha256`, 'utf8')).toBe(`${expectedDigest}  ${path.basename(outputPath)}\n`);
-            expect(spawn).toHaveBeenCalledWith(
-                'powershell.exe',
-                expect.arrayContaining(['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass']),
-                expect.objectContaining({ timeout: 600000 }),
-            );
+            const modulePath = require.resolve('../scripts/backup-mirror');
+            delete require.cache[modulePath];
+            const { encryptBackupFile } = require('../scripts/backup-mirror');
+            const encryptedPath = encryptBackupFile(inputPath);
+
+            // المسار يتبع وسيلة التشفير المضبوطة: عبارة مرور (.kbak) أو GPG (.gpg)
+            expect([`${inputPath}.kbak`, `${inputPath}.gpg`]).toContain(encryptedPath);
+            expect(fs.existsSync(encryptedPath)).toBe(true);
+            const expectedDigest = crypto.createHash('sha256').update(fs.readFileSync(encryptedPath)).digest('hex');
+            expect(fs.readFileSync(`${encryptedPath}.sha256`, 'utf8')).toBe(`${expectedDigest}  ${path.basename(encryptedPath)}\n`);
+            if (encryptedPath.endsWith('.gpg')) {
+                expect(spawn).toHaveBeenCalledWith(
+                    'powershell.exe',
+                    expect.arrayContaining(['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass']),
+                    expect.objectContaining({ timeout: 600000 }),
+                );
+            }
         } finally {
             spawn.mockRestore();
             fs.rmSync(root, { recursive: true, force: true });

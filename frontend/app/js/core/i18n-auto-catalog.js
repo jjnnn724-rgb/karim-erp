@@ -1010,7 +1010,7 @@ window.KARIM_I18N_AUTO = {
   'تعذر الربط': 'Linking failed',
   'تم تنزيل ملف البصمات (يفتح مباشرة في Excel بالعربية)': 'Punches file downloaded (opens directly in Excel in Arabic)',
   'تعذر التصدير': 'Export failed',
-  'لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 8 حروف على الأقل وتحتوي على حروف وأرقام:': 'For system security, change the initial password now. Enter a new password of at least 8 characters with letters and digits:',
+  'لأمان النظام، يجب تغيير كلمة المرور الأولية الآن. أدخل كلمة مرور جديدة من 12 حرفًا على الأقل وتحتوي على حروف وأرقام:': 'For system security, change the initial password now. Enter a new password of at least 12 characters with letters and digits:',
   'تم إلغاء تغيير كلمة المرور الإلزامي.': 'Mandatory password change cancelled.',
   'أعد إدخال كلمة المرور الجديدة للتأكيد:': 'Re-enter the new password to confirm:',
   'كلمتا المرور غير متطابقتين.': 'The passwords do not match.',
