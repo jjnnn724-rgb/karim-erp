@@ -67,7 +67,7 @@
  * PAIRS WITH: screens/veg-requests.js (screen 14 in js/v2/MIGRATION.md).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.151';
+import { apiFetch } from '../../core/api.js?v=4.9.152';
 
 const num = (v) => {
     const n = Number(v);

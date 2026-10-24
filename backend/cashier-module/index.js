@@ -42,6 +42,10 @@ function register(app, opts = {}) {
     const passwordRecoveryRoutes = require('./password-recovery-routes');
     app.use('/api/auth/forgot-password', passwordRecoveryRoutes.router);
 
+    // المصادقة الثنائية (TOTP): تذكرة قصيرة بعد كلمة المرور ثم جلسة كاملة.
+    const mfaRoutes = require('./mfa-routes');
+    mfaRoutes.register(app);
+
     // Prometheus metrics
     registerMetricsRoute(app);
 
@@ -95,6 +99,13 @@ function register(app, opts = {}) {
     logger.info('    POST /api/auth/change-password');
     logger.info('    POST /api/auth/forgot-password/request-code (admin/manager — رمز لمرة واحدة)');
     logger.info('    POST /api/auth/forgot-password/reset        (عام — استعادة ذاتية)');
+    logger.info('    GET  /api/auth/mfa/status');
+    logger.info('    POST /api/auth/mfa/setup              (تذكرة تسجيل أو جلسة — QR)');
+    logger.info('    POST /api/auth/mfa/confirm');
+    logger.info('    POST /api/auth/mfa/verify             (TOTP أو رمز استرداد ← جلسة)');
+    logger.info('    POST /api/auth/mfa/disable');
+    logger.info('    POST /api/auth/mfa/recovery-codes');
+    logger.info('    POST /api/auth/mfa/admin-reset        (owner/admin)');
     logger.info('    POST /api/sales/complete      (Idempotency-Key + atomic)');
     logger.info('    POST /api/pos/shifts/open');
     logger.info('    POST /api/pos/shifts/:id/close');

@@ -112,3 +112,133 @@
   .erp-v2 .erp-login-hero { padding: var(--erp-space-5) var(--erp-space-4) var(--erp-space-4); }
   .erp-v2 .erp-login-logo { block-size: 96px; }
 }
+
+/* ── Two-factor (MFA) ────────────────────────────────────────────────── */
+/* The card keeps its shape: the password pane is swapped for the second
+   factor, never stacked — one task at a time. */
+.erp-v2 [data-v2-mfa-pane] {
+  animation: erp-login-step 220ms cubic-bezier(.22, .61, .36, 1) both;
+}
+@keyframes erp-login-step {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.erp-v2 .erp-login-mfa-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-4);
+}
+.erp-v2 .erp-login-mfa-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  flex: 0 0 44px;
+  border-radius: var(--erp-radius-full);
+  color: var(--erp-brass-text);
+  background: var(--erp-brass-soft);
+  border: 1px solid var(--erp-brass-line);
+}
+.erp-v2 .erp-login-mfa-badge .ji { font-size: 20px; }
+.erp-v2 .erp-login-mfa-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  margin: 0 0 2px;
+  font-size: var(--erp-text-lg, 1.05rem);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-login-mfa-title .erp-eyebrow { font-size: 10px; }
+.erp-v2 .erp-login-mfa-head p { margin: 0; }
+
+.erp-v2 .erp-login-code {
+  text-align: center;
+  letter-spacing: .42em;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-lg, 1.05rem);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-login-code::placeholder { letter-spacing: .3em; color: var(--erp-text-faint); }
+
+.erp-v2 .erp-login-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--erp-space-3);
+  margin-block-end: var(--erp-space-3);
+  border: 1px dashed var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 .erp-login-qr img {
+  display: block;
+  inline-size: min(100%, 240px);
+  block-size: auto;
+  border-radius: var(--erp-radius-sm);
+}
+.erp-v2 .erp-login-qr__loading {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  padding-block: var(--erp-space-6);
+}
+.erp-v2 .erp-login-manual {
+  margin-block-end: var(--erp-space-4);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-login-manual summary {
+  cursor: pointer;
+  color: var(--erp-text-muted);
+  min-block-size: 32px;
+  display: flex;
+  align-items: center;
+}
+.erp-v2 .erp-login-manual code {
+  display: block;
+  margin-block-start: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+  border: 1px solid var(--erp-border);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  letter-spacing: .08em;
+  word-break: break-all;
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-login-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  margin: 0 0 var(--erp-space-4);
+  padding: var(--erp-space-3);
+  list-style: none;
+  border: 1px solid var(--erp-brass-line);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-brass-soft);
+}
+.erp-v2 .erp-login-codes li {
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-sm);
+  letter-spacing: .1em;
+  text-align: center;
+  color: var(--erp-text-primary);
+  user-select: all;
+}
+.erp-v2 .erp-login-codes + .erp-btn { margin-block-end: var(--erp-space-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 [data-v2-mfa-pane] { animation: none; }
+}
+@media (max-width: 380px) {
+  .erp-v2 .erp-login-codes { grid-template-columns: 1fr; }
+  .erp-v2 .erp-login-mfa-head { gap: var(--erp-space-2); }
+}

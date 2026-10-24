@@ -23,6 +23,7 @@ const { logger } = require('../logger');
 const { encryptForVault } = require('../password-vault');
 const { pool } = require('./db-pool');
 const { updateUserContext } = require('../middleware/correlation');
+const { loadState: loadMfaState, mfaRequiredFor } = require('./mfa-store');
 
 // Known placeholder/template values from .env.example. These are PUBLIC
 // (shipped in the repo), so if a real deployment ends up using one of them
@@ -103,10 +104,41 @@ function signAccessToken(user) {
             branch_id: user.branch_id ?? null,
             sid: user.session_id || null,
             pwd_change: Boolean(user.must_change_password),
+            purpose: 'access',
         },
         ACCESS_SECRET,
         { expiresIn: ACCESS_TTL, algorithm: 'HS256' }
     );
+}
+
+/**
+ * تذكرة قصيرة العمر بين كلمة المرور والرمز الثاني.
+ * `mfa`: تحقق من رمز TOTP ومدته 5 دقائق.
+ * `mfa_enroll`: تسجيل أول مرة (QR + تأكيد) ومدته 15 دقيقة.
+ * التذكرة لا تفتح أي مسار آخر: jwtAuth يرفض أي توكن غرضه ليس access.
+ */
+const MFA_TICKET_TTL = { mfa: '5m', mfa_enroll: '15m' };
+function signMfaTicket(user, purpose) {
+    const ttl = MFA_TICKET_TTL[purpose];
+    if (!ttl) {throw new Error('INVALID_MFA_PURPOSE');}
+    return jwt.sign(
+        {
+            sub: String(user.id),
+            role: user.role,
+            name: user.name,
+            dept_code: user.dept_code || null,
+            branch_id: user.branch_id ?? null,
+            purpose,
+        },
+        ACCESS_SECRET,
+        { expiresIn: ttl, algorithm: 'HS256', jwtid: crypto.randomBytes(9).toString('hex') }
+    );
+}
+
+function verifyMfaTicket(token, allowedPurposes = ['mfa', 'mfa_enroll']) {
+    const payload = jwt.verify(token, ACCESS_SECRET, { algorithms: ['HS256'] });
+    if (!allowedPurposes.includes(payload.purpose)) {throw new Error('WRONG_TICKET_PURPOSE');}
+    return payload;
 }
 
 async function issueRefreshToken(user, ctx = {}) {
@@ -205,6 +237,44 @@ function recordLoginFail(req, username) {
     }
 }
 
+function publicUserOf(user) {
+    return { id: user.id, name: user.name, role: user.role, username: user.username, dept_code: user.dept_code || null };
+}
+
+/**
+ * بوابة المصادقة الثنائية بعد التحقق من كلمة المرور. تعيد null عندما لا
+ * يُشترط عامل ثانٍ، أو ردًّا جاهزًا (تذكرة تحقق/تسجيل) بدل الجلسة.
+ * تُستدعى أيضًا بعد تدوير كلمة المرور الأولية: حساب مُلزم بالتدوير كان
+ * سيتجاوز التسجيل ويهبط بجلسة كاملة (ثغرة حقيقية أُغلقت قبل شحنها).
+ */
+async function mfaGatePayload(user) {
+    let state;
+    try {
+        state = await loadMfaState(user.id);
+    } catch (err) {
+        const wrapped = new Error('MFA_STATE_UNAVAILABLE');
+        wrapped.cause = err;
+        throw wrapped;
+    }
+    if (state && state.confirmedAt && state.secret) {
+        return {
+            mfa_required: true,
+            mfa_token: signMfaTicket(user, 'mfa'),
+            user: publicUserOf(user),
+            message: 'أدخل رمز المصادقة الثنائية من تطبيق المصادقة.',
+        };
+    }
+    if (mfaRequiredFor(user.role)) {
+        return {
+            mfa_enrollment_required: true,
+            mfa_token: signMfaTicket(user, 'mfa_enroll'),
+            user: publicUserOf(user),
+            message: 'هذا الحساب الإداري يتطلب مصادقة ثنائية — امسح رمز QR وأدخل الرمز لإكمال الدخول.',
+        };
+    }
+    return null;
+}
+
 async function loginHandler(req, res) {
     const { username, password } = req.body || {};
     if (!username || !password) {
@@ -230,7 +300,7 @@ async function loginHandler(req, res) {
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
         const user = r.rows[0];
-        const publicUser = () => ({ id: user.id, name: user.name, role: user.role, username: user.username, dept_code: user.dept_code || null });
+        const publicUser = () => publicUserOf(user);
 
         // ─── ENFORCE bcrypt-only ───────────────────────────────────
         // No plaintext comparison. No transparent migration. If the stored
@@ -269,6 +339,23 @@ async function loginHandler(req, res) {
                 app_key: process.env.API_KEY || null,
                 user: publicUser(),
             });
+        }
+
+        // ─── المصادقة الثنائية (TOTP) ─────────────────────────────────────
+        // الحساب المؤكَّد لا يحصل على أي رمز قبل الرمز الثاني. والحساب
+        // الإداري غير المسجَّل يُوجَّه للتسجيل قبل إصدار الجلسة — لا قفل:
+        // كلمة المرور الصحيحة + تطبيق المصادقة يكفيان لإكمال الدخول.
+        let gate;
+        try {
+            gate = await mfaGatePayload(user);
+        } catch (mfaErr) {
+            logger.error({ userId: user.id, err: mfaErr.cause?.message || mfaErr.message }, '[auth] MFA state read failed — refusing login');
+            return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر قراءة حالة المصادقة الثنائية — حاول مجددًا.' });
+        }
+        if (gate) {
+            logger.info({ userId: user.id, username: user.username, enrollment: Boolean(gate.mfa_enrollment_required) },
+                '[auth] Password verified — second factor required');
+            return res.json(gate);
         }
 
         const refresh = await issueRefreshToken(user, {
@@ -323,6 +410,7 @@ async function changePasswordHandler(req, res) {
         if (!user || !user.active || !BCRYPT_REGEX.test(user.password)) {return res.status(401).json({ error: 'INVALID_CREDENTIALS' });}
         if (!await bcrypt.compare(currentPassword, user.password)) {return res.status(401).json({ error: 'INVALID_CREDENTIALS' });}
 
+        const wasRestricted = Boolean(user.must_change_password);
         const hash = await bcrypt.hash(newPassword, 12);
         await client.query(
             `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
@@ -333,6 +421,26 @@ async function changePasswordHandler(req, res) {
         if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, user.id]); }
         await client.query(`DELETE FROM pos_refresh_tokens WHERE user_id = $1;`, [user.id]).catch(() => {});
         const rotatedUser = { ...user, must_change_password: false };
+        // من كان مقيّدًا بتدوير كلمة المرور لا يهبط بجلسة كاملة مباشرة:
+        // نفس بوابة الدخول تُطبَّق كي لا يكون التدوير طريقًا لتجاوز MFA.
+        if (wasRestricted) {
+            let gate;
+            try {
+                gate = await mfaGatePayload(rotatedUser);
+            } catch (mfaErr) {
+                logger.error({ userId: user.id, err: mfaErr.cause?.message || mfaErr.message }, '[auth] MFA state read failed after rotation');
+                return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تم تغيير كلمة المرور — أعد تسجيل الدخول لإكمال المصادقة.' });
+            }
+            if (gate) {
+                logger.info({ userId: user.id, enrollment: Boolean(gate.mfa_enrollment_required) },
+                    '[auth] Password rotated — second factor required before session');
+                return res.json({
+                    ...gate,
+                    password_change_required: false,
+                    message: 'تم تغيير كلمة المرور — أكمل المصادقة الثنائية من شاشة الدخول الحديثة.',
+                });
+            }
+        }
         const access = signAccessToken(rotatedUser);
         const refresh = await issueRefreshToken(rotatedUser, { deviceInfo: { ua: req.headers['user-agent'] }, ip: req.ip });
         logger.info({ userId: user.id, username: user.username }, '[auth] Password changed successfully');
@@ -372,6 +480,11 @@ function jwtAuth(req, res, next) {
             error: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
             message: err.message,
         });
+    }
+    // تذاكر MFA غرضها مختلف ولا تصلح لجلسة: حتى لو سُرّبت، لا تفتح شيئًا
+    // خارج مسارَي التسجيل/التحقق. التوكنات القديمة (بلا purpose) تبقى صالحة.
+    if (payload.purpose && payload.purpose !== 'access') {
+        return res.status(401).json({ error: 'TOKEN_INVALID', message: 'MFA ticket is not a session token.' });
     }
     req.user = {
         id: parseInt(payload.sub, 10),
@@ -539,6 +652,7 @@ module.exports = {
     jwtAuth, requireRole, loginHandler, changePasswordHandler,
     refreshHandler, logoutHandler,
     signAccessToken, issueRefreshToken, verifyAccessToken,
+    signMfaTicket, verifyMfaTicket, mfaGatePayload, publicUserOf, MFA_TICKET_TTL,
     isUserActive, invalidateActiveCache,
     isStrongPassword,
     ACCESS_TTL, REFRESH_TTL_DAYS,
