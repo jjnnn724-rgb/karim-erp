@@ -1,10 +1,10 @@
 # نماذج الوجوه عبر Git LFS (249MB > حد GitHub):
 *.onnx filter=lfs diff=lfs merge=lfs -text
-
 # لا تحويل لنهايات الأسطر إطلاقًا (core.autocrlf=false في هذا المستودع):
 # فـblob = بايتات العمل حرفيًا ⇒ ما يراه CI على لينكس هو نفس ما يراه المالك
 # على ويندوز، بالبايت. سياسة eol=crlf جُرّبت ثم رُدّت: كانت تُعيد كتابة
 # ملفات القوالب على CI وتكسر العقود التي تقرأ '\n' حرفيًا.
+backend/face-models-v2/*.onnx filter=lfs diff=lfs merge=lfs -text
 windows-service/*.exe filter=lfs diff=lfs merge=lfs -text
 tools/mkcert/*.exe filter=lfs diff=lfs merge=lfs -text
 frontend/app/vendor/face-models/*.bin filter=lfs diff=lfs merge=lfs -text
