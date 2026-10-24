@@ -5,6 +5,7 @@
  * Usage:
  *   node database/scripts/run-migration.js                    # all pending
  *   node database/scripts/run-migration.js 003_cashier.sql    # specific file
+ *   node database/scripts/run-migration.js --status            # read-only ledger check
  */
 const lib = require('../../scripts/shared');
 // Ensure we are in the project root
@@ -14,8 +15,10 @@ const fs = require('fs');
 const path = require('path');
 const {
     acquireMigrationLock,
+    compareMigrationLedger,
     isMigrationApplied,
     normalizeMigrationVersions,
+    readMigrationLedger,
 } = require('./migration-lock');
 
 // ─── FIX R5 (Enterprise 2026-10-03): التتبع المزدوج — ملف + جدول القاعدة ───
@@ -33,6 +36,41 @@ async function main() {
     }
 
     const dbName = getEnv('DB_NAME', 'karim_erp');
+    const migrationFiles = fs.readdirSync(MIGRATIONS_DIR)
+        .filter((file) => file.endsWith('.sql'))
+        .sort();
+    if (process.argv[2] === '--status') {
+        if (!String(process.env.DB_NAME || '').trim()) {
+            log.error('فحص الحالة يتطلب DB_NAME صريحًا؛ لم يتم الاتصال بأي قاعدة.');
+            process.exitCode = 2;
+            return;
+        }
+        const appliedVersions = await readMigrationLedger({
+            name: dbName,
+            host: getEnv('DB_HOST', '127.0.0.1'),
+            port: getEnv('DB_PORT', '5432'),
+            user: getEnv('DB_USER', 'postgres'),
+            password: getEnv('DB_PASSWORD', ''),
+        });
+        if (appliedVersions === null) {
+            log.warn('جدول schema_migrations غير موجود؛ لم يُنشأ أي جدول ولم تُطبَّق ترحيلات.');
+            log.warn('لا يمكن استنتاج حالة المخطط من غياب سجل الترحيلات وحده.');
+            process.exitCode = 2;
+            return;
+        }
+
+        const status = compareMigrationLedger(migrationFiles, appliedVersions);
+        log.info(`ترحيلات مسجلة: ${status.applied.length}`);
+        log.info(`ملفات غير مسجلة: ${status.pending.length}`);
+        status.pending.forEach((file) => log.info(`غير مسجل: ${file}`));
+        if (status.unknownApplied.length > 0) {
+            log.warn(`إصدارات في السجل بلا ملفات ترحيل: ${status.unknownApplied.length}`);
+            status.unknownApplied.forEach((version) => log.warn(`بلا ملف: ${version}`));
+            process.exitCode = 1;
+        }
+        return;
+    }
+
     let migrationLock;
     try {
         migrationLock = await acquireMigrationLock({
@@ -63,7 +101,6 @@ async function main() {
         //   · السجلّ الفارغ + قاعدة فيها جداول = تثبيت ما سبق تطبيقه
         //     قبل وجود جدول السجل (حالة الاستعادة القديمة).
         //   · السجلّ الفارغ + قاعدة فارغة = قاعدة جديدة ⇒ تُطبَّق كل الترحيلات.
-        const migrationFiles = fs.readdirSync(MIGRATIONS_DIR).filter((file) => file.endsWith('.sql'));
         const appliedBefore = await migrationLock.getAppliedMigrations();
         const userTables = await migrationLock.countUserTables();
         if (fs.existsSync(MIGRATION_LOCK) && appliedBefore.length === 0 && userTables > 0) {

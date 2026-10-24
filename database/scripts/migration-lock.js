@@ -8,6 +8,78 @@ const isMigrationApplied = (file, appliedVersions) =>
 const normalizeMigrationVersions = (appliedVersions, migrationFiles) =>
     migrationFiles.filter((file) => isMigrationApplied(file, appliedVersions));
 
+function compareMigrationLedger(migrationFiles, appliedVersions) {
+    if (!Array.isArray(migrationFiles) || migrationFiles.some((file) => typeof file !== 'string')) {
+        throw new TypeError('Migration files must be an array of filenames.');
+    }
+    if (!Array.isArray(appliedVersions) || appliedVersions.some((version) => typeof version !== 'string')) {
+        throw new TypeError('Applied migration versions must be an array of strings.');
+    }
+
+    const knownVersions = new Set(
+        migrationFiles.flatMap((file) => [file, file.replace(/\.sql$/i, '')]),
+    );
+    const applied = normalizeMigrationVersions(appliedVersions, migrationFiles);
+    const pending = migrationFiles.filter((file) => !isMigrationApplied(file, appliedVersions));
+    const unknownApplied = [...new Set(appliedVersions.filter((version) => !knownVersions.has(version)))].sort();
+
+    return { applied, pending, unknownApplied };
+}
+
+async function readMigrationLedger(database) {
+    const client = new Client({
+        user: database.user,
+        host: database.host,
+        database: database.name,
+        password: database.password,
+        port: Number(database.port),
+        connectionTimeoutMillis: 10000,
+        application_name: 'karim-erp-migration-status',
+    });
+    await client.connect();
+    let ledger = null;
+    let transactionStarted = false;
+    let failure = null;
+    try {
+        await client.query('BEGIN READ ONLY');
+        transactionStarted = true;
+        const table = await client.query("SELECT to_regclass('public.schema_migrations') AS relation");
+        if (table.rows[0].relation) {
+            const result = await client.query(
+                'SELECT version FROM public.schema_migrations ORDER BY version',
+            );
+            ledger = result.rows.map((row) => row.version);
+        }
+    } catch (error) {
+        failure = error;
+    }
+
+    let cleanupError = null;
+    if (transactionStarted) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (error) {
+            cleanupError = error;
+        }
+    }
+    try {
+        await client.end();
+    } catch (error) {
+        cleanupError = cleanupError || error;
+    }
+    if (failure) {
+        if (cleanupError) {
+            failure.message = `${failure.message}; migration status cleanup failed: ${cleanupError.message}`;
+            failure.cleanupError = cleanupError;
+        }
+        throw failure;
+    }
+    if (cleanupError) {
+        throw cleanupError;
+    }
+    return ledger;
+}
+
 async function acquireMigrationLock(database) {
     const client = new Client({
         user: database.user,
@@ -129,6 +201,8 @@ async function acquireMigrationLock(database) {
 module.exports = {
     MIGRATION_LOCK_KEYS,
     acquireMigrationLock,
+    compareMigrationLedger,
     isMigrationApplied,
     normalizeMigrationVersions,
+    readMigrationLedger,
 };

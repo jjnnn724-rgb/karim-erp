@@ -3,9 +3,13 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+// الحارس يقرأ DB_HOST/DB_PASSWORD من بيئة العملية؛ عند تشغيل هذه المجموعة
+// منفردةً لا وحدة أخرى تحمّل .env فيفشل الحارس بلا سبب حقيقي.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { Client } = require('pg');
 const {
     acquireMigrationLock,
+    compareMigrationLedger,
     isMigrationApplied,
     MIGRATION_LOCK_KEYS,
     normalizeMigrationVersions,
@@ -25,6 +29,90 @@ describe('database migration concurrency lock', () => {
             ['003_cashier_module', 'unknown_migration'],
             ['003_cashier_module.sql', '004_other_migration.sql'],
         )).toEqual(['003_cashier_module.sql']);
+    });
+
+    test('compares migration files with the ledger and reports unmatched versions', () => {
+        expect(compareMigrationLedger(
+            ['003_cashier_module.sql', '004_other_migration.sql'],
+            ['003_cashier_module', 'removed_migration.sql'],
+        )).toEqual({
+            applied: ['003_cashier_module.sql'],
+            pending: ['004_other_migration.sql'],
+            unknownApplied: ['removed_migration.sql'],
+        });
+    });
+
+    test('rejects malformed migration status inputs', () => {
+        expect(() => compareMigrationLedger(['003_valid.sql', null], [])).toThrow(TypeError);
+        expect(() => compareMigrationLedger([], ['003_valid.sql', 4])).toThrow(TypeError);
+    });
+
+    test('reads an existing migration ledger using SELECT statements only', async () => {
+        const client = {
+            connect: jest.fn().mockResolvedValue(),
+            query: jest.fn()
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ relation: 'schema_migrations' }] })
+                .mockResolvedValueOnce({ rows: [{ version: '003_cashier_module.sql' }] })
+                .mockResolvedValueOnce({ rows: [] }),
+            end: jest.fn().mockResolvedValue(),
+        };
+        let readMigrationLedger;
+        jest.doMock('pg', () => ({ Client: jest.fn(() => client) }));
+        try {
+            jest.isolateModules(() => {
+                ({ readMigrationLedger } = require('../database/scripts/migration-lock'));
+            });
+            await expect(readMigrationLedger({
+                name: 'karim_erp_test',
+                host: '127.0.0.1',
+                port: '5432',
+                user: 'test',
+                password: '',
+            })).resolves.toEqual(['003_cashier_module.sql']);
+            expect(client.query.mock.calls.map(([sql]) => sql)).toEqual([
+                'BEGIN READ ONLY',
+                "SELECT to_regclass('public.schema_migrations') AS relation",
+                'SELECT version FROM public.schema_migrations ORDER BY version',
+                'ROLLBACK',
+            ]);
+            expect(client.end).toHaveBeenCalledTimes(1);
+        } finally {
+            jest.dontMock('pg');
+        }
+    });
+
+    test('reports an absent ledger without creating it', async () => {
+        const client = {
+            connect: jest.fn().mockResolvedValue(),
+            query: jest.fn()
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ relation: null }] })
+                .mockResolvedValueOnce({ rows: [] }),
+            end: jest.fn().mockResolvedValue(),
+        };
+        let readMigrationLedger;
+        jest.doMock('pg', () => ({ Client: jest.fn(() => client) }));
+        try {
+            jest.isolateModules(() => {
+                ({ readMigrationLedger } = require('../database/scripts/migration-lock'));
+            });
+            await expect(readMigrationLedger({
+                name: 'karim_erp_test',
+                host: '127.0.0.1',
+                port: '5432',
+                user: 'test',
+                password: '',
+            })).resolves.toBeNull();
+            expect(client.query.mock.calls.map(([sql]) => sql)).toEqual([
+                'BEGIN READ ONLY',
+                "SELECT to_regclass('public.schema_migrations') AS relation",
+                'ROLLBACK',
+            ]);
+            expect(client.end).toHaveBeenCalledTimes(1);
+        } finally {
+            jest.dontMock('pg');
+        }
     });
 
     function assertSandboxEnvironment() {
