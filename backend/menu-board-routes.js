@@ -25,8 +25,10 @@ const router = express.Router();
 
 const SETTINGS_ID = 1;
 const MAX_BACKGROUND_LENGTH = 1_400_000;
+const MAX_V2_STATE_LENGTH = 1_500_000;
 const PUBLIC_BOARD_CACHE_TTL_MS = 15_000;
 const publicBoardCache = { expiresAt: 0, payload: null };
+let v2StateTableReady = null;
 const BACKGROUND_STYLES = new Set(['ivory', 'garden', 'champagne', 'ocean', 'rose', 'night', 'noir', 'custom']);
 const THEME_STYLES = new Set(['emerald', 'sapphire', 'ruby', 'midnight']);
 const MENU_SECTIONS = new Set(['soups', 'mains', 'desserts', 'appetizers', 'salads', 'carving']);
@@ -49,6 +51,127 @@ async function ensureMenuItemsTable() {
         ON menu_board_items (section, sort_order, id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_menu_board_items_active
         ON menu_board_items (is_active) WHERE is_active = true`);
+}
+
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function finiteNonNegative(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function validV2Dish(item) {
+    return isRecord(item) &&
+        typeof item.id === 'string' &&
+        typeof item.nameAr === 'string' &&
+        typeof item.nameEn === 'string' &&
+        typeof item.descriptionAr === 'string' &&
+        typeof item.descriptionEn === 'string' &&
+        ['soups', 'carving', 'main', 'salads', 'desserts', 'beverages'].includes(item.category) &&
+        Array.isArray(item.mealTypes) && item.mealTypes.length <= 4 &&
+        item.mealTypes.every(meal => ['breakfast', 'lunch', 'dinner', 'lounge'].includes(meal)) &&
+        Array.isArray(item.daysAvailable) && item.daysAvailable.length <= 7 &&
+        item.daysAvailable.every(day => ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day)) &&
+        typeof item.isAvailable === 'boolean' &&
+        typeof item.image === 'string';
+}
+
+function validV2Carving(item) {
+    return isRecord(item) &&
+        typeof item.id === 'string' &&
+        typeof item.nameAr === 'string' &&
+        typeof item.nameEn === 'string';
+}
+
+function sanitizeV2State(value) {
+    const buffet = value && value.buffet;
+    const pricing = buffet && buffet.pricing;
+    const settings = value && value.settings;
+    const sections = buffet && [buffet.soups, buffet.mainDishes];
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        !isRecord(buffet) || !isRecord(pricing) ||
+        !Array.isArray(buffet.soups) || !Array.isArray(buffet.mainDishes) ||
+        buffet.soups.length > 500 || buffet.mainDishes.length > 500 ||
+        !isRecord(buffet.carvingSchedule) ||
+        Object.values(buffet.carvingSchedule).some(day => !isRecord(day) ||
+            typeof day.nameAr !== 'string' || typeof day.nameEn !== 'string') ||
+        !isRecord(buffet.salads) || !Array.isArray(buffet.salads.itemsListAr) ||
+        !Array.isArray(buffet.salads.itemsListEn) ||
+        !isRecord(buffet.desserts) || !Array.isArray(buffet.desserts.itemsListAr) ||
+        !Array.isArray(buffet.desserts.itemsListEn) ||
+        (buffet.dishLibrary !== undefined && (!isRecord(buffet.dishLibrary) ||
+            !Array.isArray(buffet.dishLibrary.soups) ||
+            !Array.isArray(buffet.dishLibrary.carvings) ||
+            !Array.isArray(buffet.dishLibrary.mainDishes) ||
+            buffet.dishLibrary.soups.length > 500 ||
+            buffet.dishLibrary.mainDishes.length > 500 ||
+            buffet.dishLibrary.carvings.length > 500 ||
+            !buffet.dishLibrary.soups.every(validV2Dish) ||
+            !buffet.dishLibrary.mainDishes.every(validV2Dish) ||
+            !buffet.dishLibrary.carvings.every(validV2Carving))) ||
+        (buffet.mealMenus !== undefined && (!isRecord(buffet.mealMenus) ||
+            Object.values(buffet.mealMenus).some(menu => !isRecord(menu) ||
+                !Array.isArray(menu.soupIds) || !menu.soupIds.every(id => typeof id === 'string') ||
+                !Array.isArray(menu.mainDishIds) || !menu.mainDishIds.every(id => typeof id === 'string') ||
+                (menu.carvingNameAr !== undefined && typeof menu.carvingNameAr !== 'string') ||
+                (menu.carvingNameEn !== undefined && typeof menu.carvingNameEn !== 'string')))) ||
+        (buffet.textMenus !== undefined && (!isRecord(buffet.textMenus) ||
+            Object.keys(buffet.textMenus).length > 30 ||
+            Object.values(buffet.textMenus).some(text => typeof text !== 'string' || text.length > 20_000))) ||
+        !Array.isArray(value.schedules) || value.schedules.length > 20 ||
+        !isRecord(settings) ||
+        !Number.isSafeInteger(value.lastUpdated) || value.lastUpdated < 0 ||
+        !finiteNonNegative(pricing.adultPrice) ||
+        !finiteNonNegative(pricing.childPrice) ||
+        typeof pricing.currency !== 'string' ||
+        sections.some(items => !items.every(validV2Dish)) ||
+        Object.entries(settings).some(([key, setting]) =>
+            key === 'screenTexts'
+                ? !isRecord(setting) || Object.values(setting).some(text => typeof text !== 'string')
+                : key === 'carvingByDay'
+                    ? !isRecord(setting)
+                    : typeof setting !== 'string' && typeof setting !== 'boolean' &&
+                        !(typeof setting === 'number' && Number.isFinite(setting)) && setting !== null) ||
+        value.schedules.some(schedule => !isRecord(schedule) ||
+            !['breakfast', 'lunch', 'dinner', 'lounge'].includes(schedule.meal) ||
+            typeof schedule.startTime !== 'string' || !validTime(schedule.startTime) ||
+            typeof schedule.endTime !== 'string' || !validTime(schedule.endTime) ||
+            typeof schedule.nameAr !== 'string' || typeof schedule.nameEn !== 'string')) {
+        throw new Error('INVALID_V2_STATE');
+    }
+    const serialized = JSON.stringify(value);
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_V2_STATE_LENGTH) {
+        throw new Error('V2_STATE_TOO_LARGE');
+    }
+    const state = JSON.parse(serialized);
+    state.settings.erpUrl = '';
+    state.settings.erpSyncEnabled = false;
+    state.settings.esp32IpAddress = '';
+    return state;
+}
+
+function ensureV2StateTable() {
+    if (!v2StateTableReady) {
+        v2StateTableReady = (async () => {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS menu_board_v2_state (
+                    id SMALLINT PRIMARY KEY CHECK (id = 1),
+                    payload JSONB,
+                    version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+                    updated_at TIMESTAMPTZ,
+                    updated_by BIGINT
+                )`);
+            await pool.query(`
+                INSERT INTO menu_board_v2_state (id, payload, version)
+                VALUES (1, NULL, 0)
+                ON CONFLICT (id) DO NOTHING`);
+        })().catch((error) => {
+            v2StateTableReady = null;
+            throw error;
+        });
+    }
+    return v2StateTableReady;
 }
 
 /* ─── ترحيل لمرة واحدة: نسخ أصناف البوفيه الحالية من الكاشير ───
@@ -423,6 +546,9 @@ async function getPublicBoardCached() {
 }
 
 function register(app, opts = {}) {
+    ensureV2StateTable().catch(e => {
+        try { logger.error('[menu-board] v2 state table init failed:', e.message); } catch (_) { /* logging only */ }
+    });
     /* جدول المنيو المستقل + ترحيل لمرة واحدة من الكاشير (قراءة فقط) */
     ensureMenuItemsTable()
         .then(() => migrateFromCashierOnce())
@@ -445,6 +571,103 @@ function register(app, opts = {}) {
         } catch (e) {
             logger.error('[menu-board] public load failed:', e.message);
             res.status(500).json({ error: 'INTERNAL_ERROR' });
+        }
+    });
+
+    router.get('/v2-state', async (req, res) => {
+        try {
+            await ensureV2StateTable();
+            const result = await pool.query(
+                `SELECT payload, version, updated_at
+                   FROM menu_board_v2_state
+                  WHERE id = 1`);
+            const row = result.rows[0];
+            res.set('Cache-Control', 'no-store');
+            res.json({
+                state: row?.payload || null,
+                version: Number(row?.version || 0),
+                updatedAt: row?.updated_at ? new Date(row.updated_at).toISOString() : null,
+            });
+        } catch (e) {
+            logger.error('[menu-board] v2 state load failed:', e.message);
+            res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تحميل بيانات v2' });
+        }
+    });
+
+    router.put('/v2-state', jwtAuth, requireRole('admin', 'manager', 'kitchen', 'sous_chef'), async (req, res) => {
+        const expectedVersion = req.body?.expectedVersion;
+        if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0) {
+            return res.status(422).json({ error: 'INVALID_VERSION', message: 'إصدار البيانات المطلوب غير صالح' });
+        }
+
+        let state;
+        try {
+            state = sanitizeV2State(req.body?.state);
+        } catch (e) {
+            const tooLarge = e.message === 'V2_STATE_TOO_LARGE';
+            return res.status(422).json({
+                error: tooLarge ? 'V2_STATE_TOO_LARGE' : 'INVALID_V2_STATE',
+                message: tooLarge ? 'حجم بيانات v2 أكبر من المسموح' : 'بنية بيانات v2 غير صالحة',
+            });
+        }
+
+        let client;
+        let transactionOpen = false;
+        try {
+            await ensureV2StateTable();
+            client = await pool.connect();
+            await client.query('BEGIN');
+            transactionOpen = true;
+            const current = await client.query(
+                `SELECT version FROM menu_board_v2_state WHERE id = 1 FOR UPDATE`);
+            const currentVersion = Number(current.rows[0]?.version || 0);
+            if (currentVersion !== expectedVersion) {
+                await client.query('ROLLBACK');
+                transactionOpen = false;
+                return res.status(409).json({
+                    error: 'VERSION_CONFLICT',
+                    message: 'تغيرت البيانات في جهاز آخر. حدّث النسخة قبل الحفظ.',
+                    version: currentVersion,
+                });
+            }
+
+            const result = await client.query(
+                `UPDATE menu_board_v2_state
+                    SET payload = $1::jsonb,
+                        version = version + 1,
+                        updated_at = CURRENT_TIMESTAMP,
+                        updated_by = $2
+                  WHERE id = 1
+              RETURNING version, updated_at`,
+                [JSON.stringify(state), req.user?.id || null]);
+            await client.query('COMMIT');
+            transactionOpen = false;
+
+            const saved = result.rows[0];
+            try {
+                if (opts.io) {
+                    opts.io.emit('menu_board_v2_state_changed', {
+                        version: Number(saved.version),
+                        updatedAt: new Date(saved.updated_at).toISOString(),
+                    });
+                }
+            } catch (e) {
+                logger.warn('[menu-board] v2 change notification failed:', e.message);
+            }
+            res.json({
+                version: Number(saved.version),
+                updatedAt: new Date(saved.updated_at).toISOString(),
+            });
+        } catch (e) {
+            if (transactionOpen && client) {
+                await client.query('ROLLBACK').catch(() => {});
+            }
+            logger.error('[menu-board] v2 state save failed:', e.message);
+            res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر حفظ بيانات v2' });
+        } finally {
+            if (client) {
+                client.release();
+            }
         }
     });
 
@@ -741,4 +964,12 @@ function register(app, opts = {}) {
     app.use('/api/menu-board', router);
 }
 
-module.exports = { register, cleanBoardCategories, boardCategorySelected, cleanBuffetLayout, emptyBuffetLayout, collectBuffetProductIds };
+module.exports = {
+    register,
+    cleanBoardCategories,
+    boardCategorySelected,
+    cleanBuffetLayout,
+    emptyBuffetLayout,
+    collectBuffetProductIds,
+    sanitizeV2State,
+};
