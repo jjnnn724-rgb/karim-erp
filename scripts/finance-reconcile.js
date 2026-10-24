@@ -92,10 +92,13 @@ async function paymentJournal(row, supplierName) {
     }
     report.purchase_invoice = { missing: missingInv.length, repaired: invFixed };
 
-    // 3) مصاريف بلا قيد
+    // 3) مصاريف بلا قيد — صفوف التسويات المخزنية (dispatch/return/correction…)
+    // ليست مصروفات نقدية: ترحيلها هنا يُكرّر تكلفة الطلب ويُفرّغ الصندوق
+    // (مرجعية التصفية: expense-register-routes/daily-report-service بنفس القائمة).
     const missingExp = (await pool.query(`
         SELECT x.id, x.amount, x.category, x.notes, x.date FROM expenses x
          WHERE x.amount > 0
+           AND COALESCE(x."adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
                             WHERE je.source_type='expense' AND je.source_id=x.id::text)`)).rows;
     let expFixed = 0;
