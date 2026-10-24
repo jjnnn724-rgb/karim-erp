@@ -32,6 +32,13 @@ const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // FIX 2026-10-11 (M20): use riyadhToday() instead of UTC toISOString()
 const { riyadhToday, riyadhMonth, riyadhDateOf } = require('./riyadh-date');
 
+// مفاتيح جسر يارسوفت — مصدر واحد حتى لا تنفصل تسوية اللوحة عن مفاتيح الترحيل
+const {
+    SOURCE_TYPE: YARA_REVENUE_SOURCE,
+    PREBOOK_SOURCE_TYPE: YARA_PREBOOK_SOURCE,
+    cutoverDate: bridgeCutover,
+} = require('./yarasoft/gl-bridge');
+
 // مراكز التكلفة اختيارية على مستوى القاعدة: إن لم تُطبق migration 081 بعد،
 // يعمل الترحيل (يدوي وتلقائي) بدونها بدل أن يكسر البيع. يُكتشف مرة واحدة.
 let _ccReady = null;
@@ -584,42 +591,110 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
 });
 
 // ─── ملخص المدير المالي ──────────────────────────────────────────────────────
+// الأساس الموحّد (قرار المالك 2026-10-24): كل رقم هنا تُنتجه نفس دالة قائمة
+// الدخل (loadPnlInputs + buildPnlStatement) — فلا يختلف رقم على اللوحة عن الرقم
+// في تقرير «قائمة الدخل» لنفس الفترة. الكتلة reconciliation تربط الدفتر بمرآة
+// الكاشير يومًا بيوم؛ المرآة تُقرأ هنا فقط ولا تُكتب منها ولا عليها.
 router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const from = String(req.query.from || `${riyadhMonth()}-01`).slice(0, 10);
         const to = String(req.query.to || riyadhToday()).slice(0, 10);
         const q = async (sql, p) => (await pool.query(sql, p)).rows[0];
-        const rev = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM revenues WHERE date >= $1 AND date <= $2 AND "deptId" != 'ys_b4_ext'`, [from, to]);
-        const exp = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS t, COUNT(*)::int AS n FROM expenses
-            WHERE date >= $1 AND date <= $2 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [from, to]);
-        const pay = await q(`SELECT COALESCE(SUM("netSalary"),0)::numeric(14,2) AS t FROM payroll WHERE status <> 'cancelled' AND ("year" || '-' || LPAD("month"::text,2,'0')) BETWEEN substr($1,1,7) AND substr($2,1,7)`, [from, to]);
-        // FIX (Enterprise 2026-10-21): حدود اليوم تُحسب بتوقيت الرياض لا
-        // بتوقيت الخادم. created_at عمود TIMESTAMPTZ، ومقارنته بـ$1::date
-        // كانت تفسّره في توقيت الخادم (UTC) — فمبيعات 00:00–02:59 الرياض
-        // كانت خارج نطاق يومها.
-        const pos = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(total_amount),0)::numeric(14,2) AS t FROM pos_orders WHERE status = 'issued'
-            AND created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Riyadh')
-            AND created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Riyadh')`, [from, to]);
-        const cash = await q(`SELECT COALESCE(SUM(CASE WHEN l.account_code IN ('1000','1010') THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS t
+        const { loadPnlInputs, buildPnlStatement } = require('./finance-routes');
+        const pnl = buildPnlStatement({ ...(await loadPnlInputs(from, to)), fromDay: from, toDay: to });
+
+        const cash = await q(`SELECT
+                COALESCE(SUM(CASE WHEN l.account_code = '1000' THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS petty,
+                COALESCE(SUM(CASE WHEN l.account_code = '1010' THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS bank
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'`, []);
-        const topExp = (await pool.query(
-            `SELECT COALESCE(category,'أخرى') AS category, COALESCE(SUM(amount),0)::numeric(14,2) AS total
-             FROM expenses WHERE date >= $1 AND date <= $2 GROUP BY 1 ORDER BY total DESC LIMIT 5`, [from, to])).rows;
-        const byDept = (await pool.query(
-            `SELECT "deptId" AS code, COALESCE(SUM(amount),0)::numeric(14,2) AS total FROM revenues
-             WHERE date >= $1 AND date <= $2 AND "deptId" != 'ys_b4_ext' GROUP BY 1 ORDER BY total DESC LIMIT 8`, [from, to])).rows;
-        const journal = await q(`SELECT COUNT(*)::int AS n FROM journal_entries WHERE status = 'posted'`, []);
+        const journalPeriod = await q(`SELECT COUNT(*)::int AS n FROM journal_entries WHERE status = 'posted' AND date >= $1::date AND date <= $2::date`, [from, to]);
+        const journalAll = await q(`SELECT COUNT(*)::int AS n FROM journal_entries WHERE status = 'posted'`, []);
+
+        // ─── تسوية الدفتر مع مرآة الكاشير (من يوم التحول فقط) ───
+        const cutover = bridgeCutover();
+        const mirror = await q(`SELECT COALESCE(SUM(amount),0)::numeric(14,2) AS total, COUNT(*)::int AS n,
+                    COALESCE(SUM(amount) FILTER (WHERE "deptId" = 'ys_b4_ext'),0)::numeric(14,2) AS ext_total,
+                    COUNT(*) FILTER (WHERE "deptId" = 'ys_b4_ext')::int AS ext_n
+                FROM revenues
+               WHERE amount > 0 AND LEFT(date, 10) >= $1 AND LEFT(date, 10) <= $2 AND LEFT(date, 10) >= $3`,
+        [from, to, cutover]);
+        const booked = await q(`SELECT COALESCE(SUM(l.credit),0)::numeric(14,2) AS total, COUNT(*)::int AS n
+                FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+               WHERE e.source_type = $3 AND l.account_code = '4000' AND e.date >= $1::date AND e.date <= $2::date`,
+        [from, to, YARA_REVENUE_SOURCE]);
+        const unposted = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(r.amount),0)::numeric(14,2) AS total
+                FROM revenues r
+               WHERE r.amount > 0 AND LEFT(r.date, 10) >= $1 AND LEFT(r.date, 10) <= $2 AND LEFT(r.date, 10) >= $3
+                 AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                                  WHERE je.source_type = $4
+                                    AND (je.source_id = r.external_ref
+                                         OR je.source_id = ('id:' || CAST(r.id AS TEXT))
+                                         OR je.source_id = CAST(r.id AS TEXT)))`,
+        [from, to, cutover, YARA_REVENUE_SOURCE]);
+        const voided = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(l.credit),0)::numeric(14,2) AS total
+                FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'void'
+               WHERE e.source_type = $3 AND l.account_code = '4000' AND e.date >= $1::date AND e.date <= $2::date`,
+        [from, to, YARA_REVENUE_SOURCE]);
+        const opening = await q(`SELECT COALESCE(SUM(l.credit),0)::numeric(14,2) AS total, COUNT(*)::int AS n, MAX(e.date) AS as_of
+                FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+               WHERE e.source_type = $1 AND l.account_code = '3100'`, [YARA_PREBOOK_SOURCE]);
+        const difference = round2(Number(mirror.total) - Number(booked.total));
+        const reconciled = Math.abs(difference) <= 0.01 && Number(unposted.n) === 0;
+
         res.json({
             from, to,
-            revenue: { total: Number(rev.t), count: Number(rev.n) },
-            expenses: { total: Number(exp.t), count: Number(exp.n) },
-            payroll_open: Number(pay.t),
-            pos: { invoices: Number(pos.n), total: Number(pos.t) },
-            cash_position: Number(cash.t),
-            journal_entries: Number(journal.n),
-            net_approx: round2(Number(rev.t) - Number(exp.t) - Number(pay.t)),
-            top_expense_categories: topExp.map(r => ({ category: r.category, total: Number(r.total) })),
-            revenue_by_dept: byDept.map(r => ({ code: r.code, total: Number(r.total) })),
+            revenue: {
+                total: pnl.revenue.total,
+                count: pnl.revenue.invoice_count + pnl.revenue.manual_count,
+                pos_net: pnl.revenue.pos_net,
+                manual: pnl.revenue.manual,
+                pos_gross: pnl.revenue.pos_gross,
+                vat_collected: pnl.revenue.vat_collected,
+                pos_discounts: pnl.revenue.pos_discounts,
+            },
+            expenses: { total: pnl.operating.total, count: pnl.operating.count },
+            cogs: pnl.cogs,
+            shrinkage: pnl.shrinkage,
+            // حركات مخزون داخلية استُبعدت من المصروفات — مرقمة لا مُخفاة
+            inventory_moves: pnl.internal_moves,
+            payroll_open: pnl.payroll.total,
+            pos: { invoices: pnl.revenue.invoice_count, total: pnl.revenue.pos_gross },
+            cash_position: round2(Number(cash.petty) + Number(cash.bank)),
+            cash_ledger: { petty_cash: Number(cash.petty), bank: Number(cash.bank) },
+            journal_entries: Number(journalPeriod.n),
+            journal_entries_all_time: Number(journalAll.n),
+            gross_profit: pnl.gross_profit,
+            net_profit: pnl.net_profit,
+            // alias قديم للوحة التقليدية — صار الرقم نفسه لا تقديرًا
+            net_approx: pnl.net_profit.amount,
+            top_expense_categories: pnl.operating.items.slice(0, 5).map((i) => ({ category: i.category, total: i.amount })),
+            revenue_by_dept: pnl.by_department.slice(0, 8).map((d) => ({ code: d.code, name: d.name, total: d.revenue, net: d.net, margin_pct: d.margin_pct })),
+            daily_series: pnl.daily_series,
+            reconciliation: {
+                status: reconciled ? 'متوافق' : 'غير متوافق',
+                cutover,
+                mirror_revenue: Number(mirror.total),
+                mirror_rows: Number(mirror.n),
+                ledger_revenue: Number(booked.total),
+                ledger_entries: Number(booked.n),
+                difference,
+                unposted_rows: Number(unposted.n),
+                unposted_amount: Number(unposted.total),
+                voided_duplicates: Number(voided.n),
+                voided_amount: Number(voided.total),
+                pre_book_opening: Number(opening.total),
+                pre_book_months: Number(opening.n),
+                external_revenue: Number(mirror.ext_total),
+                external_revenue_rows: Number(mirror.ext_n),
+                note: 'الإيراد في الدفتر يغطي كل مرآة الكاشير؛ قائمة الدخل تستثني البيع الخارجي (ys_b4_ext) بأمر المالك 2026-10-21.',
+            },
+            basis: {
+                revenue: 'قائمة الدخل: صافي الكاشير (بلا ضريبة/خصم) + إيراد يدوي — بلا بيع خارجي',
+                expenses: 'التصنيف التشغيلي الموحد: استبعاد التكلفة وفروق الجرد وحركات المخزون الداخلية',
+                payroll: 'مسير الشهر موزّنًا تناسبيًا على أيام الفترة',
+                ledger: 'القيود المرحّلة فقط (status=posted) — الملغاة لا تدخل أي رقم',
+                cash: 'رصيد الدفتر التراكمي للصندوق والبنك',
+            },
         });
     } catch (error) {
         logger.error('[ledger/cfo-summary]', error);

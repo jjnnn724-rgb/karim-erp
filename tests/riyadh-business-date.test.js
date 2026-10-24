@@ -49,7 +49,16 @@ describe('تاريخ يوم العمل بتوقيت الرياض', () => {
         const accSrc = fs.readFileSync(path.resolve(__dirname, '../backend/accounting-routes.js'), 'utf8');
         expect(accSrc).toContain('riyadhDateOf(o.created_at');
         expect(accSrc).not.toMatch(/o\.created_at[\s\S]{0,80}toISOString\(\)/);
-        // نطاق اليوم في cfo-summary يُفسَّر بتوقيت الرياض لا بتوقيت الخادم
-        expect(accSrc).toContain("AT TIME ZONE 'Asia/Riyadh'");
+        // اللوحة لم تعد تُفسّر أيامها بنفسها منذ توحيد الأساس (2026-10-24): التقسيم
+        // اليومي صار في مصدر بيانات قائمة الدخل، وفيه اليوم رياضي بتوقيت الرياض.
+        const cfoHandler = accSrc.slice(accSrc.indexOf("router.get('/cfo-summary'"));
+        expect(cfoHandler).toContain('loadPnlInputs(from, to)');
+        expect(cfoHandler).not.toMatch(/toISOString\(\)\.slice\(0, 10\)/);
+        const finSrc = fs.readFileSync(path.resolve(__dirname, '../backend/finance-routes.js'), 'utf8');
+        expect(finSrc).toContain("AT TIME ZONE 'Asia/Riyadh'");
+        // جسر يارسوفت: يوم القيد من تاريخ صف الإيراد نفسه لا من ساعة الخادم
+        const bridgeSrc = fs.readFileSync(path.resolve(__dirname, '../backend/yarasoft/gl-bridge.js'), 'utf8');
+        expect(bridgeSrc).not.toMatch(/new Date\(\)\.toISOString\(\)/);
+        expect(bridgeSrc).toContain('String(date || \'\').slice(0, 10)');
     });
 });

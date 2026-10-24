@@ -100,8 +100,15 @@ function pctChange(current, previous) {
     return roundMoney(((cur - prev) / Math.abs(prev)) * 100);
 }
 
+// عائلة «مصروف المخزون»: نفس القائمة التي يستثنيها التقرير اليومي وباب استعلام
+// المخزون — dispatch تكلفة، count_correction فروق جرد، والخمس الباقية حركة داخلية
+// لا نقد خرج بها. عَدّها مصروفًا تشغيليًا يضاعف التكلفة ويكذب هامش الربح.
+const STOCK_EXPENSE_TYPES = Object.freeze(['dispatch', 'dispatch_return', 'transfer', 'receipt',
+    'stock_transfer', 'inventory_transfer', 'kitchen_return', 'count_correction']);
 const COGS_TYPES = new Set(['dispatch', 'dispatch_return']);
 const SHRINKAGE_TYPES = new Set(['count_correction']);
+const INTERNAL_MOVE_TYPES = new Set(STOCK_EXPENSE_TYPES
+    .filter((t) => !COGS_TYPES.has(t) && !SHRINKAGE_TYPES.has(t)));
 
 function expenseAdjustmentType(row) {
     return String(row?.adjustmentType ?? row?.adjustment_type ?? '').toLowerCase().trim();
@@ -116,7 +123,8 @@ function isShrinkageExpense(row) {
 }
 
 function isOperatingExpenseRow(row) {
-    return !isCogsExpense(row) && !isShrinkageExpense(row);
+    const t = expenseAdjustmentType(row);
+    return !COGS_TYPES.has(t) && !SHRINKAGE_TYPES.has(t) && !INTERNAL_MOVE_TYPES.has(t);
 }
 
 function inRange(day, fromDay, toDay) {
@@ -133,6 +141,7 @@ function classifyExpenses(expenseRows, fromDay, toDay) {
 
     const cogs = { dispatch: 0, returns: 0, net: 0, count: 0 };
     const shrinkage = { amount: 0, count: 0, losses: 0, gains: 0 };
+    const moves = { amount: 0, count: 0 };
     const operatingByCategory = new Map();
     let operatingTotal = 0;
     let operatingCount = 0;
@@ -152,6 +161,11 @@ function classifyExpenses(expenseRows, fromDay, toDay) {
             else if (amt < 0) {shrinkage.gains = roundMoney(shrinkage.gains + amt);}
             continue;
         }
+        if (INTERNAL_MOVE_TYPES.has(expenseAdjustmentType(r))) {
+            moves.amount = roundMoney(moves.amount + amt);
+            moves.count += 1;
+            continue;
+        }
         const cat = String(r.category || r.desc || 'أخرى').trim() || 'أخرى';
         const bucket = operatingByCategory.get(cat) || { category: cat, amount: 0, count: 0 };
         bucket.amount = roundMoney(bucket.amount + amt);
@@ -165,7 +179,11 @@ function classifyExpenses(expenseRows, fromDay, toDay) {
     const operatingItems = Array.from(operatingByCategory.values())
         .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
-    return { cogs, shrinkage, operating: { items: operatingItems, total: operatingTotal, count: operatingCount }, rowCount: rows.length };
+    return {
+        cogs, shrinkage, internal_moves: moves,
+        operating: { items: operatingItems, total: operatingTotal, count: operatingCount },
+        rowCount: rows.length,
+    };
 }
 
 function aggregatePayroll(payrollRows, fromDay, toDay) {
@@ -254,6 +272,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
         gross_profit: { amount: grossProfit, margin_pct: marginPct(grossProfit, revenue.total) },
         shrinkage: cls.shrinkage,
         operating: cls.operating,
+        internal_moves: cls.internal_moves,
         payroll: payrollAgg,
         net_profit: { amount: netProfit, margin_pct: marginPct(netProfit, revenue.total) },
         expense_row_count: cls.rowCount,
@@ -291,9 +310,10 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
     for (const r of (Array.isArray(expenses) ? expenses : [])) {
         const day = normalizeDay(r.date);
         if (!inRange(day, from, to)) {continue;}
+        const t = expenseAdjustmentType(r);
+        if (INTERNAL_MOVE_TYPES.has(t)) {continue;}
         const amt = roundMoney(r.amount);
         const b = deptBucket(String(r.deptId || '—'));
-        const t = expenseAdjustmentType(r);
         if (t === 'dispatch' || t === 'dispatch_return') {b.cogs = roundMoney(b.cogs + amt);}
         else if (t === 'count_correction') {b.shrinkage = roundMoney(b.shrinkage + amt);}
         else {b.operating = roundMoney(b.operating + amt);}
@@ -836,6 +856,7 @@ function renderPnlPrintHtml(stmt, opts = {}) {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'IBM Plex Sans Arabic','Cairo',Tahoma,sans-serif;color:#1a1a2e;padding:14mm 12mm;font-size:12px}
 .header{text-align:center;border-bottom:3px double #b8862d;padding-bottom:12px;margin-bottom:16px}
+.header img.logo{display:block;width:56px;height:56px;object-fit:contain;margin:0 auto 7px}
 .header h1{font-size:20px;color:#b8862d;margin-bottom:4px}
 .header .sub{color:#555;font-size:12px}
 .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:14px;font-size:11px;color:#444;background:#faf6ee;border:1px solid #e8dcc0;border-radius:8px;padding:8px 12px}
@@ -856,7 +877,8 @@ tr.net td{background:#eef7f0;font-weight:900;border-top:2px solid #2f9e72;color:
 .foot{margin-top:18px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px}
 @media print{body{padding:8mm}}
 </style></head><body>
-<div class="header">
+<div class="header" data-v2-print-brand>
+  <img class="logo" src="${escHtml(opts.logo || '/app/assets/al-shurfa-logo.png')}" alt="شعار ${restaurantName}">
   <h1>${restaurantName}</h1>
   <div class="sub">قائمة الأرباح والخسائر (قائمة الدخل) — صادرة عن الفترة ${escHtml(stmt.period.from)} إلى ${escHtml(stmt.period.to)}</div>
 </div>
@@ -897,7 +919,6 @@ ${deptRows ? `<table>
   <div class="sig"><div class="line">الختم الرسمي</div></div>
 </div>
 <div class="foot">تم إنشاء هذه القائمة آليًا من حركات النظام الفعلية — ${restaurantName}</div>
-<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>
 </body></html>`;
 }
 
@@ -939,6 +960,7 @@ function renderMonthlyPrintHtml(rows, totals, opts = {}) {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'IBM Plex Sans Arabic','Cairo',Tahoma,sans-serif;color:#1a1a2e;padding:8mm;font-size:11px}
 .header{text-align:center;border-bottom:3px double #b8862d;padding-bottom:12px;margin-bottom:14px}
+.header img.logo{display:block;width:52px;height:52px;object-fit:contain;margin:0 auto 6px}
 .header h1{font-size:20px;color:#b8862d;margin-bottom:4px}
 .header .sub{color:#555;font-size:12px}
 .meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:11px;color:#444;background:#faf6ee;border:1px solid #e8dcc0;border-radius:8px;padding:8px 12px}
@@ -959,7 +981,8 @@ tr.total td{background:#faf6ee;font-weight:900;border-top:2px solid #b8862d;font
 .foot{margin-top:16px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px}
 @media print{body{padding:8mm}}
 </style></head><body>
-<div class="header">
+<div class="header" data-v2-print-brand>
+  <img class="logo" src="${escHtml(opts.logo || '/app/assets/al-shurfa-logo.png')}" alt="شعار ${restaurantName}">
   <h1>${restaurantName}</h1>
   <div class="sub">مقارنة الشهور — الإيرادات والمصروفات والكوست · ${escHtml(opts.from || '')} إلى ${escHtml(opts.to || '')}</div>
 </div>
@@ -971,7 +994,7 @@ tr.total td{background:#faf6ee;font-weight:900;border-top:2px solid #b8862d;font
 <table>
   <thead><tr>
     <th style="width:14%">الشهر</th>
-    <th class="amt">تحصيل يارا</th>
+    <th class="amt">تحصيل الكاشيريات</th>
     <th class="amt">أذونات الصرف</th>
     <th class="amt">مرتجعات الصرف</th>
     <th class="amt">صافي تكلفة المخزون</th>
@@ -1287,6 +1310,7 @@ function renderMonthlyDetailPrintHtml(detail, opts = {}) {
 body{font-family:'IBM Plex Sans Arabic','Cairo',Tahoma,sans-serif;color:#17231f;background:#fff;padding:12mm 10mm;font-size:11.5px}
 .sheet{max-width:190mm;margin:0 auto}
 .head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:3px double #b8862d;padding-bottom:10px;margin-bottom:11px}
+.head img.logo{width:54px;height:54px;object-fit:contain;flex:none}
 .who{display:flex;flex-direction:column;gap:2px}
 .who h1{font-size:19px;color:#14352b}
 .who .en{font-size:8.5px;letter-spacing:.7px;color:#8a7f63}
@@ -1326,7 +1350,8 @@ tr.net td{background:#eef7f0;font-weight:900;color:#1d6b47;border-top:2px solid 
 @media print{body{padding:6mm}.sheet{max-width:none}tr{break-inside:avoid;page-break-inside:avoid}h2{break-after:avoid}thead{display:table-header-group}}
 </style></head><body>
 <div class="sheet">
-<div class="head">
+<div class="head" data-v2-print-brand>
+  <img class="logo" src="${escHtml(opts.logo || '/app/assets/al-shurfa-logo.png')}" alt="شعار ${restaurantName}">
   <div class="who">
     <h1>${restaurantName}</h1>
     <span class="en">AL SHURFA AL ALAMI RESTAURANTS</span>
@@ -1711,6 +1736,8 @@ table.t tfoot td { background: #eef2f7; border-top: 2px solid #c9a227; border-bo
         background: #f2f4f7; color: #475467; }
 .pill--success { border-color: #0b9e6c; background: rgba(11, 158, 108, .10); color: #055f3a; }
 .pill--danger { border-color: #e5484d; background: rgba(229, 72, 77, .10); color: #b42318; }
+.pill--warning { border-color: #d97706; background: rgba(217, 119, 6, .10); color: #92400e; }
+.pill--brand { border-color: #c9a227; background: rgba(201, 162, 39, .12); color: #7a5b0a; }
 .pos { color: #055f3a; font-weight: 700; }
 .neg { color: #b42318; font-weight: 700; }
 .foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px;
@@ -1761,6 +1788,17 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     const money = (v) => fmtMoney(v);
     const share = (part, base) => (Number(base) > 0 ? `${roundMoney((Number(part) / Number(base)) * 100)}%` : '—');
     const signedClass = (v) => (Number(v) < 0 ? 'neg' : 'pos');
+    /* A pure cost centre is not a «خاسر»: revenue and cost live on different
+       departments in this ledger, so the verdict names the centre unless both
+       sides exist. Same rule as the V2 screen. */
+    const deptVerdict = (row) => {
+        const hasRev = num(row.rev) > 0;
+        const hasCost = num(row.exp) > 0;
+        if (hasRev && hasCost) {return row.profit >= 0 ? ['success', 'مربح'] : ['danger', 'خاسر'];}
+        if (hasCost) {return ['warning', 'مركز تكلفة'];}
+        if (hasRev) {return ['brand', 'مركز إيراد'];}
+        return ['', 'بدون حركة'];
+    };
 
     const composition = [
         ['صرف المخزون (صافي المرتجعات)', totals.mat],
@@ -1777,7 +1815,9 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     const deptRows = rows
         .slice()
         .sort((a, b) => (num(b.exp) - num(a.exp)) || (num(b.rev) - num(a.rev)))
-        .map((row, index) => `
+        .map((row, index) => {
+            const [tone, label] = deptVerdict(row);
+            return `
         <tr>
             <td class="c">${index + 1}</td>
             <td>${escHtml(row.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(row.code)}</span></td>
@@ -1788,8 +1828,9 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
             <td class="n"><strong>${money(row.exp)}</strong></td>
             <td class="c">${share(row.exp, row.rev)}</td>
             <td class="n ${signedClass(row.profit)}">${money(row.profit)}</td>
-            <td class="c"><span class="pill pill--${row.profit >= 0 ? 'success' : 'danger'}">${row.profit >= 0 ? 'مربح' : 'خاسر'}</span></td>
-        </tr>`).join('');
+            <td class="c"><span class="pill${tone ? ` pill--${tone}` : ''}">${label}</span></td>
+        </tr>`;
+        }).join('');
 
     const categoryRows = categories
         .slice()
@@ -1851,7 +1892,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
       <tfoot><tr><td colspan="2">الإجمالي</td><td class="n">${money(totals.rev)}</td>
         <td class="n">${money(totals.mat)}</td><td class="n">${money(totals.cnt)}</td>
         <td class="n">${money(totals.ops)}</td><td class="n">${money(totals.exp)}</td>
-        <td class="c">${roundMoney(totals.avgCost)}%</td>
+        <td class="c">${share(totals.exp, totals.rev)}</td>
         <td class="n ${signedClass(net)}">${money(net)}</td><td></td></tr></tfoot>
     </table>
 
@@ -1976,8 +2017,10 @@ router.get('/pnl/print', asyncHandler(async (req, res) => {
             if (parsed?.name) {restaurantName = parsed.name;}
         } catch (_) { /* ignore */ }
     }
+    const brand = await financePrintBrand();
     res.type('html').send(renderPnlPrintHtml(current, {
         restaurantName,
+        logo: brand.logo,
         generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
         generatedBy: req.user?.username || req.user?.name || '—',
     }));
@@ -2156,8 +2199,10 @@ router.get('/monthly-comparison/print', asyncHandler(async (req, res) => {
         if (sendMonthlyComparisonSourceError(error, res)) {return;}
         throw error;
     }
+    const brand = await financePrintBrand();
     res.type('html').send(renderMonthlyPrintHtml(payload.months, payload.totals, {
-        restaurantName: await restaurantDisplayName(),
+        restaurantName: brand.name,
+        logo: brand.logo,
         from: payload.period.from,
         to: payload.period.to,
         generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
@@ -2189,8 +2234,10 @@ router.get('/monthly-comparison/month/print', asyncHandler(async (req, res) => {
         if (sendMonthlyComparisonSourceError(error, res)) {return;}
         throw error;
     }
+    const brand = await financePrintBrand();
     res.type('html').send(renderMonthlyDetailPrintHtml(detail, {
-        restaurantName: await restaurantDisplayName(),
+        restaurantName: brand.name,
+        logo: brand.logo,
         generatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
         generatedBy: req.user?.username || req.user?.name || '—',
     }));
@@ -2219,6 +2266,7 @@ module.exports = {
     aggregatePayroll,
     marginPct,
     buildPnlStatement,
+    loadPnlInputs,
     buildComparison,
     renderPnlPrintHtml,
     resolveCostAnalysisPeriod,

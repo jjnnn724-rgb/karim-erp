@@ -225,11 +225,16 @@ describe('تصنيف المصاريف — COGS / فروق جرد / تشغيلي�
         expect(isShrinkageExpense({ adjustmentType: 'dispatch' })).toBe(false);
     });
 
-    test('البقية تشغيلية', () => {
+    test('البقية تشغيلية — وحركات المخزون الداخلية ليست مصروفًا', () => {
         expect(isOperatingExpenseRow({ adjustmentType: 'rent' })).toBe(true);
         expect(isOperatingExpenseRow({})).toBe(true);
         expect(isOperatingExpenseRow({ adjustmentType: 'dispatch' })).toBe(false);
         expect(isOperatingExpenseRow({ adjustmentType: 'count_correction' })).toBe(false);
+        // صرف داخلي/استلام/تحويل/مرتجع مطبخ: بضاعة تحركت، لا نقد خرج. عَدّها
+        // مصروفًا تشغيليًا يضاعف التكلفة ويكذب الهامش (نفس قائمة التقرير اليومي).
+        for (const t of ['transfer', 'receipt', 'stock_transfer', 'inventory_transfer', 'kitchen_return']) {
+            expect(isOperatingExpenseRow({ adjustmentType: t })).toBe(false);
+        }
     });
 
     test('classifyExpenses: صرف 500 ومرتجع -100 → صافي COGS 400', () => {
@@ -242,6 +247,20 @@ describe('تصنيف المصاريف — COGS / فروق جرد / تشغيلي�
         expect(cls.cogs.net).toBe(400);
         expect(cls.operating.total).toBe(0);
         expect(cls.shrinkage.amount).toBe(0);
+    });
+
+    test('classifyExpenses: الحركة الداخلية تُستبعد من التشغيلية وتُبلَّغ بعددها', () => {
+        const cls = classifyExpenses([
+            { amount: 500, date: '2026-08-01', adjustmentType: 'dispatch', category: 'مواد خام' },
+            { amount: 500, date: '2026-08-02', adjustmentType: 'receipt', category: 'مواد خام' },
+            { amount: 120, date: '2026-08-03', adjustmentType: 'kitchen_return', category: 'مواد خام' },
+            { amount: 80, date: '2026-08-04', adjustmentType: 'rent', category: 'إيجار' },
+        ], '2026-08-01', '2026-08-31');
+        expect(cls.cogs.net).toBe(500);
+        expect(cls.operating.total).toBe(80);
+        expect(cls.operating.count).toBe(1);
+        expect(cls.internal_moves).toEqual({ amount: 620, count: 2 });
+        expect(cls.rowCount).toBe(4);
     });
 
     test('فروق الجرد: عجز موجب وزيادة سالبة تُفصل', () => {
@@ -309,6 +328,21 @@ describe('buildPnlStatement — هوية قائمة الدخل', () => {
         expect(st.net_profit.amount).toBe(200);
         const identity = st.revenue.total - st.cogs.net - st.shrinkage.amount - st.operating.total - st.payroll.total;
         expect(roundMoney(identity)).toBe(st.net_profit.amount);
+    });
+
+    test('حركة مخزون داخلية: لا تغيّر الصافي ولا جدول الأقسام، لكنها تظل مرقمة', () => {
+        const withMove = buildPnlStatement({
+            ...base,
+            expenses: [...base.expenses, { amount: 400, date: '2026-08-14', adjustmentType: 'receipt', deptId: 'kitchen', category: 'مواد خام' }],
+        });
+        const clean = buildPnlStatement(base);
+        expect(withMove.operating.total).toBe(clean.operating.total);
+        expect(withMove.cogs.net).toBe(clean.cogs.net);
+        expect(withMove.net_profit.amount).toBe(clean.net_profit.amount);
+        expect(withMove.internal_moves).toEqual({ amount: 400, count: 1 });
+        const kitchen = withMove.by_department.find((d) => d.code === 'kitchen');
+        expect(kitchen.operating).toBe(clean.by_department.find((d) => d.code === 'kitchen').operating);
+        expect(kitchen.net).toBe(clean.by_department.find((d) => d.code === 'kitchen').net);
     });
 
     test('الهوامش صحيحة', () => {
@@ -427,6 +461,9 @@ describe('marginPct و renderPnlPrintHtml — الهوامش والطباعة', 
         expect(html).toContain('ثالثًا: المصاريف التشغيلية');
         expect(html).toContain('المدير المالي');
         expect(html).toContain('مطاعم الشرفه العالمي');
+        expect(html).toContain('data-v2-print-brand');
+        expect(html).toContain('class="logo"');
+        expect(html).not.toMatch(/window\.print|<script/i);
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('undefined');
     });
