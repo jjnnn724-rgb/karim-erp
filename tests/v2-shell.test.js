@@ -120,7 +120,10 @@ describe('القشرة — صلاحيات القائمة موصولة بالمض
 
     test('منح مستخدم سابق لا يبقى بعد خروجه', () => {
         const h = host();
-        const logout = h.slice(h.indexOf('function doV2Logout()'), h.indexOf('function refreshProfileSlot()'));
+        // المسح انتقل إلى clearLocalSession كي يشمل أيضًا إبطال الجلسة
+        // الحالية من شاشة الأجهزة، لا زر الخروج وحده.
+        const logout = h.slice(h.indexOf('function clearLocalSession()'), h.indexOf('function refreshProfileSlot()'));
+        expect(logout).toMatch(/doV2Logout\(\)\s*\{\s*clearLocalSession\(\);/);
         expect(logout).toMatch(/window\.STATE\.permissions = \{ menus: \[\], deniedMenus: \[\] \}/);
     });
 });

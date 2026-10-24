@@ -33,9 +33,9 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.152';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.152';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.152';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.154';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.154';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.154';
 
 const LOGIN_TIMEOUT_MS = 15000;
 

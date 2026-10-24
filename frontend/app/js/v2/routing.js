@@ -48,6 +48,7 @@ export const DASH_KEY = 'dashboard';
  *  tests/v2-routing.test.js proves each one has a real route in preview.js. */
 export const SUB_ROUTES = [
     'login',
+    'sessions',
     'pos',
     'cashier-monitor',
     'menu-board',

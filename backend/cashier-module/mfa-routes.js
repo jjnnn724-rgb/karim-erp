@@ -33,6 +33,7 @@ const mfaStore = require('./mfa-store');
 const {
     jwtAuth, requireRole, publicUserOf,
     signAccessToken, issueRefreshToken, verifyAccessToken, verifyMfaTicket,
+    ACCESS_TTL_SECONDS,
 } = require('./jwt-middleware');
 const { writeAuditLog } = require('./audit-middleware');
 const { createRateLimiter, generalLimiter } = require('../rate-limiter');
@@ -66,21 +67,22 @@ async function loadLiveUser(userId) {
 /** جلسة كاملة بعد اجتياز العامل الثاني. */
 async function sendSession(req, res, row, extra = {}) {
     const user = { ...row };
-    const access = signAccessToken(user);
     const refresh = await issueRefreshToken(user, {
         deviceInfo: { ua: req.headers['user-agent'], mfa: true },
         ip: req.ip,
     });
+    const access = signAccessToken({ ...user, session_id: refresh.sessionId });
     await pool.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1;`, [user.id])
         .catch(() => {/* legacy schema */});
     const state = await mfaStore.loadState(user.id).catch(() => null);
     logger.info({ userId: user.id, username: user.username, role: user.role }, '[auth] MFA verified — session issued');
     return res.json({
         access_token: access,
-        refresh_token: refresh,
+        refresh_token: refresh.raw,
         token_type: 'Bearer',
-        expires_in: 86400,
+        expires_in: ACCESS_TTL_SECONDS,
         app_key: process.env.API_KEY || null,
+        session_id: refresh.sessionId,
         mfa_enabled: Boolean(state && state.confirmedAt),
         user: publicUserOf(user),
         ...extra,

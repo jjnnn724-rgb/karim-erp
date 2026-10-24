@@ -250,7 +250,9 @@ function posRefreshSession(){
                 body: JSON.stringify({ refresh_token: rt }),
             });
             const d = await r.json().catch(() => ({}));
-            if (!r.ok || !d.access_token) { posRTclear(); return false; }
+            // البند ١٠: نفس قاعدة app.js — المحو فقط عند رفض صريح (401)،
+            // لا عند خطأ خادم عابر أو انقطاع شبكة.
+            if (!r.ok || !d.access_token) { if (r.status === 401) {posRTclear();} return false; }
             accessToken = d.access_token;
             if (d.app_key) {posAppKeySet(d.app_key);}
             if (d.refresh_token) {posRTset(d.refresh_token);}

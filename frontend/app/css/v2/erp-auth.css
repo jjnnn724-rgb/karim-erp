@@ -242,3 +242,26 @@
   .erp-v2 .erp-login-codes { grid-template-columns: 1fr; }
   .erp-v2 .erp-login-mfa-head { gap: var(--erp-space-2); }
 }
+
+/* ── 8b. الأجهزة والجلسات (البند ١٠) ────────────────────────────────────
+   The screen is a plain erp-card + data table; only three things need a
+   selector: the explanation must not run the full width of a desktop row,
+   the "current" badge must not wrap away from its device name, and the
+   header's two actions must stack instead of overflowing on a phone. */
+.erp-v2 .erp-v2-sessions .erp-card__body > .erp-text-sm {
+  max-inline-size: 62ch;
+  margin: 0;
+}
+.erp-v2 .erp-v2-sessions .erp-badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.erp-v2 .erp-v2-sessions .erp-card__head {
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-v2-sessions .erp-card__head { align-items: stretch; }
+  .erp-v2 .erp-v2-sessions .erp-card__head > .erp-grow { display: none; }
+  .erp-v2 .erp-v2-sessions .erp-card__head > .erp-btn { flex: 1 1 auto; }
+}

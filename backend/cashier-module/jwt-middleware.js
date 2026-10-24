@@ -1,5 +1,5 @@
 /**
- * jwt-middleware.js — JWT auth (Access 24h / Refresh طويل قابل للضبط) + RBAC
+ * jwt-middleware.js — JWT auth (Access قصير قابل للضبط / Refresh طويل) + RBAC
  * ────────────────────────────────────────────────────────────────────────────
  * Uses the EXISTING `users` table (id BIGINT, username, password, role, name).
  *
@@ -64,10 +64,31 @@ const ACCESS_SECRET  = (process.env.JWT_ACCESS_SECRET  && !accessSecretIsPlaceho
 (process.env.JWT_REFRESH_SECRET && !refreshSecretIsPlaceholder)
     ? process.env.JWT_REFRESH_SECRET
     : crypto.randomBytes(32).toString('hex');
-const ACCESS_TTL  = '24h';
+// عمر رمز الوصول — البند ١٠: قصير افتراضيًا (15 دقيقة) فلا يبقى رمز مسروق
+// نافعًا نصف يوم. التجديد الصامت في الواجهات الثلاث يغطي الانتهاء، ورمز
+// الوصول القصير هو ما يجعل «إبطال الجلسة» يعني شيئًا عمليًا.
+// التخصيص: ACCESS_TOKEN_TTL (مثل "10m" أو "900s" أو "1h").
+const ACCESS_TTL = (() => {
+    const raw = String(process.env.ACCESS_TOKEN_TTL || '15m').trim();
+    return /^(\d+\s*[smhd]|\d+)$/i.test(raw) ? raw.replace(/\s+/g, '') : '15m';
+})();
+function ttlToSeconds(ttl) {
+    const m = String(ttl).match(/^(\d+)([smhd]?)$/i);
+    if (!m) {return 900;}
+    const n = Number(m[1]);
+    const unit = (m[2] || 's').toLowerCase();
+    const mult = unit === 'h' ? 3600 : unit === 'd' ? 86400 : unit === 'm' ? 60 : 1;
+    return Math.max(30, n * mult);
+}
+const ACCESS_TTL_SECONDS = ttlToSeconds(ACCESS_TTL);
 // مدة رمز التحديث — H-4 (تدقيق 2026-10-23): نافذة جلسة مسروقة ≤ 30 يومًا.
 // الافتراضي كان 365؛ خُفّض إلى 30. للتخصيص: JWT_REFRESH_DAYS في .env.
 const REFRESH_TTL_DAYS = Math.max(1, parseInt(process.env.JWT_REFRESH_DAYS || '30', 10) || 30);
+// مهلة سماح للتدوير المتزامن: تبويبان (أو V2 والقديم) يجدّدان في اللحظة
+// نفسها برمز واحد. بدونها يخسر أحدهما الدوران فيُطرد المستخدم ظلمًا كلما
+// انتهى رمز قصير. داخل المهلة يُقبل الرمز المُدوَّر ويُصدر توكن شقيق لنفس
+// الجلسة؛ خارجها = إعادة استعمال مشبوهة ⇒ إبطال الجلسة كلها.
+const REFRESH_GRACE_SECONDS = Math.max(0, parseInt(process.env.REFRESH_GRACE_SECONDS || '45', 10) || 0);
 
 const BCRYPT_REGEX = /^\$2[aby]\$/;
 
@@ -141,22 +162,40 @@ function verifyMfaTicket(token, allowedPurposes = ['mfa', 'mfa_enroll']) {
     return payload;
 }
 
+let _refreshSessionColsEnsured = false;
+/** أعمدة هوية الجلسة — DDL مرة واحدة لكل عملية، بلا NOT NULL كي لا تُكسر
+ *  السكربتات التي تُدرج صفوفًا اختبارية بلا هوية. */
+async function ensureRefreshSessionColumns(client) {
+    if (_refreshSessionColsEnsured) {return;}
+    await client.query(`ALTER TABLE pos_refresh_tokens ADD COLUMN IF NOT EXISTS session_id UUID;`);
+    await client.query(`ALTER TABLE pos_refresh_tokens ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;`);
+    _refreshSessionColsEnsured = true;
+}
+
+/**
+ * يُصدر رمز تحديث ويُرجع {raw, sessionId}. الهوية تُنشأ عند الدخول وتبقى
+ * نفسها عبر كل تدوير، ورمز الوصول يحملها في `sid` — فتُبطَل جلسة جهاز
+ * بعينه بدل «كل الأجهزة».
+ */
 async function issueRefreshToken(user, ctx = {}) {
     const raw = crypto.randomBytes(48).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
     const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 86400_000);
+    const sessionId = ctx.sessionId || crypto.randomUUID();
 
     const client = await pool.connect();
     try {
+        await ensureRefreshSessionColumns(client);
         await client.query(
-            `INSERT INTO pos_refresh_tokens (user_id, token_hash, device_info, ip_address, expires_at)
-             VALUES ($1, $2, $3, $4, $5);`,
-            [user.id, tokenHash, JSON.stringify(ctx.deviceInfo || {}), ctx.ip || null, expiresAt]
+            `INSERT INTO pos_refresh_tokens
+                (user_id, token_hash, session_id, device_info, ip_address, expires_at, last_seen_at)
+             VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP);`,
+            [user.id, tokenHash, sessionId, JSON.stringify(ctx.deviceInfo || {}), ctx.ip || null, expiresAt]
         );
     } finally {
         client.release();
     }
-    return raw;
+    return { raw, sessionId };
 }
 
 function verifyAccessToken(token) {
@@ -362,6 +401,7 @@ async function loginHandler(req, res) {
             deviceInfo: { ua: req.headers['user-agent'] },
             ip: req.ip,
         });
+        const sessionAccess = signAccessToken({ ...user, session_id: refresh.sessionId });
 
         // Update last_login
         await client.query(`UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1;`, [user.id])
@@ -371,10 +411,10 @@ async function loginHandler(req, res) {
             '[auth] Login successful');
 
         res.json({
-            access_token: access,
-            refresh_token: refresh,
+            access_token: sessionAccess,
+            refresh_token: refresh.raw,
             token_type: 'Bearer',
-            expires_in: 86400,        // 24 hours
+            expires_in: ACCESS_TTL_SECONDS,
             app_key: process.env.API_KEY || null,
             user: publicUser(),
         });
@@ -441,14 +481,14 @@ async function changePasswordHandler(req, res) {
                 });
             }
         }
-        const access = signAccessToken(rotatedUser);
         const refresh = await issueRefreshToken(rotatedUser, { deviceInfo: { ua: req.headers['user-agent'] }, ip: req.ip });
+        const sessionAccess = signAccessToken({ ...rotatedUser, session_id: refresh.sessionId });
         logger.info({ userId: user.id, username: user.username }, '[auth] Password changed successfully');
         return res.json({
-            access_token: access,
-            refresh_token: refresh,
+            access_token: sessionAccess,
+            refresh_token: refresh.raw,
             token_type: 'Bearer',
-            expires_in: 86400,
+            expires_in: ACCESS_TTL_SECONDS,
             app_key: process.env.API_KEY || null,
             password_change_required: false,
             user: { id: user.id, name: user.name, role: user.role, username: user.username, dept_code: user.dept_code || null },
@@ -493,6 +533,7 @@ function jwtAuth(req, res, next) {
         dept_code: payload.dept_code || null,
         branch_id: payload.branch_id ?? null,
         session_id: payload.sid || null,
+        sid: payload.sid || null,
         must_change_password: Boolean(payload.pwd_change),
     };
 
@@ -528,11 +569,16 @@ function jwtAuth(req, res, next) {
 }
 
 /**
- * Security audit 2026-09-03: تدوير رمز التحديث.
+ * تدوير رمز التحديث مع هوية جلسة ثابتة.
  * POST /api/auth/refresh  body: { refresh_token }
- * يتحقق من الوجود وعدم الانتهاء، يرفض المستخدمين المُوقفين، يدوّر الرمز
- * (القديم يُحذف ويُصدر بديل) ويُصدر access token جديداً. الرموز مخزنة
- * مجزأة SHA-256 ولا تُخزن خاماً أبداً.
+ *
+ * WHY NOT "DELETE + INSERT" ANYMORE
+ *   كان التدوير يحذف الصف فيضيع منه «متى بدأت الجلسة» ويستحيل الحكم على
+ *   إعادة الاستعمال. الآن الصف القديم يبقى مُبطَلًا (`revoked_at` +
+ *   `replaced_by`) فتصير إعادة الاستعمال داخل المهلة دورانًا متزامنًا
+ *   (تبويبان يجدّدان معًا) — يُصدر لها توكن شقيق في نفس الجلسة ولا يُطرد
+ *   أحد. خارج المهلة = رمز مسروق يُعاد استعماله ⇒ تُبطَل الجلسة كلها.
+ *   الرموز الخام لا تُخزن أبدًا — SHA-256 فقط.
  */
 async function refreshHandler(req, res) {
     const raw = String(req.body?.refresh_token || '').trim();
@@ -545,60 +591,102 @@ async function refreshHandler(req, res) {
         // (DDL مرة واحدة لكل عملية). بدونها: قاعدة لم تترحّل بعد + refresh
         // قبل أي login = 500 (كشفها tests/security-rbac-hardening 2026-10-13).
         await ensureUserSecurityColumns(client);
+        await ensureRefreshSessionColumns(client);
         const row = (await client.query(
-            `SELECT rt.id, rt.user_id, rt.expires_at, u.id AS live_user_id, u.active, u.role, u.name, u.username,
+            `SELECT rt.id, rt.user_id, rt.expires_at, rt.issued_at, rt.session_id, rt.device_info,
+                    rt.revoked_at, rt.replaced_by, u.id AS live_user_id, u.active, u.role, u.name, u.username,
                     u.must_change_password, u.dept_code, u.branch_id
                FROM pos_refresh_tokens rt
                JOIN users u ON u.id = rt.user_id
               WHERE rt.token_hash = $1
-              LIMIT 1
-              FOR UPDATE OF rt;`,
+              LIMIT 1;`,
             [tokenHash]
         )).rows[0];
         if (!row) {return res.status(401).json({ error: 'REFRESH_TOKEN_INVALID', message: 'رمز التحديث غير صالح.' });}
-        if (new Date(row.expires_at).getTime() <= Date.now()) {
-            await client.query('DELETE FROM pos_refresh_tokens WHERE id = $1;', [row.id]);
-            return res.status(401).json({ error: 'REFRESH_TOKEN_EXPIRED', message: 'انتهت صلاحية الجلسة — سجّل الدخول من جديد.' });
-        }
         if (!row.active) {
-            await client.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1;', [row.user_id]);
+            await client.query('UPDATE pos_refresh_tokens SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP) WHERE user_id = $1;', [row.user_id]);
             invalidateActiveCache(row.user_id);
             return res.status(401).json({ error: 'ACCOUNT_DISABLED', message: 'تم إيقاف هذا الحساب — تواصل مع المسؤول.' });
         }
 
-        // Rotation: consume the presented token, issue a fresh pair.
-        await client.query('BEGIN');
-        // FIX 2026-10-11: verify DELETE actually removed the row (rotation race guard)
-        const delResult = await client.query('DELETE FROM pos_refresh_tokens WHERE id = $1;', [row.id]);
-        if (delResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(401).json({ error: 'REFRESH_TOKEN_INVALID', message: 'رمز التحديث مستخدم بالفعل.' });
-        }
-        const nextRaw = crypto.randomBytes(48).toString('hex');
-        const nextHash = crypto.createHash('sha256').update(nextRaw).digest('hex');
-        const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 86400_000);
-        await client.query(
-            `INSERT INTO pos_refresh_tokens (user_id, token_hash, device_info, ip_address, expires_at)
-             VALUES ($1, $2, $3, $4, $5);`,
-            [row.user_id, nextHash, JSON.stringify({ ua: req.headers['user-agent'], rotated: true }), req.ip || null, expiresAt]
-        );
-        await client.query('COMMIT');
-
-        const access = signAccessToken({
+        const sessionId = row.session_id || crypto.randomUUID();
+        const sessionUser = {
             id: row.user_id, role: row.role, name: row.name,
             dept_code: row.dept_code, must_change_password: row.must_change_password,
-            branch_id: row.branch_id,
-        });
-        logger.info({ userId: row.user_id, username: row.username }, '[auth] refresh token rotated');
-        return res.json({
-            access_token: access,
+            branch_id: row.branch_id, session_id: sessionId,
+        };
+        const sessionPayload = (nextRaw) => ({
+            access_token: signAccessToken(sessionUser),
             refresh_token: nextRaw,
             token_type: 'Bearer',
-            expires_in: 86400,
+            expires_in: ACCESS_TTL_SECONDS,
             app_key: process.env.API_KEY || null,
+            session_id: sessionId,
             password_change_required: Boolean(row.must_change_password),
             user: { id: row.user_id, name: row.name, role: row.role, username: row.username, dept_code: row.dept_code || null },
         });
+
+        if (new Date(row.expires_at).getTime() <= Date.now()) {
+            await client.query('DELETE FROM pos_refresh_tokens WHERE id = $1;', [row.id]);
+            return res.status(401).json({ error: 'REFRESH_TOKEN_EXPIRED', message: 'انتهت صلاحية الجلسة — سجّل الدخول من جديد.' });
+        }
+
+        // ─── الرمز مُبطَل بالفعل: متزامن داخل المهلة أم إعادة استعمال؟ ────
+        if (row.revoked_at) {
+            const ageMs = Date.now() - new Date(row.revoked_at).getTime();
+            const inGrace = row.replaced_by && ageMs >= 0 && ageMs <= REFRESH_GRACE_SECONDS * 1000;
+            if (!inGrace) {
+                // `session_id` قد تكون NULL في صفوف ما قبل 117 — تُبطَل كصنف
+                // واحد بدل أن يفلت الشرط LEFT JOIN من `= NULL`.
+                await client.query(
+                    `UPDATE pos_refresh_tokens SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+                      WHERE user_id = $1 AND session_id IS NOT DISTINCT FROM $2::uuid;`,
+                    [row.user_id, row.session_id]
+                );
+                logger.warn({ userId: row.user_id, sessionId, ageMs }, '[auth] refresh token reuse outside grace — session revoked');
+                return res.status(401).json({ error: 'REFRESH_TOKEN_REUSED', message: 'أُبطلت الجلسة لاستعمال رمز تجديد قديم — سجّل الدخول من جديد.' });
+            }
+            const sibling = await issueRefreshToken({ id: row.user_id }, {
+                sessionId,
+                deviceInfo: row.device_info || {},
+                ip: req.ip,
+            });
+            logger.info({ userId: row.user_id, sessionId }, '[auth] concurrent refresh — sibling token issued');
+            return res.json(sessionPayload(sibling.raw));
+        }
+
+        // ─── الدوران: إبطال القديم وربطه بالبديل داخل معاملة واحدة ───────
+        const nextId = crypto.randomUUID();
+        const nextRaw = crypto.randomBytes(48).toString('hex');
+        const nextHash = crypto.createHash('sha256').update(nextRaw).digest('hex');
+        const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 86400_000);
+        await client.query('BEGIN');
+        // INSERT قبل UPDATE: `replaced_by` مفتاح أجنبي إلى pos_refresh_tokens(id)،
+        // فالـUPDATE يشير إلى صف غير موجود بعد كان يرفضه PostgreSQL (FK فوري).
+        await client.query(
+            `INSERT INTO pos_refresh_tokens
+                (id, user_id, token_hash, session_id, device_info, ip_address, issued_at, expires_at, last_seen_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP);`,
+            [nextId, row.user_id, nextHash, sessionId, JSON.stringify(row.device_info || {}), req.ip || null, row.issued_at, expiresAt]
+        );
+        const claimed = await client.query(
+            `UPDATE pos_refresh_tokens SET revoked_at = CURRENT_TIMESTAMP, replaced_by = $2
+              WHERE id = $1 AND revoked_at IS NULL;`,
+            [row.id, nextId]
+        );
+        if (claimed.rowCount === 0) {
+            // خسر السباق مع طلب متزامن — نفس مسار المهلة أعلاه.
+            await client.query('ROLLBACK');
+            const sibling = await issueRefreshToken({ id: row.user_id }, {
+                sessionId, deviceInfo: row.device_info || {}, ip: req.ip,
+            });
+            logger.info({ userId: row.user_id, sessionId }, '[auth] concurrent refresh (race) — sibling token issued');
+            return res.json(sessionPayload(sibling.raw));
+        }
+        await client.query('COMMIT');
+
+        logger.info({ userId: row.user_id, username: row.username, sessionId }, '[auth] refresh token rotated');
+        return res.json(sessionPayload(nextRaw));
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error('[auth] refresh failed:', err.message);
@@ -611,7 +699,7 @@ async function refreshHandler(req, res) {
 /**
  * Security audit 2026-09-03: تسجيل الخروج بإبطال رموز التحديث.
  * POST /api/auth/logout — يحذف كل رموز تحديث المستخدم (كل الأجهزة)؛
- * access token الحالي يبقى صالحاً حتى انتهائه الطبيعي (حد أقصى 24 ساعة)
+ * access token الحالي يبقى صالحاً حتى انتهائه الطبيعي (15 دقيقة افتراضيًا)
  * لكنه يفقد قيمته فور إيقاف الحساب بفضل الفحص النشط.
  */
 async function logoutHandler(req, res) {
@@ -655,5 +743,6 @@ module.exports = {
     signMfaTicket, verifyMfaTicket, mfaGatePayload, publicUserOf, MFA_TICKET_TTL,
     isUserActive, invalidateActiveCache,
     isStrongPassword,
-    ACCESS_TTL, REFRESH_TTL_DAYS,
+    ACCESS_TTL, ACCESS_TTL_SECONDS, REFRESH_TTL_DAYS, REFRESH_GRACE_SECONDS,
+    ensureRefreshSessionColumns,
 };

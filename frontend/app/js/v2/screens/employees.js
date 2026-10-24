@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { openInAppReport } from '../report-viewer.js?v=4.9.152';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.152';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.152';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.154';
+import { openInAppReport } from '../report-viewer.js?v=4.9.154';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.154';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.154';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.154';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,17 +81,17 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.152';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.152';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.152';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.152';
+} from '../data/employees-repo.js?v=4.9.154';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.154';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.154';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.154';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.152';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.152';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.152';
+} from '../data/employee-card-repo.js?v=4.9.154';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.154';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

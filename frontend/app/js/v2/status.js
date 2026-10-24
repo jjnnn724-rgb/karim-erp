@@ -52,6 +52,11 @@ const STATUS_MAP = {
     'device:offline':                { label: 'غير متصل',     tone: 'danger',  icon: 'wifi' },
     'device:error':                  { label: 'خطأ',           tone: 'danger',  icon: 'alert-triangle' },
 
+    /* ── sessions (session-routes.js) ───────────────────────────────────
+       Not a DB enum: the row the user is looking through right now, as
+       decided by `current_session_id` in GET /api/auth/sessions. */
+    'session:current':               { label: 'الجلسة الحالية', tone: 'brand', icon: 'user-check' },
+
     /* ── dispatches.status ──────────────────────────────────────────────
        DB: → 'pending|chef_approved|approved|partially_received|received|rejected'
        Labels verbatim from features/kitchen.js:141 (statusLabel) for the

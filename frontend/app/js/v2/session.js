@@ -69,6 +69,62 @@ export function jwtClaims(token) {
 function publish(accessToken, appKey) {
     if (accessToken) {window._jwt = accessToken;}
     if (appKey) {window._appKey = appKey;}
+    scheduleKeepAlive();
+}
+
+/* ── التجديد الصامت الاستباقي (البند ١٠) ────────────────────────────────
+   رمز الوصول صار قصيرًا (15 دقيقة)، فالاعتماد على 401 وحدها يعني طلبًا
+   فاشلًا كل ربع ساعة. هذا المؤقّت يجدّد قبل الانتهاء بهامش دقيقتين.
+   القيود:
+   · لا يعمل في تبويب مخفي (المتصفحات تخنق المؤقّتات) — وعند العودة
+     يُعاد الجدولة أو يُجدَّد فورًا إن اقترب الانتهاء.
+   · فشلُ التجديد لا يطرد أحدًا هنا؛ مسار 401 في apiFetch يقرر.
+   · لا شيء يُلمس وقت الاستيراد (vm بلا DOM/مؤقّتات).
+*/
+const KEEPALIVE_LEAD_MS = 120_000;
+const KEEPALIVE_MIN_DELAY_MS = 15_000;
+let keepAliveTimer = null;
+let keepAliveWired = false;
+/* جيل الجلسة: الخروج يرفعه فيُسقط أي تجديد كان في الطريق. بدونه يعيد ردٌّ
+   متأخر كتابة `_jwt` بعد أن ضغط المستخدم «خروج» — أي إحياءً صامتًا لجلسة
+   أنهىها بنفسه. */
+let keepAliveEpoch = 0;
+
+function accessExpiresAtMs(token) {
+    const claims = jwtClaims(token || window._jwt);
+    return claims && claims.exp ? Number(claims.exp) * 1000 : 0;
+}
+
+function scheduleKeepAlive() {
+    if (typeof setTimeout !== 'function') {return;}
+    if (keepAliveTimer) {clearTimeout(keepAliveTimer); keepAliveTimer = null;}
+    if (typeof document !== 'undefined' && document.hidden) {return;}
+    const exp = accessExpiresAtMs();
+    if (!exp) {return;}
+    const delay = Math.max(KEEPALIVE_MIN_DELAY_MS, exp - Date.now() - KEEPALIVE_LEAD_MS);
+    keepAliveTimer = setTimeout(() => {
+        keepAliveTimer = null;
+        if (typeof document !== 'undefined' && document.hidden) {return;}
+        void silentRefresh();
+    }, delay);
+}
+
+/** يوقف التجديد الاستباقي ويُبطل أي طلب جارٍ — يُندى عند الخروج. */
+export function stopKeepAlive() {
+    keepAliveEpoch += 1;
+    if (keepAliveTimer) {clearTimeout(keepAliveTimer); keepAliveTimer = null;}
+}
+
+function wireKeepAlive() {
+    if (keepAliveWired) {return;}
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') {return;}
+    keepAliveWired = true;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {return;}
+        const exp = accessExpiresAtMs();
+        if (exp && exp - Date.now() <= KEEPALIVE_LEAD_MS) {void silentRefresh();}
+        else {scheduleKeepAlive();}
+    });
 }
 
 function memorySession() {
@@ -95,6 +151,8 @@ function memorySession() {
  * intended security behavior, not a side effect.
  */
 export function installApiFetchBridge() {
+    // مؤقّت التجديد الاستباقي + إعادة الجدولة عند العودة إلى التبويب.
+    wireKeepAlive();
     if (typeof window.KARIM_RTget !== 'function') {
         window.KARIM_RTget = readRefreshToken;
     }
@@ -112,6 +170,7 @@ export function installApiFetchBridge() {
     }
     if (typeof window.doLogout !== 'function') {
         window.doLogout = () => {
+            stopKeepAlive();
             const oldJwt = window._jwt;
             window._jwt = null;
             window._appKey = null;
@@ -130,10 +189,26 @@ export function installApiFetchBridge() {
 /**
  * Silent rotation refresh. Returns {accessToken, appKey, user} or null.
  * Never throws — a dead/unreachable auth path is a normal outcome here.
+ *
+ * SINGLE-FLIGHT (item #10): with a 15-minute access token, several requests
+ * can hit 401 in the same tick. Every caller used to POST the SAME refresh
+ * token; the server rotates on first use, so the losers presented an already
+ * rotated token — which is exactly what the reuse detector revokes a session
+ * for. Sharing one in-flight promise means one rotation, and every caller
+ * gets the same fresh pair.
  */
-export async function silentRefresh() {
+let refreshInflight = null;
+
+export function silentRefresh() {
+    if (refreshInflight) {return refreshInflight;}
+    refreshInflight = performRefresh().finally(() => {refreshInflight = null;});
+    return refreshInflight;
+}
+
+async function performRefresh() {
     const rt = readRefreshToken();
     if (!rt) {return null;}
+    const epoch = keepAliveEpoch;
     let res;
     try {
         res = await fetch(`${apiBase()}/auth/refresh`, {
@@ -146,6 +221,8 @@ export async function silentRefresh() {
     let data;
     try {data = await res.json();} catch (_) {return null;}
     if (!data || !data.access_token) {return null;}
+    // خرج المستخدم أثناء الطلب: لا رمز جديد في الذاكرة ولا مُدوَّر في التخزين.
+    if (epoch !== keepAliveEpoch) {return null;}
     if (data.refresh_token) {
         try {localStorage.setItem(RT_KEY, data.refresh_token);} catch (_) { /* متجاهَل عمدًا */ }
     }

@@ -24,18 +24,18 @@
 
 import { resolveScan, assignDecision, coverage, unassignedRows, scanEnabledModel,
     normalizeCode, codeFamily, bumpLine, setLineQty, setLinePrice, setLineExpiry, dropLine,
-    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.152';
-import { checkExpiryOnLines } from '../data/expiry-policy.js?v=4.9.152';
+    sessionTotals, lookupByCode, loadCampaign, searchItems, assignItemBarcode } from '../data/scan-repo.js?v=4.9.154';
+import { checkExpiryOnLines } from '../data/expiry-policy.js?v=4.9.154';
 import { inventoryToRow, receiveInventoryItem, receiptPayload,
-    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.152';
+    invWriteVisible, formatQty } from '../data/inventory-repo.js?v=4.9.154';
 /* الصادر (أذون صرف): موجةٌ كانت مستقلّة لأن الاعتماد والتوقيع يقعان لاحقًا
  * (warehouse-routes.js:365-382/:621/:1076). الإنشاء وحده لا يطلب توقيعًا —
  * POST /api/dispatches (server.js:1546) يقبل طلبًا pending، وسلسلة الاعتماد
  * القائمة (شيف عمومي ← مخازن ← استلام، بتوقيعاتها) تكمل على شاشة الأذون.
  * فنستعمل أبواب dispatch-repo نفسها حرفًا، ولا نُعيد اختراع ولا نتجاوز توقيعًا. */
-import { createDispatch, fetchDepartmentOptions, CREATE_ROLES } from '../data/dispatch-repo.js?v=4.9.152';
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.152';
+import { createDispatch, fetchDepartmentOptions, CREATE_ROLES } from '../data/dispatch-repo.js?v=4.9.154';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.154';
+import { ensureHtml5Qrcode } from '../vendor.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 

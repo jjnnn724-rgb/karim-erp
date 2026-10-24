@@ -46,6 +46,10 @@ function register(app, opts = {}) {
     const mfaRoutes = require('./mfa-routes');
     mfaRoutes.register(app);
 
+    // الأجهزة والجلسات: عرض الجلسات النشطة وإبطال جهاز بعينه (البند ١٠).
+    const sessionRoutes = require('./session-routes');
+    sessionRoutes.register(app);
+
     // Prometheus metrics
     registerMetricsRoute(app);
 
@@ -106,6 +110,9 @@ function register(app, opts = {}) {
     logger.info('    POST /api/auth/mfa/disable');
     logger.info('    POST /api/auth/mfa/recovery-codes');
     logger.info('    POST /api/auth/mfa/admin-reset        (owner/admin)');
+    logger.info('    GET  /api/auth/sessions               (جلسات المستخدم النشطة)');
+    logger.info('    DELETE /api/auth/sessions/:id         (إبطال جهاز بعينه)');
+    logger.info('    POST /api/auth/sessions/revoke-others (إبطال بقية الأجهزة)');
     logger.info('    POST /api/sales/complete      (Idempotency-Key + atomic)');
     logger.info('    POST /api/pos/shifts/open');
     logger.info('    POST /api/pos/shifts/:id/close');

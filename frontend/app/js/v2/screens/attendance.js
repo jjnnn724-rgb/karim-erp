@@ -56,10 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.152';
-import { statusBadge } from '../status.js?v=4.9.152';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.152';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.152';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.154';
+import { statusBadge } from '../status.js?v=4.9.154';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.154';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.154';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -77,9 +77,9 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.152';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.152';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.152';
+} from '../data/attendance-repo.js?v=4.9.154';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.154';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -67,7 +67,10 @@ function refreshSession(){
                 body: JSON.stringify({ refresh_token: rt }),
             });
             const d = await r.json().catch(() => ({}));
-            if (!r.ok || !d.access_token) { KARIM_RTclear(); return false; }
+            // البند ١٠: رمز الوصول صار قصيرًا، فالتجديد يتكرر كل ربع ساعة. لا
+            // نمحو رمز التحديث إلا إذا رفضه الخادم صراحةً (401) — أما 5xx أو
+            // انقطاع الشبكة فيُبقيانه للمحاولة القادمة بدل طرد المستخدم.
+            if (!r.ok || !d.access_token) { if (r.status === 401) {KARIM_RTclear();} return false; }
             window._jwt = d.access_token;
             if (d.app_key) {window._appKey = d.app_key;}
             if (d.refresh_token) {KARIM_RTset(d.refresh_token);}

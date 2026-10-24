@@ -21,6 +21,11 @@ const bcrypt = require('bcryptjs');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+// هذه المجموعة تفحص المسار المتشدد: إعادة استعمال الرمز بعد التدوير تُرفض
+// فورًا. نافذة التسماح المتزامنة (45 ثانية افتراضيًا) لها اختبارها المستقل
+// في tests/session-hardening.test.js.
+process.env.REFRESH_GRACE_SECONDS = '0';
+
 const {
     OPEN_ENTITY_WRITE_ROLES,
     getEntityWriteRoles,
@@ -190,7 +195,7 @@ describe('Security Hardening — Refresh/Logout Lifecycle', () => {
     });
 
     it('إصدار رمز تحديث ثم تدويره ينتج زوجاً جديداً ويستهلك القديم', async () => {
-        const raw = await issueRefreshToken({ id: tempUserId }, { ip: '127.0.0.1' });
+        const raw = (await issueRefreshToken({ id: tempUserId }, { ip: '127.0.0.1' })).raw;
         expect(raw).toHaveLength(96);
 
         const res = mockRes();
@@ -206,7 +211,7 @@ describe('Security Hardening — Refresh/Logout Lifecycle', () => {
     });
 
     it('إعادة استعمال رمز مدوَّر تُرفض بـ 401', async () => {
-        const raw = await issueRefreshToken({ id: tempUserId }, { ip: '127.0.0.1' });
+        const raw = (await issueRefreshToken({ id: tempUserId }, { ip: '127.0.0.1' })).raw;
         const first = mockRes();
         await refreshHandler(makeReq({ body: { refresh_token: raw } }), first);
         expect(first.statusCode).toBe(200);
@@ -214,7 +219,9 @@ describe('Security Hardening — Refresh/Logout Lifecycle', () => {
         const second = mockRes();
         await refreshHandler(makeReq({ body: { refresh_token: raw } }), second);
         expect(second.statusCode).toBe(401);
-        expect(second.body.error).toBe('REFRESH_TOKEN_INVALID');
+        // خارج نافذة التسماح: ليس «رمزًا غير صالح» فحسب — الإشارة صريحة إلى
+        // إعادة استعمال، والجلسة كلها أُبطلت.
+        expect(second.body.error).toBe('REFRESH_TOKEN_REUSED');
     });
 
     it('رمز تحديث مجهول يُرفض بـ 401', async () => {

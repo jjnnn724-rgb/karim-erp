@@ -11,8 +11,8 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.152';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.152';
+import { apiFetch } from '../../core/api.js?v=4.9.154';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.154';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
