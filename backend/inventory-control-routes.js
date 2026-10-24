@@ -470,10 +470,12 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         // process crashes before the pool-based RE-ENABLE, triggers stay
         // disabled forever → all logins blocked. Now RE-ENABLE uses same client
         // inside the transaction, and pool-based re-enable is a safety net only.
+        // USER لا ALL: مشغّلات قيود المفاتيح الأجنبية مشغّلات نظام لا يملك
+        // karim_app تعطيلها، فتفشل ALL وتُرحّل الـsavepoint ويبقى الحذف محجوبًا.
         try {
             await client.query(`SAVEPOINT sp_triggers`);
-            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER ALL`);
-            await client.query(`ALTER TABLE users DISABLE TRIGGER ALL`);
+            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER USER`);
+            await client.query(`ALTER TABLE users DISABLE TRIGGER USER`);
             await client.query(`RELEASE SAVEPOINT sp_triggers`);
         } catch (trigErr) {
             try { await client.query(`ROLLBACK TO SAVEPOINT sp_triggers`); } catch (_) {}
@@ -582,6 +584,10 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
             INSERT INTO system_reset_audit (id, reset_number, reason, confirmation_phrase, actor_user_id, actor_username, actor_role, snapshot)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
         `, [id(), resetNumber, reason, confirmation, req.user.id || null, req.user.username || String(req.user.id), req.user.role || 'admin', json(snapshot)])).rows[0];
+        // البند ١١: أعِد مشغّلات سجل التدقيق قبل كتابة صفّ التصفير نفسه، وإلا
+        // أُدرج بلا ختم فبقي خارج سلسلة الـhash إلى الأبد. التفعيل داخل نفس
+        // المعاملة، فلا نافذة يبقى فيها الجدول بلا حماية بعد COMMIT.
+        try { await client.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER USER`); } catch (_) {}
         await client.query(`
             INSERT INTO pos_audit_logs (actor_user_id, actor_username, actor_role, action, table_name, row_pk, reason, metadata)
             VALUES ($1,$2,$3,'VOID','system_reset_audit',$4,$5,$6)
@@ -589,13 +595,13 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         // FIX 2026-10-11 (M15): RE-ENABLE triggers INSIDE the transaction before
         // COMMIT — if COMMIT succeeds and process crashes, triggers are already
         // re-enabled in the same atomic unit.
-        try { await client.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) {}
-        try { await client.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) {}
+        try { await client.query(`ALTER TABLE users ENABLE TRIGGER USER`); } catch (_) {}
+        try { await client.query(`ALTER TABLE users ENABLE TRIGGER USER`); } catch (_) {}
         await client.query('COMMIT');
         // Safety net: re-enable on separate connection (in case DISABLE was
         // done outside txn in an older code path)
-        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) {}
-        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) {}
+        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER USER`); } catch (_) {}
+        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER USER`); } catch (_) {}
         ['users','employees','payroll','attendance','leaveRequests','revenues','expenses','dispatches','kitchenReturns','purchaseInvoices','inventoryTx','inventoryAudits','posProducts','posOrders','notifications'].forEach(entity => emit(req, entity, 'reset', { resetNumber }));
         emit(req, 'inventory', 'reset', { resetNumber });
         emit(req, 'oracle', 'reset', { resetNumber });
@@ -607,8 +613,8 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         // إعادة تفعيل الـ triggers في حالة فشل
-        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER ALL`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
-        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER ALL`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
+        try { await pool.query(`ALTER TABLE pos_audit_logs ENABLE TRIGGER USER`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
+        try { await pool.query(`ALTER TABLE users ENABLE TRIGGER USER`); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
         logger.error('[system_reset_all]', error?.message || error);
         console.error('[system_reset_all] FULL ERROR:', error?.message, error?.stack?.slice(0,200));
         res.status(500).json({ error: 'SYSTEM_RESET_FAILED', message: 'تعذر تنفيذ التصفير؛ لم يتم تطبيق أي تغيير', detail: error?.message?.slice(0,120) });

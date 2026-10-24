@@ -82,6 +82,7 @@
     "verify:fix": "node scripts/verify-env.js --fix",
     "audit": "node scripts/audit.js",
     "audit:accounting": "node scripts/accounting-reconciliation.js",
+    "audit:chain": "node scripts/verify-audit-chain.js",
     "audit:fix": "node scripts/audit.js --fix",
     "audit:dry": "node scripts/audit.js --dry-run",
     "karimabdelhamed20177": "node scripts/karimabdelhamed20177.js",
