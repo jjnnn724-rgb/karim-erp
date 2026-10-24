@@ -1087,6 +1087,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
     <tr><td class="l">الإجمالي قبل الضريبة</td><td class="v">${esc(num(slip.ex_vat))}</td></tr>
     <tr><td class="l">ضريبة القيمة المضافة (${esc(String(rate))}%)</td><td class="v">${esc(num(slip.vat))}</td></tr>
     ${Number(slip.discount || 0) > 0 ? `<tr><td class="l">الخصم</td><td class="v">${esc(num(slip.discount))}</td></tr>` : ''}
+    ${Math.abs(drift) > 0.005 ? `<tr><td class="l">تسوية (فرق المحصَّل عن صافٍ + ضريبة)</td><td class="v">${esc(num(drift))}</td></tr>` : ''}
     <tr class="big"><td class="l">الإجمالي شامل الضريبة</td><td class="v">${esc(num(slip.collected))} ${esc(brand.currency)}</td></tr>
   </table>
   ${methods.length ? `<p class="pay">الدفع: ${methods.map(([m, v]) => `${esc(m)} <span class="ltr">${esc(num(v))}</span>`).join(' · ')}</p>` : ''}

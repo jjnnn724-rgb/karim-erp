@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.132';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.151';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];
@@ -146,6 +146,29 @@ export async function fetchReceiptHtml(docNo) {
     const res = await fetch(`${API_BASE}/pos/orders/ys/${encodeURIComponent(String(docNo))}/receipt-html`, { headers });
     if (!res.ok) {
         let msg = `تعذّر جلب الإيصال (${res.status})`;
+        try {
+            const e = await res.clone().json();
+            if (e && (e.message || e.error)) {msg = e.message || e.error;}
+        } catch (_) { /* النص ليس JSON */ }
+        throw new Error(msg);
+    }
+    return res.text();
+}
+
+/**
+ * HTML ورقة A4 لاستعلام المبيعات — GET /yara-reports/item-sales/print.
+ * نفس شروط الشاشة (فترة/كاشير/صنف) ونفس قاعدة fetch الإيصال: رؤوس
+ * المصادقة تُمرَّر يدويًا ثم تُكتب الورقة في عارض التطبيق.
+ * @param {{from?:string,to?:string,cashier?:string,item?:string}} f
+ * @returns {Promise<string>} HTML كامل جاهز للطباعة
+ */
+export async function fetchItemSalesSheetHtml({ from, to, cashier = '', item = '' } = {}) {
+    const headers = {};
+    if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
+    if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
+    const res = await fetch(`${API_BASE}/yara-reports/item-sales/print${qs({ from, to, cashier, item })}`, { headers });
+    if (!res.ok) {
+        let msg = `تعذّر جلب ورقة الطباعة (${res.status})`;
         try {
             const e = await res.clone().json();
             if (e && (e.message || e.error)) {msg = e.message || e.error;}

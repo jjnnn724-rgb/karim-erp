@@ -83,6 +83,13 @@ describe('مبيعات الكاشير — الرداءة تُعرض ولا تُ�
         expect(screen).not.toMatch(/t\.drift_docs\s*[-+]|t\.collected\s*[-+*/]\s*2/);
     });
 
+    test('خانة تجميع الفارق في اللوحة: مجموع drift_amount وعدد السندات', () => {
+        expect(screen).toMatch(/label: 'فارق التسوية'/);
+        expect(screen).toMatch(/value: money\(t\.drift_amount, ''\)/);
+        expect(screen).toMatch(/count\(t\.drift_docs\)/);
+        expect(screen).toMatch(/count\(t\.drift_large_docs\)/);
+    });
+
     test('الفارقُ عن (صافٍ + ضريبة) لا يُنسَب إلى التقريب إلا في قدره', () => {
         // قدرُ التقريب من عدد السطور، عند الخادم لا في الواجهة
         expect(backend).toMatch(/AS drift_large_docs/);

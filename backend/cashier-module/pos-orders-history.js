@@ -335,6 +335,15 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
         const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const stamp = `${String(slip.day).slice(0, 10)} ${String(slip.doc_time || '').slice(0, 5)}`;
         const vatRate = items.length && items[0].vat_rate != null ? items[0].vat_rate : 15;
+        /* معنى عمودَي المرآة: net = المحصَّل شاملًا الضريبة بعد خصم السند،
+           total = قبل الضريبة. كان الإيصال يطبع net تحت «قبل الضريبة»
+           وtotal تحت «الإجمالي» فينقلب المعنى ولا ينطبق (صافٍ + ضريبة).
+           الخصم الجُملي لا يُسجَّل في عمود مستقل (discount = 0 دائمًا)
+           فيُطبع الفرق صراحةً كي تنطبق المعادلة على الورق. */
+        const exVat = Number(slip.total || 0);
+        const vatAmt = Number(slip.vat || 0);
+        const collected = Number(slip.net || 0);
+        const adj = Math.round((exVat + vatAmt - collected) * 100) / 100;
         const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -371,10 +380,11 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
     <div class="detail"><span>${it.qty} × ${num(it.price)}</span><span>${num(it.total)}</span></div>
   </div>`).join('')}
   <div class="divider"></div>
-  <div class="row"><span class="label">قبل الضريبة</span><span>${num(slip.net)}</span></div>
-  <div class="row"><span class="label">ضريبة القيمة المضافة (${vatRate}%)</span><span>${num(slip.vat)}</span></div>
-  ${Number(slip.discount || 0) > 0 ? `<div class="row"><span class="label">الخصم</span><span>${num(slip.discount)}</span></div>` : ''}
-  <div class="row total-row"><span>الإجمالي</span><span>${num(slip.total)}</span></div>
+  <div class="row"><span class="label">قبل الضريبة</span><span>${num(exVat)}</span></div>
+  <div class="row"><span class="label">ضريبة القيمة المضافة (${vatRate}%)</span><span>${num(vatAmt)}</span></div>
+  ${Number(slip.discount || 0) > 0 ? `<div class="row"><span class="label">الخصم المسجَّل</span><span>${num(slip.discount)}</span></div>` : ''}
+  ${Math.abs(adj) > 0.005 ? `<div class="row"><span class="label">خصم / تسوية</span><span>${num(adj)}</span></div>` : ''}
+  <div class="row total-row"><span>الإجمالي المحصَّل</span><span>${num(collected)}</span></div>
   <div class="row payment-row"><span class="label">المدفوع</span><span>${num(slip.payed)}</span></div>
   <div class="divider"></div>
   ${[['نقد', slip.pay_cash], ['شبكة', slip.pay_network], ['آجل', slip.pay_credit], ['جوال', slip.pay_mobile]]

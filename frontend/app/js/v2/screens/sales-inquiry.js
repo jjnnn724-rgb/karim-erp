@@ -12,6 +12,11 @@
  *   4) «طباعة الإيصال» → HTML الإيصال من /pos/orders/ys/:docNo/receipt-html
  *      يُجلب بـ fetch خام برؤوس المصادقة ثم يُكتب في عارض التطبيق
  *      (report-viewer) — لأن فتحه في تبويب جديد يسقط 401 بلا هيدر.
+ *   5) «طباعة الاستعلام» → ورقة A4 من /yara-reports/item-sales/print بنفس
+ *      فلترة الشاشة (فترة/كاشير/صنف) وبالهوية نفسها.
+ *   6) الفارق (قبل الضريبة + الضريبة) − المحصَّل يُعرض صراحةً كخصم/تسوية
+ *      في الإيصال وبطاقة التفاصيل: المصدر لا يسجّل الخصم في عمود مستقل،
+ *      ولا يُصفَّر الفرق بالتقريب.
  *
  * الأرقام حقيقية من مرآة yara فقط (ys_mirror_orders عبر jsonb) — لا
  * pos_orders ولا حساب محلي ولا تقدير. الأدوار يقررها الخادم
@@ -19,13 +24,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
-    rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.132';
+    fetchItemSalesSheetHtml, rangeError, YARA_MAX_SPAN_DAYS,
+} from '../data/yara-reports-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -94,6 +99,9 @@ function template() {
             <i class="ji" data-i="search" aria-hidden="true"></i><span>استعلام</span>
           </button>
           <button type="button" class="erp-btn erp-btn--ghost erp-btn--sm" data-v2-clear>مسح</button>
+          <button type="button" class="erp-btn erp-btn--subtle erp-btn--sm" data-v2-print-sheet>
+            <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة الاستعلام</span>
+          </button>
           <span class="erp-text-sm erp-text-muted" id="v2sq-hint">أقصى فترة ${YARA_MAX_SPAN_DAYS} يومًا</span>
         </div>
 
@@ -165,7 +173,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                 render: (r) => `<span class="erp-num" dir="ltr">${formatQty(r.qty)}</span>` },
             { key: 'invoices', header: 'فواتير', type: 'number', width: '110px', align: 'end', value: (r) => Number(r.invoices || 0),
                 render: (r) => `<span class="erp-num" dir="ltr">${formatInt(r.invoices)}</span>` },
-            { key: 'net', header: 'الصافي', type: 'number', width: '140px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
+            { key: 'net', header: 'قبل الضريبة', type: 'number', width: '140px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
             { key: 'vat', header: 'الضريبة', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.vat || 0), render: (r) => money(r.vat) },
             { key: 'avg', header: 'متوسط سعر الوحدة', type: 'number', width: '160px', align: 'end',
                 value: (r) => (Number(r.qty) ? Number(r.net) / Number(r.qty) : 0),
@@ -186,8 +194,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             { key: 'item_qty', header: 'كمية الصنف', type: 'number', width: '120px', align: 'end', value: (r) => Number(r.item_qty || 0),
                 render: (r) => `<span class="erp-num" dir="ltr">${formatQty(r.item_qty)}</span>` },
             { key: 'item_price', header: 'سعر الوحدة', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.item_price || 0), render: (r) => money(r.item_price) },
-            { key: 'item_net', header: 'إجمالي الصنف', type: 'number', width: '140px', align: 'end', value: (r) => Number(r.item_net || 0), render: (r) => money(r.item_net) },
-            { key: 'net', header: 'صافي الفاتورة', type: 'number', width: '140px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
+            { key: 'item_net', header: 'قبل الضريبة للصنف', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.item_net || 0), render: (r) => money(r.item_net) },
+            { key: 'net', header: 'المحصَّل للفاتورة', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
             { key: 'actions', header: 'إجراءات', width: '130px', align: 'center', className: 'erp-no-print',
                 render: (r) => `<span class="erp-row-wrap">`
                     + `<button type="button" class="erp-btn erp-btn--subtle erp-btn--xs" data-v2-detail="${esc(r.doc_no)}" title="تفاصيل الفاتورة"><i class="ji" data-i="eye" aria-hidden="true"></i></button>`
@@ -203,8 +211,9 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             + [
                 { icon: 'receipt', label: 'فواتير', en: 'Invoices', value: `<span class="erp-num" dir="ltr">${formatInt(t.invoices)}</span>` },
                 { icon: 'package', label: 'الكمية', en: 'Qty', value: `<span class="erp-num" dir="ltr">${formatQty(t.qty)}</span>` },
-                { icon: 'banknote', label: 'الصافي', en: 'Net', value: money(t.net) },
+                { icon: 'banknote', label: 'قبل الضريبة', en: 'Net ex VAT', value: money(t.net) },
                 { icon: 'percent', label: 'الضريبة', en: 'VAT', value: money(t.vat) },
+                { icon: 'receipt', label: 'شامل الضريبة', en: 'Gross', value: money(Number(t.net || 0) + Number(t.vat || 0)) },
             ].map((k) => `<li class="erp-kpi">
                 <div class="erp-kpi__top"><span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${k.icon}"></i></span>
                 <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span></div>
@@ -333,6 +342,18 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             if (!alive || state.detailDoc !== docNo) { return; }
             const o = (data && data.order) || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
+            /* المرآة تسجّل المحصَّل في net وصافي ما قبل الضريبة في total،
+               والخصم الجُملي لا يُسجَّل في عمود مستقل (discount صفر دائمًا)
+               ⇒ الفرق (قبل الضريبة + الضريبة) − المحصَّل يُعرض صراحةً
+               بدل كتمانه بالتقريب: المحصَّل + التسوية = صافٍ + ضريبة. */
+            const adj = Math.round(((Number(o.total) || 0) + (Number(o.vat) || 0) - (Number(o.net) || 0)) * 100) / 100;
+            const gross = Math.round(((Number(o.total) || 0) + (Number(o.vat) || 0)) * 100) / 100;
+            const recon = Math.abs(adj) > 0.005
+                ? `<p class="erp-text-sm erp-text-muted">قبل الضريبة + الضريبة = ${money(gross)}، والمحصَّل ${money(o.net)}؛
+                    الفرق ${money(adj)} ${adj > 0
+                        ? 'خصمٌ أو تسويةُ كسورٍ لم يسجّلها المصدر في عمود مستقل — وبه تنطبق المعادلة: المحصَّل + التسوية = قبل الضريبة + الضريبة.'
+                        : 'زيادةٌ في المحصَّل عن المسعَّر — تُراجع مع سجل الكاشير.'}</p>`
+                : '';
             const rowsHtml = lines.map((l, i) => `<tr>
                 <td>${i + 1}</td>
                 <td class="salesinq__start">${esc(l.name || '—')}${l.code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(l.code)}</span>` : ''}</td>
@@ -361,18 +382,20 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                   <div class="erp-emp-stats">
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الوردية</span><span class="erp-emp-stat__v">${esc(o.shift_no || '—')}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">المنطقة / الطاولة</span><span class="erp-emp-stat__v">${esc(o.zone_name || o.table_name || '—')}</span></div>
-                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الإجمالي</span><span class="erp-emp-stat__v">${money(o.total)}</span></div>
-                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الخصم</span><span class="erp-emp-stat__v">${money(o.discount)}</span></div>
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">قبل الضريبة</span><span class="erp-emp-stat__v">${money(o.total)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الضريبة</span><span class="erp-emp-stat__v">${money(o.vat)}</span></div>
-                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الصافي</span><span class="erp-emp-stat__v">${money(o.net)}</span></div>
+                    ${Number(o.discount) > 0.005 ? `<div class="erp-emp-stat"><span class="erp-emp-stat__l">الخصم المسجَّل</span><span class="erp-emp-stat__v">${money(o.discount)}</span></div>` : ''}
+                    ${Math.abs(adj) > 0.005 ? `<div class="erp-emp-stat"><span class="erp-emp-stat__l">خصم / تسوية كسور</span><span class="erp-emp-stat__v">${money(adj)}</span></div>` : ''}
+                    <div class="erp-emp-stat"><span class="erp-emp-stat__l">الإجمالي المحصَّل</span><span class="erp-emp-stat__v">${money(o.net)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">المدفوع</span><span class="erp-emp-stat__v">${money(o.payed)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">نقدًا</span><span class="erp-emp-stat__v">${money(o.pay_cash)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">شبكة</span><span class="erp-emp-stat__v">${money(o.pay_network)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">آجل / محفظة</span><span class="erp-emp-stat__v">${money(Number(o.pay_credit || 0) + Number(o.pay_mobile || 0))}</span></div>
                   </div>
+                  ${recon}
                   <div class="erp-tbl-wrap salesinq__scroll">
                     <table class="erp-tbl">
-                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th></tr></thead>
                       <tbody>${rowsHtml || '<tr><td colspan="5" class="erp-text-muted erp-text-center">لا سطور مفصلة لهذه الفاتورة</td></tr>'}</tbody>
                     </table>
                   </div>
@@ -397,6 +420,27 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             w.focus();
         } catch (e) {
             notify('تعذّر طباعة الإيصال: ' + ((e && e.message) || 'خطأ'));
+        }
+    }
+
+    /* ── طباعة الاستعلام كاملًا (ورقة A4 من الخادم) ─────────────────── */
+    async function printSheet() {
+        const guard = rangeError(state.from, state.to);
+        if (guard && guard.ok === false) { notify(guard.message); return; }
+        try {
+            const html = await fetchItemSalesSheetHtml({
+                from: state.from, to: state.to,
+                cashier: state.cashier, item: state.item,
+            });
+            if (!alive) { return; }
+            const w = openInAppReport('طباعة استعلام المبيعات');
+            if (!w) { notify('تعذّر فتح عارض الطباعة'); return; }
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+        } catch (e) {
+            notify('تعذّر طباعة الاستعلام: ' + ((e && e.message) || 'خطأ'));
         }
     }
 
@@ -470,6 +514,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         if (preset) { setPreset(preset.dataset.v2Preset); return; }
 
         if (event.target.closest('[data-v2-run]')) { readFilters(); refresh(); return; }
+
+        if (event.target.closest('[data-v2-print-sheet]')) { readFilters(); printSheet(); return; }
 
         if (event.target.closest('[data-v2-clear]')) {
             q('#v2sq-item').value = ''; q('[data-v2-suggest]').hidden = true;

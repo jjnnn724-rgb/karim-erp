@@ -204,3 +204,114 @@ describe('الذوق — رموز التصميم فقط', () => {
         expect(screen).not.toMatch(/import .* from 'https?:/);
     });
 });
+
+/* ── الطباعة الكاملة + تصحيح فارق الهلالات ───────────────────────────────
+   طلب المالك (2026-10-23): «عايز طباعة في استعلامات البيع … الفواتير في
+   فارق هلالات المفروض يكون الصافي + الضريبة». هذه الكتلة تثبّت أن الطباعة
+   ورقة A4 من الخادم بنفس فلترة الشاشة، وأن الإيصال لم يعد يقلب معنى
+   net/total، وأن الفرق الجُملي يُطبع صراحةً بدل كتمانه. */
+const cashierSalesRoutes = read('backend', 'cashier-sales-routes.js');
+
+/** جسم باب الطباعة وحده. */
+function sheetDoor() {
+    const start = server.indexOf("router.get('/item-sales/print'");
+    expect(start).toBeGreaterThan(-1);
+    const end = server.indexOf("router.get('/orders'", start);
+    expect(end).toBeGreaterThan(start);
+    return server.slice(start, end);
+}
+
+describe('طباعة الاستعلام — ورقة A4 من الخادم', () => {
+    test('باب /item-sales/print بأدوار القراءة الثلاثة وقراءة المرآة فقط', () => {
+        const d = sheetDoor();
+        expect(d).toMatch(/requireRole\('sous_chef', 'admin', 'owner'\)/);
+        expect(d).toMatch(/FROM ys_mirror_orders o, jsonb_array_elements\(o\.lines\) e/);
+        expect(d).not.toMatch(/pos_orders/);
+        expect(d).not.toMatch(/INSERT|UPDATE|DELETE/);
+    });
+
+    test('نفس سقف العائلة وno-store ونفس تطبيع البحث العربي', () => {
+        const d = sheetDoor();
+        expect(d).toMatch(/spanDays > 93/);
+        expect(d).toMatch(/RANGE_TOO_WIDE/);
+        expect(d).toMatch(/Cache-Control', 'no-store'/);
+        expect(d).toMatch(/replace\(\/\^ال\/, ''\)/);
+        expect(d).toMatch(/GROUP BY 1, 2/);
+    });
+
+    test('هوية العلامة من settings بلا اسم برنامج الكاشيرية', () => {
+        const d = sheetDoor();
+        expect(server).toMatch(/FROM settings WHERE id = 'main_settings'/);
+        expect(d).toMatch(/loadSheetBrand\(\)/);
+        expect(server).toMatch(/logoB64/);
+        expect(d).toMatch(/data-v2-print-brand/);
+        expect(d).not.toMatch(/YaraSoft|يارا/);
+    });
+
+    test('الإجماليات قبل LIMIT، ورأس السند مقابل السطور يُعرضان معًا', () => {
+        const d = sheetDoor();
+        expect(d).toMatch(/COUNT\(DISTINCT o\.doc_no\)/);
+        expect(d).toMatch(/SUM\(o\.net\)/);
+        expect(d).toMatch(/خصم \/ تسوية كسور/);
+        expect(d).toMatch(/فرق السطور عن رأس السند/);
+    });
+
+    test('ورقة الصنف تطبع فواتيره بكميته وسعره ومحصَّل كل فاتورة', () => {
+        const d = sheetDoor();
+        for (const col of ['item_qty', 'item_ex_vat', 'item_vat', 'item_price', 'o.net']) {
+            expect(d).toContain(col);
+        }
+        expect(d).toMatch(/فواتير الصنف/);
+    });
+
+    test('المستودع يجلب الورقة برؤوس المصادقة لا برابط مباشر', () => {
+        const fn = repo.slice(repo.indexOf('export async function fetchItemSalesSheetHtml'));
+        expect(fn).toMatch(/item-sales\/print/);
+        expect(fn).toMatch(/window\._jwt/);
+        expect(fn).toMatch(/Authorization/);
+        expect(fn).toMatch(/x-api-key/);
+        expect(fn).toMatch(/res\.text\(\)/);
+    });
+
+    test('الشاشة: زر طباعة الاستعلام يمر بالعارض لا بتبويب جديد', () => {
+        expect(screen).toMatch(/data-v2-print-sheet/);
+        expect(screen).toMatch(/fetchItemSalesSheetHtml/);
+        expect(screen).toMatch(/\[data-v2-print-sheet\]/);
+        expect(screen).toMatch(/openInAppReport/);
+        expect(screen).not.toMatch(/target="_blank"/);
+    });
+});
+
+describe('فارق الهلالات — التسميات والمعادلة', () => {
+    test('إيصال المرآة: قبل الضريبة = total، والإجمالي المحصَّل = net', () => {
+        const block = receiptRoute.slice(receiptRoute.indexOf('const exVat = Number(slip.total'));
+        expect(block).toMatch(/قبل الضريبة<\/span><span>\$\{num\(exVat\)\}/);
+        expect(block).toMatch(/الإجمالي المحصَّل<\/span><span>\$\{num\(collected\)\}/);
+        expect(block).not.toMatch(/قبل الضريبة<\/span><span>\$\{num\(slip\.net\)\}/);
+    });
+
+    test('الإيصال يطبع خصم/تسوية صريحًا كي تنطبق المعادلة', () => {
+        const block = receiptRoute.slice(receiptRoute.indexOf('const exVat = Number(slip.total'));
+        expect(block).toMatch(/const adj = Math\.round\(\(exVat \+ vatAmt - collected\)/);
+        expect(block).toMatch(/خصم \/ تسوية/);
+    });
+
+    test('إيصال مبيعات الكاشير يعرض سطر التسوية أيضًا', () => {
+        expect(cashierSalesRoutes).toMatch(/تسوية \(فرق المحصَّل عن صافٍ \+ ضريبة\)/);
+        expect(cashierSalesRoutes).toMatch(/الإجمالي قبل الضريبة/);
+    });
+
+    test('بطاقة تفاصيل الفاتورة في الشاشة تعرض قبل الضريبة والمحصَّل والتسوية', () => {
+        expect(screen).toMatch(/قبل الضريبة<\/span><span class="erp-emp-stat__v">\$\{money\(o\.total\)\}/);
+        expect(screen).toMatch(/الإجمالي المحصَّل<\/span><span class="erp-emp-stat__v">\$\{money\(o\.net\)\}/);
+        expect(screen).toMatch(/خصم \/ تسوية كسور/);
+        expect(screen).toMatch(/المحصَّل \+ التسوية = قبل الضريبة \+ الضريبة/);
+    });
+
+    test('عناوين الجداول لا تسمّي قبل الضريبة «صافيًا»', () => {
+        expect(screen).toMatch(/header: 'قبل الضريبة'/);
+        expect(screen).toMatch(/header: 'المحصَّل للفاتورة'/);
+        expect(screen).not.toMatch(/header: 'الصافي'/);
+        expect(screen).not.toMatch(/صافي الفاتورة/);
+    });
+});

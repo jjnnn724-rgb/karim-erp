@@ -773,6 +773,350 @@ router.get('/item-sales', requireRole('sous_chef', 'admin', 'owner'), async (req
     }
 });
 
+/* ── ورقة A4 لاستعلام المبيعات ────────────────────────────────────────────
+   هوية العلامة من settings كما في كشوف مبيعات الكاشير (لا اسم لبرنامج
+   الكاشيرية على الورق). الأرقام تُعرض كما هي من المرآة، والفروق تُشرح
+   ولا تُصفَّر: «الحقيقة لا تُخفى بتقريبٍ في الواجهة». */
+const SHEET_CURRENCY = { SAR: 'ر.س', EGP: 'ج.م', AED: 'د.إ', USD: '$', EUR: '€', GBP: '£' };
+const hEsc = (v) => String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const hNum = (v, d = 2) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const hLtr = (v) => `<span class="ltr">${hEsc(v)}</span>`;
+const hMoney = (v, cur) => `<span class="ltr">${hEsc(hNum(v))} ${hEsc(cur)}</span>`;
+const hCell = (k, v) => `<div class="cell"><b>${hEsc(k)}</b><span>${v}</span></div>`;
+const hRound = (v) => Math.round(Number(v || 0) * 100) / 100;
+
+async function loadSheetBrand() {
+    try {
+        const r = (await pool.query(`SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`)).rows[0] || {};
+        const code = String(r.currency || '').trim();
+        return {
+            name: String(r.name || '').trim() || 'مطاعم الشرفة العالمي',
+            currency: SHEET_CURRENCY[code.toUpperCase()] || code || 'ر.س',
+            logo: /^data:image\//i.test(String(r.logoB64 || '')) ? String(r.logoB64) : '/app/assets/al-shurfa-logo.png',
+        };
+    } catch (err) {
+        logger.warn({ err: err.message }, '[item-sales/print] brand unavailable — fallback');
+        return { name: 'مطاعم الشرفة العالمي', currency: 'ر.س', logo: '/app/assets/al-shurfa-logo.png' };
+    }
+}
+
+function sheetCss() {
+    return `
+  @page { size: A4; margin: 12mm 11mm 14mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family:"Segoe UI", Tahoma, Arial, sans-serif; font-size:12.5px; color:#17231f;
+         background:#eef1f6; direction:rtl; padding:28px 20px; line-height:1.5; }
+  .ltr { direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .sheet { max-width:200mm; margin:0 auto; background:#fff; border:1px solid #dfe3ea;
+           border-radius:14px; box-shadow:0 14px 40px rgba(15,23,42,.10); overflow:hidden; }
+  .brand { display:flex; align-items:center; gap:14px; padding:14px 22px 12px;
+           background:#fff; border-bottom:2px solid #c9a227; }
+  .brand img { width:56px; height:56px; object-fit:contain; }
+  .brand__t { flex:1; min-width:0; }
+  .brand__t h1 { font-size:18px; color:#12352a; font-weight:700; }
+  .brand__t p { font-size:11px; color:#6b7280; margin-top:3px; overflow-wrap:anywhere; }
+  .brand__id .no { display:inline-block; background:#fffaf0; border:1px solid #d9c48a;
+                   border-radius:999px; padding:4px 14px; font-size:12.5px; font-weight:700; color:#7a5c14; }
+  .doc { text-align:center; padding:16px 22px 4px; }
+  .doc h2 { font-size:19px; color:#12352a; letter-spacing:.4px; }
+  .doc .sub { font-size:11.5px; color:#64748b; margin-top:3px; }
+  .body { padding:6px 22px 22px; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid #e5e7eb;
+          border-radius:10px; overflow:hidden; margin-top:12px; }
+  .cell { padding:9px 12px; border-inline-start:1px solid #eef1f5; border-top:1px solid #eef1f5; }
+  .cell:nth-child(4n+1) { border-inline-start:0; }
+  .cell:nth-child(-n+4) { border-top:0; }
+  .cell b { display:block; font-size:10.5px; color:#8a6d1b; font-weight:700; }
+  .cell span { display:block; margin-top:2px; font-size:12.5px; color:#12352a; font-weight:600;
+               overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+  h3.sec { font-size:12.5px; color:#12352a; margin:18px 0 6px; padding-inline-start:9px;
+           border-inline-start:4px solid #c9a227; }
+  table.t { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  table.t th, table.t td { padding:5.5px 7px; font-size:11px; border-bottom:1px solid #edf0f4; text-align:right; }
+  table.t th { background:#f3f5f3; color:#12352a; font-weight:700; font-size:10.5px;
+               border-bottom:1.5px solid #c9a227; text-align:center; white-space:nowrap; }
+  table.t td.c, table.t th.c { text-align:center; }
+  table.t td.n { text-align:left; direction:ltr; unicode-bidi:isolate; white-space:nowrap; }
+  table.t tbody tr:nth-child(even) td { background:#f8fafc; }
+  table.t tbody tr { break-inside:avoid; page-break-inside:avoid; }
+  table.t tfoot td { background:#eef2f7; font-weight:800; color:#12352a; border-top:2px solid #c9a227;
+                     border-bottom:0; font-size:11.5px; }
+  .idx { color:#94a3b8; font-size:10.5px; }
+  .bars { display:block; width:100%; height:7px; border-radius:999px; background:#eef2f7; overflow:hidden; }
+  .bars i { display:block; height:100%; background:linear-gradient(90deg,#c9a227,#12352a); }
+  .note { margin-top:12px; border:1px solid #e5e7eb; border-inline-start:4px solid #c9a227;
+          border-radius:10px; padding:9px 13px; background:#fffdf5; font-size:11px; color:#3f3a26; }
+  .foot { margin-top:18px; border-top:1px solid #e5e7eb; padding-top:8px; display:flex;
+          justify-content:space-between; gap:10px; font-size:10px; color:#94a3b8; }
+  @media print {
+    body { background:#fff; padding:0; }
+    .sheet { border:0; border-radius:0; box-shadow:none; max-width:none; overflow:visible; }
+    .body { padding:6px 0 0; }
+    table.t thead { display:table-header-group; }
+    .brand, .doc, .grid, .note, h3.sec { break-inside:avoid; page-break-inside:avoid; }
+    .grid, h3.sec { break-after:avoid; page-break-after:avoid; }
+    table.t th { background:#f3f5f3 !important; }
+    table.t tbody tr:nth-child(even) td { background:#f8fafc !important; }
+  }`;
+}
+
+/**
+ * GET /api/yara-reports/item-sales/print — ورقة A4 لاستعلام المبيعات
+ * ?from=&to=[&cashier=&item=] — نفس شرط /item-sales حرفًا بحرف، فلا تختلف
+ * الورقة عن الشاشة. عند فلتر صنف تُطبع فواتيره أيضاً بكميته في كل فاتورة.
+ * المصدر: ys_mirror_orders فقط؛ قراءة، ولا كتابة.
+ */
+router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), async (req, res) => {
+    try {
+        const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+        const from = dayRe.test(String(req.query.from || '')) ? req.query.from : riyadhDay(-29);
+        const to = dayRe.test(String(req.query.to || '')) ? req.query.to : riyadhDay(0);
+        if (from > to) {return res.status(422).json({ ok: false, error: 'INVALID_RANGE', message: 'المدى معكوس — «من» بعد «إلى»' });}
+        const spanDays = Math.round((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000) + 1;
+        if (spanDays > 93) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 93 يومًا' });}
+        const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
+        const item = String(req.query.item || '').trim().slice(0, 60);
+
+        const brand = await loadSheetBrand();
+
+        // نفس شرط /item-sales: كاشير + تطبيع البحث العربي + كل كلمة على حدة
+        const params = [from, to];
+        const conds = [];
+        if (cashier) {params.push(cashier); conds.push(`o.cashier_no::text = $${params.length}`);}
+        if (item) {
+            const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
+            const terms = words.length ? words : [item];
+            const ors = terms.map((w) => {
+                params.push('%' + w + '%');
+                return `((e->>'name') ILIKE $${params.length} OR (e->>'code') ILIKE $${params.length})`;
+            }).join(' OR ');
+            conds.push(`(${ors})`);
+        }
+        const where = conds.length ? ` AND ${conds.join(' AND ')}` : '';
+
+        let cashierName = '';
+        if (cashier) {
+            try {
+                const c = (await pool.query(
+                    `SELECT display_ar FROM yarasoft_revenue_map WHERE src_table='CC' AND active=true AND TRIM(src_name) = $1 LIMIT 1`,
+                    [cashier])).rows[0];
+                cashierName = c && c.display_ar ? String(c.display_ar) : '';
+            } catch (_) { /* الاسم تجميلي — الغيابه لا يوقف الكشف */ }
+        }
+
+        const rows = (await pool.query(
+            `SELECT e->>'code' AS item_code, e->>'name' AS item_name,
+                    COUNT(DISTINCT o.doc_no)::int AS invoices,
+                    COALESCE(SUM((e->>'qty')::numeric), 0)::float AS qty,
+                    COALESCE(SUM((e->>'total')::numeric), 0)::float AS ex_vat,
+                    COALESCE(SUM((e->>'vat')::numeric), 0)::float AS vat
+               FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${where}
+              GROUP BY 1, 2
+              ORDER BY 4 DESC, 3 DESC
+              LIMIT 1000`,
+            params
+        )).rows;
+
+        // إجماليات السطور على المدى كله — قبل أي LIMIT
+        const lines = (await pool.query(
+            `SELECT COUNT(DISTINCT o.doc_no)::int AS invoices,
+                    COUNT(DISTINCT COALESCE(e->>'code','') || '|' || COALESCE(e->>'name',''))::int AS items,
+                    COALESCE(SUM((e->>'qty')::numeric), 0)::float AS qty,
+                    COALESCE(SUM((e->>'total')::numeric), 0)::float AS ex_vat,
+                    COALESCE(SUM((e->>'vat')::numeric), 0)::float AS vat
+               FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${where}`,
+            params
+        )).rows[0] || {};
+
+        // رأس السند: المحصَّل (net) مقابل صافٍ + ضريبة — فقط عند كشف الفترة كله
+        const head = item ? null : ((await pool.query(
+            `SELECT COUNT(*)::int AS invoices,
+                    COALESCE(SUM(o.total), 0)::float AS ex_vat,
+                    COALESCE(SUM(o.vat), 0)::float AS vat,
+                    COALESCE(SUM(o.net), 0)::float AS collected
+               FROM ys_mirror_orders o
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${where}`,
+            params
+        )).rows[0] || {});
+
+        const invoices = item ? (await pool.query(
+            `SELECT o.doc_no, o.cashier_no::text AS cashier_no, o.doc_date, o.doc_time,
+                    o.net, o.total, o.vat,
+                    SUM((e->>'qty')::numeric)::float AS item_qty,
+                    SUM((e->>'total')::numeric)::float AS item_ex_vat,
+                    SUM(COALESCE((e->>'vat')::numeric, 0))::float AS item_vat,
+                    MAX(COALESCE((e->>'price')::numeric, 0))::float AS item_price,
+                    MAX(e->>'name') AS item_name, MAX(e->>'code') AS item_code
+               FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${where}
+              GROUP BY o.doc_no
+              ORDER BY o.doc_date DESC, o.doc_no DESC
+              LIMIT 1000`,
+            params
+        )).rows : [];
+
+        const cur = brand.currency;
+        const lineEx = hRound(lines.ex_vat);
+        const lineVat = hRound(lines.vat);
+        const lineGross = hRound(lineEx + lineVat);
+        const headEx = head ? hRound(head.ex_vat) : 0;
+        const headVat = head ? hRound(head.vat) : 0;
+        const collected = head ? hRound(head.collected) : 0;
+        const headGross = hRound(headEx + headVat);
+        const adj = hRound(headGross - collected);
+        const lineVsHead = hRound(lineGross - headGross);
+        const shown = rows.length;
+
+        const period = `من ${hLtr(from)} إلى ${hLtr(to)}`;
+        const who = cashier ? `كاشير ${hEsc(cashierName || cashier)}` : 'كل الكاشيرات';
+        const scopeItem = item ? ` · بحث الصنف: ${hEsc(item)}` : '';
+
+        let cells = '';
+        let title = '';
+        let table = '';
+        let docPill = '';
+
+        if (item) {
+            const invSum = invoices.reduce((a, r) => ({
+                qty: a.qty + Number(r.item_qty || 0),
+                ex: a.ex + Number(r.item_ex_vat || 0),
+                vat: a.vat + Number(r.item_vat || 0),
+            }), { qty: 0, ex: 0, vat: 0 });
+            const invEx = hRound(invSum.ex);
+            const invVat = hRound(invSum.vat);
+            const avgPrice = Number(lines.qty) > 0 ? lineEx / Number(lines.qty) : 0;
+            const label = (rows[0] && rows[0].item_name) || item;
+            const code = (rows[0] && rows[0].item_code) || '';
+            title = 'استعلام مبيعات صنف';
+            docPill = `${hEsc(String(lines.invoices || 0))} فاتورة`;
+            cells = [
+                ['الصنف', `${hEsc(label)}${code ? ` <span class="ltr">#${hEsc(code)}</span>` : ''}`],
+                ['عدد الفواتير', hLtr(lines.invoices || 0)],
+                ['الكمية المباعة', hLtr(hNum(lines.qty))],
+                ['متوسط سعر الوحدة', hMoney(avgPrice, cur)],
+                ['قبل الضريبة (سطور الصنف)', hMoney(lineEx, cur)],
+                ['الضريبة (سطور الصنف)', hMoney(lineVat, cur)],
+                ['شامل الضريبة (سطور الصنف)', hMoney(lineGross, cur)],
+                ['أصناف مطابقة للبحث', hLtr(lines.items || 0)],
+            ].map(([k, v]) => hCell(k, v)).join('');
+
+            const body = invoices.map((r, i) => `<tr>
+                <td class="c idx">${i + 1}</td>
+                <td class="c n">${hEsc(r.doc_no)}</td>
+                <td class="c n">${hEsc(String(r.doc_date || '').slice(0, 10))}</td>
+                <td class="c n">${hEsc(String(r.doc_time || '').slice(0, 5))}</td>
+                <td>كاشير ${hEsc(r.cashier_no || '—')}</td>
+                <td class="c n">${hEsc(hNum(r.item_qty, 2))}</td>
+                <td class="c n">${hEsc(hNum(r.item_price))}</td>
+                <td class="c n"><b>${hEsc(hNum(r.item_ex_vat))}</b></td>
+                <td class="c n">${hEsc(hNum(r.item_vat))}</td>
+                <td class="c n">${hEsc(hNum(r.net))}</td>
+              </tr>`).join('');
+            table = `<h3 class="sec">فواتير الصنف${invoices.length >= 1000 ? ' (أول 1000 فاتورة)' : ''}</h3>
+              <table class="t"><thead><tr><th style="width:4%">#</th><th style="width:11%">السند</th>
+                <th style="width:9%">التاريخ</th><th style="width:7%">الوقت</th><th>الكاشير</th>
+                <th style="width:8%">كمية الصنف</th><th style="width:9%">سعر الوحدة</th>
+                <th style="width:11%">قبل الضريبة للصنف</th><th style="width:10%">ضريبة الصنف</th>
+                <th style="width:11%">المحصَّل للفاتورة</th></tr></thead>
+              <tbody>${body || '<tr><td colspan="10" class="c">لا فواتير لهذا الصنف في هذا المدى</td></tr>'}</tbody>
+              ${invoices.length ? `<tfoot><tr><td colspan="5">إجمالي المعروض (${invoices.length} فاتورة)</td>
+                <td class="n">${hEsc(hNum(invSum.qty, 2))}</td><td></td>
+                <td class="n">${hEsc(hNum(invEx))}</td><td class="n">${hEsc(hNum(invVat))}</td><td></td></tr></tfoot>` : ''}
+              </table>
+              <div class="note"><b>قراءة العمود الأخير:</b> «المحصَّل للفاتورة» هو إجمالي الفاتورة كاملة كما حُصّل (يشمل أصنافًا أخرى)، وأرقام الصنف من سطوره وحدها — لذلك لا يُجمع هذا العمود مع أعمدة الصنف في معادلة واحدة.</div>`;
+        } else {
+            title = 'استعلام المبيعات';
+            docPill = `${hEsc(String(shown))} صنفًا`;
+            cells = [
+                ['عدد الفواتير', hLtr(head.invoices || 0)],
+                ['عدد الأصناف', hLtr(lines.items || 0)],
+                ['الكمية المباعة', hLtr(hNum(lines.qty))],
+                ['متوسط الفاتورة', hMoney(head.invoices ? collected / head.invoices : 0, cur)],
+                ['قبل الضريبة (سطور الأصناف)', hMoney(lineEx, cur)],
+                ['الضريبة (سطور الأصناف)', hMoney(lineVat, cur)],
+                ['شامل الضريبة (سطور الأصناف)', hMoney(lineGross, cur)],
+                ['المحصَّل فعليًا (رأس السند)', hMoney(collected, cur)],
+                ['قبل الضريبة (رأس السند)', hMoney(headEx, cur)],
+                ['الضريبة (رأس السند)', hMoney(headVat, cur)],
+                ['خصم / تسوية كسور', hMoney(adj, cur)],
+                ['فرق السطور عن رأس السند', hMoney(lineVsHead, cur)],
+            ].map(([k, v]) => hCell(k, v)).join('');
+
+            const max = Math.max(...rows.map((r) => Number(r.ex_vat) || 0), 1);
+            const body = rows.map((r, i) => {
+                const ex = Number(r.ex_vat) || 0;
+                const vat = Number(r.vat) || 0;
+                return `<tr>
+                <td class="c idx">${i + 1}</td>
+                <td>${hEsc(r.item_name || '—')}</td>
+                <td class="c n">${hEsc(r.item_code || '—')}</td>
+                <td class="c n">${hEsc(hNum(r.qty))}</td>
+                <td class="c n">${hEsc(r.invoices)}</td>
+                <td class="c n"><b>${hEsc(hNum(ex))}</b></td>
+                <td class="c n">${hEsc(hNum(vat))}</td>
+                <td class="c n">${hEsc(hNum(ex + vat))}</td>
+                <td class="c n">${hEsc(hNum(lineEx ? ex / lineEx * 100 : 0, 1))}%</td>
+                <td><span class="bars"><i style="width:${Math.max(2, hRound(max ? ex / max * 100 : 0))}%"></i></span></td>
+              </tr>`;
+            }).join('');
+            table = `<h3 class="sec">الأصناف المباعة${Number(lines.items) > shown ? ` (أول ${shown} من ${hEsc(String(lines.items))})` : ''}</h3>
+              <table class="t"><thead><tr><th style="width:4%">#</th><th>الصنف</th><th style="width:9%">الكود</th>
+                <th style="width:8%">الكمية</th><th style="width:8%">فواتير الصنف</th>
+                <th style="width:11%">قبل الضريبة</th><th style="width:10%">الضريبة</th>
+                <th style="width:11%">شامل الضريبة</th><th style="width:7%">النسبة</th><th style="width:9%">الحجم</th></tr></thead>
+              <tbody>${body || '<tr><td colspan="10" class="c">لا مبيعات في هذا المدى</td></tr>'}</tbody>
+              <tfoot><tr><td colspan="3">مجموع المعروض (${shown} صنفًا)</td>
+                <td class="n">${hEsc(hNum(rows.reduce((s, r) => s + (Number(r.qty) || 0), 0)))}</td>
+                <td class="n">${hEsc(rows.reduce((s, r) => s + (Number(r.invoices) || 0), 0))}</td>
+                <td class="n">${hEsc(hNum(rows.reduce((s, r) => s + (Number(r.ex_vat) || 0), 0)))}</td>
+                <td class="n">${hEsc(hNum(rows.reduce((s, r) => s + (Number(r.vat) || 0), 0)))}</td>
+                <td class="n">${hEsc(hNum(rows.reduce((s, r) => s + (Number(r.ex_vat) || 0) + (Number(r.vat) || 0), 0)))}</td>
+                <td colspan="2"></td></tr></tfoot>
+              </table>
+              <div class="note"><b>«فواتير الصنف»:</b> الفاتورة تُعدّ مرة لكل صنفٍ فيها، فمجموع العمود أكبر من عدد الفواتير في المؤشرات — والعدد الصحيح هو «عدد الفواتير» أعلى الورقة.</div>
+              <div class="note"><b>المطابقة:</b> مجاميع السطور قبل الضريبة ${hLtr(hNum(lineEx))} وضريبتها ${hLtr(hNum(lineVat))} وشامل الضريبة ${hLtr(hNum(lineGross))}؛
+                ورأس السند قبل الضريبة ${hLtr(hNum(headEx))} وضريبته ${hLtr(hNum(headVat))} والمحصَّل ${hLtr(hNum(collected))}.
+                ${Math.abs(lineVsHead) > 0.005
+                    ? `السطور تخالف رأس السند بمقدار ${hLtr(hNum(lineVsHead))} — سنداتٌ بلا سطورٍ مسجَّلة أو سطورٌ لا تطابق رأس سندها؛ يُعرضان معًا ولا يُصفَّر أحدهما للآخر.`
+                    : 'السطور تطابق رأس السند.'}
+                ${Math.abs(adj) > 0.005
+                    ? ` و«خصم / تسوية كسور» ${hLtr(hNum(adj))} هو الفرق بين (قبل الضريبة + الضريبة) والمحصَّل فعليًا على مستوى السند — خصمٌ أو تسويةٌ لم يسجّله المصدر في عمود مستقل، فبه تنطبق المعادلة: المحصَّل + التسوية = شامل الضريبة.`
+                    : ' والمحصَّل يطابق (قبل الضريبة + الضريبة) تمامًا.'}
+              </div>`;
+        }
+
+        const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${hEsc(title)} ${hEsc(from)} — ${hEsc(to)}</title><style>${sheetCss()}</style></head>
+<body><main class="sheet" data-v2-print-brand>
+  <header class="brand">
+    <img src="${hEsc(brand.logo)}" alt="شعار ${hEsc(brand.name)}">
+    <div class="brand__t"><h1>${hEsc(brand.name)}</h1><p>تقرير مبيعات الأصناف — قراءة من مرآة الكاشيرية</p></div>
+    <div class="brand__id"><span class="no">${docPill}</span></div>
+  </header>
+  <div class="doc"><h2>${hEsc(title)}</h2>
+    <div class="sub">${period} · ${who}${scopeItem}</div></div>
+  <div class="body">
+    <div class="grid">${cells}</div>
+    ${table}
+    <div class="foot"><span>${hEsc(brand.name)} — ${hEsc(item ? 'استعلام صنف' : 'استعلام المبيعات')}</span>
+      <span>طُبع ${hLtr(new Date().toLocaleString('en-GB'))} · Karim ERP</span></div>
+  </div>
+</main></body></html>`;
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.set('Cache-Control', 'no-store');
+        res.send(html);
+    } catch (e) {
+        logger.error('[item-sales/print]', e);
+        res.status(500).json({ ok: false, error: 'ITEM_SALES_PRINT_FAILED', message: 'تعذّر توليد ورقة الطباعة' });
+    }
+});
+
 /**
  * GET /api/yara-reports/orders — أوردرات مفصّلة (للمالك/السو شيف)
  * ?from=&to=[&cashier=4&limit=&offset=]

@@ -22,13 +22,13 @@
  * يُعلَن: سندٌ بلا سطور، أو إجماليٌ لا يساوي صافيًا + ضريبة، أو دفعٌ لم
  * يغطِّ الإجمالي — كلها تُعرض كما هي لأن إخفاءها يجعل الرقم أجمل وأكذب.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.132';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.132';
-import { openInAppReport } from '../report-viewer.js?v=4.9.132';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.151';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.151';
+import { openInAppReport } from '../report-viewer.js?v=4.9.151';
 import {
     fetchSummary, fetchOrders, fetchItems, fetchItem, fetchInvoice,
     fetchInvoiceHtml, fetchSheetHtml, money, count, qty, periodPresets, isoDay,
-} from '../data/cashier-sales-repo.js?v=4.9.132';
+} from '../data/cashier-sales-repo.js?v=4.9.151';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -66,7 +66,7 @@ function deltaChip(delta, partial) {
 }
 
 function kpiTile(k) {
-    return `<li class="erp-kpi">
+    return `<li class="erp-kpi"${k.title ? ` title="${esc(k.title)}"` : ''}>
       <div class="erp-kpi__top">
         <span class="erp-kpi__icon" data-tone="${esc(k.tone || 'brand')}" aria-hidden="true">
           <i class="ji" data-i="${esc(k.icon)}"></i></span>
@@ -302,7 +302,6 @@ export function mountCashierSales(host) {
         pageSize: PAGE_SIZE,
         search: false,
         emptyMessage: 'لا فواتير تطابق المرشّحات',
-        emptyHint: 'وسّع الفترة أو ألغِ البحث. المرآة تبدأ من أول يومٍ مزامَن.',
         rowKey: (r) => String(r.doc_no),
         onRowActivate: (r) => { if (r && r.doc_no) {openInvoice(String(r.doc_no));} },
         onStateChange: (s) => { loadOrders(s); },
@@ -367,7 +366,6 @@ export function mountCashierSales(host) {
         pageSize: PAGE_SIZE,
         search: false,
         emptyMessage: 'لا أصناف تطابق المرشّحات',
-        emptyHint: 'جرّب رمزًا أو اسمًا أقصر، أو وسّع الفترة.',
         rowKey: (r) => String(r.code),
         onRowActivate: (r) => { if (r && r.code) {openItem(String(r.code));} },
         onStateChange: (s) => { loadItems(s); },
@@ -408,6 +406,17 @@ export function mountCashierSales(host) {
                 icon: 'scale', en: 'Net', label: 'قبل الضريبة', tone: 'neutral',
                 value: money(t.ex_vat, ''), unit,
                 hint: `الضريبة ${money(t.vat, '')} ${unit}`,
+            },
+            {
+                /* خانة تجميع فارق الهلالات/الخصومات للفترة المختارة: الرقم نفسه
+                   الذي يعلنه شريط الصدق، مجموعه ومعه عدد السندات — فلا يُبحث
+                   عنه في جدول، ولا يُخفى في هامش. */
+                icon: 'scale', en: 'Adjustment', label: 'فارق التسوية', tone: 'neutral',
+                value: money(t.drift_amount, ''), unit,
+                hint: Number(t.drift_docs)
+                    ? `${count(t.drift_docs)} فاتورة · ${count(t.drift_large_docs)} جاوزَ التقريب`
+                    : 'المحصَّل يطابق قبل الضريبة + الضريبة',
+                title: 'المحصَّل + التسوية = قبل الضريبة + الضريبة. الفرق خصوماتُ سنداتٍ وتقريبُ ضريبة السطور (هلالات) — المصدر لا يسجّل الخصم في عمود مستقل.',
             },
             {
                 icon: 'calendar', en: 'Per day', label: 'متوسط اليوم', tone: 'brand',
@@ -715,8 +724,6 @@ export function mountCashierSales(host) {
               ${d.zatca.pih ? fact('البصمة', String(d.zatca.pih).slice(0, 24), 'class="erp-num" dir="ltr"') : ''}
               ${d.zatca.payableamount != null ? fact('المبلغ لدى الهيئة', money(d.zatca.payableamount, cur), 'class="erp-num" dir="ltr"') : ''}
             </div>` : ''}
-
-          <p class="csales__hint">الطباعة من شريط العارض بعد الفتح، أو من زر «طباعة الفاتورة» أعلاه.</p>
         </div>`;
     }
 
@@ -817,7 +824,6 @@ export function mountCashierSales(host) {
                     ${offset + PAGE_SIZE >= totalDocs ? 'disabled' : ''}><span>الأقدم</span>
               <i class="ji" data-i="chevron-left" aria-hidden="true"></i></button>
           </div>
-          <p class="csales__hint">ملفُ الصنف يُحسب على نفس مرشّحات الشاشة (الفترة والكاشيرية)، والفواتير مرتّبة من الأحدث.</p>
         </div>`;
     }
 
