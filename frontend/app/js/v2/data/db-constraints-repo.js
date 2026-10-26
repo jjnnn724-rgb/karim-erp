@@ -2,7 +2,7 @@
  * V2 — advisory DB-schema validation. The server remains authoritative.
  * GET /api/schema/constraints is admin-only because it exposes schema details.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
 
 const CACHE_TTL = 5 * 60_000;
 let constraintsCache = null;

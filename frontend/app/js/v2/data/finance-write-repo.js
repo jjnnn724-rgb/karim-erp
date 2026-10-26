@@ -43,7 +43,7 @@
  *   مهما كان، وبوابة الأدوار هنا زرّية لا أمنية.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
 
 /** مرآة OPEN_ENTITY_WRITE_ROLES على revenues و expenses (schema-registry:772-773). */
 export const FINANCE_WRITE_ROLES = ['admin', 'manager', 'accountant'];
