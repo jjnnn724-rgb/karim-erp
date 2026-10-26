@@ -1,0 +1,428 @@
+/**
+ * mobile.css — طبقة تجربة الجوال (S4–S6)
+ * ─────────────────────────────────────────────────────────────────────────
+ * SPEC-employee-pwa-attendance-geofence-v1.md — FR-M1..M6
+ * قواعد السلامة:
+ *   • ملف إضافي بالكامل: لا يعدّل أي قاعدة في styles.css/design-tokens.css
+ *   • كل تأثيراته مشروطة بـ body.mobile-shell-on (يضيفها mobile-shell.js)
+ *     أو بمقاس شاشة ≤ 700px داخل نطاق محدود — المكتب لا يتأثر إطلاقًا
+ */
+
+/* ═══ 1) شريط التنقل السفلي (FR-M1) ═══ */
+
+.mobile-nav {
+    display: none; /* يظهر فقط عند تفعيل الهيكل على الشاشات الصغيرة */
+}
+
+@media (max-width: 900px) {
+    body.mobile-shell-on .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1200;
+        background: var(--bg2, #14161c);
+        border-top: 1px solid var(--border, #2a2d36);
+        padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+        justify-content: space-around;
+        align-items: stretch;
+        box-shadow: 0 -6px 20px rgba(0, 0, 0, .35);
+    }
+    /* مساحة سفلية للمحتوى حتى لا يختفي خلف الشريط */
+    body.mobile-shell-on #content {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.mobile-nav .mnav-item {
+    flex: 1;
+    min-width: 56px;
+    min-height: 48px; /* هدف لمس ≥ 44px (FR-M4) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    background: transparent;
+    color: var(--text2, #9aa0ac);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 4px 2px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav .mnav-item .ji {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2;
+}
+
+.mobile-nav .mnav-item.active {
+    color: var(--gold, #d4af37);
+    background: rgba(212, 175, 55, .08);
+}
+
+/* ═══ 2) بطاقة البصمة الذاتية (S5) ═══ */
+
+.punch-card {
+    background: var(--bg2, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: var(--r, 14px);
+    padding: 18px 16px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.punch-card .punch-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, .06);
+    color: var(--text2, #9aa0ac);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.punch-card .punch-status-chip::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+}
+
+.punch-card .punch-status-chip.enabled { 
+    background: rgba(46, 204, 113, .14); 
+    color: #2ecc71; 
+}
+.punch-card .punch-status-chip.enabled::before {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+    animation: beaconPulse 1.8s infinite;
+}
+@keyframes beaconPulse {
+    0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+.punch-card .punch-status-chip.disabled { 
+    background: rgba(231, 76, 60, .14); 
+    color: #e74c3c; 
+}
+
+.punch-card .punch-btn {
+    width: 100%;
+    min-height: 58px;
+    border: 0;
+    border-radius: var(--r, 14px);
+    background: linear-gradient(135deg, var(--gold, #d4af37), #b8942c);
+    color: #16181d;
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 6px 18px rgba(180, 83, 9, 0.25);
+    transition: transform .12s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .15s ease, filter .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.punch-card .punch-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(180, 83, 9, 0.35);
+}
+
+.punch-card .punch-btn:active { transform: scale(.97); }
+.punch-card .punch-btn:disabled { filter: grayscale(.6) brightness(.7); cursor: wait; box-shadow: none; }
+
+.punch-card .punch-btn.punch-btn-off {
+    background: var(--bg3, #1c1f27);
+    color: var(--text2, #9aa0ac);
+    border: 1px dashed var(--border, #2a2d36);
+    cursor: default;
+    box-shadow: none;
+}
+
+.punch-card .punch-meta {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text2, #9aa0ac);
+}
+
+.punch-card .punch-result {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+}
+
+.punch-card .punch-result.ok { display: block; background: rgba(46, 204, 113, .1); color: #2ecc71; }
+.punch-card .punch-result.err { display: block; background: rgba(231, 76, 60, .1); color: #e67e7e; }
+
+/* ═══ 3) لافتة عدم الاتصال (FR-M6 — أوفلاين-آ ware) ═══ */
+
+.mobile-offline-bar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1300;
+    background: #b3541e;
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 10px;
+}
+
+body.mobile-offline .mobile-offline-bar { display: block; }
+
+/* ═══ 4) الجداول → بطاقات على الشاشات الضيقة (FR-M3، S6) ═══ */
+/* نطاق محدود: داخل شاشات الموظف فقط (.mtable-wrap مواضع محددة) */
+
+@media (max-width: 700px) {
+    body.mobile-shell-on .mtable-wrap table {
+        display: block;
+        overflow-x: auto; /* لا جدول مكسور أبدًا (NFR-M2) */
+        -webkit-overflow-scrolling: touch;
+    }
+    body.mobile-shell-on table:not(.keep-table) {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* ═══ 5) التعرف البيومتري للوجه (Face Biometrics UI) ═══ */
+#faceVideo {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    border: 2px solid var(--gold, #d4af37);
+    transition: border-color .2s ease;
+}
+.face-scan-box {
+    position: relative;
+    display: inline-block;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.face-scan-box::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold, #d4af37), transparent);
+    box-shadow: 0 0 12px var(--gold, #d4af37);
+    animation: scanLine 2.2s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes scanLine {
+    0% { top: 5%; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 95%; opacity: 0; }
+}
+
+
+/* ????????????? UI/UX PHASE 3 � MOBILE ENTERPRISE POLISH ????????????? */
+
+/* Bottom nav: active item indicator dot + press feedback */
+.mobile-nav .mnav-item {
+    transition: background .13s ease, color .13s ease, transform .1s ease;
+}
+.mobile-nav .mnav-item:active { transform: scale(0.91); }
+.mobile-nav .mnav-item.active {
+    position: relative;
+}
+.mobile-nav .mnav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--gold, #d4af37);
+}
+
+/* Punch card: entrance animation */
+.punch-card {
+    animation: fadeInScale .22s ease both;
+    transition: box-shadow .16s ease, border-color .16s ease;
+}
+.punch-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    border-color: var(--border-strong, #3a3d46);
+}
+
+/* Punch button: ripple + accessible focus */
+.punch-btn:focus-visible {
+    outline: 3px solid var(--gold, #d4af37);
+    outline-offset: 3px;
+}
+
+/* Offline bar: softer pulse */
+.offline-bar {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UI QA 2026-09-30: lift floating action buttons above the bottom nav so they
+   never overlap it on mobile. #chatFab carries inline styles, therefore it
+   needs !important; .fab/.fab-menu are stylesheet-driven and need no flag.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    body.mobile-shell-on .fab {
+        bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on .fab-menu {
+        bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on #chatFab {
+        bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UI QA 2026-09-30 (round 2): notch safety + elegance pass.
+   Android 15+ forces edge-to-edge in the APK (Capacitor adjustMarginsForEdgeToEdge
+   handles the app shell); these env() rules keep browser/PWA contexts safe too.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    body.mobile-shell-on .topbar {
+        height: calc(56px + env(safe-area-inset-top, 0px));
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+    body.mobile-shell-on .mobile-offline-bar {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+    /* لمسة: انتقال ناعم قصير عند تغيّر شاشة الجوال */
+    body.mobile-shell-on #content > * {
+        animation: shellPageIn .18s cubic-bezier(.16, 1, .3, 1) both;
+    }
+}
+@keyframes shellPageIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.mobile-shell-on #content > * { animation: none; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UI QA 2026-10-01 (round 3): inside the Capacitor APK the native edge-to-edge
+   margins already inset the WebView, so env(safe-area-inset-*) would DOUBLE the
+   offset (raised bottom nav, dead gap, hidden bottom content like Save/Logout).
+   body.in-capacitor is set by mobile-shell.js when window.Capacitor exists.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    body.in-capacitor.mobile-shell-on .topbar {
+        height: 56px;
+        padding-top: 0;
+    }
+    body.in-capacitor .mobile-offline-bar {
+        padding-top: 0;
+    }
+    body.in-capacitor .mobile-nav {
+        padding-bottom: 5px;
+    }
+    body.in-capacitor.mobile-shell-on #content {
+        padding-bottom: 84px;
+    }
+    /* إحساس ضغط أوضح على عناصر الشريط السفلي */
+    body.mobile-shell-on .mnav-item:active {
+        background: rgba(212, 175, 55, .16);
+    }
+    body.mobile-shell-on .topbar-btn:active,
+    body.mobile-shell-on .topbar-btn[aria-label="خروج"]:active {
+        background: rgba(212, 175, 55, .16);
+        border-radius: 10px;
+    }
+}
+
+
+/* زر الخروج في الشريط العلوي: هدف لمس كامل + لون مميز يسهل إيجاده */
+#topbarLogout {
+    min-width: 44px;
+    min-height: 44px;
+    color: #e05c4b;
+}
+#topbarLogout:active { background: rgba(224, 92, 75, .18); border-radius: 10px; }
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UI QA 2026-10-01 (round 4): الشريط السفلي كان يغطي أزرار النوافذ —
+   z-index الشريط (1200) فوق الـ overlay/modal (150/160) فالضغط على «موافق»
+   أسفل أي نافذة كان يسقط على الشريط ولا يظهر شيء. والنوافذ الآن فوق الشريط
+   دائمًا على الجوال (المكتب لا يتأثر — كل القواعد داخل mobile-shell-on).
+   + تصغير الشريط (كان كبيرًا): هدف اللمس يبقى 44px حسب FR-M4.
+   ───────────────────────────────────────────────────────────────────────────── */
+.mobile-nav .mnav-item {
+    min-height: 44px;
+    gap: 2px;
+    padding: 2px;
+    font-size: 10.5px;
+    border-radius: 8px;
+}
+.mobile-nav .mnav-item .ji {
+    width: 20px;
+    height: 20px;
+}
+.mobile-nav .mnav-item.active::after {
+    bottom: 2px;
+}
+@media (max-width: 900px) {
+    /* النوافذ فوق الشريط — وإلا غطى أزرار التأكيد السفلية */
+    body.mobile-shell-on .overlay,
+    body.mobile-shell-on .modal-overlay,
+    body.mobile-shell-on #modalBackdrop,
+    body.mobile-shell-on .invoice-detail-overlay {
+        z-index: 1500;
+    }
+    body.mobile-shell-on .modal,
+    body.mobile-shell-on .modal-content {
+        z-index: 1600;
+    }
+    /* الشريط المصغّر */
+    body.mobile-shell-on .mobile-nav {
+        padding: 2px 6px calc(2px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on #content {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on .fab {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on .fab-menu {
+        bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    }
+    body.mobile-shell-on #chatFab {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    /* داخل الـ APK الهوامش الأصلية تكفي — بلا مضاعفة */
+    body.in-capacitor.mobile-shell-on .mobile-nav {
+        padding: 2px 6px 5px;
+    }
+    body.in-capacitor.mobile-shell-on #content {
+        padding-bottom: 72px;
+    }
+}

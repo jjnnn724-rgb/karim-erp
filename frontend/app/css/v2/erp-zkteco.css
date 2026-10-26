@@ -1,0 +1,145 @@
+/* ── P2-2 · شاشة أجهزة البصمة (4 تبويبات) ───────────────────────────────
+   القاعدة: الشاشة تحمل أزرارها وألواحها داخل بطاقة واحدة؛ الجداول تبقى
+   داخل `erp-table__scroll` (لا تجاوز صفحة)، والنماذج شبكة auto-fit تنهار
+   إلى عمود واحد على الهاتف. كل القيم من رموز التصميم.
+   ملفٌ مستقل عن erp-ops: اختبارات الموجات تقرأ ذيل erp-ops وتعدّه طبقتها. */
+.erp-v2-zkteco .erp-zk__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  justify-content: flex-end;
+}
+.erp-v2-zkteco .erp-zk__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding-block-end: var(--erp-space-2);
+  border-block-end: thin solid var(--erp-border);
+}
+.erp-v2-zkteco .erp-zk__tabs .erp-btn {
+  border: thin solid var(--erp-border-strong);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+}
+.erp-v2-zkteco .erp-zk__tabs .erp-btn:hover { background: var(--erp-surface-hover); }
+.erp-v2-zkteco .erp-zk__tabs .erp-btn.is-active {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2-zkteco [data-v2-pane][hidden],
+.erp-v2-zkteco [data-v2-panel][hidden] { display: none !important; }
+
+.erp-v2-zkteco .erp-zk__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+.erp-v2-zkteco .erp-zk__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--erp-space-3);
+  margin-block: var(--erp-space-3);
+}
+.erp-v2-zkteco .erp-zk__toolbar .erp-field { min-inline-size: 18ch; }
+.erp-v2-zkteco .erp-zk__section-title {
+  margin-block: var(--erp-space-4) var(--erp-space-2);
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+.erp-v2-zkteco .erp-zk__panel {
+  margin-block: var(--erp-space-2) var(--erp-space-4);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-zkteco .erp-zk__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-3);
+}
+.erp-v2-zkteco .erp-zk__panel-head h4 { margin: 0; }
+.erp-v2-zkteco .erp-zk__panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--erp-space-2);
+  margin-block-start: var(--erp-space-3);
+}
+.erp-v2-zkteco .erp-zk__form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22ch, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-zkteco .erp-zk__import {
+  margin-block: var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-zkteco .erp-zk__import-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  margin-block-end: var(--erp-space-2);
+}
+.erp-v2-zkteco .erp-zk__import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--erp-space-2);
+}
+.erp-v2-zkteco .erp-zk__import-row .erp-field { flex: 1 1 24ch; }
+.erp-v2-zkteco .erp-zk__alert {
+  margin-block: var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border-strong);
+  border-inline-start: var(--erp-space-1) solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-warning-soft);
+}
+.erp-v2-zkteco .erp-zk__alert p { margin-block: 0 var(--erp-space-2); }
+.erp-v2-zkteco .erp-zk__alert .erp-btn { margin-block-start: var(--erp-space-2); }
+.erp-v2-zkteco .erp-zk__details { margin-block-start: var(--erp-space-4); }
+.erp-v2-zkteco .erp-zk__details summary {
+  cursor: pointer;
+  font-weight: var(--erp-fw-semibold);
+  margin-block-end: var(--erp-space-2);
+}
+.erp-v2-zkteco .erp-row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+  justify-content: flex-end;
+}
+.erp-v2-zkteco .erp-zk__import input[type="checkbox"],
+.erp-v2-zkteco .erp-table__grid input[type="checkbox"] {
+  inline-size: var(--erp-space-5);
+  block-size: var(--erp-space-5);
+  accent-color: var(--erp-brand);
+}
+
+@media (max-width: 640px) {
+  .erp-v2-zkteco .erp-card__head { flex-wrap: wrap; }
+  .erp-v2-zkteco .erp-zk__head-actions { inline-size: 100%; }
+  .erp-v2-zkteco .erp-zk__head-actions .erp-btn { flex: 1 1 auto; justify-content: center; }
+  .erp-v2-zkteco .erp-zk__tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2-zkteco .erp-zk__tabs .erp-btn { justify-content: center; }
+  .erp-v2-zkteco .erp-zk__toolbar > .erp-field { flex: 1 1 18ch; }
+  .erp-v2-zkteco .erp-zk__import-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .erp-v2-zkteco .erp-zk__panel-head { flex-wrap: wrap; }
+}
+@media (max-width: 380px) {
+  .erp-v2-zkteco .erp-zk__tabs { grid-template-columns: minmax(0, 1fr); }
+}

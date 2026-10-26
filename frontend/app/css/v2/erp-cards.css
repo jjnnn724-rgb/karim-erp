@@ -1,0 +1,96 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Card grid (employee cards, screen 02) · v1.0.0
+   ─────────────────────────────────────────────────────────────────────
+   The legacy directory is a card grid (features/employees.js
+   renderEmployeesCards): avatar, name, code, status, dept, position,
+   salary, fingerprint, shift. This layer reproduces that register with
+   the frozen tokens — all colours --erp-* (dark mode inherited).
+   Scoped under .erp-v2; zero legacy selectors.
+   ═══════════════════════════════════════════════════════════════════════ */
+.erp-v2 .erp-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+  gap: var(--erp-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-v2 .erp-person {
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-sm);
+  padding: var(--erp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  min-width: 0;
+}
+.erp-v2 .erp-person__head { display: flex; align-items: center; gap: var(--erp-space-3); min-width: 0; }
+.erp-v2 button.erp-person__head {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 4px;
+  margin: -4px;
+  inline-size: calc(100% + 8px);
+  text-align: start;
+  cursor: pointer;
+  border-radius: var(--erp-radius-md);
+}
+.erp-v2 button.erp-person__head:hover { background: var(--erp-surface-hover); }
+.erp-v2 button.erp-person__head:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: 1px; }
+.erp-v2 .erp-person__more {
+  border-block-start: 1px dashed var(--erp-border);
+  padding-block-start: var(--erp-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-person__phone { font-size: var(--erp-text-lg); font-weight: var(--erp-fw-bold); }
+.erp-v2 .erp-avatar {
+  inline-size: 52px;
+  block-size: 52px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--erp-brand-soft);
+  color: var(--erp-dash-accent-text, var(--erp-brand-text));
+  font-weight: var(--erp-fw-bold);
+  font-size: var(--erp-text-lg);
+}
+.erp-v2 .erp-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.erp-v2 .erp-person__who { flex: 1 1 auto; min-width: 0; }
+.erp-v2 .erp-person__name {
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-v2 .erp-person__code { font-size: var(--erp-text-xs); color: var(--erp-text-muted); font-family: var(--erp-font-mono); }
+.erp-v2 .erp-person__facts { display: flex; flex-direction: column; gap: var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-v2 .erp-person__fact { display: flex; align-items: center; gap: var(--erp-space-2); color: var(--erp-text-secondary); min-width: 0; }
+.erp-v2 .erp-person__fact .ji { font-size: var(--erp-icon-sm); color: var(--erp-text-faint); flex: none; }
+.erp-v2 .erp-person__fact > span:last-child {
+  flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--erp-text-primary); font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-person__salary { font-variant-numeric: tabular-nums; font-weight: var(--erp-fw-bold); color: var(--erp-brand-text); }
+.erp-v2 .erp-person__meta { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); align-items: center; }
+.erp-v2 .erp-person__shift { display: flex; align-items: center; gap: 6px; font-size: var(--erp-text-xs); color: var(--erp-text-secondary); }
+.erp-v2 .erp-person__shift .ji { font-size: 13px; color: var(--erp-text-faint); }
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
+@media print {
+  .erp-v2 .erp-cards { grid-template-columns: repeat(2, 1fr); }
+  .erp-v2 .erp-person { break-inside: avoid; box-shadow: none; }
+}

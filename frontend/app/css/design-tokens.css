@@ -1,0 +1,343 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — Design System v4.0  "Enterprise"
+   ─────────────────────────────────────────────────────────────────
+   Ground-up rebuild. Design principles:
+   1. Light-first neutral workspace; dark mode is a first-class theme.
+   2. One restrained brand accent (bronze) — solid colors, no gradients.
+   3. Structure through 1px borders and spacing, not glows and glass.
+   4. Typography: IBM Plex Sans Arabic, tabular numerals for data.
+   5. Motion: fast, purposeful transitions only (120–180ms).
+
+   NOTE: legacy variable names (--gold, --bg1..4, --text*, --karim-*)
+   are preserved as aliases so all existing views keep working.
+
+   NOTE 2: the V2 visual identity («بورسلين ونحاس») lives in
+   css/v2/erp-identity.css, which loads LAST on v2.html and re-aliases the
+   V2 semantic tokens from its own primitives. This sheet remains the
+   legacy/bronze palette only — do not "fix" it to match V2; the identity
+   layer is the single owner of the V2 look.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand accent (solid, no gradients) ── */
+  --karim-gold:        #b45309;           /* primary accent — bronze 700 */
+  --karim-gold-light:  #d97706;           /* hover / emphasis */
+  --karim-gold-dark:   #92400e;
+  --karim-gold-glow:   rgba(180, 83, 9, 0.10);
+  --karim-gold-gradient: #b45309;         /* legacy alias — flat */
+
+  /* ── Canvas layers ── */
+  --karim-bg:   #f4f5f7;
+  --karim-bg-2: #ffffff;
+  --karim-bg-3: #eef0f3;
+
+  /* ── Surfaces ── */
+  --karim-surface:        #ffffff;
+  --karim-surface-hover:  #f7f8fa;
+  --karim-surface-active: #eef0f3;
+  --karim-surface-glass:      #ffffff;    /* legacy alias — opaque */
+  --karim-surface-glass-strong:#ffffff;
+
+  /* ── Borders ── */
+  --karim-border:        #e4e7ec;
+  --karim-border-strong: #cdd3de;
+  --karim-border-gold:   rgba(180, 83, 9, 0.35);
+
+  /* ── Text ── */
+  --karim-text:       #101828;
+  --karim-text-2:     #344054;
+  --karim-text-muted: #475467;
+  --karim-text-faint: #667085;
+
+  /* ── Status (text-grade contrast) ── */
+  --karim-green: #067647;  --karim-green-light: #e7f4ec;
+  --karim-red:   #b42318;  --karim-red-light:   #fdeeec;
+  --karim-blue:  #175cd3;  --karim-blue-light:  #eaf1fb;
+  --karim-orange:#b54708;  --karim-orange-light:#fdf1e2;
+  --karim-purple:#6941c6;  --karim-purple-light:#f0ebfa;
+
+  /* ── Solid action surfaces (buttons) — single source of truth ── */
+  --success-solid: #08875c;  --success-solid-hover: #07704d;
+
+  /* ── Typography ── */
+  --karim-font: 'IBM Plex Sans Arabic', 'Cairo', 'Tajawal', 'Segoe UI', sans-serif;
+  --karim-font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --karim-text-xs: 0.72rem;   /* 11.5px */
+  --karim-text-sm: 0.83rem;   /* 13px   */
+  --karim-text-base: 0.92rem; /* 14.5px */
+  --karim-text-md: 1.05rem;
+  --karim-text-lg: 1.25rem;
+  --karim-text-xl: 1.5rem;
+
+  --karim-fw-normal: 400;
+  --karim-fw-medium: 500;
+  --karim-fw-semibold: 600;
+  --karim-fw-bold: 700;
+
+  /* ── Spacing (4px base) ── */
+  --karim-space-1: 4px;  --karim-space-2: 8px;   --karim-space-3: 12px;
+  --karim-space-4: 16px; --karim-space-5: 20px;  --karim-space-6: 24px;
+  --karim-space-8: 32px; --karim-space-10: 40px; --karim-space-12: 48px;
+
+  /* ── Radius — conservative, engineered ── */
+  --karim-radius-sm: 6px;
+  --karim-radius-md: 8px;
+  --karim-radius-lg: 10px;
+  --karim-radius-xl: 12px;
+  --karim-radius-2xl: 14px;
+  --karim-radius-full: 999px;
+
+  /* ── Elevation — quiet ── */
+  --karim-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --karim-shadow-md: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --karim-shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
+  --karim-shadow-card: var(--karim-shadow-sm);
+  --karim-shadow-card-hover: var(--karim-shadow-md);
+  --karim-shadow-gold: none;
+  --karim-shadow-glass: var(--karim-shadow-lg);
+
+  /* ── Motion ── */
+  --karim-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --karim-duration-fast: 0.12s;
+  --karim-duration-normal: 0.18s;
+
+  /* ── Z-index ── */
+  --karim-z-sidebar: 100; --karim-z-modal: 200;
+  --karim-z-toast: 300;   --karim-z-loading: 400;
+
+  /* ═══ Legacy aliases (consumed by views & inline styles) ═══ */
+  --bg1: var(--karim-bg);
+  --bg2: var(--karim-surface);
+  --bg3: var(--karim-bg-3);
+  --bg4: #e6e9ee;
+  --border: var(--karim-border);
+  --border-strong: var(--karim-border-strong);
+  --border-glow: var(--karim-border-gold);
+  --gold: var(--karim-gold);
+  --gold-l: var(--karim-gold-light);
+  --gold-d: rgba(180, 83, 9, 0.08);
+  --green: var(--karim-green);
+  --red: var(--karim-red);
+  --orange: var(--karim-orange);
+  --blue: var(--karim-blue);
+  --purple: var(--karim-purple);
+  --teal: #0e9384;
+  --text: var(--karim-text);
+  --text2: var(--karim-text-muted);
+  --text3: var(--karim-text-faint);
+  --shadow: var(--karim-shadow-md);
+  --shadow-glow: var(--karim-shadow-md);
+  --r: 8px;
+  --r2: 10px;
+  --r3: 12px;
+
+  color-scheme: light;
+}
+
+/* ═══════════════ Dark theme ═══════════════ */
+[data-theme="dark"] {
+  --karim-gold:        #e9a23b;
+  --karim-gold-light:  #f5b954;
+  --karim-gold-dark:   #c77f22;
+  --karim-gold-glow:   rgba(233, 162, 59, 0.12);
+
+  --karim-bg:   #0c111d;
+  --karim-bg-2: #131926;
+  --karim-bg-3: #1a2130;
+
+  --karim-surface:        #131926;
+  --karim-surface-hover:  #182030;
+  --karim-surface-active: #1f2940;
+
+  --karim-border:        rgba(255, 255, 255, 0.09);
+  --karim-border-strong: rgba(255, 255, 255, 0.16);
+  --karim-border-gold:   rgba(233, 162, 59, 0.40);
+
+  --karim-text:       #eceff5;
+  --karim-text-2:     #c3cad8;
+  --karim-text-muted: #9aa5b8;
+  --karim-text-faint: #7e92b3; /* 5.97:1 on bg — WCAG AA (was #6b7a93 at 4.34) */
+
+  --karim-green: #4ade80;  --karim-green-light: rgba(74, 222, 128, 0.12);
+  --karim-red:   #f87171;  --karim-red-light:   rgba(248, 113, 113, 0.12);
+  --karim-blue:  #7cb8ff;  --karim-blue-light:  rgba(124, 184, 255, 0.12);
+  --karim-orange:#fdb022;  --karim-orange-light:rgba(253, 176, 34, 0.12);
+  --karim-purple:#b692f6;  --karim-purple-light:rgba(182, 146, 246, 0.12);
+
+  --success-solid: #0b9e6c;  --success-solid-hover: #0cb178;
+
+  --bg1: #0c111d;
+  --bg2: #131926;
+  --bg3: #1a2130;
+  --bg4: #242e42;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-glow: rgba(233, 162, 59, 0.40);
+  --gold: #e9a23b;
+  --gold-l: #f5b954;
+  --gold-d: rgba(233, 162, 59, 0.12);
+  --green: #4ade80;
+  --red: #f87171;
+  --orange: #fdb022;
+  --blue: #7cb8ff;
+  --purple: #b692f6;
+  --teal: #2dd4bf;
+  --text: #eceff5;
+  --text2: #9aa5b8;
+  --text3: #7e92b3;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+/* ═══════════════ Shared components ═══════════════ */
+
+/* Brand text — flat accent, no gradient, no shadow */
+.karim-gold-text {
+  color: var(--karim-gold);
+  letter-spacing: -0.01em;
+  filter: none;
+}
+
+/* Card (legacy glass alias → clean surface) */
+.karim-glass-card {
+  background: var(--karim-surface);
+  border: 1px solid var(--karim-border);
+  border-radius: var(--karim-radius-lg);
+  box-shadow: var(--karim-shadow-lg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.glass, .glass-strong {
+  background: var(--karim-surface);
+  border: 1px solid var(--karim-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.glass-strong { box-shadow: var(--karim-shadow-lg); }
+
+/* Primary button */
+.karim-btn-gold {
+  background: var(--karim-gold);
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: var(--karim-radius-md);
+  font-family: var(--karim-font);
+  font-weight: var(--karim-fw-semibold);
+  cursor: pointer;
+  overflow: visible;
+  transition: background var(--karim-duration-fast) var(--karim-ease-out);
+  box-shadow: none;
+}
+.karim-btn-gold::before { display: none; }
+.karim-btn-gold:hover {
+  background: var(--karim-gold-light);
+  transform: none;
+  box-shadow: none;
+}
+.karim-btn-gold:active { background: var(--karim-gold-dark); }
+.karim-btn-gold:disabled {
+  background: var(--karim-bg-3);
+  color: var(--karim-text-faint);
+  cursor: not-allowed;
+  border-color: var(--karim-border);
+}
+
+/* Success button */
+.karim-btn-success {
+  background: var(--success-solid, #08875c);
+  color: #fff;
+  border: none;
+  border-radius: var(--karim-radius-md);
+  font-family: var(--karim-font);
+  font-weight: var(--karim-fw-semibold);
+  cursor: pointer;
+  transition: background var(--karim-duration-fast) var(--karim-ease-out);
+  box-shadow: none;
+}
+[data-theme="dark"] .karim-btn-success { background: var(--success-solid, #0b9e6c); }
+.karim-btn-success:hover:not(:disabled) { background: var(--success-solid-hover, #07704d); transform: none; box-shadow: none; }
+
+/* Icon button */
+.karim-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--karim-radius-md);
+  background: transparent;
+  border: 1px solid var(--karim-border);
+  color: var(--karim-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: background var(--karim-duration-fast) var(--karim-ease-out),
+              color var(--karim-duration-fast) var(--karim-ease-out);
+}
+.karim-icon-btn:hover {
+  background: var(--karim-bg-3);
+  color: var(--karim-text);
+  transform: none;
+}
+
+/* Badge */
+.karim-badge {
+  padding: 3px 10px;
+  border-radius: var(--karim-radius-full);
+  font-size: var(--karim-text-xs);
+  font-weight: var(--karim-fw-semibold);
+  letter-spacing: 0;
+  background: var(--karim-bg-3);
+  border: 1px solid var(--karim-border);
+  color: var(--karim-text-muted);
+}
+
+/* Input */
+.karim-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--karim-surface);
+  border: 1px solid var(--karim-border-strong);
+  border-radius: var(--karim-radius-md);
+  color: var(--karim-text);
+  font-size: var(--karim-text-sm);
+  font-family: var(--karim-font);
+  transition: border-color var(--karim-duration-fast) var(--karim-ease-out),
+              box-shadow var(--karim-duration-fast) var(--karim-ease-out);
+}
+.karim-input:focus {
+  outline: none;
+  border-color: var(--karim-gold);
+  background: var(--karim-surface);
+  box-shadow: 0 0 0 3px var(--karim-gold-glow);
+  transform: none;
+}
+.karim-input::placeholder { color: var(--karim-text-faint); }
+
+/* Spinner */
+.karim-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--karim-border);
+  border-top-color: var(--karim-gold);
+  border-radius: 50%;
+  animation: karim-spin 0.7s linear infinite;
+  box-shadow: none;
+}
+@keyframes karim-spin { to { transform: rotate(360deg); } }
+
+/* Scrollbar — neutral */
+.karim-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.karim-scroll::-webkit-scrollbar-track { background: transparent; }
+.karim-scroll::-webkit-scrollbar-thumb {
+  background: var(--karim-border-strong);
+  border-radius: 4px;
+}
+
+/* Selection */
+::selection { background: rgba(180, 83, 9, 0.18); color: inherit; }
+
+/* SVG icon base — the only sanctioned icon style */
+svg.ji, .ji { display: inline-block; vertical-align: -0.14em; flex-shrink: 0; }
+svg.ji { width: 1em; height: 1em; }

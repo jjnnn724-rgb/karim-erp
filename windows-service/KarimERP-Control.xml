@@ -1,0 +1,21 @@
+<service>
+  <id>KarimERP-Control</id>
+  <name>Karim ERP Control</name>
+  <description>Karim ERP control companion (127.0.0.1:5011) - keeps start/stop available while the ERP server is stopped</description>
+  <!-- الخدمة المرافقة تعمل دائمًا: هي التي تخدم زر «تشغيل» بعد إيقاف ERP،
+       وتفرض راية الصيانة التي تمنع المراقبين من إعادة تشغيله. -->
+  <executable>C:\nodejs\node.exe</executable>
+  <arguments>%BASE%\..\backend\server-control.js --service</arguments>
+  <workingdirectory>%BASE%\..</workingdirectory>
+  <logpath>%BASE%\..\logs</logpath>
+  <log mode="roll-by-size"><sizeThreshold>5242880</sizeThreshold><keepFiles>5</keepFiles></log>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <startmode>Automatic</startmode>
+  <stoptimeout>15 sec</stoptimeout>
+  <hidewindow>true</hidewindow>
+  <env name="KARIM_SERVICE" value="1" />
+  <env name="KARIM_CONTROL_ACTIONS" value="1" />
+  <env name="CONTROL_PUBLIC_HOST" value="control.karimeg.online" />
+</service>

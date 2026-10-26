@@ -1,0 +1,93 @@
+.opencode/
+
+# ─── Karim ERP — world-class ignores ─────────────────────
+node_modules/
+release/
+dist/
+*.log
+logs/
+!.gitkeep
+
+# Runtime / secrets (never commit)
+.env
+.env.backup-before-karim-rebrand
+.dev-jwt-secret
+*.secret
+*.dump
+
+# Database runtime + archives (local only)
+database/data/
+database/backups/
+database/*.log
+nul
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Electron packaging — قنوات التحديث فقط (لا تعمم *.yml وإلا تُحجب CI وdocker-compose)
+*.blockmap
+/updates/*.yml
+/updates/*.exe
+/updates/*.blockmap
+
+# مجلدات النسخ الاحتياطي والتغطية — محلية دائمًا
+backups/
+coverage/
+
+# Playwright E2E — مخارج الاختبارات المحلية فقط
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Token/session dumps (never commit)
+.admin-token-tmp
+.emp-token-tmp
+scripts/.*_tokens.json
+scripts/.*-tmp
+
+# ─── FIX 2026-10-03 (Enterprise R1): أسرار كانت متتبعة — يُمنع تتبعها ───
+# مفتاح CA الخاص: من يملكه يزوّر شهادات موثوقة لأي hostname في الشبكة
+tools/mkcert/CA/rootCA-key.pem
+tools/mkcert/CA/*.key.pem
+# مفتاح توقيع APK (مع كلمات مروره داخل build.gradle — العزل يبدأ بالملف الثنائي)
+android/app/release.keystore
+# نسخ قاعدة بيانات كاملة داخل docker-deploy
+docker-deploy/full-backup.sql
+docker-deploy/.env
+*.sql.gz
+
+# ملفات تشخيص مؤقتة وتصدير PII — لا تتبع مطلقًا
+*.tmp.*
+*.tmp
+deleted_employees*.csv
+diag-*.txt
+state.txt
+wip.patch
+
+# سرية عامة — لا تُتبع أي مفتاح أو شهادة خاصة
+*.pem
+*.key
+*.secret
+
+# سكрипتات معطلة بأمان (نسخة محلية فقط، خارج التتبع)
+_disabled/
+
+# مجلد CSS قديم (نسخة %BK%) — معزول ولا يُتتبَّع
+frontend/app/%BK%/
+# مخرجات بناء/نماذج ثقيلة
+docker-deploy/*.sql
+
+
+# أداة تحليل ثابتة تُنشئ حالة/تقارير داخل الشجرة — ليست مصدرًا ولا تُرفع
+.mimosa/
+frontend/app/.mimosa/
+
+# Runtime output written by the server itself: the Brotli static cache
+# (backend/middleware/brotli-static.js -> ./var/brotli-cache in production)
+# and the control plane state + secret. Not source, never committed.
+var/
+runtime/

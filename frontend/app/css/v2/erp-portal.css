@@ -1,0 +1,138 @@
+/* ── P2-3 · بوابة البصمة الذاتية وكاميرا الوجه ─────────────────────────────
+   البطاقة تعيش داخل `.erp-v2-eportal`؛ الكاميرا غطاء على <body> يحمل
+   `.erp-v2` نفسه حتى ترث رموز التصميم كاملة. كل قيمة من رموز التصميم:
+   لا hex ولا px خام، وخصائص منطقية فقط لتعمل في RTL. */
+.erp-v2-eportal .erp-portal-punch__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-3);
+}
+.erp-v2-eportal .erp-portal-punch__row .erp-btn {
+  min-inline-size: 22ch;
+}
+.erp-v2-eportal .erp-portal-punch .erp-card__body {
+  gap: var(--erp-space-2);
+}
+.erp-v2-eportal .erp-portal-face__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--erp-space-3);
+}
+.erp-v2-eportal .erp-portal-face__actions .erp-field {
+  flex: 1 1 24ch;
+  min-inline-size: 0;
+}
+
+/* ── الكاميرا ─────────────────────────────────────────────────────────── */
+.erp-face-cam {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--erp-space-4);
+  background: var(--erp-scrim);
+  font-family: var(--erp-font-sans);
+}
+.erp-face-cam__panel {
+  display: grid;
+  gap: var(--erp-space-3);
+  inline-size: min(100%, 44ch);
+  max-block-size: calc(100dvh - var(--erp-space-8));
+  overflow: auto;
+  padding: var(--erp-space-4);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-lg);
+  color: var(--erp-text-primary);
+}
+.erp-face-cam__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+}
+.erp-face-cam__title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-face-cam__video {
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-scrim);
+  transform: scaleX(-1);
+}
+.erp-face-cam__msg {
+  margin: 0;
+  min-block-size: var(--erp-space-6);
+  color: var(--erp-text-secondary);
+}
+.erp-face-cam__progress {
+  inline-size: 100%;
+  block-size: var(--erp-space-1);
+  accent-color: var(--erp-brand);
+}
+.erp-face-cam__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-face-cam__actions .erp-btn {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+.erp-face-cam__upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.erp-face-cam__hint {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .erp-v2-eportal .erp-portal-punch__row .erp-btn {
+    flex: 1 1 100%;
+  }
+
+  /* رأس كشف الحضور يحمل شهرًا وزرَّي طباعة؛ بلا انثناء يدفع زر الشهر
+     خارج البطاقة فتتسع الصفحة أفقًا. نمط HR نفسه: عنوانٌ بسطر، ثم
+     الشهر سطرًا كاملًا، ثم الزرّان يتقاسمان سطرًا. */
+  .erp-v2-eportal .erp-portal-report__head {
+    flex-wrap: wrap;
+    gap: var(--erp-space-2);
+  }
+  .erp-v2-eportal .erp-portal-report__head .erp-card__title {
+    flex: 1 1 100%;
+  }
+  .erp-v2-eportal .erp-portal-report__head .erp-grow {
+    display: none;
+  }
+  .erp-v2-eportal .erp-portal-report__head .erp-input {
+    flex: 1 1 100%;
+    inline-size: auto;
+    min-inline-size: 0;
+  }
+  .erp-v2-eportal .erp-portal-report__head .erp-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .erp-face-cam {
+    padding: 0;
+  }
+  .erp-face-cam__panel {
+    inline-size: 100%;
+    min-block-size: 100dvh;
+    max-block-size: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+}

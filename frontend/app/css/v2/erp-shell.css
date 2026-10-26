@@ -1,0 +1,617 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 App Shell
+   ═══════════════════════════════════════════════════════════════════════
+   Layout is CSS Grid + logical properties, so the sidebar sits on the
+   INLINE-START side: right in Arabic (default), left in English — with no
+   second rule and no duplicated selector.
+
+   Breakpoint: 1024px. Below it the sidebar becomes a focus-managed drawer.
+   Compact mode (icons only) is a desktop density control.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-shell {
+  display: grid;
+  grid-template-columns: var(--erp-sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--erp-background);
+  transition: grid-template-columns var(--erp-duration-base) var(--erp-ease-out);
+}
+
+.erp-shell.is-compact {
+  grid-template-columns: var(--erp-sidebar-width-compact) minmax(0, 1fr);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.erp-shell__sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
+  position: sticky;
+  inset-block-start: 0;
+  background: var(--erp-surface);
+  border-inline-end: 1px solid var(--erp-border);
+  overflow: hidden;
+  z-index: var(--erp-z-sticky);
+}
+
+.erp-shell__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  min-height: 72px;
+  padding-inline: var(--erp-space-4);
+  padding-block: var(--erp-space-2);
+  border-block-end: 1px solid var(--erp-border);
+  flex-shrink: 0;
+}
+
+/* The wordmark lockup is unreadable at 48px; the emblem alone sits on a
+   plaque the width of the sidebar spine. */
+.erp-shell__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-inverse);
+  flex-shrink: 0;
+}
+.erp-shell__brand-mark .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+/* `.ji { display:inline-block }` (design-tokens) outranks UA `[hidden]`, so
+   the fallback icon painted a stray "?" beside the plaque. */
+.erp-v2 .erp-shell__brand-mark [hidden] { display: none; }
+.erp-shell__brand-mark [data-v2-shell-logo] {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+  background: var(--erp-surface);
+}
+
+.erp-shell__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.erp-shell__brand-text strong {
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: -.01em;
+}
+.erp-shell__brand-text small {
+  font-size: var(--erp-text-xs);
+  letter-spacing: .02em;
+  color: var(--erp-text-muted);
+}
+
+/* `.erp-v2 .erp-icon-btn` (0,2,0) outranks the bare class below, so the
+   drawer pair must be hidden at the same specificity or the burger and X
+   paint on desktop and squeeze the brand name. */
+.erp-v2 .erp-shell__drawer-close { display: none; }
+
+/* ── Nav ─────────────────────────────────────────────────────────────── */
+.erp-shell__nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--erp-space-3) var(--erp-space-2);
+}
+
+.erp-nav-group + .erp-nav-group { margin-block-start: var(--erp-space-3); }
+
+.erp-nav-group__title {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-1) var(--erp-space-2);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: .02em;
+  color: var(--erp-text-faint);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--erp-radius-sm);
+}
+.erp-nav-group__title::after {
+  content: "";
+  margin-inline-start: auto;
+  width: 6px; height: 6px;
+  border-inline-end: 1.5px solid currentColor;
+  border-block-end: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-nav-group.is-collapsed .erp-nav-group__title::after { transform: rotate(-45deg); }
+.erp-nav-group.is-collapsed .erp-nav-list { display: none; }
+
+.erp-nav-list {
+  list-style: none;
+  margin: var(--erp-space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.erp-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  width: 100%;
+  min-height: var(--erp-control-md);
+  padding-inline: var(--erp-space-3);
+  border: 0;
+  border-radius: var(--erp-radius-md);
+  background: transparent;
+  color: var(--erp-text-secondary);
+  font-family: inherit;
+  font-size: var(--erp-text-base);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-nav-item .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); flex-shrink: 0; }
+
+.erp-nav-item:hover { background: var(--erp-surface-hover); color: var(--erp-text-primary); }
+
+/* Active = fill + inline-start bar + weight + aria-current.
+   Four non-colour cues, so it survives greyscale. */
+.erp-nav-item.is-active {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 6px;
+  width: 3px;
+  border-radius: 0 var(--erp-radius-full) var(--erp-radius-full) 0;
+  background: var(--erp-brand);
+}
+.erp-nav-item { position: relative; }
+
+.erp-shell__nav-foot {
+  flex-shrink: 0;
+  padding: var(--erp-space-3);
+  border-block-start: 1px solid var(--erp-border);
+}
+
+.erp-shell__role {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  min-width: 0;
+}
+
+.erp-role__dot {
+  width: 8px; height: 8px;
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-success);
+  flex-shrink: 0;
+}
+
+/* ── Main column ─────────────────────────────────────────────────────── */
+.erp-shell__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.erp-shell__header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--erp-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  height: var(--erp-header-height);
+  padding-inline: var(--erp-space-4);
+  background: color-mix(in srgb, var(--erp-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-block-end: 1px solid var(--erp-border);
+}
+@supports not (backdrop-filter: blur(8px)) {
+  .erp-shell__header { background: var(--erp-surface); }
+}
+
+.erp-v2 .erp-shell__drawer-open { display: none; }
+
+/* One-line page name. The trail needs the width of several crumbs; a phone
+   has room for the current step only, so the header carries it instead of
+   showing a bare row of icons with no context.
+   وهو عنوان المستند الدلالي (h1) في كل الشاشات: مخفيٌّ بصريًا على الحاسوب
+   حيث يكفي المسار، وظاهرٌ على الهاتف — ولا شاشة تُفتح بلا عنوان لقارئ الشاشة. */
+.erp-v2 .erp-shell__page-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+/* The chart live region is appended to the shell root with no offsets, so
+   its static position lands past the inline edge and a 320px phone gets a
+   sideways scroll for one invisible pixel. */
+.erp-v2 > .erp-sr-only { inset-inline-start: 0; inset-block-start: 0; }
+
+/* ── Breadcrumbs ─────────────────────────────────────────────────────── */
+.erp-crumbs { flex: 1 1 auto; min-width: 0; }
+
+.erp-crumbs__list {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  list-style: none;
+  margin: 0; padding: 0;
+  font-size: var(--erp-text-base);
+  min-width: 0;
+}
+
+.erp-crumb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-crumb:last-child { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.erp-crumb-btn {
+  border: 0; background: none; padding: 0;
+  color: var(--erp-text-muted);
+  font: inherit; cursor: pointer;
+}
+.erp-crumb-btn:hover { color: var(--erp-brand); text-decoration: underline; }
+
+.erp-crumb-sep { color: var(--erp-text-faint); }
+
+/* ── Header actions + boundaries ─────────────────────────────────────── */
+.erp-shell__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  /* Shrinkable on purpose (this was `flex-shrink: 0`). A fixed row is what let
+     eleven controls push the whole DOCUMENT sideways when they stopped
+     fitting — measured at 1280px: 1308px of controls in a 985px header. The
+     row now holds four controls, and the secondary ones live in the control
+     centre popover, so there is nothing left to squeeze. */
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.erp-shell__integrations {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding-inline-end: var(--erp-space-2);
+  border-inline-end: 1px solid var(--erp-border);
+}
+.erp-shell__integrations[hidden] { display: none; }
+
+/* An unmounted boundary: visible affordance, clearly inert, never implying
+   a feature exists. Pointer-events stay on so the tooltip explains it. */
+.erp-boundary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--erp-control-md);
+  height: var(--erp-control-md);
+  border: 1px dashed var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: transparent;
+  color: var(--erp-text-faint);
+  cursor: not-allowed;
+}
+.erp-boundary .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+.erp-boundary:hover { color: var(--erp-text-muted); border-color: var(--erp-text-faint); }
+/* An author display rule outranks the UA `[hidden]` rule: without this the
+   company/branch placeholder that app-layout marks hidden painted as a
+   dashed, inert control in the live header. */
+.erp-v2 .erp-boundary[hidden] { display: none; }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+.erp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface);
+  border-block-end: 1px solid var(--erp-border);
+}
+.erp-toolbar[hidden] { display: none; }
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.erp-shell__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--erp-space-5);
+  /* The FAB floats over the inline-start corner at every width; the page must
+     be able to scroll its last row clear of it. */
+  padding-block-end: calc(var(--erp-space-5) + 56px);
+  max-width: var(--erp-content-max);
+  width: 100%;
+}
+
+/* رابط التخطّي يهبط بالمحتوى تحت الترويسة اللاصقة لا خلفها. */
+.erp-v2 .erp-shell__content {
+  scroll-margin-block-start: calc(var(--erp-header-height) + var(--erp-space-2));
+}
+
+/* لا قاعدةَ إخفاءٍ لتركيز المحتوى: `.erp-v2 :focus` يمنع الحلقة عند النقر،
+   و`.erp-v2 :focus-visible` يرسمها عند التنقّل بالكيبورد — وهي الدليل الوحيد
+   على أن الانتقال إلى الشاشة الجديدة قد وقع. */
+
+/* ── Drawer scrim (mobile) ───────────────────────────────────────────── */
+/* One veil for the whole system (see --erp-scrim). The element lives inside the
+   .erp-v2 shell root, so the token resolves without the host being listed. */
+.erp-shell__scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--erp-scrim);
+  z-index: var(--erp-z-drawer);
+}
+.erp-shell__scrim[hidden] { display: none !important; }
+
+/* ═══════════════ Compact (desktop density) ═══════════════ */
+.erp-shell.is-compact .erp-shell__brand-text,
+.erp-shell.is-compact .erp-nav-item__label,
+.erp-shell.is-compact .erp-nav-group__title,
+.erp-shell.is-compact .erp-shell__role span:not(.erp-role__dot) {
+  display: none;
+}
+.erp-shell.is-compact .erp-shell__brand {
+  min-height: 60px;
+  justify-content: center;
+  padding-inline: var(--erp-space-1);
+}
+.erp-shell.is-compact .erp-shell__brand-mark { width: 36px; height: 36px; }
+.erp-shell.is-compact .erp-nav-item { justify-content: center; padding-inline: 0; }
+.erp-shell.is-compact .erp-nav-group__title::after { display: none; }
+.erp-shell.is-compact .erp-nav-group + .erp-nav-group {
+  margin-block-start: var(--erp-space-2);
+  padding-block-start: var(--erp-space-2);
+  border-block-start: 1px solid var(--erp-border);
+}
+
+/* ═══════════════ Control centre (مركز التحكم) ═══════════════
+   The header used to carry every secondary control in one flex strip. At
+   narrow widths that strip surrendered width until it reached zero: measured
+   live at 390px it was 0px wide holding 796px of content — password, server
+   status, lamps and language were all unreachable — and at 1024px it still
+   clipped the password and status behind an invisible horizontal scroll.
+   A strip has no honest answer when its content does not fit; a popover does.
+
+   The header now keeps only controls with a standing job: command palette,
+   notifications, session and this popover. Everything else is stacked inside
+   it at a fixed, readable width, so no breakpoint decides which feature
+   disappears. */
+.erp-v2 .erp-shell__more-toggle { flex: 0 0 auto; }
+
+.erp-shell__more {
+  position: fixed;
+  inset-block-start: calc(var(--erp-header-height) + var(--erp-space-2));
+  inset-inline-end: var(--erp-space-4);
+  z-index: var(--erp-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  inline-size: min(340px, calc(100vw - 2 * var(--erp-space-3)));
+  max-block-size: calc(100dvh - var(--erp-header-height) - 3 * var(--erp-space-4));
+  overflow-y: auto;
+  padding: var(--erp-space-3);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-lg);
+}
+.erp-shell__more[hidden] { display: none; }
+.erp-shell__more-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+}
+.erp-shell__more-title {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-shell__more-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: 1px solid var(--erp-border);
+}
+.erp-shell__more-section[hidden] { display: none; }
+.erp-shell__more-label {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+  letter-spacing: .08em;
+  color: var(--erp-text-faint);
+}
+.erp-shell__more-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  min-block-size: 40px;
+}
+.erp-shell__more-key { font-size: var(--erp-text-sm); color: var(--erp-text-secondary); }
+.erp-shell__more-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--erp-space-1);
+}
+/* shell-extras paints the buttons inside one `<span class="erp-shell__quick">`;
+   the grid therefore belongs to that span, not to its host. */
+.erp-v2 .erp-shell__more-quick .erp-shell__quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+}
+.erp-v2 .erp-shell__more-quick .erp-btn {
+  justify-content: flex-start;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-shell__more-quick .erp-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.erp-v2 .erp-shell__more .erp-shell__lamps { flex-wrap: wrap; }
+.erp-v2 .erp-shell__more .erp-server-info { white-space: normal; }
+.erp-shell__more-account .erp-btn { inline-size: 100%; justify-content: flex-start; }
+
+/* Page actions live in the toolbar on wide screens and in the control centre
+   on phones; they never render in both places at once. */
+.erp-v2 .erp-shell__more-tools { display: none; }
+.erp-v2 .erp-shell__more-tool-list .erp-btn {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+/* ═══════════════ Responsive ═══════════════ */
+@media (max-width: 1024px) {
+  .erp-shell,
+  .erp-shell.is-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .erp-shell__sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: min(84vw, var(--erp-sidebar-width));
+    transform: translateX(100%);           /* hidden off the inline-start edge */
+    transition: transform var(--erp-duration-base) var(--erp-ease-out);
+    box-shadow: var(--erp-shadow-lg);
+    z-index: calc(var(--erp-z-drawer) + 1);
+  }
+  [dir="rtl"] .erp-shell__sidebar { transform: translateX(100%); }
+  [dir="ltr"] .erp-shell__sidebar { transform: translateX(-100%); }
+
+  .erp-shell.is-drawer-open .erp-shell__sidebar { transform: translateX(0); }
+
+  .erp-v2 .erp-shell__drawer-open,
+  .erp-v2 .erp-shell__drawer-close { display: inline-flex; }
+
+  .erp-shell__scrim { display: block; }
+
+  /* Icon-only boundaries on narrow screens keep the header from wrapping. */
+  .erp-shell__content { padding: var(--erp-space-4) var(--erp-space-3); }
+}
+
+@media (max-width: 640px) {
+  .erp-shell__brand-text small { display: none; }
+  .erp-crumbs { display: none; }   /* breadcrumb trail is redundant on phones */
+  .erp-v2 .erp-shell__page-title {
+    position: static;
+    display: block;
+    flex: 1 1 0;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: hidden;
+    clip-path: none;
+  }
+
+  /* A phone header is one line: menu, page name, then the four standing
+     controls. The refresh / classic-interface row was a second bar that ate
+     60px of every screen; those actions moved into the control centre. */
+  .erp-v2 .erp-toolbar { display: none; }
+  .erp-v2 .erp-shell__more-tools:not([hidden]) { display: flex; }
+
+  .erp-shell__content {
+    padding: var(--erp-space-3);
+    /* The floating action button would sit on the last row otherwise. */
+    padding-block-end: calc(var(--erp-space-3) + 64px);
+  }
+
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-2); padding-inline: var(--erp-space-2); }
+  .erp-v2 .erp-shell__actions { gap: var(--erp-space-1); }
+
+  /* Text that only repeats an accessible name already in the source leaves
+     the phone layout; the name stays in the accessibility tree. */
+  .erp-v2 .erp-search-trigger__text,
+  .erp-v2 .erp-search-trigger .erp-pal__kbd { display: none; }
+  .erp-v2 .erp-shell__integrations {
+    gap: var(--erp-space-1);
+    padding-inline-end: var(--erp-space-2);
+  }
+  .erp-v2 .erp-shell__integrations > .erp-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .erp-v2 .erp-shell__integrations > .erp-btn span { display: none; }
+
+  /* Full-width sheet instead of a narrow popover on a phone. */
+  .erp-shell__more {
+    inset-inline: var(--erp-space-2);
+    inline-size: auto;
+  }
+}
+
+@media (max-width: 340px) {
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-1); padding-inline: var(--erp-space-1); }
+  /* Two 130px columns would ellipsis «شاشات المنيو»; stack instead. */
+  .erp-v2 .erp-shell__more-quick .erp-shell__quick { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Touch targets ≥ 44px on coarse pointers (WCAG 2.5.8). */
+@media (pointer: coarse) {
+  .erp-v2 .erp-nav-item,
+  .erp-v2 .erp-icon-btn,
+  .erp-v2 .erp-boundary,
+  .erp-v2 .erp-search-trigger,
+  .erp-v2 .erp-nav-group__title,
+  .erp-v2 .erp-theme-option,
+  .erp-v2 .erp-density-control .erp-density-option,
+  .erp-v2 .erp-shell__more .erp-btn,
+  .erp-v2 .erp-btn { min-height: var(--erp-touch-target); }
+  .erp-v2 .erp-icon-btn,
+  .erp-v2 .erp-boundary,
+  .erp-v2 .erp-search-trigger { min-width: 44px; }
+
+  /* أرضيةُ اللمس: كلُّ هدفِ مؤشرٍ داخل التطبيق لا يقلّ عن ٤٤ بكسل.
+     هذه القاعدة تسبق قواعدَ الشاشات في التخصيص (٠،٣،٠) لا في النَفَس
+     — فSpecificity تُقدَّم على ترتيب الملفات — فصارت (٠،٤،٠) لتغلبها.
+     بدونها بقيت أزرارُ الشرائط (٣٤) وأزرارُ رؤوس الجداول (٣٨) وحقولُ
+     النماذج (٣٨) أصغرَ من الإصبع على الهاتف: قِيست على ٥١ شاشة.
+     مربّعاتُ الاختيارradio/checkbox تبقى ٢٤ (حدُّ WCAG AA) لأن هدفَها
+     الحقيقي هو التسميةُ حولها. */
+  .erp-v2 :is(button,
+              [role="button"],
+              select,
+              textarea,
+              input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"])) {
+    min-block-size: var(--erp-touch-target);
+    min-inline-size: var(--erp-touch-target);
+  }
+}

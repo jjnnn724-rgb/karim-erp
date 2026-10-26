@@ -1,0 +1,400 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Auth layer (Gate C) · v1.1.0
+   ─────────────────────────────────────────────────────────────────────
+   The sign-in card opens with the same emerald spine and brass rule as the
+   sidebar, then hands the form to parchment. Same frozen language:
+   erp-card, erp-field, erp-btn, bilingual eyebrows. All colours resolve
+   from tokens, so the dark theme follows without a second palette.
+   ═══════════════════════════════════════════════════════════════════════ */
+.erp-v2 .erp-login-wrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--erp-space-6) var(--erp-space-3);
+}
+
+/* ── Auth focus (مسار الدخول) ──────────────────────────────────────────
+   البوابة شاشة مستقلة، لا شاشةً داخل قشرة العمل: على مسار login تُخفى
+   القائمة والرأس وشريط الأدوات وشريط الجوال والزر العائم، وتبقى البطاقة
+   وحدها وسط الشاشة. تُزرَع `is-auth` في preview.js من renderScreen وحدها،
+   فأي انتقال إلى شاشة أخرى يعيد القشرة كاملة تلقائيًا. */
+.erp-v2.is-auth {
+  grid-template-columns: minmax(0, 1fr);
+}
+.erp-v2.is-auth .erp-shell__sidebar,
+.erp-v2.is-auth .erp-shell__scrim,
+.erp-v2.is-auth .erp-shell__header,
+.erp-v2.is-auth .erp-toolbar { display: none; }
+.erp-v2.is-auth .erp-shell__main {
+  background:
+    radial-gradient(120% 70% at 50% 0%,
+      color-mix(in srgb, var(--erp-brand) 7%, transparent) 0%,
+      transparent 60%),
+    var(--erp-background);
+}
+.erp-v2.is-auth .erp-shell__content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  max-width: none;
+  padding-block-end: var(--erp-space-5);
+}
+.erp-v2.is-auth .erp-login-wrap { inline-size: 100%; }
+body.erp-auth-focus .erp-fab-host { display: none; }
+body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
+.erp-v2 .erp-login-card {
+  inline-size: 100%;
+  max-inline-size: 440px;
+  overflow: hidden;
+}
+
+/* ── Identity hero ───────────────────────────────────────────────────── */
+.erp-v2 .erp-login-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-6) var(--erp-space-5) var(--erp-space-5);
+  text-align: center;
+  color: var(--erp-sidebar-ink);
+  background:
+    radial-gradient(110% 130% at 50% -30%,
+      color-mix(in srgb, var(--erp-sidebar-accent) 26%, transparent) 0%,
+      transparent 62%),
+    linear-gradient(135deg, var(--erp-hero-raised), var(--erp-hero) 68%);
+  border-block-end: 2px solid var(--erp-brass);
+}
+.erp-v2 .erp-login-hero__eyebrow {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: .18em;
+  color: var(--erp-sidebar-accent);
+}
+.erp-v2 .erp-login-brand { display: flex; justify-content: center; }
+.erp-v2 .erp-login-logo {
+  display: block;
+  inline-size: min(100%, 144px);
+  block-size: 112px;
+  object-fit: contain;
+  object-position: center;
+}
+.erp-v2 .erp-login-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  text-align: center;
+  font-size: var(--erp-text-xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-sidebar-ink);
+}
+.erp-v2 .erp-login-title .erp-eyebrow {
+  margin-block-start: 2px;
+  color: var(--erp-sidebar-accent);
+}
+.erp-v2 .erp-login-hero__note {
+  margin: 0;
+  max-inline-size: 34ch;
+  font-size: var(--erp-text-sm);
+  line-height: var(--erp-leading-normal, 1.7);
+  color: var(--erp-sidebar-ink-2);
+}
+
+/* ── Form ────────────────────────────────────────────────────────────── */
+.erp-v2 .erp-login-card .erp-card__body {
+  padding-block: var(--erp-space-5);
+}
+/* Bilingual labels sit on one line: Arabic at the start, the English
+   eyebrow at the end. Stacked block eyebrows read as two labels. */
+.erp-v2 .erp-login-card .erp-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-login-card .erp-label .erp-eyebrow { font-size: 10px; }
+.erp-v2 .erp-login-center { text-align: center; }
+.erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
+.erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
+/* اللوحة كانت div عاديًا، فالحقول والزرّ كومٌ بلا فواصل: قيس الفرق بين
+   أسفل حقل كلمة المرور وأعلى زر الدخول = 0px. العمود هنا يضبط الإيقاع. */
+.erp-v2 [data-v2-pane="password"],
+.erp-v2 [data-v2-forgot-panel],
+.erp-v2 .erp-login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+/* قاعدةُ display أعلاه تغلب [hidden] في ورقة المؤلف — يُعاد معناها صراحةً. */
+.erp-v2 [data-v2-pane="password"][hidden],
+.erp-v2 [data-v2-forgot-panel][hidden] { display: none; }
+/* خطأٌ فارغ لا يستهلك فجوة؛ أول رسالة تُظهره بفجوته كاملة. */
+.erp-v2 .erp-login-card .erp-error:empty { display: none; }
+.erp-v2 .erp-login-submit {
+  inline-size: 100%;
+  justify-content: center;
+  min-block-size: 46px;
+}
+.erp-v2 .erp-login-sep {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  color: var(--erp-text-faint);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2 .erp-login-sep::before,
+.erp-v2 .erp-login-sep::after {
+  content: "";
+  flex: 1 1 auto;
+  block-size: 1px;
+  background: var(--erp-border);
+}
+.erp-v2 .erp-login-sep > span { padding-inline: var(--erp-space-1); }
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-login-wrap { padding: var(--erp-space-4) var(--erp-space-2); }
+  .erp-v2 .erp-login-hero { padding: var(--erp-space-5) var(--erp-space-4) var(--erp-space-4); }
+  .erp-v2 .erp-login-logo { block-size: 96px; }
+}
+
+/* ── Two-factor (MFA) ────────────────────────────────────────────────── */
+/* The card keeps its shape: the password pane is swapped for the second
+   factor, never stacked — one task at a time. */
+.erp-v2 [data-v2-mfa-pane] {
+  animation: erp-login-step 220ms cubic-bezier(.22, .61, .36, 1) both;
+}
+@keyframes erp-login-step {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.erp-v2 .erp-login-mfa-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-4);
+}
+.erp-v2 .erp-login-mfa-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  flex: 0 0 44px;
+  border-radius: var(--erp-radius-full);
+  color: var(--erp-brass-text);
+  background: var(--erp-brass-soft);
+  border: 1px solid var(--erp-brass-line);
+}
+.erp-v2 .erp-login-mfa-badge .ji { font-size: 20px; }
+.erp-v2 .erp-login-mfa-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  margin: 0 0 2px;
+  font-size: var(--erp-text-lg, 1.05rem);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-login-mfa-title .erp-eyebrow { font-size: 10px; }
+.erp-v2 .erp-login-mfa-head p { margin: 0; }
+
+.erp-v2 .erp-login-code {
+  text-align: center;
+  letter-spacing: .42em;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-lg, 1.05rem);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-login-code::placeholder { letter-spacing: .3em; color: var(--erp-text-faint); }
+
+.erp-v2 .erp-login-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--erp-space-3);
+  margin-block-end: var(--erp-space-3);
+  border: 1px dashed var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 .erp-login-qr img {
+  display: block;
+  inline-size: min(100%, 240px);
+  block-size: auto;
+  border-radius: var(--erp-radius-sm);
+}
+.erp-v2 .erp-login-qr__loading {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  padding-block: var(--erp-space-6);
+}
+.erp-v2 .erp-login-manual {
+  margin-block-end: var(--erp-space-4);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-login-manual summary {
+  cursor: pointer;
+  color: var(--erp-text-muted);
+  min-block-size: 32px;
+  display: flex;
+  align-items: center;
+}
+.erp-v2 .erp-login-manual code {
+  display: block;
+  margin-block-start: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+  border: 1px solid var(--erp-border);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  letter-spacing: .08em;
+  word-break: break-all;
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-login-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  margin: 0 0 var(--erp-space-4);
+  padding: var(--erp-space-3);
+  list-style: none;
+  border: 1px solid var(--erp-brass-line);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-brass-soft);
+}
+.erp-v2 .erp-login-codes li {
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-sm);
+  letter-spacing: .1em;
+  text-align: center;
+  color: var(--erp-text-primary);
+  user-select: all;
+}
+.erp-v2 .erp-login-codes + .erp-btn { margin-block-end: var(--erp-space-3); }
+
+/* ── مفاتيح المرور (بصمة / Face ID) ──────────────────────────────────── */
+/* The passkey button is the primary action when the account has a device;
+   the TOTP block stays visible underneath as the documented fallback. */
+.erp-v2 [data-v2-passkey-block] .erp-login-sep { margin-block: var(--erp-space-3); }
+.erp-v2 [data-v2-passkey-block] .erp-text-xs {
+  margin: var(--erp-space-2) 0 0;
+  line-height: var(--erp-leading-normal, 1.7);
+}
+.erp-v2 [data-v2-passkey-block] .ji { margin-inline-end: var(--erp-space-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 [data-v2-mfa-pane] { animation: none; }
+}
+@media (max-width: 380px) {
+  .erp-v2 .erp-login-codes { grid-template-columns: 1fr; }
+  .erp-v2 .erp-login-mfa-head { gap: var(--erp-space-2); }
+}
+
+/* ── 8b. الأجهزة والجلسات (البند ١٠) ────────────────────────────────────
+   The screen is a plain erp-card + data table; only three things need a
+   selector: the explanation must not run the full width of a desktop row,
+   the "current" badge must not wrap away from its device name, and the
+   header's two actions must stack instead of overflowing on a phone. */
+.erp-v2 .erp-v2-sessions .erp-card__body > .erp-text-sm {
+  max-inline-size: 62ch;
+  margin: 0;
+}
+.erp-v2 .erp-v2-sessions .erp-badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.erp-v2 .erp-v2-sessions .erp-card__head {
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-v2-sessions .erp-card__head { align-items: stretch; }
+  .erp-v2 .erp-v2-sessions .erp-card__head > .erp-grow { display: none; }
+  .erp-v2 .erp-v2-sessions .erp-card__head > .erp-btn { flex: 1 1 auto; }
+}
+
+/* ── 8c. مفاتيح المرور (بصمة / Face ID) ─────────────────────────────────
+   نفس لغة بطاقة الجلسات: شرح لا يمتد بعرض الشاشة، وصفوف أجهزة مسطّحة،
+   ولوحة تأكيد الحذف داخل البطاقة نفسها (لا نافذة منبثقة ثانية). */
+.erp-v2 .erp-v2-passkeys .erp-card__body > .erp-text-sm {
+  max-inline-size: 62ch;
+  margin: 0;
+}
+.erp-v2 .erp-v2-passkeys .erp-card__head {
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-passkey-list {
+  display: grid;
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-v2 .erp-passkey-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 .erp-passkey-row__icon { color: var(--erp-brass-text); display: inline-flex; }
+.erp-v2 .erp-passkey-row__main {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-passkey-row__label {
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  overflow-wrap: anywhere;
+}
+.erp-v2 .erp-passkey-row__meta {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-passkey-row__actions {
+  display: flex;
+  gap: var(--erp-space-1);
+  margin-inline-start: auto;
+}
+.erp-v2 .erp-passkey-add {
+  display: grid;
+  gap: var(--erp-space-3);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: 1px solid var(--erp-border);
+}
+.erp-v2 .erp-passkey-add .erp-field,
+.erp-v2 [data-v2-passkey-remove-panel] .erp-field { margin: 0; }
+.erp-v2 .erp-passkey-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--erp-space-3);
+}
+.erp-v2 [data-v2-passkey-remove-panel] {
+  display: grid;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+.erp-v2 [data-v2-passkey-remove-panel] .erp-text-sm { margin: 0; }
+@media (max-width: 640px) {
+  .erp-v2 .erp-passkey-grid { grid-template-columns: 1fr; }
+  .erp-v2 .erp-v2-passkeys .erp-card__head > .erp-grow { display: none; }
+  .erp-v2 .erp-v2-passkeys .erp-card__head > .erp-btn { flex: 1 1 auto; }
+}

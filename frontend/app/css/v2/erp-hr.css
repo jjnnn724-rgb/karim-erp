@@ -1,0 +1,1369 @@
+/**
+ * V2 — طبقة شاشات السجلات القائمة (01 الحضور · 02 الموظفون · 03 المخزون · 04 التقارير
+ *      · 05–08 موجة المشتريات: الموردون/الفواتير/المدفوعات/فواتير الشراء)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * النطاق: صفيحات صغيرة فقط تُكمّل اللغة المجمّدة — لا مكوّن جديد ولا لون
+ * جديد. كل القيم من `--erp-*` فيرث الوضعُ الداكن والمطبوعةُ قواعدِ erp-themes.css
+ * وerp-dashboard.css دون تعديل هنا. الاستثناء الوحيد المُضاف في موجة المشتريات
+ * هو تلوين زرّ الهدم (`erp-btn--danger`) — بألوانِ رموزٍ موجودة، لا رمزٍ جديد.
+ *
+ * تُحمَّل بعد erp-dashboard.css لأن بعض القواعد تعيد ضبط سلطاتِها عند الطباعة.
+ */
+
+/* شريط تصفية بسطر واحد: عناوين صغيرة + حقول، ويلتفّ نفسه على الموبايل. */
+.erp-v2 .erp-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-filterbar > label { padding-inline-start: var(--erp-space-1); }
+/* A field's intrinsic width comes from its longest option; without min-width:0
+   the flex item refuses to shrink and pushes the filter bar past 360px. */
+.erp-v2 .erp-filterbar > .erp-field { min-width: 0; }
+.erp-v2 .erp-filterbar .erp-select,
+.erp-v2 .erp-filterbar .erp-input { inline-size: auto; min-inline-size: 9rem; }
+
+/* Reports: separate the page identity from the controls, then give each
+   filter a stable label and grid slot instead of compressing everything into
+   the dashboard header's flex row. */
+.erp-v2 .erp-v2-reports [hidden] { display: none !important; }
+.erp-v2 .erp-v2-reports__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-4);
+  padding: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+.erp-v2 .erp-v2-reports__filters {
+  display: grid;
+  flex: 1 1 760px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: var(--erp-space-3);
+  min-width: 0;
+}
+.erp-v2 .erp-v2-reports__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  min-width: 0;
+}
+.erp-v2 .erp-v2-reports__field > .erp-input { width: 100%; min-width: 0; }
+.erp-v2 .erp-v2-reports__label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-v2-reports__field [data-v2-periodseg],
+.erp-v2 .erp-v2-reports__field [data-v2-groupseg] { min-width: 0; }
+.erp-v2 .erp-v2-reports__field .erp-seg {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--erp-radius-lg);
+}
+.erp-v2 .erp-v2-reports__field .erp-seg button {
+  min-block-size: 38px;
+  padding-inline: var(--erp-space-3);
+}
+.erp-v2 .erp-v2-reports__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-v2-reports__actions .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
+.erp-v2 .erp-v2-reports__actions .erp-btn:disabled { opacity: .7; cursor: wait; }
+.erp-v2 .erp-v2-reports > [data-v2-pos] { margin-block-start: var(--erp-space-4); }
+.erp-v2 .erp-v2-reports [data-v2-extra-wrap] { margin-block-start: var(--erp-space-4); }
+.erp-v2 .erp-v2-reports [data-v2-extra][aria-busy="true"] { opacity: .72; }
+.erp-v2 .erp-v2-reports [data-v2-extra] h4 {
+  margin: var(--erp-space-4) 0 var(--erp-space-2);
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-md);
+}
+.erp-v2 .erp-v2-reports [data-v2-table] .erp-table__grid,
+.erp-v2 .erp-v2-reports [data-v2-extra] .erp-table__grid { min-width: 960px; }
+.erp-v2 .erp-v2-reports .erp-kpis { margin-block-end: var(--erp-space-4); }
+
+/* الأسطر تحت الأشرطة: حالة واحدة لكل سطر، بلا لون خلفية. */
+.erp-v2 [data-v2-legend] .erp-legend { margin-block-start: var(--erp-space-4); }
+
+/* كود قسم لم يُحلّ اسمه يُقرأ أقلّ من الاسم المعروف. قاعدة erp-dashboard.css
+   (`.erp-top__name { color: … }`) تعادل الأداة في السلطة وتتأخر عليها في
+   الترتيب، فتبقى الأداة بلا أثر لولا هذا التحديد بالاسم نفسه. */
+.erp-v2 .erp-top__name.erp-text-muted { color: var(--erp-text-muted); }
+
+/* ─── موجة المشتريات (05–08) ──────────────────────────────────────────────
+   رؤوس هذه الشاشات سطرُ flex واحد لا ينثني: عنوان + شريط أقسام + (هناك)
+   قائمة موردين وحقلان للتاريخ + أزرار — عرضُها الأدنى أعرض من أنضر مقياس،
+   فتنزاح الصفحة أفقيًا قبل أي صف جدول. القواعد هنا ترتيبٌ بحت. */
+.erp-v2-procurement .erp-card__head,
+.erp-v2-invoices .erp-card__head,
+.erp-v2-payments .erp-card__head,
+.erp-v2-whinvoices .erp-card__head { flex-wrap: wrap; }
+
+/* زرّ الهدم (حذف مورد، عكس دفعة) كان يلبس زيّ الأزرار البريئة تمامًا.
+   نفس الحافة ونفس الهيكل، الرمزُ وحده يختلف — والقاعدة محصورة في هذه الشاشات
+   الأربع حتى لا تُغيّر شاشة معتمدة قبل قياسها. */
+.erp-v2 .erp-btn--danger {
+  color: var(--erp-danger-text);
+  border-color: var(--erp-danger);
+}
+.erp-v2 .erp-btn--danger:hover:not(:disabled) { background: var(--erp-danger-soft); }
+
+/* على الموبايل: الترويسة كانت تلتهم ٢٥٦ بكسل قبل أي صف. أربع حركات، كلها
+   ترتيبٌ لا معلومة: عنوان المجموعة يُخفى (aria-label يقول «الفترة» و«حالة
+   المخزون» أصلًا)، وزرّا التحديث والطباعة يصيران أيقونتين فوق الأزرار، وشريط
+   التصفية ينزل سطره وحده بعد الترويسة، والحقول تأخذ عرض السطر.
+   شاشة التقارير تحمل شريطَي فترة وتجميع معًا، فتزداد حركتان: تصغير حشو
+   أزرار الشريطين، ونزول كل شريط سطره حتى لا تُقصَّ آخر زر. */
+@media (max-width: 640px) {
+  .erp-v2 .erp-v2-reports__toolbar { align-items: stretch; padding: var(--erp-space-3); }
+  .erp-v2 .erp-v2-reports__filters { flex-basis: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-v2-reports__field--segments,
+  .erp-v2 .erp-v2-reports__field--type { grid-column: 1 / -1; }
+  .erp-v2 .erp-v2-reports__field .erp-seg { width: 100%; }
+  .erp-v2 .erp-v2-reports__field .erp-seg button { flex: 1 1 auto; }
+  .erp-v2 .erp-v2-reports__actions { width: 100%; }
+  .erp-v2 .erp-v2-reports__actions .erp-btn { flex: 1 1 0; }
+
+  .erp-v2-attendance .erp-dash-head,
+  .erp-v2-employees .erp-dash-head,
+  .erp-v2-warehouse .erp-dash-head,
+  .erp-v2-reports .erp-dash-head { gap: var(--erp-space-3); }
+
+  .erp-v2-attendance .erp-dash-controls,
+  .erp-v2-employees .erp-dash-controls,
+  .erp-v2-warehouse .erp-dash-controls,
+  .erp-v2-reports .erp-dash-controls { gap: var(--erp-space-2); }
+
+  .erp-v2-attendance .erp-seg__label,
+  .erp-v2-employees .erp-seg__label,
+  .erp-v2-warehouse .erp-seg__label,
+  .erp-v2-reports .erp-seg__label { display: none; }
+
+  .erp-v2-attendance .erp-filterbar,
+  .erp-v2-employees .erp-filterbar,
+  .erp-v2-warehouse .erp-filterbar,
+  .erp-v2-reports .erp-filterbar {
+    order: 1;
+    flex: 1 1 100%;
+    gap: var(--erp-space-1) var(--erp-space-2);
+  }
+
+  /* Caption-sized labels: they name the field, they do not compete with it. */
+  .erp-v2-attendance .erp-filterbar > label,
+  .erp-v2-employees .erp-filterbar > label,
+  .erp-v2-warehouse .erp-filterbar > label,
+  .erp-v2-reports .erp-filterbar > label {
+    font-size: var(--erp-text-xs);
+    padding-inline-start: 0;
+  }
+
+  .erp-v2-attendance .erp-filterbar .erp-input,
+  .erp-v2-attendance .erp-filterbar .erp-select,
+  .erp-v2-employees .erp-filterbar .erp-input,
+  .erp-v2-employees .erp-filterbar .erp-select,
+  .erp-v2-warehouse .erp-filterbar .erp-input,
+  .erp-v2-warehouse .erp-filterbar .erp-select,
+  .erp-v2-reports .erp-filterbar .erp-input,
+  .erp-v2-reports .erp-filterbar .erp-select {
+    inline-size: auto;
+    min-inline-size: 0;
+    flex: 1 1 7rem;
+  }
+
+  /* الأيقونة وحدها بصريًا، والاسم باقٍ في شجرة الوصول. `display:none`
+     كان يُسقط الاسم من الشجرة فتصل الأزرار بلا اسم (axe: button-name). */
+  .erp-v2-attendance .erp-dash-controls .erp-btn > span,
+  .erp-v2-employees .erp-dash-controls .erp-btn > span,
+  .erp-v2-warehouse .erp-dash-controls .erp-btn > span,
+  .erp-v2-reports .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* أيقونة وحدها على شاشة لمس تحتاج هدفًا بحجم الإصبع، لا بحجم النص. */
+  .erp-v2-attendance .erp-dash-controls .erp-btn,
+  .erp-v2-employees .erp-dash-controls .erp-btn,
+  .erp-v2-warehouse .erp-dash-controls .erp-btn,
+  .erp-v2-reports .erp-dash-controls .erp-btn {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
+
+  /* خمسة أزرار فترة + ثلاثة تجميع في سطر واحد بعرض ٣٢٠: الحشو المُجمّد
+     (٦×١٤) يجعل الشريط الأول أعرض من السطر، فيُنقص الحشو هنا وحدها بينما
+     يبقى هدف اللمس كما هو. */
+  .erp-v2-reports .erp-seg button {
+    padding-inline: var(--erp-space-2);
+    min-block-size: max(40px, var(--erp-touch-target));
+  }
+
+  /* كل شريط يملك سطره، فلا يتقاطع شريطا الفترة والتجميع عند أصغر عرض.
+     `flex: 1 1 100%` هو ما ينزل بعنصر داخل حاوية flex؛ `display: block`
+     وحده لا يفعل شيئًا لأن العنصر أصغر عنصر مرن. */
+  .erp-v2-reports [data-v2-periodseg],
+  .erp-v2-reports [data-v2-groupseg] { flex: 1 1 100%; }
+
+  /* خمسة أزرار في سطر لا ينثني عرضها الأدنى مجموعُها (قُيس ٣١٤ بكسل عند
+     عرض ٣٢٠): الشريط يفرض عرضًا أعرض من الحاوية فتتنزّل الصفحة أفقيًا.
+     الانثناء ينزله سطرًا ثانيًا — وبعد القياس صار عرض السجل بعرض الحاوية. */
+  .erp-v2-reports .erp-seg { flex-wrap: wrap; }
+}
+
+/* موجة المشتريات على الموبايل: الترويسة هنا تحمل شريط أقسام + قائمة موردين
+   + حقلَي تاريخ + أزرارًا، فهي أعلى شحنةً من ترويسات 01–04. نفس الحركات:
+   عنوانٌ يملك سطره، شريطُ أقسام يملك سطره وينثني، تصفية مرنة، وأهداف لمس
+   أربعونية. (تأتي بعد كتلة التقارير لأن اختبار v2-reports يقرأ أول كتلة
+   `max-width: 640px` في الملف — الترتيب هنا جزء من التعاقد لا ذوق.) */
+@media (max-width: 640px) {
+  .erp-v2-procurement .erp-card__head,
+  .erp-v2-invoices .erp-card__head,
+  .erp-v2-payments .erp-card__head,
+  .erp-v2-whinvoices .erp-card__head { gap: var(--erp-space-2); }
+
+  .erp-v2-procurement .erp-card__title,
+  .erp-v2-invoices .erp-card__title,
+  .erp-v2-payments .erp-card__title,
+  .erp-v2-whinvoices .erp-card__title { flex: 1 1 100%; }
+
+  /* البادئة المرنة وظيفتها دفعُ الأزرار لآخر سطر لا ينثني؛ بعد ما انثنى
+     السطور لا تولّد إلا فجوةً عشوائية وسط شريط التصفية. */
+  .erp-v2-procurement .erp-card__head .erp-grow,
+  .erp-v2-invoices .erp-card__head .erp-grow,
+  .erp-v2-payments .erp-card__head .erp-grow,
+  .erp-v2-whinvoices .erp-card__head .erp-grow { display: none; }
+
+  /* شريط الأقسام تنقّلٌ أساسي بين الشاشات الثلاث — سطرٌ كامل له، وأزراره
+     تنثني إن ضاق العرض عن ثلاثة أسماء. زرّ «الموردون» في شاشة 08 يلبس
+     نفس الخطاف فيأخذ سطره وهو زرٌّ واحد عريض الهدف. */
+  .erp-v2-procurement .erp-card__head [data-v2-hub],
+  .erp-v2-invoices .erp-card__head [data-v2-hub],
+  .erp-v2-payments .erp-card__head [data-v2-hub],
+  .erp-v2-whinvoices .erp-card__head [data-v2-hub] { flex: 1 1 100%; }
+
+  .erp-v2-procurement .erp-seg,
+  .erp-v2-invoices .erp-seg,
+  .erp-v2-payments .erp-seg { flex-wrap: wrap; }
+
+  /* عناصر التصفية تتقاسم السطر: التسمية بحجم الوصف والحقل مرن. */
+  .erp-v2-procurement .erp-card__head > label,
+  .erp-v2-invoices .erp-card__head > label,
+  .erp-v2-payments .erp-card__head > label,
+  .erp-v2-whinvoices .erp-card__head > label {
+    font-size: var(--erp-text-xs);
+  }
+  .erp-v2-payments .erp-card__head .erp-select,
+  .erp-v2-payments .erp-card__head .erp-input,
+  .erp-v2-whinvoices .erp-card__head .erp-input {
+    inline-size: auto;
+    min-inline-size: 0;
+    flex: 1 1 7rem;
+  }
+
+  /* أزرار الرأس وأزرار الإجراءات في الصف (تعديل/حذف/عكس/تسديد) هدفُ إصبعٍ
+     لا هدفِ بصر: 30px المجمّدة تُرفع إلى 40px على شاشة لمس. أشرطة الأقسام
+     (`.erp-seg button`، وهي تبويبات المركز الثلاثة عند ٣٤px) وزرّ «الأعمدة»
+     في مكوّن الجدول المشترك (٣٠px) تُذكر بالاسم هنا لا في أصلها المشترك،
+     فذلك الحصر سمة هذه الموجة لا تعديل للمكوّن. */
+  .erp-v2-procurement .erp-card__head .erp-btn,
+  .erp-v2-invoices .erp-card__head .erp-btn,
+  .erp-v2-payments .erp-card__head .erp-btn,
+  .erp-v2-whinvoices .erp-card__head .erp-btn,
+  .erp-v2-procurement .erp-seg button,
+  .erp-v2-invoices .erp-seg button,
+  .erp-v2-payments .erp-seg button,
+  .erp-v2-whinvoices .erp-seg button,
+  .erp-v2-procurement [data-erp-cols-toggle],
+  .erp-v2-invoices [data-erp-cols-toggle],
+  .erp-v2-payments [data-erp-cols-toggle],
+  .erp-v2-whinvoices [data-erp-cols-toggle],
+  .erp-v2-procurement [data-v2-act],
+  .erp-v2-invoices [data-v2-act],
+  .erp-v2-payments [data-v2-act],
+  .erp-v2-whinvoices [data-v2-act],
+  .erp-v2-procurement .erp-table__pager .erp-btn,
+  .erp-v2-invoices .erp-table__pager .erp-btn,
+  .erp-v2-payments .erp-table__pager .erp-btn,
+  .erp-v2-whinvoices .erp-table__pager .erp-btn {
+    min-block-size: max(var(--erp-space-8), var(--erp-touch-target));
+    min-inline-size: var(--erp-space-8);
+  }
+
+  /* الحقول تبقى على حجمها المجمّد (erp-control-md = ٣٨) كما في 01–04:
+     رفعها هنا وحدها يجعل سطر التصفية في شاشة واحدة غير متكافئ. */
+}
+
+/* سطر المطبوعة: لا يظهر على الشاشة إطلاقًا، ويظهر وحده عند الطباعة ليقول
+   ما المدى المطبوع — بلا هذا السطر تُقرأ صفحة واحدة كأنها السجل كلّه. */
+.erp-v2 .erp-print-note { display: none; }
+
+@media print {
+  .erp-v2 .erp-print-note {
+    display: block;
+    font-size: var(--erp-text-sm);
+    color: var(--erp-text-secondary);
+    margin-block: var(--erp-space-2) var(--erp-space-3);
+  }
+  /* المتصفّح يعرض الشريط الجانبي والأزرار في الطباعة إن تُركت؛ erp-base
+     يخفي .erp-no-print، لكن الشريط العلوي نفسه يجب أن يصغر لا أن يختفي. */
+  .erp-v2 .erp-dash-head { margin-block-end: var(--erp-space-2); }
+  /* سجل المؤشرات الموحّد (erp-components.css) يحكم الطباعة أيضًا */
+  .erp-v2 .erp-card { break-inside: avoid; }
+  /* erp-table.css تتكفّل بفكّ ارتفاع الجدول؛ المتبقّي هنا هو شريط الأرقام
+     وحده — طباعة «الصفحة ٢ من ١٢» بلا أزرار تُربك القارئ. */
+  .erp-v2 .erp-table__pager { display: none !important; }
+  /* شاشة 08 تحمل زرّ طباعة: أزرار رأسها وحقول مداها لا تُطبع — المدى
+     يُقرأ من سطر المطبوعة نفسه (عرف شاشتي 01/02). */
+  .erp-v2-whinvoices .erp-card__head .erp-btn,
+  .erp-v2-whinvoices .erp-card__head input { display: none; }
+}
+
+/* ─── شاشة 10 · طلبات الإجازات (10) ──────────────────────────────────────
+   نفس حركة موجة المشتريات: الطبقات تُحصر باسم الشاشة، فلا تلمس مكوّنًا
+   مشتركًا ولا شاشة معتمدة قبلها. الملفات الجديدة للموجة التشغيلية (09/13/14)
+   في erp-ops.css؛ هذه شاشة HR فتبقى في طبقة عائلتها. */
+
+/* رأس البطاقة هنا يحمل عنوانًا + بادئة إنجليزية + عدّادًا + ملاحظة يمينية:
+   أربعة أسماء في سطر واحد تتقطّع قبل أن تُقرأ. */
+.erp-v2-leaves .erp-card__head { flex-wrap: wrap; }
+
+/* سبب الرفض نصٌّ يُقرأ ويُخزَّن: حقل متعدد الأسطر بلا هذا القيد يقفل
+   المستطيل فيمنع من يكتب سببًا من سطرين أن يرى ما كتب. */
+.erp-v2-leaves textarea.erp-input { resize: vertical; min-block-size: 64px; line-height: 1.6; }
+
+/* اللوحة تُفتح وتُغلق بخاصية hidden وحدها (leaves.js:171، :449)، لكن
+   .erp-v2 .erp-stack { display: flex } (erp-base.css:75) قاعدةُ مؤلفٍ تُلغي
+   display:none الافتراضية للعنصر المخفي — فمات الإخفاء. القياس الميداني:
+   اللوحة بطول ١٤١px وزرّ «تأكيد الرفض» حيّ في الترتيب وهي مقفولة، أي أن كل
+   رسمٍ للشاشة يعرض نموذج رفضٍ فارغًا تحت الجدول. القاعدة تُعيد لـ hidden
+   معناه، في الطبقة الخاصة بالشاشة لا في الأساس المشترك. */
+.erp-v2-leaves [data-v2-reject][hidden] { display: none; }
+
+/* موضع هاتين الكتلتين قبل كتلتي الإجازات/الدوام مقصودٌ لا تزويقًا:
+   عقد شاشة الدوام (tests/v2-roster.test.js) يقرأ آخر كتلة 640px وآخر
+   كتلة طباعة في الملف ويثبّت أن فيهما قواعد الدوام — فلا تُضاف كتلة
+   بعد كتلتي الدوام أبدًا، وإلا انكسر عقدها. */
+/* على الموبايل: أزرار اللوحة وأزرار إجراءات الصف هدفُ إصبعٍ لا هدف
+   بصر — نفس قاعدة الأربعين في أسطر هذه الموجة. الحقول تبقى على
+   حجمها المجمّد (erp-control-md = ٣٨) كما في 01–04. الشبكتان
+   (النموذج وحقائق الكشف) عمودٌ واحد هنا، تثبيتًا للنية وإن تكفّل
+   minmax(min()) بذلك أصلًا. */
+@media (max-width: 640px) {
+  .erp-v2-employees [data-v2-act],
+  .erp-v2-employees .erp-emp-panel__head .erp-btn,
+  .erp-v2-employees .erp-emp-panel__actions .erp-btn,
+  .erp-v2-employees .erp-emp-qr__btns .erp-btn {
+    min-block-size: var(--erp-space-8);
+    min-inline-size: var(--erp-space-8);
+  }
+
+  .erp-v2-employees .erp-emp-form,
+  .erp-v2-employees .erp-emp-grid { grid-template-columns: 1fr; }
+}
+
+@media print {
+  /* ورقة الجدول: عمود الإجراءات أزرارٌ لا معلومة، وسطر تصفية الأعمدة
+     صناديق فارغة — كلاهما خارج الورقة. td يحمل فئة العمود وth يحمل
+     data-col، فتختفي الخلايا في السطرين معًا ويبقى الإطار متعامدًا. */
+  .erp-v2-employees .erp-table th[data-col="actions"],
+  .erp-v2-employees .erp-table .erp-td--actions,
+  .erp-v2-employees .erp-table .erp-tr-filter { display: none; }
+
+  /* لوحة مفتوحة أثناء الطباعة: أزرارها إدارةُ تحرير لا محتوى. */
+  .erp-v2-employees .erp-emp-panel__actions { display: none; }
+
+  /* طباعة بطاقة QR وحدها: الزر يضع شارةً على body قبل نداء الطباعة
+     الوحيد وينزعها بعده. الورقة تخفي كل ما في الشاشة — الرأس
+     والمؤشرات والبطاقات الثلاث — ثم كل ما في اللوحة غير البطاقة
+     نفسها، ويسقط غلاف اللوحة ليقف الرمز على الورق بلا إطارين.
+     (اللوحة خارج البطاقات: لو وُلِدت داخل بطاقة الدليل لَما ظهرت
+     أصلًا في عرض «بطاقات» — انظر تعليق القالب في employees.js.) */
+  body.erp-v2-print-card .erp-v2-employees .erp-dash-head,
+  body.erp-v2-print-card .erp-v2-employees [data-v2-kpis],
+  body.erp-v2-print-card .erp-v2-employees .erp-card,
+  body.erp-v2-print-card .erp-v2-employees .erp-emp-panel__head,
+  body.erp-v2-print-card .erp-v2-employees .erp-emp-panel__body > :not([data-v2-file-qr]),
+  body.erp-v2-print-card .erp-v2-employees [data-v2-file-qr] > :not(.erp-emp-qr-card),
+  body.erp-v2-print-card .erp-v2-employees .erp-emp-qr__btns { display: none !important; }
+  body.erp-v2-print-card .erp-v2-employees .erp-emp-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+@media print {
+  /* طباعة البطاقة الكاملة: الرأس والمؤشرات والبطاقات خارج الورقة، ويبقى
+     الكشف وحده — الحساب والأداء والراتب والرمزين على ورقة واحدة. نفس نداء
+     الطباعة الوحيد، وبشارة body أخرى (employees.js printEmpCard). */
+  body.erp-v2-print-empcard .erp-v2-employees .erp-dash-head,
+  body.erp-v2-print-empcard .erp-v2-employees [data-v2-kpis],
+  body.erp-v2-print-empcard .erp-v2-employees .erp-card { display: none !important; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__btns { display: none !important; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-rate { break-inside: avoid; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__one { break-inside: avoid; }
+}
+
+@media print {
+  /* طباعة كشف اليوم/الفترة وحده: الرأس والمؤشرات والبطاقات وشريط النطاق خارج
+     الورقة، ويبقى الجدول وملخّصه — ونفس رفع سقف التمرير الذي يستخدمه الكشف
+     الشهري، ليطبع المدى كله لا صفحةً واحدة. نفس نداء الطباعة الوحيد، وبشارة
+     body ثالثة (employees.js printAttRange) تُنزع على afterprint. */
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-dash-head,
+  body.erp-v2-print-dayrange .erp-v2-employees [data-v2-kpis],
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-card,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__head,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__actions,
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel__body > :not([data-v2-file-range]) { display: none !important; }
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  body.erp-v2-print-dayrange .erp-v2-employees .erp-emp-att__scroll {
+    max-block-size: none;
+    overflow: visible;
+  }
+}
+
+@media print {
+  /* طباعة الكشف الشهري وحده — نفس حركة بطاقة QR في الموظفين (W2-2): الزر
+     يضع شارةً على body قبل نداء الطباعة الوحيد وينزعها بعده. الورقة تُخفي
+     كل ما في شاشة الحضور غير لوحة الأداة (والكشف داخلها)، وتُخرج من
+     اللوحة أدوات تحريرها: الشهر و«عرض» و«طباعة» و«إغلاق» — كلّها
+     .erp-no-print. وسقف ارتفاع جدول الكشف يُرفع على الورق ليظهر الشهر
+     كله بدل صفحة واحدة من التمرير. */
+  body.erp-v2-print-monthly .erp-v2-attendance > :not([data-v2-toolpanel]) { display: none !important; }
+  body.erp-v2-print-monthly .erp-v2-attendance [data-v2-toolpanel] .erp-no-print { display: none !important; }
+  body.erp-v2-print-monthly .erp-v2-attendance [data-v2-toolpanel] .erp-card__head .erp-btn,
+  body.erp-v2-print-monthly .erp-v2-attendance [data-v2-toolpanel] .erp-card__head .erp-input { display: none !important; }
+  body.erp-v2-print-monthly .erp-v2-attendance [data-v2-toolpanel] .erp-card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  body.erp-v2-print-monthly .erp-v2-attendance [data-v2-mo-body] .erp-table__scroll {
+    max-block-size: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 640px) {
+  .erp-v2-leaves .erp-dash-head { gap: var(--erp-space-3); }
+  .erp-v2-leaves .erp-dash-controls { gap: var(--erp-space-2); }
+
+  /* «الحالة» يقولها aria-label للشاشة القارئة وتقولها أسماء الأزرار نفسها
+     (الكل/قيد الاعتماد/…)؛ على ٣٢٠px تسميةٌ واحدة تأكل سطر الشريط. */
+  .erp-v2-leaves .erp-seg__label { display: none; }
+
+  /* الشريط سطرٌ كامل له، وأزراره خمسة أسماء بأرقامها: تنثني ولا تُقطَع. */
+  .erp-v2-leaves .erp-dash-controls [data-v2-stateseg] { flex: 1 1 100%; }
+  .erp-v2-leaves .erp-seg { flex-wrap: wrap; }
+
+  /* الطباعة/التحديث: aria-label على الزرّ نفسه، فالنصّ المكرر يُخفى ويُبقى
+     الرمز — نفس حركة طبقتي 01–04 و05–08. */
+  .erp-v2-leaves .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* أزرار الرأس وشريط الحالة وأزرار القرار داخل الصفوف وزرّ «الأعمدة»
+     وأزرار الترقيم وحقل «صفوف الصفحة» ولوحة سبب الرفض: هدفُ إصبعٍ لا
+     هدفِ بصر. الحقل الأخير درْس شاشة 09 — قِيس ٦٦×٣٠ قبل أن تُلمسه قاعدة
+     الأربعين. لوحة الرفض درْسٌ ثانٍ أُعيد قياسه: «إرسال الرفض» بقياس
+     .erp-btn--sm قُدّ ١٠٧×٣٠ و«إلغاء» ٧٠×٣٠، فخرجتا من قاعدة الأربعين لأن
+     الرأس والجداول مُغطّيان واللوحة لا. */
+  .erp-v2-leaves .erp-dash-controls .erp-btn,
+  .erp-v2-leaves .erp-card__head .erp-btn,
+  .erp-v2-leaves .erp-seg button,
+  .erp-v2-leaves .erp-table td .erp-btn,
+  .erp-v2-leaves [data-erp-cols-toggle],
+  .erp-v2-leaves .erp-table__pager .erp-btn,
+  .erp-v2-leaves .erp-table__pager .erp-select,
+  .erp-v2-leaves [data-v2-reject] .erp-btn {
+    min-block-size: var(--erp-space-8);
+    min-inline-size: var(--erp-space-8);
+  }
+
+  /* سطر المدى وسطر النافذة وسطر المطبوعة أسطرُ قراءةٍ لا أزرار: تُترك
+     بحجمها، والسطر الطويل لا يتدلّى من يمين الشاشة. */
+  .erp-v2-leaves [data-v2-scope-line],
+  .erp-v2-leaves [data-v2-window-note] { overflow-wrap: anywhere; }
+
+  /* ملاحظات الرؤوس (من أي سجل، و«أكبر 6 من N») معلوماتٌ لا زينة. */
+  .erp-v2-leaves .erp-card__head [data-v2-chain-note],
+  .erp-v2-leaves .erp-card__head [data-v2-top-note] {
+    flex: 1 1 100%;
+    font-size: var(--erp-text-xs);
+  }
+
+  /* لوحة سبب الرفض تعمل بالمفردة: زرّان وحقل ونصّ الهدف — كلٌّ سطرٌ له. */
+  .erp-v2-leaves [data-v2-reject] .erp-row-wrap { flex-wrap: wrap; }
+  .erp-v2-leaves [data-v2-reject] .erp-row-wrap > span { flex: 1 1 100%; }
+
+  /* شاشة الدوام: شريط أسبوع + نسخ + حفظ + طباعة + تحديث في سطر أعرض من ٣٢٠؛
+     النصوص تُخفى وتبقى الرموز (aria-label يسمّيها) — إلا عدّاد الخلايا
+     المعدَّلة، فهو معلومة العملية الوحيدة التي لا يقولها رمز. */
+  .erp-v2-roster .erp-dash-controls { gap: var(--erp-space-2); }
+  .erp-v2-roster .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .erp-v2-roster .erp-dash-controls .erp-btn > span[data-v2-dirty-count] {
+    position: static;
+    inline-size: auto; block-size: auto;
+    margin: 0; overflow: visible;
+    clip-path: none; white-space: normal;
+  }
+
+  /* أزرار الرأس وزرّ «نسخ الصف» في الصفوف: هدف إصبعٍ لا هدف بصر. */
+  .erp-v2-roster .erp-dash-controls .erp-btn,
+  .erp-v2-roster .erp-ros-tools .erp-btn {
+    min-block-size: var(--erp-space-8);
+    min-inline-size: var(--erp-space-8);
+  }
+
+  /* موظفو القسم (طبقة الشاشة المصغرة): نصوص الأزرار تختفي وتبقى الأيقونات،
+     وهدف لمس بحجم الإصبع — بنفس قاعدة الموجات السابقة. */
+  .erp-v2-deptemp .erp-dash-controls .erp-btn > span {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .erp-v2-deptemp .erp-dash-controls .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
+
+  /* شاشة الحضور (W2-3): أزرار اللوحات — اعتماد المعالجة/العذر/التصحيح
+     وتطبيق الورديات ومسح بطاقة أخرى وعرض الكشف/التدقيق — أزرار كتابة
+     وتشغيل يُلمس بالكفّين في نقطة البيع والكشك: هدف إصبع. والنموذج
+     (شهر/وقت/سبب) ينثني ولا يقطع سطر الشريط. */
+  .erp-v2-attendance [data-v2-toolpanel] .erp-btn {
+    min-block-size: var(--erp-space-8);
+    min-inline-size: var(--erp-space-8);
+  }
+  .erp-v2-attendance [data-v2-toolpanel] .erp-dash-controls { flex-wrap: wrap; }
+}
+
+@media print {
+  /* نطاق الباب وسطر النافذة سببُ كل رقم على هذه الصفحة: إن طُبعت بلاهما
+     قُرئ «٣ طلبات» كأنها كل إجازات الشركة. */
+  .erp-v2-leaves .erp-dash-controls { display: none; }
+  .erp-v2-leaves .erp-card__head [data-v2-chain-note],
+  .erp-v2-leaves .erp-card__head [data-v2-top-note] { font-size: var(--erp-text-xs); }
+
+  /* شاشة الدوام: أزرار الرأس وعمود الأدوات إدارةُ تحريرٍ لا معلومة دوام —
+     خارج الورقة. سبعة أيام × ١٠٤px لا تسع A4 طوليًا، فتُضغط الخلايا
+     والحقول إلى الحد الذي تُقرأ فيه، وتظهر خانتا التوقيع ليُوقَّع الاعتماد
+     على الورق كما في النظام القديم. (القواعد مسبوقة باسم الشاشة لتتقدم
+     قواعدَ الأساس نفسَها في آخر الملف.) */
+  .erp-v2-roster .erp-dash-controls { display: none; }
+  .erp-v2-roster .erp-ros-tools { display: none; }
+  .erp-v2-roster .erp-ros-grid { min-inline-size: 0; }
+  .erp-v2-roster .erp-ros-cell { min-inline-size: 0; padding-inline: var(--erp-space-1); }
+  .erp-v2-roster .erp-ros-time,
+  .erp-v2-roster .erp-ros-hours { inline-size: 100%; min-inline-size: 0; }
+  .erp-v2-roster .erp-ros-emp { max-inline-size: 140px; }
+  .erp-v2-roster [data-v2-signs] {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--erp-space-6);
+    margin-block-start: var(--erp-space-5);
+    font-size: var(--erp-text-sm);
+    color: var(--erp-text-secondary);
+  }
+}
+
+/* ─── شاشة الدوام · شبكة دوامات القسم (W2-1) ─────────────────────────────
+   شاشة أُعيد بناؤها في الموجة الثانية: كانت تموت عند أول رسم (استيراد
+   ناقص في نسختها السابقة)، وهي اليوم شبكة أسبوعية قابلة للتحرير بابها
+   الواحد roster-repo.js. القواعد محصورة في أسماء الشاشة وشبكتها — لا
+   مكوّن مشترك يُلمس، والقيم من رموز --erp-* وحدها. الموبايل داخل آخر كتلة
+   640px أعلاه، والطباعة في آخر كتلة print — فتبقى مسارات اختبارات شاشتي
+   10 و02 كما هي. */
+
+/* رأس البطاقة: عنوان + عدّاد + ملاحظة يمينية — يلتف بدل أن يُقطع. */
+.erp-v2-roster .erp-card__head { flex-wrap: wrap; }
+
+/* بطاقة الانتظار تُخفى بخاصية hidden وحدها، لكن display في .erp-stack
+   (erp-base.css:75) يلغيها — نفس درس شاشة 10 (أعلاه) وهنا يجب أن تُعاد
+   للخاصية سلطتها وإلا ظهرت البطاقة فارغة في كل رسم. */
+.erp-v2-roster [data-v2-pending-card][hidden] { display: none; }
+
+/* الشبكة أعرض من الشاشات الضيقة: التمرير داخل حاوية الجدول وحدها، والعمود
+   الأول (الموظف) يثبت أفقيًا ليبقى مرجع الصف أثناء الجولة على الأسبوع.
+   خلية الرأس الأولى ركنٌ يثبت في الاتجاهين، فيلزمها z أعلى من الرأس
+   اللاصق المشترك (erp-table.css:113) — والجسم يبقى تحته فيمر تحته عند
+   التمرير الرأسي. */
+.erp-ros-grid { min-inline-size: 880px; }
+.erp-ros-grid thead .erp-th:first-child,
+.erp-ros-grid tbody td:first-child {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: var(--erp-z-base);
+  background: var(--erp-surface);
+  border-inline-end: 1px solid var(--erp-border);
+}
+.erp-ros-grid thead .erp-th:first-child {
+  z-index: calc(var(--erp-z-sticky) + 1);
+  background: var(--erp-surface-sunken);
+}
+
+/* عمود الموظف: الاسم بارز، ورقمه ووظيفته سطرًا هادئًا تحته. */
+.erp-ros-emp { max-inline-size: 200px; }
+.erp-ros-name { font-weight: var(--erp-fw-semibold); }
+
+/* رأس اليوم: الاسم ثم التاريخ بأرقام ثابتة العرض، وشاراتا اليوم والمقفل
+   سطرًا مستقلًا حتى لا يوسّعا العمود. */
+.erp-ros-day { text-align: center; }
+.erp-ros-day small { font-weight: var(--erp-fw-normal); color: var(--erp-text-muted); }
+.erp-ros-day.is-today { background: var(--erp-brand-soft); color: var(--erp-brand-text); }
+.erp-ros-tags { display: block; margin-block-start: var(--erp-space-1); }
+.erp-ros-tag {
+  display: inline-block;
+  padding: 0 var(--erp-space-1);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-normal);
+  color: var(--erp-text-secondary);
+}
+
+/* خلية اليوم: حقول متراكمة مركزيًا، والمقفولة/المُجازة شقيقتها بلا حقول. */
+.erp-ros-cell {
+  min-inline-size: 104px;
+  padding-block: var(--erp-space-1);
+  text-align: center;
+}
+.erp-ros-inputs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+.erp-ros-time { inline-size: 96px; }
+.erp-ros-hours { inline-size: 72px; }
+.erp-ros-off {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  min-block-size: 24px;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  cursor: pointer;
+}
+.erp-ros-off input[type="checkbox"] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--erp-brand);
+}
+.erp-ros-static {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+.erp-ros-cell[data-state="past"] { background: var(--erp-surface-sunken); }
+.erp-ros-cell[data-state="leave"] { background: var(--erp-warning-soft); }
+.erp-ros-leave { color: var(--erp-warning-text); font-weight: var(--erp-fw-semibold); }
+
+/* خلية مُعدَّلة بانتظار الحفظ، وأخرى غير صالحة: إطاران داخليان متمايزان —
+   الخطأ هو ما يمنع الحفظ، فيعلو بصريًا على الاثنين. */
+.erp-ros-cell[data-dirty="1"] { box-shadow: inset 0 0 0 2px var(--erp-brand); }
+.erp-ros-cell[data-error="1"] { box-shadow: inset 0 0 0 2px var(--erp-danger); }
+
+/* خانتا التوقيع على الورق: شاشةً مخفيتان، وورقًا تظهران (كتلة print أعلاه). */
+.erp-ros-signs { display: none; }
+
+/* ─── شاشة 02 · الموظفون — دورة الكتابة الكاملة (W2-2) ────────────────────
+   لوحة واحدة بثلاثة أنواع (نموذج/كشف/استيراد) على نمط W1-6 نفسه، وكشفٌ
+   يُغنّى بالحضور والإجازات وبطاقة QR، واستيراد/تصدير Excel عبر مكتبة
+   تُحمَّل عند الطلب. كل القيم من رموز --erp-* وحدها — لا لون جديد ولا
+   قناة خام. الموبايل في كتلة 640px ثالثة والطباعة في كتلة print ثالثة،
+   كلتاهما في نهاية الملف: الاختبار يقرأ أول كتلة 640px (سطر 57) فلا
+   تُلمس، وكتلتا 10/الدوام المعتمدتان تبقيان في مكانهما. */
+
+/* بطاقتا الشاشة تلتصقان: .erp-card لا تحمل هامشًا في الأساس المشترك،
+   فقيست الفجوة بين بطاقتين متجاورتين 0px. فاصلٌ واحد هنا، محصور
+   بالشاشة؛ أختها في شاشات أخرى تُقاس في موجتها لا هنا. */
+.erp-v2-employees .erp-card + .erp-card,
+.erp-v2-employees .erp-card + [data-v2-panel] { margin-block-start: var(--erp-space-4); }
+
+/* اللوحة: نفس غلاف لوحة المخزون (W1-6) — سطحٌ مرتفع بحافة أقوى. */
+.erp-v2-employees .erp-emp-panel {
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-sm);
+  padding: var(--erp-space-4);
+}
+.erp-v2-employees .erp-emp-panel__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-panel__title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-lg);
+}
+.erp-v2-employees .erp-emp-panel__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+
+/* النموذج: شبكة تنتظم من نفسها — عمودان فأكثر على الشاشة الواسعة
+   وعمود واحد عند الضيق بلا كتلة وسيط (min() تمنع الطفح عند 320px). */
+.erp-v2-employees .erp-emp-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  min-inline-size: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2-employees .erp-emp-check {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+/* صورة الموظف: .erp-avatar يرسم الشكل والملء؛ هنا الحجم وحده —
+   56px في النموذج وفي رأس الكشف معًا (الفئة نفسها تُستعمل مرتين). */
+.erp-v2-employees .erp-emp-photo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-photo__preview {
+  inline-size: 56px;
+  block-size: 56px;
+  min-inline-size: 56px;
+  overflow: hidden;
+}
+
+/* أزرار إجراءات الصف: تلتصق بمقدارها الأصغر لا أكثر. */
+.erp-v2-employees .erp-emp-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+}
+
+/* كشف الموظف: رأسٌ بحجم ثابت، ثم شبكة حقائق تنتظم كالنموذج. */
+.erp-v2-employees .erp-emp-file__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-file__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2-employees .erp-emp-file__name {
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2-employees .erp-emp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--erp-space-1) var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2-employees .erp-emp-fact .ji,
+.erp-v2-employees .erp-emp-warn .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  flex-shrink: 0;
+  margin-block-start: 2px;
+}
+
+/* سطر التواريخ: ثلاث حالات بثلاثة رموز نصية موجودة — المنتهية خطر،
+   والقريبة انتباه، والسارية طمأنة. الفئات نفسها تُلوّن سطر المعاينة
+   في الاستيراد («صالح/تحذير») لأنها الدلالة نفسها. */
+.erp-v2-employees .erp-emp-exp--ok { color: var(--erp-success-text); }
+.erp-v2-employees .erp-emp-exp--soon { color: var(--erp-warning-text); }
+.erp-v2-employees .erp-emp-exp--over { color: var(--erp-danger-text); }
+.erp-v2-employees .erp-emp-fact small { font-weight: var(--erp-fw-semibold); }
+.erp-v2-employees .erp-emp-bad { color: var(--erp-danger-text); }
+
+/* عناوين أقسام الكشف ومؤشراته وأزرار رفض الخادم في نصه. */
+.erp-v2-employees .erp-emp-sec {
+  margin: 0;
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-secondary);
+}
+.erp-v2-employees .erp-emp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2-employees .erp-emp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+  min-inline-size: 88px;
+}
+.erp-v2-employees .erp-emp-stat__v {
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2-employees .erp-emp-stat__l {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+/* آخر الإجازات: سطرٌ لكل طلب، والنوع أبرز ما فيه. */
+.erp-v2-employees .erp-emp-leaves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+.erp-v2-employees .erp-emp-leave {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2-employees .erp-emp-leave__type {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+}
+
+/* بطاقة QR: الرمز أصلًا 320px — يُعرض بحجمه على الورق، وبما لا يفيض
+   على الشاشة الضيقة. الرمزان جنبًا إلى جنب حين يتّسع المكان وحده،
+   وسطرٌ تحت كل رمز يقول لمن يخصّه: النظام للكشك، والبيانات للجوال. */
+.erp-v2-employees .erp-emp-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  max-inline-size: min(100%, 700px);
+}
+.erp-v2-employees .erp-emp-qr__pair {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--erp-space-3);
+}
+.erp-v2-employees .erp-emp-qr__one {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+.erp-v2-employees .erp-emp-qr__cap {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  text-align: center;
+}
+.erp-v2-employees .erp-emp-qr__img { inline-size: min(320px, 100%); block-size: auto; }
+.erp-v2-employees .erp-emp-qr__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+  text-align: center;
+}
+.erp-v2-employees .erp-emp-qr__btns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--erp-space-1);
+}
+
+/* شريط نسبة الانتظام: <progress> أصلي بألوان النظام — لا عرضٌ سطري ولا
+   لونٌ خام، والدلالة يقرأها قارئ الشاشة من العنصر نفسه. */
+.erp-v2-employees .erp-emp-rate {
+  inline-size: min(320px, 100%);
+  block-size: var(--erp-space-2);
+  border: none;
+  border-radius: var(--erp-radius-full);
+  overflow: hidden;
+  background-color: var(--erp-surface-sunken);
+  appearance: none;
+}
+.erp-v2-employees .erp-emp-rate::-webkit-progress-bar {
+  background-color: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-full);
+}
+.erp-v2-employees .erp-emp-rate::-webkit-progress-value {
+  background-color: var(--erp-brand);
+  border-radius: var(--erp-radius-full);
+}
+.erp-v2-employees .erp-emp-rate::-moz-progress-bar {
+  background-color: var(--erp-brand);
+  border-radius: var(--erp-radius-full);
+}
+
+/* شارة الدوام المجدول: انتباه لا خطر — تعديلٌ لم يبدأ بعد. */
+.erp-v2-employees .erp-emp-sched {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding: 2px var(--erp-space-2);
+  border: thin solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2-employees .erp-emp-sched .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  flex-shrink: 0;
+}
+
+/* تنبيه الاستيراد: نصٌّ يُقرأ قبل الالتزام — تحذيرٌ بألوان التحذير. */
+.erp-v2-employees .erp-emp-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-sm);
+}
+
+/* معاينة الاستيراد: قائمة تُمرَّر داخل سقفٍ لا يبتلع اللوحة. */
+.erp-v2-employees .erp-emp-import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-block-size: 320px;
+  overflow: auto;
+}
+.erp-v2-employees .erp-emp-import-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1) var(--erp-space-3);
+  padding-block: var(--erp-space-1);
+  border-block-end: thin solid var(--erp-border);
+  font-size: var(--erp-text-sm);
+}
+.erp-v2-employees .erp-emp-import-row:last-child { border-block-end: none; }
+
+/* كشف يوم/فترة داخل البطاقة: شريط النطاق أزرارُ تحرير (.erp-no-print)،
+   والجدول صفٌّ لكل يوم — بما فيه أيام الغياب، فلا يختفي نصف المعلومة. */
+.erp-v2-employees .erp-emp-att {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+.erp-v2-employees .erp-emp-att__f {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2-employees .erp-emp-att__scroll { max-block-size: 380px; }
+
+/* ═══════════════ موظفو القسم (dept-employees) — طبقة الشاشة ═══════════════
+   نفس أنماط لوحة الموظفين (W2-2) — النطاق محصور بالشاشة، صفر لمس للأساس. */
+.erp-v2-deptemp .erp-emp-panel {
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-sm);
+  padding: var(--erp-space-4);
+  margin-block-start: var(--erp-space-4);
+}
+.erp-v2-deptemp .erp-emp-panel__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-3);
+  margin-block-end: var(--erp-space-3);
+}
+.erp-v2-deptemp .erp-emp-panel__title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2-deptemp .erp-emp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  margin-block-end: var(--erp-space-3);
+  min-inline-size: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2-deptemp .erp-emp-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+}
+.erp-v2-deptemp .erp-dash-head { gap: var(--erp-space-3); }
+.erp-v2-deptemp .erp-dash-controls { gap: var(--erp-space-2); }
+/* قواعد ≤640px لموظفي القسم تُدمج في كتلة 640 القائمة أعلاه
+   (اختبار roster يثبّت أن كتلة 640 الأخيرة كتلة الدوام — لا كتلة بعدها). */
+
+/* ═══════════════ الحضور (attendance W2-3) — طبقة الشاشة ═══════════════
+   أدوات الكتابة ولوحاتها: النطاق محصور بالشاشة، صفر لمس للأساس. قاعدة
+   640px للحضور مدموجة في كتلة 640 أعلاه، وطباعة الكشف في كتلة طباعة
+   قبل كتلة الدوام — فلا تُضاف كتلة بعد كتلتي الدوام أبدًا. */
+
+/* سطر نواقص «لم يحضر»: لونٌ من رمزٍ لا من قناة خامة (كان rgba في
+   القالب — الطبقية تُبقيه في الورقة الرمزية الواحدة). */
+.erp-v2-attendance .erp-tr--danger td { background: var(--erp-danger-soft); }
+
+/* صندوق الكاميرا: حدٌّ وارتفاع أدنى حتى لا يقفز تخطيط اللوحة عند فتح
+   العدسة، والأبعاد من رموز المسافات لا من أرقام سحرية. */
+.erp-v2-attendance .erp-scan {
+  max-inline-size: 420px;
+  min-block-size: 240px;
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  overflow: hidden;
+  background: var(--erp-surface-sunken);
+}
+
+/* نتيجة الورديات: أسطر تُحفظ كما كتبها المخزِّن (pre-line كما في
+   الشاشة الحالية hr.js:1042). */
+.erp-v2-attendance .erp-shifts-result {
+  white-space: pre-line;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+/* نموذج الورديات: أكواد وأوقات — يُكتب ويُقرأ بخط أحادي واتجاه لاتيني،
+   ويمتد رأسيًا لأن نصًّا من سطرين لا يُقرأ في مستطيل مقفول. */
+.erp-v2-attendance textarea.erp-input {
+  resize: vertical;
+  min-block-size: 140px;
+  line-height: 1.7;
+}
+
+/* معيار التحقق أسفل الكشف: قائمة قراءةٍ لا زخرفة — سطرٌ لكل بند. */
+.erp-v2-attendance .erp-mo-verify ul {
+  margin: 0;
+  padding-inline-start: var(--erp-space-4);
+  line-height: 1.9;
+}
+
+/* حكم التدقيق الصارم: الرمزان القائمان وحدهما — لا لون رابع. */
+.erp-v2-attendance .erp-audit-verdict {
+  border-radius: var(--erp-radius-md);
+  padding: var(--erp-space-3);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2-attendance .erp-audit-verdict[data-tone="success"] {
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+}
+.erp-v2-attendance .erp-audit-verdict[data-tone="danger"] {
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+}
+
+/* ═══ بحث الموردين (شاشة 05) ═══
+   شريطٌ واحد فوق الجدول: بحثٌ خادمي في الدليل كله (اسم عربي ضبابي، رقم
+   ضريبي، سجل تجاري) + فلتر ضريبي + ترقيم. النتائج صفوفٌ خفيفة لا جدولٌ
+   ثانٍ — الشاشة تبقى «دليلًا» لا «تقريرين متزاحمين». */
+.erp-v2 .erp-supsearch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+.erp-v2 .erp-supsearch__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+/* الحقل يلبس الحدّ بنفسه ويترك الإدخال بلا إطار: تركيزٌ واحد لا إطاران. */
+.erp-v2 .erp-supsearch__field {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 18rem;
+  min-inline-size: 0;
+  padding-inline-start: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-muted);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out),
+              box-shadow var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-supsearch__field:focus-within {
+  border-color: var(--erp-brand);
+  box-shadow: 0 0 0 3px var(--erp-brand-soft);
+}
+.erp-v2 .erp-supsearch__field .erp-input {
+  border: 0;
+  background: transparent;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-supsearch__field .erp-input:focus-visible { outline: none; }
+.erp-v2 .erp-supsearch__tax { flex: 0 1 12rem; }
+.erp-v2 .erp-supsearch__status {
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-supsearch__status[data-tone="error"] { color: var(--erp-danger-text); }
+.erp-v2 .erp-supsearch__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-supsearch__item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out),
+              background-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-supsearch__item:hover {
+  border-color: var(--erp-border-strong);
+  background: var(--erp-surface-hover);
+}
+.erp-v2 .erp-supsearch__item.is-inactive { opacity: .72; }
+.erp-v2 .erp-supsearch__id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-supsearch__name {
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-supsearch__en {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-supsearch__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-supsearch__dot { color: var(--erp-text-muted); }
+.erp-v2 .erp-supsearch__badge {
+  flex: none;
+  padding-inline: var(--erp-space-2);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-supsearch__badge[data-tone="success"] {
+  border-color: var(--erp-success);
+  color: var(--erp-success-text);
+  background: var(--erp-success-soft);
+}
+.erp-v2 .erp-supsearch__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--erp-space-2);
+}
+
+/* ═══ لوحة كشف حساب المورد (P1-4) ═══
+   منبثقة على يمين الشاشة، أوسع من .erp-pop لأن سطور الكشف تحمل تاريخاً
+   ومرجعاً وبياناً ومديناً ودائناً ورصيداً متسلسلاً. تفتح من شاشة 05 عبر
+   زر «كشف حساب» في سطر كل مورد، وتُغلق بزر الإغلاق أو النقر خارجها. */
+.erp-v2 .erp-statement-pop {
+  position: fixed;
+  top: 64px;
+  inset-inline-end: 16px;
+  z-index: var(--erp-z-dropdown);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  padding: var(--erp-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  /* اللوحة تملأ بين الحافتين بحدّ أقصى — لا 100vw لأنها تحسب شريط التمرير
+     المضمن فيتجاوز اللوح 15px عند العروض الضيقة (قياس 480→320). */
+  inset-inline-start: 16px;
+  max-width: 560px;
+  max-height: 75vh;
+  overflow: auto;
+}
+.erp-v2 .erp-statement-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  margin-bottom: var(--erp-space-1);
+}
+.erp-v2 .erp-statement-pop__title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-statement-pop__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2) var(--erp-space-4);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  margin-bottom: var(--erp-space-2);
+}
+.erp-v2 .erp-statement-pop__meta b { color: var(--erp-text-primary); }
+.erp-v2 .erp-statement-pop__table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-statement-pop__row {
+  display: grid;
+  /* أعمدة مرنة: الحدود الصغرى تكفي العروض المتوسطة دون تمرير أفقي،
+     والحد الأعلى يحافظ على مقاس المكتب المقاس (88/112/68/68/80). */
+  grid-template-columns: minmax(64px, 88px) minmax(72px, 112px) minmax(0, 1fr) minmax(48px, 68px) minmax(48px, 68px) minmax(56px, 80px);
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  border-bottom: 1px solid var(--erp-border-subtle);
+  padding-block: 3px;
+  align-items: baseline;
+}
+.erp-v2 .erp-statement-pop__row.debit .erp-statement-pop__debit {
+  color: var(--erp-danger-text);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-statement-pop__row.credit .erp-statement-pop__credit {
+  color: var(--erp-success-text);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-statement-pop__row.total {
+  border-top: 2px solid var(--erp-border);
+  padding-top: var(--erp-space-1);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-statement-pop__empty {
+  text-align: center;
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  padding: var(--erp-space-4);
+}
+.erp-v2 .erp-statement-pop__amt { text-align: end; direction: ltr; }
+.erp-v2 .erp-statement-pop__date { direction: ltr; white-space: nowrap; }
+/* الهاتف (≤480): كل سطر كشف سطران — التاريخ/المرجع/الرصيد فوق،
+   والبيان/المدين/الدائن تحت. قيس: ستة أعمدة في سطر واحد تتمرّر
+   125px داخل اللوح عند 320. */
+@media (max-width: 480px) {
+  .erp-v2 .erp-statement-pop__row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+  .erp-v2 .erp-statement-pop__row > :nth-child(1) { grid-area: 1 / 1; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(2) { grid-area: 1 / 2; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(6) { grid-area: 1 / 4; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(3) { grid-area: 2 / 1 / 3 / 3; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(4) { grid-area: 2 / 3; }
+  .erp-v2 .erp-statement-pop__row > :nth-child(5) { grid-area: 2 / 4; }
+  /* صف المجموع خمس خانات (لا خانة بيان): الفارغة تُطوى والأربعة في سطر */
+  .erp-v2 .erp-statement-pop__row.total {
+    grid-template-columns: auto auto auto auto;
+  }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(2) { display: none; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(1) { grid-area: 1 / 1; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(3) { grid-area: 1 / 2; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(4) { grid-area: 1 / 3; }
+  .erp-v2 .erp-statement-pop__row.total > :nth-child(5) { grid-area: 1 / 4; }
+}

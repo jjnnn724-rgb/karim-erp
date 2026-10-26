@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════════════════════════════════
+   V2 — Toast layer (P0-3b) · js/v2/toast.js
+   ───────────────────────────────────────────────────────────────────
+   Zero hex: every colour, radius, space, shadow and duration below is a
+   live `var(--erp-*)` from erp-tokens.css / erp-themes.css. No new font,
+   no new shadow, no new colour.
+   Logical properties throughout, so the layer reads correctly at
+   dir="rtl" without a single [dir] selector.
+   The layer itself is `pointer-events: none` — it must never eat a click
+   aimed at the screen; only the toast cards take pointer events.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.erp-toast-layer {
+  position: fixed;
+  inset-block-end: var(--erp-space-4);
+
+  /* START, not end: the shipped product anchors toasts at the physical
+     right in Arabic (styles.css:460 `bottom:20px;right:20px`) and moves them
+     to the left only under html[dir="ltr"] (:602). `inset-inline-start` is
+     right in RTL and left in LTR — the same two positions, one declaration,
+     and it puts the accent bar on the same edge as the legacy
+     `border-right: 3px` does. */
+  inset-inline-start: var(--erp-space-4);
+  z-index: var(--erp-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  inline-size: min(360px, calc(100vw - (var(--erp-space-4) * 2)));
+  pointer-events: none;
+
+  /* The layer carries .erp-v2 to inherit the token scope (see toast.js), and
+     erp-base.css:23 paints .erp-v2 with --erp-background. Reset it here so no
+     band of canvas appears behind the cards — the only painted boxes are the
+     toasts themselves. */
+  background: none;
+  border-radius: 0;
+}
+
+.erp-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  padding-block: var(--erp-space-2);
+  padding-inline: var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-inline-start-width: 3px;
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-lg);
+  color: var(--erp-text-primary);
+  font-family: var(--erp-font-sans);
+  font-size: var(--erp-text-base);
+  line-height: var(--erp-leading-base);
+  cursor: pointer;
+  animation: erp-toast-in var(--erp-duration-slow) var(--erp-ease-out) both;
+  transition: opacity var(--erp-duration-fast) var(--erp-ease-standard),
+              transform var(--erp-duration-fast) var(--erp-ease-standard);
+}
+
+.erp-toast .ji {
+  inline-size: var(--erp-icon-md);
+  block-size: var(--erp-icon-md);
+  flex: none;
+  margin-block-start: 1px;
+}
+
+.erp-toast__msg { flex: 1 1 auto; overflow-wrap: anywhere; }
+
+.erp-toast__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0 var(--erp-space-1);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-lg);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--erp-radius-sm);
+}
+
+.erp-toast__close:hover { color: var(--erp-text-primary); }
+.erp-toast__close:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: 2px; }
+
+/* LTR is the opt-out (same rule the legacy layer follows): the anchor moves
+   to the physical left, mirroring styles.css:602 for html[dir="ltr"] #toasts. */
+[dir="ltr"] .erp-toast-layer { inset-inline-start: auto; inset-inline-end: var(--erp-space-4); }
+
+/* Four types, four soft fills + four accent colours. `error` maps to the
+   danger ramp because that is the token pair the rest of V2 uses. */
+.erp-toast--success { border-inline-start-color: var(--erp-success); background: var(--erp-success-soft); }
+.erp-toast--success .ji, .erp-toast--success .erp-toast__close { color: var(--erp-success-text); }
+
+.erp-toast--info { border-inline-start-color: var(--erp-info); background: var(--erp-info-soft); }
+.erp-toast--info .ji, .erp-toast--info .erp-toast__close { color: var(--erp-info-text); }
+
+.erp-toast--warning { border-inline-start-color: var(--erp-warning); background: var(--erp-warning-soft); }
+.erp-toast--warning .ji, .erp-toast--warning .erp-toast__close { color: var(--erp-warning-text); }
+
+.erp-toast--error { border-inline-start-color: var(--erp-danger); background: var(--erp-danger-soft); }
+.erp-toast--error .ji, .erp-toast--error .erp-toast__close { color: var(--erp-danger-text); }
+
+.erp-toast--leave { opacity: 0; transform: translateY(var(--erp-space-1)); }
+
+@keyframes erp-toast-in {
+  from { opacity: 0; transform: translateY(var(--erp-space-2)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion: the toast still appears and still dismisses — it simply
+   never travels. Timing lives in JS (4s / 6s), so it is unaffected. */
+@media (prefers-reduced-motion: reduce) {
+  .erp-toast { animation: none; transition: none; }
+  .erp-toast--leave { transform: none; }
+}

@@ -1,0 +1,332 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Dashboard ("المكس الساحر") · v1.0.0
+   ─────────────────────────────────────────────────────────────────────
+   Design language: Fiori shell discipline + Odoo pipeline/statusbar spirit
+   + NetSuite KPI density (6 tiles, deltas) + command palette. Emerald brand
+   stays — "global" is in the system, not the colour.
+
+   SCOPING: every rule below lives under .erp-v2, except .erp-pal-* (the
+   command-palette overlay, mounted on <body> so it survives screen swaps;
+   unique prefix, no element selectors — nothing leaks to legacy).
+   Dark mode is inherited: all colours are --erp-* aliases that flip with
+   [data-theme="dark"], same as the rest of V2.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── KPI strip (NetSuite density: 6 tiles, each with a delta) ─────────── */
+/* Six tiles only afford a divisor of six — 6 · 3 · 2 · 1 — and nothing in
+   between: every other count ends on an orphan row. `auto-fit` alone did
+   exactly that, measured on the running page (dense/comfortable): six tiles
+   split 5+1 at 1024–1420 and 4+2 at 900, the tiles squeezed to their 172px
+   floor while the sixth sat alone underneath.
+   So the count is pinned rather than guessed, and only the widest band keeps
+   the free `auto-fit`: six tiles fit one row down to a 1425px viewport in
+   comfortable density (6×172 + 5×12 gaps), which is the wider of the two, so
+   the breakpoint sits just below that.
+   `minmax(0, 1fr)` rather than `1fr`: a bare `1fr` track still refuses to go
+   under its content's min-content width, and that is how a strip starts
+   scrolling sideways. */
+/* ── سجل المؤشرات الموحّد ────────────────────────────────────────────────
+   مكوّن KPI كله (الشبكة والخلايا والترقيم والدلتا وأعمدة التجاوب) انتقل
+   إلى بيته في erp-components.css على المحدد العام — لغة السجل المرقّم
+   لكل الشاشات (2026-10-26). ما بقي هنا خاصٌّ بتخطيط لوحة القيادة فقط. */
+/* Latin digits/amounts inside RTL text: isolate direction, never guess. */
+.erp-v2 .erp-num { display: inline-block; direction: ltr; unicode-bidi: isolate; }
+/* الرقم قد يكون خلية جدول: `inline-block` يكسر محاذاة الأعمدة لأن الخلية
+   تخرج من خوارزمية الجدول، فتعود table-cell ويبقى اتجاه LTR والعزل. */
+.erp-v2 td.erp-num,
+.erp-v2 th.erp-num { display: table-cell; }
+
+/* ── Dashboard card grid (charts row + lists row) ─────────────────────── */
+.erp-v2 .erp-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--erp-space-4);
+  margin-block-end: var(--erp-space-4);
+}
+.erp-v2 .erp-dash-grid:last-child { margin-block-end: 0; }
+
+/* ── Sales bars (hand SVG-free: pure divs, RTL flows right→left) ───────── */
+.erp-v2 .erp-bars { display: flex; align-items: flex-end; gap: var(--erp-space-2); block-size: 168px; padding-block-start: var(--erp-space-3); }
+.erp-v2 .erp-bar { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; block-size: 100%; justify-content: flex-end; }
+.erp-v2 .erp-bar__val { font-size: var(--erp-text-xs); color: var(--erp-text-muted); font-variant-numeric: tabular-nums; }
+.erp-v2 .erp-bar__track { inline-size: 100%; max-inline-size: 44px; border-radius: 6px 6px 3px 3px; background: var(--erp-brand-soft); }
+.erp-v2 .erp-bar--max .erp-bar__track { background: var(--erp-brand); }
+.erp-v2 .erp-bar--max .erp-bar__val { color: var(--erp-brand-text); font-weight: var(--erp-fw-bold); }
+.erp-v2 .erp-bar__day { font-size: var(--erp-text-xs); color: var(--erp-text-secondary); }
+
+/* ── Donut + legend ───────────────────────────────────────────────────── */
+.erp-v2 .erp-donut-wrap { display: flex; align-items: center; gap: var(--erp-space-5); flex-wrap: wrap; }
+.erp-v2 .erp-donut { inline-size: 132px; block-size: 132px; flex: none; position: relative; }
+.erp-v2 .erp-donut svg { display: block; inline-size: 100%; block-size: 100%; }
+.erp-v2 .erp-donut__center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; pointer-events: none;
+}
+.erp-v2 .erp-donut__total { font-size: var(--erp-text-lg); font-weight: var(--erp-fw-bold); font-variant-numeric: tabular-nums; color: var(--erp-text-primary); }
+.erp-v2 .erp-donut__cap { font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
+.erp-v2 .erp-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); min-width: 150px; flex: 1 1 auto; }
+.erp-v2 .erp-legend li { display: flex; align-items: center; gap: var(--erp-space-2); font-size: var(--erp-text-sm); color: var(--erp-text-secondary); }
+.erp-v2 .erp-legend__dot { inline-size: 10px; block-size: 10px; border-radius: 50%; flex: none; }
+.erp-v2 .erp-legend__val { margin-inline-start: auto; font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); font-variant-numeric: tabular-nums; }
+
+/* ── Top items (horizontal bars) ──────────────────────────────────────── */
+.erp-v2 .erp-tops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-3); }
+.erp-v2 .erp-top__row { display: flex; align-items: center; gap: var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-v2 .erp-top__name { flex: none; min-inline-size: 118px; color: var(--erp-text-primary); font-weight: var(--erp-fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erp-v2 .erp-top__track { flex: 1 1 auto; block-size: 8px; border-radius: var(--erp-radius-full); background: var(--erp-surface-sunken); overflow: hidden; }
+.erp-v2 .erp-top__fill { display: block; block-size: 100%; border-radius: inherit; background: var(--erp-brand); }
+.erp-v2 .erp-top__val { flex: none; min-inline-size: 44px; text-align: end; font-variant-numeric: tabular-nums; color: var(--erp-text-secondary); font-weight: var(--erp-fw-semibold); }
+
+/* ── Pipeline statusbar (Odoo spirit: status display, not fake buttons) ── */
+.erp-v2 .erp-pipe { list-style: none; margin: 0; padding: var(--erp-space-2) 0 0; display: flex; align-items: flex-start; }
+.erp-v2 .erp-pipe__step { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; text-align: center; min-width: 0; }
+.erp-v2 .erp-pipe__step::before {
+  content: ""; position: absolute; inset-block-start: 15px;
+  inset-inline-start: calc(-50% + 18px); inset-inline-end: calc(50% + 18px);
+  block-size: 2px; background: var(--erp-border-strong); border-radius: 2px;
+}
+.erp-v2 .erp-pipe__step:first-child::before { display: none; }
+.erp-v2 .erp-pipe__dot {
+  inline-size: 32px; block-size: 32px; border-radius: 50%; position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--erp-surface); border: 2px solid var(--erp-border-strong);
+  color: var(--erp-text-muted); font-weight: var(--erp-fw-bold); font-size: var(--erp-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-pipe__step.is-done .erp-pipe__dot { border-color: var(--erp-success); color: var(--erp-success-text); background: var(--erp-success-soft); }
+.erp-v2 .erp-pipe__step.is-current .erp-pipe__dot { border-color: var(--erp-brand); background: var(--erp-brand); color: var(--erp-text-inverse); box-shadow: var(--erp-shadow-md); }
+.erp-v2 .erp-pipe__step.is-current::before { background: var(--erp-success); }
+.erp-v2 .erp-pipe__label { font-size: var(--erp-text-sm); font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }
+.erp-v2 .erp-pipe__count { font-size: var(--erp-text-xs); color: var(--erp-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Mini lists (invoices + alerts) ───────────────────────────────────── */
+.erp-v2 .erp-minis { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.erp-v2 .erp-mini { display: flex; align-items: center; gap: var(--erp-space-3); padding-block: var(--erp-space-2); border-block-end: 1px solid var(--erp-border-subtle); font-size: var(--erp-text-sm); min-block-size: 48px; }
+.erp-v2 .erp-mini:last-child { border-block-end: 0; }
+.erp-v2 .erp-mini__id { font-family: var(--erp-font-mono); font-size: var(--erp-text-sm); color: var(--erp-text-secondary); }
+.erp-v2 .erp-mini__main { flex: 1 1 auto; min-width: 0; color: var(--erp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erp-v2 .erp-mini__sub { display: block; font-size: var(--erp-text-xs); color: var(--erp-text-muted); overflow: hidden; text-overflow: ellipsis; }
+.erp-v2 .erp-mini__amount { font-weight: var(--erp-fw-bold); font-variant-numeric: tabular-nums; color: var(--erp-text-primary); white-space: nowrap; }
+.erp-v2 .erp-dot { inline-size: 10px; block-size: 10px; border-radius: 50%; flex: none; }
+.erp-v2 .erp-dot--danger { background: var(--erp-danger); }
+.erp-v2 .erp-dot--warning { background: var(--erp-warning); }
+.erp-v2 .erp-dot--info { background: var(--erp-info); }
+.erp-v2 .erp-dot--success { background: var(--erp-success); }
+
+/* ── Command palette (the "pro feel": Ctrl+K) ─────────────────────────── */
+.erp-pal-backdrop {
+  /* no `, 900` fallback: the host is listed in erp-tokens.css since البند ١١, so
+     the name always resolves — and a fallback is a silent second scale factor
+     that would keep painting at 900 after any future rename. */
+  position: fixed; inset: 0; z-index: var(--erp-z-modal);
+  background: var(--erp-scrim);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 12vh 16px 16px;
+}
+.erp-pal {
+  inline-size: 100%; max-inline-size: 560px; max-block-size: 60vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--erp-surface); color: var(--erp-text-primary);
+  border: 1px solid var(--erp-border); border-radius: 14px;
+  box-shadow: var(--erp-shadow-xl);
+}
+.erp-pal__input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-block-end: 1px solid var(--erp-border); }
+.erp-pal__input-row .ji { font-size: 18px; color: var(--erp-text-muted); flex: none; }
+.erp-pal__input {
+  flex: 1 1 auto; border: 0; outline: 0; background: transparent; color: inherit;
+  font: inherit; font-size: 15px; min-width: 0;
+}
+.erp-pal__input::placeholder { color: var(--erp-text-faint); }
+.erp-pal__kbd {
+  flex: none; font-family: var(--erp-font-mono, monospace); font-size: 11px;
+  color: var(--erp-text-muted); border: 1px solid var(--erp-border);
+  border-block-end-width: 2px; border-radius: 6px; padding: 1px 7px;
+}
+.erp-pal__list { overflow-y: auto; padding: 6px; margin: 0; list-style: none; }
+.erp-pal__opt {
+  display: flex; align-items: center; gap: 10px; inline-size: 100%;
+  padding: 10px; border: 0; border-radius: 8px; background: transparent; color: inherit;
+  font: inherit; font-size: 14px; cursor: pointer; text-align: start; min-block-size: 44px;
+}
+.erp-pal__opt .ji { font-size: 17px; color: var(--erp-text-muted); flex: none; }
+.erp-pal__opt.is-active { background: var(--erp-brand-soft); }
+.erp-pal__opt.is-active .ji { color: var(--erp-brand-text); }
+.erp-pal__label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erp-pal__group { flex: none; font-size: 11px; color: var(--erp-text-faint); }
+.erp-pal__empty { padding: 18px; text-align: center; font-size: 13px; color: var(--erp-text-muted); }
+
+/* Search trigger that replaces the inert boundary slot (keeps its data attr). */
+.erp-v2 .erp-search-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--erp-border); background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary); border-radius: var(--erp-radius-md);
+  padding: 6px 10px; font: inherit; font-size: var(--erp-text-sm); cursor: pointer;
+  max-inline-size: 220px;
+}
+.erp-v2 .erp-search-trigger:hover { border-color: var(--erp-border-strong); color: var(--erp-text-primary); }
+.erp-v2 .erp-search-trigger .ji { font-size: var(--erp-icon-sm); }
+.erp-v2 .erp-search-trigger__text { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Small screens ────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .erp-v2 .erp-pipe { overflow-x: auto; }
+  .erp-v2 .erp-pipe__step { min-inline-size: 108px; }
+  .erp-v2 .erp-top__name { min-inline-size: 92px; }
+}
+
+/* Two tiles per row stop paying off under ~380px: measured at 340 and 320 the
+   tile's own content (icon · label · value) had begun to overflow its
+   126–136px box — 2px in dense density and 16px in comfortable — while the
+   label was cut mid-word by its ellipsis. One tile per row removes that
+   overflow and lets the label read whole. (The 4px the document still scrolls
+   at 320px is not this strip: it is the data table, which is 709px wide inside
+   its own scroll box and stays 4px over below a 360px viewport.
+   أعمدة السجل عند 380px تعيش الآن مع المكوّن في erp-components.css.) */
+@media (max-width: 380px) {
+  /* The grid's 300px column floor cannot fit a ~280px card body: it pushed
+     the card 4px past the viewport. The floor only sizes columns, so folding
+     to one column below the same 380px tier removes the overflow. */
+  .erp-v2 .erp-dash-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Reduced motion: no shimmer/pulse above 3Hz concerns, kill slides ──── */
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 .erp-top__fill { transition: none; }
+  .erp-pal-backdrop { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FORMAL ENTERPRISE LAYER · v1.2.0
+   ─────────────────────────────────────────────────────────────────────
+   1. Bilingual eyebrows (AR primary + EN micro-label, like global ERPs).
+   2. Dashboard header: live greeting + period switcher. The white-label
+      brand switcher (ذهبي ملكي/كحلي مؤسسي) was REMOVED by user decision
+      2026-10-25: one unified identity, no half-applied rebrand.
+   3. Dashboard accents read --erp-dash-accent-text, OWNED by
+      erp-identity.css (champagne text-grade). The two declarations below
+      are the degradation path only — if the identity link is ever
+      removed, the dashboard still carries a readable accent (brand-text
+      light, warm gold dark) instead of an undefined token.
+   4. Print rules: formal companies print reports — sidebar, actions and
+      overlays drop out, cards avoid breaking across pages.
+   ═══════════════════════════════════════════════════════════════════════ */
+.erp-v2 { --erp-dash-accent-text: var(--erp-brand-text); }
+html[data-theme="dark"] .erp-v2 { --erp-dash-accent-text: var(--erp-brand-text); }
+
+.erp-v2 .erp-eyebrow {
+  display: block;
+  font-size: var(--erp-text-xs);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--erp-text-faint);
+  font-weight: var(--erp-fw-semibold);
+  margin-block-start: 2px;
+}
+.erp-v2 .erp-dash-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+  margin-block-end: var(--erp-space-4);
+}
+.erp-v2 .erp-dash-title { font-size: var(--erp-text-xl); font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); margin: 0; }
+.erp-v2 .erp-dash-sub { font-size: var(--erp-text-sm); color: var(--erp-text-secondary); margin-block-start: 2px; }
+.erp-v2 .erp-dash-controls { margin-inline-start: auto; display: flex; align-items: center; gap: var(--erp-space-3); flex-wrap: wrap; }
+
+/* Settings · بيانات المنشأة — a label above its input, not a caption
+   floating beside it; equal columns fold to one on narrow screens. */
+.erp-v2 .erp-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-settings-fields .erp-input { inline-size: 100%; }
+
+/* Settings · قائمة الظهور — same grid the old inline style drew, now a
+   tokenised rule with a visible hover target. */
+.erp-v2 .erp-settings-navgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-settings-navgrid__item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  cursor: pointer;
+}
+.erp-v2 .erp-settings-navgrid__item:hover { background: var(--erp-surface-hover); }
+.erp-v2 .erp-seg {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--erp-surface-sunken);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-full);
+  padding: 3px;
+}
+.erp-v2 .erp-seg button {
+  border: 0; background: transparent; color: var(--erp-text-secondary);
+  font: inherit; font-size: var(--erp-text-sm); font-weight: var(--erp-fw-medium);
+  border-radius: var(--erp-radius-full); padding: 6px 14px; cursor: pointer;
+  min-block-size: 34px; white-space: nowrap;
+}
+.erp-v2 .erp-seg button:hover { color: var(--erp-text-primary); }
+.erp-v2 .erp-seg button.is-active {
+  background: var(--erp-surface); color: var(--erp-text-primary);
+  box-shadow: var(--erp-shadow-sm); font-weight: var(--erp-fw-bold);
+}
+.erp-v2 .erp-seg button:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: 1px; }
+.erp-v2 .erp-seg__label { font-size: var(--erp-text-xs); color: var(--erp-text-muted); padding-inline-start: 8px; }
+
+/* Dashboard accents read the white-label token, never the raw brand.
+   (أيقونة السجل تعاشر لغة الهوية في erp-components.css — لا لون مخصص هنا.) */
+.erp-v2 .erp-bar--max .erp-bar__val { color: var(--erp-dash-accent-text, var(--erp-brand-text)); }
+.erp-pal__opt.is-active .ji { color: var(--erp-dash-accent-text, var(--erp-brand-text)); }
+
+@media print {
+  .erp-preview-banner, .erp-shell__sidebar, .erp-shell__actions,
+  .erp-toolbar, .erp-pal-backdrop, .erp-no-print { display: none !important; }
+  .erp-v2 .erp-shell__main { margin: 0 !important; }
+  .erp-v2 .erp-dash-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .erp-v2 .erp-card { break-inside: avoid; box-shadow: none; }
+  .erp-v2 .erp-dash-controls { display: none; }
+}
+
+/* CFO tables are built from raw HTML (not the data-table component), so they
+   have no `.erp-table__scroll` wrapper. At 360px the journal table is 936px
+   wide and drags the whole document with it. display:block keeps the table
+   grid intact and turns the table itself into a horizontal scroller. */
+@media (max-width: 640px) {
+  .erp-v2-cfo .erp-table__grid { display: block; overflow-x: auto; }
+}
+
+/* At 320px the mini-row's three inline parts are 280px against 274px of
+   content: the 12px gaps are what push it over, not the text (which ellipsizes). */
+@media (max-width: 340px) {
+  .erp-v2 .erp-mini { gap: var(--erp-space-1); }
+}
+
+/* ── المستشار الذكي: نصائح مبنية على مؤشرات اللوحة ──────────────────────
+   قائمة نصائح مرتبة بالأولوية (عاجل/انتبه/فرصة) — كل قاعدةٍ محلية،
+   والتوكنات فقط لا حرفيات. على الهاتف يبقى الشارة والنص في سطرين. */
+.erp-v2 .erp-ai-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-ai-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-inline-start: 3px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+.erp-v2 .erp-ai-tip .erp-badge { flex: none; margin-block-start: 2px; }
+.erp-v2 .erp-ai-tip__text { min-inline-size: 0; color: var(--erp-text-secondary); }

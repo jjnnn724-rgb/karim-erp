@@ -1,0 +1,35 @@
+/* ══════════════════════════════════════════════════════
+   Karim ERP — Scanner Module Styles
+   ══════════════════════════════════════════════════════ */
+.scanner-tabs{display:flex;gap:8px;margin:16px 0}
+.scanner-tab{
+    flex:1;padding:10px;border:1px solid var(--border);border-radius:var(--r);
+    background:var(--bg3);color:var(--text2);font-weight:700;font-size:13px;
+    cursor:pointer;transition:all .2s;font-family:'Cairo','Tajawal',sans-serif;
+}
+.scanner-tab.active{
+    background:var(--gold-d);color:var(--gold);border-color:var(--gold);
+}
+.scanner-panel{margin-bottom:8px}
+.scanner-camera-box{
+    width:100%;min-height:260px;border-radius:var(--r2);overflow:hidden;
+    background:#000;position:relative;border:1px solid var(--border);
+}
+.scanner-camera-box video{width:100% !important;border-radius:var(--r2)}
+.scanner-hint{
+    text-align:center;color:var(--text2);font-size:12px;margin-top:10px;
+}
+.scanner-note{
+    text-align:center;color:var(--text3);font-size:11px;margin-top:8px;
+    background:var(--bg3);border-radius:var(--r);padding:8px 12px;line-height:1.6;
+}
+.scanner-error{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:260px;color:var(--red);text-align:center;padding:20px;font-size:13px;line-height:1.8;
+}
+#scannerManualInput{
+    font-family:monospace;font-size:16px;letter-spacing:1px;text-align:center;
+}
+
+/* ── Real-time-style badge reused for "code detected" flash ── */
+.scanner-camera-box.detected{ animation:cardGlow .4s ease; }

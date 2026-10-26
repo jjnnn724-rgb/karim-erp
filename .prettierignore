@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+release/
+
+# Database
+database/backups/
+database/data/
+
+# Logs
+*.log
+
+# Environment
+.env*
+!.env.example
+
+# Coverage
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test temp
+test-*.js
+debug-*.js
+check-*.js
+add-*.js
+
+# Vendor
+frontend/app/js/vendor/
+
+# مخرجات مولَّدة (ليست كودًا مصدريًا — وقد تحتوي HTML غير مُغلق)
+tools/employee-card/out/
+audit-results/
+var/
+runtime/
+playwright-report/
+coverage/
+
+# مخرجات مولَّدة
+logs/

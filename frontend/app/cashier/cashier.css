@@ -1,0 +1,212 @@
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: var(--erp-background);
+}
+
+#cashier-app {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  flex-direction: column;
+  padding-block-end: env(safe-area-inset-bottom);
+}
+
+.cashier-app-header {
+  position: sticky;
+  z-index: 20;
+  inset-block-start: 0;
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-2) max(var(--erp-space-4), env(safe-area-inset-right));
+  padding-inline-start: max(var(--erp-space-4), env(safe-area-inset-left));
+  padding-block-start: max(var(--erp-space-2), env(safe-area-inset-top));
+  background: var(--erp-surface);
+  border-block-end: 1px solid var(--erp-border);
+}
+
+.cashier-app-brand,
+.cashier-app-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.cashier-app-brand {
+  min-width: 0;
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-bold);
+}
+
+.cashier-app-brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cashier-app-brand img {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+}
+
+.cashier-app-actions {
+  flex: 0 0 auto;
+}
+
+.cashier-app-notice {
+  display: none;
+  margin: var(--erp-space-2) var(--erp-space-4) 0;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  color: var(--erp-text-secondary);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+}
+
+.cashier-app-notice:not(:empty) {
+  display: block;
+}
+
+.cashier-app-main {
+  width: 100%;
+  max-width: 1920px;
+  flex: 1 0 auto;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: var(--erp-space-3);
+}
+
+.cashier-app-main > .erp-pos-v2 {
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, clamp(21rem, 25vw, 28rem));
+  gap: clamp(var(--erp-space-2), 1.25vw, var(--erp-space-4));
+}
+
+.cashier-app-main .erp-pos-v2-catalog,
+.cashier-app-main .erp-pos-v2-order {
+  min-width: 0;
+}
+
+.cashier-app-main .erp-pos-v2-catalog .erp-card__body {
+  min-width: 0;
+}
+
+.cashier-app-main .erp-pos-v2-products {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(6.25rem, 7vw, 7.75rem), 1fr));
+  gap: clamp(0.375rem, 0.55vw, var(--erp-space-2));
+}
+
+.cashier-app-main .erp-pos-v2-product {
+  min-height: 0;
+}
+
+.cashier-app-main .erp-pos-v2-product-image {
+  aspect-ratio: 1.6 / 1;
+}
+
+.cashier-app-main .erp-pos-v2-product-placeholder {
+  width: clamp(2rem, 28%, 2.75rem);
+  height: auto;
+  aspect-ratio: 1;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+}
+
+.cashier-app-main .erp-pos-v2-product-info {
+  gap: 0.25rem;
+  padding: clamp(0.375rem, 0.55vw, var(--erp-space-2));
+}
+
+.cashier-app-main .erp-pos-v2-product-info > strong {
+  min-height: 0;
+  font-size: clamp(0.75rem, 0.85vw, 0.875rem);
+  line-height: 1.25;
+}
+
+.cashier-app-main .erp-pos-v2-product-price {
+  font-size: clamp(0.8125rem, 0.95vw, 1rem);
+}
+
+.cashier-app-main .erp-pos-v2-product-meta {
+  justify-content: flex-start;
+  column-gap: var(--erp-space-2);
+}
+
+.cashier-app-main .erp-pos-v2-image-action {
+  min-height: 2.25rem;
+  margin-inline: 0.375rem;
+  font-size: var(--erp-text-xs, 0.75rem);
+}
+
+.cashier-app-access {
+  max-width: 38rem;
+  margin: var(--erp-space-6) auto;
+}
+
+@media (min-width: 901px) {
+  .cashier-app-main .erp-pos-v2-order {
+    position: sticky;
+    inset-block-start: calc(4.25rem + env(safe-area-inset-top));
+    max-height: calc(100dvh - 5rem - env(safe-area-inset-top));
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .cashier-app-main > .erp-pos-v2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cashier-app-main .erp-pos-v2-products {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(6.25rem, 14vw, 7.5rem), 1fr));
+  }
+
+  .cashier-app-main .erp-pos-v2-order {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 520px) {
+  .cashier-app-header {
+    min-height: 3.5rem;
+    flex-wrap: wrap;
+    padding-inline: var(--erp-space-2);
+  }
+
+  .cashier-app-brand {
+    font-size: var(--erp-text-sm);
+  }
+
+  .cashier-app-brand img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .cashier-app-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .cashier-app-main {
+    padding: var(--erp-space-2);
+  }
+
+  .cashier-app-main .erp-pos-v2-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--erp-space-2);
+  }
+
+  .cashier-app-main .erp-pos-v2-product-placeholder {
+    width: 2.25rem;
+  }
+
+  .cashier-app-main .erp-pos-v2-image-action {
+    min-height: 2.75rem;
+  }
+}

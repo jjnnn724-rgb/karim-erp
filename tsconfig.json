@@ -1,0 +1,44 @@
+{
+  "_readme": [
+    "TypeScript strategy (handover 2026-09-29): JS codebase with INCREMENTAL typing.",
+    "Base pass: structure/syntax check over everything (checkJs off — legacy untyped).",
+    "Strict pass: files listed in tsconfig.strict.json are fully type-checked.",
+    "Growth rule: every NEW module must be added to tsconfig.strict.json with",
+    "// @ts-check + JSDoc types. Run: npm run typecheck (must stay 0 errors).",
+    "The company inherits the strict list and converts legacy modules at its pace.",
+    "See docs/HANDOVER-2026-09-30.md for the full handover guide."
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "backend/**/*",
+    "frontend/**/*",
+    "scripts/**/*",
+    "database/scripts/**/*",
+    "tests/**/*",
+    "common/**/*",
+    "electron/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release",
+    "database/backups",
+    "database/data",
+    "logs",
+    "**/vendor/**",
+    "**/*.min.js"
+  ]
+}

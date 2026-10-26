@@ -1,0 +1,71 @@
+/* ═══════════════════════════════════════════════════════════════════
+   V2 — Loading overlay (P0-3c) · js/v2/overlay.js
+   ───────────────────────────────────────────────────────────────────
+   صفر hex وصفر لون جديد: كل لون ومسافة وزاوية وظل هنا `var(--erp-*)`
+   حيّ. الشريط (scrim) مشتقٌّ من توكن نصّي موجود عبر color-mix، وبإعلان
+   احتياطي من توكن شفاف أصلي (`--erp-neutral-soft`) فلا يوجد لون خام.
+   خصائص منطقية فقط، فيقرأ الغطاء صحيحًا في RTL بلا محدد [dir].
+   ═══════════════════════════════════════════════════════════════════ */
+
+.erp-loading-layer {
+  position: fixed;
+  inset: 0;
+
+  /* فوق المحتوى وتحت النوافذ والتنبيهات (--erp-z-toast أعلى منه عمدًا،
+     فيبقى التنبيه مقروءًا على الغطاء). */
+  z-index: var(--erp-z-overlay);
+  display: grid;
+  place-items: center;
+
+  /* الإعلان الاحتياطي توكن شفاف أصلي؛ الإعلان الثاني هو الشريط الداكن
+     المشتق من --erp-text-primary. */
+  background: var(--erp-neutral-soft);
+  background: color-mix(in srgb, var(--erp-text-primary) 42%, transparent);
+
+  font-family: var(--erp-font-sans);
+
+  /* الغطاء وحده يلتقط المؤشر — فلا نقرة تمرّ إلى شاشةٍ تحت الحمل. */
+  pointer-events: auto;
+}
+
+/* .erp-v2 (erp-base.css:23) يصبغ العقدة بخلفية اللوحة؛ والإعلانان أعلاه
+   يغلبانه لأن قاعدتهما تأتي بعده في ترتيب الأوراق (v2.html). */
+.erp-loading-layer[hidden] { display: none; }
+
+.erp-loading__card {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding-block: var(--erp-space-3);
+  padding-inline: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-lg);
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-md);
+  line-height: var(--erp-leading-base);
+  /* البطاقة زخرف: التقاط المؤشر للغطاء وحده. */
+  pointer-events: none;
+}
+
+.erp-loading__spinner {
+  inline-size: var(--erp-icon-lg);
+  block-size: var(--erp-icon-lg);
+  flex: none;
+  border: 2px solid var(--erp-border);
+  border-block-start-color: var(--erp-brand);
+  border-radius: var(--erp-radius-full);
+  animation: erp-loading-spin 900ms linear infinite;
+}
+
+.erp-loading__label { font-weight: var(--erp-fw-medium); }
+
+@keyframes erp-loading-spin {
+  to { transform: rotate(1turn); }
+}
+
+/* حركة أقل لا غياب: الحلقة تثبت والنصّ يبقى — الحمل ما زال معلنًا. */
+@media (prefers-reduced-motion: reduce) {
+  .erp-loading__spinner { animation: none; }
+}

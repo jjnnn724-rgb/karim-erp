@@ -1,0 +1,16 @@
+node_modules
+logs
+backups
+database/backups
+database/data
+release
+build
+android
+.github
+.opencode
+.zcode
+.git
+*.log
+*.dump
+updates
+docker-deploy

@@ -1,0 +1,128 @@
+/* ── محرك الاستعلامات + بطاقة الصنف (قراءة فقط) ─────────────────────────
+   طبقة رفيعة جدًا: البطاقات والجداول والرسوم تأتي من erp-kpis و erp-card
+   و erp-table و erp-v2-chart-grid — وهي معرّفة أصلًا في erp-base و
+   erp-dashboard و erp-charts. هذا الملف يرصف ما لا مثيل له فيه فقط:
+   شريط هوية الصنف، وشبكة رسوم البطاقة، وضغط البطاقة داخل المحرك.
+   كل القيم من رموز التصميم — لا hex ولا لون خام، ولا px خارج @media. */
+
+/* المحرك: الرسوم فوق الجدول تحتاج فاصلًا عن بطاقات KPI فقط. */
+.erp-v2 .erp-v2-inq__charts {
+  margin-block-start: var(--erp-space-2);
+}
+
+/* ── بطاقة الصنف ── */
+
+/* شريط الهوية: اسم الصنف مقابل شاراته، وينهار لعمود واحد على الهاتف. */
+.erp-v2 .erp-v2-dossier__id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-xl);
+  background: var(--erp-surface-raised, var(--erp-background));
+}
+
+.erp-v2 .erp-v2-dossier__name {
+  display: grid;
+  gap: var(--erp-space-1);
+  min-inline-size: 0;
+}
+
+.erp-v2 .erp-v2-dossier__name h3 {
+  margin: 0;
+  font-size: var(--erp-text-xl);
+  font-weight: var(--erp-fw-bold);
+  line-height: var(--erp-leading-tight);
+  color: var(--erp-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.erp-v2 .erp-v2-dossier__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2) var(--erp-space-3);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.erp-v2 .erp-v2-dossier__flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+/* الرسوم: نفس شبكة erp-v2-chart-grid لكن البطاقة تُظهر أربعة رسوم،
+   فتنهار إلى عمود واحد بدلًا من نصف عرض قاسٍ. */
+.erp-v2 .erp-v2-dossier__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(32ch, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+
+/* لوحات البطاقة: بطاقات erp-card متتالية بلا هوامش في الأصل، تُصفّ هنا. */
+.erp-v2 .erp-v2-dossier__charts {
+  margin-block-end: var(--erp-space-4);
+}
+
+.erp-v2 .erp-v2-dossier__panels > .erp-card + .erp-card {
+  margin-block-start: var(--erp-space-4);
+}
+
+/* البطاقة المُفتَحة داخل المحرك تُقرأ كملحق للجدول لا كصفحة مستقلة. */
+.erp-v2 .erp-v2-dossier.is-compact {
+  border-inline-start: 3px solid var(--erp-brand);
+  padding-inline-start: var(--erp-space-3);
+}
+
+.erp-v2 .erp-v2-dossier.is-compact .erp-v2-dossier__name h3 {
+  font-size: var(--erp-text-lg);
+}
+
+/* الشاشة الأخت: منتقي الصنف فوق البطاقة الكاملة.
+   أطفال الشبكة لا ينكمشون تلقائيًا: min-inline-size:0 يمنع جدولًا عريضًا
+   داخل البطاقة من تمديد المسار ودفع الصفحة كلها لليمين على الهاتف. */
+.erp-v2 .erp-v2-pro {
+  display: grid;
+  gap: var(--erp-space-4);
+}
+
+.erp-v2 .erp-v2-pro > * {
+  min-inline-size: 0;
+}
+
+.erp-v2 .erp-v2-pro__picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--erp-space-3);
+}
+
+.erp-v2 .erp-v2-pro__picker .erp-field {
+  flex: 1 1 14rem;
+}
+
+@media (max-width: 640px) {
+  .erp-v2 .erp-v2-dossier__id {
+    align-items: flex-start;
+    padding: var(--erp-space-3);
+  }
+
+  .erp-v2 .erp-v2-dossier__flags {
+    width: 100%;
+  }
+
+  .erp-v2 .erp-v2-dossier__charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .erp-v2 .erp-v2-dossier__charts {
+    grid-template-columns: 1fr 1fr;
+  }
+}

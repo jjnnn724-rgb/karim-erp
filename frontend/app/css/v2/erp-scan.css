@@ -1,0 +1,247 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   V2 — Barcode scan · مسح الباركود في المخزن (البند ٩)
+   ═══════════════════════════════════════════════════════════════════════════
+   شاشةٌ واحدة بثلاثة أوضاع: ربط كود بصنف، واردٌ بالمسح، وقائمة تغطية الحملة.
+   لا أنماط جديدة هنا غير ما تحمله هذه الشاشة: كل عنصرٍ أساسي يأتي من
+   erp-components.css (‎.erp-card/‎.erp-btn/‎.erp-input/‎.erp-badge/‎.erp-state‎)
+   وهذا الملف يُضبط المواضع فقط — ولا حركة فيه عدا لون الحدّ، فقرارُ السرعة
+   في V2: transform/opacity فقط، وتُطفأ مع prefers-reduced-motion في erp-motion.
+
+   لماذا لا ‎.erp-scan‎؟ لأن القائمة في erp-hr.css:967 مقيّدة بـ
+   `.erp-v2-attendance .erp-scan` — فحاوية الكاميرا هنا تحتاج قياسها الخاص
+   لا سرقَ اسمٍ لا ينطبق.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* سطر المسح: حقلٌ عريض ثم أزراره في صفٍّ واحد، وينخفض تلقائيًا على الشاشات
+   الضيقة بلا نقطة قطعَ مكسورة — flex-wrap مع حدٍّ أدنى للحقل. */
+.erp-v2-scan .erp-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-scan .erp-card__title {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-scan [data-v2-mode] {
+  min-block-size: max(40px, var(--erp-touch-target));
+  white-space: nowrap;
+}
+
+.erp-v2-scan .erp-card__body { gap: var(--erp-space-4); }
+
+.erp-v2-scan .gs-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--erp-space-2) var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+
+.erp-v2-scan .gs-line > .erp-label { flex: 0 0 100%; }
+
+/* الكود يُقرأ بالأحرف اللاتينية دائمًا، والأرقام تباعد ثابت لا يتراقص. */
+.erp-v2-scan .gs-code {
+  flex: 1 1 18rem;
+  min-inline-size: min(100%, 12rem);
+  min-block-size: 44px;
+  font-family: var(--erp-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+
+.erp-v2-scan .gs-line .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
+
+.erp-v2-scan [data-v2-note]:empty { display: none; }
+
+.erp-v2-scan [data-v2-note]:not(:empty) {
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-inline-start: 3px solid var(--erp-brand);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+  line-height: var(--erp-leading-base);
+}
+
+.erp-v2-scan [data-v2-wedge] {
+  max-inline-size: 78ch;
+  line-height: var(--erp-leading-base);
+}
+
+.erp-v2-scan .gs-panel:not([hidden]) { display: block; }
+
+.erp-v2-scan .gs-manual-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-scan .gs-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-raised);
+}
+
+/* الصنف المُحال إليه: اسمٌ يقرأه أمين المخزن أولًا، ثم كوده حرفيًا. */
+.erp-v2-scan .gs-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--erp-space-1) var(--erp-space-3);
+  padding-block: var(--erp-space-2);
+  border-block-start: thin solid var(--erp-border-subtle);
+}
+
+.erp-v2-scan .gs-item__name {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.erp-v2-scan .gs-item__code {
+  font-family: var(--erp-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--erp-text-secondary);
+  direction: ltr;
+}
+
+/* نتائج البحث عن الصنف لأجل الربط: أزرارٌ كاملة العرض، لا قائمة منسدلة
+   تحتاج إدارة تركيز — النقر وحده يكفي، وEnter في حقل الكود يعمل دائمًا. */
+.erp-v2-scan .gs-picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  max-block-size: 19rem;
+  overflow-y: auto;
+}
+
+.erp-v2-scan .gs-pick {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.erp-v2-scan .gs-pick:hover { background: var(--erp-surface-hover); }
+.erp-v2-scan .gs-pick:focus-visible { outline: var(--erp-focus-ring) solid var(--erp-focus-ring-offset, 2px); }
+
+/* جدول الجلسة: أرقامٌ بعمودٍ ضيّق لا جدولٌ مؤسَّسي — المدخلات هي العمل نفسه. */
+.erp-v2-scan .gs-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+
+.erp-v2-scan .gs-table-wrap {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2-scan .gs-table { min-inline-size: 680px; }
+
+.erp-v2-scan .gs-table th {
+  text-align: start;
+  padding: var(--erp-space-1) var(--erp-space-2);
+  color: var(--erp-text-muted);
+  font-weight: var(--erp-fw-medium);
+  border-block-end: thin solid var(--erp-border);
+  white-space: nowrap;
+}
+
+.erp-v2-scan .gs-table td {
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border-block-end: thin solid var(--erp-border-subtle);
+  vertical-align: middle;
+}
+
+.erp-v2-scan .gs-table .gs-qty { inline-size: 7rem; }
+.erp-v2-scan .gs-table .gs-tnum { font-variant-numeric: tabular-nums; direction: ltr; }
+.erp-v2-scan .gs-actions { display: flex; gap: var(--erp-space-2); flex-wrap: wrap; }
+.erp-v2-scan .gs-actions .erp-btn { min-block-size: max(40px, var(--erp-touch-target)); }
+
+/* مقاييس الحملة: أربعة أرقام تُقرأ من نظرة — المربوط، بلا كود، مكرر، مكسور التحقق. */
+.erp-v2-scan .gs-kpis { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); }
+
+.erp-v2-scan .gs-kpi {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.erp-v2-scan .gs-kpi b {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  font-variant-numeric: var(--erp-tnum);
+}
+
+.erp-v2-scan .gs-kpi i { font-style: normal; color: var(--erp-text-muted); }
+
+/* تحذيرٌ لا خطأ: الكود المشكوك فيه يُؤكَّد ولا يُرفض، والرفض كله للخادم. */
+.erp-v2-scan .gs-warn { color: var(--erp-warning-text); }
+.erp-v2-scan .gs-ok { color: var(--erp-success-text); }
+
+/* حاوية الكاميرا: مستطيلٌ عريض لأن الباركود الخطي أعرضُ بكثير من مربّعه. */
+.erp-v2-scan .gs-cam {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-2);
+}
+
+.erp-v2-scan .gs-cam .erp-scan {
+  inline-size: min(100%, 480px);
+  min-block-size: clamp(200px, 35vh, 320px);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  overflow: hidden;
+  background: var(--erp-surface-sunken);
+}
+
+/* الطباعة: قائمة الوارد وحدها على الورق، لا الأزرار ولا الكاميرا. */
+@media print {
+  .erp-v2-scan .gs-line,
+  .erp-v2-scan .gs-actions,
+  .erp-v2-scan .gs-cam,
+  .erp-v2-scan [data-v2-mode] { display: none !important; }
+  .erp-v2-scan .gs-box { border: none; background: none; }
+}
+
+@media (max-width: 640px) {
+  .erp-v2-scan .erp-card__head { align-items: stretch; }
+  .erp-v2-scan [data-v2-mode] { flex: 1 1 calc(50% - var(--erp-space-2)); }
+  .erp-v2-scan .gs-line .gs-code { flex-basis: calc(100% - 1px); }
+  .erp-v2-scan .gs-line .erp-btn { flex: 1 1 auto; }
+  .erp-v2-scan .gs-table { min-inline-size: 640px; }
+  .erp-v2-scan .gs-actions { display: grid; grid-template-columns: 1fr; }
+}

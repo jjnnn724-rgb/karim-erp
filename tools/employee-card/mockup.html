@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<title>بطاقة الموظف الفاخرة — عرض تقديمي</title>
+<link rel="stylesheet" href="./card.css">
+<style>
+  body { font-family: 'Cairo', Arial, sans-serif; background: radial-gradient(1200px 600px at 50% -10%, #16395f, #0A2540 70%); color: #fff; margin: 0; padding: 40px 24px; text-align: center; }
+  h1 { font-size: 28px; margin: 0 0 4px; } h1 .gold { color: #C9A961; }
+  p.sub { color: #B9C4D4; margin: 0 0 32px; }
+  .stage { display: flex; gap: 48px; justify-content: center; flex-wrap: wrap; perspective: 1400px; }
+  .tilt { transform: rotateY(-14deg) rotateX(6deg); transition: transform .5s; }
+  .tilt.back { transform: rotateY(14deg) rotateX(6deg); }
+  .tilt:hover { transform: rotateY(0) rotateX(0) scale(1.04); }
+  .cap { margin-top: 12px; color: #E8D5A3; font-weight: 700; }
+  .feats { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+  .feats span { border: 1px solid #C9A961; color: #E8D5A3; border-radius: 20px; padding: 6px 16px; font-size: 13px; }
+  a.btn { display: inline-block; margin-top: 28px; background: #C9A961; color: #0A2540; font-weight: 800; padding: 12px 36px; border-radius: 10px; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>بطاقة موظف <span class="gold">مطاعم الشرفه العالمي</span></h1>
+  <p class="sub">ID-1 • طباعة 300DPI • هولوغرام • Guilloche • Micro-text • MRZ ICAO 9303 • Code128 حقيقي • QR</p>
+  <div class="stage">
+    <div><div class="tilt" id="mockFront"></div><div class="cap">الوجه الأمامي</div></div>
+    <div><div class="tilt back" id="mockBack"></div><div class="cap">الوجه الخلفي</div></div>
+  </div>
+  <div class="feats">
+    <span>كحلي #0A2540</span><span>ذهبي #C9A961</span><span>عربي + إنجليزي RTL</span><span>OCR-B للأرقام</span><span>شريط أمان</span>
+  </div>
+  <br><a class="btn" href="./out/card-61.html">فتح بطاقة كريم للطباعة</a>
+  <script>
+    fetch('./out/card-61.html').then(r => r.text()).then(html => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const cards = doc.querySelectorAll('.idcard');
+      const css = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n');
+      const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+      if (cards[0]) document.getElementById('mockFront').appendChild(cards[0]);
+      if (cards[1]) document.getElementById('mockBack').appendChild(cards[1]);
+    }).catch(() => {
+      document.getElementById('mockFront').innerHTML = '<div style=color:#fff>افتح mockup عبر سيرفر محلي أو ولّد البطاقة أولًا</div>';
+    });
+  </script>
+</body>
+</html>

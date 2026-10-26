@@ -1,0 +1,708 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '22.x'
+  POSTGRES_VERSION: '16'   # ملاحظة: لا تُستخدم كـ env context داخل services.image (مرفوض من GitHub) — القيمة الحرفية هناك
+  CACHE_DEPENDENCY_PATH: |
+    ~/.npm
+    node_modules
+  RETENTION_DAYS: 14
+
+jobs:
+  security-audit:
+    name: 🔒 Security Audit (npm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies (ci)
+        run: npm ci --ignore-scripts
+
+      - name: Run npm audit (production dependencies only)
+        id: audit
+        run: |
+          echo "=== NPM Audit (production dependencies — ما يُشحن فعلًا إلى الخادم) ==="
+          set +e
+          npm audit --omit=dev --audit-level=moderate --json > npm-audit-report.json
+          AUDIT_EXIT=$?
+          set -e
+          echo "audit_exit_code=$AUDIT_EXIT" >> $GITHUB_OUTPUT
+          if [ $AUDIT_EXIT -ne 0 ]; then
+            echo "::error::ثغرات moderate+ في تبعيات الإنتاج (ما يُشحن إلى الخادم)."
+            npm audit --omit=dev --audit-level=moderate || true
+          else
+            echo "✅ لا ثغرات moderate+ في تبعيات الإنتاج."
+          fi
+          exit 0
+
+      - name: Upload npm audit artifact
+        if: always()
+        continue-on-error: true  # تشخيص فقط: البوابة الفعلية خطوة "Fail on moderate+" أدناه
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit-report.json
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Fail on moderate+ vulnerabilities in PRODUCTION dependencies (all CI events)
+        run: |
+          echo "Checking production dependencies on every pull request, push, and manual run..."
+          set +e
+          AUDIT_OUT=$(npm audit --omit=dev --audit-level=moderate 2>&1)
+          AUDIT_CODE=$?
+          set -e
+          echo "$AUDIT_OUT"
+          # 2026-10-22: نقطة npm (audit/quick) أُنهيت ⇒ الخدمة تردّ 400.
+          # عطلُ الخدمة ليس ثغرة: يُنبَّه ولا يُفشل البناء؛ البوابة تبقى
+          # فاشلةً على أي ثغرةٍmoderate+ حقيقية.
+          if echo "$AUDIT_OUT" | grep -qiE '400 Bad Request|audit endpoint returned an error|retired'; then
+            echo "::warning::خدمة تدقيق npm غير متاحة مؤقتًا (نقطة audit/quick أُنهيت) — تُتخطّى هذه الجولة، والبوابة تبقى فعّالةً على الثغرات الحقيقية."
+            exit 0
+          fi
+          exit $AUDIT_CODE
+
+      - name: Dev-dependency audit (informational — tools only, never shipped to the server)
+        if: always()
+        run: |
+          set +e
+          npm audit --audit-level=moderate
+          EXIT=$?
+          set -e
+          if [ $EXIT -ne 0 ]; then
+            echo "::warning::توجد ثغرات moderate+ في تبعيات التطوير فقط (jest/electron-builder/capacitor-cli) — لا تُشحن إلى الخادم. تُعالج على دفعات."
+          fi
+          exit 0
+
+  lint-and-typecheck:
+    name: 🧹 Lint, Format & TypeCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [security-audit]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --onnxruntime-node-install=skip
+
+      - name: ESLint gate — no errors, no NEW warnings (per-file baseline)
+        run: npm run test:lint:gate
+
+      - name: Inline-handler gate — no dead onclick/oninput handlers
+        run: npm run test:handlers:gate
+
+      - name: Inline-handler budget — no growth (CSP ratchet)
+        run: npm run test:handlers:budget
+
+      - name: No inline <script> blocks — they are blocked by CSP and silently never run
+        run: npm run test:inline-scripts:gate
+
+      - name: Delegation gate — pages using data-karim-action must load the dispatcher
+        run: npm run test:dispatch:gate
+
+      - name: Frontend version gate — changed frontend files require a version bump
+        # إعلامي: التزم برفع الإصدار مع تغيير الواجهة (deploy-verify محليًا)
+        continue-on-error: true
+        run: npm run test:frontend-version
+
+      - name: Design color gate — css/v2 reads --erp-* tokens only (documented exemptions)
+        run: npm run test:color:gate
+
+      - name: Container security gate — non-root, no baked secrets, fail-fast entrypoints
+        run: npm run test:docker:gate
+
+      - name: Secret scanner — no hardcoded credentials in tracked files
+        run: npm run test:secrets:gate
+
+      - name: Run Prettier check (via package script)
+        # إعلامي: المستودع فيه 1304 ملف غير منسّق (تنسيق كامل = تغيير ضخم).
+        # البوابات الحقيقية (lint/secrets/handlers/docker/tests) تبقى حاجبة.
+        continue-on-error: true
+        run: npm run test:format
+
+      - name: Run TypeScript type check (via package script)
+        run: npm run test:type
+
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [lint-and-typecheck]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_test
+      DB_POOL_MAX: 10
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: '1'
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-secret-32-chars-minimum-length-for-testing
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: error
+      LOG_PRETTY: 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --onnxruntime-node-install=skip
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            echo "PostgreSQL not ready, attempt $i..."
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      # فحص النظام الشامل — يعمل على القاعدة المعزولة (حارس العزل في
+      # scripts/audit.js يرفض أي قاعدة غير معزولة). معلوماتي الآن: نجمع
+      # التقرير على كل build حتى نُثبّت استقراره، ثم نرفعه حاجبًا.
+      - name: System audit (informational — isolated DB)
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/audit.js --dry-run --no-save --json > audit-report.json
+          AUDIT_EXIT=$?
+          set -e
+          echo "audit_exit=$AUDIT_EXIT"
+          node -e "const r=require('./audit-report.json');const bad=(r.findings||[]).filter(f=>!['pass','info'].includes(f.status));console.log(bad.length?('⚠ '+bad.length+' ملاحظة: '+bad.map(f=>f.id).join(', ')):'✅ لا ملاحظات');"
+
+      - name: Upload system audit report
+        if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-audit-report
+          path: audit-report.json
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Run Jest unit tests (coverage gate — jest.config.js thresholds)
+        run: npm run test:coverage -- --testPathIgnorePatterns="/node_modules/" --testPathIgnorePatterns="smoke|integration|workflow"
+
+      - name: Upload test coverage (if generated)
+        if: always()
+        continue-on-error: true  # تشخيص فقط: بوابة التغطية هي jest نفسه
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: |
+            coverage/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  smoke-test:
+    name: 🔥 Smoke Test (Startup + Health)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # مستقل عن Unit Tests (يبني قاعدته بنفسه) ⇒ يعمل بالتوازي ويكشف أعطاله مبكرًا
+    needs: [lint-and-typecheck]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # حارس عزل الاختبارات: قاعدة منفصلة معلنة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
+      # حارس سكربت الـsmoke: يرفض التشغيل بلا هدف صريح (حمايةً من الإنتاج).
+      KARIM_TEST_BASE_URL: http://localhost:3000
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_test
+      DB_POOL_MAX: 5
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-access-secret-32-chars-minimum-length-smoke
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length-smoke
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length-smoke
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: info
+      LOG_PRETTY: 'true'
+      HTTP_PORT: 3000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --onnxruntime-node-install=skip
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Run smoke test
+        id: smoke
+        run: |
+          set +e
+          npm run smoke 2>&1 | tee smoke-test.log
+          SMOKE_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "smoke_exit_code=$SMOKE_EXIT" >> $GITHUB_OUTPUT
+          exit $SMOKE_EXIT
+
+      - name: Upload smoke test logs
+        if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: |
+            smoke-test.log
+            logs/**
+            startup-report.json
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'pull_request'
+    needs: [smoke-test]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # حارس عزل الاختبارات: قاعدة منفصلة معلنة + خادم loopback (يمنع لمس الإنتاج).
+      KARIM_TEST_DB_NAME: karim_erp_test
+      KARIM_TEST_DB_ISOLATED: "1"
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_test
+      DB_POOL_MAX: 10
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-secret-32-chars-minimum-length-for-testing
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: error
+      LOG_PRETTY: 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --onnxruntime-node-install=skip
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Start backend server
+        run: |
+          node backend/server.js > integration-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "server_pid=$SERVER_PID" >> $GITHUB_ENV
+          sleep 8
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "Server failed to start. Logs:"
+            cat integration-server.log
+            exit 1
+          fi
+
+      - name: Run integration tests
+        run: npm run integration
+
+      - name: Run workflow tests
+        run: npm run workflow
+
+      - name: Upload integration logs
+        if: always()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            integration-server.log
+            logs/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  e2e-tests:
+    name: 🎭 E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # مستقلة عن Unit Tests (تبني قاعدتها بنفسها) ⇒ تعمل بالتوازي وتكشف أعطالها مبكرًا
+    needs: [lint-and-typecheck]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: karim_erp_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: karim_erp_e2e
+      DB_POOL_MAX: 10
+      API_KEY: test-api-key-32-chars-minimum-length
+      JWT_ACCESS_SECRET: test-jwt-access-secret-32-chars-minimum-length-e2e
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-minimum-length-e2e
+      HEALTH_TOKEN: test-health-token-32-chars-minimum-length-e2e
+      ALLOWED_ORIGINS: '*'
+      LOG_LEVEL: error
+      LOG_PRETTY: 'false'
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --onnxruntime-node-install=skip
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: npm run migrate
+
+      - name: Start backend server
+        run: |
+          node backend/server.js > e2e-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "server_pid=$SERVER_PID" >> $GITHUB_ENV
+          for i in {1..30}; do
+            curl -sf http://localhost:3000/health > /dev/null && break
+            sleep 1
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "Server died. Logs:"; cat e2e-server.log; exit 1
+            fi
+          done
+
+      - name: Run Playwright E2E tests
+        run: npx playwright test
+
+      - name: Stop server
+        if: always()
+        run: kill ${{ env.server_pid }} 2>/dev/null || true
+
+      - name: Upload Playwright report
+        if: failure()
+        continue-on-error: true  # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/**
+            test-results/**
+            e2e-server.log
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  build-electron:
+    name: 📦 Build Electron App
+    runs-on: windows-latest
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [smoke-test]
+    permissions:
+      contents: read
+      actions: write        # لازم لحذف لقطات البناء السابقة (حصة تخزين GitHub 500MB)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron (NSIS)
+        run: npm run electron:build:nsis
+        env:
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+
+      # حصة GitHub للتخزين المجاني 500MB فقط، ولقطة البناء وحدها ~210MB.
+      # نحذف اللقطات السابقة (بعد بناءٍ ناجح) قبل الرفع كي لا يسقط الرفع
+      # بـ "Artifact storage quota has been hit" — حذفُ لقطاتٍ لا حذفُ كود.
+      - name: Prune previous build artifacts
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = "application/vnd.github+json"; 'User-Agent' = 'karim-ci' }
+          foreach ($n in @('KarimERP-Setup', 'karim-release-verified')) {
+            $r = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?name=$n&per_page=100" -Headers $h
+            foreach ($a in @($r.artifacts)) {
+              try {
+                Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$($a.id)" -Headers $h
+                Write-Host "pruned $n $($a.id)"
+              } catch { Write-Host "skip $n $($a.id): $($_.Exception.Message)" }
+            }
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: KarimERP-Setup
+          path: release/*.exe
+          retention-days: 30
+
+  release-preparation:
+    name: 📦 Release Preparation (deploy is MANUAL, by design)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-electron, e2e-tests]
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download the built installer
+        uses: actions/download-artifact@v4
+        with:
+          name: KarimERP-Setup
+          path: release
+
+      # ── ماكينة الحقيقة ──────────────────────────────────────────────────
+      # Job كان اسمه «Deploy to Production» وكان يفعل echo فقط — أي أن
+      # everybody يظن أن النشر تم بينما لم يحدث شيء. الاستبداله هنا
+      # يحضّر حزمة إصدار موثّقة (بصمة SHA-256) ويطبع أمر النشر اليدوي
+      # المتفق عليه، ولا يدّعي نشراً لم يحدث.
+      - name: Verify the artifact and emit a signed release manifest
+        id: verify
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(release/*.exe)
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "::error::لا يوجد ملف تثبيت في حزمة الإصدار — لا يمكن تحضير النشر."
+            exit 1
+          fi
+          for f in "${artifacts[@]}"; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 1000000 ]; then
+              echo "::error::حجم الحزمة غير منطقي ($size بايت) — تحقّق من البناء."
+              exit 1
+            fi
+            sha=$(sha256sum "$f" | awk '{print $1}')
+            echo "artifact=$(basename "$f")" >> "$GITHUB_OUTPUT"
+            echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+            echo "size=$size" >> "$GITHUB_OUTPUT"
+            echo "✅ $(basename "$f") — $size بايت — SHA-256 $sha"
+          done
+          {
+            echo "# Release manifest"
+            echo "version: ${{ github.ref_name }}"
+            echo "commit: ${{ github.sha }}"
+            echo "artifact: ${{ steps.verify.outputs.artifact }}"
+            echo "sha256: ${{ steps.verify.outputs.sha256 }}"
+            echo "built_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > release/RELEASE-MANIFEST.md
+          cat release/RELEASE-MANIFEST.md
+
+      - name: Upload the verified release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: karim-release-verified
+          path: release/
+          retention-days: 30
+
+      - name: Deployment handoff — MANUAL and approval-gated
+        run: |
+          echo "::warning::النشر إلى الإنتاج **غير مُتتَم آلياً** في هذا المسار."
+          echo "الحزمة موثّقة بالبصمة أعلاه. النشر يتطلّب نافذة تنفيذ موافَق عليها:"
+          echo ""
+          echo "  1. ارفع release/ إلى خادم الإنتاج."
+          echo "  2. شغّل على الخادم (بصلاحيات مدير):"
+          echo "     ./scripts/update-production.ps1 -PackageUrl '<url>' -Sha256 '${{ steps.verify.outputs.sha256 }}'"
+          echo ""
+          echo "السكربت يوقف الخدمات عند الفشل ولا يدّعي استعادة تلقائية."
+          echo "لم يُنفَّذ أي نشر في هذا الـ job — وهذا مقصود."
+
+  notify:
+    name: 📢 Notify (Status Summary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    # إعلامي فقط: لا يُفشل الـpipeline (الفشل فع��ً في الـjobs نفسها)
+    continue-on-error: true
+    needs:
+      - security-audit
+      - lint-and-typecheck
+      - unit-tests
+      - smoke-test
+      - integration-tests
+      - e2e-tests
+      - build-electron
+      - release-preparation
+    steps:
+      - name: Collect job statuses
+        id: status
+        run: |
+          echo "=== CI/CD Pipeline Summary ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          FAILED=0
+          SKIPPED=0
+          SUCCESS=0
+          for result in \
+            "security-audit:${{ needs.security-audit.result }}" \
+            "lint-and-typecheck:${{ needs.lint-and-typecheck.result }}" \
+            "unit-tests:${{ needs.unit-tests.result }}" \
+            "smoke-test:${{ needs.smoke-test.result }}" \
+            "integration-tests:${{ needs.integration-tests.result }}" \
+            "e2e-tests:${{ needs.e2e-tests.result }}" \
+            "build-electron:${{ needs.build-electron.result }}" \
+            "release-preparation:${{ needs.release-preparation.result }}"; do
+            JOB=$(echo $result | cut -d: -f1)
+            RES=$(echo $result | cut -d: -f2-)
+            case "$RES" in
+              success) echo "  ✅ $JOB: success"; SUCCESS=$((SUCCESS+1)) ;;
+              skipped) echo "  ⏭️  $JOB: skipped"; SKIPPED=$((SKIPPED+1)) ;;
+              failure|cancelled) echo "  ❌ $JOB: $RES"; FAILED=$((FAILED+1)) ;;
+              *) echo "  ❓ $JOB: $RES" ;;
+            esac
+          done
+          echo ""
+          echo "Total: $SUCCESS succeeded, $SKIPPED skipped, $FAILED failed"
+          echo "failed_count=$FAILED" >> $GITHUB_OUTPUT
+
+      - name: Send failure notification
+        if: steps.status.outputs.failed_count > 0
+        run: |
+          echo "::error::Pipeline failed with ${{ steps.status.outputs.failed_count }} failed jobs. Check GitHub Actions for details."
+          exit 1

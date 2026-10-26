@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="638" height="1016" viewBox="0 0 204 322">
+<defs><clipPath id="rc"><rect x="0" y="0" width="204" height="322" rx="14"/></clipPath>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#32353b"/><stop offset="1" stop-color="#15171a"/></linearGradient>
+<linearGradient id="goldm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".3" stop-color="#E2BE5A"/><stop offset=".7" stop-color="#9E7A28"/><stop offset="1" stop-color="#FFF3D6"/></linearGradient></defs>
+<g clip-path="url(#rc)"><rect width="204" height="322" fill="url(#metal)"/>
+<text x="102" y="52" text-anchor="middle" font-size="38" font-weight="900" fill="url(#goldm)" font-family="Cairo,Arial">𓁫</text>
+<text x="102" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="#DFBA57" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
+<text x="102" y="84" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">AL SHURFA AL ALAMI RESTAURANTS</text>
+<rect x="55" y="94" width="94" height="108" fill="#111317" stroke="#DFBA57" stroke-width="2"/>
+<image href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22120%22%3E%3Crect%20width%3D%22100%22%20height%3D%22120%22%20fill%3D%22%23dfe5ee%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2270%22%20font-size%3D%2236%22%20text-anchor%3D%22middle%22%20fill%3D%22%230A2540%22%3E%D9%85%3C%2Ftext%3E%3C%2Fsvg%3E" x="56" y="95" width="92" height="106" preserveAspectRatio="xMidYMid slice"/>
+<rect x="62" y="204" width="80" height="12" rx="2" fill="url(#goldm)"/>
+<text x="102" y="224" text-anchor="middle" font-size="15" font-weight="bold" fill="#FFFFFF" font-family="Cairo,Arial">مد فاروس</text>
+<text x="102" y="238" text-anchor="middle" font-size="8" fill="#9CA3AF" font-family="Inter,Arial">MD FAROUS</text>
+<text x="102" y="256" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF" font-family="Cairo,Arial">ستيور</text>
+<text x="102" y="268" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">STIOUR</text>
+<rect x="20" y="276" width="164" height="18" rx="3" fill="url(#goldm)"/>
+<text x="102" y="289" text-anchor="middle" font-size="11" font-weight="900" fill="#15171a" font-family="Courier New,monospace" letter-spacing="1">EMP-032</text>
+<rect x="0" y="0" width="204" height="322" rx="14" fill="none" stroke="#DFBA57" stroke-width="1.5" opacity="0.6"/>
+</g></svg>

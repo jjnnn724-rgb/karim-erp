@@ -1,0 +1,122 @@
+{
+  "startedAt": "2026-10-04T17:19:30.920Z",
+  "pass": 22,
+  "total": 23,
+  "results": [
+    {
+      "name": "login admin",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "health + database",
+      "ok": false,
+      "detail": "status=warn db=ok ver=4.9.2"
+    },
+    {
+      "name": "veg create",
+      "ok": true,
+      "detail": "200 VR-20261004-11795"
+    },
+    {
+      "name": "veg receive + per-item rejection",
+      "ok": true,
+      "detail": "status=received dept=مخازن"
+    },
+    {
+      "name": "veg price accepted-only",
+      "ok": true,
+      "detail": "total=57 expected=57"
+    },
+    {
+      "name": "veg expense posted",
+      "ok": true,
+      "detail": "expenseId=1791134370529874"
+    },
+    {
+      "name": "veg expense row in DB",
+      "ok": true,
+      "detail": "{\"deptId\":\"kitchen\",\"amount\":\"57.00\",\"adjustmentType\":\"veg_request\"}"
+    },
+    {
+      "name": "veg re-price rejected (NOT_RECEIVED)",
+      "ok": true,
+      "detail": "status=409"
+    },
+    {
+      "name": "veg priced state persisted",
+      "ok": true,
+      "detail": "status=priced total=57.00"
+    },
+    {
+      "name": "roster week starts Saturday",
+      "ok": true,
+      "detail": "weekStart=2026-10-03 utcdow=6"
+    },
+    {
+      "name": "roster leaves fields merged",
+      "ok": true,
+      "detail": "cells carry onLeave/leaveType"
+    },
+    {
+      "name": "roster 7 days sequential",
+      "ok": true,
+      "detail": "days=7"
+    },
+    {
+      "name": "punch portal status",
+      "ok": true,
+      "detail": "enabled=true binding=true"
+    },
+    {
+      "name": "auto-rebind setting present",
+      "ok": true,
+      "detail": "value=true"
+    },
+    {
+      "name": "static /app/index.html",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/sw.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/js/core/config.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/js/core/i18n.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/js/features/veg-requests.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/js/features/page-router.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "static /app/js/features/roster.js",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "veg list requires auth",
+      "ok": true,
+      "detail": "status=401"
+    },
+    {
+      "name": "veg sanitizes html in names",
+      "ok": true,
+      "detail": "name=xscr"
+    }
+  ]
+}

@@ -1,0 +1,358 @@
+/**
+ * system-routes.js — النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط)
+ * ────────────────────────────────────────────────────────────────────────────
+ * GET  /api/system/backups          قائمة النسخ (الملف + الحجم + التاريخ + سلامة البصمة)
+ * POST /api/system/backup           نسخة جديدة الآن (قاعدة + .env + بيان) — بحد أدنى 5 دقائق بين النسخ
+ * POST /api/system/restore          استعادة نسخة: {file, confirm:'RESTORE', restoreEnv?:boolean}
+ *   - يتحقق من SHA-256، يعمل نسخة أمان تلقائية للوضع الحالي أولًا، يفصل باقي
+ *     اتصالات القاعدة، ثم يستعيد بسكربت restore.js --yes. بعد الاستعادة يُنصح
+ *     بإعادة تشغيل خدمة السيرفر.
+ */
+'use strict';
+
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const multer = require('multer');
+const { spawn } = require('child_process');
+const { logger } = require('./logger');
+const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { getActiveBrotliStatic } = require('./middleware/brotli-static');
+const { pool } = require('./shared-pool');
+const { runSystemAudit, buildContext } = require('./audit-engine');
+
+const router = express.Router();
+
+// ─── مؤشر حالة الخادم (طلب المالك 2026-10-06: «أعرف أنا شغال على التحديث الجديد ولا القديم») ───
+// يُظهر منذ متى يعمل الخادم، وأحدث وقت تعديل لكود الخادم على القرص، وهل الكود المُشغَّل محدث أم قديم.
+const SERVER_INFO_STARTED_AT = new Date(Date.now() - process.uptime() * 1000);
+let _codeMtimeCache = { at: 0, value: null };
+function backendCodeMtime() {
+    if (Date.now() - _codeMtimeCache.at < 60 * 1000 && _codeMtimeCache.value) {return _codeMtimeCache.value;}
+    let latest = null;
+    const scan = (dir) => {
+        let entries;
+        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
+        for (const e of entries) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) {
+                if (e.name === 'node_modules' || e.name.startsWith('.')) {continue;}
+                scan(p);
+            } else if (e.name.endsWith('.js')) {
+                try { const m = fs.statSync(p).mtime; if (!latest || m > latest) {latest = m;} } catch (_) { /* ملف اختفى أثناء الفحص — يُتجاهل عمدًا */ }
+            }
+        }
+    };
+    scan(__dirname);
+    _codeMtimeCache = { at: Date.now(), value: latest };
+    return latest;
+}
+router.get('/server-info', jwtAuth, (req, res) => {
+    const codeMtime = backendCodeMtime();
+    const upToDate = !codeMtime || codeMtime <= SERVER_INFO_STARTED_AT;
+    res.json({
+        version: require('../package.json').version,
+        startedAt: SERVER_INFO_STARTED_AT.toISOString(),
+        codeMtime: codeMtime ? codeMtime.toISOString() : null,
+        upToDate,
+    });
+});
+
+function backupsDir() {
+    return path.resolve(process.env.KARIM_BACKUP_DIR || path.join(__dirname, '..', 'database', 'backups'));
+}
+function rootDir() { return path.resolve(__dirname, '..'); }
+function runNode(script, args, timeoutMs) {
+    return new Promise((resolve) => {
+        const p = spawn(process.execPath, [script, ...args], { windowsHide: true, timeout: timeoutMs });
+        let out = '', err = '';
+        p.stdout?.on('data', (d) => { out += String(d); });
+        p.stderr?.on('data', (d) => { err += String(d); });
+        p.on('error', (e) => resolve({ ok: false, error: e.message, out, err }));
+        p.on('close', (code) => resolve({ ok: code === 0, code, out, err }));
+    });
+}
+function shaOk(file) {
+    try {
+        const side = `${file}.sha256`;
+        if (!fs.existsSync(side)) {return null;}
+        const [expected] = fs.readFileSync(side, 'utf8').trim().split(/\s+/);
+        const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+        return expected === actual;
+    } catch (_) { return false; }
+}
+
+// PERF: مع نسخ بمئات الميجابايت كان التحقق من أحدث 3 نسخ يقرأ ~2GB متزامنًا في
+// كل طلب سرد (قِسنا 11.6 ثانية). الآن: نتيجة التحقق تُخزَّن في الذاكرة + ملف
+// .sha-cache.json بجانب النسخ (فتبقى معروفة حتى بعد إعادة تشغيل السيرفر)،
+// ويُحسب الناقص بقراءة متدفقّة async لا تحبس حلقة الأحداث — القائمة تفتح فورًا
+// في كل الأحوال، والاستعادة نفسها تتحقق من ملفها الوحيد قبل التنفيذ فلا تضعف السلامة.
+const shaCache = new Map();
+const shaVerifying = new Set();
+function shaCacheFile() { return path.join(backupsDir(), '.sha-cache.json'); }
+function shaCacheLoad() {
+    if (shaCache.size) {return;}
+    try {
+        const raw = JSON.parse(fs.readFileSync(shaCacheFile(), 'utf8'));
+        for (const [k, v] of Object.entries(raw || {})) {shaCache.set(k, Boolean(v));}
+    } catch (_) { /* لا ملف بعد — طبيعي أول تشغيل */ }
+}
+function shaCachePersist() {
+    try {
+        fs.writeFileSync(shaCacheFile(), JSON.stringify(Object.fromEntries(shaCache)), 'utf8');
+    } catch (_) { /* غير حرج — يُعاد الحساب لاحقًا */ }
+}
+async function shaOkAsync(file) {
+    try {
+        const side = `${file}.sha256`;
+        if (!fs.existsSync(side)) {return null;}
+        const [expected] = fs.readFileSync(side, 'utf8').trim().split(/\s+/);
+        const hash = crypto.createHash('sha256');
+        await new Promise((resolve, reject) => {
+            const stream = fs.createReadStream(file, { highWaterMark: 4 * 1024 * 1024 });
+            stream.on('data', (d) => hash.update(d));
+            stream.on('end', resolve);
+            stream.on('error', reject);
+        });
+        return expected === hash.digest('hex');
+    } catch (_) { return false; }
+}
+function shaCached(full, size, mtimeMs) {
+    shaCacheLoad();
+    const key = `${path.basename(full)}|${size}|${mtimeMs}`;
+    if (shaCache.has(key)) {return shaCache.get(key);}
+    if (!shaVerifying.has(key)) {
+        shaVerifying.add(key);
+        // تأخير بسيط: الاستجابة تخرج أولًا، ثم يجرى التحقق بتدفق غير حاجب
+        setTimeout(async () => {
+            try { shaCache.set(key, await shaOkAsync(full)); } catch (_) { shaCache.set(key, false); }
+            shaVerifying.delete(key);
+            shaCachePersist();
+        }, 1500);
+    }
+    return null; // قيد التحقق في الخلفية
+}
+function listBackups({ verify = false } = {}) {
+    const dir = backupsDir();
+    if (!fs.existsSync(dir)) {return { dir, files: [] };}
+    // PERF: قراءة البصمة (SHA-256) تعني قراءة كل ملف كاملًا — مع نسخ بمئات
+    // الميجابايت كان السرد يجمّد الصفحة. الافتراضي الآن: stat فقط + وجود
+    // البصمة، والتحقق الكامل اختياري (?verify=1) أو لأحدث 3 ملفات فقط.
+    // الاستعادة نفسها تتحقق من ملفها الوحيد (سطر restore) — فلا مخاطرة.
+    const files = fs.readdirSync(dir)
+        .filter((f) => f.endsWith('.sql'))
+        .map((f) => {
+            const full = path.join(dir, f);
+            let st;
+            try { st = fs.statSync(full); } catch (_) { return null; }
+            let manifest = null;
+            try {
+                const mf = `${full}.json`;
+                if (fs.existsSync(mf)) {manifest = JSON.parse(fs.readFileSync(mf, 'utf8'));}
+            } catch (e) { logger.debug('[system/backups] manifest غير صالح:', e.message); }
+            const hasSha = fs.existsSync(`${full}.sha256`);
+            return { file: f, bytes: st.size, mtime: st.mtime, shaOk: null, hasSha, manifest, _full: full };
+        })
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.mtime) - new Date(a.mtime))
+        .slice(0, 100);
+    const newestN = verify ? files.length : Math.min(3, files.length);
+    for (let i = 0; i < newestN; i++) {
+        try { files[i].shaOk = shaCached(files[i]._full, files[i].bytes, new Date(files[i].mtime).getTime()); } catch (_) { files[i].shaOk = false; }
+        delete files[i]._full;
+    }
+    for (const f of files) {delete f._full;}
+    return { dir, files };
+}
+
+let lastBackupAt = 0;
+router.get('/backups', jwtAuth, requireRole('admin'), async (req, res) => {
+    try { res.json({ ok: true, ...listBackups({ verify: req.query.verify === '1' }) }); }
+    catch (e) { logger.error('[system/backups]', e.message); res.status(500).json({ error: 'SYS_BACKUP_LIST_FAILED', message: 'تعذر جلب قائمة النسخ' }); }
+});
+
+router.post('/backup', jwtAuth, requireRole('admin'), async (req, res) => {
+    try {
+        if (Date.now() - lastBackupAt < 5 * 60 * 1000) {
+            return res.status(429).json({ error: 'BACKUP_TOO_SOON', message: 'انتظر 5 دقائق بين النسخة والأخرى' });
+        }
+        lastBackupAt = Date.now();
+        const r = await runNode(path.join(rootDir(), 'database', 'scripts', 'backup.js'), [], 300000);
+        if (!r.ok) {return res.status(500).json({ error: 'BACKUP_FAILED', message: 'فشل النسخ الاحتياطي', log: (r.err || r.out || '').slice(-500) });}
+        // حزمة الاستعادة الكاملة: نسخة .env + بيان بجانب ملف القاعدة
+        try {
+            const { files } = listBackups();
+            const newest = files[0] ? path.join(backupsDir(), files[0].file) : null;
+            if (newest) {
+                fs.copyFileSync(path.join(rootDir(), '.env'), `${newest}.env`);
+                fs.writeFileSync(`${newest}.json`, JSON.stringify({
+                    createdAt: new Date().toISOString(), by: req.user?.name || 'admin',
+                    byId: req.user?.id || null, db: process.env.DB_NAME || 'karim_erp',
+                    includes: ['database.sql', '.env'], app: 'karim-erp',
+                }, null, 1));
+            }
+        } catch (e) { logger.warn('[system/backup] env snapshot skipped: ' + e.message); }
+        res.json({ ok: true, ...listBackups() });
+    } catch (e) { logger.error('[system/backup]', e.message); res.status(500).json({ error: 'BACKUP_FAILED', message: 'فشل النسخ الاحتياطي' }); }
+});
+
+// ─── رفع نسخة احتياطية خارجية (.sql) لتظهر في القائمة وتكون قابلة للاستعادة ───
+const backupUpload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            try { fs.mkdirSync(backupsDir(), { recursive: true }); cb(null, backupsDir()); }
+            catch (e) { cb(e); }
+        },
+        filename: (req, file, cb) => cb(null, `upload-${Date.now()}.part`),
+    }),
+    limits: { fileSize: 1024 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, cb) => {
+        const name = String(file.originalname || '');
+        if (/\.sql$/i.test(name)) {return cb(null, true);}
+        cb(Object.assign(new Error('ملف غير مدعوم — ارفع نسخة .sql فقط'), { code: 'BAD_TYPE' }));
+    },
+}).single('file');
+
+router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
+    backupUpload(req, res, (err) => {
+        try {
+            if (err) {
+                const msg = err.code === 'LIMIT_FILE_SIZE' ? 'الملف أكبر من 1GB' : (err.message || 'فشل الرفع');
+                return res.status(422).json({ error: 'UPLOAD_FAILED', message: msg });
+            }
+            if (!req.file) {return res.status(422).json({ error: 'NO_FILE', message: 'اختر ملف .sql أولًا' });}
+            // اسم آمن + منع الكتابة فوق نسخة قائمة
+            let base = path.basename(String(req.file.originalname || 'backup.sql')).replace(/[^a-zA-Z0-9_.ء-غف-ي -]/g, '_').slice(0, 120);
+            if (!/\.sql$/i.test(base)) {base += '.sql';}
+            let full = path.join(backupsDir(), base);
+            if (fs.existsSync(full)) {
+                const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                base = base.replace(/\.sql$/i, `-${stamp}.sql`);
+                full = path.join(backupsDir(), base);
+            }
+            fs.renameSync(req.file.path, full);
+            // بصمة وبيان حتى تمر الاستعادة اللاحقة من نفس فحوص السلامة
+            try {
+                const hash = crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex');
+                fs.writeFileSync(`${full}.sha256`, `${hash}  ${base}\n`);
+                fs.writeFileSync(`${full}.json`, JSON.stringify({
+                    createdAt: new Date().toISOString(), by: req.user?.name || 'admin',
+                    byId: req.user?.id || null, db: process.env.DB_NAME || 'karim_erp',
+                    includes: ['database.sql'], app: 'karim-erp', uploaded: path.basename(String(req.file.originalname || '')),
+                }, null, 1));
+            } catch (e) { logger.warn('[system/upload] sidecar skipped: ' + e.message); }
+            logger.info(`[system/upload] ${base} by ${req.user?.name || req.user?.id}`);
+            return res.status(201).json({ ok: true, file: base, ...listBackups() });
+        } catch (e) {
+            try { if (req.file?.path && fs.existsSync(req.file.path)) {fs.unlinkSync(req.file.path);} } catch (e) { logger.debug('[system/upload] تعذر حذف الملف المؤقت:', e.message); }
+            logger.error('[system/upload]', e.message);
+            return res.status(500).json({ error: 'UPLOAD_FAILED', message: 'فشل حفظ الملف' });
+        }
+    });
+});
+
+router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
+    const t0 = Date.now();
+    try {
+        const file = String(req.body?.file || '').trim();
+        if (req.body?.confirm !== 'RESTORE') {
+            return res.status(422).json({ error: 'CONFIRM_REQUIRED', message: 'أكّد بكلمة RESTORE — الاستعادة تمسح الوضع الحالي' });
+        }
+        const full = path.resolve(backupsDir(), path.basename(file));
+        if (!file.endsWith('.sql') || !fs.existsSync(full)) {
+            return res.status(404).json({ error: 'BACKUP_NOT_FOUND', message: 'ملف النسخة غير موجود' });
+        }
+        const ok = shaOk(full);
+        if (ok === false) {return res.status(422).json({ error: 'SHA_MISMATCH', message: 'بصمة النسخة غير سليمة — لن نستعيد ملفًا تالفًا' });}
+        // نسخة أمان تلقائية للوضع الحالي قبل المسح
+        const pre = await runNode(path.join(rootDir(), 'database', 'scripts', 'backup.js'),
+            [path.join(backupsDir(), `pre-restore-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.sql`)], 300000);
+        if (!pre.ok) {return res.status(500).json({ error: 'SAFETY_BACKUP_FAILED', message: 'تعذرت نسخة الأمان — أُوقفت الاستعادة لحماية بياناتك' });}
+        // فصل باقي اتصالات القاعدة حتى لا تعلق الاستعادة على الأقفال
+        try {
+            await pool.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`);
+        } catch (e) { logger.warn('[system/restore] تعذر قطع اتصالات قاعدة البيانات النشطة:', e.message); }
+        const r = await runNode(path.join(rootDir(), 'database', 'scripts', 'restore.js'), [full, '--yes'], 600000);
+        if (!r.ok) {return res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة — نسخة الأمان موجودة', log: (r.err || r.out || '').slice(-800) });}
+        // FIX 2026-10-11 (M22): re-initialize the DB pool after restore —
+        // pg_terminate_backend killed all connections but the Pool object
+        // still held dead sockets. reinitPool() creates fresh connections.
+        try { await require('./shared-pool').reinitPool(); } catch (e) { logger.warn('[system/restore] pool reinit failed:', e.message); }
+        // استعادة .env إن طُلبت (تتطلب إعادة تشغيل السيرفر لتُطبق)
+        let envRestored = false;
+        if (req.body?.restoreEnv === true && fs.existsSync(`${full}.env`)) {
+            try {
+                fs.copyFileSync(path.join(rootDir(), '.env'), path.join(backupsDir(), `.env.before-restore-${Date.now()}`));
+                fs.copyFileSync(`${full}.env`, path.join(rootDir(), '.env'));
+                envRestored = true;
+            } catch (e) { logger.warn('[system/restore] env restore skipped: ' + e.message); }
+        }
+        try { if (req.io) {req.io.emit('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (e) { logger.debug('[system/restore] تعذر البث:', e.message); }
+        res.json({ ok: true, file, ms: Date.now() - t0, envRestored, restartNeeded: true, message: 'تمت الاستعادة — أعد تشغيل خدمة السيرفر' });
+    } catch (e) { logger.error('[system/restore]', e.message); res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة' }); }
+});
+
+// ─── مدقق النظام الشامل (فحص + إصلاح آمن) — مدير فقط ───
+function auditCtx() { return buildContext({ pool, root: rootDir() }); }
+
+// GET /api/system/audit?domain=security,database&severity=HIGH — تقرير للقراءة فقط
+router.get('/audit', jwtAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const domains = req.query.domain ? String(req.query.domain).split(',').map((s) => s.trim()).filter(Boolean) : null;
+        const result = await runSystemAudit({ fix: false, domains, save: true, ctx: auditCtx() });
+        res.json({ ok: true, ...result });
+    } catch (e) {
+        logger.error('[system/audit]', e.message);
+        res.status(500).json({ error: 'AUDIT_FAILED', message: 'تعذر تشغيل مدقق النظام' });
+    }
+});
+
+// POST /api/system/audit/fix  body:{ dryRun?:boolean, domain?:'a,b' } — تطبيق الإصلاحات الآمنة بعد نسخة احتياطية
+router.post('/audit/fix', jwtAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const dryRun = req.body?.dryRun === true;
+        const domains = req.body?.domain ? String(req.body.domain).split(',').map((s) => s.trim()).filter(Boolean) : null;
+        const result = await runSystemAudit({ fix: true, dryRun, domains, save: true, ctx: auditCtx() });
+        try { if (req.io) {req.io.emit('system:audited', { score: result.score, grade: result.grade, fix: true, dryRun, at: new Date().toISOString() });} } catch (e) { logger.debug('[system/audit] تعذر البث:', e.message); }
+        res.json({ ok: true, ...result });
+    } catch (e) {
+        logger.error('[system/audit/fix]', e.message);
+        res.status(500).json({ error: 'AUDIT_FIX_FAILED', message: 'تعذر تنفيذ إصلاحات المدقق' });
+    }
+});
+
+// ─── إبطال كاش Brotli (مدير فقط) — المرحلة 3 ───
+// POST /api/system/brotli-cache/invalidate
+//   body {}                     → إبطال كل النسخ (أول طلب تالٍ يعيد الضغط ويسلّم br)
+//   body {path:'js/v2/x.js'}    → إبطال نسخة ملف واحد داخل جذر الأصول
+// حذف نسخ مضغوطة فقط: لا يُمسّ أي ملف أصلي ولا أي منطق HTTP.
+router.post('/brotli-cache/invalidate', jwtAuth, requireRole('admin'), (req, res) => {
+    try {
+        const brotli = getActiveBrotliStatic();
+        if (!brotli || typeof brotli.invalidateAll !== 'function') {
+            return res.status(503).json({ error: 'BROTLI_NOT_ACTIVE', message: 'وسيط Brotli غير مُركّب في هذه العملية' });
+        }
+        const raw = req.body && typeof req.body.path === 'string' ? req.body.path.trim() : '';
+        let result;
+        if (!raw) {
+            result = brotli.invalidateAll();
+        } else {
+            // مسار نسبي فقط، بلا جذر مطلق ولا مقاطع نقطية ولا رجوع للخلف
+            const rel = raw.replace(/\\/g, '/');
+            const unsafe = rel.startsWith('/') || rel.includes('\0') ||
+                rel.split('/').some((seg) => !seg || seg === '.' || seg === '..' || seg.startsWith('.'));
+            if (unsafe) {
+                return res.status(422).json({ error: 'INVALID_PATH', message: 'مسار نسبي داخل جذر الأصول مطلوب بلا مقاطع نقطية' });
+            }
+            result = brotli.invalidate(path.resolve(brotli.rootDir, rel));
+        }
+        logger.info(`[system/brotli-cache] invalidate ${result.scope} removed=${result.removed} bytes=${result.bytes} by ${req.user?.name || req.user?.id || 'admin'}`);
+        res.json({ ok: true, ...result, policyVersion: brotli.policyVersion, cacheDir: brotli.cacheDir });
+    } catch (e) {
+        logger.error('[system/brotli-cache]', e.message);
+        res.status(500).json({ error: 'INVALIDATE_FAILED', message: 'تعذر إبطال كاش Brotli' });
+    }
+});
+
+module.exports = router;

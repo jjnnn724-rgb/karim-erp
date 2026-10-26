@@ -1,0 +1,616 @@
+/* ── سجلّ الصرف + إذن الصرف ─────────────────────────────────────────────
+   شاشة واحدة: مرشّحات فوق، مؤشرات الفترة، منحنًى وتوزيعًا، فالحركات.
+   فتح أي ستنزل لوحة جانبية بإذن الصرف كما يُطبع.
+
+   القيد: رموز --erp-* فقط — لا لونٌ خام ولا مقياسٌ بالـ px ولا em.
+   الوضع الليلي والأبيضُ والتذهيبُ كلُّها تُعاد قراءتها من الرموز،
+   فلا يُعاد رسمُ شيءٍ عند تبديل السمة. الحركات CSS خالص (لا JS). */
+
+.cashreg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+
+/* ── الرأس والأدوات ───────────────────────────────────────────────────── */
+.cashreg__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.cashreg__title {
+  margin: 0;
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__sub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__tools {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+/* ── بطاقة الرسم / بطاقة الحركات: دخولٌ متدرّج بالترتيب ────────────────── */
+.cashreg__card {
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+  animation-delay: calc(var(--cr-i, 0) * var(--erp-duration-instant));
+}
+
+.cashreg__cardNote {
+  font-size: var(--erp-text-xs);
+  text-align: end;
+}
+
+/* ── المرشّحات ────────────────────────────────────────────────────────── */
+.cashreg__filters {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.cashreg__search {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 auto;
+  min-inline-size: 18ch;
+  max-inline-size: 34ch;
+  padding-inline: var(--erp-space-3);
+  min-block-size: var(--erp-control-md);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__search:focus-within {
+  border-color: var(--erp-brand);
+  box-shadow: var(--erp-focus-ring);
+}
+
+.cashreg__search .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  flex: none;
+  color: var(--erp-text-faint);
+}
+
+.cashreg__search .erp-input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__search .erp-input:focus { outline: none; box-shadow: none; }
+
+/* ── خلايا الجدول ─────────────────────────────────────────────────────── */
+.cashreg__ref {
+  display: inline-block;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  padding: var(--erp-space-0) var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  white-space: nowrap;
+}
+
+.cashreg__desc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  min-inline-size: 0;
+}
+
+.cashreg__lead {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+.cashreg__type {
+  display: inline-block;
+  font-size: var(--erp-text-xs);
+  white-space: nowrap;
+  padding: var(--erp-space-0) var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  border: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary);
+}
+
+/* المبلغ ونسبتُه من الفترة: رقمٌ صريح ومقياسٌ رفيعٌ تحته. */
+.cashreg__amt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--erp-space-1);
+}
+
+.cashreg__amt .erp-num {
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+}
+
+.cashreg__share {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 12ch;
+  block-size: var(--erp-space-1);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  position: relative;
+  overflow: hidden;
+}
+
+.cashreg__share::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: var(--cr-share, 0%);
+  border-radius: inherit;
+  background: var(--erp-brand);
+  opacity: 0.55;
+}
+
+.cashreg__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-icon-lg);
+  block-size: var(--erp-icon-lg);
+  border: 0;
+  border-radius: var(--erp-radius-full);
+  background: transparent;
+  color: var(--erp-text-faint);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--erp-duration-fast) var(--erp-ease-out),
+              color var(--erp-duration-fast) var(--erp-ease-out),
+              background var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.cashreg__open .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+}
+
+.erp-table tbody tr:hover .cashreg__open,
+.cashreg__open:hover,
+.cashreg__open:focus-visible {
+  color: var(--erp-brand-text);
+  background: var(--erp-brand-soft);
+}
+
+.cashreg__open:hover { transform: translateY(var(--erp-space-1)); }
+
+.cashreg__howto {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* ── لوحة إذن الصرف ─────────────────────────────────────────────────── */
+.cashreg__scrim,
+.cashreg__panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline: 0;
+}
+
+.cashreg__scrim {
+  z-index: var(--erp-z-drawer);
+  background: var(--erp-scrim);
+  animation: erp-screen-in var(--erp-duration-fast) var(--erp-ease-out) both;
+}
+
+.cashreg__panel {
+  z-index: calc(var(--erp-z-drawer) + 1);
+  inset-inline-start: auto;
+  inline-size: min(100%, 78ch);
+  display: flex;
+  flex-direction: column;
+  background: var(--erp-surface);
+  box-shadow: var(--erp-shadow-xl);
+  border-inline-start: thin solid var(--erp-border);
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+}
+
+.cashreg__scrim[hidden],
+.cashreg__panel[hidden] { display: none; }
+
+body.cashreg-open { overflow: hidden; }
+
+.cashreg__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border-bottom: thin solid var(--erp-border);
+  background: var(--erp-surface-raised);
+}
+
+.cashreg__barTitle {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.cashreg__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--erp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+
+.cashreg__panelState {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-3);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  padding: var(--erp-space-6);
+}
+
+.cashreg__shimmer {
+  inline-size: 100%;
+  max-inline-size: 24ch;
+  block-size: var(--erp-space-3);
+  border-radius: var(--erp-radius-full);
+  background-image: linear-gradient(
+    90deg,
+    var(--erp-surface-sunken) 0%,
+    var(--erp-surface-hover) 50%,
+    var(--erp-surface-sunken) 100%);
+  background-size: 200% 100%;
+  animation: cashreg-shimmer var(--erp-duration-slow) linear infinite;
+}
+
+@keyframes cashreg-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── الشريط العلوي للإذن: الإجمالي كتابةً ثم الوقائع ──────────────────── */
+.cashreg__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+  padding: var(--erp-space-4);
+  border-radius: var(--erp-radius-lg);
+  border: thin solid var(--erp-border);
+  border-inline-start: var(--erp-space-1) solid var(--erp-brand);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.cashreg__heroLabel {
+  display: block;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__heroValue {
+  display: block;
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  line-height: var(--erp-leading-tight);
+}
+
+.cashreg__words {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  max-inline-size: 46ch;
+}
+
+.cashreg__heroSide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12ch, 1fr));
+  gap: var(--erp-space-3);
+  flex: 1 1 24ch;
+}
+
+.cashreg__fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+
+.cashreg__fact b {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-faint);
+}
+
+.cashreg__fact span {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+/* ── عناوين الأقسام داخل اللوحة ───────────────────────────────────────── */
+.cashreg__sec {
+  margin: var(--erp-space-3) 0 var(--erp-space-0);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.cashreg__count {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-full);
+  padding: var(--erp-space-0) var(--erp-space-2);
+  background: var(--erp-surface-sunken);
+}
+
+/* ── جدول الأصناف ─────────────────────────────────────────────────────── */
+.cashreg__items {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+
+.cashreg__items th {
+  text-align: start;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-muted);
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border);
+  white-space: nowrap;
+  background: var(--erp-surface-sunken);
+}
+
+.cashreg__items td {
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+  color: var(--erp-text-secondary);
+  vertical-align: middle;
+}
+
+.cashreg__items tbody tr:hover { background: var(--erp-surface-hover); }
+
+.cashreg__items .c { text-align: center; }
+.cashreg__items .idx { color: var(--erp-text-faint); }
+.cashreg__items td b { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.cashreg__items tfoot td {
+  border-bottom: 0;
+  border-top: thin solid var(--erp-border);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  background: var(--erp-surface-sunken);
+}
+
+/* ── دفتر الحركات المنفَّذة ───────────────────────────────────────────── */
+.cashreg__ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cashreg__ledger li {
+  display: grid;
+  grid-template-columns: minmax(0, 10ch) minmax(0, 1fr) auto;
+  gap: var(--erp-space-3);
+  align-items: baseline;
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.cashreg__ledger li:last-child { border-bottom: 0; }
+
+.cashreg__ledgerDesc {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--erp-text-faint);
+}
+
+.cashreg__ledger b { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+/* ── سلسلة الاعتماد ───────────────────────────────────────────────────── */
+.cashreg__stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+
+.cashreg__stage {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+
+.cashreg__stage b {
+  display: block;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+.cashreg__stageDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-control-sm);
+  block-size: var(--erp-control-sm);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+  flex: none;
+}
+
+.cashreg__stageDot .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+}
+
+.cashreg__stageWho {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.cashreg__stageAt {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+  margin-inline-start: var(--erp-space-2);
+}
+
+.cashreg__stageNo {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+.cashreg__stage.is-current {
+  border-color: var(--erp-brand);
+  background: var(--erp-brand-soft);
+}
+
+.cashreg__stage.is-current .cashreg__stageDot {
+  background: var(--erp-brand);
+  color: var(--erp-text-inverse);
+}
+
+.cashreg__stage.is-bad {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-soft);
+}
+
+.cashreg__stage.is-bad .cashreg__stageDot {
+  background: var(--erp-danger);
+  color: var(--erp-text-inverse);
+}
+
+/* ── الملاحظات والتواقيع ─────────────────────────────────────────────── */
+.cashreg__notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  border-inline-start: var(--erp-space-1) solid var(--erp-border-strong);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+
+.cashreg__notes p { margin: 0; }
+.cashreg__notes b { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.cashreg__sigs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16ch, 1fr));
+  gap: var(--erp-space-3);
+}
+
+.cashreg__sig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-2);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+
+.cashreg__sig img {
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: var(--erp-space-10);
+  object-fit: contain;
+  object-position: center;
+}
+
+.cashreg__sig figcaption {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  text-align: center;
+}
+
+.cashreg__nosig,
+.cashreg__hint {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* ── وضوحٌ عند تقليل الحركة ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .cashreg__card,
+  .cashreg__panel,
+  .cashreg__scrim { animation: none; }
+  .cashreg__shimmer { animation: none; background-image: none; background: var(--erp-surface-sunken); }
+  .cashreg__open { transition: none; }
+}
+
+/* ── الموبايل: اللوحة تأخذ العرض كلّه، والأدوات تصطف ─────────────────── */
+@media (max-width: 40em) {
+  .cashreg__panel { inline-size: 100%; }
+  .cashreg__hero { align-items: stretch; }
+  .cashreg__amt { align-items: flex-start; }
+  .cashreg__scroll { padding: var(--erp-space-3); }
+  .cashreg__search { max-inline-size: none; }
+  /* اللمسة تحتاج هدفًا بيدٍ كاملة، لا سهمًا بعشرين نقطة. */
+  .cashreg__open { inline-size: var(--erp-control-lg); block-size: var(--erp-control-lg); }
+  .cashreg__howto { display: none; }
+}
+
+/* ── الطباعة: شاشة التطبيق تختفي، الورقة وحدها تُطبع ──────────────────── */
+@media print {
+  .cashreg__head,
+  .cashreg__tools,
+  .cashreg__filters,
+  .cashreg__scrim,
+  .cashreg__panel,
+  .cashreg__search { display: none !important; }
+}

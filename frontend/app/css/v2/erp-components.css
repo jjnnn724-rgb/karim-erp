@@ -1,0 +1,631 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Shared Components (status badge, buttons, inputs)
+   ═══════════════════════════════════════════════════════════════════════
+   The status badge is the presentation half of js/v2/status.js.
+
+   ACCESSIBILITY CONTRACT
+   ──────────────────────
+   Colour is NEVER the only cue. Every badge carries:
+     • a text label  (the human-readable value)
+     • a glyph        (decorative, aria-hidden)
+     • a data-tone    (styling only)
+   so the state survives greyscale, colour blindness and forced-colors.
+
+   The badge renders a value the adapter recognised; an unrecognised value
+   falls back to neutral with the RAW stored string shown — it is never
+   silently relabelled or hidden (see status.js `resolveStatus`).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Status badge ────────────────────────────────────────────────────── */
+.erp-v2 .erp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--erp-radius-full);
+  border: 1px solid transparent;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  line-height: 1.45;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.erp-v2 .erp-badge svg,
+.erp-v2 .erp-badge .ji {
+  width: var(--erp-icon-sm);
+  height: var(--erp-icon-sm);
+  flex-shrink: 0;
+}
+
+.erp-v2 .erp-badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inside a KPI tile the badge carries a comparison sentence ("▼ إيراد
+   166,509.29 SAR (10.6%)"), which is wider than the tile itself: six
+   tiles in one row leaves ~172px per tile. With the badge locked to one
+   line the text ran past the tile edge and overlapped the neighbouring
+   card (measured on the P&L screen: 52px past the border). Here the
+   badge may wrap, so the tile keeps its own bounds. */
+.erp-v2 .erp-kpi__foot .erp-badge {
+  white-space: normal;
+  text-align: start;
+}
+
+/* Tones — background tint + tone-specific text (contrast measured, see
+   erp-tokens.css). Border gives a second non-colour cue at low tint. */
+.erp-v2 .erp-badge[data-tone="success"] {
+  background: var(--erp-success-soft);
+  color: var(--erp-success-text);
+  border-color: color-mix(in srgb, var(--erp-success) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="warning"] {
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  border-color: color-mix(in srgb, var(--erp-warning) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="danger"] {
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+  border-color: color-mix(in srgb, var(--erp-danger) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="info"] {
+  background: var(--erp-info-soft);
+  color: var(--erp-info-text);
+  border-color: color-mix(in srgb, var(--erp-info) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="brand"] {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  border-color: color-mix(in srgb, var(--erp-brand) 34%, transparent);
+}
+.erp-v2 .erp-badge[data-tone="neutral"] {
+  background: var(--erp-neutral-soft);
+  color: var(--erp-neutral-text);
+  border-color: color-mix(in srgb, var(--erp-neutral) 34%, transparent);
+}
+
+/* Unknown-value marker: dashed border signals "not a recognised state". */
+.erp-v2 .erp-badge[data-unknown="true"] {
+  border-style: dashed;
+}
+
+/* Fallback for browsers without color-mix: keep a visible hairline. */
+@supports not (color-mix(in srgb, red 10%, transparent)) {
+  .erp-v2 .erp-badge { border-color: currentColor; opacity: .95; }
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.erp-v2 .erp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  min-height: var(--erp-control-md);
+  padding-inline: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-family: inherit;
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--erp-duration-fast) var(--erp-ease-out),
+    border-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-v2 .erp-btn:hover:not(:disabled) { background: var(--erp-surface-hover); }
+.erp-v2 .erp-btn:active:not(:disabled) { background: var(--erp-surface-active); }
+.erp-v2 .erp-btn:disabled { opacity: .5; cursor: not-allowed; }
+.erp-v2 a.erp-btn,
+.erp-v2 a.erp-btn:hover { text-decoration: none; }
+
+.erp-v2 .erp-btn svg,
+.erp-v2 .erp-btn .ji { width: var(--erp-icon-sm); height: var(--erp-icon-sm); flex-shrink: 0; }
+
+.erp-v2 .erp-btn--primary {
+  background: var(--erp-brand);
+  border-color: var(--erp-brand);
+  color: var(--erp-text-inverse);
+}
+.erp-v2 .erp-btn--primary:hover:not(:disabled) {
+  background: var(--erp-brand-hover);
+  border-color: var(--erp-brand-hover);
+}
+
+.erp-v2 .erp-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.erp-v2 .erp-btn--ghost:hover:not(:disabled) { background: var(--erp-surface-hover); }
+
+.erp-v2 .erp-btn--sm {
+  min-height: var(--erp-control-sm);
+  padding-inline: var(--erp-space-3);
+  font-size: var(--erp-text-sm);
+}
+
+/* Square icon-only action. Accessible name MUST come from aria-label. */
+.erp-v2 .erp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--erp-control-md);
+  height: var(--erp-control-md);
+  padding: 0;
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-icon-btn:hover { background: var(--erp-surface-hover); color: var(--erp-text-primary); }
+.erp-v2 .erp-icon-btn svg,
+.erp-v2 .erp-icon-btn .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
+
+/* Close affordance of a modal window — the ONLY way out.
+   Policy (Karim, 2026-10): a window opened for printing or for reading
+   closes from this X at its top corner and nothing else — no Escape key,
+   no click on the scrim. Because it carries the whole exit, it gets the
+   large control box (46px, above the 44px touch target), never shrinks in
+   a wrapping header, and turns destructive-red on hover so it reads as
+   "this closes what you are reading". */
+.erp-v2 .erp-modal-x {
+  flex: none;
+  inline-size: var(--erp-control-lg);
+  block-size: var(--erp-control-lg);
+  border-radius: 999px;
+  font-size: var(--erp-text-lg);
+  line-height: 1;
+  transition: background-color var(--erp-duration-fast) var(--erp-ease-out),
+              border-color var(--erp-duration-fast) var(--erp-ease-out),
+              color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-modal-x:hover {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+}
+.erp-v2 .erp-modal-x:focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+.erp-v2 .erp-input,
+.erp-v2 .erp-select {
+  min-height: var(--erp-control-md);
+  padding-inline: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-family: inherit;
+  font-size: var(--erp-text-base);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+/* Latin codes/serials inside an RTL form must not mirror — forces LTR
+   rendering and start-alignment for identifiers, emails and numbers. */
+.erp-v2 .erp-input--ltr,
+.erp-v2 input[type="email"],
+.erp-v2 input[type="tel"],
+.erp-v2 .erp-addr {
+  direction: ltr;
+  text-align: start;
+}
+
+.erp-v2 .erp-input:hover,
+.erp-v2 .erp-select:hover { border-color: var(--erp-text-faint); }
+
+.erp-v2 .erp-input[aria-invalid="true"],
+.erp-v2 .erp-select[aria-invalid="true"] {
+  border-color: var(--erp-danger);
+}
+
+.erp-v2 .erp-field { display: flex; flex-direction: column; gap: var(--erp-space-1); }
+
+.erp-v2 .erp-label {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-secondary);
+}
+
+.erp-v2 .erp-error {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-danger-text);
+}
+
+/* علامة الحقل الإلزامي — تُقرأ مع Label ولا تحمل معلومة وحدها (النص يقول «إلزامي»). */
+.erp-v2 .erp-req { color: var(--erp-danger-text); font-weight: var(--erp-fw-bold); }
+
+/* أهداف اللمس: مربّع اختيار 13px داخل صفٍّ نصّي لا يُصاب بإصبع.
+   على أجهزة اللمس يُكبَّر المربّع ويُمنح الصفّ 44px كاملة. */
+@media (pointer: coarse) {
+  .erp-v2 input[type="checkbox"],
+  .erp-v2 input[type="radio"] {
+    inline-size: 24px;
+    block-size: 24px;
+    flex: 0 0 auto;
+  }
+  .erp-v2 label:has(> input[type="checkbox"]),
+  .erp-v2 label:has(> input[type="radio"]) {
+    min-block-size: 44px;
+    align-items: center;
+  }
+}
+
+/* ── Theme control (segmented radio group) ───────────────────────────── */
+.erp-v2 .erp-theme-control {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--erp-surface-sunken);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-v2 .erp-theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--erp-control-sm);
+  padding-inline: var(--erp-space-3);
+  border: 0;
+  border-radius: var(--erp-radius-sm);
+  background: transparent;
+  color: var(--erp-text-muted);
+  font-family: inherit;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-v2 .erp-theme-option:hover { color: var(--erp-text-primary); }
+
+/* Selected state uses fill + weight + aria-checked, not colour alone. */
+.erp-v2 .erp-theme-option.is-active {
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-semibold);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.erp-v2 .erp-theme-option svg,
+.erp-v2 .erp-theme-option .ji { width: var(--erp-icon-sm); height: var(--erp-icon-sm); }
+
+/* ── Card ────────────────────────────────────────────────────────────── */
+.erp-v2 .erp-card {
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.erp-v2 .erp-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--erp-space-2);
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4);
+  border-block-end: 1px solid var(--erp-border);
+  min-inline-size: 0;
+}
+.erp-v2 .erp-card__head > * { min-inline-size: 0; }
+
+.erp-v2 .erp-card__title {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-v2 .erp-card__body { padding: var(--erp-space-4); }
+
+/* ── Empty / loading states (explicit, never a blank region) ─────────── */
+.erp-v2 .erp-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-8) var(--erp-space-4);
+  text-align: center;
+  color: var(--erp-text-muted);
+}
+
+.erp-v2 .erp-state__icon { font-size: var(--erp-text-2xl); line-height: 1; color: var(--erp-brass-text); }
+.erp-v2 .erp-state--error .erp-state__icon { color: var(--erp-danger-text); }
+.erp-v2 .erp-state__title { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }
+
+/* ── Skeleton (structure before data) ─────────────────────────────────
+   Shown while a first payload is in flight. The sheet that draws it keeps
+   the REAL column headers on screen and fills the body with bars at the
+   same row rhythm, so the table does not jump when data lands (CLS 0).
+   Colours are the sunken/hover tokens — same paper, one step quieter —
+   and the sweep stops dead under prefers-reduced-motion. */
+.erp-v2 .erp-skeleton {
+  display: block;
+  min-block-size: 11px;
+  border-radius: var(--erp-radius-sm);
+  background: linear-gradient(90deg,
+      var(--erp-surface-sunken) 25%,
+      var(--erp-surface-hover) 37%,
+      var(--erp-surface-sunken) 63%);
+  background-size: 400% 100%;
+  animation: erp-skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes erp-skeleton-sweep {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+.erp-v2 .erp-table__grid--loading { pointer-events: none; }
+.erp-v2 .erp-table__grid--loading .erp-th { color: var(--erp-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 .erp-skeleton { animation: none; }
+}
+
+/* ── Shell extras (W5): lamps, bell, quick cluster, FAB, notifs, offline ── */
+.erp-v2 .erp-shell__quick { display: inline-flex; align-items: center; gap: 8px; }
+.erp-v2 .erp-shell__lamps { display: inline-flex; align-items: center; gap: 6px; }
+.erp-v2 .erp-server-info { color: var(--erp-text-muted); white-space: nowrap; }
+.erp-v2 .erp-server-info[data-current="1"] { color: var(--erp-success-text); }
+.erp-v2 .erp-server-info[data-current="0"] { color: var(--erp-danger-text); }
+
+/* ── التحكم بالسيرفر (شريحة الرأس للأدمن — كل الصفحات) ─────────────────
+   لمبة الحالة + زرا إيقاف/تشغيل. على الهاتف: اللمبة والزران يبقيان ظاهرين
+   (أهداف 44px) والنصوص تختفي ليبقى الصف بسيطًا كما بقية أدوات الرأس. */
+.erp-v2 .erp-srvctl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding-inline: var(--erp-space-2);
+  border-inline-end: 1px solid var(--erp-border);
+}
+.erp-v2 .erp-srvctl__state {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+}
+.erp-v2 .erp-srvctl__btn { min-inline-size: var(--erp-control-sm); }
+.erp-v2 .erp-srvctl__btn--start {
+  border-color: var(--erp-success-text);
+  color: var(--erp-success-text);
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-srvctl__state { display: none; }
+  .erp-v2 .erp-srvctl .erp-btn span { display: none; }
+  .erp-v2 .erp-srvctl .erp-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+.erp-v2 .erp-lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--erp-neutral); display: inline-block; }
+.erp-v2 .erp-lamp[data-ok="1"] { background: var(--erp-success-text); }
+.erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
+.erp-v2 .erp-shell__bell { position: relative; display: inline-flex; }
+.erp-v2 .erp-shell__bell .erp-badge { position: absolute; top: -6px; inset-inline-end: -6px; }
+.erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 12px; z-index: var(--erp-z-dropdown); }
+.erp-v2 .erp-notif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.erp-v2 .erp-notif-list { display: flex; flex-direction: column; gap: 8px; }
+.erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.erp-v2 .erp-notif--unread { border-color: var(--erp-brand-text); }
+/* Bare on purpose: js/v2/layout/shell-extras.js mounts this host on
+   document.body, so a `.erp-v2 ` ancestor prefix never matches. Measured before
+   this change: the host was `position: static` and sat at the bottom of the
+   document (y≈2767), invisible until you scrolled past the whole page.
+   z-index lives on --erp-z-fab, not a literal: #erp-v2-root is static/auto
+   (measured), so the host competes in the ROOT context against the opaque
+   sticky sidebar at --erp-z-sticky=100 on this same inline-start edge — at the
+   old 60 the sidebar won the point under the button, i.e. the FAB was
+   unclickable at every viewport above the 1024px drawer breakpoint. */
+/* على الحافة المنطقية المقابلة للعمود الجانبي: بـRTL كان
+   `inset-inline-start` يضع الزر فوق كعب القائمة (قياس حيّ على 1066px)،
+   فيغطّي آخر عنصر واسم الدور. `inline-end` يبقى داخل المحتوى في الاتجاهين. */
+.erp-fab-host { position: fixed; bottom: 20px; inset-inline-end: 20px; z-index: var(--erp-z-fab); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: 26px; line-height: 1; cursor: pointer; }
+.erp-fab-host .erp-fab-menu { display: flex; flex-direction: column; gap: 8px; }
+/* `[hidden]` was losing to the rule above (UA `[hidden]{display:none}` is a
+   lower-priority element rule), so all four quick-action pills rendered even
+   with aria-expanded="false". Harmless while the host was invisible; now that
+   the FAB actually paints, the menu has to obey its own closed state. */
+.erp-fab-host .erp-fab-menu[hidden] { display: none; }
+.erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font: inherit; }
+/* Revived by البند ١٣: js/v2/layout/shell-extras.js gives the body-mounted host
+   the .erp-v2 class, so this rule matches and its declarations became live —
+   the z-index included, which moves onto the scale beside the notification
+   dropdown above. Measured at 671×613 (preview banner 94px tall, sticky header
+   94–150 at scrollY 0): the panel's fixed band is 64–250, so it overlaps the
+   header, and document.elementFromPoint in the overlap gave the header's own
+   button at the old 70 and the panel at 300. `top: 64px` clearing the 56px
+   header is a separate debt — it only holds while nothing taller than 8px
+   rides above the header. */
+.erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: var(--erp-z-dropdown); background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
+/* #b91c1c was an off-palette red (the token is #b42318 light / #f87171 dark).
+   Both readings stay AA-safe with the inverse ink: 6.57:1 light, 6.82:1 dark.
+   z-index was 9999 — above the whole scale, so the strip painted over open
+   modals and the toast layer. --erp-z-toast keeps it visible above dialogs
+   (900) but inside the system, yielding only to tooltips (1100). The
+   hand-written 13px is a separate debt. */
+.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: var(--erp-z-toast); background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
+@media (max-width: 640px) {
+  .erp-fab-host .erp-fab { width: 44px; height: 44px; }
+  /* A card head is a control strip, not a single line on a phone: without
+     wrapping, filter fields push the last button off-screen (branches,
+     revenues, expenses, wh-moves, payroll). Measured at 360px against live
+     data. The segmented control wraps inside the head for the same reason. */
+  .erp-v2 .erp-card__head { flex-wrap: wrap; row-gap: var(--erp-space-2); }
+  /* الشريطُ المنكسرُ على الهاتف يصير شريطًا لا حبّة: نصفُ القطرِ
+     الكامل (999px) على حاويةٍ طويلةٍ ضيّقةٍ يرسمُ عدسةً مشوّهة، لا
+     شريطًا. لغةُ النظام في الهاتف: الحاويةُ بنصفِ قطرٍ متوسّط
+     والتبويباتُ بنصفِ قطرٍ صغير. */
+  .erp-v2 .erp-card__head .erp-seg {
+    flex-wrap: wrap;
+    border-radius: var(--erp-radius-md);
+  }
+  .erp-v2 .erp-card__head .erp-seg button { border-radius: var(--erp-radius-sm); }
+}
+.erp-v2 .erp-link { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: var(--erp-brand-text); text-decoration: underline; }
+
+/* ── Department identity cell (شاشة الأقسام) ────────────────────────────
+   دائرة ملوّنة تحمل أيقونة القسم (SVG أو رمز تعبية قديم) + الاسم والكود.
+   اللون يأتي من بيانات القسم نفسها (hex صالح من القاعدة) — لا متغيّر نظام. */
+.erp-v2 .erp-dept-identity { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.erp-v2 .erp-dept-ico { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border-radius: 10px; color: var(--erp-text-inverse); flex: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--erp-text-inverse) 18%, transparent); }
+.erp-v2 .erp-dept-ico .ji, .erp-v2 .erp-dept-ico svg { inline-size: 18px; block-size: 18px; }
+.erp-v2 .erp-dept-ico__emoji { font-size: 17px; line-height: 1; }
+.erp-v2 .erp-dept-identity__body { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.erp-v2 .erp-dept-identity__name { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erp-v2 .erp-dept-identity__code { font-size: 11px; color: var(--erp-text-muted); }
+.erp-v2 .erp-dept-parent { color: var(--erp-text-secondary); }
+.erp-v2 .erp-dept-swatch { display: inline-block; inline-size: 22px; block-size: 22px; border-radius: 7px; border: 1px solid var(--erp-border); vertical-align: middle; }
+.erp-v2 .erp-dept-kpis { margin-block-end: 2px; }
+
+/* ── سجل المؤشرات الموحّد — لغة واحدة لكل شاشات V2 (2026-10-26) ──────────
+   الكتلة كانت محصورة في الداشبورد والموجز داخل طبقة الهوية؛ صارت هنا بيت
+   المكوّنات على المحدد العام: سجل مرقّم 01…NN بخلايا مفصولة بخطوط شعرية،
+   لا بطاقات متفرقة. اللهجات القديمة (chip بظل وخلفية في erp-dashboard،
+   أعمدة 3/4 في hr/ops/sales، أيقونات ملوّنة في cash) حُذفت من ملفاتها.
+   القواعد منقولة حرفيًا من الوصفة المقاسة في طبقة الهوية — بلا إعادة تصميم. */
+.erp-v2 .erp-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 var(--erp-space-4);
+  padding: 0;
+  list-style: none;
+  counter-reset: karim-kpi;
+}
+.erp-v2 .erp-kpi {
+  counter-increment: karim-kpi;
+  position: relative;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-4) var(--erp-space-5);
+  border: 0;
+  border-inline-start: 1px solid var(--erp-border);
+  border-block-end: 1px solid var(--erp-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 0; }
+.erp-v2 .erp-kpi:nth-last-child(-n+3) { border-block-end: 0; }
+.erp-v2 .erp-kpi::after {
+  content: "0" counter(karim-kpi);
+  position: absolute;
+  inset-block-start: 14px;
+  inset-inline-end: 16px;
+  color: var(--erp-text-faint);
+  font-family: var(--erp-font-num);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+}
+.erp-v2 .erp-kpi__top { display: flex; align-items: center; gap: var(--erp-space-2); padding-inline-end: 22px; }
+.erp-v2 .erp-kpi__icon {
+  inline-size: 30px;
+  block-size: 30px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px 9px 3px 9px;
+  background: transparent;
+  color: var(--erp-c-forest);
+  box-shadow: inset 0 0 0 1px var(--erp-border-strong);
+}
+.erp-v2 .erp-kpi__icon .ji { font-size: var(--erp-icon-md); }
+[data-theme="dark"] .erp-v2 .erp-kpi__icon { color: var(--erp-brass-bright); }
+.erp-v2 .erp-kpi__label {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-v2 .erp-kpi__value {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+  color: var(--erp-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--erp-leading-tight);
+}
+.erp-v2 .erp-kpi__unit { font-size: var(--erp-text-sm); color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
+.erp-v2 .erp-kpi__foot { display: flex; align-items: center; gap: var(--erp-space-2); flex-wrap: wrap; min-block-size: 26px; }
+.erp-v2 .erp-kpi__foot > * { min-width: 0; }
+.erp-v2 .erp-kpi__hint { font-size: var(--erp-text-xs); color: var(--erp-text-faint); }
+.erp-v2 .erp-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: var(--erp-radius-full);
+  line-height: 1.6;
+}
+.erp-v2 .erp-delta .ji { font-size: 12px; }
+.erp-v2 .erp-delta--up { background: var(--erp-success-soft); color: var(--erp-success-text); }
+.erp-v2 .erp-delta--down { background: var(--erp-danger-soft); color: var(--erp-danger-text); }
+.erp-v2 .erp-delta--flat { background: var(--erp-neutral-soft); color: var(--erp-neutral-text); }
+
+/* ستة أعمدة تحتاج 1680px لا 1360: عند 1440 يقيس العمود 176px فيبقى 76px
+   لاسم الخلية، والوسم الإنجليزي («TODAY'S SALES» 109px) يُقصّ في منتصف
+   الحرف. بين 1360 و1679 يبقى السجل 3×2 كما يتّسع الاسم كاملًا. */
+@media (min-width: 1680px) {
+  .erp-v2 .erp-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .erp-v2 .erp-kpi { border-block-end: 0; }
+  .erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:first-child { border-inline-start: 0; }
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-kpi {
+    padding: var(--erp-space-4) var(--erp-space-3);
+    border-inline-start: 1px solid var(--erp-border);
+    border-block-end: 1px solid var(--erp-border);
+  }
+  .erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:nth-child(2n) { border-inline-start: 0; }
+  .erp-v2 .erp-kpi:nth-last-child(-n+3) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:nth-last-child(-n+2) { border-block-end: 0; }
+  .erp-v2 .erp-kpi::after { inset-inline-end: 10px; inset-block-start: 10px; }
+  .erp-v2 .erp-kpi__top { padding-inline-end: 18px; }
+  .erp-v2 .erp-kpi__icon { inline-size: 26px; block-size: 26px; }
+  .erp-v2 .erp-kpi__value { font-size: 25px; }
+  .erp-v2 .erp-kpi__label .erp-eyebrow { display: none; }
+  .erp-v2 .erp-kpi__label { white-space: normal; line-height: 1.35; }
+  .erp-v2 .erp-kpi__hint { display: none; }
+}
+@media (max-width: 380px) {
+  .erp-v2 .erp-kpis { grid-template-columns: minmax(0, 1fr); }
+  .erp-v2 .erp-kpi,
+  .erp-v2 .erp-kpi:nth-child(2n) { border-inline-start: 0; }
+  .erp-v2 .erp-kpi:nth-last-child(-n+2) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:last-child { border-block-end: 0; }
+}
+
+/* ترويسة طباعة السجل: مخفية على الشاشة — الشعار الرسمي يرفعه beforeprint
+   (core/print-branding.js) على مستوى الصفحة، فهذه تحمل هوية التقرير فقط. */
+.erp-v2 .erp-print-head { display: none; }
+@media print {
+  .erp-v2 .erp-print-head { display: block; text-align: center; margin: 0 0 10px; }
+  .erp-v2 .erp-print-head__title { font-size: 16px; font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); }
+  .erp-v2 .erp-print-head__meta { font-size: 11px; color: var(--erp-text-secondary); margin-top: 2px; }
+}

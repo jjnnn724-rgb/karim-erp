@@ -1,0 +1,6 @@
+{
+  "_comment": "ميزانية المعالجات السطرية لكل ملف — لا تُرفع. أي زيادة تفشل CI. تُخفض مع كل دفعة تحويل إلى addEventListener.",
+  "totalHandlers": 0,
+  "totalInlineScripts": 0,
+  "files": {}
+}

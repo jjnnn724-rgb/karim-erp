@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مطاعم الشرفه العالمي — شاشة العرض</title>
+    <meta name="theme-color" content="#f6f2e9">
+    <link rel="icon" href="assets/karim-logo.ico">
+    <!-- 2026-10-15 (النسخة الفاتحة): قرار المالك — ألوان فاتحة احترافية وأداء أعلى
+         على شاشات TV الضعيفة. CSS واحد نحيف بلا هالات/blur/noise.
+         الرجوع الفوري: أعد ربط css/menu-board-bundle.css (النوار الفاخر، محفوظ). -->
+    <!-- 2026-10-15 (v1.1): الطابع الإسلامي — قبة ذهبية تحتضن الشعار، محاريب،
+         نقشة نجمة ثمانية ثابتة، ورواق أقواس — كلها SVG/CSS ثابت بلا فلاتر. -->
+    <link rel="preload" href="fonts/menu/tajawal-normal-400-arabic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/menu-fonts.css?v=1.0.0">
+    <link rel="stylesheet" href="css/menu-board-light.css?v=1.2.0">
+</head>
+<body>
+    <div id="letterbox">
+        <div id="stage" data-theme="emerald" data-background="noir">
+            <!-- ═══ شريط الحالة العلوي ═══ -->
+            <div class="status-bar">
+                <span id="connState" class="conn live">● مباشر</span>
+                <div class="status-brand">AL-SHORFA AL ALAMI · OPEN BUFFET</div>
+                <button id="languageToggle" class="language-toggle" type="button" aria-label="Switch to English">English</button>
+                <div class="status-clock">
+                    <span class="clock-time" id="clockTime">00:00</span>
+                    <span class="clock-date" id="clockDate">—</span>
+                </div>
+            </div>
+
+            <!-- ═══ الترويسة — القبة الذهبية تحتضن الشعار (قبة + هلال، SVG ثابت) ═══ -->
+            <header class="mb-header">
+              <div class="arch">
+                <div class="mihrab">
+                  <svg class="mihrab-crown" viewBox="0 0 300 132" aria-hidden="true" focusable="false">
+                    <path d="M158 2a11 11 0 1 0 0 20 9 9 0 1 1 0-20Z" fill="#b45309"/>
+                    <path d="M150 22c0 12-12 16-22 22-32 16-56 36-60 76h164c-4-40-28-60-60-76-10-6-22-10-22-22Z" fill="#b45309" opacity=".92"/>
+                    <rect x="58" y="120" width="184" height="10" rx="5" fill="#92400e"/>
+                  </svg>
+                  <div class="crest brand-logo">
+                    <img src="assets/al-shurfa-logo.png" alt="شعار الشرفه العالمي" fetchpriority="high" decoding="async">
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <!-- ═══ شريط الفترات ═══ -->
+            <div class="period-strip">
+                <div class="period" data-period="breakfast">
+                    <span class="period-name">الفطار</span><span class="period-hours" id="hoursBreakfast">05:00 - 11:30</span>
+                </div>
+                <span class="period-sep">❖</span>
+                <div class="period" data-period="lunch">
+                    <span class="period-name">الغداء</span><span class="period-hours" id="hoursLunch">12:00 - 16:30</span>
+                </div>
+                <span class="period-sep">❖</span>
+                <div class="period" data-period="dinner">
+                    <span class="period-name">العشاء</span><span class="period-hours" id="hoursDinner">17:00 - 24:00</span>
+                </div>
+            </div>
+
+            <div class="gold-rule"></div>
+
+            <main id="pageHost">
+                <div class="page active empty">
+                    <div class="empty-note">جارٍ تحميل المنيو…</div>
+                </div>
+            </main>
+
+            <div class="page-dots" id="pageDots"></div>
+
+            <!-- ═══ التذييل: شريط إخباري متحرك ═══ -->
+            <footer class="mb-footer">
+                <div class="arcade" aria-hidden="true"></div>
+                <div class="ticker">
+                    <span class="ticker-star">✦</span>
+                    <div class="ticker-track">
+                        <div class="ticker-marquee">
+                            <span class="ticker-text" id="footerText">الأسعار شاملة الضريبة · نتشرف بخدمتكم</span>
+                            <span class="ticker-text" id="footerTextClone" aria-hidden="true">الأسعار شاملة الضريبة · نتشرف بخدمتكم</span>
+                        </div>
+                    </div>
+                    <span class="ticker-star">✦</span>
+                </div>
+                <div class="footer-meta">
+                    <span class="foot-brand">AL-SHORFA AL ALAMI RESTAURANTS</span>
+                    <span id="pageIndicator">1 / 1</span>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="js/menu-board.js?v=5.27.2"></script>
+</body>
+</html>

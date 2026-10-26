@@ -1,0 +1,109 @@
+/* ── P2-4 · شاشة حوكمة المخزن (سنوات مالية + رصيد افتتاحي + فحص نظام) ─────
+   ثلاث بطاقات مستقلة داخل صفحة واحدة. كل الجداول داخل erp-table__scroll،
+   والنماذج شبكة auto-fit تنهار إلى عمود واحد على الهاتف، والتفاصيل أصلية
+   <details> بلا معالج إضافي. كل القيم من رموز التصميم — لا hex ولا px
+   خارج نقطة كسر @media (لا تقبل متغيّرات CSS).
+   ملف مستقل عمدًا: اختبارات الموجات تقرأ ذيل erp-ops وتعدّه طبقتها. */
+
+.erp-v2-wgov .erp-wgov__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-wgov .erp-wgov__snap {
+  display: grid;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+}
+
+.erp-v2-wgov .erp-wgov__actions {
+  white-space: nowrap;
+}
+
+.erp-v2-wgov .erp-wgov__fiscal-form {
+  display: grid;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-wgov .erp-wgov__form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20ch, 100%), 1fr));
+  gap: var(--erp-space-3);
+}
+.erp-v2-wgov .erp-wgov__form-actions {
+  justify-content: flex-start;
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-wgov .erp-table__scroll {
+  max-block-size: 60vh;
+}
+
+.erp-v2-wgov details.erp-wgov__inv {
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+.erp-v2-wgov .erp-wgov__inv + .erp-wgov__inv {
+  margin-block-start: var(--erp-space-2);
+}
+.erp-v2-wgov .erp-wgov__inv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  cursor: pointer;
+}
+.erp-v2-wgov .erp-wgov__inv-title {
+  flex: 1 1 24ch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+}
+.erp-v2-wgov .erp-wgov__inv-body {
+  display: grid;
+  gap: var(--erp-space-2);
+  padding: 0 var(--erp-space-3) var(--erp-space-3);
+}
+.erp-v2-wgov .erp-wgov__inv .erp-table__scroll {
+  max-block-size: 50vh;
+}
+
+.erp-v2-wgov .erp-wgov__health-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-wgov .erp-wgov__health-banner[data-tone="success"] {
+  border-inline-start: var(--erp-space-1) solid var(--erp-success);
+  background: var(--erp-success-soft);
+}
+.erp-v2-wgov .erp-wgov__health-banner[data-tone="danger"] {
+  border-inline-start: var(--erp-space-1) solid var(--erp-danger);
+  background: var(--erp-danger-soft);
+}
+
+@media (max-width: 640px) {
+  .erp-v2-wgov .erp-card__head { flex-wrap: wrap; }
+  .erp-v2-wgov .erp-dash-head { flex-wrap: wrap; }
+  .erp-v2-wgov .erp-wgov__inv-head > * { flex: 1 1 auto; }
+  .erp-v2-wgov .erp-wgov__inv-title { flex: 1 1 100%; }
+  .erp-v2-wgov .erp-wgov__form-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .erp-v2-wgov .erp-wgov__form-actions .erp-btn { justify-content: center; }
+}
+@media (max-width: 380px) {
+  .erp-v2-wgov .erp-wgov__facts { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .erp-v2-wgov .erp-wgov__facts .erp-badge { justify-content: center; }
+}

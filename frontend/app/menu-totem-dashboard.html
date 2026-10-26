@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم شاشة المنيو — مطاعم الشرفة العالمي</title>
+    <meta name="theme-color" content="#04121c">
+    <link rel="icon" href="assets/karim-logo.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cinzel:wght@600;700&family=Outfit:wght@400;500;600;700&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/menu-totem-dashboard.css?v=2.4.0">
+</head>
+<body>
+
+<!-- ═══════ تسجيل الدخول ═══════ -->
+<div id="loginOverlay" class="login-overlay">
+    <form id="loginForm" class="login-card">
+        <div class="login-crest"><img src="assets/al-shurfa-logo.png" alt="شعار"></div>
+        <h1>لوحة تحكم شاشة المنيو</h1>
+        <p>MENU TOTEM CONTROL CENTER</p>
+        <label>اسم المستخدم<input id="username" type="text" autocomplete="username" required placeholder="admin"></label>
+        <label>كلمة المرور<input id="password" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
+        <p id="loginError" class="login-err hidden"></p>
+        <button id="loginBtn" type="submit" class="btn btn-gold wide">دخول</button>
+    </form>
+</div>
+
+<div id="app" class="locked">
+<div class="shell">
+
+    <!-- ═══════ الترويسة ═══════ -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="crest"><img src="assets/al-shurfa-logo.png" alt="شعار"></div>
+            <div class="brand-copy">
+                <h1>لوحة تحكم شاشة المنيو</h1>
+                <p>MENU TOTEM CONTROL CENTER</p>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <span id="connBadge" class="badge badge-off">● جارٍ الاتصال</span>
+            <div class="clock"><span id="clockTime">--:--</span><small id="clockDate">—</small></div>
+            <button id="logoutBtn" type="button" class="btn sm">خروج</button>
+        </div>
+    </header>
+
+    <!-- ═══════ تبويبات ═══════ -->
+    <nav class="tabs">
+        <button class="tab active" data-tab="screen">🖥️ الشاشة</button>
+        <button class="tab" data-tab="buffet">🍽️ البوفيه</button>
+        <button class="tab" data-tab="theme">🎨 المظهر</button>
+        <button class="tab" data-tab="schedule">⏱️ المواعيد</button>
+    </nav>
+
+    <!-- ═══════ مؤشرات ═══════ -->
+    <section class="kpis">
+        <div class="kpi"><span class="kpi-ic">🍽️</span><div><b id="kpiItems">—</b><small>صنف معروض</small></div></div>
+        <div class="kpi"><span class="kpi-ic">📂</span><div><b id="kpiCats">—</b><small>قسم</small></div></div>
+        <div class="kpi kpi-warn"><span class="kpi-ic">⚠️</span><div><b id="kpiSold">—</b><small>نفدت كميته</small></div></div>
+        <div class="kpi"><span class="kpi-ic">💰</span><div><b id="kpiPrice">—</b><small>سعر البوفيه (ر.س)</small></div></div>
+        <div class="kpi"><span class="kpi-ic">⏱️</span><div><b id="kpiPeriod" class="kpi-v good">—</b><small>الفترة الحالية</small></div></div>
+        <div class="kpi"><span class="kpi-ic">✨</span><div><b id="kpiMode" class="kpi-v">—</b><small>وضع العرض</small></div></div>
+    </section>
+
+    <div class="grid">
+
+        <!-- ════════ تبويب: الشاشة (محاكاة حقيقية 1080×1920) ════════ -->
+        <section id="pane-screen" class="pane active">
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>◉ محاكاة حقيقية للشاشة الطولية</h2>
+                    <span class="tag">1080 × 1920 · <i id="previewScale">—</i></span>
+                </div>
+                <div id="previewWrap" class="preview-wrap">
+                    <iframe id="previewFrame" src="/app/menu-board.html" title="محاكاة شاشة المنيو"></iframe>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn" id="btnRefreshPreview">↻ تحديث المعاينة</button>
+                    <button class="btn" id="btnFullscreen">🖥️ ملء الشاشة</button>
+                    <a class="btn btn-gold" href="/app/menu-board.html" target="_blank">⛶ فتح الشاشة الحقيقية</a>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head"><h2>⏱️ فترات الوجبات (تبديل تلقائي)</h2></div>
+                <p class="ed-hint">تحدّد مواعيد البداية في تبويب «المواعيد» — الشاشة تغيّر المنيو المعروض تلقائيًا حسب الساعة.</p>
+                <ul class="period-list" id="periodList">
+                    <li data-period="breakfast"><span class="dot dot-cyan"></span><b>الفطار</b></li>
+                    <li data-period="lunch"><span class="dot dot-amber"></span><b>الغداء</b></li>
+                    <li data-period="dinner"><span class="dot dot-emerald"></span><b>العشاء</b></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ════════ تبويب: البوفيه ════════ -->
+        <section id="pane-buffet" class="pane">
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🍽️ تقسيم أقسام البوفيه</h2>
+                    <button type="button" id="btnToggleBuffet" class="btn sm">تبديل تفعيل/إيقاف البوفيه</button>
+                </div>
+                <p class="ed-hint">الشكل المثالي: <b>2 شوربة</b> + <b>ركن شواء</b> (اسم يتغيّر يوميًا) + <b>10 أطباق رئيسية</b> + حلويات + قبليات + سلطات. الأقسام الفارغة تُخفى تلقائيًا من الشاشة.</p>
+                <div id="buffetEditor"></div>
+            </div>
+        </section>
+
+        <!-- ════════ تبويب: المظهر ════════ -->
+        <section id="pane-theme" class="pane">
+            <div class="panel">
+                <div class="panel-head"><h2>🎨 سميز — قوالب الخلفية</h2><span class="tag">BACKGROUND</span></div>
+                <p class="ed-hint">اختر قالب الخلفية — التبديل يظهر مباشرة بعد الحفظ.</p>
+                <div id="bgSwatches" class="swatches"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-head"><h2>💎 لون الشعار والتفاصيل</h2><span class="tag">ACCENT</span></div>
+                <div id="themeSwatches" class="swatches"></div>
+            </div>
+        </section>
+
+        <!-- ════════ تبويب: المواعيد ════════ -->
+        <section id="pane-schedule" class="pane">
+            <div class="panel">
+                <div class="panel-head"><h2>⏱️ مواعيد العرض التلقائي</h2><span class="tag">AUTO SWITCH</span></div>
+                <p class="ed-hint">وقت البداية لكل وجبة — عند دخول الوقت تُعرض الشاشة المنيو الخاصة بتلك الوجبة تلقائيًا دون أي تدخّل.</p>
+                <div class="meal-schedule-grid">
+                    <section class="meal-schedule">
+                        <h3>الإفطار <small>BREAKFAST</small></h3>
+                        <label>بداية العرض<input id="setBreakfastStart" type="time" step="60"></label>
+                        <label>قسم المنيو<select id="setBreakfastCategory"></select></label>
+                    </section>
+                    <section class="meal-schedule">
+                        <h3>الغداء <small>LUNCH</small></h3>
+                        <label>بداية العرض<input id="setLunchStart" type="time" step="60"></label>
+                        <label>قسم المنيو<select id="setLunchCategory"></select></label>
+                    </section>
+                    <section class="meal-schedule">
+                        <h3>العشاء <small>DINNER</small></h3>
+                        <label>بداية العرض<input id="setDinnerStart" type="time" step="60"></label>
+                        <label>قسم المنيو<select id="setDinnerCategory"></select></label>
+                    </section>
+                </div>
+                <div class="form-grid">
+                    <label>سعر البوفيه (ر.س)<input id="setBuffetPrice" type="number" min="0" step="0.5"></label>
+                    <label class="span2">اسم المطعم<input id="setTitle" type="text" maxlength="80"></label>
+                    <label class="span2">الاسم الفرعي / الشعار اللاتيني<input id="setSubtitle" type="text" maxlength="90"></label>
+                    <label class="span2">شريط الأخبار أسفل الشاشة<textarea id="setFooter" rows="2" maxlength="220"></textarea></label>
+                </div>
+                <p class="ed-hint schedule-hint">اختر قسم المنيو لكل وجبة، وحدد وقت بدايتها. عند الوصول إلى الوقت المحدد تتبدل الشاشة تلقائيًا، ويُعرض القسم المختار حتى موعد الوجبة التالية. اختيار «تلقائي حسب اسم القسم» يستخدم التصنيف المعروف من اسم القسم. في وضع البوفيه، تتغير الأطباق الرئيسية حسب اختيارات كل وجبة في تبويب «البوفيه».</p>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="foot">AL-SHURFA AL ALAMI · MENU TOTEM CONTROL CENTER</footer>
+</div>
+
+<!-- ═══════ شريط الحفظ والعرض الثابت ═══════ -->
+<div id="saveBar" class="save-bar">
+    <span class="save-note">● لديك تغييرات غير محفوظة</span>
+    <button id="btnSave" type="button" class="btn btn-gold">💾 حفظ وعرض على الشاشة</button>
+</div>
+
+<div id="toast" class="toast hide"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/menu-totem-dashboard.js?v=2.9.0"></script>
+</body>
+</html>

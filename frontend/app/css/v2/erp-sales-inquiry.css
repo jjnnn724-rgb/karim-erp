@@ -1,0 +1,197 @@
+/* ── استعلام المبيعات · Sales Inquiry ────────────────────────────────────
+   شاشة واحدة: مرشّحات فوق، مؤشرات الفترة، جدول أصناف، ثم لوحة فواتير
+   الصنف المختار وتفاصيل أي فاتورة مع الطباعة.
+
+   القيد كما في erp-cash.css: رموز --erp-* فقط — لا لونٌ خام ولا مقياسٌ
+   بالـ px/rem/em (المقاييس ch و% والرموز). الوضع الليلي والأبيض يُعاد
+   رسمهما من الرموز، والحركات CSS خالصة (لا JS). */
+
+.salesinq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+
+/* ── الرأس والفترات السريعة ───────────────────────────────────────────── */
+.salesinq__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.salesinq__title {
+  margin: 0;
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+
+.salesinq__sub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  max-inline-size: 78ch;
+}
+
+.salesinq__presets {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  flex-wrap: wrap;
+}
+
+.salesinq__presets .is-active {
+  background: var(--erp-brand-soft);
+  border-color: var(--erp-brand);
+  color: var(--erp-brand-text);
+}
+
+/* ── المرشّحات ────────────────────────────────────────────────────────── */
+.salesinq__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.salesinq__search {
+  position: relative;
+  flex: 1 1 26ch;
+  min-inline-size: 20ch;
+  max-inline-size: 44ch;
+}
+
+.salesinq__search .erp-input {
+  inline-size: 100%;
+}
+
+/* اقتراحاتٌ تنزل تحت الحقل — الطبقة من سلّم الرموز لا رقمًا مخترعًا */
+.salesinq__suggest {
+  position: absolute;
+  inset-block-start: calc(100% + var(--erp-space-1));
+  inset-inline: 0;
+  z-index: var(--erp-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-0);
+  padding: var(--erp-space-1);
+  max-block-size: 42vh;
+  overflow-y: auto;
+  border: thin solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  box-shadow: var(--erp-shadow-lg);
+}
+
+.salesinq__suggest[hidden] {
+  display: none;
+}
+
+.salesinq__suggest-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 0;
+  border-radius: var(--erp-radius-sm);
+  background: transparent;
+  color: var(--erp-text-primary);
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.salesinq__suggest-row:hover,
+.salesinq__suggest-row:focus-visible {
+  background: var(--erp-surface-hover);
+  outline: none;
+}
+
+.salesinq__suggest-name {
+  font-weight: var(--erp-fw-medium);
+  min-inline-size: 0;
+}
+
+.salesinq__suggest-meta {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  white-space: nowrap;
+}
+
+.salesinq__suggest-empty {
+  padding: var(--erp-space-2) var(--erp-space-3);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+}
+
+/* ── لوحة فواتير الصنف ────────────────────────────────────────────────── */
+.salesinq__panel {
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+}
+
+.salesinq__panel[hidden] {
+  display: none;
+}
+
+.salesinq__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+
+.salesinq__more {
+  display: flex;
+  justify-content: center;
+}
+
+.salesinq__more[hidden] {
+  display: none;
+}
+
+/* اسم الصنف في الجدول: زرٌّ رابط بلا زخرفة — النقر يفتح فواتيره */
+.salesinq__name {
+  text-align: start;
+}
+
+/* kinahabogang أفقي لجدول التفاصيل على الشاشات الضيقة */
+.salesinq__scroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+
+.salesinq__start {
+  text-align: start;
+}
+
+.salesinq__detail {
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+}
+
+/* ── الطباعة: الشاشة ورقةٌ نظيفة، والأدوات تختفي ──────────────────────── */
+@media print {
+  .salesinq__head,
+  .salesinq__filters,
+  .salesinq__presets {
+    display: none;
+  }
+
+  .salesinq__suggest {
+    display: none;
+  }
+
+  .salesinq {
+    gap: var(--erp-space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .salesinq__panel,
+  .salesinq__detail {
+    animation: none;
+  }
+}

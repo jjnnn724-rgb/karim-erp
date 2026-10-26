@@ -1,0 +1,232 @@
+/* erp-ai.css — لوحة المساعد (V2)
+   ══════════════════════════════════════════════════════════════════════
+   لوحة مساعدة على جنب الشاشة (start في RTL = اليمين)، لا تغطي المحتوى
+   ولا تسدّده. كل قيمة رمزٌ من --erp-* (بلا hex ولا px خام) كما تنصّ
+   طبقة الموجة — التباين والحركة من التوكنات نفسها.
+   ────────────────────────────────────────────────────────────────────── */
+
+.erp-ai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-drawer);
+  background: var(--erp-scrim);
+  display: flex;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.erp-ai {
+  inline-size: min(100%, 46ch);
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4);
+  background: var(--erp-surface);
+  border-inline-end: thin solid var(--erp-border);
+  box-shadow: var(--erp-shadow-xl);
+}
+
+.erp-ai__head {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.erp-ai__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  font-weight: var(--erp-fw-semibold);
+  font-size: var(--erp-text-lg);
+  color: var(--erp-text-primary);
+  margin-inline-end: auto;
+}
+
+.erp-ai__badge {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-brand-text);
+  background: var(--erp-brand-soft);
+  border-radius: var(--erp-radius-full);
+  padding-inline: var(--erp-space-2);
+  padding-block: var(--erp-space-1);
+  white-space: nowrap;
+}
+
+.erp-ai__modes {
+  display: flex;
+  gap: var(--erp-space-1);
+  background: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-md);
+  padding: var(--erp-space-1);
+}
+
+.erp-ai__mode {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-1);
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--erp-radius-sm);
+  padding-block: var(--erp-space-2);
+  cursor: pointer;
+  min-block-size: var(--erp-control-md);
+}
+
+.erp-ai__mode.is-active {
+  background: var(--erp-surface);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-medium);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.erp-ai__ctx {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.erp-ai__drafts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+
+.erp-ai__deep {
+  align-self: flex-start;
+  margin-block-start: var(--erp-space-1);
+}
+
+.erp-ai__draft-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-1);
+  padding-bottom: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+}
+
+.erp-ai__draft-form .erp-input {
+  min-inline-size: 6ch;
+  flex: 1 1 6ch;
+}
+
+.erp-ai__drafts-title {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.erp-ai__draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  background: var(--erp-warning-soft);
+  border: thin solid var(--erp-warning);
+  border-radius: var(--erp-radius-md);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.erp-ai__draft-label {
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-ai__draft-note {
+  color: var(--erp-text-secondary);
+}
+
+.erp-ai__draft-actions {
+  margin-inline-start: auto;
+  display: inline-flex;
+  gap: var(--erp-space-1);
+}
+
+.erp-ai__log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2);
+  background: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-md);
+}
+
+.erp-ai__msg {
+  margin: 0;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  font-size: var(--erp-text-sm);
+  line-height: var(--erp-leading-base);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.erp-ai__msg--me {
+  background: var(--erp-brand-soft);
+  color: var(--erp-text-primary);
+  align-self: flex-end;
+  max-inline-size: 90%;
+}
+
+.erp-ai__msg--bot {
+  background: var(--erp-surface);
+  color: var(--erp-text-primary);
+  border: thin solid var(--erp-border-subtle);
+  align-self: flex-start;
+  max-inline-size: 100%;
+}
+
+.erp-ai__msg--fallback {
+  border-inline-start: var(--erp-space-1) solid var(--erp-warning);
+}
+
+.erp-ai__files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+
+.erp-ai__files-label {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.erp-ai__form {
+  display: flex;
+  gap: var(--erp-space-2);
+  align-items: flex-end;
+}
+
+.erp-ai__input {
+  flex: 1;
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+  background: var(--erp-surface);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  padding: var(--erp-space-2);
+  min-block-size: var(--erp-control-lg);
+  resize: vertical;
+}
+
+/* على الشاشات الضيّقة: اللوحة تملأ العرض، والزرّ يبقى في المتناول. */
+@media (max-width: 640px) {
+  .erp-ai {
+    inline-size: 100%;
+    border-inline-end: 0;
+  }
+
+  .erp-ai__mode {
+    flex-direction: column;
+    gap: var(--erp-space-0);
+  }
+}

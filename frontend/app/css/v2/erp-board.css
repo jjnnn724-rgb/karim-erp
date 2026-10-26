@@ -1,0 +1,306 @@
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+   V2 — Menu board · لوحة المنيو V2 (البند ٨) — التصميم الفني المتقن
+   ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+   قرار المالك: «عايز صفحه المنيو عايزها تحفه فنية وتعمل علي كل الشاشات الطوليه».
+   Screen-shape is the whole problem here, so the design rule is:
+
+   Legacy  : one fixed 1080×1920 canvas + transform: scale(min(w/1080,h/1920)).
+            أي شاشة غيرها = أعمدة ميتة يمينًا/يسفلًا وخطٌّ يصغر مع المقياس.
+   This file: لا كانفس ثابت ولا مقياس. الجذر container-type:size وكل قياس
+            مُشتقّ من cqmin (≈ ١٪ من عرض الشاشة الطولية). الشاشة تمتلئ دائمًا،
+            والخط يبقى على مقاسه النسبي مهما كانت نسبة الأبعاد.
+
+   Four portrait bands via [data-ar] — aspect = height/width:
+     wide    < 1.50  (768×1024، 1080×1440 — شاشات التلفاز القديمة)
+     classic 1.50–1.89 (1080×1920 — الوضع الأصلي)
+     tall    1.90–2.14 (1080×2160 — 9:18)
+     super   ≥ 2.15  (1080×2400، توتems المول)
+
+   Performance (owner: «عايز السستم سريع جدا») — نفس عهد النسخة الفاتحة:
+   لا blur، لا backdrop-filter، لا هالات متحركة، لا noise. الحركة transform/
+   opacity فقط وتُنطفئ مع prefers-reduced-motion. النقوش SVG ثابتة تُرسَم مرة.
+   ══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* الخطوط: نفس ملفات اللوحة القديمة (ملفات المستودع، font-display:swap —
+   لو غاب ملفٌ رُسم النظامُ ولا تنكسر الشاشة). لا Google Fonts: شاشة المنيو
+   تعمل في مول بلا إنترنت خارجي، ولا طلب طرف ثالث في مسار العرض. */
+@font-face { font-family: 'Tajawal'; font-style: normal; font-weight: 400; font-display: swap; src: url(../../fonts/menu/tajawal-normal-400-arabic.woff2) format('woff2'); }
+@font-face { font-family: 'Tajawal'; font-style: normal; font-weight: 700; font-display: swap; src: url(../../fonts/menu/tajawal-normal-700-arabic.woff2) format('woff2'); }
+@font-face { font-family: 'Tajawal'; font-style: normal; font-weight: 800; font-display: swap; src: url(../../fonts/menu/tajawal-normal-800-arabic.woff2) format('woff2'); }
+@font-face { font-family: 'Tajawal'; font-style: normal; font-weight: 900; font-display: swap; src: url(../../fonts/menu/tajawal-normal-900-arabic.woff2) format('woff2'); }
+@font-face { font-family: 'Amiri'; font-style: normal; font-weight: 700; font-display: swap; src: url(../../fonts/menu/amiri-normal-700-arabic.woff2) format('woff2'); }
+@font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 700; font-display: swap; src: url(../../fonts/menu/cinzel-normal-700-latin.woff2) format('woff2'); }
+
+:root {
+  --kb-paper:   #f7f3ea;
+  --kb-paper-2: #efe7d8;
+  --kb-card:    #fffdf8;
+  --kb-ink:     #171310;
+  --kb-ink-2:   #4d4640;
+  --kb-muted:   #97907f;
+  --kb-line:    #e3dac6;
+  --kb-gold:    #a8690c;
+  --kb-gold-hi: #d9a441;
+  --kb-gold-deep:#7a4708;
+  --kb-gold-wash: rgba(168, 105, 12, .07);
+  --kb-green:   #0b6b4f;
+  --kb-red:     #a32717;
+  --kb-u: 1cqmin;
+  --kb-radius: calc(var(--kb-u) * 1.9);
+  --kb-pad: calc(var(--kb-u) * 4.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--kb-paper); }
+body { font-family: 'Tajawal', 'Segoe UI', system-ui, sans-serif; color: var(--kb-ink); -webkit-font-smoothing: antialiased; }
+
+/* ── الجذر: يُعرِّف حاوية الاستعلام ثم يملأ الشاشة كاملة — لا حروف جانبية ──
+   Flex column لا Grid: بقوائم الصفوف الموقعية، أي عنصر زائد في الـHTML يسرق
+   صف الـ1fr ويُنزل المسرح إلى بضعة صفوف — وقد حدث. العمود المرن يعطي
+   المساحة الباقية لمن يطلبها (‎#kbStage‎) مهما بلغ عدد الأشرطة. */
+#board {
+  container-type: size;
+  container-name: board;
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  gap: calc(var(--kb-u) * 1.4);
+  padding: calc(var(--kb-pad) * .7) var(--kb-pad) var(--kb-pad);
+  background: var(--kb-paper);
+  overflow: hidden;
+}
+
+/* ── إطار الصفحة مع زخارف إسلامية في الزوايا والحواف (خلف كل المحتوى) ─── */
+.kb-frame { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.kb-corner { position: absolute; width: 200px; height: 200px; background-size: contain; background-repeat: no-repeat; z-index: 1; }
+.kb-corner--tl { top: 0; left: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cpath d='M0 0 Q100 0 100 100 T0 200 H0 Z' fill='none' stroke='%23a8690c' stroke-opacity='.13' stroke-width='2.5'/%3E%3Cpath d='M50 50 Q100 50 100 100 T50 150 Z' fill='none' stroke='%23a8690c' stroke-opacity='.06' stroke-width='1.5'/%3E%3Ccircle cx='100' cy='100' r='18' fill='none' stroke='%23a8690c' stroke-opacity='.05' stroke-width='1'/%3E%3C/svg%3E"); }
+.kb-corner--tr { top: 0; right: 0; transform: scaleX(-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cpath d='M0 0 Q100 0 100 100 T0 200 H0 Z' fill='none' stroke='%23a8690c' stroke-opacity='.13' stroke-width='2.5'/%3E%3Cpath d='M50 50 Q100 50 100 100 T50 150 Z' fill='none' stroke='%23a8690c' stroke-opacity='.06' stroke-width='1.5'/%3E%3Ccircle cx='100' cy='100' r='18' fill='none' stroke='%23a8690c' stroke-opacity='.05' stroke-width='1'/%3E%3C/svg%3E"); }
+.kb-corner--bl { bottom: 0; left: 0; transform: scaleY(-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cpath d='M0 0 Q100 0 100 100 T0 200 H0 Z' fill='none' stroke='%23a8690c' stroke-opacity='.13' stroke-width='2.5'/%3E%3Cpath d='M50 50 Q100 50 100 100 T50 150 Z' fill='none' stroke='%23a8690c' stroke-opacity='.06' stroke-width='1.5'/%3E%3Ccircle cx='100' cy='100' r='18' fill='none' stroke='%23a8690c' stroke-opacity='.05' stroke-width='1'/%3E%3C/svg%3E"); }
+.kb-corner--br { bottom: 0; right: 0; transform: scale(-1,-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cpath d='M0 0 Q100 0 100 100 T0 200 H0 Z' fill='none' stroke='%23a8690c' stroke-opacity='.13' stroke-width='2.5'/%3E%3Cpath d='M50 50 Q100 50 100 100 T50 150 Z' fill='none' stroke='%23a8690c' stroke-opacity='.06' stroke-width='1.5'/%3E%3Ccircle cx='100' cy='100' r='18' fill='none' stroke='%23a8690c' stroke-opacity='.05' stroke-width='1'/%3E%3C/svg%3E"); }
+.kb-border-top { position: absolute; top: 0; left: 0; right: 0; height: 28px; background: repeat-x center / auto 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='28' viewBox='0 0 60 28'%3E%3Cpath d='M0 28 Q30 0 60 28' fill='none' stroke='%23a8690c' stroke-opacity='.10' stroke-width='2'/%3E%3C/svg%3E"); z-index: 1; }
+.kb-border-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 28px; background: repeat-x center / auto 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='28' viewBox='0 0 60 28'%3E%3Cpath d='M0 0 Q30 28 60 0' fill='none' stroke='%23a8690c' stroke-opacity='.10' stroke-width='2'/%3E%3C/svg%3E"); z-index: 1; }
+
+/* المحتوى يعلو زخارف الإطار */
+.kb-top, .kb-header-wrap, .kb-periods, .kb-rule, #kbStage, .kb-progress, .kb-footer { position: relative; z-index: 2; }
+
+/* ── شريط الحالة ───────────────────────────────────────────────────── */
+.kb-top { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--kb-u) * 2); font-size: max(12px, calc(var(--kb-u) * 1.9)); letter-spacing: calc(var(--kb-u) * .12); color: var(--kb-ink-2); }
+.kb-conn { font-weight: 800; }
+.kb-conn.is-live { color: var(--kb-green); }
+.kb-conn.is-off  { color: var(--kb-red); }
+.kb-brandline { flex: 1 1 auto; text-align: center; color: var(--kb-muted); font-weight: 700; letter-spacing: calc(var(--kb-u) * .35); text-transform: uppercase; }
+.kb-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
+.kb-time { font-size: max(15px, calc(var(--kb-u) * 3)); font-weight: 800; color: var(--kb-ink); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.kb-date { font-size: max(11px, calc(var(--kb-u) * 1.7)); color: var(--kb-muted); }
+.kb-lang { font: inherit; font-weight: 800; cursor: pointer; color: var(--kb-gold-deep); background: var(--kb-gold-wash); border: 1px solid var(--kb-line); border-radius: 999px; padding: calc(var(--kb-u) * .55) calc(var(--kb-u) * 1.9); }
+
+/* ── الترويسة: قبة ذهبية تحتضن الشعار واسم المطعم باللغتين ─────────── */
+.kb-header-wrap { display: flex; justify-content: center; padding: calc(var(--kb-u) * .4) 0 calc(var(--kb-u) * .3); }
+.kb-mihrab {
+  position: relative;
+  display: grid; justify-items: center; align-content: center;
+  gap: calc(var(--kb-u) * .8);
+  padding: calc(var(--kb-u) * 4.2) calc(var(--kb-u) * 9) calc(var(--kb-u) * 3.2);
+  border: calc(var(--kb-u) * .34) solid var(--kb-gold-hi);
+  border-radius: 50% 50% var(--kb-radius) var(--kb-radius) / 45% 45% var(--kb-radius) var(--kb-radius);
+  background: radial-gradient(circle at 50% 0%, rgba(217,164,65,.28), rgba(217,164,65,.06) 52%, var(--kb-card));
+  box-shadow: 0 calc(var(--kb-u) * .8) calc(var(--kb-u) * 3) rgba(0,0,0,.08), inset 0 0 calc(var(--kb-u) * 2) rgba(168,105,12,.12);
+}
+.kb-finial { position: absolute; top: calc(var(--kb-u) * -2.6); left: 50%; transform: translateX(-50%); width: calc(var(--kb-u) * 5.6); height: auto; color: var(--kb-gold); filter: drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+.kb-logo { width: calc(var(--kb-u) * 23); height: auto; display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
+.kb-brand { text-align: center; line-height: 1.3; }
+.kb-title { margin: 0; font-family: 'Amiri','Tajawal',serif; font-size: max(23px, calc(var(--kb-u) * 5.4)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .12); color: var(--kb-ink); }
+.kb-subtitle { margin: 0; font-family: 'Cinzel','Outfit',sans-serif; font-size: max(12px, calc(var(--kb-u) * 2.4)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .5); text-transform: uppercase; color: var(--kb-gold-deep); }
+
+/* ── شريط اليوم والفترة ───────────────────────────────────────────── */
+.kb-periods { display: flex; align-items: center; justify-content: center; gap: calc(var(--kb-u) * 1.2); flex-wrap: nowrap; }
+.kb-day-group { display: flex; flex-direction: column; align-items: center; gap: calc(var(--kb-u) * .15); }
+.kb-day { font-family: 'Cinzel','Outfit',sans-serif; font-size: max(15px, calc(var(--kb-u) * 3.2)); font-weight: 800; letter-spacing: calc(var(--kb-u) * .7); text-transform: uppercase; color: var(--kb-gold-deep); }
+.kb-day-en { font-family: 'Cinzel','Outfit',sans-serif; font-size: max(10px, calc(var(--kb-u) * 2)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .5); text-transform: uppercase; color: var(--kb-muted); }
+.kb-sep { color: var(--kb-gold-hi); font-size: max(10px, calc(var(--kb-u) * 1.8)); }
+.kb-chip { display: flex; align-items: baseline; gap: calc(var(--kb-u) * .9); padding: calc(var(--kb-u) * .9) calc(var(--kb-u) * 2.4); border: 1px solid var(--kb-line); border-radius: 999px; background: var(--kb-card); transition: background-color .3s ease, border-color .3s ease; }
+.kb-chip-name { font-size: max(14px, calc(var(--kb-u) * 2.8)); font-weight: 800; color: var(--kb-ink-2); }
+.kb-chip-name small { display: block; font-size: max(9px, calc(var(--kb-u) * 1.4)); font-weight: 700; color: var(--kb-muted); letter-spacing: calc(var(--kb-u) * .1); }
+.kb-chip-hours { font-size: max(11px, calc(var(--kb-u) * 2)); color: var(--kb-muted); font-variant-numeric: tabular-nums; }
+.kb-chip.is-current { border-color: var(--kb-gold); background: var(--kb-gold-wash); }
+.kb-chip.is-current .kb-chip-name { color: var(--kb-gold-deep); }
+.kb-chip.is-current .kb-chip-name small { color: var(--kb-gold); }
+.kb-chip.is-current .kb-chip-hours { color: var(--kb-gold); }
+
+/* ── فاصل ذهبي ─────────────────────────────────────────────────────── */
+.kb-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--kb-gold-hi) 20%, var(--kb-gold-hi) 80%, transparent); position: relative; }
+.kb-rule::after { content: "◆"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--kb-gold); font-size: max(9px, calc(var(--kb-u) * 1.5)); background: var(--kb-paper); padding: 0 calc(var(--kb-u) * .8); }
+
+/* ── منطقة الصفحات (ترسمها boot.js ديناميكيًا) ─────────────────────── */
+#kbStage { position: relative; min-height: 0; flex: 1 1 auto; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }
+.kb-page { grid-area: 1 / 1; display: none; flex-direction: column; min-height: 0; gap: calc(var(--kb-u) * 1.6); }
+.kb-page.is-active { display: flex; animation: kb-page-in .5s ease both; }
+.kb-measure { position: absolute; inset: 0; visibility: hidden; pointer-events: none; display: flex; }
+.kb-measure, .kb-measure * { animation: none !important; }
+.kb-quiet .kb-page.is-active, .kb-quiet .kb-item, .kb-quiet .kb-panel, .kb-quiet .kb-row { animation: none !important; }
+@keyframes kb-page-in { from { opacity: 0; transform: translateY(calc(var(--kb-u) * 1.1)); } to { opacity: 1; transform: none; } }
+
+/* رؤوس التصنيفات: EN كبير + AR أصغر إلى اليمين */
+.kb-cathead { text-align: center; }
+.kb-cattitle { font-family: 'Cinzel','Outfit',sans-serif; font-size: max(19px, calc(var(--kb-u) * 5)); font-weight: 800; line-height: 1.2; color: var(--kb-gold-deep); letter-spacing: calc(var(--kb-u) * .1); }
+.kb-catlatin { font-family: 'Amiri','Tajawal',serif; font-size: max(12px, calc(var(--kb-u) * 2.6)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .3); color: var(--kb-gold); margin-top: calc(var(--kb-u) * .5); }
+.kb-catnote { font-size: max(12px, calc(var(--kb-u) * 2.2)); color: var(--kb-ink-2); margin-top: calc(var(--kb-u) * .6); }
+
+.kb-ribbon { display: inline-flex; align-items: center; gap: calc(var(--kb-u) * .8); margin-top: calc(var(--kb-u) * .9); padding: calc(var(--kb-u) * .5) calc(var(--kb-u) * 2); border-radius: 999px; background: var(--kb-green); color: #fff; font-size: max(11px, calc(var(--kb-u) * 2)); font-weight: 800; }
+.kb-ribbon.is-hidden { display: none; }
+.kb-ribbon::before { content: ""; width: calc(var(--kb-u) * .7); height: calc(var(--kb-u) * .7); border-radius: 50%; background: #fff; }
+
+/* شبكة الأصناف: --cols/--rows تضعها الجافاسكربت من القياس الفعلي للشاشة */
+.kb-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 3), minmax(0, 1fr)); gap: calc(var(--kb-u) * 1.5); }
+.kb-item { position: relative; display: flex; align-items: center; gap: calc(var(--kb-u) * 1.4); min-width: 0; padding: calc(var(--kb-u) * 1.4) calc(var(--kb-u) * 1.8); background: var(--kb-card); border: 1px solid var(--kb-line); border-radius: var(--kb-radius); animation: kb-item-in .45s ease both; animation-delay: calc(var(--i, 0) * 45ms); }
+.kb-item::before {
+  content: ""; position: absolute; top: calc(var(--kb-u) * .7); left: 50%; transform: translateX(-50%);
+  width: calc(var(--kb-u) * 3.4); height: calc(var(--kb-u) * 1.6);
+  border: 1px solid var(--kb-gold-hi); border-bottom: none;
+  border-radius: 100% 100% 0 0 / 160% 160% 0 0; opacity: .5;
+}
+@keyframes kb-item-in { from { opacity: 0; transform: translateY(calc(var(--kb-u) * .7)); } to { opacity: 1; transform: none; } }
+.kb-num {
+  flex: none; display: grid; place-items: center;
+  width: calc(var(--kb-u) * 4.4); height: calc(var(--kb-u) * 4.4);
+  border-radius: 50%;
+  background: var(--kb-gold-wash); color: var(--kb-gold-deep);
+  font-size: max(10px, calc(var(--kb-u) * 2)); font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.kb-thumb { flex: none; width: calc(var(--kb-u) * 7.6); height: calc(var(--kb-u) * 7.6); border-radius: calc(var(--kb-u) * 1.2); object-fit: cover; background: var(--kb-paper-2); }
+.kb-copy { display: flex; flex-direction: column; gap: calc(var(--kb-u) * .25); min-width: 0; }
+.kb-name { font-size: max(14px, calc(var(--kb-u) * 3.1)); font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; color: var(--kb-ink); }
+.kb-name2 { font-family: 'Amiri','Tajawal',serif; font-size: max(11px, calc(var(--kb-u) * 2.3)); font-weight: 700; color: var(--kb-gold-deep); overflow-wrap: anywhere; text-align: right; }
+.kb-price { margin-inline-start: auto; flex: none; font-size: max(12px, calc(var(--kb-u) * 2.4)); font-weight: 900; color: var(--kb-gold-deep); font-variant-numeric: tabular-nums; }
+.kb-item.is-sold { opacity: .55; }
+.kb-item.is-sold .kb-name { text-decoration: line-through; text-decoration-color: var(--kb-red); text-decoration-thickness: 2px; }
+.kb-sold { font-size: max(10px, calc(var(--kb-u) * 1.7)); font-weight: 800; color: var(--kb-red); }
+
+/* ── البوفيه: صفحة واحدة ثابتة التكوين (المالك: «كل اللي قولتلك عليه في صفحة واحدة»)
+   الشوربتان وركن الشواء صفٌّ ← الأطباق العشرة عمودان ← الجملتان الثابتتان ←
+   شريط السعر. لا قصَّ ولا تدوير ولا حذف صنف: ما لا يدخل يصغُر بمقياسٍ محلي.
+   ‎--kb-u‎ يعيد التعريف داخل الصفحة وحدها — فالحروف والحشوات والألواح كلُّها
+   مشتقّة منه تصغر معه، وتبقى أرضيّات ‎max(px,…)‎ حاجزًا دون مقروئية الشاشة. ── */
+.kb-bf { --kb-u: calc(1cqmin * var(--bf-scale, 1)); gap: calc(var(--kb-u) * 1.1); }
+.kb-bfhead { flex: none; display: flex; align-items: baseline; justify-content: center; gap: calc(var(--kb-u) * 1.4); text-align: center; }
+.kb-bfhead-title { font-size: max(16px, calc(var(--kb-u) * 3.8)); font-weight: 900; }
+.kb-bfhead-period { font-family: 'Cinzel', 'Outfit', serif; font-size: max(11px, calc(var(--kb-u) * 2.1)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .35); text-transform: uppercase; color: var(--kb-gold); }
+.kb-bf-cols { flex: none; display: grid; gap: calc(var(--kb-u) * 1.2); grid-template-columns: repeat(var(--bf-cols, 2), minmax(0, 1fr)); }
+.kb-bf .kb-panel--mains { flex: 1 1 auto; min-height: 0; }
+.kb-bf-lines { flex: none; display: grid; gap: calc(var(--kb-u) * 1); grid-template-columns: repeat(var(--bf-lines, 2), minmax(0, 1fr)); }
+.kb-bf-line {
+  display: flex; align-items: center; justify-content: center; min-width: 0; text-align: center;
+  padding: calc(var(--kb-u) * 1) calc(var(--kb-u) * 1.2);
+  border: 1px dashed var(--kb-gold-hi); border-radius: var(--kb-radius);
+  background: var(--kb-gold-wash); color: var(--kb-gold-deep);
+  font-size: max(12px, calc(var(--kb-u) * 2.4)); font-weight: 800; line-height: 1.25;
+}
+.kb-grid--bf { gap: calc(var(--kb-u) * .5) calc(var(--kb-u) * 2.2); }
+.kb-grid--bf .kb-row { align-self: center; }
+.kb-bf-cols .kb-panel-body { align-content: center; }
+.kb-bf-cols .kb-carve { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.kb-bf-probe { align-items: flex-start; }
+.kb-bf-probe > .kb-page { display: flex; }
+
+.kb-panel { display: flex; flex-direction: column; min-height: 0; gap: calc(var(--kb-u) * 1);
+  padding: calc(var(--kb-u) * 1.6) calc(var(--kb-u) * 2);
+  background: var(--kb-card); border: 1px solid var(--kb-line); border-radius: var(--kb-radius); }
+.kb-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--kb-u) * 1.2);
+  padding-bottom: calc(var(--kb-u) * .8); border-bottom: 1px solid var(--kb-line); }
+.kb-panel-title { font-size: max(13px, calc(var(--kb-u) * 2.8)); font-weight: 900; }
+.kb-panel-meta { font-family: 'Cinzel', 'Outfit', serif; font-size: max(9px, calc(var(--kb-u) * 1.6)); font-weight: 700; letter-spacing: calc(var(--kb-u) * .25); color: var(--kb-muted); text-transform: uppercase; white-space: nowrap; }
+.kb-panel-body { flex: 1 1 auto; min-height: 0; display: grid; gap: calc(var(--kb-u) * .7); align-content: start; grid-auto-rows: min-content; }
+.kb-row { display: flex; align-items: baseline; gap: calc(var(--kb-u) * 1.1); min-width: 0; }
+.kb-row .kb-num { width: calc(var(--kb-u) * 3.4); height: calc(var(--kb-u) * 3.4); font-size: max(9px, calc(var(--kb-u) * 1.6)); align-self: center; }
+.kb-carve { padding: calc(var(--kb-u) * 1.4) calc(var(--kb-u) * 2); background: var(--kb-gold-wash); border: 1px solid var(--kb-gold-hi); border-radius: var(--kb-radius); }
+.kb-carve .kb-name { font-size: max(15px, calc(var(--kb-u) * 3.4)); color: var(--kb-gold-deep); }
+
+/* شريط سعر البوفيه (المالك 2026-10-16: تحت السلطات، «أقدر أغيره ويكون مخزّن») */
+.kb-price-strip {
+  flex: none; display: flex; align-items: baseline; justify-content: center;
+  gap: calc(var(--kb-u) * 1.6);
+  padding: calc(var(--kb-u) * 1.2) calc(var(--kb-u) * 2.4);
+  border: 1px solid var(--kb-gold-hi); border-radius: var(--kb-radius);
+  background: var(--kb-gold-wash);
+}
+.kb-price-label { font-size: max(12px, calc(var(--kb-u) * 2.4)); font-weight: 800; color: var(--kb-ink); }
+.kb-price-amount { display: inline-flex; align-items: baseline; gap: calc(var(--kb-u) * .6); }
+.kb-price-value { font-size: max(20px, calc(var(--kb-u) * 4.4)); font-weight: 900; color: var(--kb-gold-deep); font-variant-numeric: tabular-nums; }
+.kb-price-currency { font-size: max(12px, calc(var(--kb-u) * 2.2)); font-weight: 800; color: var(--kb-gold-deep); }
+.kb-price-per { font-size: max(11px, calc(var(--kb-u) * 2)); font-weight: 700; color: var(--kb-muted); }
+
+/* ── تقدّم الصفحات ────────────────────────────────────────────────── */
+.kb-progress { display: flex; justify-content: center; gap: calc(var(--kb-u) * .8); }
+.kb-dot { position: relative; overflow: hidden; width: calc(var(--kb-u) * 4.6); height: calc(var(--kb-u) * .7); border-radius: 999px; background: var(--kb-line); cursor: pointer; }
+.kb-dot.is-active::after { content: ""; position: absolute; inset: 0; background: var(--kb-gold); transform: scaleX(0); transform-origin: right center; animation: kb-dwell var(--dwell, 14s) linear both; }
+html[dir="ltr"] .kb-dot.is-active::after { transform-origin: left center; }
+@keyframes kb-dwell { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.kb-count { font-size: max(10px, calc(var(--kb-u) * 1.7)); font-weight: 800; color: var(--kb-muted); font-variant-numeric: tabular-nums; align-self: center; }
+
+/* ── التذييل: رواق أقواس + شريط إخباري ─────────────────────────────── */
+.kb-footer { display: grid; gap: calc(var(--kb-u) * 1.4); }
+.kb-arcade { height: calc(var(--kb-u) * 4.4); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='60'%3E%3Cpath d='M14 60V34Q14 15 38 11Q60 7 66 2Q72 7 94 11Q118 15 118 34V60' fill='none' stroke='%23a8690c' stroke-opacity='.32' stroke-width='2.4'/%3E%3C/svg%3E") repeat-x center / auto 100%; }
+.kb-ticker { display: flex; align-items: center; gap: calc(var(--kb-u) * 1.4); border-block: 1px solid var(--kb-line); padding: calc(var(--kb-u) * 1) calc(var(--kb-u) * .5); overflow: hidden; }
+.kb-ticker-star { color: var(--kb-gold); font-size: max(10px, calc(var(--kb-u) * 2)); }
+.kb-ticker-track { flex: 1 1 auto; overflow: hidden; }
+.kb-marquee { display: flex; width: max-content; animation: kb-scroll 40s linear infinite; }
+.kb-marquee-text { font-size: max(12px, calc(var(--kb-u) * 2.3)); font-weight: 700; color: var(--kb-ink-2); white-space: nowrap; padding-inline-end: calc(var(--kb-u) * 8); }
+@keyframes kb-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+html[dir="rtl"] .kb-marquee { animation-name: kb-scroll-rtl; }
+@keyframes kb-scroll-rtl { from { transform: translateX(0); } to { transform: translateX(50%); } }
+.kb-metabar { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--kb-u) * 5); font-size: max(9px, calc(var(--kb-u) * 1.6)); font-weight: 800; letter-spacing: calc(var(--kb-u) * .22); color: var(--kb-muted); }
+.kb-metabar span:first-child { font-family: 'Cinzel','Outfit',sans-serif; font-weight: 700; letter-spacing: calc(var(--kb-u) * .3); color: var(--kb-ink-2); }
+.kb-metabar span:last-child { font-weight: 800; color: var(--kb-gold-deep); font-variant-numeric: tabular-nums; }
+
+/* ── زخرفة سفلية: قبة مسجدية/مساجد ────────────────────────────────── */
+.kb-skyline { position: absolute; bottom: 0; left: 0; right: 0; height: 140px; background: repeat-x center bottom / 260px 140px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='140' viewBox='0 0 260 140'%3E%3Cpath d='M0 140 Q65 70 130 140 T260 140 V0 H0 Z' fill='none' stroke='%23a8690c' stroke-opacity='.10' stroke-width='2'/%3E%3Cpath d='M130 20 Q130 0 130 20 M110 40 Q130 20 150 40 M90 55 Q130 35 170 55' fill='none' stroke='%23a8690c' stroke-opacity='.06' stroke-width='1.5'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+/* ── حالة فارغة/خطأ ────────────────────────────────────────────────── */
+.kb-empty { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--kb-u) * 1.4); text-align: center; }
+.kb-empty-title { font-family: 'Amiri', serif; font-size: max(17px, calc(var(--kb-u) * 4)); font-weight: 700; color: var(--kb-gold-deep); }
+.kb-empty-note { font-size: max(12px, calc(var(--kb-u) * 2.3)); color: var(--kb-ink-2); }
+
+/* ── النطاقات: الاختلاف البنياني لا المقياس ────────────────────────── */
+#board[data-ar="wide"]  { --kb-pad: calc(var(--kb-u) * 3.2); gap: calc(var(--kb-u) * 1.1); }
+#board[data-ar="wide"] .kb-logo { width: calc(var(--kb-u) * 17); }
+#board[data-ar="wide"] .kb-mihrab { padding: calc(var(--kb-u) * 2.8) calc(var(--kb-u) * 6) calc(var(--kb-u) * 2); }
+#board[data-ar="wide"] .kb-arcade { height: calc(var(--kb-u) * 3); }
+#board[data-ar="tall"], #board[data-ar="super"] { gap: calc(var(--kb-u) * 1.8); }
+#board[data-ar="super"] .kb-logo { width: calc(var(--kb-u) * 21); }
+#board[data-ar="super"] .kb-arcade { height: calc(var(--kb-u) * 5.6); }
+
+/* ── وضع البوفيه: الحلية تتقلّص ليتّسع التكوين كلّه لصفحة واحدة ────── */
+#board[data-bf="1"] { gap: calc(var(--kb-u) * .8); }
+#board[data-bf="1"] .kb-periods, #board[data-bf="1"] .kb-rule, #board[data-bf="1"] .kb-progress,
+#board[data-bf="1"] .kb-arcade, #board[data-bf="1"] .kb-subtitle { display: none; }
+#board[data-bf="1"] .kb-top { font-size: max(10px, calc(var(--kb-u) * 1.5)); }
+#board[data-bf="1"] .kb-time { font-size: max(13px, calc(var(--kb-u) * 2.4)); }
+#board[data-bf="1"] .kb-date { font-size: max(9px, calc(var(--kb-u) * 1.4)); }
+#board[data-bf="1"] .kb-mihrab { gap: 0; padding: calc(var(--kb-u) * 1.3) calc(var(--kb-u) * 4) calc(var(--kb-u) * 1); }
+#board[data-bf="1"] .kb-logo { width: calc(var(--kb-u) * 10); }
+#board[data-bf="1"] .kb-title { font-size: max(15px, calc(var(--kb-u) * 3.2)); }
+#board[data-bf="1"] .kb-finial { width: calc(var(--kb-u) * 3.2); top: calc(var(--kb-u) * -1.5); }
+#board[data-bf="1"] .kb-ticker { padding-block: calc(var(--kb-u) * .4); }
+#board[data-bf="1"] .kb-marquee-text { font-size: max(11px, calc(var(--kb-u) * 2)); }
+
+/*── الوضع الداكن الاختياري (نفس اللغة، بنفس القواعد) ──────────────────*/
+#board[data-theme="noir"] {
+  --kb-paper: #07131a; --kb-paper-2: #040d12; --kb-card: #0d1e28;
+  --kb-ink: #f4efe4; --kb-ink-2: #c8d3d8; --kb-muted: #7f9299; --kb-line: #1d3541;
+  --kb-gold: #e8b55e; --kb-gold-hi: #f0c987; --kb-gold-deep: #ffd9a0;
+  --kb-gold-wash: rgba(232, 181, 94, .12);
+}
+
+/* ── الإتاحة: من يطلب بلا حركة، ياخدها بلا حركة ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .kb-page.is-active, .kb-item, .kb-dot.is-active::after, .kb-marquee { animation: none !important; }
+  .kb-chip { transition: none; }
+}

@@ -1,0 +1,18 @@
+<service>
+  <id>KarimControlTunnel</id>
+  <name>Karim ERP Control Tunnel</name>
+  <description>Cloudflare tunnel for the standalone control panel (control.karimeg.online) - stays up while ERP is stopped</description>
+  <!-- نفق مستقل عن نفق ERP الرئيسي، وبياسم تنفيذي مختلف كي لا يخلط
+       keepalive-tunnel.bat بينهما. الأصل محلي 127.0.0.1:5011 فقط. -->
+  <executable>C:\cloudflared\cloudflared-control.exe</executable>
+  <arguments>--no-autoupdate --config C:\cloudflared\control-config.yml tunnel run</arguments>
+  <workingdirectory>C:\cloudflared</workingdirectory>
+  <logpath>C:\cloudflared\logs</logpath>
+  <log mode="roll-by-size"><sizeThreshold>5242880</sizeThreshold><keepFiles>3</keepFiles></log>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <startmode>Automatic</startmode>
+  <stoptimeout>15 sec</stoptimeout>
+  <hidewindow>true</hidewindow>
+</service>

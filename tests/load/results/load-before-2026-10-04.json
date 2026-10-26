@@ -1,0 +1,724 @@
+{
+  "phase": "load-before-2026-10-04.json",
+  "startedAt": "2026-10-04T04:34:53.640Z",
+  "serverBefore": {
+    "pid": 3492,
+    "rss_mb": 358
+  },
+  "scenarios": [
+    {
+      "label": "reads-c25",
+      "requests": 25134,
+      "rps": 1256.7,
+      "duration_s": 20,
+      "mb_transferred": 585.1,
+      "p50": 17.4,
+      "p90": 23.9,
+      "p95": 25.8,
+      "p99": 31.6,
+      "max": 226.7,
+      "byStatus": {
+        "200": 22851,
+        "302": 2283
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/veg-requests": {
+          "requests": 2280,
+          "rps": 114,
+          "p50": 16.6,
+          "p95": 25.8,
+          "byStatus": {
+            "200": 2280
+          }
+        },
+        "/api/employees": {
+          "requests": 2287,
+          "rps": 114.4,
+          "p50": 17.6,
+          "p95": 25.5,
+          "byStatus": {
+            "200": 2287
+          }
+        },
+        "/api/attendance/portal/status": {
+          "requests": 2283,
+          "rps": 114.2,
+          "p50": 17.6,
+          "p95": 26.2,
+          "byStatus": {
+            "200": 2283
+          }
+        },
+        "/api/departments": {
+          "requests": 2288,
+          "rps": 114.4,
+          "p50": 17.4,
+          "p95": 25.7,
+          "byStatus": {
+            "200": 2288
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 2287,
+          "rps": 114.4,
+          "p50": 16.9,
+          "p95": 25,
+          "byStatus": {
+            "200": 2287
+          }
+        },
+        "/api/users": {
+          "requests": 2289,
+          "rps": 114.5,
+          "p50": 18.2,
+          "p95": 26.3,
+          "byStatus": {
+            "200": 2289
+          }
+        },
+        "/": {
+          "requests": 2283,
+          "rps": 114.2,
+          "p50": 16.7,
+          "p95": 25.3,
+          "byStatus": {
+            "302": 2283
+          }
+        },
+        "/api/attendance": {
+          "requests": 2287,
+          "rps": 114.4,
+          "p50": 18.1,
+          "p95": 25.9,
+          "byStatus": {
+            "200": 2287
+          }
+        },
+        "/api/inventory": {
+          "requests": 2286,
+          "rps": 114.3,
+          "p50": 16.7,
+          "p95": 25.1,
+          "byStatus": {
+            "200": 2286
+          }
+        },
+        "/api/hr/dept-roster-week": {
+          "requests": 2282,
+          "rps": 114.1,
+          "p50": 18.7,
+          "p95": 27.2,
+          "byStatus": {
+            "200": 2282
+          }
+        },
+        "/api/veg-requests/catalog": {
+          "requests": 2282,
+          "rps": 114.1,
+          "p50": 16.9,
+          "p95": 25.1,
+          "byStatus": {
+            "200": 2282
+          }
+        }
+      }
+    },
+    {
+      "label": "reads-c50",
+      "requests": 25911,
+      "rps": 1295.6,
+      "duration_s": 20,
+      "mb_transferred": 602.1,
+      "p50": 34.2,
+      "p90": 45.1,
+      "p95": 50.5,
+      "p99": 65.3,
+      "max": 325.4,
+      "byStatus": {
+        "200": 23552,
+        "302": 2356,
+        "429": 3
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/employees": {
+          "requests": 2350,
+          "rps": 117.5,
+          "p50": 35.6,
+          "p95": 52.3,
+          "byStatus": {
+            "200": 2349,
+            "429": 1
+          }
+        },
+        "/api/attendance/portal/status": {
+          "requests": 2347,
+          "rps": 117.4,
+          "p50": 35.7,
+          "p95": 52.8,
+          "byStatus": {
+            "200": 2347
+          }
+        },
+        "/api/attendance": {
+          "requests": 2364,
+          "rps": 118.2,
+          "p50": 36,
+          "p95": 50.6,
+          "byStatus": {
+            "200": 2362,
+            "429": 2
+          }
+        },
+        "/api/veg-requests": {
+          "requests": 2350,
+          "rps": 117.5,
+          "p50": 31.7,
+          "p95": 49.3,
+          "byStatus": {
+            "200": 2350
+          }
+        },
+        "/api/veg-requests/catalog": {
+          "requests": 2346,
+          "rps": 117.3,
+          "p50": 32.5,
+          "p95": 48.5,
+          "byStatus": {
+            "200": 2346
+          }
+        },
+        "/api/inventory": {
+          "requests": 2357,
+          "rps": 117.9,
+          "p50": 32.2,
+          "p95": 46.7,
+          "byStatus": {
+            "200": 2357
+          }
+        },
+        "/api/users": {
+          "requests": 2369,
+          "rps": 118.5,
+          "p50": 35.2,
+          "p95": 51.7,
+          "byStatus": {
+            "200": 2369
+          }
+        },
+        "/api/departments": {
+          "requests": 2366,
+          "rps": 118.3,
+          "p50": 34.4,
+          "p95": 50.2,
+          "byStatus": {
+            "200": 2366
+          }
+        },
+        "/api/hr/dept-roster-week": {
+          "requests": 2348,
+          "rps": 117.4,
+          "p50": 35.8,
+          "p95": 53.5,
+          "byStatus": {
+            "200": 2348
+          }
+        },
+        "/": {
+          "requests": 2356,
+          "rps": 117.8,
+          "p50": 32.2,
+          "p95": 46.1,
+          "byStatus": {
+            "302": 2356
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 2358,
+          "rps": 117.9,
+          "p50": 33.3,
+          "p95": 50,
+          "byStatus": {
+            "200": 2358
+          }
+        }
+      }
+    },
+    {
+      "label": "reads-c100",
+      "requests": 22694,
+      "rps": 1134.7,
+      "duration_s": 20,
+      "mb_transferred": 324.9,
+      "p50": 73,
+      "p90": 98.8,
+      "p95": 111.3,
+      "p99": 231.9,
+      "max": 1073,
+      "byStatus": {
+        "200": 8398,
+        "302": 2068,
+        "429": 12228
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/attendance": {
+          "requests": 2079,
+          "rps": 104,
+          "p50": 74.6,
+          "p95": 109.9,
+          "byStatus": {
+            "200": 38,
+            "429": 2041
+          }
+        },
+        "/api/attendance/portal/status": {
+          "requests": 2047,
+          "rps": 102.4,
+          "p50": 74.6,
+          "p95": 135.6,
+          "byStatus": {
+            "200": 2047
+          }
+        },
+        "/api/users": {
+          "requests": 2084,
+          "rps": 104.2,
+          "p50": 74.8,
+          "p95": 110.4,
+          "byStatus": {
+            "200": 38,
+            "429": 2046
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 2087,
+          "rps": 104.4,
+          "p50": 73.9,
+          "p95": 113.8,
+          "byStatus": {
+            "200": 47,
+            "429": 2040
+          }
+        },
+        "/api/departments": {
+          "requests": 2083,
+          "rps": 104.2,
+          "p50": 74.8,
+          "p95": 114.2,
+          "byStatus": {
+            "200": 44,
+            "429": 2039
+          }
+        },
+        "/api/employees": {
+          "requests": 2055,
+          "rps": 102.8,
+          "p50": 72.8,
+          "p95": 104.7,
+          "byStatus": {
+            "200": 23,
+            "429": 2032
+          }
+        },
+        "/api/inventory": {
+          "requests": 2077,
+          "rps": 103.9,
+          "p50": 73.8,
+          "p95": 111.3,
+          "byStatus": {
+            "200": 47,
+            "429": 2030
+          }
+        },
+        "/": {
+          "requests": 2068,
+          "rps": 103.4,
+          "p50": 72.1,
+          "p95": 100.6,
+          "byStatus": {
+            "302": 2068
+          }
+        },
+        "/api/veg-requests": {
+          "requests": 2050,
+          "rps": 102.5,
+          "p50": 69.9,
+          "p95": 101.8,
+          "byStatus": {
+            "200": 2050
+          }
+        },
+        "/api/veg-requests/catalog": {
+          "requests": 2034,
+          "rps": 101.7,
+          "p50": 69.3,
+          "p95": 95.1,
+          "byStatus": {
+            "200": 2034
+          }
+        },
+        "/api/hr/dept-roster-week": {
+          "requests": 2030,
+          "rps": 101.5,
+          "p50": 72.6,
+          "p95": 602.1,
+          "byStatus": {
+            "200": 2030
+          }
+        }
+      }
+    },
+    {
+      "label": "login-storm-c10",
+      "requests": 17837,
+      "rps": 1189.1,
+      "duration_s": 15,
+      "mb_transferred": 2.3,
+      "p50": 6.6,
+      "p90": 10.2,
+      "p95": 11.2,
+      "p99": 14.2,
+      "max": 53.6,
+      "byStatus": {
+        "429": 17837
+      },
+      "errors": {},
+      "perEndpoint": {
+        "POST /api/auth/login": {
+          "requests": 17837,
+          "rps": 1189.1,
+          "p50": 6.6,
+          "p95": 11.2,
+          "byStatus": {
+            "429": 17837
+          }
+        }
+      }
+    },
+    {
+      "label": "writes-c20",
+      "requests": 7141,
+      "rps": 357.1,
+      "duration_s": 20,
+      "mb_transferred": 0.8,
+      "p50": 24,
+      "p90": 33.2,
+      "p95": 37.7,
+      "p99": 75.8,
+      "max": 11022.6,
+      "byStatus": {
+        "201": 56,
+        "429": 7085
+      },
+      "errors": {},
+      "perEndpoint": {
+        "POST+DELETE hrDepartments": {
+          "requests": 7141,
+          "rps": 357.1,
+          "p50": 24,
+          "p95": 37.7,
+          "byStatus": {
+            "201": 56,
+            "429": 7085
+          }
+        }
+      }
+    },
+    {
+      "label": "veg-writes-c20",
+      "requests": 4583,
+      "rps": 305.5,
+      "duration_s": 15,
+      "mb_transferred": 3.2,
+      "p50": 28,
+      "p90": 34.2,
+      "p95": 36.4,
+      "p99": 42,
+      "max": 84.2,
+      "byStatus": {
+        "200": 4583
+      },
+      "errors": {},
+      "perEndpoint": {
+        "POST veg create+cancel": {
+          "requests": 4583,
+          "rps": 305.5,
+          "p50": 28,
+          "p95": 36.4,
+          "byStatus": {
+            "200": 4583
+          }
+        }
+      }
+    },
+    {
+      "label": "mixed-sustained-c50-60s",
+      "requests": 60760,
+      "rps": 1012.7,
+      "duration_s": 60,
+      "mb_transferred": 1119.7,
+      "p50": 44.9,
+      "p90": 59.4,
+      "p95": 66,
+      "p99": 91.4,
+      "max": 629.5,
+      "byStatus": {
+        "200": 27353,
+        "201": 73,
+        "302": 5232,
+        "429": 28102
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/departments": {
+          "requests": 5254,
+          "rps": 87.6,
+          "p50": 45,
+          "p95": 64.8,
+          "byStatus": {
+            "200": 1055,
+            "429": 4199
+          }
+        },
+        "/api/veg-requests": {
+          "requests": 5281,
+          "rps": 88,
+          "p50": 43.9,
+          "p95": 64.6,
+          "byStatus": {
+            "200": 5281
+          }
+        },
+        "/api/inventory": {
+          "requests": 5279,
+          "rps": 88,
+          "p50": 44.6,
+          "p95": 64.7,
+          "byStatus": {
+            "200": 1036,
+            "429": 4243
+          }
+        },
+        "/api/hr/dept-roster-week": {
+          "requests": 5275,
+          "rps": 87.9,
+          "p50": 46.7,
+          "p95": 75.4,
+          "byStatus": {
+            "200": 5275
+          }
+        },
+        "/api/users": {
+          "requests": 5240,
+          "rps": 87.3,
+          "p50": 44.9,
+          "p95": 65,
+          "byStatus": {
+            "200": 1068,
+            "429": 4172
+          }
+        },
+        "/api/veg-requests/catalog": {
+          "requests": 5230,
+          "rps": 87.2,
+          "p50": 44.6,
+          "p95": 64.5,
+          "byStatus": {
+            "200": 5230
+          }
+        },
+        "/": {
+          "requests": 5232,
+          "rps": 87.2,
+          "p50": 44.1,
+          "p95": 62.8,
+          "byStatus": {
+            "302": 5232
+          }
+        },
+        "/api/attendance/portal/status": {
+          "requests": 5222,
+          "rps": 87,
+          "p50": 45.6,
+          "p95": 69.3,
+          "byStatus": {
+            "200": 5222
+          }
+        },
+        "POST+DELETE hrDepartments": {
+          "requests": 3039,
+          "rps": 50.7,
+          "p50": 45.5,
+          "p95": 68.6,
+          "byStatus": {
+            "201": 73,
+            "429": 2966
+          }
+        },
+        "/api/hrDepartments": {
+          "requests": 5226,
+          "rps": 87.1,
+          "p50": 44.8,
+          "p95": 63.9,
+          "byStatus": {
+            "200": 1058,
+            "429": 4168
+          }
+        },
+        "/api/employees": {
+          "requests": 5257,
+          "rps": 87.6,
+          "p50": 44.4,
+          "p95": 64,
+          "byStatus": {
+            "200": 1063,
+            "429": 4194
+          }
+        },
+        "/api/attendance": {
+          "requests": 5225,
+          "rps": 87.1,
+          "p50": 45.1,
+          "p95": 66.7,
+          "byStatus": {
+            "200": 1065,
+            "429": 4160
+          }
+        }
+      }
+    },
+    {
+      "label": "spike-c150",
+      "requests": 11006,
+      "rps": 1100.6,
+      "duration_s": 10,
+      "mb_transferred": 203.2,
+      "p50": 121.9,
+      "p90": 150.9,
+      "p95": 165.7,
+      "p99": 779.3,
+      "max": 1075.2,
+      "byStatus": {
+        "200": 4645,
+        "302": 975,
+        "429": 5386
+      },
+      "errors": {},
+      "perEndpoint": {
+        "/api/hrDepartments": {
+          "requests": 1005,
+          "rps": 100.5,
+          "p50": 120.7,
+          "p95": 152.3,
+          "byStatus": {
+            "200": 89,
+            "429": 916
+          }
+        },
+        "/api/inventory": {
+          "requests": 972,
+          "rps": 97.2,
+          "p50": 119,
+          "p95": 165.7,
+          "byStatus": {
+            "200": 55,
+            "429": 917
+          }
+        },
+        "/": {
+          "requests": 975,
+          "rps": 97.5,
+          "p50": 115.5,
+          "p95": 160,
+          "byStatus": {
+            "302": 975
+          }
+        },
+        "/api/veg-requests": {
+          "requests": 979,
+          "rps": 97.9,
+          "p50": 112.2,
+          "p95": 171.1,
+          "byStatus": {
+            "200": 979
+          }
+        },
+        "/api/veg-requests/catalog": {
+          "requests": 989,
+          "rps": 98.9,
+          "p50": 125.3,
+          "p95": 155.2,
+          "byStatus": {
+            "200": 989
+          }
+        },
+        "/api/hr/dept-roster-week": {
+          "requests": 991,
+          "rps": 99.1,
+          "p50": 136.3,
+          "p95": 908.4,
+          "byStatus": {
+            "200": 991
+          }
+        },
+        "/api/attendance/portal/status": {
+          "requests": 998,
+          "rps": 99.8,
+          "p50": 136.1,
+          "p95": 758.1,
+          "byStatus": {
+            "200": 998
+          }
+        },
+        "/api/attendance": {
+          "requests": 1023,
+          "rps": 102.3,
+          "p50": 118.6,
+          "p95": 164.6,
+          "byStatus": {
+            "200": 139,
+            "429": 884
+          }
+        },
+        "/api/users": {
+          "requests": 1026,
+          "rps": 102.6,
+          "p50": 117.7,
+          "p95": 161.5,
+          "byStatus": {
+            "200": 138,
+            "429": 888
+          }
+        },
+        "/api/departments": {
+          "requests": 1038,
+          "rps": 103.8,
+          "p50": 118.6,
+          "p95": 155.9,
+          "byStatus": {
+            "200": 136,
+            "429": 902
+          }
+        },
+        "/api/employees": {
+          "requests": 1010,
+          "rps": 101,
+          "p50": 121.7,
+          "p95": 161,
+          "byStatus": {
+            "200": 131,
+            "429": 879
+          }
+        }
+      }
+    }
+  ],
+  "serverAfter": {
+    "pid": 3492,
+    "rss_mb": 606
+  },
+  "healthAfter": 200,
+  "totalMinutes": 3.1
+}

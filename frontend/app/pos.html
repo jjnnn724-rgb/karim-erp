@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مطاعم الشرفه العالمي — كاشير المطعم</title>
+    <meta name="theme-color" content="#b45309">
+    <link rel="manifest" href="/app/manifest.json">
+    <link rel="icon" type="image/png" href="/app/assets/icon-192.png">
+    <link rel="apple-touch-icon" href="/app/assets/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="karim POS">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-400-arabic.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-700-arabic.woff2">
+    <link rel="stylesheet" href="css/menu-fonts.css">
+    <link rel="stylesheet" href="css/design-tokens.css">
+    <link rel="stylesheet" href="css/pos.css?v=4.9.34">
+    <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
+    <link rel="stylesheet" href="css/pro-theme.css?v=4.9.33">
+</head>
+<body>
+
+    <div id="posOfflineBar" style="display:none;position:fixed;top:0;right:0;left:0;z-index:9999;background:#b91c1c;color:#fff;text-align:center;padding:8px;font-size:13px">⚠ لا يوجد اتصال — وضع عدم الاتصال</div>
+
+    <!-- ═══ Login Screen ═══ -->
+    <div id="login-screen" class="screen">
+        <div class="login-card">
+            <div class="login-logo"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي"></div>
+            <h1>مطاعم الشرفه العالمي</h1>
+            <h2>كاشير المطعم المتكامل</h2>
+            <form id="login-form" class="login-form">
+                <input type="text" id="username" placeholder="اسم المستخدم" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus>
+                <input type="password" id="password" placeholder="كلمة المرور" required autocomplete="current-password">
+                <button type="submit"><i class=ji data-i=lock></i> تسجيل الدخول</button>
+            </form>
+            <div id="login-error" class="login-error"></div>
+            <a href="#" id="forgot-link" style="display:block;text-align:center;margin-top:12px;color:#c9a227;font-size:13px;text-decoration:none"><i class=ji data-i=key></i> نسيت كلمة المرور؟</a>
+            <button type="button" id="posInstallBtn" data-karim-action="posPwaInstall" style="display:none;width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #c9a227;background:transparent;color:#c9a227;font:inherit;cursor:pointer">⬇ ثبّت تطبيق الكاشير</button>
+        </div>
+    </div>
+
+    <!-- ═══ Shift Open Screen ═══ -->
+    <div id="shift-open-screen" class="screen hidden">
+        <div class="card">
+            <div class="login-logo shift-icon"><i class=ji data-i=user-check></i></div>
+            <h2>فتح وردية جديدة</h2>
+            <p>مرحبًا <strong id="cashier-name"></strong></p>
+            <label><i class=ji data-i=building></i> اختر القسم</label>
+            <select id="department-select"></select>
+            <label><i class=ji data-i=banknote></i> مبلغ العهدة (ريال)</label>
+            <input type="number" id="opening-balance" min="0" step="0.01" value="0">
+            <button id="open-shift-btn"><i class=ji data-i=play></i> فتح الوردية</button>
+            <button id="resume-shift-btn" class="secondary-btn hidden" type="button"><i class=ji data-i=refresh></i> متابعة الوردية الحالية</button>
+            <button id="new-shift-btn" class="secondary-btn hidden" type="button"><i class=ji data-i=plus></i> فتح جلسة جديدة</button>
+            <div id="active-shift-info" class="shift-active-info hidden"></div>
+            <div id="shift-open-error" class="error"></div>
+        </div>
+    </div>
+
+    <!-- ═══ Main POS Screen ═══ -->
+    <div id="pos-screen" class="screen hidden">
+        <header class="pos-header">
+            <div class="brand"><img src="assets/karim-logo.ico" alt="مطاعم الشرفه العالمي"> <span>مطاعم الشرفه العالمي</span></div>
+            <div class="cashier-info">
+                <span id="pos-cashier-name"></span>
+                <span class="badge" id="pos-dept-name"></span>
+                <span class="badge badge-shift" id="pos-session-id"></span>
+                <span class="pos-live" id="pos-live" title="الاتصال اللحظي بالخادم"><span class="pos-live-dot"></span><span id="pos-live-txt">مباشر</span></span>
+            </div>
+            <div class="pos-header-actions">
+                <button class="icon-btn" id="refresh-products-btn" title="تحديث البيانات"><i class=ji data-i=refresh></i></button>
+                <button class="icon-btn" id="change-password-btn" title="تغيير كلمة المرور"><i class=ji data-i=lock></i></button>
+                <button class="icon-btn hidden" id="catalog-btn" title="إدارة منيو المطعم والأسعار"><i class=ji data-i=settings></i></button>
+                <button class="icon-btn hidden" id="buffet-prices-btn" title="قائمة أسعار البوفيه (كبير/صغير/ضيافة)"><i class=ji data-i=users></i></button>
+                <button class="icon-btn hidden" id="buffet-invoices-btn" title="فواتير البوفيه المخزنة"><i class=ji data-i=receipt></i></button>
+                <button class="icon-btn hidden" id="buffet-report-btn" title="تقرير البوفيه اليومي"><i class=ji data-i=chart-bar></i></button>
+                <button class="icon-btn" id="held-orders-btn" title="الطلبات المعلقة"><i class=ji data-i=clipboard-list></i></button>
+                <button class="icon-btn" id="orders-history-btn" title="سجل الفواتير"><i class=ji data-i=receipt></i></button>
+                <button class="icon-btn" id="discount-btn" title="خصم على السلة" disabled><i class=ji data-i=tag></i></button>
+                <button class="icon-btn" id="close-shift-btn" title="إغلاق الوردية"><i class=ji data-i=stop></i></button>
+                <button class="icon-btn hidden" id="day-close-btn" title="الإقفال اليومي Z (مدير)"><i class=ji data-i=lock></i></button>
+                <button class="mobile-cart-toggle" id="mobile-cart-toggle" type="button" aria-controls="mobile-cart-panel" aria-expanded="false"><i class=ji data-i=shopping-cart></i> السلة <span id="mobile-cart-count">0</span></button>
+            </div>
+        </header>
+
+        <main class="pos-main">
+            <!-- Products Section -->
+            <section class="products-section">
+                <div class="pos-stats" id="pos-stats">
+                    <div class="stat-chip">
+                        <span class="label">أصناف المنيو</span>
+                        <strong id="stat-products-count">0</strong>
+                    </div>
+                    <div class="stat-chip">
+                        <span class="label">المتاح</span>
+                        <strong id="stat-available-count">0</strong>
+                    </div>
+                    <div class="stat-chip warning">
+                        <span class="label">منخفض</span>
+                        <strong id="stat-low-stock-count">0</strong>
+                    </div>
+                    <div class="stat-chip info">
+                        <span class="label">معلق</span>
+                        <strong id="stat-held-count">0</strong>
+                    </div>
+                </div>
+                <div class="search-bar">
+                    <input type="text" id="product-search" placeholder="ابحث بالاسم أو الباركود..." aria-label="البحث عن صنف بالاسم أو الباركود" autocomplete="off" autofocus>
+                    <div class="pos-shortcut-help" role="note" aria-label="اختصارات الكاشير">
+                        <span><kbd>F1</kbd> بحث</span>
+                        <span><kbd>F2</kbd> إتمام البيع</span>
+                        <span><kbd>F3</kbd> تعليق</span>
+                        <span><kbd>F4</kbd> تفريغ السلة</span>
+                        <span><kbd>F9</kbd> إغلاق الوردية</span>
+                    </div>
+                </div>
+                <div class="category-tabs" id="category-tabs"></div>
+                <div id="products-grid" class="products-grid"></div>
+            </section>
+
+            <!-- Cart Section -->
+            <aside class="cart-section" id="mobile-cart-panel">
+                <div class="cart-header">
+                    <h3><i class=ji data-i=shopping-cart></i> السلة</h3>
+                    <span class="cart-count" id="cart-count">0</span>
+                </div>
+
+                <div class="cart-actions-top">
+                    <button class="cart-action-btn warning" id="hold-order-btn" disabled><i class=ji data-i=pause></i> تعليق</button>
+                    <button class="cart-action-btn" id="clear-cart-btn" disabled><i class=ji data-i=trash></i> تفريغ</button>
+                </div>
+
+                <div id="buffet-party-row" class="buffet-party-row hidden">
+                    <input type="text" id="buffet-party-name" maxlength="120" placeholder="اسم العائلة / المناسبة (اختياري) — يُسجَّل على الفاتورة">
+                </div>
+
+                <div id="cart-items" class="cart-items"></div>
+
+                <div class="cart-summary">
+                    <div class="summary-row">
+                        <span>المجموع الفرعي:</span>
+                        <span id="cart-subtotal">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>الخصم:</span>
+                        <span class="discount-val" id="cart-discount">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>الضريبة (15%):</span>
+                        <span class="tax-val" id="cart-tax">0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>الإجمالي:</span>
+                        <span class="amount" id="cart-total">0.00 SAR</span>
+                    </div>
+                </div>
+
+                <div class="payment-section">
+                    <h4><i class=ji data-i=credit-card></i> طرق الدفع</h4>
+                    <div class="payment-channels">
+                        <div class="pay-channel cash" data-method="cash">
+                            <div class="pay-channel-label"><i class=ji data-i=banknote></i> نقدي <button type="button" class="pay-remaining-btn" data-target="pay-cash" title="ادفع المتبقي نقدًا">الباقي</button></div>
+                            <input type="number" id="pay-cash" min="0" step="0.01" value="0" placeholder="0.00">
+                        </div>
+                        <div class="pay-channel card" data-method="card">
+                            <div class="pay-channel-label"><i class=ji data-i=credit-card></i> بطاقة <button type="button" class="pay-remaining-btn" data-target="pay-card" title="ادفع المتبقي بالبطاقة">الباقي</button></div>
+                            <input type="number" id="pay-card" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" id="pay-card-ref" placeholder="مرجع العملية" class="ref-input">
+                        </div>
+                        <div class="pay-channel wallet" data-method="wallet">
+                            <div class="pay-channel-label"><i class=ji data-i=smartphone></i> محفظة <button type="button" class="pay-remaining-btn" data-target="pay-wallet" title="ادفع المتبقي بالمحفظة">الباقي</button></div>
+                            <input type="number" id="pay-wallet" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" id="pay-wallet-ref" placeholder="مرجع المحفظة" class="ref-input">
+                        </div>
+                        <div class="pay-channel" data-method="bank_transfer">
+                            <div class="pay-channel-label"><i class=ji data-i=landmark></i> تحويل <button type="button" class="pay-remaining-btn" data-target="pay-bank" title="ادفع المتبقي تحويلًا">الباقي</button></div>
+                            <input type="number" id="pay-bank" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" id="pay-bank-ref" placeholder="رقم العملية" class="ref-input">
+                        </div>
+                    </div>
+
+                    <div class="quick-cash" id="quick-cash-buttons">
+                        <button class="quick-cash-btn" data-amount="50">50</button>
+                        <button class="quick-cash-btn" data-amount="100">100</button>
+                        <button class="quick-cash-btn" data-amount="200">200</button>
+                        <button class="quick-cash-btn" data-amount="exact">المبلغ بالضبط</button>
+                    </div>
+
+                    <div class="summary-row paid-row">
+                        <span>المدفوع:</span>
+                        <span id="pay-total">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>الباقي للعميل:</span>
+                        <span id="pay-change">0.00</span>
+                    </div>
+
+                    <button id="complete-sale-btn" class="btn-complete" disabled>
+                        <i class=ji data-i=check></i> إتمام البيع
+                    </button>
+                    <div id="sale-error" class="sale-error"></div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- ═══ Receipt Modal ═══ -->
+    <div id="receipt-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=circle-check></i> تم إتمام البيع</h3>
+            <div id="receipt-info"></div>
+            <img id="receipt-qr" alt="ZATCA QR" class="qr-img">
+            <div class="modal-buttons">
+                <button id="print-receipt-btn" class="modal-btn primary"><i class=ji data-i=printer></i> طباعة</button>
+                <button id="new-sale-btn" class="modal-btn success"><i class=ji data-i=shopping-cart></i> بيع جديد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Buffet Price List Modal (professional) ═══ -->
+    <div id="buffet-prices-modal" class="modal hidden">
+        <div class="modal-content modal-wide">
+            <h3><i class=ji data-i=users></i> قائمة أسعار البوفيه المفتوح</h3>
+            <p class="text-muted">حدّد سعر الفرد لكل فئة (كبير / صغير / ضيافة) أو أضف فئات جديدة. السعر الجديد يُطبّق على الفواتير التالية فقط ولا يمس الفواتير الصادرة سابقًا.</p>
+            <div id="buffet-price-rows" class="buffet-price-rows"></div>
+            <div class="buffet-add-tier-row" id="buffet-add-tier-form">
+                <input type="text" id="buffet-new-tier-name" placeholder="اسم فئة جديدة (مثال: عشاء مسائي)" maxlength="100">
+                <input type="number" id="buffet-new-tier-price" placeholder="السعر" min="0" step="0.01">
+                <button id="buffet-add-tier-btn" class="modal-btn primary">+ إضافة فئة</button>
+            </div>
+            <div id="buffet-prices-error" class="sale-error"></div>
+            <div class="modal-buttons">
+                <button id="save-buffet-prices" class="modal-btn primary"><i class=ji data-i=check></i> حفظ قائمة الأسعار</button>
+                <button id="cancel-buffet-prices" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Buffet Stored Invoices Modal ═══ -->
+    <div id="buffet-invoices-modal" class="modal hidden">
+        <div class="modal-content modal-wide">
+            <h3><i class=ji data-i=receipt></i> فواتير البوفيه المخزنة</h3>
+            <div class="buffet-inv-tabs">
+                <button class="buffet-inv-tab active" data-tab="held">المحفوظة (معلقة) <span id="buffet-held-count-badge">0</span></button>
+                <button class="buffet-inv-tab" data-tab="issued">فواتير اليوم</button>
+            </div>
+            <div id="buffet-invoices-body" class="buffet-invoices-body"></div>
+            <div class="modal-buttons">
+                <button id="buffet-invoices-refresh" class="modal-btn secondary">تحديث</button>
+                <button id="close-buffet-invoices" class="modal-btn secondary">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Buffet Daily Report Modal ═══ -->
+    <div id="buffet-report-modal" class="modal hidden">
+        <div class="modal-content modal-wide">
+            <h3><i class=ji data-i=chart-bar></i> تقرير البوفيه اليومي</h3>
+            <div class="buffet-report-toolbar">
+                <label>التاريخ:</label>
+                <input type="date" id="buffet-report-date">
+                <button id="buffet-report-load" class="modal-btn secondary">عرض التقرير</button>
+                <button id="buffet-report-print" class="modal-btn primary"><i class=ji data-i=printer></i> طباعة</button>
+            </div>
+            <div id="buffet-report-body" class="buffet-report-body"></div>
+            <div class="modal-buttons">
+                <button id="close-buffet-report" class="modal-btn secondary">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Close Shift Modal ═══ -->
+    <div id="close-shift-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=stop></i> إغلاق الوردية</h3>
+            <div id="close-shift-summary"></div>
+            <label><i class=ji data-i=banknote></i> المبلغ الفعلي (ريال)</label>
+            <input type="number" id="actual-cash" min="0" step="0.01" value="0">
+            <label><i class=ji data-i=file-text></i> ملاحظات</label>
+            <textarea id="close-notes" rows="2" placeholder="ملاحظات اختيارية..."></textarea>
+            <div class="modal-buttons">
+                <button id="confirm-close-shift" class="modal-btn danger"><i class=ji data-i=stop></i> تأكيد الإغلاق</button>
+                <button id="cancel-close-shift" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Day Close (Z) Modal ═══ -->
+    <div id="day-close-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=lock></i> الإقفال اليومي (Z)</h3>
+            <div id="day-close-body"></div>
+            <div class="modal-buttons">
+                <button id="confirm-day-close" class="modal-btn danger"><i class=ji data-i=lock></i> تنفيذ الإقفال</button>
+                <button id="cancel-day-close" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Forgot Password Modal (استعادة ذاتية برمز لمرة واحدة) ═══ -->
+    <div id="forgot-password-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=key></i> استعادة كلمة المرور</h3>
+            <p style="font-size:13px;color:#9aa3b2;margin-bottom:12px">أدخل اسم المستخدم، ثم اطلب من المدير توليد <strong>رمز من 6 أرقام</strong> (صالح 10 دقائق)، وأدخل الرمز مع كلمة المرور الجديدة.</p>
+            <label>اسم المستخدم</label>
+            <input type="text" id="fp-username" autocomplete="username" autocapitalize="none">
+            <label>رمز الاستعادة (6 أرقام)</label>
+            <input type="text" id="fp-code" inputmode="numeric" maxlength="6" placeholder="______">
+            <label>كلمة المرور الجديدة (12 حرفًا على الأقل مع حروف وأرقام)</label>
+            <input type="password" id="fp-new">
+            <label>تأكيد كلمة المرور الجديدة</label>
+            <input type="password" id="fp-new2">
+            <div id="fp-error" class="login-error"></div>
+            <div class="modal-buttons">
+                <button id="fp-submit" class="modal-btn"><i class=ji data-i=key></i> تغيير كلمة المرور</button>
+                <button id="fp-cancel" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Change Password Modal (تطوعي للمسجلين) ═══ -->
+    <div id="change-password-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=lock></i> تغيير كلمة المرور</h3>
+            <label>كلمة المرور الحالية</label>
+            <input type="password" id="cp-current" autocomplete="current-password">
+            <label>كلمة المرور الجديدة (12 حرفًا على الأقل مع حروف وأرقام)</label>
+            <input type="password" id="cp-new">
+            <label>تأكيد كلمة المرور الجديدة</label>
+            <input type="password" id="cp-new2">
+            <div id="cp-error" class="login-error"></div>
+            <div class="modal-buttons">
+                <button id="cp-submit" class="modal-btn"><i class=ji data-i=save></i> حفظ</button>
+                <button id="cp-cancel" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Discount Modal ═══ -->
+    <div id="discount-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=tag></i> خصم على السلة</h3>
+            <label>نوع الخصم</label>
+            <div class="discount-options">
+                <button class="discount-option" data-type="percent" data-value="5">5%</button>
+                <button class="discount-option" data-type="percent" data-value="10">10%</button>
+                <button class="discount-option" data-type="percent" data-value="15">15%</button>
+                <button class="discount-option" data-type="percent" data-value="20">20%</button>
+                <button class="discount-option" data-type="percent" data-value="25">25%</button>
+                <button class="discount-option" data-type="percent" data-value="50">50%</button>
+            </div>
+            <label>أو أدخل مبلغ ثابت (ريال)</label>
+            <input type="number" id="custom-discount" min="0" step="0.01" placeholder="0.00">
+            <div class="modal-buttons">
+                <button id="apply-discount-btn" class="modal-btn primary"><i class=ji data-i=check></i> تطبيق</button>
+                <button id="remove-discount-btn" class="modal-btn secondary">إزالة</button>
+                <button id="cancel-discount-btn" class="modal-btn secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Held Orders Modal ═══ -->
+    <div id="held-orders-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class=ji data-i=clipboard-list></i> الطلبات المعلقة</h3>
+            <div id="held-orders-list" class="held-orders-list"></div>
+            <div class="modal-buttons">
+                <button id="close-held-orders-btn" class="modal-btn secondary">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Catalog Modal ═══ -->
+    <div id="catalog-modal" class="modal hidden">
+        <div class="modal-content modal-wide">
+            <h3><i class=ji data-i=settings></i> إدارة منيو الكاشير</h3>
+            <div class="catalog-toolbar">
+                <input type="text" id="catalog-search" placeholder="ابحث في أصناف المنيو أو الفئة">
+                <button id="catalog-refresh-btn" class="modal-btn secondary">تحديث</button>
+                <button id="catalog-new-btn" class="modal-btn secondary">صنف منيو جديد</button>
+            </div>
+
+            <div class="catalog-layout">
+                <div class="catalog-table-wrap">
+                    <table class="catalog-table">
+                        <thead>
+                            <tr>
+                                <th>صنف المنيو</th>
+                                <th>السعر</th>
+                                <th>المخزون</th>
+                                <th>الحالة</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalog-products-list"></tbody>
+                    </table>
+                </div>
+
+                <form id="catalog-form" class="catalog-form">
+                    <input type="hidden" id="catalog-product-id">
+                    <div class="catalog-form-grid">
+                        <div>
+                            <label>اسم الصنف</label>
+                            <input type="text" id="catalog-name" required>
+                        </div>
+                        <div>
+                            <label>الفئة</label>
+                            <input type="text" id="catalog-category">
+                        </div>
+                        <div class="catalog-image-field">
+                            <label>صورة الصنف</label>
+                            <input type="file" id="catalog-image" accept="image/jpeg,image/png,image/webp">
+                            <div id="catalog-image-preview" class="catalog-image-preview">لا توجد صورة</div>
+                            <div class="image-actions">
+                                <button type="button" id="catalog-image-upload" class="modal-btn secondary">رفع الصورة</button>
+                                <button type="button" id="catalog-image-remove" class="modal-btn danger hidden">حذف الصورة</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label>الباركود</label>
+                            <input type="text" id="catalog-barcode">
+                        </div>
+                        <div>
+                            <label>الوحدة</label>
+                            <input type="text" id="catalog-unit" placeholder="قطعة">
+                        </div>
+                        <div>
+                            <label>سعر البيع</label>
+                            <input type="number" id="catalog-price" min="0" step="0.01" required>
+                        </div>
+                        <div>
+                            <label>سعر التكلفة</label>
+                            <input type="number" id="catalog-cost-price" min="0" step="0.01">
+                        </div>
+                        <div class="catalog-stock-note">
+                            <i class=ji data-i=package></i> <strong>المخزون لا يُدخل من الكاشير</strong> — الكميات والتوريد والجرد والحد الأدنى تُدار من المخزن، ويُخصم الصنف من مكونات الوصفة عند البيع.
+                        </div>
+                        <input type="hidden" id="catalog-stock" value="0">
+                        <input type="hidden" id="catalog-min-stock" value="0">
+                        <div>
+                            <label>الضريبة %</label>
+                            <input type="number" id="catalog-vat" min="0" step="0.01" value="15">
+                        </div>
+                        <div>
+                            <label>الأقسام التي يظهر بها الصنف</label>
+                            <select id="catalog-department" multiple size="4" aria-describedby="catalog-department-help"></select>
+                            <small id="catalog-department-help" class="text-muted">يمكن اختيار أكثر من قسم. السعر والمخزون والوصفة موحّدة للصنف.</small>
+                        </div>
+                    </div>
+                    <div id="recipe-editor" class="recipe-editor hidden">
+                        <div class="recipe-editor-header">
+                            <strong><i class=ji data-i=utensils></i> مكونات الوصفة</strong>
+                            <span>تُخصم من المخزون تلقائياً عند البيع</span>
+                        </div>
+                        <div id="recipe-ingredients-list" class="recipe-ingredients-list"></div>
+                        <div class="recipe-add-row">
+                            <select id="recipe-inventory-select"><option value="">اختر مكوناً من المخزون</option></select>
+                            <input type="number" id="recipe-ingredient-qty" min="0.0001" step="0.0001" placeholder="الكمية لكل طبق">
+                            <button type="button" id="recipe-add-btn" class="modal-btn secondary">إضافة مكون</button>
+                        </div>
+                    </div>
+                    <label class="catalog-checkbox">
+                        <input type="checkbox" id="catalog-active" checked>
+                        <span>الصنف نشط ويظهر في منيو الكاشير</span>
+                    </label>
+                    <div id="catalog-error" class="sale-error"></div>
+                    <div class="modal-buttons">
+                        <button type="submit" id="catalog-save-btn" class="modal-btn primary">حفظ</button>
+                        <button type="button" id="catalog-archive-btn" class="modal-btn danger">تعطيل</button>
+                        <button type="button" id="catalog-reset-btn" class="modal-btn secondary">تفريغ</button>
+                        <button type="button" id="catalog-close-btn" class="modal-btn secondary">إغلاق</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ORDERS HISTORY SCREEN — Professional Invoice Management     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="orders-screen" class="screen hidden">
+        <div class="orders-header">
+            <div class="orders-header-left">
+                <h2><i class=ji data-i=receipt></i> سجل الفواتير</h2>
+                <span class="text-muted" id="orders-total-count"></span>
+            </div>
+            <div class="orders-header-actions"><button class="btn btn-gold btn-sm" id="print-all-orders-btn" title="طباعة كل الفواتير حسب الفلاتر"><i class=ji data-i=printer></i> طباعة كل الفواتير</button><button class="icon-btn" id="close-orders-screen" title="العودة للكاشير"><i class=ji data-i=undo></i> العودة للكاشير</button></div>
+        </div>
+        <div class="orders-stats-grid" id="orders-stats"><div class="order-stat-card skeleton">جارٍ التحميل...</div></div>
+        <div class="orders-payment-chips" id="orders-payment-breakdown"></div>
+        <div class="orders-recent-section">
+            <h4><i class=ji data-i=clock></i> آخر الفواتير اليوم</h4>
+            <div class="orders-recent-list" id="orders-recent"></div>
+        </div>
+        <div class="orders-filter-section"><div id="orders-filter-bar"></div></div>
+        <section class="item-sales-report" id="item-sales-report">
+            <div class="item-sales-report-header"><div><h3><i class=ji data-i=package></i> مبيعات الأصناف الفعلية</h3><p>الكميات المؤكدة من الفواتير الصادرة فقط، مع استبعاد الفواتير الملغاة.</p></div><button class="btn btn-blue btn-sm" id="print-item-sales-btn"><i class=ji data-i=printer></i> طباعة ملخص الأصناف</button></div>
+            <div class="orders-stats-grid" id="item-sales-stats"><div class="order-stat-card skeleton">جارٍ التحميل...</div></div>
+            <div class="orders-table-wrap"><table><thead><tr><th>الصنف</th><th>الأقسام</th><th>عدد الفواتير</th><th>الكمية المباعة</th><th>صافي المبيعات</th><th>الضريبة</th><th>المقارنة</th></tr></thead><tbody id="item-sales-table-body"><tr><td colspan="7" class="u-empty-sm">جارٍ التحميل...</td></tr></tbody></table></div>
+        </section>
+        <div class="orders-table-wrap" id="orders-table">
+            <table><thead><tr><th>رقم الفاتورة</th><th>القسم</th><th>التاريخ</th><th>المبلغ</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <tbody id="orders-table-body"><tr><td colspan="7" class="u-empty">جارٍ التحميل...</td></tr></tbody></table>
+        </div>
+        <div class="orders-pagination" id="orders-pagination"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- INVOICE DETAIL MODAL                                        -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="invoice-detail-modal" class="invoice-detail-overlay hidden">
+        <div class="invoice-detail-panel">
+            <div class="invoice-header"><div class="invoice-header-info"></div></div>
+            <div class="invoice-section"><h4><i class=ji data-i=package></i> الأصناف</h4>
+                <div class="invoice-items-table"><table><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الخصم</th><th>الإجمالي</th></tr></thead>
+                <tbody class="invoice-items-body"></tbody></table></div>
+            </div>
+            <div class="invoice-section"><h4><i class=ji data-i=banknote></i> الملخص</h4><div class="invoice-totals"></div></div>
+            <div class="invoice-section"><h4><i class=ji data-i=credit-card></i> الدفع</h4>
+                <div class="invoice-payments-table"><table><thead><tr><th>الوسيلة</th><th>المبلغ</th><th>المرجع</th></tr></thead>
+                <tbody class="invoice-payments-body"></tbody></table></div>
+            </div>
+            <div class="invoice-actions"></div>
+        </div>
+    </div>
+
+    <!-- ═══ Toast Container ═══ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ═══ Loading Overlay ═══ -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">جارٍ المعالجة...</div>
+    </div>
+
+    <script src="js/icons.js?v=4.9.164"></script>
+    <script src="js/vendor/qrcode.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/pos-search.js?v=4.9.164"></script>
+    <script src="js/pos.js?v=4.9.34"></script>
+    <script src="js/pos-orders.js"></script>
+    <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
+         الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
+    <script src="js/pos-path-guard.js?v=4.9.164"></script>
+    <!-- Phase 4.2: تهيئة الـPOS في ملف خارجي — سكربتات inline محجوبة بسياسة CSP
+         (وجود nonce يجعل المتصفح يتجاهل 'unsafe-inline')، فلم تكن تعمل داخل الصفحة. -->
+    <script src="js/pos-bootstrap.js?v=4.9.164"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.164" defer></script>
+</body>
+</html>

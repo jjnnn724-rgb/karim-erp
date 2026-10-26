@@ -1,0 +1,4 @@
+ALTER TABLE menu_board_settings
+    ADD COLUMN IF NOT EXISTS buffet_price NUMERIC(10, 2) NOT NULL DEFAULT 75,
+    ADD COLUMN IF NOT EXISTS background_style VARCHAR(16) NOT NULL DEFAULT 'ivory',
+    ADD COLUMN IF NOT EXISTS custom_background TEXT NOT NULL DEFAULT '';

@@ -1,0 +1,737 @@
+/**
+ * V2 — شاشة مبيعات الكاشير (csales)
+ * ═══════════════════════════════════════════════════════════════════════
+ * التوكناتُ وحدها: لا حرفيةَ لونية ولا مقاسًا باليد — القياس من سلّم
+ * --erp-space-*، واللون من --erp-*؛ فيبقى الداكن والفاتح والهاتفُ نسخةً واحدة.
+ *
+ * الأرقامُ كلها تأتي من الخادم؛ هذا الملف يرتّب عرضها فقط. شريطُ الصدق
+ * (csales__pulse) والعُصيَراتُ التحذيرية مقروءتان في الفاتحة والداكن، ولا
+ * تُخفى حين تصفُر.
+ */
+
+/* المركّبُ .erp-v2.csales يفوز على .erp-v2 .erp-stack بالتساوي ويكسب
+   بالترتيب: نفسُ البنية بمسافةٍ أعرض بين الأقسام. */
+.erp-v2.csales {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+
+/* .erp-stack يجعلها display:flex على الأبناء، فخاصية hidden وحدها لا تكفي
+   لإخفاء لوحات العرض — القاعدةُ صريحةٌ لا !important. (القياس الميداني في
+   erp-hr.css:351 هو نفس الفخ.) */
+.erp-v2 .csales__view[hidden] { display: none; }
+
+/* ── الرأس ──────────────────────────────────────────────────────────────── */
+.csales__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+}
+
+.csales__title {
+  margin: 0;
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+}
+
+.csales__sub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.csales__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+/* ── شريط الصدق: المرآة ومتى زومِنت وما الذي لا تُرويه الأرقام ──────────── */
+.csales__pulseWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  border: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.csales__pulseWrap:empty { display: none; }
+
+.csales__pulseMain {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  color: var(--erp-text-secondary);
+  font-weight: var(--erp-fw-medium);
+}
+
+.csales__pulseMain .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  color: var(--erp-text-faint);
+}
+
+.csales__pulseAt { color: var(--erp-text-faint); }
+
+/* العلّةُ تُقال بصفرتها: تحذيرٌ لا خطر — البيانات موجودة لكنها ناقصة. */
+.csales__pulseFlag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-0) var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  border: thin solid var(--erp-border);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  cursor: help;
+}
+
+/* ── شريط المرشّحات ─────────────────────────────────────────────────────── */
+.csales__bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.csales__bar .erp-field { min-inline-size: 11ch; }
+
+.csales__search {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 22ch;
+  min-inline-size: 16ch;
+  padding-inline: var(--erp-space-3);
+  block-size: var(--erp-control-md);
+  border-radius: var(--erp-radius-md);
+  border: thin solid var(--erp-border);
+  background: var(--erp-surface-raised);
+}
+
+.csales__search:focus-within {
+  border-color: var(--erp-brand);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.csales__search .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  color: var(--erp-text-faint);
+  flex: none;
+}
+
+.csales__search .erp-input {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline-start: 0;
+  font-size: var(--erp-text-sm);
+}
+
+.csales__search .erp-input:focus { outline: none; box-shadow: none; }
+
+.csales__sum {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+
+.csales__howto {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+.csales__card { margin: 0; }
+
+.csales__cardNote {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* ── خلايا الجداول ──────────────────────────────────────────────────────── */
+.csales__ref {
+  display: inline-block;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  padding: var(--erp-space-0) var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  white-space: nowrap;
+  border: 0;
+  cursor: pointer;
+}
+
+button.csales__ref:hover { text-decoration: underline; }
+
+.csales__itemName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+/* الغموضُ المُرصود لا يُدارى: رمزٌ باسمين أو أسعارٍ متعددة تُعلَّن لا تُجمَّع. */
+.csales__amb {
+  display: inline-block;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-warning-text);
+  background: var(--erp-warning-soft);
+  border-radius: var(--erp-radius-full);
+  padding: var(--erp-space-0) var(--erp-space-2);
+  cursor: help;
+  white-space: nowrap;
+}
+
+.csales__code {
+  display: block;
+  font-family: var(--erp-font-mono);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* المبلغ ونسبتُه من الفترة: رقمٌ صريح ومقياسٌ رفيعٌ تحته. */
+.csales__amt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--erp-space-1);
+}
+
+.csales__amt .erp-num {
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+}
+
+.csales__share {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 12ch;
+  block-size: var(--erp-space-1);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  position: relative;
+  overflow: hidden;
+}
+
+.csales__share::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: var(--cs-share, 0%);
+  border-radius: inherit;
+  background: var(--erp-brand);
+  opacity: 0.55;
+}
+
+/* أعمدةُ الدفع: رموزٌ صغيرة بتلميحٍ يحمل المبلغ، فلا عمودٌ لكل طريقة. */
+.csales__pay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-space-4);
+  block-size: var(--erp-space-4);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+  border: thin solid var(--erp-border-subtle);
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-xs);
+  cursor: help;
+}
+
+.csales__drift {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-warning-text);
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* الفارقُ الذي جاوزَ تقريبَ السطور يُثبَّت بلونِ الخطر: المرآةُ لا تسجّل
+   سببَه، فيُميَّ من تقريبِ الجمع دون أن يُنسَب إلى سببٍ مُختلَق. */
+.csales__drift.is-large { color: var(--erp-danger-text); font-weight: var(--erp-fw-semibold); }
+
+.csales__rowTools {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+}
+
+.csales__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--erp-icon-lg);
+  block-size: var(--erp-icon-lg);
+  border: 0;
+  border-radius: var(--erp-radius-full);
+  background: transparent;
+  color: var(--erp-text-faint);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--erp-duration-fast) var(--erp-ease-out),
+              color var(--erp-duration-fast) var(--erp-ease-out),
+              background var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.csales__open .ji {
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+}
+
+.erp-table tbody tr:hover .csales__open,
+.csales__open:hover,
+.csales__open:focus-visible {
+  color: var(--erp-brand-text);
+  background: var(--erp-brand-soft);
+}
+
+.csales__open:hover { transform: translateY(var(--erp-space-1)); }
+
+.csales__open:disabled { opacity: .5; cursor: progress; }
+
+/* ── لوحة الفاتورة / ملف الصنف ──────────────────────────────────────────── */
+.csales__scrim,
+.csales__panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline: 0;
+}
+
+.csales__scrim {
+  z-index: var(--erp-z-drawer);
+  background: var(--erp-scrim);
+  animation: erp-screen-in var(--erp-duration-fast) var(--erp-ease-out) both;
+}
+
+.csales__panel {
+  z-index: calc(var(--erp-z-drawer) + 1);
+  inset-inline-start: auto;
+  inline-size: min(100%, 86ch);
+  display: flex;
+  flex-direction: column;
+  background: var(--erp-surface);
+  box-shadow: var(--erp-shadow-xl);
+  border-inline-start: thin solid var(--erp-border);
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+}
+
+.csales__scrim[hidden],
+.csales__panel[hidden] { display: none; }
+
+body.csales-open { overflow: hidden; }
+
+/* شريطُ عنوان اللوحة — غيرُ شريط المرشّحات فوق، فلا تتصارع حالتان على اسمٍ واحد. */
+.csales__panelBar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  flex: none;
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border-bottom: thin solid var(--erp-border);
+  background: var(--erp-surface-raised);
+}
+
+.csales__barTitle {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.csales__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--erp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+
+.csales__panelState {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-3);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  padding: var(--erp-space-6);
+}
+
+.csales__shimmer {
+  inline-size: 100%;
+  max-inline-size: 24ch;
+  block-size: var(--erp-space-3);
+  border-radius: var(--erp-radius-full);
+  background-image: linear-gradient(
+    90deg,
+    var(--erp-surface-sunken) 0%,
+    var(--erp-surface-hover) 50%,
+    var(--erp-surface-sunken) 100%);
+  background-size: 200% 100%;
+  animation: csales-shimmer var(--erp-duration-slow) linear infinite;
+}
+
+@keyframes csales-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── البطل: الرقمُ أوّلًا ثم الوقائع ────────────────────────────────────── */
+.csales__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+  padding: var(--erp-space-4);
+  border-radius: var(--erp-radius-lg);
+  border: thin solid var(--erp-border);
+  border-inline-start: var(--erp-space-1) solid var(--erp-brand);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+.csales__heroLabel {
+  display: block;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.csales__heroValue {
+  display: block;
+  font-size: var(--erp-text-2xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  line-height: var(--erp-leading-tight);
+}
+
+.csales__words {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  max-inline-size: 52ch;
+}
+
+.csales__heroSide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12ch, 1fr));
+  gap: var(--erp-space-3);
+  flex: 1 1 26ch;
+}
+
+.csales__fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+
+.csales__fact b {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-faint);
+}
+
+.csales__fact span {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.csales__sec {
+  margin: var(--erp-space-3) 0 var(--erp-space-0);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+
+.csales__count {
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-faint);
+  background: var(--erp-surface-sunken);
+  border-radius: var(--erp-radius-full);
+  padding: var(--erp-space-0) var(--erp-space-2);
+}
+
+/* ── جدولُ السطور داخل اللوحة ──────────────────────────────────────────── */
+.csales__items {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--erp-text-sm);
+}
+
+.csales__items th {
+  text-align: start;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-faint);
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border);
+  white-space: nowrap;
+}
+
+.csales__items td {
+  padding: var(--erp-space-2);
+  border-bottom: thin solid var(--erp-border-subtle);
+  color: var(--erp-text-secondary);
+  vertical-align: top;
+}
+
+.csales__items td.c,
+.csales__items th.c { text-align: center; }
+
+.csales__items .idx { color: var(--erp-text-faint); }
+
+.csales__items tfoot td {
+  border-bottom: 0;
+  border-top: thin solid var(--erp-border);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+/* فواتيرُ ملف الصنف تُمرَّر أفقيًّا على الهاتف بدل أن تُهرس أعمدةً عشرة. */
+.csales__items--orders {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.csales__items--orders td,
+.csales__items--orders th { white-space: normal; }
+
+/* ── طرق الدفع والحالة ──────────────────────────────────────────────────── */
+.csales__pays {
+  display: flex;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.csales__payChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border-radius: var(--erp-radius-full);
+  border: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-xs);
+}
+
+.csales__payChip b { color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
+.csales__payChip .erp-num { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.csales__zatca {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+  padding: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  border: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-sunken);
+}
+
+/* ── القائمة المصغّرة: أسماءُ الرمز وأسعارُه ────────────────────────────── */
+.csales__mini {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20ch, 1fr));
+  gap: var(--erp-space-2);
+}
+
+.csales__mini li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+}
+
+.csales__mini .erp-num { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.csales__miniMeta {
+  grid-column: 1 / -1;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* ── ترتيبُ الكاشيريات ──────────────────────────────────────────────────── */
+.csales__ccList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--erp-space-2);
+}
+
+.csales__cc {
+  display: grid;
+  grid-template-columns: minmax(14ch, 22ch) minmax(6ch, 1fr) auto;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  border: thin solid var(--erp-border-subtle);
+  background: var(--erp-surface-raised);
+}
+
+.csales__ccName {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csales__ccBar {
+  block-size: var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  position: relative;
+  overflow: hidden;
+}
+
+.csales__ccBar::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: var(--cs-share, 0%);
+  border-radius: inherit;
+  background: var(--erp-chart-2, var(--erp-brand));
+  opacity: 0.8;
+}
+
+.csales__ccNums {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+}
+
+.csales__ccNums .erp-num:last-child { color: var(--erp-text-faint); font-size: var(--erp-text-xs); }
+
+.csales__ccMeta {
+  grid-column: 1 / -1;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+/* ── ملاحظاتُ الصدق داخل اللوحة ─────────────────────────────────────────── */
+.csales__note {
+  margin: 0;
+  padding: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  border-inline-start: var(--erp-space-1) solid var(--erp-warning);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-xs);
+  line-height: var(--erp-leading-base);
+}
+
+.csales__note b { font-weight: var(--erp-fw-bold); }
+
+.csales__warn {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+  cursor: help;
+}
+
+.csales__hint {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-faint);
+}
+
+.csales__error {
+  margin: 0;
+  padding: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+  font-size: var(--erp-text-sm);
+}
+
+.csales__unit {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.csales__panelGrid { margin: 0; }
+
+/* ── ترقيمُ ملف الصنف ───────────────────────────────────────────────────── */
+.csales__pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.csales__pageInfo {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+
+.csales__pager .erp-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── خاناتُ اللوحة سبع: تُرصُّ أربعًا ثم ثلاثًا على الشاشات الواسعة ───────
+   الشبكةُ المشتركة تملأ الصفَّ ستًّا ثم تُنزل السابعةَ وحيدة؛ وهنا العددُ
+   سبعة، فالشبكةُ اثنتا عشرةَ وحدة: الأربعُ الأولى ثُلاثياتٌ (٤ في الصف)
+   والثلاثُ الأخيرة رباعياتٌ (٣ في الصف) — صفّان ممتلئان لا خانةَ يتيمة. */
+/* ── الهاتف: اللوحة تأخذ العرضَ كلَّه والشريطُ يتراصّ ───────────────────── */
+@media (max-width: 720px) {
+  .csales__head { align-items: flex-start; }
+  .csales__tools,
+  .csales__bar { inline-size: 100%; }
+  .csales__bar .erp-field { flex: 1 1 10ch; }
+  .csales__search { flex-basis: 100%; }
+  .csales__howto { display: none; }
+  .csales__panel { inline-size: 100%; border-inline-start: 0; }
+  .csales__hero,
+  .csales__scroll { padding: var(--erp-space-3); }
+  .csales__cc { grid-template-columns: 1fr auto; }
+  .csales__ccBar { display: none; }
+}
+
+/* ── الطباعة: اللوحةُ وحدها، وشريطُ الأدوات يختفي ───────────────────────── */
+@media print {
+  .csales__tools,
+  .csales__bar,
+  .csales__pulseWrap,
+  .csales__pager { display: none; }
+}

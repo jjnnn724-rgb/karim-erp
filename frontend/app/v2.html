@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0F5B46">
+<link rel="apple-touch-icon" href="/app/assets/icon-192.png">
+<link rel="manifest" href="/app/manifest.json">
+<title>KARIM ERP — V2</title>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ZERO INLINE MARKUP — THIS IS A SECURITY-CONTRACT DECISION, NOT STYLE.
+
+     The origin (Server: KarimERP) serves:
+       Content-Security-Policy: script-src 'self' 'nonce-<per response>' …
+     Because a nonce is present, 'unsafe-inline' in that same list is
+     ignored by browsers, so every inline script tag is silently blocked.
+     Production index.html ships ZERO inline scripts for exactly this
+     reason; this page follows the same rule.
+
+     Consequences handled below:
+       • theme boot  → js/v2/theme-boot.js, referenced without defer or
+                       type=module so it still executes during parsing,
+                       before the first paint (the whole point of it).
+       • page chrome → css/v2/erp-preview.css, so the page keeps working
+                       even if the policy is later tightened to styles.
+     ══════════════════════════════════════════════════════════════════ -->
+
+<!-- ── Palette source of truth (legacy primitives V2 aliases) ───────────
+     Loaded unchanged and unmodified: V2 reads --karim-* values, it never
+     redefines them and never restyles a legacy selector. -->
+<link rel="stylesheet" href="css/design-tokens.css?v=4.9.76">
+
+<!-- ── V2 system (entirely additive, scoped under .erp-v2) ──────────────
+     Every asset carries ?v= like index.html does (17 occurrences there).
+     This is not cosmetic: the origin sends `Cache-Control: no-cache`, but
+     the Cloudflare tunnel rewrites it to `max-age=14400` — a four-hour
+     cache on every static file. A changing ?v is what makes an edit
+     visible at all. There is no build script that bumps it; it is updated
+     by hand, exactly as the rest of the app does.
+
+     V2 carries its own revision so a V2 edit can be released without
+     forcing every legacy asset to re-download. design-tokens.css above
+     keeps the app's 4.9.76 — it is unchanged legacy that V2 reads and never
+     edits, so it has no reason to move.
+
+     The revision is not only on this page's tags: every `import` inside
+     js/v2/** carries the SAME value as the preview.js tag below, because a
+     module fetched without a query is still a static file and the tunnel
+     caches that URL for four hours — a new preview.js over an old status.js
+     is exactly the bug that hides. tests/v2-branches.test.js asserts the
+     graph stays on one revision. Bump the page tag and the import
+     specifiers together. -->
+<!-- Self-hosted faces first: the tokens below name `Tajawal` first, and these
+     are the files that name must resolve to. No CDN, no `local()`. -->
+<!-- Preload the two faces the first paint actually waits on: the body face
+     (400 Arabic) and the KPI/money face (700 Arabic). These must be the
+     fonts erp-fonts.css declares — the V2 shell renders in IBM Plex Sans
+     Arabic (erp-tokens.css names it first), not the Tajawal/Outfit faces
+     used by the standalone menu screens. The previous four preloads pointed
+     at menu fonts this document never draws, so the browser fetched ~180KB
+     it did not use and printed "preloaded but not used" warnings while the
+     real first-paint font still waited on CSS. The woff2 URLs carry no ?v on
+     purpose: these files never change content — a new revision renames
+     nothing, so the preload can never point at a stale variant. crossorigin
+     is required even same-origin: fonts fetch in anonymous CORS mode, and a
+     preload without it double-fetches. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/v2/ibmplexsansarabic-normal-400-arabic.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/v2/ibmplexsansarabic-normal-700-arabic.woff2">
+<link rel="stylesheet" href="css/v2/erp-fonts.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-tokens.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-themes.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-base.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-components.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-shell.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-table.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-dashboard.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-charts.css?v=4.9.180">
+  <link rel="stylesheet" href="css/v2/erp-briefing.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-auth.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-cards.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-departments.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-hr.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-invoice-editor.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-bulk-import.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-ops.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-zkteco.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-portal.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-warehouse-gov.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-density.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-motion.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-toast.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-overlay.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-report-viewer.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-chat.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-scan.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-mobile-shell.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-whatsapp.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-yarasoft.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-pos-v2.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-inquiry.css?v=4.9.180">
+
+<!-- ── IDENTITY ──────────────────────────────────────────────────────────
+     «بورسلين ونحاس» — آخر طبقة تُحمَّل: تعيد صياغة التوكنات فقط ولا تلمس
+     أي عقد مكوّن. حذف هذا السطر وحده يعيد المظهر السابق بالكامل. -->
+  <link rel="stylesheet" href="css/v2/erp-ai.css?v=4.9.180">
+  <link rel="stylesheet" href="css/v2/erp-cash.css?v=4.9.180">
+  <link rel="stylesheet" href="css/v2/erp-sales.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-sales-inquiry.css?v=4.9.180">
+  <link rel="stylesheet" href="css/v2/erp-executive.css?v=4.9.180">
+  <link rel="stylesheet" href="css/v2/erp-monthly.css?v=4.9.180">
+<link rel="stylesheet" href="css/v2/erp-identity.css?v=4.9.180">
+
+<!-- Preview-only chrome — never part of the shipped shell. -->
+<link rel="stylesheet" href="css/v2/erp-preview.css?v=4.9.180">
+
+<!-- ── NO-FLASH THEME BOOT ───────────────────────────────────────────────
+     Placed after the stylesheets so the CSS fetch starts first, but with
+     NO defer and NO type=module: it must run while <head> is still being
+     parsed, i.e. before <html data-theme> matters to any rendered pixel.
+     Sets the same attribute design-tokens.css keys the palette on, so V2
+     and legacy can never disagree about the active theme. -->
+<script src="js/v2/theme-boot.js?v=4.9.180"></script>
+
+<!-- ── Icons: the SAME hydrator the production app uses (icons.js).
+     It installs window.ico and a MutationObserver that converts every
+     i.ji[data-i] — including nodes V2 inserts later — so both shells share
+     one icon set instead of V2 shipping a second one. -->
+<script src="js/icons.js?v=4.9.164" defer></script>
+</head>
+
+<body>
+  <!-- لا شريط وضع في أعلى الصفحة: الوضع (معاينة/حيّة) يُقرأ من عنوان التبويب،
+       ورابط «النظام الحالي» صار في مركز التحكم. -->
+
+  <div id="erp-v2-root"></div>
+
+      <!-- حراسة قراءة Excel: حدّ حجم/صفوف قبل القراءة (يفشل بلا صمت) -->
+    <script src="js/core/xlsx-guard.js?v=4.9.181"></script>
+    <script type="module" src="js/v2/preview.js?v=4.9.180"></script>
+</body>
+</html>

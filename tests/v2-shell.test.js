@@ -1,0 +1,223 @@
+/**
+ * v2-shell.test.js — عقد إضافات القشرة + إصلاح عملة الموجز
+ * ═══════════════════════════════════════════════════════════════════════
+ * المرجع: index.html (الجرس/FAB/اللغة/عدم الاتصال) + app.js:269-331
+ * (الجرس للأدمن) + auth-navigation.js:395 (اللغة) + middleware/health.js.
+ */
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const APP = path.join(__dirname, '..', 'frontend', 'app');
+const V2 = path.join(APP, 'js', 'v2');
+const REPO = path.join(V2, 'data', 'shell-repo.js');
+const EXTRAS = path.join(V2, 'layout', 'shell-extras.js');
+const HOST = path.join(V2, 'preview.js');
+const BREPO = path.join(V2, 'data', 'briefing-repo.js');
+const V2_HTML = path.join(APP, 'v2.html');
+const REV = (fs.readFileSync(V2_HTML, 'utf8').match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
+
+const read = (p) => fs.readFileSync(p, 'utf8');
+
+function loadEsm(file, injections = {}, collect = []) {
+    const stripped = read(file)
+        .split('\n')
+        .filter((line) => !/^\s*import\b|^\s*from\s*'[^']*';?\s*$/.test(line))
+        .join('\n')
+        .replace(/^export\s+/gm, '');
+    const src = collect.length
+        ? `${stripped}\n;Object.assign(globalThis, {${collect.join(', ')}});`
+        : stripped;
+    const context = {
+        console, JSON, String, Number, Boolean, Array, Object, RegExp, Error,
+        Date, Math, Promise, Set, Map, Intl, FormData, encodeURIComponent,
+        ...injections,
+    };
+    vm.createContext(context);
+    vm.runInContext(src, context, { filename: file });
+    return context;
+}
+
+function repoStub(impl) {
+    const calls = [];
+    const apiFetch = jest.fn(async (p, opts) => {
+        calls.push({ path: p, method: (opts && opts.method) || 'GET', body: opts && opts.body });
+        return impl ? impl(p, opts) : {};
+    });
+    return { apiFetch, calls };
+}
+
+describe('القشرة — الأبواب', () => {
+    test('الجرس والصحة وكلمة المرور بنفس المسارات', async () => {
+        const { apiFetch, calls } = repoStub(() => ({ notifications: [], unread_count: 0 }));
+        const ctx = loadEsm(REPO, { apiFetch }, [
+            'fetchNotifications', 'markNotificationsRead', 'markAllNotificationsRead',
+            'clearNotifications', 'changePassword',
+        ]);
+        await ctx.fetchNotifications();
+        await ctx.markNotificationsRead([3]);
+        await ctx.markAllNotificationsRead();
+        await ctx.clearNotifications();
+        await ctx.changePassword({ current_password: 'a', new_password: 'Abcd12345678' });
+        expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+            'GET /notifications',
+            'POST /notifications/read',
+            'POST /notifications/read-all',
+            'DELETE /notifications',
+            'POST /auth/change-password',
+        ]);
+        expect(JSON.parse(calls[1].body)).toEqual({ ids: [3] });
+        expect(JSON.parse(calls[4].body)).toEqual({ current_password: 'a', new_password: 'Abcd12345678' });
+    });
+
+    test('الصحة بلا مصادقة مسبقة — والسقوط معلن', async () => {
+        const { apiFetch } = repoStub(() => { throw new Error('down'); });
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchHealth']);
+        const h = await ctx.fetchHealth();
+        expect(h.ok).toBe(false);
+        expect(h.server).toBe(false);
+    });
+
+    test('صلاحيات الجلسة تُقرأ من بابه — بنفس رد الخادم', async () => {
+        const { apiFetch, calls } = repoStub(() => ({
+            grants: ['payroll.view'], denies: ['shelves'],
+            menus: ['payroll'], deniedMenus: ['shelves'],
+        }));
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchMyPermissions']);
+        const p = await ctx.fetchMyPermissions();
+        expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['GET /permissions/me']);
+        expect(p).toEqual({
+            grants: ['payroll.view'], denies: ['shelves'],
+            menus: ['payroll'], deniedMenus: ['shelves'],
+        });
+    });
+
+    test('باب الصلاحيات لا يرمي — الفشل يرجع لأدوار الدور وحدها', async () => {
+        const { apiFetch } = repoStub(() => { throw new Error('500'); });
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchMyPermissions']);
+        await expect(ctx.fetchMyPermissions()).resolves.toEqual({
+            grants: [], denies: [], menus: [], deniedMenus: [],
+        });
+    });
+});
+
+describe('القشرة — صلاحيات القائمة موصولة بالمضيف', () => {
+    const host = () => read(HOST);
+
+    test('المنح والمسحوب يكتبان STATE.permissions التي يقرأها nav-model', () => {
+        const h = host();
+        expect(h).toMatch(/import \{ fetchMyPermissions \} from '\.\/data\/shell-repo\.js\?v=/);
+        expect(h).toMatch(/window\.STATE\.permissions = await fetchMyPermissions\(\)/);
+        expect(h).toMatch(/async function applyMyPermissions\(\)/);
+        expect(h).toMatch(/if \(!isLive\(\)\) \{return;\}/);
+    });
+
+    test('تُطلب عند كل جلسة جاهزة — وبلا انتظار يُعطّل أول رسم', () => {
+        const h = host();
+        expect(h.match(/void applyMyPermissions\(\)/g) || []).toHaveLength(2);
+        expect(h).not.toMatch(/^\s*await applyMyPermissions/m);
+    });
+
+    test('منح مستخدم سابق لا يبقى بعد خروجه', () => {
+        const h = host();
+        // المسح انتقل إلى clearLocalSession كي يشمل أيضًا إبطال الجلسة
+        // الحالية من شاشة الأجهزة، لا زر الخروج وحده.
+        const logout = h.slice(h.indexOf('function clearLocalSession()'), h.indexOf('function refreshProfileSlot()'));
+        expect(logout).toMatch(/doV2Logout\(\)\s*\{[\s\S]{0,500}clearLocalSession\(\);/);
+        // الخروج من جلسة حقيقية يفتح بوابة الدخول، لا قشرةً بلا بيانات.
+        expect(logout).toMatch(/if \(signedIn\) \{navigateLogin\('dashboard'\);\}/);
+        expect(logout).toMatch(/window\.STATE\.permissions = \{ menus: \[\], deniedMenus: \[\] \}/);
+    });
+});
+
+describe('القشرة — عقد الوحدة', () => {
+    const src = () => read(EXTRAS);
+
+    test('لا تعرض إجراء تصدير عامًا بلا تنفيذ — لكل شاشة تصديرها المدعوم', () => {
+        const host = read(HOST);
+        expect(host).not.toMatch(/label:\s*'تصدير'[\s\S]{0,180}console\.info/);
+        expect(host).not.toContain('[V2 preview] export is a boundary, not implemented');
+    });
+
+    test('حدود التكامل غير الموصولة لا تظهر كأزرار قبل تركيب ميزة حقيقية', () => {
+        const layout = read(path.join(V2, 'layout', 'app-layout.js'));
+        expect(layout).toMatch(/data-erp-integrations hidden/);
+        expect(layout).toMatch(/data-erp-boundary="\$\{esc\(name\)\}"[\s\S]*?hidden/);
+        expect(layout).toMatch(/integrations\.hidden = false/);
+    });
+
+    test('العناصر الستة حاضرة بنفس أدوار القديم', () => {
+        const s = src();
+        for (const k of ['karim_lang', 'data-v2-bell', 'data-v2-notif-readall',
+            'erp-lamp', 'data-v2-quick="pos"', 'data-v2-quick="menu-board"',
+            'data-v2-quick="dispatch"', 'data-v2-fab-go', 'data-v2-pw-go',
+            'erp-offline-bar', 'mountBoundary', 'FAB_ACTIONS']) {
+            expect(s).toContain(k);
+        }
+        expect(s).toContain("'admin', 'manager', 'hr', 'accountant', 'dept_head'");
+    });
+
+    test('زر الكاشير السريع يبقى داخل V2 ويظهر للمدير', () => {
+        const extras = read(EXTRAS);
+        expect(extras).toContain("const posRoles = ['admin', 'manager', 'accountant', 'cashier'];");
+        expect(extras).toContain('shell.navigate(k);');
+        expect(extras).not.toContain("window.open('/app/pos.html'");
+    });
+
+    test('بلا شبكة مباشرة ولا معالج سطري', () => {
+        const s = src().replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(s).not.toMatch(/\bapiFetch\b/);
+        expect(s).not.toMatch(/[^a-zA-Z]fetch\(/);
+        expect(s.match(/\son[a-z]+\s*=\s*["']/g) || []).toHaveLength(0);
+    });
+
+    test('وضع fixture لا يشغّل شبكة: isLive يحكم الجرس والصحة ومؤقتاتهما', () => {
+        const s = src();
+        expect(s).toMatch(/const live = \(\) => \(typeof ctx\.isLive === 'function' \? ctx\.isLive\(\) : false\) && hasSession\(\);/);
+        const block = (start, end) => s.slice(s.indexOf(start), s.indexOf(end, s.indexOf(start)));
+        const health = block('async function paintHealth()', 'const healthTimer');
+        expect(health).toMatch(/if \(!live\(\)\) \{return;\}/);
+        const bell = block('async function paintBell()', 'async function openNotifPanel');
+        /* الجرس لكل دور مصادق (لا قيد الأدمن القديم app.js:255): الخادم يوجّه
+           إشعارات الاعتماد لـ kitchen/warehouse ويبصرّها على مالك الجلسة وحده. */
+        expect(bell).toMatch(/if \(!live\(\)\) \{bellWrap\.innerHTML = ''; return;\}/);
+        expect(bell).not.toMatch(/isAdmin|NOTIF_ADMIN_ROLES|NOTIF_BELL_ROLES/);
+        expect(src()).not.toMatch(/NOTIF_ADMIN_ROLES|NOTIF_BELL_ROLES/);
+        const poll = block('function startNotifPoll()', '/* ── Quick buttons');
+        expect(poll).toMatch(/if \(!live\(\)\) \{return;\}/);
+        const refresh = block('function refresh()', 'refresh();');
+        const guard = refresh.indexOf('if (!live())');
+        expect(guard).toBeGreaterThan(-1);
+        expect(refresh.indexOf('paintBell()')).toBeGreaterThan(guard);
+        expect(refresh.indexOf('paintHealth()')).toBeGreaterThan(guard);
+        expect(refresh.indexOf('startNotifPoll()')).toBeGreaterThan(guard);
+    });
+
+    test('المضيف يركّب الإضافات ويحدّثها مع الجلسة', () => {
+        const h = read(HOST);
+        expect(h).toMatch(/import \{ mountShellExtras \} from '\.\/layout\/shell-extras\.js\?v=/);
+        expect(h).toMatch(/mountShellExtras\(shell, \{/);
+        expect(h).toMatch(/shellExtras\.refresh\(\)/);
+    });
+
+    test('الوحدة الموحدة', () => {
+        expect(REV).toBeTruthy();
+        for (const f of [REPO, EXTRAS]) {
+            const versions = [...read(f).matchAll(/\?v=([0-9.]+)/g)].map((m) => m[1]);
+            expect(versions.length).toBeGreaterThan(0);
+            for (const v of versions) {expect(v).toBe(REV);}
+        }
+    });
+});
+
+describe('الموجز — العملة من الإعدادات', () => {
+    test('buildKpis يقبل العملة ويبقي الافتراضي', () => {
+        const ctx = loadEsm(BREPO, {}, ['buildKpis']);
+        const b = { cashiersTotal: { invoices: 0 } };
+        const withCur = ctx.buildKpis(b, {}, 'ج.م');
+        expect(withCur.filter((k) => k.unit === 'ج.م').length).toBeGreaterThan(0);
+        const def = ctx.buildKpis(b, {});
+        expect(def.filter((k) => k.unit === 'ر.س').length).toBeGreaterThan(0);
+        expect(JSON.stringify(withCur)).not.toMatch('ر.س');
+    });
+});

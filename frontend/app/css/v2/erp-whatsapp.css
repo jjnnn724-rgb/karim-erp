@@ -1,0 +1,74 @@
+.erp-v2-whatsapp .erp-wa-tabs,
+.erp-v2-whatsapp .erp-wa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+  align-items: center;
+}
+
+.erp-v2-whatsapp .erp-wa-tabs [aria-selected="true"] {
+  color: var(--erp-brand-text);
+  background: var(--erp-primary-soft);
+  font-weight: var(--erp-fw-bold);
+}
+
+.erp-v2-whatsapp .erp-wa-status,
+.erp-v2-whatsapp .erp-wa-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--erp-space-3);
+}
+
+.erp-v2-whatsapp .erp-wa-qr {
+  display: grid;
+  justify-items: center;
+  gap: var(--erp-space-2);
+  min-block-size: 8rem;
+  padding: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  text-align: center;
+}
+
+.erp-v2-whatsapp .erp-wa-qr-image {
+  inline-size: min(15rem, 100%);
+  block-size: auto;
+  padding: var(--erp-space-2);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+
+.erp-v2-whatsapp [role="alert"] {
+  color: var(--erp-danger-text);
+}
+
+.erp-v2-whatsapp .erp-wa-query {
+  display: flex;
+  gap: var(--erp-space-2);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.erp-v2-whatsapp .erp-wa-query .erp-input {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.erp-v2-whatsapp .erp-wa-query-chips {
+  display: flex;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.erp-v2-whatsapp .erp-wa-answer {
+  padding: var(--erp-space-3);
+  border-inline-start: 4px solid var(--erp-success);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-2);
+}
+
+.erp-v2-whatsapp .erp-wa-answer p {
+  margin: var(--erp-space-2) 0 0;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,129 @@
+
+/* ═══════════════════════════════════════════════════════════════════
+   Real-time status — v4.2
+   The connection indicator is a topbar status item (same rhythm as
+   .topbar-btn), not a floating overlay. It degrades to a fixed chip
+   only when no topbar exists (standalone pages).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Status item (in topbar) ── */
+#rt-badge{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:6px 12px;background:transparent;
+    border:1px solid var(--karim-border,#e4e7ec);border-radius:7px;
+    cursor:pointer;user-select:none;
+    font-family:'IBM Plex Sans Arabic','Cairo','Tajawal',sans-serif;
+    transition:background .12s ease, border-color .12s ease;
+}
+#rt-badge:hover{ background:var(--karim-bg-3,#eef0f3); }
+body > #rt-badge{               /* fallback mount: quiet fixed chip, bottom corner */
+    position:fixed;bottom:76px;inset-inline-start:12px;z-index:90;
+    background:var(--karim-surface,#fff);
+    box-shadow:0 1px 3px rgba(16,24,40,.08);
+}
+
+/* ── Status lamps ── */
+.rt-lamps{ display:inline-flex;align-items:center;gap:5px;flex-shrink:0; }
+#rt-dot{
+    width:7px;height:7px;border-radius:50%;
+    background:#d92d20;
+    transition:background .3s;
+}
+#rt-dot.connected{ background:#12b76a; animation:rt-pulse 2.4s infinite; }
+#rt-dot.syncing{ background:#f79009; animation:rt-pulse 1.2s infinite; }
+.rt-lamp-sep{ width:1px;height:10px;background:var(--karim-border,#e4e7ec);flex-shrink:0; }
+#db-dot{
+    width:7px;height:7px;border-radius:50%;
+    background:#d92d20;
+    transition:background .3s;
+}
+#db-dot.healthy{ background:#12b76a; }
+#db-dot.checking{ background:#f79009; }
+#db-dot.down{ background:#d92d20; animation:rt-pulse-red 1.4s infinite; }
+@keyframes rt-pulse{
+    0%{box-shadow:0 0 0 0 rgba(18,183,106,.35)}
+    70%{box-shadow:0 0 0 5px rgba(18,183,106,0)}
+    100%{box-shadow:0 0 0 0 rgba(18,183,106,0)}
+}
+@keyframes rt-pulse-red{
+    0%{box-shadow:0 0 0 0 rgba(217,45,32,.35)}
+    70%{box-shadow:0 0 0 5px rgba(217,45,32,0)}
+    100%{box-shadow:0 0 0 0 rgba(217,45,32,0)}
+}
+
+/* ── Label + caret ── */
+#rt-label{
+    font-size:11.5px;font-weight:500;color:var(--karim-text-muted,#475467);
+    transition:color .3s;white-space:nowrap;
+}
+#rt-badge.connected #rt-label{ color:#12b76a; }
+#rt-badge.syncing #rt-label{ color:#f79009; }
+.rt-caret{ width:11px;height:11px;color:var(--karim-text-faint,#667085);transition:transform .15s ease;flex-shrink:0; }
+#rt-badge.open .rt-caret{ transform:rotate(180deg); }
+
+/* ── Devices Panel (drops from the topbar item) ── */
+#rt-panel{
+    position:fixed;top:54px;inset-inline-end:16px;z-index:210;
+    background:var(--karim-surface,#fff);
+    border:1px solid var(--karim-border,#e4e7ec);border-radius:12px;
+    padding:14px;min-width:250px;
+    box-shadow:0 12px 32px rgba(16,24,40,.14);
+    transform:translateY(-6px);opacity:0;pointer-events:none;
+    transition:all .2s ease;
+    font-family:'IBM Plex Sans Arabic','Cairo','Tajawal',sans-serif;
+}
+#rt-panel.visible{ transform:translateY(0);opacity:1;pointer-events:all; }
+#rt-panel-title{
+    font-size:11px;font-weight:600;color:var(--karim-text-faint,#667085);
+    text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;
+    padding-bottom:9px;border-bottom:1px solid var(--karim-border,#e4e7ec);
+}
+#rt-panel-title svg.ji{ width:13px;height:13px;vertical-align:-2px;margin-left:4px;color:var(--karim-gold,#b45309); }
+.rt-device-item{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 0;border-bottom:1px solid var(--karim-border,#e4e7ec);
+}
+.rt-device-item:last-child{ border:none; }
+.rt-device-icon{
+    width:30px;height:30px;border-radius:8px;
+    background:var(--karim-bg-3,#eef0f3);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--karim-text-muted,#475467);flex-shrink:0;
+}
+.rt-device-icon svg.ji{ width:14px;height:14px; }
+.rt-device-info{ flex:1;min-width:0; }
+.rt-device-name{ font-size:12px;font-weight:500;color:var(--karim-text,#101828);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.rt-device-ip{ font-size:10px;color:var(--karim-text-faint,#667085);margin-top:1px; }
+.rt-device-dot{ width:6px;height:6px;border-radius:50%;background:#12b76a;flex-shrink:0; }
+#rt-latency{ font-size:10px;color:var(--karim-text-faint,#667085);margin-top:9px;text-align:center;font-variant-numeric:tabular-nums; }
+
+/* ── Sync Toast ── */
+#rt-sync-toast{
+    position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(8px);
+    z-index:210;
+    background:var(--karim-text,#101828);
+    border:1px solid transparent;border-radius:8px;
+    padding:9px 16px;
+    display:flex;align-items:center;gap:9px;
+    font-family:'IBM Plex Sans Arabic','Cairo','Tajawal',sans-serif;
+    font-size:12.5px;font-weight:500;color:#fff;
+    box-shadow:0 8px 24px rgba(16,24,40,.25);
+    opacity:0;pointer-events:none;
+    transition:all .2s ease;
+    white-space:nowrap;
+}
+#rt-sync-toast.show{ opacity:1;transform:translateX(-50%) translateY(0); }
+#rt-sync-icon{ font-size:14px;display:inline-flex;color:#f5b954; }
+#rt-sync-icon svg.ji{ width:14px;height:14px; }
+
+/* ── Compact topbar: lamps only, no label ── */
+@media (max-width: 1100px){
+    #rt-label, .rt-caret{ display:none; }
+    #rt-badge{ padding:6px 9px; }
+}
+
+/* ── v4.4: حالات لوحة الأجهزة — على رموز النظام بدل الأنماط المضمّنة ── */
+.rt-empty{ color:var(--karim-text-faint,#667085); font-size:12px; text-align:center; padding:12px; }
+.rt-latency-ok{ color:#12b76a; font-weight:700; }
+.rt-latency-warn{ color:#f79009; font-weight:700; }
+.rt-latency-bad{ color:#d92d20; font-weight:700; }

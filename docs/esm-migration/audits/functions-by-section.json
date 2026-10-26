@@ -1,0 +1,4002 @@
+[
+ {
+  "name": "apiFetch",
+  "line": 32,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "serverErrorInfo",
+  "line": 104,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "serverMessage",
+  "line": 110,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "KARIM_RTget",
+  "line": 116,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "KARIM_RTset",
+  "line": 117,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "KARIM_RTclear",
+  "line": 118,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "refreshSession",
+  "line": 120,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "persistCreate",
+  "line": 169,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "persistUpdate",
+  "line": 175,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "persistRemove",
+  "line": 178,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "upsertStateEntity",
+  "line": 181,
+  "section": "CONFIG & STATE"
+ },
+ {
+  "name": "uid",
+  "line": 255,
+  "section": "UTILS"
+ },
+ {
+  "name": "t",
+  "line": 471,
+  "section": "I18N"
+ },
+ {
+  "name": "readLangLocal",
+  "line": 473,
+  "section": "I18N"
+ },
+ {
+  "name": "persistLangLocal",
+  "line": 474,
+  "section": "I18N"
+ },
+ {
+  "name": "applyI18nMaps",
+  "line": 519,
+  "section": "I18N"
+ },
+ {
+  "name": "applyLangAttrs",
+  "line": 527,
+  "section": "I18N"
+ },
+ {
+  "name": "applyLoginI18n",
+  "line": 535,
+  "section": "I18N"
+ },
+ {
+  "name": "esc",
+  "line": 550,
+  "section": "I18N"
+ },
+ {
+  "name": "today",
+  "line": 551,
+  "section": "I18N"
+ },
+ {
+  "name": "nowTime",
+  "line": 552,
+  "section": "I18N"
+ },
+ {
+  "name": "fN",
+  "line": 553,
+  "section": "I18N"
+ },
+ {
+  "name": "fC",
+  "line": 554,
+  "section": "I18N"
+ },
+ {
+  "name": "fD",
+  "line": 555,
+  "section": "I18N"
+ },
+ {
+  "name": "fHijri",
+  "line": 557,
+  "section": "I18N"
+ },
+ {
+  "name": "gregToHijriParts",
+  "line": 567,
+  "section": "I18N"
+ },
+ {
+  "name": "hijriToGregorian",
+  "line": 581,
+  "section": "I18N"
+ },
+ {
+  "name": "hijriDateField",
+  "line": 608,
+  "section": "I18N"
+ },
+ {
+  "name": "toggleDateMode",
+  "line": 634,
+  "section": "I18N"
+ },
+ {
+  "name": "syncGregToHijri",
+  "line": 657,
+  "section": "I18N"
+ },
+ {
+  "name": "syncHijriToGreg",
+  "line": 676,
+  "section": "I18N"
+ },
+ {
+  "name": "fDT",
+  "line": 686,
+  "section": "I18N"
+ },
+ {
+  "name": "toast",
+  "line": 687,
+  "section": "I18N"
+ },
+ {
+  "name": "cleanNotificationText",
+  "line": 688,
+  "section": "I18N"
+ },
+ {
+  "name": "showLoad",
+  "line": 697,
+  "section": "I18N"
+ },
+ {
+  "name": "hideLoad",
+  "line": 698,
+  "section": "I18N"
+ },
+ {
+  "name": "destroyCharts",
+  "line": 699,
+  "section": "I18N"
+ },
+ {
+  "name": "metricCard",
+  "line": 700,
+  "section": "I18N"
+ },
+ {
+  "name": "notifAdmin",
+  "line": 703,
+  "section": "I18N"
+ },
+ {
+  "name": "addNotification",
+  "line": 704,
+  "section": "I18N"
+ },
+ {
+  "name": "updateNotificationBadge",
+  "line": 717,
+  "section": "I18N"
+ },
+ {
+  "name": "refreshNotifications",
+  "line": 726,
+  "section": "I18N"
+ },
+ {
+  "name": "navigateNotification",
+  "line": 734,
+  "section": "I18N"
+ },
+ {
+  "name": "showNotifications",
+  "line": 743,
+  "section": "I18N"
+ },
+ {
+  "name": "openNotification",
+  "line": 768,
+  "section": "I18N"
+ },
+ {
+  "name": "markAllNotificationsRead",
+  "line": 775,
+  "section": "I18N"
+ },
+ {
+  "name": "markNotificationRead",
+  "line": 778,
+  "section": "I18N"
+ },
+ {
+  "name": "clearAllNotifications",
+  "line": 779,
+  "section": "I18N"
+ },
+ {
+  "name": "chatIsOn",
+  "line": 783,
+  "section": "I18N"
+ },
+ {
+  "name": "ensureChatUI",
+  "line": 784,
+  "section": "I18N"
+ },
+ {
+  "name": "hookChatSocket",
+  "line": 804,
+  "section": "I18N"
+ },
+ {
+  "name": "chatUpdateBadge",
+  "line": 812,
+  "section": "I18N"
+ },
+ {
+  "name": "chatRender",
+  "line": 818,
+  "section": "I18N"
+ },
+ {
+  "name": "chatPeerName",
+  "line": 827,
+  "section": "I18N"
+ },
+ {
+  "name": "chatRenderUsers",
+  "line": 831,
+  "section": "I18N"
+ },
+ {
+  "name": "loadChatUsers",
+  "line": 845,
+  "section": "I18N"
+ },
+ {
+  "name": "pickChatPeer",
+  "line": 854,
+  "section": "I18N"
+ },
+ {
+  "name": "backToChatUsers",
+  "line": 871,
+  "section": "I18N"
+ },
+ {
+  "name": "toggleChatPanel",
+  "line": 875,
+  "section": "I18N"
+ },
+ {
+  "name": "onChatNew",
+  "line": 886,
+  "section": "I18N"
+ },
+ {
+  "name": "sendChatMsg",
+  "line": 902,
+  "section": "I18N"
+ },
+ {
+  "name": "initDatabase",
+  "line": 918,
+  "section": "STORAGE"
+ },
+ {
+  "name": "uiPreferencesPayload",
+  "line": 939,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_doSaveOnce",
+  "line": 940,
+  "section": "STORAGE"
+ },
+ {
+  "name": "_flushSave",
+  "line": 980,
+  "section": "STORAGE"
+ },
+ {
+  "name": "saveData",
+  "line": 999,
+  "section": "STORAGE"
+ },
+ {
+  "name": "loadData",
+  "line": 1024,
+  "section": "STORAGE"
+ },
+ {
+  "name": "generateFingerprintSync",
+  "line": 1102,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "generateDigitalFingerprint",
+  "line": 1114,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "findEmployeeById",
+  "line": 1123,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "ensureEmployeeCardData",
+  "line": 1124,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "generateQRDataURL",
+  "line": 1146,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "getEmployeeQRData",
+  "line": 1153,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "getEmployeeHumanQRData",
+  "line": 1157,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "uploadEmployeePhoto",
+  "line": 1169,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "handlePhotoUpload",
+  "line": 1195,
+  "section": "SMART CARD UTILS"
+ },
+ {
+  "name": "renderSmartCard",
+  "line": 1199,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "showFullQRModal",
+  "line": 1374,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "downloadHumanQRImage",
+  "line": 1406,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "downloadQRImage",
+  "line": 1417,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "localDateOnly",
+  "line": 1430,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "reportDateRangeForMonth",
+  "line": 1435,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "fetchEmployeeAttendanceReport",
+  "line": 1440,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "formatHoursFromMinutes",
+  "line": 1443,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "formatLateSummary",
+  "line": 1448,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "formatLateRow",
+  "line": 1453,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "formatAttendanceStatus",
+  "line": 1459,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printAttendanceReport",
+  "line": 1473,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "runStrictAuditUI",
+  "line": 1518,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printMonthlyAttendance",
+  "line": 1537,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printLuxCard",
+  "line": 1620,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printEmployeeAttendanceDay",
+  "line": 1630,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printEmployeeAttendanceMonth",
+  "line": 1636,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "regenerateFingerprint",
+  "line": 1643,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "printSmartCard",
+  "line": 1655,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "downloadSmartCard",
+  "line": 1720,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "drawRestOfCard",
+  "line": 1757,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "finalizeCard",
+  "line": 1787,
+  "section": "SMART CARD RENDER"
+ },
+ {
+  "name": "bulkTransliterate",
+  "line": 1808,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkGenPassword",
+  "line": 1810,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkGenUsername",
+  "line": 1818,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "showBulkImportModal",
+  "line": 1834,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkSetupDragDrop",
+  "line": 1939,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkSelectFormat",
+  "line": 1961,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkGetSelectedFormat",
+  "line": 1965,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkFpForms",
+  "line": 1971,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkUsedFpSet",
+  "line": 1983,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkAllocFp",
+  "line": 1992,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkNextStep",
+  "line": 2004,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkRenderPreview",
+  "line": 2049,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkDeleteRow",
+  "line": 2103,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkClearAll",
+  "line": 2111,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkReadFile",
+  "line": 2127,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkConfirmImport",
+  "line": 2152,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkShowResultsModal",
+  "line": 2193,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkExportExcel",
+  "line": 2239,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkExportCSV",
+  "line": 2249,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkExportJSON",
+  "line": 2263,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkCopyAllPasswords",
+  "line": 2282,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkPrint",
+  "line": 2297,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "bulkPrintSlips",
+  "line": 2341,
+  "section": "BULK IMPORT"
+ },
+ {
+  "name": "completeRequiredPasswordChange",
+  "line": 2387,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "showForgotPasswordModal",
+  "line": 2404,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "fpFail",
+  "line": 2408,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "submitForgotPassword",
+  "line": 2413,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "issueResetCode",
+  "line": 2429,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "copyResetCode",
+  "line": 2439,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "markLoginInvalid",
+  "line": 2444,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "clearLoginInvalid",
+  "line": 2452,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "doLogin",
+  "line": 2455,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "enterApp",
+  "line": 2518,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "doLogout",
+  "line": 2551,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "getLogoSrc",
+  "line": 2569,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "getAbsoluteLogoSrc",
+  "line": 2573,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "logoMarkup",
+  "line": 2577,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "updateLogoDisplay",
+  "line": 2580,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "buildNav",
+  "line": 2594,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "go",
+  "line": 2639,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "openDepartmentDetail",
+  "line": 2654,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "toggleSidebar",
+  "line": 2665,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "toggleLang",
+  "line": 2666,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "toggleTheme",
+  "line": 2667,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "isOperatingExpense",
+  "line": 2668,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "accountingExpenseAmount",
+  "line": 2669,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "isStockMovementExpense",
+  "line": 2670,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "isCountCorrectionExpense",
+  "line": 2671,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "deptExpenseBreakdown",
+  "line": 2674,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "deptWithChildren",
+  "line": 2686,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "calcStats",
+  "line": 2705,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "updateDateDisplay",
+  "line": 2722,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "updateRoleIndicator",
+  "line": 2723,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "updateQuickDispatchButton",
+  "line": 2724,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "checkMenuAccessLocal",
+  "line": 2725,
+  "section": "AUTH & NAVIGATION"
+ },
+ {
+  "name": "dashboardDateKey",
+  "line": 2731,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "dashboardFilteredRows",
+  "line": 2732,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "renderDashboardAnalytics",
+  "line": 2740,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "initDashboardCharts",
+  "line": 2744,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "loadZkDashboardStatus",
+  "line": 2760,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "renderDashboard",
+  "line": 2782,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "mgrBriefLoad",
+  "line": 2897,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "renderEmployeeDashboard",
+  "line": 2974,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "renderExpiryAlertBanner",
+  "line": 3005,
+  "section": "DASHBOARD"
+ },
+ {
+  "name": "renderEmployeePortal",
+  "line": 3037,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "loadMyBiometricPanel",
+  "line": 3130,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "zkPortalIndicator",
+  "line": 3158,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "switchPortalEmployee",
+  "line": 3175,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "renderEmployeePortalFor",
+  "line": 3180,
+  "section": "EMPLOYEE PORTAL"
+ },
+ {
+  "name": "zkStatusBadge",
+  "line": 3193,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkPunchName",
+  "line": 3200,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkVerifyName",
+  "line": 3203,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkFmtTime",
+  "line": 3206,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkFmtDate",
+  "line": 3209,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "renderZktecoPage",
+  "line": 3212,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkRefresh",
+  "line": 3232,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkSetTab",
+  "line": 3246,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkRenderBody",
+  "line": 3247,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkRenderDevices",
+  "line": 3254,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkAddDeviceModal",
+  "line": 3304,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkAddDevice",
+  "line": 3325,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkEditDeviceModal",
+  "line": 3339,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkUpdateDevice",
+  "line": 3361,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkTestDevice",
+  "line": 3374,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkSyncNow",
+  "line": 3382,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkToggleEnabled",
+  "line": 3390,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkDeleteDevice",
+  "line": 3395,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkLoadMappings",
+  "line": 3403,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkRenderMappings",
+  "line": 3409,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkSaveMapping",
+  "line": 3471,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkAutoLink",
+  "line": 3481,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkMapDeviceUser",
+  "line": 3490,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkTakenFpSet",
+  "line": 3506,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkImportPreview",
+  "line": 3518,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkImportModal",
+  "line": 3539,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkConfirmImport",
+  "line": 3570,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkConfirmMapDeviceUser",
+  "line": 3591,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkLoadLogs",
+  "line": 3602,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkRenderLogs",
+  "line": 3608,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "zkExportLogs",
+  "line": 3636,
+  "section": "ZKTECO"
+ },
+ {
+  "name": "renderYarasoftPage",
+  "line": 3660,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRefresh",
+  "line": 3682,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysLoadOracleBox",
+  "line": 3698,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysOracleImportItems",
+  "line": 3713,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysOraclePollNow",
+  "line": 3729,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysReconcile",
+  "line": 3741,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysCatchUp",
+  "line": 3756,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysCatchUpStatus",
+  "line": 3766,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysOracleTest",
+  "line": 3778,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSetTab",
+  "line": 3787,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderBody",
+  "line": 3788,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysNetBadge",
+  "line": 3798,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderStatus",
+  "line": 3803,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysStatusBadge",
+  "line": 3845,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysTableSearch",
+  "line": 3858,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintReport",
+  "line": 3866,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRunNow",
+  "line": 3890,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysReprocess",
+  "line": 3898,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintLog",
+  "line": 3906,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysViewInvoice",
+  "line": 3913,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintInvoiceDetail",
+  "line": 3935,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysLoadReview",
+  "line": 3945,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderReview",
+  "line": 3951,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintReview",
+  "line": 3972,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysResolveReview",
+  "line": 3978,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysConfirmReview",
+  "line": 3991,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysLoadMappings",
+  "line": 4002,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderMappings",
+  "line": 4008,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysAddMappingModal",
+  "line": 4028,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSaveMapping",
+  "line": 4045,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysDeactivateMapping",
+  "line": 4057,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysLoadSections",
+  "line": 4063,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderSections",
+  "line": 4075,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintSections",
+  "line": 4118,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysCashierIcon",
+  "line": 4127,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysCashierCards",
+  "line": 4134,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysOpenSecInvoices",
+  "line": 4144,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSecInvReload",
+  "line": 4152,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSecInvToggleAll",
+  "line": 4193,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSecInvReclassify",
+  "line": 4196,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysCloseSecDrill",
+  "line": 4210,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysInvDetail",
+  "line": 4211,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintInvDetail",
+  "line": 4236,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysApproveSectionModal",
+  "line": 4245,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysConfirmApproveSection",
+  "line": 4263,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenameSectionModal",
+  "line": 4276,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysConfirmRenameSection",
+  "line": 4289,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysManualSectionModal",
+  "line": 4301,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysConfirmManualSection",
+  "line": 4314,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysLoadWarehouse",
+  "line": 4327,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPrintQuarantine",
+  "line": 4367,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysOrganizeCategories",
+  "line": 4374,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysSyncBalances",
+  "line": 4385,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysRenderTools",
+  "line": 4397,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "ysPreview",
+  "line": 4415,
+  "section": "YARASOFT"
+ },
+ {
+  "name": "waStateBadge",
+  "line": 4445,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "renderWhatsappPage",
+  "line": 4450,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waSetTab",
+  "line": 4457,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRefreshStatus",
+  "line": 4458,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waStateHtml",
+  "line": 4476,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRenderBody",
+  "line": 4490,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRenderOverview",
+  "line": 4509,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waDo",
+  "line": 4529,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waQrStop",
+  "line": 4536,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waQrPoll",
+  "line": 4537,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waQrRefresh",
+  "line": 4561,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waPairModal",
+  "line": 4571,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waPairGo",
+  "line": 4578,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLogoutModal",
+  "line": 4586,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLogoutGo",
+  "line": 4592,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waAutoLoad",
+  "line": 4599,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waAutoSave",
+  "line": 4618,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waAutoTest",
+  "line": 4624,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadMsgs",
+  "line": 4630,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadCampaigns",
+  "line": 4644,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waCampaignCreate",
+  "line": 4653,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waCampaignAction",
+  "line": 4659,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waChatMetaSave",
+  "line": 4663,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadOutbox",
+  "line": 4671,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waSendGo",
+  "line": 4684,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadRules",
+  "line": 4692,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRuleModal",
+  "line": 4702,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRuleSave",
+  "line": 4712,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRuleDel",
+  "line": 4720,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadManagers",
+  "line": 4727,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waManagerAdd",
+  "line": 4740,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waManagerDel",
+  "line": 4747,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waRenderQueryTab",
+  "line": 4754,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waDoQuery",
+  "line": 4770,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "waLoadLogs",
+  "line": 4785,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "renderOracleDataPage",
+  "line": 4794,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "renderDailyLocksPage",
+  "line": 4803,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "loadDailyLocks",
+  "line": 4816,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataRefresh",
+  "line": 4852,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataSync",
+  "line": 4862,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataRender",
+  "line": 4872,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataFilter",
+  "line": 4894,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataOpen",
+  "line": 4899,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataRenderDetail",
+  "line": 4911,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "oraDataPrint",
+  "line": 4933,
+  "section": "WHATSAPP"
+ },
+ {
+  "name": "renderEmployeesPage",
+  "line": 4944,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "empShiftChip",
+  "line": 4973,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "shiftEndText",
+  "line": 4988,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "renderEmployeesCards",
+  "line": 4995,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "searchEmployeeById",
+  "line": 5030,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "normalizeAr",
+  "line": 5054,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "revertAllInferred",
+  "line": 5061,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "revertInference",
+  "line": 5074,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "filterEmployees",
+  "line": 5095,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "showAddEmployeeModal",
+  "line": 5105,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "addEmployee",
+  "line": 5151,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "editEmployee",
+  "line": 5195,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "updateEmployee",
+  "line": 5245,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "deleteEmployee",
+  "line": 5271,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "viewEmployeeDetails",
+  "line": 5277,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "showSmartCardModal",
+  "line": 5331,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "exportEmployeesExcel",
+  "line": 5347,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "empSheetNormDate",
+  "line": 5362,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "downloadEmpSheetTemplate",
+  "line": 5370,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "showEmpSheetImportModal",
+  "line": 5379,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "previewEmpSheetFile",
+  "line": 5392,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "importEmpSheet",
+  "line": 5429,
+  "section": "EMPLOYEES"
+ },
+ {
+  "name": "renderWarehouse",
+  "line": 5456,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "getPaymentMethodLabel",
+  "line": 5568,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "whBulkDelete",
+  "line": 5569,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "whPrintInventory",
+  "line": 5594,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtStatusBadge",
+  "line": 5610,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtInvoiceSupplier",
+  "line": 5615,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtInvoiceRemaining",
+  "line": 5619,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "refreshProcurementData",
+  "line": 5620,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "renderProcurement",
+  "line": 5632,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtRerenderSuppliers",
+  "line": 5676,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtInvoicesTab",
+  "line": 5681,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtSuppliersTab",
+  "line": 5710,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtPaymentsTab",
+  "line": 5742,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showSupplierModal",
+  "line": 5771,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "saveSupplier",
+  "line": 5784,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "toggleSupplier",
+  "line": 5795,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "deleteSupplier",
+  "line": 5799,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showPaymentModal",
+  "line": 5808,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtUnpaidOptions",
+  "line": 5826,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtOnSupplierChange",
+  "line": 5831,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "savePayment",
+  "line": 5841,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "payInvoiceFull",
+  "line": 5856,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "deletePayment",
+  "line": 5870,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "openStatement",
+  "line": 5882,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "loadStatement",
+  "line": 5895,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtStatementHtml",
+  "line": 5910,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "printStatement",
+  "line": 5927,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakStatusBadge",
+  "line": 5942,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakChipsHtml",
+  "line": 5947,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakClientSummary",
+  "line": 5960,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showInventoryAuditModal",
+  "line": 5971,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSetTab",
+  "line": 5982,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakRender",
+  "line": 5987,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakScopeItems",
+  "line": 6000,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakScopePreview",
+  "line": 6008,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSetLocation",
+  "line": 6028,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakLoadLocations",
+  "line": 6033,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSetScope",
+  "line": 6038,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakHtmlNew",
+  "line": 6045,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakStartSession",
+  "line": 6084,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showFiscalYearModal",
+  "line": 6104,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "closeFiscalYear",
+  "line": 6113,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "createNextFiscalYear",
+  "line": 6117,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakOpenSession",
+  "line": 6122,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakRefreshDetail",
+  "line": 6133,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakCountFilter",
+  "line": 6138,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakRowHtml",
+  "line": 6146,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakRowsTbodyHtml",
+  "line": 6162,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakStaleBanner",
+  "line": 6169,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakHtmlCount",
+  "line": 6174,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakOnSearch",
+  "line": 6217,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakToggleDiffs",
+  "line": 6222,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakScanCount",
+  "line": 6227,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakCountChanged",
+  "line": 6240,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSaveCount",
+  "line": 6247,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakApplyItem",
+  "line": 6261,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakApplyProgress",
+  "line": 6272,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakClearCount",
+  "line": 6281,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSavePending",
+  "line": 6292,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakSubmitSession",
+  "line": 6297,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakApproveSession",
+  "line": 6312,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakCancelSession",
+  "line": 6331,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakCancelById",
+  "line": 6336,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakPrintById",
+  "line": 6350,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakPrint",
+  "line": 6362,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "stocktakHtmlHistory",
+  "line": 6367,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "inventoryUnitOptions",
+  "line": 6391,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showAddItemModal",
+  "line": 6392,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "scanForItemBarcodeField",
+  "line": 6402,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "scanToAddInventoryItem",
+  "line": 6412,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showQuickStockInModal",
+  "line": 6423,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "confirmQuickStockIn",
+  "line": 6436,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "addInventoryItem",
+  "line": 6459,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "editItem",
+  "line": 6484,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateInventoryItem",
+  "line": 6499,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "deleteItem",
+  "line": 6516,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showAddPurchaseInvoiceModal",
+  "line": 6540,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtInvoiceSupplierChanged",
+  "line": 6571,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "pcmtInvoicePaidChanged",
+  "line": 6580,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "addInvoiceItemRow",
+  "line": 6597,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "removeInvoiceItemRow",
+  "line": 6598,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateInvoiceItem",
+  "line": 6599,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateInvoiceTotal",
+  "line": 6619,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "focusInvoiceEntryField",
+  "line": 6626,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "renderInvoiceItemsList",
+  "line": 6632,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "savePurchaseInvoice",
+  "line": 6654,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "openingSupplier",
+  "line": 6687,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showOpeningBalanceModal",
+  "line": 6691,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "downloadOpeningTemplate",
+  "line": 6705,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "openingHeaderKey",
+  "line": 6711,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "previewOpeningExcel",
+  "line": 6714,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "renderOpeningImportPreview",
+  "line": 6750,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "appendOpeningImportRows",
+  "line": 6756,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "renderOpeningRows",
+  "line": 6762,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "isOpeningMeatRow",
+  "line": 6776,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateOpeningBoxesVisibility",
+  "line": 6779,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "syncOpeningRowWithInventory",
+  "line": 6788,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "addOpeningRow",
+  "line": 6796,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "removeOpeningRow",
+  "line": 6797,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateOpeningRow",
+  "line": 6798,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "updateOpeningTotal",
+  "line": 6808,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "saveOpeningBalance",
+  "line": 6812,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "viewPurchaseInvoice",
+  "line": 6837,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "voidPurchaseInvoice",
+  "line": 6874,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "printPurchaseInvoice",
+  "line": 6894,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showImportItemsCatalogModal",
+  "line": 6911,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "downloadItemsCatalogTemplate",
+  "line": 6927,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "previewCatalogFile",
+  "line": 6934,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "importItemsCatalog",
+  "line": 6952,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "showBulkInventoryImportModal",
+  "line": 6978,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "downloadInventoryTemplate",
+  "line": 6997,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "parseInventoryImportCell",
+  "line": 7004,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "parseInventoryImportNumber",
+  "line": 7008,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "readInventoryImportRows",
+  "line": 7015,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "inventoryImportRowsFromSheet",
+  "line": 7038,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "previewInventoryFile",
+  "line": 7056,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "importBulkInventory",
+  "line": 7070,
+  "section": "WAREHOUSE"
+ },
+ {
+  "name": "renderShelves",
+  "line": 7097,
+  "section": "SHELVES"
+ },
+ {
+  "name": "showAddShelfModal",
+  "line": 7150,
+  "section": "SHELVES"
+ },
+ {
+  "name": "addShelf",
+  "line": 7168,
+  "section": "SHELVES"
+ },
+ {
+  "name": "editShelf",
+  "line": 7180,
+  "section": "SHELVES"
+ },
+ {
+  "name": "updateShelf",
+  "line": 7197,
+  "section": "SHELVES"
+ },
+ {
+  "name": "deleteShelf",
+  "line": 7209,
+  "section": "SHELVES"
+ },
+ {
+  "name": "renderWeight",
+  "line": 7221,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "adjustWeight",
+  "line": 7274,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "resetWeight",
+  "line": 7280,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "setWeightUnit",
+  "line": 7285,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "recordWeight",
+  "line": 7296,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "recordWeightToItem",
+  "line": 7308,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "confirmRecordWeightToItem",
+  "line": 7322,
+  "section": "WEIGHT"
+ },
+ {
+  "name": "refreshKitchenOverview",
+  "line": 7345,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "kitchenProductionDestinations",
+  "line": 7348,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "showKitchenProductionModal",
+  "line": 7356,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "setKitchenProductionMaterialField",
+  "line": 7373,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addKitchenProductionMaterialRow",
+  "line": 7374,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "removeKitchenProductionMaterialRow",
+  "line": 7375,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenProductionMaterialRows",
+  "line": 7376,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addKitchenProductionDistributionRow",
+  "line": 7382,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "removeKitchenProductionDistributionRow",
+  "line": 7383,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "syncKitchenProductionDestination",
+  "line": 7384,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "setKitchenProductionCustomName",
+  "line": 7385,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "setKitchenProductionDistributionQty",
+  "line": 7386,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenProductionRows",
+  "line": 7387,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "updateKitchenProductionTotal",
+  "line": 7392,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitKitchenProduction",
+  "line": 7393,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "refreshKitchenGovernance",
+  "line": 7407,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "showKitchenAuditCreateModal",
+  "line": 7408,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "createKitchenAudit",
+  "line": 7409,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openKitchenAuditCount",
+  "line": 7410,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "saveKitchenAuditCount",
+  "line": 7419,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitKitchenAudit",
+  "line": 7420,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "approveKitchenAudit",
+  "line": 7421,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmKitchenAuditApproval",
+  "line": 7422,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenGovernance",
+  "line": 7423,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "showKitchenStockReceiveModal",
+  "line": 7427,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addKitchenTransferRow",
+  "line": 7437,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "removeKitchenTransferRow",
+  "line": 7438,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenTransferRows",
+  "line": 7439,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "updateKitchenTransferRow",
+  "line": 7445,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "syncKitchenTransferMax",
+  "line": 7446,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitKitchenStockReceive",
+  "line": 7447,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenDispatchRegister",
+  "line": 7452,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenDistributionRegister",
+  "line": 7462,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchen",
+  "line": 7468,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "myDeptCode",
+  "line": 7477,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "isDeptHead",
+  "line": 7478,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deptNameByCode",
+  "line": 7479,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchChainStage",
+  "line": 7480,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderDeptHeadDashboard",
+  "line": 7490,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "loadDeptPanel",
+  "line": 7529,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderDispatch",
+  "line": 7535,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanSee",
+  "line": 7551,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanCreate",
+  "line": 7552,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanReceive",
+  "line": 7553,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanChef",
+  "line": 7554,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanGM",
+  "line": 7555,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanCancel",
+  "line": 7556,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prCanDelete",
+  "line": 7557,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deletePR",
+  "line": 7558,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deleteDispatch",
+  "line": 7568,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prStatusLabel",
+  "line": 7578,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prStatusClass",
+  "line": 7579,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "refreshPurchaseRequests",
+  "line": 7580,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderPRSection",
+  "line": 7585,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRCreateModal",
+  "line": 7592,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prAddManualRow",
+  "line": 7604,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRCreate",
+  "line": 7610,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRChefApproveModal",
+  "line": 7633,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRChefApprove",
+  "line": 7639,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRChefRejectModal",
+  "line": 7649,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRChefReject",
+  "line": 7654,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRGMApproveModal",
+  "line": 7665,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRGMApprove",
+  "line": 7671,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRGMRejectModal",
+  "line": 7682,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRGMReject",
+  "line": 7687,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openPRReceiveModal",
+  "line": 7698,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prDeliverModeSync",
+  "line": 7711,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "prFreshSuggest",
+  "line": 7714,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmPRReceive",
+  "line": 7721,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "cancelPR",
+  "line": 7742,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "viewPRDetails",
+  "line": 7750,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "printPR",
+  "line": 7759,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "renderKitchenReturnsSection",
+  "line": 7767,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "deleteKitchenReturn",
+  "line": 7803,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "getDispatchDepartments",
+  "line": 7814,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "showDispatchRequestModal",
+  "line": 7820,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispRowHtml",
+  "line": 7830,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "updateDispSummary",
+  "line": 7847,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispFilterItems",
+  "line": 7868,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispHideList",
+  "line": 7876,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispPickItem",
+  "line": 7877,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addDispatchItemField",
+  "line": 7904,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "syncDispatchRowUnit",
+  "line": 7912,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "removeDispatchItem",
+  "line": 7913,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitDispatchRequest",
+  "line": 7914,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openChefApproveModal",
+  "line": 7942,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmChefApprove",
+  "line": 7950,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openChefRejectModal",
+  "line": 7960,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmChefReject",
+  "line": 7966,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "accountSignatureName",
+  "line": 7981,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "normalizeSigName",
+  "line": 7982,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureNameMatchesAccount",
+  "line": 7983,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "readSignerName",
+  "line": 7988,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signaturePadMarkup",
+  "line": 7993,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "signatureFont",
+  "line": 7997,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "paintTypedSignature",
+  "line": 7998,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "initSignaturePad",
+  "line": 8023,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "clearSignaturePad",
+  "line": 8037,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "readSignaturePad",
+  "line": 8043,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "afterModalSignatureInit",
+  "line": 8058,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchStatusLabel",
+  "line": 8059,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "dispatchStatusClass",
+  "line": 8060,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openApproveModal",
+  "line": 8061,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmApprove",
+  "line": 8124,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openRejectModal",
+  "line": 8169,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmReject",
+  "line": 8174,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "openReceiveModal",
+  "line": 8191,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "confirmReceive",
+  "line": 8198,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "viewDispatchDetails",
+  "line": 8208,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "printDispatchNote",
+  "line": 8217,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "showKitchenReturnModal",
+  "line": 8234,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "refreshReturnItems",
+  "line": 8288,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addReturnItemField",
+  "line": 8301,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "addDirectReturnItemField",
+  "line": 8315,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitDirectReturn",
+  "line": 8326,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "submitKitchenReturn",
+  "line": 8348,
+  "section": "KITCHEN & DISPATCH"
+ },
+ {
+  "name": "syncRecipeToCashier",
+  "line": 8377,
+  "section": "RECIPES"
+ },
+ {
+  "name": "renderRecipes",
+  "line": 8387,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeCatalogRow",
+  "line": 8392,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeUnitInfo",
+  "line": 8393,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeNormalizeUnit",
+  "line": 8394,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeConvertQty",
+  "line": 8395,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeDefaultUnit",
+  "line": 8396,
+  "section": "RECIPES"
+ },
+ {
+  "name": "recipeManagerCost",
+  "line": 8397,
+  "section": "RECIPES"
+ },
+ {
+  "name": "renderRecipeManagerIngredients",
+  "line": 8398,
+  "section": "RECIPES"
+ },
+ {
+  "name": "updateRecipeManagerPortion",
+  "line": 8405,
+  "section": "RECIPES"
+ },
+ {
+  "name": "updateRecipeManagerQty",
+  "line": 8406,
+  "section": "RECIPES"
+ },
+ {
+  "name": "updateRecipeManagerUnit",
+  "line": 8407,
+  "section": "RECIPES"
+ },
+ {
+  "name": "updateRecipeManagerWaste",
+  "line": 8408,
+  "section": "RECIPES"
+ },
+ {
+  "name": "removeRecipeManagerIngredient",
+  "line": 8409,
+  "section": "RECIPES"
+ },
+ {
+  "name": "addRecipeManagerIngredient",
+  "line": 8410,
+  "section": "RECIPES"
+ },
+ {
+  "name": "uploadRecipeManagerImage",
+  "line": 8411,
+  "section": "RECIPES"
+ },
+ {
+  "name": "openRecipeManager",
+  "line": 8412,
+  "section": "RECIPES"
+ },
+ {
+  "name": "saveRecipeManager",
+  "line": 8413,
+  "section": "RECIPES"
+ },
+ {
+  "name": "showAddRecipeModal",
+  "line": 8414,
+  "section": "RECIPES"
+ },
+ {
+  "name": "addRecipe",
+  "line": 8418,
+  "section": "RECIPES"
+ },
+ {
+  "name": "editRecipe",
+  "line": 8431,
+  "section": "RECIPES"
+ },
+ {
+  "name": "updateRecipe",
+  "line": 8437,
+  "section": "RECIPES"
+ },
+ {
+  "name": "deleteRecipe",
+  "line": 8451,
+  "section": "RECIPES"
+ },
+ {
+  "name": "renderRevenues",
+  "line": 8461,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "refreshWhShortages",
+  "line": 8480,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "whPrintShortages",
+  "line": 8495,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "whShortRows",
+  "line": 8505,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "whShortPanel",
+  "line": 8511,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "revPrintFiltered",
+  "line": 8542,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "showAddRevenueModal",
+  "line": 8559,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "addRevenue",
+  "line": 8563,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "editRevenue",
+  "line": 8577,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "updateRevenue",
+  "line": 8583,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deleteRevenue",
+  "line": 8598,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "renderExpenses",
+  "line": 8607,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "showAddExpenseModal",
+  "line": 8623,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "addExpense",
+  "line": 8627,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "editExpense",
+  "line": 8641,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "updateExpense",
+  "line": 8647,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "deleteExpense",
+  "line": 8663,
+  "section": "REVENUES & EXPENSES"
+ },
+ {
+  "name": "renderCostAnalysis",
+  "line": 8678,
+  "section": "COST ANALYSIS"
+ },
+ {
+  "name": "pnlPresetRange",
+  "line": 8709,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlActivePreset",
+  "line": 8719,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlLoad",
+  "line": 8727,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlRefresh",
+  "line": 8741,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlCmpChip",
+  "line": 8742,
+  "section": "P&L"
+ },
+ {
+  "name": "renderPnl",
+  "line": 8753,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlApplyPreset",
+  "line": 8837,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlInitCharts",
+  "line": 8842,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlPrint",
+  "line": 8870,
+  "section": "P&L"
+ },
+ {
+  "name": "pnlExportExcel",
+  "line": 8885,
+  "section": "P&L"
+ },
+ {
+  "name": "normalizeDepartmentIcon",
+  "line": 8926,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "departmentIconOptions",
+  "line": 8927,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "deptIcon",
+  "line": 8928,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "deptIconMarkup",
+  "line": 8929,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "renderDepartments",
+  "line": 8930,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashTodayStr",
+  "line": 8949,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashShiftDate",
+  "line": 8950,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashTime",
+  "line": 8953,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashNavDay",
+  "line": 8957,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashPickDay",
+  "line": 8964,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "cashBarsSVG",
+  "line": 8970,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "loadCashiersLive",
+  "line": 8985,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "openCashierLive",
+  "line": 9082,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "deptParentOptions",
+  "line": 9106,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "showAddDepartmentModal",
+  "line": 9111,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "addDepartment",
+  "line": 9114,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "editDepartment",
+  "line": 9129,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "updateDepartment",
+  "line": 9134,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "deleteDepartment",
+  "line": 9147,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "renderDepartmentDetail",
+  "line": 9168,
+  "section": "DEPARTMENTS"
+ },
+ {
+  "name": "renderHRDashboard",
+  "line": 9184,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "renderHRCharts",
+  "line": 9225,
+  "section": "HR DASHBOARD"
+ },
+ {
+  "name": "renderAttendance",
+  "line": 9245,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attRangeChange",
+  "line": 9364,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attRangePreset",
+  "line": 9376,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attSearchFilter",
+  "line": 9385,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attPageGo",
+  "line": 9392,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attExceptionsBox",
+  "line": 9397,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "hrGoGaps",
+  "line": 9449,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attGapsToggle",
+  "line": 9455,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attGapsData",
+  "line": 9461,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attNextDay",
+  "line": 9478,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attGapsSearch",
+  "line": 9479,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attGapsRender",
+  "line": 9485,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attResolveModal",
+  "line": 9511,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attCalcTimes",
+  "line": 9529,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attResolveSave",
+  "line": 9536,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attExcuseModal",
+  "line": 9581,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attExcuseSave",
+  "line": 9588,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attCorrectModal",
+  "line": 9600,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "attCorrectSave",
+  "line": 9616,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "checkInOutByScan",
+  "line": 9641,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "scanAttendanceKiosk",
+  "line": 9656,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "checkIn",
+  "line": 9663,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "checkOut",
+  "line": 9682,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "exportAttendanceExcel",
+  "line": 9703,
+  "section": "ATTENDANCE"
+ },
+ {
+  "name": "leaveWorkflowStatusLabel",
+  "line": 9727,
+  "section": "LEAVES"
+ },
+ {
+  "name": "leaveWorkflowStatusClass",
+  "line": 9728,
+  "section": "LEAVES"
+ },
+ {
+  "name": "renderLeaveWorkflowTimeline",
+  "line": 9729,
+  "section": "LEAVES"
+ },
+ {
+  "name": "refreshLeaveWorkflow",
+  "line": 9734,
+  "section": "LEAVES"
+ },
+ {
+  "name": "workflowForLeave",
+  "line": 9735,
+  "section": "LEAVES"
+ },
+ {
+  "name": "leaveCanAct",
+  "line": 9736,
+  "section": "LEAVES"
+ },
+ {
+  "name": "renderLeavesPage",
+  "line": 9737,
+  "section": "LEAVES"
+ },
+ {
+  "name": "showAddLeaveModal",
+  "line": 9742,
+  "section": "LEAVES"
+ },
+ {
+  "name": "addLeaveRequest",
+  "line": 9770,
+  "section": "LEAVES"
+ },
+ {
+  "name": "advanceLeaveWorkflow",
+  "line": 9776,
+  "section": "LEAVES"
+ },
+ {
+  "name": "approveLeave",
+  "line": 9781,
+  "section": "LEAVES"
+ },
+ {
+  "name": "rejectLeave",
+  "line": 9782,
+  "section": "LEAVES"
+ },
+ {
+  "name": "returnLeaveToEmployee",
+  "line": 9783,
+  "section": "LEAVES"
+ },
+ {
+  "name": "viewLeaveDetails",
+  "line": 9784,
+  "section": "LEAVES"
+ },
+ {
+  "name": "renderHRDepartmentsPage",
+  "line": 9792,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "showAddHRDeptModal",
+  "line": 9825,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "addHRDept",
+  "line": 9839,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "editHRDept",
+  "line": 9849,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "updateHRDept",
+  "line": 9862,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "deleteHRDept",
+  "line": 9872,
+  "section": "HR DEPARTMENTS"
+ },
+ {
+  "name": "renderPayroll",
+  "line": 9883,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrSuiteSection",
+  "line": 9928,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrEmpOptions",
+  "line": 9957,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "runPayrollGen",
+  "line": 9960,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrDelete",
+  "line": 9974,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrAdvanceModal",
+  "line": 9981,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrAdvanceSave",
+  "line": 9989,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrAdjustModal",
+  "line": 10002,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrAdjustSave",
+  "line": 10012,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrContractModal",
+  "line": 10026,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrContractSave",
+  "line": 10034,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrEvalModal",
+  "line": 10047,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "hrEvalSave",
+  "line": 10056,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "exportPayrollExcel",
+  "line": 10070,
+  "section": "PAYROLL"
+ },
+ {
+  "name": "renderReports",
+  "line": 10086,
+  "section": "REPORTS"
+ },
+ {
+  "name": "updateDateInputs",
+  "line": 10141,
+  "section": "REPORTS"
+ },
+ {
+  "name": "getDateRange",
+  "line": 10148,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateReport",
+  "line": 10161,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generatePosSalesReport",
+  "line": 10210,
+  "section": "REPORTS"
+ },
+ {
+  "name": "renderPosPaymentSummary",
+  "line": 10225,
+  "section": "REPORTS"
+ },
+ {
+  "name": "renderPosSalesReportHtml",
+  "line": 10237,
+  "section": "REPORTS"
+ },
+ {
+  "name": "formatRevenueNote",
+  "line": 10325,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateGeneralReport",
+  "line": 10338,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateDepartmentReport",
+  "line": 10378,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateKitchenReport",
+  "line": 10406,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateReturnsReport",
+  "line": 10435,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateWarehouseReport",
+  "line": 10460,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateHRReport",
+  "line": 10508,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateSpecificDeptReport",
+  "line": 10536,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateYaraDeptReport",
+  "line": 10558,
+  "section": "REPORTS"
+ },
+ {
+  "name": "generateYaraCashiersReport",
+  "line": 10615,
+  "section": "REPORTS"
+ },
+ {
+  "name": "renderYaraCashiersHtml",
+  "line": 10628,
+  "section": "REPORTS"
+ },
+ {
+  "name": "ysCashierInvoiceDetail",
+  "line": 10728,
+  "section": "REPORTS"
+ },
+ {
+  "name": "printReportOnly",
+  "line": 10741,
+  "section": "REPORTS"
+ },
+ {
+  "name": "renderSettings",
+  "line": 10753,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "loadCardSettings",
+  "line": 10824,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "saveCardSettings",
+  "line": 10839,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "showOperationalResetModal",
+  "line": 10845,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "executeOperationalReset",
+  "line": 10859,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "handleLogoUpload",
+  "line": 10872,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "resetLogo",
+  "line": 10890,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "saveSettings",
+  "line": 10901,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "renderZatcaHub",
+  "line": 10923,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "loadZatcaHub",
+  "line": 10980,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaSave",
+  "line": 10992,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaToggle",
+  "line": 11013,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaTest",
+  "line": 11022,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaEnvChanged",
+  "line": 11032,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaGenerateCsr",
+  "line": 11039,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaCopyCsr",
+  "line": 11052,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaCsidModal",
+  "line": 11060,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaRequestCsid",
+  "line": 11067,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "loadZatcaQueue",
+  "line": 11082,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaRetry",
+  "line": 11105,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaCsidManualModal",
+  "line": 11115,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaCsidManualSubmit",
+  "line": 11123,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaCsidClear",
+  "line": 11136,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "zatcaApplyVat",
+  "line": 11145,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "renderKotSettings",
+  "line": 11168,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "loadKotSettings",
+  "line": 11201,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "saveKotSettings",
+  "line": 11211,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "exportAllData",
+  "line": 11225,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "showDatabaseRestoreInfo",
+  "line": 11236,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysFmtBytes",
+  "line": 11242,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysLoadBackups",
+  "line": 11243,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysDoBackup",
+  "line": 11260,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysUploadBackup",
+  "line": 11269,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysRestoreModal",
+  "line": 11283,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "sysConfirmRestore",
+  "line": 11292,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "resetAllData",
+  "line": 11304,
+  "section": "SETTINGS"
+ },
+ {
+  "name": "linkedEmployeeForUser",
+  "line": 11320,
+  "section": "USERS"
+ },
+ {
+  "name": "linkedUserForEmployee",
+  "line": 11321,
+  "section": "USERS"
+ },
+ {
+  "name": "employeeAccountOptions",
+  "line": 11322,
+  "section": "USERS"
+ },
+ {
+  "name": "linkUserToEmployee",
+  "line": 11323,
+  "section": "USERS"
+ },
+ {
+  "name": "toggleEmployeeAccountFields",
+  "line": 11324,
+  "section": "USERS"
+ },
+ {
+  "name": "showCreateEmployeeAccountModal",
+  "line": 11325,
+  "section": "USERS"
+ },
+ {
+  "name": "renderUserCards",
+  "line": 11326,
+  "section": "USERS"
+ },
+ {
+  "name": "renderUsers",
+  "line": 11330,
+  "section": "USERS"
+ },
+ {
+  "name": "filterUsers",
+  "line": 11339,
+  "section": "USERS"
+ },
+ {
+  "name": "showAddUserModal",
+  "line": 11351,
+  "section": "USERS"
+ },
+ {
+  "name": "toggleUserDeptField",
+  "line": 11357,
+  "section": "USERS"
+ },
+ {
+  "name": "addUser",
+  "line": 11362,
+  "section": "USERS"
+ },
+ {
+  "name": "editUser",
+  "line": 11383,
+  "section": "USERS"
+ },
+ {
+  "name": "updateUser",
+  "line": 11391,
+  "section": "USERS"
+ },
+ {
+  "name": "deleteUser",
+  "line": 11414,
+  "section": "USERS"
+ },
+ {
+  "name": "cfoCanWrite",
+  "line": 11429,
+  "section": "CFO"
+ },
+ {
+  "name": "renderCfoPage",
+  "line": 11430,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoJournalModal",
+  "line": 11483,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoSaveJournal",
+  "line": 11493,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoPostPayroll",
+  "line": 11508,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoConfirmPostPayroll",
+  "line": 11513,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoVoidEntry",
+  "line": 11523,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoPrintShell",
+  "line": 11532,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoPrintTB",
+  "line": 11552,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoPrintJournal",
+  "line": 11559,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoPrintSummary",
+  "line": 11564,
+  "section": "CFO"
+ },
+ {
+  "name": "cfoExportTB",
+  "line": 11574,
+  "section": "CFO"
+ },
+ {
+  "name": "showModal",
+  "line": 11590,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "closeModal",
+  "line": 11597,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "renderPage",
+  "line": 11601,
+  "section": "MODAL & RENDER PAGE"
+ },
+ {
+  "name": "pwaInstall",
+  "line": 11711,
+  "section": "PWA"
+ },
+ {
+  "name": "pwaUpdateOfflineBar",
+  "line": 11722,
+  "section": "PWA"
+ },
+ {
+  "name": "openCommandPalette",
+  "line": 11939,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "closeCommandPalette",
+  "line": 11945,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "filterCommands",
+  "line": 11948,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "renderCommandResults",
+  "line": 11956,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "executeCommand",
+  "line": 11973,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "handleCommandKey",
+  "line": 11979,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "toggleFabMenu",
+  "line": 12004,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "showShortcutsHelp",
+  "line": 12104,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "celebrate",
+  "line": 12139,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "spawnParticle",
+  "line": 12170,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "hideSplash",
+  "line": 12185,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "startLiveClock",
+  "line": 12197,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "injectWelcomeBanner",
+  "line": 12219,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "enhancedToast",
+  "line": 12250,
+  "section": "ENHANCEMENT PACK"
+ },
+ {
+  "name": "animateCounter",
+  "line": 12269,
+  "section": "ENHANCEMENT PACK"
+ }
+]

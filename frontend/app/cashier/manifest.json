@@ -1,0 +1,41 @@
+{
+  "id": "/app/cashier/",
+  "name": "كاشير مطاعم الشرفة العالمي",
+  "short_name": "كاشير الشرفة",
+  "description": "تطبيق كاشير مستقل لمطاعم الشرفة العالمي",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/app/cashier/",
+  "scope": "/app/cashier/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F1E6",
+  "theme_color": "#0F5B46",
+  "categories": ["business", "food"],
+  "icons": [
+    {
+      "src": "/app/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app/assets/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/app/assets/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

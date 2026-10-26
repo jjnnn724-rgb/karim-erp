@@ -1,0 +1,7 @@
+{
+ "app.js:localStorage.getItem:karim_lang": 1,
+ "app.js:localStorage.setItem:karim_lang": 1,
+ "js/db-constraints-client.js:localStorage.getItem:token": 1,
+ "js/bilingual.js:localStorage.setItem:erp_lang": 1,
+ "js/bilingual.js:localStorage.getItem:erp_lang": 1
+}

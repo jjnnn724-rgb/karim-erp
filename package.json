@@ -1,0 +1,304 @@
+{
+  "name": "karim-erp",
+  "version": "4.9.2",
+  "description": "مطاعم الشرفه العالمي - نظام إدارة المطاعم المتكامل | Restaurant Management System with POS, Inventory, HR (ZATCA قيد التطوير، غير معتمد) | v4.0 Enterprise UI redesign",
+  "main": "electron/main.js",
+  "author": {
+    "name": "karim Team",
+    "email": "support@karim-erp.com"
+  },
+  "license": "ISC",
+  "homepage": "https://karim-erp.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/karim-erp/karim-desktop.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "electron:dev": "electron . --dev",
+    "electron:build": "electron-builder --win --publish never",
+    "electron:build:nsis": "electron-builder --win nsis --publish never",
+    "electron:build:portable": "electron-builder --win portable --publish never",
+    "setup": "node scripts/setup.js",
+    "smart-install": "node scripts/smart-install.js",
+    "doctor": "node scripts/smart-install.js --doctor",
+    "patch-html": "node scripts/patch-html.js",
+    "show-ip": "node scripts/show-ip.js",
+    "cleanup-pg": "node database/scripts/cleanup-pg.js",
+    "backup": "node database/scripts/backup.js",
+    "restore": "node database/scripts/restore.js",
+    "zatca-worker": "node backend/cashier-module/zatca-worker.js",
+    "attendance-push-worker": "node backend/attendance-push/worker.js",
+    "print-worker": "node backend/cashier-module/print-worker.js",
+    "migrate:pos": "node database/scripts/run-migration.js database/migrations/003_cashier_module.sql",
+    "test": "node scripts/test.js jest",
+    "test:coverage": "jest --coverage --silent --runInBand --forceExit",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:sale-cycle": "node tests/integration/sale-cycle.js",
+    "test:static-routes": "node tests/integration/static-routes.js",
+    "test:lint": "npx eslint . --ext .js,.mjs",
+    "test:lint:gate": "node scripts/lint-gate.js",
+    "test:handlers:gate": "node scripts/audit-inline-handlers.js",
+    "test:handlers:budget": "node scripts/audit-csp-inline-handlers.js --check scripts/inline-handlers-baseline.json",
+    "test:inline-scripts:gate": "node scripts/audit-csp-inline-handlers.js --check-inline-scripts",
+    "test:dispatch:gate": "node scripts/audit-csp-inline-handlers.js --check-dispatch",
+    "test:frontend-version": "node scripts/frontend-version.js --check",
+    "test:color:gate": "node scripts/design-color-audit.js",
+    "frontend:version:bump": "node scripts/frontend-version.js --bump",
+    "build:electron": "node scripts/build-electron.js",
+    "test:docker:gate": "node scripts/check-docker.js",
+    "csp:report": "node scripts/summarize-csp-violations.js",
+    "test:secrets:gate": "node scripts/check-secrets.js",
+    "test:v2-revision": "node scripts/v2-revision.js --check",
+    "test:format": "npx prettier --check .",
+    "test:type": "npm run typecheck && npm run typecheck:strict",
+    "test:type:gate": "node scripts/type-gate.js",
+    "test:all": "npm run test:lint && npm run test:type && npm run test",
+    "smoke": "node scripts/test.js smoke",
+    "integration": "node scripts/test.js integration",
+    "workflow": "node scripts/test.js workflow",
+    "responsive": "node scripts/test-responsive.mjs",
+    "pos-sale": "node scripts/pos-sale-test.js",
+    "test:pos-scenarios": "node tests/expanded-pos-scenarios.js",
+    "test:pos-inventory-http": "node tests/pos-inventory-http-scenarios.js",
+    "postinstall": "electron-builder install-app-deps",
+    "stop": "node scripts/stop.js",
+    "status": "node scripts/status.js",
+    "issue-code": "node scripts/issue-reset-code.js",
+    "karim-erp": "node scripts/karimerp.js",
+    "karimerp": "node scripts/karimerp.js",
+    "reset": "node scripts/reset.js",
+    "migrate": "node database/scripts/run-migration.js",
+    "cloudflare:install": "powershell -ExecutionPolicy Bypass -File scripts/install-cloudflare-tunnel.ps1",
+    "update:production": "powershell -ExecutionPolicy Bypass -File scripts/update-production.ps1",
+    "karimabdelhamed": "node scripts/migrate.js",
+    "build:exe": "node scripts/migrate.js build-exe",
+    "verify": "node scripts/verify-env.js",
+    "verify:fix": "node scripts/verify-env.js --fix",
+    "audit": "node scripts/audit.js",
+    "audit:accounting": "node scripts/accounting-reconciliation.js",
+    "audit:chain": "node scripts/verify-audit-chain.js",
+    "audit:fix": "node scripts/audit.js --fix",
+    "audit:dry": "node scripts/audit.js --dry-run",
+    "karimabdelhamed20177": "node scripts/karimabdelhamed20177.js",
+    "karimabdelhamed20177:doctor": "node scripts/karimabdelhamed20177.js --doctor",
+    "doctor:machine": "node scripts/deploy-machine.mjs --doctor",
+    "setup:machine": "node scripts/deploy-machine.mjs",
+    "client:package": "node scripts/make-client-package.js",
+    "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
+    "import:employee-documents": "node scripts/import-employee-documents.js",
+    "finance:reconcile": "node scripts/finance-reconcile.js",
+    "security:routes": "node scripts/security-route-audit.js"
+  },
+  "build": {
+    "productName": "مطاعم الشرفه العالمي",
+    "appId": "com.karim.erp.desktop",
+    "copyright": "© 2026 مطاعم الشرفه العالمي",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/**/*",
+      "common/**/*",
+      "frontend/**/*",
+      "database/**/*",
+      "scripts/**/*",
+      "node_modules/**/*",
+      ".env.example",
+      "build/templates/**/*",
+      "build/AlShorfa-ERP-Setup.nsi",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme}",
+      "!**/node_modules/.cache",
+      "!**/node_modules/*.ts",
+      "!**/node_modules/*.md",
+      "!**/node_modules/*.tgz",
+      "!**/node_modules/tests/{test,tests,__tests__,}/**/*",
+      "!**/dist/demo",
+      "!**/NUL",
+      "!**/nul",
+      "!database/data/**/*",
+      "!database/backups/**/*",
+      "!**/*.map",
+      "!**/.gitignore"
+    ],
+    "extraResources": [
+      {
+        "from": "database/migrations",
+        "to": "database/migrations",
+        "filter": [
+          "*.sql"
+        ]
+      },
+      {
+        "from": "windows-service",
+        "to": "windows-service",
+        "filter": [
+          "WinSW-x64.exe",
+          "*.bat"
+        ]
+      },
+      {
+        "from": "Karim-Local-CA.crt",
+        "to": "Karim-Local-CA.crt"
+      }
+    ],
+    "win": {
+      "executableName": "KarimERP",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "KarimERP-Setup-${version}-${arch}.${ext}",
+      "requestedExecutionLevel": "highestAvailable",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "مطاعم الشرفه العالمي",
+      "uninstallDisplayName": "مطاعم الشرفه العالمي",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "language": "1025",
+      "displayLanguageSelector": true,
+      "multiLanguageInstaller": true,
+      "installerLanguages": [
+        "ar_SA",
+        "en_US"
+      ]
+    },
+    "portable": {
+      "artifactName": "KarimERP-Portable-${version}-${arch}.exe",
+      "requestExecutionLevel": "user",
+      "unpackDirName": "KarimERP"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "karim-erp",
+      "repo": "karim-desktop",
+      "releaseType": "release"
+    },
+    "asar": false,
+    "compression": "maximum",
+    "npmRebuild": false,
+    "electronUpdaterCompatibility": ">=4.7.0",
+    "generateUpdatesFilesForAllChannels": true
+  },
+  "pkg": {
+    "scripts": [
+      "backend/server.js",
+      "backend/cashier-module/**/*.js",
+      "scripts/**/*.js",
+      "database/scripts/**/*.js"
+    ],
+    "assets": [
+      "frontend/**/*",
+      "database/migrations/**/*",
+      ".env.example"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "keywords": [
+    "karim",
+    "erp",
+    "restaurant",
+    "management",
+    "accounting",
+    "pos",
+    "cashier",
+    "zatca",
+    "fintech",
+    "electron",
+    "egyptian",
+    "pharaoh",
+    "lan",
+    "offline",
+    "inventory",
+    "hr",
+    "payroll"
+  ],
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.81.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
+    "@opentelemetry/sdk-node": "^0.223.0",
+    "@simplewebauthn/server": "^14.0.3",
+    "axios": "^1.7.7",
+    "baileys": "^7.0.0-rc14",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.13.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "electron-log": "^5.1.2",
+    "electron-updater": "^6.1.7",
+    "express": "^4.21.0",
+    "geolib": "^3.3.14",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.11.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.2.1",
+    "onnxruntime-node": "^1.30.0",
+    "oracledb": "^7.0.1",
+    "pg": "^8.12.0",
+    "pino": "^8.20.0",
+    "pino-pretty": "^10.3.1",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
+    "socket.io": "^4.8.3",
+    "uuid": "^11.1.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
+    "@types/jest": "^30.0.0",
+    "chart.js": "^4.4.0",
+    "electron": "^44.9.2",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "html5-qrcode": "^2.3.8",
+    "jest": "^30.5.2",
+    "prettier": "^3.9.8",
+    "typescript": "^5.9.3",
+    "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "socket.io-parser": "4.2.7"
+  },
+  "allowScripts": {
+    "electron@44.9.2": true
+  }
+}

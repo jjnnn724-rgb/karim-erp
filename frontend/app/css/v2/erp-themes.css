@@ -1,0 +1,130 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Theme Layer
+   ═══════════════════════════════════════════════════════════════════════
+   DARK MODE IS INHERITED, NOT REDEFINED.
+
+   design-tokens.css already redefines every --karim-* primitive under
+   [data-theme="dark"] (surfaces, text, borders, brand, status colors — several
+   of them tuned for WCAG AA contrast), and since erp-tokens.css aliases those
+   primitives, V2 flips to dark automatically with zero duplicated palette.
+
+   This file therefore contains ONLY:
+     1. The handful of V2 tokens that carry their own literal value and so
+        cannot inherit (raised/sunken surfaces, inverse text, elevation).
+     2. Accessibility layers: reduced motion, forced colors, print.
+
+   NOTE: erp-identity.css («ليل الزمرد») loads after this sheet and
+   re-aliases the semantic palette from its own dark primitives, so the
+   colour story in dark is owned there; this file stays responsible for
+   color-scheme, elevation, scrim and the a11y layers for all hosts.
+
+   Theme state itself is owned by the existing system:
+     document.documentElement[data-theme] = "light" | "dark"
+   V2 adds "system" as a *client-side* preference only — no new persisted
+   field, no new endpoint (see js/v2/theme.js).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-v2 {
+  color-scheme: light;
+}
+
+/* Mirrors the selector list in erp-tokens.css: the layers mounted on
+   document.body sit outside .erp-v2, so the dark flip has to reach them by
+   name too (the preview banner among them, and the preview body). Values are
+   identical to the .erp-v2 rule, so an element that matches both (a layer
+   nested inside the root) cannot disagree. */
+[data-theme="dark"] .erp-v2,
+[data-theme="dark"] .erp-fab-host,
+[data-theme="dark"] .erp-offline-bar,
+[data-theme="dark"] .erp-pal-backdrop,
+[data-theme="dark"] .erp-preview-banner,
+[data-theme="dark"] body {
+  color-scheme: dark;
+
+  /* Elevation must be legible in dark: raised reads lighter than the canvas,
+     sunken reads darker. --karim-surface equals --karim-bg-2 in dark, so
+     aliasing both would flatten the hierarchy. */
+  --erp-surface-raised: var(--karim-bg-3, #1a2130);
+  --erp-surface-sunken: #090d16;
+
+  /* Legacy already prints dark ink on the gold fill in dark mode
+     (styles.css: `.btn-gold { color:#131926 }`) — match that contract so
+     V2 never ships white-on-gold in dark. */
+  --erp-text-inverse: #0c111d;
+
+  /* The veil carries its own rgba, so it cannot inherit either. A #0c111d
+     canvas is already near black, so a black veil caps out at 1.17:1 here —
+     .60 is where the dimming becomes visible (palette backdrop measured
+     1.03:1 as rgba(16,24,40,.5), Δ2 of 255) without crushing the page. */
+  --erp-scrim: rgba(0, 0, 0, .6);
+
+  /* Shadows carry a hardcoded rgba, so they do not inherit either.
+     Dark surfaces need a deeper, more opaque drop to separate from canvas. */
+  --erp-shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
+  --erp-shadow-md: 0 4px 14px rgba(0, 0, 0, .45);
+  --erp-shadow-lg: 0 14px 36px rgba(0, 0, 0, .50);
+  --erp-shadow-xl: 0 26px 60px rgba(0, 0, 0, .55);
+
+  /* Focus ring: gold flips to #f5b954 (bright) — keep the offset dark so the
+     ring never disappears into the raised surface behind it. */
+  --erp-focus-ring-offset: var(--erp-surface);
+
+  /* Badge text flips to the BRIGHT dark-theme status colours: measured on the
+     same 14% tint over the dark surface, e.g. #4ade80 = 7.52:1 ✓. The light
+     values above would be unreadable here (they were chosen for white). */
+  --erp-success-text: var(--karim-green,  #4ade80);
+  --erp-warning-text: var(--karim-orange, #fdb022);
+  --erp-danger-text:  var(--karim-red,    #f87171);
+  --erp-info-text:    var(--karim-blue,   #7cb8ff);
+  --erp-neutral-text: var(--karim-text-2, #c3cad8);
+  --erp-brand-text:   var(--karim-gold,   #e9a23b);
+}
+
+/* ═══════════════ Accessibility layers ═══════════════ */
+
+/* Reduced motion: collapse every duration to 0 rather than guessing each
+   component. Global (not V2-scoped) because the user preference is OS-level
+   and must apply everywhere, and it can only ever remove movement. */
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2,
+  .erp-v2 *,
+  .erp-v2 *::before,
+  .erp-v2 *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Forced colors (Windows High Contrast): drop our backgrounds and let the OS
+   palette own the rendering, but keep the shape cues. */
+@media (forced-colors: active) {
+  .erp-v2 {
+    --erp-border: CanvasText;
+    --erp-border-strong: CanvasText;
+  }
+  .erp-v2 *,
+  .erp-v2 *::before,
+  .erp-v2 *::after {
+    forced-color-adjust: auto;
+  }
+}
+
+/* Print: kill chrome, keep content, force white paper so dark mode never
+   prints white-on-white. */
+@media print {
+  .erp-v2 {
+    color-scheme: light;
+    --erp-background: #ffffff;
+    --erp-surface: #ffffff;
+    --erp-surface-raised: #ffffff;
+    --erp-text-primary: #000000;
+    --erp-text-secondary: #1a1a1a;
+    --erp-text-muted: #333333;
+    --erp-border: #cccccc;
+  }
+  .erp-v2 .erp-no-print {
+    display: none !important;
+  }
+}

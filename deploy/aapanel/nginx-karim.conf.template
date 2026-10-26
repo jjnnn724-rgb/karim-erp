@@ -1,0 +1,39 @@
+# استخدم هذا الجزء داخل إعدادات موقع aaPanel بعد استبدال example.com.
+# لا تعرض منفذ Node.js للعامة؛ اجعل Nginx هو نقطة الدخول الوحيدة.
+#
+# الضغط (Brotli) — لا تضف gzip_static/brotli_static هنا:
+#   Nginx في aaPanel وكيل عكسي فقط (location / → 127.0.0.1:5000) ولا يقرأ الملفات
+#   من القرص، فلا قيمة لهذين التوجيهين. ضغط الأصول الساكنة تتولاه Node عبر
+#   backend/middleware/brotli-static.js. المطلوب هنا فقط تمرير Accept-Encoding.
+
+location / {
+    proxy_pass http://127.0.0.1:5000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    # يضمن وصول طلب brotli إلى Node (بعض إعدادات aaPanel تُفرغ هذا الترويسة فيسقط الضغط)
+    proxy_set_header Accept-Encoding $http_accept_encoding;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+    client_max_body_size 50m;
+}
+
+location /socket.io/ {
+    proxy_pass http://127.0.0.1:5000/socket.io/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+}
+
+add_header X-Content-Type-Options nosniff always;
+add_header X-Frame-Options SAMEORIGIN always;
+add_header Referrer-Policy strict-origin-when-cross-origin always;

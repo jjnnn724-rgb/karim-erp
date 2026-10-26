@@ -1,0 +1,547 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   V2 — مقارنة الشهور · لوحة تنفيذية + ملف شهر قابل للطباعة
+   ═══════════════════════════════════════════════════════════════════════
+   كل لونٍ ومسافةٍ وحجمِ نصٍّ من --erp-*؛ لا hex ولا rgba ولا px/rem/em،
+   فالقاعدة الواحدة تتبع الوضع الليلي والكثافة بلا إعادة رسم.
+   الدرج يتبع نمط شاشة مبيعات الكاشير: scrim + panel منطقي الاتجاه.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-v2.erp-monthly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+  min-inline-size: 0;
+}
+
+/* ── الواجهة العليا ───────────────────────────────────────────────────── */
+/* العنوان على الغلاف التحريري المشترك (.erp-dash-head) منذ 2026-10-26 —
+   قواعد الهيرو القديمة (hero/heroMain/title/en/sub/heroSide) حُذفت،
+   وبقيت أدوات الفترة والأزرار لأنها تعيش داخل .erp-dash-controls. */
+
+.erp-monthly__period {
+  display: flex;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.erp-monthly__periodChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-raised);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+}
+
+.erp-monthly__periodChip .ji { font-size: var(--erp-icon-sm); color: var(--erp-brand-text); }
+.erp-monthly__periodChip--muted { color: var(--erp-text-muted); }
+
+.erp-monthly__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── شريط الفلاتر: فترة مخصصة + كاشيرات ─────────────────────────────── */
+.erp-monthly__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+}
+
+.erp-monthly__filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-4);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.erp-monthly__filterGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.erp-monthly__filterGroup--cashiers { flex: 1 1 24ch; }
+
+.erp-monthly__filterLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+
+.erp-monthly__filterLabel .ji { font-size: var(--erp-icon-sm); color: var(--erp-brand-text); }
+
+.erp-monthly__field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-raised);
+}
+
+.erp-monthly__field:focus-within { border-color: var(--erp-brand); }
+
+.erp-monthly__fieldLabel {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+
+.erp-monthly__field .erp-input {
+  inline-size: 14ch;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--erp-text-sm);
+}
+
+.erp-monthly__chips {
+  display: flex;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.erp-monthly__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-raised);
+  color: var(--erp-text-secondary);
+  font: inherit;
+  font-size: var(--erp-text-sm);
+  line-height: var(--erp-leading-tight);
+  cursor: pointer;
+  transition: background var(--erp-duration-fast) var(--erp-ease-out),
+    border-color var(--erp-duration-fast) var(--erp-ease-out),
+    color var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+.erp-monthly__chip:hover { border-color: var(--erp-border-strong); color: var(--erp-text-primary); }
+
+.erp-monthly__chip[data-active="true"] {
+  background: var(--erp-brand-soft);
+  border-color: var(--erp-brand);
+  color: var(--erp-brand-text);
+}
+
+.erp-monthly__chipName { white-space: nowrap; }
+.erp-monthly__chipNo { font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
+.erp-monthly__chip[data-active="true"] .erp-monthly__chipNo { color: var(--erp-brand-text); }
+
+.erp-monthly__chipTag {
+  padding-inline: var(--erp-space-1);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+}
+
+.erp-monthly__filterMsg {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  line-height: var(--erp-leading-base);
+  color: var(--erp-text-muted);
+}
+
+.erp-monthly__filterMsg[data-tone="danger"] { color: var(--erp-danger-text); font-weight: var(--erp-fw-medium); }
+.erp-monthly__filterEmpty { font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
+
+/* ── إيراد الكاشيرات المختارة ─────────────────────────────────────────── */
+.erp-monthly__cashierName { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); }
+
+.erp-monthly__miniTable tfoot td {
+  background: var(--erp-surface-sunken);
+  border-block-start: thin solid var(--erp-border);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+.erp-monthly__monthRange {
+  display: block;
+  margin-block-start: var(--erp-space-1);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-normal);
+  color: var(--erp-text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── أشرطة الأرقام ────────────────────────────────────────────────────── */
+.erp-monthly__kpis { margin-block-end: 0; }
+
+.erp-monthly__kpis--dense {
+  grid-template-columns: repeat(auto-fit, minmax(17ch, 1fr));
+}
+
+.erp-monthly__kpi--brand { border-block-start: medium solid var(--erp-brand); }
+.erp-monthly__kpi--success { border-block-start: medium solid var(--erp-success); }
+.erp-monthly__kpi--danger { border-block-start: medium solid var(--erp-danger); }
+.erp-monthly__kpi--info { border-block-start: medium solid var(--erp-info); }
+
+/* ── الأقسام والعناوين ────────────────────────────────────────────────── */
+.erp-monthly__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  min-inline-size: 0;
+}
+
+.erp-monthly__sectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.erp-monthly__sectionHead--inline { flex-direction: column; gap: var(--erp-space-1); }
+
+.erp-monthly__sectionTitle {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+
+.erp-monthly__sectionHint {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.erp-monthly__tableCard { overflow: hidden; }
+
+.erp-monthly__tableBody {
+  padding: var(--erp-space-2) var(--erp-space-3) 0;
+  min-inline-size: 0;
+}
+
+.erp-monthly__tableBody > * { min-inline-size: 0; }
+
+.erp-monthly__legend {
+  display: inline-flex;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+
+.erp-monthly__month { font-weight: var(--erp-fw-semibold); }
+
+.erp-monthly__coverage {
+  margin: 0;
+  padding: var(--erp-space-3) var(--erp-space-4) var(--erp-space-4);
+  font-size: var(--erp-text-xs);
+  line-height: var(--erp-leading-base);
+  color: var(--erp-text-muted);
+  border-block-start: thin solid var(--erp-border-subtle);
+}
+
+/* ── شبكة اللوحات الثانوية ────────────────────────────────────────────── */
+.erp-monthly__grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+  gap: var(--erp-space-4);
+  min-inline-size: 0;
+}
+
+.erp-monthly__grid2 > * { min-inline-size: 0; }
+
+.erp-monthly__basis { min-inline-size: 0; }
+
+.erp-monthly__facts {
+  display: grid;
+  gap: var(--erp-space-2);
+  margin: 0;
+}
+
+.erp-monthly__facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--erp-space-3);
+  padding-block-end: var(--erp-space-2);
+  border-block-end: thin solid var(--erp-border-subtle);
+}
+
+.erp-monthly__facts > div:last-child { border-block-end: 0; padding-block-end: 0; }
+
+.erp-monthly__facts dt {
+  flex: none;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.erp-monthly__facts dd {
+  margin: 0;
+  min-inline-size: 0;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  color: var(--erp-text-primary);
+  text-align: end;
+}
+
+.erp-monthly__finePrint {
+  margin: 0;
+  font-size: var(--erp-text-xs);
+  line-height: var(--erp-leading-base);
+  color: var(--erp-text-muted);
+}
+
+/* ── الدرج: ملف الشهر ─────────────────────────────────────────────────── */
+.erp-monthly__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--erp-z-drawer);
+  background: var(--erp-scrim);
+  animation: erp-screen-in var(--erp-duration-fast) var(--erp-ease-out) both;
+}
+
+.erp-monthly__panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline: 0;
+  inset-inline-start: auto;
+  z-index: calc(var(--erp-z-drawer) + 1);
+  inline-size: min(100%, 112ch);
+  display: flex;
+  flex-direction: column;
+  background: var(--erp-surface);
+  border-inline-start: thin solid var(--erp-border);
+  box-shadow: var(--erp-shadow-xl);
+  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
+}
+
+.erp-monthly__scrim[hidden],
+.erp-monthly__panel[hidden] { display: none; }
+
+body.erp-monthly-open { overflow: hidden; }
+
+.erp-monthly__panelHead {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--erp-space-4);
+  padding: var(--erp-space-4) var(--erp-space-5);
+  border-block-end: thin solid var(--erp-border);
+  background: var(--erp-surface-raised);
+}
+
+.erp-monthly__panelId { min-inline-size: 0; }
+
+.erp-monthly__panelTitle {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-xl);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+}
+
+.erp-monthly__panelSub {
+  margin: var(--erp-space-1) 0 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+
+.erp-monthly__panelActions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: none;
+}
+
+.erp-monthly__panelBody {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--erp-space-4) var(--erp-space-5) var(--erp-space-7);
+  background: var(--erp-background);
+}
+
+.erp-monthly__panelState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-3);
+  padding-block: var(--erp-space-10);
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-sm);
+  text-align: center;
+}
+
+.erp-monthly__panelState .ji { font-size: var(--erp-icon-lg); color: var(--erp-brand-text); }
+.erp-monthly__panelState p { margin: 0; max-inline-size: 52ch; }
+
+.erp-monthly__shimmer {
+  position: relative;
+  inline-size: 46ch;
+  max-inline-size: 80%;
+  block-size: var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  overflow: hidden;
+}
+
+.erp-monthly__shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--erp-brand-soft-hover), transparent);
+  animation: erp-monthly-shimmer var(--erp-duration-slow) var(--erp-ease-standard) infinite;
+}
+
+@keyframes erp-monthly-shimmer {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+.erp-monthly__dossier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+  min-inline-size: 0;
+}
+
+.erp-monthly__dossierGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--erp-space-4);
+  min-inline-size: 0;
+}
+
+.erp-monthly__dossierGrid > * { min-inline-size: 0; }
+
+/* ── أسطر الوزن داخل ملف الشهر ────────────────────────────────────────── */
+.erp-monthly__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--erp-space-3);
+  min-inline-size: 0;
+}
+
+.erp-monthly__lineLabel {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-monthly__lineValue {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: end;
+  min-inline-size: 12ch;
+}
+
+.erp-monthly__bar {
+  display: block;
+  block-size: var(--erp-space-2);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  overflow: hidden;
+}
+
+.erp-monthly__barFill {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--erp-brand);
+  transition: inline-size var(--erp-duration-base) var(--erp-ease-out);
+}
+
+.erp-monthly__barFill[data-tone="brand"] { background: var(--erp-brand); }
+.erp-monthly__barFill[data-tone="success"] { background: var(--erp-success); }
+.erp-monthly__barFill[data-tone="danger"] { background: var(--erp-danger); }
+.erp-monthly__barFill[data-tone="warning"] { background: var(--erp-warning); }
+.erp-monthly__barFill[data-tone="info"] { background: var(--erp-info); }
+.erp-monthly__barFill[data-tone="neutral"] { background: var(--erp-neutral); }
+
+/* ── الجداول المصغرة ──────────────────────────────────────────────────── */
+.erp-monthly__miniTable { font-size: var(--erp-text-sm); }
+
+.erp-monthly__miniTable th,
+.erp-monthly__miniTable td {
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border-block-end: thin solid var(--erp-border-subtle);
+  text-align: start;
+}
+
+.erp-monthly__miniTable thead th {
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary);
+  font-weight: var(--erp-fw-semibold);
+  white-space: nowrap;
+}
+
+.erp-monthly__miniTable td.erp-num { text-align: end; }
+
+.erp-monthly__desc {
+  display: block;
+  max-inline-size: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--erp-text-secondary);
+}
+
+.erp-monthly__emptyLine {
+  margin: 0;
+  padding: var(--erp-space-4);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  text-align: center;
+  border: thin dashed var(--erp-border);
+  border-radius: var(--erp-radius-md);
+}
+
+/* ── الشاشات الضيقة ───────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .erp-monthly__period, .erp-monthly__actions { justify-content: flex-start; }
+  .erp-monthly__grid2,
+  .erp-monthly__dossierGrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 639px) {
+  .erp-monthly__kpis,
+  .erp-monthly__kpis--dense { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-monthly__panelHead { flex-wrap: wrap; }
+  .erp-monthly__panelBody { padding-inline: var(--erp-space-3); }
+  .erp-monthly__line { grid-template-columns: minmax(0, 1fr) auto; }
+  .erp-monthly__bar { display: none; }
+  .erp-monthly__filterGroup { inline-size: 100%; }
+  .erp-monthly__field { flex: 1 1 14ch; }
+  .erp-monthly__field .erp-input { inline-size: 100%; }
+  .erp-monthly__chipName { max-inline-size: 18ch; overflow: hidden; text-overflow: ellipsis; }
+}

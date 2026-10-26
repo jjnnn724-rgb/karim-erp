@@ -1,0 +1,476 @@
+{
+  "target": "https://127.0.0.1:5001",
+  "db": "karim_erp_test",
+  "at": "2026-10-05T02:25:03.712Z",
+  "params": {
+    "SALES_CONC": 25,
+    "SALES_SECS": 50,
+    "READS_CONC": 40,
+    "READS_SECS": 30,
+    "IDEM_BURST": 60
+  },
+  "results": {
+    "reads": {
+      "label": "reads c40",
+      "requests": 48934,
+      "rps": 1629.8,
+      "duration_s": 30,
+      "p50": 23.2,
+      "p90": 30.2,
+      "p95": 33.1,
+      "p99": 57.8,
+      "max": 621.5,
+      "byStatus": {
+        "200": 48930,
+        "429": 4
+      },
+      "errors": {},
+      "byEndpoint": {
+        "/api/pos/departments": {
+          "requests": 8194,
+          "rps": 272.9,
+          "p50": 23.2,
+          "p95": 34.4,
+          "p99": 231.4,
+          "byStatus": {
+            "200": 8194
+          }
+        },
+        "/api/pos/products?limit=50&department_id=9": {
+          "requests": 8140,
+          "rps": 271.1,
+          "p50": 23.2,
+          "p95": 32.7,
+          "p99": 44.3,
+          "byStatus": {
+            "200": 8140
+          }
+        },
+        "/api/pos/shifts/active": {
+          "requests": 8372,
+          "rps": 278.8,
+          "p50": 23.1,
+          "p95": 32.5,
+          "p99": 47.9,
+          "byStatus": {
+            "200": 8372
+          }
+        },
+        "/api/pos/orders?limit=20": {
+          "requests": 8031,
+          "rps": 267.5,
+          "p50": 23.1,
+          "p95": 32.6,
+          "p99": 54.2,
+          "byStatus": {
+            "200": 8031
+          }
+        },
+        "/api/pos/dashboard": {
+          "requests": 8042,
+          "rps": 267.9,
+          "p50": 23.2,
+          "p95": 32.9,
+          "p99": 50.2,
+          "byStatus": {
+            "200": 8042
+          }
+        },
+        "/api/pos/orders/stats/today": {
+          "requests": 8155,
+          "rps": 271.6,
+          "p50": 23.2,
+          "p95": 33.3,
+          "p99": 69.3,
+          "byStatus": {
+            "200": 8151,
+            "429": 4
+          }
+        }
+      }
+    },
+    "sales": {
+      "label": "sales c25",
+      "requests": 1680,
+      "rps": 32.1,
+      "duration_s": 52.4,
+      "p50": 520.7,
+      "p90": 705,
+      "p95": 1655.2,
+      "p99": 10652.6,
+      "max": 12397.6,
+      "byStatus": {
+        "201": 1680
+      },
+      "errors": {},
+      "byEndpoint": {
+        "POST /api/sales/complete": {
+          "requests": 1680,
+          "rps": 32.1,
+          "p50": 520.7,
+          "p95": 1655.2,
+          "p99": 10652.6,
+          "byStatus": {
+            "201": 1680
+          }
+        }
+      }
+    },
+    "idemStorm": {
+      "burst": 60,
+      "byStatus": {
+        "201": 60
+      },
+      "distinctOrderIds": 1,
+      "idempotencyRows": 1,
+      "ms": 823
+    },
+    "history": {
+      "label": "history paged",
+      "requests": 23723,
+      "rps": 1185.7,
+      "duration_s": 20,
+      "p50": 9.6,
+      "p90": 15,
+      "p95": 16.1,
+      "p99": 21.8,
+      "max": 446.2,
+      "byStatus": {
+        "200": 15818,
+        "404": 7905
+      },
+      "errors": {},
+      "byEndpoint": {
+        "/api/pos/orders/stats/today2": {
+          "requests": 804,
+          "rps": 40.2,
+          "p50": 9.6,
+          "p95": 16,
+          "p99": 21.3,
+          "byStatus": {
+            "404": 804
+          }
+        },
+        "/api/pos/orders/stats/today3": {
+          "requests": 799,
+          "rps": 39.9,
+          "p50": 9.7,
+          "p95": 16.5,
+          "p99": 20.8,
+          "byStatus": {
+            "404": 799
+          }
+        },
+        "/api/pos/orders?limit=50&page=2": {
+          "requests": 774,
+          "rps": 38.7,
+          "p50": 9.7,
+          "p95": 15.7,
+          "p99": 24.2,
+          "byStatus": {
+            "200": 774
+          }
+        },
+        "/api/pos/orders/stats/today4": {
+          "requests": 764,
+          "rps": 38.2,
+          "p50": 9.8,
+          "p95": 16.1,
+          "p99": 19.5,
+          "byStatus": {
+            "404": 764
+          }
+        },
+        "/api/pos/orders?limit=50&page=3": {
+          "requests": 781,
+          "rps": 39,
+          "p50": 9.7,
+          "p95": 16.2,
+          "p99": 26.6,
+          "byStatus": {
+            "200": 781
+          }
+        },
+        "/api/pos/orders?limit=50&page=4": {
+          "requests": 803,
+          "rps": 40.1,
+          "p50": 9.8,
+          "p95": 16.6,
+          "p99": 24.2,
+          "byStatus": {
+            "200": 803
+          }
+        },
+        "/api/pos/orders?limit=50&page=5": {
+          "requests": 826,
+          "rps": 41.3,
+          "p50": 9.5,
+          "p95": 16.2,
+          "p99": 20.1,
+          "byStatus": {
+            "200": 826
+          }
+        },
+        "/api/pos/orders?limit=50&page=6": {
+          "requests": 771,
+          "rps": 38.5,
+          "p50": 9.6,
+          "p95": 15.5,
+          "p99": 20,
+          "byStatus": {
+            "200": 771
+          }
+        },
+        "/api/pos/orders/stats/today7": {
+          "requests": 782,
+          "rps": 39.1,
+          "p50": 10.1,
+          "p95": 16,
+          "p99": 18.2,
+          "byStatus": {
+            "404": 782
+          }
+        },
+        "/api/pos/orders?limit=50&page=8": {
+          "requests": 788,
+          "rps": 39.4,
+          "p50": 9.7,
+          "p95": 16.1,
+          "p99": 19.7,
+          "byStatus": {
+            "200": 788
+          }
+        },
+        "/api/pos/orders?limit=50&page=9": {
+          "requests": 780,
+          "rps": 39,
+          "p50": 9.7,
+          "p95": 16.4,
+          "p99": 23.4,
+          "byStatus": {
+            "200": 780
+          }
+        },
+        "/api/pos/orders?limit=50&page=10": {
+          "requests": 780,
+          "rps": 39,
+          "p50": 9.6,
+          "p95": 16.6,
+          "p99": 23.2,
+          "byStatus": {
+            "200": 780
+          }
+        },
+        "/api/pos/orders/stats/today1": {
+          "requests": 834,
+          "rps": 41.7,
+          "p50": 10.2,
+          "p95": 16.2,
+          "p99": 18.6,
+          "byStatus": {
+            "404": 834
+          }
+        },
+        "/api/pos/orders/item-summary?2": {
+          "requests": 799,
+          "rps": 39.9,
+          "p50": 9.4,
+          "p95": 16.1,
+          "p99": 33.3,
+          "byStatus": {
+            "200": 799
+          }
+        },
+        "/api/pos/orders/item-summary?8": {
+          "requests": 779,
+          "rps": 38.9,
+          "p50": 9.2,
+          "p95": 15.6,
+          "p99": 24.3,
+          "byStatus": {
+            "200": 779
+          }
+        },
+        "/api/pos/orders/item-summary?4": {
+          "requests": 808,
+          "rps": 40.4,
+          "p50": 9.5,
+          "p95": 16.4,
+          "p99": 24.2,
+          "byStatus": {
+            "200": 808
+          }
+        },
+        "/api/pos/orders/stats/today9": {
+          "requests": 791,
+          "rps": 39.5,
+          "p50": 9.6,
+          "p95": 15.8,
+          "p99": 21.7,
+          "byStatus": {
+            "404": 791
+          }
+        },
+        "/api/pos/orders/item-summary?5": {
+          "requests": 768,
+          "rps": 38.4,
+          "p50": 9.6,
+          "p95": 16.2,
+          "p99": 30.5,
+          "byStatus": {
+            "200": 768
+          }
+        },
+        "/api/pos/orders/stats/today6": {
+          "requests": 761,
+          "rps": 38,
+          "p50": 9.8,
+          "p95": 16,
+          "p99": 19.8,
+          "byStatus": {
+            "404": 761
+          }
+        },
+        "/api/pos/orders/item-summary?3": {
+          "requests": 795,
+          "rps": 39.7,
+          "p50": 9.4,
+          "p95": 16.3,
+          "p99": 30.9,
+          "byStatus": {
+            "200": 795
+          }
+        },
+        "/api/pos/orders/item-summary?1": {
+          "requests": 755,
+          "rps": 37.7,
+          "p50": 9.3,
+          "p95": 16,
+          "p99": 25.7,
+          "byStatus": {
+            "200": 755
+          }
+        },
+        "/api/pos/orders/item-summary?7": {
+          "requests": 810,
+          "rps": 40.5,
+          "p50": 9.3,
+          "p95": 15.8,
+          "p99": 27.1,
+          "byStatus": {
+            "200": 810
+          }
+        },
+        "/api/pos/orders/stats/today8": {
+          "requests": 805,
+          "rps": 40.2,
+          "p50": 9.9,
+          "p95": 16.5,
+          "p99": 22,
+          "byStatus": {
+            "404": 805
+          }
+        },
+        "/api/pos/orders/stats/today5": {
+          "requests": 780,
+          "rps": 39,
+          "p50": 9.4,
+          "p95": 15.8,
+          "p99": 17.6,
+          "byStatus": {
+            "404": 780
+          }
+        },
+        "/api/pos/orders/item-summary?6": {
+          "requests": 842,
+          "rps": 42.1,
+          "p50": 9.3,
+          "p95": 16.4,
+          "p99": 30.7,
+          "byStatus": {
+            "200": 842
+          }
+        },
+        "/api/pos/orders/stats/today10": {
+          "requests": 785,
+          "rps": 39.2,
+          "p50": 9.7,
+          "p95": 16,
+          "p99": 20.5,
+          "byStatus": {
+            "404": 785
+          }
+        },
+        "/api/pos/orders/item-summary?9": {
+          "requests": 799,
+          "rps": 39.9,
+          "p50": 9.5,
+          "p95": 15.4,
+          "p99": 21.4,
+          "byStatus": {
+            "200": 799
+          }
+        },
+        "/api/pos/orders/item-summary?10": {
+          "requests": 802,
+          "rps": 40.1,
+          "p50": 9.8,
+          "p95": 16,
+          "p99": 19.8,
+          "byStatus": {
+            "200": 802
+          }
+        },
+        "/api/pos/orders?limit=50&page=7": {
+          "requests": 781,
+          "rps": 39,
+          "p50": 9.7,
+          "p95": 15.7,
+          "p99": 25.1,
+          "byStatus": {
+            "200": 781
+          }
+        },
+        "/api/pos/orders?limit=50&page=1": {
+          "requests": 777,
+          "rps": 38.8,
+          "p50": 9.8,
+          "p95": 16.4,
+          "p99": 24.3,
+          "byStatus": {
+            "200": 777
+          }
+        }
+      }
+    },
+    "loginStorm": {
+      "label": "login storm c16",
+      "requests": 16062,
+      "rps": 1337.7,
+      "duration_s": 12,
+      "p50": 9.6,
+      "p90": 15.3,
+      "p95": 16.6,
+      "p99": 19.4,
+      "max": 1301.4,
+      "byStatus": {
+        "200": 16,
+        "429": 16046
+      },
+      "errors": {},
+      "byEndpoint": {
+        "POST /api/auth/login": {
+          "requests": 16062,
+          "rps": 1337.7,
+          "p50": 9.6,
+          "p95": 16.6,
+          "p99": 19.4,
+          "byStatus": {
+            "200": 16,
+            "429": 16046
+          }
+        }
+      }
+    }
+  }
+}

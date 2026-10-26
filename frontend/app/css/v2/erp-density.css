@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 Density Layer (Fiori cozy/compact · NetSuite density)
+   ═══════════════════════════════════════════════════════════════════════
+   OPT-IN: applies only under `.erp-v2.is-dense`, set by js/v2/density.js.
+   Removing the class (or this file) restores cozy — nothing else moves.
+
+   HOW IT WORKS
+   ────────────
+   Token-level first: most V2 components read --erp-space-* / --erp-control-* /
+   --erp-icon-*, so overriding the tokens tightens every component at once
+   with no per-component rules. The handful of hardcoded paddings/heights
+   (erp-table.css, erp-components.css) get explicit overrides below.
+
+   CONTRACT: type sizes NEVER shrink (legibility is not negotiable); only
+   chrome — spacing, control heights, cell heights — tightens. This mirrors
+   SAP Fiori's cozy→compact rule and NetSuite's density presets.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-v2.is-dense {
+  /* ── Spacing scale: ~25% tighter, rhythm preserved ─────────────────── */
+  --erp-space-1:  3px;
+  --erp-space-2:  6px;
+  --erp-space-3:  9px;
+  --erp-space-4:  12px;
+  --erp-space-5:  15px;
+  --erp-space-6:  18px;
+  --erp-space-7:  24px;
+  --erp-space-8:  30px;
+  --erp-space-9:  36px;
+  --erp-space-10: 48px;
+
+  /* ── Controls: desktop targets drop, never below 26px ──────────────── */
+  --erp-control-sm: 26px;
+  --erp-control-md: 32px;
+  --erp-control-lg: 40px;
+
+  --erp-icon-sm: 13px;
+  --erp-icon-md: 16px;
+  --erp-icon-lg: 20px;
+
+  --erp-header-height: 48px;
+  --erp-sidebar-width: 216px;
+}
+
+/* ── Data table: the component users stare at all day ─────────────────── */
+.erp-v2.is-dense .erp-th { height: 31px; }
+.erp-v2.is-dense .erp-td { height: 28px; }
+.erp-v2.is-dense .erp-tr-filter .erp-td { height: 30px; }
+.erp-v2.is-dense .erp-input--sm { min-height: 24px; }
+
+/* ── Badges: same shape language, tighter box ─────────────────────────── */
+.erp-v2.is-dense .erp-badge { padding: 2px 7px; gap: 4px; }
+
+/* KPI numbers intentionally keep their cozy size in dense — the display
+   numeral is the one place legibility beats density (Fiori keeps it too). */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Density control (segmented, same shape as the theme control)
+   ═══════════════════════════════════════════════════════════════════════ */
+.erp-v2 .erp-density-control { display: inline-flex; gap: 2px; }
+.erp-v2 .erp-density-option {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: var(--erp-control-sm);
+  padding: 0 var(--erp-space-2);
+  border: 1px solid var(--erp-border);
+  background: var(--erp-surface);
+  color: var(--erp-text-secondary);
+  font: inherit; font-size: var(--erp-text-xs);
+  cursor: pointer;
+}
+.erp-v2 .erp-density-option:first-child { border-start-start-radius: var(--erp-radius-md); border-end-start-radius: var(--erp-radius-md); }
+.erp-v2 .erp-density-option:last-child  { border-start-end-radius: var(--erp-radius-md);   border-end-end-radius: var(--erp-radius-md); }
+.erp-v2 .erp-density-option:hover { background: var(--erp-surface-hover); color: var(--erp-text-primary); }
+.erp-v2 .erp-density-option.is-active {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  border-color: color-mix(in srgb, var(--erp-brand) 34%, transparent);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-density-option:focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+}

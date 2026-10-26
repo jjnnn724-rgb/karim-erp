@@ -1,0 +1,232 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — EnterpriseDataTable styles
+   ═══════════════════════════════════════════════════════════════════════
+   Dense-on-purpose: enterprise operators scan dozens of rows at a time, so
+   row height is tight (34px) and figures are tabular. Alignment uses
+   text-align:start/end → correct in RTL and LTR from one rule.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.erp-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  min-width: 0;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+.erp-table__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.erp-table__search {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 260px;
+  max-width: 420px;
+  min-width: 0;
+  position: relative;
+}
+.erp-table__search > .ji {
+  position: absolute;
+  inset-inline-start: var(--erp-space-3);
+  width: var(--erp-icon-sm);
+  height: var(--erp-icon-sm);
+  color: var(--erp-text-faint);
+  pointer-events: none;
+}
+.erp-table__search .erp-input { padding-inline-start: calc(var(--erp-space-3) * 2 + var(--erp-icon-sm)); }
+
+.erp-table__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  margin-inline-start: auto;
+  position: relative;
+}
+
+.erp-table__count {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Column visibility menu ──────────────────────────────────────────── */
+.erp-cols-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + var(--erp-space-1));
+  z-index: var(--erp-z-dropdown);
+  min-width: 220px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: var(--erp-space-2);
+  background: var(--erp-surface-raised);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  box-shadow: var(--erp-shadow-lg);
+}
+.erp-cols-menu[hidden] { display: none; }
+
+.erp-cols-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  font-size: var(--erp-text-base);
+  cursor: pointer;
+}
+.erp-cols-menu__item:hover { background: var(--erp-surface-hover); }
+
+/* ── Scroll container ────────────────────────────────────────────────── */
+.erp-table__scroll {
+  overflow: auto;
+  max-height: min(72vh, 780px);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+  overscroll-behavior: contain;
+}
+
+/* ── Grid ────────────────────────────────────────────────────────────── */
+.erp-table__grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--erp-text-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-table__grid th,
+.erp-table__grid td {
+  padding: 0 var(--erp-space-3);
+  border-block-end: 1px solid var(--erp-border);
+  vertical-align: middle;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.erp-th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--erp-z-sticky);
+  height: 38px;
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+.erp-table__grid thead .erp-th:first-child { inset-inline-start: 0; }
+
+.erp-th__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  width: 100%;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.erp-th__btn:hover { color: var(--erp-brand-text); }
+.erp-th__btn .ji { width: 12px; height: 12px; opacity: .55; }
+.erp-th[aria-sort="ascending"]  .erp-th__btn,
+.erp-th[aria-sort="descending"] .erp-th__btn { color: var(--erp-brand-text); font-weight: var(--erp-fw-bold); }
+.erp-th[aria-sort="ascending"]  .erp-th__btn .ji,
+.erp-th[aria-sort="descending"] .erp-th__btn .ji { opacity: 1; }
+
+/* Filter sub-header sits below the sticky header without colliding. */
+.erp-tr-filter .erp-td {
+  height: 34px;
+  padding-block: 3px;
+  background: var(--erp-surface);
+}
+.erp-input--sm {
+  min-height: 26px;
+  padding-inline: var(--erp-space-2);
+  font-size: var(--erp-text-sm);
+  width: 100%;
+  min-width: 90px;
+}
+
+/* ── Body ────────────────────────────────────────────────────────────── */
+.erp-tr { background: var(--erp-surface); }
+.erp-tr:nth-child(even) { background: color-mix(in srgb, var(--erp-surface) 96%, var(--erp-background)); }
+.erp-tr:hover { background: var(--erp-surface-hover); }
+.erp-tr:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: -2px; }
+
+.erp-td {
+  height: 34px;
+  color: var(--erp-text-primary);
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-th--sel, .erp-td--sel { width: 40px; text-align: center !important; padding-inline: 0; }
+
+/* Totals row — the extra report tables paint their sums here on screen, and
+   the same markup prints inside the report document (reports.js xTable). */
+.erp-table__grid tfoot td {
+  height: 36px;
+  background: var(--erp-surface-sunken);
+  border-block-start: 2px solid var(--erp-border-strong);
+  border-block-end: 0;
+  color: var(--erp-text-primary);
+  font-weight: var(--erp-fw-semibold);
+}
+
+/* Sticky first column only when the row is horizontally scrollable —
+   keeps the identity column visible without a JS offset. */
+.erp-table__grid th:first-child,
+.erp-table__grid td:first-child { position: relative; }
+
+/* ── States ──────────────────────────────────────────────────────────── */
+.erp-table .erp-state { min-height: 220px; }
+
+/* ── Pager ───────────────────────────────────────────────────────────── */
+.erp-table__pager {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+.erp-table__pager[hidden] { display: none; }
+
+.erp-pager__info,
+.erp-pager__page {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.erp-pager__page { color: var(--erp-text-primary); font-weight: var(--erp-fw-semibold); }
+
+.erp-pager__btns { display: flex; align-items: center; gap: var(--erp-space-1); }
+
+.erp-pager__btns .erp-btn { min-width: var(--erp-control-sm); padding-inline: var(--erp-space-2); }
+
+.erp-pager__size .erp-select { min-height: var(--erp-control-sm); font-size: var(--erp-text-sm); }
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .erp-table__bar-actions { margin-inline-start: 0; width: 100%; justify-content: space-between; }
+  .erp-table__search { max-width: none; }
+  .erp-table__scroll { max-height: min(64vh, 560px); }
+}
+
+@media print {
+  .erp-table__scroll { max-height: none; overflow: visible; border: 0; }
+  .erp-th { position: static; background: var(--erp-print-head) !important; }
+  .erp-tr:nth-child(even) { background: var(--erp-print-paper); }
+}
