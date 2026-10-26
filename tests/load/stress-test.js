@@ -25,9 +25,10 @@ const { spawnSync } = require('child_process');
 
 // ─── إعدادات ثابتة (نفسها في كل مراحل القياس) ───
 const BASE = 'https://127.0.0.1:5000';
-const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
+// Never hard-code this: it used to live here and leaked to a public remote.
+const API_KEY = process.env.API_KEY || '';
 const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'karim@20177';
+const ADMIN_PASS = process.env.KARIM_FIXED_ADMIN_PASSWORD || '';
 
 const READ_ENDPOINTS = [
     '/api/employees',

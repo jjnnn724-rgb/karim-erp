@@ -2,7 +2,8 @@
 'use strict';
 const https = require('https');
 const { Client } = require('pg');
-const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
+// Never hard-code this: it used to live here and leaked to a public remote.
+const API_KEY = process.env.API_KEY || '';
 const DEPT = 99901, PRODUCT = 999001, ING = 999001, SHIFT = 999001;
 
 function req(method, path, { token, body, headers = {} } = {}) {
@@ -33,7 +34,7 @@ const saleBody = (qty, price) => ({
 });
 
 (async () => {
-    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'karim@20177' } });
+    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: process.env.KARIM_FIXED_ADMIN_PASSWORD || '' } });
     const token = JSON.parse(login.b).access_token;
 
     // تزويد مخزون للنسخة

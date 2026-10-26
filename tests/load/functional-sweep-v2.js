@@ -45,7 +45,7 @@ async function dbQuery(sql, params) {
     const t0 = Date.now();
     // ─── 0) الدخول (مستخدم قابل للتعيين كي لا يُستهلك ميزانية admin أثناء اختبار الضغط) ───
     const SWEEP_USER = process.env.SWEEP_USER || 'admin';
-    const SWEEP_PASS = process.env.SWEEP_PASS || 'karim@20177';
+    const SWEEP_PASS = process.env.SWEEP_PASS || process.env.KARIM_FIXED_ADMIN_PASSWORD || '';
     const login = await request('POST', '/api/auth/login', { body: { username: SWEEP_USER, password: SWEEP_PASS } });
     const token = (() => { try { return JSON.parse(login.text).access_token; } catch (_) { return null; } })();
     check('login admin', login.status === 200 && !!token, 'status=' + login.status);

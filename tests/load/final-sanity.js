@@ -2,7 +2,8 @@
 'use strict';
 const https = require('https');
 const BASE = 'https://127.0.0.1:5000';
-const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
+// Never hard-code this: it used to live here and leaked to a public remote.
+const API_KEY = process.env.API_KEY || '';
 
 function req(method, path, { token, body } = {}) {
     return new Promise((resolve) => {
@@ -28,7 +29,7 @@ function req(method, path, { token, body } = {}) {
     const health = await req('GET', '/api/server/info');
     check('الخادم يستجيب', health.s === 200);
 
-    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'karim@20177' } });
+    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: process.env.KARIM_FIXED_ADMIN_PASSWORD || '' } });
     const token = (() => { try { return JSON.parse(login.b).access_token; } catch (_) { return null; } })();
     check('الدخول يعمل بوضع الإنتاج (حد 20/15د)', login.s === 200 && !!token);
 

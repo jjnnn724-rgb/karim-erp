@@ -6,7 +6,8 @@ const { Client } = require('pg');
 
 const BASE_HOST = '127.0.0.1';
 const BASE_PORT = 5001;
-const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
+// Never hard-code this: it used to live here and leaked to a public remote.
+const API_KEY = process.env.API_KEY || '';
 const DEPT = 99901, PRODUCT = 999001, ING = 999001, SHIFT = 999001;
 const results = [];
 function record(name, pass, detail) {
@@ -53,7 +54,7 @@ const saleBody = (qty, price) => ({
 
 (async () => {
     // ط¯ط®ظˆظ„
-    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: 'karim@20177' } });
+    const login = await req('POST', '/api/auth/login', { body: { username: 'admin', password: process.env.KARIM_FIXED_ADMIN_PASSWORD || '' } });
     let token = null;
     try { token = JSON.parse(login.b).access_token; } catch (_) {}
     if (!token) { console.error('LOGIN_FAIL', login.s, login.b.slice(0, 200)); process.exit(1); }

@@ -27,9 +27,9 @@ const API_KEY = String((require('dotenv').config({ quiet: true }).parsed || {}).
 // مستخدم التوكن قابل للتعيين (--token-user/--token-pass أو متغيرات بيئة) كي لا تحرق
 // عاصفة الدخول (الموجهة عمدًا إلى STORM_USER=admin) ميزانية دخول مستخدم القياس.
 const ADMIN_USER = process.env.LOAD_TOKEN_USER || arg('token-user', 'admin');
-const ADMIN_PASS = process.env.LOAD_TOKEN_PASS || arg('token-pass', 'karim@20177');
+const ADMIN_PASS = process.env.LOAD_TOKEN_PASS || arg('token-pass', process.env.KARIM_FIXED_ADMIN_PASSWORD || '');
 const STORM_USER = 'admin'; // عاصفة الدخول تقيس محدد المعدل على هذا الحساب تحديدًا
-const STORM_PASS = 'karim@20177';
+const STORM_PASS = process.env.STORM_PASS || process.env.KARIM_FIXED_ADMIN_PASSWORD || '';
 
 // نفس نقاط النهاية الأصلية + نقاط الميزات الجديدة (ملصقة بنهاية القائمة لتوزيع ثابت)
 const READ_ENDPOINTS = [

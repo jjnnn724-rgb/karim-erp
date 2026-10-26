@@ -1,7 +1,8 @@
 // تحقق حي: نقطة تغطية البصمات + عينة النتائج الفعلية
 'use strict';
 const https = require('https');
-const API_KEY = '110c4ed2acfb2f7ed50b7ec6b58b7df7261396888839936d';
+// Never hard-code this: it used to live here and leaked to a public remote.
+const API_KEY = process.env.API_KEY || '';
 function post(path, body) {
     return new Promise((res) => {
         const d = JSON.stringify(body);
@@ -21,7 +22,7 @@ function get(path, token) {
     });
 }
 (async () => {
-    const l = await post('/api/auth/login', { username: 'admin', password: 'karim@20177' });
+    const l = await post('/api/auth/login', { username: 'admin', password: process.env.KARIM_FIXED_ADMIN_PASSWORD || '' });
     const token = JSON.parse(l.b).access_token;
     const cov = await get('/api/zkteco/coverage?days=7', token);
     if (cov.s !== 200) { console.log('COVERAGE_FAIL', cov.s, cov.b.slice(0, 200)); process.exit(1); }
