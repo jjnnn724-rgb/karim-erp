@@ -4,6 +4,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  * Usage:
  *   node database/scripts/restore.js <backup_file.sql|backup_file.dump> [--target-db NAME] [--yes] [--drop]
+ *   node database/scripts/restore.js <backup_file.sql.kbak|backup_file.dump.gpg> [--target-db NAME] [--yes] [--drop]
  *
  * أوضاع التشغيل:
  *   1) عادي (بلا --drop): استعادة داخل قاعدة موجودة. فوق قاعدة الإنتاج تتطلب --yes.
@@ -13,6 +14,10 @@
  *          (كتابة الاسم = نية صريحة، الـ --yes وحدها لا تكفي).
  *        • نسخة احتياطية pre-restore- تلقائية (pg_dump) قبل أي DROP —
  *          فالاستعادة الفاشلة تبقى قابلة للاسترجاع.
+ *        • نسخة pre-restore تُشفَّر ويُحذف الملف الصريح فورًا (لا نص صريح على القرص).
+ * الأرشيفات المشفّرة (.kbak/.gpg): يُتحقق من بصمة النص المشفَّر، ثم يُفكّ التشفير
+ * إلى ملف مؤقّت، ثم تُتحقق بصمة النسخة الصريحة إن وُجدت، ثم تتم الاستعادة،
+ * ويُحذف الملف المؤقّت في كل الأحوال (بما فيها الفشل).
  * أمان عام: تحقق SHA-256 من ملف بصمة عند وجوده قبل لمس أي شيء.
  */
 const lib = require('../../scripts/shared');
@@ -20,8 +25,11 @@ process.chdir(lib.ROOT);
 const { log, getEnv, getPgBinary } = lib;
 const { spawnSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+
+const ENCRYPTED_EXT = /\.(kbak|gpg)$/i;
 
 function isCustomDump(file) {
     const descriptor = fs.openSync(file, 'r');
@@ -34,13 +42,29 @@ function isCustomDump(file) {
     }
 }
 
+/** تحقق SHA-256 من ملف مقابل بصمة مخزونة بجانبه. */
+function verifyChecksum(file, sidecarPath, required) {
+    if (!fs.existsSync(sidecarPath)) {
+        if (required) {
+            throw new Error(`ملف البصمة مفقود: ${path.basename(sidecarPath)} — لا يمكن التحقق من سلامة الأرشيف`);
+        }
+        log.warn('لا يوجد ملف بصمة — متابعة بدون تحقق');
+        return false;
+    }
+    const [expected] = fs.readFileSync(sidecarPath, 'utf8').trim().split(/\s+/);
+    const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    if (expected !== actual) throw new Error('بصمة SHA-256 غير متطابقة — الملف تالف أو عُبث به');
+    log.ok('بصمة SHA-256 سليمة');
+    return true;
+}
+
 function main() {
     const argv = process.argv.slice(2);
     const args = argv.filter(a => !a.startsWith('--'));
     const flags = new Set(argv.filter(a => a.startsWith('--') && !a.includes('=')));
     const file = args[0];
     if (!file || !fs.existsSync(file)) {
-        throw new Error('حدد ملف نسخة موجودًا بصيغة SQL أو PostgreSQL custom: node database/scripts/restore.js <file.sql|file.dump> [--target-db NAME] [--yes] [--drop]');
+        throw new Error('حدد ملف نسخة موجودًا بصيغة SQL أو PostgreSQL custom أو أرشيف مشفّر: node database/scripts/restore.js <file.sql|file.dump|file.sql.kbak|file.dump.gpg> [--target-db NAME] [--yes] [--drop]');
     }
     if (fs.statSync(file).size === 0) {
         throw new Error('ملف النسخة الاحتياطية فارغ؛ أُلغيت الاستعادة');
@@ -67,17 +91,33 @@ function main() {
         throw new Error('الاستعادة فوق قاعدة الإنتاج تتطلب --yes (تأكيد صريح)');
     }
 
-    // تحقق البصمة إن وُجدت — قبل أي كتابة
-    const sidecar = `${file}.sha256`;
-    if (fs.existsSync(sidecar)) {
-        const [expected] = fs.readFileSync(sidecar, 'utf8').trim().split(/\s+/);
-        const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-        if (expected !== actual) throw new Error('بصمة SHA-256 غير متطابقة — الملف تالف أو عُبث به');
-        log.ok('بصمة SHA-256 سليمة');
-    } else {
-        log.warn('لا يوجد ملف بصمة — متابعة بدون تحقق');
-    }
+    // ── الأرشيف المشفَّر: تحقق من النص المشفَّر ثم فك التشفير إلى ملف مؤقّت ──
+    let restoreFile = file;
+    let tempFile = null;
+    try {
+        if (ENCRYPTED_EXT.test(file)) {
+            verifyChecksum(file, `${file}.sha256`, true);
+            const { decryptBackupFile } = require('../../scripts/backup-mirror');
+            tempFile = path.join(os.tmpdir(), `karim-restore-${Date.now()}-${process.pid}.tmp`);
+            log.info('فك تشفير الأرشيف إلى ملف مؤقّت…');
+            decryptBackupFile(file, tempFile);
+            restoreFile = tempFile;
+            // بصمة النسخة الصريحة (إن وُجدت) — تثبت أن فك التشفير أنتج النسخة الأصلية
+            verifyChecksum(restoreFile, `${file.replace(/\.(kbak|gpg)$/i, '')}.sha256`, false);
+        } else {
+            verifyChecksum(file, `${file}.sha256`, false);
+        }
 
+        runRestore(restoreFile, targetDb, dropMode);
+    } finally {
+        if (tempFile) {
+            try { fs.unlinkSync(tempFile); } catch (_) {}
+            log.info('حُذف الملف المؤقّت بعد الاستعادة');
+        }
+    }
+}
+
+function runRestore(file, targetDb, dropMode) {
     const customDump = isCustomDump(file);
     const psql = process.env.KARIM_PSQL_PATH || getPgBinary('psql');
     if (!customDump && !psql) throw new Error('psql binary not found');
@@ -102,6 +142,15 @@ function main() {
         ], { stdio: 'inherit', env, timeout: 600000 });
         if (dump.status !== 0) throw new Error('فشل أخذ نسخة pre-restore — أُلغيت الاستعادة (لم يُلمس شيء)');
         log.ok('نسخة pre-restore جاهزة');
+        // لا نص صريح على القرص: تُشفَّر النسخة ثم يُحذف الملف الصريح
+        try {
+            const { encryptBackupFile } = require('../../scripts/backup-mirror');
+            const encrypted = encryptBackupFile(preRestorePath);
+            fs.unlinkSync(preRestorePath);
+            log.ok(`نسخة pre-restore مشفّرة: ${path.basename(encrypted)} (حُذف الملف الصريح)`);
+        } catch (e) {
+            log.warn(`تعذر تشفير نسخة pre-restore (بقيت صريحة): ${e.message}`);
+        }
 
         log.info(`DROP DATABASE IF EXISTS ${targetDb} ثم إنشاؤها من جديد…`);
         const drop = spawnSync(psql, [
@@ -133,4 +182,4 @@ if (require.main === module) {
     catch (error) { log.error(error.message); process.exit(1); }
 }
 
-module.exports = { isCustomDump };
+module.exports = { isCustomDump, verifyChecksum, ENCRYPTED_EXT };

@@ -62,6 +62,40 @@ function Protect-BackupArchive {
     }
 }
 
+function Unprotect-BackupArchive {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$InputPath,
+        [Parameter(Mandatory = $true)][string]$OutputPath,
+        [Parameter(Mandatory = $true)][string]$GpgPath
+    )
+
+    if (-not (Test-Path -LiteralPath $InputPath -PathType Leaf) -or
+        (Get-Item -LiteralPath $InputPath).Length -eq 0) {
+        throw 'Encrypted backup archive is missing or empty; decryption was not attempted.'
+    }
+    if (-not (Test-Path -LiteralPath $GpgPath -PathType Leaf)) {
+        throw "Configured GPG executable does not exist: $GpgPath"
+    }
+    if (Test-Path -LiteralPath $OutputPath) {
+        throw "Decrypted backup already exists; refusing to overwrite it: $OutputPath"
+    }
+
+    try {
+        & $GpgPath --batch --yes --output $OutputPath --decrypt $InputPath
+        if ($LASTEXITCODE -ne 0 -or
+            -not (Test-Path -LiteralPath $OutputPath -PathType Leaf) -or
+            (Get-Item -LiteralPath $OutputPath).Length -eq 0) {
+            throw "GPG decryption failed (exit code $LASTEXITCODE)."
+        }
+    } catch {
+        if (Test-Path -LiteralPath $OutputPath) {
+            Remove-Item -LiteralPath $OutputPath -Force
+        }
+        throw
+    }
+}
+
 function Set-PrivateBackupAcl {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path)

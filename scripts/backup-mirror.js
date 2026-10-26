@@ -37,7 +37,15 @@ function readBackupPassphrase() {
     return raw.length >= 12 ? raw : null;
 }
 
-function encryptBackupFile(srcFile) {
+/**
+ * تشفير ملف نسخة احتياطية.
+ * @param {string} srcFile
+ * @param {{method?: 'auto'|'passphrase'|'gpg'}} [options]
+ *   auto (الافتراضي): عبارة المرور إن توفّرت، وإلا GPG.
+ *   passphrase: إجباري (يستهلك ذاكرة كبيرة — الملف كله في الذاكرة).
+ *   gpg: بثّ بلا استهلاك ذاكرة (يُستعمل ل.Batch الترحيل الكبير).
+ */
+function encryptBackupFile(srcFile, options = {}) {
     const outputFile = `${srcFile}.gpg`;
     const checksumFile = `${outputFile}.sha256`;
     // إعادة التشغيل (نفس الليلة/بعد فشل) يجب أن تنجح: ننظّف البقايا بدل
@@ -49,7 +57,11 @@ function encryptBackupFile(srcFile) {
 
     // Preferred path: passphrase (no key file to move around — a secret the
     // owner keeps in their password manager). Falls back to GPG below.
-    const passphrase = readBackupPassphrase();
+    const method = String(options.method || 'auto').toLowerCase();
+    const passphrase = method === 'gpg' ? null : readBackupPassphrase();
+    if (method === 'passphrase' && !passphrase) {
+        throw new Error('KARIM_BACKUP_PASSPHRASE is not set — cannot encrypt with a passphrase.');
+    }
     if (passphrase) {
         const { encryptFile } = require('./backup-passphrase-encryption');
         // امتداد مختلف عن .gpg حتى لا تختلط الصيغ (فك التشفير يقرأ الصيغة من الترويسة)
@@ -90,6 +102,71 @@ function encryptBackupFile(srcFile) {
 
     const digest = sha256File(outputFile);
     fs.writeFileSync(checksumFile, `${digest}  ${path.basename(outputFile)}\n`, { encoding: 'utf8', flag: 'wx' });
+    return outputFile;
+}
+
+function resolveGpgPath() {
+    const configured = String(process.env.KARIM_GPG_PATH || '').trim();
+    if (!configured) { return 'gpg'; }
+    if (!fs.existsSync(configured)) {
+        throw new Error(`Configured GPG executable does not exist: ${configured}`);
+    }
+    return configured;
+}
+
+/**
+ * فك تشفير أرشيف مشفّر إلى ملف صريح.
+ * .kbak → عبارة مرور (AES-256-GCM)، .gpg → مفتاح GPG.
+ * يتحقق أولًا من بصمة النص المشفَّر — أرشيف عبث به لا يُفكّ أبدًا.
+ */
+function decryptBackupFile(encryptedFile, outputFile) {
+    const ext = path.extname(encryptedFile).toLowerCase();
+    if (ext !== '.gpg' && ext !== '.kbak') {
+        throw new Error(`Unsupported encrypted archive (expected .kbak or .gpg): ${encryptedFile}`);
+    }
+    const checksumFile = `${encryptedFile}.sha256`;
+    if (!fs.existsSync(checksumFile)) {
+        throw new Error(`Encrypted backup checksum missing: ${checksumFile}`);
+    }
+    const checksum = fs.readFileSync(checksumFile, 'utf8').trim().match(/^([a-f0-9]{64})\s+(.+)$/i);
+    if (!checksum || checksum[2] !== path.basename(encryptedFile)
+        || sha256File(encryptedFile).toLowerCase() !== checksum[1].toLowerCase()) {
+        throw new Error('Encrypted backup checksum invalid');
+    }
+    if (fs.existsSync(outputFile)) {
+        throw new Error(`Decrypted backup already exists; refusing to overwrite it: ${outputFile}`);
+    }
+
+    if (ext === '.kbak') {
+        const { decryptFile, readPassphrase } = require('./backup-passphrase-encryption');
+        const passphrase = readPassphrase();
+        if (!passphrase) {
+            throw new Error('KARIM_BACKUP_PASSPHRASE is not set — cannot decrypt passphrase archives.');
+        }
+        decryptFile(encryptedFile, outputFile, passphrase);
+        return outputFile;
+    }
+
+    const helperPath = path.join(__dirname, 'backup-encryption.ps1').replace(/'/g, "''");
+    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    const command = [
+        `$ErrorActionPreference = 'Stop'`,
+        `. ${quote(helperPath)}`,
+        `Unprotect-BackupArchive -InputPath ${quote(path.resolve(encryptedFile))} -OutputPath ${quote(path.resolve(outputFile))} -GpgPath ${quote(resolveGpgPath())}`,
+    ].join('; ');
+    const result = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command,
+    ], { encoding: 'utf8', windowsHide: true, timeout: 900000 });
+
+    if (result.error || result.status !== 0) {
+        if (fs.existsSync(outputFile)) {fs.unlinkSync(outputFile);}
+        const detail = result.error ? result.error.message : (result.stderr || result.stdout || `exit code ${result.status}`);
+        throw new Error(`GPG decryption failed for ${encryptedFile}: ${String(detail).trim()}`);
+    }
+    if (!fs.existsSync(outputFile) || fs.statSync(outputFile).size === 0) {
+        if (fs.existsSync(outputFile)) {fs.unlinkSync(outputFile);}
+        throw new Error(`GPG did not produce a non-empty decrypted backup: ${outputFile}`);
+    }
     return outputFile;
 }
 
@@ -137,4 +214,4 @@ function mirrorFile(srcFile, subdir) {
     return out;
 }
 
-module.exports = { encryptBackupFile, mirrorFile, MIRROR_ROOTS };
+module.exports = { encryptBackupFile, decryptBackupFile, mirrorFile, sha256File, MIRROR_ROOTS };
