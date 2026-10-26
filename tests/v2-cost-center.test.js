@@ -101,10 +101,10 @@ describe('عقد Backend — مراكز التكلفة والتوليد', () => 
         expect(src).toContain('ensureCostCenters,');
     });
 
-    test('ensureCostCenters idempotent: INSERT مع WHERE NOT EXISTS', () => {
+    test('ensureCostCenters idempotent: INSERT مع ON CONFLICT DO NOTHING', () => {
         const src = read(ACCOUNTING);
         expect(src).toMatch(/INSERT INTO cost_centers \(code, name_ar\)/);
-        expect(src).toMatch(/WHERE NOT EXISTS \(SELECT 1 FROM cost_centers WHERE code = c\)/);
+        expect(src).toMatch(/ON CONFLICT \(code\) DO NOTHING/);
     });
 
     test('نقطة التوليد: حرس الدور + فحص العائد والرصيد + حركات المخزون ومصروف التوليد والقيد بمركز القسم', () => {
