@@ -801,7 +801,13 @@ let totalValue = 0;
             await require('./accounting-routes').postDispatchToLedger(dispatch.id, {
                 totalValue, date: dateOnly(dispatch.date), deptCode: dispatch.deptCode,
             });
-        } catch (ledgerErr) { logger.warn('[dispatch_ledger] best-effort skipped:', ledgerErr.message); }
+        } catch (ledgerErr) {
+            /* Not silent on purpose: an approved dispatch that never reaches the GL
+               means stock left the store with no COGS recorded. The stock rows and
+               the expense are already committed, so the remedy is a retry or
+               scripts/reconcile-dispatch-ledger.js — and both need the reason. */
+            logger.error(`[dispatch_ledger] FAILED dispatch=${dispatch.id} dept=${dispatch.deptCode || '?'} value=${round(totalValue, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
+        }
 
         emit(req, 'dispatches', 'update', updatedDispatch);
         // Task 20: إشعار فوري — المخازن صرفت: مقدم الطلب والشيف العمومي
@@ -1303,7 +1309,9 @@ async function directReturn(client, req, res) {
             await require('./accounting-routes').postReturnToLedger(returnRow.id, {
                 totalValue, date: returnRow.date, deptCode: returnRow.deptCode,
             });
-        } catch (ledgerErr) { logger.warn('[return_ledger] best-effort skipped:', ledgerErr.message); }
+        } catch (ledgerErr) {
+            logger.error(`[return_ledger] FAILED return=${returnRow.id} dept=${returnRow.deptCode || '?'} value=${round(totalValue, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
+        }
         emit(req, 'kitchenReturns', 'create', returnRow);
         for (const item of stockChanges) {emit(req, 'inventory', 'update', item);}
         for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
@@ -1483,7 +1491,9 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             await require('./accounting-routes').postReturnToLedger(returnRow.id, {
                 totalValue, date: returnRow.date, deptCode: returnRow.deptCode,
             });
-        } catch (ledgerErr) { logger.warn('[return_ledger] best-effort skipped:', ledgerErr.message); }
+        } catch (ledgerErr) {
+            logger.error(`[return_ledger] FAILED return=${returnRow.id} dept=${returnRow.deptCode || '?'} value=${round(totalValue, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
+        }
 
         emit(req, 'kitchenReturns', 'create', returnRow);
         // Task 20: إشعار فوري — إرجاع أصناف للقسم: المخازن والشيف يعرفان بالعكس
@@ -2130,7 +2140,9 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
             const _isOpen = String(invoice.invoiceNumber || '').startsWith('OPEN-');
             await (_isOpen ? _acct.postOpeningToLedger : _acct.postPurchaseToLedger)(invoiceId);
         }
-        catch (ledgerErr) { logger.warn('[purchase_ledger] best-effort skipped:', ledgerErr.message); }
+        catch (ledgerErr) {
+            logger.error(`[purchase_ledger] FAILED invoice=${invoiceId} number=${invoice.invoiceNumber || '?'} total=${round(invoiceTotal, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
+        }
 
         emit(req, 'purchaseInvoices', 'create', invoice);
         for (const item of inventoryRows) {emit(req, 'inventory', 'update', item);}

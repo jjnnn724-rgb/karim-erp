@@ -628,6 +628,9 @@ app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, inventor
 // Professional stocktaking studio: live counting, bulk counts, cancel, printable sheets.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, stocktakingRouter);
 ensureStocktakingSchema().catch((error) => logger.error('[STOCKTAKING_SCHEMA] initialization failed:', error.message));
+// إذن التوليد (خام ← مصنّع بتكلفة الوصفة) — نظام تكلفة المراكز، المرحلة 3 (2026-10-25)
+const { router: productionRouter } = require('./production-routes');
+app.use('/api/productions', (req, res, next) => { req.io = io; next(); }, productionRouter);
 // ── v7.1 Real-time infrastructure: outbox publisher + missed-event recovery + client ACK ──
 // طبقة إضافية فوق Socket.IO القائم — لا تستبدل أي بث قائم (العقد C1/C5: dual-publish فقط).
 const rtRecovery = require('./realtime/recovery-routes');

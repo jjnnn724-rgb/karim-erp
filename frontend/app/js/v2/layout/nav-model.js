@@ -36,7 +36,7 @@
  *  menu-board, cashier-monitor, yara-daily-locks. Same ids and order. */
 const NAV_GROUPS_FALLBACK = [
     { id: 'main',    title: 'nav.grp.main',    keys: ['dashboard'] },
-    { id: 'finance', title: 'nav.grp.finance', keys: ['cfo', 'cash-register', 'cashier-sales', 'sales-inquiry', 'cashier-monitor', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'monthly-comparison', 'yara-daily-locks'] },
+    { id: 'finance', title: 'nav.grp.finance', keys: ['cfo', 'cash-register', 'cashier-sales', 'sales-inquiry', 'cashier-monitor', 'revenues', 'expenses', 'cost-center', 'cost-analysis', 'pnl', 'monthly-comparison', 'yara-daily-locks'] },
     { id: 'ops',     title: 'nav.grp.ops',     keys: ['departments', 'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'veg-requests', 'shelves', 'weight', 'kitchen', 'dispatch', 'recipes', 'procurement', 'menu-board'] },
     { id: 'hr',      title: 'nav.grp.hr',      keys: ['hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco', 'payroll', 'hr-departments', 'employee-portal', 'roster', 'dept-employees'] },
     { id: 'sys',     title: 'nav.grp.sys',     keys: ['reports', 'settings', 'users', 'branches', 'permissions', 'yarasoft', 'oracle-data', 'whatsapp', 'query', 'professional', 'sales-analyzer', 'received-analyzer', 'wh-vs-pos'] },

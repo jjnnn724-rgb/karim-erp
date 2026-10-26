@@ -83,7 +83,7 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
             credit: round2(l.credit),
             memo: l.memo != null ? String(l.memo).slice(0, 255) : null,
             cost_center_code: l.cost_center_code != null
-                ? String(l.cost_center_code).trim().toUpperCase().slice(0, 20) : null,
+                ? (normalizeCostCenterCode(l.cost_center_code) || null) : null,
         }))
         .filter(l => l.account_code && (l.debit > 0 || l.credit > 0));
     if (clean.length < 2) {throw Object.assign(new Error('القيد يحتاج سطرين على الأقل بمبالغ موجبة'), { statusCode: 422 });}
@@ -338,33 +338,69 @@ async function postOpeningToLedger(invoiceId) {
  *   صرف OUT: Dr 5000 تكلفة بضاعة ← Cr 1200 مخزون (بمتوسط التكلفة المرجح)
  *   إرجاع IN: Dr 1200 مخزون ← Cr 5000 تكلفة بضاعة (عكس متماثل)
  */
-function buildStockMoveLines(totalValue, direction) {
+function buildStockMoveLines(totalValue, direction, costCenter = null) {
     const v = round2(totalValue);
     if (!(v > 0)) {return [];}
     if (direction === 'in') {
         return [
-            { account_code: '1200', debit: v, credit: 0, memo: 'إرجاع مخزون' },
-            { account_code: '5000', debit: 0, credit: v, memo: 'عكس تكلفة' },
+            { account_code: '1200', debit: v, credit: 0, memo: 'إرجاع مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+            { account_code: '5000', debit: 0, credit: v, memo: 'عكس تكلفة', ...(costCenter ? { cost_center_code: costCenter } : {}) },
         ];
     }
     return [
-        { account_code: '5000', debit: v, credit: 0, memo: 'تكلفة صرف' },
-        { account_code: '1200', debit: 0, credit: v, memo: 'صرف مخزون' },
+        { account_code: '5000', debit: v, credit: 0, memo: 'تكلفة صرف', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+        { account_code: '1200', debit: 0, credit: v, memo: 'صرف مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
     ];
 }
 
-/** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT. */
+/** ضمان وجود مراكز تكلفة للأقسام قبل أول قيدٍ يحملها — idempotent.
+ *  postJournal يرفض أي cost_center غير موجود، فتُنشأ الصفوف إن غابت
+ *  (best-effort: إن فشل الإنشاء يُرحَّل القيد بلا مركز كما كان). */
+/**
+ * رمز مركز تكلفة كما يفرضه الجدول: `CHECK (code ~ '^[A-Z0-9_-]{1,20}$')`.
+ * أقسام التشغيل تُسمّى بأحرف صغيرة (`kitchen`, `hot_hall`, `external_sales`)،
+ * فكان الإدراج الخامّ يفشل دائمًا بقيد `cost_centers_code_check`، ثم يرمي
+ * postJournal «مركز غير معروف» بعد أن يرفع الرمز إلى أحرف كبيرة — فيسقط قيد
+ * الصرف كله بصمت. التطبيع هنا هو مصدر الحقيقة الوحيد للرمز.
+ */
+function normalizeCostCenterCode(code) {
+    const s = String(code == null ? '' : code).trim().toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, '_').slice(0, 20);
+    return s || '';
+}
+
+async function ensureCostCenters(codes = []) {
+    const wanted = [...new Set(codes.map(normalizeCostCenterCode).filter(Boolean))];
+    if (!wanted.length) {return wanted;}
+    try {
+        // ON CONFLICT بدل NOT EXISTS: الاعتمادات المتزامنة كانت تتسابق فتفشل
+        // إحداهما بخطأ 23505 (سُجّل فعلًا 2026-10-26 في سجل التشغيل).
+        await pool.query(
+            `INSERT INTO cost_centers (code, name_ar)
+             SELECT c, c FROM unnest($1::text[]) AS c
+             ON CONFLICT (code) DO NOTHING`,
+            [wanted]);
+    } catch (e) {
+        logger.warn(`[cost-centers] ensure skipped: ${e.message}`);
+    }
+    return wanted;
+}
+
+/** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT.
+ *  سطر التكلفة يحمل cost_center_code = القسم الطالب (إن وُجد مركزُه) —
+ *  فانقسام COGS لكل قسم يصبح ممكنًا من الأستاذ مباشرة. */
 async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } = {}) {
     const v = round2(totalValue);
     if (!(v > 0)) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
         ? String(date).slice(0, 10) : riyadhToday();
+    if (deptCode) {await ensureCostCenters([deptCode]);}
     const out = await postJournal(pool, {
         date: day,
         memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
         source_type: 'dispatch',
         source_id: String(dispatchId),
-        lines: buildStockMoveLines(v, 'out'),
+        lines: buildStockMoveLines(v, 'out', deptCode || null),
     });
     logger.info(`[LEDGER] صرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;
@@ -376,12 +412,13 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
     if (!(v > 0)) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
         ? String(date).slice(0, 10) : riyadhToday();
+    if (deptCode) {await ensureCostCenters([deptCode]);}
     const out = await postJournal(pool, {
         date: day,
         memo: `إرجاع مخزون — مرتجع #${returnId}${deptCode ? ` (${deptCode})` : ''}`,
         source_type: 'kitchen_return',
         source_id: String(returnId),
-        lines: buildStockMoveLines(v, 'in'),
+        lines: buildStockMoveLines(v, 'in', deptCode || null),
     });
     logger.info(`[LEDGER] مرتجع #${returnId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;
@@ -702,4 +739,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, resetCcCache: () => { _ccReady = null; } };
+module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };

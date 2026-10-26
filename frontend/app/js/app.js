@@ -193,6 +193,7 @@ menus: {
     cfo: '<i class=ji data-i=briefcase></i>',
     revenues: '<i class=ji data-i=banknote></i>',
     expenses: '<i class=ji data-i=wallet></i>',
+    'cost-center': '<i class=ji data-i=calculator></i>',
     'cost-analysis': '<i class=ji data-i=trending-up></i>',
     'pnl': '<i class=ji data-i=gem></i>',
     departments: '<i class=ji data-i=building></i>',
