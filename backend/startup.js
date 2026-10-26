@@ -327,12 +327,81 @@ async function validateDB(pool) {
 }
 
 /**
+ * تثبيت كلمة مرور admin من .env عند الإقلاع
+ * ─────────────────────────────────────────────────────────────
+ * لماذا: خدمة Windows تشغّل `node backend/server.js --service` مباشرة، فلا
+ * يمرّ مسار `scripts/karimerp.js` الذي يثبّت كلمة المرور. النتيجة: قيمة
+ * `KARIM_FIXED_ADMIN_PASSWORD` في .env لا تحكم إلا المشغّل اليدوي، بينما
+ * الخدمة تترك ما في القاعدة — فتصبح الـ.env مصدرًا مضلِّلًا، وأي إعادة
+ * تعيين لهش كلمة مرور admin (ترحيل، استعادة نسخة، يد يدوية) تبقى سارية
+ * حتى الإقلاع التالي.
+ *
+ * القواعد:
+ *   • بلا قيمة في .env ⇒ لا تثبيت إطلاقًا (سلوك المشغّل اليدوي نفسه).
+ *   • قيمة ضعيفة أو مشوّهة ⇒ تُتجاهل مع تحذير، ولا تُكتب أبدًا — التثبيت
+ *     بقيمة خاطئة يقفل المالك خارج النظام.
+ *   • الكتابة ذرّية على صف admin واحد فقط، وتُسجَّل في سجل التدقيق
+ *     (بالسلسلة) — تغيير كلمة مرور بلا أثر يُشبه ما كان الكود القديم يفعله.
+ */
+async function pinAdminPassword(pool, { writeAudit } = {}) {
+    const errors = [];
+    const warnings = [];
+    const fixed = String(process.env.KARIM_FIXED_ADMIN_PASSWORD || '').trim();
+    const skip = (reason) => ({ ok: true, errors, warnings, details: { pinned: false, reason } });
+    const auditWriter = typeof writeAudit === 'function'
+        ? writeAudit
+        : (entry) => require('./cashier-module/audit-middleware').writeAuditLog(entry);
+
+    if (!fixed) {return skip('no_fixed_password');}
+    if (fixed.length < 12 || !/[A-Za-z]/.test(fixed) || !/\d/.test(fixed)) {
+        warnings.push({ code: 'WEAK_FIXED_ADMIN_PASSWORD', message: 'KARIM_FIXED_ADMIN_PASSWORD ضعيفة أو مشوّهة — لم تُثبَّت (لا تُكتب قيمة مشكوك فيها)' });
+        return { ok: true, errors, warnings, details: { pinned: false, reason: 'weak_value_skipped' } };
+    }
+    if (!pool) {return skip('no_pool');}
+
+    try {
+        const bcrypt = require('bcryptjs');
+        const { rows } = await pool.query(`SELECT id, password FROM users WHERE username = 'admin' LIMIT 1`);
+        const admin = rows[0];
+        if (!admin) {
+            warnings.push({ code: 'NO_ADMIN_USER', message: 'لا يوجد مستخدم admin — لم يُثبَّت شيء' });
+            return { ok: true, errors, warnings, details: { pinned: false, reason: 'no_admin_user' } };
+        }
+        if (/^\$2[aby]\$/.test(String(admin.password || '')) && await bcrypt.compare(fixed, admin.password)) {
+            return { ok: true, errors, warnings, details: { pinned: false, reason: 'already_matching' } };
+        }
+        const hash = await bcrypt.hash(fixed, 12);
+        await pool.query(
+            `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [hash, admin.id]
+        );
+        try {
+            await auditWriter({
+                action: 'ADMIN_PASSWORD_PINNED',
+                tableName: 'users',
+                rowPk: admin.id,
+                reason: 'استعادة كلمة مرور admin من KARIM_FIXED_ADMIN_PASSWORD عند الإقلاع',
+                metadata: { source: 'startup', actor: 'system' },
+                actor: { userName: 'system', role: 'bg_worker' },
+            });
+        } catch (auditError) {
+            warnings.push({ code: 'AUDIT_WRITE_FAILED', message: `تعذر تسجيل التثبيت في سجل التدقيق: ${auditError.message}` });
+        }
+        logger.warn('[STARTUP] كلمة مرور admin أُعيدت من .env (KARIM_FIXED_ADMIN_PASSWORD)');
+        return { ok: true, errors, warnings, details: { pinned: true } };
+    } catch (e) {
+        errors.push({ code: 'ADMIN_PIN_FAIL', message: `تعذر تثبيت كلمة مرور admin: ${e.message}` });
+        return { ok: false, errors, warnings, details: { pinned: false, reason: 'error' } };
+    }
+}
+
+/**
  * Run the whole pipeline. Call early in server.js.
  * If CRITICAL fails, throws ConfigurationError.
  */
 async function runAll({ pool, failFast = true } = {}) {
     const startedAt = Date.now();
-    const results = { env: null, db: null, disk: null };
+    const results = { env: null, db: null, disk: null, credential: null };
     const fatalErrors = [];
     const allWarnings = [];
 
@@ -341,14 +410,14 @@ async function runAll({ pool, failFast = true } = {}) {
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // 1) Env
-    logger.info('  [1/3] فحص متغيرات البيئة .env');
+    logger.info('  [1/4] فحص متغيرات البيئة .env');
     results.env = validateEnv();
     if (!results.env.ok) {fatalErrors.push(...results.env.errors);}
     allWarnings.push(...results.env.warnings);
     logStep('env', results.env);
 
     // 2) Disk (validated via DATA_DIR / BACKUP_DIR rules above)
-    logger.info('  [2/3] فحص المساحة والقرص');
+    logger.info('  [2/4] فحص المساحة والقرص');
     const dataDir = results.env.config.DATA_DIR || makeRules().DATA_DIR.default;
     results.disk = validateDiskOnce(dataDir);
     if (!results.disk.ok) {fatalErrors.push(...results.disk.errors);}
@@ -357,14 +426,21 @@ async function runAll({ pool, failFast = true } = {}) {
 
     // 3) DB (if pool is ready)
     if (pool) {
-        logger.info('  [3/3] فحص الاتصال بقاعدة البيانات');
+        logger.info('  [3/4] فحص الاتصال بقاعدة البيانات');
         results.db = await validateDB(pool);
         if (!results.db.ok) {fatalErrors.push(...results.db.errors);}
         allWarnings.push(...results.db.warnings);
         logStep('db', results.db);
     } else {
-        logger.info('  [3/3] تخطي فحص قاعدة البيانات (لم يتم تهيئتها بعد)');
+        logger.info('  [3/4] تخطي فحص قاعدة البيانات (لم يتم تهيئتها بعد)');
     }
+
+    // 4) Credential pin — .env is the source of truth for the admin password
+    logger.info('  [4/4] تثبيت كلمة مرور admin من .env');
+    results.credential = await pinAdminPassword(pool);
+    if (!results.credential.ok) {fatalErrors.push(...results.credential.errors);}
+    allWarnings.push(...results.credential.warnings);
+    logStep('credential', results.credential);
 
     const elapsed = Date.now() - startedAt;
 
@@ -435,5 +511,6 @@ function validateDiskOnce(dir) {
 module.exports = {
     validateEnv,
     validateDB,
+    pinAdminPassword,
     runAll,
 };
