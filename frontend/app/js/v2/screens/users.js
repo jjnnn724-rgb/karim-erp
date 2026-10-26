@@ -15,17 +15,17 @@
  * and the independent `v2bulkimport` flag (OFF by default).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.156';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.156';
-import { formatInt } from '../data/reports-repo.js?v=4.9.156';
-import { ROLES } from '../../core/config.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.180';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.180';
+import { formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { ROLES } from '../../core/config.js?v=4.9.180';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
     linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.156';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.156';
+} from '../data/users-repo.js?v=4.9.180';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -199,26 +199,26 @@ export function mountUsersScreen(host, ctx = {}) {
           ${isEdit ? '' : '<p class="erp-text-sm erp-text-muted">الحساب يحدد تسجيل الدخول والصلاحيات، والربط يوصله بالسجل الوظيفي والحضور والراتب.</p>'}
           ${isEdit ? '<p class="erp-text-sm erp-text-muted">اسم المستخدم ثابت كمعرّف دخول. اترك كلمة المرور فارغة دون تغيير.</p>' : ''}
           <div class="erp-dash-controls">
-            <label class="erp-text-sm erp-text-muted">الاسم</label>
-            <input class="erp-input" data-v2-f="name" value="${isEdit ? esc(user.name) : ''}" autocomplete="off">
-            <label class="erp-text-sm erp-text-muted">اسم المستخدم</label>
-            <input class="erp-input erp-input--ltr" data-v2-f="username" value="${isEdit ? esc(user.username) : ''}" ${isEdit ? 'readonly aria-readonly="true"' : ''} autocomplete="off" dir="ltr">
+            <label class="erp-text-sm erp-text-muted" for="v2u-name">الاسم</label>
+            <input class="erp-input" id="v2u-name" data-v2-f="name" value="${isEdit ? esc(user.name) : ''}" autocomplete="off">
+            <label class="erp-text-sm erp-text-muted" for="v2u-username">اسم المستخدم</label>
+            <input class="erp-input erp-input--ltr" id="v2u-username" data-v2-f="username" value="${isEdit ? esc(user.username) : ''}" ${isEdit ? 'readonly aria-readonly="true"' : ''} autocomplete="off" dir="ltr">
           </div>
           <div class="erp-dash-controls">
-            <label class="erp-text-sm erp-text-muted">كلمة المرور${isEdit ? ' الجديدة' : ''}</label>
-            <input class="erp-input" data-v2-f="password" type="password" placeholder="${isEdit ? 'فارغة = دون تغيير' : '12 حرفًا على الأقل مع حرف ورقم'}" autocomplete="new-password">
-            <label class="erp-text-sm erp-text-muted">الدور</label>
-            <select class="erp-select" data-v2-f="role">${roleOptions(isEdit ? user.role : '')}</select>
+            <label class="erp-text-sm erp-text-muted" for="v2u-password">كلمة المرور${isEdit ? ' الجديدة' : ''}</label>
+            <input class="erp-input" id="v2u-password" data-v2-f="password" type="password" placeholder="${isEdit ? 'فارغة = دون تغيير' : '12 حرفًا على الأقل مع حرف ورقم'}" autocomplete="new-password">
+            <label class="erp-text-sm erp-text-muted" for="v2u-role">الدور</label>
+            <select class="erp-select" id="v2u-role" data-v2-f="role">${roleOptions(isEdit ? user.role : '')}</select>
           </div>
-          <div data-v2-deptwrap>
-            <label class="erp-text-sm erp-text-muted">قسم الرئيس <small>(إجباري لرئيس القسم — أكثر من قسم مدعوم)</small></label>
+          <div data-v2-deptwrap role="group" aria-labelledby="v2u-dept-label">
+            <span class="erp-text-sm erp-text-muted" id="v2u-dept-label">قسم الرئيس <small>(إجباري لرئيس القسم — أكثر من قسم مدعوم)</small></span>
             <div style="max-height:200px;overflow-y:auto;border:1px solid var(--erp-border);border-radius:10px;padding:10px">${deptBoxes(isEdit ? user.dept_code : '')}</div>
           </div>
           <div class="erp-dash-controls">
-            <label class="erp-text-sm erp-text-muted">الموظف المرتبط</label>
-            <select class="erp-select" data-v2-f="employee">${empOptions(isEdit ? (employees.find((x) => String(x.userId) === String(user.id)) || {}).id : '', isEdit ? user.id : null)}</select>
-            <label class="erp-text-sm erp-text-muted">الحالة</label>
-            <select class="erp-select" data-v2-f="active">
+            <label class="erp-text-sm erp-text-muted" for="v2u-employee">الموظف المرتبط</label>
+            <select class="erp-select" id="v2u-employee" data-v2-f="employee">${empOptions(isEdit ? (employees.find((x) => String(x.userId) === String(user.id)) || {}).id : '', isEdit ? user.id : null)}</select>
+            <label class="erp-text-sm erp-text-muted" for="v2u-active">الحالة</label>
+            <select class="erp-select" id="v2u-active" data-v2-f="active">
               <option value="true"${!isEdit || user.active !== false ? ' selected' : ''}>نشط</option>
               <option value="false"${isEdit && user.active === false ? ' selected' : ''}>موقوف</option>
             </select>

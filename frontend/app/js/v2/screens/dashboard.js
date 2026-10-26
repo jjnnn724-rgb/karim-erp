@@ -10,9 +10,10 @@
  *   • The period switcher RE-RENDERS every figure from a different fixture
  *     set (day/week/month) — the control genuinely works; only the numbers
  *     are samples, stated on every section head.
- *   • The brand switcher sets ONE data-brand attribute on the .erp-v2 root;
- *     every accent re-resolves through --erp-dash-accent-* (white-label
- *     proof: the same dashboard serves any national company).
+ *   • Identity is UNIFIED since 2026-10-25 («أونيكس وشامبانيا», one system
+ *     palette owned by erp-identity.css): the dashboard-only white-label
+ *     brand switcher (data-brand) was removed by user decision — no more
+ *     half-applied rebrand.
  *   • The greeting date is the browser's real current date (ar-SA locale).
  *   • Status badges use persisted values verified in the Gate B showcase.
  *   • Numbers/dates are tabular Latin digits per the Arabic-UX skill.
@@ -26,10 +27,11 @@
  *   live wiring is Gate D — deliberately not faked here.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.156';
-import { setPref } from '../theme.js?v=4.9.156';
-import { hydrateStatusNodes } from '../status.js?v=4.9.156';
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.156';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.180';
+import { setPref } from '../theme.js?v=4.9.180';
+import { hydrateStatusNodes } from '../status.js?v=4.9.180';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -139,29 +141,73 @@ const ALERTS = [
     { tone: 'warning', text: 'تأخر عن الوردية: خالد سعيد (+25 دقيقة)', time: 'الحضور', badge: null },
 ];
 
-const BRANDS = [
-    { id: 'gold',      label: 'ذهبي ملكي',  en: 'Royal Gold' },
-    { id: 'corporate', label: 'كحلي مؤسسي', en: 'Corporate Navy' },
-];
-
 /* ── Builders ─────────────────────────────────────────────────────────── */
-function deltaPill(d) {
-    const icon = d.dir === 'up' ? 'arrow-up' : d.dir === 'down' ? 'arrow-down' : null;
-    return `<span class="erp-delta erp-delta--${d.dir}">${icon ? `<i class="ji" data-i="${icon}" aria-hidden="true"></i>` : ''}<span class="erp-num" dir="ltr">${esc(d.text)}</span></span>`;
+/* kpiStrip/deltaPill مشتركان الآن في role-dash-parts.js — نسخة واحدة للنظام. */
+
+/* ── المستشار الذكي: قواعد نصائح من أرقام اللوحة نفسها ─────────────────
+   محركٌ محلي صرف (بلا شبكة ولا مفتاح خارجي): يقرأ مؤشرات الفترة ويحول
+   الانحرافات إلى إرشادٍ عملي مرتّب بالأولوية. سريعٌ بلا تكلفة، ولا
+   ينكسر: أي مؤشرٍ غائب يُتخطى بصمت، والبطاقة لا تظهر بلا نصائح. */
+function pctOf(d) {
+    const m = String((d && d.text) || '').match(/([\d.]+)/);
+    return m ? Number(m[1]) : 0;
+}
+function findKpi(kpis, en) {
+    return (kpis || []).find((k) => k.en === en) || null;
+}
+export function advise(kpis) {
+    const out = [];
+    const sales = findKpi(kpis, "Today's Sales");
+    if (sales && sales.delta && sales.delta.dir === 'down' && pctOf(sales.delta) >= 10) {
+        out.push({ tone: 'warning', icon: 'trending-down',
+            text: `المبيعات تحت الأمس بنسبة ${sales.delta.text} — فعّل عرضًا سريعًا على الأصناف عالية الهامش وراجع ساعات الذروة مع كاشيريات اليوم.` });
+    }
+    const net = findKpi(kpis, 'Net Profit');
+    if (net && net.delta && net.delta.dir === 'down' && pctOf(net.delta) >= 10) {
+        out.push({ tone: 'danger', icon: 'wallet',
+            text: `الصافي انخفض ${net.delta.text} رغم الإيراد — راجع مصاريف اليوم الاستثنائية وأي صرفٍ غير معتمد في سجل الصرف.` });
+    }
+    const critical = findKpi(kpis, 'Critical SKUs');
+    if (critical && Number(String(critical.value).replace(/[^\d.]/g, '')) > 0) {
+        out.push({ tone: 'danger', icon: 'package',
+            text: `${critical.value} صنفًا تحت الحد الأدنى — أصدر طلبات الشراء اليوم من شاشة المخزن قبل أن يتوقف قسم.` });
+    }
+    const att = findKpi(kpis, 'Attendance');
+    if (att) {
+        const m = String(att.value).match(/(\d+)\s*\/\s*(\d+)/);
+        const ratio = m && Number(m[2]) ? Number(m[1]) / Number(m[2]) : 1;
+        if (ratio < 0.8) {
+            out.push({ tone: 'warning', icon: 'users',
+                text: `الحضور ${att.value} فقط (${Math.round(ratio * 100)}% من الوردية) — راجع دوامات القسم الغائب وفعّل الاحتياط من موظفي الأقسام الأخرى.` });
+        }
+    }
+    const ticket = findKpi(kpis, 'Avg Ticket');
+    if (ticket && ticket.delta && ticket.delta.dir === 'down' && pctOf(ticket.delta) >= 5) {
+        out.push({ tone: 'warning', icon: 'receipt',
+            text: `متوسط الفاتورة نزل ${ticket.delta.text} — درّب الكاشيريات على البيع الإضافي (طبق جانبي/مشروب) وضَع الأصناف المربحة أول القائمة.` });
+    }
+    const invoices = findKpi(kpis, 'Invoices');
+    if (invoices && invoices.delta && invoices.delta.dir === 'up' && pctOf(invoices.delta) >= 10
+        && sales && sales.delta && sales.delta.dir !== 'down') {
+        out.push({ tone: 'success', icon: 'trending-up',
+            text: `عدد الفواتير صاعد ${invoices.delta.text} — أداءُ الطاقة جيد؛ حافظ على سرعة التحضير وشاركه مع فريق الصالة.` });
+    }
+    return out;
 }
 
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات الفترة (بيانات نموذجية)">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${k.icon}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">${deltaPill(k.delta)}<span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
+function advisorCard(kpis) {
+    const tips = advise(kpis);
+    if (!tips.length) {return '';}
+    return card('نصائح ذكية لليوم', 'AI Advisor',
+        'مبنية على أرقام هذه اللوحة · محرك محلي لا يتوقف',
+        `<ul class="erp-ai-tips" aria-label="نصائح ذكية مبنية على المؤشرات">`
+        + tips.map((t) => `
+          <li class="erp-ai-tip">
+            <span class="erp-badge" data-tone="${t.tone}"><i class="ji" data-i="${t.icon}" aria-hidden="true"></i>
+              <span class="erp-badge-label">${t.tone === 'danger' ? 'عاجل' : t.tone === 'warning' ? 'انتبه' : 'فرصة'}</span></span>
+            <span class="erp-ai-tip__text">${esc(t.text)}</span>
+          </li>`).join('')
+        + `</ul>`);
 }
 
 /* الرسمان يُرسمان بمحرّك الرسوم نفسه (charts.js): محورٌ بقيمٍ حقيقية،
@@ -272,16 +318,15 @@ function greeting() {
 export function renderDashboard(host, ctx) {
     const { statusBadge } = ctx;
     let period = 'day';
-    let brand = 'gold';
 
-    function segGroup(kind, options, current, _onPick) {
-        return `<div class="erp-seg" role="group" aria-label="${kind === 'period' ? 'الفترة' : 'الهوية'}">`
-            + `<span class="erp-seg__label">${kind === 'period' ? 'الفترة' : 'الهوية'}</span>`
+    function segGroup(options, current) {
+        return `<div class="erp-seg" role="group" aria-label="الفترة">`
+            + `<span class="erp-seg__label">الفترة</span>`
             + options.map((o) => {
-                const id = kind === 'period' ? o : o.id;
-                const label = kind === 'period' ? PERIODS[o].seg : o.label;
+                const id = o;
+                const label = PERIODS[o].seg;
                 const on = id === current;
-                return `<button type="button" data-seg-kind="${kind}" data-seg-id="${id}"${on ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"'}>${esc(label)}</button>`;
+                return `<button type="button" data-seg-kind="period" data-seg-id="${id}"${on ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"'}>${esc(label)}</button>`;
             }).join('')
             + `</div>`;
     }
@@ -296,11 +341,11 @@ export function renderDashboard(host, ctx) {
           <div class="erp-dash-sub">نظرة على العمليات — ${esc(g.date)}</div>
         </div>
         <div class="erp-dash-controls">
-          ${segGroup('period', PERIOD_KEYS, period)}
-          ${segGroup('brand', BRANDS, brand)}
+          ${segGroup(PERIOD_KEYS, period)}
         </div>
       </div>
-      ${card('نبض ' + P.seg, 'Pulse', 'بيانات نموذجية للمعاينة · ' + P.compare, kpiStrip(P.kpis))}
+      ${card('نبض ' + P.seg, 'Pulse', 'بيانات نموذجية للمعاينة · ' + P.compare, kpiStrip(P.kpis, 'مؤشرات الفترة (بيانات نموذجية)'))}
+      ${advisorCard(P.kpis)}
       <div class="erp-dash-grid">
         ${card('مبيعات آخر 7 أيام (ألف ر.س)', 'Weekly Trend', 'بيانات نموذجية', salesBars())}
         ${card('طرق الدفع', 'Payment Mix', 'بيانات نموذجية · ' + P.compare, payDonut(P.payments))}
@@ -311,23 +356,13 @@ export function renderDashboard(host, ctx) {
       </div>
       ${card('خط سير فواتير اليوم', 'Invoice Pipeline', 'بيانات نموذجية', pipeline())}
       ${card('تنبيهات تحتاج تدخلًا', 'Action Alerts', 'بيانات نموذجية', alertList(statusBadge))}`;
-        host.querySelectorAll('[data-seg-kind]').forEach((b) => {
+        host.querySelectorAll('[data-seg-kind="period"]').forEach((b) => {
             b.addEventListener('click', () => {
-                const kind = b.dataset.segKind, id = b.dataset.segId;
-                if (kind === 'period' && PERIODS[id]) {period = id; paint();}
-                else if (kind === 'brand') {setBrand(id); paint();}
+                const id = b.dataset.segId;
+                if (PERIODS[id]) {period = id; paint();}
             });
         });
         try { hydrateStatusNodes(host); } catch { /* badges stay raw text — never fatal */ }
-    }
-
-    function setBrand(id) {
-        const root = (host.isConnected ? host : document).closest?.('.erp-v2')
-            || document.querySelector('.erp-v2');
-        brand = id === 'corporate' ? 'corporate' : 'gold';
-        if (!root) {return;}
-        if (brand === 'corporate') {root.setAttribute('data-brand', 'corporate');}
-        else {root.removeAttribute('data-brand');}
     }
 
     paint();
@@ -359,7 +394,7 @@ const norm = (s) => String(s || '').replace(/[\u064B-\u0652\u0640]/g, '').trim()
 /**
  * Mount the palette trigger into the shell's `search` boundary slot and wire
  * Ctrl+K. The overlay is appended to the shell root (not <body>) so it
- * inherits .erp-v2 tokens and the white-label data-brand, while surviving
+ * inherits the unified .erp-v2 tokens, while surviving
  * screen swaps (it is a sibling of <main>, never inside it).
  * @param {{ root: HTMLElement, mountBoundary: Function, navigate: Function }} shell
  * @returns {{ destroy: () => void }}
@@ -421,6 +456,9 @@ export function mountCommandPalette(shell) {
                 if (i !== active) {active = i; paint();}
             });
         });
+        /* الأسهم تنقل الاختيار بين نتائج تتجاوز ارتفاع القائمة (12 نتيجة في
+           284px): بلا هذا يتحرّك aria-activedescendant إلى صفٍّ خارج النظر. */
+        list.querySelector(`#erp-pal-opt-${active}`)?.scrollIntoView({ block: 'nearest' });
     }
 
     function applyFilter() {
@@ -434,6 +472,9 @@ export function mountCommandPalette(shell) {
     function onDocKey(e) {
         if (e.key === 'Escape') {e.preventDefault(); close(); return;}
         if (!input) {return;}
+        /* الحوار معلن aria-modal، فلا يجوز أن يخرج Tab إلى صفحةٍ خلفه:
+           التنقّل داخل النتائج بالأسهم (aria-activedescendant). */
+        if (e.key === 'Tab') {e.preventDefault(); input.focus(); return;}
         if (e.key === 'ArrowDown') {e.preventDefault(); active = Math.min(active + 1, filtered.length - 1); paint();}
         else if (e.key === 'ArrowUp') {e.preventDefault(); active = Math.max(active - 1, 0); paint();}
         else if (e.key === 'Enter') {e.preventDefault(); run(filtered[active]);}

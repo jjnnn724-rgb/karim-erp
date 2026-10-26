@@ -4,15 +4,16 @@
  * (features/hr.js:695/:717/:725 — الكود يُولَّد لاتينيًا آمنًا إن كان عربيًا).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.156';
-import { formatInt } from '../data/reports-repo.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.180';
+import { formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.180';
 import {
     HR_DEPARTMENT_WRITE_ROLES,
     validateHrDepartmentForm, createHrDepartment, updateHrDepartment, deleteHrDepartment,
-} from '../data/departments-write-repo.js?v=4.9.156';
+} from '../data/departments-write-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -157,8 +158,40 @@ export function mountHrDepartmentsScreen(host, ctx = {}) {
         }).finally(() => {saving = false;});
     }
 
+    /** طباعة نظيفة لسجل الأقسام مع تعداد الموظفين — بدل window.print() الخام. */
+    function printHrDepartments() {
+        const extRows = rows.map((r) => ({ ...r, _count: counts.get(String(r.code)) || 0 }));
+        const totalEmps = extRows.reduce((s, r) => s + r._count, 0);
+        const w = openInAppReport('أقسام الموظفين');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أقسام الموظفين</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز السجل…</body></html>');
+        const body = extRows.map((r, i) => `<tr><td>${i + 1}</td><td dir="ltr">${esc(r.code)}</td><td style="text-align:right"><b>${esc(r.name)}</b></td><td>${esc(r.manager || '—')}</td><td>${formatInt(r._count)}</td></tr>`).join('');
+        w.document.open();
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أقسام الموظفين</title>`
+            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:860px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}'
+            + '.summary div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}'
+            + '.summary b{display:block;font-size:17px;color:#7c3500;margin-top:4px}.summary span{font-size:12px;color:#555}'
+            + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
+            + 'th{background:#f7ead8;color:#7c3500}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + '.controls button.secondary{background:#555}'
+            + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
+            + '<div class="controls"><button type="button" data-hd-print>طباعة</button><button type="button" class="secondary" data-hd-close>إغلاق</button></div>'
+            + `<main class="sheet"><header class="head"><h1>أقسام الموظفين</h1><p>تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}</p></header>`
+            + `<section class="summary"><div><span>عدد الأقسام</span><b>${formatInt(extRows.length)}</b></div>`
+            + `<div><span>إجمالي الموظفين الموزعين</span><b>${formatInt(totalEmps)}</b></div></section>`
+            + '<table><thead><tr><th>#</th><th>الرمز</th><th>اسم القسم</th><th>المدير</th><th>الموظفون</th></tr></thead>'
+            + `<tbody>${body || '<tr><td colspan="5">لا توجد أقسام</td></tr>'}</tbody></table></main></body></html>`);
+        w.document.close();
+        w.document.querySelector('[data-hd-print]')?.addEventListener('click', () => w.print());
+        w.document.querySelector('[data-hd-close]')?.addEventListener('click', () => w.close());
+        w.focus();
+    }
+
     el.addEventListener('click', (ev) => {
-        if (ev.target.closest('[data-v2-print]')) { window.print(); return; }
+        if (ev.target.closest('[data-v2-print]')) { printHrDepartments(); return; }
         if (ev.target.closest('[data-v2-reload]') || ev.target.closest('[data-erp-retry]')) { reload(); return; }
         if (ev.target.closest('[data-v2-hrd-add]')) { openHrDeptForm(null); return; }
         const editBtn = ev.target.closest('[data-v2-hrd-edit]');

@@ -59,7 +59,7 @@ function loadEsm(file, injections = {}, collect = []) {
     return context;
 }
 
-const EXPORTS = ['fetchProcurementSummary', 'fetchSuppliers', 'PAYMENT_METHOD_AR',
+const EXPORTS = ['fetchProcurementSummary', 'fetchSuppliers', 'searchSuppliers', 'PAYMENT_METHOD_AR',
     'SUPPLIER_WRITE_ROLES', 'PAYMENT_WRITE_ROLES', 'PAYMENT_DELETE_ROLES',
     'fetchSupplierPayments', 'rangeError', 'paymentToRow', 'supplierToRow',
     'validateSupplierForm',
@@ -562,25 +562,24 @@ describe('P1-4 — كشف الحساب والدفعة الجزئية: الباب
         expect(src).toMatch(/const raw = row \? rawById\.get\(String\(row\.id\)\) : null;\s*editing = raw \? \{ \.\.\.raw \} : null;/);
     });
 
-    test('اللوحة تُغلق عند التنقل: closeStatement تفكك النقر خارج ثم تزيل — ولا تعلّق عقدة ميتة', () => {
+    test('اللوحة تُغلق من X أعلاها وحده — وتُزال عند التنقل بلا عقدة ميتة', () => {
         const src = screenSrc['procurement.js'];
-        // الدالة الموحّدة: تفكّك المعالج ثم تزيل اللوحة، وتُستدعى من destroy
+        // الدالة الموحّدة تُزيل اللوحة وحدها: لا مستمع خارجي لتفكيكه، فلا
+        // شيء يبقى معلّقًا بعد التنقل.
         const fn = src.slice(src.indexOf('function closeStatement()'), src.indexOf('async function openStatement'));
-        expect(fn).toMatch(/document\.removeEventListener\('click', statementOutside, true\);/);
         expect(fn).toMatch(/statementPop\.remove\(\); statementPop = null;/);
-        expect(fn.indexOf('removeEventListener')).toBeLessThan(fn.indexOf('statementPop.remove'));
+        expect(fn).not.toMatch(/removeEventListener/);
         const destroy = src.slice(src.indexOf('destroy() {'), src.indexOf('},', src.indexOf('destroy() {')));
         expect(destroy).toMatch(/closeStatement\(\);/);
         expect(destroy.indexOf('closeStatement')).toBeLessThan(destroy.indexOf('el.remove()'));
     });
 
-    test('النقر خارج اللوحة يغلقها — بحصاد capture، ويستثنى زر الكشف نفسه', () => {
+    test('لا إغلاق بنقرة خارج كشف الحساب — X وحده (سطح اطلاع لا ينقرض بسهو)', () => {
         const src = screenSrc['procurement.js'];
-        expect(src).toMatch(/statementOutside = \(ev\) => \{/);
-        expect(src).toMatch(/document\.addEventListener\('click', statementOutside, true\);/);
-        expect(src).toMatch(/!t\.closest\('\[data-v2-act="statement"\]'\)/);
+        expect(src).not.toMatch(/statementOutside/);
+        expect(src).not.toMatch(/document\.addEventListener\('click', statementOutside/);
         // إغلاق الزر يستدعي الدالة الموحّدة لا معالجًا مجمّعًا آخر
-        expect(src).toMatch(/\.erp-statement-pop__close'\)\.addEventListener\('click', closeStatement\);/);
+        expect(src).toMatch(/querySelector\('\.erp-modal-x'\)\.addEventListener\('click', closeStatement\);/);
     });
 
     test('قراءة متأخرة بعد الإغلاق لا تسقط: body مفقود = صمت لا استثناء (لا null.replace)', () => {
@@ -596,5 +595,66 @@ describe('P1-4 — كشف الحساب والدفعة الجزئية: الباب
         expect(block).toMatch(/var\(--erp-/);
         expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
         expect(block).not.toMatch(/rgba?\(/);
+    });
+});
+
+describe('بحث الموردين — الباب الخادمي فوق الجدول', () => {
+    test('المسار والوسائط مطابقة لراوتر الخادم: q · tax_status · page · limit', async () => {
+        const { calls, repo } = repoStub({
+            data: [{ id: 7, name: 'مورد', is_active: true }],
+            pagination: { page: '2', limit: '20', total: '41', pages: '3' },
+        });
+        const out = await repo.searchSuppliers({ q: '  لحوم  ', taxStatus: 'registered', page: 2 });
+        expect(calls[0].p).toBe('/procurement/suppliers/search?q=%D9%84%D8%AD%D9%88%D9%85&tax_status=REGISTERED&page=2&limit=20');
+        expect(out.rows).toHaveLength(1);
+        expect(out).toEqual({ rows: [{ id: 7, name: 'مورد', is_active: true }], page: 2, pages: 3, total: 41, limit: 20 });
+    });
+
+    test('«الكل» لا تُرسل فلترًا، والترقيم الفاسد يرتد إلى ١/٢٠ بلا انفجار', async () => {
+        const { calls, repo } = repoStub({ data: [], pagination: {} });
+        const out = await repo.searchSuppliers({ q: '', taxStatus: 'ALL', page: 0, limit: 0 });
+        expect(calls[0].p).toBe('/procurement/suppliers/search?page=1&limit=20');
+        expect(out).toEqual({ rows: [], page: 1, pages: 0, total: 0, limit: 20 });
+    });
+
+    test('شكل استجابة غريب لا يُفسَّر صامتًا: قائمة فارغة وترقيم صفري', async () => {
+        const { repo } = repoStub('not-an-object');
+        const out = await repo.searchSuppliers({ q: 'x' });
+        expect(out.rows).toEqual([]);
+        expect(out.total).toBe(0);
+        expect(out.pages).toBe(0);
+    });
+
+    test('الشاشة: حقلٌ وفلتر ضريبي وترقيم، وردٌّ متأخر يُهمل بـseq', () => {
+        const src = screenSrc['procurement.js'];
+        expect(src).toMatch(/data-v2-search-q/);
+        expect(src).toMatch(/data-v2-search-tax/);
+        expect(src).toMatch(/data-v2-search-prev[\s\S]{0,400}data-v2-search-next/);
+        expect(src).toMatch(/searchSuppliers\(\{ q: term, taxStatus: searchTax\.value, page \}\)/);
+        expect(src).toMatch(/const SEARCH_MIN = 2;/);
+        expect(src).toMatch(/if \(seq !== searchSeq \|\| !el\.isConnected\) \{return;\}/);
+        expect(src).toMatch(/setTimeout\(\(\) => \{runSearch\(\{ page: 1 \}\);\}, 250\)/);
+    });
+
+    test('النتيجة لا تخترع أرقامًا مالية، والتعديل لا يُفتح إلا لسجلٍّ كامل محمّل', () => {
+        const src = screenSrc['procurement.js'];
+        const row = src.slice(src.indexOf('function paintSearchResults(out)'), src.indexOf('async function runSearch('));
+        expect(row).not.toMatch(/purchasesTotal|paymentsTotal|dueTotal/);
+        expect(row).toMatch(/const editable = writable && rawById\.has\(String\(s\.id\)\);/);
+        // كشف الحساب من نتيجة البحث يجلب أرقامه من الكشف نفسه
+        expect(src).toMatch(/await fetchSupplierStatement\(row\.id\);/);
+        expect(src).toMatch(/paint\('\[data-v2-st-buy\]', st\.totals\.debit \|\| 0\)/);
+    });
+
+    test('طبقة البحث برموز tokens فقط (تتبع الوضع الليلي بلا إعادة رسم)', () => {
+        const css = read(HR_CSS);
+        const start = css.indexOf('.erp-v2 .erp-supsearch {');
+        const end = css.indexOf('.erp-v2 .erp-statement-pop {');
+        expect(start).toBeGreaterThan(-1);
+        expect(end).toBeGreaterThan(start);
+        const block = css.slice(start, end);
+        expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(block).not.toMatch(/rgba?\(/);
+        expect(block).toMatch(/var\(--erp-space-3\)/);
     });
 });

@@ -123,7 +123,9 @@ describe('القشرة — صلاحيات القائمة موصولة بالمض
         // المسح انتقل إلى clearLocalSession كي يشمل أيضًا إبطال الجلسة
         // الحالية من شاشة الأجهزة، لا زر الخروج وحده.
         const logout = h.slice(h.indexOf('function clearLocalSession()'), h.indexOf('function refreshProfileSlot()'));
-        expect(logout).toMatch(/doV2Logout\(\)\s*\{\s*clearLocalSession\(\);/);
+        expect(logout).toMatch(/doV2Logout\(\)\s*\{[\s\S]{0,500}clearLocalSession\(\);/);
+        // الخروج من جلسة حقيقية يفتح بوابة الدخول، لا قشرةً بلا بيانات.
+        expect(logout).toMatch(/if \(signedIn\) \{navigateLogin\('dashboard'\);\}/);
         expect(logout).toMatch(/window\.STATE\.permissions = \{ menus: \[\], deniedMenus: \[\] \}/);
     });
 });
@@ -171,7 +173,7 @@ describe('القشرة — عقد الوحدة', () => {
 
     test('وضع fixture لا يشغّل شبكة: isLive يحكم الجرس والصحة ومؤقتاتهما', () => {
         const s = src();
-        expect(s).toMatch(/const live = typeof ctx\.isLive === 'function'/);
+        expect(s).toMatch(/const live = \(\) => \(typeof ctx\.isLive === 'function' \? ctx\.isLive\(\) : false\) && hasSession\(\);/);
         const block = (start, end) => s.slice(s.indexOf(start), s.indexOf(end, s.indexOf(start)));
         const health = block('async function paintHealth()', 'const healthTimer');
         expect(health).toMatch(/if \(!live\(\)\) \{return;\}/);

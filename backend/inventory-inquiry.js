@@ -678,14 +678,20 @@ router.get('/departments', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), as
                     COALESCE(SUM(CASE WHEN COALESCE(i.qty,0) <= 0 THEN 1 ELSE 0 END),0)::int AS zero_items
                FROM inventory i`);
 
+        /* pg returns a Promise, not a result. The item endpoint awaits its
+           parallel batch (line 541); this one read `.rows` off the unfinished
+           promises and threw "rows is not iterable" for every caller. */
+        const [issuedR, expR, revR, posRevR, deptsR, stockValueR] = await Promise.all(
+            [issuedQ, expQ, revQ, posRevQ, deptsQ, stockValueQ]);
+
         const map = (rows) => {
             const out = new Map();
             for (const r of rows) {out.set(String(r.code || ''), r);}
             return out;
         };
-        const issued = map(issuedQ.rows), exp = map(expQ.rows), rev = map(revQ.rows), posRev = map(posRevQ.rows);
+        const issued = map(issuedR.rows), exp = map(expR.rows), rev = map(revR.rows), posRev = map(posRevR.rows);
 
-        const rows = deptsQ.rows.map((d) => {
+        const rows = deptsR.rows.map((d) => {
             const iss = issued.get(d.code) || {};
             const ex = exp.get(d.code) || {};
             const rv = rev.get(d.code) || {};
@@ -711,17 +717,17 @@ router.get('/departments', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), as
         });
 
         const sum = (k) => round(rows.reduce((s, r) => s + n(r[k]), 0));
-        const sv = stockValueQ.rows[0] || {};
+        const sv = stockValueR.rows[0] || {};
         // أرقام بلا قسم معروف: حركة في دفتر بموقع قسمه ليس في جدول departments،
         // أو مصروف بـ deptId غير موجود. تُعلن ولا تُختفى من الإجمالي.
-        const known = new Set(deptsQ.rows.map((d) => String(d.code || '')));
+        const known = new Set(deptsR.rows.map((d) => String(d.code || '')));
         const orphanSum = (q, key) => round(q.rows
             .filter((x) => !known.has(String(x.code || '')))
             .reduce((s, x) => s + n(x[key]), 0));
         const unattributed = {
-            issuedCost: orphanSum(issuedQ, 'cost'),
-            issuedQty: round(orphanSum(issuedQ, 'qty'), 3),
-            expenseOperating: orphanSum(expQ, 'operating'),
+            issuedCost: orphanSum(issuedR, 'cost'),
+            issuedQty: round(orphanSum(issuedR, 'qty'), 3),
+            expenseOperating: orphanSum(expR, 'operating'),
         };
 
         res.json({

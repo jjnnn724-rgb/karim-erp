@@ -14,34 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.156';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.180';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.180';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.156';
+} from '../data/departments-write-repo.js?v=4.9.180';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
     updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
-} from '../data/dept-cashier-repo.js?v=4.9.156';
+} from '../data/dept-cashier-repo.js?v=4.9.180';
 import {
     CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.156';
+} from '../data/dept-detail.js?v=4.9.180';
 /* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
  * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
  * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
  * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.156';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.156';
-import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.156';
-import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.156';
-import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.156';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.180';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.180';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.180';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.180';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1083,8 +1083,8 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-detail-x>رجوع للسجل</button></div>`
             + `<div class="erp-card__body erp-stack">`
             + `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">من تاريخ</label><input class="erp-input erp-input--ltr" type="date" data-v2-dfrom value="${esc(detailFrom)}">`
-            + `<label class="erp-text-sm erp-text-muted">إلى تاريخ</label><input class="erp-input erp-input--ltr" type="date" data-v2-dto value="${esc(detailTo)}">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-dfrom">من تاريخ</label><input class="erp-input erp-input--ltr" id="v2dept-dfrom" type="date" data-v2-dfrom value="${esc(detailFrom)}">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-dto">إلى تاريخ</label><input class="erp-input erp-input--ltr" id="v2dept-dto" type="date" data-v2-dto value="${esc(detailTo)}">`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-dall>كل الفترة</button>`
             + `${(detailFrom || detailTo) ? `<span class="erp-badge" data-tone="info">${detailFrom ? `من ${esc(detailFrom)}` : 'كل الفترة'} ${detailTo ? `إلى ${esc(detailTo)}` : ''}</span>` : ''}`
             + `${cashChips ? `<span>${cashChips}</span>` : ''}`
@@ -1128,15 +1128,15 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         if (!holder || !detailCode) {return;}
         const isRev = kind === 'rev';
         holder.innerHTML = `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">${isRev ? 'المصدر' : 'البيان'}</label>`
-            + `<input class="erp-input" data-v2-m="label">`
-            + `<label class="erp-text-sm erp-text-muted">المبلغ</label>`
-            + `<input class="erp-input erp-input--ltr" data-v2-m="amount" type="number" step="0.01">`
-            + `<label class="erp-text-sm erp-text-muted">التاريخ</label>`
-            + `<input class="erp-input erp-input--ltr" data-v2-m="date" type="date" value="${new Date().toISOString().slice(0, 10)}">`
-            + (!isRev ? `<label class="erp-text-sm erp-text-muted">الفئة</label><select class="erp-select" data-v2-m="category"><option>مواد خام</option><option>رواتب</option><option>تشغيل</option><option>أخرى</option></select>` : '')
-            + `<label class="erp-text-sm erp-text-muted">ملاحظات</label>`
-            + `<input class="erp-input" data-v2-m="notes">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-m-label">${isRev ? 'المصدر' : 'البيان'}</label>`
+            + `<input class="erp-input" id="v2dept-m-label" data-v2-m="label">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-m-amount">المبلغ</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2dept-m-amount" data-v2-m="amount" type="number" step="0.01">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-m-date">التاريخ</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2dept-m-date" data-v2-m="date" type="date" value="${new Date().toISOString().slice(0, 10)}">`
+            + (!isRev ? `<label class="erp-text-sm erp-text-muted" for="v2dept-m-category">الفئة</label><select class="erp-select" id="v2dept-m-category" data-v2-m="category"><option>مواد خام</option><option>رواتب</option><option>تشغيل</option><option>أخرى</option></select>` : '')
+            + `<label class="erp-text-sm erp-text-muted" for="v2dept-m-notes">ملاحظات</label>`
+            + `<input class="erp-input" id="v2dept-m-notes" data-v2-m="notes">`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-m-go="${kind}">حفظ</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-m-x>إلغاء</button></div>`
             + `<div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-m-err role="alert"></div>`;

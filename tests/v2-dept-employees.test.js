@@ -153,10 +153,14 @@ describe('موظفو القسم — عقد الشاشة', () => {
         expect(src).toContain('writable ? `<button type="button" class="erp-btn erp-btn--primary');
     });
 
-    test('بنية المعيار: ul.erp-kpis > li.erp-kpi — لا ديفات', () => {
-        expect(src).toMatch(/<ul class="erp-kpis"/);
-        expect(src).toMatch(/<li class="erp-kpi">/);
-        expect(src).not.toMatch(/<div class="erp-kpi">/);
-        expect(src).not.toContain('erp-kpi-grid');
+    test('بنية المعيار: الشاشة تفوّض للسجل المشترك ul.erp-kpis > li.erp-kpi', () => {
+        // الشريط من role-dash-parts (2026-10-26) — البنية معقودة على البيت المشترك.
+        expect(src).toMatch(/import \{ kpiStrip \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(src).not.toMatch(/function kpiStrip/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/<ul class="erp-kpis"/);
+        expect(shared).toMatch(/<li class="erp-kpi"/);
+        expect(shared).not.toMatch(/<div class="erp-kpi">/);
+        expect(shared).not.toContain('erp-kpi-grid');
     });
 });

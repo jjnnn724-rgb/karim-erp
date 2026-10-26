@@ -266,6 +266,14 @@ describe('التوجيه — الوصل في المضيف', () => {
         expect(slice.slice(0, slice.indexOf('\n}') + 2)).toMatch(/window\.STATE\.permissions = await fetchMyPermissions\(\);\n\s*shell\.refreshNav\(\);\n\s*\/\/[^\n]*\n\s*routeSettled = true;\n\s*applyRouteFromHash\(\);\n\}/);
     });
 
+    test('رابط اللوحة المحفوظ يُرسم ولا يُختصر بحجة مطابقة الحالة', () => {
+        // الحادثة (2026-10-26): فتح ?v2routing=1#/dashboard يرسم صفحة فارغة،
+        // لأن الراوتر قارن الهاش بالمفتاح الافتراضي وافترض أن الشاشة مرسومة.
+        expect(host).toMatch(/let screenPainted = false;/);
+        expect(host).toMatch(/renderScreen\(key\);\s*screenPainted = true;\s*settleScreen\(\);\s*if \(ROUTING\) \{syncHash\(key\);\}/);
+        expect(host).toMatch(/if \(screenPainted && res\.key === navStatus\.current && window\.location\.hash === hashFor\(res\.key\)\) \{return;\}/);
+    });
+
     test('البوابة تُبنى من المسحوب لا من قائمة الدور', () => {
         expect(host).toMatch(/state\.permissions\.deniedMenus/);
         expect(host).toMatch(/if \(state && state\.currentUser && state\.currentUser\.role === 'admin'\) \{return new Set\(\);\}/);

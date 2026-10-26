@@ -56,10 +56,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { statusBadge } from '../status.js?v=4.9.156';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.156';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { statusBadge } from '../status.js?v=4.9.180';
+import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.180';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.180';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -77,9 +77,10 @@ import {
     monthOf, fetchShiftsAnalysis, applyShifts,
     fetchStrictAudit, summarizeAudit,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.156';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.156';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.156';
+} from '../data/attendance-repo.js?v=4.9.180';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.180';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -188,24 +189,7 @@ function todayBlock(data, opts = {}) {
 }
 
 /** One chip: number, what it counts, and the share it belongs to. */
-function kpiStrip(kpis, scopeLabel) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — مشتقة من السجلات المعروضة">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">
-          <span class="erp-delta erp-delta--flat" role="img" aria-label="${esc(k.pill.aria)}">
-            <span class="erp-num" dir="ltr">${esc(k.pill.text)}</span>
-          </span>
-          <span class="erp-kpi__hint">${esc(k.hint)}</span>
-        </div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 function barsBlock(bars) {
     if (!bars.length) {
@@ -456,7 +440,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
         const scope = filtering ? 'النتيجة المصفّاة' : `الفترة (${formatInt(span)} يومًا)`;
         periodLine.textContent = `${arabicRange(from, to)} · ${formatInt(allRows.length)} سجلًا`;
 
-        kpisHost.innerHTML = kpiStrip(buildAttendanceKpis(rows, { scope }), scope);
+        kpisHost.innerHTML = kpiStrip(buildAttendanceKpis(rows, { scope }), `مؤشرات ${scope} — مشتقة من السجلات المعروضة`);
 
         const bars = buildPunchBars(rows);
         barsHost.innerHTML = barsBlock(bars);
@@ -710,16 +694,16 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
             + `<div class="erp-card__body erp-stack">`
             + `<p class="erp-text-sm erp-text-muted">الحالي: حضور <b dir="ltr">${esc((rec && rec.checkIn) || '—')}</b> · انصراف <b dir="ltr">${esc((rec && rec.checkOut) || '—')}</b></p>`
-            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">نوع المعالجة</label>`
-            + `<select class="erp-select" data-v2-res-type><option value="fill">تعبئة البصمة الناقصة</option><option value="excuse">عذر معتمد</option><option value="swap">تبديل وردية</option></select></div>`
+            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-res-type">نوع المعالجة</label>`
+            + `<select class="erp-select" id="v2att-res-type" data-v2-res-type><option value="fill">تعبئة البصمة الناقصة</option><option value="excuse">عذر معتمد</option><option value="swap">تبديل وردية</option></select></div>`
             + `<div data-v2-res-fill><div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">بصمة الحضور</label><input class="erp-input erp-input--ltr" type="time" data-v2-res-in value="${esc((rec && rec.checkIn) || '')}" dir="ltr">`
-            + `<label class="erp-text-sm erp-text-muted">بصمة الانصراف</label><input class="erp-input erp-input--ltr" type="time" data-v2-res-out value="${esc((rec && rec.checkOut) || '')}" dir="ltr">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-res-in">بصمة الحضور</label><input class="erp-input erp-input--ltr" id="v2att-res-in" type="time" data-v2-res-in value="${esc((rec && rec.checkIn) || '')}" dir="ltr">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-res-out">بصمة الانصراف</label><input class="erp-input erp-input--ltr" id="v2att-res-out" type="time" data-v2-res-out value="${esc((rec && rec.checkOut) || '')}" dir="ltr">`
             + `</div></div>`
-            + `<div data-v2-res-swap hidden><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">تبديل مع الموظف</label>`
-            + `<select class="erp-select" data-v2-res-with><option value="">اختر...</option>${others}</select></div></div>`
-            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">السبب (إجباري)</label>`
-            + `<input class="erp-input" data-v2-res-reason placeholder="مثال: نسي البصمة — ظرف عائلي — تبديل متفق عليه"></div>`
+            + `<div data-v2-res-swap hidden><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-res-with">تبديل مع الموظف</label>`
+            + `<select class="erp-select" id="v2att-res-with" data-v2-res-with><option value="">اختر...</option>${others}</select></div></div>`
+            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-res-reason">السبب (إجباري)</label>`
+            + `<input class="erp-input" id="v2att-res-reason" data-v2-res-reason placeholder="مثال: نسي البصمة — ظرف عائلي — تبديل متفق عليه"></div>`
             + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-res-go><i class="ji" data-i="save" aria-hidden="true"></i><span>اعتماد المعالجة</span></button></div>`
             + `</div></section>`;
         q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
@@ -810,10 +794,10 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<h3 class="erp-card__title">عذر إداري${emp ? ` — ${esc(emp.name)}` : ''}</h3>`
             + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
             + `<div class="erp-card__body erp-stack"><div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">الموظف</label><select class="erp-select" data-v2-exc-emp>${opts}</select>`
-            + `<label class="erp-text-sm erp-text-muted">التاريخ</label><input class="erp-input erp-input--ltr" type="date" data-v2-exc-date value="${esc(presetDate || todayIso())}">`
-            + `</div><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">سبب العذر</label>`
-            + `<input class="erp-input" data-v2-exc-reason placeholder="مثال: ظرف عائلي / مأمورية عمل"></div>`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-exc-emp">الموظف</label><select class="erp-select" id="v2att-exc-emp" data-v2-exc-emp>${opts}</select>`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-exc-date">التاريخ</label><input class="erp-input erp-input--ltr" id="v2att-exc-date" type="date" data-v2-exc-date value="${esc(presetDate || todayIso())}">`
+            + `</div><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-exc-reason">سبب العذر</label>`
+            + `<input class="erp-input" id="v2att-exc-reason" data-v2-exc-reason placeholder="مثال: ظرف عائلي / مأمورية عمل"></div>`
             + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-exc-go><i class="ji" data-i="save" aria-hidden="true"></i><span>اعتماد العذر</span></button></div>`
             + `</div></section>`;
         q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
@@ -860,10 +844,10 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<div class="erp-card__body erp-stack">`
             + `<p class="erp-text-sm erp-text-muted">الحالي: حضور <b dir="ltr">${esc(rec.checkIn || '—')}</b> · انصراف <b dir="ltr">${esc(rec.checkOut || '—')}</b> — املأ الخانة الناقصة فقط (أو عدّل الاثنتين).</p>`
             + `<div class="erp-dash-controls">`
-            + `<label class="erp-text-sm erp-text-muted">بصمة الحضور${!rec.checkIn ? ' (ناقصة)' : ''}</label><input class="erp-input erp-input--ltr" type="time" data-v2-cor-in value="${esc(rec.checkIn || '')}" dir="ltr">`
-            + `<label class="erp-text-sm erp-text-muted">بصمة الانصراف${!rec.checkOut ? ' (ناقصة)' : ''}</label><input class="erp-input erp-input--ltr" type="time" data-v2-cor-out value="${esc(rec.checkOut || '')}" dir="ltr">`
-            + `</div><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">سبب التصحيح (إجباري)</label>`
-            + `<input class="erp-input" data-v2-cor-reason placeholder="مثال: نسي بصمة الدخول — تم التأكد من الكاميرات"></div>`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-cor-in">بصمة الحضور${!rec.checkIn ? ' (ناقصة)' : ''}</label><input class="erp-input erp-input--ltr" id="v2att-cor-in" type="time" data-v2-cor-in value="${esc(rec.checkIn || '')}" dir="ltr">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-cor-out">بصمة الانصراف${!rec.checkOut ? ' (ناقصة)' : ''}</label><input class="erp-input erp-input--ltr" id="v2att-cor-out" type="time" data-v2-cor-out value="${esc(rec.checkOut || '')}" dir="ltr">`
+            + `</div><div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-cor-reason">سبب التصحيح (إجباري)</label>`
+            + `<input class="erp-input" id="v2att-cor-reason" data-v2-cor-reason placeholder="مثال: نسي بصمة الدخول — تم التأكد من الكاميرات"></div>`
             + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-cor-go><i class="ji" data-i="save" aria-hidden="true"></i><span>اعتماد التصحيح</span></button></div>`
             + `</div></section>`;
         q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
@@ -1025,8 +1009,8 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<div class="erp-card__body erp-stack">`
             + `<p class="erp-text-sm erp-text-muted">سطر لكل موظف: <b>EMP-رقم أو اسم الموظف أو بصمة رقم</b> ثم وقت الدخول ثم عدد ساعات الوردية (أو وقت الخروج).<br>`
             + `أمثلة: <code>EMP-019: 16:00 12</code> · <code>بصمة 45: 04:00 - 16:00</code> · <code>احمد السيد العدوي 16:00 12س</code></p>`
-            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">شهر التحليل المقترح</label>`
-            + `<input class="erp-input erp-input--ltr" type="month" data-v2-sh-month value="${esc(defMonth)}"></div>`
+            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-sh-month">شهر التحليل المقترح</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2att-sh-month" type="month" data-v2-sh-month value="${esc(defMonth)}"></div>`
             + `<textarea class="erp-input erp-mono" rows="8" data-v2-sh-text dir="ltr" aria-label="نص الورديات" placeholder="EMP-019: 16:00 12"></textarea>`
             + `<label class="erp-row-wrap erp-text-sm"><input type="checkbox" data-v2-sh-suggest checked> أضف تلقائيًا ورديات مقترحة من واقع البصمة للموظفين غير المذكورين (فجوة ≥30 دقيقة)</label>`
             + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-sh-go><i class="ji" data-i="save" aria-hidden="true"></i><span>تطبيق وإعادة حساب الحضور</span></button></div>`

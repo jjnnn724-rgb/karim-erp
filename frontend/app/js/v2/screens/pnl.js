@@ -29,13 +29,13 @@
  * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { lineChart, barChart } from '../charts.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { lineChart, barChart } from '../charts.js?v=4.9.180';
 import {
     fetchPnl, fetchPnlPrintHtml, PNL_PRESETS, pnlPresetRange,
-} from '../data/finance-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.156';
+} from '../data/finance-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -82,13 +82,21 @@ function kpiCard(label, valueHtml, subHtml, tone) {
 }
 
 function template() {
+    /* ONE ROOT (same defect as cost-analysis.js). `mountPnlScreen` binds to
+       `host.lastElementChild`; two top-level nodes made the header — and the
+       date inputs inside it — unreachable, so `fromEl.value = …` threw. */
     return `
-      <section class="erp-card erp-v2-pnl">
-        <div class="erp-card__head">
-          <h3 class="erp-card__title">قائمة الدخل
+      <div class="erp-v2-pnl-page">
+      <div class="erp-dash-head">
+        <div>
+          <h2 class="erp-dash-title">قائمة الدخل
             <span class="erp-eyebrow" dir="ltr" lang="en">Profit &amp; Loss</span>
-          </h3>
-          <span class="erp-grow"></span>
+          </h2>
+          <div class="erp-dash-sub" data-v2-note role="status" aria-live="polite">
+            كل الأرقام من حركات مسجّلة فعليًا (لا إدخال يدوي) — الخادم يبني القائمة والواجهة تعرض ولا تعيد الحساب.
+          </div>
+        </div>
+        <div class="erp-dash-controls">
           <span data-v2-presets></span>
           <label class="erp-text-sm erp-text-muted" for="v2pnl-from">من</label>
           <input class="erp-input erp-input--ltr" id="v2pnl-from" type="date">
@@ -101,16 +109,15 @@ function template() {
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
           </button>
         </div>
+      </div>
+      <section class="erp-card erp-v2-pnl">
         <div class="erp-card__body erp-stack">
-          <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite">
-            كل الأرقام من حركات مسجّلة فعليًا (لا إدخال يدوي) —
-            الخادم يبني القائمة من 6 جداول × فترتين، والواجهة تعرض ولا تعيد الحساب.
-          </p>
           <ul class="erp-kpis" data-v2-kpis></ul>
           <div class="erp-v2-chart-grid" data-v2-charts></div>
           <div class="erp-stack" data-v2-detail></div>
         </div>
-      </section>`;
+      </section>
+      </div>`;
 }
 
 /**
@@ -127,6 +134,9 @@ export function mountPnlScreen(host, ctx = {}) {
     const [pFrom, pTo] = pnlPresetRange('thismonth');
     host.insertAdjacentHTML('beforeend', template());
     const el = host.lastElementChild;
+    if (!el || !el.classList.contains('erp-v2-pnl-page') || !el.querySelector('#v2pnl-from')) {
+        throw new Error('pnl: template must render a single .erp-v2-pnl-page root');
+    }
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
     const chartsEl = q('[data-v2-charts]');

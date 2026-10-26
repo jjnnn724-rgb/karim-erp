@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index, follow">
+<title> Karim ERP — نظام إدارة المطاعم المتكامل</title>
+<meta name="description" content="نظام متكامل لإدارة المطاعم: كاشير، مخزون، مصاريف، تقارير، وموارد بشرية، في واجهة احترافية واحدة.">
+<meta name="theme-color" content="#0B5A5F">
+
+<!-- Product emblem -->
+<link rel="icon" type="image/png" href="/app/assets/icon-192.png">
+<link rel="apple-touch-icon" href="/app/assets/icon-192.png">
+
+<style>
+  :root {
+    --petrol: #0B5A5F;
+    --petrol-dark: #083B3E;
+    --brass: #A9761B;
+    --brass-bright: #D9B266;
+    --paper: #F4F1EA;
+    --ink: #111A18;
+    --ink-2: #2D3B37;
+    --ink-muted: #4F5F59;
+    --ink-faint: #6B7A73;
+    --line: #D8D2C2;
+    --card: #FFFFFF;
+    --success: #067647;
+    --radius: 14px;
+    --space: 24px;
+    --font: "IBM Plex Sans Arabic","Tajawal","Cairo","Segoe UI",sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0 18px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand mark { font-weight: 700; color: var(--petrol); font-size: 1.1rem; }
+  .brand__name { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand__sub { font-size: .85rem; color: var(--ink-muted); }
+
+  .cta { display: inline-flex; align-items: center; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--petrol); color: #fff;
+    padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: .95rem;
+    text-decoration: none; border: 2px solid transparent; cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .btn:hover { background: var(--petrol-dark); }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost {
+    background: transparent; color: var(--petrol); border-color: var(--petrol);
+  }
+  .btn.ghost:hover { background: rgba(11,90,95,.06); }
+
+  /* Hero */
+  .hero { padding: 52px 0 30px; text-align: center; }
+  .hero__kicker {
+    text-transform: uppercase; letter-spacing: .14em; font-size: .82rem;
+    font-weight: 700; color: var(--brass); margin-bottom: 16px;
+  }
+  .hero__title { font-size: 2.1rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+  .hero__desc { max-width: 680px; margin: 16px auto 0; font-size: 1.04rem; color: var(--ink-2); }
+
+  /* Features */
+  .features { padding: 34px 0 10px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
+  .section-head h2 {
+    font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .section-head .tag { font-size: .85rem; color: var(--ink-muted); font-weight: 600; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px 22px;
+    box-shadow: 0 1px 3px rgba(17,26,24,.05);
+  }
+  .card__ic {
+    width: 40px; height: 40px; border-radius: 10px; background: rgba(11,90,95,.10);
+    color: var(--petrol); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .card h3 { font-size: 1.02rem; font-weight: 700; margin-bottom: 6px; }
+  .card p { font-size: .92rem; color: var(--ink-muted); }
+
+  /* Screenshots */
+  .screenshots { padding: 6px 0 34px; display: flex; gap: 18px; overflow-x: auto; }
+  .screenshots .cell {
+    flex: 1 1 0; min-width: 320px; background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px; box-shadow: 0 1px 3px rgba(17,26,24,.06);
+  }
+  .screenshots .cell .label { font-size: .78rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 8px; }
+  .screenshots img { width: 100%; height: 220px; object-fit: cover; border-radius: 9px; display: block; }
+
+  /* CTA */
+  .final-cta {
+    padding: 40px 0 30px; text-align: center;
+    background: linear-gradient(180deg, var(--petrol), var(--petrol-dark));
+    color: #fff;
+  }
+  .final-cta .big { font-size: 1.2rem; font-weight: 600; color: #fff; }
+  .final-cta p { color: rgba(255,255,255,.9); margin-top: 6px; font-size: .95rem; }
+  .final-cta .btn { background: #fff; color: var(--petrol); }
+  .final-cta .btn:hover { background: #f0f3f5; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--line); padding: 22px 0 26px; color: var(--ink-faint);
+    font-size: .85rem;
+  }
+  footer .cols { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
+  footer .col h4 { color: var(--ink-muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  footer .col a { display: block; color: var(--ink-faint); text-decoration: none; margin-bottom: 4px; }
+  footer .col a:hover { color: var(--ink-2); }
+
+  @media (max-width: 720px) {
+    .hero__title { font-size: 1.6rem; }
+    .final-cta { padding: 30px 0 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <strong><span class="brand__name">Karim ERP</span></strong>
+      <small class="brand__sub">نظام إدارة مطاعم متكامل</small>
+    </div>
+    <nav>
+      <a class="btn ghost" href="/app/v2.html?live=1" target="_blank" rel="noopener">
+        الدخول إلى الواجهة
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero__kicker">نظام إدارة المطاعم</div>
+    <h1 class="hero__title">مركز إدارة المطاعم في متناول يدك</h1>
+    <p class="hero__desc">كاشير، مخزون، مصاريف، تقارير مالية، وجدول الموظفين — كل شيء في واجهة واحدة أنيقة وسهلة، تعمل بكفاءة سواء متصلة بالإنترنت أو دون اتصال.</p>
+    <a class="btn" href="/app/v2.html?live=1">
+      ابدأ الآن
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
+  </section>
+
+  <section class="features">
+    <div class="section-head">
+      <h2>ما يمكنه النظام</h2>
+      <span class="tag">المزايا الرئيسية</span>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card__ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <h3>الكاشير والبيع</h3>
+        <p>إيداع وردية سريعة، تميز بالباركود، فواتير ومصاريب رقمية، وإدارة المبيعات حسب المعاملات.</p>
+      </div>
+      <div class="card">
+        <div class="card__ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <h3>المخزون والمصاريف</h3>
+        <p>تتبع الأصناف والزيادات والإنخفاضات، مصاريف دورية، وفواتير شراء مع مبالغ ضريبية واضحة.</p>
+      </div>
+      <div class="card">
+        <div class="card__ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7.5 19.5a2.1 2.1 0 0 1-3-3z"/></svg></div>
+        <h3>التقارير واللوحة</h3>
+        <p>ملخص المبيعات يومياً، الأرباح، أكبر العملاء، وأفلام الحركة — لاتتطلب كلاس أدapolis.</p>
+      </div>
+      <div class="card">
+        <div class="card__ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>الموارد البشرية</h3>
+        <p>إدارة الموظفين، الدوام، وإجازات، ودخول 가동시간، وحسابات الرواتب — دون ورقة مطبوعة.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="screenshots">
+    <div class="cell">
+      <div class="label">لوحة التحكم</div>
+      <div class="mockup">
+        <div class="mockup__top"><span class="mockup__dot mockup__dot--a"></span><span class="mockup__dot mockup__dot--b"></span><span class="mockup__dot mockup__dot--c"></span><span class="mockup__title">dashboard</span></div>
+        <div class="mockup__body">
+          <div class="mockup__row"><span class="mockup__kpi"><b>48.2</b> <small>SAR</small> <span class="mockup__t">إيراد، ساعة النهار</span></span><span class="mockup__kpi"><b>1,247</b> <small>عميل</small></span></div>
+          <div class="mockup__row"><span class="mockup__bar" style="flex:4"><span></span></span><span class="mockup__bar" style="flex:2"><span></span></span><span class="mockup__bar" style="flex:1"><span></span></span></div>
+          <div class="mockup__row"><span class="mockup__chip">سريع</span><span class="mockup__chip">احتياطي</span><span class="mockup__chip">ضريبي</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="label">الكاشير</div>
+      <div class="mockup">
+        <div class="mockup__top"><span class="mockup__dot mockup__dot--a"></span><span class="mockup__dot mockup__dot--b"></span><span class="mockup__dot mockup__dot--c"></span><span class="mockup__title">pos</span></div>
+        <div class="mockup__body">
+          <div class="mockup__items">
+            <div class="mockup__item"><span class="mockup__name">بطاقات حمض</span><span class="mockup__price">12.00 ر.س</span></div>
+            <div class="mockup__item"><span class="mockup__name">قهوة سوبر</span><span class="mockup__price">8.50 ر.س</span></div>
+            <div class="mockup__item"><span class="mockup__name">مثلجات</span><span class="mockup__price">34.00 ر.س</span></div>
+          </div>
+          <div class="mockup__totals"><b>المجموع:</b> 54.50 ر.س</div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="label">التقارير</div>
+      <div class="mockup">
+        <div class="mockup__top"><span class="mockup__dot mockup__dot--a"></span><span class="mockup__dot mockup__dot--b"></span><span class="mockup__dot mockup__dot--c"></span><span class="mockup__title">reports</span></div>
+        <div class="mockup__body">
+          <div class="mockup__bar-row"><label>الربع الأول</label><span class="mockup__bar" style="flex:3"></span></div>
+          <div class="mockup__bar-row"><label>الربع الثاني</label><span class="mockup__bar" style="flex:5"></span></div>
+          <div class="mockup__bar-row"><label>الربع الثالث</label><span class="mockup__bar" style="flex:3"></span></div>
+          <div class="mockup__row"><span class="mockup__kpi"><b>1,289</b> <small>معاملة</b></span></div>
+          <div class="mockup__row"><span class="mockup__kpi"><b>96.2%</b> <small>دقة</small></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final-cta">
+    <div class="big">جاهز للتشغيل</div>
+    <p>النظام متاح الآن في الواجهة الجديدة التي تعمل على نفس البيانات والصلاحيات، مع دعم الاتصال غير المباشر.</p>
+    <a class="btn" href="/app/v2.html?live=1">الدخول الآن</a>
+  </section>
+</div>
+
+<footer>
+  <div class="cols">
+    <div class="col">
+      <h4>Karim ERP</h4>
+      <a href="/app/v2.html">الانتقال إلى الواجهة</a>
+      <a href="#">وثائق الاستخدام</a>
+      <a href="#">دعم العملاء</a>
+    </div>
+    <div class="col">
+      <h4>الشركة</h4>
+      <a href="#">من نحن</a>
+      <a href="#">المدونة</a>
+      <a href="#">مشاريعنا</a>
+    </div>
+    <div class="col">
+      <h4>الدعم</h4>
+      <a href="#">مركز المساعدة</a>
+      <a href="#">التصحيح الشائع</a>
+      <a href="#">إبلاغ عن خطأ</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

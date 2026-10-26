@@ -13,7 +13,8 @@
  *   • وضع «قواعدي» يظهر حين لا يوجد مفتاح: الحقائق تُعرض كما هي.
  *   • vm-friendly: لا DOM وقت الاستيراد — كل شيء داخل mount.
  */
-import { apiFetch } from '../core/api.js?v=4.9.156';
+import { apiFetch } from '../core/api.js?v=4.9.180';
+import { trapFocus } from './focus-trap.js?v=4.9.180';
 
 const MODES = [
     { id: 'knowledge', label: 'معرفة', icon: 'file-text', hint: 'الشاشات والعقود' },
@@ -66,6 +67,7 @@ export function mountAiAssistant(shell, ctx = {}) {
     let statusAsked = false;
     let busy = false;
     let lastFocus = null;
+    let releaseTrap = null;
 
     /* ── الزرّ: في مركز التحكم (مركزُ Header) — للأدمن فقط ───────────── */
     const trigger = document.createElement('button');
@@ -112,7 +114,7 @@ export function mountAiAssistant(shell, ctx = {}) {
             <header class="erp-ai__head">
               <span class="erp-ai__title"><i class="ji" data-i="message" aria-hidden="true"></i><span>مساعد V2</span></span>
               <span class="erp-ai__badge" data-erp-ai-status>مجاني</span>
-              <button type="button" class="erp-icon-btn" data-erp-ai-close aria-label="إغلاق المساعد">
+              <button type="button" class="erp-icon-btn erp-modal-x" data-erp-ai-close aria-label="إغلاق المساعد" title="إغلاق">
                 <i class="ji" data-i="x" aria-hidden="true"></i>
               </button>
             </header>
@@ -274,13 +276,10 @@ export function mountAiAssistant(shell, ctx = {}) {
         if (!drawer) {return;}
         drawer.remove();
         drawer = null;
-        document.removeEventListener('keydown', onKey, true);
+        releaseTrap?.();
+        releaseTrap = null;
         if (lastFocus && typeof lastFocus.focus === 'function') {lastFocus.focus();}
         lastFocus = null;
-    }
-
-    function onKey(e) {
-        if (e.key === 'Escape') {e.preventDefault(); close();}
     }
 
     function open() {
@@ -293,7 +292,7 @@ export function mountAiAssistant(shell, ctx = {}) {
         push('bot', 'اسألني عن أي شاشة أو عقد في V2 — أو اختر «المحاسبة» لأراجع أرقام اليوم، أو «تشخيص» لأقرأ حالة النظام الحيّة.');
         askStatus();
 
-        drawer.addEventListener('mousedown', (e) => { if (e.target === drawer) {close();} });
+        /* الإغلاق من X أعلى اللوحة وحده — لا Escape ولا نقرة على الخلفية. */
         drawer.querySelector('[data-erp-ai-close]')?.addEventListener('click', close);
         drawer.querySelectorAll('[data-erp-ai-mode]').forEach((b) => {
             b.addEventListener('click', () => {
@@ -315,6 +314,7 @@ export function mountAiAssistant(shell, ctx = {}) {
             }
         });
         document.addEventListener('keydown', onKey, true);
+        releaseTrap = trapFocus(drawer);
         input?.focus();
     }
 

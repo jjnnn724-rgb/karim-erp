@@ -44,16 +44,20 @@
  *   remains the authority on every gate — this file only names the paths.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
 
-/** Bounded current-month entity walk (5 × 1000), newest first. */
-export async function fetchDispatches() {
+/** قراءة أذون الصرف. scope='month' (الافتراضي) = الشهر الحالي بفلتر الخادم
+ *  (server.js:1680 يطبّق dateRange عند v2_period=month وحده)؛ scope='all' =
+ *  السجل كله دون معلمة الفترة — بلا أي تغيير في الخادم. 'all' يسمح حتى 40
+ *  صفحة (40×1000) حدًّا أمانيًّا صريحًا، فالكشف التاريخي قد يطول. */
+export async function fetchDispatches(scope = 'month') {
     const rows = [];
-    for (let page = 1; page <= 5; page += 1) {
+    const maxPages = scope === 'all' ? 40 : 5;
+    for (let page = 1; page <= maxPages; page += 1) {
         const params = new URLSearchParams({
             page: String(page), limit: '1000', sort: 'id', order: 'desc',
-            v2_period: 'month',
         });
+        if (scope !== 'all') {params.set('v2_period', 'month');}
         const res = await apiFetch(`/dispatches?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data
             : (Array.isArray(res) ? res : []);
@@ -93,12 +97,49 @@ export function dispatchToRow(d = {}) {
         deptCode: d.deptCode ? String(d.deptCode) : '',
         deptResolved: !!(d.deptName),
         itemsText: itemsSummary(d.items),
+        /* الأصناف الخام (اسم + كمية معتمدة) — البحث بالصنف يطابق هذه لا
+           itemsText، فالملخص يعرض أول صنفين فقط (itemsSummary). */
+        items: Array.isArray(d.items) ? d.items.map((i) => ({
+            name: String((i && (i.itemName || i.name)) || ''),
+            qty: num(i && (i.approvedQty ?? i.qty)),
+        })).filter((it) => it.name) : [],
         itemsCount: Array.isArray(d.items) ? d.items.length : 0,
         date: d.date ? String(d.date).slice(0, 10) : '',
         status,
         by: d.createdBy ? String(d.createdBy) : '—',
         receivedBy: d.kitchenReceivedBy ? String(d.kitchenReceivedBy) : '',
     };
+}
+
+/** هل صفُّ الإذن يطابق بحثَ الصنف؟ يطابق أسماء الأصناف الخام بتطبيع
+ *  arSearchKey (همزات/تاء مربوطة/تشبيك) — فـ«دجاج» تجد «الدجاج»
+ *  و«بدجاجه». بلا مفتاح = الكل (لا فلترة). نقيةٌ للاختبار بلا متصفح. */
+export function matchDispatchProduct(row, productQuery) {
+    const key = arSearchKey(productQuery);
+    if (!key) {return true;}
+    if (!row || !Array.isArray(row.items)) {return false;}
+    return row.items.some((it) => arSearchKey(it.name).includes(key));
+}
+
+/** تجميع المسحوب لصنف البحث عبر الصفوف: كل صنفٍ خامٍ مطابقٍ يُجمَّع
+ *  باسمه الحرفي (لا بالتطبيع) فتظهر الأسماء كما في القاعدة. يعيد
+ *  {vouchers, byName: Map(اسم→كمية معتمدة)}. نقيةٌ للاختبار. */
+export function summarizeProductWithdrawal(rows, productQuery) {
+    const key = arSearchKey(productQuery);
+    const byName = new Map();
+    let vouchers = 0;
+    for (const row of rows || []) {
+        if (!row || !Array.isArray(row.items)) {continue;}
+        let hit = false;
+        for (const it of row.items) {
+            if (key && arSearchKey(it.name).includes(key)) {
+                hit = true;
+                byName.set(it.name, (byName.get(it.name) || 0) + num(it.qty));
+            }
+        }
+        if (hit) {vouchers += 1;}
+    }
+    return { vouchers, byName };
 }
 
 /** Counts per stored status for the summary line — derived, never fetched. */

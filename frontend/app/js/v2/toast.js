@@ -140,7 +140,13 @@ export function installToast(win, opts = {}) {
         close.type = 'button';
         close.className = 'erp-toast__close';
         close.setAttribute('aria-label', CLOSE_LABEL);
-        close.textContent = '×';
+        /* أيقونة المجموعة نفسها بدل نص «×»: الرمز الطباعي يختلف شكله ووزنه
+           بين الخطوط، والأيقونة تُرسم عبر data-i كما في بقية الواجهة. */
+        const closeIcon = doc.createElement('i');
+        closeIcon.className = 'ji';
+        closeIcon.setAttribute('data-i', 'x');
+        closeIcon.setAttribute('aria-hidden', 'true');
+        close.appendChild(closeIcon);
         item.addEventListener('click', () => dismiss(item));
         close.addEventListener('click', () => dismiss(item));
         item.appendChild(icon);

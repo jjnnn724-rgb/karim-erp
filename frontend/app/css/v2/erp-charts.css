@@ -141,7 +141,7 @@
 }
 
 /* The plot is one focus stop; its ring is brass so it never reads as the
-   petrol of an action. */
+   emerald of an action. */
 .erp-v2 .erp-chart__plot:focus-visible,
 .erp-v2 .erp-chart__donut-wrap:focus-visible {
   outline: 2px solid var(--erp-focus-ring);
@@ -323,10 +323,21 @@
   text-align: end;
 }
 
-/* Cost analysis — an executive petrol band, a metric rail, two analytical
+/* Cost analysis — an executive emerald band, a metric rail, two analytical
    panels and a readable register. Depth comes from the band and hairlines,
    not from stacked shadows; every colour resolves from tokens so the dark
    theme follows without a second palette. */
+/* Single-root page wrappers. Both screens used to emit the editorial header
+   and the card as two siblings; the mount code binds to the last child, so the
+   header (and its date inputs) fell outside every lookup. The wrapper restores
+   the vertical rhythm the sibling layout used to get from the register host. */
+.erp-v2 .erp-v2-cost-page,
+.erp-v2 .erp-v2-pnl-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-5);
+}
+
 .erp-v2 .erp-v2-cost .erp-card__head {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -336,42 +347,8 @@
   border-block-end: 1px solid var(--erp-border);
 }
 
-.erp-v2 .erp-v2-cost__heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--erp-space-1);
-  min-width: 0;
-}
-.erp-v2 .erp-v2-cost__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--erp-space-2);
-  font-size: var(--erp-text-xs);
-  font-weight: var(--erp-fw-bold);
-  letter-spacing: .16em;
-  color: var(--erp-brass-text);
-}
-.erp-v2 .erp-v2-cost__eyebrow::before {
-  content: "";
-  inline-size: 22px;
-  block-size: 2px;
-  border-radius: var(--erp-radius-full);
-  background: var(--erp-brass);
-}
-.erp-v2 .erp-v2-cost__heading .erp-card__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--erp-space-2);
-  font-size: var(--erp-text-2xl);
-  letter-spacing: -.02em;
-}
-.erp-v2 .erp-v2-cost__heading > p {
-  margin: 0;
-  color: var(--erp-text-muted);
-  font-size: var(--erp-text-sm);
-}
-
+/* عنوان تحليل التكاليف على الغلاف التحريري المشترك (.erp-dash-head) منذ
+   2026-10-26 — قواعد اللهجة القديمة (heading/eyebrow) حُذفت. */
 /* The period controls are a quiet instrument panel, not part of the title. */
 .erp-v2 .erp-v2-cost__filters {
   display: grid;
@@ -746,8 +723,7 @@
 }
 
 @media print {
-  .erp-v2 .erp-v2-cost .erp-card__head { padding: 0 0 8px; }
-  .erp-v2 .erp-v2-cost__eyebrow { display: none; }
+  .erp-v2 .erp-v2-cost .erp-dash-head { min-block-size: 0; padding: 0 0 8px; background: none; box-shadow: none; }
   .erp-v2 .erp-v2-cost__filters { display: none; }
   .erp-v2 .erp-v2-cost__hero {
     --erp-sidebar-bg: var(--erp-surface);

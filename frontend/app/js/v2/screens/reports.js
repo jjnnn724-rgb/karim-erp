@@ -30,19 +30,21 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
-    GROUP_BY, PERIODS,
-} from '../data/reports-repo.js?v=4.9.156';
+    GROUP_BY, PERIODS, composeSalesFromRegister,
+} from '../data/reports-repo.js?v=4.9.180';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
-    fetchYaraInvoiceDetail,
-} from '../data/reports-extra.js?v=4.9.156';
+    fetchYaraInvoiceDetail, fetchRevenuesRange, fetchRegisterDepartments,
+    composeDeptRevenueFromRegister,
+} from '../data/reports-extra.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -96,24 +98,7 @@ function dimCell(row) {
         : label;
 }
 
-function kpiStrip(kpis, scopeLabel) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — كل رقم حسبه النظام على الفترة المطلوبة">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">
-          <span class="erp-delta erp-delta--flat" role="img" aria-label="${esc(k.pill.aria)}">
-            <span class="erp-num" dir="ltr">${esc(k.pill.text)}</span>
-          </span>
-          <span class="erp-kpi__hint">${esc(k.hint)}</span>
-        </div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 /** `.erp-tops` bars for the payment rollup — share of what was actually paid. */
 function paymentsBlock(pay, currency) {
@@ -313,6 +298,10 @@ export function mountReportsScreen(host, ctx = {}) {
     let rows = [];
     let summary = {};
     let meta = { startDate: '', endDate: '', capped: false, filters: { departmentId: null, cashierId: null } };
+    // وضع سجل الإيرادات: يعني أن أرقام هذه القراءة جُمِّعت من سجل revenues
+    // لا من باب POS — كل نص على الشاشة يقول ذلك، ولا عمود خصم/ضريبة يُطبع.
+    let registerMode = false;
+    let registerCache = null;   // {from, rows} — مسيرة السجل خارج الشهر تُجلب مرة
     let loading = false;
     let queued = false;
     let table = null;
@@ -346,6 +335,39 @@ export function mountReportsScreen(host, ctx = {}) {
      *  creation — so the honest move is a new table, not a patched header. */
     function mountTable() {
         if (table) {table.destroy();}
+        if (registerMode) {
+            // سجل الإيرادات لا يحمل خصمًا ولا ضريبة ولا كميات أصناف — أعمدة
+            // ما يملكه السجل فقط؛ لا صفر يوهم أنه مجمّع خادم لفواتير POS.
+            table = createDataTable({
+                caption: `سجل المبيعات حسب ${GROUP_AR[groupBy]} — من سجل الإيرادات`,
+                mode: 'client',
+                pageSize: 20,
+                stickyHeader: true,
+                emptyMessage: 'لا صفوف في هذه الفترة',
+                emptyHint: 'غيّر الفترة أو البُعد؛ السجل هو من قرر ماذا يعود.',
+                rowKey: (row) => `${groupBy}:${row.dimensionId ?? row.dimensionName}`,
+                columns: [
+                    { key: 'dimensionName', header: DIM_LABEL[groupBy], sortable: true, filterable: true, render: dimCell },
+                    {
+                        key: 'invoiceCount', header: 'سجلات الإيراد', sortable: true, type: 'number', width: '120px',
+                        align: 'end', value: (r) => r.invoiceCount,
+                        render: (r) => intCell(r.invoiceCount, { title: 'عدد سجلات الإيراد في الفترة لهذا البُعد' }),
+                    },
+                    {
+                        key: 'avgTicket', header: 'متوسط السجل', sortable: true, type: 'number', width: '140px',
+                        align: 'end', value: (r) => r.avgTicket,
+                        render: (r) => moneyCell(r.avgTicket, currency, { title: 'الصافي ÷ عدد السجلات' }),
+                    },
+                    {
+                        key: 'netSales', header: 'الصافي', sortable: true, type: 'number', width: '140px',
+                        align: 'end', value: (r) => r.netSales,
+                        render: (r) => moneyCell(r.netSales, currency, { title: 'مجموع مبالغ سجل الإيراد — والترتيب على هذا العمود' }),
+                    },
+                ],
+            });
+            q('[data-v2-table]').appendChild(table.el);
+            return;
+        }
         const moneyCols = [
             {
                 key: 'subtotalSales', header: 'قبل الضريبة', sortable: true, type: 'number',
@@ -442,17 +464,32 @@ export function mountReportsScreen(host, ctx = {}) {
 
     function paint() {
         const label = range().label;
-        scopeLine.textContent = `${label} · ${meta.startDate} ← ${meta.endDate} · حسب ${GROUP_AR[groupBy]} · ${formatInt(rows.length)} صفًا`;
+        scopeLine.textContent = `${label} · ${meta.startDate} ← ${meta.endDate} · حسب ${GROUP_AR[groupBy]} · ${formatInt(rows.length)} صفًا`
+            + (registerMode ? ' · المصدر: سجل الإيرادات' : '');
 
-        kpisHost.innerHTML = kpiStrip(buildReportKpis(summary, {
-            currency, scopeLabel: label, capped: meta.capped,
-        }), label);
+        kpisHost.innerHTML = registerMode
+            ? kpiStrip([
+                xKpi('banknote', 'صافي المبيعات', 'Net', formatMoney(summary.net_sales || 0, currency).amount, currency, `${formatInt(summary.invoice_count || 0)} سجل إيراد`),
+                xKpi('receipt', 'سجلات الإيراد', 'Entries', formatInt(summary.invoice_count || 0), 'سجل', 'سجل الإيرادات هو مصدر هذه القراءة'),
+                xKpi('wallet', 'متوسط السجل', 'Avg', formatMoney(summary.avg_ticket || 0, currency).amount, currency, 'الصافي ÷ عدد السجلات'),
+                xKpi(GROUP_BY.includes(groupBy) && groupBy === 'cashier' ? 'users' : 'building',
+                    groupBy === 'cashier' ? 'الكاشيرية' : 'الأقسام', 'Dims', formatInt(rows.length), '', groupBy === 'cashier' ? 'مصادر إيراد مختلفة' : 'أقسام ذات إيراد في الفترة'),
+            ], `مؤشرات ${label} — كل رقم حسبه النظام على الفترة المطلوبة`)
+            : kpiStrip(buildReportKpis(summary, {
+                currency, scopeLabel: label, capped: meta.capped,
+            }), `مؤشرات ${label} — كل رقم حسبه النظام على الفترة المطلوبة`);
 
-        const pay = paymentBreakdown(summary.payment_methods);
-        paymentsHost.innerHTML = paymentsBlock(pay, currency);
-        payNote.textContent = pay.rows.length
-            ? `${formatInt(pay.rows.length)} طريقة · المدفوع ${formatMoney(pay.total, currency).amount}${currency ? ` ${currency}` : ''}`
-            : '';
+        if (registerMode) {
+            // السجل لا يحمل طرق دفع — توزيع مطبوع هنا كان سيُختلق من لا شيء.
+            paymentsHost.innerHTML = '<p class="erp-text-sm erp-text-muted">سجل الإيرادات لا يحمل طرق الدفع — لا توزيع يُطبع لهذه القراءة.</p>';
+            payNote.textContent = '';
+        } else {
+            const pay = paymentBreakdown(summary.payment_methods);
+            paymentsHost.innerHTML = paymentsBlock(pay, currency);
+            payNote.textContent = pay.rows.length
+                ? `${formatInt(pay.rows.length)} طريقة · المدفوع ${formatMoney(pay.total, currency).amount}${currency ? ` ${currency}` : ''}`
+                : '';
+        }
 
         dimsWord.textContent = GROUP_AR[groupBy];
         dimsHost.innerHTML = dimsBlock(rows, groupBy, currency);
@@ -477,7 +514,8 @@ export function mountReportsScreen(host, ctx = {}) {
             scopeNote.textContent = `النتيجة مقصورة على المعرّف ${formatInt(echo)} (${meta.filters.cashierId ? 'كاشير' : 'قسم'}).`;
         }
 
-        printNote.textContent = `تقرير ${label} · ${meta.startDate} ← ${meta.endDate} · ${GROUP_AR[groupBy]} · ${formatInt(rows.length)} صفًا`;
+        printNote.textContent = `تقرير ${label} · ${meta.startDate} ← ${meta.endDate} · ${GROUP_AR[groupBy]} · ${formatInt(rows.length)} صفًا`
+            + (registerMode ? ' · المصدر: سجل الإيرادات' : '');
         filterNote.hidden = period === 'month' && groupBy === 'department';
         if (!filterNote.hidden) {
             filterNote.textContent = `الفترة «${label}» · ${meta.startDate} ← ${meta.endDate} · ${GROUP_AR[groupBy]}`;
@@ -501,6 +539,8 @@ export function mountReportsScreen(host, ctx = {}) {
         // always safe — the newest one is already on its way.
         const r = range();
         const asked = { groupBy, startDate: r.startDate, endDate: r.endDate };
+        const wasRegister = registerMode;
+        registerMode = false;                       // كل قراءة تبدأ من باب POS
         try {
             // The two date rules belong to the repository, which rejects a
             // missing or reversed range with the server's own words
@@ -524,9 +564,45 @@ export function mountReportsScreen(host, ctx = {}) {
             // Mapped with THIS screen's dimension, because the mounted columns
             // were built for it — the rows and their headers cannot drift.
             rows = report.rows.map((row) => reportToRow(row, groupBy));
+
+            // باب POS أجاب صفرًا: هذا التشغيل لا يكتب فواتير POS أصلًا —
+            // المبيعات تعيش في سجل الإيرادات (استيراد ياراسوفت). تُجمَّع منه
+            // بالأبعاد نفسها (قسم/كاشير)، والمصدر يُعلَن في كل سطر بالشاشة.
+            // بُعد الأصناف لا يُبنى من السجل — تفاصيله في تقرير مبيعات الكاشيرية.
+            if (!rows.length && groupBy !== 'item') {
+                const [revRows, departments] = await Promise.all([
+                    revenuesFor(r),
+                    fetchRegisterDepartments().catch(() => []),
+                ]);
+                if (!el.isConnected) {return;}
+                if (stale(asked)) {return;}
+                const composed = composeSalesFromRegister(revRows, departments, groupBy, r.startDate, r.endDate);
+                if (composed && composed.rows.length) {
+                    registerMode = true;
+                    meta = {
+                        startDate: r.startDate, endDate: r.endDate, capped: false,
+                        filters: { departmentId: null, cashierId: null },
+                    };
+                    summary = composed.summary;
+                    rows = composed.rows.map((row) => {
+                        const mapped = reportToRow(row, groupBy);
+                        mapped.avgTicket = mapped.invoiceCount > 0
+                            ? mapped.netSales / mapped.invoiceCount : 0;
+                        return mapped;
+                    });
+                    mountTable();                   // أعمدة السجل لا أعمدة POS
+                    paint();
+                    notify('لا فواتير POS مسجلة في هذه الفترة — التقرير مبني على سجل الإيرادات، والمصدر معلَن أعلاه.');
+                    return;
+                }
+            }
+
+            if (wasRegister) {mountTable();}        // عاد باب POS بأعمدته
             paint();
             if (!rows.length) {
-                notify('لا فواتير في هذه الفترة عند الخادم — لا رقم يُختلق لصف غائب.');
+                notify(groupBy === 'item'
+                    ? 'لا فواتير POS في هذه الفترة — مبيعات الأصناف التفصيلية متاحة في تقرير «مبيعات الكاشيرية».'
+                    : 'لا فواتير في هذه الفترة عند الخادم — لا رقم يُختلق لصف غائب.');
             }
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -552,7 +628,10 @@ export function mountReportsScreen(host, ctx = {}) {
                     ? 'لا صلاحية لقراءة التقارير بهذا الحساب — القرار للخادم وحده.'
                     : `تعذّر تحميل التقرير: ${message}`));
         } finally {
-            table.setLoading(false);
+            /* destroy() nulls `table` while a read is still in flight — that is
+               exactly what happens when the operator leaves the screen mid-load.
+               The old unguarded call threw on every such navigation. */
+            if (table && el.isConnected) {table.setLoading(false);}
             loading = false;
             el.removeAttribute('aria-busy');
             reloadButton.disabled = false;
@@ -687,6 +766,16 @@ export function mountReportsScreen(host, ctx = {}) {
         return bundle;
     }
 
+    /** سجل الإيرادات للفترة — مع كاش للمسيرة الكاملة خارج الشهر الحالي. */
+    async function revenuesFor(r) {
+        if (registerCache && registerCache.from && r.startDate >= registerCache.from) {
+            return registerCache.rows;
+        }
+        const reg = await fetchRevenuesRange(r.startDate);
+        if (reg.scope === 'all') {registerCache = { from: r.startDate, rows: reg.rows };}
+        return reg.rows;
+    }
+
     function extraMoney(v) {
         const m = formatMoney(v, currency);
         return `<span class="erp-num" dir="ltr">${esc(m.amount)}</span>${m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''}`;
@@ -704,7 +793,7 @@ export function mountReportsScreen(host, ctx = {}) {
                     xKpi('banknote', 'إجمالي الإيرادات', 'Revenue', formatMoney(g.totalRev, currency).amount, currency, `${formatInt(g.count)} معاملة`),
                     xKpi('wallet', 'إجمالي المصاريف', 'Expenses', formatMoney(g.totalExp, currency).amount, currency, 'تشغيلية + مخزون + فروق'),
                     xKpi('trending-up', 'صافي الربح', 'Net', formatMoney(g.profit, currency).amount, currency, `نسبة التكلفة ${ratio}%`),
-                ], 'الشامل')
+                ], 'مؤشرات الشامل — كل رقم حسبه النظام على الفترة المطلوبة')
                 + `<h4>ملخص المعاملات (آخر 30)</h4>`
                 + xTable(['التاريخ', 'النوع', 'البيان', 'المبلغ'], g.sample.map((it) => {
                     const kind = it.kind === 'revenue' ? 'إيراد' : (it.kind === 'operating' ? 'مصروف' : 'حركة مخزون');
@@ -798,21 +887,38 @@ export function mountReportsScreen(host, ctx = {}) {
         }
         if (t === 'yara-departments') {
             const group = period === 'month' ? 'month' : (period === 'year' ? 'year' : 'day');
-            const d = await fetchYaraDepartments({ from: r.startDate, to: r.endDate, group });
+            let d = await fetchYaraDepartments({ from: r.startDate, to: r.endDate, group });
+            let fromRegister = false;
+            if (!d.rows.length) {
+                // جدول الإغلاقات اليومية فارغ في هذا التشغيل (الـtrigger الخاص
+                // به معلّق على فواتير POS لا تُكتب) — التجميع من سجل الإيرادات
+                // بالفترات نفسها، والمصدر يُعلَن في عنوان التقرير.
+                const [revRows, departments] = await Promise.all([
+                    revenuesFor(r),
+                    fetchRegisterDepartments().catch(() => []),
+                ]);
+                const composed = composeDeptRevenueFromRegister(revRows, departments, group, r.startDate, r.endDate);
+                if (composed.rows.length) {
+                    d = { rows: composed.rows, totals: composed.totals };
+                    fromRegister = true;
+                }
+            }
             const tt = d.totals || {};
             const gName = group === 'month' ? 'شهري' : (group === 'year' ? 'سنوي' : 'يومي');
-            return xHead(`${EXTRA_AR[t]} (${gName})`)
+            const srcNote = fromRegister ? ' — من سجل الإيرادات' : '';
+            const moneyOrDash = (v) => (v === null || v === undefined ? '—' : extraMoney(v));
+            return xHead(`${EXTRA_AR[t]} (${gName})${srcNote}`)
                 + kpiStrip([
                     xKpi('banknote', 'إجمالي الإيراد', 'Gross', formatMoney(tt.gross || 0, currency).amount, currency, ''),
-                    xKpi('tag', 'المرتجعات', 'Refunds', formatMoney(tt.refund || 0, currency).amount, currency, ''),
-                    xKpi('gem', 'الصافي', 'Net', formatMoney(tt.net || 0, currency).amount, currency, `${formatInt(tt.invoices || 0)} فاتورة`),
+                    xKpi('tag', 'المرتجعات', 'Refunds', tt.refund === null || tt.refund === undefined ? '—' : formatMoney(tt.refund || 0, currency).amount, '', 'غير مسجلة في سجل الإيرادات'),
+                    xKpi('gem', 'الصافي', 'Net', formatMoney(tt.net || 0, currency).amount, currency, `${formatInt(tt.invoices || 0)} سجل إيراد`),
                 ], 'المبيعات')
                 + xTable(['الفترة', 'القسم', 'الإيراد', 'المرتجعات', 'الصافي', 'الفواتير'],
-                    d.rows.map((x) => `<tr><td class="erp-td">${esc(x.period || '—')}</td><td class="erp-td"><b>${esc(x.dept_name || '—')}</b></td><td class="erp-td">${extraMoney(x.gross || 0)}</td><td class="erp-td">${extraMoney(x.refund || 0)}</td><td class="erp-td">${extraMoney(x.net || 0)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.invoices || 0)}</td></tr>`).join(''),
-                    'لا توجد إغلاقات يومية ضمن الفترة — شغّل التعبئة من صفحة استيراد المبيعات',
+                    d.rows.map((x) => `<tr><td class="erp-td">${esc(x.period || '—')}</td><td class="erp-td"><b>${esc(x.dept_name || x.name || '—')}</b></td><td class="erp-td">${extraMoney(x.gross || 0)}</td><td class="erp-td">${moneyOrDash(x.refund)}</td><td class="erp-td">${extraMoney(x.net || 0)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(x.invoices || 0)}</td></tr>`).join(''),
+                    'لا توجد إيرادات مسجلة ضمن الفترة',
                     d.rows.length ? `<td>الإجمالي (${esc(formatInt(d.rows.length))} سطر)</td><td class="erp-td"></td>`
                         + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.gross) || 0), 0))}</td>`
-                        + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.refund) || 0), 0))}</td>`
+                        + `<td class="erp-td">${moneyOrDash(tt.refund)}</td>`
                         + `<td class="erp-td">${extraMoney(d.rows.reduce((sum, x) => sum + (Number(x.net) || 0), 0))}</td>`
                         + `<td class="erp-td erp-num" dir="ltr">${formatInt(d.rows.reduce((sum, x) => sum + (Number(x.invoices) || 0), 0))}</td>` : '');
         }
@@ -843,8 +949,8 @@ export function mountReportsScreen(host, ctx = {}) {
                 : '';
             return xHead(EXTRA_AR[t])
                 + `<div class="erp-dash-controls erp-no-print">`
-                + `<label class="erp-text-sm erp-text-muted">الكاشير</label><select class="erp-input" data-v2-y_cashier>${cashierOpts}</select>`
-                + `<label class="erp-text-sm erp-text-muted">العرض</label><select class="erp-input" data-v2-y_view><option value="items"${yView === 'items' ? ' selected' : ''}>الأصناف المباعة</option><option value="invoices"${yView === 'invoices' ? ' selected' : ''}>الفواتير</option></select>`
+                + `<label class="erp-text-sm erp-text-muted" for="v2rep-y-cashier">الكاشير</label><select class="erp-input" id="v2rep-y-cashier" data-v2-y_cashier>${cashierOpts}</select>`
+                + `<label class="erp-text-sm erp-text-muted" for="v2rep-y-view">العرض</label><select class="erp-input" id="v2rep-y-view" data-v2-y_view><option value="items"${yView === 'items' ? ' selected' : ''}>الأصناف المباعة</option><option value="invoices"${yView === 'invoices' ? ' selected' : ''}>الفواتير</option></select>`
                 + `</div>`
                 + kpiStrip([
                     xKpi('banknote', 'صافي المبيعات', 'Net', formatMoney(tt.net || 0, currency).amount, currency, `${formatInt(tt.invoices || 0)} فاتورة`),
@@ -937,8 +1043,14 @@ export function mountReportsScreen(host, ctx = {}) {
         @bottom-center { content: "صفحة " counter(page) " من " counter(pages);
           font-family: Tahoma, Arial, sans-serif; font-size: 8.5pt; color: #756d5a; } }
       * { box-sizing: border-box; }
-      body { font-family: 'Cairo','Tajawal',Tahoma,Arial,sans-serif; direction: rtl; color: #1a1a1a; font-size: 10pt; margin: 0; }
-      .rp-title { text-align: center; font-size: 16pt; color: #18352b; margin: 2px 0 3px; }
+      body { font-family: 'Cairo','Tajawal',Tahoma,Arial,sans-serif; direction: rtl; color: #1a1a1a; font-size: 10pt; margin: 0;
+        background: #fff; }
+      /* ورقة التقرير: إطار علوّي مزدوج (ذهب × أخضر داكن) بهوية الشرفة —
+         موحّدة لكل التقارير من هذا المسار. */
+      .rp-sheet { max-width: 1000px; margin: 0 auto; padding-top: 6px;
+        border-top: 4px solid #18352b; }
+      .rp-sheet::before { content: ""; display: block; height: 2px; background: #d7c99f; margin-bottom: 10px; }
+      .rp-title { text-align: center; font-size: 16pt; color: #18352b; margin: 2px 0 3px; letter-spacing: .3px; }
       .rp-sub { text-align: center; color: #756d5a; font-size: 9.5pt; margin: 0 0 12px; line-height: 1.65; }
       h3 { font-size: 11.5pt; color: #18352b; margin: 15px 0 6px; border-bottom: 2px solid #d7c99f; padding-bottom: 3px; break-after: avoid; page-break-after: avoid; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
@@ -948,7 +1060,7 @@ export function mountReportsScreen(host, ctx = {}) {
       tfoot td { background: #f4ead2; color: #18352b; font-weight: 700; }
       .rp-num { text-align: center; font-variant-numeric: tabular-nums; }
       .rp-kpis { width: 100%; }
-      .rp-kpis td { border: 1px solid #c9bfa6; padding: 8px; text-align: center; width: 33.3%; }
+      .rp-kpis td { border: 1px solid #c9bfa6; padding: 8px; text-align: center; width: 33.3%; background: #fbf8f0; }
       .rp-kpis td span { display: block; color: #756d5a; font-size: 8.5pt; }
       .rp-kpis td b { display: block; font-size: 13pt; color: #18352b; margin-top: 2px; }
       .rp-sig { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 12px; border-top: 1px solid #d7c99f; font-size: 10pt; color: #18352b; }
@@ -1002,12 +1114,13 @@ export function mountReportsScreen(host, ctx = {}) {
         const by = ctx.userName ? ` · أعدّه ${ctx.userName}` : '';
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`
             + `<style>${PRINT_CSS}</style></head><body>`
+            + `<main class="rp-sheet">`
             + `<h1 class="rp-title">${esc(title)}</h1>`
             + `<p class="rp-sub">${esc(subtitle)}<br>أُصدر ${esc(stamp)}${esc(by)}</p>`
             + tmp.innerHTML
             + `<div class="rp-sig"><span>أعدّه: ${esc(ctx.userName || '________________')}</span><span>راجعه: ________________</span><span>اعتمده: ________________</span></div>`
             + `<p class="rp-foot">مطاعم الشرفة العالمي — مستند داخلي طُبع من نظام كريم ERP، ولا يُعتد به إلا بختم وتوقيع.</p>`
-            + `</body></html>`);
+            + `</main></body></html>`);
         w.document.close();
         w.focus();
     }

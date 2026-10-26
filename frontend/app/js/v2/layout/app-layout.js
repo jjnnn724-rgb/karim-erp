@@ -21,9 +21,9 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.156';
-import { mountDensityControl } from '../density.js?v=4.9.156';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.156';
+import { mountThemeControl } from '../theme.js?v=4.9.180';
+import { mountDensityControl } from '../density.js?v=4.9.180';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -33,6 +33,7 @@ const esc = (v) => String(v ?? '')
 export const BOUNDARIES = Object.freeze({
     search:          { label: 'البحث الشامل', hint: 'Ctrl + K', icon: 'search' },
     notifications:   { label: 'الإشعارات',     hint: 'لم تُربط',  icon: 'bell' },
+    'server-control':{ label: 'التحكم بالسيرفر', hint: 'لم يُربط', icon: 'database' },
     profile:         { label: 'الملف الشخصي',  hint: 'لم يُربط',  icon: 'user' },
     'company-branch':{ label: 'الشركة / الفرع', hint: 'لم يُربط', icon: 'building' },
 });
@@ -106,7 +107,7 @@ export function mountAppLayout(container, options = {}) {
             <i class="ji" data-i="menu" aria-hidden="true"></i>
           </button>
 
-          <span class="erp-shell__page-title erp-truncate" data-erp-page-title></span>
+          <h1 class="erp-shell__page-title erp-truncate" id="erp-page-title" data-erp-page-title></h1>
 
           <nav class="erp-crumbs" aria-label="مسار التنقل"></nav>
 
@@ -165,7 +166,7 @@ export function mountAppLayout(container, options = {}) {
 
         <div class="erp-toolbar" data-erp-toolbar hidden></div>
 
-        <main class="erp-shell__content" id="erp-main" tabindex="-1"></main>
+        <main class="erp-shell__content" id="erp-main" tabindex="-1" aria-labelledby="erp-page-title"></main>
       </div>`;
 
     container.appendChild(root);
@@ -354,11 +355,23 @@ export function mountAppLayout(container, options = {}) {
     /* ── Drawer (mobile) ────────────────────────────────────────────── */
     let lastFocus = null;
 
+    /* الشريط مغلقًا على الجوال يبقى خارج الشاشة، لكنه ظلّ يدخل في مسار
+       Tab: أول ثلاثين توقفًا كلها عناصر لا تُرى (WCAG 2.4.7). `inert` يخرجه
+       من التدفق التفاعلي وشجرة الوصول معًا، ويُرفع قبل نقل التركيز إليه. */
+    const drawerMq = window.matchMedia('(max-width: 1024px)');
+    function syncSidebarInert() {
+        el.sidebar.inert = drawerMq.matches && !state.drawerOpen;
+    }
+    syncSidebarInert();
+    drawerMq.addEventListener('change', syncSidebarInert);
+    state.disposers.push(() => drawerMq.removeEventListener('change', syncSidebarInert));
+
     function setDrawer(open) {
         state.drawerOpen = open;
         root.classList.toggle('is-drawer-open', open);
         el.scrim.hidden = !open;
         el.drawerOpenBtn.setAttribute('aria-expanded', String(open));
+        syncSidebarInert();
         if (open) {
             lastFocus = document.activeElement;
             // Focus the first nav item so keyboard/SR users land inside.
@@ -436,6 +449,20 @@ export function mountAppLayout(container, options = {}) {
     };
     document.addEventListener('keydown', onKeydown);
     state.disposers.push(() => document.removeEventListener('keydown', onKeydown));
+
+    /* رابط التخطّي هدفه مرساةٌ داخل الصفحة لا شاشة. تركه للراوتر كان يقرأ
+       `#erp-main` مسارًا مجهولًا فيعيد مستخدمَ الكيبورد إلى اللوحة من أي
+       شاشة. القبض هنا يحفظ الشاشة، والتركيز يهبط إلى المحتوى كما وُعد. */
+    const skipLink = root.querySelector('.erp-skip-link');
+    const onSkip = (e) => {
+        e.preventDefault();
+        el.main.focus();
+        el.main.scrollIntoView({ block: 'start' });
+    };
+    if (skipLink) {
+        skipLink.addEventListener('click', onSkip);
+        state.disposers.push(() => skipLink.removeEventListener('click', onSkip));
+    }
 
     /* ── Theme control ──────────────────────────────────────────────── */
     state.themeControl = mountThemeControl(el.themeSlot);

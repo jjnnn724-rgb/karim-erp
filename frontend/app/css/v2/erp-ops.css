@@ -264,7 +264,6 @@
   /* نافذة الخادم وسطر المدى سبب كل رقم على هذه الصفحة: إن طُبعت بلاهما
      قُرئ «100 أمر» كأنها كل السجل. */
   .erp-v2-kitchen .erp-dash-controls { display: none; }
-  .erp-v2-kitchen .erp-kpis { grid-template-columns: repeat(4, 1fr); }
   .erp-v2-kitchen .erp-card__head [data-v2-orders-note],
   .erp-v2-kitchen .erp-card__head [data-v2-dist-note] { font-size: var(--erp-text-xs); }
   /* لوحة قرار مفتوحة ليست جزءًا من الكشف المطبوع، وعمود الإجراءات لا
@@ -290,6 +289,21 @@
   flex-wrap: wrap;
   gap: var(--erp-space-2);
 }
+
+/* حقل بحث الصنف: ملصق يحمل الأيقونة والحقل معًا — يمتدّ ليتنفس على الشاشات
+   الضيقة، والأيقونة داخلية بلا حرفية لونية (توكنات الهوية وحدها).
+   (قاعدة الشاشات الضيقة مع مجموعتها أدنى الملف — عقد الطبقة يمنع أي وسيط
+   بين قاعدتي الرأس وحارس الإخفاء.) */
+.erp-v2-dispatch__search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 22ch;
+  min-inline-size: 0;
+  color: var(--erp-text-muted);
+}
+.erp-v2-dispatch__search .erp-input { flex: 1 1 auto; min-inline-size: 0; }
+.erp-v2-dispatch__search .ji { flex-shrink: 0; }
 
 /* «عرض الكل» مخفيٌّ حتى يوجد مدى — و[hidden] يجب أن يغلب display
    للزرّ المشترك (نفس فخ erp-hr.css:260 المعلَّق). */
@@ -523,6 +537,8 @@
   /* شريط الأدوات سطر كامل له، والتاريخان يتقاسمان ما تبقّى. */
   .erp-v2-dispatch__tools { flex: 1 1 100%; }
   .erp-v2-dispatch__tools .erp-input[type="date"] { flex: 1 1 25%; }
+  /* بحث الصنف يأخذ سطرًا كاملًا على الهاتف. */
+  .erp-v2-dispatch__search { flex-basis: 100%; }
 
   /* W1-3 — شاشة 21 (طلبات الشراء): نفس حركة W1-1 بحصر هذه الشاشة:
      الاسم يأكل الشريط فالرمز يكفي مع aria-label، وأزرار الرأس واللوحة

@@ -21,15 +21,15 @@
  * التي لا تشملها STOCK_TYPES في finance-repo (تُركت هناك لعقدها).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.156';
-import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats } from './finance-repo.js?v=4.9.156';
-import { fetchDispatches } from './dispatch-repo.js?v=4.9.156';
-import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.156';
-import { fetchInventory } from './inventory-repo.js?v=4.9.156';
-import { fetchRecipes } from './recipes-repo.js?v=4.9.156';
-import { fetchEmployees } from './employees-repo.js?v=4.9.156';
-import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.156';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
+import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats, fetchEntityNewest, WALK_ALL_PAGES } from './finance-repo.js?v=4.9.180';
+import { fetchDispatches } from './dispatch-repo.js?v=4.9.180';
+import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.180';
+import { fetchInventory } from './inventory-repo.js?v=4.9.180';
+import { fetchRecipes } from './recipes-repo.js?v=4.9.180';
+import { fetchEmployees } from './employees-repo.js?v=4.9.180';
+import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.180';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.180';
 
 export const EXTRA_REPORT_TYPES = [
     'general', 'department', 'kitchen', 'returns', 'warehouse', 'hr',
@@ -70,11 +70,77 @@ export async function fetchLocalBundle() {
         departments: Array.isArray(departments) ? departments : [],
         dispatches: Array.isArray(dispatches) ? dispatches : [],
         returns: Array.isArray(returns) ? returns : [],
-        inventory: Array.isArray(inventory) ? inventory : [],
+        // fetchInventory يرجع مغلّفًا {rows,…} لا مصفوفة — بدون فكّه تنطوي
+        // الحزمة إلى [] ويظهر تقرير المخازن أصفارًا والمخزون موجود (2026-10-25).
+        inventory: Array.isArray(inventory) ? inventory
+            : (inventory && Array.isArray(inventory.rows) ? inventory.rows : []),
         recipes: Array.isArray(recipes) ? recipes : [],
         leaves: Array.isArray(leaves) ? leaves : [],
         employees: Array.isArray(employees) ? employees : [],
     };
+}
+
+/* ── سجل الإيرادات: مصدر مبيعات هذا التشغيل ────────────────────────────── */
+
+/**
+ * فواتير POS الداخلية (pos_orders) لا تُكتب في هذا التشغيل — المبيعات
+ * تصل عبر استيراد ياراسوفت إلى سجل revenues بعشرات الآلاف (dashboard-repo.js
+ * يوثّق الحقيقة نفسها). هذا الباب يجلب السجل بدقة الفترة: داخل الشهر الحالي
+ * تكفي مسيرة الشهر المقيّدة خادميًا (نفس باب الشاشات المالية)، وما تجاوزه
+ * يمشي السجل كاملًا بسقف الصفحات ثم يُفلتر بالتاريخ هنا.
+ * @returns {Promise<{rows:any[], scope:'month'|'all'}>}
+ */
+export async function fetchRevenuesRange(from) {
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    if (!from || from >= monthStart) {
+        return { rows: await fetchRevenues(), scope: 'month' };
+    }
+    return { rows: await fetchEntityNewest('revenues', { maxPages: WALK_ALL_PAGES }), scope: 'all' };
+}
+
+let _registerDepartments = null;
+
+/** دليل الأقسام لمُنشئ تقرير السجل (أسماء deptId) — يُجلب مرة لكل صفحة. */
+export async function fetchRegisterDepartments() {
+    if (!_registerDepartments) {_registerDepartments = await fetchDepartments();}
+    return _registerDepartments;
+}
+
+/**
+ * إيرادات الأقسام حين يكون جدول الإغلاقات اليومية (pos_department_daily_
+ * revenues) فارغًا — وهذا التشغيل كذلك، فالـtrigger الخاص به معلّق على فواتير
+ * POS لا تُكتب. تجميع السجل بالفترات نفسها (يوم/شهر/سنة). السجل لا يفصل
+ * المرتجعات، فهي تبقى null ولا تُطبع كأرقام.
+ * @returns {{rows:Array<{period:string,name:string,gross:number,refund:null,
+ *            net:number,invoices:number}>, totals:object}}
+ */
+export function composeDeptRevenueFromRegister(revenues, departments, group, from, to) {
+    const g = ['day', 'month', 'year'].includes(group) ? group : 'day';
+    const nameByCode = new Map(
+        (Array.isArray(departments) ? departments : [])
+            .map((d) => [String(d && d.code), String((d && d.name) || '')])
+    );
+    const buckets = new Map();
+    for (const r of (Array.isArray(revenues) ? revenues : [])) {
+        const d = String((r && r.date) || '').slice(0, 10);
+        if (!d || (from && d < from) || (to && d > to)) {continue;}
+        const period = g === 'year' ? d.slice(0, 4) : (g === 'month' ? d.slice(0, 7) : d);
+        const code = String((r && r.deptId) ?? '—');
+        const key = `${period}|${code}`;
+        const b = buckets.get(key) || { period, name: nameByCode.get(code) || code, gross: 0, refund: null, net: 0, invoices: 0 };
+        b.gross += Number(r.amount) || 0;
+        b.net += Number(r.amount) || 0;
+        b.invoices += 1;
+        buckets.set(key, b);
+    }
+    const rows = [...buckets.values()]
+        .sort((a, b) => b.period.localeCompare(a.period) || b.net - a.net);
+    const totals = rows.reduce((s, x) => ({
+        gross: s.gross + x.gross, refund: null, net: s.net + x.net,
+        invoices: s.invoices + x.invoices, refunds: null,
+    }), { gross: 0, refund: null, net: 0, invoices: 0, refunds: null });
+    return { rows, totals };
 }
 
 export async function fetchHrAttendance(from, to) {

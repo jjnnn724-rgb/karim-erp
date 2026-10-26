@@ -164,7 +164,12 @@ describe('باب العبور في المضيف', () => {
         expect(pv).toContain('const MENU_CATALOG = { ...(MENU_STRINGS || {}), ...V2_MENU_STRINGS };');
         expect(pv).toContain('if (!window.ALL_PERMISSIONS.menus[key]) {');
         expect(pv).toContain('window.ALL_PERMISSIONS.menus[key] = `<i class=ji data-i=${m.icon}></i> ${m.ar}`;');
-        expect(pv).toContain('const menuLabel = (key) => (MENU_CATALOG[key] && MENU_CATALOG[key].ar) || key;');
+        // المسارات خارج القوائم (pos / goods-scan / procurement-*) لا يجدها
+        // MENU_CATALOG فيُطبع مفتاحها الإنجليزي في المشار والتاج — يكملها ROUTE_LABELS.
+        expect(pv).toMatch(/const ROUTE_LABELS = Object\.freeze\(\{/);
+        expect(pv).toContain("'procurement-payments': 'مدفوعات الموردين'");
+        expect(pv).toContain("'goods-scan': 'مسح الباركود'");
+        expect(pv).toContain('const menuLabel = (key) => (MENU_CATALOG[key] && MENU_CATALOG[key].ar) || ROUTE_LABELS[key] || key;');
     });
 
     test('تسمية المضيف لا تُطمس، والمصدر لا يُعاد تعريفه', () => {

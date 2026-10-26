@@ -1,85 +1,16 @@
 /* erp-executive.css — موجز المدير (لوحة واحدة، كل الأرقام حقيقية)
    ══════════════════════════════════════════════════════════════════════
+   2026-10-26 توحيد اللغة: لهجتا العنوان وشريط المؤشرات القديم حُذفتا —
+   الشاشة تتبنى الغلاف التحريري المشترك (رأس البطل بخط Amiri) وسجل
+   المؤشرات المرقّم المشترك (قواعده في erp-components.css).
+   ما بقي هنا هو تخطيط هذه الشاشة وحده: الشبكة والإنذارات والقوائم.
    أنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم ولا تأخير في الإقلاع.
-   الدخول متدرّج بمتغيّر --exec-i ⇒ تتحرك البطاقات تباعًا لا دفعةً واحدة.
    كل القيم رموز --erp-* (تتبع الوضع الليلي بلا إعادة رسم). */
 
 .erp-v2.exec {
   display: flex;
   flex-direction: column;
   gap: var(--erp-space-4);
-}
-
-.exec__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--erp-space-3);
-  flex-wrap: wrap;
-}
-
-.exec__title {
-  margin: 0;
-  font-size: var(--erp-text-2xl);
-  color: var(--erp-text-primary);
-}
-
-.exec__sub {
-  margin: var(--erp-space-1) 0 0;
-  font-size: var(--erp-text-sm);
-  color: var(--erp-text-muted);
-}
-
-/* ── شريط المؤشّرات ─────────────────────────────────────────────────── */
-.exec__kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13ch, 1fr));
-  gap: var(--erp-space-3);
-}
-
-.exec__kpi {
-  display: flex;
-  flex-direction: column;
-  gap: var(--erp-space-1);
-  padding: var(--erp-space-3);
-  background: var(--erp-surface);
-  border: thin solid var(--erp-border-subtle);
-  border-inline-start: var(--erp-space-1) solid var(--erp-border);
-  border-radius: var(--erp-radius-lg);
-  box-shadow: var(--erp-shadow-sm);
-  animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
-  animation-delay: calc(var(--exec-i, 0) * 40ms);
-  transition: transform var(--erp-duration-fast) var(--erp-ease-out),
-              box-shadow var(--erp-duration-fast) var(--erp-ease-out);
-}
-
-.exec__kpi:hover {
-  transform: translateY(calc(var(--erp-space-1) * -1));
-  box-shadow: var(--erp-shadow-md);
-}
-
-.exec__kpi--success { border-inline-start-color: var(--erp-success); }
-.exec__kpi--warning { border-inline-start-color: var(--erp-warning); }
-.exec__kpi--brand   { border-inline-start-color: var(--erp-brand); }
-.exec__kpi--info    { border-inline-start-color: var(--erp-info); }
-.exec__kpi--danger  { border-inline-start-color: var(--erp-danger); }
-.exec__kpi--neutral { border-inline-start-color: var(--erp-border-strong); }
-
-.exec__kpi-label {
-  font-size: var(--erp-text-xs);
-  color: var(--erp-text-muted);
-}
-
-.exec__kpi-value {
-  font-size: var(--erp-text-xl);
-  font-weight: var(--erp-fw-bold);
-  color: var(--erp-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.exec__kpi-hint {
-  font-size: var(--erp-text-xs);
-  color: var(--erp-text-faint);
 }
 
 /* ── الشبكة ─────────────────────────────────────────────────────────── */
@@ -174,12 +105,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .exec__kpi,
   .exec__alert {
     animation: none;
-  }
-
-  .exec__kpi:hover {
-    transform: none;
   }
 }

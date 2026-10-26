@@ -1,5 +1,15 @@
 const FALLBACK_LOGO = 'assets/al-shurfa-logo.png';
 
+/* مستندات V2 المولّدة تحمل شريط .controls بزرَّي «طباعة/إغلاق» كان يعمل في
+   نافذة window.open القديمة. داخل عارض المستندات صار querySelector يعيد null
+   عن قصد، فالزرّان زخرفيان لا يستجيبان — شريط العارض (طباعة + X) هو المصدر
+   الوحيد. نُخفي الزخرفة على الشاشة فقط، ونترك @media print كما هي لأن
+   الطباعة تُخفي .controls أصلًا في كل مستند. */
+const VIEWER_STYLE = `
+@media screen {
+    body > .controls { display: none !important; }
+}`;
+
 let configuredLogo = '';
 let installed = false;
 
@@ -71,6 +81,13 @@ export function addV2PrintBranding(doc) {
         style.setAttribute('data-v2-print-style', '');
         style.textContent = PRINT_STYLE;
         doc.head.appendChild(style);
+    }
+
+    if (!doc.querySelector('[data-v2-viewer-style]')) {
+        const viewerStyle = doc.createElement('style');
+        viewerStyle.setAttribute('data-v2-viewer-style', '');
+        viewerStyle.textContent = VIEWER_STYLE;
+        doc.head.appendChild(viewerStyle);
     }
 
     const title = brandName();

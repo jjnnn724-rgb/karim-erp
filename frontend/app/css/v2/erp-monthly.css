@@ -14,55 +14,9 @@
 }
 
 /* ── الواجهة العليا ───────────────────────────────────────────────────── */
-.erp-monthly__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--erp-space-5);
-  padding: var(--erp-space-5) var(--erp-space-6);
-  border: thin solid var(--erp-border);
-  border-radius: var(--erp-radius-xl);
-  background:
-    linear-gradient(135deg, var(--erp-brand-soft), transparent 58%),
-    var(--erp-surface);
-  box-shadow: var(--erp-shadow-sm);
-}
-
-.erp-monthly__heroMain { min-inline-size: 0; }
-
-.erp-monthly__title {
-  margin: var(--erp-space-1) 0 0;
-  font-size: var(--erp-text-2xl);
-  font-weight: var(--erp-fw-bold);
-  color: var(--erp-text-primary);
-  display: flex;
-  align-items: baseline;
-  gap: var(--erp-space-3);
-  flex-wrap: wrap;
-}
-
-.erp-monthly__en {
-  font-size: var(--erp-text-xs);
-  font-weight: var(--erp-fw-medium);
-  color: var(--erp-text-faint);
-  letter-spacing: .08ch;
-}
-
-.erp-monthly__sub {
-  margin: var(--erp-space-2) 0 0;
-  max-inline-size: 78ch;
-  font-size: var(--erp-text-sm);
-  line-height: var(--erp-leading-base);
-  color: var(--erp-text-muted);
-}
-
-.erp-monthly__heroSide {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--erp-space-3);
-  min-inline-size: 0;
-}
+/* العنوان على الغلاف التحريري المشترك (.erp-dash-head) منذ 2026-10-26 —
+   قواعد الهيرو القديمة (hero/heroMain/title/en/sub/heroSide) حُذفت،
+   وبقيت أدوات الفترة والأزرار لأنها تعيش داخل .erp-dash-controls. */
 
 .erp-monthly__period {
   display: flex;
@@ -574,15 +528,12 @@ body.erp-monthly-open { overflow: hidden; }
 
 /* ── الشاشات الضيقة ───────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
-  .erp-monthly__hero { grid-template-columns: minmax(0, 1fr); }
-  .erp-monthly__heroSide { align-items: flex-start; }
   .erp-monthly__period, .erp-monthly__actions { justify-content: flex-start; }
   .erp-monthly__grid2,
   .erp-monthly__dossierGrid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 639px) {
-  .erp-monthly__hero { padding: var(--erp-space-4); }
   .erp-monthly__kpis,
   .erp-monthly__kpis--dense { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .erp-monthly__panelHead { flex-wrap: wrap; }

@@ -24,13 +24,14 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.156';
-import { formatInt } from '../data/employees-repo.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.180';
+import { formatInt } from '../data/employees-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.180';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
+    matchDispatchProduct, summarizeProductWithdrawal,
     CREATE_ROLES, chainStage, deptCodesOf,
     chefActionsVisible, warehouseActionsVisible, deleteVisible, receiveVisible,
     editVisible, printVisible,
@@ -38,11 +39,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.156';
+} from '../data/dispatch-repo.js?v=4.9.180';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.156';
+} from '../signature.js?v=4.9.180';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -102,13 +103,23 @@ function template(from, to, canCreate) {
             ${canCreate ? `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-new>
               <i class="ji" data-i="plus" aria-hidden="true"></i><span>طلب صرف جديد</span>
             </button>` : ''}
+            <label class="erp-v2-dispatch__search" for="v2dsp-product">
+              <i class="ji" data-i="search" aria-hidden="true"></i>
+              <input class="erp-input" id="v2dsp-product" type="search" data-v2-product-search
+                     placeholder="ابحث عن صنف مسحوب… (مثال: دجاج)" aria-label="بحث بالصنف في أذون الصرف">
+            </label>
+            <label class="erp-text-sm erp-text-muted" for="v2dsp-scope">النطاق</label>
+            <select class="erp-select" id="v2dsp-scope" data-v2-scope aria-label="نطاق بيانات السجل">
+              <option value="month" selected>الشهر الحالي</option>
+              <option value="all">كل السجل</option>
+            </select>
             <label class="erp-text-sm erp-text-muted" for="v2dsp-from">من</label>
             <input class="erp-input erp-input--ltr" id="v2dsp-from" type="date" value="${esc(from)}">
             <label class="erp-text-sm erp-text-muted" for="v2dsp-to">إلى</label>
             <input class="erp-input erp-input--ltr" id="v2dsp-to" type="date" value="${esc(to)}" max="${esc(isoDay(0))}">
             <button type="button" class="erp-btn erp-btn--sm" data-v2-clear hidden>عرض الكل</button>
-            <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة الكشف">
-              <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة الكشف المفلتر">
+              <i class="ji" data-i="printer" aria-hidden="true"></i><span>اطبع المعروض</span>
             </button>
             <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span>
@@ -120,8 +131,9 @@ function template(from, to, canCreate) {
           <p class="erp-text-sm erp-text-muted">
             دورة الإذن كاملة من هنا (إنشاء · اعتماد الشيف · اعتماد المخازن ·
             استلام بتوقيع · تعديل · حذف · طباعة) — الأزرار حسب الدور، والخادم
-            يحسم كل خطوة والتواقيع إلكترونية مقفلة باسم الحساب. الافتراضي الشهر
-            الحالي؛ إفراغ التاريخين يعرض الكل.
+            يحسم كل خطوة والتواقيع إلكترونية مقفلة باسم الحساب. ابحث باسم أي
+            صنفٍ مسحوب («دجاج» تجد «الدجاج» و«بدجاجه») وسطّر النطاق الشهر الحالي
+            أو كل السجل، و«اطبع المعروض» يطبع نتائج بحثك بالضبط.
           </p>
           <div data-v2-panel hidden></div>
           <div data-v2-table></div>
@@ -161,6 +173,9 @@ export function mountDispatchScreen(host, ctx = {}) {
     let formState = null;                   // {catalog, byId, byName, avail, depts}
     let suggestState = [];
     let settingsState = null;               // {name, currency, logoB64} — مرة واحدة
+    let dataScope = 'month';                // month = فلتر الخادم | all = السجل كله
+    let productQuery = '';                  // بحث الصنف الخام — يُطبَّع في المستودع
+    let productTimer = 0;                   // كتمُ إدخال البحث 250ms
 
     host.insertAdjacentHTML('beforeend', template(firstOfMonth(), isoDay(0), CREATE_ROLES.includes(role)));
     const el = host.lastElementChild;
@@ -1240,12 +1255,28 @@ export function mountDispatchScreen(host, ctx = {}) {
         const w = openInAppReport('كشف أذونات الصرف');
         w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
         const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
-        const { rows } = inRange(view);
+        /* الكشف يطبع المعروض بالضبط: التاريخ + بحث الصنف (نفس طبقتَي paint). */
+        const { rows: dated } = inRange(view);
+        const rows = productQuery
+            ? dated.filter((r) => matchDispatchProduct(r, productQuery))
+            : dated;
         const from = q('#v2dsp-from').value;
         const to = q('#v2dsp-to').value;
         const settings = await ensureSettings();
         const brand = (settings && settings.name) || 'Karim ERP';
         const period = (from || to) ? `من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترة';
+        const scopeLabel = dataScope === 'all' ? 'كل السجل' : 'الشهر الحالي';
+        const criteria = [`النطاق: ${scopeLabel}`, period]
+            .concat(productQuery ? [`بحث الصنف: «${productQuery}»`] : [])
+            .join(' — ');
+        let productSummary = '';
+        if (productQuery) {
+            const { vouchers, byName } = summarizeProductWithdrawal(rows, productQuery);
+            const tops = [...byName.entries()].slice(0, 6)
+                .map(([name, qty]) => `${esc(name)}: ${esc(formatQty(qty))}`).join(' · ');
+            productSummary = `<div><span>أذون مطابقة للبحث</span><b>${formatInt(vouchers)}</b></div>`
+                + (tops ? `<div style="grid-column:1/-1;text-align:right"><span>الكميات المعتمدة حسب الصنف</span><b style="font-size:13px">${tops}</b></div>` : '');
+        }
         const body = rows.map((row, i) => {
             const raw = row._raw || {};
             let statusLabel = raw.status || '—';
@@ -1258,6 +1289,31 @@ export function mountDispatchScreen(host, ctx = {}) {
                 + `<td style="text-align:right">${esc(row.itemsText || '—')}</td>`
                 + `<td>${esc(row.date ? fD(row.date) : '—')}</td><td>${esc(statusLabel)}</td></tr>`;
         }).join('');
+        /* بحث الصنف: سطورُ الأصناف المطابقة نفسها تُطبع — لا الملخص المختصر
+           (itemsSummary يعرض أول صنفين)، فتقرير المالك يرى الصنف في كل
+           إذنٍ بكميته المعتمدة وقيمتها (كمية × متوسط التكلفة من البنود). */
+        let detailBlock = '';
+        if (productQuery) {
+            const itemRows = [];
+            for (const row of rows) {
+                const raw = row._raw || {};
+                const costs = new Map((Array.isArray(raw.approvedItems) ? raw.approvedItems : [])
+                    .map((a) => [String(a.itemName || a.name || ''), Number(a.avgCost) || 0]));
+                for (const it of (Array.isArray(row.items) ? row.items : [])) {
+                    if (!matchDispatchProduct({ items: [it] }, productQuery)) {continue;}
+                    const unit = costs.get(String(it.name)) || 0;
+                    itemRows.push(`<tr><td>${itemRows.length + 1}</td>`
+                        + `<td>${esc(row.date ? fD(row.date) : '—')}</td>`
+                        + `<td dir="ltr">#${esc(String(row.id ?? '—'))}</td>`
+                        + `<td style="text-align:right"><b>${esc(it.name)}</b></td>`
+                        + `<td class="n" dir="ltr">${esc(String(it.qty ?? 0))}</td>`
+                        + `<td class="n" dir="ltr">${esc(((Number(it.qty) || 0) * unit).toFixed(2))}</td></tr>`);
+                }
+            }
+            detailBlock = `<h2 style="font-size:15px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:6px;margin:16px 0 8px">سطور الصنف المطابق — الكمية المعتمدة × متوسط تكلفته</h2>`
+                + `<table><thead><tr><th>#</th><th>التاريخ</th><th>الإذن</th><th>الصنف</th><th>الكمية</th><th>القيمة</th></tr></thead>`
+                + `<tbody>${itemRows.join('') || '<tr><td colspan="6">لا سطور مطابقة</td></tr>'}</tbody></table>`;
+        }
         const dateStr = new Date().toLocaleString('ar-EG');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title>`
@@ -1275,10 +1331,11 @@ export function mountDispatchScreen(host, ctx = {}) {
             + '<div class="controls"><button type="button" data-pl-print>طباعة</button><button type="button" class="secondary" data-pl-close>إغلاق</button></div>'
             + `<main class="sheet"><header class="head"><h1>${esc(brand)}</h1>`
             + '<p style="font-size:16px;font-weight:700;color:#111">كشف أذونات الصرف</p>'
-            + `<p>${esc(period)}</p><p>تاريخ التقرير: ${esc(dateStr)}</p></header>`
-            + `<section class="summary"><div><span>عدد الأذون</span><b>${formatInt(rows.length)}</b></div></section>`
+            + `<p>${esc(criteria)}</p><p>تاريخ التقرير: ${esc(dateStr)}</p></header>`
+            + `<section class="summary"><div><span>عدد الأذون</span><b>${formatInt(rows.length)}</b></div>${productSummary}</section>`
             + '<table><thead><tr><th>#</th><th>القسم</th><th>الأصناف</th><th>التاريخ</th><th>الحالة</th></tr></thead>'
-            + `<tbody>${body || '<tr><td colspan="5">لا بيانات في الفترة المحددة</td></tr>'}</tbody></table></main></body></html>`);
+            + `<tbody>${body || '<tr><td colspan="5">لا بيانات في الفترة المحددة</td></tr>'}</tbody></table>`
+            + detailBlock + '</main></body></html>');
         w.document.close();
         const btnPrint = w.document.querySelector('[data-pl-print]');
         if (btnPrint) {btnPrint.addEventListener('click', () => w.print());}
@@ -1305,7 +1362,12 @@ export function mountDispatchScreen(host, ctx = {}) {
 
     function paint() {
         const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
-        const { rows, filtered } = inRange(view);
+        const { rows: dated, filtered } = inRange(view);
+        /* بحث الصنف يُطبَّق بعد فلتر التاريخ، ومن الأصناف الخام لا الملخص
+           (itemsSummary يعرض أول صنفين فقط). */
+        const rows = productQuery
+            ? dated.filter((r) => matchDispatchProduct(r, productQuery))
+            : dated;
         const c = summarizeDispatches(rows);
         const states = Object.entries(c).map(([k, v]) => {
             let label = k || 'بلا حالة';
@@ -1315,7 +1377,16 @@ export function mountDispatchScreen(host, ctx = {}) {
             } catch { /* adapter stays total — raw key above */ }
             return `${label} ${v}`;
         }).join(' · ');
-        summaryEl.textContent = `${formatInt(rows.length)} إذنًا${states ? ` · ${states}` : ''}${filtered ? '' : ' · كل الفترات'}`;
+        let productLine = '';
+        if (productQuery) {
+            const { vouchers, byName } = summarizeProductWithdrawal(rows, productQuery);
+            const tops = [...byName.entries()].slice(0, 3)
+                .map(([name, qty]) => `${name} (${formatQty(qty)})`).join(' · ');
+            productLine = ` · نتائج البحث «${productQuery}»: ${formatInt(vouchers)} إذنًا`
+                + (tops ? ` — الكميات المعتمدة: ${tops}` : '');
+        }
+        summaryEl.textContent = `${formatInt(rows.length)} إذنًا${states ? ` · ${states}` : ''}`
+            + `${dataScope === 'all' ? ' · كل السجل' : ' · الشهر الحالي'}${productLine}`;
         countEl.textContent = rows.length ? `(${formatInt(rows.length)})` : '';
         clearBtn.hidden = !filtered;
         table.setRows(rows);
@@ -1327,7 +1398,7 @@ export function mountDispatchScreen(host, ctx = {}) {
         const seq = ++readSeq;
         if (!rawRows.length) {table.setLoading(true);}
         try {
-            const list = await fetchDispatches();
+            const list = await fetchDispatches(dataScope);
             if (!el.isConnected || seq !== readSeq) {return;}   // destroyed / newer read wins
             rawRows = list;
             rawById = new Map(list.map((r) => [String(r.id), r]));
@@ -1396,6 +1467,17 @@ export function mountDispatchScreen(host, ctx = {}) {
     });
 
     el.addEventListener('input', (event) => {
+        if (event.target.matches('[data-v2-product-search]')) {
+            /* كتم 250ms ثم إعادة رسم محلية — لا شبكة، البحث فوق المحمّل،
+               وحارس el.isConnected يمنع الرسم بعد التفكيك. */
+            clearTimeout(productTimer);
+            productTimer = setTimeout(() => {
+                if (!el.isConnected) {return;}
+                productQuery = String(event.target.value || '').trim();
+                paint();
+            }, 250);
+            return;
+        }
         if (event.target.matches('[data-v2-item-search]')) {updateSuggestions(); return;}
         if (event.target.closest('[data-di]')) {updateFormSummary(); return;}
         if (event.target.closest('[data-ap-row]') && event.target.matches('[data-ap]')) {
@@ -1404,11 +1486,20 @@ export function mountDispatchScreen(host, ctx = {}) {
     });
 
     el.addEventListener('change', (event) => {
+        if (event.target.matches('#v2dsp-scope')) {
+            /* ثوابت لا حرفيات داخل ternary — جامع الأيقونات في عقد
+               الشاشة يقرأ أي 'a-z' : 'a-z' ويظنّها أيقونة. */
+            const ALL = 'all';
+            const MONTH = 'month';
+            dataScope = event.target.value === ALL ? ALL : MONTH;
+            reload();
+            return;
+        }
         if (event.target.matches('#v2dsp-from, #v2dsp-to')) {paint();}
     });
 
     el.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to')) {paint();}
+        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to, [data-v2-product-search]')) {paint();}
     });
 
     reload();
@@ -1418,6 +1509,7 @@ export function mountDispatchScreen(host, ctx = {}) {
         reload,
         getRows: () => inRange(rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }))).rows,
         destroy() {
+            clearTimeout(productTimer);
             panelSeq += 1;
             disposeSignaturePads(ALL_SIG_IDS);
             table.destroy();

@@ -323,7 +323,7 @@
   /* المتصفّح يعرض الشريط الجانبي والأزرار في الطباعة إن تُركت؛ erp-base
      يخفي .erp-no-print، لكن الشريط العلوي نفسه يجب أن يصغر لا أن يختفي. */
   .erp-v2 .erp-dash-head { margin-block-end: var(--erp-space-2); }
-  .erp-v2 .erp-kpis { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  /* سجل المؤشرات الموحّد (erp-components.css) يحكم الطباعة أيضًا */
   .erp-v2 .erp-card { break-inside: avoid; }
   /* erp-table.css تتكفّل بفكّ ارتفاع الجدول؛ المتبقّي هنا هو شريط الأرقام
      وحده — طباعة «الصفحة ٢ من ١٢» بلا أزرار تُربك القارئ. */
@@ -586,7 +586,6 @@
   /* نطاق الباب وسطر النافذة سببُ كل رقم على هذه الصفحة: إن طُبعت بلاهما
      قُرئ «٣ طلبات» كأنها كل إجازات الشركة. */
   .erp-v2-leaves .erp-dash-controls { display: none; }
-  .erp-v2-leaves .erp-kpis { grid-template-columns: repeat(3, 1fr); }
   .erp-v2-leaves .erp-card__head [data-v2-chain-note],
   .erp-v2-leaves .erp-card__head [data-v2-top-note] { font-size: var(--erp-text-xs); }
 
@@ -1140,6 +1139,127 @@
   color: var(--erp-danger-text);
 }
 
+/* ═══ بحث الموردين (شاشة 05) ═══
+   شريطٌ واحد فوق الجدول: بحثٌ خادمي في الدليل كله (اسم عربي ضبابي، رقم
+   ضريبي، سجل تجاري) + فلتر ضريبي + ترقيم. النتائج صفوفٌ خفيفة لا جدولٌ
+   ثانٍ — الشاشة تبقى «دليلًا» لا «تقريرين متزاحمين». */
+.erp-v2 .erp-supsearch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+.erp-v2 .erp-supsearch__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex-wrap: wrap;
+}
+/* الحقل يلبس الحدّ بنفسه ويترك الإدخال بلا إطار: تركيزٌ واحد لا إطاران. */
+.erp-v2 .erp-supsearch__field {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  flex: 1 1 18rem;
+  min-inline-size: 0;
+  padding-inline-start: var(--erp-space-3);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  color: var(--erp-text-muted);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out),
+              box-shadow var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-supsearch__field:focus-within {
+  border-color: var(--erp-brand);
+  box-shadow: 0 0 0 3px var(--erp-brand-soft);
+}
+.erp-v2 .erp-supsearch__field .erp-input {
+  border: 0;
+  background: transparent;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-supsearch__field .erp-input:focus-visible { outline: none; }
+.erp-v2 .erp-supsearch__tax { flex: 0 1 12rem; }
+.erp-v2 .erp-supsearch__status {
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-supsearch__status[data-tone="error"] { color: var(--erp-danger-text); }
+.erp-v2 .erp-supsearch__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-1);
+}
+.erp-v2 .erp-supsearch__item {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+  transition: border-color var(--erp-duration-fast) var(--erp-ease-out),
+              background-color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-supsearch__item:hover {
+  border-color: var(--erp-border-strong);
+  background: var(--erp-surface-hover);
+}
+.erp-v2 .erp-supsearch__item.is-inactive { opacity: .72; }
+.erp-v2 .erp-supsearch__id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+.erp-v2 .erp-supsearch__name {
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-v2 .erp-supsearch__en {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2 .erp-supsearch__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-supsearch__dot { color: var(--erp-text-muted); }
+.erp-v2 .erp-supsearch__badge {
+  flex: none;
+  padding-inline: var(--erp-space-2);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-secondary);
+}
+.erp-v2 .erp-supsearch__badge[data-tone="success"] {
+  border-color: var(--erp-success);
+  color: var(--erp-success-text);
+  background: var(--erp-success-soft);
+}
+.erp-v2 .erp-supsearch__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--erp-space-2);
+}
+
 /* ═══ لوحة كشف حساب المورد (P1-4) ═══
    منبثقة على يمين الشاشة، أوسع من .erp-pop لأن سطور الكشف تحمل تاريخاً
    ومرجعاً وبياناً ومديناً ودائناً ورصيداً متسلسلاً. تفتح من شاشة 05 عبر
@@ -1176,17 +1296,6 @@
   font-weight: var(--erp-fw-bold);
   color: var(--erp-text-primary);
 }
-.erp-v2 .erp-statement-pop__close {
-  flex: none;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--erp-text-muted);
-  cursor: pointer;
-  line-height: 1;
-}
-.erp-v2 .erp-statement-pop__close:hover { color: var(--erp-text-primary); }
 .erp-v2 .erp-statement-pop__meta {
   display: flex;
   flex-wrap: wrap;

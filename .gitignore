@@ -81,3 +81,13 @@ frontend/app/%BK%/
 # مخرجات بناء/نماذج ثقيلة
 docker-deploy/*.sql
 
+
+# أداة تحليل ثابتة تُنشئ حالة/تقارير داخل الشجرة — ليست مصدرًا ولا تُرفع
+.mimosa/
+frontend/app/.mimosa/
+
+# Runtime output written by the server itself: the Brotli static cache
+# (backend/middleware/brotli-static.js -> ./var/brotli-cache in production)
+# and the control plane state + secret. Not source, never committed.
+var/
+runtime/

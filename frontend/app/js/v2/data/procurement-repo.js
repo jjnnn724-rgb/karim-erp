@@ -31,8 +31,8 @@
  * re-checks every call, so a gate here is button hygiene, never security.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.180';
 
 export { fetchCurrency, formatMoney, formatInt };
 
@@ -62,6 +62,38 @@ export async function fetchSuppliers() {
     if (Array.isArray(res)) {return res;}
     if (res && Array.isArray(res.data)) {return res.data;}
     return [];
+}
+
+/**
+ * بحث الموردين في الخادم — GET /procurement/suppliers/search
+ * (procurement-routes.js:451-506). يطابق: الاسم العربي (ضبابي trgm عبر
+ * arFuzzyPattern) أو الاسم الإنجليزي أو السجل التجاري أو بداية الرقم
+ * الضريبي — وليس الهاتف، فالشاشة تقول ذلك ولا تدّعيه.
+ * الاستجابة `{ data, pagination }` هي الشكل الوحيد المقبول؛ أي شكل آخر
+ * يعود بقائمة فارغة وترقيم صفري بدل أن يُفسَّر صامتًا.
+ * @param {{q?:string, taxStatus?:string, page?:number, limit?:number}} [opts]
+ * @returns {Promise<{rows:object[], page:number, pages:number, total:number, limit:number}>}
+ */
+export async function searchSuppliers({ q = '', taxStatus = 'ALL', page = 1, limit = 20 } = {}) {
+    const params = new URLSearchParams();
+    const term = String(q ?? '').trim().slice(0, 100);
+    if (term) {params.set('q', term);}
+    const tax = String(taxStatus || 'ALL').trim().toUpperCase();
+    if (tax !== 'ALL') {params.set('tax_status', tax);}
+    const pg = Number.parseInt(page, 10);
+    const lim = Number.parseInt(limit, 10);
+    params.set('page', String(Number.isInteger(pg) && pg > 0 ? pg : 1));
+    params.set('limit', String(Number.isInteger(lim) && lim > 0 ? Math.min(lim, 100) : 20));
+    const res = await apiFetch(`/procurement/suppliers/search?${params.toString()}`);
+    const rows = res && Array.isArray(res.data) ? res.data : [];
+    const p = res && res.pagination && typeof res.pagination === 'object' ? res.pagination : {};
+    return {
+        rows,
+        page: Math.max(1, Math.round(num(p.page)) || 1),
+        pages: Math.max(0, Math.round(num(p.pages))),
+        total: Math.max(0, Math.round(num(p.total))),
+        limit: Math.max(1, Math.round(num(p.limit)) || 20),
+    };
 }
 
 /** Payment-method words copied from the app's own vocabulary

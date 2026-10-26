@@ -35,14 +35,14 @@
 
     try {
         const pref = localStorage.getItem(PREF_KEY);
+        /* 2026-10-25: default is LIGHT unless the user explicitly stored a
+           pref. The old system-dark boot made dark-OS machines open the emerald
+           shell and read it as the product («اللون غامق مش احترافي»). */
         if (pref === 'light' || pref === 'dark') {
             theme = pref;
-        } else if (window.matchMedia
-            && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            theme = 'dark';
         }
     } catch {
-        /* Storage blocked (private mode) or matchMedia missing → keep 'light'. */
+        /* Storage blocked (private mode) → keep 'light'. */
     }
 
     document.documentElement.setAttribute('data-theme', theme);

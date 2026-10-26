@@ -237,14 +237,22 @@
 
 /* One-line page name. The trail needs the width of several crumbs; a phone
    has room for the current step only, so the header carries it instead of
-   showing a bare row of icons with no context. */
-.erp-shell__page-title {
-  display: none;
-  min-width: 0;
+   showing a bare row of icons with no context.
+   وهو عنوان المستند الدلالي (h1) في كل الشاشات: مخفيٌّ بصريًا على الحاسوب
+   حيث يكفي المسار، وظاهرٌ على الهاتف — ولا شاشة تُفتح بلا عنوان لقارئ الشاشة. */
+.erp-v2 .erp-shell__page-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   font-size: var(--erp-text-base);
   font-weight: var(--erp-fw-semibold);
   color: var(--erp-text-primary);
-  white-space: nowrap;
 }
 
 /* The chart live region is appended to the shell root with no offsets, so
@@ -344,7 +352,15 @@
   max-width: var(--erp-content-max);
   width: 100%;
 }
-.erp-shell__content:focus { outline: none; }
+
+/* رابط التخطّي يهبط بالمحتوى تحت الترويسة اللاصقة لا خلفها. */
+.erp-v2 .erp-shell__content {
+  scroll-margin-block-start: calc(var(--erp-header-height) + var(--erp-space-2));
+}
+
+/* لا قاعدةَ إخفاءٍ لتركيز المحتوى: `.erp-v2 :focus` يمنع الحلقة عند النقر،
+   و`.erp-v2 :focus-visible` يرسمها عند التنقّل بالكيبورد — وهي الدليل الوحيد
+   على أن الانتقال إلى الشاشة الجديدة قد وقع. */
 
 /* ── Drawer scrim (mobile) ───────────────────────────────────────────── */
 /* One veil for the whole system (see --erp-scrim). The element lives inside the
@@ -514,7 +530,16 @@
 @media (max-width: 640px) {
   .erp-shell__brand-text small { display: none; }
   .erp-crumbs { display: none; }   /* breadcrumb trail is redundant on phones */
-  .erp-v2 .erp-shell__page-title { display: block; flex: 1 1 auto; }
+  .erp-v2 .erp-shell__page-title {
+    position: static;
+    display: block;
+    flex: 1 1 0;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: hidden;
+    clip-path: none;
+  }
 
   /* A phone header is one line: menu, page name, then the four standing
      controls. The refresh / classic-interface row was a second bar that ate

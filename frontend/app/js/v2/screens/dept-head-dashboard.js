@@ -15,26 +15,28 @@
  * screen, with its signatures and server gates.
  */
 
-import { donutChart } from '../charts.js?v=4.9.156';
-import { statusBadge } from '../status.js?v=4.9.156';
-import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.156';
-import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.156';
+import { donutChart } from '../charts.js?v=4.9.180';
+import { statusBadge } from '../status.js?v=4.9.180';
+import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.180';
+import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.180';
 
 function template() {
     return `
       <div class="erp-v2-role-dash">
-      <section class="erp-card erp-v2-deptdash">
-        <div class="erp-card__head">
-          <h3 class="erp-card__title">لوحة رئيس القسم
+      <div class="erp-dash-head">
+        <div>
+          <h2 class="erp-dash-title">لوحة رئيس القسم
             <span class="erp-eyebrow" dir="ltr" lang="en">Department Overview</span>
-            <span class="erp-text-muted erp-text-sm" data-v2-dept></span>
-          </h3>
-          <span class="erp-grow"></span>
-          <span class="erp-text-sm erp-text-muted" data-v2-cost></span>
+          </h2>
+          <div class="erp-dash-sub"><span data-v2-dept></span> · <span data-v2-cost></span></div>
+        </div>
+        <div class="erp-dash-controls">
           <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
           </button>
         </div>
+      </div>
+      <section class="erp-card erp-v2-deptdash">
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite">
             سلسلة الاعتماد: قسمك ينشئ الطلب ← الشيف العمومي يعتمده ← المخازن تصرف ← قسمك يستلم من مخزنه.

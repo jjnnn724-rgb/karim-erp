@@ -132,12 +132,12 @@ describe('mobile-shell — المضيف (preview.js)', () => {
         expect(boot).toMatch(/mobileShell\.update\(\)/);
     });
 
-    test('غياب الجلسة يجعل التوجيه محسومًا ويطبّق الرابط العميق', () => {
+    test('غياب الجلسة يحسم التوجيه ويفتح بوابة الدخول محتفظًا بالرابط العميق', () => {
         const boot = HOST.slice(
             HOST.indexOf('let sessionPromise = LIVE'),
             HOST.indexOf(': Promise.resolve(null);'),
         );
-        expect(boot).toMatch(/routeSettled = true;[\s\S]{0,120}applyRouteFromHash\(\);/);
+        expect(boot).toMatch(/routeSettled = true;[\s\S]{0,160}navigateLogin\(keyFromHash\(window\.location\.hash\)\);/);
     });
 });
 

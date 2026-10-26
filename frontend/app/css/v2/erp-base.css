@@ -49,14 +49,17 @@
 
 .erp-v2 p { margin: 0; }
 
+/* النص المرتبط يأخذ درجة النحاس المخصّصة للنصّ (5.65:1 على الورق العاجي)،
+   لا درجة التعبئة (3.18:1) التي تصلح للأزرار ولا تُقرأ كرابط. */
 .erp-v2 a {
-  color: var(--erp-brand);
+  color: var(--erp-brand-text);
   text-decoration: none;
 }
 .erp-v2 a:hover { text-decoration: underline; }
 /* Links inside running text stay underlined: colour alone is not a cue
    (WCAG 1.4.1). Standalone actions keep their own affordance. */
-.erp-v2 p a { text-decoration: underline; text-underline-offset: .18em; }
+.erp-v2 p a,
+.erp-v2 .erp-state a { text-decoration: underline; text-underline-offset: .18em; }
 
 /* Numbers, IDs, serials, times and money must not shift width while
    re-sorting or ticking. Applied as a utility so it can be opted out of

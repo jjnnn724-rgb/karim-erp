@@ -9,10 +9,13 @@ const BACKEND = fs.readFileSync(path.join(__dirname, '..', 'backend', 'finance-r
 
 describe('V2 cost-analysis layout', () => {
     test('date filters and actions have a separate, labeled toolbar', () => {
-        expect(SCREEN).toContain('class="erp-v2-cost__filters" role="group" aria-label="فترة تحليل التكاليف"');
+        // 2026-10-26: شريط الفلاتر يعيش داخل تحكمات الغلاف التحريري المشترك
+        // مع بقاء المجموعة الموسومة وحقول التاريخ.
+        expect(SCREEN).toContain('class="erp-dash-controls erp-v2-cost__filters" role="group" aria-label="فترة تحليل التكاليف"');
         expect(SCREEN).toContain('class="erp-v2-cost__date" for="v2cost-from"');
         expect(SCREEN).toContain('class="erp-v2-cost__date" for="v2cost-to"');
         expect(SCREEN).toContain('class="erp-v2-cost__actions"');
+        expect(SCREEN).toContain('erp-dash-title');
     });
 
     test('the screen states no method or guidance text', () => {

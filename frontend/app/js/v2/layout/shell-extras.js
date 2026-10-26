@@ -14,8 +14,9 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.156';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.156';
+} from '../data/shell-repo.js?v=4.9.180';
+import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.180';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -39,7 +40,7 @@ function currentLang() {
 
 /**
  * @param {{mountBoundary:(name:string, node:Node)=>void, navigate:(key:string)=>void, onToast?: (m:string)=>void}} shell
- * @param {{getRole:()=>string|null, getUserName:()=>string, isLive:()=>boolean}} [ctx]
+ * @param {{getRole:()=>string|null, getUserName:()=>string, isLive:()=>boolean, hasSession?:()=>boolean}} [ctx]
  * @returns {{destroy:()=>void, refresh:()=>void}}
  */
 export function mountShellExtras(shell, ctx = {}) {
@@ -48,8 +49,12 @@ export function mountShellExtras(shell, ctx = {}) {
     /* Fixture mode (v2.html without ?live=1) must issue no request at all —
        contract line 77. Every network-backed extra (bell, health lamps and
        their timers) reads this door; the sign-in flips isLive() and the host
-       calls refresh() again, so the same mount becomes live without remount. */
-    const live = typeof ctx.isLive === 'function' ? ctx.isLive : () => false;
+       calls refresh() again, so the same mount becomes live without remount.
+       `hasSession` keeps ?live=1 with no session equally silent: the login
+       gate owns the screen, so probing /notifications or /health/ready only
+       returns 401 and litters the console. */
+    const hasSession = typeof ctx.hasSession === 'function' ? ctx.hasSession : () => true;
+    const live = () => (typeof ctx.isLive === 'function' ? ctx.isLive() : false) && hasSession();
 
     const disposers = [];
     const on = (target, ev, fn) => {
@@ -428,6 +433,86 @@ export function mountShellExtras(shell, ctx = {}) {
     document.body.appendChild(offBar);
     disposers.push(() => offBar.remove());
 
+    /* ── التحكم بالسيرفر (أدمن فقط — أعلى الشاشة في كل الصفحات) ─────────
+       شريحة دائمة في رأس النظام: لمبة الحالة + زرا إيقاف/تشغيل خدمة
+       KarimERP-Server عبر البروكسي المحروس (/api/server-control — أدمن
+       حصرًا، حد استخدام، وتأكيد STOP على الخادم). التشغيل بعد إيقافٍ
+       كامل تعمله الخدمة المرافقة الدائمة على 127.0.0.1:5011 — لا
+       PostgreSQL ولا النفق في نطاق هذين الزرين. */
+    const serverChip = document.createElement('span');
+    serverChip.className = 'erp-srvctl erp-no-print';
+    serverChip.setAttribute('role', 'group');
+    serverChip.setAttribute('aria-label', 'التحكم بخدمة السيرفر');
+    let srvBusy = false;
+    let srvPoll = 0;
+    let srvMounted = false;                 // لا شريحةً فارغة لغير الأدمن
+    const SRV_STATES = {
+        RUNNING: ['1', 'السيرفر يعمل'],
+        STOPPED: ['0', 'السيرفر متوقف'],
+        START_PENDING: ['x', 'جارٍ التشغيل…'],
+        STOP_PENDING: ['x', 'جارٍ الإيقاف…'],
+    };
+    function paintSrv(state, note) {
+        const [ok, label] = SRV_STATES[state] || ['x', note || 'غير معروف'];
+        serverChip.innerHTML = `<span class="erp-lamp" role="img" data-ok="${ok}" aria-label="حالة السيرفر: ${esc(label)}"></span>`
+            + `<span class="erp-srvctl__state">${esc(label)}</span>`
+            + (state === 'RUNNING'
+                ? `<button type="button" class="erp-btn erp-btn--sm erp-srvctl__btn" data-srv="stop" title="إيقاف خدمة السيرفر كاملة"><i class="ji" data-i="circle-x" aria-hidden="true"></i><span>إيقاف</span></button>`
+                : '')
+            + (state === 'STOPPED'
+                ? `<button type="button" class="erp-btn erp-btn--sm erp-srvctl__btn erp-srvctl__btn--start" data-srv="start" title="تشغيل خدمة السيرفر"><i class="ji" data-i="play" aria-hidden="true"></i><span>تشغيل</span></button>`
+                : '');
+    }
+    async function paintSrvStatus() {
+        if (!live() || getRole() !== 'admin' || srvBusy) {return;}
+        if (!srvMounted) {
+            try {shell.mountBoundary('server-control', serverChip); srvMounted = true;}
+            catch { /* host decides */ }
+        }
+        try {
+            const res = await fetchServerControl();
+            if (!res || res.available === false) {
+                serverChip.innerHTML = `<span class="erp-lamp" role="img" data-ok="x" aria-label="التحكم غير متاح"></span>`
+                    + `<span class="erp-srvctl__state" title="${esc((res && res.message) || '')}">تحكم غير متاح</span>`;
+                return;
+            }
+            paintSrv(String(res.state || ''), (res && res.message) || '');
+        } catch { /* الشبكة ترجع لاحقًا — اللمبة الحالية تبقى */ }
+    }
+    async function srvAction(action) {
+        if (srvBusy) {return;}
+        let confirm = '';
+        if (action === 'stop') {
+            confirm = String(window.prompt('إيقاف خدمة السيرفر يقطع النظام عن كل المستخدمين فورًا.\nقاعدة البيانات والنفق يبقيان كما هما.\nاكتب STOP للتأكيد:') || '').trim().toUpperCase();
+            if (confirm !== 'STOP') {return;}
+        } else if (!window.confirm('تشغيل خدمة السيرفر الآن؟')) {return;}
+        srvBusy = true;
+        paintSrv(action === 'stop' ? 'STOP_PENDING' : 'START_PENDING');
+        try {
+            const res = await serverControlAction(action, confirm);
+            toast((res && res.message) || (action === 'stop'
+                ? 'تم إرسال الإيقاف — النظام ينزل خلال ثوانٍ'
+                : 'تم إرسال التشغيل — انتظر عودة اللمبة الخضراء'));
+        } catch (e) {
+            toast((e && e.message) || 'تعذر تنفيذ الأمر', 'error');
+        } finally {
+            let ticks = 0;
+            clearInterval(srvPoll);
+            srvPoll = setInterval(() => {
+                ticks += 1;
+                srvBusy = false;
+                paintSrvStatus();
+                if (ticks >= 6) {clearInterval(srvPoll);}
+            }, 4000);
+        }
+    }
+    on(serverChip, 'click', (event) => {
+        const b = event.target.closest('[data-srv]');
+        if (b) {srvAction(String(b.dataset.srv));}
+    });
+    disposers.push(() => {clearInterval(srvPoll); serverChip.remove();});
+    /* التركيب يحدث داخل paintSrvStatus للأدمن فقط — لا شريحةً فارغة لغيره. */
+
     /* ── Mount + refresh ──────────────────────────────────────────────── */
     try {shell.mountBoundary('notifications', bellWrap);} catch { /* host decides */ }
     try {
@@ -470,16 +555,33 @@ export function mountShellExtras(shell, ctx = {}) {
             bellWrap.innerHTML = '';
             lamps.innerHTML = '<span class="erp-text-sm erp-text-muted">وضع المعاينة — لا اتصال بخادم</span>';
             serverInfo.textContent = '';
+            serverChip.innerHTML = '';
             startNotifPoll();
             return;
         }
         paintBell();
         paintHealth();
         paintServerInfo();
+        paintSrvStatus();
         startNotifPoll();
         startNotifPush();
     }
     refresh();
+    /* استطلاع حالة السيرفر: نبضات سريعة أول 30 ثانية (الجلسة قد تجهز بعد
+       الإقلاع — فالشريحة تظهر خلال ثوانٍ لا نصف دقيقة)، ثم كل 30 ثانية.
+       مؤقّت srvPoll يغطي ثواني ما بعد أوامر الإيقاف/التشغيل. */
+    let srvFastTicks = 0;
+    const srvStatusTimer = setInterval(() => {
+        srvFastTicks += 1;
+        paintSrvStatus();
+        if (srvFastTicks >= 10) {
+            clearInterval(srvStatusTimer);
+            disposers.push(() => 0);
+            const slow = setInterval(paintSrvStatus, 30_000);
+            disposers.push(() => clearInterval(slow));
+        }
+    }, 3_000);
+    disposers.push(() => clearInterval(srvStatusTimer));
 
     return {
         refresh,

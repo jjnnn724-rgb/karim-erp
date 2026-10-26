@@ -41,6 +41,14 @@
   font-weight: var(--erp-fw-bold);
 }
 
+/* The X is the only exit from the viewer (no Escape, no backdrop), and it
+   draws a plain glyph rather than an icon-font node — size it by hand so it
+   reads as a button, not as a stray multiplication sign. */
+.erp-report-viewer__bar .erp-modal-x {
+  font-size: 24px;
+  font-weight: var(--erp-fw-normal);
+}
+
 .erp-report-viewer__frame {
   flex: 1;
   inline-size: 100%;

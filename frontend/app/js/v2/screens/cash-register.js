@@ -15,14 +15,15 @@
  * · كل رقمٍ ومنةٍ ونسبةٍ من الخادم · RTL عربي · الترقيم صادق (العدد القادم
  * من الخادم هو عدد المطابق كلّه، لا المعروض).
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { statusBadge } from '../status.js?v=4.9.156';
-import { barChart, donutChart } from '../charts.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { statusBadge } from '../status.js?v=4.9.180';
+import { barChart, donutChart } from '../charts.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { trapFocus } from '../focus-trap.js?v=4.9.180';
 import {
     fetchExpenseRegister, fetchVoucher, fetchVoucherHtml, fetchRegisterHtml,
     typeLabel, money, count, splitDesc, voucherRef, periodPresets, isoDay,
-} from '../data/expense-register-repo.js?v=4.9.156';
+} from '../data/expense-register-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -85,8 +86,8 @@ function template(presetKey) {
     <section class="erp-v2 cashreg erp-stack">
       <header class="cashreg__head erp-screen-in">
         <div>
-          <h1 class="cashreg__title">سجلّ الصرف
-            <span class="erp-eyebrow" dir="ltr" lang="en">Expense Register</span></h1>
+          <h2 class="cashreg__title">سجلّ الصرف
+            <span class="erp-eyebrow" dir="ltr" lang="en">Expense Register</span></h2>
           <p class="cashreg__sub">كل ما خرج من الصندوق: حركةٌ بكلّ إذنها واعتماداتها وتواقيعها</p>
         </div>
         <div class="cashreg__tools erp-no-print">
@@ -97,6 +98,9 @@ function template(presetKey) {
             <input class="erp-input erp-input--ltr" type="date" data-cr="to" value="${esc(PRESETS.find((p) => p.key === presetKey)?.to ?? isoDay(0))}" max="${esc(isoDay(0))}"></label>
           <button type="button" class="erp-btn erp-btn--sm" data-cr-print-list>
             <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة الكشف</span></button>
+          <input class="erp-input" type="text" data-cr-multi placeholder="تقرير مفصل: أصناف بفاصلة (دجاج، أرز)" aria-label="أصناف التقرير المفصل مفصولة بفاصلة" style="min-inline-size:30ch">
+          <button type="button" class="erp-btn erp-btn--sm" data-cr-print-multi aria-label="طباعة تقرير مفصل بالأصناف المختارة">
+            <i class="ji" data-i="file-text" aria-hidden="true"></i><span>تقرير مفصل</span></button>
         </div>
       </header>
 
@@ -127,7 +131,7 @@ function template(presetKey) {
       </section>
 
       <div class="cashreg__scrim" data-cr-scrim hidden></div>
-      <aside class="cashreg__panel" data-cr-panel hidden role="dialog" aria-modal="true"
+      <aside class="cashreg__panel" data-cr-panel hidden role="dialog" aria-modal="true" tabindex="-1"
              aria-labelledby="cr-panel-title"></aside>
     </section>`;
 }
@@ -357,12 +361,15 @@ export function mountCashRegister(host, ctx = {}) {
     /* ── لوحة إذن الصرف ─────────────────────────────────────────────────── */
     const panel = q('[data-cr-panel]');
     const scrim = q('[data-cr-scrim]');
+    let releaseTrap = null;
 
     function closePanel() {
         panel.hidden = true;
         scrim.hidden = true;
         panel.innerHTML = '';
         document.body.classList.remove('cashreg-open');
+        releaseTrap?.();
+        releaseTrap = null;
         if (lastFocus && lastFocus.isConnected) {try {lastFocus.focus();} catch (_) { /* أُزيل العنصر */ }}
         lastFocus = null;
     }
@@ -387,13 +394,20 @@ export function mountCashRegister(host, ctx = {}) {
         scrim.hidden = false;
         panel.hidden = false;
         document.body.classList.add('cashreg-open');
+        /* اللوحة معلنة aria-modal: التركيز يدخلها قبل أن يُقرأ شيء، ويُحبس
+           فيها حتى تُغلق — وإلا تاه Tab في الصفحة التي يزعم الغطاء أنها خلفها. */
+        panel.focus();
+        releaseTrap?.();
+        releaseTrap = trapFocus(panel);
         panel.innerHTML = '<div class="cashreg__panelState"><span class="cashreg__shimmer"></span>جارٍ فتح الإذن…</div>';
         let v;
         try {
             v = await fetchVoucher(id);
         } catch (e) {
-            panel.innerHTML = `<div class="cashreg__panelState">تعذّر فتح الإذن: ${esc((e && e.message) || 'خطأ')}
-              <button type="button" class="erp-btn erp-btn--sm" data-cr-close>إغلاق</button></div>`;
+            panel.innerHTML = `<div class="cashreg__bar"><span class="erp-grow"></span>
+                <button type="button" class="erp-icon-btn erp-modal-x" data-cr-close aria-label="إغلاق" title="إغلاق">
+                  <i class="ji" data-i="x" aria-hidden="true"></i></button></div>
+              <div class="cashreg__panelState">تعذّر فتح الإذن: ${esc((e && e.message) || 'خطأ')}</div>`;
             panel.querySelector('[data-cr-close]').addEventListener('click', closePanel);
             return;
         }
@@ -435,7 +449,7 @@ export function mountCashRegister(host, ctx = {}) {
             <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة الإذن</span></button>
           <button type="button" class="erp-btn erp-btn--sm" data-cr-open-dispatch>
             <i class="ji" data-i="external" aria-hidden="true"></i><span>طلب الصرف</span></button>
-          <button type="button" class="erp-icon-btn" data-cr-close aria-label="إغلاق">
+          <button type="button" class="erp-icon-btn erp-modal-x" data-cr-close aria-label="إغلاق إذن الصرف" title="إغلاق">
             <i class="ji" data-i="x" aria-hidden="true"></i></button>
         </div>
 
@@ -581,14 +595,84 @@ export function mountCashRegister(host, ctx = {}) {
         }
     });
 
-    scrim.addEventListener('click', closePanel);
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !panel.hidden) {closePanel();}
+    /* ── التقرير المفصل بأصناف مختارة (تقارير المالك 2026-10-25) ──────────
+       أصنافٌ بفاصلة → حركاتُ الفترة التي بيَانها يطابق أيّ token → قسمٌ
+       لكل صنف (تاريخ، إذن، بيان، قسم، مبلغ) بمجموعه، ومجموعٌ عام. القراءة
+       من باب السجل المعتمد حصرًا — والبناء هنا كطباعة dispatch.printList. */
+    q('[data-cr-print-multi]').addEventListener('click', async (ev) => {
+        const btn = ev.currentTarget;
+        const tokens = String(q('[data-cr-multi]')?.value || '')
+            .split(',').map((s) => s.replace(/[%_;()]/g, ' ').trim())
+            .filter(Boolean).slice(0, 6);
+        if (!tokens.length) {notify('اكتب صنفًا واحدًا على الأقل مفصولًا بفاصلة', 'error'); return;}
+        btn.disabled = true;
+        try {
+            const reg = await fetchExpenseRegister({ from: filters.from, to: filters.to });
+            const rows = reg.rows || [];
+            const currency = reg.currency || '';
+            const sections = [];
+            const grand = { count: 0, amount: 0, missing: [] };
+            const lower = (v) => String(v || '').toLowerCase();
+            for (const token of tokens) {
+                const needle = token.toLowerCase();
+                const hits = rows.filter((r) => lower(r.desc).includes(needle)
+                    || lower(r.request_dept || r.deptId).includes(needle));
+                if (!hits.length) {grand.missing.push(token); continue;}
+                const total = hits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+                grand.count += hits.length;
+                grand.amount += total;
+                const body = hits.map((r, i) => `<tr><td>${i + 1}</td>`
+                    + `<td>${esc(shortDay(r.date))}</td>`
+                    + `<td>${r.request_id ? `<span dir="ltr" title="${esc(String(r.request_id))}">${esc(voucherRef(r.request_id).short)}</span>` : '—'}</td>`
+                    + `<td style="text-align:right">${esc(r.desc || '—')}</td>`
+                    + `<td>${esc(r.request_dept || r.deptId || '—')}</td>`
+                    + `<td class="c"><b>${esc(money(r.amount, currency))}</b></td></tr>`).join('');
+                sections.push(`<h3 class="sec">صنف/بحث: ${esc(token)} — ${esc(count(hits.length))} حركة · ${esc(money(total, currency))}</h3>`
+                    + '<table><thead><tr><th>#</th><th>التاريخ</th><th>الإذن</th><th>البيان</th><th>القسم</th><th>المبلغ</th></tr></thead>'
+                    + `<tbody>${body}</tbody>`
+                    + `<tfoot><tr><td colspan="5">مجموع ${esc(token)}</td><td class="c">${esc(money(total, currency))}</td></tr></tfoot></table>`);
+            }
+            const w = openInAppReport('تقرير مفصل بأصناف مختارة — سجل الصرف');
+            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مفصل — سجل الصرف</title>`
+                + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+                + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+                + 'h3.sec{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:18px 0 8px}'
+                + 'table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}'
+                + 'th{background:#f7ead8;color:#7c3500}td.c,th.c{text-align:center}'
+                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+                + '.controls button.secondary{background:#555}'
+                + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
+                + '<div class="controls"><button type="button" data-cm-print>طباعة</button><button type="button" class="secondary" data-cm-close>إغلاق</button></div>'
+                + '<main class="sheet"><header class="head"><h1>تقرير مفصل — سجل الصرف</h1>'
+                + `<p>الفترة: ${esc(filters.from || 'البداية')} → ${esc(filters.to || 'اليوم')} — تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}</p>`
+                + `<p>الأصناف المطلوبة: ${esc(tokens.join('، '))}</p></header>`
+                + (sections.length ? sections.join('')
+                    : '<div class="sec">لا حركات مطابقة لما كتبته في هذه الفترة</div>')
+                + (grand.missing.length ? `<p class="sec">لم تطابقها الحركات: ${esc(grand.missing.join('، '))}</p>` : '')
+                + (sections.length ? `<p class="sec"><b>مجموع التقرير:</b> ${esc(count(grand.count))} حركة · ${esc(money(grand.amount, currency))}</p>` : '')
+                + '</main></body></html>');
+            w.document.close();
+            w.document.querySelector('[data-cm-print]')?.addEventListener('click', () => w.print());
+            w.document.querySelector('[data-cm-close]')?.addEventListener('click', () => w.close());
+            w.focus();
+        } catch (e) {
+            notify((e && e.message) || 'تعذر بناء التقرير المفصل', 'error');
+        } finally {
+            btn.disabled = false;
+        }
     });
 
+    /* الإغلاق من X أعلى اللوحة وحده — لا Escape ولا نقرة على الغطاء. */
     load();
     return {
-        destroy() { clearTimeout(searchTimer); table.destroy(); host.innerHTML = ''; },
+        destroy() {
+            clearTimeout(searchTimer);
+            releaseTrap?.();
+            releaseTrap = null;
+            table.destroy();
+            host.innerHTML = '';
+        },
         refresh: () => load(table.getState()),
         openVoucher,
         printVoucherHtml: fetchVoucherHtml,

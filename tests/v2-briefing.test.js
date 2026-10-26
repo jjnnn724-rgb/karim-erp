@@ -363,10 +363,14 @@ describe('V2 briefing screen + host (source contract)', () => {
 
     test('movement is reported twice: colour and arrow, with an aria sentence', () => {
         const s = screen();
-        expect(s).toMatch(/favor === 'good' \? 'erp-delta--up'/);
-        expect(s).toMatch(/favor === 'bad' \? 'erp-delta--down'/);
-        expect(s).toMatch(/sign === 'up' \? 'arrow-up'/);
-        expect(s).toMatch(/aria-label="\$\{esc\(d\.aria\)\}"/);
+        // deltaPill مفوَّضة للبيت المشترك (اتحاد نسختي الداشبورد والموجز) — 2026-10-26.
+        expect(s).toMatch(/import \{ kpiStrip, deltaPill \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(s).not.toMatch(/function deltaPill/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/favor === 'good' \? 'erp-delta--up'/);
+        expect(shared).toMatch(/favor === 'bad' \? 'erp-delta--down'/);
+        expect(shared).toMatch(/d\.dir \|\| d\.sign/);
+        expect(shared).toMatch(/aria-label="\$\{esc\(d\.aria\)\}"/);
     });
 
     test('the charts come from the engine, so a theme switch keeps them readable', () => {
@@ -405,10 +409,13 @@ describe('V2 briefing screen + host (source contract)', () => {
            وكل توكن --erp-*، فيُطبع الجدول بلا خلفية ولا حشو فوق لوحة التحكم. */
         expect(s).toMatch(/layer\.className = 'erp-v2 erp-allorders'/);
         expect(s).toMatch(/document\.body\.appendChild\(layer\)/);
-        /* مخرجٌ للكيبورد: اللوحة role=dialog aria-modal بلا Escape وعدٌ ناقص. */
-        expect(s).toMatch(/e\.key === 'Escape'/);
-        expect(s).toMatch(/addEventListener\('keydown', onKey\)/);
-        expect(s).toMatch(/removeEventListener\('keydown', onKey\)/);
+        /* الإغلاق من X أعلى اللوحة وحده: لا Escape ولا نقرة على الخلفية —
+           لوحة تقرأ فواتير يوم كامل لا تُفقد بنقرة سهو. */
+        expect(s).toMatch(/data-v2-close-orders/);
+        expect(s).toMatch(/erp-modal-x/);
+        expect(s).not.toMatch(/e\.key === 'Escape'/);
+        expect(s).not.toMatch(/addEventListener\('keydown', onKey\)/);
+        expect(s).not.toMatch(/e\.target === layer/);
     });
 
     test('the host maps the executive nav key to the briefing screen and tears it down', () => {

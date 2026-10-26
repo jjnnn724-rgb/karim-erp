@@ -133,6 +133,18 @@ function memorySession() {
     return {source: 'memory', role: claims.role || null, user: claims};
 }
 
+/* إشعار خروج واحد: apiFetch يندي doLogout() بلا وسائط على 401 قاطع،
+   وتنظيفُ الاعتماد وحده يترك القشرة تبدو داخلة بينما كل طلب يفشل. المضيف
+   (preview.js) يسجّل هنا فينقل المستخدم إلى بوابة الدخول بسبب مفهوم. لا
+   يغيّر هذا عقد doLogout شيئًا: النداء نفسه، والمراقب بعد التنظيف، وخطؤه
+   لا يوقف التنظيف. */
+let logoutObserver = null;
+
+/** @param {null|(() => void)} fn — null يزيل المراقب. */
+export function setLogoutObserver(fn) {
+    logoutObserver = typeof fn === 'function' ? fn : null;
+}
+
 /**
  * Installs the globals apiFetch expects. Safe to call more than once, and
  * safe to call without a session: the getters just return ''.
@@ -182,6 +194,10 @@ export function installApiFetchBridge() {
                 }).catch(() => {});
             }
             try { window.KARIM_RTclear && window.KARIM_RTclear(); } catch (_) { /* متجاهَل عمدًا */ }
+            /* بعد التنظيف لا قبله: الواجهة ترى حالةً نظيفة إن قرأت globals.
+               ولا رمي من المراقب إلى مسار apiFetch — وإلا حجب خطأُ واجهةٍ
+               الخطأَ الحقيقي. */
+            try { if (logoutObserver) {logoutObserver();} } catch (_) { /* متجاهَل عمدًا */ }
         };
     }
 }
@@ -217,7 +233,17 @@ async function performRefresh() {
             body: JSON.stringify({refresh_token: rt}),
         });
     } catch (_) {return null;}
-    if (!res.ok) {return null;}
+    if (!res.ok) {
+        /* 401 من التجديد يعني رمزًا ميتًا لا مؤقتًا: غير صالح، أو منتهٍ
+           (الخادم يحذفه)، أو أُبطل، أو الحساب موقوف. إبقاؤه في التخزين
+           يُظهر زر «استئناف الجلسة» ليفشل في كل مرة، ويُخفي أن الدخول
+           من جديد هو الحل الوحيد. عطل 5xx/شبكة يُبقي الرمز: قد يصلح بعد
+           الثانية. */
+        if (res.status === 401) {
+            try {localStorage.removeItem(RT_KEY);} catch (_) { /* متجاهَل عمدًا */ }
+        }
+        return null;
+    }
     let data;
     try {data = await res.json();} catch (_) {return null;}
     if (!data || !data.access_token) {return null;}

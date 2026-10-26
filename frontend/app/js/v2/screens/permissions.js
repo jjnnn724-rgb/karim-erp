@@ -13,13 +13,14 @@
  * counter + grouped cards + audit badges — same gates, better experience.
  */
 
-import { canWrite } from '../session.js?v=4.9.156';
-import { ROLES } from '../../core/config.js?v=4.9.156';
-import { formatInt } from '../data/reports-repo.js?v=4.9.156';
+import { canWrite } from '../session.js?v=4.9.180';
+import { ROLES } from '../../core/config.js?v=4.9.180';
+import { formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 import {
     PERM_WRITE_ROLES, fetchPermCatalog, fetchUserPerms, saveUserPerms,
     fetchPermissionUsers, groupCatalog, permMode, auditActionLabel,
-} from '../data/permissions-repo.js?v=4.9.156';
+} from '../data/permissions-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -27,19 +28,7 @@ const esc = (v) => String(v ?? '')
 
 const roleLabelOf = (role) => (ROLES[role] && ROLES[role].name) || 'دور غير معروف';
 
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات الصلاحيات">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span></div>
-        <div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 function template(canAdmin) {
     return `
@@ -120,7 +109,7 @@ export function mountPermissionsScreen(host, ctx = {}) {
             { icon: 'key', label: 'صلاحيات الكتالوج', en: 'Catalog', value: formatInt(catalog.length), hint: 'مجموعات حسب النظام' },
             { icon: 'user-check', label: 'ممنوحة للهدف', en: 'Granted', value: formatInt(grants.size), hint: target ? `لـ ${target.name || target.username}` : 'اختر مستخدمًا' },
             { icon: 'circle-x', label: 'مسحوبة من الهدف', en: 'Denied', value: formatInt(denies.size), hint: 'السحب يغلب المنح والدور' },
-        ])
+        ], 'مؤشرات الصلاحيات')
         + `<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">منح فردية فوق الدور</h3>`
         + `<span class="erp-grow"></span><label class="erp-text-sm erp-text-muted" for="v2perm-user">المستخدم</label>`
         + `<select class="erp-select" id="v2perm-user" data-v2-user style="max-width:260px"><option value="">— اختر المستخدم —</option>${userOpts}</select></div>`

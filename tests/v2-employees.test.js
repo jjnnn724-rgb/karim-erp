@@ -285,10 +285,14 @@ describe('V2 employees screen + layer (source contract)', () => {
         expect(s).toMatch(/esc\(row\.dept\)/);
         expect(s).toMatch(/esc\(row\.position\)/);
         expect(s).toMatch(/esc\(row\.phone\)/);
-        expect(s).toMatch(/esc\(k\.label\)/);
-        expect(s).toMatch(/esc\(k\.pill\.aria\)/);
         expect(s).toMatch(/title="\$\{esc\(title\)\}"/);   // the bar tooltip escapes its sentence
         expect(s).toMatch(/esc\(label\)/);                 // option text and bar name
+        // شريط المؤشرات مفوَّض للبيت المشترك — وهذه ضمانة هروبه هناك (2026-10-26).
+        expect(s).toMatch(/import \{ kpiStrip \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(s).not.toMatch(/function kpiStrip/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/esc\(k\.label\)/);
+        expect(shared).toMatch(/esc\(k\.pill\.aria\)/);
     });
 
     test('labels come from the status authority, never re-typed per screen', () => {

@@ -11,6 +11,13 @@ module.exports = {
   setupFiles: ['<rootDir>/tests/setup-env.js'],
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.js'],
+  /* Every suite talks to a real isolated PostgreSQL; with 266 suites in
+     parallel the CPU and the pool are saturated and a handful of DB-bound
+     tests legitimately exceed jest's 5s default. A timed-out test proves
+     load, not a bug — 2026-10-26 saw webauthn (bcrypt cost 12) and
+     migration-lock fail at 5s while both passed instantly alone. 20s is a
+     ceiling, not an expectation: the suite still finishes in ~60s. */
+  testTimeout: 20000,
   // ─── بوابة التغطية (coverage gate) — تُطبَّق فقط عند --coverage ───
   // الأرقام أرضية آمنة «مِصْعَد» (ratchet): ارفعها تدريجيًا مع كل مجموعة
   // تختبرها، ولا تخفضها أبدًا. لقطة 2026-10-13: stmts 31.2٪ lines 32.5٪

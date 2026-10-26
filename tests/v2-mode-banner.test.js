@@ -41,7 +41,9 @@ describe('V2 mode and version indicators', () => {
         expect(preview).toContain("mode = 'معاينة'");
         expect(preview).toContain("mode = 'التحقق من الجلسة'");
         expect(preview).toContain("mode = 'جلسة حية'");
-        expect(preview).toMatch(/document\.title = `KARIM ERP — V2 \(\$\{mode\}\)`/);
+        expect(preview).toMatch(/document\.title = \(screen \? `\$\{screen\} — ` : ''\) \+ `KARIM ERP — V2 \(\$\{mode\}\)`/);
+        // اسم الشاشة يسبق الوضع: تبويبان على شاشتين لا يحملان عنوانًا واحدًا.
+        expect(preview).toMatch(/titleKey = key;\s*\n\s*updateModeTitle\(\);/);
     });
 
     test('«النظام الحالي» انتقل إلى مركز التحكّم — لكل الأدوار لا للأدمن وحده', () => {

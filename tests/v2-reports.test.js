@@ -59,7 +59,7 @@ function loadEsm(file, injections = {}, collect = []) {
 
 const EXPORTS = ['GROUP_BY', 'PERIODS', 'PAYMENT_METHOD_AR', 'ROW_FIELDS', 'localDateOnly',
     'periodRange', 'fetchSalesReport', 'fetchCurrency', 'formatInt', 'formatQty', 'formatMoney',
-    'reportToRow', 'sharePill', 'paymentBreakdown', 'buildReportKpis'];
+    'reportToRow', 'sharePill', 'paymentBreakdown', 'buildReportKpis', 'composeSalesFromRegister'];
 
 /** A server-shaped stub: one envelope, so the rules under test are the repo's. */
 function repoStub(envelope) {
@@ -492,8 +492,12 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(s).toMatch(/esc\(m\.unit\)/);
         expect(s).toMatch(/title="\$\{esc\(opts\.title\)\}"/);
         expect(s).toMatch(/title="\$\{esc\(title\)\}"/);
-        expect(s).toMatch(/aria-label="\$\{esc\(k\.pill\.aria\)\}"/);
-        expect(s).toMatch(/data-i="\$\{esc\(k\.icon\)\}"/);
+        // شريط المؤشرات مفوَّض للبيت المشترك — وهذه ضمانة هروبه هناك (2026-10-26).
+        expect(s).toMatch(/import \{ kpiStrip \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(s).not.toMatch(/function kpiStrip/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/aria-label="\$\{esc\(k\.pill\.aria\)\}"/);
+        expect(shared).toMatch(/data-i="\$\{esc\(k\.icon \|\| 'chart'\)\}"/);
     });
 
     test('money is printed only through the unit the settings row carries', () => {
@@ -580,10 +584,11 @@ describe('V2 reports screen + layer (source contract)', () => {
 
     test('a late answer cannot paint under headers it was not asked for', () => {
         const s = screen();
-        // The request remembers what it asked; both paths drop it if the
-        // screen has since been asked for another dimension or range.
+        // The request remembers what it asked; every awaited path drops it if
+        // the screen has since been asked for another dimension or range —
+        // باب POS، ثم مسيرة سجل الإيرادات البديلة (2026-10-25): ثلاث بوابات.
         expect(s).toMatch(/const asked = \{ groupBy, startDate: r\.startDate, endDate: r\.endDate \};/);
-        expect(s.split('if (stale(asked)) {return;}').length - 1).toBe(2);
+        expect(s.split('if (stale(asked)) {return;}').length - 1).toBe(3);
         expect(s).toMatch(/asked\.groupBy !== groupBy \|\| asked\.startDate !== r\.startDate/);
     });
 
@@ -697,5 +702,70 @@ describe('V2 reports screen + layer (source contract)', () => {
         expect(p).toMatch(/let reportsScreen = null;/);
         expect((p.match(/reportsScreen = mount/g) || []).length).toBe(1);
         expect((p.match(/function renderReportsScreen/g) || []).length).toBe(1);
+    });
+});
+
+/* ══ سجل الإيرادات كمصدر بديل حين يجيب باب POS صفرًا ═══════════════════════
+ * هذا التشغيل لا يكتب فواتير POS (pos_orders فارغ) — المبيعات تعيش في سجل
+ * revenues عبر استيراد ياراسوفت. composeSalesFromRegister يجمّعه بالأبعاد
+ * نفسها، ولا يختلق خصمًا ولا ضريبة ولا بُعد أصناف.
+ */
+describe('V2 reports — تقرير المبيعات من سجل الإيرادات', () => {
+    const revs = [
+        { date: '2026-10-02', deptId: 'ys_cc_4', source: 'كاشير 4', amount: 100 },
+        { date: '2026-10-03', deptId: 'ys_cc_4', source: 'كاشير 4', amount: 50.5 },
+        { date: '2026-10-03', deptId: 'kitchen', source: 'المطبخ', amount: 30 },
+        { date: '2026-09-28', deptId: 'ys_cc_4', source: 'كاشير 4', amount: 999 },   // خارج الفترة
+        { date: '', deptId: 'kitchen', source: 'المطبخ', amount: 7 },                // بلا تاريخ لا يُعدّ
+    ];
+    const depts = [{ code: 'ys_cc_4', name: 'كاشيرية 4' }, { code: 'kitchen', name: 'المطبخ' }];
+
+    test('تجميع الأقسام: المجاميع والأسماء من دليل الأقسام، والفترة محترمة', () => {
+        const { repo } = repoStub(envelope());
+        const out = repo.composeSalesFromRegister(revs, depts, 'department', '2026-10-01', '2026-10-31');
+        expect(out.register).toBe(true);
+        expect(out.rows).toHaveLength(2);
+        const cc4 = out.rows[0];                       // الأعلى صافيًا أولًا كما يرتب الخادم
+        expect(cc4.department_id).toBe('ys_cc_4');
+        expect(cc4.department_name).toBe('كاشيرية 4');
+        expect(cc4.invoice_count).toBe(2);
+        expect(cc4.net_sales).toBeCloseTo(150.5, 6);
+        const kit = out.rows[1];
+        expect(kit.department_name).toBe('المطبخ');
+        expect(kit.net_sales).toBe(30);
+    });
+
+    test('تجميع الكاشير من المصدر المخزّن نفسه، وقسم غير معروف يظهر بكوده', () => {
+        const { repo } = repoStub(envelope());
+        const out = repo.composeSalesFromRegister(revs, [], 'cashier', '2026-10-01', '2026-10-31');
+        expect(out.rows[0].cashier_name).toBe('كاشير 4');
+        expect(out.rows[0].invoice_count).toBe(2);
+        const dept = repo.composeSalesFromRegister(revs, [], 'department', '2026-10-01', '2026-10-31');
+        expect(dept.rows.some((r) => r.department_name === 'ys_cc_4')).toBe(true);
+    });
+
+    test('بُعد الأصناف مستحيل من السجل — null لا تقرير مزيف', () => {
+        const { repo } = repoStub(envelope());
+        expect(repo.composeSalesFromRegister(revs, depts, 'item', '2026-10-01', '2026-10-31')).toBeNull();
+    });
+
+    test('الملخص: عدد السجلات والصافي ومتوسط السجل — لا خصم ولا ضريبة', () => {
+        const { repo } = repoStub(envelope());
+        const out = repo.composeSalesFromRegister(revs, depts, 'department', '2026-10-01', '2026-10-31');
+        expect(out.summary.invoice_count).toBe(3);
+        expect(out.summary.net_sales).toBeCloseTo(180.5, 6);
+        expect(out.summary.avg_ticket).toBeCloseTo(180.5 / 3, 6);
+        expect(out.summary).not.toHaveProperty('discount_total');
+        expect(out.summary).not.toHaveProperty('tax_total');
+    });
+
+    test('الشاشة تعلن مصدر السجل ولا تطبع طرق دفع مختلقة', () => {
+        const s = fs.readFileSync(SCREEN, 'utf8');
+        expect(s).toMatch(/composeSalesFromRegister\(/);
+        expect(s).toMatch(/من سجل الإيرادات/);                          // عنوان الجدول
+        expect(s).toMatch(/المصدر: سجل الإيرادات/);                     // سطر النطاق والطباعة
+        expect(s).toMatch(/لا يحمل طرق الدفع/);                          // صدق طرق الدفع
+        expect(s).toMatch(/composeDeptRevenueFromRegister\(/);          // بديل إيرادات الأقسام
+        expect(s).toMatch(/registerMode = false;\s*\/\/ كل قراءة تبدأ من باب POS/);
     });
 });

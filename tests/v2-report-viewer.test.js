@@ -74,9 +74,13 @@ describe('عارض المستندات — الطباعة والوصولية', ()
         expect(v).toContain("host.setAttribute('aria-modal', 'true')");
         expect(v).toContain("host.setAttribute('aria-labelledby', TITLE_ID)");
         expect(v).toContain("frame.setAttribute('title'");
-        expect(v).toContain("doc.addEventListener('keydown', onEscape, true)");
-        expect(v).toContain("frame.contentDocument.addEventListener('keydown', onEscape)");
-        expect(v).toContain("event.key !== 'Escape'");
+        /* عقد الإغلاق: X في أعلى الشريط وحده. لا Escape ولا نقرة على الخلفية،
+           فمستندٌ قيد القراءة أو الطباعة لا يُفقد بضغطة عابرة. */
+        expect(v).toContain('erp-icon-btn erp-modal-x');
+        expect(v).toContain("closeBtn.setAttribute('data-v2-report-action', 'close')");
+        expect(v).toContain("closeBtn.addEventListener('click', closeReportViewer)");
+        expect(v).not.toContain('onEscape');
+        expect(v).not.toContain("keydown");
     });
 
     test('التركيز يعود إلى العنصر الذي فتح العارض', () => {

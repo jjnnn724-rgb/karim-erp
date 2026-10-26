@@ -38,15 +38,15 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.156';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.156';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.156';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.180';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.180';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.180';
 import {
     isWebAuthnSupported,
     toRequestOptions,
     serializeAssertion,
     describeWebAuthnError,
-} from '../data/webauthn-client.js?v=4.9.156';
+} from '../data/webauthn-client.js?v=4.9.180';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -70,9 +70,9 @@ function template(canResume) {
             <div class="erp-login-brand">
               <img class="erp-login-logo" src="assets/al-shurfa-logo.png" alt="مطاعم الشرفة العالمي">
             </div>
-            <h2 class="erp-login-title" id="v2login-title">تسجيل الدخول
+            <h1 class="erp-login-title" id="v2login-title">تسجيل الدخول
               <span class="erp-eyebrow" dir="ltr" lang="en">Sign In</span>
-            </h2>
+            </h1>
             <p class="erp-login-hero__note">أدخل بيانات حسابك للوصول إلى مساحة العمل.</p>
           </header>
           <div class="erp-card__body erp-stack">
@@ -132,6 +132,9 @@ function template(canResume) {
               <i class="ji" data-i="refresh" aria-hidden="true"></i>
               <span>استئناف الجلسة المحفوظة على هذا الجهاز</span>
             </button>` : ''}
+            <p class="erp-text-xs erp-text-muted erp-login-center">
+              <a href="index.html">الدخول عبر الواجهة الكلاسيكية</a>
+            </p>
             </div>
 
             <div data-v2-mfa-pane hidden>
@@ -235,7 +238,9 @@ function template(canResume) {
 
 /**
  * @param {ParentNode} host where the screen is inserted
- * @param {{ onSuccess?: (session:{role:string|null,user:any})=>void }} [ctx]
+ * @param {{ onSuccess?: (session:{role:string|null,user:any})=>void, notice?: string }} [ctx]
+ *   notice = سبب الوصول الاضطراري (انتهاء جلسة). يُعرض في صندوق الخطأ
+ *   القائم (role="alert") ولا يُكرَّر بعد أول دخول ناجح.
  * @returns {{el: HTMLElement, destroy: ()=>void}}
  */
 export function mountLoginScreen(host, ctx = {}) {
@@ -256,6 +261,11 @@ export function mountLoginScreen(host, ctx = {}) {
     function fail(message) {
         errBox.textContent = message;
     }
+
+    /* وصولٌ اضطراري لا اختياري: المستخدم كان داخل النظام وانتهت جلسته في
+       منتصف العمل. الصندوق القائم نفسه يُعلن السبب — لا بانر ثانٍ فوق
+       التصميم — ويُقرأ تلقائيًا لأن دوره alert. */
+    if (ctx.notice) {fail(String(ctx.notice));}
 
     function setBusy(on) {
         busy = on;

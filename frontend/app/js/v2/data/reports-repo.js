@@ -39,7 +39,7 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
 
 /** The server's own grouping enum (shift-routes.js:947) — nothing else is sent. */
 export const GROUP_BY = ['department', 'cashier', 'item'];
@@ -242,6 +242,59 @@ export function reportToRow(raw = {}, groupBy = 'department') {
         avgTicket: num(raw.avg_ticket),
         itemsQty: num(raw.items_qty),
         uniqueItems: num(raw.unique_items),
+    };
+}
+
+/* ── سجل الإيرادات كمصدر بديل لتقرير المبيعات ──────────────────────────── */
+
+/**
+ * لماذا هذا المُنشئ موجود: باب POS يعدّ pos_orders، وهذا التشغيل لا يكتب
+ * فيه فاتورة واحدة — المبيعات تصل عبر استيراد ياراسوفت إلى سجل revenues
+ * (عشرات الآلاف من الصفوف؛ dashboard-repo.js يقول الحقيقة نفسها). حين
+ * يجيب الخادم صفر صفوف، يُجمَّع السجل هنا بالأبعاد نفسها التي كان الباب
+ * سيجيب بها: department عبر deptId (والأسماء من مسيرة departments)،
+ * وcashier عبر المصدر المخزّن نفسه (source = «كاشير 4» …).
+ *
+ * الصدق قبل العرض: السجل لا يحمل خصمًا ولا ضريبة ولا طرق دفع، فهذه تبقى
+ * غائبة — ولا يُطبع لها صفر يوهم أنها مجمّع خادم. بُعد الأصناف مستحيل من
+ * هذا السجل، والعودة null تقول ذلك بدل ادعاء تقرير.
+ *
+ * @returns {{rows:any[], summary:{invoice_count:number, net_sales:number,
+ *            avg_ticket:number}, register:true}|null} صفوف بمقاس reportToRow
+ */
+export function composeSalesFromRegister(revenues, departments, groupBy, from, to) {
+    const kind = GROUP_BY.includes(groupBy) ? groupBy : 'department';
+    if (kind === 'item') {return null;}
+    const nameByCode = new Map(
+        (Array.isArray(departments) ? departments : [])
+            .map((d) => [String(d && d.code), String((d && d.name) || '')])
+    );
+    const inRange = (r) => {
+        const d = String((r && r.date) || '').slice(0, 10);
+        return !!d && (!from || d >= from) && (!to || d <= to);
+    };
+    const buckets = new Map();
+    for (const r of (Array.isArray(revenues) ? revenues : [])) {
+        if (!r || !inRange(r)) {continue;}
+        const key = kind === 'cashier' ? String(r.source || '—') : String(r.deptId ?? '—');
+        const name = kind === 'cashier' ? key : (nameByCode.get(key) || key);
+        const b = buckets.get(key) || { key, name, net: 0, count: 0 };
+        b.net += Number(r.amount) || 0;
+        b.count += 1;
+        buckets.set(key, b);
+    }
+    const rows = [...buckets.values()]
+        .map((b) => (kind === 'cashier'
+            ? { cashier_id: b.key, cashier_name: b.name, invoice_count: b.count, net_sales: b.net }
+            : { department_id: b.key, department_name: b.name, invoice_count: b.count, net_sales: b.net }))
+        .sort((a, b) => b.net_sales - a.net_sales
+            || String(a.cashier_name || a.department_name).localeCompare(String(b.cashier_name || b.department_name), 'ar'));
+    const net = rows.reduce((s, r) => s + r.net_sales, 0);
+    const count = rows.reduce((s, r) => s + r.invoice_count, 0);
+    return {
+        rows,
+        summary: { invoice_count: count, net_sales: net, avg_ticket: count > 0 ? net / count : 0 },
+        register: true,
     };
 }
 

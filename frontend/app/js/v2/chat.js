@@ -13,9 +13,9 @@
  * session is not live; it never fabricates a local session.
  */
 
-import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.156';
-import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.156';
-import { chatWriteEnabled } from './write-flags.js?v=4.9.156';
+import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.180';
+import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.180';
+import { chatWriteEnabled } from './write-flags.js?v=4.9.180';
 
 const CHAT_POLL_MS = 15_000;
 
@@ -76,7 +76,8 @@ export function mountChat(ctx = {}) {
     <strong class="erp-chat-title" data-v2-chat-title><i class="ji" data-i="message" aria-hidden="true"></i> شات الطاقم</strong>
     <span class="erp-chat-head__actions">
       <button type="button" class="erp-btn erp-btn--sm" data-v2-chat-back hidden>الموظفون</button>
-      <button type="button" class="erp-btn erp-btn--sm" data-v2-chat-close>إغلاق</button>
+      <button type="button" class="erp-icon-btn erp-modal-x" data-v2-chat-close aria-label="إغلاق الشات" title="إغلاق">
+        <i class="ji" data-i="x" aria-hidden="true"></i></button>
     </span>
   </div>
   <div class="erp-chat-box" data-v2-chat-box aria-live="polite"></div>
@@ -135,6 +136,7 @@ export function mountChat(ctx = {}) {
     <span class="erp-chat-user__meta">${esc(u.role || '')} · ${esc(u.username || '')}</span>
   </span>
 </button>`).join('') : '<p class="erp-chat-empty">لا موظفين آخرين</p>';
+        focusIntoPanel();
     }
 
     async function loadUsers() {
@@ -283,9 +285,21 @@ export function mountChat(ctx = {}) {
     }
 
     function closePanel() {
+        /* مَن كان داخل اللوحة يعود إلى زرّها: إغلاقها بلا مرجعٍ يترك التركيز
+           على عنصرٍ اختفى فيسقط إلى body. */
+        const hadFocus = panel.contains(document.activeElement);
         st.open = false;
         panel.hidden = true;
         fab.setAttribute('aria-expanded', 'false');
+        if (hadFocus) {try {fab.focus();} catch (_) { /* detached */ }}
+    }
+
+    /* اللوحة حوارٌ مسمّى: التركيز يدخلها عند فتحها (أول موظف، أو زر الإغلاق
+       إن كانت القائمة فارغة)، ولا يُسحب من مستخدمٍ يعمل داخلها. */
+    function focusIntoPanel() {
+        if (!st.open || panel.hidden || panel.contains(document.activeElement)) {return;}
+        const target = panel.querySelector('[data-v2-chat-peer]') || panel.querySelector('[data-v2-chat-close]');
+        if (target) {try {target.focus();} catch (_) { /* detached */ }}
     }
 
     async function send() {
@@ -325,6 +339,8 @@ export function mountChat(ctx = {}) {
             void send();
         }
     });
+
+    /* الإغلاق من X أعلى اللوحة وحده — لا Escape ولا نقرة خارجها. */
 
     function refresh() {
         if (!isLive()) {

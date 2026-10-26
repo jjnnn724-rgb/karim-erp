@@ -1,47 +1,47 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   KARIM ERP — V2 IDENTITY · «أونيكس وشامبانيا»
+   KARIM ERP — V2 IDENTITY · «ليل الزمرد»
    ═══════════════════════════════════════════════════════════════════════
    A new visual identity for V2 ONLY. Legacy keeps its own palette because
    this sheet is never linked there and every rule is scoped to `.erp-v2`
    (plus the V2-owned body-mounted layers and the preview body, which
    already carry the token scope).
 
-   THE IDEA (2026-10-25 — اعتماد المستخدم: «أونيكس وذهب»)
+   THE IDEA (2026-10-26 — طلب المالك: «تحفة فنية فخمة لا مثيل لها … شي
+   من الخيال» بعد رؤية الجولة الأولى الأخضر/البرونزي)
    ────────────────────────────────────────────────────────────────────────
-   ONE signature instead of a mix. The previous identity asked the reader
-   to hold three colour stories at once (porcelain warm + petrol/teal ink
-   + brass + copper + an indigo chart stop) and a second, dashboard-only
-   «identity» switcher re-branded half the screen — the user read the
-   result as لخبطة and approved a full re-identity plus deleting that
-   switcher. The new identity is a monochrome luxury system, the way a
-   five-star house prints its ledger:
-     · ONYX is the only ink. Espresso-black (#1C1710) owns every action:
-       primary buttons, active states, the FAB. One dark voice, no teal.
-     · CHAMPAGNE GOLD is jewellery, never paint: focus rings, the sidebar's
-       active spine, KPI icon chips, the login card's cap rule, charts.
-       It comes from the restaurant's gold mark — #A9821E light / #E2C274
-       dark, with a text-grade #7C5E0E for figures that must read ≥4.5.
-     · IVORY paper, not cream: canvas #F4F1EA sits clearly below the white
-       card so every sheet floats — the value ladder does the hierarchy.
-     · COPPER stays the data voice (#A05A26 light / #D9925A dark): a chart
-       never competes with the colour of the button beside it.
-     · An ESPRESSO SIDEBAR in both themes — near-black warm spine
-       (#16120D light / #0B0806 dark) with champagne active jewellery.
-     · Dark mode is TRUE ONYX: warm-black canvas #0B0907, the primary
-       button flips to a champagne fill with dark ink (the luxury CTA).
+   A night-garden identity: emerald depth, parchment light, bronze
+   jewellery. Not a flat "green theme" — the green is a *material*
+   (polished jade in the dark, deep emerald in the light) and the warmth
+   lives in the bronze, not in the action colour.
+     · EMERALD IS THE ACTION in both themes: a deep emerald fill carrying
+       ivory ink on paper, a luminous jade fill carrying night ink in the
+       dark. The CTA is a lit stone, never a flat block.
+     · THE SPINE IS EMERALD IN BOTH THEMES: a night-side column (#0C2A23
+       light / #040D0A dark) with ivory ink and a BRASS PLAQUE for the
+       active item — the one place a user's location is written in metal.
+     · PARCHMENT LIGHT: #F6F1E6 canvas under warm-white cards (#FFFCF5).
+       Lightness is still the luxury; the paper is warm, not grey.
+     · EMERALD NOCTURNE: #06110D canvas, #0C1E18 surfaces, #122A21 raised —
+       elevation separates by light-jade edge, not by blue-grey.
+     · BRONZE is jewellery, never paint: focus ring, KPI chips, the rule on
+       the sign-in card, the flourish under the dashboard greeting, the
+       plaque line around the logo (+ a champagne "sheen" highlight on the
+       primary button edge).
+     · Copper stays the data voice; the chart ramp is emerald-led.
 
    MEASURED (WCAG 2.1 — نفس رياضيات tests/v2-identity.test.js، كلها ≥ الحد)
    ────────────────────────────────────────────────────────────────────────
-     light  primary 18.49 · secondary 12.62 · muted 7.81 · faint 6.00
-            on the card; faint 5.32 on the canvas (the lowest in the UI).
-     dark   primary 16.26 · secondary 11.67 · muted 7.32 · faint 5.70.
-     sidebar light 16.54 / 12.29 / 8.18 / 6.45 · accent 9.33 · accent-text 13.79
-     sidebar dark  17.72 / 13.16 / 8.77 / 6.91 · accent 9.99 · accent-text 14.77
-     brand text 18.49 on card · white on onyx 17.81 · dark ink on
-     champagne 9.48 · focus 4.03 surface / 3.57 canvas (≥3).
-     brass text-grade 6.06 on card · 5.37 on canvas (jewellery brass stays
-     for ≥3:1 marks, 3.56). every status badge text ≥5.10 on its own tint.
-     every chart stop ≥ 3:1 on the card and on the canvas, both themes.
+     light  primary 14.48 · secondary 9.71 · muted 5.77 · faint 5.12 on the
+            card; faint 4.66 on the canvas (the lowest in the UI).
+     dark   primary 15.01 · secondary 11.67 · muted 8.06 · faint 6.73.
+     sidebar light 13.69 / 10.46 / 8.73 / 7.54 · accent 9.14 · accent-text 11.29
+     sidebar dark  17.27 / 13.16 / 9.86 / 8.05 · accent 11.51 · accent-text 14.55
+     brand text 7.78 on card · ivory ink on emerald 7.69 · night ink on
+     luminous jade 8.01 · focus 3.78 surface / 3.44 canvas (≥3).
+     brass text-grade 6.21 on card · 5.65 on canvas (jewellery brass stays
+     for ≥3:1 marks, 3.78). every status badge text ≥5.61 on its own tint.
+     every chart stop ≥ 3:1 on the card and on the canvas, both themes
+     (chart-2 copper #A85E2E = 4.76 card / 4.33 canvas is the floor).
    tests/v2-identity.test.js recomputes these from this file, so the sheet
    cannot drift lighter than the numbers above without failing.
 
@@ -49,12 +49,12 @@
    ────────────
    Two token layers, one file:
      1. PRIMITIVE  --erp-c-*   raw values, defined for light and redefined
-                               under [data-theme="dark"]. The action-ink
-                               primitives keep the identity-internal names
-                               --erp-c-onyx* (this file is their only owner);
-                               every externally-consumed name — --erp-brass*,
-                               --erp-copper*, --erp-sidebar-*, --erp-c-* —
-                               keeps its exact published name.
+                               under [data-theme="dark"]. The action
+                               primitives are --erp-c-emerald* (this file is
+                               their only owner); every externally-consumed
+                               name — --erp-brass*, --erp-copper*, --erp-c-
+                               forest*, --erp-sidebar-*, --erp-c-* — keeps
+                               its exact published name.
      2. SEMANTIC   --erp-*     declared once, aliasing the primitives. CSS
                                resolves var() per element after the cascade,
                                so the dark block only swaps primitives and
@@ -62,7 +62,8 @@
    No component file is edited: components already read --erp-*, so they
    inherit the new identity from the names they already use. The few rules
    at the bottom are polish that needs a selector (the sidebar's local
-   token remap, the numeral face, the champagne rule on the sign-in card).
+   token remap, the numeral face, the brass plaque on the active nav item,
+   the lit-stone CTA, the parchment rule on the sign-in card).
 
    ROLLBACK
    ────────
@@ -93,74 +94,79 @@
 .erp-preview-banner,
 body {
   /* ── Primitives ─────────────────────────────────────────────────── */
-  /* سلّم القيم هو التسلسل الهرمي: الورقة (#F4F1EA) تحت البطاقة البيضاء
-     بوضوحٍ محسوس، فكل بطاقة تعوم بدل أن تذوب. في الهوية السابقة كان
-     الفارق كريميًّا خفيًّا؛ هنا خطوةُ قيمةٍ مقصودة. */
-  --erp-c-canvas:        #F4F1EA;
-  --erp-c-surface:       #FFFFFF;
+  /* ورقٌ عاجي دافئ تحت بطاقاتٍ أوفى بياضًا: الفخامة في مساحةٍ تتنفّس،
+     والحبرُ زمرديٌّ داكن لا أسود. */
+  --erp-c-canvas:        #F6F1E6;
+  --erp-c-surface:       #FFFCF5;
   --erp-c-raised:        #FFFFFF;
-  --erp-c-sunken:        #EAE5DA;
-  --erp-c-hover:         #F6F3EC;
-  --erp-c-active:        #ECE8DD;
-  --erp-c-line:          #E3DED1;
-  --erp-c-line-strong:   #CDC6B4;
+  --erp-c-sunken:        #EDE6D7;
+  --erp-c-hover:         #F3EDE1;
+  --erp-c-active:        #EBE3D2;
+  --erp-c-line:          #E2D9C7;
+  --erp-c-line-strong:   #CBBFA8;
 
-  --erp-c-ink:           #17130E;
-  --erp-c-ink-2:         #39322A;
-  --erp-c-ink-muted:     #5A5142;
-  --erp-c-ink-faint:     #6C6250;  /* 6.00 card · 5.32 canvas */
+  --erp-c-ink:           #1A2B24;
+  --erp-c-ink-2:         #33473E;
+  --erp-c-ink-muted:     #57685F;
+  --erp-c-ink-faint:     #5F7067;  /* 5.12 card · 4.66 canvas */
 
-  /* الأونيكس: حبرُ الفعل الوحيد. كلُّ زرٍّ وكل حالةٍ نشطة من عائلةٍ
-     espresso سوداء واحدة — بلا تركوازٍ ولا أزرق يزاحمها. */
-  --erp-c-onyx:          #1C1710;
-  --erp-c-onyx-hover:    #2E2718;
-  --erp-c-onyx-active:   #0F0C08;
-  --erp-c-onyx-text:     #17130E;
+  /* الزمرد: لون الفعل الوحيد في الفاتح — تعبئة زمردية عميقة بحبرٍ عاجي
+     عليها (حجرٌ مضاء لا مستطيل مصبوغ)، ونصُّه النصي أغمقَ للمقروئية. */
+  --erp-c-emerald:        #0F5B46;
+  --erp-c-emerald-hover:  #0B4A39;
+  --erp-c-emerald-active: #083A2C;
+  --erp-c-emerald-text:   #0E5C45;  /* 7.78 card */
+  --erp-c-emerald-ink:    #FFF9EE;  /* حبرُ الزرّ — 7.69 على التعبئة */
 
-  --erp-c-brass:         #A9821E;  /* 3.56 card — مجوهرات لا نصوص */
-  --erp-c-brass-text:    #7C5E0E;  /* 6.06 card · 5.37 canvas */
-  --erp-c-brass-bright:  #E0BC5C;
-  --erp-c-brass-soft:    rgba(169, 130, 30, .12);
-  --erp-c-brass-line:    rgba(169, 130, 30, .30);
+  --erp-c-brass:         #A57A2C;  /* 3.78 card — مجوهرات لا نصوص */
+  --erp-c-brass-text:    #7A5A12;  /* 6.21 card · 5.65 canvas */
+  --erp-c-brass-bright:  #E6C478;
+  --erp-c-brass-soft:    rgba(165, 122, 44, .12);
+  --erp-c-brass-line:    rgba(165, 122, 44, .32);
 
-  /* النحاس: لون البيانات. الأونيكس يقول "افعل" والنحاس يقول "انظر" —
+  /* النحاس: لون البيانات. الزمرد يقول "افعل" والنحاس يقول "انظر" —
      ثم تبقى الرسوم مستقلة عن لون الفعل فلا تتزاحم معه. */
-  --erp-c-copper:        #A05A26;
-  --erp-c-copper-text:   #7E4419;
+  --erp-c-copper:        #A85E2E;
+  --erp-c-copper-text:   #82461C;
 
-  --erp-c-success:       #0F7A57;
-  --erp-c-success-text:  #0A5B41;
-  --erp-c-warning:       #B4690E;
-  --erp-c-warning-text:  #8F5208;
-  --erp-c-danger:        #C0392B;
-  --erp-c-danger-text:   #9B2C21;
-  --erp-c-info:          #2F5FD0;
-  --erp-c-info-text:     #2447A8;
-  --erp-c-neutral:       #5B6B65;
-  --erp-c-neutral-text:  #47554F;
+  --erp-c-success:       #0F7A46;
+  --erp-c-success-text:  #0A5C35;
+  --erp-c-warning:       #A86411;
+  --erp-c-warning-text:  #824C08;
+  --erp-c-danger:        #B03428;
+  --erp-c-danger-text:   #8E241A;
+  --erp-c-info:          #2E5CC8;
+  --erp-c-info-text:     #2348A3;
+  --erp-c-neutral:       #5A6A60;
+  --erp-c-neutral-text:  #45544B;
 
   --erp-c-inverse:       #FFFFFF;
-  --erp-c-highlight:     rgba(255, 255, 255, .75);
-  --erp-c-brand-shadow:  rgba(23, 19, 14, .26);
-  --erp-c-plaque-line:   rgba(224, 188, 92, .50);
+  --erp-c-highlight:     rgba(255, 255, 255, .78);
+  --erp-c-brand-shadow:  rgba(16, 43, 34, .22);
+  --erp-c-plaque-line:   rgba(230, 196, 120, .50);
+  /* حبرُ النحاس على اللوحة العاجية: اللوحة عاجيةٌ في الوضعين، فدرجةُ
+     الحبر واحدة — لا تتلوّن مع الثيم وإلا اختفت على العاج. */
+  --erp-c-plaque-accent: #7A5A12;
 
-  /* Sidebar primitives — an espresso spine in BOTH themes. */
-  --erp-c-sidebar:          #16120D;
-  --erp-c-sidebar-line:     rgba(255, 255, 255, .10);
-  --erp-c-sidebar-line-2:   rgba(255, 255, 255, .20);
-  --erp-c-sidebar-ink:      #F5F1E8;
-  --erp-c-sidebar-ink-2:    #D9D1C1;
-  --erp-c-sidebar-muted:    #B5AB94;
-  --erp-c-sidebar-faint:    #A2977F;
-  --erp-c-sidebar-hover:    rgba(255, 255, 255, .06);
-  --erp-c-sidebar-active:   rgba(255, 255, 255, .11);
-  --erp-c-sidebar-accent:   #D9B266;
-  --erp-c-sidebar-paper:    #F0DCAB;
-  --erp-c-sidebar-wash:     rgba(217, 178, 102, .15);
-  --erp-c-sidebar-success:  #6EE7A8;
-  --erp-c-sidebar-info:     #7CB8FF;  /* روابط/تركيز على العمود الأسود — درجة الداكن الساطعة */
-  --erp-c-sidebar-plaque:   #FAF6EC;
-  --erp-c-sidebar-plaque-ink: #17130E;
+  /* Sidebar primitives — the night-side emerald column, IN BOTH THEMES.
+     Light mode keeps a warm page but a dark spine: the column is the room's
+     depth, and the brass plaque on the active item is its only gold. */
+  --erp-c-sidebar:          #0C2A23;
+  --erp-c-sidebar-line:     rgba(244, 239, 226, .10);
+  --erp-c-sidebar-line-2:   rgba(244, 239, 226, .20);
+  --erp-c-sidebar-ink:      #F7F2E4;
+  --erp-c-sidebar-ink-2:    #D9D6C2;
+  --erp-c-sidebar-muted:    #BCC7B4;
+  --erp-c-sidebar-faint:    #ACBAA8;
+  --erp-c-sidebar-hover:    rgba(244, 239, 226, .07);
+  --erp-c-sidebar-active:   rgba(230, 196, 120, .14);
+  --erp-c-sidebar-accent:   #E6C478;
+  --erp-c-sidebar-paper:    #EFDCA8;
+  --erp-c-sidebar-wash:     rgba(230, 196, 120, .14);
+  --erp-c-sidebar-success:  #6FE0A8;
+  --erp-c-sidebar-info:     #8CC2FF;  /* روابط على الزمرد — درجةٌ فاتحة مقروءة */
+  --erp-c-sidebar-plaque:   #FBF6E9;
+  --erp-c-sidebar-plaque-ink: #201A12;
 
   /* ── Semantic surfaces ──────────────────────────────────────────── */
   --erp-background:        var(--erp-c-canvas);
@@ -189,11 +195,14 @@ body {
   --erp-focus-ring-width:  2px;
   --erp-focus-ring-offset: var(--erp-surface);
 
-  /* ── Brand ─────────────────────────────────────────────────────── */
-  --erp-brand:             var(--erp-c-onyx);
-  --erp-brand-hover:       var(--erp-c-onyx-hover);
-  --erp-brand-active:      var(--erp-c-onyx-active);
-  --erp-brand-text:        var(--erp-c-onyx-text);
+  /* ── Brand — emerald is the action, brass is the jewellery ──────── */
+  --erp-brand:             var(--erp-c-emerald);
+  --erp-brand-hover:       var(--erp-c-emerald-hover);
+  --erp-brand-active:      var(--erp-c-emerald-active);
+  --erp-brand-text:        var(--erp-c-emerald-text);
+  /* حبرُ الزرّ الزمردي: عاجيٌّ في الفاتح (7.69) وليليٌّ في الداكن (8.01).
+     منفصلٌ عن --erp-text-inverse — فذلك يخدم تعبئة الخطر. */
+  --erp-cta-ink:           var(--erp-c-emerald-ink);
   --erp-brand-soft:        color-mix(in srgb, var(--erp-brand) 12%, transparent);
   --erp-brand-soft-hover:  color-mix(in srgb, var(--erp-brand) 18%, transparent);
   --erp-primary:           var(--erp-brand);
@@ -214,16 +223,15 @@ body {
   --erp-copper-soft:       color-mix(in srgb, var(--erp-copper) 12%, transparent);
 
   /* ── Chart ramp ─────────────────────────────────────────────────── */
-  /* سُلَّم فئويٌّ دافئ: أونيكسٌ أولًا (حبرُ الهوية)، ثم ذهبيٌّ عميق ونحاس
-     ونبيذي وزيتوني ورمادي دخاني. كل درجة ≥ 3:1 على السطح والكانفس في
-     الوضعين (non-text contrast 1.4.11) — وبين كل درجتين فرقٌ في الدرجة
-     اللونية لا في السطوع وحده. */
-  --erp-chart-1:           var(--erp-c-ink);
+  /* سُلَّم فئويٌّ زمردي القيادة: الزمرد يعلّم السلسلة الأولى (لون الفعل
+     يحمل الرقم الأول)، ثم نحاس البيانات، ثم أزرق ونبيذي وزيتوني ودخاني.
+     كل درجة ≥ 3:1 على السطح والكانفس في الوضعين (1.4.11). */
+  --erp-chart-1:           #14735B;
   --erp-chart-2:           var(--erp-c-copper);
-  --erp-chart-3:           #8F6E14;
-  --erp-chart-4:           #713A4B;
-  --erp-chart-5:           #5C6528;
-  --erp-chart-6:           #55606A;
+  --erp-chart-3:           #3F5187;
+  --erp-chart-4:           #7A4B63;
+  --erp-chart-5:           #66702B;
+  --erp-chart-6:           #5A6570;
   --erp-chart-track:       var(--erp-c-sunken);
   --erp-chart-grid:        var(--erp-c-line);
   --erp-chart-label:       var(--erp-c-ink-faint);
@@ -299,69 +307,88 @@ body {
 [data-theme="dark"] .erp-pal-backdrop,
 [data-theme="dark"] .erp-preview-banner,
 [data-theme="dark"] body {
-  --erp-c-canvas:        #0B0907;
-  --erp-c-surface:       #151210;
-  --erp-c-raised:        #1C1814;
-  --erp-c-sunken:        #070505;
-  --erp-c-hover:         #1B1713;
-  --erp-c-active:        #241E18;
-  --erp-c-line:          rgba(255, 255, 255, .09);
-  --erp-c-line-strong:   rgba(255, 255, 255, .18);
+  --erp-c-canvas:        #06110D;
+  --erp-c-surface:       #0C1E18;
+  --erp-c-raised:        #122A21;
+  --erp-c-sunken:        #030B08;
+  --erp-c-hover:         #10251D;
+  --erp-c-active:        #163229;
+  --erp-c-line:          #1E322A;
+  --erp-c-line-strong:   #33483F;
 
-  --erp-c-ink:           #F3EFE7;
-  --erp-c-ink-2:         #D2CCC0;
-  --erp-c-ink-muted:     #ABA192;
-  --erp-c-ink-faint:     #978D7C;
+  /* الليل الزمردي: الحبرُ عاجيٌّ مائل للأخضر، لا أبيضَ باردًا ولا ذهبيًا.
+     الدرجات الأربع تُقاس على #0C1E18: 15.01 / 11.67 / 8.06 / 6.73. */
+  --erp-c-ink:           #F3EFE0;
+  --erp-c-ink-2:         #D3D6C3;
+  --erp-c-ink-muted:     #A7B5A4;
+  --erp-c-ink-faint:     #96A693;  /* 6.73 card · 7.47 canvas */
 
-  /* أونيكس الداكن: زرُّ الفعل يقلب شامبانيا — الحبرُ الداكن على تعبئةٍ
-     ذهبية هو توقيعُ الداكن الفاخر (نفسُ عقد الإرث: داكنٌ يحمل حبرًا
-     داكنًا على الذهب، لا أبيضَ على ذهب). */
-  --erp-c-onyx:          #D9B56A;
-  --erp-c-onyx-hover:    #E6C57F;
-  --erp-c-onyx-active:   #C8A457;
-  --erp-c-onyx-text:     #E6C882;
+  /* في الليل يصير الزمردُ يشمًا مضيئًا (polished jade): تعبئةٌ لامعة
+     تحمل حبرًا ليليًا (8.01:1)، ونصُّه النصي #7FE0BC يُقرأ على السطح. */
+  --erp-c-emerald:        #3FBF93;
+  --erp-c-emerald-hover:  #57D6A9;
+  --erp-c-emerald-active: #33A87F;
+  --erp-c-emerald-text:   #7FE0BC;  /* 10.94 card */
+  --erp-c-emerald-ink:    #04170F;  /* 8.01 على التعبئة المضيئة */
 
-  --erp-c-brass:         #E2C274;
-  --erp-c-brass-text:    #E6C882;
-  --erp-c-brass-bright:  #F0D28A;
-  --erp-c-brass-soft:    rgba(226, 194, 116, .12);
-  --erp-c-brass-line:    rgba(226, 194, 116, .34);
+  --erp-c-brass:         #E3C27E;
+  --erp-c-brass-text:    #E9CD93;
+  --erp-c-brass-bright:  #F2DBA8;
+  --erp-c-brass-soft:    rgba(227, 194, 126, .12);
+  --erp-c-brass-line:    rgba(227, 194, 126, .34);
 
   /* النحاس في الداكن: أفتحُ من نظيره الفاتح، لأن السطح نفسه أغمق
      فيرتفع العزمُ اللوني بلا أن يفقد الحدّ 3:1. */
-  --erp-c-copper:        #D9925A;
-  --erp-c-copper-text:   #E5A871;
+  --erp-c-copper:        #E39A66;
+  --erp-c-copper-text:   #EDB183;
 
-  /* سُلَّم الرسوم في الداكن: نفس الترتيب، بدرجاتٍ أفتح (desaturated
-     lifts) — لا قلبٍ للألوان، فالرسم يبقى هو هو بين الوضعين. */
-  --erp-chart-1:         #E0BE74;
-  --erp-chart-2:         #D9925A;
-  --erp-chart-3:         #B9C47E;
-  --erp-chart-4:         #CE9FB0;
-  --erp-chart-5:         #9FB6C4;
-  --erp-chart-6:         #C9BFAF;
-  --erp-chart-track:     #1C1814;
-  --erp-chart-grid:      rgba(255, 255, 255, .10);
+  /* سُلَّم الرسوم في الداكن: نفس ترتيب الفاتح (زمرد ← نحاس ← أزرق ←
+     نبيذي ← زيتوني ← دخاني) بدرجاتٍ أفتح، فلا يتبدّل معنى اللون بين
+     الوضعين — الزمرد هو القيادة في الاثنين. */
+  --erp-chart-1:         #5FD3A6;
+  --erp-chart-2:         #E39A66;
+  --erp-chart-3:         #93A7E8;
+  --erp-chart-4:         #D79BB4;
+  --erp-chart-5:         #B8C46E;
+  --erp-chart-6:         #A9B6C2;
+  --erp-chart-track:     #122A21;
+  --erp-chart-grid:      rgba(244, 239, 226, .10);
   --erp-chart-label:     var(--erp-c-ink-faint);
 
-  --erp-c-success:       #4ADE80;
-  --erp-c-success-text:  #4ADE80;
-  --erp-c-warning:       #FDB022;
-  --erp-c-warning-text:  #FDB022;
-  --erp-c-danger:        #F87171;
-  --erp-c-danger-text:   #F87171;
-  --erp-c-info:          #7CB8FF;
-  --erp-c-info-text:     #7CB8FF;
-  --erp-c-neutral:       #C4D1CA;
-  --erp-c-neutral-text:  #C4D1CA;
+  --erp-c-success:       #5FE0A8;
+  --erp-c-success-text:  #5FE0A8;
+  --erp-c-warning:       #F3C15E;
+  --erp-c-warning-text:  #F3C15E;
+  --erp-c-danger:        #F18B7B;
+  --erp-c-danger-text:   #FF9A8A;
+  --erp-c-info:          #8CC2FF;
+  --erp-c-info-text:     #8CC2FF;
+  --erp-c-neutral:       #C6D3C9;
+  --erp-c-neutral-text:  #C6D3C9;
 
-  --erp-c-inverse:       #17130E;
+  --erp-c-inverse:       #0A1A14;
   --erp-c-highlight:     rgba(255, 255, 255, .05);
-  --erp-c-brand-shadow:  rgba(0, 0, 0, .40);
+  --erp-c-brand-shadow:  rgba(0, 0, 0, .45);
+  --erp-c-plaque-accent: #7A5A12;  /* اللوحة عاجيةٌ في الوضعين أيضًا */
 
-  --erp-c-sidebar:          #0B0806;
-  --erp-c-sidebar-line:     rgba(255, 255, 255, .08);
-  --erp-c-sidebar-line-2:   rgba(255, 255, 255, .18);
+  --erp-c-sidebar:          #040D0A;
+  --erp-c-sidebar-line:     rgba(244, 239, 226, .08);
+  --erp-c-sidebar-line-2:   rgba(244, 239, 226, .18);
+  /* حبرُ العمود في الداكن يعود فاتحًا — قيمُ الفاتح داكنةٌ ولا تصلح
+     لسطحٍ شبه أسود (عقد الاختبار يسقط إن انقلبت). */
+  --erp-c-sidebar-ink:      #F5F0E1;
+  --erp-c-sidebar-ink-2:    #D6D4C1;
+  --erp-c-sidebar-muted:    #B0BBA9;
+  --erp-c-sidebar-faint:    #9BAA97;
+  --erp-c-sidebar-hover:    rgba(244, 239, 226, .06);
+  --erp-c-sidebar-active:   rgba(227, 194, 126, .15);
+  --erp-c-sidebar-accent:   #E3C27E;
+  --erp-c-sidebar-paper:    #F0DCAB;
+  --erp-c-sidebar-wash:     rgba(227, 194, 126, .15);
+  --erp-c-sidebar-success:  #6FE0A8;
+  --erp-c-sidebar-info:     #8CC2FF;
+  --erp-c-sidebar-plaque:   #FBF6E9;
+  --erp-c-sidebar-plaque-ink: #201A12;
 
   /* Dark surfaces separate by elevation, not by a black veil inside a
      near-black canvas (measured 1.1:1 cap — see erp-themes.css). */
@@ -374,7 +401,10 @@ body {
   --erp-surface-raised: var(--erp-c-raised);
   --erp-surface-sunken: var(--erp-c-sunken);
   --erp-text-inverse:   var(--erp-c-inverse);
-  --erp-brand-text:     var(--erp-c-onyx-text);
+  --erp-brand-text:     var(--erp-c-emerald-text);
+  /* حبر الزرّ في الداكن: ليلٌ على يشمٍ مضيء (8.01:1) — العقد نفسه في
+     الوضعين، والزمرد هو لون الفعل دائمًا. */
+  --erp-cta-ink:        var(--erp-c-emerald-ink);
   --erp-success-text:   var(--erp-c-success-text);
   --erp-warning-text:   var(--erp-c-warning-text);
   --erp-danger-text:    var(--erp-c-danger-text);
@@ -395,9 +425,21 @@ html[data-theme="dark"] .erp-v2 {
 
 /* ═══════════ Component polish — selectors, tokens only ═══════════ */
 
-/* The sidebar is an espresso spine in BOTH themes: remap the shared names
-   locally so every existing nav rule (hover, active bar, group titles,
-   role row) repaints without a single duplicated selector. */
+/* A whisper of emerald light from the top of the content — the parchment is
+   lit, not flat. The sign-in page keeps its own stronger aura (its selector
+   is more specific, erp-auth.css). */
+.erp-v2 .erp-shell__main {
+  background:
+    radial-gradient(120% 46% at 50% -6%,
+      color-mix(in srgb, var(--erp-brand) 5%, transparent) 0%,
+      transparent 68%),
+    var(--erp-background);
+}
+
+/* The sidebar is a night-emerald spine in BOTH themes (parchment room,
+   dark column): remap the shared names locally so every existing nav rule
+   (hover, active plaque, group titles, role row) repaints without a single
+   duplicated selector. */
 .erp-v2 .erp-shell__sidebar {
   --erp-surface:        var(--erp-sidebar-bg);
   --erp-surface-raised: var(--erp-sidebar-bg);
@@ -421,11 +463,12 @@ html[data-theme="dark"] .erp-v2 {
 }
 
 /* The logo file carries its own cream background, so it sits on a matching
-   ivory plaque — a framed emblem rather than a pale square on espresso. */
+   ivory plaque with a champagne ring — a framed emblem, not a pasted square. */
 .erp-v2 .erp-shell__brand-mark {
   background: var(--erp-sidebar-plaque);
   border-color: var(--erp-sidebar-plaque-line);
   color: var(--erp-sidebar-plaque-ink);
+  box-shadow: 0 0 0 1px var(--erp-plaque-line);
 }
 .erp-v2 .erp-shell__brand-mark [data-v2-shell-logo] {
   background: transparent;
@@ -486,13 +529,13 @@ html[data-theme="dark"] .erp-v2 {
   letter-spacing: -.01em;
 }
 
-/* Bilingual micro-labels stay quiet onyx: jewellery brass at 11px fails AA. */
+/* Bilingual micro-labels stay quiet bronze: jewellery brass at 11px fails AA. */
 .erp-v2 .erp-eyebrow {
   color: var(--erp-brand-text);
   letter-spacing: .12em;
 }
 
-/* Inputs answer in onyx, the action colour, not in grey. */
+/* Inputs answer in emerald, the action colour, not in grey. */
 .erp-v2 .erp-input:focus,
 .erp-v2 .erp-select:focus {
   border-color: var(--erp-brand);
@@ -503,18 +546,22 @@ html[data-theme="dark"] .erp-v2 {
   border-block-end-color: var(--erp-border-strong);
 }
 
-/* Primary action: the only filled surface in the shell, so it carries the
-   light — a hairline highlight where the light lands, a soft lift beneath. */
-.erp-v2 .erp-btn--primary {
-  background: var(--erp-brand);
-  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand) 58%);
-  border-color: var(--erp-brand);
-  box-shadow: 0 1px 2px var(--erp-brand-shadow), 0 8px 20px -12px var(--erp-brand-shadow);
+/* Dashboard head: a champagne flourish closes the greeting band — the one
+   ornament the dashboard is allowed, mirroring the sign-in card's cap. */
+.erp-v2 .erp-dash-head {
+  position: relative;
+  padding-block-end: var(--erp-space-4);
 }
-.erp-v2 .erp-btn--primary:hover:not(:disabled) {
-  background: var(--erp-brand-hover);
-  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand-active) 58%);
-  border-color: var(--erp-brand-hover);
+.erp-v2 .erp-dash-head::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  height: 2px;
+  border-radius: var(--erp-radius-full);
+  background: linear-gradient(90deg, transparent, var(--erp-brass) 22%, var(--erp-brass-bright) 50%, var(--erp-brass) 78%, transparent);
+  opacity: .5;
+  pointer-events: none;
 }
 
 /* Sign-in: a champagne rule caps the ivory card, like a ledger heading. */
@@ -563,4 +610,432 @@ html[data-theme="dark"] .erp-v2 {
     --erp-shadow-xl: none;
     --erp-highlight: transparent;
   }
+}
+
+/* ═══════════ KARIM SIGNATURE — editorial operations, not another ERP ═══ */
+.erp-v2,
+.erp-fab-host,
+.erp-offline-bar,
+.erp-pal-backdrop,
+.erp-preview-banner,
+body {
+  /* العمق الزمردي الذي يُكتب عليه بالعاج: هو نفسه --erp-c-emerald-active
+     في الفاتح وليلٌ أعمق في الداكن — اسمٌ منشورٌ واحد لا يكسر أي مستهلك. */
+  --erp-c-forest: #083A2C;
+  --erp-c-forest-raised: #0F5B46;
+  --erp-c-forest-ink: #FFF9EE;
+  --erp-c-forest-muted: #C7DDD3;
+  --erp-hero: var(--erp-c-forest);
+  --erp-hero-raised: var(--erp-c-forest-raised);
+  --erp-hero-ink: var(--erp-c-forest-ink);
+  --erp-hero-muted: var(--erp-c-forest-muted);
+  --erp-sidebar-width: 264px;
+  --erp-header-height: 64px;
+  --erp-content-max: 1600px;
+  --erp-text-xs: 12px;
+  --erp-text-sm: 13px;
+  --erp-text-base: 14px;
+  --erp-text-md: 15px;
+  --erp-text-lg: 18px;
+  --erp-text-xl: 24px;
+  --erp-text-2xl: 30px;
+}
+
+[data-theme="dark"] .erp-v2,
+[data-theme="dark"] body {
+  --erp-c-forest: #0A241C;
+  --erp-c-forest-raised: #103A2C;
+  --erp-c-forest-ink: #F3EFE0;
+  --erp-c-forest-muted: #BBD3C8;
+}
+
+.erp-v2 .erp-shell__content {
+  padding: var(--erp-space-6) var(--erp-space-7);
+  padding-block-end: calc(var(--erp-space-8) + 56px);
+}
+
+.erp-v2 .erp-shell__header {
+  padding-inline: var(--erp-space-6);
+  background: color-mix(in srgb, var(--erp-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.erp-v2 .erp-shell__brand {
+  min-height: 88px;
+  padding-inline: var(--erp-space-5);
+  border-block-end-color: var(--erp-sidebar-line);
+}
+.erp-v2 .erp-shell__brand-mark {
+  inline-size: 50px;
+  block-size: 50px;
+  border-radius: 3px 14px 3px 14px;
+  box-shadow: 0 0 0 1px var(--erp-plaque-line), 0 8px 20px -14px var(--erp-brand-shadow);
+}
+.erp-v2 .erp-shell__brand-text strong { font-size: var(--erp-text-md); }
+.erp-v2 .erp-shell__brand-text small { margin-block-start: 3px; }
+.erp-v2 .erp-shell__nav { padding: var(--erp-space-4) var(--erp-space-3); }
+.erp-v2 .erp-nav-group + .erp-nav-group { margin-block-start: var(--erp-space-5); }
+.erp-v2 .erp-nav-group__title {
+  min-block-size: 28px;
+  padding-inline: var(--erp-space-3);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.erp-v2 .erp-nav-item {
+  min-block-size: 42px;
+  border: 1px solid transparent;
+  border-radius: 3px 12px 3px 12px;
+}
+/* الوجهة الحالية لوحةٌ نحاسية مرصودة في العمود الزمردي: عاجٌّ ورقّها
+   نحاسي، وحبرُها إسبريسو — الموضع الوحيد الذي يكتب فيه الواجهة بالمعدن.
+   أيقونةٌ نحاسية داكنة (5.3:1) وشرطةُ نحاس على الحافة: أربع إشارات
+   غير لونية مع الوزن وaria-current، فتبقى مميّزة بالأبيض والأسود. */
+.erp-v2 .erp-nav-item.is-active {
+  background: var(--erp-sidebar-plaque);
+  border-color: var(--erp-sidebar-plaque-line);
+  color: var(--erp-sidebar-plaque-ink);
+  box-shadow: 0 12px 26px -18px var(--erp-c-sidebar), inset 0 1px 0 var(--erp-highlight);
+}
+.erp-v2 .erp-nav-item.is-active::before {
+  inset-block: 9px;
+  inline-size: 3px;
+  background: var(--erp-plaque-accent);
+}
+.erp-v2 .erp-nav-item.is-active .ji { color: var(--erp-plaque-accent); }
+.erp-v2 .erp-shell__nav-foot { padding: var(--erp-space-4) var(--erp-space-5); }
+.erp-v2 .erp-role__dot { flex: none; }
+.erp-v2 .erp-crumb-btn { display: inline-flex; align-items: center; min-block-size: 24px; }
+
+.erp-v2 .erp-btn,
+.erp-v2 .erp-icon-btn,
+.erp-v2 .erp-input,
+.erp-v2 .erp-select,
+.erp-v2 .erp-search-trigger {
+  border-radius: 4px 10px 4px 10px;
+}
+/* الفعل الأساسي حجرٌ زمرديٌّ مضاء: تدرّجٌ من الحافة المضيئة إلى العمق
+   (يشتدّ في الداكن إلى يشمٍ لامع)، وخطُّ شامبانيا رفيعٌ حيث يقع الضوء،
+   وظلٌّ زمردي يرفعه عن الورق. الحبرُ يتكفّل به --erp-cta-ink: عاجيٌّ
+   على الزمرد العميق في الفاتح، وليليٌّ على اليشم المضيء في الداكن. */
+.erp-v2 .erp-btn--primary {
+  background: var(--erp-brand);
+  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand) 52%, var(--erp-brand-active));
+  border-color: var(--erp-brand-active);
+  color: var(--erp-cta-ink);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--erp-brass-bright) 42%, transparent),
+    0 10px 24px -16px var(--erp-brand-shadow);
+}
+.erp-v2 .erp-btn--primary:hover:not(:disabled) {
+  background: var(--erp-brand-hover);
+  background-image: linear-gradient(180deg, var(--erp-brand-hover), var(--erp-brand) 60%, var(--erp-brand-active));
+  border-color: var(--erp-brand);
+  color: var(--erp-cta-ink);
+}
+
+.erp-v2 .erp-card {
+  border-radius: 3px 18px 3px 18px;
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--erp-c-ink) 3%, transparent), 0 16px 42px -36px var(--erp-c-ink);
+}
+.erp-v2 .erp-card__head { padding: var(--erp-space-4) var(--erp-space-5); }
+.erp-v2 .erp-card__body { padding: var(--erp-space-5); }
+.erp-v2 .erp-card__title { font-size: var(--erp-text-md); }
+.erp-v2 .erp-eyebrow { letter-spacing: .14em; }
+
+/* The greeting is a editorial cover; the KPI ledger physically overlaps it. */
+.erp-v2 .erp-dash-head,
+.erp-v2 .erp-brief__lock {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-block-size: 184px;
+  margin: 0;
+  padding: var(--erp-space-7) var(--erp-space-8) 56px;
+  border: 1px solid var(--erp-c-forest);
+  border-radius: 4px 26px 4px 26px;
+  background:
+    radial-gradient(circle at 12% 120%, color-mix(in srgb, var(--erp-brass-bright) 13%, transparent), transparent 42%),
+    linear-gradient(135deg, var(--erp-hero-raised), var(--erp-hero) 64%);
+  box-shadow: 0 26px 60px -44px var(--erp-c-forest);
+  color: var(--erp-hero-ink);
+}
+.erp-v2 .erp-dash-head { align-items: center; flex-wrap: nowrap; }
+.erp-v2 .erp-dash-head::before,
+.erp-v2 .erp-brief__lock::before {
+  content: "KARIM  /  EXECUTIVE PULSE";
+  position: absolute;
+  inset-block-start: 18px;
+  inset-inline-start: 32px;
+  z-index: calc(var(--erp-z-base) + 1);
+  inline-size: auto;
+  block-size: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--erp-hero-muted);
+  font-family: var(--erp-font-sans);
+  font-size: 11px;
+  font-weight: var(--erp-fw-semibold);
+  letter-spacing: .2em;
+  line-height: 1;
+  white-space: nowrap;
+  direction: ltr;
+}
+.erp-v2 .erp-dash-head::after,
+.erp-v2 .erp-brief__lock::after {
+  content: "";
+  position: absolute;
+  z-index: calc(var(--erp-z-base) - 1);
+  inline-size: 220px;
+  block-size: 220px;
+  inset-inline-end: -54px;
+  inset-block-end: -116px;
+  border: 1px solid var(--erp-brass-line);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 32px color-mix(in srgb, var(--erp-brass-bright) 4%, transparent), 0 0 0 64px color-mix(in srgb, var(--erp-brass-bright) 3%, transparent);
+  opacity: 1;
+}
+.erp-v2 .erp-dash-title,
+.erp-v2 .erp-brief__name {
+  position: relative;
+  z-index: calc(var(--erp-z-base) + 1);
+  color: var(--erp-hero-ink);
+  font-family: 'Amiri', var(--erp-font-display);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.erp-v2 .erp-dash-sub {
+  position: relative;
+  z-index: calc(var(--erp-z-base) + 1);
+  margin-block-start: var(--erp-space-2);
+  color: var(--erp-hero-muted);
+  font-size: var(--erp-text-base);
+}
+.erp-v2 .erp-dash-controls { position: relative; z-index: calc(var(--erp-z-base) + 2); }
+.erp-v2 .erp-dash-head .erp-seg {
+  background: color-mix(in srgb, var(--erp-hero-ink) 7%, transparent);
+  border-color: color-mix(in srgb, var(--erp-hero-ink) 20%, transparent);
+  border-radius: 4px 12px 4px 12px;
+}
+.erp-v2 .erp-dash-head .erp-seg button { color: var(--erp-hero-muted); }
+.erp-v2 .erp-dash-head .erp-seg button:hover { color: var(--erp-hero-ink); }
+.erp-v2 .erp-dash-head .erp-seg button.is-active {
+  background: var(--erp-brass-bright);
+  color: var(--erp-c-forest);
+  box-shadow: none;
+}
+.erp-v2 .erp-dash-head .erp-seg__label { color: var(--erp-hero-muted); }
+
+.erp-v2 .erp-brief__lock {
+  display: flex;
+  align-items: center;
+  min-block-size: 152px;
+  padding-block-start: var(--erp-space-8);
+  padding-block-end: var(--erp-space-7);
+}
+.erp-v2 .erp-brief__lock::before { content: "KARIM  /  MANAGER BRIEFING"; }
+.erp-v2 .erp-brief__when { color: var(--erp-hero-muted); }
+.erp-v2 .erp-brief__lock .erp-btn {
+  border-color: color-mix(in srgb, var(--erp-hero-ink) 26%, transparent);
+  background: color-mix(in srgb, var(--erp-hero-ink) 7%, transparent);
+  color: var(--erp-hero-ink);
+}
+.erp-v2 .erp-brief__lock .erp-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--erp-hero-ink) 13%, transparent); }
+.erp-v2 .erp-v2-briefing {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.erp-v2 .erp-v2-briefing > .erp-card__body { padding: 0; }
+
+.erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card,
+.erp-v2 .erp-brief > .erp-kpis {
+  position: relative;
+  z-index: calc(var(--erp-z-base) + 3);
+  margin: -34px var(--erp-space-6) var(--erp-space-6);
+  border: 1px solid var(--erp-border);
+  border-radius: 3px 18px 3px 18px;
+  background: var(--erp-surface);
+  box-shadow: 0 20px 50px -38px var(--erp-c-ink);
+  overflow: hidden;
+}
+.erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card > .erp-card__head {
+  padding: var(--erp-space-4) var(--erp-space-5) var(--erp-space-2);
+  border-block-end: 0;
+}
+.erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card > .erp-card__body { padding: 0 var(--erp-space-3) var(--erp-space-3); }
+.erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card .erp-kpis { margin: 0; }
+.erp-v2 .erp-brief > .erp-kpis { padding: var(--erp-space-2); }
+/* سجل المؤشرات المرقّم نفسه (الخلايا والترقيم وأعمدة التجاوب) انتقل إلى بيته
+   العام في erp-components.css على `.erp-v2 .erp-kpis` — لغة واحدة لكل
+   الشاشات (2026-10-26). ما بقي هنا هو هامش الشريط داخل الغلافين فقط. */
+
+.erp-v2 [data-erp-dash] > .erp-card:not(.erp-dash-head + .erp-card) { margin-block-end: var(--erp-space-6); }
+.erp-v2 [data-erp-dash] .erp-dash-grid,
+.erp-v2 .erp-brief .erp-dash-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--erp-space-5);
+  margin-block-end: var(--erp-space-5);
+}
+.erp-v2 [data-erp-dash] .erp-dash-grid > *,
+.erp-v2 .erp-brief .erp-dash-grid > * { min-inline-size: 0; grid-column: span 4; }
+.erp-v2 [data-erp-dash] .erp-dash-grid > :first-child { grid-column: span 8; }
+.erp-v2 .erp-brief .erp-dash-grid > :first-child { grid-column: span 8; }
+.erp-v2 .erp-brief .erp-dash-grid > :last-child { grid-column: span 12; }
+.erp-v2 .erp-brief__decisions { margin-block-start: var(--erp-space-5); }
+.erp-v2 [data-erp-dash] .erp-ai-tip { background: var(--erp-surface-hover); }
+
+.erp-v2 .erp-delta { border-radius: 3px 8px 3px 8px; }
+.erp-v2 .erp-top__track { block-size: 6px; }
+.erp-v2 .erp-top__fill { background: linear-gradient(90deg, var(--erp-brand-hover), var(--erp-brass-bright)); }
+.erp-v2 .erp-mini { min-block-size: 54px; }
+.erp-v2 .erp-sand { border-radius: 3px 18px 0 0; }
+
+/* ── صقل لوحة الموجز: بطاقاتٌ لا تترك فراغًا ───────────────────────────
+   «أحدث الفواتير» وحدها طويلةٌ بطبعها — سطرٌ لكل سند — فتمدّ صفَّ الشبكة
+   إلى ارتفاعها وتترك تحت جاراتها القصيرة فراغًا بعرض بطاقة. تُسقَف بخمسة
+   سطور مرئية وتُمرَّر داخليًا؛ أما اليومُ كاملًا فله زرّه «كل الفواتير».
+   الارتفاع سقفٌ لا ثابت: قائمةٌ من سطرين تبقى بارتفاعها. */
+.erp-v2 [data-v2-briefing] .erp-sand__rows {
+  max-block-size: 340px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* شبكةٌ صفّية تسوّي كل صفٍّ على أطول بطاقةٍ فيه، فتبقى تحت القصيرة فرجةٌ
+   بعرض بطاقة. الأعمدة تكدّس البطاقات بارتفاعاتها الطبيعية وتوازن العمودين،
+   فلا فراغ. تحت 761px تعود عمودًا واحدًا. */
+@media (min-width: 761px) {
+  .erp-v2 [data-v2-briefing] .erp-dash-grid {
+    display: block;
+    columns: 2;
+    column-gap: var(--erp-space-5);
+  }
+  .erp-v2 [data-v2-briefing] .erp-dash-grid > * {
+    break-inside: avoid;
+    margin-block-end: var(--erp-space-5);
+  }
+}
+
+/* حافةٌ ذهبية رفيعة تفصل رأس البطاقة عن جسدها: لغةُ السجل، لا الخطأ. */
+.erp-v2 [data-v2-briefing] .erp-card__head {
+  border-block-end: 1px solid var(--erp-brass-line);
+}
+
+/* عمقٌ من ظلّين — قريبٌ حادّ ومحيطيٌّ ناعم — وحافةٌ تشمبان عند التحويم
+   وحده. أجهزةُ اللمس لا تحوّم، فتبقى البطاقات ساكنةً هناك. */
+.erp-v2 [data-v2-briefing] .erp-card {
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--erp-c-ink) 7%, transparent),
+              0 20px 44px -38px color-mix(in srgb, var(--erp-c-forest) 80%, transparent);
+  transition: box-shadow var(--erp-duration-base) var(--erp-ease-out),
+              border-color var(--erp-duration-fast) var(--erp-ease-out),
+              transform var(--erp-duration-fast) var(--erp-ease-out);
+}
+@media (hover: hover) {
+  .erp-v2 [data-v2-briefing] .erp-card:hover {
+    border-color: var(--erp-brass-line);
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--erp-c-ink) 8%, transparent),
+                0 30px 60px -36px color-mix(in srgb, var(--erp-c-forest) 90%, transparent);
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 [data-v2-briefing] .erp-card,
+  .erp-v2 [data-v2-briefing] .erp-card:hover { transform: none; transition: none; }
+}
+
+/* الرقم بطلُ الخلية: عرضُ حروفٍ ثابت وأرقامٌ تصطفّ عبر الستة. */
+.erp-v2 [data-v2-briefing] .erp-kpi__value {
+  font-family: var(--erp-font-mono);
+  letter-spacing: -.02em;
+}
+.erp-v2 [data-v2-briefing] .erp-kpi:hover {
+  background: color-mix(in srgb, var(--erp-brass-bright) 8%, transparent);
+}
+
+/* (كتلة ≥1360px كانت لسجل المؤشرات وحدها — انتقلت مع المكوّن إلى
+   erp-components.css. لا قاعدة عرضية تُخترع هنا.) */
+
+@media (max-width: 1100px) {
+  .erp-v2 [data-erp-dash] .erp-dash-grid > *,
+  .erp-v2 .erp-brief .erp-dash-grid > *,
+  .erp-v2 [data-erp-dash] .erp-dash-grid > :first-child,
+  .erp-v2 .erp-brief .erp-dash-grid > :first-child { grid-column: span 6; }
+  .erp-v2 .erp-brief .erp-dash-grid > :last-child { grid-column: span 12; }
+}
+
+@media (max-width: 760px) {
+  .erp-v2 .erp-shell__content { padding: var(--erp-space-4); padding-block-end: calc(var(--erp-space-6) + 64px); }
+  .erp-v2 .erp-dash-head { flex-wrap: wrap; gap: var(--erp-space-4); }
+  .erp-v2 .erp-dash-controls { margin-inline-start: 0; inline-size: 100%; }
+  .erp-v2 .erp-dash-head,
+  .erp-v2 .erp-brief__lock { padding-inline: var(--erp-space-5); }
+  .erp-v2 .erp-dash-head::before,
+  .erp-v2 .erp-brief__lock::before { inset-inline-start: 20px; }
+  .erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card,
+  .erp-v2 .erp-brief > .erp-kpis { margin-inline: var(--erp-space-3); }
+  .erp-v2 [data-erp-dash] .erp-dash-grid > *,
+  .erp-v2 .erp-brief .erp-dash-grid > *,
+  .erp-v2 [data-erp-dash] .erp-dash-grid > :first-child,
+  .erp-v2 .erp-brief .erp-dash-grid > :first-child,
+  .erp-v2 .erp-brief .erp-dash-grid > :last-child { grid-column: span 12; }
+}
+
+@media (max-width: 640px) {
+  .erp-v2 { --erp-text-base: 14px; }
+  .erp-v2 .erp-shell__header { padding-inline: var(--erp-space-2); }
+  .erp-v2 .erp-shell__content { padding: var(--erp-space-3); padding-block-end: calc(var(--erp-space-6) + 64px); }
+  .erp-v2 .erp-dash-head { min-block-size: 204px; padding-block-start: var(--erp-space-8); padding-block-end: 48px; }
+  .erp-v2 .erp-brief__lock { min-block-size: 144px; flex-wrap: wrap; gap: var(--erp-space-2); }
+  .erp-v2 .erp-dash-title,
+  .erp-v2 .erp-brief__name { font-size: 29px; }
+  .erp-v2 .erp-dash-sub { font-size: var(--erp-text-sm); }
+  .erp-v2 .erp-dash-head::after,
+  .erp-v2 .erp-brief__lock::after { inline-size: 160px; block-size: 160px; }
+  .erp-v2 .erp-dash-head .erp-seg { inline-size: 100%; flex-wrap: nowrap; }
+  .erp-v2 .erp-dash-head .erp-seg button { flex: 1 1 0; padding-inline: var(--erp-space-2); }
+  .erp-v2 .erp-dash-head .erp-seg__label { display: none; }
+  .erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card > .erp-card__head { padding-inline: var(--erp-space-4); }
+  .erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card > .erp-card__body { padding-inline: var(--erp-space-1); }
+  .erp-v2 [data-erp-dash] .erp-card__head,
+  .erp-v2 .erp-brief .erp-card__head { padding: var(--erp-space-4); }
+  .erp-v2 [data-erp-dash] .erp-card__body,
+  .erp-v2 .erp-brief .erp-card__body { padding: var(--erp-space-4); }
+  .erp-v2 .erp-input,
+  .erp-v2 .erp-select { font-size: 16px; }
+}
+
+@media (max-width: 400px) {
+  .erp-v2 .erp-shell__header { gap: var(--erp-space-1); padding-inline: var(--erp-space-1); }
+}
+
+@media (max-width: 380px) {
+  /* يختفي النص من الترويسة على أضيق الشاشات، ويبقى عنوان المستند في شجرة
+     الوصول: لا شاشة تُفتح بلا h1. */
+  .erp-v2 .erp-shell__page-title {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+@media print {
+  .erp-v2 .erp-shell__main { background: none; }
+  .erp-v2 .erp-dash-head,
+  .erp-v2 .erp-brief__lock { min-block-size: 0; padding: 16px; background: none; color: var(--erp-text-primary); }
+  .erp-v2 .erp-dash-head::before,
+  .erp-v2 .erp-dash-head::after,
+  .erp-v2 .erp-brief__lock::before,
+  .erp-v2 .erp-brief__lock::after { display: none; }
+  .erp-v2 .erp-dash-title,
+  .erp-v2 .erp-brief__name,
+  .erp-v2 .erp-dash-sub,
+  .erp-v2 .erp-brief__when { color: var(--erp-text-primary); }
+  .erp-v2 [data-erp-dash] > .erp-dash-head + .erp-card,
+  .erp-v2 .erp-brief > .erp-kpis { margin: 0 0 16px; box-shadow: none; }
 }

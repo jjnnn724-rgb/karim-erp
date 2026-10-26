@@ -25,93 +25,16 @@
    `minmax(0, 1fr)` rather than `1fr`: a bare `1fr` track still refuses to go
    under its content's min-content width, and that is how a strip starts
    scrolling sideways. */
-.erp-v2 .erp-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
-  gap: var(--erp-space-3);
-  margin: 0 0 var(--erp-space-4);
-  padding: 0;
-  list-style: none;
-}
-@media (max-width: 1439px) {
-  .erp-v2 .erp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-.erp-v2 .erp-kpi {
-  background: var(--erp-surface);
-  border: 1px solid var(--erp-border);
-  border-radius: var(--erp-radius-lg);
-  box-shadow: var(--erp-shadow-sm);
-  padding: var(--erp-space-3) var(--erp-space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--erp-space-2);
-  min-width: 0;
-}
-.erp-v2 .erp-kpi__top {
-  display: flex;
-  align-items: center;
-  gap: var(--erp-space-2);
-}
-.erp-v2 .erp-kpi__icon {
-  inline-size: 34px;
-  block-size: 34px;
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--erp-radius-md);
-  background: var(--erp-brand-soft);
-  color: var(--erp-brand-text);
-}
-.erp-v2 .erp-kpi__icon .ji { font-size: var(--erp-icon-md); }
-.erp-v2 .erp-kpi__label {
-  font-size: var(--erp-text-sm);
-  color: var(--erp-text-secondary);
-  font-weight: var(--erp-fw-medium);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.erp-v2 .erp-kpi__value {
-  font-size: var(--erp-text-2xl);
-  font-weight: var(--erp-fw-bold);
-  color: var(--erp-text-primary);
-  font-variant-numeric: tabular-nums;
-  line-height: var(--erp-leading-tight);
-}
+/* ── سجل المؤشرات الموحّد ────────────────────────────────────────────────
+   مكوّن KPI كله (الشبكة والخلايا والترقيم والدلتا وأعمدة التجاوب) انتقل
+   إلى بيته في erp-components.css على المحدد العام — لغة السجل المرقّم
+   لكل الشاشات (2026-10-26). ما بقي هنا خاصٌّ بتخطيط لوحة القيادة فقط. */
 /* Latin digits/amounts inside RTL text: isolate direction, never guess. */
 .erp-v2 .erp-num { display: inline-block; direction: ltr; unicode-bidi: isolate; }
 /* الرقم قد يكون خلية جدول: `inline-block` يكسر محاذاة الأعمدة لأن الخلية
    تخرج من خوارزمية الجدول، فتعود table-cell ويبقى اتجاه LTR والعزل. */
 .erp-v2 td.erp-num,
 .erp-v2 th.erp-num { display: table-cell; }
-.erp-v2 .erp-kpi__unit { font-size: var(--erp-text-sm); color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
-/* The foot row carries the context line and the comparison chip. It must
-   wrap: a six-tile row leaves ~172px per tile, and an unwrapped flex row
-   pushed the chip past the tile's own border. */
-.erp-v2 .erp-kpi__foot {
-  display: flex;
-  align-items: center;
-  gap: var(--erp-space-2);
-  flex-wrap: wrap;
-}
-.erp-v2 .erp-kpi__foot > * { min-width: 0; }
-.erp-v2 .erp-delta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--erp-text-xs);
-  font-weight: var(--erp-fw-bold);
-  font-variant-numeric: tabular-nums;
-  padding: 2px 8px;
-  border-radius: var(--erp-radius-full);
-  line-height: 1.6;
-}
-.erp-v2 .erp-delta .ji { font-size: 12px; }
-.erp-v2 .erp-delta--up { background: var(--erp-success-soft); color: var(--erp-success-text); }
-.erp-v2 .erp-delta--down { background: var(--erp-danger-soft); color: var(--erp-danger-text); }
-.erp-v2 .erp-delta--flat { background: var(--erp-neutral-soft); color: var(--erp-neutral-text); }
-.erp-v2 .erp-kpi__hint { font-size: var(--erp-text-xs); color: var(--erp-text-faint); }
 
 /* ── Dashboard card grid (charts row + lists row) ─────────────────────── */
 .erp-v2 .erp-dash-grid {
@@ -182,7 +105,7 @@
 .erp-v2 .erp-mini:last-child { border-block-end: 0; }
 .erp-v2 .erp-mini__id { font-family: var(--erp-font-mono); font-size: var(--erp-text-sm); color: var(--erp-text-secondary); }
 .erp-v2 .erp-mini__main { flex: 1 1 auto; min-width: 0; color: var(--erp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.erp-v2 .erp-mini__sub { display: block; font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
+.erp-v2 .erp-mini__sub { display: block; font-size: var(--erp-text-xs); color: var(--erp-text-muted); overflow: hidden; text-overflow: ellipsis; }
 .erp-v2 .erp-mini__amount { font-weight: var(--erp-fw-bold); font-variant-numeric: tabular-nums; color: var(--erp-text-primary); white-space: nowrap; }
 .erp-v2 .erp-dot { inline-size: 10px; block-size: 10px; border-radius: 50%; flex: none; }
 .erp-v2 .erp-dot--danger { background: var(--erp-danger); }
@@ -246,8 +169,6 @@
 
 /* ── Small screens ────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .erp-v2 .erp-kpis { grid-template-columns: repeat(2, 1fr); }
-  .erp-v2 .erp-kpi__value { font-size: var(--erp-text-xl); }
   .erp-v2 .erp-pipe { overflow-x: auto; }
   .erp-v2 .erp-pipe__step { min-inline-size: 108px; }
   .erp-v2 .erp-top__name { min-inline-size: 92px; }
@@ -259,9 +180,9 @@
    label was cut mid-word by its ellipsis. One tile per row removes that
    overflow and lets the label read whole. (The 4px the document still scrolls
    at 320px is not this strip: it is the data table, which is 709px wide inside
-   its own scroll box and stays 4px over below a 360px viewport.) */
+   its own scroll box and stays 4px over below a 360px viewport.
+   أعمدة السجل عند 380px تعيش الآن مع المكوّن في erp-components.css.) */
 @media (max-width: 380px) {
-  .erp-v2 .erp-kpis { grid-template-columns: minmax(0, 1fr); }
   /* The grid's 300px column floor cannot fit a ~280px card body: it pushed
      the card 4px past the viewport. The floor only sizes columns, so folding
      to one column below the same 380px tier removes the overflow. */
@@ -275,35 +196,22 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   FORMAL ENTERPRISE LAYER — أفخم ورسمي لأي شركة ناشونال · v1.1.0
+   FORMAL ENTERPRISE LAYER · v1.2.0
    ─────────────────────────────────────────────────────────────────────
    1. Bilingual eyebrows (AR primary + EN micro-label, like global ERPs).
-   2. Dashboard header: live greeting + period switcher + brand switcher.
-   3. White-label brands via ONE attribute on the .erp-v2 root:
-      gold (default royal) / corporate (formal navy). Every accent in this
-      file reads --erp-dash-accent-*, so the whole dashboard re-brands.
-   4. Dark-canvas accent text: --erp-brand-text is a light-canvas literal
-      (#92400e) that would sink on dark surfaces, so dashboard accents use
-      --erp-dash-accent-text with explicit dark overrides (verified ≥4.5:1).
-   5. Print rules: formal companies print reports — sidebar, actions and
+   2. Dashboard header: live greeting + period switcher. The white-label
+      brand switcher (ذهبي ملكي/كحلي مؤسسي) was REMOVED by user decision
+      2026-10-25: one unified identity, no half-applied rebrand.
+   3. Dashboard accents read --erp-dash-accent-text, OWNED by
+      erp-identity.css (champagne text-grade). The two declarations below
+      are the degradation path only — if the identity link is ever
+      removed, the dashboard still carries a readable accent (brand-text
+      light, warm gold dark) instead of an undefined token.
+   4. Print rules: formal companies print reports — sidebar, actions and
       overlays drop out, cards avoid breaking across pages.
    ═══════════════════════════════════════════════════════════════════════ */
 .erp-v2 { --erp-dash-accent-text: var(--erp-brand-text); }
-/* design-color-audit:allow-begin — لوحة white-label مشروعة: سمة
-   data-brand على جذر .erp-v2 تعيد تلوين لوحة القيادة لعلامات عملاء
-   (الذهبي الملكي الافتراضي / الأزرق المؤسسي). ألوانُ علامةٍ بديلة،
-   لا انجرافًا: تُفعَّل بسمةٍ واحدة وتُقرأ عبر --erp-dash-accent-* و
-   --erp-brand-*، وكل لونٍ في الوضع الافتراضي (بلا سمة) من الهوية. */
-html[data-theme="dark"] .erp-v2 { --erp-dash-accent-text: #f2b73c; }
-.erp-v2[data-brand="corporate"] {
-  --erp-brand:        #1e40af;
-  --erp-brand-hover:  #1d4ed8;
-  --erp-brand-active: #1e3a8a;
-  --erp-brand-text:   #1e3a8a;
-  --erp-dash-accent-text: #1e3a8a;
-}
-html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text: #93c5fd; }
-/* design-color-audit:allow-end */
+html[data-theme="dark"] .erp-v2 { --erp-dash-accent-text: var(--erp-brand-text); }
 
 .erp-v2 .erp-eyebrow {
   display: block;
@@ -371,8 +279,8 @@ html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text
 .erp-v2 .erp-seg button:focus-visible { outline: 2px solid var(--erp-focus-ring); outline-offset: 1px; }
 .erp-v2 .erp-seg__label { font-size: var(--erp-text-xs); color: var(--erp-text-muted); padding-inline-start: 8px; }
 
-/* Dashboard accents read the white-label token, never the raw brand. */
-.erp-v2 .erp-kpi__icon { color: var(--erp-dash-accent-text, var(--erp-brand-text)); }
+/* Dashboard accents read the white-label token, never the raw brand.
+   (أيقونة السجل تعاشر لغة الهوية في erp-components.css — لا لون مخصص هنا.) */
 .erp-v2 .erp-bar--max .erp-bar__val { color: var(--erp-dash-accent-text, var(--erp-brand-text)); }
 .erp-pal__opt.is-active .ji { color: var(--erp-dash-accent-text, var(--erp-brand-text)); }
 
@@ -398,3 +306,27 @@ html[data-theme="dark"] .erp-v2[data-brand="corporate"] { --erp-dash-accent-text
 @media (max-width: 340px) {
   .erp-v2 .erp-mini { gap: var(--erp-space-1); }
 }
+
+/* ── المستشار الذكي: نصائح مبنية على مؤشرات اللوحة ──────────────────────
+   قائمة نصائح مرتبة بالأولوية (عاجل/انتبه/فرصة) — كل قاعدةٍ محلية،
+   والتوكنات فقط لا حرفيات. على الهاتف يبقى الشارة والنص في سطرين. */
+.erp-v2 .erp-ai-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-ai-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-inline-start: 3px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+.erp-v2 .erp-ai-tip .erp-badge { flex: none; margin-block-start: 2px; }
+.erp-v2 .erp-ai-tip__text { min-inline-size: 0; color: var(--erp-text-secondary); }

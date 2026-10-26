@@ -123,6 +123,23 @@ describe('الشات الداخلي — الواجهة', () => {
         expect(c).toContain("fab.setAttribute('aria-expanded', 'true')");
     });
 
+    test('لوحة الشات حوارٌ بمسارات كيبورد كاملة: دخول، إغلاق من X، عودة التركيز', () => {
+        const c = read(CHAT);
+        // تدخل اللوحة عند الفتح: أول موظف، أو زر الإغلاق في القائمة الفارغة.
+        expect(c).toMatch(/function focusIntoPanel\(\) \{\s*if \(!st\.open \|\| panel\.hidden \|\| panel\.contains\(document\.activeElement\)\) \{return;\}/);
+        expect(c).toContain("panel.querySelector('[data-v2-chat-peer]') || panel.querySelector('[data-v2-chat-close]')");
+        const render = c.slice(c.indexOf('function renderUsers()'), c.indexOf('async function loadUsers()'));
+        expect(render).toMatch(/focusIntoPanel\(\);?\s*\}\s*$/);
+        // الإغلاق من X أعلى اللوحة وحده — لا Escape ولا مستمع كيبورد للإغلاق.
+        expect(c).toContain('data-v2-chat-close aria-label="إغلاق الشات"');
+        expect(c).toContain('erp-modal-x');
+        expect(c).not.toContain("event.key !== 'Escape'");
+        expect(c).not.toContain("document.addEventListener('keydown', onEscape)");
+        // الإغلاق يعيد التركيز إلى الزرّ الذي فتحها بدل إسقاطه على body.
+        expect(c).toContain('const hadFocus = panel.contains(document.activeElement)');
+        expect(c).toContain('if (hadFocus) {try {fab.focus();}');
+    });
+
     test('بلا معالجات سطرية وبلا شبكة مباشرة', () => {
         const c = read(CHAT).replace(/\/\*[\s\S]*?\*\//g, '');
         expect(c).not.toMatch(/\bapiFetch\b/);

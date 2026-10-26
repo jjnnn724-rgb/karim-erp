@@ -12,14 +12,17 @@
  * CONTRACT
  *   • لا innerHTML ولا معالج سطري: كل عقدة تُبنى بـ createElement، وأزرار
  *     الشريط تُربط بـ addEventListener — صفحة V2 تمنع onclick أصلًا.
- *   • Escape يغلق، والتركيز يعود إلى العنصر الذي فتح العارض.
+ *   • الإغلاق من زر X في أعلى الشريط وحده. لا Escape ولا نقرة على الخلفية:
+ *     مستند قيد القراءة أو الطباعة لا يجوز أن يختفي بضغطة عابرة، والـX هو
+ *     العقد الوحيد الذي يراه المستخدم ويقصده. التركيز يعود إلى من فتحه.
  *   • querySelector داخل الوهمية يعيد null عن قصد: أزرار المستند المولّد
  *     زخرفية الآن، وشريط العارض هو مصدر الطباعة والإغلاق الوحيد.
  *   • الطباعة تنتظر load الـiframe ثم تنادي contentWindow.print؛ عند
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { addV2PrintBranding } from './print-branding.js?v=4.9.156';
+import { addV2PrintBranding } from './print-branding.js?v=4.9.180';
+import { trapFocus } from './focus-trap.js?v=4.9.180';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';
@@ -29,6 +32,7 @@ let host = null;
 let frame = null;
 let titleEl = null;
 let lastFocus = null;
+let releaseTrap = null;
 let printPending = false;
 let renderSeq = 0;
 let loadedSeq = 0;
@@ -58,14 +62,8 @@ function requestPrint() {
     printFrame();
 }
 
-/* Escape must work wherever focus went: the print button, the page body, or
-   the report iframe itself (printFrame focuses that document, and a reader
-   may click inside it). A listener on the host alone misses all three. */
-function onEscape(event) {
-    if (event.key !== 'Escape') {return;}
-    event.preventDefault();
-    closeReportViewer();
-}
+/* Close is the X in the top bar and nothing else: no Escape, no backdrop.
+   A document under review (or mid-print) must not vanish on a stray key. */
 
 function render(html) {
     if (!frame) {return;}
@@ -80,8 +78,9 @@ export function closeReportViewer() {
     frame = null;
     titleEl = null;
     printPending = false;
+    releaseTrap?.();
+    releaseTrap = null;
     if (typeof document !== 'undefined') {
-        document.removeEventListener('keydown', onEscape, true);
         document.documentElement.classList.remove(OPEN_CLASS);
     }
     if (lastFocus && typeof lastFocus.focus === 'function') {
@@ -116,9 +115,11 @@ function ensureHost(title) {
 
     const closeBtn = doc.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'erp-btn erp-btn--sm';
+    closeBtn.className = 'erp-icon-btn erp-modal-x';
     closeBtn.setAttribute('data-v2-report-action', 'close');
-    closeBtn.textContent = 'إغلاق';
+    closeBtn.setAttribute('aria-label', 'إغلاق المستند');
+    closeBtn.setAttribute('title', 'إغلاق');
+    closeBtn.textContent = '×';
 
     frame = doc.createElement('iframe');
     frame.className = 'erp-report-viewer__frame';
@@ -128,7 +129,6 @@ function ensureHost(title) {
     frame.addEventListener('load', () => {
         if (frame.contentDocument) {addV2PrintBranding(frame.contentDocument);}
         loadedSeq = renderSeq;
-        try {frame.contentDocument.addEventListener('keydown', onEscape);} catch (_) { /* مستند غير متاح */ }
         if (printPending) {
             printPending = false;
             printFrame();
@@ -136,7 +136,6 @@ function ensureHost(title) {
     });
     printBtn.addEventListener('click', requestPrint);
     closeBtn.addEventListener('click', closeReportViewer);
-    doc.addEventListener('keydown', onEscape, true);
 
     bar.appendChild(titleEl);
     bar.appendChild(printBtn);
@@ -145,6 +144,7 @@ function ensureHost(title) {
     host.appendChild(frame);
     doc.body.appendChild(host);
     doc.documentElement.classList.add(OPEN_CLASS);
+    releaseTrap = trapFocus(host);
     printBtn.focus();
     return frame;
 }

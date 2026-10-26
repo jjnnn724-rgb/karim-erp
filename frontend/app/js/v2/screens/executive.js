@@ -11,8 +11,9 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.156';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.156';
+import { apiFetch } from '../../core/api.js?v=4.9.180';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -20,16 +21,17 @@ const esc = (v) => String(v ?? '')
 
 const money = (v) => `${Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })} ر.س`;
 const pct = (v) => (v == null ? '—' : `${Number(v).toFixed(1)}%`);
+const bare = (v) => `${Number(v || 0).toLocaleString('en-US')}`;
 
 const KPIS = [
-    { key: 'revenue', label: 'إيراد اليوم', tone: 'success', fmt: money, hint: 'من دفتر القيود المُرحَّل' },
-    { key: 'cogs', label: 'تكلفة البضاعة', tone: 'warning', fmt: money, hint: 'من دفتر القيود' },
-    { key: 'net', label: 'الصافي', tone: 'brand', fmt: money, hint: 'إيراد − تكلفة − مصروف' },
-    { key: 'margin', label: 'الهامش', tone: 'info', fmt: pct, hint: 'نسبة الصافي من الإيراد' },
-    { key: 'cash', label: 'النقد في الدفاتر', tone: 'neutral', fmt: money, hint: 'أرصدة حسابات النقد' },
-    { key: 'entries', label: 'قيود مُرحَّلة اليوم', tone: 'neutral', fmt: (v) => String(v || 0), hint: 'عدد قيود اليوم' },
-    { key: 'openShifts', label: 'ورديات مفتوحة', tone: 'danger', fmt: (v) => String(v || 0), hint: 'نقد لم يُقفل' },
-    { key: 'negativeStock', label: 'أصناف رصيدها سالب', tone: 'danger', fmt: (v) => String(v || 0), hint: 'ثقة التكلفة' },
+    { key: 'revenue', label: 'إيراد اليوم', icon: 'banknote', en: 'Revenue', unit: 'ر.س', fmt: bare, hint: 'من دفتر القيود المُرحَّل' },
+    { key: 'cogs', label: 'تكلفة البضاعة', icon: 'wallet', en: 'COGS', unit: 'ر.س', fmt: bare, hint: 'من دفتر القيود' },
+    { key: 'net', label: 'الصافي', icon: 'gem', en: 'Net', unit: 'ر.س', fmt: bare, hint: 'إيراد − تكلفة − مصروف' },
+    { key: 'margin', label: 'الهامش', icon: 'trending-up', en: 'Margin', unit: '', fmt: pct, hint: 'نسبة الصافي من الإيراد' },
+    { key: 'cash', label: 'النقد في الدفاتر', icon: 'receipt', en: 'Cash on books', unit: 'ر.س', fmt: bare, hint: 'أرصدة حسابات النقد' },
+    { key: 'entries', label: 'قيود مُرحَّلة اليوم', icon: 'save', en: 'Posted today', unit: 'قيد', fmt: bare, hint: 'عدد قيود اليوم' },
+    { key: 'openShifts', label: 'ورديات مفتوحة', icon: 'clock', en: 'Open shifts', unit: 'وردية', fmt: bare, hint: 'نقد لم يُقفل' },
+    { key: 'negativeStock', label: 'أصناف رصيدها سالب', icon: 'alert-triangle', en: 'Negative stock', unit: 'صنف', fmt: bare, hint: 'ثقة التكلفة' },
 ];
 
 const SEV = { high: 'danger', medium: 'warning', low: 'info' };
@@ -45,14 +47,18 @@ export function mountExecutive(host, ctx = {}) {
 
     host.innerHTML = `
       <section class="erp-v2 exec" data-exec>
-        <header class="exec__head erp-screen-in">
+        <header class="erp-dash-head erp-screen-in">
           <div>
-            <h1 class="exec__title">موجز المدير</h1>
-            <p class="exec__sub" data-exec-sub>جارٍ جمع الأرقام…</p>
+            <h2 class="erp-dash-title">موجز المدير
+              <span class="erp-eyebrow" dir="ltr" lang="en">Executive Pulse</span>
+            </h2>
+            <p class="erp-dash-sub" data-exec-sub>جارٍ جمع الأرقام…</p>
           </div>
-          <button type="button" class="erp-btn erp-btn--sm" data-exec-refresh>تحديث</button>
+          <div class="erp-dash-controls">
+            <button type="button" class="erp-btn erp-btn--sm" data-exec-refresh>تحديث</button>
+          </div>
         </header>
-        <div class="exec__kpis" data-exec-kpis></div>
+        <div data-exec-kpis></div>
         <div class="exec__grid">
           <section class="erp-card exec__card exec__card--wide erp-screen-in">
             <div class="erp-card__head"><h2 class="erp-card__title">إيراد وتكلفة — آخر ١٤ يومًا</h2></div>
@@ -87,12 +93,11 @@ export function mountExecutive(host, ctx = {}) {
 
     function paintKpis() {
         const k = (data && data.kpi) || {};
-        q('[data-exec-kpis]').innerHTML = KPIS.map((c, i) => `
-          <article class="exec__kpi exec__kpi--${c.tone}" style="--exec-i:${i}">
-            <span class="exec__kpi-label">${esc(c.label)}</span>
-            <strong class="exec__kpi-value">${esc(c.fmt(k[c.key]))}</strong>
-            <span class="exec__kpi-hint">${esc(c.hint)}</span>
-          </article>`).join('');
+        // سجل المؤشرات الموحّد (ul.erp-kpis) — نفس لغة لوحة القيادة، مرقّم 01…NN.
+        q('[data-exec-kpis]').innerHTML = kpiStrip(KPIS.map((c) => ({
+            icon: c.icon, label: c.label, en: c.en,
+            value: c.fmt(k[c.key]), unit: c.unit, hint: c.hint,
+        })));
     }
 
     function paintCharts() {

@@ -657,15 +657,17 @@ describe('تفصيل الشهر — المستودع والدرج', () => {
         expect(repo).toMatch(/export async function fetchMonthlyDetail\(month, filters\)/);
     });
 
-    test('الدرج حوارٌ مُعلَن: scrim + panel + قفل جسم + Escape', () => {
+    test('الدرج حوارٌ مُعلَن: scrim + panel + قفل جسم، ويُغلق من X وحده', () => {
         expect(screen).toMatch(/data-v2-panel role="dialog" aria-modal="true"/);
         expect(screen).toMatch(/data-v2-scrim/);
         expect(screen).toMatch(/classList\.add\('erp-monthly-open'\)/);
         expect(screen).toMatch(/classList\.remove\('erp-monthly-open'\)/);
-        expect(screen).toMatch(/event\.key === 'Escape'/);
-        expect(screen).toMatch(/document\.addEventListener\('keydown', onKey, true\)/);
-        expect(screen).toMatch(/document\.removeEventListener\('keydown', onKey, true\)/);
-        expect(screen).toMatch(/erp-report-viewer-open/);
+        /* مخرجٌ واحد: X أعلى الدرج. لا Escape ولا نقرة على الغطاء. */
+        expect(screen).toMatch(/data-v2-close aria-label="إغلاق ملف الشهر"/);
+        expect(screen).toMatch(/erp-modal-x/);
+        expect(screen).not.toMatch(/event\.key === 'Escape'/);
+        expect(screen).not.toMatch(/document\.addEventListener\('keydown', onKey/);
+        expect(screen).not.toMatch(/closest\('\[data-v2-scrim\]'\)/);
     });
 
     test('بيانات المصروفات تصل بجدولها وطباعة الشهر من داخل الدرج', () => {

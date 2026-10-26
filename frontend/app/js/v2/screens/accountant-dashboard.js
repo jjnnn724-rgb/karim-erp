@@ -11,26 +11,29 @@
  * Quick links navigate to the migrated finance screens only.
  */
 
-import { lineChart, barChart } from '../charts.js?v=4.9.156';
-import { fetchAccountantSnapshot, buildAccountantView } from '../data/dashboard-repo.js?v=4.9.156';
-import { money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.156';
+import { lineChart, barChart } from '../charts.js?v=4.9.180';
+import { fetchAccountantSnapshot, buildAccountantView } from '../data/dashboard-repo.js?v=4.9.180';
+import { money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.180';
 
 const pct = (v) => (v == null ? '—' : `${v.toFixed(1)}%`);
 
 function template() {
     return `
       <div class="erp-v2-role-dash">
-      <section class="erp-card erp-v2-accountant">
-        <div class="erp-card__head">
-          <h3 class="erp-card__title">لوحة المدير المالي
+      <div class="erp-dash-head">
+        <div>
+          <h2 class="erp-dash-title">لوحة المدير المالي
             <span class="erp-eyebrow" dir="ltr" lang="en">Accountant Overview</span>
-          </h3>
-          <span class="erp-grow"></span>
-          <span class="erp-text-sm erp-text-muted" data-v2-period></span>
+          </h2>
+          <div class="erp-dash-sub" data-v2-period role="status" aria-live="polite"></div>
+        </div>
+        <div class="erp-dash-controls">
           <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
             <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
           </button>
         </div>
+      </div>
+      <section class="erp-card erp-v2-accountant">
         <div class="erp-card__body erp-stack">
           <p class="erp-text-sm erp-text-muted" data-v2-note role="status" aria-live="polite">
             الفترة يحددها الخادم — كل رقم من حركة مسجّلة، ولا يجمع المتصفح سجلات الشهر بنفسه.

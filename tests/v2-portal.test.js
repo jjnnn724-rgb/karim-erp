@@ -274,11 +274,13 @@ describe('P2-3 — كاميرا الوجه: محلية ونظيفة', () => {
         expect(src).toContain("new Error('FACE_CANCELLED')");
     });
 
-    test('التنظيف يوقف كل مسار كاميرا ويُزيل العقدة', () => {
+    test('التنظيف يوقف كل مسار كاميرا ويُزيل العقدة، والإغلاق من X وحده', () => {
         expect(src).toMatch(/getTracks\(\)\.forEach\(\(track\) => track\.stop\(\)\)/);
         expect(src).toContain('host.remove()');
-        expect(src).toContain("document.removeEventListener('keydown', onKey)");
-        expect(src).toContain("event.key === 'Escape'");
+        expect(src).toContain('data-face-cancel aria-label="إغلاق الكاميرا"');
+        expect(src).toContain('erp-modal-x');
+        expect(src).not.toContain("event.key === 'Escape'");
+        expect(src).not.toContain("document.addEventListener('keydown', onKey)");
     });
 });
 

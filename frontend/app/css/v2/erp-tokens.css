@@ -15,7 +15,7 @@
 
    THE CROWN LAYER
    ───────────────
-   css/v2/erp-identity.css («بورسلين ونحاس») loads LAST in v2.html and
+   css/v2/erp-identity.css («ليل الزمرد») loads LAST in v2.html and
    re-aliases every --erp-* semantic to its own primitives. It is the
    visual identity; this sheet is the neutral semantic contract underneath
    it (names, scales, z-order, motion) and the degradation path if the
@@ -42,7 +42,7 @@
    treatment on that fallback path. The preview banner is preview-only CSS
    (v2.html deliberately ships no banner markup — v2-mode-banner.test.js pins
    that) that would mount as a body child above #erp-v2-root. `body` joins for
-   the preview page itself, which erp-preview.css paints with the porcelain
+   the preview page itself, which erp-preview.css paints with the parchment
    canvas. Listing the hosts here ships them the token layer only — custom
    properties are inert until read, so no typography, background or box rule
    reaches these elements. */

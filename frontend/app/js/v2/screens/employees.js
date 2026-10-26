@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.156';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.156';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.180';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.180';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.180';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,17 +81,18 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.156';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.156';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.156';
+} from '../data/employees-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.180';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.180';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.180';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.156';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.156';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
+} from '../data/employee-card-repo.js?v=4.9.180';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.180';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -116,24 +117,7 @@ function nameCell(row) {
 }
 
 /** One chip: the count, what it counts, and the base its share uses. */
-function kpiStrip(kpis, scopeLabel) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — محسوبة على الصفوف المعروضة">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">
-          <span class="erp-delta erp-delta--flat" role="img" aria-label="${esc(k.pill.aria)}">
-            <span class="erp-num" dir="ltr">${esc(k.pill.text)}</span>
-          </span>
-          <span class="erp-kpi__hint">${esc(k.hint)}</span>
-        </div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 /** Roster spread over departments — the frozen `.erp-tops` component. */
 function topsBlock(depts, total) {
@@ -618,7 +602,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             : `${formatInt(allRows.length)} موظفًا · ${scope}`;
 
         kpisHost.innerHTML = kpiStrip(
-            buildEmployeeKpis(rows, { scope, labelOf: statusOf }), scope);
+            buildEmployeeKpis(rows, { scope, labelOf: statusOf }), `مؤشرات ${scope} — محسوبة على الصفوف المعروضة`);
 
         const depts = deptCounts(rows);
         topsHost.innerHTML = topsBlock(depts, rows.length);

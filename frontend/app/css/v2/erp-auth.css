@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════
    KARIM ERP — V2 Auth layer (Gate C) · v1.1.0
    ─────────────────────────────────────────────────────────────────────
-   The sign-in card opens with the same petrol spine and brass rule as the
-   sidebar, then hands the form to porcelain. Same frozen language:
+   The sign-in card opens with the same emerald spine and brass rule as the
+   sidebar, then hands the form to parchment. Same frozen language:
    erp-card, erp-field, erp-btn, bilingual eyebrows. All colours resolve
    from tokens, so the dark theme follows without a second palette.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -11,6 +11,37 @@
   justify-content: center;
   padding: var(--erp-space-6) var(--erp-space-3);
 }
+
+/* ── Auth focus (مسار الدخول) ──────────────────────────────────────────
+   البوابة شاشة مستقلة، لا شاشةً داخل قشرة العمل: على مسار login تُخفى
+   القائمة والرأس وشريط الأدوات وشريط الجوال والزر العائم، وتبقى البطاقة
+   وحدها وسط الشاشة. تُزرَع `is-auth` في preview.js من renderScreen وحدها،
+   فأي انتقال إلى شاشة أخرى يعيد القشرة كاملة تلقائيًا. */
+.erp-v2.is-auth {
+  grid-template-columns: minmax(0, 1fr);
+}
+.erp-v2.is-auth .erp-shell__sidebar,
+.erp-v2.is-auth .erp-shell__scrim,
+.erp-v2.is-auth .erp-shell__header,
+.erp-v2.is-auth .erp-toolbar { display: none; }
+.erp-v2.is-auth .erp-shell__main {
+  background:
+    radial-gradient(120% 70% at 50% 0%,
+      color-mix(in srgb, var(--erp-brand) 7%, transparent) 0%,
+      transparent 60%),
+    var(--erp-background);
+}
+.erp-v2.is-auth .erp-shell__content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  max-width: none;
+  padding-block-end: var(--erp-space-5);
+}
+.erp-v2.is-auth .erp-login-wrap { inline-size: 100%; }
+body.erp-auth-focus .erp-fab-host { display: none; }
+body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
 .erp-v2 .erp-login-card {
   inline-size: 100%;
   max-inline-size: 440px;
@@ -30,7 +61,7 @@
     radial-gradient(110% 130% at 50% -30%,
       color-mix(in srgb, var(--erp-sidebar-accent) 26%, transparent) 0%,
       transparent 62%),
-    var(--erp-sidebar-bg);
+    linear-gradient(135deg, var(--erp-hero-raised), var(--erp-hero) 68%);
   border-block-end: 2px solid var(--erp-brass);
 }
 .erp-v2 .erp-login-hero__eyebrow {
@@ -86,6 +117,20 @@
 .erp-v2 .erp-login-center { text-align: center; }
 .erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
 .erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
+/* اللوحة كانت div عاديًا، فالحقول والزرّ كومٌ بلا فواصل: قيس الفرق بين
+   أسفل حقل كلمة المرور وأعلى زر الدخول = 0px. العمود هنا يضبط الإيقاع. */
+.erp-v2 [data-v2-pane="password"],
+.erp-v2 [data-v2-forgot-panel],
+.erp-v2 .erp-login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-4);
+}
+/* قاعدةُ display أعلاه تغلب [hidden] في ورقة المؤلف — يُعاد معناها صراحةً. */
+.erp-v2 [data-v2-pane="password"][hidden],
+.erp-v2 [data-v2-forgot-panel][hidden] { display: none; }
+/* خطأٌ فارغ لا يستهلك فجوة؛ أول رسالة تُظهره بفجوته كاملة. */
+.erp-v2 .erp-login-card .erp-error:empty { display: none; }
 .erp-v2 .erp-login-submit {
   inline-size: 100%;
   justify-content: center;

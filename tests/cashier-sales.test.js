@@ -334,9 +334,9 @@ describe('مبيعات الكاشير — الواجهة', () => {
         expect(screen).toMatch(/csales__empty|emptyMessage/);
     });
 
-    test('التنظيف: مؤقّتٌ ومستمعٌ وجداولٌ وقفلُ جسم', () => {
+    test('التنظيف: مؤقّتٌ وجداولٌ وقفلُ جسم — ولا مستمع إغلاق كيبورد', () => {
         expect(screen).toMatch(/\bdestroy\(\) \{/);
-        expect(screen).toMatch(/document\.removeEventListener\('keydown', onKey\)/);
+        expect(screen).not.toMatch(/document\.removeEventListener\('keydown', onKey\)/);
         expect(screen).toMatch(/ordersTable\.destroy\(\)/);
         expect(screen).toMatch(/document\.body\.classList\.remove\('csales-open'\)/);
     });

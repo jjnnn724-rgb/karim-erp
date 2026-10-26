@@ -12,14 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.156';
-import { formatInt } from '../data/reports-repo.js?v=4.9.156';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.156';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.156';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.156';
-import { captureFace } from '../portal-face.js?v=4.9.156';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.156';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.156';
+import { canWrite } from '../session.js?v=4.9.180';
+import { formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.180';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.180';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.180';
+import { captureFace } from '../portal-face.js?v=4.9.180';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.180';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.180';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.180';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -31,7 +32,7 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.156';
+} from '../data/settings-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -169,6 +170,17 @@ export function mountSettingsScreen(host, ctx = {}) {
     const say = (m) => { if (noteEl) {noteEl.textContent = m;} notify(m); };
     const secBody = (k) => el.querySelector(`[data-v2-sec-body="${k}"]`);
     const secEmpty = (k) => el.querySelector(`[data-v2-sec-empty="${k}"]`);
+
+    /* كل قالب تكامل يضع عنوانه في `<label>` شقيق للحقل بلا `for`، فيسمع
+       قارئ الشاشة «حقل نص» بلا اسم. الربط تلقائي عند كل رسم، فلا يُنسى
+       حقل جديد. */
+    const labelObserver = new MutationObserver((mutations) => {
+        mutations.forEach((m) => m.addedNodes.forEach((node) => {
+            if (node.nodeType === 1) {bindAdjacentLabels(node);}
+        }));
+    });
+    labelObserver.observe(el, {childList: true, subtree: true});
+    bindAdjacentLabels(el);
 
     /* ── الرئيسية ───────────────────────────────────────────────────────── */
 
@@ -1344,6 +1356,7 @@ export function mountSettingsScreen(host, ctx = {}) {
         destroy() {
             stopZatcaQueueTimer();
             stopScTimer();
+            labelObserver.disconnect();
             el.remove();
         },
     };

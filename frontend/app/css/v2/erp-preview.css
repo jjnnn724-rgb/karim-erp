@@ -16,8 +16,8 @@
    deliberately ships no banner markup (v2-mode-banner.test.js pins that);
    the CSS stays for a future mode banner. When mounted it is a body-level
    token host (erp-identity.css host list) and paints exclusively with
-   --erp-* identity tokens — petrol spine, brass jewellery. The preview
-   BODY also paints from the identity tokens (porcelain canvas), so the
+   --erp-* identity tokens — emerald spine, brass jewellery. The preview
+   BODY also paints from the identity tokens (parchment canvas), so the
    page carries zero painted literals.
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -28,7 +28,7 @@ html, body { height: 100%; }
 body {
   margin: 0;
   /* body من مضيفي الرموز في erp-identity.css (هذه الصفحة وحدها تصلها
-     الهوية) — فتُرسم الكانفس الخزفية نفسها لا الرمادي القديم، ويبقى
+     الهوية) — فتُرسم الكانفس العاجية نفسها لا الرمادي القديم، ويبقى
      --karim-* طريقَ الرجوع إن غابت طبقة الهوية. */
   background: var(--erp-background, var(--karim-bg));
   color: var(--erp-text-primary, var(--karim-text));
@@ -44,7 +44,7 @@ body {
    Paints with the identity tokens: the banner is one of the body-mounted
    token hosts (see the host list in erp-identity.css), so --erp-* names
    resolve here even though it sits outside #erp-v2-root. It wears the
-   petrol spine and the brass jewellery of the identity — the preview is
+   emerald spine and the brass jewellery of the identity — the preview is
    the first impression of the ledger. */
 .erp-preview-banner {
   display: flex;

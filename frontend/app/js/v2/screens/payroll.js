@@ -7,20 +7,21 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.156';
-import { fetchDepartments as fetchHrDepartments } from '../data/employees-repo.js?v=4.9.156';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.180';
+import { fetchDepartments as fetchHrDepartments, arSearchKey } from '../data/employees-repo.js?v=4.9.180';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { ensureXlsx } from '../vendor.js?v=4.9.156';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
+} from '../data/payroll-suite.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { ensureXlsx } from '../vendor.js?v=4.9.180';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -50,6 +51,7 @@ function template(canPost) {
         + '</p>'
         + '<div data-v2-table></div></div></section>'
         + '<section class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">كشف الرواتب</h3><span class="erp-grow"></span>'
+        + '<input class="erp-input" type="search" data-v2-sheet-search placeholder="ابحث باسم موظف…" aria-label="بحث في كشف الرواتب باسم الموظف">'
         + '<input class="erp-input erp-input--ltr" type="month" data-v2-sheet-month value="' + curMonth() + '" aria-label="شهر الكشف">'
         + '<button type="button" class="erp-btn erp-btn--sm" data-v2-sheet-go>عرض</button>'
         + '<button type="button" class="erp-btn erp-btn--sm" data-v2-sheet-export>تصدير Excel</button>'
@@ -90,6 +92,7 @@ export function mountPayrollScreen(host, ctx = {}) {
     let sheetDepts = new Map();
     let suite = { advances: [], adjustments: [], contracts: [], evaluations: [] };
     let dedPreview = null;
+    let sheetQuery = '';                    // بحث الكشف باسم الموظف (مطبَّع عربيًا)
 
     host.insertAdjacentHTML('beforeend', template(canPost));
     const el = host.lastElementChild;
@@ -136,15 +139,20 @@ export function mountPayrollScreen(host, ctx = {}) {
     function paintSheet() {
         const box = q('[data-v2-sheet]');
         if (!box) {return;}
-        const total = sheetEmps.reduce((s, e) => s + (Number(e.salary) || 0), 0);
-        box.innerHTML = `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>القسم</th><th>المنصب</th><th>الأساسي</th><th>أيام الحضور</th><th>الصافي</th></tr></thead><tbody>`
-            + (sheetEmps.map((e) => {
+        const key = arSearchKey(sheetQuery);
+        const shown = key
+            ? sheetEmps.filter((e) => arSearchKey(e.name).includes(key))
+            : sheetEmps;
+        const total = shown.reduce((s, e) => s + (Number(e.salary) || 0), 0);
+        box.innerHTML = (sheetQuery ? `<p class="erp-text-sm erp-text-muted" role="status" aria-live="polite">نتائج البحث «${esc(sheetQuery)}»: ${formatInt(shown.length)} من ${formatInt(sheetEmps.length)} موظف</p>` : '')
+            + `<div class="erp-table__scroll" tabindex="0"><table class="erp-table__grid"><thead><tr><th>الموظف</th><th>القسم</th><th>المنصب</th><th>الأساسي</th><th>أيام الحضور</th><th>الصافي</th></tr></thead><tbody>`
+            + (shown.map((e) => {
                 const d = sheetDepts.get(String(e.department));
                 const days = sheetDays.get(String(e.id)) || 0;
                 return `<tr><td class="erp-td"><b>${esc(e.name)}</b></td><td class="erp-td">${esc((d && (d.name || d.name_ar)) || '—')}</td><td class="erp-td">${esc(e.position || '—')}</td><td class="erp-td">${money(e.salary || 0, currency)}</td><td class="erp-td erp-num" dir="ltr">${formatInt(days)} يوم</td><td class="erp-td"><b>${money(e.salary || 0, currency)}</b></td></tr>`;
-            }).join('') || '<tr><td class="erp-td" colspan="6">لا يوجد موظفون</td></tr>')
+            }).join('') || '<tr><td class="erp-td" colspan="6">لا يوجد موظفون مطابقون</td></tr>')
             + `</tbody></table></div>`
-            + `<p class="erp-text-sm">الإجمالي: <b>${money(total, currency)}</b></p>`;
+            + `<p class="erp-text-sm">الإجمالي${sheetQuery ? ' (لنتائج البحث)' : ''}: <b>${money(total, currency)}</b></p>`;
     }
 
     function paintSuite() {
@@ -306,7 +314,7 @@ export function mountPayrollScreen(host, ctx = {}) {
     }
 
     el.addEventListener('click', (ev) => {
-        if (ev.target.closest('[data-v2-print]')) {window.print(); return;}
+        if (ev.target.closest('[data-v2-print]')) {printPayroll(); return;}
         if (ev.target.closest('[data-v2-reload]') || ev.target.closest('[data-erp-retry]')) {reload(); return;}
         if (ev.target.closest('[data-v2-sheet-go]')) {loadSheet(); return;}
         if (ev.target.closest('[data-v2-sheet-export]')) {
@@ -446,6 +454,64 @@ export function mountPayrollScreen(host, ctx = {}) {
                     say('تم الحذف');
                 });
             })();
+        }
+    });
+    /** طباعة نظيفة: ملخص المسيرات + كشف الشهر المعروض (نتائج بحثه ضمنًا) —
+     *  بدل window.print() الخام التي تطبع الشاشة كلها بأزرارها. */
+    function printPayroll() {
+        const month = q('[data-v2-sheet-month]')?.value || curMonth();
+        const key = arSearchKey(sheetQuery);
+        const shown = key
+            ? sheetEmps.filter((e) => arSearchKey(e.name).includes(key))
+            : sheetEmps;
+        const sheetTotal = shown.reduce((s, e) => s + (Number(e.salary) || 0), 0);
+        const w = openInAppReport('كشف الرواتب');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف الرواتب</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
+        const runsBody = rows.slice().sort((a, b) => String(b.month).localeCompare(String(a.month))).slice(0, 12)
+            .map((r) => `<tr><td dir="ltr">${esc(r.month)}</td><td>${formatInt(r.count)}</td><td>${esc(formatMoney(r.basic, currency).amount)}</td><td>${esc(formatMoney(r.net, currency).amount)}</td><td>${esc(r.status || '—')}</td></tr>`).join('');
+        const empBody = shown.map((e, i) => {
+            const d = sheetDepts.get(String(e.department));
+            const days = sheetDays.get(String(e.id)) || 0;
+            return `<tr><td>${i + 1}</td><td style="text-align:right"><b>${esc(e.name)}</b></td>`
+                + `<td>${esc((d && (d.name || d.name_ar)) || '—')}</td><td>${esc(e.position || '—')}</td>`
+                + `<td>${esc(formatMoney(e.salary || 0, currency).amount)}</td>`
+                + `<td>${formatInt(days)}</td><td><b>${esc(formatMoney(e.salary || 0, currency).amount)}</b></td></tr>`;
+        }).join('');
+        const dateStr = new Date().toLocaleString('ar-EG');
+        const criteria = ['الشهر: ' + month]
+            .concat(sheetQuery ? [`البحث: «${sheetQuery}» (${formatInt(shown.length)} من ${formatInt(sheetEmps.length)})`] : []).join(' — ');
+        w.document.open();
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف الرواتب ${esc(month)}</title>`
+            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:1000px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + 'h2{font-size:15px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:6px;margin:18px 0 10px}'
+            + '.total{margin:10px 0;font-size:14px}.total b{color:#7c3500;font-size:16px}'
+            + 'table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
+            + 'th{background:#f7ead8;color:#7c3500}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + '.controls button.secondary{background:#555}'
+            + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
+            + '<div class="controls"><button type="button" data-pl-print>طباعة</button><button type="button" class="secondary" data-pl-close>إغلاق</button></div>'
+            + `<main class="sheet"><header class="head"><h1>كشف الرواتب</h1><p>${esc(criteria)}</p><p>تاريخ التقرير: ${esc(dateStr)}</p></header>`
+            + '<h2>مسيرات مرحّلة (الأحدث أولًا)</h2>'
+            + '<table><thead><tr><th>الشهر</th><th>موظفون</th><th>الأساسي</th><th>الصافي</th><th>الحالة</th></tr></thead>'
+            + `<tbody>${runsBody || '<tr><td colspan="5">لا مسيرات مرحّلة</td></tr>'}</tbody></table>`
+            + '<h2>كشف الموظفين</h2>'
+            + '<table><thead><tr><th>#</th><th>الموظف</th><th>القسم</th><th>المنصب</th><th>الأساسي</th><th>أيام الحضور</th><th>الصافي</th></tr></thead>'
+            + `<tbody>${empBody || '<tr><td colspan="7">لا موظفين</td></tr>'}</tbody></table>`
+            + `<p class="total">إجمالي كشف ${esc(month)}${sheetQuery ? ' (نتائج البحث)' : ''}: <b>${esc(formatMoney(sheetTotal, currency).amount)}</b></p>`
+            + '</main></body></html>');
+        w.document.close();
+        w.document.querySelector('[data-pl-print]')?.addEventListener('click', () => w.print());
+        w.document.querySelector('[data-pl-close]')?.addEventListener('click', () => w.close());
+        w.focus();
+    }
+
+    el.addEventListener('input', (ev) => {
+        if (ev.target.matches('[data-v2-sheet-search]')) {
+            sheetQuery = String(ev.target.value || '').trim();
+            paintSheet();
         }
     });
     reload();

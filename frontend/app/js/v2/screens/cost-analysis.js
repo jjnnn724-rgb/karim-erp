@@ -23,13 +23,13 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { barChart, donutChart } from '../charts.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { barChart, donutChart } from '../charts.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
 import {
     fetchCostAnalysis, fetchCostAnalysisPrintHtml, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.156';
+} from '../data/finance-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -105,36 +105,41 @@ function statCard({ label, value, note, icon, tone }) {
 }
 
 function template(from, to) {
+    /* ONE ROOT, ALWAYS. The mount code binds every lookup to
+       `host.lastElementChild`; a template with two top-level nodes silently
+       dropped the header (and every control inside it) from scope, which is
+       how the date inputs came back null and reload() threw. The wrapper keeps
+       the header and the card children of a single element. */
     return `
-      <section class="erp-card erp-v2-cost">
-        <div class="erp-card__head">
-          <div class="erp-v2-cost__heading">
-            <span class="erp-v2-cost__eyebrow" dir="ltr" lang="en">FINANCE · COST CONTROL</span>
-            <h3 class="erp-card__title">تحليل التكاليف
-              <span class="erp-eyebrow" dir="ltr" lang="en">Cost Analysis</span>
-            </h3>
-            <p>ملخص الإيرادات والتكاليف حسب القسم والفترة المحددة.</p>
-          </div>
-          <div class="erp-v2-cost__filters" role="group" aria-label="فترة تحليل التكاليف">
-            <label class="erp-v2-cost__date" for="v2cost-from">
-              <span>من تاريخ</span>
-              <input class="erp-input erp-input--ltr" id="v2cost-from" type="date" value="${esc(from)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
-            </label>
-            <label class="erp-v2-cost__date" for="v2cost-to">
-              <span>إلى تاريخ</span>
-              <input class="erp-input erp-input--ltr" id="v2cost-to" type="date" value="${esc(to)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
-            </label>
-            <div class="erp-v2-cost__actions">
-              <button type="button" class="erp-btn erp-btn--sm" data-v2-month>بداية الشهر</button>
-              <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة التحليل">
-                <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
-              </button>
-              <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
-                <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة الحساب</span>
-              </button>
-            </div>
+      <div class="erp-v2-cost-page">
+      <div class="erp-dash-head">
+        <div>
+          <h2 class="erp-dash-title">تحليل التكاليف
+            <span class="erp-eyebrow" dir="ltr" lang="en">Cost Analysis</span>
+          </h2>
+          <div class="erp-dash-sub">ملخص الإيرادات والتكاليف حسب القسم والفترة المحددة.</div>
+        </div>
+        <div class="erp-dash-controls erp-v2-cost__filters" role="group" aria-label="فترة تحليل التكاليف">
+          <label class="erp-v2-cost__date" for="v2cost-from">
+            <span>من تاريخ</span>
+            <input class="erp-input erp-input--ltr" id="v2cost-from" type="date" value="${esc(from)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
+          </label>
+          <label class="erp-v2-cost__date" for="v2cost-to">
+            <span>إلى تاريخ</span>
+            <input class="erp-input erp-input--ltr" id="v2cost-to" type="date" value="${esc(to)}" min="${esc(firstOfMonth())}" max="${esc(riyadhToday())}">
+          </label>
+          <div class="erp-v2-cost__actions">
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-month>بداية الشهر</button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة التحليل">
+              <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
+            </button>
+            <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
+              <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة الحساب</span>
+            </button>
           </div>
         </div>
+      </div>
+      <section class="erp-card erp-v2-cost">
         <div class="erp-card__body erp-stack">
           <section class="erp-v2-cost__hero" data-v2-hero aria-label="المؤشرات الرئيسية">
             <div class="erp-v2-cost__hero-head">
@@ -178,7 +183,8 @@ function template(from, to) {
             <div data-v2-table></div>
           </section>
         </div>
-      </section>`;
+      </section>
+      </div>`;
 }
 
 /**
@@ -195,6 +201,12 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
 
     host.insertAdjacentHTML('beforeend', template(firstOfMonth(), riyadhToday()));
     const el = host.lastElementChild;
+    /* Fail loudly if the contract ever drifts again: a template that emits more
+       than one top-level node leaves this branch without its controls, and the
+       old symptom was a null dereference three hundred lines later. */
+    if (!el || !el.classList.contains('erp-v2-cost-page') || !el.querySelector('#v2cost-from')) {
+        throw new Error('cost-analysis: template must render a single .erp-v2-cost-page root');
+    }
     const q = (sel) => el.querySelector(sel);
     const kpisEl = q('[data-v2-kpis]');
     const mixEl = q('[data-v2-mix]');

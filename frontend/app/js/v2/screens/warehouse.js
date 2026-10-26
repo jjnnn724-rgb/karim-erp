@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,20 +114,21 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.156';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.156';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.156';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.156';
+} from '../data/inventory-repo.js?v=4.9.180';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.180';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.180';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.156';
-import { ensureXlsx } from '../vendor.js?v=4.9.156';
+} from '../data/opening-balance-repo.js?v=4.9.180';
+import { ensureXlsx } from '../vendor.js?v=4.9.180';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.156';
+} from '../signature.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -196,24 +197,7 @@ function qtyCell(v, unit, opts = {}) {
     return opts.title ? `<span title="${esc(opts.title)}">${n}${u}</span>` : `${n}${u}`;
 }
 
-function kpiStrip(kpis, scopeLabel) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات ${esc(scopeLabel)} — محسوبة على الأصناف المعروضة">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">
-          <span class="erp-delta erp-delta--flat" role="img" aria-label="${esc(k.pill.aria)}">
-            <span class="erp-num" dir="ltr">${esc(k.pill.text)}</span>
-          </span>
-          <span class="erp-kpi__hint">${esc(k.hint)}</span>
-        </div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 /** The six gaps: name, how much is missing, bar against the biggest gap. */
 function shortageBlock(items, max) {
@@ -2155,7 +2139,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             : `${formatInt(allRows.length)} صنفًا · ${scope}`;
 
         kpisHost.innerHTML = kpiStrip(
-            buildInventoryKpis(allRows, { scope, registerTotal, truncated }), scope);
+            buildInventoryKpis(allRows, { scope, registerTotal, truncated }), `مؤشرات ${scope} — محسوبة على الأصناف المعروضة`);
 
         const under = allRows.filter((r) => r.stateKey === 'low' || r.stateKey === 'out');
         const gaps = shortageRows(under);
@@ -2197,8 +2181,14 @@ export function mountWarehouseScreen(host, ctx = {}) {
             if (shelves.status === 'fulfilled' && shelves.value.length) {
                 shelfById = shelfMap(shelves.value);
                 shelfNote.hidden = true;
-            } else {
+            } else if (shelves.status === 'rejected') {
+                // Only a failed READ is a failure. An empty register is a data
+                // gap, not an outage — calling it «تعذّر التحميل» sent operators
+                // hunting a network problem that did not exist.
+                shelfNote.textContent = 'تعذّر تحميل أسماء الرفوف — تُعرض أرقامها.';
                 shelfNote.hidden = false;
+            } else {
+                shelfNote.hidden = true;
             }
             if (inv.status === 'rejected') {throw inv.reason;}
             allRows = inv.value.rows.map((r) => inventoryToRow(r, shelfById));

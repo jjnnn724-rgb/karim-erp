@@ -1111,8 +1111,8 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
 /* ── ٦) الكشف مطبوعًا: أوراق / أصناف / صنفٌ واحد ────────────────────────── */
 router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
     try {
-        const raw = String(req.query.view || '');
-        const view = raw === 'items' || raw === 'item' ? raw : 'orders';
+    const raw = String(req.query.view || '');
+    const view = raw === 'items' || raw === 'item' || raw === 'items-detail' ? raw : 'orders';
         const brand = await loadBrand();
         const f = readQuery(req.query);
         const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 1000);
@@ -1123,7 +1123,8 @@ router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (
             : 'كل الفترة المتوفرة في المرآة';
         const note = await honestyNote(f);
         const title = view === 'items' ? 'كشف الأصناف المباعة'
-            : view === 'item' ? 'ملف صنفٍ واحد' : 'كشف فواتير الكاشير';
+            : view === 'item' ? 'ملف صنفٍ واحد'
+            : view === 'items-detail' ? 'تقرير مفصل بأصناف مختارة' : 'كشف فواتير الكاشير';
         const scope = f.cashier ? ` · ${esc(f.cashier)}` : '';
         const search = f.q ? ` · بحث: ${esc(f.q)}` : '';
 

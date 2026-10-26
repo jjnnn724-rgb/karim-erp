@@ -504,11 +504,15 @@ describe('V2 warehouse screen + layer (source contract)', () => {
         expect(s).toMatch(/esc\(row\.barcode\)/);
         expect(s).toMatch(/esc\(state\.label\)/);
         expect(s).toMatch(/esc\(state\.raw\)/);
-        expect(s).toMatch(/esc\(k\.hint\)/);
-        expect(s).toMatch(/esc\(k\.pill\.aria\)/);
         expect(s).toMatch(/title="\$\{esc\(opts\.title\)\}"/);
         expect(s).toMatch(/title="\$\{esc\(title\)\}"/);
         expect(s).toMatch(/option value="\$\{esc\(c\)\}"/);
+        // شريط المؤشرات مفوَّض للبيت المشترك — وهذه ضمانة هروبه هناك (2026-10-26).
+        expect(s).toMatch(/import \{ kpiStrip \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(s).not.toMatch(/function kpiStrip/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/esc\(k\.hint \|\| ''\)/);
+        expect(shared).toMatch(/esc\(k\.pill\.aria\)/);
     });
 
     test('the table is client mode over a server-filtered walk — both search boxes are declared', () => {

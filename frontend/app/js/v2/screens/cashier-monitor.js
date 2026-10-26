@@ -10,11 +10,12 @@
  * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { ensureXlsx } from '../vendor.js?v=4.9.156';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
-import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.156';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { ensureXlsx } from '../vendor.js?v=4.9.180';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.180';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -41,19 +42,7 @@ function clock(d) {
     return `${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
 }
 
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="إجماليات الكاشيرية">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"${k.color ? ` style="color:${k.color}"` : ''}>${k.html}</div>
-        <div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 function template() {
     return `
@@ -150,7 +139,7 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
             { icon: 'receipt', label: 'إجمالي الفواتير', en: 'Invoices', html: `<span class="erp-num" dir="ltr">${formatInt(invoices)}</span>`, hint: `${formatInt(summary.length)} كاشير · من قاعدة الكاشير مباشرة` },
             { icon: 'banknote', label: 'صافي الإيراد', en: 'Net revenue', html: `<span class="erp-num" dir="ltr">${formatQty(revenue)}</span>`, color: 'var(--erp-success-text)', hint: `الفترة: ${esc(fD(date))}` },
             { icon: 'receipt', label: 'الخصومات', en: 'Discounts', html: `<span class="erp-num" dir="ltr">${formatQty(discounts)}</span>`, color: 'var(--erp-info-text)', hint: 'إجمالي الخصم المسجل' },
-        ]);
+        ], 'إجماليات الكاشيرية');
         syncBadge();
         q('[data-v2-cards]').innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">` + summary.map((c) => `
           <button type="button" class="erp-card" style="cursor:pointer;min-width:210px;flex:1;text-align:start;padding:12px 14px;${String(cashier) === String(c.cashier_no) ? 'border:2px solid var(--erp-brand-text);' : ''}" data-v2-cashier="${esc(String(c.cashier_no))}" aria-pressed="${String(cashier) === String(c.cashier_no)}">

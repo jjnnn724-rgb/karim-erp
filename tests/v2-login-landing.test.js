@@ -41,10 +41,10 @@ describe('V2 first page after sign-in', () => {
     });
 
     test('the tab title follows the session, not only ?live=1', () => {
-        const body = PREVIEW.slice(
-            PREVIEW.indexOf('function updateModeTitle() {'),
-            PREVIEW.indexOf('updateModeTitle();'),
-        );
+        const start = PREVIEW.indexOf('function updateModeTitle() {');
+        // نهاية الدالة أول سطرٍ يُغلق على مستواه، لا أول نداء لها (applyKey
+        // يناديها قبله في الملف).
+        const body = PREVIEW.slice(start, PREVIEW.indexOf('\n}', start));
         expect(body).toContain("sessionState.status === 'ready'");
         expect(body.indexOf("sessionState.status === 'ready'")).toBeLessThan(body.indexOf("sessionState.status === 'pending'"));
         expect(body).not.toContain("if (!LIVE || sessionState.status === 'none')");

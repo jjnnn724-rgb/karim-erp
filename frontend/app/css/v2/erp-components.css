@@ -170,6 +170,34 @@
 .erp-v2 .erp-icon-btn svg,
 .erp-v2 .erp-icon-btn .ji { width: var(--erp-icon-md); height: var(--erp-icon-md); }
 
+/* Close affordance of a modal window — the ONLY way out.
+   Policy (Karim, 2026-10): a window opened for printing or for reading
+   closes from this X at its top corner and nothing else — no Escape key,
+   no click on the scrim. Because it carries the whole exit, it gets the
+   large control box (46px, above the 44px touch target), never shrinks in
+   a wrapping header, and turns destructive-red on hover so it reads as
+   "this closes what you are reading". */
+.erp-v2 .erp-modal-x {
+  flex: none;
+  inline-size: var(--erp-control-lg);
+  block-size: var(--erp-control-lg);
+  border-radius: 999px;
+  font-size: var(--erp-text-lg);
+  line-height: 1;
+  transition: background-color var(--erp-duration-fast) var(--erp-ease-out),
+              border-color var(--erp-duration-fast) var(--erp-ease-out),
+              color var(--erp-duration-fast) var(--erp-ease-out);
+}
+.erp-v2 .erp-modal-x:hover {
+  border-color: var(--erp-danger);
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+}
+.erp-v2 .erp-modal-x:focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 2px;
+}
+
 /* ── Inputs ──────────────────────────────────────────────────────────── */
 .erp-v2 .erp-input,
 .erp-v2 .erp-select {
@@ -197,7 +225,8 @@
 .erp-v2 .erp-input:hover,
 .erp-v2 .erp-select:hover { border-color: var(--erp-text-faint); }
 
-.erp-v2 .erp-input[aria-invalid="true"] {
+.erp-v2 .erp-input[aria-invalid="true"],
+.erp-v2 .erp-select[aria-invalid="true"] {
   border-color: var(--erp-danger);
 }
 
@@ -351,6 +380,36 @@
 .erp-v2 .erp-server-info { color: var(--erp-text-muted); white-space: nowrap; }
 .erp-v2 .erp-server-info[data-current="1"] { color: var(--erp-success-text); }
 .erp-v2 .erp-server-info[data-current="0"] { color: var(--erp-danger-text); }
+
+/* ── التحكم بالسيرفر (شريحة الرأس للأدمن — كل الصفحات) ─────────────────
+   لمبة الحالة + زرا إيقاف/تشغيل. على الهاتف: اللمبة والزران يبقيان ظاهرين
+   (أهداف 44px) والنصوص تختفي ليبقى الصف بسيطًا كما بقية أدوات الرأس. */
+.erp-v2 .erp-srvctl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  padding-inline: var(--erp-space-2);
+  border-inline-end: 1px solid var(--erp-border);
+}
+.erp-v2 .erp-srvctl__state {
+  font-size: var(--erp-text-sm);
+  color: var(--erp-text-secondary);
+  white-space: nowrap;
+}
+.erp-v2 .erp-srvctl__btn { min-inline-size: var(--erp-control-sm); }
+.erp-v2 .erp-srvctl__btn--start {
+  border-color: var(--erp-success-text);
+  color: var(--erp-success-text);
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-srvctl__state { display: none; }
+  .erp-v2 .erp-srvctl .erp-btn span { display: none; }
+  .erp-v2 .erp-srvctl .erp-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
 .erp-v2 .erp-lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--erp-neutral); display: inline-block; }
 .erp-v2 .erp-lamp[data-ok="1"] { background: var(--erp-success-text); }
 .erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
@@ -431,8 +490,137 @@
 .erp-v2 .erp-dept-parent { color: var(--erp-text-secondary); }
 .erp-v2 .erp-dept-swatch { display: inline-block; inline-size: 22px; block-size: 22px; border-radius: 7px; border: 1px solid var(--erp-border); vertical-align: middle; }
 .erp-v2 .erp-dept-kpis { margin-block-end: 2px; }
-/* 4 مؤشرات ثابتة — auto-fit يمنع كسر 3+1 الذي تفرضه قاعدة ≤1439px في erp-dashboard. */
-.erp-v2 .erp-dept-kpis.erp-kpis { grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); }
+
+/* ── سجل المؤشرات الموحّد — لغة واحدة لكل شاشات V2 (2026-10-26) ──────────
+   الكتلة كانت محصورة في الداشبورد والموجز داخل طبقة الهوية؛ صارت هنا بيت
+   المكوّنات على المحدد العام: سجل مرقّم 01…NN بخلايا مفصولة بخطوط شعرية،
+   لا بطاقات متفرقة. اللهجات القديمة (chip بظل وخلفية في erp-dashboard،
+   أعمدة 3/4 في hr/ops/sales، أيقونات ملوّنة في cash) حُذفت من ملفاتها.
+   القواعد منقولة حرفيًا من الوصفة المقاسة في طبقة الهوية — بلا إعادة تصميم. */
+.erp-v2 .erp-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 var(--erp-space-4);
+  padding: 0;
+  list-style: none;
+  counter-reset: karim-kpi;
+}
+.erp-v2 .erp-kpi {
+  counter-increment: karim-kpi;
+  position: relative;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-4) var(--erp-space-5);
+  border: 0;
+  border-inline-start: 1px solid var(--erp-border);
+  border-block-end: 1px solid var(--erp-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 0; }
+.erp-v2 .erp-kpi:nth-last-child(-n+3) { border-block-end: 0; }
+.erp-v2 .erp-kpi::after {
+  content: "0" counter(karim-kpi);
+  position: absolute;
+  inset-block-start: 14px;
+  inset-inline-end: 16px;
+  color: var(--erp-text-faint);
+  font-family: var(--erp-font-num);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+}
+.erp-v2 .erp-kpi__top { display: flex; align-items: center; gap: var(--erp-space-2); padding-inline-end: 22px; }
+.erp-v2 .erp-kpi__icon {
+  inline-size: 30px;
+  block-size: 30px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px 9px 3px 9px;
+  background: transparent;
+  color: var(--erp-c-forest);
+  box-shadow: inset 0 0 0 1px var(--erp-border-strong);
+}
+.erp-v2 .erp-kpi__icon .ji { font-size: var(--erp-icon-md); }
+[data-theme="dark"] .erp-v2 .erp-kpi__icon { color: var(--erp-brass-bright); }
+.erp-v2 .erp-kpi__label {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-v2 .erp-kpi__value {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+  color: var(--erp-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--erp-leading-tight);
+}
+.erp-v2 .erp-kpi__unit { font-size: var(--erp-text-sm); color: var(--erp-text-muted); font-weight: var(--erp-fw-medium); }
+.erp-v2 .erp-kpi__foot { display: flex; align-items: center; gap: var(--erp-space-2); flex-wrap: wrap; min-block-size: 26px; }
+.erp-v2 .erp-kpi__foot > * { min-width: 0; }
+.erp-v2 .erp-kpi__hint { font-size: var(--erp-text-xs); color: var(--erp-text-faint); }
+.erp-v2 .erp-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: var(--erp-radius-full);
+  line-height: 1.6;
+}
+.erp-v2 .erp-delta .ji { font-size: 12px; }
+.erp-v2 .erp-delta--up { background: var(--erp-success-soft); color: var(--erp-success-text); }
+.erp-v2 .erp-delta--down { background: var(--erp-danger-soft); color: var(--erp-danger-text); }
+.erp-v2 .erp-delta--flat { background: var(--erp-neutral-soft); color: var(--erp-neutral-text); }
+
+/* ستة أعمدة تحتاج 1680px لا 1360: عند 1440 يقيس العمود 176px فيبقى 76px
+   لاسم الخلية، والوسم الإنجليزي («TODAY'S SALES» 109px) يُقصّ في منتصف
+   الحرف. بين 1360 و1679 يبقى السجل 3×2 كما يتّسع الاسم كاملًا. */
+@media (min-width: 1680px) {
+  .erp-v2 .erp-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .erp-v2 .erp-kpi { border-block-end: 0; }
+  .erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:first-child { border-inline-start: 0; }
+}
+@media (max-width: 640px) {
+  .erp-v2 .erp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-kpi {
+    padding: var(--erp-space-4) var(--erp-space-3);
+    border-inline-start: 1px solid var(--erp-border);
+    border-block-end: 1px solid var(--erp-border);
+  }
+  .erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:nth-child(2n) { border-inline-start: 0; }
+  .erp-v2 .erp-kpi:nth-last-child(-n+3) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:nth-last-child(-n+2) { border-block-end: 0; }
+  .erp-v2 .erp-kpi::after { inset-inline-end: 10px; inset-block-start: 10px; }
+  .erp-v2 .erp-kpi__top { padding-inline-end: 18px; }
+  .erp-v2 .erp-kpi__icon { inline-size: 26px; block-size: 26px; }
+  .erp-v2 .erp-kpi__value { font-size: 25px; }
+  .erp-v2 .erp-kpi__label .erp-eyebrow { display: none; }
+  .erp-v2 .erp-kpi__label { white-space: normal; line-height: 1.35; }
+  .erp-v2 .erp-kpi__hint { display: none; }
+}
+@media (max-width: 380px) {
+  .erp-v2 .erp-kpis { grid-template-columns: minmax(0, 1fr); }
+  .erp-v2 .erp-kpi,
+  .erp-v2 .erp-kpi:nth-child(2n) { border-inline-start: 0; }
+  .erp-v2 .erp-kpi:nth-last-child(-n+2) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpi:last-child { border-block-end: 0; }
+}
+
 /* ترويسة طباعة السجل: مخفية على الشاشة — الشعار الرسمي يرفعه beforeprint
    (core/print-branding.js) على مستوى الصفحة، فهذه تحمل هوية التقرير فقط. */
 .erp-v2 .erp-print-head { display: none; }

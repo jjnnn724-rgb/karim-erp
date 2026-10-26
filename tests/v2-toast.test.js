@@ -262,6 +262,11 @@ describe('5. الإغلاق بالنقر', () => {
         const close = item.children[2];
         expect(close.tagName).toBe('button');
         expect(close.getAttribute('aria-label')).toBe('إخفاء التنبيه');
+        // أيقونة المجموعة نفسها (data-i) بدل الرمز الطباعي «×».
+        expect(close.textContent).toBe('');
+        expect(close.children[0].className).toBe('ji');
+        expect(close.children[0].getAttribute('data-i')).toBe('x');
+        expect(close.children[0].getAttribute('aria-hidden')).toBe('true');
         close.click();
         expect(win.__v2Toast.count()).toBe(0);
         item.click();

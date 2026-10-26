@@ -2,46 +2,58 @@
 version: alpha
 name: Karim-ERP-V2
 description: >
-  الهوية البصرية الرسمية لواجهة Karim ERP V2 («بورسلين ونحاس»): ورقة خزفية دافئة
-  وبطاقات بيضاء، حبر بترولي للفعل، نحاس للمجوهرات والتركيز، ونحاسي للبيانات.
-  كل قيمة هنا مشتقة من css/v2/erp-identity.css وerp-tokens.css — الملفان
-  الوحيدان المسموح لهما بحمل قيم لونية خام؛ بقية ملفات css/v2 تقرأ الرموز فقط
-  وتُفحص ببوابة design-color-audit.
+  الهوية البصرية الرسمية لواجهة Karim ERP V2 («ليل الزمرد»): ورقٌ عاجي دافئ
+  وبطاقات أوفى بياضًا، وزمردٌ هو لون الفعل في الوضعين، وعمودٌ زمردي ليليّ
+  يحمل لوحةً نحاسية للوجهة الحالية. النحاس مجوهراتٌ (تركيز، شعار، حدّ)،
+  والنحاسي صوتُ البيانات. كل قيمة هنا مشتقة من css/v2/erp-identity.css
+  وerp-tokens.css — الملفان الوحيدان المسموح لهما بحمل قيم لونية خام؛ بقية
+  ملفات css/v2 تقرأ الرموز فقط وتُفحص ببوابة design-color-audit.
 colors:
-  primary: "#0B5A5F"
-  on-primary: "#FFFFFF"
-  primary-hover: "#106E74"
-  primary-active: "#07484C"
-  brand-text: "#0A474C"
-  canvas: "#EFECE4"
-  surface: "#FFFFFF"
-  surface-sunken: "#E7E3D8"
-  surface-hover: "#F5F3EE"
-  ink: "#111A18"
-  ink-secondary: "#2D3B37"
-  muted: "#4F5F59"
-  faint: "#5D6C66"
-  hairline: "#E2DED3"
-  hairline-strong: "#CCC6B6"
-  brass: "#A9761B"
-  brass-text: "#7A5410"
-  brass-bright: "#D9B266"
-  copper: "#B4632A"
-  success: "#0F7A57"
-  success-text: "#0A5B41"
-  warning: "#B4690E"
-  warning-text: "#8F5208"
-  danger: "#C0392B"
-  danger-text: "#9B2C21"
-  info: "#2F5FD0"
-  neutral: "#5B6B65"
-  sidebar: "#0A2422"
-  sidebar-ink: "#F4F0E5"
-  sidebar-accent: "#D9B266"
-  dark-canvas: "#08110F"
-  dark-surface: "#0E1B18"
-  dark-primary: "#5CBFB5"
-  dark-brass: "#E7B65C"
+  primary: "#0F5B46"
+  on-primary: "#FFF9EE"
+  primary-hover: "#0B4A39"
+  primary-active: "#083A2C"
+  brand-text: "#0E5C45"
+  canvas: "#F6F1E6"
+  surface: "#FFFCF5"
+  surface-raised: "#FFFFFF"
+  surface-sunken: "#EDE6D7"
+  surface-hover: "#F3EDE1"
+  ink: "#1A2B24"
+  ink-secondary: "#33473E"
+  muted: "#57685F"
+  faint: "#5F7067"
+  hairline: "#E2D9C7"
+  hairline-strong: "#CBBFA8"
+  brass: "#A57A2C"
+  brass-text: "#7A5A12"
+  brass-bright: "#E6C478"
+  copper: "#A85E2E"
+  success: "#0F7A46"
+  success-text: "#0A5C35"
+  warning: "#A86411"
+  warning-text: "#824C08"
+  danger: "#B03428"
+  danger-text: "#8E241A"
+  info: "#2E5CC8"
+  info-text: "#2348A3"
+  neutral: "#5A6A60"
+  neutral-text: "#45544B"
+  sidebar: "#0C2A23"
+  sidebar-ink: "#F7F2E4"
+  sidebar-accent: "#E6C478"
+  sidebar-plaque: "#FBF6E9"
+  sidebar-plaque-ink: "#201A12"
+  dark-canvas: "#06110D"
+  dark-surface: "#0C1E18"
+  dark-raised: "#122A21"
+  dark-primary: "#3FBF93"
+  dark-on-primary: "#04170F"
+  dark-brand-text: "#7FE0BC"
+  dark-brass: "#E3C27E"
+  dark-brass-text: "#E9CD93"
+  dark-ink: "#F3EFE0"
+  dark-muted: "#A7B5A4"
 typography:
   display-lg:
     fontFamily: "IBM Plex Sans Arabic, Tajawal, Cairo, Segoe UI, sans-serif"
@@ -197,8 +209,8 @@ components:
     padding: "0 12px"
     height: 38px
   nav-item-active:
-    backgroundColor: "{colors.sidebar}"
-    textColor: "{colors.sidebar-accent}"
+    backgroundColor: "{colors.sidebar-plaque}"
+    textColor: "{colors.sidebar-plaque-ink}"
     typography: "{typography.body-md}"
     rounded: "{rounded.md}"
     height: 38px
@@ -233,16 +245,17 @@ components:
 **الفكرة:** لوحةُ المطعم ورقةٌ دافئة وذهب؛ والنظام يجب أن يكون «الدفتر» الذي
 خلفها — لا منتجاً ثانياً لا علاقة له بها. لذلك:
 
-- **خزف** (`{colors.canvas}`) لا رمادي بارد، و**بطاقات بيضاء** (`{colors.surface}`)
-  تقفز على الورقة (فرق القيمة هو ما يجعل الواجهة تُقرأ «محترفة» لا «كريمية»).
-- **بترول** (`{colors.primary}`) لونُ الفعل: عمقٌ هادئ يفصل «العلامة» عن
-  «النجاح» (أخضر) و«التحذير» (كهرماني).
-- **نحاس** (`{colors.brass}`) مجوهراتٌ لا طلاء: حلقة التركيز، شريط التنقّل
-  النشط، ولمسات KPI، وإطار الشعار.
-- **نحاسي** (`{colors.copper}`) صوتُ البيانات: الرسوم والأرقام لها لونها،
-  فتصمت الرسوم بجانب لون الزر.
-- **عمود جانبي بترولي عميق** (`{colors.sidebar}`) في الوضعين — أكبر قرار هوية:
+- **ورق عاجي** (`{colors.canvas}`) لا رمادي بارد، و**بطاقات أوفى بياضاً**
+  (`{colors.surface}`) تقفز على الورق (فرق القيمة هو ما يجعل الواجهة تُقرأ
+  «محترفة» لا «كريمية»).
+- **زمرد** (`{colors.primary}`) لونُ الفعل الوحيد في الوضعين: حجرٌ مضاء
+  بتدرّج، لا مستطيل مصبوغ. ونصُّه النصي `{colors.brand-text}` أغمق للمقروئية.
+- **نحاس** (`{colors.brass}`) مجوهراتٌ لا طلاء: حلقة التركيز، إطار الشعار،
+  ولمسات KPI. والنحاسي `{colors.copper}` صوتُ البيانات.
+- **عمود جانبي زمردي ليليّ** (`{colors.sidebar}`) في الوضعين — أكبر قرار هوية:
   التطبيق دفترٌ مجلّد (كعب داكن، صفحات ورق) لا قالب إدارة أبيض آخر.
+  والوجهةُ الحالية **لوحةٌ نحاسية عاجية** (`{colors.sidebar-plaque}`) بحبر
+  إسبريسو — الموضع الوحيد الذي يكتب فيه الواجهة بالمعدن.
 
 **النطاق:** كل ما هنا يخص `.erp-v2` فقط. الواجهة القديمة تحتفظ بلوحتها؛ لا
 تُستورد رموز V2 هناك ولا العكس.
@@ -267,21 +280,23 @@ components:
 |---|---|---|
 | كانفس | `{colors.canvas}` | `{colors.dark-canvas}` |
 | بطاقة/سطح | `{colors.surface}` | `{colors.dark-surface}` |
+| مرفوع | `{colors.surface-raised}` | `{colors.dark-raised}` |
 | غائر (رؤوس جدول) | `{colors.surface-sunken}` | — |
 | خط شعرة | `{colors.hairline}` | — |
 
 **النص** — أربع درجات لا أكثر:
 `{colors.ink}` للقيم، `{colors.ink-secondary}` للعناوين الفرعية،
-`{colors.muted}` للتسميات، `{colors.faint}` للهامش (وأدنى تباين في الواجهة
-4.68:1 على الكانفس). لا رمادي خامس.
+`{colors.muted}` للتسميات، `{colors.faint}` للهامش. المقاساتُ المقيسة على
+البطاقة: 14.48 / 9.71 / 5.77 / 5.12، والدرجة الخافتة على الكانفس 4.66:1 —
+أدنى تباين في الواجهة. لا رمادي خامس.
 
 **الفعل والزينة**
 
 - `{colors.primary}` / `{colors.primary-hover}` / `{colors.primary-active}`:
-  أزرار أساسية، روابط، شريط التنقّل.
-- `{colors.brand-text}`: نصٌّ بترولي على سطح فاتح (10.40:1).
-- `{colors.brass}`: حلقة تركيز فقط (≥3:1) — **لا** خلفيات أزرار.
-- `{colors.brass-text}`: نحاسٌ صالحٌ للنص الصغير (6.77:1) — لمسات KPI.
+  أزرار أساسية وروابط. الزر تدرّجُ حجرٍ مضاء وحبره `{colors.on-primary}`.
+- `{colors.brand-text}`: نصٌّ زمردي على سطح فاتح (7.78:1).
+- `{colors.brass}`: حلقة تركيز وإطار شعار (≥3:1 = 3.78) — **لا** خلفيات أزرار.
+- `{colors.brass-text}`: نحاسٌ صالحٌ للنص الصغير (6.21:1) — لمسات KPI.
 - `{colors.brass-bright}`: نحاسٌ على العمود الداكن.
 - `{colors.copper}`: سلاسل بيانات ورسوم.
 
@@ -290,11 +305,14 @@ components:
 `{colors.neutral}`. الشارة تحمل **نصاً** دائماً؛ اللون وحده ليس دلالة
 (WCAG 1.4.1).
 
-**سلّم الرسوم:** بترول ← نحاسي ← `#3B4E8F` ← `#6B7A2E` ← `#8E3F63` ←
-`#4A5A66`. كل درجة ≥3:1 على السطح والكانفس في الوضعين.
+**سلّم الرسوم:** زمرد `#14735B` ← نحاسي `#A85E2E` ← `#3F5187` ← `#7A4B63`
+← `#66702B` ← `#5A6570`. كل درجة ≥3:1 على السطح والكانفس في الوضعين.
 
 **الوضع الداكن** يبدّل **البدائيات فقط**؛ الدلالات ترث تلقائياً. هذا هو سبب
 وجود طبقتين: إضافة لون داكن جديد = سطر بدائي واحد، لا بحث عن كل مستهلكيه.
+الليل `{colors.dark-canvas}` بحبر `{colors.dark-ink}`، والفعل فيه يشمٌ مضيء
+(`{colors.dark-primary}`) بحبر ليليّ `{colors.dark-on-primary}` — العقد نفسه
+في الوضعين، والزمرد هو لون الفعل دائمًا.
 
 **الطباعة:** `:root` يحمل `--erp-print-ink/-ink-strong/-paper/-head/-head-soft/
 -grid` لأن قواعد `@media print` تلمس `html`/`body` خارج `.erp-v2`.
@@ -329,7 +347,7 @@ components:
 
 - **المسافات:** مقياس 4px (`{spacing.xxs}`…`{spacing.page}`). المسافة بين
   البطاقات 16px، وبين الأقسام 24–32px.
-- **الهيكل:** عمود جانبي ثابت 248px (يُطوى إلى 68px `is-compact`) + محتوى
+- **الهيكل:** عمود جانبي ثابت 264px (يُطوى إلى 68px `is-compact`) + محتوى
   يتدفّق. تحت 1024px يصبح العمود درجاً منزلقاً فوق المحتوى؛ وتحت 900px
   يتحوّل الهيكل إلى شريط سفلي بخمسة عناصر كحد أقصى (`mobile-shell.js`).
 - **الشبكات:** KPI بشبكة تلقائية `repeat(auto-fit, minmax(172px, 1fr))`؛
@@ -362,7 +380,9 @@ components:
 
 **button-primary** — `{components.button-primary}`؛ hover
 `{components.button-primary-hover}`، active أغمق بدرجة، disabled بشفافية
-‎0.5 مع `cursor: not-allowed` و`aria-disabled`. الحد الأدنى 38px.
+‎0.5 مع `cursor: not-allowed` و`aria-disabled`. الحد الأدنى 38px. التعبئة
+تدرّجٌ رأسي من `{colors.primary-hover}` إلى `{colors.primary-active}` وحدُّ
+ضوء نحاسي رفيع في الأعلى — «حجرٌ مضاء» لا مستطيل مسطّح.
 
 **text-input** — `{components.text-input}`، حدّ `1px`
 `{colors.hairline-strong}`. Focus: `outline: 2px solid {colors.brass}` بـ
@@ -396,9 +416,10 @@ components:
 حشو `3px 9px`، نص 12px، حدّ بلون النبرة 34% (إشارة ثانية بلا اعتماد على
 اللون). قيمة غير معروفة = حدّ متقطّع `data-unknown="true"`.
 
-**nav-item** — `{components.nav-item}` على العمود البترولي؛ النشط
-`{components.nav-item-active}` + شريط نحاسي رفيع على الحافة (`::before`)
-+ `aria-current="page"`. النشط لا يعتمد على اللون وحده.
+**nav-item** — `{components.nav-item}` على العمود الزمردي؛ النشط
+`{components.nav-item-active}`: **لوحة نحاسية عاجية** بحبر إسبريسو، وشريط
+نحاسي رفيع على الحافة (`::before`)، وأيقونة نحاسية داكنة، و
+`aria-current="page"`. النشط لا يعتمد على اللون وحده.
 
 **fab** — الزر العائم 52px على الحافة **المقابلة** للعمود الجانبي
 (`inset-inline-end: 20px`)، ويُخفى داخل هيكل الجوال (≤900px) حيث الشريط
@@ -437,7 +458,7 @@ components:
 
 ## Responsive Behavior
 
-- **>1024px:** عمود جانبي ثابت (248px، أو 68px مضغوط) + شبكة KPI تلقائية.
+- **>1024px:** عمود جانبي ثابت (264px، أو 68px مضغوط) + شبكة KPI تلقائية.
 - **641–1024px:** العمود يصبح درجاً منزلقاً مع حاجب؛ وعند ≤900px يظهر
   الشريط السفلي (5 عناصر) والزر العائم ويسقط شريط الأدوات.
 - **≤640px:** رأس بلا مسار تنقّل، تبويب الشريط السفلي، أهداف لمس ≥44px،

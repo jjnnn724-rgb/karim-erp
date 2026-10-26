@@ -14,12 +14,13 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.156';
-import { ensureXlsx } from '../vendor.js?v=4.9.156';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.180';
+import { ensureXlsx } from '../vendor.js?v=4.9.180';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -29,7 +30,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.156';
+} from '../data/cfo-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -52,19 +53,7 @@ function fD(v) {
     return v ? new Date(v).toLocaleDateString('ar-EG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 }
 
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات مالية">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"${k.color ? ` style="color:${k.color}"` : ''}>${k.html}</div>
-        <div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 const TONE = {
     green: 'var(--erp-success-text)',
@@ -283,7 +272,7 @@ export function mountCfoScreen(host, ctx = {}) {
             { icon: 'circle-check', label: 'تسوية الدفتر', en: 'Parity', html: `<span style="color:${parityTone}">${esc(r.status || '—')}</span>`, color: parityTone, hint: `فرق ${formatMoney(r.difference || 0, currency).amount} · ${formatInt(r.unposted_rows || 0)} صفًا بلا قيد` },
             { icon: 'receipt', label: 'فواتير POS', en: 'POS', html: money(s.pos.total), color: TONE.gold, hint: `${formatInt(s.pos.invoices)} فاتورة` },
             { icon: 'scale', label: 'الميزان', en: 'TB', html: tb.balanced ? 'متوازن' : 'غير متوازن', color: tb.balanced ? TONE.green : TONE.red, hint: `${formatInt(s.journal_entries)} قيدًا مرحّلًا في الفترة` },
-        ]);
+        ], 'مؤشرات مالية');
         paintRecon();
     }
 
@@ -429,16 +418,16 @@ export function mountCfoScreen(host, ctx = {}) {
     function openEntryPanel() {
         const opts = chart.filter((c) => c.is_postable && c.is_active)
             .map((c) => `<option value="${esc(c.code)}">${esc(c.code)} — ${esc(c.name_ar)}</option>`).join('');
-        const row = (i) => `<tr><td><select class="erp-select" data-jl-acc="${i}" style="width:100%">${opts}</select></td>`
-            + `<td><input class="erp-input" type="number" data-jl-dr="${i}" min="0" step="0.01" style="width:100%"></td>`
-            + `<td><input class="erp-input" type="number" data-jl-cr="${i}" min="0" step="0.01" style="width:100%"></td></tr>`;
+        const row = (i) => `<tr><td><select class="erp-select" data-jl-acc="${i}" aria-label="حساب السطر ${i + 1}" style="width:100%">${opts}</select></td>`
+            + `<td><input class="erp-input" type="number" data-jl-dr="${i}" aria-label="مدين — السطر ${i + 1}" min="0" step="0.01" style="width:100%"></td>`
+            + `<td><input class="erp-input" type="number" data-jl-cr="${i}" aria-label="دائن — السطر ${i + 1}" min="0" step="0.01" style="width:100%"></td></tr>`;
         panelEl.innerHTML = `<div class="erp-card"><div class="erp-card__head"><h3 class="erp-card__title">قيد يدوي متوازن</h3>`
             + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-close>إغلاق</button></div>`
             + `<div class="erp-card__body erp-stack">`
-            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted">التاريخ</label>`
-            + `<input class="erp-input erp-input--ltr" type="date" data-v2-jl-date value="${isoDay(0)}">`
-            + `<label class="erp-text-sm erp-text-muted">البيان</label>`
-            + `<input class="erp-input" data-v2-jl-memo placeholder="شرح القيد"></div>`
+            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2cfo-jl-date">التاريخ</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2cfo-jl-date" type="date" data-v2-jl-date value="${isoDay(0)}">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2cfo-jl-memo">البيان</label>`
+            + `<input class="erp-input" id="v2cfo-jl-memo" data-v2-jl-memo placeholder="شرح القيد"></div>`
             + `<table class="erp-table__grid"><thead><tr><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>`
             + `<tbody>${row(0)}${row(1)}${row(2)}${row(3)}</tbody></table>`
             + `<p class="erp-text-sm erp-text-muted"><span data-v2-jl-total></span></p>`
@@ -572,7 +561,7 @@ export function mountCfoScreen(host, ctx = {}) {
                     { icon: 'banknote', label: 'مقبوضات', en: 'In', html: moneyText(d.inflow), color: TONE.green, hint: '' },
                     { icon: 'wallet', label: 'مدفوعات', en: 'Out', html: moneyText(d.outflow), color: TONE.red, hint: '' },
                     { icon: 'gem', label: 'الصافي / الختامي', en: 'Net', html: `${moneyText(d.net)} / ${moneyText(d.closing)}`, color: TONE.gold, hint: '' },
-                ])
+                ], 'مؤشرات مالية')
                 + `<table class="erp-table__grid"><thead><tr><th>الطرف المقابل</th><th>الصافي</th></tr></thead><tbody>${rows}</tbody></table>`;
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -679,7 +668,7 @@ export function mountCfoScreen(host, ctx = {}) {
                 { icon: 'archive', label: 'الدفتر', en: 'Book', html: moneyText(d.book), hint: '' },
                 { icon: 'banknote', label: 'الكشف', en: 'Statement', html: moneyText(d.statement), hint: '' },
                 { icon: 'scale', label: 'الفرق', en: 'Diff', html: moneyText(d.diff), color: d.diff === 0 ? TONE.green : TONE.red, hint: '' },
-            ])
+            ], 'مؤشرات مالية')
             + (canPost ? `<div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--sm" data-v2-bank-match>مطابقة تلقائية</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-bank-add>إضافة سطر كشف</button></div><div data-v2-bank-form></div>` : '')
             + `<table class="erp-table__grid"><thead><tr><th>التاريخ</th><th>البيان</th><th>المبلغ</th></tr></thead><tbody>${rows || '<tr><td class="erp-td" colspan="3">لا بنود معلقة — التسوية نظيفة ✓</td></tr>'}</tbody></table>`;

@@ -10,32 +10,22 @@
  * department and accounts belong to hr/admin (legacy header, verbatim).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { statusBadge } from '../status.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { formatInt } from '../data/reports-repo.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { statusBadge } from '../status.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
 import {
     fetchDeptEmployees, deptEmpToRow, deptScopeLabel, validateDeptEmpForm,
     DEPT_EMP_WRITE_ROLES, createDeptEmployee, updateDeptEmployee, deactivateDeptEmployee,
-} from '../data/dept-employees-repo.js?v=4.9.156';
+} from '../data/dept-employees-repo.js?v=4.9.180';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات موظفي القسم">`
-        + kpis.map((k) => `
-      <li class="erp-kpi">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span></div>
-        <div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip مشترك الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 function template(writable) {
     return `
@@ -199,7 +189,7 @@ export function mountDeptEmployeesScreen(host, ctx = {}) {
                 value: formatInt(allRows.filter((r) => r.phone !== '—').length),
                 hint: 'للتواصل التشغيلي',
             },
-        ]);
+        ], 'مؤشرات موظفي القسم');
         table.setRows(allRows);
         countEl.textContent = allRows.length ? `(${formatInt(allRows.length)})` : '';
         filterNote.hidden = true;
@@ -303,6 +293,42 @@ export function mountDeptEmployeesScreen(host, ctx = {}) {
         }
     }
 
+    /** طباعة سجل موظفي القسم المعروض (بحث الجدول ضمنًا) — بدل window.print(). */
+    function printDeptEmployees() {
+        const query = String((table.getState().query) || '').trim().toLowerCase();
+        const shown = query ? allRows.filter((r) => [r.name, r.position, r.phone, r.employeeId]
+            .some((v) => String(v || '').toLowerCase().includes(query))) : allRows;
+        const w = openInAppReport('موظفو القسم');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>موظفو القسم</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز السجل…</body></html>');
+        const body = shown.map((r, i) => `<tr><td>${i + 1}</td><td style="text-align:right"><b>${esc(r.name)}</b><br><small dir="ltr">${esc(r.employeeId || '')}</small></td>`
+            + `<td>${esc(r.position !== '—' ? r.position : '—')}</td>`
+            + `<td dir="ltr">${esc(r.phone !== '—' ? r.phone : '—')}</td>`
+            + `<td>${esc(r.status || '—')}</td></tr>`).join('');
+        w.document.open();
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>موظفو القسم</title>`
+            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:860px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}'
+            + '.summary div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}'
+            + '.summary b{display:block;font-size:17px;color:#7c3500;margin-top:4px}.summary span{font-size:12px;color:#555}'
+            + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
+            + 'th{background:#f7ead8;color:#7c3500}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + '.controls button.secondary{background:#555}'
+            + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
+            + '<div class="controls"><button type="button" data-de-print>طباعة</button><button type="button" class="secondary" data-de-close>إغلاق</button></div>'
+            + `<main class="sheet"><header class="head"><h1>سجل موظفي القسم</h1>`
+            + `<p>${query ? `البحث: «${esc(query)}» — ` : ''}تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}</p></header>`
+            + `<section class="summary"><div><span>عدد الموظفين</span><b>${formatInt(shown.length)}</b></div></section>`
+            + '<table><thead><tr><th>#</th><th>الموظف</th><th>الوظيفة</th><th>الهاتف</th><th>الحالة</th></tr></thead>'
+            + `<tbody>${body || '<tr><td colspan="5">لا موظفين في نطاق الطباعة</td></tr>'}</tbody></table></main></body></html>`);
+        w.document.close();
+        w.document.querySelector('[data-de-print]')?.addEventListener('click', () => w.print());
+        w.document.querySelector('[data-de-close]')?.addEventListener('click', () => w.close());
+        w.focus();
+    }
+
     el.addEventListener('click', (event) => {
         const editBtn = event.target.closest('[data-v2-edit]');
         if (editBtn) {
@@ -319,7 +345,7 @@ export function mountDeptEmployeesScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-add]')) {openPanel(null); return;}
         if (event.target.closest('[data-v2-panel-close]')) {closePanel(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
-        if (event.target.closest('[data-v2-print]')) {window.print(); return;}
+        if (event.target.closest('[data-v2-print]')) {printDeptEmployees(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
     formEl.addEventListener('submit', (event) => {

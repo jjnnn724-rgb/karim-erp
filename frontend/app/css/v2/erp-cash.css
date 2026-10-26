@@ -100,13 +100,6 @@
 
 .cashreg__search .erp-input:focus { outline: none; box-shadow: none; }
 
-/* ── أيقونات المؤشرات: اللون دلالةٌ على نوع الرقم، لا زينة ─────────────── */
-.cashreg .erp-kpi__icon[data-tone="info"]    { background: var(--erp-info-soft);    color: var(--erp-info-text); }
-.cashreg .erp-kpi__icon[data-tone="success"] { background: var(--erp-success-soft); color: var(--erp-success-text); }
-.cashreg .erp-kpi__icon[data-tone="warning"] { background: var(--erp-warning-soft); color: var(--erp-warning-text); }
-.cashreg .erp-kpi__icon[data-tone="danger"]  { background: var(--erp-danger-soft);  color: var(--erp-danger-text); }
-.cashreg .erp-kpi__icon[data-tone="neutral"] { background: var(--erp-surface-sunken); color: var(--erp-text-muted); }
-
 /* ── خلايا الجدول ─────────────────────────────────────────────────────── */
 .cashreg__ref {
   display: inline-block;

@@ -30,8 +30,12 @@ export function getPref() {
     try {
         const raw = localStorage.getItem(PREF_KEY);
         if (VALID_PREFS.has(raw)) {return raw;}
-    } catch { /* private mode / storage blocked → fall through to system */ }
-    return 'system';
+    } catch { /* private mode / storage blocked → fall through to the default */ }
+    /* 2026-10-25: the default flipped from 'system' to 'light' by user
+       decision («اللون غامق مش احترافي») — dark-on-dark OS machines booted
+       the emerald shell and read it as the product. 'system' remains available
+       as an explicit choice in مركز التحكم. */
+    return 'light';
 }
 
 /**

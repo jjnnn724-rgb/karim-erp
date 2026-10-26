@@ -62,10 +62,17 @@ describe('موجز المدير — العقد', () => {
         expect(screen).not.toMatch(/chart\.js|cdn\.|unpkg|jsdelivr/i);
     });
 
-    test('الأنيميشن CSS فقط (لا JS يعيد الرسم)', () => {
+    test('الأنيميشن CSS فقط (لا JS يعيد الرسم) والشاشة على اللغة الموحدة', () => {
         expect(css).toMatch(/animation: erp-screen-in/);
         expect(css).toMatch(/prefers-reduced-motion/);
         expect(screen).not.toMatch(/setInterval|requestAnimationFrame/);
+        // توحيد 2026-10-26: الغلاف التحريري المشترك + سجل المؤشرات المرقّم،
+        // ولا بقايا لهجة exec__title/exec__kpi.
+        expect(screen).toMatch(/erp-dash-head/);
+        expect(screen).toMatch(/erp-dash-title/);
+        expect(screen).toMatch(/kpiStrip\(/);
+        expect(screen).not.toMatch(/exec__kpi|exec__title|exec__sub/);
+        expect(css).not.toMatch(/exec__kpi|exec__title|exec__sub/);
     });
 
     test('كل رقم إنذارٍ يحمل زرّ إجراء (الوصول لأفضل خطوة)', () => {
@@ -79,6 +86,6 @@ describe('موجز المدير — العقد', () => {
         expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
         expect(body).not.toMatch(/rgba?\(/);
         expect(body).not.toMatch(/\b\d+(px|rem|em)\b/);
-        expect(body).toMatch(/var\(--erp-space-4\)/);
+        expect(body).toMatch(/var\(--erp-space-3\)/);
     });
 });

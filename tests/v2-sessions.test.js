@@ -259,3 +259,99 @@ describe('شاشة الجلسات — عقد المصدر', () => {
         expect(routingSrc).toMatch(/'sessions',/);
     });
 });
+
+/* ── انتهاء الجلسة أثناء العمل ────────────────────────────────────────
+   apiFetch على 401 قاطع: يمحو الاعتماد ثم يندي doLogout(). قبل هذا
+   الوصل كانت V2 تبقى «داخلة» وكل طلب يفشل، والتوست مطفأ افتراضيًا —
+   أي المستخدم يرى شاشةً صامتة بلا طريق للدخول. */
+describe('إشعار الخروج — الجلسة تسقط والواجهة تعرف', () => {
+    test('المراقب يُندى بعد التنظيف: لا رمز في الذاكرة ولا رمز تحديث', () => {
+        const { ctx, window, localStorage } = sessionHarness({ refreshTokens: { karim_rt_v1: 'rt-0' } });
+        ctx.installApiFetchBridge();
+        const seen = [];
+        ctx.setLogoutObserver(() => {
+            seen.push({jwt: window._jwt, rt: localStorage.dump().karim_rt_v1});
+        });
+        window._jwt = 'jwt-1';
+        window._appKey = 'k-1';
+
+        window.doLogout();
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0]).toEqual({jwt: null, rt: undefined});
+    });
+
+    test('مراقب يرمي لا يمنع التنظيف ولا يسقط doLogout', () => {
+        const { ctx, window } = sessionHarness({ refreshTokens: { karim_rt_v1: 'rt-0' } });
+        ctx.installApiFetchBridge();
+        ctx.setLogoutObserver(() => {throw new Error('واجهة مكسورة');});
+        window._jwt = 'jwt-1';
+        window._appKey = 'k-1';
+
+        expect(() => window.doLogout()).not.toThrow();
+        expect(window._jwt).toBeNull();
+        expect(window._appKey).toBeNull();
+    });
+
+    test('مراقب واحد فقط، وnull يزيله', () => {
+        const { ctx, window } = sessionHarness();
+        ctx.installApiFetchBridge();
+        const first = jest.fn();
+        const second = jest.fn();
+        ctx.setLogoutObserver(first);
+        ctx.setLogoutObserver(second);
+        window.doLogout();
+        expect(first).not.toHaveBeenCalled();
+        expect(second).toHaveBeenCalledTimes(1);
+
+        ctx.setLogoutObserver(null);
+        expect(() => window.doLogout()).not.toThrow();
+        expect(second).toHaveBeenCalledTimes(1);
+    });
+
+    test('401 من التجديد يمحو رمزًا ميتًا — لا زر «استئناف» يفشل دائمًا', async () => {
+        const { ctx, fetch, localStorage } = sessionHarness({ refreshTokens: { karim_rt_v1: 'rt-dead' } });
+        fetch.mockImplementation(async () => ({
+            ok: false, status: 401, json: async () => ({error: 'REFRESH_TOKEN_INVALID'}),
+        }));
+
+        expect(await ctx.silentRefresh()).toBeNull();
+        expect(localStorage.dump().karim_rt_v1).toBeUndefined();
+    });
+
+    test('عطل عابر (503) يُبقي الرمز — قد يصلح بعد قليل', async () => {
+        const { ctx, fetch, localStorage } = sessionHarness({ refreshTokens: { karim_rt_v1: 'rt-ok' } });
+        fetch.mockImplementation(async () => ({
+            ok: false, status: 503, json: async () => ({error: 'UNAVAILABLE'}),
+        }));
+
+        expect(await ctx.silentRefresh()).toBeNull();
+        expect(localStorage.dump().karim_rt_v1).toBe('rt-ok');
+    });
+});
+
+describe('وصل الانتهاء في المضيف — عقد المصدر', () => {
+    const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+    const preview = strip(fs.readFileSync(path.join(V2, 'preview.js'), 'utf8'));
+    const login = strip(fs.readFileSync(path.join(V2, 'screens', 'login.js'), 'utf8'));
+
+    test('preview يسجّل المراقب مرة واحدة، ويحفظ الشاشة وجهةَ عودة', () => {
+        expect(preview.match(/setLogoutObserver\(/g)).toHaveLength(1);
+        expect(preview).toMatch(/const SESSION_ENDED_NOTICE = '[^']+';/);
+        expect(preview).toMatch(/setLogoutObserver\(\(\) => \{[\s\S]{0,240}?navigateLogin\(navStatus\.current, SESSION_ENDED_NOTICE\)/);
+    });
+
+    test('البوابة المعروضة لا تُعاد بناؤها — ما يكتبه المستخدم لا يُمحى', () => {
+        expect(preview).toMatch(/navStatus\.current === 'login' && shell\.root\.classList\.contains\('is-auth'\)/);
+        expect(preview).toMatch(/box\.textContent = loginNotice/);
+    });
+
+    test('السبب يمر من المضيف إلى الشاشة ويُعرض في صندوق alert القائم', () => {
+        expect(preview).toMatch(/loginNotice = notice \|\| ''/);
+        expect(preview).toMatch(/notice: loginNotice/);
+        expect(preview).toMatch(/loginNotice = '';/);
+        expect(login).toMatch(/if \(ctx\.notice\) \{fail\(String\(ctx\.notice\)\);\}/);
+        // الصندوق نفسه هو صندوق خطأ النموذج: لا بانر ثانٍ فوق التصميم.
+        expect(login).toMatch(/<div class="erp-error" data-v2-login-error role="alert"><\/div>/);
+    });
+});

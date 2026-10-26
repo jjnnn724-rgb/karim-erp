@@ -23,12 +23,13 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.156';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.180';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.180';
+import { paintFormErrors } from '../form-errors.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -290,7 +291,7 @@ export function mountRevenuesScreen(host, ctx = {}) {
               <input class="erp-input" id="v2rev-f-notes" name="notes" value="${esc(val('notes'))}">
             </div>
             <p class="erp-text-sm erp-text-muted">التعديل يمسّ سجلًا ماليًا حقيقيًا؛ حقول خارج قائمة الكتابة لا تُرسل أصلًا، ورفض الخادم يظهر حرفيًا هنا.</p>
-            <div class="erp-error" data-v2-form-error role="alert"></div>
+            <div class="erp-error" id="v2rev-form-error" data-v2-form-error role="alert"></div>
             <div class="erp-row-wrap">
               <span class="erp-grow"></span>
               <button type="button" class="erp-btn" data-v2-form-cancel>إلغاء</button>
@@ -329,15 +330,11 @@ export function mountRevenuesScreen(host, ctx = {}) {
     }
 
     function showFormErrors(errors) {
-        const box = formHost.querySelector('[data-v2-form-error]');
-        if (!box) {return;}
-        box.textContent = errors.map((e) => e.message).join(' · ');
-        const form = formHost.querySelector('[data-v2-form-el]');
-        if (!form) {return;}
-        for (const key of REV_FIELDS) {
-            const input = form.querySelector(`[name="${key}"]`);
-            if (input) {input.setAttribute('aria-invalid', errors.some((e) => e.field === key) ? 'true' : 'false');}
-        }
+        paintFormErrors(
+            formHost.querySelector('[data-v2-form-el]'),
+            formHost.querySelector('[data-v2-form-error]'),
+            errors,
+        );
     }
 
     async function submitForm(event) {

@@ -22,13 +22,14 @@
  * يُعلَن: سندٌ بلا سطور، أو إجماليٌ لا يساوي صافيًا + ضريبة، أو دفعٌ لم
  * يغطِّ الإجمالي — كلها تُعرض كما هي لأن إخفاءها يجعل الرقم أجمل وأكذب.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { trapFocus } from '../focus-trap.js?v=4.9.180';
 import {
     fetchSummary, fetchOrders, fetchItems, fetchItem, fetchInvoice,
     fetchInvoiceHtml, fetchSheetHtml, money, count, qty, periodPresets, isoDay,
-} from '../data/cashier-sales-repo.js?v=4.9.156';
+} from '../data/cashier-sales-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -146,12 +147,15 @@ function template(presetKey, viewKey) {
     <section class="erp-v2 csales erp-stack">
       <header class="csales__head erp-screen-in">
         <div>
-          <h1 class="csales__title">مبيعات الكاشير
-            <span class="erp-eyebrow" dir="ltr" lang="en">Cashier Sales</span></h1>
+          <h2 class="csales__title">مبيعات الكاشير
+            <span class="erp-eyebrow" dir="ltr" lang="en">Cashier Sales</span></h2>
           <p class="csales__sub">كل سندٍ صدر من الكاشيريات، وكل صنفٍ بِرمزه — والفاتورة تُطبع من داخلها</p>
         </div>
         <div class="csales__tools erp-no-print">
           ${seg('aria-label="العرض"', VIEWS.map((v) => ({ key: v.key, label: v.label, attr: 'data-sa-view' })), viewKey)}
+          <input class="erp-input" type="text" data-sa-multi placeholder="تقرير مفصل: أصناف بفاصلة (مشويات، عصير)" aria-label="أصناف التقرير المفصل مفصولة بفاصلة" style="min-inline-size:30ch">
+          <button type="button" class="erp-btn erp-btn--sm" data-sa-print-multi aria-label="طباعة تقرير مفصل بالأصناف المختارة">
+            <i class="ji" data-i="file-text" aria-hidden="true"></i><span>تقرير مفصل</span></button>
           <button type="button" class="erp-btn erp-btn--sm" data-sa-print-sheet>
             <i class="ji" data-i="printer" aria-hidden="true"></i><span data-sa-print-label>طباعة الكشف</span></button>
         </div>
@@ -205,7 +209,7 @@ function template(presetKey, viewKey) {
       </div>
 
       <div class="csales__scrim" data-sa-scrim hidden></div>
-      <aside class="csales__panel" data-sa-panel hidden role="dialog" aria-modal="true"
+      <aside class="csales__panel" data-sa-panel hidden role="dialog" aria-modal="true" tabindex="-1"
              aria-labelledby="cs-panel-title"></aside>
     </section>`;
 }
@@ -220,6 +224,7 @@ export function mountCashierSales(host) {
     let lastFocus = null;
     let busySeq = 0;
     let paintSeq = 0;
+    let releaseTrap = null;
     /* مكداسُ اللوحات: الفاتورة تُفتح فوق ملف الصنف، والإغلاق رجوعٌ للأول —
        فالتنقّل لا يفقد مكانَ المستخدم في كشفٍ كان يقلّبه. */
     const stack = [];
@@ -593,7 +598,7 @@ export function mountCashierSales(host) {
             <span class="erp-eyebrow" dir="ltr" lang="en">${esc(titleEn)}</span></h2>
           <span class="erp-grow"></span>
           ${actions}
-          <button type="button" class="erp-icon-btn" data-sa-close aria-label="إغلاق">
+          <button type="button" class="erp-icon-btn erp-modal-x" data-sa-close aria-label="إغلاق" title="إغلاق">
             <i class="ji" data-i="x" aria-hidden="true"></i></button>
         </div>`;
     }
@@ -609,6 +614,11 @@ export function mountCashierSales(host) {
         scrim.hidden = false;
         panel.hidden = false;
         document.body.classList.add('csales-open');
+        /* اللوحة معلنة aria-modal: التركيز يدخلها ويُحبس فيها، ويُعاد إلى
+           اللوحة عند كل تنقّلٍ داخلها (فاتورة ← صنف) فلا يسقط إلى body. */
+        panel.focus();
+        releaseTrap?.();
+        releaseTrap = trapFocus(panel);
         panel.innerHTML = `<div class="csales__panelState"><span class="csales__shimmer"></span>جارٍ الفتح…</div>`;
         try {
             if (entry.kind === 'invoice') {await paintInvoice(entry.docNo, seq);} else {await paintItem(entry.code, entry.offset, seq);}
@@ -635,6 +645,8 @@ export function mountCashierSales(host) {
         scrim.hidden = true;
         panel.innerHTML = '';
         document.body.classList.remove('csales-open');
+        releaseTrap?.();
+        releaseTrap = null;
         if (lastFocus && lastFocus.isConnected) {try {lastFocus.focus();} catch (_) { /* أُزيل العنصر */ }}
         lastFocus = null;
     }
@@ -646,7 +658,7 @@ export function mountCashierSales(host) {
         hidePanels();
     }
 
-    /** النقر على العتمة يُغلق الكلّ دفعةً واحدة. */
+    /** X أعلى اللوحة يُغلق النافذة كلها — لا يترك طبقةً تحتها مفتوحة. */
     function closeAll() {
         stack.length = 0;
         hidePanels();
@@ -830,7 +842,7 @@ export function mountCashierSales(host) {
     /** تفويضٌ واحد على اللوحة: الأزرار تُستبدل بكل رسمٍ والمعالجُ يبقى. */
     panel.addEventListener('click', (ev) => {
         const close = ev.target.closest('[data-sa-close]');
-        if (close) {closePanel(); return;}
+        if (close) {closeAll(); return;}
         const pp = ev.target.closest('[data-sa-panel-print]');
         if (pp) {printInvoice(pp.dataset.saPanelPrint, pp); return;}
         const sheet = ev.target.closest('[data-sa-item-sheet]');
@@ -881,6 +893,83 @@ export function mountCashierSales(host) {
             w.document.close();
         } catch (e) {
             notify((e && e.message) || 'تعذر طباعة الكشف', 'error');
+        } finally {
+            if (btn) {btn.disabled = false;}
+        }
+    }
+
+    /* ── التقرير المفصل بأصناف مختارة (تقارير المالك 2026-10-25) ──────────
+       صنفٌ بفاصلة (حتى 6) → لكل صنف: مطابقة أكواده من كشف الأصناف ثم
+       ملف كل كود (تجميعه + كل فواتيره) من الأبواب المعتمدة، والورقة
+       تُبنى هنا وتُطبع — بلا أي نقطة جديدة على الخادم. */
+    async function printMulti(raw, btn) {
+        const tokens = String(raw || '').split(',')
+            .map((s) => s.replace(/[%_;()]/g, ' ').trim()).filter(Boolean).slice(0, 6);
+        if (!tokens.length) {notify('اكتب صنفًا واحدًا على الأقل مفصولًا بفاصلة', 'error'); return;}
+        if (btn) {btn.disabled = true;}
+        const range = `${filters.from || 'البداية'} → ${filters.to || 'اليوم'}`;
+        try {
+            const sections = [];
+            const grand = { qty: 0, exVat: 0, docs: 0, found: 0, missing: [] };
+            for (const token of tokens) {
+                const res = await fetchItems({ ...filters, q: token, limit: 6 });
+                const matches = (res.rows || []).slice(0, 3);
+                if (!matches.length) {grand.missing.push(token); continue;}
+                for (const m of matches) {
+                    const prof = await fetchItem(m.code, { ...filters, limit: 500 });
+                    const agg = prof.agg || {};
+                    const lines = prof.invoices || [];
+                    grand.found += 1;
+                    grand.qty += Number(agg.qty) || 0;
+                    grand.exVat += Number(agg.ex_vat) || 0;
+                    grand.docs += Number(agg.docs) || 0;
+                    const rows = lines.map((r, i) => `<tr>
+                        <td class="c">${i + 1}</td>
+                        <td class="c">${esc(r.day || '')}</td>
+                        <td class="c">${esc(r.doc_no || '')}</td>
+                        <td>${esc(r.cashier_name || '—')}</td>
+                        <td class="c">${esc(qty(r.qty))}</td>
+                        <td class="c">${esc(qty(r.price))}</td>
+                        <td class="c"><b>${esc(qty(r.line_ex_vat))}</b></td>
+                      </tr>`).join('');
+                    sections.push(`
+                      <h3 class="sec">صنف: ${esc(m.name)} <span class="pill">كود ${esc(m.code)}</span></h3>
+                      <table class="t"><thead><tr><th>الكمية</th><th>الفواتير</th><th>صافي قبل الضريبة</th><th>متوسط السعر</th></tr></thead>
+                      <tbody><tr><td class="c"><b>${esc(qty(agg.qty))}</b></td><td class="c">${esc(count(agg.docs))}</td>
+                        <td class="c"><b>${esc(qty(agg.ex_vat))}</b></td><td class="c">${esc(qty(agg.avg_price))}</td></tr></tbody></table>
+                      <table class="t"><thead><tr><th>#</th><th>التاريخ</th><th>السند</th><th>الكاشير</th><th>الكمية</th><th>السعر</th><th>صافي السطر</th></tr></thead>
+                      <tbody>${rows || '<tr><td colspan="7" class="c">لا فواتير</td></tr>'}</tbody>
+                      <tfoot><tr><td colspan="4">مجموع المعروض</td><td class="c">${esc(qty(lines.reduce((s, r) => s + (Number(r.qty) || 0), 0)))}</td><td></td>
+                        <td class="c">${esc(qty(lines.reduce((s, r) => s + (Number(r.line_ex_vat) || 0), 0)))}</td></tr></tfoot></table>`);
+                }
+            }
+            const w = openInAppReport('تقرير مفصل بأصناف مختارة');
+            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مفصل بأصناف مختارة</title>`
+                + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+                + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+                + 'h3.sec{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:18px 0 8px}'
+                + '.pill{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:1px 9px;font-size:11px;color:#555}'
+                + 'table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}'
+                + 'th{background:#f7ead8;color:#7c3500}td.c,th.c{text-align:center}'
+                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+                + '.controls button.secondary{background:#555}'
+                + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
+                + '<div class="controls"><button type="button" data-mi-print>🖨 طباعة</button><button type="button" class="secondary" data-mi-close>إغلاق</button></div>'
+                + '<main class="sheet"><header class="head"><h1>تقرير مفصل بأصناف مختارة</h1>'
+                + `<p>الفترة: ${esc(range)}${filters.cashier ? ` · كاشيرية: ${esc(filters.cashier)}` : ''}</p>`
+                + `<p>الأصناف المطلوبة: ${esc(tokens.join('، '))} — تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}</p></header>`
+                + (sections.length ? sections.join('')
+                    : '<div class="sec">لا أصناف مطابقة لما كتبته في هذه الفترة</div>')
+                + (grand.missing.length ? `<p class="sec">لم تطابقها المرآة: ${esc(grand.missing.join('، '))}</p>` : '')
+                + (sections.length ? `<p class="sec"><b>مجموع التقرير:</b> ${esc(qty(grand.qty))} وحدة · ${esc(qty(grand.exVat))} قبل الضريبة · ${esc(count(grand.docs))} فاتورة</p>` : '')
+                + '</main></body></html>');
+            w.document.close();
+            w.document.querySelector('[data-mi-print]')?.addEventListener('click', () => w.print());
+            w.document.querySelector('[data-mi-close]')?.addEventListener('click', () => w.close());
+            w.focus();
+        } catch (e) {
+            notify((e && e.message) || 'تعذر بناء التقرير المفصل', 'error');
         } finally {
             if (btn) {btn.disabled = false;}
         }
@@ -969,12 +1058,11 @@ export function mountCashierSales(host) {
         const view2 = view === 'items' ? 'items' : 'orders';
         printSheet({ view: view2 }, view2 === 'items' ? 'كشف الأصناف المباعة' : 'كشف فواتير الكاشير', ev.currentTarget);
     });
+    q('[data-sa-print-multi]').addEventListener('click', (ev) => {
+        printMulti(q('[data-sa-multi]')?.value, ev.currentTarget);
+    });
 
-    scrim.addEventListener('click', closeAll);
-    const onKey = (e) => {
-        if (e.key === 'Escape' && !panel.hidden) {closePanel();}
-    };
-    document.addEventListener('keydown', onKey);
+    /* الإغلاق من X أعلى اللوحة وحده — لا Escape ولا نقرة على الغطاء. */
 
     /* إرجاءٌ أوليّ: اللوحة تُرسم أوّلًا، ثم الجدول إن كان هو النشط — فلا
        طلبٌ ثقيلٌ يسبق ما يراه المستخدم. */
@@ -983,7 +1071,8 @@ export function mountCashierSales(host) {
     return {
         destroy() {
             clearTimeout(searchTimer);
-            document.removeEventListener('keydown', onKey);
+            releaseTrap?.();
+            releaseTrap = null;
             ordersTable.destroy();
             itemsTable.destroy();
             document.body.classList.remove('csales-open');

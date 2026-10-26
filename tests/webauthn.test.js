@@ -14,7 +14,13 @@ process.env.MFA_ENFORCE = '1';
 process.env.MFA_REQUIRED_ROLES = 'owner,admin';
 process.env.WEBAUTHN_RP_ID = 'localhost';
 
+/* bcrypt is deliberately slow (cost 12) and this file compares real hashes
+   against the isolated DB. Under the full 266-suite run the CPU is saturated
+   and the 5s default proved flaky (one timeout on 2026-10-26 while the same
+   test passed in 0.3s alone). The work is bounded and correct; only the
+   budget was too tight. */
 const { describe, it, expect, beforeAll, afterAll } = require('@jest/globals');
+jest.setTimeout(30000);
 const bcrypt = require('../backend/pw-crypto');
 const { pool } = require('../backend/shared-pool');
 const { loginHandler, verifyMfaTicket } = require('../backend/cashier-module/jwt-middleware');

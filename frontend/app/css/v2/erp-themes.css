@@ -13,7 +13,7 @@
         cannot inherit (raised/sunken surfaces, inverse text, elevation).
      2. Accessibility layers: reduced motion, forced colors, print.
 
-   NOTE: erp-identity.css («بورسلين ونحاس») loads after this sheet and
+   NOTE: erp-identity.css («ليل الزمرد») loads after this sheet and
    re-aliases the semantic palette from its own dark primitives, so the
    colour story in dark is owned there; this file stays responsible for
    color-scheme, elevation, scrim and the a11y layers for all hosts.

@@ -6,7 +6,7 @@
  * screens own fetching and behaviour, exactly like every other V2 screen.
  */
 
-import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.156';
+import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.180';
 
 export const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -28,20 +28,41 @@ export function money(v, currency) {
 export const int = (v) => formatInt(v);
 
 /**
- * KPI strip — the same ul.erp-kpis structure the briefing and HR screens use.
- * `value` is text unless `valueHtml` is supplied; only the caller knows which
- * number deserves an LTR-isolated span.
+ * شارة الانحراف — الاتحاد بين نسختي الداشبورد ({dir}) والموجز
+ * ({sign, favor, aria}): السهم من أيٍّ من المفتاحين، واللون من favor
+ * حين يُذكر وإلا من الاتجاه، وaria لفظي حين يُقدَّم.
  */
-export function kpiStrip(kpis) {
-    return `<ul class="erp-kpis">`
+export function deltaPill(d = {}) {
+    const dir = d.dir || d.sign;
+    const icon = dir === 'up' ? 'arrow-up' : dir === 'down' ? 'arrow-down' : null;
+    const cls = d.favor === 'good' ? 'erp-delta--up'
+        : d.favor === 'bad' ? 'erp-delta--down' : `erp-delta--${dir || 'flat'}`;
+    const aria = d.aria ? ` role="img" aria-label="${esc(d.aria)}"` : '';
+    return `<span class="erp-delta ${cls}"${aria}>`
+        + `${icon ? `<i class="ji" data-i="${icon}" aria-hidden="true"></i>` : ''}`
+        + `<span class="erp-num" dir="ltr">${esc(d.text)}</span></span>`;
+}
+
+/**
+ * KPI strip — النسخة الوحيدة في النظام (2026-10-26): كانت مكررة محليًا في
+ * 13 شاشة بفروق شكلية، فجامعناها هنا. التغطية:
+ *   · المعامل الثاني نص aria (سلسلة) أو {ariaLabel} — يُحذف إن غاب.
+ *   · القيمة: `valueHtml` ثقةً من المستدعي، وإلا `value` معزول LTR + `unit`.
+ *   · `color` لون قيمة برمز توكن من المستدعي (cfo/مراقب الكاشيرية).
+ *   · دلالة القدم: `pillHtml` جاهز، أو `pill {text,aria}` رقاقة ثابتة،
+ *     أو `delta` يُمرَّر لـ deltaPill — الأولوية بهذا الترتيب.
+ */
+export function kpiStrip(kpis, opts = {}) {
+    const aria = typeof opts === 'string' ? opts : ((opts && opts.ariaLabel) || '');
+    return `<ul class="erp-kpis"${aria ? ` aria-label="${esc(aria)}"` : ''}>`
         + kpis.map((k, i) => `
       <li class="erp-kpi" style="--erp-rise-i:${i}">
         <div class="erp-kpi__top">
           <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon || 'chart')}"></i></span>
           <span class="erp-kpi__label">${esc(k.label)}${k.en ? `<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span>` : ''}</span>
         </div>
-        <div class="erp-kpi__value">${k.valueHtml || `<span class="erp-num" dir="ltr">${esc(k.value ?? '—')}</span>`}${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        ${k.hint ? `<div class="erp-kpi__foot"><span class="erp-kpi__hint">${esc(k.hint)}</span></div>` : ''}
+        <div class="erp-kpi__value"${k.color ? ` style="color:${esc(k.color)}"` : ''}>${k.valueHtml || k.html || `<span class="erp-num" dir="ltr">${esc(k.value ?? '—')}</span>`}${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
+        ${(k.pillHtml || k.pill || k.delta || k.hint) ? `<div class="erp-kpi__foot">${k.pillHtml || ''}${k.pill ? `<span class="erp-delta erp-delta--flat" role="img" aria-label="${esc(k.pill.aria)}"><span class="erp-num" dir="ltr">${esc(k.pill.text)}</span></span>` : ''}${k.delta ? deltaPill(k.delta) : ''}<span class="erp-kpi__hint">${esc(k.hint || '')}</span></div>` : ''}
       </li>`).join('')
         + `</ul>`;
 }

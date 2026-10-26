@@ -2705,7 +2705,10 @@ app.get('/app/sw.js', (req, res) => {
     } catch (_) { res.status(500).send('// sw unavailable'); }
 });
 // The live menu preview is embedded only by this same-origin dashboard.
-app.use('/app/menu-board.html', (req, res, next) => {
+// `menu-admin.html` is the page the V2 «شاشات المنيو» screen actually frames
+// (screens/menu-board.js:52); exempting only `menu-board.html` left the iframe
+// permanently blocked by `frame-ancestors 'none'`.
+app.use(['/app/menu-board.html', '/app/menu-admin.html'], (req, res, next) => {
     const policy = res.getHeader('Content-Security-Policy');
     if (typeof policy !== 'string') {
         logger.error('[MENU_PREVIEW_CSP] Content-Security-Policy header missing');
@@ -2717,6 +2720,14 @@ app.use('/app/menu-board.html', (req, res, next) => {
         return next();
     }
     res.setHeader('Content-Security-Policy', sameOriginPolicy);
+    /* The report-only twin still said `frame-ancestors 'none'`, so every
+       legitimate same-origin embed was reported as a violation — thousands of
+       lines in logs/csp-violations.jsonl for a policy we deliberately allow. */
+    const reportOnly = res.getHeader('Content-Security-Policy-Report-Only');
+    if (typeof reportOnly === 'string') {
+        res.setHeader('Content-Security-Policy-Report-Only',
+            reportOnly.replace(/frame-ancestors\s+[^;]+/, "frame-ancestors 'self'"));
+    }
     next();
 });
 /* Brotli للأصول الساكنة — Nginx في aaPanel مجرد reverse proxy لا يقرأ القرص،
@@ -2757,6 +2768,14 @@ app.use((req, res, next) => {
 // نحوّلها بدل ترك رابط مكسور للعملاء.
 app.use('/app/menu.html', (req, res) => {
     res.redirect(302, '/app/menu-board.html');
+});
+
+/* Aliases typed by hand or kept in old bookmarks. The login page is `/`
+   (which itself forwards to /app/index.html); these paths used to fall
+   through to the 404 handler, which reads to a user as "the system is down".
+   302 rather than 301: the canonical destination can move. */
+app.get(['/login', '/login.html', '/index.html'], (req, res) => {
+    res.redirect(302, '/');
 });
 
 // ─── اعتماد V2 كواجهة رسمية (2026-10-23) ─────────────────────────────────

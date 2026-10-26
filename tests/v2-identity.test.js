@@ -1,5 +1,5 @@
 /**
- * v2-identity.test.js — عقد هوية «بورسلين ونحاس»
+ * v2-identity.test.js — عقد هوية «ليل الزمرد»
  * ═══════════════════════════════════════════════════════════════════════
  * الهوية طبقةُ عرضٍ أخيرة (erp-identity.css): تعيد صياغة التوكنات وحدها،
  * فلا تلمس أي ملف مكوّن. وهذا بالضبط سببُ الحاجة إلى حارسٍ آلي: الخطأ هنا
@@ -8,7 +8,7 @@
  *
  * الملف يثبّت سبعة أشياء:
  *   ١) الورقة مربوطة في الصفحتين (V2 + الكاشير) بنسخة الصفحة، وآخر الطبقات.
- *   ٢) ألوان الواجهة (theme-color) على البترول الجديد.
+ *   ٢) ألوان الواجهة (theme-color) على الزمرد الجديد.
  *   ٣) التباين: كل درجة نصّ ≥ 4.5 على السطح والكانفس، بعد حلّ var() فعليًا
  *      من الملف نفسه — لا نسخٌ يدوي للأرقام.
  *   ٤) العمود الجانبي والعلامة والتركيز والحالات في الوضعين.
@@ -156,7 +156,7 @@ function htmlFiles(dir) {
     return acc;
 }
 
-describe('هوية V2 — «بورسلين ونحاس»', () => {
+describe('هوية V2 — «ليل الزمرد»', () => {
     test('الورقة مربوطة في V2 والكاشير بنسخة الصفحة، وآخر ما يُحمَّل قبل كروم المعاينة', () => {
         const rev = pageRevision();
         const html = read(path.join(APP, 'v2.html'));
@@ -172,12 +172,12 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
         expect(cash(`/app/css/v2/erp-identity.css?v=${rev}`)).toBeLessThan(cash(`/app/cashier/cashier.css?v=`));
     });
 
-    test('theme-color على البترول الجديد في الصفحتين، ومانيفست الكاشير يلبس الهوية', () => {
-        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#0B5A5F">');
-        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#0B5A5F">');
+    test('theme-color على الزمرد في الصفحتين، ومانيفست الكاشير يلبس الهوية', () => {
+        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#0F5B46">');
+        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#0F5B46">');
         const manifest = JSON.parse(read(path.join(APP, 'cashier', 'manifest.json')));
-        expect(manifest.theme_color).toBe('#0B5A5F');
-        expect(manifest.background_color).toBe('#EFECE4');
+        expect(manifest.theme_color).toBe('#0F5B46');
+        expect(manifest.background_color).toBe('#F6F1E6');
     });
 
     test('سلّم النص الفاتح: كل درجة ≥ 4.5 على السطح والكانفس، وبترتيب لمعانٍ صارم', () => {
@@ -191,9 +191,9 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
             expect(onSurface[i]).toBeLessThan(onSurface[i - 1]);
         }
         // القيم الموثّقة في رأس الملف: انزياحٌ بمقدار 0.05 يستوجب تحديثها معًا.
-        expect(onSurface[0]).toBeCloseTo(17.72, 1);
-        expect(onSurface[3]).toBeCloseTo(5.52, 1);
-        expect(onCanvas[3]).toBeCloseTo(4.68, 1);
+        expect(onSurface[0]).toBeCloseTo(14.48, 1);
+        expect(onSurface[3]).toBeCloseTo(5.12, 1);
+        expect(onCanvas[3]).toBeCloseTo(4.66, 1);
     });
 
     test('سلّم النص الداكن: كل درجة ≥ 4.5 على سطحه وكانفسه', () => {
@@ -203,31 +203,34 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
             expect(contrast(t(`--erp-text-${g}`), t('--erp-background'))).toBeGreaterThanOrEqual(4.5);
         }
         const faint = contrast(t('--erp-text-faint'), t('--erp-surface'));
-        expect(faint).toBeCloseTo(5.81, 1);
+        expect(faint).toBeCloseTo(6.73, 1);
     });
 
-    test('العلامة والتركيز: بترولٌ للفعل، نحاسٌ للحلقة، وحبرٌ معاكسٌ على الزر', () => {
+    test('العلامة والتركيز: الزمرد للفعل، النحاس للحلقة، وحبرُ الزرّ يتبع التعبئة', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             expect(contrast(t('--erp-brand-text'), t('--erp-surface'))).toBeGreaterThanOrEqual(4.5);
-            expect(contrast(t('--erp-text-inverse'), t('--erp-brand'))).toBeGreaterThanOrEqual(4.5);
+            /* الحبرُ مخصّصٌ للتعبئة الزمردية: عاجيٌّ على الزمرد العميق في
+               الفاتح، وليليٌّ على اليشم المضيء في الداكن — بعكس
+               --erp-text-inverse الذي يخدم تعبئة الخطر. */
+            expect(contrast(t('--erp-cta-ink'), t('--erp-brand'))).toBeGreaterThanOrEqual(4.5);
             // حلقة التركيز عنصرٌ غير نصي: حدّ WCAG 1.4.11 هو 3:1.
             expect(contrast(t('--erp-focus-ring'), t('--erp-surface'))).toBeGreaterThanOrEqual(3);
             expect(contrast(t('--erp-focus-ring'), t('--erp-background'))).toBeGreaterThanOrEqual(3);
         }
     });
 
-    test('نحاس النص ≥ 4.5 في الوضعين — نحاس الزينة يبقى للعلامات لا للأرقام', () => {
+    test('النحاس النصي ≥ 4.5 في الوضعين — الذهب يبقى للعلامات لا للأرقام', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             for (const bg of ['--erp-surface', '--erp-background']) {
                 expect({ theme, bg, ok: contrast(t('--erp-dash-accent-text'), t(bg)) >= 4.5 })
                     .toEqual({ theme, bg, ok: true });
             }
-            // نحاس الزينة نفسه مسموح كعلامة غير نصية (≥3:1).
+            // النحاس المجوهر نفسه مسموح كعلامة غير نصية (≥3:1).
             expect(contrast(t('--erp-brass'), t('--erp-surface'))).toBeGreaterThanOrEqual(3);
         }
-        expect(palette('light')('--erp-dash-accent-text')).toBe('#7A5410');
+        expect(palette('light')('--erp-dash-accent-text')).toBe('#7A5A12');
     });
 
     test('سُلَّم الرسوم: كل درجةٍ تُرى على الورقة والكانفس (حدّ 1.4.11 = 3:1)', () => {
@@ -255,12 +258,12 @@ describe('هوية V2 — «بورسلين ونحاس»', () => {
         }
         const t = palette('dark');
         // القيم البدائية للهوية، لا أدبيات erp-themes.css.
-        expect(t('--erp-brand-text')).toBe('#86D8D0');
-        expect(t('--erp-surface-raised')).toBe('#14241F');
-        expect(t('--erp-text-inverse')).toBe('#0C111D');
+        expect(t('--erp-brand-text')).toBe('#7FE0BC');
+        expect(t('--erp-surface-raised')).toBe('#122A21');
+        expect(t('--erp-text-inverse')).toBe('#0A1A14');
     });
 
-    test('العمود الجانبي: العمق البترولي لا يبتلع أي درجة نص', () => {
+    test('العمود الجانبي: الزمرد الليلي لا يبتلع أي درجة نص', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             const pairs = [

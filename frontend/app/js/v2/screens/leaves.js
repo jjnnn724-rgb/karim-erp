@@ -37,16 +37,17 @@
  *   handlers) and refuses to send an empty reason.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
 import {
     fetchLeaveWorkflow, fetchLeaveTypes, leaveToRow, leaveStateOf, leaveTypeMap,
     summarizeLeaves, buildLeavesKpis, topRequesters, flattenEvents, typeToRow,
     doorScopeNote, canActOnStage, decideLeave, approveOutcome, STAGE_LABELS_AR,
     LEAVES_TYPE_PAGE, LEAVES_TYPE_PAGES, createLeaveRequest, isPrivilegedLeaveRole,
-} from '../data/leaves-repo.js?v=4.9.156';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.156';
-import { ROLES } from '../../core/config.js?v=4.9.156';
+} from '../data/leaves-repo.js?v=4.9.180';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.180';
+import { ROLES } from '../../core/config.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -850,10 +851,60 @@ export function mountLeavesScreen(host, ctx = {}) {
             paint();
             return;
         }
-        if (event.target.closest('[data-v2-print]')) {window.print(); return;}
+        if (event.target.closest('[data-v2-print]')) {printLeaves(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
+
+    /** طباعة سجل الإجازات المعروض: شريحة الحالة + بحث الجدول الحالي —
+     *  نفس قاعدة dispatch.printList: يُطبع ما يُرى بالضبط، بترويسة معايير. */
+    function printLeaves() {
+        const s = summarizeLeaves(rows);
+        const shown = stateFilter === 'all' ? rows
+            : rows.filter((r) => r.wfStatus === stateFilter);
+        const query = String((table.getState().query) || '').trim().toLowerCase();
+        const hits = query ? shown.filter((r) => [r.employee, r.type, r.note]
+            .some((v) => String(v || '').toLowerCase().includes(query))) : shown;
+        const w = openInAppReport('سجل الإجازات');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل الإجازات</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز السجل…</body></html>');
+        const body = hits.map((r, i) => {
+            let statusLabel = r.wfStatus || '—';
+            try {statusLabel = stateWord(leaveStateOf(r).key) || statusLabel;} catch { /* raw key */ }
+            return `<tr><td>${i + 1}</td><td style="text-align:right">${esc(r.employee || '—')}</td>`
+                + `<td>${esc(r.type || '—')}</td>`
+                + `<td dir="ltr">${esc(r.start || '—')} ← ${esc(r.end || '—')}</td>`
+                + `<td>${r.days === null || r.days === undefined ? '—' : esc(String(r.days))}</td>`
+                + `<td>${esc(statusLabel)}</td><td style="text-align:right">${esc(r.note || '—')}</td></tr>`;
+        }).join('');
+        const dateStr = new Date().toLocaleString('ar-EG');
+        const criteria = ['الحالة: ' + stateWord(stateFilter)]
+            .concat(query ? [`البحث: «${query}»`] : []).join(' — ');
+        w.document.open();
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل الإجازات</title>`
+            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}'
+            + '.kpis div{border:1px solid #ddd;border-radius:8px;padding:8px;text-align:center}.kpis b{display:block;font-size:16px;color:#7c3500}'
+            + '.kpis span{font-size:11px;color:#555}'
+            + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
+            + 'th{background:#f7ead8;color:#7c3500}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + '.controls button.secondary{background:#555}'
+            + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
+            + '<div class="controls"><button type="button" data-lv-print>طباعة</button><button type="button" class="secondary" data-lv-close>إغلاق</button></div>'
+            + `<main class="sheet"><header class="head"><h1>سجل الإجازات</h1><p>${esc(criteria)}</p><p>تاريخ التقرير: ${esc(dateStr)}</p></header>`
+            + `<section class="kpis"><div><span>الكل</span><b>${esc(String(s.total))}</b></div>`
+            + `<div><span>قيد التنفيذ</span><b>${esc(String(s.inProgress))}</b></div>`
+            + `<div><span>محسومة</span><b>${esc(String(s.completed))}</b></div>`
+            + `<div><span>مرفوضة</span><b>${esc(String(s.rejected))}</b></div></section>`
+            + '<table><thead><tr><th>#</th><th>الموظف</th><th>النوع</th><th>الفترة</th><th>الأيام</th><th>الحالة</th><th>الملاحظة</th></tr></thead>'
+            + `<tbody>${body || '<tr><td colspan="7">لا طلبات في نطاق الطباعة</td></tr>'}</tbody></table></main></body></html>`);
+        w.document.close();
+        w.document.querySelector('[data-lv-print]')?.addEventListener('click', () => w.print());
+        w.document.querySelector('[data-lv-close]')?.addEventListener('click', () => w.close());
+        w.focus();
+    }
 
     reload();
 

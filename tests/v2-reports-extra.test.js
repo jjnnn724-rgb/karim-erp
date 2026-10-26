@@ -160,3 +160,64 @@ describe('التقارير الإضافية — عقد الشاشة', () => {
         for (const v of versions) {expect(v).toBe(REV);}
     });
 });
+
+describe('سجل الإيرادات — فك المخزون ومصدر البدائل', () => {
+    test('الحزمة تفكّ مغلّف fetchInventory وإلا انطوى المخزون إلى [] (خطأ 2026-10-25)', async () => {
+        const fetchInventory = jest.fn(async () => ({
+            rows: [{ id: 1, name: 'أرز', qty: 10, avgCost: 5, minQty: 2 }],
+            total: 1, categories: [], fuzzy: false, truncated: false,
+        }));
+        const ctx = loadEsm(REPO, {
+            fetchInventory,
+            fetchRevenues: jest.fn(async () => []),
+            fetchExpenses: jest.fn(async () => []),
+            fetchDepartments: jest.fn(async () => []),
+            fetchDispatches: jest.fn(async () => []),
+            fetchKitchenReturns: jest.fn(async () => []),
+            fetchRecipes: jest.fn(async () => []),
+            fetchLeaveWorkflow: jest.fn(async () => []),
+            fetchEmployees: jest.fn(async () => []),
+        }, ['fetchLocalBundle']);
+        const bundle = await ctx.fetchLocalBundle();
+        expect(Array.isArray(bundle.inventory)).toBe(true);
+        expect(bundle.inventory).toHaveLength(1);
+        expect(bundle.inventory[0].name).toBe('أرز');
+    });
+
+    test('fetchRevenuesRange: داخل الشهر مسيرة الشهر، وما قبله مسيرة كاملة بسقف الصفحات', async () => {
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const fetchRevenues = jest.fn(async () => ['شهر']);
+        const fetchEntityNewest = jest.fn(async () => ['كل']);
+        const ctx = loadEsm(REPO, { fetchRevenues, fetchEntityNewest, WALK_ALL_PAGES: 200 }, ['fetchRevenuesRange']);
+        const a = await ctx.fetchRevenuesRange(monthStart);   // أول الشهر نفسه = داخل الشهر
+        expect(a.scope).toBe('month');
+        expect(a.rows).toEqual(['شهر']);
+        expect(fetchEntityNewest).not.toHaveBeenCalled();
+        const b = await ctx.fetchRevenuesRange('2000-01-01'); // قبل أي شهر تشغيلي
+        expect(b.scope).toBe('all');
+        expect(b.rows).toEqual(['كل']);
+        expect(fetchEntityNewest).toHaveBeenCalledWith('revenues', { maxPages: 200 });
+        expect(fetchRevenues).toHaveBeenCalledTimes(1);
+    });
+
+    test('composeDeptRevenueFromRegister: تجميع يومي/شهري والمرتجعات null', () => {
+        const ctx = loadEsm(REPO, {}, ['composeDeptRevenueFromRegister']);
+        const revs = [
+            { date: '2026-10-02', deptId: 'kitchen', amount: 100 },
+            { date: '2026-10-02', deptId: 'kitchen', amount: 50 },
+            { date: '2026-10-05', deptId: 'kitchen', amount: 25 },
+            { date: '2026-11-01', deptId: 'kitchen', amount: 999 },   // خارج الفترة
+        ];
+        const depts = [{ code: 'kitchen', name: 'المطبخ' }];
+        const day = ctx.composeDeptRevenueFromRegister(revs, depts, 'day', '2026-10-01', '2026-10-31');
+        expect(day.rows).toHaveLength(2);
+        expect(day.rows[0]).toMatchObject({ period: '2026-10-05', name: 'المطبخ', net: 25, invoices: 1, refund: null });
+        expect(day.rows[1]).toMatchObject({ period: '2026-10-02', net: 150, invoices: 2 });
+        expect(day.totals).toMatchObject({ gross: 175, net: 175, invoices: 3, refund: null, refunds: null });
+        const month = ctx.composeDeptRevenueFromRegister(revs, depts, 'month', '2026-10-01', '2026-10-31');
+        expect(month.rows).toHaveLength(1);
+        expect(month.rows[0].period).toBe('2026-10');
+        expect(month.rows[0].net).toBe(175);
+    });
+});

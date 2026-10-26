@@ -19,6 +19,8 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
+import { trapFocus } from './focus-trap.js?v=4.9.180';
+
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';
 const CAMERA_TRIES = [
@@ -203,15 +205,20 @@ export function captureFace(opts = {}) {
 
     return new Promise((resolve, reject) => {
         const host = document.createElement('div');
+        /* مَن فتح الكاميرا يعود إليه التركيز عند الإغلاق، والتركيز يدخل الحوار
+           ويُحبس فيه: هو يعلن aria-modal، والكاميرا تفتح فوق الصفحة كلها. */
+        const opener = document.activeElement;
         host.className = 'erp-v2 erp-face-cam';
         host.setAttribute('role', 'dialog');
         host.setAttribute('aria-modal', 'true');
         host.setAttribute('aria-label', title);
+        host.tabIndex = -1;
         host.innerHTML = `
           <div class="erp-face-cam__panel">
             <div class="erp-face-cam__head">
               <h3 class="erp-face-cam__title" data-face-title></h3>
-              <button type="button" class="erp-btn erp-btn--sm" data-face-cancel aria-label="إغلاق">✕</button>
+              <button type="button" class="erp-icon-btn erp-modal-x" data-face-cancel aria-label="إغلاق الكاميرا" title="إغلاق">
+                <i class="ji" data-i="x" aria-hidden="true"></i></button>
             </div>
             <video class="erp-face-cam__video" data-face-video autoplay playsinline muted></video>
             <p class="erp-face-cam__msg erp-text-sm" data-face-msg role="status" aria-live="polite">جارٍ تشغيل الكاميرا…</p>
@@ -221,11 +228,12 @@ export function captureFace(opts = {}) {
               <label class="erp-btn erp-btn--sm erp-face-cam__upload">رفع صورة
                 <input type="file" accept="image/*" capture="user" data-face-upload hidden>
               </label>
-              <button type="button" class="erp-btn erp-btn--sm" data-face-cancel>إلغاء</button>
             </div>
             <p class="erp-text-xs erp-text-muted erp-face-cam__hint">الصور لا تُخزَّن على الخادم — تُستخدم لحظيًا لاستخراج البصمة ثم تُهمل.</p>
           </div>`;
         document.body.appendChild(host);
+        const releaseTrap = trapFocus(host);
+        host.focus();
 
         const q = (sel) => host.querySelector(sel);
         const titleEl = q('[data-face-title]');
@@ -260,8 +268,11 @@ export function captureFace(opts = {}) {
             if (disposed) { return; }
             disposed = true;
             stopStream();
-            document.removeEventListener('keydown', onKey);
+            releaseTrap();
             host.remove();
+            if (opener && typeof opener.focus === 'function' && opener.isConnected) {
+                try { opener.focus(); } catch (_) { /* أُزيل العنصر */ }
+            }
         };
         const finish = () => {
             cleanup();
@@ -273,10 +284,8 @@ export function captureFace(opts = {}) {
         };
         const cancel = () => fail(new Error('FACE_CANCELLED'));
 
-        function onKey(event) {
-            if (event.key === 'Escape') { cancel(); }
-        }
-        document.addEventListener('keydown', onKey);
+        /* الإغلاق من X أعلى النافذة وحده — لا Escape ولا زر إلغاء ثانٍ:
+           الكاميرا تبقى حتى يقرر المستخدم الإغلاق صراحةً. */
         host.querySelectorAll('[data-face-cancel]').forEach((btn) => {
             btn.addEventListener('click', cancel);
         });

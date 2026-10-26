@@ -22,15 +22,16 @@
  *   (زر «مصروف +» في تفاصيل القسم — شاشة 10).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
     EXPENSE_KIND_AR, EXPENSE_KIND_TONE, riyadhToday, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.156';
-import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.156';
-import { canWrite } from '../session.js?v=4.9.156';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.156';
+} from '../data/finance-repo.js?v=4.9.180';
+import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.180';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.180';
+import { paintFormErrors } from '../form-errors.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -306,7 +307,7 @@ export function mountExpensesScreen(host, ctx = {}) {
               <label class="erp-label" for="v2exp-f-notes">ملاحظات</label>
               <input class="erp-input" id="v2exp-f-notes" name="notes" value="${esc(val('notes'))}">
             </div>
-            <div class="erp-error" data-v2-form-error role="alert"></div>
+            <div class="erp-error" id="v2exp-form-error" data-v2-form-error role="alert"></div>
             <div class="erp-row-wrap">
               <span class="erp-grow"></span>
               <button type="button" class="erp-btn" data-v2-form-cancel>إلغاء</button>
@@ -346,15 +347,11 @@ export function mountExpensesScreen(host, ctx = {}) {
     }
 
     function showFormErrors(errors) {
-        const box = formHost.querySelector('[data-v2-form-error]');
-        if (!box) {return;}
-        box.textContent = errors.map((e) => e.message).join(' · ');
-        const form = formHost.querySelector('[data-v2-form-el]');
-        if (!form) {return;}
-        for (const key of EXP_FIELDS) {
-            const input = form.querySelector(`[name="${key}"]`);
-            if (input) {input.setAttribute('aria-invalid', errors.some((e) => e.field === key) ? 'true' : 'false');}
-        }
+        paintFormErrors(
+            formHost.querySelector('[data-v2-form-el]'),
+            formHost.querySelector('[data-v2-form-error]'),
+            errors,
+        );
     }
 
     async function submitForm(event) {

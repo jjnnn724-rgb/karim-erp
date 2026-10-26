@@ -253,11 +253,15 @@ describe('V2 attendance screen + layer (source contract)', () => {
     test('every payload string reaching the DOM is escaped', () => {
         const s = screen();
         expect(s).toMatch(/esc\(row\.employee\)/);
-        expect(s).toMatch(/esc\(k\.label\)/);
-        expect(s).toMatch(/esc\(k\.pill\.aria\)/);
         expect(s).toMatch(/esc\(b\.label\)/);
         expect(s).toMatch(/title="\$\{esc\(`/);   // the bar's tooltip escapes its whole sentence
         expect(s).toMatch(/esc\(l\.label\)/);
+        // شريط المؤشرات مفوَّض للبيت المشترك — وهذه ضمانة هروبه هناك (2026-10-26).
+        expect(s).toMatch(/import \{ kpiStrip \} from '\.\.\/role-dash-parts\.js\?v=/);
+        expect(s).not.toMatch(/function kpiStrip/);
+        const shared = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'role-dash-parts.js'), 'utf8');
+        expect(shared).toMatch(/esc\(k\.label\)/);
+        expect(shared).toMatch(/esc\(k\.pill\.aria\)/);
     });
 
     test('an unresolved employee id is shown as what it is, never as a guessed name', () => {

@@ -151,6 +151,11 @@ function buildCspDirectives(opts, nonce) {
 function buildV2Csp() {
     return [
         "default-src 'self'",
+        /* Deliberately no external https origins: V2 is the financial surface
+           (tests/v2-security.test.js pins this). Cloudflare's injected
+           analytics beacon is therefore blocked here and allowed only on the
+           legacy documents (buildCspDirectives). That is a policy choice, not
+           a bug — enabling analytics on V2 means editing this list on purpose. */
         "script-src 'self'",
         "script-src-attr 'none'",
         "style-src 'self' 'unsafe-inline'",

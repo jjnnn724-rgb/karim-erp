@@ -18,9 +18,10 @@
  *   بوابة الشاشة هي بوابة الخادم (admin|manager|accountant).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
-import { barChart, lineChart } from '../charts.js?v=4.9.156';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { trapFocus } from '../focus-trap.js?v=4.9.180';
+import { barChart, lineChart } from '../charts.js?v=4.9.180';
 import {
     fetchMonthlyComparison,
     fetchMonthlyDetail,
@@ -30,8 +31,8 @@ import {
     monthLabel,
     MONTHS_CHOICES,
     MONTHS_DEFAULT,
-} from '../data/monthly-comparison-repo.js?v=4.9.156';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.156';
+} from '../data/monthly-comparison-repo.js?v=4.9.180';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -105,29 +106,26 @@ function weightLine(label, valueHtml, pctValue, tone) {
 function template() {
     return `
       <section class="erp-v2 erp-monthly">
-        <header class="erp-monthly__hero">
-          <div class="erp-monthly__heroMain">
-            <span class="erp-eyebrow">المالية · تقرير تنفيذي</span>
-            <h2 class="erp-monthly__title">مقارنة الشهور
-              <span class="erp-monthly__en" dir="ltr" lang="en">Monthly Performance</span>
+        <header class="erp-dash-head">
+          <div>
+            <h2 class="erp-dash-title">مقارنة الشهور
+              <span class="erp-eyebrow" dir="ltr" lang="en">Monthly Performance</span>
             </h2>
-            <p class="erp-monthly__sub" data-v2-note role="status" aria-live="polite">
+            <div class="erp-dash-sub" data-v2-note role="status" aria-live="polite">
               الإيراد هو التحصيل المعتمد من تقرير الكاشيريات (شامل الضريبة)، والكوست
               والمصروفات من دفتر ERP. المصدران لا يُدمجان، وما لا يغطيه مصدر يُعلن
               ولا يُقرأ صفرًا.
-            </p>
-          </div>
-          <div class="erp-monthly__heroSide">
-            <div class="erp-monthly__period" data-v2-period></div>
-            <div class="erp-monthly__actions">
-              <span data-v2-months></span>
-              <button type="button" class="erp-btn erp-btn--sm" data-v2-print-open>
-                ${icon('printer')}<span>طباعة المقارنة</span>
-              </button>
-              <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
-                ${icon('refresh')}<span>تحديث</span>
-              </button>
             </div>
+          </div>
+          <div class="erp-dash-controls">
+            <div class="erp-monthly__period" data-v2-period></div>
+            <span data-v2-months></span>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-print-open>
+              ${icon('printer')}<span>طباعة المقارنة</span>
+            </button>
+            <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
+              ${icon('refresh')}<span>تحديث</span>
+            </button>
           </div>
         </header>
 
@@ -227,7 +225,7 @@ function template() {
               <button type="button" class="erp-btn erp-btn--sm" data-v2-panel-print>
                 ${icon('printer')}<span>طباعة الشهر</span>
               </button>
-              <button type="button" class="erp-icon-btn" data-v2-close aria-label="إغلاق ملف الشهر">
+              <button type="button" class="erp-icon-btn erp-modal-x" data-v2-close aria-label="إغلاق ملف الشهر" title="إغلاق">
                 ${icon('x')}
               </button>
             </div>
@@ -258,6 +256,7 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
     let detailSeq = 0;
     let detailTable = null;
     let lastFocus = null;
+    let releaseTrap = null;
     const detailCache = new Map();
 
     host.insertAdjacentHTML('beforeend', template());
@@ -873,6 +872,8 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
         document.body.classList.add('erp-monthly-open');
         const focusTarget = q('[data-v2-close]');
         if (focusTarget) {focusTarget.focus();}
+        releaseTrap?.();
+        releaseTrap = trapFocus(panel);
         const cached = detailCache.get(detailCacheKey(month));
         if (cached) {paintDetail(cached);} else {loadDetail(month);}
     }
@@ -887,6 +888,8 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
         panelBody.removeAttribute('aria-busy');
         disposeDetailTable();
         document.body.classList.remove('erp-monthly-open');
+        releaseTrap?.();
+        releaseTrap = null;
         if (lastFocus && lastFocus.isConnected) {lastFocus.focus();}
         lastFocus = null;
     }
@@ -1013,31 +1016,8 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
         changeFilters('عُرضت كل الكاشيرات.');
     }
 
-    const viewerOpen = () => document.documentElement.classList.contains('erp-report-viewer-open');
-
-    const onKey = (event) => {
-        if (panel.hidden) {return;}
-        if (event.key === 'Escape') {
-            if (viewerOpen()) {return;}
-            event.preventDefault();
-            closePanel();
-            return;
-        }
-        if (event.key !== 'Tab') {return;}
-        const focusables = [...panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
-            .filter((node) => !node.disabled && node.offsetParent !== null);
-        if (!focusables.length) {return;}
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
-    };
-    document.addEventListener('keydown', onKey, true);
+    /* لوحة ملف الشهر تُغلق من X أعلاها وحده. لا Escape ولا نقرة على الغطاء:
+       قراءة شهرٍ كامل بأرقامه قابلة للضياع بنقرة سهو، والـX هو المخرج المعلن. */
 
     /* The sheet is fetched with credentials and handed to the viewer as text:
        an iframe src jump carries no Authorization header and would 401. */
@@ -1093,7 +1073,6 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-close]')) {closePanel(); return;}
-        if (event.target.closest('[data-v2-scrim]')) {closePanel(); return;}
         if (event.target.closest('[data-v2-print-open]')) {
             openPrintSheet(
                 () => fetchMonthlyComparisonPrintHtml(currentFilters()),
@@ -1121,7 +1100,8 @@ export function mountMonthlyComparisonScreen(host, ctx = {}) {
         getData: () => data,
         destroy() {
             detailSeq += 1;
-            document.removeEventListener('keydown', onKey, true);
+            releaseTrap?.();
+            releaseTrap = null;
             disposeDetailTable();
             monthTable.destroy();
             document.body.classList.remove('erp-monthly-open');

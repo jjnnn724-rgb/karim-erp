@@ -39,7 +39,7 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.156';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.180';
 import {
     fetchBriefing,
     fetchTodayStats,
@@ -49,11 +49,13 @@ import {
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.156';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.156';
-import { openInAppReport } from '../report-viewer.js?v=4.9.156';
+} from '../data/briefing-repo.js?v=4.9.180';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { trapFocus } from '../focus-trap.js?v=4.9.180';
 
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.156';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.180';
+import { kpiStrip, deltaPill } from '../role-dash-parts.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -61,28 +63,7 @@ const esc = (v) => String(v ?? '')
 
 /* ── Markup builders ─────────────────────────────────────────────────── */
 
-/** The pill: `favor` paints it, `sign` points it. */
-function deltaPill(d) {
-    const icon = d.sign === 'up' ? 'arrow-up' : d.sign === 'down' ? 'arrow-down' : null;
-    const cls = d.favor === 'good' ? 'erp-delta--up' : d.favor === 'bad' ? 'erp-delta--down' : 'erp-delta--flat';
-    return `<span class="erp-delta ${cls}" role="img" aria-label="${esc(d.aria)}">`
-        + `${icon ? `<i class="ji" data-i="${icon}" aria-hidden="true"></i>` : ''}`
-        + `<span class="erp-num" dir="ltr">${esc(d.text)}</span></span>`;
-}
-
-function kpiStrip(kpis) {
-    return `<ul class="erp-kpis" aria-label="مؤشرات اليوم — مباشرة من قاعدة البيانات">`
-        + kpis.map((k, i) => `
-      <li class="erp-kpi" style="--erp-rise-i:${i}">
-        <div class="erp-kpi__top">
-          <span class="erp-kpi__icon" aria-hidden="true"><i class="ji" data-i="${esc(k.icon)}"></i></span>
-          <span class="erp-kpi__label">${esc(k.label)}<span class="erp-eyebrow" dir="ltr" lang="en">${esc(k.en)}</span></span>
-        </div>
-        <div class="erp-kpi__value"><span class="erp-num" dir="ltr">${esc(k.value)}</span>${k.unit ? ` <span class="erp-kpi__unit">${esc(k.unit)}</span>` : ''}</div>
-        <div class="erp-kpi__foot">${deltaPill(k.delta)}<span class="erp-kpi__hint">${esc(k.hint)}</span></div>
-      </li>`).join('')
-        + `</ul>`;
-}
+/* kpiStrip/deltaPill مشتركان الآن في role-dash-parts.js — نسخة واحدة للنظام. */
 
 /**
  * منحنى المبيعات: أعمدةٌ SVG بمحورٍ يعرف مداه. القيمُ بالألوف — فيبقى
@@ -288,7 +269,7 @@ function bodyHTML(view, failures, opts = {}) {
     ].join('');
     return `<div class="${opts.animate ? 'erp-brief erp-brief--in' : 'erp-brief'}">
       ${sourceLine(failures)}
-      ${kpiStrip(view.kpis)}
+      ${kpiStrip(view.kpis, 'مؤشرات اليوم — مباشرة من قاعدة البيانات')}
       <div class="erp-dash-grid">${flow}</div>
       ${card('يحتاج قرارًا', 'Needs A Decision', `${view.alerts.length} بند`, alertsBlock(view.alerts), { cls: 'erp-brief__decisions', i: 6 })}
     </div>`;
@@ -323,6 +304,7 @@ function template() {
  * دفعات · كاشير) من مرآة YaraSoft، والنطاق يختاره المالك.
  */
 async function openAllOrders(day) {
+    const opener = document.activeElement;
     const layer = document.createElement('div');
     /* الطبقة تُلحَق بـdocument.body أي خارج شجرة .erp-v2، فبلا هذا الغلاف
        تسقط كل قاعدة «.erp-v2 .erp-*» وكل توكن --erp-*: جدول بلا خلفية أو
@@ -331,12 +313,14 @@ async function openAllOrders(day) {
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-modal', 'true');
     layer.setAttribute('aria-label', 'كل الفواتير');
+    layer.tabIndex = -1;
     layer.innerHTML = `
       <div class="erp-allorders__panel">
         <header class="erp-allorders__head">
           <strong>كل الفواتير</strong>
           <input class="erp-allorders__date" type="date" value="${esc(day || '')}" aria-label="التاريخ">
-          <button type="button" class="erp-icon-btn" data-v2-close-orders aria-label="إغلاق">&times;</button>
+          <button type="button" class="erp-icon-btn erp-modal-x" data-v2-close-orders aria-label="إغلاق كل الفواتير" title="إغلاق">
+            <i class="ji" data-i="x" aria-hidden="true"></i></button>
         </header>
         <div class="erp-allorders__body" data-v2-orders-body><p class="erp-state">جارٍ جلب السندات…</p></div>
         <div class="erp-allorders__detail" data-v2-order-detail hidden></div>
@@ -344,14 +328,18 @@ async function openAllOrders(day) {
     document.body.appendChild(layer);
     const bodyEl = layer.querySelector('[data-v2-orders-body]');
     const dateEl = layer.querySelector('.erp-allorders__date');
-    const onKey = (e) => { if (e.key === 'Escape') {close();} };
+    const releaseTrap = trapFocus(layer);
+    layer.focus();
     const close = () => {
-        document.removeEventListener('keydown', onKey);
+        releaseTrap();
         layer.remove();
+        if (opener && typeof opener.focus === 'function' && opener.isConnected) {
+            try { opener.focus(); } catch (_) { /* أُزيل العنصر */ }
+        }
     };
+    /* الإغلاق من X أعلى الشريط وحده — لا Escape ولا نقرة خارج اللوحة:
+       لوحة تقرأ فواتير يوم كامل لا تُفقد بنقرة سهو على الخلفية. */
     layer.querySelector('[data-v2-close-orders]').addEventListener('click', close);
-    layer.addEventListener('mousedown', (e) => { if (e.target === layer) {close();}});
-    document.addEventListener('keydown', onKey);
 
     /* إيصال POS محميّ برؤوس المصادقة فقط — مجرد تنقّل (href/target) لا يحمل
        x-api-key فيرجع 401. جلب الورقة من المستودع (fetchReceiptHtml) وكتابتها
@@ -388,7 +376,8 @@ async function openAllOrders(day) {
                 <span>كاشير ${esc(d.cashier_no || '—')}</span>
                 <span>${esc(d.dept_name || d.department_name || '—')}</span>
                 <button type="button" class="erp-btn erp-btn--sm" data-v2-print-receipt>طباعة الإيصال</button>
-                <button type="button" class="erp-icon-btn" data-v2-close-detail aria-label="إغلاق">×</button>              </div>
+                <button type="button" class="erp-icon-btn erp-modal-x" data-v2-close-detail aria-label="إغلاق تفاصيل السند" title="إغلاق">×</button>
+              </div>
               <table class="erp-allorders__table">
                 <thead><tr><th>الصنف</th><th>كمية</th><th>سعر</th><th>ضريبة</th><th>إجمالي</th></tr></thead>
                 <tbody>${items.map((it) => `<tr>
