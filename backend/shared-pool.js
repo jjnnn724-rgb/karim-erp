@@ -40,13 +40,30 @@ function dbEnv(key, fallback) {
     return fallback;
 }
 
+/**
+ * حارس قاعدة بيانات الاختبار (fail-closed).
+ * 2026-10-26: مجموعة password-recovery كتبت حسابات PWRT-TEST في قاعدة
+ * الإنتاج قبل ضبط عزل الاختبار، وبقي حساب اختبار نشط بكلمة مرور معروفة.
+ * أي عملية تعمل بـ NODE_ENV=test لا يجوز أن تفتح اتصالًا إلا بـ
+ * karim_erp_test — هنا يُمنع الاتصال لا يُسجَّل تحذير.
+ */
+function resolveDbName() {
+    const name = dbEnv('DB_NAME', 'karim_erp');
+    if (process.env.NODE_ENV === 'test' && name !== 'karim_erp_test') {
+        throw new Error(
+            `Refusing to connect to database "${name}" with NODE_ENV=test — test runs must target karim_erp_test.`
+        );
+    }
+    return name;
+}
+
 // FIX 2026-10-11 (M22): pool is now mutable — after DB restore, pg_terminate_backend
 // kills all connections but the Pool object still holds dead sockets. reinitPool()
 // creates a fresh Pool so the server doesn't need a full restart.
 let _pool = new Pool({
     user: dbEnv('DB_USER', 'postgres'),
     host: dbEnv('DB_HOST', 'localhost'),
-    database: dbEnv('DB_NAME', 'karim_erp'),
+    database: resolveDbName(),
     password: dbEnv('DB_PASSWORD', ''),
     port: parseInt(dbEnv('DB_PORT', '5432'), 10),
     // PERF-7: max reduced 60→20 — Postgres default max_connections=100;
@@ -89,7 +106,7 @@ async function reinitPool() {
     _pool = new Pool({
         user: dbEnv('DB_USER', 'postgres'),
         host: dbEnv('DB_HOST', 'localhost'),
-        database: dbEnv('DB_NAME', 'karim_erp'),
+        database: resolveDbName(),
         password: dbEnv('DB_PASSWORD', ''),
         port: parseInt(dbEnv('DB_PORT', '5432'), 10),
         max: parseInt(process.env.DB_POOL_MAX || '20', 10),
@@ -153,4 +170,4 @@ async function safeQuery(text, params = [], retries = 2) {
     throw lastErr;
 }
 
-module.exports = { pool, safeQuery, reinitPool };
+module.exports = { pool, safeQuery, reinitPool, dbName: resolveDbName };

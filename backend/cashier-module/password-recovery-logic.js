@@ -21,6 +21,29 @@ const { isStrongPassword } = require('./jwt-middleware');
 const RESET_CODE_TTL_MS = 10 * 60 * 1000;   // 10 دقائق
 const MAX_VERIFY_ATTEMPTS = 5;              // قفل الرمز بعد هذا العدد من الأخطاء
 
+/** بادئات حسابات الاختبار — تُرفض حتى لو تسرّبت إلى قاعدة الإنتاج. */
+const TEST_ACCOUNT_PREFIXES = ['pwrt-test'];
+
+/**
+ * هل الاسم حساب اختبار؟ حسابات الاختبار ليست بيانات إنتاج: كلمة مرورها
+ * معلنة في المستودع، فاستهدافها في الاستعادة باب مفتوح. الرفض هنا في
+ * المنطق النقي — قبل أي وصول لقاعدة البيانات.
+ */
+function isTestAccount(username) {
+    const u = String(username || '').trim().toLowerCase();
+    if (!u) {return false;}
+    return TEST_ACCOUNT_PREFIXES.some((prefix) => u.startsWith(prefix));
+}
+
+/**
+ * الرفض فعّال في الإنتاج فقط: داخل قاعدة الاختبار المعزولة الحسابات
+ * الموسومة هي مادة الاختبار نفسها، فرفضها يفرغ مجموعة الاستعادة من معناها.
+ */
+function refusesTestAccount(username, dbName) {
+    if (!isTestAccount(username)) {return false;}
+    return String(dbName || '').trim().toLowerCase() !== 'karim_erp_test';
+}
+
 /** رمز رقمي من 6 خانات (بأصفار بادئة عند اللزوم) */
 function generateResetCode() {
     return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
@@ -58,6 +81,9 @@ function evaluateCodeRow(row, presentedCode, now = Date.now()) {
 module.exports = {
     RESET_CODE_TTL_MS,
     MAX_VERIFY_ATTEMPTS,
+    TEST_ACCOUNT_PREFIXES,
+    isTestAccount,
+    refusesTestAccount,
     generateResetCode,
     hashCode,
     requestCodeSchema,

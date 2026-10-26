@@ -21,6 +21,7 @@
 const express = require('express');
 const bcrypt = require('../pw-crypto');
 const { pool } = require('./db-pool');
+const { dbName } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { writeAuditLog } = require('./audit-middleware');
 const { authLimiter } = require('../rate-limiter');
@@ -31,6 +32,7 @@ const {
     MAX_VERIFY_ATTEMPTS,
     generateResetCode,
     hashCode,
+    refusesTestAccount,
     requestCodeSchema,
     resetRequestSchema,
     evaluateCodeRow,
@@ -44,7 +46,7 @@ const GENERIC_RESET_ERROR = {
 };
 
 // ─── إصدار رمز استعادة (admin/manager فقط) ─────────────────────────────────
-async function requestCodeHandler(req, res) {
+async function requestCodeHandler(req, res, ctx = {}) {
     const parsed = requestCodeSchema.safeParse(req.body || {});
     if (!parsed.success) {
         return res.status(422).json({
@@ -53,6 +55,12 @@ async function requestCodeHandler(req, res) {
         });
     }
     const { username } = parsed.data;
+
+    // حساب اختبار ليس حساب إنتاج: كلمة مروره معلنة في المستودع، فاستهدافه
+    // باب مفتوح. الرفض قبل أي وصول لقاعدة البيانات (2026-10-26).
+    if (refusesTestAccount(username, ctx.dbName || dbName())) {
+        return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'لا يوجد حساب نشط بهذا الاسم.' });
+    }
 
     const client = await pool.connect();
     try {
@@ -107,7 +115,7 @@ async function requestCodeHandler(req, res) {
 router.post('/request-code', authLimiter, jwtAuth, requireRole('admin', 'manager'), (req, res) => requestCodeHandler(req, res));
 
 // ─── الاستعادة الذاتية (عام — الموظف من شاشة الدخول) ────────────────────────
-async function resetHandler(req, res) {
+async function resetHandler(req, res, ctx = {}) {
     const parsed = resetRequestSchema.safeParse(req.body || {});
     if (!parsed.success) {
         return res.status(422).json({
@@ -116,6 +124,9 @@ async function resetHandler(req, res) {
         });
     }
     const { username, code, new_password } = parsed.data;
+
+    // حساب اختبار لا يُستهدف — الرد الموحّد نفسه كأي اسم غير صالح
+    if (refusesTestAccount(username, ctx.dbName || dbName())) {return res.status(401).json(GENERIC_RESET_ERROR);}
 
     const client = await pool.connect();
     try {
