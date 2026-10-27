@@ -33,7 +33,7 @@ body {
   background: var(--erp-background, var(--karim-bg));
   color: var(--erp-text-primary, var(--karim-text));
   font-family: var(--erp-font-sans, var(--karim-font));
-  font-size: 13px;
+  font-size: var(--erp-text-sm);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -55,7 +55,7 @@ body {
   padding: 7px 18px;
   background: var(--erp-sidebar-bg);
   color: var(--erp-sidebar-ink-2);
-  font-size: 12px;
+  font-size: var(--erp-text-xs);
   border-block-end: 1px solid var(--erp-sidebar-line);
   position: sticky;
   inset-block-start: 0;
@@ -73,8 +73,8 @@ body {
   background: var(--erp-sidebar-plaque);
   color: var(--erp-sidebar-plaque-ink);
   padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  border-radius: var(--erp-radius-full);
+  font-size: var(--erp-text-xs);
   white-space: nowrap;
 }
 
@@ -109,14 +109,14 @@ body {
 .erp-preview-banner a:focus-visible {
   outline: 2px solid var(--erp-c-sidebar-info);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: var(--erp-radius-sm);
 }
 
 @media (max-width: 640px) {
-  .erp-preview-banner { gap: 8px; min-height: 42px; padding: 6px 10px; font-size: 11px; }
-  .erp-preview-banner strong { padding: 3px 7px; font-size: 10px; }
+  .erp-preview-banner { gap: 8px; min-height: 42px; padding: 6px 10px; font-size: var(--erp-text-xs); }
+  .erp-preview-banner strong { padding: 3px 7px; font-size: var(--erp-text-xs); }
   .erp-preview-banner span { flex-basis: 90px; }
-  .erp-preview-banner a { font-size: 10px; }
+  .erp-preview-banner a { font-size: var(--erp-text-xs); }
 }
 
 #erp-v2-root .erp-shell__content {

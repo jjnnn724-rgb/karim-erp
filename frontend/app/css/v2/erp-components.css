@@ -181,7 +181,7 @@
   flex: none;
   inline-size: var(--erp-control-lg);
   block-size: var(--erp-control-lg);
-  border-radius: 999px;
+  border-radius: var(--erp-radius-full);
   font-size: var(--erp-text-lg);
   line-height: 1;
   transition: background-color var(--erp-duration-fast) var(--erp-ease-out),
@@ -415,10 +415,10 @@
 .erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
 .erp-v2 .erp-shell__bell { position: relative; display: inline-flex; }
 .erp-v2 .erp-shell__bell .erp-badge { position: absolute; top: -6px; inset-inline-end: -6px; }
-.erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 12px; z-index: var(--erp-z-dropdown); }
+.erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-lg); padding: 12px; z-index: var(--erp-z-dropdown); }
 .erp-v2 .erp-notif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .erp-v2 .erp-notif-list { display: flex; flex-direction: column; gap: 8px; }
-.erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: var(--erp-radius-md); padding: 8px 10px; cursor: pointer; }
 .erp-v2 .erp-notif--unread { border-color: var(--erp-brand-text); }
 /* Bare on purpose: js/v2/layout/shell-extras.js mounts this host on
    document.body, so a `.erp-v2 ` ancestor prefix never matches. Measured before
@@ -433,14 +433,14 @@
    `inset-inline-start` يضع الزر فوق كعب القائمة (قياس حيّ على 1066px)،
    فيغطّي آخر عنصر واسم الدور. `inline-end` يبقى داخل المحتوى في الاتجاهين. */
 .erp-fab-host { position: fixed; bottom: 20px; inset-inline-end: 20px; z-index: var(--erp-z-fab); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-.erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: 26px; line-height: 1; cursor: pointer; }
+.erp-fab-host .erp-fab { width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--erp-brand-text); color: var(--erp-text-inverse); font-size: var(--erp-text-xl); line-height: 1; cursor: pointer; }
 .erp-fab-host .erp-fab-menu { display: flex; flex-direction: column; gap: 8px; }
 /* `[hidden]` was losing to the rule above (UA `[hidden]{display:none}` is a
    lower-priority element rule), so all four quick-action pills rendered even
    with aria-expanded="false". Harmless while the host was invisible; now that
    the FAB actually paints, the menu has to obey its own closed state. */
 .erp-fab-host .erp-fab-menu[hidden] { display: none; }
-.erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font: inherit; }
+.erp-fab-host .erp-fab-action { display: inline-flex; align-items: center; gap: 8px; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-full); padding: 8px 14px; cursor: pointer; font: inherit; }
 /* Revived by البند ١٣: js/v2/layout/shell-extras.js gives the body-mounted host
    the .erp-v2 class, so this rule matches and its declarations became live —
    the z-index included, which moves onto the scale beside the notification
@@ -450,14 +450,14 @@
    button at the old 70 and the panel at 300. `top: 64px` clearing the 56px
    header is a separate debt — it only holds while nothing taller than 8px
    rides above the header. */
-.erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: var(--erp-z-dropdown); background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
+.erp-v2 .erp-pop { position: fixed; top: 64px; inset-inline-end: 16px; z-index: var(--erp-z-dropdown); background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 8px; width: min(320px, 90vw); }
 /* #b91c1c was an off-palette red (the token is #b42318 light / #f87171 dark).
    Both readings stay AA-safe with the inverse ink: 6.57:1 light, 6.82:1 dark.
    z-index was 9999 — above the whole scale, so the strip painted over open
    modals and the toast layer. --erp-z-toast keeps it visible above dialogs
    (900) but inside the system, yielding only to tooltips (1100). The
    hand-written 13px is a separate debt. */
-.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: var(--erp-z-toast); background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: 13px; }
+.erp-offline-bar { position: fixed; top: 0; right: 0; left: 0; z-index: var(--erp-z-toast); background: var(--erp-danger); color: var(--erp-text-inverse); text-align: center; padding: 8px; font-size: var(--erp-text-sm); }
 @media (max-width: 640px) {
   .erp-fab-host .erp-fab { width: 44px; height: 44px; }
   /* A card head is a control strip, not a single line on a phone: without
@@ -481,14 +481,14 @@
    دائرة ملوّنة تحمل أيقونة القسم (SVG أو رمز تعبية قديم) + الاسم والكود.
    اللون يأتي من بيانات القسم نفسها (hex صالح من القاعدة) — لا متغيّر نظام. */
 .erp-v2 .erp-dept-identity { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
-.erp-v2 .erp-dept-ico { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border-radius: 10px; color: var(--erp-text-inverse); flex: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--erp-text-inverse) 18%, transparent); }
+.erp-v2 .erp-dept-ico { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border-radius: var(--erp-radius-md); color: var(--erp-text-inverse); flex: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--erp-text-inverse) 18%, transparent); }
 .erp-v2 .erp-dept-ico .ji, .erp-v2 .erp-dept-ico svg { inline-size: 18px; block-size: 18px; }
-.erp-v2 .erp-dept-ico__emoji { font-size: 17px; line-height: 1; }
+.erp-v2 .erp-dept-ico__emoji { font-size: var(--erp-text-lg); line-height: 1; }
 .erp-v2 .erp-dept-identity__body { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .erp-v2 .erp-dept-identity__name { font-weight: var(--erp-fw-semibold); color: var(--erp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.erp-v2 .erp-dept-identity__code { font-size: 11px; color: var(--erp-text-muted); }
+.erp-v2 .erp-dept-identity__code { font-size: var(--erp-text-xs); color: var(--erp-text-muted); }
 .erp-v2 .erp-dept-parent { color: var(--erp-text-secondary); }
-.erp-v2 .erp-dept-swatch { display: inline-block; inline-size: 22px; block-size: 22px; border-radius: 7px; border: 1px solid var(--erp-border); vertical-align: middle; }
+.erp-v2 .erp-dept-swatch { display: inline-block; inline-size: 22px; block-size: 22px; border-radius: var(--erp-radius-sm); border: 1px solid var(--erp-border); vertical-align: middle; }
 .erp-v2 .erp-dept-kpis { margin-block-end: 2px; }
 
 /* ── سجل المؤشرات الموحّد — لغة واحدة لكل شاشات V2 (2026-10-26) ──────────
@@ -530,7 +530,7 @@
   inset-inline-end: 16px;
   color: var(--erp-text-faint);
   font-family: var(--erp-font-num);
-  font-size: 11px;
+  font-size: var(--erp-text-xs);
   font-variant-numeric: tabular-nums;
   letter-spacing: .08em;
 }
@@ -558,7 +558,7 @@
   text-overflow: ellipsis;
 }
 .erp-v2 .erp-kpi__value {
-  font-size: 30px;
+  font-size: var(--erp-display-lg);
   font-weight: 600;
   letter-spacing: -.025em;
   color: var(--erp-text-primary);
@@ -580,7 +580,7 @@
   border-radius: var(--erp-radius-full);
   line-height: 1.6;
 }
-.erp-v2 .erp-delta .ji { font-size: 12px; }
+.erp-v2 .erp-delta .ji { font-size: var(--erp-text-xs); }
 .erp-v2 .erp-delta--up { background: var(--erp-success-soft); color: var(--erp-success-text); }
 .erp-v2 .erp-delta--down { background: var(--erp-danger-soft); color: var(--erp-danger-text); }
 .erp-v2 .erp-delta--flat { background: var(--erp-neutral-soft); color: var(--erp-neutral-text); }
@@ -608,7 +608,7 @@
   .erp-v2 .erp-kpi::after { inset-inline-end: 10px; inset-block-start: 10px; }
   .erp-v2 .erp-kpi__top { padding-inline-end: 18px; }
   .erp-v2 .erp-kpi__icon { inline-size: 26px; block-size: 26px; }
-  .erp-v2 .erp-kpi__value { font-size: 25px; }
+  .erp-v2 .erp-kpi__value { font-size: var(--erp-display-md); }
   .erp-v2 .erp-kpi__label .erp-eyebrow { display: none; }
   .erp-v2 .erp-kpi__label { white-space: normal; line-height: 1.35; }
   .erp-v2 .erp-kpi__hint { display: none; }
@@ -626,6 +626,6 @@
 .erp-v2 .erp-print-head { display: none; }
 @media print {
   .erp-v2 .erp-print-head { display: block; text-align: center; margin: 0 0 10px; }
-  .erp-v2 .erp-print-head__title { font-size: 16px; font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); }
-  .erp-v2 .erp-print-head__meta { font-size: 11px; color: var(--erp-text-secondary); margin-top: 2px; }
+  .erp-v2 .erp-print-head__title { font-size: var(--erp-text-lg); font-weight: var(--erp-fw-bold); color: var(--erp-text-primary); }
+  .erp-v2 .erp-print-head__meta { font-size: var(--erp-text-xs); color: var(--erp-text-secondary); margin-top: 2px; }
 }

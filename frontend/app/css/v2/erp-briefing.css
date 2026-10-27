@@ -207,7 +207,7 @@
   background: transparent;
   padding: 0;
 }
-.erp-v2 .erp-sand__sub .erp-badge .ji { font-size: 11px; }
+.erp-v2 .erp-sand__sub .erp-badge .ji { font-size: var(--erp-text-xs); }
 
 /* ── ختم الإلغاء: أوقف الحساب، لا توقف السطر ──────────────────────────── */
 .erp-v2 .erp-sand__stamp {

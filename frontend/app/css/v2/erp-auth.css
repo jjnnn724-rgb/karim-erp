@@ -113,7 +113,7 @@ body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
   justify-content: flex-start;
   gap: var(--erp-space-2);
 }
-.erp-v2 .erp-login-card .erp-label .erp-eyebrow { font-size: 10px; }
+.erp-v2 .erp-login-card .erp-label .erp-eyebrow { font-size: var(--erp-text-xs); }
 .erp-v2 .erp-login-center { text-align: center; }
 .erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
 .erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
@@ -186,7 +186,7 @@ body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
   background: var(--erp-brass-soft);
   border: 1px solid var(--erp-brass-line);
 }
-.erp-v2 .erp-login-mfa-badge .ji { font-size: 20px; }
+.erp-v2 .erp-login-mfa-badge .ji { font-size: var(--erp-text-lg); }
 .erp-v2 .erp-login-mfa-title {
   display: flex;
   flex-wrap: wrap;
@@ -197,7 +197,7 @@ body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
   font-weight: var(--erp-fw-bold);
   color: var(--erp-text-primary);
 }
-.erp-v2 .erp-login-mfa-title .erp-eyebrow { font-size: 10px; }
+.erp-v2 .erp-login-mfa-title .erp-eyebrow { font-size: var(--erp-text-xs); }
 .erp-v2 .erp-login-mfa-head p { margin: 0; }
 
 .erp-v2 .erp-login-code {

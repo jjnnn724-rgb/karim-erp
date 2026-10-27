@@ -67,7 +67,7 @@
     color: var(--erp-text-muted);
     background: var(--erp-surface);
     border: 1px solid var(--erp-border);
-    border-radius: 999px;
+    border-radius: var(--erp-radius-full);
     cursor: pointer;
 }
 
@@ -502,7 +502,7 @@
     color: var(--erp-brand);
     background: var(--erp-surface);
     border: 1px dashed var(--erp-border);
-    border-radius: 999px;
+    border-radius: var(--erp-radius-full);
     font-size: var(--erp-text-xs, 0.75rem);
     font-weight: 700;
 }

@@ -682,7 +682,7 @@ body {
 .erp-v2 .erp-nav-group__title {
   min-block-size: 28px;
   padding-inline: var(--erp-space-3);
-  font-size: 12px;
+  font-size: var(--erp-text-xs);
   letter-spacing: 0;
 }
 .erp-v2 .erp-nav-item {
@@ -777,7 +777,7 @@ body {
   background: none;
   color: var(--erp-hero-muted);
   font-family: var(--erp-font-sans);
-  font-size: 11px;
+  font-size: var(--erp-text-xs);
   font-weight: var(--erp-fw-semibold);
   letter-spacing: .2em;
   line-height: 1;
@@ -805,7 +805,7 @@ body {
   z-index: calc(var(--erp-z-base) + 1);
   color: var(--erp-hero-ink);
   font-family: 'Amiri', var(--erp-font-display);
-  font-size: 36px;
+  font-size: var(--erp-display-xl);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -994,7 +994,7 @@ body {
   .erp-v2 .erp-dash-head { min-block-size: 204px; padding-block-start: var(--erp-space-8); padding-block-end: 48px; }
   .erp-v2 .erp-brief__lock { min-block-size: 144px; flex-wrap: wrap; gap: var(--erp-space-2); }
   .erp-v2 .erp-dash-title,
-  .erp-v2 .erp-brief__name { font-size: 29px; }
+  .erp-v2 .erp-brief__name { font-size: var(--erp-display-lg); }
   .erp-v2 .erp-dash-sub { font-size: var(--erp-text-sm); }
   .erp-v2 .erp-dash-head::after,
   .erp-v2 .erp-brief__lock::after { inline-size: 160px; block-size: 160px; }
@@ -1008,7 +1008,7 @@ body {
   .erp-v2 [data-erp-dash] .erp-card__body,
   .erp-v2 .erp-brief .erp-card__body { padding: var(--erp-space-4); }
   .erp-v2 .erp-input,
-  .erp-v2 .erp-select { font-size: 16px; }
+  .erp-v2 .erp-select { font-size: var(--erp-text-base); }
 }
 
 @media (max-width: 400px) {

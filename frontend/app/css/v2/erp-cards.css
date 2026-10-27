@@ -84,7 +84,7 @@
 .erp-v2 .erp-person__salary { font-variant-numeric: tabular-nums; font-weight: var(--erp-fw-bold); color: var(--erp-brand-text); }
 .erp-v2 .erp-person__meta { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); align-items: center; }
 .erp-v2 .erp-person__shift { display: flex; align-items: center; gap: 6px; font-size: var(--erp-text-xs); color: var(--erp-text-secondary); }
-.erp-v2 .erp-person__shift .ji { font-size: 13px; color: var(--erp-text-faint); }
+.erp-v2 .erp-person__shift .ji { font-size: var(--erp-text-sm); color: var(--erp-text-faint); }
 
 @media (max-width: 640px) {
   .erp-v2 .erp-cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

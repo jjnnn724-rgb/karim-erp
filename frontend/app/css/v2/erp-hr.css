@@ -1271,7 +1271,7 @@
   z-index: var(--erp-z-dropdown);
   background: var(--erp-surface);
   border: 1px solid var(--erp-border);
-  border-radius: 12px;
+  border-radius: var(--erp-radius-lg);
   padding: var(--erp-space-3);
   display: flex;
   flex-direction: column;

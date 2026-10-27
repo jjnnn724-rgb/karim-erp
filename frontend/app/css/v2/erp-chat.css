@@ -23,7 +23,7 @@
     border: 2px solid var(--erp-brand);
     background: var(--erp-surface);
     color: var(--erp-brand);
-    font-size: 22px;
+    font-size: var(--erp-text-xl);
     line-height: 1;
     cursor: pointer;
     box-shadow: var(--erp-shadow-md);
