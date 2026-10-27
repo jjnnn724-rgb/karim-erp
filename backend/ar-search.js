@@ -3,6 +3,7 @@
 // رغم الخطأ المطبعي الشائع في لمس النقاط. تُستخدم في كل مسارات البحث بالخادم.
 'use strict';
 
+/** @type {Record<string, string>} حرف ← نمط الفئة المتشابهة */
 const FAMILIES = {
     'ا': '[اأإآٱ]', 'أ': '[اأإآٱ]', 'إ': '[اأإآٱ]', 'آ': '[اأإآٱ]', 'ٱ': '[اأإآٱ]',
     'ه': '[هة]', 'ة': '[هة]',
@@ -20,6 +21,10 @@ const FAMILIES = {
 };
 const REGEX_SPECIALS = '.*+?^${}()|[]\\/';
 
+/**
+ * @param {string} q استعلام المستخدم (أي نص).
+ * @returns {string} نمط regex يقبل الحروف المتشابهة.
+ */
 function arFuzzyPattern(q) {
     let out = '';
     for (const ch of String(q || '')) {

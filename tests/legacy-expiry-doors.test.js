@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // legacy-expiry-doors.test.js — سياسة 2026-10-20 في الواجهة القديمة
 // تاريخ الصلاحية اختياري في كل مداخل المخزون: الغياب مقبول ويُحفظ null،
@@ -15,7 +16,7 @@ const APP = path.join(__dirname, '..', 'frontend', 'app');
 const LEGACY = path.join(APP, 'js', 'features', 'warehouse.js');
 const V2_REPO = path.join(APP, 'js', 'v2', 'data', 'inventory-repo.js');
 const SERVER = path.join(__dirname, '..', 'backend', 'server.js');
-const WAREHOUSE_ROUTES = path.join(__dirname, '..', 'backend', 'warehouse-routes.js');
+const WAREHOUSE_ROUTES = warehouseSource();
 
 const SRC = fs.readFileSync(LEGACY, 'utf8').replace(/export\s*\{[^}]*\};?/g, '');
 
@@ -343,7 +344,7 @@ describe('العقد مع الخادم', () => {
     });
 
     test('أبواب المخزون الثلاثة تُغلق بالـ422، والحركات الداخلية تحمل آخر صلاحية', () => {
-        const routes = fs.readFileSync(WAREHOUSE_ROUTES, 'utf8');
+        const routes = WAREHOUSE_ROUTES;
         expect((routes.match(/checkExpiryOnLines\(/g) || []).length).toBe(3);
         expect(routes).not.toContain('EXPIRY_DATE_REQUIRED');
         expect(routes).toContain('latestExpiryFor(');

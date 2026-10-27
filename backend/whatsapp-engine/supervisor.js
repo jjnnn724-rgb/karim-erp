@@ -10,10 +10,20 @@
 
 const BAD_STATES = new Set(['RECONNECTING', 'FAILED', 'DISCONNECTED']);
 
+/**
+ * @param {string} state حالة اتصال Baileys الحالية.
+ * @param {number} sameTicks عدد الدورات المتتالية في الحالة نفسها.
+ * @param {number} sinceHealMs المسافة بالمللي ثانية منذ آخر محاولة إصلاح.
+ * @returns {'heal'|'wait_qr'|'ok'} 'ok' لبقية الحالات (انظر وصف الوحدة).
+ */
 function supervisorDecision(state, sameTicks, sinceHealMs) {
-    if (BAD_STATES.has(state) && sameTicks >= 10 && sinceHealMs > 10 * 60 * 1000) {return 'heal';}
-    if (state === 'LOGGED_OUT') {return 'wait_qr';}
-    return 'ok';
+  if (BAD_STATES.has(state) && sameTicks >= 10 && sinceHealMs > 10 * 60 * 1000) {
+    return 'heal';
+  }
+  if (state === 'LOGGED_OUT') {
+    return 'wait_qr';
+  }
+  return 'ok';
 }
 
 module.exports = { supervisorDecision, BAD_STATES };

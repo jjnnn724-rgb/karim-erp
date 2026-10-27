@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // system-hardening.test.js — طلب المالك 2026-10-06 «سستم حديد»
 // يقفل تحصينات المطابقة والتكرار: كل مسار إنشاء صنف يطابق بالمفتاح المطبع
@@ -6,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROUTES = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const ROUTES = warehouseSource();
 const SERVER = fs.readFileSync(path.join(__dirname, '..', 'backend', 'server.js'), 'utf8');
 const WAREHOUSE = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
 

@@ -18,25 +18,34 @@
 const ZATCA_PLACEHOLDER_VAT = '300000000000003'; // official ZATCA sample VAT — never a real seller
 const VAT_15_DIGITS = /^\d{15}$/;
 
-/** Digits-only normalization → 15-digit VAT or null. Accepts '3-0-0…', ' 3000… ', 3000…(number). */
+/** Digits-only normalization → 15-digit VAT or null. Accepts '3-0-0…', ' 3000… ', 3000…(number).
+ *  @param {unknown} value قيمة خام من قاعدة/واجهة — قد تكون نصًا أو رقمًا أو null.
+ */
 function normalizeVat(value) {
-    if (value === null || value === undefined) {return null;}
-    const digits = String(value).replace(/\D/g, '');
-    return VAT_15_DIGITS.test(digits) ? digits : null;
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const digits = String(value).replace(/\D/g, '');
+  return VAT_15_DIGITS.test(digits) ? digits : null;
 }
 
 /**
  * Resolve the seller VAT for a ZATCA artifact.
+ * @param {{deptVat?: string|null, settingsVat?: string|null}} [input]
  * @returns {{vat: string, placeholder: boolean, source: 'department'|'settings_hub'|'placeholder'}}
  */
 function resolveSellerVat({ deptVat, settingsVat } = {}) {
-    const dept = normalizeVat(deptVat);
-    if (dept) {return { vat: dept, placeholder: false, source: 'department' };}
+  const dept = normalizeVat(deptVat);
+  if (dept) {
+    return { vat: dept, placeholder: false, source: 'department' };
+  }
 
-    const hub = normalizeVat(settingsVat);
-    if (hub) {return { vat: hub, placeholder: false, source: 'settings_hub' };}
+  const hub = normalizeVat(settingsVat);
+  if (hub) {
+    return { vat: hub, placeholder: false, source: 'settings_hub' };
+  }
 
-    return { vat: ZATCA_PLACEHOLDER_VAT, placeholder: true, source: 'placeholder' };
+  return { vat: ZATCA_PLACEHOLDER_VAT, placeholder: true, source: 'placeholder' };
 }
 
 module.exports = { resolveSellerVat, normalizeVat, ZATCA_PLACEHOLDER_VAT };

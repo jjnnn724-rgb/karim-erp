@@ -17,24 +17,24 @@
  * Decide whether the supervisor should restart an exited child.
  *
  * @param {object} input
- * @param {number|null} input.code                 Process exit code.
- * @param {string|null} input.signal               Terminating signal, if any.
+ * @param {number|null} [input.code]                 Process exit code.
+ * @param {string|null} [input.signal]               Terminating signal, if any.
  * @param {boolean} [input.stopping]               Supervisor is shutting down.
  * @param {boolean} [input.manualStopRequested]    Operator asked for a stop.
  * @returns {{restart: boolean, reason: string}}
  */
 function shouldRestartChild({ code, signal, stopping = false, manualStopRequested = false } = {}) {
-    // 1) The supervisor (or the operator through it) decided to stop — obey.
-    if (stopping || manualStopRequested) {
-        return { restart: false, reason: 'supervisor-initiated stop' };
-    }
-    // 2) Clean exit nobody requested = unexpected shutdown under supervision.
-    //    The guardian's whole job is uptime — bring the service back.
-    if (code === 0 && !signal) {
-        return { restart: true, reason: 'unexpected clean exit under supervision' };
-    }
-    // 3) Crash (signal or non-zero code) — restart with backoff.
-    return { restart: true, reason: signal ? `signal ${signal}` : `exit code ${code}` };
+  // 1) The supervisor (or the operator through it) decided to stop — obey.
+  if (stopping || manualStopRequested) {
+    return { restart: false, reason: 'supervisor-initiated stop' };
+  }
+  // 2) Clean exit nobody requested = unexpected shutdown under supervision.
+  //    The guardian's whole job is uptime — bring the service back.
+  if (code === 0 && !signal) {
+    return { restart: true, reason: 'unexpected clean exit under supervision' };
+  }
+  // 3) Crash (signal or non-zero code) — restart with backoff.
+  return { restart: true, reason: signal ? `signal ${signal}` : `exit code ${code}` };
 }
 
 module.exports = { shouldRestartChild };

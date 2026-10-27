@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // dispatch-chain-guard.test.js — طلب المالك 2026-10-05
 // «مش عايز الموضوع دا يتكر نهايا مطلقًا — إذن الصرف لا يتم إرساله من القسم
@@ -12,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROUTES = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const ROUTES = warehouseSource();
 const SERVER = fs.readFileSync(path.join(__dirname, '..', 'backend', 'server.js'), 'utf8');
 const KITCHEN = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'kitchen.js'), 'utf8');
 

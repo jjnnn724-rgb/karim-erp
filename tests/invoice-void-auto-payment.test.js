@@ -6,10 +6,11 @@
  * المدير بين رفض و«حذف قسري» معطّل في الخادم. الدفعة التوليدية جزء من الفاتورة نفسها،
  * لذا تُعكس معها داخل نفس المعاملة؛ الدفعات اليدية تبقى محميّة.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 
-const BE = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const BE = warehouseSource();
 const FE = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
 
 // نفس أخطاء round() المستخدمة في الخلفية — الدالة النقية لا تحتاج قاعدة بيانات

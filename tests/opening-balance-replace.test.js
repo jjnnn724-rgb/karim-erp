@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // opening-balance-replace.test.js — طلب المالك 2026-10-05
 // «أعيد الرصيد الافتتاحي مرة أخرى وأحذف القديم بس اخصم من الرصيد طلبات الصرف»
@@ -9,7 +10,7 @@ const path = require('path');
 
 const RAW = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
 const SRC = RAW.replace(/export\s*\{[^}]*\};?/, '');
-const BACKEND = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const BACKEND = warehouseSource();
 
 function el(props = {}) { return { style: {}, value: '', innerHTML: '', checked: false, ...props }; }
 

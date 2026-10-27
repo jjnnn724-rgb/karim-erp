@@ -31,6 +31,7 @@
  *     الشاشة ممتدة داخل آخر كتلتي الوسيط عمدًا (عدد الكتل يبقى 2 و2 — أي
  *     كتلة ثالثة تكسر ضوابط شاشات W1-1/W1-2 التي تقرأ أول/آخر كتلة)
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const { ruleBody, hidesLabel, withoutSrOnly } = require('./helpers/css-contract');
@@ -45,7 +46,7 @@ const OPS_CSS = path.join(APP, 'css', 'v2', 'erp-ops.css');
 const V2_HTML = path.join(APP, 'v2.html');
 const HOST = path.join(V2, 'preview.js');
 const ICONS = path.join(APP, 'js', 'icons.js');
-const WR = path.join(__dirname, '..', 'backend', 'warehouse-routes.js');
+const WR = warehouseSource();
 const LEGACY = path.join(APP, 'js', 'features', 'kitchen.js');
 // REV مشتق من الوسم الحيّ في v2.html (نفس نمط v2-kitchen/leaves/dispatch) —
 // تثبيت يدوي هنا كسر مرّات عند رفع النسخة الموحّدة؛ الاشتقاق يجعل الاختبار معاييرًا.
@@ -208,7 +209,7 @@ describe('pr-repo — الباب الواحد: قراءات من سجلاتها 
         const repo = stripComments(source(REPO));
         expect(repo).not.toContain('warehouse-receive');
         expect(repo).not.toMatch(/\breceivePR\b/);
-        const wr = source(WR);
+        const wr = WR;
         expect(wr).toContain("router.post('/purchase-requests/:id/warehouse-receive', jwtAuth, requireRole(...PR_WH_ROLES)");
         expect(wr).toContain("return fail(res, 410, 'PR_RECEIVE_RETIRED', 'دورة طلب الشراء تنتهي باعتماد المدير العام — سجّل البضاعة بفاتورة مشتريات');");
     });
@@ -218,7 +219,7 @@ describe('pr-repo — الثوابت مرايا الخادم والقديم بم
     test('ثوابت الأدوار الستة حرفًا بسطر الخادم :2997-3006', () => {
         const { repo } = repoStub({});
         const list = (a) => `[${a.map((r) => `'${r}'`).join(', ')}]`;   // مسافات الخادم
-        const wr = source(WR);
+        const wr = WR;
         expect(wr).toContain(`const PR_CREATE_ROLES = ${list(repo.PR_CREATE_ROLES)};`);
         expect(wr).toContain(`const PR_CANCEL_ROLES = ${list(repo.PR_CANCEL_ROLES)};`);
         expect(wr).toContain(`const PR_CHEF_ROLES = ${list(repo.PR_CHEF_ROLES)};`);
@@ -228,7 +229,7 @@ describe('pr-repo — الثوابت مرايا الخادم والقديم بم
     });
 
     test('المسارات السبعة في الخادم بأدوارها — والقراءتان بأدوار القراءة', () => {
-        const wr = source(WR);
+        const wr = WR;
         for (const line of [
             "router.get('/purchase-requests/shortages', jwtAuth, requireRole(...PR_READ_ROLES)",
             "router.get('/purchase-requests', jwtAuth, requireRole(...PR_READ_ROLES)",
@@ -346,7 +347,7 @@ describe('pr-repo — الصف والملخص والبوابات: شرط الص�
         expect(repo.deleteVisible('warehouse', 'pending')).toBe(false);
         expect(repo.deleteVisible('kitchen', 'rejected')).toBe(false);
         // ورسالة الخادم نفسها هي الدليل على الانحراف
-        expect(source(WR)).toContain("لا يجوز حذف طلب معتمد أو مستلم (ولو جزئيًا) — له أثر مخزني");
+        expect(WR).toContain("لا يجوز حذف طلب معتمد أو مستلم (ولو جزئيًا) — له أثر مخزني");
     });
 
     test('الطباعة على قائمة القديم الأربعة حرفيًا — partially_fulfilled ليست منها', () => {
@@ -417,7 +418,7 @@ describe('pr-repo — الأصناف والحمولات: حقول القديم �
         expect(repo.prReasonError('')).toBe('سبب الرفض مطلوب (3 أحرف على الأقل)');
         const legacy = source(LEGACY);
         expect(legacy).toContain("toast('سبب الرفض مطلوب (3 أحرف على الأقل)','error')");
-        expect(source(WR)).toContain("return fail(res, 422, 'PR_REASON_REQUIRED', 'سبب الرفض مطلوب (3 أحرف على الأقل)');");
+        expect(WR).toContain("return fail(res, 422, 'PR_REASON_REQUIRED', 'سبب الرفض مطلوب (3 أحرف على الأقل)');");
     });
 
     test('حمولة الإنشاء: حقول القديم :537 بتوقيع الشيف وحده — وإلا null كما ترسل', () => {

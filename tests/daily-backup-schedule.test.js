@@ -4,6 +4,7 @@ const path = require('path');
 describe('daily 02:00 database backup', () => {
   const root = path.resolve(__dirname, '..');
   const backup = fs.readFileSync(path.join(root, 'database', 'scripts', 'backup.js'), 'utf8');
+  const retention = fs.readFileSync(path.join(root, 'scripts', 'backup-retention.js'), 'utf8');
   const electron = fs.readFileSync(path.join(root, 'electron', 'main.js'), 'utf8');
   const batch = fs.readFileSync(path.join(root, 'windows-service', 'DailyBackup.bat'), 'utf8');
 
@@ -14,7 +15,12 @@ describe('daily 02:00 database backup', () => {
     expect(backup).toContain('secureBackupDirectory');
     expect(backup).toContain('Administrators:(OI)(CI)F');
     expect(backup).toContain('Math.max(7, Math.min(365');
-    expect(backup).toContain('fs.unlinkSync(`${old.path}.sha256`)');
+    // التدوير صار في وحدة مشتركة (scripts/backup-retention.js): يجب أن تحذف
+    // الأرشيف مع بصمته (بصمة النص المشفَّر + بصمة النسخة الصريحة) وإلا تبقّت
+    // بصمة يتيمة تكشف بيانات النسخة المحذوفة.
+    expect(backup).toContain('pruneBackupGroups');
+    expect(retention).toContain('fs.unlinkSync(`${old.path}.sha256`)');
+    expect(retention).toContain('fs.unlinkSync(path.join(dir, `${group.base}.sha256`))');
   });
 
   test('runs backup mode headlessly from the embedded EXE', () => {

@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // dispatch-stock-gate.test.js — طلب المالك 2026-10-05
 // «لا يقبل أي إذن صرف ليس له رصيد في المخزن نهائيًا»
@@ -5,9 +6,7 @@
 // الإنشاء (POST /api/dispatches) + اعتماد الشيف + التعديل — والاعتماد المخزني كان مفحوصًا سلفًا.
 // ────────────────────────────────────────────────────────────────────────────
 const { dispatchStockGate } = require('../backend/warehouse-routes');
-const fs = require('fs');
-const path = require('path');
-const ROUTES = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const ROUTES = warehouseSource();
 
 test('نقطة /main-availability موجودة — تغذي شاشة طلب الصرف برصيد المخزن الرئيسي', () => {
     expect(ROUTES).toContain("'/main-availability'");

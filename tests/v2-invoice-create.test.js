@@ -14,6 +14,7 @@
  *   • الصلاحية (سياسة 2026-10-20): حقل اختياري على كل سطر، وبوابته
  *     في المحرر تُصدر رسالة الخادم نفسها عند الفساد قبل القفل والشبكة.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -78,7 +79,7 @@ const cssSrc = read(CSS);
 describe('مستودع الكتابة — الأدوار والحقول', () => {
     test('الأدوار مرآة requireRole على POST/PUT', () => {
         expect(repo.INVOICE_CREATE_ROLES).toEqual(['admin', 'manager', 'warehouse']);
-        expect(read(path.join(ROOT, 'backend', 'warehouse-routes.js')))
+        expect(warehouseSource())
             .toContain("router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'warehouse')");
     });
 
@@ -92,7 +93,7 @@ describe('مستودع الكتابة — الأدوار والحقول', () => 
         expect(repo.invoiceEditable({ paidAmount: 0.01 })).toBe(false);
         expect(repo.invoiceEditable({ paidAmount: 100 })).toBe(false);
         expect(repo.EDIT_LOCKED_MESSAGE).toBe('لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
-        expect(read(path.join(ROOT, 'backend', 'warehouse-routes.js')))
+        expect(warehouseSource())
             .toContain('لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
     });
 });

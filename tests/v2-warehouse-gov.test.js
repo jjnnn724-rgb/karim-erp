@@ -16,6 +16,7 @@
  *   • المسار الفرعي warehouse-gov موصول في routing.js وpreview.js، وزر
  *     الدخول من شاشة المخزون لا يظهر لدور بلا بطاقة قراءة.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -30,7 +31,7 @@ const ROUTING = path.join(V2, 'routing.js');
 const CSS = path.join(APP, 'css', 'v2', 'erp-warehouse-gov.css');
 const V2_HTML = path.join(APP, 'v2.html');
 const SERVER_FISCAL = path.join(__dirname, '..', 'backend', 'inventory-control-routes.js');
-const SERVER_WAREHOUSE = path.join(__dirname, '..', 'backend', 'warehouse-routes.js');
+const SERVER_WAREHOUSE = warehouseSource();
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const REV = (read(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
@@ -74,7 +75,7 @@ const EXPORTS = [
 
 describe('P2-4 — الأدوار مرآة الخادم', () => {
     const fiscal = read(SERVER_FISCAL);
-    const warehouse = read(SERVER_WAREHOUSE);
+    const warehouse = SERVER_WAREHOUSE;
 
     test('قراءة/إنشاء السنة: admin|manager|accountant حرفيًا', () => {
         expect(fiscal).toContain("router.get('/fiscal-years', jwtAuth, requireRole('admin', 'manager', 'accountant')");

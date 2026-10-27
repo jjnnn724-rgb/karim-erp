@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // inventory-merge.test.js — طلب المالك 2026-10-05
 // «في اصناف مثل كده عايز احذف المكرر المفروض» — دمج الأصناف المكررة في صنف واحد:
@@ -8,7 +9,7 @@ const path = require('path');
 
 const RAW = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
 const SRC = RAW.replace(/export\s*\{[^}]*\};?/, '');
-const BACKEND = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const BACKEND = warehouseSource();
 
 function build(STATE) {
     const factory = new Function('STATE', 'window', 'esc', 'fN', 'fC', 't', 'today',

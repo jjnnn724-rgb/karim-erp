@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // opening-net-mode.test.js — طلب المالك 2026-10-05
 // «عايز يتخصم أذونات الصرف من الرصيد الجديد» — الوضع الصافي في شاشة الافتتاحي:
@@ -9,7 +10,7 @@ const path = require('path');
 
 const RAW = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'features', 'warehouse.js'), 'utf8');
 const SRC = RAW.replace(/export\s*\{[^}]*\};?/, '');
-const BACKEND = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const BACKEND = warehouseSource();
 
 const INVENTORY = [
     { id: 11, name: 'دجاج بلدي', unit: 'كجم', qty: 500, minQty: 0, avgCost: 10 },

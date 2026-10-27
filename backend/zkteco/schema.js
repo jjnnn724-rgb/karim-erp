@@ -128,20 +128,23 @@ CREATE TABLE IF NOT EXISTS zk_device_users (
 CREATE INDEX IF NOT EXISTS idx_zk_device_users_device ON zk_device_users ("deviceId");
 `;
 
+/** @type {Promise<void>|null} ضمان تطبيق المخطط مرة واحدة فقط */
 let ensured = null;
 
 /** تطبيق المخطط مرة واحدة (idempotent) */
 function ensureZktecoSchema() {
-    if (!ensured) {
-        ensured = (async () => {
-            await pool.query(SCHEMA_SQL);
-            logger.info('[ZKTECO_SCHEMA] مخطط مزامنة البصمة جاهز (attendance_devices / attendance_logs / device_sync_state / employees.deviceUserId)');
-        })().catch((error) => {
-            ensured = null;
-            throw error;
-        });
-    }
-    return ensured;
+  if (!ensured) {
+    ensured = (async () => {
+      await pool.query(SCHEMA_SQL);
+      logger.info(
+        '[ZKTECO_SCHEMA] مخطط مزامنة البصمة جاهز (attendance_devices / attendance_logs / device_sync_state / employees.deviceUserId)'
+      );
+    })().catch(error => {
+      ensured = null;
+      throw error;
+    });
+  }
+  return ensured;
 }
 
 module.exports = { ensureZktecoSchema, SCHEMA_SQL };

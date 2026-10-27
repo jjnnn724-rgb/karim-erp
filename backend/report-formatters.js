@@ -1,3 +1,7 @@
+/**
+ * @param {number|string|null|undefined} value عدد الساعات الخام.
+ * @param {number} [digits] عدد المنازل العشرية.
+ */
 function formatHours(value, digits = 1) {
   const hours = Number(value || 0);
   if (!Number.isFinite(hours) || hours <= 0) {

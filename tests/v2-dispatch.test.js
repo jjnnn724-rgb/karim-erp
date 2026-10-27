@@ -34,6 +34,7 @@
  *   • كل رمز data-i ساكن موجود في icons.js — الغائب يسقط صامتًا إلى
  *     circle-help (icons.js:169) فلا يُشحن رمزٌ لا وجود له
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const { ruleBody, hidesLabel } = require('./helpers/css-contract');
@@ -49,7 +50,7 @@ const V2_HTML = path.join(APP, 'v2.html');
 const HOST = path.join(V2, 'preview.js');
 const ICONS = path.join(APP, 'js', 'icons.js');
 const SERVER = path.join(__dirname, '..', 'backend', 'server.js');
-const WR = path.join(__dirname, '..', 'backend', 'warehouse-routes.js');
+const WR = warehouseSource();
 const LEGACY = path.join(APP, 'js', 'features', 'kitchen.js');
 const I18N = path.join(APP, 'js', 'core', 'i18n.js');
 // REV مشتق من الوسم الحيّ في v2.html (نفس نمط v2-kitchen/leaves) — تثبيت
@@ -232,7 +233,7 @@ describe('dispatch-repo — كلمات المراحل والثوابت منسو�
         const list = (a) => `[${a.map((r) => `'${r}'`).join(', ')}]`;
         const server = source(SERVER);
         expect(server).toContain(`entity === 'dispatches' ? ${list(repo.CREATE_ROLES)} : entity === 'payroll'`);
-        const wr = source(WR);
+        const wr = WR;
         expect(wr).toContain(`const WRITE_ROLES = ${list(repo.WAREHOUSE_DECIDE_ROLES)};`);
         expect(wr).toContain(`const CHEF_APPROVAL_ROLES = ${list(repo.CHEF_DECIDE_ROLES)};`);
         // الاستلام عند الخادم أوسع (يضم warehouse) — مرآة الشاشة من القديم عمدًا

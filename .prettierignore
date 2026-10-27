@@ -48,3 +48,23 @@ coverage/
 
 # مخرجات مولَّدة
 logs/
+
+# مخرجات بناء أندرويد/إلكترون: تظهر بعد `gradle build` فيسقط Prettier بـ
+# "SyntaxError: Unexpected closing tag" على HTML مُجمَّع — وهي غير متتبَّعة أصلًا.
+android/.gradle/
+android/app/build/
+android/app/src/main/assets/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+build/
+release/
+dist/
+
+# ملفات ومساحات عمل مؤقتة
+tmp/
+test-results/
+backups/
+_disabld/
+*.patch
+nul
+NUL

@@ -1,3 +1,4 @@
+const { warehouseSource } = require('./helpers/warehouse-source');
 // ────────────────────────────────────────────────────────────────────────────
 // arabic-search.test.js — طلب المالك 2026-10-06
 // «بكتب بازنجان مش جايبها اكتب باذنجان يجيبها» — بحث عربي متسامح مع أخطاء
@@ -7,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const UTILS = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'core', 'utils.js'), 'utf8');
-const ROUTES = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+const ROUTES = warehouseSource();
 const AR_SEARCH = fs.readFileSync(path.join(__dirname, '..', 'backend', 'ar-search.js'), 'utf8');
 const HR = fs.readFileSync(path.join(__dirname, '..', 'backend', 'hr-routes.js'), 'utf8');
 const PROCUREMENT = fs.readFileSync(path.join(__dirname, '..', 'backend', 'procurement-routes.js'), 'utf8');
@@ -71,7 +72,7 @@ describe('التوصيل في كل واجهات البحث', () => {
         expect(AR_SEARCH).toContain('function arFuzzyPattern(q)');
         expect(AR_SEARCH).toContain("'ز': '[زذ]'");
         expect(AR_SEARCH).toContain("'س': '[سش]'");
-        expect(ROUTES).toContain("require('./ar-search')");
+        expect(ROUTES).toContain("require('../ar-search')");
         expect(ROUTES).toContain('i.name ~* $1');
         expect(ROUTES).toContain('fuzzy: fuzzyUsed');
     });

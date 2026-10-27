@@ -18,11 +18,12 @@
  * scripts/live_fullchain_audit.py (77 فحصًا) — هذه الاختبارات تقفل الشيفرة
  * ضد أي انحدار يُبطل الإصلاحات.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 
 const fs = require('fs');
 const path = require('path');
 
-const warehouseSrc = fs.readFileSync(path.resolve(__dirname, '../backend/warehouse-routes.js'), 'utf8');
+const warehouseSrc = warehouseSource();
 const kitchenSrc = fs.readFileSync(path.resolve(__dirname, '../backend/kitchen-production-routes.js'), 'utf8');
 
 describe('إرجاع القسم للمخزن — لا ازدواج في المخزون', () => {

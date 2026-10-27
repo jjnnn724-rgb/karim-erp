@@ -9,6 +9,7 @@
  *     والعلم OFF افتراضيًا (اختباراته في v2-write-flags).
  *   • لا شبكة في الشاشة: الكتابة عبر purchase-invoices-write-repo وحده.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -17,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const V2 = path.join(ROOT, 'frontend', 'app', 'js', 'v2');
 const WRITE_REPO = path.join(V2, 'data', 'purchase-invoices-write-repo.js');
 const SCREEN = path.join(V2, 'screens', 'invoices.js');
-const SERVER = path.join(ROOT, 'backend', 'warehouse-routes.js');
+const SERVER = warehouseSource();
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 
@@ -38,7 +39,7 @@ function loadRepo(apiFetch) {
 }
 
 const screenSrc = read(SCREEN);
-const serverSrc = read(SERVER);
+const serverSrc = SERVER;
 
 describe('الخادم — البابان وقفل الأدمن', () => {
     test('void: POST + admin فقط، وforce مرفوض نصًّا', () => {

@@ -5,6 +5,7 @@
  *   3) موجة 429 عند الإقلاع (1606 رفضًا) + ذيل loadData متسلسل.
  * الاختبارات سلوكية على الدوال النقية، وتعاقدية على مصدر الواجهة/الخادم.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 
@@ -87,7 +88,7 @@ describe('بوابة الاعتماد: رفض المكرر فورًا بدل ا�
     });
 
     test('المسار يعتمد البوابة ويضبط lock_timeout ويرد 409 رمزًا واضحًا', () => {
-        const ROUTES = read('backend/warehouse-routes.js');
+        const ROUTES = warehouseSource();
         const approve = ROUTES.slice(ROUTES.indexOf("'/dispatches/:id/approve'"), ROUTES.indexOf("'/dispatches/:id/chef-approve'"));
         expect(approve).toContain('beginDispatchOp(req.params.id');
         expect(approve).toContain('endDispatchOp(req.params.id');

@@ -12,6 +12,7 @@
  *
  * الاختبار يعاين وحدة السياسة + أبواب الخادم مصدرياً (لا DOM ولا قاعدة).
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 
@@ -197,7 +198,7 @@ describe('validateRow — سياسة الصلاحية في الاستيراد', 
 
 // ─── 6) عقود المصادر: كل باب يدخل بضاعة يحرس الصلاحية ──────────────────────────
 describe('حرس الخادم على مداخل المخزون', () => {
-    const warehouse = read('backend/warehouse-routes.js');
+    const warehouse = warehouseSource();
     const server = read('backend/server.js');
     const transfers = read('backend/inventory-transfer-routes.js');
     const registry = read('backend/schema-registry.js');

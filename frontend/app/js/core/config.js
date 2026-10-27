@@ -3,7 +3,7 @@
  * Bridge policy: mounted on window by js/main.js (BRIDGE-007).
  */
 
-const CONFIG = { VERSION: '4.9.164', APP_NAME: 'مطاعم الشرفه العالمي', LOGO_PATH: '/app/assets/karim-logo.ico' };
+const CONFIG = { VERSION: '4.9.165', APP_NAME: 'مطاعم الشرفه العالمي', LOGO_PATH: '/app/assets/karim-logo.ico' };
 
 const ROLES = {
 admin: { name: 'مدير النظام', icon: '<i class=ji data-i=crown></i>', menus: ['dashboard','menu-board','cfo','cash-register','cashier-sales','sales-inquiry','revenues','expenses','cost-center','cost-analysis','pnl','monthly-comparison','departments','warehouse','wh-invoices','wh-moves','wh-returns','wh-prs','procurement','kitchen','veg-requests','dispatch','recipes','reports','settings','users','branches','permissions','hr-dashboard','employees','leaves','attendance','zkteco','yarasoft','oracle-data','yara-daily-locks','sales-analyzer','whatsapp','hr-departments','payroll','employee-portal','roster','query','professional'] },

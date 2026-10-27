@@ -19,19 +19,20 @@ const STALE_AFTER = '15 minutes';
 /**
  * Reclaim rows stranded in 'processing' longer than STALE_AFTER.
  *
- * @param {object} client  pg client (from pool.connect()) or any object with
+ * @param {{query: (sql: string) => Promise<{rowCount: number|null}>}} client
+ *                         pg client (from pool.connect()) or any object with
  *                         `.query(sql)` — injected for testability.
  * @returns {Promise<number>} number of reclaimed rows.
  */
 async function reclaimStaleProcessing(client) {
-    const res = await client.query(
-        `UPDATE pos_zatca_invoice_queue
+  const res = await client.query(
+    `UPDATE pos_zatca_invoice_queue
             SET status = 'failed',
                 last_error = COALESCE(last_error, 'Reclaimed stale processing job')
           WHERE status = 'processing'
             AND last_attempt_at <= CURRENT_TIMESTAMP - INTERVAL '${STALE_AFTER}';`
-    );
-    return res.rowCount || 0;
+  );
+  return res.rowCount || 0;
 }
 
 module.exports = { reclaimStaleProcessing, STALE_AFTER };

@@ -15,18 +15,19 @@
  *   3. الفشل يُسجَّل error صريح باسم الإذن وقيمته — لا warn صامت.
  *   4. اختبار حيّ على قاعدة الاختبار: أقسام بأحرف صغيرة تُنشئ صفوفًا كبيرة.
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const { pool: sharedPool } = require('../backend/shared-pool');
 
 const ROOT = path.join(__dirname, '..');
 const ACCOUNTING = path.join(ROOT, 'backend', 'accounting-routes.js');
-const WAREHOUSE = path.join(ROOT, 'backend', 'warehouse-routes.js');
+const WAREHOUSE = warehouseSource();
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 describe('مراكز التكلفة — تطبيع الرمز وترحيل قيد الصرف', () => {
     const accounting = read(ACCOUNTING);
-    const warehouse = read(WAREHOUSE);
+    const warehouse = WAREHOUSE;
 
     test('الرمز يُطبَّع إلى ما يسمح به قيد الجدول قبل الإدراج', () => {
         expect(accounting).toMatch(/function normalizeCostCenterCode\(code\)/);

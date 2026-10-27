@@ -26,6 +26,7 @@
  *   • الطبقة: كل قيم erp-ops.css رموز --erp-* بلا hex ولا px خام، ووسائط
  *     الشاشة ممتدة داخل آخر كتلتي الوسيط عمدًا (عدد الكتل يبقى 2 و2)
  */
+const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
 const path = require('path');
 const { ruleBody, hidesLabel, withoutSrOnly } = require('./helpers/css-contract');
@@ -39,7 +40,7 @@ const OPS_CSS = path.join(APP, 'css', 'v2', 'erp-ops.css');
 const V2_HTML = path.join(APP, 'v2.html');
 const HOST = path.join(V2, 'preview.js');
 const ICONS = path.join(APP, 'js', 'icons.js');
-const VR = path.join(__dirname, '..', 'backend', 'warehouse-routes.js');
+const VR = warehouseSource();
 const LEGACY = path.join(APP, 'js', 'features', 'kitchen.js');
 // REV مشتق من الوسم الحيّ في v2.html (نفس نمط v2-kitchen/wh-prs/veg).
 const REV = (fs.readFileSync(V2_HTML, 'utf8').match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
@@ -232,7 +233,7 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
 describe('warehouse-repo — الثوابت مرايا الخادم والقديم بمسافاتهما', () => {
     test('قائمتا الأدوار حرفًا بسطر الخادم :16 وحارس الحذف :1506', () => {
         const { repo } = repoStub({});
-        const wr = source(VR);
+        const wr = VR;
         const list = (a) => `[${a.map((r) => `'${r}'`).join(', ')}]`;   // مسافات الخادم
         expect(wr).toContain(`const RETURN_ROLES = ${list(repo.RETURN_ROLES)};`);
         expect(repo.RETURN_ROLES).toEqual(['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head']);
@@ -252,7 +253,7 @@ describe('warehouse-repo — الثوابت مرايا الخادم والقدي
     });
 
     test('وضعا الخادم وأسقفُ الرفض — مصدر كلمات الشاشة حين يرد', () => {
-        const wr = source(VR);
+        const wr = VR;
         // الوضع المباشر: غياب dispatchId يفتح فرع الإرجاع المباشر
         expect(wr).toContain("if (dispatchId === undefined || dispatchId === null || String(dispatchId).trim() === '')");
         // نافذة حالات الإذن المقبول للإرجاع

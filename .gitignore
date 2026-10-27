@@ -91,3 +91,8 @@ frontend/app/.mimosa/
 # and the control plane state + secret. Not source, never committed.
 var/
 runtime/
+tmp/
+
+# Generated employee card artifacts (tools/employee-card/generate-card.js writes here).
+# Regenerable on demand; purged from Git history on 2026-10-27 — 138MB of build output.
+tools/employee-card/out/
