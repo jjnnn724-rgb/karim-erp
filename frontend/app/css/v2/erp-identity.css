@@ -654,10 +654,14 @@ body {
   padding-block-end: calc(var(--erp-space-8) + 56px);
 }
 
+/* الرأس لاصق فوق المحتوى ⇒ blur(16px) يُعاد حسابه في كل إطار تمرير — أثقل
+   ما في الصفحة على أجهزة الكاشير. لوحة erp-board.css تَعِد بعدم استخدام
+   backdrop-filter أصلًا (owner: «عايز السستم سريع جدا»)، والسطح كان عتامته
+   94% أي أن البؤرة لا تُظهر إلا 6% مموّهة ⇒ الاستبدال بسطح صافٍ غير محسوس
+   بصريًا ويلغي إعادة الرسم الكاملة عند التمرير. */
 .erp-v2 .erp-shell__header {
   padding-inline: var(--erp-space-6);
-  background: color-mix(in srgb, var(--erp-surface) 94%, transparent);
-  backdrop-filter: blur(16px);
+  background: var(--erp-surface);
 }
 
 .erp-v2 .erp-shell__brand {

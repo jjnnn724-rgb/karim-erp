@@ -735,3 +735,8 @@ body.csales-open { overflow: hidden; }
   .csales__pulseWrap,
   .csales__pager { display: none; }
 }
+
+/* يتوقف الوهج/النبض حين يطلب النظام عدم الحركة — نفس عهد بقية أوراق V2 */
+@media (prefers-reduced-motion: reduce) {
+  .csales__shimmer { animation: none; }
+}

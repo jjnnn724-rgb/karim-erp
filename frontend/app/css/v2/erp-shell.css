@@ -225,12 +225,11 @@
   gap: var(--erp-space-3);
   height: var(--erp-header-height);
   padding-inline: var(--erp-space-4);
-  background: color-mix(in srgb, var(--erp-surface) 88%, transparent);
-  backdrop-filter: blur(8px);
+  /* سطح صافٍ بدل الزجاج المُجمَّد: البؤرة تُعاد حسابها في كل إطار تمرير فوق
+     رأس ثابت عرضيًا — وهذا هو fallback الذي كان معرَّفًا للمسارات بلا
+     backdrop-filter، فصار هو الأصل بلا أي تغيّر في المظهر المَحوَّد. */
+  background: var(--erp-surface);
   border-block-end: 1px solid var(--erp-border);
-}
-@supports not (backdrop-filter: blur(8px)) {
-  .erp-shell__header { background: var(--erp-surface); }
 }
 
 .erp-v2 .erp-shell__drawer-open { display: none; }

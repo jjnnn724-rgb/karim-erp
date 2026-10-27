@@ -609,3 +609,8 @@
         border: 0;
     }
 }
+
+/* يتوقف الوهج/النبض حين يطلب النظام عدم الحركة — نفس عهد بقية أوراق V2 */
+@media (prefers-reduced-motion: reduce) {
+  .erp-pos-v2-live-dot { animation: none; }
+}

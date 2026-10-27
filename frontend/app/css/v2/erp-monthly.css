@@ -545,3 +545,8 @@ body.erp-monthly-open { overflow: hidden; }
   .erp-monthly__field .erp-input { inline-size: 100%; }
   .erp-monthly__chipName { max-inline-size: 18ch; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* يتوقف التمويل/النبض حين يطلب النظام عدم الحركة — نفس عهد بقية أوراق V2 */
+@media (prefers-reduced-motion: reduce) {
+  .erp-monthly__shimmer::after { animation: none; }
+}
