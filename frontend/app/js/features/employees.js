@@ -77,7 +77,7 @@ const initials=emp.name.split(' ').map(n=>n[0]).join('').substring(0,2);
 return `
 <div class="employee-card" data-karim-action="viewEmployeeDetails" data-karim-arg0="${emp.id}">
 <div class="emp-head">
-<div class="employee-avatar">${emp.photo?`<img src="${emp.photo}" alt="${esc(emp.name)}" loading="lazy">`:initials}</div>
+<div class="employee-avatar">${emp.photo?`<img src="${safeImgSrc(emp.photo)}" alt="${esc(emp.name)}" loading="lazy">`:initials}</div>
 <div class="u-flex1">
 <div class="emp-name">${esc(emp.name)}</div>
 <div class="emp-id">${esc(emp.employeeId||t('emp.noEmpId'))}</div>
@@ -290,7 +290,7 @@ const deptOptions=empDeptOptions(emp.department);
 showModal(`
 <h3><i class=ji data-i=pencil></i> تعديل بيانات الموظف</h3>
 <div style="text-align:center;margin-bottom:20px">
-<div class="employee-avatar" style="width:100px;height:100px;font-size:40px;margin:0 auto 10px">${emp.photo?`<img src="${emp.photo}">`:emp.name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+<div class="employee-avatar" style="width:100px;height:100px;font-size:40px;margin:0 auto 10px">${emp.photo?`<img src="${safeImgSrc(emp.photo)}">`:emp.name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
 <label class="btn btn-blue btn-sm" style="cursor:pointer">
 <i class=ji data-i=camera></i> تغيير الصورة
 <input type="file" accept="image/*" style="display:none" data-karim-action="handlePhotoUpload" data-karim-event="change" data-karim-arg0="${emp.id}" data-karim-pass="files.0" data-karim-also="setTimeout">

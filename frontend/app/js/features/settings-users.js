@@ -158,7 +158,7 @@ try {
   await apiUpdate('settings','main_settings',{logoB64});
   STATE.settings.logoB64=logoB64;
   const preview=document.getElementById('logoPreview');
-  if(preview) {preview.innerHTML=`<img src="${logoB64}" style="width:100%;height:100%;object-fit:cover">`;}
+  if(preview) {preview.innerHTML=`<img src="${safeImgSrc(logoB64)}" style="width:100%;height:100%;object-fit:cover">`;}
   updateLogoDisplay();
   toast('تم رفع الشعار وحفظه في قاعدة البيانات','success');
 } catch(e) { toast(e.message||'تعذر حفظ الشعار','error'); }

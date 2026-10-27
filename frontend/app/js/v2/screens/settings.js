@@ -33,6 +33,9 @@ import {
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
 } from '../data/settings-repo.js?v=4.9.180';
+// safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
+// (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
+import { safeImgSrc } from '../../core/utils.js?v=4.9.180';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -200,7 +203,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             + `<label class="erp-field" for="v2-main-work-start"><span class="erp-text-sm erp-text-muted">بداية الدوام</span>`
             + `<input id="v2-main-work-start" class="erp-input erp-input--ltr" data-v2-main="workStartHour" type="number" min="0" max="23" value="${esc(main.workStartHour ?? 9)}" autocomplete="off"></label>`
             + `</div><div class="erp-dash-controls">`
-            + `<span data-v2-logo-prev>${main.logoB64 ? `<img src="${main.logoB64}" alt="الشعار" style="width:80px;height:80px;border-radius:12px;object-fit:cover">` : '<span class="erp-text-sm erp-text-muted">بلا شعار مرفوع</span>'}</span>`
+            + `<span data-v2-logo-prev>${main.logoB64 ? `<img src="${safeImgSrc(main.logoB64)}" alt="الشعار" style="width:80px;height:80px;border-radius:12px;object-fit:cover">` : '<span class="erp-text-sm erp-text-muted">بلا شعار مرفوع</span>'}</span>`
             + `<input type="file" data-v2-logo-file accept="image/*" hidden>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-logo-pick>رفع الشعار</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-logo-reset>إزالة الشعار</button>`

@@ -231,7 +231,7 @@ return `
 <div class="smart-card">
 <div class="smart-card-header" style="background:linear-gradient(135deg,#1a1a2e 0%,#C9A961 100%);padding:20px 16px;border-radius:12px 12px 0 0;color:#fff;position:relative">
 <div style="display:flex;align-items:center;gap:12px">
-${emp.photo ? `<img src="${emp.photo}" alt="${esc(emp.name)}" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,.5);object-fit:cover">` : `<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;border:3px solid rgba(255,255,255,.5)">${initials}</div>`}
+${emp.photo ? `<img src="${safeImgSrc(emp.photo)}" alt="${esc(emp.name)}" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,.5);object-fit:cover">` : `<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;border:3px solid rgba(255,255,255,.5)">${initials}</div>`}
 ${canUploadPhoto ? `<label class="photo-upload-btn" title="رفع صورة" style="position:absolute;bottom:4px;right:4px;background:rgba(255,255,255,.3);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer"><i class=ji data-i=camera></i><input type="file" accept="image/*" style="display:none" data-karim-action="handlePhotoUpload" data-karim-event="change" data-karim-arg0="${emp.id}" data-karim-pass="files.0"></label>` : ''}
 <div style="flex:1">
 <div style="font-size:18px;font-weight:800;line-height:1.2">${esc(emp.name)}</div>
@@ -860,7 +860,7 @@ body{font-family:'Cairo',sans-serif;background:#f0f0f0;padding:20px;direction:rt
 </div>
 <div class="card">
 <div class="card-inner">
-<div class="photo">${emp.photo?`<img src="${emp.photo}">`:initials}</div>
+<div class="photo">${emp.photo?`<img src="${safeImgSrc(emp.photo)}">`:initials}</div>
 <div class="info">
 <div class="name">${esc(emp.name)}</div>
 <div class="position">${esc(emp.position||'—')} ${dept?'• '+esc(dept.name):''}</div>
