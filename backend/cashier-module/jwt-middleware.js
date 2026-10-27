@@ -650,7 +650,11 @@ async function refreshHandler(req, res) {
         // ─── الرمز مُبطَل بالفعل: متزامن داخل المهلة أم إعادة استعمال؟ ────
         if (row.revoked_at) {
             const ageMs = Date.now() - new Date(row.revoked_at).getTime();
-            const inGrace = row.replaced_by && ageMs >= 0 && ageMs <= REFRESH_GRACE_SECONDS * 1000;
+            // `REFRESH_GRACE_SECONDS = 0` تعني «بلا تسماح» لا «تسماح ميلي ثانية»:
+            // بدون هذا الشرط يبقى `ageMs <= 0` صادقًا حين يقع الاستعمالان في نفس
+            // الميلي ثانية، فيُصدر توكن شقيق لإعادة استعمالٍ حقيقية (متذبذب).
+            const inGrace = row.replaced_by && REFRESH_GRACE_SECONDS > 0
+                && ageMs >= 0 && ageMs <= REFRESH_GRACE_SECONDS * 1000;
             if (!inGrace) {
                 // `session_id` قد تكون NULL في صفوف ما قبل 117 — تُبطَل كصنف
                 // واحد بدل أن يفلت الشرط LEFT JOIN من `= NULL`.
