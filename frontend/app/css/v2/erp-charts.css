@@ -663,6 +663,29 @@
   letter-spacing: -.01em;
 }
 .erp-v2 .erp-v2-cost__register-head p { flex-basis: 100%; margin: 0; font-variant-numeric: tabular-nums; }
+.erp-v2 .erp-v2-cost__register-head [data-v2-attribution] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-1) var(--erp-space-2);
+  line-height: 1.7;
+}
+.erp-v2 .erp-v2-cost__attr-label {
+  color: var(--erp-text-secondary);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-v2-cost__attr-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--erp-space-2);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-xs);
+  white-space: nowrap;
+}
 .erp-v2 .erp-v2-cost__register-total {
   display: inline-flex;
   align-items: baseline;

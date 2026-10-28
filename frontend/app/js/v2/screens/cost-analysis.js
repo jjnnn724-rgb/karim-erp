@@ -23,13 +23,13 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.182';
-import { barChart, donutChart } from '../charts.js?v=4.9.182';
-import { openInAppReport } from '../report-viewer.js?v=4.9.182';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.183';
+import { barChart, donutChart } from '../charts.js?v=4.9.183';
+import { openInAppReport } from '../report-viewer.js?v=4.9.183';
 import {
     fetchCostAnalysis, fetchCostAnalysisPrintHtml, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.182';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.182';
+} from '../data/finance-repo.js?v=4.9.183';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.183';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -179,6 +179,7 @@ function template(from, to) {
               <h4 id="v2cost-table-title">تفصيل التكاليف حسب القسم</h4>
               <span class="erp-v2-cost__register-total" data-v2-register-total></span>
               <p data-v2-summary role="status" aria-live="polite" class="erp-text-sm erp-text-muted"></p>
+              <p class="erp-text-sm erp-text-muted" data-v2-attribution></p>
             </div>
             <div data-v2-table></div>
           </section>
@@ -195,6 +196,7 @@ function template(from, to) {
 export function mountCostAnalysisScreen(host, ctx = {}) {
     let rows = [];
     let categories = [];
+    let attribution = { links: [], channelRevenue: [] };
     let currency = '';
     let totals = null;
     let loading = false;
@@ -213,6 +215,7 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
     const rankEl = q('[data-v2-rank]');
     const chartsEl = q('[data-v2-charts]');
     const summaryEl = q('[data-v2-summary]');
+    const attrEl = q('[data-v2-attribution]');
 
     const table = createDataTable({
         caption: 'تكلفة الأقسام',
@@ -222,7 +225,13 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
         emptyMessage: 'لا توجد أقسام مسجلة',
         rowKey: (row) => row.code,
         columns: [
-            { key: 'name', header: 'القسم', sortable: true, filterable: true },
+            {
+                key: 'name', header: 'القسم', sortable: true, filterable: true,
+                render: (row) => `<span>${esc(row.name)}</span>`
+                    + (row.external
+                        ? ' <span class="erp-badge" data-tone="neutral">بيع خارجي — خارج الإجمالي</span>'
+                        : ''),
+            },
             {
                 key: 'rev', header: 'الإيرادات', type: 'number', sortable: true,
                 align: 'end', value: (row) => row.rev, render: (row) => moneyCell(row.rev, currency),
@@ -287,6 +296,51 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
         }));
     }
 
+    /** قنوات البيع (ys_cc_N) ليست أقسامًا: إيرادها أُسند لأقسامه في الخادم
+     *  فبقيت صفوفها صفرية — لا تُعرض كأقسام ولا تدخل الرسوم. */
+    function departmentRows() {
+        return rows.filter((row) => !row.channel);
+    }
+
+    /**
+     * سطر الإسناد: من يغذّي إيراد كل قسم. المصدر جدول dept_cashier_links وحده
+     * (103) — لا خريطة موازية. القنوات غير المرتبطة تُكشف بالاسم كي لا يضيع
+     * إيرادها بصمت.
+     */
+    function paintAttribution() {
+        if (!attrEl) {return;}
+        const links = Array.isArray(attribution && attribution.links) ? attribution.links : [];
+        const channels = Array.isArray(attribution && attribution.channelRevenue) ? attribution.channelRevenue : [];
+        if (!links.length && !channels.length) {
+            attrEl.textContent = 'إسناد الكاشير غير متاح الآن — الإيراد يظهر على القنوات كما ورد.';
+            return;
+        }
+        const nameOf = new Map(departmentRows().map((row) => [String(row.code), row.name]));
+        const byDept = new Map();
+        for (const link of links) {
+            const list = byDept.get(link.dept) || [];
+            list.push(String(link.cashierNo));
+            byDept.set(link.dept, list);
+        }
+        const parts = [...byDept.entries()].map(([code, nos]) => {
+            const label = nameOf.get(code) || code;
+            return `<span class="erp-v2-cost__attr-item"><span>${esc(label)}</span> ← <span dir="ltr">${esc(nos.join('، '))}</span></span>`;
+        });
+        const linkedNos = new Set(links.map((l) => String(l.cashierNo)));
+        const orphanNos = channels
+            .map((c) => String(c.code).replace(/^ys_cc_/i, ''))
+            .filter((no) => !linkedNos.has(no));
+        const attributed = channels
+            .filter((c) => linkedNos.has(String(c.code).replace(/^ys_cc_/i, '')))
+            .reduce((sum, c) => sum + num(c.revenue), 0);
+        attrEl.innerHTML = `<span class="erp-v2-cost__attr-label">إسناد الكاشيرات:</span> `
+            + (parts.length ? parts.join('<span class="erp-text-muted"> · </span>') : '<span>لا روابط مسجَّلة</span>')
+            + (attributed > 0 ? ` <span class="erp-text-muted">— المُسند ${moneyText(attributed, currency)}</span>` : '')
+            + (orphanNos.length
+                ? ` <span class="erp-text-warning">· كاشير بلا قسم: <span dir="ltr">${esc(orphanNos.join('، '))}</span></span>`
+                : '');
+    }
+
     function paintHero(t) {
         const net = num(t.rev) - num(t.exp);
         const shareOfRev = num(t.rev) > 0 ? (num(t.exp) / num(t.rev)) * 100 : 0;
@@ -301,7 +355,7 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
             statCard({
                 label: 'إجمالي الإيرادات',
                 value: moneyCell(t.rev, currency),
-                note: `${formatInt(rows.length)} قسمًا مسجلًا`,
+                note: `${formatInt(departmentRows().length)} قسمًا مسجلًا`,
                 icon: 'banknote', tone: 'brand',
             }),
             statCard({
@@ -362,7 +416,7 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
     }
 
     function paintRank() {
-        const ranked = rows.slice()
+        const ranked = departmentRows()
             .filter((row) => num(row.exp) > 0)
             .sort((a, b) => num(b.exp) - num(a.exp))
             .slice(0, 5);
@@ -397,6 +451,7 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
         paintKpis(t);
         paintMix(t);
         paintRank();
+        paintAttribution();
         const totalEl = q('[data-v2-register-total]');
         if (totalEl) {
             totalEl.innerHTML = totals
@@ -404,22 +459,23 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
                 : '';
         }
 
-        if (!rows.length) {
+        const visible = departmentRows();
+        if (!visible.length) {
             chartsEl.innerHTML = '';
             summaryEl.textContent = 'لا توجد أقسام مسجلة.';
             table.setRows([]);
             return;
         }
 
-        const chartRows = rows.slice()
+        const chartRows = visible.slice()
             .sort((a, b) => (num(b.rev) + num(b.exp)) - (num(a.rev) + num(a.exp)))
             .slice(0, 8);
         chartsEl.innerHTML = [
             barChart({
-                title: rows.length > chartRows.length
+                title: visible.length > chartRows.length
                     ? `مقارنة أعلى ${formatInt(chartRows.length)} أقسام`
                     : 'الإيرادات مقابل التكلفة حسب القسم',
-                ariaLabel: rows.length > chartRows.length
+                ariaLabel: visible.length > chartRows.length
                     ? `أعمدة الإيرادات والتكلفة لأعلى ${chartRows.length} أقسام`
                     : 'أعمدة الإيرادات والتكلفة الإجمالية لكل قسم',
                 labels: chartRows.map((r) => r.name),
@@ -441,8 +497,8 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
             }),
         ].join('');
 
-        summaryEl.textContent = `${formatInt(rows.length)} قسمًا · ${from || firstOfMonth()} → ${to || riyadhToday()}`;
-        table.setRows(rows);
+        summaryEl.textContent = `${formatInt(visible.length)} قسمًا · ${from || firstOfMonth()} → ${to || riyadhToday()}`;
+        table.setRows(visible);
     }
 
     async function printSheet(button) {
@@ -485,6 +541,9 @@ export function mountCostAnalysisScreen(host, ctx = {}) {
             currency = String(cur ?? '');
             rows = withMargin(Array.isArray(result && result.rows) ? result.rows : []);
             categories = Array.isArray(result && result.categories) ? result.categories : [];
+            attribution = result && result.attribution && typeof result.attribution === 'object'
+                ? result.attribution
+                : { links: [], channelRevenue: [] };
             totals = result && result.totals ? result.totals : null;
             if (!totals) {throw new Error('استجابة تحليل التكاليف غير مكتملة من الخادم');}
             paint();
