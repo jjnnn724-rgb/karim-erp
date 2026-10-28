@@ -1233,6 +1233,13 @@ async function stocktakCancelById(id){
     }catch(e){ toast(e.message||'تعذر إلغاء الجلسة','error'); }
     finally{ hideLoad(); }
 }
+/* طبقة الطباعة الموحدة (سكربت كلاسيكي: تحميل ديناميكي) —
+   إن تعذّر تحميلها تُطبع الوثيقة كما هي بدل تعطيل الطباعة. */
+function applyPrintLayer(doc, title){
+    return import(new URL('js/core/print-system.js', document.baseURI).href)
+        .then((mod)=>mod.applyPrintSystem(doc, {title}))
+        .catch(()=>false);
+}
 async function stocktakPrintById(id, kind){
     try{
         const res = await fetch(API_BASE+`/warehouse/inventory/audits/${id}/${kind}`,{headers:{'Authorization':'Bearer '+(window._jwt||'')}});
@@ -1242,7 +1249,8 @@ async function stocktakPrintById(id, kind){
         frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
         document.body.appendChild(frame);
         frame.contentDocument.open(); frame.contentDocument.write(html); frame.contentDocument.close();
-        setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },500);
+        await applyPrintLayer(frame.contentDocument, 'محضر جرد المخزون');
+        setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },300);
     }catch(e){ toast(e.message||'تعذر الطباعة','error'); }
 }
 function stocktakPrint(kind){

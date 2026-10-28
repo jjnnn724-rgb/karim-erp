@@ -473,6 +473,13 @@ function pnlInitCharts(){
       ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}},scales:{x:{ticks:{color:'#9aa0b4'}},y:{ticks:{color:'#9aa0b4'}}}}});
   }
 }
+/* طبقة الطباعة الموحدة (سكربت كلاسيكي: تحميل ديناميكي) —
+   إن تعذّر تحميلها تُطبع الوثيقة كما هي بدل تعطيل الطباعة. */
+function applyPrintLayer(doc, title){
+  return import(new URL('js/core/print-system.js', document.baseURI).href)
+    .then((mod)=>mod.applyPrintSystem(doc, {title}))
+    .catch(()=>false);
+}
 async function pnlPrint(){
   try{
     const p=new URLSearchParams();
@@ -485,7 +492,8 @@ async function pnlPrint(){
     frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(frame);
     frame.contentDocument.open(); frame.contentDocument.write(html); frame.contentDocument.close();
-    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },500);
+    await applyPrintLayer(frame.contentDocument, 'قائمة الأرباح والخسائر');
+    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },300);
   }catch(e){ toast(e.message||'تعذر الطباعة','error'); }
 }
 function pnlExportExcel(){

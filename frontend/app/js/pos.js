@@ -925,6 +925,14 @@ function renderBuffetReportHtml(r, { forPrint = false } = {}) {
         </div>`;
 }
 
+/* طبقة الطباعة الموحدة (سكربت كلاسيكي: تحميل ديناميكي) —
+   إن تعذّر تحميلها تُطبع الوثيقة كما هي بدل تعطيل الطباعة. */
+function applyPrintLayer(doc, title) {
+    return import(new URL('js/core/print-system.js', document.baseURI).href)
+        .then((mod) => mod.applyPrintSystem(doc, { title }))
+        .catch(() => false);
+}
+
 function printBuffetReport() {
     if (!lastBuffetReport) { showToast('لا يوجد تقرير للطباعة — اعرض التقرير أولًا', 'warning'); return; }
     const report = lastBuffetReport;
@@ -950,7 +958,8 @@ function printBuffetReport() {
         ${renderBuffetReportHtml(report, { forPrint: true })}
     </body></html>`);
     doc.close();
-    frame.onload = () => {
+    frame.onload = async () => {
+        await applyPrintLayer(frame.contentDocument, `تقرير البوفيه ${report.date}`);
         frame.contentWindow.focus();
         frame.contentWindow.print();
         setTimeout(() => frame.remove(), 2000);

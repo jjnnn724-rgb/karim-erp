@@ -116,6 +116,20 @@ describe('عارض المستندات — الطباعة والوصولية', ()
         expect(read(LEGACY)).toContain('await applyPrintSystem(frame.contentDocument');
     });
 
+    test('المستندات التي تُبنى خارج العارض تمر هي أيضًا بطبقة الطباعة', () => {
+        const FINANCE = path.join(APP, 'js', 'features', 'finance.js');
+        const WAREHOUSE = path.join(APP, 'js', 'features', 'warehouse.js');
+        const POS = path.join(APP, 'js', 'pos.js');
+        for (const file of [FINANCE, WAREHOUSE, POS]) {
+            const src = read(file);
+            expect(src).toContain("import(new URL('js/core/print-system.js', document.baseURI).href)");
+            expect(src).toContain('applyPrintLayer(');
+        }
+        expect(read(FINANCE)).toContain("await applyPrintLayer(frame.contentDocument, 'قائمة الأرباح والخسائر')");
+        expect(read(WAREHOUSE)).toContain("await applyPrintLayer(frame.contentDocument, 'محضر جرد المخزون')");
+        expect(read(POS)).toContain('await applyPrintLayer(frame.contentDocument, `تقرير البوفيه ${report.date}`)');
+    });
+
     test('V2 print uses the uploaded settings logo without changing legacy branding', () => {
         const branding = read(path.join(V2, 'print-branding.js'));
         // الرموز تصل إلى المستند المطبوع كوسوم svg بلا عرضٍ/ارتفاع (icons.js)؛
