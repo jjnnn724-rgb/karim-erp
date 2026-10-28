@@ -1,10 +1,9 @@
 name: CI/CD Pipeline
 
 on:
+  # كل الفروع: المشروع يُسلَّم من فروع stabilization/* وليس main وحده.
   push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
   workflow_dispatch:
 
 permissions:
@@ -131,9 +130,16 @@ jobs:
         run: npm run test:dispatch:gate
 
       - name: Frontend version gate — changed frontend files require a version bump
-        # إعلامي: التزم برفع الإصدار مع تغيير الواجهة (deploy-verify محليًا)
-        continue-on-error: true
+        # حاجب: تغيير ملفات الواجهة بلا رفع الإصدار يعني بقاء العملاء على
+        # نسخة قديمة من الكاش — وهذا ما حدث فعليًا (docs/V2-COMPLETION-CONTRACT).
+        # الإصلاح: node scripts/frontend-version.js --bump ثم commit الاثنين معًا.
         run: npm run test:frontend-version
+
+      - name: V2 revision gate — every js/v2 specifier equals the page revision
+        # حاجب: مرجعُ الوحدات داخل js/v2 كاش-بسترُ V2 (167 ملفًا). انحرافُ
+        # واحد يعني وحدةً قديمة تُخدَم مع صفحة جديدة. الإصلاح:
+        # node scripts/v2-revision.js --rev <page-rev>
+        run: npm run test:v2-revision
 
       - name: Design color gate — css/v2 reads --erp-* tokens only (documented exemptions)
         run: npm run test:color:gate

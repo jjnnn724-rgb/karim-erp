@@ -20,8 +20,10 @@ module.exports = {
   testTimeout: 20000,
   // ─── بوابة التغطية (coverage gate) — تُطبَّق فقط عند --coverage ───
   // الأرقام أرضية آمنة «مِصْعَد» (ratchet): ارفعها تدريجيًا مع كل مجموعة
-  // تختبرها، ولا تخفضها أبدًا. لقطة 2026-10-13: stmts 31.2٪ lines 32.5٪
-  // funcs 33.3٪ branches 25.9٪ — العتبات تُشدّ تحت المقياس بهامش أمان صغير.
+  // تختبرها، ولا تخفضها أبدًا. لقطة 2026-10-28 (281 حزمة، 4083 اختبارًا):
+  // stmts 40.31٪ lines 42.24٪ funcs 41.47٪ branches 33.5٪ — العتبات
+  // تُشدّ تحت المقياس بهامش أمان ~1 نقطة. (اللقطة السابقة 2026-10-13
+  // كانت 31.2/32.5/33.3/25.9 على 28/29/30/23.)
   collectCoverageFrom: [
     'backend/**/*.js',
     '!backend/node_modules/**',
@@ -31,10 +33,10 @@ module.exports = {
   coverageReporters: ['text-summary', 'lcov', 'clover'],
   coverageThreshold: {
     global: {
-      statements: 28,
-      lines: 29,
-      functions: 30,
-      branches: 23,
+      statements: 39,
+      lines: 41,
+      functions: 40,
+      branches: 32,
     },
   },
 };
