@@ -109,10 +109,10 @@ describe('بيانات Oracle — عقد الشاشتين', () => {
 
     test('المضيف يربط المفتاحين', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountOracleDataScreen \} from '\.\/screens\/oracle-data\.js\?v=/);
-        expect(h).toMatch(/import \{ mountDailyLocksScreen \} from '\.\/screens\/daily-locks\.js\?v=/);
-        expect(h).toMatch(/key: 'oracle-data', title: 'بيانات Oracle', mount: mountOracleDataScreen/);
-        expect(h).toMatch(/key: 'yara-daily-locks', title: 'التقفيل اليومي', mount: mountDailyLocksScreen/);
+        expect(h).toMatch(/module: 'oracle-data'/);
+        expect(h).toMatch(/module: 'daily-locks'/);
+        expect(h).toMatch(/key: 'oracle-data', title: 'بيانات Oracle', module: 'oracle-data'/);
+        expect(h).toMatch(/key: 'yara-daily-locks', title: 'التقفيل اليومي', module: 'daily-locks'/);
         expect(h).toMatch(/if \(key === 'oracle-data'\)/);
         expect(h).toMatch(/if \(key === 'yara-daily-locks'\)/);
     });

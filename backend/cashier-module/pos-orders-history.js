@@ -848,6 +848,16 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
         if (!orderRes.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'NOT_FOUND' }); }
         const order = orderRes.rows[0];
         if (order.status === 'cancelled') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'ALREADY_CANCELLED', message: 'الفاتورة ملغاة بالفعل' }); }
+        // قفل الفترة يُفحص قبل بدء أي عكس: إلغاء بلا قيد عكسي يُبقي الإيراد
+        // والضريبة والتكلفة حيّة في الأستاذ — الرفض الصريح أأمن من نصف إلغاء.
+        const reversalDay = riyadhToday();
+        const periodClosed = (await client.query(
+            `SELECT 1 FROM accounting_periods WHERE period = $1 AND closed = true LIMIT 1`,
+            [reversalDay.slice(0, 7)])).rows[0];
+        if (periodClosed) {
+            await client.query('ROLLBACK');
+            return res.status(423).json({ error: 'PERIOD_CLOSED', message: 'الشهر المالي مقفل — أعد فتح الفترة قبل الإلغاء (لم يُغيَّر شيء)' });
+        }
         const items = (await client.query(`SELECT * FROM pos_order_items WHERE order_id = $1 ORDER BY id`, [id])).rows;
         // Resolve the SAME consumption location the sale used — including the
         // kitchen_policies override (the sale consumed from the kitchen, so the
@@ -935,42 +945,73 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
         await client.query(`UPDATE pos_orders SET status='cancelled', voided_at=CURRENT_TIMESTAMP, voided_by=$2, void_reason=$3, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [id, req.user.id, reason || 'إلغاء بواسطة المدير']);
         const revNote = `[VOID] عكس فاتورة #${order.invoice_counter}${reason ? ' — ' + reason : ''}`;
         const dept = (await client.query(`SELECT legacy_dept_code FROM pos_departments WHERE id=$1`, [order.department_id])).rows[0];
-        if (dept?.legacy_dept_code) {await client.query(`INSERT INTO revenues (id, "deptId", source, amount, date, notes) VALUES ($1,$2,'POS_VOID',-CAST($3 AS numeric),CURRENT_DATE,$4)`, [Date.now() * 1000 + require('crypto').randomInt(0, 1000), dept.legacy_dept_code, order.total_amount, revNote]);}
-        // ROOT FIX 2026-10-02: الإلغاء كان يعكس المخزون والإيرادات التشغيلية
-        // ويترك قيد البيع حيًا في الأستاذ — يُرحّل قيد عكسي موثق فقط إن وُجد
-        // قيد بيع أصلي (pos_sale posted) مع صيانة قفل الفترة المالية.
-        const periodClosed = (await client.query(
-            `SELECT 1 FROM accounting_periods WHERE period = to_char(CURRENT_DATE,'YYYY-MM') AND closed = true LIMIT 1`)).rows[0];
-        const saleJe = periodClosed ? { rows: [] } : (await client.query(
-            `SELECT id FROM journal_entries WHERE source_type='pos_sale' AND source_id=$1 AND status='posted' LIMIT 1`, [String(id)])).rows[0];
-        await client.query('COMMIT');
-        if (saleJe) {
-            try {
-                const t = Number(order.total_amount) || 0;
-                const tax = Number(order.tax_total) || 0;
-                const rev = Math.max(0, Math.round((t - tax) * 100) / 100);
-                const lines = [{ account_code: '4000', debit: rev, credit: 0, memo: `عكس مبيعات فاتورة #${order.invoice_counter}` }];
-                if (tax > 0) {lines.push({ account_code: '2100', debit: tax, credit: 0, memo: 'عكس ضريبة الفاتورة' });}
-                lines.push({ account_code: '1000', debit: 0, credit: t, memo: 'رد التحصيل — إلغاء فاتورة' });
-                const { postJournal } = require('../accounting-routes');
-                await postJournal(pool, {
-                    date: new Date().toISOString().slice(0, 10),
-                    memo: `إلغاء فاتورة كاشير #${order.invoice_counter}${reason ? ' — ' + reason : ''}`,
-                    source_type: 'pos_void',
-                    source_id: String(id),
-                    lines,
-                });
-                logger.info(`[LEDGER] قيد عكس إلغاء الفاتورة #${order.invoice_counter} مُرحّل`);
-            } catch (jeErr) { logger.warn('[pos_void_ledger] best-effort skipped:', jeErr.message); }
-        } else if (periodClosed) {
-            logger.warn(`[pos-orders] إلغاء الفاتورة #${order.invoice_counter} في شهر مالي مقفل — لا قيد عكسي (راجع المالية)`);
+        if (dept?.legacy_dept_code) {await client.query(`INSERT INTO revenues (id, "deptId", source, amount, date, notes) VALUES ($1,$2,'POS_VOID',-CAST($3 AS numeric),$5,$4)`, [Date.now() * 1000 + require('crypto').randomInt(0, 1000), dept.legacy_dept_code, order.total_amount, revNote, reversalDay]);}
+        // ROOT FIX 2026-10-27: الإلغاء كان يُرحّل قيدًا عكسيًا «بأفضل جهد» بعد
+        // COMMIT، وبسطور الإيراد والضريبة والصندوق فقط — فأي فشل يُبقي قيد
+        // البيع حيًا، والتكلفة (5000/1200) والبنك (1010) لا يُعكسان أبدًا.
+        // الآن: قلب سطور قيد البيع نفسه مدين↔دائن داخل نفس المعاملة — إما
+        // يُلغى كل شيء ويُرحّل العكس، أو لا يتغيّر شيء إطلاقًا.
+        const { reverseJournalLines, buildFallbackVoidLines } = require('./pos-void-lines');
+        const original = (await client.query(
+            `SELECT id FROM journal_entries
+              WHERE source_type = 'pos_sale' AND source_id = $1 AND status = 'posted'
+              ORDER BY id DESC LIMIT 1`, [String(id)])).rows[0];
+        // لا قيد بيع أصلي (بيع سابق لتفعيل الأستاذ): يُعاد بناء العكس من
+        // بيانات الفاتورة والتحصيل وتكلفة الاستهلاك الفعلية في دفتر المخزون.
+        const buildFallbackLines = async () => buildFallbackVoidLines({
+            invoiceCounter: order.invoice_counter,
+            total: order.total_amount,
+            tax: order.tax_total,
+            cogs: (await client.query(
+                `SELECT COALESCE(SUM(total_cost), 0) AS cogs FROM inventory_ledger
+                  WHERE reference_type = 'pos_order' AND reference_id = $1 AND quantity_delta < 0`,
+                [id])).rows[0].cogs,
+            payments: (await client.query(
+                `SELECT method, amount, direction FROM pos_invoice_payments WHERE order_id = $1`, [id])).rows,
+        });
+        /** @type {import('./pos-void-lines').JournalLine[]} */
+        let revLines = [];
+        if (original) {
+            const origLines = (await client.query(
+                `SELECT * FROM journal_lines WHERE entry_id = $1 ORDER BY id`, [original.id])).rows;
+            revLines = reverseJournalLines(origLines);
         }
-        logger.info({ orderId: id, userId: req.user.id, restoredQty }, '[pos-orders] voided and reversed');
-        res.json({ message: 'تم إلغاء الفاتورة واسترجاع المخزون والمدفوعات', order_id: id, status: 'cancelled', restored_quantity: restoredQty, refund_total: refundTotal, reversal_note: revNote });
+        if (revLines.length < 2) { revLines = await buildFallbackLines(); }
+        // القيد العكسي داخل المعاملة: فشله يُلغي الإلغاء كله (لا حالة نصفية).
+        const { postJournal } = require('../accounting-routes');
+        let reversalEntry = null;
+        /** @param {import('./pos-void-lines').JournalLine[]} lines */
+        const postReversal = (lines) => postJournal(client, {
+            date: reversalDay,
+            memo: `إلغاء فاتورة كاشير #${order.invoice_counter}${reason ? ' — ' + reason : ''}`,
+            source_type: 'pos_void',
+            source_id: String(id),
+            lines,
+            created_by: req.user?.id || null,
+        });
+        if (revLines.length >= 2) {
+            let out;
+            try {
+                out = await postReversal(revLines);
+            } catch (jeErr) {
+                // حساب أُوقف بعد البيع: يُعاد بناء العكس بالحسابات القياسية
+                // بدل تعطيل الإلغاء نهائيًا.
+                if (jeErr.statusCode !== 422 || !original) { throw jeErr; }
+                revLines = await buildFallbackLines();
+                out = await postReversal(revLines);
+            }
+            reversalEntry = out.entry || null;
+            logger.info(`[LEDGER] قيد عكس إلغاء الفاتورة #${order.invoice_counter} ${out.replay ? 'مُرحّل مسبقًا' : 'مُرحّل'} (${original ? 'قلب قيد البيع' : 'مُعاد بناؤه'})`);
+        }
+        await client.query('COMMIT');
+        logger.info({ orderId: id, userId: req.user.id, restoredQty, reversalEntry: reversalEntry?.entry_no }, '[pos-orders] voided and reversed');
+        res.json({ message: 'تم إلغاء الفاتورة واسترجاع المخزون والمدفوعات', order_id: id, status: 'cancelled', restored_quantity: restoredQty, refund_total: refundTotal, reversal_note: revNote, journal_entry_no: reversalEntry?.entry_no || null });
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error({ err: err.message }, '[pos-orders] void failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        const code = err.statusCode || 500;
+        const errorCode = code === 423 ? 'PERIOD_CLOSED' : code === 422 ? 'LEDGER_REJECTED' : 'INTERNAL';
+        res.status(code).json({ error: errorCode, message: err.message });
     } finally { client.release(); }
 });
 

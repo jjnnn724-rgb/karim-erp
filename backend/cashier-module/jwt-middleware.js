@@ -20,7 +20,6 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('../pw-crypto');
 const { logger } = require('../logger');
-const { encryptForVault } = require('../password-vault');
 const { pool } = require('./db-pool');
 const { updateUserContext } = require('../middleware/correlation');
 const { loadState: loadMfaState, mfaRequiredFor } = require('./mfa-store');
@@ -472,9 +471,6 @@ async function changePasswordHandler(req, res) {
             `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
             [hash, user.id]
         );
-        // خزنة كلمات المرور: حدّث النسخة القابلة للاسترجاع (قرار المالك — أدمن فقط يقرأها)
-        const _vault = encryptForVault(newPassword);
-        if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, user.id]); }
         await client.query(`DELETE FROM pos_refresh_tokens WHERE user_id = $1;`, [user.id]).catch(() => {});
         const rotatedUser = { ...user, must_change_password: false };
         // من كان مقيّدًا بتدوير كلمة المرور لا يهبط بجلسة كاملة مباشرة:

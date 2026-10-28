@@ -37,6 +37,16 @@ function auditContextMiddleware(req, res, next) {
     next();
 }
 
+/**
+ * @param {object} entry
+ * @param {string} entry.action
+ * @param {string} [entry.tableName]
+ * @param {string|number|null} [entry.rowPk]
+ * @param {string|null} [entry.reason]
+ * @param {Record<string, any>} [entry.metadata]
+ * @param {{userId?: number|string|null, userName?: string|null, role?: string|null, ip?: string|null, requestId?: string|null}} [entry.actor]
+ * @returns {Promise<void>}
+ */
 async function writeAuditLog({ action, tableName = '', rowPk = null, reason = null, metadata = {}, actor = {} }) {
     const client = await pool.connect();
     try {

@@ -234,7 +234,7 @@ describe('P2-3 — الشاشة: الأبواب موصولة والكتابة م
         expect(src).toContain('target: 5');
         expect(src).toContain('faceEnrollMessage(saved)');
         expect(src).toContain('تم تسجيل الوجه بالمحركين');
-        expect(src).toContain("window.confirm('إزالة قالب الوجه لهذا الموظف؟')");
+        expect(src).toContain("confirmFn('إزالة قالب الوجه لهذا الموظف؟')");
         expect(src).toContain('data-v2-face-user');
     });
 

@@ -472,9 +472,15 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         // inside the transaction, and pool-based re-enable is a safety net only.
         // USER لا ALL: مشغّلات قيود المفاتيح الأجنبية مشغّلات نظام لا يملك
         // karim_app تعطيلها، فتفشل ALL وتُرحّل الـsavepoint ويبقى الحذف محجوبًا.
+        // لكن USER كان يعطّل أيضًا: (١) trg_pos_audit_chain — فكل إدراج أثناء
+        // النافذة يبقى بلا ختم إلى الأبد؛ (٢) حاجز حذف السجل — والتصفير لا
+        // يحذفه أصلًا (RESET_AUDIT_TABLES تتجاوزه) ولا يحذفه أي cascade، فتعطيله
+        // كان يفتح باب حذفٍ متزامن يكسر السلسلة عند الصف التالي. نُبقي الحذف
+        // محجوبًا دائمًا، ونعطّل حاجز التعديل وحده: حذف users يرفع actor_user_id
+        // بـSET NULL (غير محسوب في حِمل السلسلة فلا يكسر الختم).
         try {
             await client.query(`SAVEPOINT sp_triggers`);
-            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER USER`);
+            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER trg_pos_prevent_audit_update`);
             await client.query(`ALTER TABLE users DISABLE TRIGGER USER`);
             await client.query(`RELEASE SAVEPOINT sp_triggers`);
         } catch (trigErr) {

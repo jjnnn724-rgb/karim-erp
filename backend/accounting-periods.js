@@ -155,8 +155,8 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
               WHERE id = $1 AND status = 'draft'
                 AND NOT EXISTS (
                     SELECT 1 FROM accounting_periods ap
-                    WHERE ap.month = to_char(journal_entries.date, 'YYYY-MM')
-                      AND ap.status = 'closed'
+                    WHERE ap.period = to_char(journal_entries.date, 'YYYY-MM')
+                      AND ap.closed = TRUE
                 )
               RETURNING *`,
             [id, req.user?.id || null]

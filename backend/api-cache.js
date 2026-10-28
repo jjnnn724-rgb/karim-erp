@@ -16,7 +16,6 @@ const API_CACHE_MAX = 2000;
 function apiCacheMiddleware(req, res, next) {
     if (req.method !== 'GET') { return next(); }
     if (req.path === '/api/state' || req.path === '/state') { return next(); }
-    if (req.path.startsWith('/api/users/') && req.path.endsWith('/password')) { return next(); }
     const key = `${req.headers.authorization || ''}|${req.originalUrl}`;
     const cached = _apiCache.get(key);
     if (cached && Date.now() - cached.ts < API_CACHE_TTL) {

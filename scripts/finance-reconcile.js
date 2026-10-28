@@ -59,7 +59,7 @@ async function paymentJournal(row, supplierName) {
     // 1) مبيعات الكاشير الصادرة بلا قيد
     const missingSales = (await pool.query(`
         SELECT o.id FROM pos_orders o
-         WHERE o.status = 'issued' AND o.total_amount > 0
+         WHERE o.status IN ('issued','reported') AND o.total_amount > 0
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
                             WHERE je.source_type='pos_sale' AND je.source_id=o.id::text AND je.status='posted')`)).rows;
     let fixed = 0;
@@ -131,6 +131,29 @@ async function paymentJournal(row, supplierName) {
         }
     }
     report.supplier_payment = { missing: missingPay.length, repaired: payFixed };
+
+    // 5) أذون صرف معتمدة بلا قيد — ترحيلها best-effort بعد COMMIT، فإذن بلا
+    // قيد يعني مخزونًا خرج بلا تكلفة في الأستاذ (2026-10-26). idempotent.
+    const missingDispatch = (await pool.query(`
+        SELECT d.id, d.date, d."deptCode" AS dept,
+               COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
+                           FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value
+          FROM dispatches d
+         WHERE d.status = ANY($1::text[])
+           AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                            WHERE je.source_type='dispatch' AND je.source_id=d.id::text)`,
+        [['approved', 'received', 'partially_received', 'closed']])).rows;
+    let dispFixed = 0;
+    for (const r of missingDispatch) {
+        try {
+            const out = await acct.postDispatchToLedger(r.id, { totalValue: r.value, date: r.date, deptCode: r.dept });
+            if (!out.skipped) {dispFixed++;}
+        } catch (e) {
+            failures++;
+            console.error('dispatch', r.id, e.message);
+        }
+    }
+    report.dispatch = { missing: missingDispatch.length, repaired: dispFixed };
 
     const totalMissing = Object.values(report).reduce((s, r) => s + r.missing, 0);
     const totalFixed = Object.values(report).reduce((s, r) => s + r.repaired, 0);

@@ -19,6 +19,8 @@
  *   KARIM_TEST_DB_ISOLATED=1 npx jest tests/audit-chain.test.js --runInBand
  */
 
+const fs = require('fs');
+const path = require('path');
 const { describe, it, expect, beforeAll, afterAll } = require('@jest/globals');
 const { writeAuditLog } = require('../backend/cashier-module/audit-middleware');
 const { pool } = require('../backend/shared-pool');
@@ -271,5 +273,39 @@ describe('الفجوات المشروعة والمدقّق', () => {
         const result = await verify(linkRowId);
         expect(result.ok).toBe(true);
         expect(Number(result.checked)).toBeGreaterThanOrEqual(1);
+    });
+});
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * نافذة التصفير لا تُبطل حماية السجل
+ * ──────────────────────────────────────────────────────────────────────────
+ * العطب المقيس (2026-10-27): مسار التصفير كان يُعطّل `TRIGGER USER` على
+ * pos_audit_logs، فتنكشف النافذة لمسارين: (أ) أي إدراجٍ أثناءها يبقى بلا
+ * ختم إلى الأبد، و(ب) أي حذفٍ متزامن ينجح — ويظهر كسرُه عند الصف التالي
+ * بـprev_mismatch. والتصفير لا يحذف السجل أصلًا (RESET_AUDIT_TABLES تتجاوزه)
+ * ولا يحذفه أي cascade، فتعطيل حاجز الحذف كان بلا داعٍ. حاجز التعديل وحده
+ * يُبطل: حذف users يرفع actor_user_id بـSET NULL، وهو خارج حِمل السلسلة.
+ * هذا الاختبار يحرس النافذة ضيّقة بعد الآن.
+ */
+describe('نافذة التصفير — السجل يبقى مختومًا ومحميًا', () => {
+    const resetSrc = fs.readFileSync(
+        path.join(__dirname, '..', 'backend', 'inventory-control-routes.js'), 'utf8');
+
+    it('لا يُعطّل التصفير مشغّل الختم ولا مشغّل الحذف', () => {
+        expect(resetSrc).not.toMatch(/pos_audit_logs\s+DISABLE\s+TRIGGER\s+USER/i);
+        expect(resetSrc).not.toMatch(/DISABLE\s+TRIGGER\s+trg_pos_audit_chain/i);
+        expect(resetSrc).not.toMatch(/DISABLE\s+TRIGGER\s+trg_pos_prevent_audit_delete/i);
+    });
+
+    it('يُبطل حاجز التعديل وحده لرفع actor_user_id عند حذف users', () => {
+        expect(resetSrc)
+            .toMatch(/ALTER TABLE pos_audit_logs DISABLE TRIGGER trg_pos_prevent_audit_update/);
+        // الإعادة قبل COMMIT داخل المعاملة — لا نافذة تبقى بعدها.
+        expect(resetSrc).toMatch(/ALTER TABLE pos_audit_logs ENABLE TRIGGER USER/);
+    });
+
+    it('السجل خارج نطاق حذف التصفير', () => {
+        expect(resetSrc)
+            .toMatch(/RESET_AUDIT_TABLES = new Set\(\['pos_audit_logs', 'system_reset_audit'\]\)/);
     });
 });

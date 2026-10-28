@@ -1,37 +1,14 @@
 /**
  * ops-inspect-routes.js — فحوصات الإدارة التشغيلية (مُستخلص من server.js)
- * خزنة كلمة المرور (أدمن) + لقطة metrics + قيود المخطط (أدمن فقط — FIX L1/L2).
+ * لقطة metrics + قيود المخطط (أدمن/مدير — FIX L1/L2).
  */
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { pool } = require('./shared-pool');
-const { logger } = require('./logger');
-const { decryptFromVault } = require('./password-vault');
 
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 function register(app, opts = {}) {
     const { metrics } = opts;
-
-    // خزنة كلمات المرور: عرض نسخة كلمة المرور المسجلة — للأدمن حصريًا (قرار المالك
-    // لمساعدة الموظف النسي كلمته). بلا نسخة محفوظة ترجع available:false بدل فشل.
-    app.get('/api/users/:id/password', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {return res.status(422).json({ error: 'USER_ID_INVALID', message: 'معرف المستخدم غير صالح' });}
-        try {
-            const r = await pool.query('SELECT password_vault, username FROM users WHERE id = $1', [id]);
-            if (!r.rows[0]) {return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' });}
-            // FIX 2026-10-11 (L1): audit log for password vault access — sensitive
-            // operation that reveals plaintext passwords.
-            logger.info({ event: 'security', securityEvent: 'password_vault_view', targetUserId: id, targetUsername: r.rows[0].username, actorUserId: req.user?.id, actorUsername: req.user?.username }, '[SECURITY] Password vault accessed');
-            res.set('Cache-Control', 'no-store');
-            const plain = decryptFromVault(r.rows[0].password_vault);
-            if (!plain) {return res.json({ ok: true, available: false, message: 'لا توجد نسخة محفوظة لهذا الحساب — أعد تعيين كلمة المرور من «تعديل الحساب» وستُسجَّل' });}
-            res.json({ ok: true, available: true, password: plain });
-        } catch (e) {
-            logger.error('[pw-vault] view failed:', e.message);
-            res.status(500).json({ error: 'VAULT_VIEW_FAILED', message: 'تعذر جلب كلمة المرور' });
-        }
-    }));
 
     // Runtime metrics (enterprise observability) — للمالك/المدير فقط.
     app.get('/api/metrics', jwtAuth, requireRole('admin', 'manager'), (req, res) => {

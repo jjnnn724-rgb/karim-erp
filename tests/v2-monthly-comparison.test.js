@@ -465,11 +465,11 @@ describe('مقارنة الشهور — النشر: مفتاحٌ واحد في �
     });
 
     test('المعاينة V2 تحمّل الشاشة وتُنظّفها وتوجّهها', () => {
-        expect(preview).toMatch(/import \{ mountMonthlyComparisonScreen \} from '\.\/screens\/monthly-comparison\.js/);
+        expect(preview).toMatch(/module: 'monthly-comparison'/);
         expect(preview).toMatch(/let monthlyComparisonScreen = null;/);
         expect(preview).toMatch(/function teardownMonthlyComparisonScreen\(\)/);
         expect(preview).toMatch(/teardownMonthlyComparisonScreen\(\);/);
-        expect(preview).toMatch(/key: 'monthly-comparison', title: 'مقارنة الشهور', mount: mountMonthlyComparisonScreen/);
+        expect(preview).toMatch(/key: 'monthly-comparison', title: 'مقارنة الشهور', module: 'monthly-comparison'/);
         expect(preview).toMatch(/if \(key === 'monthly-comparison'\) \{/);
     });
 });

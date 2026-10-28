@@ -236,7 +236,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 const { postSaleToLedger } = require('../accounting-routes');
                 const missing = (await client.query(
                     `SELECT o.id FROM pos_orders o
-                      WHERE o.status = 'issued' AND o.created_at::date = $1::date
+                      WHERE o.status IN ('issued','reported') AND o.created_at::date = $1::date
                         AND NOT EXISTS (SELECT 1 FROM journal_entries je
                                          WHERE je.source_type = 'pos_sale' AND je.source_id = o.id::text AND je.status = 'posted')`,
                     [date])).rows;
@@ -246,6 +246,33 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 }
                 if (journalsRepaired) { logger.warn(`[day-close] أُعيد ترحيل ${journalsRepaired} قيد بيع مفقود ليوم ${date}`); }
             } catch (sweepErr) { logger.error('[day-close] journal sweep failed (non-fatal):', sweepErr.message); }
+
+            // ROOT FIX 2026-10-27: نفس الحلقة لأذون الصرف المعتمدة — ترحيل
+            // قيدها best-effort بعد COMMIT، فإذن بلا قيد = مخزون خرج بلا تكلفة
+            // في الأستاذ (سُجّل فعليًا 2026-10-26). الترحيل idempotent بمفتاح
+            // (dispatch, id) — إعادة التشغيل لا تُكرّر.
+            let dispatchJournalsRepaired = 0;
+            try {
+                const { postDispatchToLedger } = require('../accounting-routes');
+                const missingDispatches = (await client.query(
+                    `SELECT d.id, d.date, d."deptCode" AS dept,
+                            COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
+                                        FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value
+                       FROM dispatches d
+                      WHERE d.status = ANY($2::text[]) AND LEFT(d.date, 10) = $1
+                        AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                                         WHERE je.source_type = 'dispatch' AND je.source_id = d.id::text)`,
+                    [date, ['approved', 'received', 'partially_received', 'closed']])).rows;
+                for (const row of missingDispatches) {
+                    try {
+                        const out = /** @type {any} */ (await postDispatchToLedger(row.id, {
+                            totalValue: row.value, date: row.date, deptCode: row.dept,
+                        }));
+                        if (!out.skipped) { dispatchJournalsRepaired += 1; }
+                    } catch (e2) { logger.error('[day-close] dispatch journal repair failed', row.id, e2 instanceof Error ? e2.message : e2); }
+                }
+                if (dispatchJournalsRepaired) { logger.warn(`[day-close] أُعيد ترحيل ${dispatchJournalsRepaired} قيد صرف مفقود ليوم ${date}`); }
+            } catch (sweepErr) { logger.error('[day-close] dispatch sweep failed (non-fatal):', sweepErr instanceof Error ? sweepErr.message : sweepErr); }
 
             // Auto-post net variance to the ledger (idempotent on Z number).
             // Shortage: Dr 6900 (تشغيلية أخرى) / Cr 1000 (الصندوق).
@@ -268,7 +295,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                     [zNumber, ins.rows[0].id]
                 );
             }
-            return { z: ins.rows[0], journal, perSession, methods: mt.methods, invoices: mt.invoices };
+            return { z: ins.rows[0], journal, perSession, methods: mt.methods, invoices: mt.invoices, repaired: { sales: journalsRepaired, dispatches: dispatchJournalsRepaired } };
         }, { userId: req.user.id, userRole: req.user.role, clientIp: req.ip });
 
         try {

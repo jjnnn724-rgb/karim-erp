@@ -58,6 +58,56 @@ const checks = [
         FROM payroll
         WHERE status IS NULL OR TRIM(status) = ''
     `],
+    // قيد غير متوازن في الأستاذ = خطأ بنيوي لا يُصلح بالتقارير.
+    ['unbalanced_journal_entries', `
+        SELECT COUNT(*)::int AS count
+        FROM (
+            SELECT e.id
+              FROM journal_entries e
+              JOIN journal_lines l ON l.entry_id = e.id
+             WHERE e.status = 'posted'
+             GROUP BY e.id
+            HAVING ABS(SUM(l.debit) - SUM(l.credit)) > 0.01
+        ) bad
+    `],
+    // مبيعات صادرة/مُبلَّغة بلا قيد — ترحيلها best-effort وقت البيع.
+    ['sale_without_journal', `
+        SELECT COUNT(*)::int AS count
+        FROM pos_orders o
+        WHERE o.status IN ('issued','reported') AND o.total_amount > 0
+          AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                           WHERE je.source_type = 'pos_sale' AND je.source_id = o.id::text
+                             AND je.status = 'posted')
+    `],
+    // فاتورة ملغاة بلا قيد عكسي = إيراد وتكلفة حيّان لبيعٍ ملغى.
+    ['void_without_reversal', `
+        SELECT COUNT(*)::int AS count
+        FROM pos_orders o
+        WHERE o.status = 'cancelled'
+          AND EXISTS (SELECT 1 FROM journal_entries je
+                       WHERE je.source_type = 'pos_sale' AND je.source_id = o.id::text
+                         AND je.status = 'posted')
+          AND NOT EXISTS (SELECT 1 FROM journal_entries jv
+                           WHERE jv.source_type = 'pos_void' AND jv.source_id = o.id::text
+                             AND jv.status = 'posted')
+    `],
+    // مصروف يدوي بلا قيد (تُستثنى صفوف التسويات المخزنية — ليست دفعًا نقديًا).
+    ['expense_without_journal', `
+        SELECT COUNT(*)::int AS count
+        FROM expenses x
+        WHERE x.amount > 0
+          AND COALESCE(x."adjustmentType", '') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')
+          AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                           WHERE je.source_type = 'expense' AND je.source_id = x.id::text)
+    `],
+    // إذن صرف معتمد/مستلم بلا قيد تكلفة.
+    ['dispatch_without_journal', `
+        SELECT COUNT(*)::int AS count
+        FROM dispatches d
+        WHERE d.status = ANY(ARRAY['approved','received','partially_received','closed'])
+          AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                           WHERE je.source_type = 'dispatch' AND je.source_id = d.id::text)
+    `],
 ];
 
 async function main() {

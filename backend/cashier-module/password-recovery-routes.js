@@ -10,6 +10,8 @@
  *         يدخل اسمه + الرمز + كلمة مرور جديدة بنفسه من شاشة الدخول.
  *
  * الأمان:
+ *   - الهرم (2026-10-27): لا يُصدر رمز إلا لحساب أدنى من دور المُصدر —
+ *     المدير لا يستطيع أخذ المالك/المسؤول، ولا يُصدر لنفسه.
  *   - إصدار رمز جديد يحذف الرموز غير المستخدمة السابقة للمستخدم.
  *   - 5 محاولات خاطئة تقفل الرمز (429) حتى لو صحّ الرمز لاحقًا.
  *   - رسائل الفشل في /reset موحّدة (لا كشف لوجود الحساب أو صحة الرمز).
@@ -26,7 +28,7 @@ const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { writeAuditLog } = require('./audit-middleware');
 const { authLimiter } = require('../rate-limiter');
 const { logger } = require('../logger');
-const { encryptForVault } = require('../password-vault');
+const userAuthority = require('../user-authority');
 const {
     RESET_CODE_TTL_MS,
     MAX_VERIFY_ATTEMPTS,
@@ -65,11 +67,33 @@ async function requestCodeHandler(req, res, ctx = {}) {
     const client = await pool.connect();
     try {
         const u = (await client.query(
-            `SELECT id, username, name, active FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1;`,
+            `SELECT id, username, name, active, role FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1;`,
             [username]
         )).rows[0];
         if (!u || !u.active) {
             return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'لا يوجد حساب نشط بهذا الاسم.' });
+        }
+
+        // Hierarchy guard (2026-10-27): the code is handed back to the caller, so a
+        // manager could otherwise take over the owner/admin account. Only strictly
+        // lower-ranked accounts may receive a code; no peers, no self.
+        const authzReset = userAuthority.evaluateUserMutation({
+            operation: 'reset-code',
+            actorRole: req.user?.role,
+            actorId: req.user?.id,
+            targetId: u.id,
+            targetRole: u.role,
+        });
+        if (!authzReset.ok) {
+            await writeAuditLog({
+                action: 'PASSWORD_RESET_CODE_DENIED',
+                tableName: 'users',
+                rowPk: String(u.id),
+                reason: authzReset.message,
+                metadata: { target_username: u.username, target_role: u.role, actor_role: req.user?.role },
+                actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
+            }).catch((e) => logger.error('[pw-recovery] audit log failed:', e.message));
+            return res.status(authzReset.status).json({ error: authzReset.code, message: authzReset.message });
         }
 
         // إصدار جديد يبطل كل الرموز السابقة غير المستخدمة لنفس المستخدم
@@ -89,7 +113,7 @@ async function requestCodeHandler(req, res, ctx = {}) {
             tableName: 'users',
             rowPk: String(u.id),
             reason: 'إصدار رمز استعادة لمرة واحدة لموظف نسي كلمة المرور',
-            metadata: { target_username: u.username, ttl_seconds: RESET_CODE_TTL_MS / 1000 },
+            metadata: { target_username: u.username, target_role: u.role, ttl_seconds: RESET_CODE_TTL_MS / 1000 },
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
         }).catch((e) => logger.error('[pw-recovery] audit log failed:', e.message));
 
@@ -169,9 +193,6 @@ async function resetHandler(req, res, ctx = {}) {
                 `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
                 [hash, u.id]
             );
-            // خزنة كلمات المرور: حدّث النسخة القابلة للاسترجاع
-            const _vault = encryptForVault(new_password);
-            if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, u.id]); }
             await client.query(
                 `UPDATE pos_password_reset_codes SET used_at = CURRENT_TIMESTAMP WHERE id = $1;`,
                 [row.id]

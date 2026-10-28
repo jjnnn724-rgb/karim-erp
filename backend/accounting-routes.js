@@ -69,6 +69,18 @@ async function nextEntryNo(client) {
  * ترحيل قيد متوازن — يستخدم نفس الاتصال (معاملة المتصل) أو المسبح.
  * يُرجع { entry, replay:true } عند وجود نفس المصدر مسبقًا (لا ازدواج).
  */
+/**
+ * @param {any} db اتصال العميل (معاملة) أو المسبح
+ * @param {object} entry
+ * @param {string} entry.date
+ * @param {string} entry.memo
+ * @param {string} [entry.source_type]
+ * @param {string|number|null} [entry.source_id]
+ * @param {Array<{account_code:string,debit?:number,credit?:number,memo?:string|null,cost_center_code?:string|null}>} entry.lines
+ * @param {string|number|null} [entry.created_by]
+ * @param {'posted'|'draft'} [entry.status]
+ * @returns {Promise<any>}
+ */
 async function postJournal(db, { date, memo, source_type = 'manual', source_id = null, lines, created_by = null, status = 'posted' }) {
     const day = String(date || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {throw Object.assign(new Error('تاريخ القيد غير صالح (YYYY-MM-DD)'), { statusCode: 422 });}

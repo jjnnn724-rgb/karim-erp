@@ -42,6 +42,9 @@ const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
 // ─── JWT Authentication Middleware ────────────────────
 const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
 const { requireRoleOrPerm, permForEntity } = require('./permissions');
+const userAuthority = require('./user-authority');
+const { forcesPasswordRotation } = require('./user-password-policy');
+const { writeAuditLog } = require('./cashier-module/audit-middleware');
 const { guardCreate } = require('./submit-guard');
 const { router: hrRouter } = require('./hr-routes');
 const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode } = require('./warehouse-routes');
@@ -63,8 +66,7 @@ const { router: yarasoftRouter, ensureYarasoftSchema, yarasoftEngine } = require
 
 // ─── Schema Registry (Column Whitelist for Security) ──
 const { filterBody, validateColumnName, getSortableColumns, getSchema, getEntityWriteRoles, isProtectedDeleteEntity, maskEmployeeRowForRole } = require('./schema-registry');
-const { encryptForVault, ensurePasswordVaultSchema } = require('./password-vault');
-// decryptFromVault يُستخدم الآن داخل ops-inspect-routes.js
+const { ensurePasswordVaultSchema } = require('./password-vault');
 // ─── طبقة الفروع (migration 102) — تصفية CRUD الديناميكي حسب branch_id ───
 const branchCtx = require('./branch-context');
 // M20: riyadhToday for business dates
@@ -1913,13 +1915,16 @@ entities.forEach(entity => {
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
                 if (!isStrongPassword(String(filtered.password).trim())) {return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });}
-                // Privilege-escalation guard: only admins may mint accounts with elevated roles
-                if (req.user?.role !== 'admin' && 'role' in filtered) {
-                    return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
+                // Hierarchy guard (2026-10-27): owner > admin > manager. A manager
+                // may mint lower-rank accounts only; owner/admin roles are owner-only.
+                const authzCreate = userAuthority.evaluateUserMutation({
+                    operation: 'create', actorRole: req.user?.role, patch: filtered,
+                });
+                if (!authzCreate.ok) {
+                    return res.status(authzCreate.status).json({ error: authzCreate.code, message: authzCreate.message });
                 }
                 try { await validateDeptHeadUserLink(entity, filtered); }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
-                req._pwVaultPlain = String(filtered.password);
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -1944,6 +1949,16 @@ entities.forEach(entity => {
             );
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
+            if (entity === 'users') {
+                await writeAuditLog({
+                    action: 'USER_CREATED',
+                    tableName: 'users',
+                    rowPk: result.rows[0].id,
+                    reason: 'إنشاء حساب مستخدم',
+                    metadata: { target_username: result.rows[0].username, target_role: result.rows[0].role },
+                    actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
+                }).catch((e) => logger.warn('[user-audit] create:', e.message));
+            }
             // ROOT FIX 2026-10-02 + حديد 2026-10-06: الجداول تُبنى من أرصدة المواقع، والرصيد
             // الافتتاحي للصنف الجديد يُقيَّد في الدفتر (opening_balance) — الرصيد والدفتر يولدان
             // متطابقين بدل رصيد صامت بلا أي قيد
@@ -1992,10 +2007,6 @@ entities.forEach(entity => {
                         if (child.unref) {child.unref();}
                     } catch (_) {}
                 }
-            }
-            if (entity === 'users' && req._pwVaultPlain) {
-                const _enc = encryptForVault(req._pwVaultPlain);
-                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
             }
             res.status(201).json(publicRow);
         }));
@@ -2078,7 +2089,6 @@ entities.forEach(entity => {
                 // Task 19: حساب رئيس القسم يجب ربطه بقسم صحيح عند الإنشاء
                 try { await validateDeptHeadUserLink(entity, filtered); }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
-                req._pwVaultPlain = String(filtered.password);
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -2158,10 +2168,6 @@ entities.forEach(entity => {
                     }
                 } catch (e) { logger.warn('[leave-workflow-auto]', e.message); }
             }
-            if (entity === 'users' && req._pwVaultPlain) {
-                const _enc = encryptForVault(req._pwVaultPlain);
-                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
-            }
             res.status(201).json(publicRow);
         }));
     }
@@ -2176,7 +2182,8 @@ entities.forEach(entity => {
             
             // ─── SECURITY: Filter body against whitelist ──
             const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");
-            let filtered = _filteredIn;
+            /** @type {Record<string, any>} */
+            let filtered = /** @type {Record<string, any>} */ (_filteredIn);
             if (errors.length > 0 || removedKeys.length > 0) {
                 const firstProblem = errors[0] || (removedKeys.length ? `الحقل "${removedKeys[0]}" غير مسموح في هذا الطلب` : null);
                 return res.status(400).json({
@@ -2187,13 +2194,40 @@ entities.forEach(entity => {
                 });
             }
             if (entity === 'users') {
-                // ─── حارس الهدف: غير-admin لا يستهدف حساب administrator ───
-                if (req.user?.role !== 'admin') {
-                    const targetUser = (await pool.query('SELECT role, username FROM users WHERE id=$1', [id])).rows[0];
-                    if (targetUser && targetUser.role === 'admin') {
-                        return res.status(403).json({ error: 'ADMIN_TARGET_FORBIDDEN', message: 'لا يمكن تعديل حساب المسؤول العام إلا من قبل المسؤول العام نفسه' });
-                    }
+                // Hierarchy guard (2026-10-27): مدير لا يلمس admin/owner أو ندًّا له،
+                // ولا أحد يغيّر دوره/يوقف نفسه، وآخر owner/admin محمي من الإقصاء.
+                const userTarget = (await pool.query(
+                    'SELECT id, username, role, active FROM users WHERE id=$1', [id]
+                )).rows[0];
+                if (!userTarget) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+
+                const authzUpdate = userAuthority.evaluateUserMutation({
+                    operation: 'update',
+                    actorRole: req.user?.role,
+                    actorId: req.user?.id,
+                    targetId: userTarget.id,
+                    targetRole: userTarget.role,
+                    patch: filtered,
+                });
+                if (!authzUpdate.ok) {
+                    return res.status(authzUpdate.status).json({ error: authzUpdate.code, message: authzUpdate.message });
                 }
+
+                const nextRole = Object.prototype.hasOwnProperty.call(filtered, 'role') ? filtered.role : userTarget.role;
+                const nextActive = Object.prototype.hasOwnProperty.call(filtered, 'active') ? filtered.active !== false : userTarget.active !== false;
+                if (userTarget.active !== false && (nextRole !== userTarget.role || nextActive === false)) {
+                    const counts = (await pool.query(
+                        `SELECT count(*) FILTER (WHERE role='owner' AND active IS NOT FALSE)::int AS owners,
+                                count(*) FILTER (WHERE role='admin' AND active IS NOT FALSE)::int AS admins
+                           FROM users`
+                    )).rows[0];
+                    const lastGuard = userAuthority.evaluateLastPrivileged({
+                        targetRole: userTarget.role, nextRole, nextActive,
+                        activeOwners: counts.owners, activeAdmins: counts.admins,
+                    });
+                    if (lastGuard) {return res.status(lastGuard.status).json({ error: lastGuard.code, message: lastGuard.message });}
+                }
+
                 // Empty/whitespace passwords must never overwrite a stored hash
                 if (filtered.password !== undefined && !String(filtered.password).trim()) {
                     return res.status(422).json({ error: 'PASSWORD_EMPTY', message: 'لا يمكن حفظ كلمة مرور فارغة' });
@@ -2201,14 +2235,28 @@ entities.forEach(entity => {
                 if (filtered.password !== undefined && !isStrongPassword(String(filtered.password).trim())) {
                     return res.status(422).json({ error: 'PASSWORD_TOO_WEAK', message: 'كلمة المرور ضعيفة: 12 حرفًا على الأقل مع حرف ورقم' });
                 }
-                // Privilege-escalation guard: role changes are admin-only
-                if ('role' in filtered && req.user?.role !== 'admin') {
-                    return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
-                }
                 if (filtered.password !== undefined) {
-                    req._pwVaultPlain = String(filtered.password);
+                    req._passwordChanged = true;
+                    req._identityChanged = true;
                     filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12) };
+                    // كلمة مرور يضعها غير صاحبها ⇒ يُطلب تغييرها عند أول دخول
+                    // (ما لم يمرّر المستدعي must_change_password صراحةً أو يُوقف المفتاح).
+                    if (forcesPasswordRotation({ actorId: req.user?.id, targetId: id, body: req.body })) {
+                        filtered.must_change_password = true;
+                    }
                 }
+                if (nextRole !== userTarget.role || (nextActive === false && userTarget.active !== false)) {
+                    req._identityChanged = true;
+                }
+                req._userAudit = {
+                    target_username: userTarget.username,
+                    target_role: userTarget.role,
+                    next_role: nextRole,
+                    next_active: nextActive,
+                    changed_fields: Object.keys(filtered).filter((k) => k !== 'password'),
+                    password_changed: filtered.password !== undefined,
+                    force_password_change: filtered.must_change_password === true,
+                };
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
                 try { await validateDeptHeadUserUpdate(filtered, id); }
                 catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
@@ -2287,17 +2335,23 @@ entities.forEach(entity => {
             // SECURITY ROOT FIX 2026-10-02: أي تعديل حساس على حساب مستخدم (كلمة
             // مرور أو إيقاف) يبطل جلسات التحديث المفتوحة — كانت تظل صالحة حتى
             // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
-            if (entity === 'users' && (req._pwVaultPlain !== undefined || filtered.active === false)) {
+            if (entity === 'users' && (req._passwordChanged === true || req._identityChanged === true || filtered.active === false)) {
                 try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
                 catch (e) { logger.warn('[refresh-revoke]', e.message); }
+            }
+            if (entity === 'users' && req._userAudit) {
+                await writeAuditLog({
+                    action: 'USER_UPDATED',
+                    tableName: 'users',
+                    rowPk: id,
+                    reason: 'تعديل حساب مستخدم',
+                    metadata: { ...req._userAudit, actor_role: req.user?.role },
+                    actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
+                }).catch((e) => logger.warn('[user-audit] update:', e.message));
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
                 await purgeExpenseJournal(id);
                 await postExpenseJournal(result.rows[0]);
-            }
-            if (entity === 'users' && req._pwVaultPlain) {
-                const _enc = encryptForVault(req._pwVaultPlain);
-                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
             }
             res.json(publicRow);
         }));
@@ -2313,7 +2367,8 @@ entities.forEach(entity => {
             
             // ─── SECURITY: Filter body against whitelist ──
             const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");
-            let filtered = _filteredIn;
+            /** @type {Record<string, any>} */
+            let filtered = /** @type {Record<string, any>} */ (_filteredIn);
             if (errors.length > 0 || removedKeys.length > 0) {
                 const firstProblem = errors[0] || (removedKeys.length ? `الحقل "${removedKeys[0]}" غير مسموح في هذا الطلب` : null);
                 return res.status(400).json({
@@ -2357,8 +2412,11 @@ entities.forEach(entity => {
                     return res.status(403).json({ error: 'ROLE_ASSIGNMENT_FORBIDDEN', message: 'تعيين الأدوار متاح للمسؤول العام فقط' });
                 }
                 if (filtered.password !== undefined) {
-                    req._pwVaultPlain = String(filtered.password);
+                    req._passwordChanged = true;
                     filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12) };
+                    if (forcesPasswordRotation({ actorId: req.user?.id, targetId: id, body: req.body })) {
+                        filtered.must_change_password = true;
+                    }
                 }
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
                 try { await validateDeptHeadUserUpdate(filtered, id); }
@@ -2429,17 +2487,13 @@ entities.forEach(entity => {
             // SECURITY ROOT FIX 2026-10-02: أي تعديل حساس على حساب مستخدم (كلمة
             // مرور أو إيقاف) يبطل جلسات التحديث المفتوحة — كانت تظل صالحة حتى
             // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
-            if (entity === 'users' && (req._pwVaultPlain !== undefined || filtered.active === false)) {
+            if (entity === 'users' && (req._passwordChanged === true || filtered.active === false)) {
                 try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
                 catch (e) { logger.warn('[refresh-revoke]', e.message); }
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
                 await purgeExpenseJournal(id);
                 await postExpenseJournal(result.rows[0]);
-            }
-            if (entity === 'users' && req._pwVaultPlain) {
-                const _enc = encryptForVault(req._pwVaultPlain);
-                if (_enc) { await pool.query('UPDATE users SET password_vault = $1 WHERE id = $2', [_enc, result.rows[0].id]).catch(e => logger.warn('[pw-vault]', e.message)); }
             }
             res.json(publicRow);
         }));
@@ -2505,22 +2559,55 @@ entities.forEach(entity => {
         app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
             if (entity === 'users') {
-                // ─── حارس الهدف: غير-admin لا يستهدف حساب administrator ───
-                if (req.user?.role !== 'admin') {
-                    const targetUser = (await pool.query('SELECT role FROM users WHERE id=$1', [id])).rows[0];
-                    if (targetUser && targetUser.role === 'admin') {
-                        return res.status(403).json({ error: 'ADMIN_TARGET_FORBIDDEN', message: 'لا يمكن حذف حساب المسؤول العام إلا من قبل المسؤول العام نفسه' });
-                    }
+                // Soft-deactivate (2026-10-27): a hard DELETE destroys the bcrypt hash,
+                // password_vault and identity history, and previously 500ed on FKs.
+                const targetUser = (await pool.query(
+                    'SELECT id, username, role, active FROM users WHERE id=$1', [id]
+                )).rows[0];
+                if (!targetUser) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+
+                const authzDelete = userAuthority.evaluateUserMutation({
+                    operation: 'delete',
+                    actorRole: req.user?.role,
+                    actorId: req.user?.id,
+                    targetId: targetUser.id,
+                    targetRole: targetUser.role,
+                });
+                if (!authzDelete.ok) {
+                    return res.status(authzDelete.status).json({ error: authzDelete.code, message: authzDelete.message });
                 }
-                // ─── حارس آخر-admin: لا يُحذف آخر مسؤول عام حتى من الأدمن نفسه ───
-                const targetAdmin = (await pool.query('SELECT role FROM users WHERE id=$1', [id])).rows[0];
-                if (targetAdmin && targetAdmin.role === 'admin') {
-                    const adminCount = Number((await pool.query('SELECT count(*) FROM users WHERE role=$1', ['admin'])).rows[0].count);
-                    if (adminCount <= 1) {
-                        return res.status(403).json({ error: 'LAST_ADMIN_FORBIDDEN', message: 'لا يمكن حذف آخر مسؤول عام في النظام' });
-                    }
+
+                if (targetUser.active !== false && userAuthority.isPrivilegedRole(targetUser.role)) {
+                    const counts = (await pool.query(
+                        `SELECT count(*) FILTER (WHERE role='owner' AND active IS NOT FALSE)::int AS owners,
+                                count(*) FILTER (WHERE role='admin' AND active IS NOT FALSE)::int AS admins
+                           FROM users`
+                    )).rows[0];
+                    const lastGuard = userAuthority.evaluateLastPrivileged({
+                        targetRole: targetUser.role, nextRole: targetUser.role, nextActive: false,
+                        activeOwners: counts.owners, activeAdmins: counts.admins,
+                    });
+                    if (lastGuard) {return res.status(lastGuard.status).json({ error: lastGuard.code, message: lastGuard.message });}
                 }
-                await pool.query('UPDATE employees SET "userId"=NULL WHERE "userId"=$1', [id]);
+
+                await pool.query('UPDATE users SET active=FALSE WHERE id=$1', [id]);
+                try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
+                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+                await writeAuditLog({
+                    action: 'USER_DEACTIVATED',
+                    tableName: 'users',
+                    rowPk: id,
+                    reason: 'تعطيل حساب مستخدم (حذف ناعم) مع حفظ كلمة المرور والتاريخ',
+                    metadata: { target_username: targetUser.username, target_role: targetUser.role, actor_role: req.user?.role },
+                    actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
+                }).catch((e) => logger.warn('[user-audit] delete:', e.message));
+                emitEntityChange(entity, 'update', { id, active: false }, req);
+                logger.info('[user] soft-deactivated', { id, by: req.user?.username || req.user?.id });
+                return res.json({
+                    ok: true,
+                    deactivated: true,
+                    message: 'تم تعطيل الحساب وحفظ تاريخه — لن يستطيع الدخول، وكلمة المرور لم تُحذف.',
+                });
             }
             const periodBlockDel = await payrollRowViolation(entity, id);
             if (periodBlockDel) {return res.status(423).json(periodBlockDel);}
@@ -2534,11 +2621,17 @@ entities.forEach(entity => {
                 if (!dispatchRow) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
                 const isAdmin = req.user?.role === 'admin';
                 const isCreator = dispatchRow.creatorUserId != null && Number(dispatchRow.creatorUserId) === Number(req.user?.id);
+                // مدير/أمين المخزن ينظّفان الطلبات المعلّقة (بلا أثر مالي)،
+                // وأي دور آخر يحذف طلبه المعلّق فقط. المعتمد/المستلم للأدمن وحده.
                 const isWarehouseSide = ['manager', 'warehouse'].includes(req.user?.role);
-                if (!isAdmin && !isWarehouseSide) {
-                    // صاحب الطلب: معلّق فقط
+                if (!isAdmin) {
+                    // ROOT FIX 2026-10-27: كان manager/warehouse يتجاوزان
+                    // canDeleteDispatch ويمحوان تتابعيًا إذنًا معتمدًا أو مستلمًا
+                    // (دفتر + مصاريف + قيود + أحداث موقّعة) — صلاحية الأدمن
+                    // وحدها. المستند المالي الموقّع لا يُمحى بأي دور آخر.
                     const deleteGuard = canDeleteDispatch(dispatchRow);
-                    if (!deleteGuard.ok || !isCreator) {
+                    const mayDeletePending = deleteGuard.ok && (isCreator || isWarehouseSide);
+                    if (!mayDeletePending) {
                         const deleteMessages = {
                             DISPATCH_ALREADY_APPROVED: 'لا يمكن حذف إذن صرف معتمد — مستند مالي موقّع مرحّل مصروفات وحركات مخزون',
                             DISPATCH_REJECTED: 'لا يمكن حذف إذن مرفوض — قرار الرفض موقّع وموثّق في سلسلة الأحداث',

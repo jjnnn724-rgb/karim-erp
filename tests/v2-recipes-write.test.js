@@ -432,11 +432,10 @@ describe('شاشة الوصفات — العقد المصدر', () => {
 describe('شاشة الوصفات — المضيف', () => {
     test('تُركَّب بمضيف السجلات المشترك وبالهوية كاملة', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountRecipesScreen \} from '\.\/screens\/recipes\.js\?v=/);
-        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'recipes', title: 'الوصفات', mount: mountRecipesScreen/);
-        expect(h).toMatch(/role: session\.role,/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
-        expect(h).toMatch(/notify: notifyTo\(note\),/);
+        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'recipes', title: 'الوصفات', module: 'recipes'/);
+        expect(h).toMatch(/assign: \(s\) => \{ recipesScreen = s; \}/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
+        expect(h).toMatch(/notify: notifyTo\(noteTarget\),/);
     });
 
     test('المغادرة تُتلف الشاشة — لا شبح يكتب على DOM بعد التنقّل', () => {

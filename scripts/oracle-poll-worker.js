@@ -46,6 +46,20 @@ async function main() {
             console.error('[oracle-poll-worker] catchup error:', e.message);
         }
     }
+
+    // 3) استرداد الصفوف العالقة في PROCESSING: هذه العملية نفسها قصيرة العمر
+    //    بحارس 8 دقائق، وقد تُقتل بين حجز صف السجل وإتمام المعاملة — فيبقى
+    //    عالقًا أبدًا ويظهر «معلّقًا» في الحالة. الاسترداد يعيد بناء الفاتورة
+    //    من payload المحفوظ ويعيد مسارها نفسه (حاجز external_ref يمنع التكرار).
+    try {
+        const doctor = require('../backend/yarasoft/sync-doctor');
+        const rec = await doctor.recoverStaleImports({ olderThanMinutes: 15, io: null });
+        if (rec.scanned) {
+            console.log(`[oracle-poll-worker] recovery: ${rec.scanned} stale → recovered=${rec.recovered} dups=${rec.duplicates} failed=${rec.failed}`);
+        }
+    } catch (e) {
+        console.error('[oracle-poll-worker] recovery error:', e.message);
+    }
 }
 
 main().then(async () => {
