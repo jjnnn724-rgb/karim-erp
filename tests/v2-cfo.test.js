@@ -220,10 +220,10 @@ describe('CFO — عقد الشاشة من المصدر', () => {
 
     test('المضيف يربط المفتاح: استيراد + متغير + تفكيك + رسم + توجيه', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountCfoScreen \} from '\.\/screens\/cfo\.js\?v=/);
+        expect(h).toMatch(/module: 'cfo'/);
         expect(h).toMatch(/let cfoScreen = null;/);
         expect(h).toMatch(/function teardownCfoScreen\(\)/);
-        expect(h).toMatch(/key: 'cfo', title: 'المدير المالي', mount: mountCfoScreen/);
+        expect(h).toMatch(/key: 'cfo', title: 'المدير المالي', module: 'cfo'/);
         expect(h).toMatch(/if \(key === 'cfo'\)/);
     });
 });

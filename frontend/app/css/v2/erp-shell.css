@@ -373,6 +373,10 @@
 }
 .erp-shell__scrim[hidden] { display: none !important; }
 
+/* The control centre floats over page content at every width; with the scrim
+   the overlap reads as a layer above the page instead of colliding with it. */
+.erp-shell.is-more-open .erp-shell__scrim { display: block; }
+
 /* ═══════════════ Compact (desktop density) ═══════════════ */
 .erp-shell.is-compact .erp-shell__brand-text,
 .erp-shell.is-compact .erp-nav-item__label,
@@ -426,6 +430,11 @@
   box-shadow: var(--erp-shadow-lg);
 }
 .erp-shell__more[hidden] { display: none; }
+/* The panel lifts above the shared scrim only while it is open: its resting
+   z-index sits below the drawer's scrim, which serves the mobile nav. */
+.erp-shell.is-more-open .erp-shell__more {
+  z-index: calc(var(--erp-z-drawer) + 1);
+}
 .erp-shell__more-head {
   display: flex;
   align-items: center;
@@ -487,9 +496,14 @@
 .erp-v2 .erp-shell__more .erp-server-info { white-space: normal; }
 .erp-shell__more-account .erp-btn { inline-size: 100%; justify-content: flex-start; }
 
-/* Page actions live in the toolbar on wide screens and in the control centre
-   on phones; they never render in both places at once. */
-.erp-v2 .erp-shell__more-tools { display: none; }
+/* Page actions live in the control centre at every width: the toolbar row was
+   a second full-width bar under the one-line header — a ~60px gap at the top
+   of every screen — and it duplicated the panel's own action list. The panel
+   copy renders whenever the screen's actions are known; the row never does.
+   They therefore still never render in both places at once. */
+.erp-v2 .erp-toolbar { display: none; }
+.erp-v2 .erp-shell__more-tools[hidden] { display: none; }
+.erp-v2 .erp-shell__more-tools:not([hidden]) { display: flex; }
 .erp-v2 .erp-shell__more-tool-list .erp-btn {
   inline-size: 100%;
   justify-content: flex-start;
@@ -541,10 +555,8 @@
   }
 
   /* A phone header is one line: menu, page name, then the four standing
-     controls. The refresh / classic-interface row was a second bar that ate
-     60px of every screen; those actions moved into the control centre. */
-  .erp-v2 .erp-toolbar { display: none; }
-  .erp-v2 .erp-shell__more-tools:not([hidden]) { display: flex; }
+     controls. The refresh / classic-interface row and its control-centre copy
+     are handled at every width in the base sheet above. */
 
   .erp-shell__content {
     padding: var(--erp-space-3);

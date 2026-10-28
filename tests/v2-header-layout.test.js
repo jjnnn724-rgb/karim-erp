@@ -198,3 +198,47 @@ describe('V2 رأس الشل — مركز تحكم بدل شريطٍ يُسحق'
         }
     });
 });
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * شريحة التحكم بالسيرفر في الرأس
+ * ──────────────────────────────────────────────────────────────────────────
+ * العطب المقيس: ردّ `/server-control/status` جسمٌ له `{ control,
+ * service:{state,installed,pid}, erp, … }` (server-control.js snapshot())،
+ * والشريحة كانت تقرأ `res.state` و`res.message` — أي حقلين غير موجودين،
+ * فتُعيد '' فتسقط في الفرع الاحتياطي وتطبع «غير معروف» في رأس كل صفحة
+ * للأدمن ولو كانت الخدمة تعمل. هذا الملف يحرس: قراءة الجسم الصحيح،
+ * تغطية كل حالات خدمة ويندوز ببديل عربي، وغياب النصّ الاحتياطي القديم.
+ */
+describe('V2 شريحة التحكم بالسيرفر — لا «غير معروف» ولا حقلٌ مخترَع', () => {
+    const SERVER_CONTROL = path.join(__dirname, '..', 'backend', 'server-control.js');
+    const backendSrc = read(SERVER_CONTROL);
+
+    test('تقرأ service.state — الحقل الذي يعيده الردّ فعلًا', () => {
+        expect(extrasSrc).toMatch(/const svc = res\.service \|\| \{\};/);
+        expect(extrasSrc).toMatch(/svc\.installed === false \? 'NOT_INSTALLED' : String\(svc\.state \|\| 'UNKNOWN'\)/);
+        // قراءة res.state كانت تمنح '' دائمًا: الحقل غير موجود في الجسم.
+        expect(extrasSrc).not.toMatch(/paintSrv\(String\(res\.state/);
+        // الخادم نفسه يعلن الحالة تحت service.state ولا يضعها في الجذر.
+        expect(backendSrc).toMatch(/state: service\.state \|\| 'UNKNOWN'/);
+        expect(backendSrc).not.toMatch(/\bok: true,[\s\S]{0,400}\bstate:/);
+    });
+
+    test('كل حالات خدمة ويندوز التي يعيدها الخادم لها بديل عربي', () => {
+        const emitted = [...backendSrc.matchAll(/state: '([A-Z_]+)'/g)].map((m) => m[1]);
+        expect(emitted.length).toBeGreaterThan(0);
+        for (const s of new Set(emitted)) {
+            expect(extrasSrc).toContain(`${s}: ['`);
+        }
+        // الحالات التي يصدرها sc queryex كلها معرَّفة — لا سقوط في الاحتياطي.
+        for (const s of ['RUNNING', 'STOPPED', 'START_PENDING', 'STOP_PENDING',
+            'PAUSED', 'PAUSE_PENDING', 'CONTINUE_PENDING', 'NOT_INSTALLED', 'UNKNOWN']) {
+            expect(extrasSrc).toContain(`${s}: ['`);
+        }
+    });
+
+    test('لا فرع احتياطي «غير معروف» ولا شريحة فارغة في الرأس', () => {
+        expect(extrasSrc).not.toMatch(/note \|\| 'غير معروف'/);
+        // تُركَّب بحالة انتظار معلَنة بدل span فارغ يفرّغ الصفّ.
+        expect(extrasSrc).toContain('جارٍ فحص الخدمة…');
+    });
+});

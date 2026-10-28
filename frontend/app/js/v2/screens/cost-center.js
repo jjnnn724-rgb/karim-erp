@@ -19,16 +19,20 @@
  * تتحقق من الدور والصلاحية — هذه الشاشة لا تحسب رقمًا بيدها إلا مجموعًا
  * لقيمٍ وردت من الخادم، وتنسب كل رقم إلى مصدره.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { fetchDepartments } from '../data/employees-repo.js?v=4.9.180';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.180';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.182';
+import { openInAppReport } from '../report-viewer.js?v=4.9.182';
+/* مصدر الأقسام هو المستودع المالي لا الموارد البشرية: المعادلة تقرأ
+   revenues.deptId و expenses.deptId و dispatches.deptCode — أكواد جدول
+   departments. قائمة hrDepartments كوداتها مختلفة (KITCHEN/SERVICE/…)
+   فكانت كل قراءة الشاشة تُصفّر: لا إيراد ولا أذون ولا إضافات. */
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.182';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.182';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.182';
 import {
     fetchDeptPnl, fetchDeptDispatches, fetchDeptAdditions,
     createDeptAddition, deleteDeptAddition, createProduction, fetchProductions,
     buildDeptEquation, ADDITION_CATEGORY,
-} from '../data/cost-center-repo.js?v=4.9.180';
+} from '../data/cost-center-repo.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

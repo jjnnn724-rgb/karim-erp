@@ -188,6 +188,92 @@
 /* عمود الإجراءات: زرّا «عرض/عد» و«اعتماد» ينثنيان أسطرًا لا يُقصّان. */
 .erp-v2-kitchen td.erp-v2-kitchen-actions { white-space: normal; }
 
+.erp-v2-kitchen__quick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18ch, 1fr));
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-kitchen__nav {
+  display: flex;
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-1);
+  overflow-x: auto;
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+}
+
+.erp-v2-kitchen__nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--erp-space-2);
+  flex: 1 0 auto;
+  min-block-size: var(--erp-space-8);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 0;
+  border-radius: var(--erp-radius-md);
+  background: transparent;
+  color: var(--erp-text-secondary);
+  font: inherit;
+  font-weight: var(--erp-fw-semibold);
+  cursor: pointer;
+}
+
+.erp-v2-kitchen__nav button:hover { background: var(--erp-surface-hover); }
+.erp-v2-kitchen__nav button.is-active {
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+}
+.erp-v2-kitchen [data-v2-view][hidden] { display: none; }
+.erp-v2-kitchen [data-v2-view] { min-inline-size: 0; }
+
+.erp-v2-kitchen__insights,
+.erp-v2-kitchen__inventory {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--erp-space-4);
+}
+
+.erp-v2-kitchen__insights > *,
+.erp-v2-kitchen__inventory > * { min-inline-size: 0; }
+
+.erp-v2-kitchen__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+
+.erp-v2-kitchen__distribution-status {
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+  font-size: var(--erp-text-sm);
+}
+
+.erp-v2-cost__card { border-block-start: var(--erp-space-1) solid var(--erp-brand); }
+.erp-v2-cost__details {
+  border-block-start: thin solid var(--erp-border-subtle);
+  padding-block-start: var(--erp-space-2);
+}
+.erp-v2-cost__details summary {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-2);
+  min-block-size: var(--erp-space-8);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-semibold);
+  cursor: pointer;
+}
+.erp-v2-cost__details[open] summary .ji { transform: rotate(180deg); }
+.erp-v2-cost__details summary + .erp-stack { padding-block-start: var(--erp-space-3); }
+
+@media (min-width: 1100px) {
+  .erp-v2-kitchen__insights { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
 @media (max-width: 640px) {
   .erp-v2-kitchen .erp-dash-head { gap: var(--erp-space-3); }
   .erp-v2-kitchen .erp-dash-controls { gap: var(--erp-space-2); }
@@ -197,8 +283,10 @@
   .erp-v2-kitchen .erp-seg__label { display: none; }
 
   /* الشريط سطرٌ كامل له، وأزراره تنثني إن ضاق عن ثلاثة أسماء بأرقامها. */
-  .erp-v2-kitchen .erp-dash-controls [data-v2-stateseg] { flex: 1 1 100%; }
+  .erp-v2-kitchen .erp-dash-controls [data-v2-stateseg],
+  .erp-v2-kitchen .erp-card__head [data-v2-stateseg] { flex: 1 1 100%; }
   .erp-v2-kitchen .erp-seg { flex-wrap: wrap; }
+  .erp-v2-kitchen__nav button { min-inline-size: max-content; }
 
   /* الطباعة/التحديث: aria-label موجود على الزرّ نفسه، فالنصّ المكرر يُخفى
      ويُبقى الرمز — نفس حركة طبقة 01–04. */
@@ -269,6 +357,8 @@
   /* لوحة قرار مفتوحة ليست جزءًا من الكشف المطبوع، وعمود الإجراءات لا
      معنى له على ورق — نفس حركة طبقة W1-1. */
   .erp-v2-kitchen [data-v2-panel] { display: none; }
+  .erp-v2-kitchen [data-v2-view][hidden] { display: block; }
+  .erp-v2-kitchen .erp-v2-cost__details { display: block; }
   .erp-v2-kitchen [data-col="actions"],
   .erp-v2-kitchen td.erp-v2-kitchen-actions { display: none; }
 }

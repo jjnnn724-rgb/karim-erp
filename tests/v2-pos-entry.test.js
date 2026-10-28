@@ -247,8 +247,8 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
 
     test('المضيف يربط المفتاح مع التفكيك ويمرر العلم للواجهة', () => {
         const host = read(HOST);
-        expect(host).toMatch(/import \{ mountPosEntryScreen \} from '\.\/screens\/pos-entry\.js\?v=/);
-        expect(host).toMatch(/key: 'pos', title: 'الكاشير', mount: mountPosEntryScreen/);
+        expect(host).toMatch(/module: 'pos-entry'/);
+        expect(host).toMatch(/key: 'pos', title: 'الكاشير', module: 'pos-entry'/);
         expect(host).toMatch(/if \(key === 'pos'\)/);
         expect(host).toMatch(/function teardownPosEntryScreen\(\)/);
         expect(host).toContain('featureFlags: V2_FEATURE_FLAGS');

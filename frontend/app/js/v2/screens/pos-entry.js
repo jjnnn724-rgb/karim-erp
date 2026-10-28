@@ -3,23 +3,23 @@
  * Embedded checkout follows the host feature flag. The standalone POS stays
  * available as the fallback at all times.
  */
-import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.180';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.182';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.182';
 import {
     closePosShift, completePosSale, deletePosHeldOrder, exportPosOrders, fetchActivePosShift, fetchPosDepartments,
     fetchPosHeldOrders, fetchPosKotPage, fetchPosOrderDetails, fetchPosOrders, fetchPosProducts, fetchPosShiftSummary,
     holdPosOrder, openPosShift, recallPosHeldOrder, reprintPosOrder, voidPosOrder,
-} from '../data/pos-v2-repo.js?v=4.9.180';
+} from '../data/pos-v2-repo.js?v=4.9.182';
 import {
     addBuffetTier, buffetTierProducts, disableBuffetTier, fetchBuffetConfig, fetchBuffetInvoices, fetchBuffetLive,
     fetchBuffetReport, isBuffetDepartment, renameBuffetTier, saveBuffetPrices, setBuffetTierActive, BUFFET_ADMIN_ROLES,
-} from '../data/pos-buffet-repo.js?v=4.9.180';
-import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.180';
-import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.180';
-import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.180';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { ensureQrCode } from '../vendor.js?v=4.9.180';
+} from '../data/pos-buffet-repo.js?v=4.9.182';
+import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.182';
+import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.182';
+import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.182';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.182';
+import { openInAppReport } from '../report-viewer.js?v=4.9.182';
+import { ensureQrCode } from '../vendor.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

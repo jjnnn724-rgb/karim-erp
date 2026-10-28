@@ -265,9 +265,9 @@ describe('العقد المصدري — شاشات P2-7', () => {
     test('المعاينة توجّه الأدوار وتدمّر لوحاتها', () => {
         const preview = read(path.join(V2, 'preview.js'));
         expect(preview).toContain('dashboardKind(session.role)');
-        for (const mount of ['mountHrDashboardScreen', 'mountEmployeePortalScreen',
-            'mountAccountantDashboardScreen', 'mountWarehouseDashboardScreen', 'mountDeptHeadDashboardScreen']) {
-            expect(preview).toContain(`${mount}(host, ctx)`);
+        for (const mod of ['hr-dashboard', 'employee-portal', 'accountant-dashboard',
+            'warehouse-dashboard', 'dept-head-dashboard']) {
+            expect(preview).toContain(`mountLazy('${mod}'`);
         }
         expect(preview).toContain('teardownAccountantScreen()');
         expect(preview).toContain('teardownWarehouseDashScreen()');

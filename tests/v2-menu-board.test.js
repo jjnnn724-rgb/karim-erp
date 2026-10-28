@@ -32,7 +32,7 @@ describe('شاشات المنيو — التضمين', () => {
 
     test('المضيف يربط المفتاح مع تفكيك', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountMenuBoardScreen \} from '\.\/screens\/menu-board\.js\?v=/);
+        expect(h).toMatch(/mountLazy\('menu-board'/);
         expect(h).toMatch(/function teardownMenuBoardScreen\(\)/);
         expect(h).toMatch(/if \(key === 'menu-board'\)/);
     });

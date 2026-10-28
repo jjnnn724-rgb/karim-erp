@@ -21,9 +21,10 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.180';
-import { mountDensityControl } from '../density.js?v=4.9.180';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.180';
+import { mountThemeControl } from '../theme.js?v=4.9.182';
+import { mountDensityControl } from '../density.js?v=4.9.182';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.182';
+import { prefetch } from '../screens/registry.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -233,6 +234,11 @@ export function mountAppLayout(container, options = {}) {
             node.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {e.preventDefault(); navigate(node.dataset.erpNav);}
             });
+            /* وحدة الشاشة تُطلَب عند النقر؛ المرورُ أو التركيزُ يسبق النقر
+               بجزءٍ من الثانية، فيصل الملف قبل أن يُحتاج — التنقّل يبدو فوريًّا
+               بلا أن يدفع أوّلُ تحميلٍ ثمنَ ٥٧ وحدة. الطلب صامت ومُخزَّن. */
+            node.addEventListener('pointerenter', () => prefetch(node.dataset.erpNav));
+            node.addEventListener('focus', () => prefetch(node.dataset.erpNav));
         });
 
         highlightActive();
@@ -355,6 +361,16 @@ export function mountAppLayout(container, options = {}) {
     /* ── Drawer (mobile) ────────────────────────────────────────────── */
     let lastFocus = null;
 
+    /* The drawer and the control centre share the one scrim: it shows while
+       either surface is open and hides only when both are closed, so the
+       panel never paints straight over the page content it floats on. */
+    let moreOpen = false;
+    let moreReturnFocus = null;
+
+    function syncScrim() {
+        el.scrim.hidden = !(state.drawerOpen || moreOpen);
+    }
+
     /* الشريط مغلقًا على الجوال يبقى خارج الشاشة، لكنه ظلّ يدخل في مسار
        Tab: أول ثلاثين توقفًا كلها عناصر لا تُرى (WCAG 2.4.7). `inert` يخرجه
        من التدفق التفاعلي وشجرة الوصول معًا، ويُرفع قبل نقل التركيز إليه. */
@@ -369,7 +385,7 @@ export function mountAppLayout(container, options = {}) {
     function setDrawer(open) {
         state.drawerOpen = open;
         root.classList.toggle('is-drawer-open', open);
-        el.scrim.hidden = !open;
+        syncScrim();
         el.drawerOpenBtn.setAttribute('aria-expanded', String(open));
         syncSidebarInert();
         if (open) {
@@ -384,7 +400,10 @@ export function mountAppLayout(container, options = {}) {
     root.querySelectorAll('[data-erp-open-drawer]').forEach((b) =>
         b.addEventListener('click', () => setDrawer(true)));
     root.querySelectorAll('[data-erp-close-drawer]').forEach((b) =>
-        b.addEventListener('click', () => setDrawer(false)));
+        b.addEventListener('click', () => {
+            setDrawer(false);
+            if (moreOpen) {setMore(false, { returnFocus: false });}
+        }));
 
     /* ── Control centre (الحالة والتفضيلات والإجراءات الثانوية) ──────────
        Every control that used to sit in a horizontal strip is now stacked
@@ -392,13 +411,12 @@ export function mountAppLayout(container, options = {}) {
        reached zero, which silently removed the password and server status
        (measured at 390 / 1024). A popover has a fixed, readable width at
        every viewport and no control can be squeezed out of it. */
-    let moreOpen = false;
-    let moreReturnFocus = null;
-
     function setMore(open, { returnFocus = true } = {}) {
         if (!el.morePanel || !el.moreToggle) {return;}
         moreOpen = !!open;
         el.morePanel.hidden = !moreOpen;
+        root.classList.toggle('is-more-open', moreOpen);
+        syncScrim();
         el.moreToggle.setAttribute('aria-expanded', String(moreOpen));
         if (moreOpen) {
             /* The header may sit below the preview banner at scroll 0, so a

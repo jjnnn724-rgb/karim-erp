@@ -716,12 +716,11 @@ describe('شاشة 21 — السجل المشترك والمضيف والطبق�
 
     test('المضيف يمرر الهوية كاملة ويطبع الإشعارات على سطره', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountWhPrsScreen \} from '\.\/screens\/wh-prs\.js\?v=/);
-        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-prs', title: 'طلبات شراء النواقص', mount: mountWhPrsScreen, assign: \(s\) => \{ whPrsScreen = s; \} \}\);/);
+        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-prs', title: 'طلبات شراء النواقص', module: 'wh-prs', assign: \(s\) => \{ whPrsScreen = s; \} \}\);/);
         expect(h).toMatch(/const u = session\.user \|\| \{\};/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
         expect(h).toMatch(/if \(navStatus\.current !== key\) \{return;\}/);
     });
 
@@ -733,7 +732,7 @@ describe('شاشة 21 — السجل المشترك والمضيف والطبق�
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها وتُركّب على مضيفها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/wh-prs.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./wh-prs.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`css/v2/erp-ops.css?v=${rev}`);
     });

@@ -456,11 +456,10 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
 describe('شاشة 20 — المضيف والطبقة', () => {
     test('المضيف يمرر deptCode الجديد مع الهوية — الركوب على مضيف السجلات المشترك', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountWhReturnsScreen \} from '\.\/screens\/wh-returns\.js\?v=/);
-        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-returns', title: 'مرتجعات المطبخ', mount: mountWhReturnsScreen, assign: \(s\) => \{ whReturnsScreen = s; \} \}\);/);
+        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-returns', title: 'مرتجعات المطبخ', module: 'wh-returns', assign: \(s\) => \{ whReturnsScreen = s; \} \}\);/);
         expect(h).toMatch(/deptCode: String\(u\.dept_code \|\| ''\),/);
         expect(h).toMatch(/role: session\.role,/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
     });
 
@@ -473,7 +472,7 @@ describe('شاشة 20 — المضيف والطبقة', () => {
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/wh-returns.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./wh-returns.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`css/v2/erp-ops.css?v=${rev}`);
     });

@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.180';
-import { formatInt } from '../data/reports-repo.js?v=4.9.180';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.180';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.180';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.180';
-import { captureFace } from '../portal-face.js?v=4.9.180';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.180';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.180';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.182';
+import { formatInt } from '../data/reports-repo.js?v=4.9.182';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.182';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.182';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.182';
+import { captureFace } from '../portal-face.js?v=4.9.182';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.182';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.182';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.182';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,18 +32,22 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.180';
+} from '../data/settings-repo.js?v=4.9.182';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.180';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+/* حالات `sc queryex` كاملة: ما يخرج عن هذه القائمة يُطبع خامًا في الشارة
+   (NOT_INSTALLED كان يظهر بالإنجليزية). */
 const SVC_STATE_AR = {
     RUNNING: 'يعمل', STOPPED: 'متوقف', START_PENDING: 'جارٍ التشغيل',
-    STOP_PENDING: 'جارٍ الإيقاف', PAUSED: 'موقوف مؤقتًا', UNKNOWN: 'غير معروف',
+    STOP_PENDING: 'جارٍ الإيقاف', PAUSED: 'موقوف مؤقتًا',
+    PAUSE_PENDING: 'جارٍ الإيقاف المؤقت', CONTINUE_PENDING: 'جارٍ استئناف العمل',
+    NOT_INSTALLED: 'غير مثبّتة', UNKNOWN: 'تعذّر قراءة الحالة',
 };
 const SC_STAGE_AR = {
     queued: 'في الانتظار', stopping: 'جارٍ الإيقاف', waiting_stop: 'انتظار توقف الخدمة',

@@ -177,7 +177,7 @@ describe('التربيط — الشاشة تصل للشريط الجانبي', (
     });
 
     test('preview: تحميل + مسار + تفكيك', () => {
-        expect(preview).toMatch(/mountSalesInquiryScreen/);
+        expect(preview).toMatch(/module: 'sales-inquiry'/);
         expect(preview).toMatch(/key === 'sales-inquiry'/);
         expect(preview).toMatch(/teardownSalesInquiryScreen/);
     });

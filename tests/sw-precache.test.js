@@ -70,6 +70,17 @@ function requestedSet() {
             if (u.origin === ORIGIN) {imported.add(`${u.pathname}${u.search}`);}
         }
     }
+    /* الطبقة الثالثة — مرآةُ ما يفعله sw.js تمامًا: سجلُ الشاشات يستورد
+       وحداتها ديناميكيًّا، فهي مطلوبةٌ فعلًا عند فتحها لا مفاتيح ميتة. */
+    for (const key of [...imported]) {
+        if (!/\/js\/v2\/screens\/registry\.js/.test(key)) {continue;}
+        const text = readRepoFile(key);
+        if (!text) {continue;}
+        for (const m of text.matchAll(/['"](\.[^'"]*?\.(?:js|css|mjs|json)(?:\?v=[0-9.]+)?)['"]/g)) {
+            const u = new URL(m[1], `${ORIGIN}${key}`);
+            if (u.origin === ORIGIN) {imported.add(`${u.pathname}${u.search}`);}
+        }
+    }
     return { requested, imported };
 }
 

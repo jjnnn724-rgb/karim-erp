@@ -378,7 +378,7 @@ describe('V2 roster screen (source contract)', () => {
 
     test('the host mounts and tears down the roster screen it already routed to', () => {
         const p = fs.readFileSync(PREVIEW, 'utf8');
-        expect(p).toMatch(/import \{ mountRosterScreen \} from '\.\/screens\/roster\.js\?v=/);
+        expect(p).toMatch(/module: 'roster'/);
         expect(p).toMatch(/rosterScreen\.destroy\(\)/);
         expect(p).toMatch(/if \(key === 'roster'\) \{/);
     });

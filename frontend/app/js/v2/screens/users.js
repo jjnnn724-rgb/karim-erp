@@ -5,9 +5,9 @@
  * (read fully): admin gate · cards→table · search · add/edit panel (role
  * select, dept_head multi-dept mandatory, employee link, active flag,
  * password required+strong on create, optional on edit, username frozen) ·
- * delete (never self) · password vault view · reset-code issue · employee
- * link kept through edit. The server re-checks everything (PASSWORD_REQUIRED
- * / PASSWORD_TOO_WEAK / ROLE_ASSIGNMENT_FORBIDDEN / dept-head link).
+ * deactivate (never self; soft — password preserved) · reset-code issue ·
+ * employee link kept through edit. The server re-checks everything
+ * (PASSWORD_REQUIRED / PASSWORD_TOO_WEAK / role hierarchy / dept-head link).
  *
  * World-class deltas (no behavior change): EnterpriseDataTable instead of
  * cards (search/sort built in) · inline panels instead of modals · no
@@ -15,17 +15,17 @@
  * and the independent `v2bulkimport` flag (OFF by default).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { canWrite } from '../session.js?v=4.9.180';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.180';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.180';
-import { formatInt } from '../data/reports-repo.js?v=4.9.180';
-import { ROLES } from '../../core/config.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.182';
+import { canWrite } from '../session.js?v=4.9.182';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.182';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.182';
+import { formatInt } from '../data/reports-repo.js?v=4.9.182';
+import { ROLES } from '../../core/config.js?v=4.9.182';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
-    linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
-} from '../data/users-repo.js?v=4.9.180';
-import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.180';
+    linkUserEmployee, issueUserResetCode, fetchUserLinkData,
+} from '../data/users-repo.js?v=4.9.182';
+import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -69,6 +69,14 @@ export function mountUsersScreen(host, ctx = {}) {
     const canAdmin = canWrite(ctx.role, USERS_WRITE_ROLES) && ctx.role === 'admin';
     const canBulk = canAdmin && bulkImportWriteEnabled();
     const selfId = ctx.userId !== null && ctx.userId !== undefined ? String(ctx.userId) : null;
+    // Mirror of backend/user-authority.js — the server re-checks; this only
+    // hides buttons that would 403 (admin cannot manage a peer admin or owner).
+    const ROLE_RANK = {
+        owner: 100, admin: 90, auditor: 75, manager: 70, accountant: 50, hr: 50,
+        dept_head: 40, warehouse: 35, kitchen: 35, sous_chef: 30, cashier: 20, employee: 10,
+    };
+    const canManageRow = (role) => ctx.role === 'owner'
+        || ((ROLE_RANK[role] || 0) < (ROLE_RANK[ctx.role] || 0));
 
     let rows = [];
     let employees = [];
@@ -107,11 +115,11 @@ export function mountUsersScreen(host, ctx = {}) {
                 key: 'actions', header: 'إجراءات', width: '230px',
                 render: (r) => {
                     const isSelf = selfId !== null && String(r.id) === selfId;
+                    const manageable = canManageRow(r.role);
                     return `<span class="erp-row-wrap">`
-                    + `<button type="button" class="erp-btn erp-btn--sm" data-v2-edit="${esc(String(r.id))}" aria-label="تعديل ${esc(r.name)}"><i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span></button>`
-                    + `<button type="button" class="erp-btn erp-btn--sm" data-v2-pw="${esc(String(r.id))}" aria-label="عرض كلمة المرور"><i class="ji" data-i="eye" aria-hidden="true"></i></button>`
-                    + (!isSelf && r.active ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-reset="${esc(String(r.id))}" aria-label="رمز استعادة" title="رمز استعادة (10 دقائق، استخدام واحد)"><i class="ji" data-i="key" aria-hidden="true"></i></button>` : '')
-                    + (!isSelf ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="${esc(String(r.id))}" aria-label="حذف ${esc(r.name)}"><i class="ji" data-i="trash" aria-hidden="true"></i></button>` : '')
+                    + (manageable || isSelf ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-edit="${esc(String(r.id))}" aria-label="تعديل ${esc(r.name)}"><i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span></button>` : '')
+                    + (manageable && !isSelf && r.active ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-reset="${esc(String(r.id))}" aria-label="رمز استعادة" title="رمز استعادة (10 دقائق، استخدام واحد)"><i class="ji" data-i="key" aria-hidden="true"></i></button>` : '')
+                    + (manageable && !isSelf && r.active ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="${esc(String(r.id))}" aria-label="تعطيل ${esc(r.name)}" title="تعطيل الحساب مع حفظ كلمة المرور"><i class="ji" data-i="lock" aria-hidden="true"></i><span>تعطيل</span></button>` : '')
                     + `</span>`;
                 },
             }] : []),
@@ -122,7 +130,7 @@ export function mountUsersScreen(host, ctx = {}) {
         body.innerHTML = `<section class="erp-card"><div class="erp-card__head">
           <h3 class="erp-card__title">دليل الحسابات <span class="erp-text-muted erp-text-sm">(${formatInt(rows.length)})</span></h3>
         </div><div class="erp-card__body erp-stack">
-          <p class="erp-text-sm erp-text-muted">السجل يمر عبر publicEntityRow (بلا كلمات مرور) — الخزنة والرموز بأزرار الصف.</p>
+          <p class="erp-text-sm erp-text-muted">السجل يمر عبر publicEntityRow (بلا كلمات مرور) — إدارة الحساب والرموز من أزرار الصف.</p>
           <div data-v2-table></div>
         </div></section><div data-v2-panel></div>`;
         body.querySelector('[data-v2-table]').appendChild(table.el);
@@ -146,7 +154,10 @@ export function mountUsersScreen(host, ctx = {}) {
     }
 
     function roleOptions(selected) {
-        return Object.keys(ROLES).map((k) => `<option value="${esc(k)}"${k === selected ? ' selected' : ''}>${esc(ROLES[k].name)}</option>`).join('');
+        return Object.keys(ROLES)
+            .filter((k) => k === selected || canManageRow(k))
+            .map((k) => `<option value="${esc(k)}"${k === selected ? ' selected' : ''}>${esc(ROLES[k].name)}</option>`)
+            .join('');
     }
 
     function linkedEmpName(userId) {
@@ -208,7 +219,7 @@ export function mountUsersScreen(host, ctx = {}) {
             <label class="erp-text-sm erp-text-muted" for="v2u-password">كلمة المرور${isEdit ? ' الجديدة' : ''}</label>
             <input class="erp-input" id="v2u-password" data-v2-f="password" type="password" placeholder="${isEdit ? 'فارغة = دون تغيير' : '12 حرفًا على الأقل مع حرف ورقم'}" autocomplete="new-password">
             <label class="erp-text-sm erp-text-muted" for="v2u-role">الدور</label>
-            <select class="erp-select" id="v2u-role" data-v2-f="role">${roleOptions(isEdit ? user.role : '')}</select>
+            <select class="erp-select" id="v2u-role" data-v2-f="role"${isEdit && selfId !== null && String(user.id) === selfId ? ' disabled aria-disabled="true" title="لا يمكنك تغيير دورك بنفسك"' : ''}>${roleOptions(isEdit ? user.role : '')}</select>
           </div>
           <div data-v2-deptwrap role="group" aria-labelledby="v2u-dept-label">
             <span class="erp-text-sm erp-text-muted" id="v2u-dept-label">قسم الرئيس <small>(إجباري لرئيس القسم — أكثر من قسم مدعوم)</small></span>
@@ -218,7 +229,7 @@ export function mountUsersScreen(host, ctx = {}) {
             <label class="erp-text-sm erp-text-muted" for="v2u-employee">الموظف المرتبط</label>
             <select class="erp-select" id="v2u-employee" data-v2-f="employee">${empOptions(isEdit ? (employees.find((x) => String(x.userId) === String(user.id)) || {}).id : '', isEdit ? user.id : null)}</select>
             <label class="erp-text-sm erp-text-muted" for="v2u-active">الحالة</label>
-            <select class="erp-select" id="v2u-active" data-v2-f="active">
+            <select class="erp-select" id="v2u-active" data-v2-f="active"${isEdit && selfId !== null && String(user.id) === selfId ? ' disabled aria-disabled="true" title="لا يمكنك إيقاف حسابك بنفسك"' : ''}>
               <option value="true"${!isEdit || user.active !== false ? ' selected' : ''}>نشط</option>
               <option value="false"${isEdit && user.active === false ? ' selected' : ''}>موقوف</option>
             </select>
@@ -312,12 +323,12 @@ export function mountUsersScreen(host, ctx = {}) {
     }
 
     async function confirmDelete(user) {
-        if (selfId !== null && String(user.id) === selfId) {say('لا يمكن حذف حسابك'); return;}
-        if (!await confirmFn('حذف هذا المستخدم؟')) {return;}
+        if (selfId !== null && String(user.id) === selfId) {say('لا يمكن تعطيل حسابك'); return;}
+        if (!await confirmFn(`تعطيل حساب «${user.name || user.username}»؟ لن يستطيع الدخول، وتبقى كلمة المرور وتاريخه محفوظين.`)) {return;}
         try {
             await deleteUser(user.id);
             if (!el.isConnected) {return;}
-            say('تم حذف المستخدم من قاعدة البيانات');
+            say('تم تعطيل الحساب وحفظ تاريخه — يمكن إعادة تنشيطه من التعديل');
             await reload();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -335,21 +346,6 @@ export function mountUsersScreen(host, ctx = {}) {
             + `<div class="erp-dash-controls"><button type="button" class="erp-btn erp-btn--sm" data-v2-copy>${esc(copyLabel)}</button></div>`
             + `</div></section>`;
         holder.scrollIntoView({ block: 'nearest' });
-    }
-
-    async function viewPassword(user) {
-        try {
-            const r = await fetchUserPassword(user.id);
-            if (!el.isConnected) {return;}
-            if (!r.available) {
-                showSecret(`كلمة مرور ${user.name}`, 'لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.', '—', 'إغلاق');
-                return;
-            }
-            showSecret(`كلمة مرور ${user.name}`, `اسم المستخدم: @${user.username} — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.`, r.password, 'نسخ');
-        } catch {
-            if (!el.isConnected) {return;}
-            say('تعذر جلب كلمة المرور — حاول مرة أخرى');
-        }
     }
 
     async function resetCode(user) {
@@ -427,12 +423,6 @@ export function mountUsersScreen(host, ctx = {}) {
         if (db) {
             const u = rows.find((r) => String(r.id) === String(db.dataset.v2Del));
             if (u) {confirmDelete(u);}
-            return;
-        }
-        const pb = event.target.closest('[data-v2-pw]');
-        if (pb) {
-            const u = rows.find((r) => String(r.id) === String(pb.dataset.v2Pw));
-            if (u) {viewPassword(u);}
             return;
         }
         const rb = event.target.closest('[data-v2-reset]');

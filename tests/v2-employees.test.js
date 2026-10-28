@@ -395,7 +395,7 @@ describe('V2 employees screen + layer (source contract)', () => {
     test('the host still tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect(p).toMatch(/employeesScreen\.destroy\(\)/);
-        expect(p).toMatch(/mountEmployeesScreen\(/);
+        expect(p).toMatch(/mountLazy\('employees'/);
     });
 });
 
@@ -794,10 +794,10 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
 
     test('the host passes confirmFn to the employees mount', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
-        const at = p.indexOf('mountEmployeesScreen(');
+        const at = p.indexOf("mountLazy('employees'");
         expect(at).toBeGreaterThan(-1);
-        const mount = p.slice(at, p.indexOf('});', at));
-        expect(mount).toMatch(/confirmFn: \(message\) => window\.confirm\(message\)/);
+        const mount = p.slice(at, p.indexOf('})) || employeesScreen;', at));
+        expect(mount).toMatch(/confirmFn: confirmAction/);
         expect(p).toMatch(/employeesScreen\.destroy\(\)/);
     });
 

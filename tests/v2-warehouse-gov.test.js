@@ -314,9 +314,9 @@ describe('P2-4 — الوصل والمسار', () => {
         const routing = loadEsm(ROUTING, {}, ['SUB_ROUTES']);
         expect(routing.SUB_ROUTES).toContain('warehouse-gov');
         const host = read(PREVIEW);
-        expect(host).toContain("from './screens/warehouse-gov.js?v=");
+        expect(host).toContain("mountLazy('warehouse-gov'");
+        expect(read(path.join(V2, 'screens', 'registry.js'))).toContain("import('./warehouse-gov.js?v=");
         expect(host).toMatch(/if \(key === 'warehouse-gov'\) \{\n\s*renderWarehouseGovScreen\(\);/);
-        expect(host).toContain('mountWarehouseGovScreen(');
         expect(host).toContain('teardownWarehouseGovScreen();');
         expect(host).toMatch(/function teardownWarehouseGovScreen\(\)/);
         expect(host).toContain('data-v2-warehouse-gov-host');
@@ -329,7 +329,9 @@ describe('P2-4 — الوصل والمسار', () => {
         expect(wh).toContain("navigate('warehouse-gov')");
         expect(wh).toMatch(/const canGov = !!navigate && hasGovernanceRead\(role\)/);
         const host = read(PREVIEW);
-        const block = host.slice(host.indexOf('warehouseScreen = mountWarehouseScreen'), host.indexOf('});', host.indexOf('warehouseScreen = mountWarehouseScreen')));
+        const at = host.indexOf("warehouseScreen = (await mountLazy('warehouse'");
+        expect(at).toBeGreaterThan(-1);
+        const block = host.slice(at, host.indexOf('})) || warehouseScreen;', at));
         expect(block).toContain('navigate: (key) => shell.navigate(key)');
     });
 

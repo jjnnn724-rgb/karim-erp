@@ -175,10 +175,10 @@ describe('الصلاحيات — عقد الشاشة من المصدر', () => {
 
     test('المضيف يربط المفتاح: استيراد + متغير + تفكيك + رسم + توجيه', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountPermissionsScreen \} from '\.\/screens\/permissions\.js\?v=/);
+        expect(h).toMatch(/module: 'permissions'/);
         expect(h).toMatch(/let permissionsScreen = null;/);
         expect(h).toMatch(/function teardownPermissionsScreen\(\)/);
-        expect(h).toMatch(/key: 'permissions', title: 'الصلاحيات', mount: mountPermissionsScreen/);
+        expect(h).toMatch(/key: 'permissions', title: 'الصلاحيات', module: 'permissions'/);
         expect(h).toMatch(/if \(key === 'permissions'\)/);
     });
 });

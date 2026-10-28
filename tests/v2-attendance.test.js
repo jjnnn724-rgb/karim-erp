@@ -330,7 +330,7 @@ describe('V2 attendance screen + layer (source contract)', () => {
     test('the host still tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect(p).toMatch(/attendanceScreen\.destroy\(\)/);
-        expect(p).toMatch(/mountAttendanceScreen\(/);
+        expect(p).toMatch(/mountLazy\('attendance'/);
         expect(p).toMatch(/noSessionState/);
     });
 });

@@ -92,11 +92,11 @@ describe('الحضور — أدوات الكتابة في الشاشة', () => {
 
     test('المضيف يمرر هوية الحساب وconfirmFn لشاشة الحضور', () => {
         const host = read(path.join(V2, 'preview.js'));
-        const at = host.indexOf('attendanceScreen = mountAttendanceScreen(');
+        const at = host.indexOf("attendanceScreen = (await mountLazy('attendance'");
         expect(at).toBeGreaterThan(-1);
         const mount = host.slice(at, at + 800);
         expect(mount).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\)/);
         expect(mount).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\)/);
-        expect(mount).toMatch(/confirmFn: \(message\) => window\.confirm\(message\)/);
+        expect(mount).toMatch(/confirmFn: confirmAction/);
     });
 });

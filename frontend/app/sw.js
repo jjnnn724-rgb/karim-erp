@@ -140,12 +140,26 @@ async function precacheAll() {
     const importedRefs = [];
     moduleTexts.forEach((js, i) => {importedRefs.push(...refsInModule(js, hrefOf(walkable[i])));});
 
+    /* الطبقة الثالثة — الشاشات وحدها. preview.js لم يعد يستورد الشاشات
+       استيرادًا ساكنًا (screens/registry.js يستوردها ديناميكيًّا عند الطلب)،
+       فبلا هذه الخطوة يفقد التثبيتُ كلَّ شاشةٍ لم تُفتَح بعدُ — وجهازُ الكاشير
+       ينقطع عنه الشبكة في منتصف الوردية فيجد الشاشة غيرَ مخزَّنة، وهو أسوأ من
+       بطءِ أوّلِ تحميل. نقرأ سجلَّ الشاشات وحده ونضمّ ما يشير إليه من
+       /js/v2/screens/ — نفس المحتوى الذي كان يُخزَّن قبل التحميل الكسول، دون
+       سحب بقية الاعتماديات ومزاحمة الميزانية. */
+    const screenRefs = [];
+    const registryKey = [...new Set(importedRefs)].find((k) => k.startsWith('/app/js/v2/screens/registry.js'));
+    if (registryKey) {
+        const text = await take(registryKey, true);
+        if (text) {screenRefs.push(...refsInModule(text, hrefOf(registryKey)).filter((k) => k.includes('/js/v2/screens/')));}
+    }
+
     // FIX (Enterprise 2026-10-21): الأصول الصريحة (manifest + الأيقونات) كانت
     // تُقصّ مع الترتيب الأبجدي عند بلوغ الحد — فيسقط manifest.json من الذيل
     // ويختفي التطبيق المثبَّت. الصريح الآن **أولًا دائمًا**، والباقي يملأ
     // ما تبقّى من الميزانية.
     const explicit = MANIFEST_ASSETS.filter((key) => !stored.has(key));
-    const derived = [...new Set([...pageRefs, ...importedRefs])]
+    const derived = [...new Set([...pageRefs, ...importedRefs, ...screenRefs])]
         .filter((key) => !stored.has(key) && !explicit.includes(key))
         .sort();
     const budget = Math.max(PRECACHE_LIMIT - stored.size - explicit.length, 0);

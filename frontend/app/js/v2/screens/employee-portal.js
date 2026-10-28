@@ -23,19 +23,19 @@
  * V2's own (same content, not pixel-parity).
  */
 
-import { canWrite } from '../session.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.180';
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { canWrite } from '../session.js?v=4.9.182';
+import { openInAppReport } from '../report-viewer.js?v=4.9.182';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.182';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.182';
 import {
     fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
     faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
     reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
-} from '../data/portal-repo.js?v=4.9.180';
-import { captureFace } from '../portal-face.js?v=4.9.180';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.180';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.180';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.180';
+} from '../data/portal-repo.js?v=4.9.182';
+import { captureFace } from '../portal-face.js?v=4.9.182';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.182';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.182';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -173,6 +173,10 @@ function template() {
  */
 export function mountEmployeePortalScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 employee-portal]', m);
+    /* الحوار يأتي من المضيف (نظام التصميم)؛ والافتراضي للمونتاج المعزول. */
+    const confirmFn = typeof ctx.confirmFn === 'function'
+        ? ctx.confirmFn
+        : (m) => Promise.resolve(typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const isAdmin = ADMIN_ROLES.includes(String(ctx.role || ''));
     const selfUserId = ctx.userId != null ? String(ctx.userId) : null;
 
@@ -567,7 +571,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             paint();
             return;
         }
-        if (!window.confirm('إزالة قالب الوجه لهذا الموظف؟')) { return; }
+        if (!await confirmFn('إزالة قالب الوجه لهذا الموظف؟')) { return; }
         faceBusy = true;
         faceResult = null;
         paint();

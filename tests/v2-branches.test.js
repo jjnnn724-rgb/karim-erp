@@ -254,7 +254,9 @@ describe('V2 branches screen + host (source contract)', () => {
         expect(preview).toMatch(/ensureSession\(\{ rotate: true \}\)/);
         // top-level await would defer the module past DOMContentLoaded and
         // leave icons.js hydrating an empty document (see preview.js §4).
-        expect(preview).not.toMatch(/^\s*await /m);
+        // العمودُ صفر هو الفرق: التحميلُ الكسول يستوفي داخل callbacks مستبعدة
+        // (async (session) => …) ويبقى مسموحًا؛ الممنوعُ await في جذر الوحدة.
+        expect(preview).not.toMatch(/^await /m);
     });
 
     test('a missing session is stated, not papered over with sample rows', () => {
@@ -266,7 +268,7 @@ describe('V2 branches screen + host (source contract)', () => {
 
     test('the branches key in the real nav model renders the branches screen', () => {
         expect(preview).toMatch(/key === 'branches'/);
-        expect(preview).toMatch(/mountBranchesScreen\(/);
+        expect(preview).toMatch(/mountLazy\('branches'/);
         expect(preview).toMatch(/teardownBranchesScreen\(\)/);
     });
 

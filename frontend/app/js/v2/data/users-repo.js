@@ -7,19 +7,17 @@
  *     قوية 8+ حرف+رقم، وربط dept_head يُتحقق منه — server.js:1684-1695)
  *   PUT  /users/:id                    → تعديل (اسم المستخدم ثابت، وكلمة
  *     المرور اختيارية تُخزَّن وتُشترط القوة عند إرسالها)
- *   DELETE /users/:id                  → حذف (ليس الحساب الحالي — قاعدة
- *     الواجهة features/settings-users.js:707، والخادم يعيد الفحص)
+ *   DELETE /users/:id                  → تعطيل ناعم (ليس الحساب الحالي — قاعدة
+ *     الواجهة، والخادم يعيد الفحص الهرمي؛ كلمة المرور والتاريخ محفوظان)
  *   PUT  /users/:id/employee {employeeId} → ربط موظف (admin/manager —
  *     server.js:1349)
- *   GET  /users/:id/password           → خزنة كلمات المرور (admin —
- *     ops-inspect-routes.js:17)
  *   POST /auth/forgot-password/request-code {username} → رمز استعادة
  *     (10 دقائق، استخدام واحد — features/auth-navigation.js:85-94)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.180';
-import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.180';
-import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.180';
+import { apiFetch } from '../../core/api.js?v=4.9.182';
+import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.182';
+import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.182';
 
 /** الإنشاء/الكتابة: admin يمنح الأدوار؛ manager ينشئ بلا تعيين دور (الخادم يحسم). */
 export const USERS_WRITE_ROLES = ['admin', 'manager'];
@@ -69,10 +67,6 @@ export async function linkUserEmployee(userId, employeeId) {
     return apiFetch(`/users/${encodeURIComponent(userId)}/employee`, {
         method: 'PUT', body: JSON.stringify({ employeeId: employeeId || null }),
     });
-}
-
-export async function fetchUserPassword(id) {
-    return apiFetch(`/users/${encodeURIComponent(id)}/password`);
 }
 
 export async function issueUserResetCode(username) {

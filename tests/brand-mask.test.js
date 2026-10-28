@@ -40,6 +40,9 @@ describe('إخفاء اسم مصدر الكاشير من الواجهة', () => 
                 }
                 for (const literal of line.match(/'[^']*'|"[^"]*"|`[^`]*`/g) || []) {
                     if (literal === `'${AUTO_MARKER}'`) { continue; }
+                    // أسماء دوال التركيب في MOUNTS معرّفاتُ كود لا نصوصُ عرض
+                    // (registry.js يقابل المفتاح باسم التصدير) — لا تُعرض.
+                    if (/^'mount[A-Za-z0-9]*Screen'$/.test(literal)) { continue; }
                     if (/Yarasoft|YaraSoft|YARASOFT/.test(literal)) {
                         hits.push(`${relative}:${index + 1} ${literal.slice(0, 80)}`);
                     }

@@ -33,7 +33,10 @@ const jsNames = (dir) =>
 
 function current() {
     const v1 = jsNames(V1_DIR);
-    const screens = jsNames(SCREENS_DIR);
+    // registry.js بنيةٌ تحميلية لا شاشة (جدول راويات) — لا صف ترحيل لها ولا
+    // دورةَ حياة؛ إدخالها في فحص «الشاشات» يقيس البنية بمقياس الواجهات.
+    const screens = jsNames(SCREENS_DIR).filter((n) => n !== 'registry');
+    const registrySrc = fs.readFileSync(path.join(SCREENS_DIR, 'registry.js'), 'utf8');
     const md = fs.readFileSync(MIGRATION_MD, 'utf8');
     // الـcorpus يُبنى مرة واحدة — لا داخل فلتر الشاشات الـ62 (٦٢ قراءة متكرّرة
     // لكل التطبيق كانت تجعل البوابة أبطأ من الاختبارات كلها).
@@ -49,7 +52,10 @@ function current() {
         screensWithDirectFetch: screens
             .filter((n) => /\bfetch\s*\(/.test(fs.readFileSync(path.join(SCREENS_DIR, `${n}.js`), 'utf8')))
             .sort(),
-        deadScreens: screens.filter((n) => !corpus.includes(`screens/${n}.js`)),
+        /* منذ التحميل الكسول (2026-10-27) تشير preview.js إلى الشاشة باسم
+           وحدةٍ في السجل (`./x.js`) لا بمسارٍ كامل (`./screens/x.js`)، فمرجعُ
+           السجل مرجعٌ حيّ كأي استيرادٍ آخر — وإلا اتُّهمت ٥٢ شاشةٍ حيّة بالموت. */
+        deadScreens: screens.filter((n) => !corpus.includes(`screens/${n}.js`) && !registrySrc.includes(`./${n}.js`)),
     };
 }
 

@@ -103,6 +103,14 @@ describe('الشاشة — القسم والربط', () => {
         expect(screen).toContain('نسبة التكلفة / الصافي');
     });
 
+    test('سطر «مرتجعات مخصومة» نصّ خالص — لا HTML داخل esc(meta)', () => {
+        /* esc(meta) يُهرّب الوسوم، فإدراج costMoney (يعيد <span>) كان يطبع
+           الوسم حرفيًا على الشاشة. القاعدة: هذا السطر يستعمل costMoneyText. */
+        expect(screen).toContain('مرتجعات مخصومة: ${costMoneyText(cons.returned)}');
+        expect(screen).not.toMatch(/مرتجعات مخصومة: \$\{costMoney\(/);
+        expect(screen).toMatch(/<p>\$\{esc\(meta\)\}<\/p>/);
+    });
+
     test('النطاق المعكوس يُرفض قبل الشبكة', () => {
         const fn = screen.slice(screen.indexOf('async function readCostCards'), screen.indexOf('function printCostCard'));
         expect(fn).toMatch(/costFrom > costTo/);

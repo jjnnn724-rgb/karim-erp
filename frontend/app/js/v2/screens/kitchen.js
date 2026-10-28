@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.180';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.182';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.182';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.182';
+import { openInAppReport } from '../report-viewer.js?v=4.9.182';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.180';
+} from '../data/kitchen-repo.js?v=4.9.182';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.180';
+} from '../signature.js?v=4.9.182';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -196,6 +196,12 @@ function costMoney(v) {
 }
 
 function template(canWrite, costFrom, costTo) {
+    const sections = [
+        ['operations', 'cooking-pot', 'التشغيل'],
+        ['costs', 'chart', 'التكاليف'],
+        ['inventory', 'clipboard-list', 'الجرد والمستندات'],
+        ['policies', 'settings', 'السياسات'],
+    ];
     return `
       <div class="erp-v2-kitchen">
         <div class="erp-dash-head">
@@ -203,10 +209,10 @@ function template(canWrite, costFrom, costTo) {
             <h2 class="erp-dash-title">المطبخ
               <span class="erp-eyebrow" dir="ltr" lang="en">Kitchen</span>
             </h2>
+            <p class="erp-dash-sub">كل ما يحتاجه الشيف من الإنتاج إلى التوزيع والجرد في مكان واحد.</p>
             <div class="erp-dash-sub" data-v2-scope-line role="status" aria-live="polite"></div>
           </div>
           <div class="erp-dash-controls">
-            <span data-v2-stateseg>${stateSeg('all', { all: '—', open: '—', closed: '—' })}</span>
             <button type="button" class="erp-btn erp-btn--sm erp-no-print" data-v2-print aria-label="طباعة النظرة">
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة</span>
             </button>
@@ -216,125 +222,144 @@ function template(canWrite, costFrom, costTo) {
           </div>
         </div>
 
+        ${canWrite ? `<div class="erp-v2-kitchen__quick erp-no-print" role="group" aria-label="إجراءات المطبخ السريعة">
+          <button type="button" class="erp-btn erp-btn--primary" data-v2-new-production>
+            <i class="ji" data-i="cooking-pot" aria-hidden="true"></i><span>أمر إنتاج جديد</span>
+          </button>
+          <button type="button" class="erp-btn" data-v2-new-transfer>
+            <i class="ji" data-i="inbox" aria-hidden="true"></i><span>استلام مواد</span>
+          </button>
+          <button type="button" class="erp-btn" data-v2-new-audit>
+            <i class="ji" data-i="clipboard-list" aria-hidden="true"></i><span>بدء جرد</span>
+          </button>
+        </div>` : ''}
+
         <div data-v2-kpis></div>
         <p class="erp-text-sm erp-text-muted" data-v2-window-note role="status" aria-live="polite"></p>
 
+        <nav class="erp-v2-kitchen__nav erp-no-print" aria-label="أقسام شاشة المطبخ">
+          ${sections.map(([key, icon, label], i) => `<button type="button" data-v2-section="${key}" class="${i === 0 ? 'is-active' : ''}" aria-pressed="${i === 0 ? 'true' : 'false'}">
+            <i class="ji" data-i="${icon}" aria-hidden="true"></i><span>${label}</span>
+          </button>`).join('')}
+        </nav>
+
         <div data-v2-panel hidden></div>
 
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">أوامر الإنتاج
-              <span class="erp-eyebrow" dir="ltr" lang="en">Production Orders</span>
-              <span class="erp-text-muted erp-text-sm" data-v2-count></span>
-            </h3>
-            <span class="erp-grow"></span>
-            ${canWrite ? writeBtn('data-v2-new-production', 'cooking-pot', 'أمر إنتاج') : ''}
-            <span class="erp-text-sm erp-text-muted" data-v2-orders-note></span>
-          </div>
-          <div class="erp-card__body">
-            <div data-v2-batches></div>
-          </div>
-        </section>
-
-        <section class="erp-card erp-v2-cost" data-v2-costcards>
-          <div class="erp-card__head">
-            <div class="erp-v2-cost__heading">
-              <h3 class="erp-card__title">بطاقات التكلفة
-                <span class="erp-eyebrow" dir="ltr" lang="en">Cost Cards</span>
+        <div data-v2-view="operations">
+          <section class="erp-card">
+            <div class="erp-card__head">
+              <h3 class="erp-card__title">أوامر الإنتاج
+                <span class="erp-eyebrow" dir="ltr" lang="en">Production Orders</span>
+                <span class="erp-text-muted erp-text-sm" data-v2-count></span>
               </h3>
-              <p>الصرف الفعلي (أذون الصرف − المرتجعات + مكوّنات أوامر الإنتاج) مقابل الإيراد الفعلي من الكاشير.</p>
+              <span class="erp-grow"></span>
+              ${canWrite ? writeBtn('data-v2-new-production', 'cooking-pot', 'أمر إنتاج') : ''}
+              <span data-v2-stateseg>${stateSeg('all', { all: '—', open: '—', closed: '—' })}</span>
+              <span class="erp-text-sm erp-text-muted" data-v2-orders-note></span>
             </div>
-            <div class="erp-v2-cost__filters" role="group" aria-label="فترة بطاقات التكلفة">
-              <label class="erp-v2-cost__date" for="v2kit-cost-from">
-                <span>من تاريخ</span>
-                <input class="erp-input erp-input--ltr" id="v2kit-cost-from" type="date" value="${esc(costFrom)}" data-v2-cost-from>
-              </label>
-              <label class="erp-v2-cost__date" for="v2kit-cost-to">
-                <span>إلى تاريخ</span>
-                <input class="erp-input erp-input--ltr" id="v2kit-cost-to" type="date" value="${esc(costTo)}" data-v2-cost-to>
-              </label>
-              <div class="erp-v2-cost__actions">
-                <button type="button" class="erp-btn erp-btn--sm erp-btn--primary erp-no-print" data-v2-cost-reload>
-                  <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
-                </button>
+            <div class="erp-card__body">
+              <div data-v2-batches></div>
+            </div>
+          </section>
+
+          <div class="erp-v2-kitchen__insights">
+            <section class="erp-card">
+              <div class="erp-card__head">
+                <h3 class="erp-card__title">استثناءات تحتاج مراجعة
+                  <span class="erp-eyebrow" dir="ltr" lang="en">Open Exceptions</span>
+                  <span class="erp-text-muted erp-text-sm" data-v2-exccount></span>
+                </h3>
+                <span class="erp-grow"></span>
+                <span class="erp-text-sm erp-text-muted">المفتوحة فقط</span>
+              </div>
+              <div class="erp-card__body"><div data-v2-exceptions></div></div>
+            </section>
+
+            <section class="erp-card">
+              <div class="erp-card__head">
+                <h3 class="erp-card__title">أكبر الكميات الموزّعة
+                  <span class="erp-eyebrow" dir="ltr" lang="en">Top Distributions</span>
+                </h3>
+                <span class="erp-grow"></span>
+                <span class="erp-text-sm erp-text-muted" data-v2-dist-note></span>
+              </div>
+              <div class="erp-card__body"><div data-v2-dist></div></div>
+            </section>
+          </div>
+        </div>
+
+        <div data-v2-view="costs" hidden>
+          <section class="erp-card erp-v2-cost" data-v2-costcards>
+            <div class="erp-card__head">
+              <div class="erp-v2-cost__heading">
+                <h3 class="erp-card__title">بطاقات التكلفة
+                  <span class="erp-eyebrow" dir="ltr" lang="en">Cost Cards</span>
+                </h3>
+                <p>الصرف الفعلي بعد المرتجعات وتكلفة الإنتاج مقابل إيراد الكاشير لكل جهة.</p>
+              </div>
+              <div class="erp-v2-cost__filters" role="group" aria-label="فترة بطاقات التكلفة">
+                <label class="erp-v2-cost__date" for="v2kit-cost-from">
+                  <span>من تاريخ</span>
+                  <input class="erp-input erp-input--ltr" id="v2kit-cost-from" type="date" value="${esc(costFrom)}" data-v2-cost-from>
+                </label>
+                <label class="erp-v2-cost__date" for="v2kit-cost-to">
+                  <span>إلى تاريخ</span>
+                  <input class="erp-input erp-input--ltr" id="v2kit-cost-to" type="date" value="${esc(costTo)}" data-v2-cost-to>
+                </label>
+                <div class="erp-v2-cost__actions">
+                  <button type="button" class="erp-btn erp-btn--sm erp-btn--primary erp-no-print" data-v2-cost-reload>
+                    <i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض النتائج</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="erp-card__body erp-stack">
-            <div data-v2-costcards-board aria-live="polite"></div>
-          </div>
-        </section>
+            <div class="erp-card__body erp-stack"><div data-v2-costcards-board aria-live="polite"></div></div>
+          </section>
+        </div>
 
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">أكبر الكميات الموزّعة
-              <span class="erp-eyebrow" dir="ltr" lang="en">Top Distributions</span>
-            </h3>
-            <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted" data-v2-dist-note></span>
-          </div>
-          <div class="erp-card__body">
-            <div data-v2-dist></div>
-          </div>
-        </section>
+        <div data-v2-view="inventory" hidden>
+          <div class="erp-v2-kitchen__inventory">
+            <section class="erp-card">
+              <div class="erp-card__head">
+                <h3 class="erp-card__title">الجرد الذكي
+                  <span class="erp-eyebrow" dir="ltr" lang="en">Stock Audits</span>
+                  <span class="erp-text-muted erp-text-sm" data-v2-auditcount></span>
+                </h3>
+                <span class="erp-grow"></span>
+                ${canWrite ? writeBtn('data-v2-new-audit', 'plus', 'جرد جديد') : ''}
+              </div>
+              <div class="erp-card__body"><div data-v2-audits></div></div>
+            </section>
 
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">استثناءات تحتاج مراجعة
-              <span class="erp-eyebrow" dir="ltr" lang="en">Open Exceptions</span>
-              <span class="erp-text-muted erp-text-sm" data-v2-exccount></span>
-            </h3>
-            <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted">الاستثناءات المفتوحة فقط</span>
+            <section class="erp-card">
+              <div class="erp-card__head">
+                <h3 class="erp-card__title">مستندات حركة المطبخ
+                  <span class="erp-eyebrow" dir="ltr" lang="en">Kitchen Documents</span>
+                  <span class="erp-text-muted erp-text-sm" data-v2-doccount></span>
+                </h3>
+                <span class="erp-grow"></span>
+                ${canWrite ? writeBtn('data-v2-new-transfer', 'inbox', 'استلام مواد') : ''}
+              </div>
+              <div class="erp-card__body"><div data-v2-docs></div></div>
+            </section>
           </div>
-          <div class="erp-card__body">
-            <div data-v2-exceptions></div>
-          </div>
-        </section>
+          <p class="erp-text-sm erp-text-muted" data-v2-gov-note role="status" aria-live="polite"></p>
+        </div>
 
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">سياسات أقسام المطبخ
-              <span class="erp-eyebrow" dir="ltr" lang="en">Department Policies</span>
-              <span class="erp-text-muted erp-text-sm" data-v2-polcount></span>
-            </h3>
-            <span class="erp-grow"></span>
-            <span class="erp-text-sm erp-text-muted">كلمات الوضع معتمدة من إعداد المطبخ</span>
-          </div>
-          <div class="erp-card__body">
-            <div data-v2-policies></div>
-          </div>
-        </section>
+        <div data-v2-view="policies" hidden>
+          <section class="erp-card">
+            <div class="erp-card__head">
+              <h3 class="erp-card__title">سياسات أقسام المطبخ
+                <span class="erp-eyebrow" dir="ltr" lang="en">Department Policies</span>
+                <span class="erp-text-muted erp-text-sm" data-v2-polcount></span>
+              </h3>
+              <span class="erp-grow"></span>
+              <span class="erp-text-sm erp-text-muted">كلمات الوضع معتمدة من إعداد المطبخ</span>
+            </div>
+            <div class="erp-card__body"><div data-v2-policies></div></div>
+          </section>
+        </div>
 
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">الجرد الذكي
-              <span class="erp-eyebrow" dir="ltr" lang="en">Stock Audits</span>
-              <span class="erp-text-muted erp-text-sm" data-v2-auditcount></span>
-            </h3>
-            <span class="erp-grow"></span>
-            ${canWrite ? writeBtn('data-v2-new-audit', 'plus', 'جرد جديد') : ''}
-          </div>
-          <div class="erp-card__body">
-            <div data-v2-audits></div>
-          </div>
-        </section>
-
-        <section class="erp-card">
-          <div class="erp-card__head">
-            <h3 class="erp-card__title">مستندات حركة المطبخ
-              <span class="erp-eyebrow" dir="ltr" lang="en">Kitchen Documents</span>
-              <span class="erp-text-muted erp-text-sm" data-v2-doccount></span>
-            </h3>
-            <span class="erp-grow"></span>
-            ${canWrite ? writeBtn('data-v2-new-transfer', 'inbox', 'استلام مواد') : ''}
-          </div>
-          <div class="erp-card__body">
-            <div data-v2-docs></div>
-          </div>
-        </section>
-
-        <p class="erp-text-sm erp-text-muted" data-v2-gov-note role="status" aria-live="polite"></p>
         <p class="erp-print-note" data-v2-print-note></p>
       </div>`;
 }
@@ -816,13 +841,20 @@ export function mountKitchenScreen(host, ctx = {}) {
               </table>
             </div>` : '<p class="erp-text-sm erp-text-muted">لا صرف مسجل في هذه الفترة.</p>';
 
+        // نصّ خالص: السطر يُدرَج داخل esc(meta) — إدراج costMoney هنا (HTML)
+        // كان يطبع الوسم حرفيًا على الشاشة.
         const meta = `أصناف الصرف: ${formatInt(items.length)} · أوامر الإنتاج الموزعة: ${formatInt(lines.length)}`
-            + (Number(cons.returned) ? ` · مرتجعات مخصومة: ${costMoney(cons.returned)}` : '');
+            + (Number(cons.returned) ? ` · مرتجعات مخصومة: ${costMoneyText(cons.returned)}` : '');
 
-        return `<article class="erp-card erp-card--subtle" style="border-block-start:4px solid ${esc(c.color || '#c9a227')}">
+        const detailsHtml = items.length || lines.length ? `<details class="erp-v2-cost__details">
+            <summary><i class="ji" data-i="chevron-down" aria-hidden="true"></i><span>عرض تفاصيل الصرف والإنتاج</span></summary>
+            <div class="erp-stack">${linesHtml}${itemsHtml}</div>
+          </details>` : '<p class="erp-text-sm erp-text-muted">لا صرف مسجل في هذه الفترة.</p>';
+        const cardIcon = c.code === 'external_sales' ? 'arrow-left-right' : 'utensils';
+        return `<article class="erp-card erp-card--subtle erp-v2-cost__card">
           <div class="erp-card__head">
             <div class="erp-v2-cost__heading">
-              <h4 class="erp-card__title">${esc(c.icon || '')} ${esc(c.name || c.code)}
+              <h4 class="erp-card__title"><i class="ji" data-i="${cardIcon}" aria-hidden="true"></i> ${esc(c.name || c.code)}
                 <span class="erp-text-sm erp-text-muted">(${esc(c.from || costFrom)} — ${esc(c.to || costTo)})</span>
               </h4>
               <p>${esc(meta)}</p>
@@ -839,8 +871,7 @@ export function mountKitchenScreen(host, ctx = {}) {
               ${costKpi('الإيراد الفعلي', costMoney(c.revenue), 'banknote', 'إيرادات الكاشير المرتبطة بالقسم')}
               ${costKpi('نسبة التكلفة / الصافي', ratioText, 'chart', `صافي ${costMoneyText(c.net)}`)}
             </ul>
-            ${linesHtml}
-            ${itemsHtml}
+            ${detailsHtml}
           </div>
         </article>`;
     }
@@ -1065,7 +1096,7 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
                 <option value="">اختر مكونًا من المخزن</option>${opts}
               </select></label>
             <label class="erp-field"><span class="erp-label">الكمية</span>
-              <input class="erp-input erp-input--ltr" type="number" min="0.001" step="0.001" data-f="m-qty" data-i="${i}" value="${esc(row.quantity || '')}" placeholder="الكمية"></label>
+              <input class="erp-input erp-input--ltr" type="number" inputmode="decimal" min="0.001" step="0.001" data-f="m-qty" data-i="${i}" value="${esc(row.quantity || '')}" placeholder="الكمية"></label>
             <label class="erp-field"><span class="erp-label">الهالك %</span>
               <input class="erp-input erp-input--ltr" type="number" min="0" max="100" step="0.01" data-f="m-waste" data-i="${i}" value="${esc(row.waste_percent || '0')}"></label>
           </div>
@@ -1091,7 +1122,7 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
               <select class="erp-select" data-f="d-dest" data-i="${i}">${opts}</select></label>
             ${custom}
             <label class="erp-field"><span class="erp-label">الكمية</span>
-              <input class="erp-input erp-input--ltr" type="number" min="0.01" step="0.01" data-f="d-qty" data-i="${i}" value="${esc(row.quantity || '')}"></label>
+              <input class="erp-input erp-input--ltr" type="number" inputmode="decimal" min="0.01" step="0.01" data-f="d-qty" data-i="${i}" value="${esc(row.quantity || '')}"></label>
           </div>
           <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-remove-dist data-index="${i}"
                   aria-label="إزالة الجهة ${i + 1}"><i class="ji" data-i="trash" aria-hidden="true"></i></button>
@@ -1123,6 +1154,22 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
             + (diff === 0
                 ? `<span class="erp-badge" data-tone="success" data-unknown="false"><i class="ji" data-i="circle-check" aria-hidden="true"></i><span class="erp-badge-label">مكتمل</span></span>`
                 : `<span class="erp-badge" data-tone="warning" data-unknown="false"><i class="ji" data-i="hourglass" aria-hidden="true"></i><span class="erp-badge-label">المتبقي: ${esc(legacyQty(diff))}</span></span>`);
+        const autoBtn = panelEl.querySelector('[data-v2-autofill-dist]');
+        if (autoBtn) {autoBtn.disabled = total <= 0 || diff <= 0;}
+    }
+
+    function autofillRemainingDistribution() {
+        if (!prodState || !prodState.distRows.length) {return;}
+        const total = Number(fieldVal('qty') || 0);
+        const allocated = prodState.distRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
+        const diff = Number((total - allocated).toFixed(4));
+        if (total <= 0) {notify('اكتب إجمالي الكمية المنتجة أولًا'); return;}
+        if (diff <= 0) {notify('التوزيع مكتمل بالفعل'); return;}
+        const row = prodState.distRows[prodState.distRows.length - 1];
+        row.quantity = String(Number((Number(row.quantity || 0) + diff).toFixed(4)));
+        renderProdDists();
+        const lastInput = panelEl.querySelector(`[data-f="d-qty"][data-i="${prodState.distRows.length - 1}"]`);
+        if (lastInput) {lastInput.focus();}
     }
 
     /** اختيار منتج مسجل يملأ الاسم (إن كان فارغًا) والوحدة — نفس قاعدة
@@ -1158,8 +1205,8 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
             <div><strong>المنتج النهائي</strong>
               <small class="erp-text-muted">اكتب الاسم يدويًا، أو اختر منتجًا مسجلًا فيملأ الاسم والوحدة تلقائيًا (مستقل عن الوصفة وكتالوج البيع)</small></div>
           </div>
-          <label class="erp-field"><span class="erp-label">اسم المنتج النهائي</span>
-            <input class="erp-input" type="text" data-f="name" placeholder="مثال: دجاج مطهي أو صينية لحم"></label>
+          <label class="erp-field"><span class="erp-label">اسم المنتج النهائي <span class="erp-text-danger">*</span></span>
+            <input class="erp-input" type="text" data-f="name" autocomplete="off" required placeholder="مثال: دجاج مطهي أو صينية لحم"></label>
           <div class="erp-prod-grid">
             <label class="erp-field"><span class="erp-label">منتج مسجل اختياري</span>
               <select class="erp-select" data-f="product">
@@ -1168,8 +1215,8 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
             <label class="erp-field"><span class="erp-label">الوحدة</span>
               <input class="erp-input" type="text" data-f="unit" value="وحدة" placeholder="حبة، كجم، صينية..."></label>
           </div>
-          <label class="erp-field"><span class="erp-label">إجمالي الكمية المنتجة</span>
-            <input class="erp-input erp-input--ltr" type="number" data-f="qty" min="0.01" step="0.01" placeholder="مثال: 50 حبة"></label>
+          <label class="erp-field"><span class="erp-label">إجمالي الكمية المنتجة <span class="erp-text-danger">*</span></span>
+            <input class="erp-input erp-input--ltr" type="number" inputmode="decimal" data-f="qty" min="0.01" step="0.01" required placeholder="مثال: 50 حبة"></label>
           <div class="erp-prod-step"><span class="erp-prod-step__num" aria-hidden="true">2</span>
             <div><strong>المكونات من مخزن المطبخ</strong>
               <small class="erp-text-muted">مثال: أرز 40 كجم، لحم 20 كجم، هالك 5%.</small></div>
@@ -1184,10 +1231,15 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
               <small class="erp-text-muted">يجب أن يساوي مجموع التوزيع إجمالي الإنتاج.</small></div>
           </div>
           <div data-v2-prod-dists class="erp-stack"></div>
-          <div><button type="button" class="erp-btn erp-btn--sm" data-v2-add-dist>
-            <i class="ji" data-i="plus" aria-hidden="true"></i><span>إضافة جهة</span>
-          </button></div>
-          <div data-v2-prod-summary class="erp-text-sm erp-text-muted" role="status" aria-live="polite"></div>
+          <div class="erp-v2-kitchen__form-actions">
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-add-dist>
+              <i class="ji" data-i="plus" aria-hidden="true"></i><span>إضافة جهة</span>
+            </button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-autofill-dist>
+              <i class="ji" data-i="zap" aria-hidden="true"></i><span>إكمال المتبقي تلقائيًا</span>
+            </button>
+          </div>
+          <div data-v2-prod-summary class="erp-v2-kitchen__distribution-status" role="status" aria-live="polite"></div>
           <label class="erp-field"><span class="erp-label">ملاحظات الأمر</span>
             <textarea class="erp-input" data-f="notes" rows="2" placeholder="وردية الصباح، دفعة الغداء، رقم المناسبة..."></textarea></label>
           ${panelActions('حفظ أمر الإنتاج والتوزيع', 'save', '', !(prodState.materials || []).length, 'production')}
@@ -1591,23 +1643,43 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
         }
     }
 
-    function submitPanel(btn) {
+    async function submitPanel(btn) {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
         const kind = btn && btn.dataset ? btn.dataset.v2SubmitKind : '';
-        if (panelKind === 'production') {submitProduction(); return;}
-        if (panelKind === 'transfer') {submitTransfer(); return;}
-        if (panelKind === 'audit-new') {submitAuditCreate(); return;}
-        if (panelKind === 'audit-count') {
-            if (kind === 'audit-save') {submitAuditSave(); return;}
-            submitAuditSend();
-            return;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        try {
+            if (panelKind === 'production') {await submitProduction(); return;}
+            if (panelKind === 'transfer') {await submitTransfer(); return;}
+            if (panelKind === 'audit-new') {await submitAuditCreate(); return;}
+            if (panelKind === 'audit-count') {
+                if (kind === 'audit-save') {await submitAuditSave(); return;}
+                await submitAuditSend();
+                return;
+            }
+            if (panelKind === 'audit-approve') {await submitAuditApprove();}
+        } finally {
+            if (btn.isConnected) {
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+            }
         }
-        if (panelKind === 'audit-approve') {submitAuditApprove();}
     }
 
     /* ── التفويض: نقرة/كتابة واحدة تخدم كل اللوحات (CSP: لا معالج سطري) ── */
 
     el.addEventListener('click', (event) => {
+        const sectionBtn = event.target.closest('[data-v2-section]');
+        if (sectionBtn) {
+            const key = sectionBtn.dataset.v2Section;
+            el.querySelectorAll('[data-v2-section]').forEach((btn) => {
+                const active = btn === sectionBtn;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', String(active));
+            });
+            el.querySelectorAll('[data-v2-view]').forEach((view) => {view.hidden = view.dataset.v2View !== key;});
+            return;
+        }
         const costReload = event.target.closest('[data-v2-cost-reload]');
         if (costReload) {readCostCards(); return;}
         const costPrint = event.target.closest('[data-v2-cost-print]');
@@ -1646,6 +1718,7 @@ ${prodRows ? `<h3>أوامر الإنتاج الموزعة على الجهة</h3
             if (prodState) {prodState.distRows.push({ destination: 'custom|custom|', customName: '', quantity: '' }); renderProdDists();}
             return;
         }
+        if (event.target.closest('[data-v2-autofill-dist]')) {autofillRemainingDistribution(); return;}
         if (event.target.closest('[data-v2-add-transfer]')) {
             if (transferState) {transferState.rows.push({ inventory_id: '', qty: '' }); renderTransferRows();}
             return;

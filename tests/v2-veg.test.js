@@ -656,13 +656,12 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
 
     test('المضيف يمرر الهوية كاملة — المعرّف يحكم بوابتي التعديل والإلغاء والاسم يطبع', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountVegScreen \} from '\.\/screens\/veg-requests\.js\?v=/);
-        expect(h).toMatch(/vegScreen = mountVegScreen\(shell\.main\.querySelector\('\[data-v2-veg-host\]'\), \{/);
+        expect(h).toMatch(/vegScreen = \(await mountLazy\('veg-requests', '\[data-v2-veg-host\]'/);
         expect(h).toMatch(/role: session\.role,/);
         expect(h).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\),/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
         expect(h).toMatch(/if \(navStatus\.current !== 'veg-requests'\) \{return;\}/);
     });
 
@@ -674,7 +673,7 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها وتُركّب على مضيفها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/veg-requests.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./veg-requests.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`css/v2/erp-ops.css?v=${rev}`);
     });

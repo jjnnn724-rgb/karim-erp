@@ -186,7 +186,7 @@ describe('الإعدادات — عقد الشاشة', () => {
 
     test('المضيف يبقي المفتاح مربوطًا بالشاشة الجديدة', () => {
         const h = read(HOST);
-        expect(h).toMatch(/mount: mountSettingsScreen/);
+        expect(h).toMatch(/module: 'settings'/);
         expect(h).toMatch(/key: 'settings'/);
     });
 });

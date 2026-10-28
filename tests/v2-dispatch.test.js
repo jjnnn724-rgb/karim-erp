@@ -633,14 +633,13 @@ describe('شاشة 13 — السجل المشترك والمضيف والطبق�
 
     test('المضيف يمرر الهوية كاملة ويطبع الإشعارات على سطره', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountDispatchScreen \} from '\.\/screens\/dispatch\.js\?v=/);
-        expect(h).toMatch(/dispatchScreen = mountDispatchScreen\(/);
+        expect(h).toMatch(/dispatchScreen = \(await mountLazy\('dispatch', '\[data-v2-dispatch-host\]'/);
         expect(h).toMatch(/role: session\.role,/);
         expect(h).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\),/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(h).toMatch(/deptCode: String\(u\.dept_code \|\| ''\),/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
     });
 
     test('المغادرة تُتلف الشاشة — لا شبح يكتب على DOM بعد التنقّل', () => {
@@ -652,7 +651,7 @@ describe('شاشة 13 — السجل المشترك والمضيف والطبق�
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها وتُركّب على مضيفها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/dispatch.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./dispatch.js?v=${rev}`);
         expect(source(HOST)).toContain('data-v2-dispatch-host');
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
     });

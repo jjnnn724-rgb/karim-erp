@@ -84,6 +84,16 @@ describe('حساب القسم — عقد المعادلة والأبواب', () 
         expect(repo).toMatch(/COSTED_DISPATCH_STATUSES\.includes\(String\(d\.status \|\| ''\)\)/);
     });
 
+    /* انحدار 2026-10-27: الشاشة كانت تستورد fetchDepartments من
+       employees-repo (أقسام الموارد البشرية) — كوداتها تختلف عن جدول
+       departments (KITCHEN/SERVICE/WAREHOUSE مقابل kitchen/storeroom)، فكانت
+       قائمة الأقسام تملأ برموز لا وجود لها في revenues.deptId فيُصفَّر كل
+       شيء: لا إيراد ولا أذون ولا إضافات. القائمة مصدرها المالي. */
+    test('قائمة الأقسام من المستودع المالي لا من الموارد البشرية', () => {
+        expect(SCREEN_SRC).toMatch(/import \{ fetchDepartments \} from '\.\.\/data\/finance-repo\.js/);
+        expect(SCREEN_SRC).not.toMatch(/import \{ fetchDepartments \} from '\.\.\/data\/employees-repo\.js/);
+    });
+
     test('الشاشة تستهلك value المدروس ولا تعيد اشتقاقه من حقل غير موجود', () => {
         expect(SCREEN_SRC).toMatch(/reduce\(\(s, r\) => s \+ \(Number\(r\.value\) \|\| 0\), 0\)/);
         expect(SCREEN_SRC).toMatch(/value: \(r\) => r\.value, render: \(r\) => money\(r\.value, currency\)/);
@@ -147,7 +157,7 @@ describe('عقد الشاشة والتنقل', () => {
         expect(read(NAV)).toMatch(/'cost-center', 'cost-analysis'/);
         expect(read(I18N)).toContain("'cost-center': { icon: 'calculator', ar: 'حساب القسم', en: 'Cost Center' }");
         expect(read(I18N)).toContain("'pg.cost-center': 'حساب القسم'");
-        expect(read(PREVIEW)).toContain('mountCostCenterScreen');
+        expect(read(PREVIEW)).toContain("module: 'cost-center'");
         expect(read(PREVIEW)).toMatch(/if \(key === 'cost-center'\)/);
         expect(read(APPJS)).toContain("'cost-center': '<i class=ji data-i=calculator></i>'");
     });

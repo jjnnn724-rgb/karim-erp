@@ -685,7 +685,7 @@ describe('V2 reports screen + layer (source contract)', () => {
 
     test('the host mounts, notifies and tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
-        expect(p).toMatch(/mountReportsScreen\(/);
+        expect(p).toMatch(/mountLazy\('reports'/);
         expect(p).toMatch(/reportsScreen\.destroy\(\)/);
         expect(p).toMatch(/key === 'reports'/);
         expect(p).toMatch(/teardownReportsScreen\(\)/);
@@ -700,7 +700,7 @@ describe('V2 reports screen + layer (source contract)', () => {
     test('the host has exactly one reports screen instance', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect(p).toMatch(/let reportsScreen = null;/);
-        expect((p.match(/reportsScreen = mount/g) || []).length).toBe(1);
+        expect((p.match(/reportsScreen = \(await mountLazy\(/g) || []).length).toBe(1);
         expect((p.match(/function renderReportsScreen/g) || []).length).toBe(1);
     });
 });

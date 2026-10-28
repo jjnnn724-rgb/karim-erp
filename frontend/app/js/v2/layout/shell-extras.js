@@ -14,9 +14,9 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.180';
-import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.180';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.180';
+} from '../data/shell-repo.js?v=4.9.182';
+import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.182';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.182';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -46,6 +46,10 @@ function currentLang() {
 export function mountShellExtras(shell, ctx = {}) {
     const getRole = typeof ctx.getRole === 'function' ? ctx.getRole : () => null;
     const toast = typeof ctx.onToast === 'function' ? ctx.onToast : (m) => console.info('[V2 shell]', m);
+    /* سؤال المضيف (حوار نظام التصميم)؛ والافتراضي للمونتاج المعزول. */
+    const confirmFn = typeof ctx.confirm === 'function'
+        ? ctx.confirm
+        : (m) => Promise.resolve(typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     /* Fixture mode (v2.html without ?live=1) must issue no request at all —
        contract line 77. Every network-backed extra (bell, health lamps and
        their timers) reads this door; the sign-in flips isLive() and the host
@@ -443,19 +447,36 @@ export function mountShellExtras(shell, ctx = {}) {
     serverChip.className = 'erp-srvctl erp-no-print';
     serverChip.setAttribute('role', 'group');
     serverChip.setAttribute('aria-label', 'التحكم بخدمة السيرفر');
+    /* شريحة تُركَّب قبل أول فحص: فراغٌ في الرأس أسوأ من رسالة انتظار،
+       فتبدأ بحالة محايدة تُستبدل فور أول ردٍّ صالح. */
+    serverChip.innerHTML = `<span class="erp-lamp" role="img" data-ok="x" aria-label="جارٍ فحص حالة الخدمة"></span>`
+        + `<span class="erp-srvctl__state">جارٍ فحص الخدمة…</span>`;
     let srvBusy = false;
     let srvPoll = 0;
     let srvMounted = false;                 // لا شريحةً فارغة لغير الأدمن
+    /* كل حالات خدمة ويندوز كما تعيدها `sc queryex`: أربع حالاتٍ فقط كانت
+       معروفة، فـNOT_INSTALLED وUNKNOWN وPAUSED… كلها تسقط في الفرع
+       الاحتياطي وتطبع «غير معروف» في رأس كل صفحة للأدمن. */
     const SRV_STATES = {
         RUNNING: ['1', 'السيرفر يعمل'],
         STOPPED: ['0', 'السيرفر متوقف'],
         START_PENDING: ['x', 'جارٍ التشغيل…'],
         STOP_PENDING: ['x', 'جارٍ الإيقاف…'],
+        PAUSED: ['x', 'الخدمة موقوفة مؤقتًا'],
+        PAUSE_PENDING: ['x', 'جارٍ الإيقاف المؤقت…'],
+        CONTINUE_PENDING: ['x', 'جارٍ استئناف العمل…'],
+        NOT_INSTALLED: ['0', 'الخدمة غير مثبّتة'],
+        UNKNOWN: ['x', 'تعذّر قراءة حالة الخدمة'],
     };
+    let srvPainted = false;                // هل رُسمت حالة حقيقية يومًا؟
     function paintSrv(state, note) {
-        const [ok, label] = SRV_STATES[state] || ['x', note || 'غير معروف'];
+        srvPainted = true;
+        const known = SRV_STATES[state];
+        // لا نصّ «غير معروف» عارٍ: الحالة الخام تبقى في title للتشخيص.
+        const [ok, label] = known || ['x', note || 'تعذّر قراءة حالة الخدمة'];
+        const hint = known ? label : `الحالة الخام: ${state || '—'}`;
         serverChip.innerHTML = `<span class="erp-lamp" role="img" data-ok="${ok}" aria-label="حالة السيرفر: ${esc(label)}"></span>`
-            + `<span class="erp-srvctl__state">${esc(label)}</span>`
+            + `<span class="erp-srvctl__state" title="${esc(hint)}">${esc(label)}</span>`
             + (state === 'RUNNING'
                 ? `<button type="button" class="erp-btn erp-btn--sm erp-srvctl__btn" data-srv="stop" title="إيقاف خدمة السيرفر كاملة"><i class="ji" data-i="circle-x" aria-hidden="true"></i><span>إيقاف</span></button>`
                 : '')
@@ -476,8 +497,20 @@ export function mountShellExtras(shell, ctx = {}) {
                     + `<span class="erp-srvctl__state" title="${esc((res && res.message) || '')}">تحكم غير متاح</span>`;
                 return;
             }
-            paintSrv(String(res.state || ''), (res && res.message) || '');
-        } catch { /* الشبكة ترجع لاحقًا — اللمبة الحالية تبقى */ }
+            /* جسم الردّ هو { control, service:{state,installed,pid}, erp, … }
+               (server-control.js snapshot()) — لا حقل `state` في الجذر. قراءة
+               res.state كانت تمنح '' دائمًا، فالشريحة ترسم «غير معروف» في كل
+               مرة ولو كانت الخدمة تعمل. */
+            const svc = res.service || {};
+            paintSrv(svc.installed === false ? 'NOT_INSTALLED' : String(svc.state || 'UNKNOWN'));
+        } catch (e) {
+            /* الشبكة ترجع لاحقًا: آخر حالة معروفة تبقى كما هي — ما لم تكن
+               رُسمت أصلًا، فلا يبقى «جارٍ الفحص» وعودًا كاذبًا إلى الأبد. */
+            if (!srvPainted) {
+                serverChip.innerHTML = `<span class="erp-lamp" role="img" data-ok="x" aria-label="تعذّر فحص حالة الخدمة"></span>`
+                    + `<span class="erp-srvctl__state" title="${esc((e && e.message) || '')}">تعذّر فحص الخدمة</span>`;
+            }
+        }
     }
     async function srvAction(action) {
         if (srvBusy) {return;}
@@ -485,7 +518,7 @@ export function mountShellExtras(shell, ctx = {}) {
         if (action === 'stop') {
             confirm = String(window.prompt('إيقاف خدمة السيرفر يقطع النظام عن كل المستخدمين فورًا.\nقاعدة البيانات والنفق يبقيان كما هما.\nاكتب STOP للتأكيد:') || '').trim().toUpperCase();
             if (confirm !== 'STOP') {return;}
-        } else if (!window.confirm('تشغيل خدمة السيرفر الآن؟')) {return;}
+        } else if (!await confirmFn('تشغيل خدمة السيرفر الآن؟')) {return;}
         srvBusy = true;
         paintSrv(action === 'stop' ? 'STOP_PENDING' : 'START_PENDING');
         try {

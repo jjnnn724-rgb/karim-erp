@@ -29,86 +29,31 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.180';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.180';
-import { initTheme, currentTheme } from './theme.js?v=4.9.180';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.180';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.180';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.180';
-import { mountChartInteraction } from './charts-live.js?v=4.9.180';
-import { mountAiAssistant } from './ai-assistant.js?v=4.9.180';
-import { mountChat } from './chat.js?v=4.9.180';
-import { mountMobileShell } from './mobile-shell.js?v=4.9.180';
-import { createDataTable } from './data-display/data-table.js?v=4.9.180';
-import { ensureSession, setLogoutObserver, stopKeepAlive } from './session.js?v=4.9.180';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.180';
-import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.180';
-import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.180';
-import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.180';
-import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.180';
-import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.180';
-import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.180';
-import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.180';
-import { mountBranchesScreen } from './screens/branches.js?v=4.9.180';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.180';
-import { mountAttendanceScreen } from './screens/attendance.js?v=4.9.180';
-import { mountEmployeesScreen } from './screens/employees.js?v=4.9.180';
-import { mountLoginScreen } from './screens/login.js?v=4.9.180';
-import { mountSessionsScreen } from './screens/sessions.js?v=4.9.180';
-import { mountBriefingScreen } from './screens/briefing.js?v=4.9.180';
-import { mountCfoScreen } from './screens/cfo.js?v=4.9.180';
-import { mountWarehouseScreen } from './screens/warehouse.js?v=4.9.180';
-import { mountWarehouseGovScreen } from './screens/warehouse-gov.js?v=4.9.180';
-import { mountReportsScreen } from './screens/reports.js?v=4.9.180';
-import { mountProcurementScreen } from './screens/procurement.js?v=4.9.180';
-import { mountInvoicesScreen } from './screens/invoices.js?v=4.9.180';
-import { mountPaymentsScreen } from './screens/payments.js?v=4.9.180';
-import { mountWhInvoicesScreen } from './screens/wh-invoices.js?v=4.9.180';
-import { mountKitchenScreen } from './screens/kitchen.js?v=4.9.180';
-import { mountLeavesScreen } from './screens/leaves.js?v=4.9.180';
-import { mountDispatchScreen } from './screens/dispatch.js?v=4.9.180';
-import { mountVegScreen } from './screens/veg-requests.js?v=4.9.180';
-import { mountRosterScreen } from './screens/roster.js?v=4.9.180';
-import { mountEmployeePortalScreen } from './screens/employee-portal.js?v=4.9.180';
-import { mountSettingsScreen } from './screens/settings.js?v=4.9.180';
-import { mountUsersScreen } from './screens/users.js?v=4.9.180';
-import { mountYarasoftScreen } from './screens/yarasoft.js?v=4.9.180';
-import { mountWhatsappScreen } from './screens/whatsapp.js?v=4.9.180';
-import { mountPermissionsScreen } from './screens/permissions.js?v=4.9.180';
-import { mountCashierMonitorScreen } from './screens/cashier-monitor.js?v=4.9.180';
-import { mountOracleDataScreen } from './screens/oracle-data.js?v=4.9.180';
-import { mountDailyLocksScreen } from './screens/daily-locks.js?v=4.9.180';
-import { mountMenuBoardScreen } from './screens/menu-board.js?v=4.9.180';
-import { mountPosEntryScreen } from './screens/pos-entry.js?v=4.9.180';
-import { mountDepartmentsScreen } from './screens/departments.js?v=4.9.180';
-import { mountHrDepartmentsScreen } from './screens/hr-departments.js?v=4.9.180';
-import { mountPayrollScreen } from './screens/payroll.js?v=4.9.180';
-import { mountWhMovesScreen } from './screens/wh-moves.js?v=4.9.180';
-import { mountWhReturnsScreen } from './screens/wh-returns.js?v=4.9.180';
-import { mountWhPrsScreen } from './screens/wh-prs.js?v=4.9.180';
-import { mountGoodsScanScreen } from './screens/goods-scan.js?v=4.9.180';
-import { mountRecipesScreen } from './screens/recipes.js?v=4.9.180';
-import { mountRevenuesScreen } from './screens/revenues.js?v=4.9.180';
-import { mountExpensesScreen } from './screens/expenses.js?v=4.9.180';
-import { mountCostAnalysisScreen } from './screens/cost-analysis.js?v=4.9.180';
-import { mountCostCenterScreen } from './screens/cost-center.js?v=4.9.180';
-import { mountPnlScreen } from './screens/pnl.js?v=4.9.180';
-import { mountMonthlyComparisonScreen } from './screens/monthly-comparison.js?v=4.9.180';
-import { mountHrDashboardScreen } from './screens/hr-dashboard.js?v=4.9.180';
-import { mountZktecoScreen } from './screens/zkteco.js?v=4.9.180';
-import { mountDeptEmployeesScreen } from './screens/dept-employees.js?v=4.9.180';
-import { mountSalesAnalyzerScreen } from './screens/sales-analyzer.js?v=4.9.180';
-import { mountSalesInquiryScreen } from './screens/sales-inquiry.js?v=4.9.180';
-import { mountReceivedAnalyzerScreen } from './screens/received-analyzer.js?v=4.9.180';
-import { mountWhVsPosScreen } from './screens/wh-vs-pos.js?v=4.9.180';
-import { mountQueryScreen } from './screens/inventory-inquiry.js?v=4.9.180';
-import { mountProfessionalScreen } from './screens/inventory-inquiry-pro.js?v=4.9.180';
-import { mountShelvesScreen } from './screens/shelves.js?v=4.9.180';
-import { mountWeightScreen } from './screens/weight.js?v=4.9.180';
-import { mountAccountantDashboardScreen } from './screens/accountant-dashboard.js?v=4.9.180';
-import { mountWarehouseDashboardScreen } from './screens/warehouse-dashboard.js?v=4.9.180';
-import { mountDeptHeadDashboardScreen } from './screens/dept-head-dashboard.js?v=4.9.180';
-import { dashboardKind } from './role-dashboard.js?v=4.9.180';
+import { ROLES } from '../core/config.js?v=4.9.182';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.182';
+import { initTheme, currentTheme } from './theme.js?v=4.9.182';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.182';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.182';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.182';
+import { mountChartInteraction } from './charts-live.js?v=4.9.182';
+import { mountAiAssistant } from './ai-assistant.js?v=4.9.182';
+import { mountChat } from './chat.js?v=4.9.182';
+import { mountMobileShell } from './mobile-shell.js?v=4.9.182';
+import { createDataTable } from './data-display/data-table.js?v=4.9.182';
+import { ensureSession, setLogoutObserver, stopKeepAlive } from './session.js?v=4.9.182';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.182';
+import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.182';
+import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.182';
+import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.182';
+import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.182';
+import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.182';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.182';
+import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.182';
+import { confirmEnabled, createConfirm } from './confirm.js?v=4.9.182';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.182';
+import { loadScreen } from './screens/registry.js?v=4.9.182';
+import { mountLoginScreen } from './screens/login.js?v=4.9.182';
+import { dashboardKind } from './role-dashboard.js?v=4.9.182';
 
 // Enable the embedded cashier while retaining the standalone POS fallback.
 const V2_FEATURE_FLAGS = Object.freeze({ embeddedPos: true, salesEnabled: true });
@@ -251,6 +196,17 @@ let storedOverlayFlag = '';
 try {storedOverlayFlag = localStorage.getItem('karim_v2_overlay');} catch { /* private mode */ }
 const OVERLAY = overlayEnabled(window.location.search, storedOverlayFlag);
 installOverlay(window, { enabled: OVERLAY });
+
+/* ── 2e. تأكيد الإجراء — حوارٌ من نظام التصميم بدل نافذة نظام التشغيل ──
+   كل شاشة V2 تستقبل `confirmFn` من المضيف وتنتظره بـ`await`، فالمضيف وحده
+   يقرّر شكل السؤال. مع `?v2confirm=0` يبقى `window.confirm` حرفًا — وهو
+   مستوى التراجع الفوري بلا git. الحوار نفسه في js/v2/confirm.js. */
+let storedConfirmFlag = '';
+try {storedConfirmFlag = localStorage.getItem('karim_v2_confirm');} catch { /* private mode */ }
+const CONFIRM = confirmEnabled(window.location.search, storedConfirmFlag);
+const confirmAction = CONFIRM
+    ? createConfirm(window)
+    : (message) => Promise.resolve(Boolean(window.confirm(message)));
 
 /* ── 3. Boot theme ──────────────────────────────────────────────────── */
 initTheme();
@@ -474,7 +430,7 @@ async function renderCashRegisterScreen() {
     const host = shell.main.querySelector('[data-v2-cashreg-host]');
     try {
         if (!cashRegisterMount) {
-            const mod = await import('./screens/cash-register.js?v=4.9.180');
+            const mod = await import('./screens/cash-register.js?v=4.9.182');
             cashRegisterMount = mod.mountCashRegister;
         }
         cashRegisterHandle = cashRegisterMount(host, { navigate: (k) => shell.navigate(k) });
@@ -497,7 +453,7 @@ async function renderCashierSalesScreen() {
     const host = shell.main.querySelector('[data-v2-csales-host]');
     try {
         if (!cashierSalesMount) {
-            const mod = await import('./screens/cashier-sales.js?v=4.9.180');
+            const mod = await import('./screens/cashier-sales.js?v=4.9.182');
             cashierSalesMount = mod.mountCashierSales;
         }
         cashierSalesHandle = cashierSalesMount(host);
@@ -520,7 +476,7 @@ async function renderExecutiveScreen() {
     const host = shell.main.querySelector('[data-v2-executive-host]');
     try {
         if (!executiveMount) {
-            const mod = await import('./screens/executive.js?v=4.9.180');
+            const mod = await import('./screens/executive.js?v=4.9.182');
             executiveMount = mod.mountExecutive;
         }
         executiveHandle = executiveMount(host, { navigate: (k) => shell.navigate(k) });
@@ -561,6 +517,7 @@ const shellExtras = mountShellExtras(shell, {
        نموذجيًا كما كانت. */
     hasSession: () => !LIVE || sessionState.status === 'ready',
     onToast: (m) => { try {toast(m);} catch { console.info('[V2]', m); } },
+    confirm: confirmAction,
 });
 
 /* ── 5b3. Staff chat — legacy app.js:332-466 behind ?v2chat (OFF).
@@ -793,7 +750,7 @@ function renderSessionsScreen() {
     renderLiveRegisterScreen({
         key: 'sessions',
         title: 'الأجهزة والجلسات',
-        mount: mountSessionsScreen,
+        module: 'sessions',
         assign: (s) => { sessionsScreen = s; },
         extraCtx: {
             onCurrentRevoked: () => {
@@ -1298,7 +1255,7 @@ function renderBranchesScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'branches') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState();
@@ -1311,10 +1268,10 @@ function renderBranchesScreen() {
             <div data-v2-branches-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        branchesScreen = mountBranchesScreen(shell.main.querySelector('[data-v2-branches-host]'), {
+        branchesScreen = (await mountLazy('branches', '[data-v2-branches-host]', {
             role: session.role,
             notify: notifyTo(note),
-        });
+        })) || branchesScreen;
     });
 }
 
@@ -1353,7 +1310,7 @@ function renderAttendanceScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'attendance') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + `
@@ -1375,13 +1332,13 @@ function renderAttendanceScreen() {
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
         const u = session.user || {};
-        attendanceScreen = mountAttendanceScreen(shell.main.querySelector('[data-v2-attendance-host]'), {
+        attendanceScreen = (await mountLazy('attendance', '[data-v2-attendance-host]', {
             role: session.role,
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || attendanceScreen;
     });
 }
 
@@ -1416,7 +1373,7 @@ function renderEmployeesScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'employees') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + `
@@ -1437,11 +1394,11 @@ function renderEmployeesScreen() {
             <div data-v2-employees-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        employeesScreen = mountEmployeesScreen(shell.main.querySelector('[data-v2-employees-host]'), {
+        employeesScreen = (await mountLazy('employees', '[data-v2-employees-host]', {
             role: session.role,
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || employeesScreen;
     });
 }
 
@@ -1483,7 +1440,7 @@ function renderWarehouseScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'warehouse') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('المخزون');
@@ -1501,13 +1458,13 @@ function renderWarehouseScreen() {
         // W1-6c: واستوديو الجرد يقفل توقيعه باسم الحساب (والخادم يعيد الفحص)
         // — نفس قاعدة شاشة المطبخ: عدة أشكال للجلسة، والتطبيع هنا مرة واحدة.
         const u = session.user || {};
-        warehouseScreen = mountWarehouseScreen(shell.main.querySelector('[data-v2-warehouse-host]'), {
+        warehouseScreen = (await mountLazy('warehouse', '[data-v2-warehouse-host]', {
             role: session.role,
             userName: String(u.name || u.username || ''),
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
+            confirmFn: confirmAction,
             navigate: (key) => shell.navigate(key),
-        });
+        })) || warehouseScreen;
     });
 }
 
@@ -1545,7 +1502,7 @@ function renderWarehouseGovScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'warehouse-gov') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('حوكمة المخزن');
@@ -1558,11 +1515,11 @@ function renderWarehouseGovScreen() {
             <div data-v2-warehouse-gov-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        warehouseGovScreen = mountWarehouseGovScreen(shell.main.querySelector('[data-v2-warehouse-gov-host]'), {
+        warehouseGovScreen = (await mountLazy('warehouse-gov', '[data-v2-warehouse-gov-host]', {
             role: session.role,
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || warehouseGovScreen;
     });
 }
 
@@ -1603,7 +1560,7 @@ function renderReportsScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'reports') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('التقارير');
@@ -1616,10 +1573,10 @@ function renderReportsScreen() {
             <div data-v2-reports-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        reportsScreen = mountReportsScreen(shell.main.querySelector('[data-v2-reports-host]'), {
+        reportsScreen = (await mountLazy('reports', '[data-v2-reports-host]', {
             role: session.role,
             notify: notifyTo(note),
-        });
+        })) || reportsScreen;
     });
 }
 
@@ -1664,7 +1621,7 @@ function renderBriefingScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'cfo') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('الموجز');
@@ -1677,10 +1634,10 @@ function renderBriefingScreen() {
             <div data-v2-briefing-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        briefingScreen = mountBriefingScreen(shell.main.querySelector('[data-v2-briefing-host]'), {
+        briefingScreen = (await mountLazy('briefing', '[data-v2-briefing-host]', {
             role: session.role,
             notify: notifyTo(note),
-        });
+        })) || briefingScreen;
     });
 }
 
@@ -1716,7 +1673,7 @@ function renderProcurementScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'procurement') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('الموردون');
@@ -1729,12 +1686,12 @@ function renderProcurementScreen() {
             <div data-v2-procurement-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        procurementScreen = mountProcurementScreen(shell.main.querySelector('[data-v2-procurement-host]'), {
+        procurementScreen = (await mountLazy('procurement', '[data-v2-procurement-host]', {
             role: session.role,
             notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || procurementScreen;
     });
 }
 
@@ -1769,7 +1726,7 @@ function renderInvoicesScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'procurement-invoices') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('فواتير الموردين');
@@ -1782,11 +1739,11 @@ function renderInvoicesScreen() {
             <div data-v2-invoices-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        invoicesScreen = mountInvoicesScreen(shell.main.querySelector('[data-v2-invoices-host]'), {
+        invoicesScreen = (await mountLazy('invoices', '[data-v2-invoices-host]', {
             role: session.role,
             notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
-        });
+        })) || invoicesScreen;
     });
 }
 
@@ -1819,7 +1776,7 @@ function renderPaymentsScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'procurement-payments') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('مدفوعات الموردين');
@@ -1832,11 +1789,11 @@ function renderPaymentsScreen() {
             <div data-v2-payments-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        paymentsScreen = mountPaymentsScreen(shell.main.querySelector('[data-v2-payments-host]'), {
+        paymentsScreen = (await mountLazy('payments', '[data-v2-payments-host]', {
             role: session.role,
             notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
-        });
+        })) || paymentsScreen;
     });
 }
 
@@ -1871,7 +1828,7 @@ function renderWhInvoicesScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'wh-invoices') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('فواتير الشراء');
@@ -1884,11 +1841,11 @@ function renderWhInvoicesScreen() {
             <div data-v2-whinvoices-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        whInvoicesScreen = mountWhInvoicesScreen(shell.main.querySelector('[data-v2-whinvoices-host]'), {
+        whInvoicesScreen = (await mountLazy('wh-invoices', '[data-v2-whinvoices-host]', {
             role: session.role,
             notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
-        });
+        })) || whInvoicesScreen;
     });
 }
 
@@ -1923,7 +1880,7 @@ function renderKitchenScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'kitchen') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('المطبخ');
@@ -1941,12 +1898,12 @@ function renderKitchenScreen() {
         // User may be JWT claims ({sub,name}) or the refresh shape
         // ({id,name,username}) — normalise once, here (same fix as dispatch).
         const u = session.user || {};
-        kitchenScreen = mountKitchenScreen(shell.main.querySelector('[data-v2-kitchen-host]'), {
+        kitchenScreen = (await mountLazy('kitchen', '[data-v2-kitchen-host]', {
             role: session.role,
             userName: String(u.name || u.username || ''),
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || kitchenScreen;
     });
 }
 
@@ -1981,7 +1938,7 @@ function renderLeavesScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'leaves') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('الإجازات');
@@ -1994,10 +1951,10 @@ function renderLeavesScreen() {
             <div data-v2-leaves-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        leavesScreen = mountLeavesScreen(shell.main.querySelector('[data-v2-leaves-host]'), {
+        leavesScreen = (await mountLazy('leaves', '[data-v2-leaves-host]', {
             role: session.role,
             notify: notifyTo(note),
-        });
+        })) || leavesScreen;
     });
 }
 
@@ -2033,7 +1990,7 @@ function renderZktecoScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'zkteco') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('أجهزة البصمة');
@@ -2046,10 +2003,10 @@ function renderZktecoScreen() {
             <div data-v2-zkteco-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        zktecoScreen = mountZktecoScreen(shell.main.querySelector('[data-v2-zkteco-host]'), {
+        zktecoScreen = (await mountLazy('zkteco', '[data-v2-zkteco-host]', {
             role: session.role,
             notify: notifyTo(note),
-        });
+        })) || zktecoScreen;
     });
 }
 
@@ -2086,7 +2043,7 @@ function renderHrDashboardScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'hr-dashboard') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('لوحة الموارد');
@@ -2099,11 +2056,11 @@ function renderHrDashboardScreen() {
             <div data-v2-hrdash-host></div>
           </div>`;
         const note = shell.main.querySelector('[data-v2-note]');
-        hrDashboardScreen = mountHrDashboardScreen(shell.main.querySelector('[data-v2-hrdash-host]'), {
+        hrDashboardScreen = (await mountLazy('hr-dashboard', '[data-v2-hrdash-host]', {
             role: session.role,
             notify: notifyTo(note),
             navigate: (k) => shell.navigate(k),
-        });
+        })) || hrDashboardScreen;
     });
 }
 
@@ -2138,7 +2095,7 @@ function renderDispatchScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'dispatch') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('أذون الصرف');
@@ -2156,14 +2113,14 @@ function renderDispatchScreen() {
         // User may be JWT claims ({sub,name,dept_code}) or the refresh shape
         // ({id,name,role,username,dept_code}) — normalise both once, here.
         const u = session.user || {};
-        dispatchScreen = mountDispatchScreen(shell.main.querySelector('[data-v2-dispatch-host]'), {
+        dispatchScreen = (await mountLazy('dispatch', '[data-v2-dispatch-host]', {
             role: session.role,
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
             deptCode: String(u.dept_code || ''),
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || dispatchScreen;
     });
 }
 
@@ -2198,7 +2155,7 @@ function renderVegScreen() {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'veg-requests') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('طلبات الخضار');
@@ -2216,14 +2173,57 @@ function renderVegScreen() {
         // لتأكيد رفض كل الأصناف. User may be JWT claims ({sub,name,dept_code})
         // or the refresh shape ({id,name,role,username,dept_code}).
         const u = session.user || {};
-        vegScreen = mountVegScreen(shell.main.querySelector('[data-v2-veg-host]'), {
+        vegScreen = (await mountLazy('veg-requests', '[data-v2-veg-host]', {
             role: session.role,
             userId: u.id != null ? u.id : (u.sub != null ? Number(u.sub) : null),
             userName: String(u.name || u.username || ''),
             notify: notifyTo(note),
-            confirmFn: (message) => window.confirm(message),
-        });
+            confirmFn: confirmAction,
+        })) || vegScreen;
     });
+}
+
+/* رسمُ فشل التحميل داخل بطاقة النظام نفسها — لا شاشة بيضاء ولا بياناتٌ
+   نموذجية تحت اسمٍ حقيقي. إعادةُ المحاولة تُعيد تحميل الصفحة لأن رقم
+   المراجعة في وسوم الوحدات قد يكون تغيّر بعد نشرٍ جديد. */
+function paintLoadFailure(host, title) {
+    host.innerHTML = `<section class="erp-card"><div class="erp-card__body"><div class="erp-state" role="alert">
+      <span class="erp-state__title">تعذّر تحميل ${esc(title)}</span>
+      <span>لم تُحمَّل وحدة الشاشة. تحقّق من الاتصال ثم أعد المحاولة — لا تُعرض بيانات نموذجية.</span>
+      <button type="button" class="erp-btn erp-btn--sm" data-v2-reload>إعادة المحاولة</button>
+    </div></div></section>`;
+    host.querySelector('[data-v2-reload]')?.addEventListener('click', () => window.location.reload());
+}
+
+/**
+ * تركيب شاشةٍ بعد تحميل وحدتها — البوابة الوحيدة للشاشات الكسولة.
+ * تُستورد الوحدات ديناميكيًّا عبر screens/registry.js، فبين بدء الرسم ووصول
+ * الوحدة قد يتغيّر المسار. نلتقط عنصر المضيف قبل الانتظار ونطابقه بعده:
+ * إعادةُ الرسم تُنشئ عنصرًا جديدًا، فلا نركّب في عنصرٍ منزوع (نسخة تتسرّب
+ * بلا teardown)، ولا نُسنِد نسخةً قديمة فوق نسخةٍ أحدث.
+ * @returns {Promise<object|null>} نسخةُ الشاشة، أو null إن أُلغي الرسم.
+ */
+async function mountLazy(moduleKey, hostSel, ctx, navKey = moduleKey) {
+    const pending = shell.main.querySelector(hostSel);
+    if (!pending) {return null;}
+    let mount;
+    try {
+        mount = await loadScreen(moduleKey);
+    } catch (err) {
+        console.error(`[V2] تعذّر تحميل وحدة الشاشة «${moduleKey}»:`, err);
+        paintLoadFailure(pending, pageTitle(navKey));
+        return null;
+    }
+    if (navStatus.current !== navKey) {return null;}
+    const host = shell.main.querySelector(hostSel);
+    if (!host || host !== pending) {return null;}
+    try {
+        return mount(host, ctx);
+    } catch (err) {
+        console.error(`[V2] تعذّر تركيب الشاشة «${moduleKey}»:`, err);
+        paintLoadFailure(host, pageTitle(navKey));
+        return null;
+    }
 }
 
 /**
@@ -2233,7 +2233,7 @@ function renderVegScreen() {
  * screen instance is handed back through `assign` so each teardown can
  * reach its own module-level variable.
  */
-function renderLiveRegisterScreen({ key, title, mount, assign, extraCtx }) {
+function renderLiveRegisterScreen({ key, title, module, assign, extraCtx }) {
     if (!isLive()) {
         shell.main.innerHTML = `
           ${liveModeStrip()}
@@ -2262,7 +2262,7 @@ function renderLiveRegisterScreen({ key, title, mount, assign, extraCtx }) {
         </div>
       </section>`;
 
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== key) {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState(title);
@@ -2286,156 +2286,157 @@ function renderLiveRegisterScreen({ key, title, mount, assign, extraCtx }) {
             set textContent(value) { (host.querySelector('[data-v2-note]') || note).textContent = value; },
         };
         const u = session.user || {};
-        assign(mount(host, {
+        const screen = await mountLazy(module || key, '[data-v2-register-host]', {
             role: session.role,
             userId: u.id != null ? u.id : null,
             userName: String(u.name || u.username || ''),
             deptCode: String(u.dept_code || ''),
             featureFlags: V2_FEATURE_FLAGS,
-            confirmFn: (message) => window.confirm(message),
+            confirmFn: confirmAction,
             notify: notifyTo(noteTarget),
             navigate: (key) => shell.navigate(key),
             ...(extraCtx || {}),
-        }));
+        }, key);
+        if (screen) {assign(screen);}
         if (host.querySelector('[data-v2-note]')) {note.remove();}
     });
 }
 
-function renderCfoScreen() { renderLiveRegisterScreen({ key: 'cfo', title: 'المدير المالي', mount: mountCfoScreen, assign: (s) => { cfoScreen = s; } }); }
+function renderCfoScreen() { renderLiveRegisterScreen({ key: 'cfo', title: 'المدير المالي', module: 'cfo', assign: (s) => { cfoScreen = s; } }); }
 
 function renderRevenuesScreen() {
     renderLiveRegisterScreen({
-        key: 'revenues', title: 'الإيرادات', mount: mountRevenuesScreen,
+        key: 'revenues', title: 'الإيرادات', module: 'revenues',
         assign: (s) => { revenuesScreen = s; },
     });
 }
 
 function renderExpensesScreen() {
     renderLiveRegisterScreen({
-        key: 'expenses', title: 'المصروفات', mount: mountExpensesScreen,
+        key: 'expenses', title: 'المصروفات', module: 'expenses',
         assign: (s) => { expensesScreen = s; },
     });
 }
 
 function renderCostAnalysisScreen() {
     renderLiveRegisterScreen({
-        key: 'cost-analysis', title: 'تحليل التكاليف', mount: mountCostAnalysisScreen,
+        key: 'cost-analysis', title: 'تحليل التكاليف', module: 'cost-analysis',
         assign: (s) => { costAnalysisScreen = s; },
     });
 }
 
 function renderCostCenterScreen() {
     renderLiveRegisterScreen({
-        key: 'cost-center', title: 'حساب القسم', mount: mountCostCenterScreen,
+        key: 'cost-center', title: 'حساب القسم', module: 'cost-center',
         assign: (s) => { costCenterScreen = s; },
     });
 }
 
 function renderPnlScreen() {
     renderLiveRegisterScreen({
-        key: 'pnl', title: 'قائمة الدخل', mount: mountPnlScreen,
+        key: 'pnl', title: 'قائمة الدخل', module: 'pnl',
         assign: (s) => { pnlScreen = s; },
     });
 }
 
 function renderMonthlyComparisonScreen() {
     renderLiveRegisterScreen({
-        key: 'monthly-comparison', title: 'مقارنة الشهور', mount: mountMonthlyComparisonScreen,
+        key: 'monthly-comparison', title: 'مقارنة الشهور', module: 'monthly-comparison',
         assign: (s) => { monthlyComparisonScreen = s; },
     });
 }
 
 function renderWhMovesScreen() {
-    renderLiveRegisterScreen({ key: 'wh-moves', title: 'حركات المخزون', mount: mountWhMovesScreen, assign: (s) => { whMovesScreen = s; } });
+    renderLiveRegisterScreen({ key: 'wh-moves', title: 'حركات المخزون', module: 'wh-moves', assign: (s) => { whMovesScreen = s; } });
 }
 
 /* البند ٩: مسح الباركود — مسارٌ فرعي (#goods-scan) لا بطاقة في القائمة،
    والشاشة نفسها تقرأ ?v2scan وتطفئ كل شيء بدونه (screens/goods-scan.js). */
 function renderGoodsScanScreen() {
-    renderLiveRegisterScreen({ key: 'goods-scan', title: 'مسح الباركود', mount: mountGoodsScanScreen, assign: (s) => { goodsScanScreen = s; } });
+    renderLiveRegisterScreen({ key: 'goods-scan', title: 'مسح الباركود', module: 'goods-scan', assign: (s) => { goodsScanScreen = s; } });
 }
 
 function renderWhReturnsScreen() {
-    renderLiveRegisterScreen({ key: 'wh-returns', title: 'مرتجعات المطبخ', mount: mountWhReturnsScreen, assign: (s) => { whReturnsScreen = s; } });
+    renderLiveRegisterScreen({ key: 'wh-returns', title: 'مرتجعات المطبخ', module: 'wh-returns', assign: (s) => { whReturnsScreen = s; } });
 }
 
 function renderWhPrsScreen() {
-    renderLiveRegisterScreen({ key: 'wh-prs', title: 'طلبات شراء النواقص', mount: mountWhPrsScreen, assign: (s) => { whPrsScreen = s; } });
+    renderLiveRegisterScreen({ key: 'wh-prs', title: 'طلبات شراء النواقص', module: 'wh-prs', assign: (s) => { whPrsScreen = s; } });
 }
 
 function renderRecipesScreen() {
-    renderLiveRegisterScreen({ key: 'recipes', title: 'الوصفات', mount: mountRecipesScreen, assign: (s) => { recipesScreen = s; } });
+    renderLiveRegisterScreen({ key: 'recipes', title: 'الوصفات', module: 'recipes', assign: (s) => { recipesScreen = s; } });
 }
 
 function renderDepartmentsScreen() {
-    renderLiveRegisterScreen({ key: 'departments', title: 'الأقسام', mount: mountDepartmentsScreen, assign: (s) => { departmentsScreen = s; } });
+    renderLiveRegisterScreen({ key: 'departments', title: 'الأقسام', module: 'departments', assign: (s) => { departmentsScreen = s; } });
 }
 
 function renderHrDepartmentsScreen() {
-    renderLiveRegisterScreen({ key: 'hr-departments', title: 'أقسام HR', mount: mountHrDepartmentsScreen, assign: (s) => { hrDepartmentsScreen = s; } });
+    renderLiveRegisterScreen({ key: 'hr-departments', title: 'أقسام HR', module: 'hr-departments', assign: (s) => { hrDepartmentsScreen = s; } });
 }
 
 function renderPayrollScreen() {
-    renderLiveRegisterScreen({ key: 'payroll', title: 'مسيرات الرواتب', mount: mountPayrollScreen, assign: (s) => { payrollScreen = s; } });
+    renderLiveRegisterScreen({ key: 'payroll', title: 'مسيرات الرواتب', module: 'payroll', assign: (s) => { payrollScreen = s; } });
 }
 
-function renderRosterScreen() { renderLiveRegisterScreen({ key: 'roster', title: 'الدوام', mount: mountRosterScreen, assign: (s) => { rosterScreen = s; } }); }
+function renderRosterScreen() { renderLiveRegisterScreen({ key: 'roster', title: 'الدوام', module: 'roster', assign: (s) => { rosterScreen = s; } }); }
 
-function renderEmployeePortalScreen() { renderLiveRegisterScreen({ key: 'employee-portal', title: 'البصمات (ذاتي)', mount: mountEmployeePortalScreen, assign: (s) => { employeePortalScreen = s; } }); }
+function renderEmployeePortalScreen() { renderLiveRegisterScreen({ key: 'employee-portal', title: 'البصمات (ذاتي)', module: 'employee-portal', assign: (s) => { employeePortalScreen = s; } }); }
 
-function renderSettingsScreen() { renderLiveRegisterScreen({ key: 'settings', title: 'الإعدادات', mount: mountSettingsScreen, assign: (s) => { settingsScreen = s; } }); }
+function renderSettingsScreen() { renderLiveRegisterScreen({ key: 'settings', title: 'الإعدادات', module: 'settings', assign: (s) => { settingsScreen = s; } }); }
 
-function renderUsersScreen() { renderLiveRegisterScreen({ key: 'users', title: 'المستخدمون', mount: mountUsersScreen, assign: (s) => { usersScreen = s; } }); }
+function renderUsersScreen() { renderLiveRegisterScreen({ key: 'users', title: 'المستخدمون', module: 'users', assign: (s) => { usersScreen = s; } }); }
 
-function renderYarasoftScreen() { renderLiveRegisterScreen({ key: 'yarasoft', title: 'تكامل قاعدة الكاشير', mount: mountYarasoftScreen, assign: (s) => { yarasoftScreen = s; } }); }
+function renderYarasoftScreen() { renderLiveRegisterScreen({ key: 'yarasoft', title: 'تكامل قاعدة الكاشير', module: 'yarasoft', assign: (s) => { yarasoftScreen = s; } }); }
 
-function renderWhatsappScreen() { renderLiveRegisterScreen({ key: 'whatsapp', title: 'WhatsApp', mount: mountWhatsappScreen, assign: (s) => { whatsappScreen = s; } }); }
+function renderWhatsappScreen() { renderLiveRegisterScreen({ key: 'whatsapp', title: 'WhatsApp', module: 'whatsapp', assign: (s) => { whatsappScreen = s; } }); }
 
-function renderPermissionsScreen() { renderLiveRegisterScreen({ key: 'permissions', title: 'الصلاحيات', mount: mountPermissionsScreen, assign: (s) => { permissionsScreen = s; } }); }
+function renderPermissionsScreen() { renderLiveRegisterScreen({ key: 'permissions', title: 'الصلاحيات', module: 'permissions', assign: (s) => { permissionsScreen = s; } }); }
 
-function renderCashierMonitorScreen() { renderLiveRegisterScreen({ key: 'cashier-monitor', title: 'متابعة الكاشير', mount: mountCashierMonitorScreen, assign: (s) => { cashierMonitorScreen = s; } }); }
+function renderCashierMonitorScreen() { renderLiveRegisterScreen({ key: 'cashier-monitor', title: 'متابعة الكاشير', module: 'cashier-monitor', assign: (s) => { cashierMonitorScreen = s; } }); }
 
-function renderOracleDataScreen() { renderLiveRegisterScreen({ key: 'oracle-data', title: 'بيانات Oracle', mount: mountOracleDataScreen, assign: (s) => { oracleDataScreen = s; } }); }
+function renderOracleDataScreen() { renderLiveRegisterScreen({ key: 'oracle-data', title: 'بيانات Oracle', module: 'oracle-data', assign: (s) => { oracleDataScreen = s; } }); }
 
-function renderDailyLocksScreen() { renderLiveRegisterScreen({ key: 'yara-daily-locks', title: 'التقفيل اليومي', mount: mountDailyLocksScreen, assign: (s) => { dailyLocksScreen = s; } }); }
+function renderDailyLocksScreen() { renderLiveRegisterScreen({ key: 'yara-daily-locks', title: 'التقفيل اليومي', module: 'daily-locks', assign: (s) => { dailyLocksScreen = s; } }); }
 
-function renderPosEntryScreen() { renderLiveRegisterScreen({ key: 'pos', title: 'الكاشير', mount: mountPosEntryScreen, assign: (s) => { posEntryScreen = s; } }); }
+function renderPosEntryScreen() { renderLiveRegisterScreen({ key: 'pos', title: 'الكاشير', module: 'pos-entry', assign: (s) => { posEntryScreen = s; } }); }
 
 function renderMenuBoardScreen() {
     if (!isLive()) {
         shell.main.innerHTML = `${liveModeStrip()}<section class="erp-card" style="margin-block-start:var(--erp-space-4)"><div class="erp-card__body"><div class="erp-state"><span class="erp-state__title">شاشات المنيو — تُعرض من الخادم</span><span>العرض الحي يتطلب <a href="v2.html?live=1">الوضع الحيّ</a> بجلسة مسجلة في هذا المتصفح.</span></div></div></section>`;
         return;
     }
-    sessionPromise.then((session) => {
+    sessionPromise.then(async (session) => {
         if (navStatus.current !== 'menu-board') {return;}
         if (!session) {
             shell.main.innerHTML = liveModeStrip() + noSessionState('شاشات المنيو');
             return;
         }
         shell.main.innerHTML = `${liveModeStrip()}<div class="erp-stack" style="margin-block-start:var(--erp-space-4)"><div data-v2-register-host></div></div>`;
-        menuBoardScreen = mountMenuBoardScreen(shell.main.querySelector('[data-v2-register-host]'), {
+        menuBoardScreen = (await mountLazy('menu-board', '[data-v2-register-host]', {
             notify: (_message) => {},
-        });
+        })) || menuBoardScreen;
     });
 }
 
-function renderDeptEmployeesScreen() { renderLiveRegisterScreen({ key: 'dept-employees', title: 'موظفو القسم', mount: mountDeptEmployeesScreen, assign: (s) => { deptEmpScreen = s; } }); }
+function renderDeptEmployeesScreen() { renderLiveRegisterScreen({ key: 'dept-employees', title: 'موظفو القسم', module: 'dept-employees', assign: (s) => { deptEmpScreen = s; } }); }
 
-function renderSalesAnalyzerScreen() { renderLiveRegisterScreen({ key: 'sales-analyzer', title: 'تحليل المبيعات', mount: mountSalesAnalyzerScreen, assign: (s) => { salesAnalyzerScreen = s; } }); }
+function renderSalesAnalyzerScreen() { renderLiveRegisterScreen({ key: 'sales-analyzer', title: 'تحليل المبيعات', module: 'sales-analyzer', assign: (s) => { salesAnalyzerScreen = s; } }); }
 
-function renderSalesInquiryScreen() { renderLiveRegisterScreen({ key: 'sales-inquiry', title: 'استعلام المبيعات', mount: mountSalesInquiryScreen, assign: (s) => { salesInquiryScreen = s; } }); }
+function renderSalesInquiryScreen() { renderLiveRegisterScreen({ key: 'sales-inquiry', title: 'استعلام المبيعات', module: 'sales-inquiry', assign: (s) => { salesInquiryScreen = s; } }); }
 
-function renderReceivedAnalyzerScreen() { renderLiveRegisterScreen({ key: 'received-analyzer', title: 'المستلم من المخزن', mount: mountReceivedAnalyzerScreen, assign: (s) => { receivedAnalyzerScreen = s; } }); }
+function renderReceivedAnalyzerScreen() { renderLiveRegisterScreen({ key: 'received-analyzer', title: 'المستلم من المخزن', module: 'received-analyzer', assign: (s) => { receivedAnalyzerScreen = s; } }); }
 
-function renderWhVsPosScreen() { renderLiveRegisterScreen({ key: 'wh-vs-pos', title: 'مقارنة الصرف والمبيعات', mount: mountWhVsPosScreen, assign: (s) => { whVsPosScreen = s; } }); }
+function renderWhVsPosScreen() { renderLiveRegisterScreen({ key: 'wh-vs-pos', title: 'مقارنة الصرف والمبيعات', module: 'wh-vs-pos', assign: (s) => { whVsPosScreen = s; } }); }
 
-function renderQueryScreen() { renderLiveRegisterScreen({ key: 'query', title: 'محرك الاستعلامات', mount: mountQueryScreen, assign: (s) => { queryScreen = s; } }); }
+function renderQueryScreen() { renderLiveRegisterScreen({ key: 'query', title: 'محرك الاستعلامات', module: 'inventory-inquiry', assign: (s) => { queryScreen = s; } }); }
 
-function renderProfessionalScreen() { renderLiveRegisterScreen({ key: 'professional', title: 'البطاقة الفاخرة', mount: mountProfessionalScreen, assign: (s) => { professionalScreen = s; } }); }
+function renderProfessionalScreen() { renderLiveRegisterScreen({ key: 'professional', title: 'البطاقة الفاخرة', module: 'inventory-inquiry-pro', assign: (s) => { professionalScreen = s; } }); }
 
-function renderShelvesScreen() { renderLiveRegisterScreen({ key: 'shelves', title: 'الرفوف', mount: mountShelvesScreen, assign: (s) => { shelvesScreen = s; } }); }
+function renderShelvesScreen() { renderLiveRegisterScreen({ key: 'shelves', title: 'الرفوف', module: 'shelves', assign: (s) => { shelvesScreen = s; } }); }
 
-function renderWeightScreen() { renderLiveRegisterScreen({ key: 'weight', title: 'الميزان', mount: mountWeightScreen, assign: (s) => { weightScreen = s; } }); }
+function renderWeightScreen() { renderLiveRegisterScreen({ key: 'weight', title: 'الميزان', module: 'weight', assign: (s) => { weightScreen = s; } }); }
 
 function noSessionState(entity = 'الفروع') {
     return `
@@ -2836,7 +2837,7 @@ function renderScreen(key) {
               </div>
             </div>
           </section>`;
-        sessionPromise.then((session) => {
+        sessionPromise.then(async (session) => {
             if (navStatus.current !== 'dashboard') {return;}
             if (!session) {
                 shell.main.innerHTML = liveModeStrip() + noSessionState('اللوحة');
@@ -2849,7 +2850,6 @@ function renderScreen(key) {
                 <div data-v2-dashboard-host></div>
               </div>`;
             const note = shell.main.querySelector('[data-v2-note]');
-            const host = shell.main.querySelector('[data-v2-dashboard-host]');
             const u = session.user || {};
             const ctx = {
                 role: session.role,
@@ -2858,28 +2858,29 @@ function renderScreen(key) {
                 deptCode: String(u.dept_code || ''),
                 notify: notifyTo(note),
                 navigate: (key) => shell.navigate(key),
+                confirmFn: confirmAction,
             };
             // P2-7: each role reads the dashboard it owns (legacy mapping,
             // features/dashboard.js:127-133). admin/manager — and any role
             // without a migrated dashboard — keep the executive briefing.
             switch (dashboardKind(session.role)) {
                 case 'hr':
-                    hrDashboardScreen = mountHrDashboardScreen(host, ctx);
+                    hrDashboardScreen = (await mountLazy('hr-dashboard', '[data-v2-dashboard-host]', ctx, 'dashboard')) || hrDashboardScreen;
                     break;
                 case 'employee':
-                    employeePortalScreen = mountEmployeePortalScreen(host, ctx);
+                    employeePortalScreen = (await mountLazy('employee-portal', '[data-v2-dashboard-host]', ctx, 'dashboard')) || employeePortalScreen;
                     break;
                 case 'accountant':
-                    accountantScreen = mountAccountantDashboardScreen(host, ctx);
+                    accountantScreen = (await mountLazy('accountant-dashboard', '[data-v2-dashboard-host]', ctx, 'dashboard')) || accountantScreen;
                     break;
                 case 'warehouse':
-                    warehouseDashScreen = mountWarehouseDashboardScreen(host, ctx);
+                    warehouseDashScreen = (await mountLazy('warehouse-dashboard', '[data-v2-dashboard-host]', ctx, 'dashboard')) || warehouseDashScreen;
                     break;
                 case 'dept-head':
-                    deptHeadDashScreen = mountDeptHeadDashboardScreen(host, ctx);
+                    deptHeadDashScreen = (await mountLazy('dept-head-dashboard', '[data-v2-dashboard-host]', ctx, 'dashboard')) || deptHeadDashScreen;
                     break;
                 default:
-                    briefingScreen = mountBriefingScreen(host, ctx);
+                    briefingScreen = (await mountLazy('briefing', '[data-v2-dashboard-host]', ctx, 'dashboard')) || briefingScreen;
             }
         });
         return;

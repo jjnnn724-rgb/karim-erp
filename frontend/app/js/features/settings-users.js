@@ -615,22 +615,9 @@ function employeeAccountOptions(selectedId=null,userId=null){return `<option val
 async function linkUserToEmployee(userId,employeeId){const result=await apiFetch(`/users/${encodeURIComponent(userId)}/employee`,{method:'PUT',body:JSON.stringify({employeeId:employeeId||null})});(result.previousEmployees||[]).forEach(e=>upsertStateEntity('employees',{...e,userId:null}));if(result.employee){upsertStateEntity('employees',result.employee);}return result;}
 function toggleEmployeeAccountFields(){const enabled=Boolean(document.getElementById('empCreateAccount')?.checked);const box=document.getElementById('empAccountFields');if(box){box.style.display=enabled?'grid':'none';}}
 function showCreateEmployeeAccountModal(employeeId){showAddUserModal(employeeId);}
-// خزنة كلمات المرور: عرض النسخة المسجلة (أدمن فقط — مسار محمي على الخادم)
-async function viewUserPassword(id){
-const u=STATE.users.find(x=>String(x.id)===String(id));
-if(!u){return;}
-try{
-const r=await apiFetch('/users/'+id+'/password');
-if(!r.available){
-showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل الحساب» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.</div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button></div>`);
-return;
-}
-showModal(`<h3><i class=ji data-i=key></i> كلمة مرور ${esc(u.name)}</h3><div class="workflow-banner">اسم المستخدم: <strong>@${esc(u.username)}</strong> — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:26px;font-weight:bold;letter-spacing:2px;color:var(--gold,#c9a227)">${esc(r.password)}</div></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="copyResetCode" data-karim-arg0="${esc(r.password)}"><i class=ji data-i=copy></i> نسخ</button></div>`);
-}catch(_){ toast('تعذر جلب كلمة المرور — حاول مرة أخرى','error'); }
-}
 function renderUserCards(users){
 if(!users || !users.length) {return '<div class="mcard u-empty-grid">' + t('user.noResult') + '</div>';}
-return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" data-karim-action="editUser" data-karim-arg0="${u.id}"><i class=ji data-i=pencil></i> تعديل الحساب</button><button class="btn btn-sm" data-karim-action="viewUserPassword" data-karim-arg0="${u.id}" title="عرض كلمة المرور المسجلة"><i class=ji data-i=eye></i></button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" data-karim-action="issueResetCode" data-karim-arg0="${u.id}" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id?`<button class="btn btn-red btn-sm" data-karim-action="deleteUser" data-karim-arg0="${u.id}"><i class=ji data-i=trash></i></button>`:''}</div></div>`;}).join('');
+return users.map(u=>{const role=ROLES[u.role];const emp=linkedEmployeeForUser(u.id);const active=u.active!==false;const deptLine=u.role==='dept_head'?`<br><strong>قسمه:</strong> <span class="badge bdg-blue">${esc(deptNameByCode(u.dept_code))}</span>`:'';return `<div class="mcard"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:50%;background:var(--gold-d);display:flex;align-items:center;justify-content:center;font-size:22px">${role?.icon||'<i class=ji data-i=user></i>'}</div><div class="u-flex1"><div class="fw-bold">${esc(u.name)}</div><div class="text-muted" style="font-size:11px">@${esc(u.username)}</div></div><span class="badge ${active?'bdg-green':'bdg-red'}">${active?'نشط':'موقوف'}</span></div><div class="details-item" style="margin-top:8px"><strong>الدور:</strong> ${role?.name||esc(u.role)}${deptLine}<br><strong>الموظف المرتبط:</strong> ${emp?`${esc(emp.name)} — ${esc(emp.employeeId||'')}`:'<span class="text-muted">غير مربوط</span>'}</div><div class="fr u-mt12"><button class="btn btn-sm u-flex1" data-karim-action="editUser" data-karim-arg0="${u.id}"><i class=ji data-i=pencil></i> تعديل الحساب</button>${active&&u.id!==STATE.currentUser.id?`<button class="btn btn-sm" data-karim-action="issueResetCode" data-karim-arg0="${u.id}" title="توليد رمز استعادة لكلمة المرور (10 دقائق، استخدام واحد)"><i class=ji data-i=key></i></button>`:''}${u.id!==STATE.currentUser.id&&active?`<button class="btn btn-red btn-sm" data-karim-action="deleteUser" data-karim-arg0="${u.id}" title="تعطيل الحساب مع حفظ كلمة المرور"><i class=ji data-i=lock></i></button>`:''}</div></div>`;}).join('');
 }
 function renderUsers(){
 if(STATE.currentUser.role!=='admin') {return '<div class="mcard"><i class=ji data-i=circle-x></i> هذه الصفحة للمدير فقط</div>';}
@@ -721,13 +708,13 @@ try {
 }
 async function deleteUser(id){
 if(String(id)===String(STATE.currentUser?.id)){ toast('لا يمكن حذف حسابك','error'); return; }
-if(!confirm('حذف هذا المستخدم؟')){return;}
+if(!confirm('تعطيل هذا المستخدم؟ لن يستطيع الدخول، وتبقى كلمة المرور محفوظة.')){return;}
 try {
   await persistRemove('users',id);
   STATE.users=STATE.users.filter(u=>String(u.id)!==String(id));
   STATE.employees.forEach(emp=>{if(String(emp.userId)===String(id)) {emp.userId=null;}});
   renderPage();
-  toast('تم حذف المستخدم من قاعدة البيانات','warning');
+  toast('تم تعطيل المستخدم وحفظ تاريخه','warning');
 } catch(e) { toast(e.message||'تعذر حذف المستخدم','error'); }
 }
 
@@ -1040,4 +1027,4 @@ function kdSysRestoreModal(p0) {
 }
 
 
-export {saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, viewUserPassword, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts, loadPunchDevices, unbindPunchDevice, kdAct, kdAct49, kdSysRestoreModal };;
+export {saveNavVisibility, enrollPunchFace, removePunchFace, refreshPunchFaces, renderSettings, loadCardSettings, saveCardSettings, showOperationalResetModal, executeOperationalReset, handleLogoUpload, resetLogo, saveSettings, ZATCA_WRITE, ZATCA_STATUS_LABEL, renderZatcaHub, loadZatcaHub, zatcaSave, zatcaToggle, zatcaTest, zatcaEnvChanged, zatcaGenerateCsr, zatcaCopyCsr, zatcaCsidModal, zatcaRequestCsid, loadZatcaQueue, zatcaRetry, zatcaCsidManualModal, zatcaCsidManualSubmit, zatcaCsidClear, zatcaApplyVat, KOT_CAN_WRITE, renderKotSettings, loadKotSettings, saveKotSettings, exportAllData, showDatabaseRestoreInfo, sysFmtBytes, sysLoadBackups, sysDoBackup, sysUploadBackup, sysRestoreModal, sysConfirmRestore, resetAllData, linkedEmployeeForUser, linkedUserForEmployee, employeeAccountOptions, linkUserToEmployee, toggleEmployeeAccountFields, showCreateEmployeeAccountModal, renderUserCards, renderUsers, filterUsers, showAddUserModal, toggleUserDeptField, addUser, editUser, updateUser, deleteUser, loadPunchSettingsUI, savePunchSettings, captureRestaurantLocation, loadPunchAttempts, loadPunchDevices, unbindPunchDevice, kdAct, kdAct49, kdSysRestoreModal };;

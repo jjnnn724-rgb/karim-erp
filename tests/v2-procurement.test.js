@@ -486,8 +486,8 @@ describe('الرسوم والثوابت — لا انفجار تخزيني ول�
 
     test('المضيف يمرّر confirmFn لشاشة الموردين — لا سقوط صامت إلى نافذة المتصفح الخام', () => {
         const host = read(HOST);
-        const mount = host.slice(host.indexOf('mountProcurementScreen('));
-        expect(mount).toContain('confirmFn: (message) => window.confirm(message)');
+        const mount = host.slice(host.indexOf("mountLazy('procurement'"));
+        expect(mount).toContain('confirmFn: confirmAction');
     });
 });
 
