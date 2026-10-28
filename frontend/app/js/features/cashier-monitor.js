@@ -267,7 +267,8 @@ function cmPrintReport(){
     w.document.close();
     w.focus();
 }
-function cmExportExcel(){
+async function cmExportExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if(typeof XLSX==='undefined'){ toast('مكتبة Excel غير محملة','error'); return; }
     const rows = cmReportRows();
     const data=[['الكاشير','الفواتير','الإيراد شامل','قبل الضريبة','المتوسط','نقدًا','شبكة','آخر فاتورة']];

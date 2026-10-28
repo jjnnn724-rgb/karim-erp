@@ -20,8 +20,10 @@ function renderDashboardAnalytics(){
  const deptOptions=STATE.departments.map(d=>`<option value="${esc(d.code)}" ${dashboardChartDept===d.code?'selected':''}>${esc(d.name)}</option>`).join('');
  return `<section class="dashboard-analytics" style="margin-top:30px"><div class="section-header"><div><div class="section-title"><i class=ji data-i=chart></i> التحليلات التفاعلية</div><div class="text-muted" style="font-size:12px;margin-top:4px">بيانات مباشرة من النظام — اضغط على عناصر الرسم للتفاصيل</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="dashboardChartDays" class="form-control" data-karim-action="kdRenderPage" data-karim-event="change" data-karim-pass="value"><option value="7" ${dashboardChartDays==='7'?'selected':''}>آخر 7 أيام</option><option value="30" ${String(dashboardChartDays)==='30'?'selected':''}>آخر 30 يومًا</option><option value="90" ${String(dashboardChartDays)==='90'?'selected':''}>آخر 90 يومًا</option><option value="all" ${dashboardChartDays==='all'?'selected':''}>كل الفترة</option></select><select id="dashboardChartDept" class="form-control" data-karim-action="kdRenderPage7" data-karim-event="change" data-karim-pass="value"><option value="all">كل الأقسام</option>${deptOptions}</select></div></div><div class="dashboard-chart-grid"><div class="mcard chart-panel"><div class="chart-panel-title">الإيرادات والمصروفات حسب القسم</div><div class="chart-canvas-wrap"><canvas id="dashboardDeptChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">اتجاه الإيرادات والنتيجة</div><div class="chart-canvas-wrap"><canvas id="dashboardTrendChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">توزيع المصروفات التشغيلية</div><div class="chart-canvas-wrap chart-doughnut"><canvas id="dashboardExpenseChart"></canvas></div></div></div></section>`;
 }
-function initDashboardCharts(){
- if(STATE.page!=='dashboard'||typeof Chart==='undefined') {return;}
+async function initDashboardCharts(){
+ if(STATE.page!=='dashboard') {return;}
+ // Chart صار يُحمَّل عند الحاجة (vendor-lazy) — ننتظره بدل رسم لوحة بلا رسوم.
+ if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
  // لوحات بلا رسوم بيانية (لوحة رئيس القسم مثلًا) — لا تنشئ رسمًا على كانفس غير موجود
  if(!document.getElementById('dashboardDeptChart')) {return;}
  // ROOT FIX (2026-09-30): تهيئة مكررة (تنقل سريع) كانت تسقط بـ

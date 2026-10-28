@@ -449,7 +449,8 @@ showModal(`
 const container = document.getElementById('modalSmartCardView');
 if(container){ container.innerHTML = await renderSmartCard(emp, { canUpload }); }
 }
-function exportEmployeesExcel(){
+async function exportEmployeesExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data=[['الرقم الوظيفي','الاسم','القسم','المنصب','الهاتف','البريد','تاريخ الالتحاق','الراتب','الحالة','البصمة الرقمية','رقم البطاقة']];
 STATE.employees.forEach(emp=>{
 const dept=STATE.hrDepartments.find(d=>d.code===emp.department);
@@ -472,7 +473,8 @@ let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if(m) {return `${m[1]}-
 m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); if(m) {return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
 return s ? 'INVALID' : '';
 }
-function downloadEmpSheetTemplate(){
+async function downloadEmpSheetTemplate(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const wb=XLSX.utils.book_new();
 const ws=XLSX.utils.aoa_to_sheet([EMP_SHEET_COLS,
 ['EMP-201','أحمد محمد','الإنتاج','عامل','0500000001','a@x.com','2024-01-15',4500,'نشط','2027-01-01','2027-06-01','2027-06-01'],
@@ -494,7 +496,8 @@ showModal(`
 <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="importEmpSheet"><i class=ji data-i=inbox></i> استيراد المعتمد</button></div>`);
 document.getElementById('empSheetFile').addEventListener('change',previewEmpSheetFile);
 }
-function previewEmpSheetFile(){
+async function previewEmpSheetFile(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const file=document.getElementById('empSheetFile')?.files[0];
 const prev=document.getElementById('empSheetPreview');
 if(!file||!prev) {return;}

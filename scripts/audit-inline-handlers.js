@@ -92,10 +92,9 @@ const toModulePath = (spec) => {
     const target = path.resolve(mainDir, spec.split('?')[0]);
     return fs.existsSync(target) ? target : null;
 };
-for (const [varName, spec] of imported) {
-    if (!assigned.has(varName)) {continue;}
+function registerExposed(spec) {
     const target = toModulePath(spec);
-    if (!target) {continue;}
+    if (!target) {return;}
     const src = fs.readFileSync(target, 'utf8');
     const exported = new Set();
     const expRe = /export\s*\{([^}]*)\}/g;
@@ -111,25 +110,17 @@ for (const [varName, spec] of imported) {
     while ((e = expDeclRe.exec(src))) {exported.add(e[1]);}
     exposedModules.set(target, exported);
 }
+for (const [varName, spec] of imported) {
+    if (!assigned.has(varName)) {continue;}
+    registerExposed(spec);
+}
 // safeBridge modules: كل مسار يُمرَّر إلى safeBridge يُنسخ إلى window
 const safeBridgeCallRe = /safeBridge\(\s*['"]([^'"]+)['"]/g;
-while ((m = safeBridgeCallRe.exec(mainSrc))) {
-    const target = toModulePath(m[1]);
-    if (!target) {continue;}
-    const src = fs.readFileSync(target, 'utf8');
-    const exported = new Set();
-    const expRe = /export\s*\{([^}]*)\}/g;
-    let e;
-    while ((e = expRe.exec(src))) {
-        for (const part of e[1].split(',')) {
-            const name = part.trim().split(/\s+as\s+/).pop().trim();
-            if (name) {exported.add(name);}
-        }
-    }
-    const expDeclRe = /export\s+(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)/g;
-    while ((e = expDeclRe.exec(src))) {exported.add(e[1]);}
-    exposedModules.set(target, exported);
-}
+while ((m = safeBridgeCallRe.exec(mainSrc))) {registerExposed(m[1]);}
+// BOOT-PARALLEL (2026-10-28): الوحدات صارت قائمة FEATURE_MODULES تُمرَّر
+// إلى safeBridge في حلقة — المدقّق يقرأ نفس القائمة كي لا يظنّها غير مجسورة.
+const featureListRe = /\[\s*['"](\.\/[^'"]+\.js(?:\?v=[^'"]+)?)['"]\s*,\s*['"]BRIDGE-[^'"]+['"]\s*\]/g;
+while ((m = featureListRe.exec(mainSrc))) {registerExposed(m[1]);}
 
 /** ٣ب) الدوال المُسنَدة صراحة إلى window (window.X = ...) في أي مكان */
 const explicitGlobals = new Set();

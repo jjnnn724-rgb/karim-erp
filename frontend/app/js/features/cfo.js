@@ -460,7 +460,8 @@ function cfoPrintSummary(){
   ${(s.top_expense_categories || []).map(c => kv('— ' + esc(c.category), fC(c.total))).join('')}
   </tbody></table>`);
 }
-function cfoExportTB(){
+async function cfoExportTB(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
   const tb = CFO_STATE.tb; if(!tb) {return;}
   const data = [[t('cfo.code'), t('cfo.account'), t('cfo.type'), t('cfo.debit'), t('cfo.credit'), t('cfo.balance')]];
   tb.accounts.filter(a => Number(a.debit) || Number(a.credit)).forEach(a =>

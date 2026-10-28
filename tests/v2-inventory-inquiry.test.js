@@ -308,7 +308,8 @@ describe('الواجهة القديمة — نفس المفتاحين، ونفس
         // كان يكسر هذا الاختبار بلا سبب حقيقي.
         const rev = (read(INDEX).match(/js\/main\.js\?v=([\d.]+)/) || [])[1];
         expect(rev).toBeTruthy();
-        expect(read(MAIN)).toContain(`await safeBridge('./features/inventory-inquiry.js?v=${rev}', 'BRIDGE-INQ');`);
+        // 2026-10-28: الوحدات صارت قائمةً واحدة تُجلب مسبقًا وتُقيَّم بالترتيب.
+        expect(read(MAIN)).toContain(`['./features/inventory-inquiry.js?v=${rev}', 'BRIDGE-INQ']`);
         const router = read(ROUTER);
         expect(router).toMatch(/case 'query':[\s\S]{0,200}await renderInventoryQueryPage\(\);/);
         expect(router).toMatch(/case 'professional':[\s\S]{0,200}await renderItemCardPage\(\);/);

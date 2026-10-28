@@ -542,7 +542,8 @@ function raPrintDispatchesReport() {
 }
 
 // ─── تصدير Excel ───
-function raExportExcel() {
+async function raExportExcel() {
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if (typeof XLSX === 'undefined') { toast('مكتبة Excel غير محمّلة', 'error'); return; }
     const wb = XLSX.utils.book_new();
     if (RA.tab === 'outflow') {

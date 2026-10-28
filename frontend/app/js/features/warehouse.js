@@ -1895,7 +1895,8 @@ if(!invoices.length){ box.innerHTML='<div class="u-t12 text-muted">لا يوجد
 box.innerHTML=`<div class="callout" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px"><div class="fw-bold u-t13"><i class=ji data-i=history></i> أرصدة افتتاحية مسجلة (${fN(invoices.length)})</div>${invoices.map(inv=>`<div class="u-row-between u-mt8" style="gap:8px;flex-wrap:wrap"><span class="u-t12"><strong>${esc(inv.invoiceNumber)}</strong> · ${esc(inv.date||'')} · ${fN(inv.items.length)} صنف · ${fC(inv.totalAmount)}</span><button type="button" class="btn btn-orange btn-sm" data-karim-action="showOpeningBalanceReplaceGrid" data-karim-arg0="${inv.id}"><i class=ji data-i=rotate-ccw></i> استبدال وإعادة إدخال</button></div>`).join('')}<div class="u-t11 text-muted u-mt8">الاستبدال يلغي القديم ويعكس استلامه فقط — <strong>طلبات الصرف تبقى محسوبة</strong>، ثم تدخل الكميات الصحيحة.</div></div>`;
 }catch(e){ box.innerHTML=`<div class="u-t12 text-muted">تعذر تحميل الأرصدة المسجلة: ${esc(e.message||'')}</div>`; }
 }
-function downloadOpeningTemplate(){
+async function downloadOpeningTemplate(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data=[['اسم الصنف','الوحدة','كمية فعلية','سعر الشراء','الكراتين','الفئة','تاريخ الصلاحية'],['دجاج','50','كجم','25','4','لحوم','2026-11-30'],['مشروم','12','علبة','18','','معلبات','2027-02-28'],['دقيق','20','كيس','3.5','','حبوب','2027-06-30']];
 const ws=XLSX.utils.aoa_to_sheet(data); ws['!cols']=[{wch:24},{wch:16},{wch:16},{wch:12},{wch:18},{wch:14},{wch:18}];
 const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'الرصيد الافتتاحي');
@@ -1960,7 +1961,8 @@ rows.push({name,qty,unit:String(unitIdx>=0?row[unitIdx]||'':'').trim()||'كجم'
 });
 return {rows, errors, headerRow};
 }
-function previewOpeningExcel(file){
+async function previewOpeningExcel(file){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 if(!file){return;}
 const reader=new FileReader();
 reader.onload=e=>{
@@ -2426,14 +2428,16 @@ showModal(`
 `);
 document.getElementById('catalogExcelFile').addEventListener('change',previewCatalogFile);
 }
-function downloadItemsCatalogTemplate(){
+async function downloadItemsCatalogTemplate(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const wb=XLSX.utils.book_new();
 const ws=XLSX.utils.aoa_to_sheet([['اسم الصنف','الفئة','الوحدة','الحد الأدنى'],['دجاج','لحوم','كجم',5],['أرز','حبوب','كيس',10],['زيت','زيوت','لتر',3]]);
 ws['!cols']=[{wch:20},{wch:15},{wch:10},{wch:12}];
 XLSX.utils.book_append_sheet(wb,ws,'الأصناف');
 XLSX.writeFile(wb,'نموذج_قائمة_الأصناف.xlsx');
 }
-function previewCatalogFile(){
+async function previewCatalogFile(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const file=document.getElementById('catalogExcelFile')?.files[0];
 if(!file){return;}
 const reader=new FileReader();
@@ -2451,7 +2455,8 @@ prev.innerHTML=`<div class="preview-scroll"><div class="u-gold-strong u-mb8">م�
 };
 reader.readAsBinaryString(file);
 }
-function importItemsCatalog(){
+async function importItemsCatalog(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const file=document.getElementById('catalogExcelFile')?.files[0];
 if(!file){ toast('اختر ملف Excel أولاً','error'); return; }
 const reader=new FileReader();
@@ -2497,7 +2502,8 @@ showModal(`
 `);
 document.getElementById('inventoryExcelFile').addEventListener('change',previewInventoryFile);
 }
-function downloadInventoryTemplate(){
+async function downloadInventoryTemplate(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const wb=XLSX.utils.book_new();
 const ws=XLSX.utils.aoa_to_sheet([['اسم الصنف','الفئة','الوحدة','الكمية','سعر الشراء','الحد الأدنى','تاريخ الصلاحية'],['دجاج','لحوم','كجم',50,25,10,'2026-11-30'],['أرز','حبوب','كيس',100,3.5,20,'2027-06-30'],['زيت نخيل','زيوت','لتر',30,8,5,'2027-03-31']]);
 ws['!cols']=[{wch:20},{wch:15},{wch:10},{wch:10},{wch:12},{wch:12},{wch:18}];
@@ -2516,6 +2522,7 @@ function parseInventoryImportNumber(value, fallback = 0) {
     return Number.isFinite(num) ? num : fallback;
 }
 async function readInventoryImportRows(file) {
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if (!file) {return [];} 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();

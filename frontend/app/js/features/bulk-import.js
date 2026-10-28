@@ -333,7 +333,8 @@ if(namesInput) {namesInput.value = '';}
 // الكاشير بالكامل (المتصفح يجمّد) — والقراءة تتم في المتصفح.
 const BULK_IMPORT_MAX_BYTES = 20 * 1024 * 1024;   // 20MB
 const BULK_IMPORT_MAX_ROWS = 20000;
-function bulkReadFile(file){
+async function bulkReadFile(file){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 if(!file) {return;}
 if(typeof file.size === 'number' && file.size > BULK_IMPORT_MAX_BYTES){
 toast(`حجم الملف يتجاوز الحد (${Math.round(BULK_IMPORT_MAX_BYTES/1024/1024)}MB) — اختر ملفًا أصغر`,'error');
@@ -453,7 +454,8 @@ ${BULK_IMPORT_ROWS.map((u,i) => `
 `,'modal-wide');
 }, 300);
 }
-function bulkExportExcel(){
+async function bulkExportExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data = [['#','الاسم','اسم المستخدم','كلمة المرور','رقم البصمة','الدور']];
 BULK_IMPORT_ROWS.forEach((u,i) => data.push([i+1, u.name, u.username, u.password, u.fp || '', ROLES[u.role]?.name || u.role]));
 const ws = XLSX.utils.aoa_to_sheet(data);

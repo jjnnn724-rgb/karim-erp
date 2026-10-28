@@ -294,7 +294,8 @@ function wvPrintReport() {
 }
 
 // ─── تصدير Excel ───
-function wvExportExcel() {
+async function wvExportExcel() {
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if (typeof XLSX === 'undefined') { toast('مكتبة Excel غير محمّلة', 'error'); return; }
     const data = [['الصنف', 'مصروف من المخزن', 'مبيع بالكاشيرية', 'الفرق', 'النسبة %', 'قيمة المبيع الصافي', 'قيمة المبيع الإجمالي', 'عدد الأذونات', 'عدد الفواتير', 'القسم', 'الحالة']];
     WV.rows.forEach((r) => {

@@ -46,7 +46,8 @@ return `
 </div>
 `;
 }
-function renderHRCharts(){
+async function renderHRCharts(){
+if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
 const ctx1=document.getElementById('hrDeptChart');
 if(ctx1 && typeof Chart!=='undefined'){
 if(STATE.charts.hrDept){STATE.charts.hrDept.destroy();}
@@ -547,7 +548,8 @@ async function checkOut(){
 if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch('out'); }
 toast('البصمة الذاتية غير متاحة في هذه الجلسة — استخدم تطبيق الجوال','error');
 }
-function exportAttendanceExcel(){
+async function exportAttendanceExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const attFrom=STATE.attFrom||'', attTo=STATE.attTo||'';
 const filtered=STATE.attendance.filter(a=>(!attFrom||a.date>=attFrom)&&(!attTo||a.date<=attTo));
 const data=[['التاريخ','الموظف','الحضور','الانصراف','ساعات العمل','المصدر']];
@@ -972,7 +974,8 @@ async function hrEvalSave(){
   }catch(e){ toast(e.message || 'تعذر الحفظ', 'error'); }
   finally{ hideLoad(); }
 }
-function exportPayrollExcel(){
+async function exportPayrollExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data=[['الموظف','القسم','المنصب','الراتب الأساسي','أيام الحضور','الصافي']];
 STATE.employees.filter(e=>e.status==='active').forEach(emp=>{
 const dept=STATE.hrDepartments.find(d=>d.code===emp.department);

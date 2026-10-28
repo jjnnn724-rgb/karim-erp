@@ -66,8 +66,11 @@ describe('أسلاك التثبيت: karim-i18n + صفحة الفروع', () => 
     expect(INDEX.indexOf('karim-i18n.js')).toBeLessThan(INDEX.indexOf('js/main.js?v='));
   });
 
-  test('main.js يجسر features/branches.js عبر safeBridge', () => {
-    expect(MAIN).toContain(`safeBridge('./features/branches.js?v=${VER}', 'BRIDGE-BR')`);
+  test('main.js يجسر features/branches.js عبر قائمة الوحدات المعزولة', () => {
+    // منذ 2026-10-28 تُجلب الوحدات دفعةً واحدة (modulepreload) وتُقيَّم بالترتيب
+    // من قائمة واحدة؛ المكان الذي يحفظ العقد هو مدخلها لا سطر await منفصل.
+    expect(MAIN).toContain(`['./features/branches.js?v=${VER}', 'BRIDGE-BR']`);
+    expect(MAIN).toContain('for (const [spec, tag] of FEATURE_MODULES)');
   });
 
   test('page-router: حالة branches ترسم الصفحة اللاتزامنية بلا ترك شفافية', () => {

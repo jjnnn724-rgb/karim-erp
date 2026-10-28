@@ -363,7 +363,8 @@ function saPrintOrdersReport() {
 }
 
 // ─── تصدير Excel ───
-function saExportExcel() {
+async function saExportExcel() {
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if (typeof XLSX === 'undefined') { toast('مكتبة Excel غير محمّلة', 'error'); return; }
     const wb = XLSX.utils.book_new();
     if (SA.tab === 'orders') {

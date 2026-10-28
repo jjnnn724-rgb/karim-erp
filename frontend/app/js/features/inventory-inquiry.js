@@ -513,7 +513,8 @@ async function icLoad(preferredId) {
 }
 
 /* ── Excel ── */
-function iqExportExcel() {
+async function iqExportExcel() {
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
     if (typeof XLSX === 'undefined') { toast('مكتبة Excel غير محمّلة — حدّث الصفحة', 'error'); return; }
     const head = ['الصنف', 'التصنيف', 'الوحدة', 'الرصيد بالمخزن', 'داخل من الفواتير (صافي)', 'داخل آخر', 'المنصرف كله',
         'صرف للأقسام', 'مستهلك في البيع', 'صافي الحركة', 'كوست الشراء', 'تكلفة المنصرف', 'قيمة المخزون',

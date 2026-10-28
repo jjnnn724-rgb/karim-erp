@@ -291,7 +291,8 @@ const totalExp=totMat+totCnt+totOps;
 const avgCost = totalRev>0?(totalExp/totalRev*100):0;
 const categories = {};
 periodExp.forEach(e=>{const cat=e.category||'أخرى';categories[cat]=(categories[cat]||0)+Number(e.amount||0);});
-setTimeout(()=>{
+setTimeout(async()=>{
+if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
 const ctx1=document.getElementById('costBarChart');
 if(ctx1 && typeof Chart!=='undefined'){
 if(STATE.charts.costBar){STATE.charts.costBar.destroy();}
@@ -445,8 +446,9 @@ function pnlApplyPreset(kind){
   const [f,t]=pnlPresetRange(kind);
   window.pnlFrom=f; window.pnlTo=t; pnlRefresh();
 }
-function pnlInitCharts(){
-  if(!PNL_DATA||STATE.page!=='pnl'||typeof Chart==='undefined') {return;}
+async function pnlInitCharts(){
+  if(!PNL_DATA||STATE.page!=='pnl') {return;}
+  if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
   const st=PNL_DATA.statement;
   const daily=st.daily_series||[];
   const c1=document.getElementById('pnlTrendChart');
@@ -496,7 +498,8 @@ async function pnlPrint(){
     setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },300);
   }catch(e){ toast(e.message||'تعذر الطباعة','error'); }
 }
-function pnlExportExcel(){
+async function pnlExportExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
   if(!PNL_DATA){ toast('لا بيانات للتصدير','warning'); return; }
   const st=PNL_DATA.statement, cmp=PNL_DATA.comparison||{};
   const cur=(k)=>{const v=cmp[k];return v&&v.previous!=null?[v.current,v.previous,v.delta??'',v.pct??'']:['','','',''];};
