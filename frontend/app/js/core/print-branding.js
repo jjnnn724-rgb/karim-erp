@@ -2,7 +2,7 @@ const LOGO_PATH = 'assets/al-shurfa-logo.png';
 
 const BRAND_STYLE = `
 .erp-print-brand {
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     gap: 14px;
@@ -18,7 +18,7 @@ const BRAND_STYLE = `
 .erp-print-brand__text strong { font-size: 17px; }
 .erp-print-brand__text span { color: #756d5a; font-size: 11px; letter-spacing: .4px; }
 @media print {
-    .erp-print-brand { break-inside: avoid; page-break-inside: avoid; }
+    .erp-print-brand { display: flex; break-inside: avoid; page-break-inside: avoid; }
     .erp-print-brand img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }`;
 
@@ -37,11 +37,11 @@ export function addCompanyPrintLogo(doc) {
     brand.setAttribute('data-company-print-logo', '');
     const image = doc.createElement('img');
     image.src = new URL(LOGO_PATH, window.location.href).href;
-    image.alt = 'شعار مطاعم الشرفة العالمي';
+    image.alt = 'شعار مطاعم الشرفه العالمي';
     const text = doc.createElement('div');
     text.className = 'erp-print-brand__text';
     const name = doc.createElement('strong');
-    name.textContent = 'مطاعم الشرفة العالمي';
+    name.textContent = 'مطاعم الشرفه العالمي';
     const englishName = doc.createElement('span');
     englishName.textContent = 'AL SHURFA AL ALAMI RESTAURANTS';
     text.append(name, englishName);

@@ -21,7 +21,7 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { addV2PrintBranding } from './print-branding.js?v=4.9.183';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.183';
 import { trapFocus } from './focus-trap.js?v=4.9.183';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
@@ -126,8 +126,14 @@ function ensureHost(title) {
     frame.setAttribute('title', title || 'مستند');
     frame.setAttribute('referrerpolicy', 'no-referrer');
 
-    frame.addEventListener('load', () => {
-        if (frame.contentDocument) {addV2PrintBranding(frame.contentDocument);}
+    frame.addEventListener('load', async () => {
+        const seq = renderSeq;
+        try {
+            await applyPrintSystem(frame.contentDocument, {
+                title: titleEl ? titleEl.textContent : title,
+            });
+        } catch (_) { /* PDF أو مستند خارجي بلا وصول — الطباعة كما هي */ }
+        if (seq !== renderSeq) {return;}
         loadedSeq = renderSeq;
         if (printPending) {
             printPending = false;

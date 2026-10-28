@@ -39,6 +39,9 @@ svg.ji { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 
 export function setV2PrintLogo(value) {
     configuredLogo = typeof value === 'string' ? value.trim() : '';
+    /* طبقة الطباعة الموحّدة (core/print-system.js) تقرأ هذا المتغير لتستخدم
+       الشعار المرفوع نفسه في ترويسة المستندات المطبوعة. */
+    if (typeof window !== 'undefined') {window.KARIM_V2_PRINT_LOGO = configuredLogo;}
     const image = typeof document !== 'undefined' ? document.querySelector('[data-v2-shell-logo]') : null;
     const fallback = typeof document !== 'undefined' ? document.querySelector('[data-v2-shell-logo-fallback]') : null;
     /* The 46px plaque keeps the emblem mark: the owner's logo is a full

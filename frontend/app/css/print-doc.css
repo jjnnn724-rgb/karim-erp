@@ -1,0 +1,420 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   print-doc.css — الهوية الموحدة لكل مستند طباعة في Karim-ERP (2026-10-28)
+   ───────────────────────────────────────────────────────────────────────────
+   كل مولّد مستند (تقارير يارسوفت، كشوف المبيعات، أذون الصرف، كشوف الرواتب…)
+   يكتب CSS خاصًا به داخل الـ iframe. هذا الملف يُحقن بعدها فيتغلّب عليه
+   ويوحّد الشكل: خط واحد، ترويسة واحدة، جداول مغلقة، ألوان مثبتة في الطباعة،
+   وقواعد كسر الصفحات. يعمل عبر:
+     • js/core/print-system.js  → يحقنه داخل عارضي المستندات (V1/V2)
+     • <link href="css/print-doc.css"> داخل ysPrintReport عند الفتح خارج العارض
+   المستندات ذات مقاس ورق مخصص (بطاقة الموظف 85.6×54مم) لا يمسّها النظام.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html.erp-print-doc {
+    --erp-ink: #1f2d27;
+    --erp-ink-soft: #5f6b64;
+    --erp-green: #17352b;
+    --erp-green-soft: #2c5748;
+    --erp-gold: #b8912f;
+    --erp-gold-soft: #f4ecd7;
+    --erp-cream: #f6f1e2;
+    --erp-line: #ded7c6;
+    --erp-rule: #e9e4d6;
+    --erp-zebra: #f8f7f2;
+    --erp-font: "Segoe UI", "Noto Naskh Arabic", "Dubai", Tahoma, Arial, sans-serif;
+    background: #e7eaee;
+}
+
+html.erp-print-doc body {
+    box-sizing: border-box;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 14mm 12mm;
+    background: #ffffff;
+    color: var(--erp-ink);
+    font-family: var(--erp-font) !important;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    direction: rtl;
+    text-align: right;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+html.erp-print-doc body *:not(svg):not(svg *) { font-family: inherit; }
+html.erp-print-doc img { max-width: 100%; }
+
+/* أيقونات ji تصل كوسوم svg بلا أبعاد من icons.js — بلا هذه القاعدة تتضخم */
+html.erp-print-doc svg { max-width: 100%; }
+html.erp-print-doc svg.ji {
+    width: 1em; height: 1em; max-width: 1em; max-height: 1em;
+    vertical-align: -0.125em; flex: none;
+}
+
+/* أزرار «طباعة/إغلاق» القديمة زخرفية داخل العارض — شريط العارض هو المصدر */
+@media screen {
+    html.erp-print-doc body > .controls { display: none !important; }
+}
+
+/* ── الحاوية والترويسة ──────────────────────────────────────────────────── */
+html.erp-print-doc .sheet {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+html.erp-print-doc .head,
+html.erp-print-doc .report-header,
+html.erp-print-doc header.head {
+    display: block;
+    background: transparent !important;
+    background-image: none !important;
+    color: var(--erp-green) !important;
+    border: 0 !important;
+    border-bottom: 2.5pt solid var(--erp-gold) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 0 9px !important;
+    margin: 0 0 12px !important;
+    text-align: center;
+}
+html.erp-print-doc .head:has(img) {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: right;
+}
+html.erp-print-doc .head h1 {
+    color: var(--erp-green) !important;
+    font-size: 16pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    margin: 0 0 2px !important;
+    line-height: 1.35;
+}
+html.erp-print-doc .head h2 {
+    color: var(--erp-green) !important;
+    font-size: 13pt !important;
+    margin: 0 0 2px !important;
+}
+html.erp-print-doc .head p {
+    color: var(--erp-ink-soft) !important;
+    font-size: 9.5pt !important;
+    margin: 1px 0 !important;
+}
+html.erp-print-doc .head .doc-logo {
+    width: 17mm !important;
+    height: 17mm !important;
+    object-fit: contain;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+html.erp-print-doc .head__title {
+    color: var(--erp-green) !important;
+    font-size: 12.5pt !important;
+    font-weight: 700 !important;
+    margin-top: 4px !important;
+}
+html.erp-print-doc .head p.head__en {
+    color: #8a7c5c !important;
+    font-size: 8pt !important;
+    letter-spacing: .12em !important;
+}
+
+html.erp-print-doc .doc-title {
+    margin: 2px 0 12px;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--erp-rule);
+    text-align: center;
+}
+html.erp-print-doc .doc-title h2 {
+    color: var(--erp-green) !important;
+    font-size: 14pt !important;
+    margin: 0 !important;
+    letter-spacing: 0 !important;
+}
+html.erp-print-doc .doc-title .st {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 16px !important;
+    border-radius: 999px !important;
+    background: var(--erp-green) !important;
+    color: var(--erp-cream) !important;
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+}
+
+/* ── الترويسة المُحقنة (شعار + اسم) ─────────────────────────────────────── */
+html.erp-print-doc .erp-doc-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 0 0 8px;
+    border-bottom: 2.5pt solid var(--erp-gold);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+html.erp-print-doc .erp-doc-brand img {
+    width: 16mm; height: 16mm; object-fit: contain; flex: none;
+}
+html.erp-print-doc .erp-doc-brand__text {
+    display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+html.erp-print-doc .erp-doc-brand__name {
+    color: var(--erp-green);
+    font-size: 15pt;
+    font-weight: 700;
+    line-height: 1.3;
+}
+html.erp-print-doc .erp-doc-brand__en {
+    color: #8a7c5c;
+    font-size: 7.5pt;
+    letter-spacing: .14em;
+}
+
+/* ── بطاقات الملخص والبيانات الوصفية ────────────────────────────────────── */
+html.erp-print-doc .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(34mm, 1fr));
+    gap: 6px;
+    margin: 10px 0 12px;
+}
+html.erp-print-doc .summary > div {
+    background: #fbfaf5 !important;
+    border: 1px solid var(--erp-line) !important;
+    border-top: 2pt solid var(--erp-gold) !important;
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    padding: 6px 8px !important;
+    text-align: center;
+}
+html.erp-print-doc .summary span {
+    display: block;
+    color: var(--erp-ink-soft) !important;
+    font-size: 8.5pt !important;
+}
+html.erp-print-doc .summary b {
+    display: block;
+    color: var(--erp-green) !important;
+    font-size: 12pt !important;
+    margin-top: 1px;
+}
+
+html.erp-print-doc .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(36mm, 1fr));
+    gap: 6px;
+    margin: 10px 0 12px;
+}
+html.erp-print-doc .meta > div {
+    background: #fbfaf5 !important;
+    border: 1px solid var(--erp-line) !important;
+    border-right: 2.5pt solid var(--erp-gold) !important;
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    padding: 6px 10px !important;
+    font-size: 9.5pt !important;
+}
+html.erp-print-doc .meta b {
+    display: block;
+    color: #7d735c !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    margin-bottom: 1px;
+}
+
+html.erp-print-doc .chain {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0;
+}
+html.erp-print-doc .chain > div {
+    flex: 1;
+    background: #fbfaf5 !important;
+    border: 1px solid var(--erp-line) !important;
+    border-top: 2pt solid var(--erp-gold) !important;
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    padding: 6px !important;
+    font-size: 8.5pt !important;
+}
+html.erp-print-doc .chain b { color: var(--erp-green) !important; }
+
+/* ── الجداول: الرأس الأخضر المتكرر والصفيحة الواحدة ────────────────────── */
+html.erp-print-doc table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--erp-line);
+    background: #fff;
+    margin: 8px 0 12px;
+    font-size: 9.5pt !important;
+}
+html.erp-print-doc th,
+html.erp-print-doc td {
+    border: 1px solid var(--erp-line) !important;
+    padding: 5.5px 8px !important;
+    text-align: right;
+    vertical-align: middle;
+}
+html.erp-print-doc th {
+    background: var(--erp-green) !important;
+    color: var(--erp-cream) !important;
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    white-space: nowrap;
+}
+html.erp-print-doc td.c,
+html.erp-print-doc td.n,
+html.erp-print-doc th.c {
+    text-align: center !important;
+}
+html.erp-print-doc tbody tr:nth-child(even) > td {
+    background: var(--erp-zebra);
+}
+html.erp-print-doc tfoot td {
+    background: var(--erp-cream) !important;
+    color: var(--erp-green) !important;
+    font-weight: 700 !important;
+    border-top: 1.5pt solid var(--erp-gold) !important;
+}
+html.erp-print-doc thead { display: table-header-group; }
+/* tfoot مجموع نهائي للمستند — display الافتراضي (table-footer-group) يكرره
+   في أسفل كل صفحة فيظهر مجموع المستند كأنه مجموع الصفحة؛ row-group يجعله
+   يُطبع مرة واحدة بعد آخر صف. */
+html.erp-print-doc tfoot { display: table-row-group; }
+
+/* ── عناوين الأقسام والملاحظات والتذييل ─────────────────────────────────── */
+html.erp-print-doc h3.sec,
+html.erp-print-doc .sheet > h2 {
+    color: var(--erp-green) !important;
+    font-size: 11pt !important;
+    border-bottom: 1px solid var(--erp-rule) !important;
+    padding-bottom: 4px !important;
+    margin: 14px 0 8px !important;
+}
+/* عنوان علوي في مستند بلا .sheet (مولّدات قديمة تكتب h2 مباشرة في body) */
+html.erp-print-doc body > h1,
+html.erp-print-doc body > h2 {
+    color: var(--erp-green) !important;
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    margin: 6px 0 10px !important;
+}
+html.erp-print-doc .pill {
+    display: inline-block;
+    border: 1px solid var(--erp-line) !important;
+    border-radius: 999px;
+    background: #fbfaf5;
+    color: var(--erp-ink-soft) !important;
+    padding: 0 8px;
+    font-size: 8.5pt;
+    font-weight: 400;
+}
+
+html.erp-print-doc .notes {
+    background: #fcfbf6 !important;
+    border: 1px solid var(--erp-line) !important;
+    border-right: 2.5pt solid var(--erp-gold) !important;
+    border-radius: 3px !important;
+    padding: 8px 12px !important;
+    margin-top: 10px;
+    font-size: 9.5pt !important;
+}
+
+html.erp-print-doc .sigs {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+}
+html.erp-print-doc .sigs > div { flex: 1; }
+html.erp-print-doc .sigs img { max-height: 16mm; }
+
+html.erp-print-doc .foot {
+    margin-top: 14px;
+    padding-top: 6px;
+    border-top: 1px solid var(--erp-line);
+    color: #8a8577 !important;
+    font-size: 8pt !important;
+    text-align: center;
+}
+
+/* ── أدوات قديمة كانت بلا تعريف داخل الـ iframe ─────────────────────────── */
+html.erp-print-doc .fw-bold { font-weight: 700 !important; }
+html.erp-print-doc .c-gold { color: var(--erp-gold) !important; }
+html.erp-print-doc .text-muted { color: #7a7567 !important; }
+html.erp-print-doc .u-empty,
+html.erp-print-doc .u-empty-sm {
+    color: #8a8577 !important;
+    text-align: center;
+    padding: 10px;
+}
+
+/* ── الطباعة: الورق والتذييل التشغيلي المتكرر ───────────────────────────── */
+html.erp-print-doc .erp-runner { display: none; }
+
+@media print {
+    html.erp-print-doc { background: #fff; }
+    html.erp-print-doc body {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        font-size: 10pt;
+        background: #fff;
+    }
+    html.erp-print-doc * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    html.erp-print-doc h1,
+    html.erp-print-doc h2,
+    html.erp-print-doc h3 {
+        break-after: avoid-page;
+        page-break-after: avoid;
+    }
+    html.erp-print-doc tr,
+    html.erp-print-doc .summary > div,
+    html.erp-print-doc .meta > div,
+    html.erp-print-doc .chain > div,
+    html.erp-print-doc .sigs > div,
+    html.erp-print-doc .notes,
+    html.erp-print-doc .erp-doc-brand,
+    html.erp-print-doc .foot {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    html.erp-print-doc a { color: inherit; text-decoration: none; }
+    /* تذييل المستند يُطبع مرة واحدة في آخره. position:fixed كان يكرره على
+       كل صفحة، لكن Chrome لا يثبته داخل هامش الورق في بعض الصفحات ويغطي
+       آخر الصفوف؛ السكون هنا أصدق وأأمن. */
+    html.erp-print-doc .erp-runner {
+        display: flex;
+        position: static;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6mm;
+        margin-top: 14px;
+        padding-top: 4px;
+        border-top: 1px solid #e4dfd1;
+        color: #8a8577;
+        font-size: 7.5pt;
+        direction: rtl;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    html.erp-print-doc .erp-runner span:nth-child(2) {
+        max-width: 60%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}

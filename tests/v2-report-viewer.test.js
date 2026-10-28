@@ -16,6 +16,7 @@ const CSS = path.join(APP, 'css', 'v2', 'erp-report-viewer.css');
 const PAGE = path.join(APP, 'v2.html');
 const LEGACY = path.join(APP, 'js', 'features', 'report-viewer.js');
 const PRINT_BRANDING = path.join(APP, 'js', 'core', 'print-branding.js');
+const PRINT_SYSTEM = path.join(APP, 'js', 'core', 'print-system.js');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const pageRev = () => (read(PAGE).match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
@@ -102,10 +103,17 @@ describe('عارض المستندات — الطباعة والوصولية', ()
         expect(branding).toContain("const LOGO_PATH = 'assets/al-shurfa-logo.png'");
         expect(branding).toContain("doc.querySelector('[data-company-print-logo]");
         expect(branding).toContain("window.addEventListener('beforeprint'");
-        expect(read(VIEWER)).toContain(`import { addV2PrintBranding } from './print-branding.js?v=${pageRev()}'`);
-        expect(read(VIEWER)).toContain('addV2PrintBranding(frame.contentDocument)');
-        expect(read(LEGACY)).toMatch(/import \{ addCompanyPrintLogo \} from '\.\.\/core\/print-branding\.js\?v=\d+\.\d+\.\d+'/);
-        expect(read(LEGACY)).toContain('addCompanyPrintLogo(frame.contentDocument)');
+        /* العارضان صارا يوكّلان الترويسة والشعار لطبقة الطباعة الموحّدة
+           (core/print-system.js) بدل شارة شعار منفصلة لكل مستند. */
+        const system = read(PRINT_SYSTEM);
+        expect(system).toContain("FALLBACK_LOGO = 'assets/al-shurfa-logo.png'");
+        expect(system).toContain('function injectBrand(doc, name)');
+        expect(system).toContain("brand.setAttribute('data-erp-print-brand', '')");
+        expect(system).toContain('image.src = logoSource()');
+        expect(read(VIEWER)).toContain(`import { applyPrintSystem } from '../core/print-system.js?v=${pageRev()}'`);
+        expect(read(VIEWER)).toContain('await applyPrintSystem(frame.contentDocument');
+        expect(read(LEGACY)).toMatch(/import \{ applyPrintSystem \} from '\.\.\/core\/print-system\.js\?v=\d+\.\d+\.\d+'/);
+        expect(read(LEGACY)).toContain('await applyPrintSystem(frame.contentDocument');
     });
 
     test('V2 print uses the uploaded settings logo without changing legacy branding', () => {

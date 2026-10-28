@@ -13,8 +13,8 @@
  *   w.document.write(html); w.document.close(); // يُعرض فورًا داخل التطبيق
  * وضع URL: window.openInAppReport('إيصال', url) — يعرض رابطًا جاهزًا.
  */
-import { esc } from '../core/utils.js?v=4.9.13';
-import { addCompanyPrintLogo } from '../core/print-branding.js?v=4.9.177';
+import { esc } from '../core/utils.js?v=4.9.181';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.181';
 
 let overlayEl = null;
 let frameLoaded = false;
@@ -52,8 +52,10 @@ function ensureOverlay(title) {
     document.body.appendChild(overlayEl);
     overlayEl.querySelector('[data-act="close"]').addEventListener('click', () => closeReportOverlay());
     const frame = overlayEl.querySelector('#inAppReportFrame');
-    frame.addEventListener('load', () => {
-        if (frame.contentDocument) { addCompanyPrintLogo(frame.contentDocument); }
+    frame.addEventListener('load', async () => {
+        try {
+            await applyPrintSystem(frame.contentDocument, { title });
+        } catch (_) { /* PDF أو مستند خارجي بلا وصول — الطباعة كما هي */ }
         frameLoaded = true;
         if (pendingPrint) {
             pendingPrint = false;
