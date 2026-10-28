@@ -1559,10 +1559,31 @@ function costAnalysisSql(from, to) {
                   JOIN departments child ON child.parent_code = tree.code
                  WHERE NOT child.code = ANY(tree.path)
             ),
+            /* إيراد الكاشير يُنسب للقسم المرتبط به قبل التجميع الشجري:
+               قنوات البيع (ys_cc_N) ليست أقسامًا، وبقاء إيرادها على كود القناة
+               يجعل كل مركز إنتاج «مركز تكلفة» بالضرورة. الربط من
+               dept_cashier_links (بذرة المالك في 103) — لا خريطة جديدة.
+               DISTINCT ON يضمن هدفًا واحدًا للكاشير كي لا يتكرر إيراده إذا
+               رُبط بأكثر من قسم: الأساسي أولًا ثم الأقدم. */
+            revenue_links AS (
+                SELECT DISTINCT ON (l.cashier_no)
+                       'ys_cc_' || l.cashier_no AS revenue_dept,
+                       l.dept_code AS target_dept
+                  FROM dept_cashier_links l
+                 ORDER BY l.cashier_no, l.is_primary DESC, l.id
+            ),
+            revenue_alloc AS (
+                SELECT COALESCE(link.target_dept, r."deptId") AS dept_code,
+                       SUM(COALESCE(r.amount, 0)) AS amount
+                  FROM revenues r
+                  LEFT JOIN revenue_links link ON link.revenue_dept = r."deptId"
+                 WHERE TRUE${revenueRange}
+                 GROUP BY 1
+            ),
             revenue_totals AS (
-                SELECT tree.root_code, SUM(COALESCE(r.amount, 0)) AS revenue
+                SELECT tree.root_code, SUM(alloc.amount) AS revenue
                   FROM dept_tree tree
-                  JOIN revenues r ON r."deptId" = tree.code${revenueRange}
+                  JOIN revenue_alloc alloc ON alloc.dept_code = tree.code
                  GROUP BY tree.root_code
             ),
             expense_totals AS (
@@ -1641,6 +1662,14 @@ function costAnalysisSql(from, to) {
     };
 }
 
+/** قناة بيع يارا (ys_cc_N): كود إيراد لا قسم تشغيلي — إيرادها يُنسب إلى قسمها
+ *  المرتبط عبر dept_cashier_links، فتبقى صفوفها في التحليل بلا أرقام.
+ *  @param {unknown} code
+ *  @returns {boolean} */
+function isRevenueChannel(code) {
+    return /^ys_cc_\d+$/i.test(String(code ?? '').trim());
+}
+
 function buildCostAnalysisResult(rows) {
     const departments = (Array.isArray(rows) ? rows : []).map((row) => {
         const rev = num(row.revenue);
@@ -1651,6 +1680,10 @@ function buildCostAnalysisResult(rows) {
         return {
             code: row.code,
             name: row.name,
+            channel: isRevenueChannel(row.code),
+            /* مرآة البيع الخارجي (ys_b4_ext) ليست قسمًا أيضًا: إيرادها يُعرض
+               للمراجعة لكن سياسة المالك تستبعدها من الإجماليات التشغيلية. */
+            external: String(row.code) === 'ys_b4_ext',
             rev,
             exp,
             profit: rev - exp,
@@ -1774,7 +1807,10 @@ async function financePrintBrand() {
 
 /** مستند تحليل التكاليف: الأرقام نفسها التي تعرضها الشاشة، بلا أي حساب جديد. */
 function renderCostAnalysisPrintHtml(payload, opts = {}) {
-    const rows = Array.isArray(payload && payload.rows) ? payload.rows.slice() : [];
+    /* قنوات البيع (ys_cc_N) ليست أقسامًا: إيرادها أُسند لأقسامه، وصفوفها
+       صفرية — لا تُطبع كأقسام. مرآة البيع الخارجي تبقى للمراجعة موسومة. */
+    const rows = (Array.isArray(payload && payload.rows) ? payload.rows.slice() : [])
+        .filter((/** @type {any} */ row) => !row.channel);
     const totals = (payload && payload.totals) || { rev: 0, mat: 0, cnt: 0, ops: 0, exp: 0, avgCost: 0 };
     const categories = Array.isArray(payload && payload.categories) ? payload.categories.slice() : [];
     const period = (payload && payload.period) || {};
@@ -1820,7 +1856,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
             return `
         <tr>
             <td class="c">${index + 1}</td>
-            <td>${escHtml(row.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(row.code)}</span></td>
+            <td>${escHtml(row.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(row.code)}</span>${row.external ? '<span class="pill" style="margin-inline-start:6px">بيع خارجي — خارج الإجمالي</span>' : ''}</td>
             <td class="n">${money(row.rev)}</td>
             <td class="n">${money(row.materials)}</td>
             <td class="n">${money(row.countAdj)}</td>
@@ -1844,6 +1880,12 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
         </tr>`).join('');
 
     const net = num(totals.rev) - num(totals.exp);
+    const attrLinks = payload && payload.attribution && Array.isArray(payload.attribution.links)
+        ? payload.attribution.links : [];
+    const nameByCode = new Map(rows.map((/** @type {any} */ row) => [String(row.code), row.name]));
+    const attrNote = attrLinks.length
+        ? `إسناد الكاشيرات: ${attrLinks.map((/** @type {any} */ l) => `${nameByCode.get(String(l.dept)) || l.dept} ← كاشير ${l.cashierNo}`).join(' · ')}`
+        : '';
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1861,6 +1903,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
   <div class="doc">
     <h2>تحليل التكاليف</h2>
     <div class="sub">ملخص الإيرادات والتكاليف حسب القسم والفترة المحددة</div>
+    ${attrNote ? `<div class="sub">${escHtml(attrNote)}</div>` : ''}
   </div>
   <div class="body">
     <section class="grid">
@@ -1912,20 +1955,57 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
 </body></html>`;
 }
 
+/**
+ * بيانات الإسناد المرافقة لتحليل التكاليف: خريطة الكاشير→القسم (جدول 103)
+ * وإيراد كل قناة مبيعات (ys_cc_N) كما وصل من يارا قبل الإسناد. غياب الجدول
+ * أو تعذّر إحدى القراءتين لا يُسقط التقرير — يرجع إسنادًا فارغًا والشاشة
+ * تقول إن الإسناد غير متاح بدل أن تخترع أرقامًا.
+ * @param {string} from
+ * @param {string} to
+ * @returns {Promise<{links: {cashierNo:string, dept:string, primary:boolean}[], channelRevenue: {code:string, revenue:number}[]}>}
+ */
+async function loadCostAttribution(from, to) {
+    const [links, channels] = await Promise.all([
+        pool.query('SELECT cashier_no, dept_code, is_primary FROM dept_cashier_links ORDER BY dept_code, cashier_no')
+            .catch(() => ({ rows: [] })),
+        pool.query(
+            `SELECT "deptId" AS code, SUM(COALESCE(amount, 0))::numeric(14,2) AS revenue
+               FROM revenues
+              WHERE "deptId" ~ '^ys_cc_[0-9]+$'
+                AND LEFT(date, 10) >= $1 AND LEFT(date, 10) <= $2
+              GROUP BY 1 ORDER BY 1`,
+            [from, to]).catch(() => ({ rows: [] })),
+    ]);
+    return {
+        links: links.rows.map((r) => ({
+            cashierNo: String(r.cashier_no),
+            dept: String(r.dept_code),
+            primary: r.is_primary === true,
+        })),
+        channelRevenue: channels.rows.map((r) => ({ code: String(r.code), revenue: num(r.revenue) })),
+    };
+}
+
 router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
-    const result = await pool.query(query.text, query.params);
-    res.json({ ...buildCostAnalysisResult(result.rows), period: { from, to } });
+    const [result, attribution] = await Promise.all([
+        pool.query(query.text, query.params),
+        loadCostAttribution(from, to),
+    ]);
+    res.json({ ...buildCostAnalysisResult(result.rows), attribution, period: { from, to } });
 }));
 
 router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
-    const result = await pool.query(query.text, query.params);
+    const [result, attribution] = await Promise.all([
+        pool.query(query.text, query.params),
+        loadCostAttribution(from, to),
+    ]);
     const brand = await financePrintBrand();
     res.type('html').send(renderCostAnalysisPrintHtml(
-        { ...buildCostAnalysisResult(result.rows), period: { from, to } },
+        { ...buildCostAnalysisResult(result.rows), attribution, period: { from, to } },
         {
             restaurantName: brand.name,
             logo: brand.logo,
@@ -2271,6 +2351,8 @@ module.exports = {
     renderPnlPrintHtml,
     resolveCostAnalysisPeriod,
     costAnalysisSql,
+    isRevenueChannel,
+    loadCostAttribution,
     buildCostAnalysisResult,
     renderCostAnalysisPrintHtml,
     // المقارنة الشهرية (مصدَّرة للاختبارات)

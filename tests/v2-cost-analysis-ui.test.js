@@ -45,12 +45,15 @@ describe('V2 cost-analysis layout', () => {
         expect(SCREEN).toContain('% من الإيراد');
     });
 
-    test('register keeps all rows and adds profit, margin, movements and verdict', () => {
+    test('register keeps every department row and adds profit, margin, movements and verdict', () => {
         expect(SCREEN).toContain("key: 'profit', header: 'صافي الربح'");
         expect(SCREEN).toContain("key: 'margin', header: 'هامش الربح'");
         expect(SCREEN).toContain("key: 'rowCount', header: 'الحركات'");
         expect(SCREEN).toContain("key: 'status', header: 'التقييم'");
-        expect(SCREEN).toContain('table.setRows(rows)');
+        /* 2026-10-28: قنوات البيع (ys_cc_N) ليست أقسامًا — إيرادها أُسند إلى
+           أقسامه في الخادم، فتُعرض الأقسام وحدها (departmentRows) لا كل الصفوف. */
+        expect(SCREEN).toContain('table.setRows(visible)');
+        expect(SCREEN).toContain('function departmentRows()');
         expect(SCREEN).toContain('labels: chartRows.map((r) => r.name)');
     });
 

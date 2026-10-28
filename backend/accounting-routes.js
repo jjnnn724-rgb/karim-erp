@@ -751,4 +751,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
+module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
