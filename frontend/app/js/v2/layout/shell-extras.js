@@ -14,9 +14,9 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.186';
-import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.186';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.186';
+} from '../data/shell-repo.js?v=4.9.188';
+import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.188';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.188';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -305,6 +305,35 @@ export function mountShellExtras(shell, ctx = {}) {
         rtBound = false;
     }
     disposers.push(stopNotifPush);
+
+    /* NOTIFICATION PUSH IS NOT BOOT WORK (2026-10-29): فتح socket.io كلَّه
+       (37KB سكربت + اتصال دائم) كان يبدأ مع أول رسم للشل، قبل أن يرى
+       المستخدم لوحته. هنا يُؤجَّل إلى ما بعد أول رسم وأول خمول. لا يتأخر
+       إشعار فعليًا: الجرس يستطلع كل دقيقة، و`/api/rt/events` يعيد كل حدث
+       فات بعد الاتصال (realtime.js: resumeEvents)، فالفقرة كلها مغطاة. */
+    let pushTimer = 0;
+    let pushTimerIsIdle = false;
+    function cancelNotifPush() {
+        if (!pushTimer) {return;}
+        if (pushTimerIsIdle && typeof window.cancelIdleCallback === 'function') {
+            try {window.cancelIdleCallback(pushTimer);} catch { /* not idle */ }
+        }
+        clearTimeout(pushTimer);
+        pushTimer = 0;
+        pushTimerIsIdle = false;
+    }
+    function scheduleNotifPush() {
+        if (!live() || rtBound || pushTimer) {return;}
+        const run = () => { pushTimer = 0; void startNotifPush(); };
+        if (typeof window.requestIdleCallback === 'function') {
+            pushTimerIsIdle = true;
+            pushTimer = window.requestIdleCallback(run, { timeout: 2500 });
+        } else {
+            pushTimerIsIdle = false;
+            pushTimer = setTimeout(run, 1200);
+        }
+    }
+    disposers.push(cancelNotifPush);
 
     /* ── Quick buttons: POS / menu boards / dispatch ──────────────────── */
     const quick = document.createElement('span');
@@ -597,7 +626,7 @@ export function mountShellExtras(shell, ctx = {}) {
         paintServerInfo();
         paintSrvStatus();
         startNotifPoll();
-        startNotifPush();
+        scheduleNotifPush();
     }
     refresh();
     /* استطلاع حالة السيرفر: نبضات سريعة أول 30 ثانية (الجلسة قد تجهز بعد

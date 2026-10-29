@@ -13,16 +13,16 @@
  * Quick links navigate to migrated HR screens only (employees/attendance/leaves).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.186';
-import { statusBadge } from '../status.js?v=4.9.186';
-import { donutChart, lineChart } from '../charts.js?v=4.9.186';
-import { openInAppReport } from '../report-viewer.js?v=4.9.186';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.188';
+import { statusBadge } from '../status.js?v=4.9.188';
+import { donutChart, lineChart } from '../charts.js?v=4.9.188';
+import { openInAppReport } from '../report-viewer.js?v=4.9.188';
 import {
     fetchHrSnapshot, buildHrKpis, pendingLeaveRows,
     departmentDistribution, weeklyAttendance,
-} from '../data/hr-dashboard-repo.js?v=4.9.186';
-import { employeeMap } from '../data/employees-repo.js?v=4.9.186';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.186';
+} from '../data/hr-dashboard-repo.js?v=4.9.188';
+import { employeeMap } from '../data/employees-repo.js?v=4.9.188';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.188';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

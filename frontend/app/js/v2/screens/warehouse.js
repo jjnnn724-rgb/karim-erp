@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.186';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.188';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,21 +114,21 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.186';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.186';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.186';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.186';
+} from '../data/inventory-repo.js?v=4.9.188';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.188';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.188';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.188';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.186';
-import { ensureXlsx } from '../vendor.js?v=4.9.186';
+} from '../data/opening-balance-repo.js?v=4.9.188';
+import { ensureXlsx } from '../vendor.js?v=4.9.188';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.186';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.186';
+} from '../signature.js?v=4.9.188';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.188';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -2167,6 +2167,24 @@ export function mountWarehouseScreen(host, ctx = {}) {
     }
 
     /* ── Load ─────────────────────────────────────────────────────────── */
+    /* أسماء الرفوف لا تتغير مع كل حرف بحث؛ كان كل reload يعيد جلبها مع قائمة
+       الأصناف (طلب شبكة كامل لكل إدخال). تُخزَّن خمس دقائق ويُعاد جلبها بعدها،
+       وفشلُها لا يُخزَّن فيُعاد المحاولة في القراءة التالية. */
+    const SHELF_CACHE_MS = 5 * 60 * 1000;
+    let shelfCache = null;
+    let shelfInFlight = null;
+    function loadShelves() {
+        if (shelfCache && Date.now() - shelfCache.at < SHELF_CACHE_MS) {
+            return Promise.resolve(shelfCache.rows);
+        }
+        if (!shelfInFlight) {
+            shelfInFlight = fetchShelves()
+                .then((rows) => { shelfCache = { at: Date.now(), rows }; return rows; })
+                .finally(() => { shelfInFlight = null; });
+        }
+        return shelfInFlight;
+    }
+
     async function reload() {
         if (loading) {queued = true; return;}       // never stack two walks
         loading = true;
@@ -2175,7 +2193,7 @@ export function mountWarehouseScreen(host, ctx = {}) {
             const f = filters();
             const [inv, shelves] = await Promise.allSettled([
                 fetchInventory(f),
-                fetchShelves(),
+                loadShelves(),
             ]);
             if (!el.isConnected) {return;}          // destroyed while in flight
             if (shelves.status === 'fulfilled' && shelves.value.length) {

@@ -38,15 +38,15 @@
  *   • No inline handlers (CSP nonce makes 'unsafe-inline' inert).
  */
 
-import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.186';
-import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.186';
-import { resetPassword } from '../data/shell-repo.js?v=4.9.186';
+import { API_BASE, SERVER_CODE_AR } from '../../core/api.js?v=4.9.188';
+import { installApiFetchBridge, ensureSession, readRefreshToken } from '../session.js?v=4.9.188';
+import { resetPassword } from '../data/shell-repo.js?v=4.9.188';
 import {
     isWebAuthnSupported,
     toRequestOptions,
     serializeAssertion,
     describeWebAuthnError,
-} from '../data/webauthn-client.js?v=4.9.186';
+} from '../data/webauthn-client.js?v=4.9.188';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
