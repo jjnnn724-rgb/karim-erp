@@ -14,9 +14,9 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.183';
-import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.183';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.183';
+} from '../data/shell-repo.js?v=4.9.186';
+import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.186';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.186';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

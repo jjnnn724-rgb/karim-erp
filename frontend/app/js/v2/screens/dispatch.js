@@ -24,11 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.183';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.183';
-import { formatInt } from '../data/employees-repo.js?v=4.9.183';
-import { openInAppReport } from '../report-viewer.js?v=4.9.183';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.183';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.186';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.186';
+import { formatInt } from '../data/employees-repo.js?v=4.9.186';
+import { openInAppReport } from '../report-viewer.js?v=4.9.186';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.186';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     matchDispatchProduct, summarizeProductWithdrawal,
@@ -39,11 +39,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.183';
+} from '../data/dispatch-repo.js?v=4.9.186';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.183';
+} from '../signature.js?v=4.9.186';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -164,6 +164,7 @@ export function mountDispatchScreen(host, ctx = {}) {
     let rawRows = [];                       // آخر قراءة خام من الخادم
     let rawById = new Map();
     let loading = false;
+    let reloadQueued = false;               // طلب تحديث وصل أثناء قراءة جارية
     let readSeq = 0;                        // أحدث قراءة تفوز
     let busy = false;                       // قرار واحد في المرة
     let panelSeq = 0;                       // إغلاق اللوحة يُلغي أي تجهيز جارٍ
@@ -350,6 +351,41 @@ export function mountDispatchScreen(host, ctx = {}) {
         const res = readSignaturePad(panelEl, id, signerName);
         if (res.error) {panelMsg(signatureErrorText(res.error)); return null;}
         return res.dataUrl;
+    }
+
+    /* زر القرار يعلن انشغاله من أول نقرة: بلا ذلك يبدو الضغط ميتًا أثناء
+       انتظار الخادم (خصم المخزون + قيد التكلفة) فيضغط المستخدم مرة ثانية. */
+    function setPanelBusy(label) {
+        const btn = panelEl.querySelector('[data-v2-submit]');
+        if (!btn) {return null;}
+        const prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = `<span class="erp-btn__spin" aria-hidden="true"></span><span>${esc(label)}</span>`;
+        panelEl.setAttribute('aria-busy', 'true');
+        return prevHtml;
+    }
+
+    function clearPanelBusy(prevHtml) {
+        panelEl.removeAttribute('aria-busy');
+        const btn = panelEl.querySelector('[data-v2-submit]');
+        if (!btn) {return;}
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        if (prevHtml != null) {btn.innerHTML = prevHtml;}
+    }
+
+    /* الصف المعتمد من ردّ الخادم هو الحقيقة — يُدمج في السجل ويُرسم فورًا،
+       فلا يعتمد ظهور الحالة الجديدة على نجاح قراءة القائمة بعدها. */
+    function applyDecisionResult(result) {
+        const row = result && result.dispatch;
+        if (!row || row.id == null) {return;}
+        const key = String(row.id);
+        const idx = rawRows.findIndex((r) => String(r.id) === key);
+        if (idx >= 0) {rawRows[idx] = {...rawRows[idx], ...row};}
+        else {rawRows.unshift(row);}
+        rawById.set(key, rawRows[idx >= 0 ? idx : 0]);
+        paint();
     }
 
     /* ── البيانات المرجعية للنماذج (كتالوج + أرصدة الرئيسي + أقسام) ────── */
@@ -1021,15 +1057,18 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (sig == null) {return;}
         const notes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الاعتماد…');
         try {
-            await chefApproveDispatch(raw.id, { notes, signatureData: sig, signerName });
+            const result = await chefApproveDispatch(raw.id, { notes, signatureData: sig, signerName });
             closePanel();
             notify('تم اعتماد الطلب وإحالته للمخازن');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر اعتماد الطلب');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1040,15 +1079,18 @@ export function mountDispatchScreen(host, ctx = {}) {
         const sig = readSig(SIG_IDS.chefReject);
         if (sig == null) {return;}
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الرفض…');
         try {
-            await chefRejectDispatch(raw.id, { reason, signatureData: sig, signerName });
+            const result = await chefRejectDispatch(raw.id, { reason, signatureData: sig, signerName });
             closePanel();
             notify('تم رفض الطلب وسيظهر لرئيس القسم');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر رفض الطلب');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1102,10 +1144,12 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (sig == null) {return;}
         const approveNotes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الاعتماد…');
         try {
             const result = await approveDispatch(raw.id, { approvedItems, approveNotes, signatureData: sig, signerName });
             closePanel();
             notify(`تمت الموافقة وحُسبت مصاريف القسم بقيمة ${moneyPlain(result && result.totalValue || 0)}`);
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
             if (e && e.code === 'DISPATCH_APPROVE_IN_PROGRESS') {
@@ -1115,6 +1159,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             }
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1125,15 +1170,18 @@ export function mountDispatchScreen(host, ctx = {}) {
         const sig = readSig(SIG_IDS.reject);
         if (sig == null) {return;}
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الرفض…');
         try {
-            await rejectDispatch(raw.id, { reason, signatureData: sig, signerName });
+            const result = await rejectDispatch(raw.id, { reason, signatureData: sig, signerName });
             closePanel();
             notify('تم رفض الطلب');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر رفض طلب الصرف');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1173,15 +1221,18 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (sig == null) {return;}
         const notes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ تسجيل الاستلام…');
         try {
-            await receiveDispatch(raw.id, { items: receivedItems, notes, signatureData: sig, signerName });
+            const result = await receiveDispatch(raw.id, { items: receivedItems, notes, signatureData: sig, signerName });
             closePanel();
             notify('تم تسجيل استلام المطبخ بالتوقيع');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر تسجيل استلام المطبخ');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1392,8 +1443,12 @@ export function mountDispatchScreen(host, ctx = {}) {
         table.setRows(rows);
     }
 
+    /* COALESCE (2026-10-29): كان `if (loading) {return;}` يُسقط بصمت طلب
+       التحديث القادم من اعتماد/استلام ناجح فوق قراءة جارية — فيبقى السجل على
+       حالته القديمة حتى ريفريش يدوي (عطل المالك: «في الشكل لازم ريفرش»).
+       الآن الطلب يُسجَّل ويُعاد فور انتهاء القراءة الجارية بدل إسقاطه. */
     async function reload() {
-        if (loading) {return;}
+        if (loading) {reloadQueued = true; return;}
         loading = true;
         const seq = ++readSeq;
         if (!rawRows.length) {table.setLoading(true);}
@@ -1417,6 +1472,7 @@ export function mountDispatchScreen(host, ctx = {}) {
                     : `تعذّر تحميل الأذون: ${(e && e.message) || 'خطأ'}`));
         } finally {
             loading = false;
+            if (reloadQueued) {reloadQueued = false; reload();}
         }
     }
 

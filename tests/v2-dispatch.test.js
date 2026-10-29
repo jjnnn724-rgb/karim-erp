@@ -500,7 +500,10 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
 
     test('حراس القراءة والقرار: أحدث قراءة تفوز، لا رسم بعد الانفصال، قرار واحد في المرة', () => {
         const s = src();
-        expect(s).toMatch(/if \(loading\) \{return;\}/);
+        /* 2026-10-29: حارس `return` الصامت كان يُسقط تحديثًا مطلوبًا أثناء
+           قراءة جارية فيبقى السجل قديمًا حتى ريفريش — صار الطلب يُصفّ ولا يُسقط. */
+        expect(s).toMatch(/if \(loading\) \{reloadQueued = true; return;\}/);
+        expect(s).toMatch(/if \(reloadQueued\) \{reloadQueued = false; reload\(\);\}/);
         expect(s).toMatch(/const seq = \+\+readSeq;/);
         expect(s.match(/if \(!el\.isConnected \|\| seq !== readSeq\) \{return;\}/g)).toHaveLength(2);
         expect(s).toMatch(/const panelAlive = \(seq\) => el\.isConnected && seq === panelSeq;/);
@@ -510,6 +513,35 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
         expect(s.match(/disposeSignaturePads\(ALL_SIG_IDS\);/g)).toHaveLength(2);
         expect(s).toMatch(/table\.destroy\(\);/);
         expect(s).toMatch(/el\.remove\(\);/);
+    });
+
+    test('قرار موفق يحدّث السجل من ردّ الخادم فورًا بلا انتظار قراءة القائمة', () => {
+        const s = src();
+        /* الصف المعتمد في ردّ الخادم هو الحقيقة: يُدمج ويُرسم قبل reload() */
+        expect(s).toMatch(/function applyDecisionResult\(result\)/);
+        expect(s).toMatch(/const row = result && result\.dispatch;/);
+        expect(s).toMatch(/rawRows\[idx\] = \{\.\.\.rawRows\[idx\], \.\.\.row\};/);
+        expect(s).toMatch(/rawById\.set\(key, rawRows\[idx >= 0 \? idx : 0\]\);\s*\n\s*paint\(\);/);
+        const decisions = ['submitChefApprove', 'submitChefReject', 'submitApprove', 'submitReject', 'submitReceive'];
+        for (const fn of decisions) {
+            const start = s.indexOf(`async function ${fn}(`);
+            expect(start).toBeGreaterThan(-1);
+            const rest = s.slice(start + 1);
+            const end = rest.search(/\n {4}(async )?function /);
+            const scope = end === -1 ? rest : rest.slice(0, end);
+            expect(scope).toContain('applyDecisionResult(result);');
+            expect(scope.indexOf('applyDecisionResult(result);')).toBeLessThan(scope.indexOf('await reload();'));
+        }
+    });
+
+    test('زر القرار يعلن الانشغال من أول نقرة — لا ضغطة ثانية', () => {
+        const s = src();
+        expect(s).toMatch(/function setPanelBusy\(label\)/);
+        expect(s).toMatch(/btn\.disabled = true;/);
+        expect(s).toMatch(/btn\.setAttribute\('aria-busy', 'true'\);/);
+        expect(s).toMatch(/function clearPanelBusy\(prevHtml\)/);
+        expect(s.match(/const prevBtn = setPanelBusy\('جارٍ /g)).toHaveLength(5);
+        expect(s.match(/clearPanelBusy\(prevBtn\);/g)).toHaveLength(5);
     });
 
     test('الأخطاء من ردّ الخادم كما ترد، وثلاث قراءات مسمّاة', () => {

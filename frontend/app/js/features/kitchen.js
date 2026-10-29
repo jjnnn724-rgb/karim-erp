@@ -1168,9 +1168,15 @@ actualWeight:null,packagingQty:null,packagingUom:null,catchWeightUom:inv?.catch_
 }
 });
 if(hasError||approvedItems.length===0){ toast('تحقق من البيانات','error'); return; }
+const approveBtn=document.querySelector('[data-karim-action="confirmApprove"]');
+const approveBtnHtml=approveBtn?approveBtn.innerHTML:null;
+if(approveBtn){approveBtn.disabled=true;approveBtn.innerHTML='<i class=ji data-i=refresh></i> جارٍ الاعتماد…';}
 try{
 const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/approve`,{method:'POST',body:JSON.stringify({approvedItems,approveNotes,signatureData,signerName})});
-upsertStateEntity('dispatches',result.dispatch);
+// دمج الصف المعتمد فوق صف الحالة المحلي — الرد يعيد أعمدة القاعدة وحدها،
+// وحقول العرض (deptName) تأتي من الصف المحمّل؛ الدمج يمنع اختفاءها ويمنع
+// بقاء الحالة القديمة حتى ريفريش يدوي.
+upsertStateEntity('dispatches',{...d,...(result.dispatch||{}),status:(result.dispatch&&result.dispatch.status)||'approved'});
 (result.stockChanges||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
 (result.expenses||[]).forEach(row=>upsertStateEntity('expenses',row));
@@ -1178,6 +1184,7 @@ closeModal(); renderPage();
 toast(`تمت الموافقة وحُسبت مصاريف القسم بقيمة ${fC(result.totalValue||0)}`,'success');
 addNotification('تمت الموافقة',`تم اعتماد طلب الصرف من ${d.deptName} وتسجيل تكلفته على القسم`,'success');
 }catch(e){ if(e && e.code==='DISPATCH_APPROVE_IN_PROGRESS'){ toast('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا','warning'); return; } toast(e.message||'تعذر اعتماد طلب الصرف','error'); }
+finally{ if(approveBtn&&approveBtn.isConnected){approveBtn.disabled=false;if(approveBtnHtml!=null){approveBtn.innerHTML=approveBtnHtml;}} }
 }catch(err){ console.error('[confirmApprove]',err); toast('خطأ غير متوقع أثناء الاعتماد: '+(err?.message||err),'error'); }
 finally{ _approvingDispatch=false; hideLoad(); }
 }

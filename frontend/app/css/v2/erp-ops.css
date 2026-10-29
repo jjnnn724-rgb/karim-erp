@@ -436,6 +436,32 @@
   padding-block-start: var(--erp-space-3);
 }
 
+/* قرار قيد التنفيذ: الزر يعلن الانشغال فورًا بدل أن يبدو الضغط ميتًا */
+.erp-v2-dispatch .erp-dispatch-panel__actions .erp-btn[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.erp-btn__spin {
+  display: inline-block;
+  flex: none;
+  inline-size: var(--erp-icon-sm);
+  block-size: var(--erp-icon-sm);
+  border: thin solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: var(--erp-radius-full);
+  animation: erp-btn-spin 800ms linear infinite;
+}
+
+@keyframes erp-btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-btn__spin { animation-duration: 2.4s; }
+}
+
 /* ── صف الصنف في نموذج الإنشاء/التعديل ── */
 .erp-v2-dispatch .erp-di {
   display: flex;
