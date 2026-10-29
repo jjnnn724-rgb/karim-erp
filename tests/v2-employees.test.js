@@ -677,7 +677,11 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
 
     test('the panel is born outside both cards, so it shows in cards view too', () => {
         const s = screen();
-        expect(s.lastIndexOf('<div data-v2-panel hidden>')).toBeGreaterThan(s.lastIndexOf('</section>'));
+        // العقدة معقودة على القالب وحده: الكشف صار أقسامًا مسماة، وفتح اللوحة
+        // فيه </section> أسطرًا لاحقًا في الملف — والقصد أن اللوحة خارج
+        // بطاقتي الدليل داخل القالب، لا أن القالب آخر </section> في الملف.
+        const tpl = s.slice(s.indexOf('function template()'), s.indexOf('export function mountEmployeesScreen'));
+        expect(tpl.lastIndexOf('<div data-v2-panel hidden>')).toBeGreaterThan(tpl.lastIndexOf('</section>'));
         expect(s).toMatch(/function setPanel\(html\)/);
         expect(s).toMatch(/panelEl\.hidden = false/);
         expect(s).toMatch(/panelEl\.hidden = true/);
@@ -697,8 +701,9 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
             /esc\(x\.warn\)/,
             /esc\(qrUrl\)/,
             /esc\(payload\.cardId \|\| ''\)/,
-            /esc\(s\.from \|\| ''\)/,
-            /esc\(s\.to \|\| ''\)/,
+            /String\(s\.from \|\| ''\)/,
+            /String\(s\.to \|\| ''\)/,
+            /esc\(period\)/,
             /esc\(r\.start\)/,
             /esc\(r\.end\)/,
             /esc\(r\.type\)/,

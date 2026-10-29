@@ -43,8 +43,8 @@
  *   screens/employees.js: they are presentation, and this file stays pure.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.188';
-import { isWeeklyOff } from './attendance-repo.js?v=4.9.188';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.192';
+import { isWeeklyOff } from './attendance-repo.js?v=4.9.192';
 
 const int = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : 0; };
 // A missing salary is not zero: Number(null) is 0, and a card that prints
@@ -112,6 +112,13 @@ export function cardKpis(summary = {}) {
     const reviewDays = int(summary.reviewDays);
     const lateHours = num(summary.totalLateHours) ?? 0;
     const lateMinutes = Math.max(0, int(summary.totalLateMinutes));
+    // الخام (بلا سماحية) من حقول الخادم الجديدة — للعرض لا للنسبة: نسبة
+    // الانتظام تبقى على «المحتسب» حتى لا تعاقب شخصًا على دقيقة سمح بها المالك.
+    const rawLateMinutes = Math.max(0, int(summary.totalRawLateMinutes));
+    const rawLateDays = Math.max(0, int(summary.rawLateDays));
+    const graceMinutes = Math.max(0, int(summary.graceMinutes));
+    // ساعات العمل المعروضة كما يحسبها الخادم (totalKarim) — لا إعادة حساب هنا.
+    const hours = num(summary.totalKarim) ?? 0;
     const rate = workDays > 0
         ? Number((((workDays - lateDays) / workDays) * 100).toFixed(1))
         : null;
@@ -123,6 +130,10 @@ export function cardKpis(summary = {}) {
         reviewDays,
         lateHours,
         lateMinutes,
+        rawLateMinutes,
+        rawLateDays,
+        graceMinutes,
+        hours,
         rate,
         badge: badge ? badge.label : null,
         badgeTone: badge ? badge.tone : 'neutral',
@@ -273,12 +284,18 @@ export function rangeReportRows(report = {}) {
         if (!rec) {
             return {
                 date, state: off ? 'day-off' : 'absent', weeklyOff: off,
-                minutes: 0, lateMinutes: 0, checkIn: '', checkOut: '',
+                minutes: 0, lateMinutes: 0, arrivalLateRaw: 0, earlyLeaveRaw: 0,
+                withinGrace: false, checkIn: '', checkOut: '',
             };
         }
         const checkIn = String(rec.checkIn || '').trim();
         const checkOut = String(rec.checkOut || '').trim();
         const lateMinutes = Math.max(0, int(rec.lateMinutes));
+        // الدقائق الخام من الخادم كما هي: ما حدث على الساعة فعلًا، قبل السماحية.
+        // «ضمن السماح» = حصل تأخير حقيقي لكنه تحت الحدّ، فلا هو اختفى ولا هو
+        // اتحوّل خصمًا. النسبة للحضور تبقى على المحتسب (lateMinutes) وحده.
+        const arrivalLateRaw = Math.max(0, int(rec.arrivalLateRawMinutes));
+        const earlyLeaveRaw = Math.max(0, int(rec.earlyLeaveRawMinutes));
         let state;
         // راحةٌ أسبوعية بلا بصمة ليست «بلا حضور»؛ وراحةٌ بُصم عليها يومٌ عملٍ
         // كما هو — الحضور حقيقةٌ أحدث من الجدول.
@@ -289,11 +306,13 @@ export function rangeReportRows(report = {}) {
         else if (!checkIn) {state = 'no-in';}
         else if (!checkOut) {state = 'no-out';}
         else if (lateMinutes > 0) {state = 'late';}
+        else if (arrivalLateRaw > 0 || earlyLeaveRaw > 0) {state = 'within-grace';}
         else {state = 'in-time';}
         return {
             date, state, checkIn, checkOut, weeklyOff: off,
             minutes: Math.max(0, int(rec.workMinutes)),
-            lateMinutes,
+            lateMinutes, arrivalLateRaw, earlyLeaveRaw,
+            withinGrace: state === 'within-grace',
         };
     });
 
@@ -317,6 +336,11 @@ export function rangeReportRows(report = {}) {
             totalKarim: num(summary.totalKarim) ?? 0,
             totalLateMinutes: int(summary.totalLateMinutes),
             totalLateHours: num(summary.totalLateHours) ?? 0,
+            graceMinutes: int(summary.graceMinutes),
+            rawLateDays: int(summary.rawLateDays),
+            arrivalRawMinutes: int(summary.totalArrivalRawMinutes),
+            earlyLeaveRawMinutes: int(summary.totalEarlyRawMinutes),
+            totalRawLateMinutes: int(summary.totalRawLateMinutes),
         },
     };
 }

@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.188';
-import { openInAppReport } from '../report-viewer.js?v=4.9.188';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.188';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.188';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.188';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.192';
+import { openInAppReport } from '../report-viewer.js?v=4.9.192';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.192';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.192';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.192';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,18 +81,18 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.188';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.188';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.188';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.188';
+} from '../data/employees-repo.js?v=4.9.192';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.192';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.192';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.192';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.188';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.188';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.188';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.188';
+} from '../data/employee-card-repo.js?v=4.9.192';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.192';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.192';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.192';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -153,8 +153,8 @@ function topsBlock(depts, total) {
  */
 function attRangeBlock() {
     const today = todayIso();
-    return `<div data-v2-file-range>
-          <h4 class="erp-emp-sec">كشف يوم/فترة</h4>
+    return `<div class="erp-emp-sec-block" data-v2-file-range>
+          <h4 class="erp-emp-sec">كشف يوم/فترة <span class="erp-eyebrow" dir="ltr" lang="en">Day / Range</span></h4>
           <div class="erp-emp-att erp-no-print">
             <label class="erp-emp-att__f"><span>من</span>
               <input type="date" class="erp-input erp-input--ltr" data-v2-att-from max="${esc(today)}" value="${esc(`${today.slice(0, 7)}-01`)}"></label>
@@ -181,8 +181,31 @@ const ATT_STATE = {
     'no-in': { label: 'بلا حضور', tone: 'warning' },
     'no-out': { label: 'بلا انصراف', tone: 'warning' },
     late: { label: 'تأخير', tone: 'danger' },
+    // «ضمن السماح»: بصمة متأخرة فعلًا لكن داخل حدّ السماحية، فلا هي اختفت ولا
+    // هي محتسبة خصمًا (طلب المالك 2026-10-29: كل تأخير ولو دقيقة يبان).
+    'within-grace': { label: 'ضمن السماح', tone: 'info' },
     'in-time': { label: 'في الموعد', tone: 'success' },
 };
+
+/** «12 د» — الدقائق وحدها هي المقياس هنا: التقريب لساعات هو ما كان يبتلع
+ *  الدقيقة الواحدة. وتُكتب الأرقام LTR تحت نظام كتابة عربي. */
+const minutesCell = (v) => `<span class="erp-num" dir="ltr">${formatInt(v)} د</span>`;
+
+/**
+ * عمود التأخير ليوم واحد: الدقائق الفعلية لكلٍّ من الدخول المتأخر والانصراف
+ * المبكر كما سجّلتهما البصمة (بلا سماحية)، زائد المحتسب للخصم إن اختلفا.
+ * من دون هذا العمود كانت أي دقيقة داخل السماحية تختفي من البطاقة كلها.
+ */
+function delayCell(r) {
+    const parts = [];
+    if (r.arrivalLateRaw > 0) {parts.push(`دخول ${minutesCell(r.arrivalLateRaw)}`);}
+    if (r.earlyLeaveRaw > 0) {parts.push(`انصراف ${minutesCell(r.earlyLeaveRaw)}`);}
+    if (!parts.length) {return `<span class="erp-text-muted">—</span>`;}
+    const counted = r.lateMinutes > 0 && r.lateMinutes !== (r.arrivalLateRaw + r.earlyLeaveRaw)
+        ? ` · <span class="erp-emp-delay__counted">محتسَب ${minutesCell(r.lateMinutes)}</span>`
+        : '';
+    return `<span class="erp-emp-delay${r.withinGrace ? ' erp-emp-delay--grace' : ''}">${parts.join(' · ')}${counted}</span>`;
+}
 
 function template() {
     return `
@@ -961,6 +984,10 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ? `<span class="erp-emp-photo__preview erp-avatar" aria-hidden="true"><img src="${esc(photo)}" alt=""></span>`
             : `<span class="erp-emp-photo__preview erp-avatar" aria-hidden="true">${esc(initialsOf(row.nameResolved ? row.name : ''))}</span>`;
         const hasSalary = ex.salary !== null && ex.salary !== undefined;
+        /* اللوحة قسمٌ قسم بغلافٍ واحد: رأسٌ للهوية، ثم ثلاث كتل ثابتة مسماة،
+           ثم الكتلة الحيّة (الأداء/الكشف/الإجازات/QR) — كلٌّ منها عنوانها من
+           الراسم نفسه. قبل كذا كانت تسع لفّات مختلفة تكدّس السطور بلا نظام،
+           وكان شهرٌ واحد يُطبع بشريطي أرقام متطابقين؛ الآن شريطٌ واحد. */
         setPanel(panelShell(`كشف الموظف — ${row.name}`, 'id-card', `
           <div class="erp-emp-file__head">
             ${avatar}
@@ -971,28 +998,38 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${statusBadge('employees', row.status)}
             <span data-v2-file-badge></span>
           </div>
-          <div class="erp-emp-grid">
-            <div class="erp-emp-fact"><i class="ji" data-i="building" aria-hidden="true"></i><span>القسم: ${deptCell(row)}</span></div>
-            <div class="erp-emp-fact"><i class="ji" data-i="briefcase" aria-hidden="true"></i><span>المسمى: ${row.position !== '—' ? esc(row.position) : '—'}</span></div>
-            <div class="erp-emp-fact"><i class="ji" data-i="phone" aria-hidden="true"></i><span>الجوال: ${row.phone !== '—' ? `<span class="erp-num" dir="ltr">${esc(row.phone)}</span>` : '—'}</span></div>
-            <div class="erp-emp-fact"><i class="ji" data-i="file-text" aria-hidden="true"></i><span>البريد: ${raw.email ? esc(raw.email) : '—'}</span></div>
-            <div class="erp-emp-fact"><i class="ji" data-i="calendar-days" aria-hidden="true"></i><span>تاريخ الالتحاق: ${sliceDate(raw.joinDate) ? `<span class="erp-num" dir="ltr">${esc(sliceDate(raw.joinDate))}</span>` : '—'}</span></div>
-            <div class="erp-emp-fact"><i class="ji" data-i="scan" aria-hidden="true"></i><span>رقم البصمة: ${ex.deviceUserId ? `<span class="erp-num" dir="ltr">${esc(ex.deviceUserId)}</span>` : '<span class="erp-text-muted">بلا بصمة</span>'}</span></div>
-          </div>
-          <div class="erp-emp-grid">
-            ${expiryLine('انتهاء الإقامة', raw.iqamaExpiry)}
-            ${expiryLine('انتهاء الشهادة الصحية', raw.healthCertExpiry)}
-            ${expiryLine('انتهاء التثقيف الصحي', raw.healthEduExpiry)}
-          </div>
-          <div class="erp-person__meta">${shiftBits(ex)}</div>
-          <div class="erp-person__meta" data-v2-file-sched></div>
-          ${hasSalary ? `<div class="erp-emp-fact"><i class="ji" data-i="banknote" aria-hidden="true"></i><span>الراتب الأساسي: ${salaryText(ex.salary)}</span></div>` : ''}
-          <div data-v2-file-kpis></div>
-          <div data-v2-file-att></div>
+          <section class="erp-emp-sec-block">
+            <h4 class="erp-emp-sec">بيانات الموظف <span class="erp-eyebrow" dir="ltr" lang="en">Profile</span></h4>
+            <div class="erp-emp-grid">
+              <div class="erp-emp-fact"><i class="ji" data-i="building" aria-hidden="true"></i><span>القسم: ${deptCell(row)}</span></div>
+              <div class="erp-emp-fact"><i class="ji" data-i="briefcase" aria-hidden="true"></i><span>المسمى: ${row.position !== '—' ? esc(row.position) : '—'}</span></div>
+              <div class="erp-emp-fact"><i class="ji" data-i="phone" aria-hidden="true"></i><span>الجوال: ${row.phone !== '—' ? `<span class="erp-num" dir="ltr">${esc(row.phone)}</span>` : '—'}</span></div>
+              <div class="erp-emp-fact"><i class="ji" data-i="file-text" aria-hidden="true"></i><span>البريد: ${raw.email ? esc(raw.email) : '—'}</span></div>
+              <div class="erp-emp-fact"><i class="ji" data-i="calendar-days" aria-hidden="true"></i><span>تاريخ الالتحاق: ${sliceDate(raw.joinDate) ? `<span class="erp-num" dir="ltr">${esc(sliceDate(raw.joinDate))}</span>` : '—'}</span></div>
+              <div class="erp-emp-fact"><i class="ji" data-i="scan" aria-hidden="true"></i><span>رقم البصمة: ${ex.deviceUserId ? `<span class="erp-num" dir="ltr">${esc(ex.deviceUserId)}</span>` : '<span class="erp-text-muted">بلا بصمة</span>'}</span></div>
+            </div>
+          </section>
+          <section class="erp-emp-sec-block">
+            <h4 class="erp-emp-sec">العقود والشهادات <span class="erp-eyebrow" dir="ltr" lang="en">Expiries</span></h4>
+            <div class="erp-emp-grid">
+              ${expiryLine('انتهاء الإقامة', raw.iqamaExpiry)}
+              ${expiryLine('انتهاء الشهادة الصحية', raw.healthCertExpiry)}
+              ${expiryLine('انتهاء التثقيف الصحي', raw.healthEduExpiry)}
+            </div>
+          </section>
+          <section class="erp-emp-sec-block">
+            <h4 class="erp-emp-sec">الوردية والأجر <span class="erp-eyebrow" dir="ltr" lang="en">Shift &amp; Pay</span></h4>
+            <div class="erp-emp-grid">
+              <div class="erp-person__meta">${shiftBits(ex)}</div>
+              <div class="erp-person__meta" data-v2-file-sched></div>
+              ${hasSalary ? `<div class="erp-emp-fact"><i class="ji" data-i="banknote" aria-hidden="true"></i><span>الراتب الأساسي: ${salaryText(ex.salary)}</span></div>` : ''}
+            </div>
+          </section>
+          <div class="erp-emp-sec-block" data-v2-file-kpis></div>
           ${attRangeBlock()}
-          <div data-v2-file-leaves></div>
-          <div data-v2-file-qr></div>
-          <div class="erp-emp-panel__actions">
+          <div class="erp-emp-sec-block" data-v2-file-leaves></div>
+          <div class="erp-emp-sec-block" data-v2-file-qr></div>
+          <div class="erp-emp-panel__actions erp-no-print">
             <span class="erp-grow"></span>
             <button type="button" class="erp-btn erp-btn--sm" data-v2-print="card">
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>طباعة البطاقة الكاملة</span></button>
@@ -1011,28 +1048,21 @@ export function mountEmployeesScreen(host, ctx = {}) {
     }
 
     async function fillAttendance(row, seq) {
-        const host = panelEl.querySelector('[data-v2-file-att]');
+        // شهرٌ واحد = شريطُ أرقامٍ واحد: المؤشرات تُرسم في كتلة «الأداء
+        // والانضباط» نفسها، لا في كتلةٍ ثانية تكرّرها تحتها.
+        const host = panelEl.querySelector('[data-v2-file-kpis]');
         if (!host) {return;}
         host.innerHTML = `<p class="erp-text-sm erp-text-muted">جارٍ جلب حضور الشهر…</p>`;
         let res = null; let err = '';
         try { res = await fetchAttendanceReport({ employeeId: row.id }); }
         catch (e) { err = (e && e.message) || 'خطأ'; }
         if (!el.isConnected || seq !== panelSeq || panelKind !== 'file' || !host.isConnected) {return;}
-        if (err) {host.innerHTML = `<p class="erp-text-sm erp-emp-bad">تعذر جلب تقرير الحضور: ${esc(err)}</p>`; return;}
-        const s = (res && res.summary) || {};
-        const stat = (label, value) => `<span class="erp-emp-stat"><span class="erp-emp-stat__v erp-num" dir="ltr">${esc(value)}</span><span class="erp-emp-stat__l">${esc(label)}</span></span>`;
-        host.innerHTML = `
-          <h4 class="erp-emp-sec">حضور الشهر (${esc(s.from || '')} — ${esc(s.to || '')})</h4>
-          <div class="erp-emp-stats">
-            ${stat('أيام حضور', formatInt(s.daysPresent))}
-            ${stat('أيام مكتملة', formatInt(s.completeDays))}
-            ${stat('أيام تأخير', formatInt(s.lateDays))}
-            ${stat('ساعات عمل', s.totalKarim !== undefined ? String(s.totalKarim) : '0')}
-            ${stat('ساعات تأخير', s.totalLateHours !== undefined ? String(s.totalLateHours) : '0')}
-            ${Number(s.reviewDays) > 0 ? stat('قيد المراجعة', formatInt(s.reviewDays)) : ''}
-          </div>
-          <p class="erp-text-sm erp-text-muted">الشهر الحالي</p>`;
-        paintCardSummary(row, s);
+        if (err) {
+            host.innerHTML = `<h4 class="erp-emp-sec">الأداء والانضباط</h4>`
+                + `<p class="erp-text-sm erp-emp-bad">تعذر جلب تقرير الحضور: ${esc(err)}</p>`;
+            return;
+        }
+        paintCardSummary(row, (res && res.summary) || {});
     }
 
     /**
@@ -1054,24 +1084,39 @@ export function mountEmployeesScreen(host, ctx = {}) {
         const raw = (label, html) => `<span class="erp-emp-stat"><span class="erp-emp-stat__v">${html}</span>`
             + `<span class="erp-emp-stat__l">${esc(label)}</span></span>`;
         const stat = (label, value) => raw(label, `<span class="erp-num" dir="ltr">${esc(value)}</span>`);
+        // الفترة تُكتب في الحاجب اللاتيني كما يكتبها كشف الفترة — عنوانٌ واحد
+        // يحمل اسم الكتلة ونافذتها، بدل سطرٍ زائد يكرر التاريخين.
+        const period = [String(s.from || ''), String(s.to || '')].filter(Boolean).join(' — ');
+        const head = `<h4 class="erp-emp-sec">الأداء والانضباط`
+            + (period ? ` <span class="erp-eyebrow" dir="ltr" lang="en">${esc(period)}</span>` : '') + `</h4>`;
         if (k.workDays <= 0) {
-            kpiHost.innerHTML = `<h4 class="erp-emp-sec">الأداء</h4>
-              <p class="erp-text-sm erp-text-muted">لا أيام حضور مسجّلة هذا الشهر — لا نسبة تُحسب ولا خصم يُقدَّر.</p>`;
+            kpiHost.innerHTML = head
+                + `<p class="erp-text-sm erp-text-muted">لا أيام حضور مسجّلة هذا الشهر — لا نسبة تُحسب ولا خصم يُقدَّر.</p>`;
             return;
         }
         const ex = extrasById.get(String(row.id)) || {};
         const pr = cardPayroll({ salary: ex.salary, lateMinutes: k.lateMinutes, workDays: k.workDays });
+        // سطر الحدّ: ربع الساعة عتبة — من تجاوزها حُسب تأخيره كاملًا، ومن كان
+        // داخلها لم يُخصم منه شيء. الفرق بين «عليها تأخير» و«محتسَبة» هو هذا.
+        const graceNote = k.graceMinutes > 0 && k.rawLateDays !== k.lateDays
+            ? `<p class="erp-text-sm erp-text-muted">${formatInt(k.rawLateDays)} يومًا فيها دقائق تأخير فعلية (${minutesToHM(k.rawLateMinutes)})؛ منها ${formatInt(k.lateDays)} يومًا تجاوزت حدّ ${formatInt(k.graceMinutes)} دقيقة فحُسب تأخيرها كاملًا، والباقي داخل الحدّ فلا خصم عليه.</p>`
+            : '';
         kpiHost.innerHTML = `
-          <h4 class="erp-emp-sec">الأداء</h4>
+          ${head}
           <div class="erp-emp-stats">
             ${stat('نسبة الانتظام', `${k.rate}%`)}
             ${stat('أيام حضور', formatInt(k.workDays))}
-            ${stat('أيام تأخير', formatInt(k.lateDays))}
-            ${stat('ساعات تأخير', String(k.lateHours))}
+            ${stat('أيام مكتملة', formatInt(k.completeDays))}
+            ${stat('ساعات عمل', k.hours)}
+            ${stat('عليها تأخير', formatInt(k.rawLateDays))}
+            ${stat('تأخير فعلي', k.rawLateMinutes ? minutesToHM(k.rawLateMinutes) : '—')}
+            ${stat('أيام تأخير محتسَبة', formatInt(k.lateDays))}
+            ${stat('تأخير محتسَب', k.lateMinutes ? minutesToHM(k.lateMinutes) : '—')}
             ${k.reviewDays > 0 ? stat('قيد المراجعة', formatInt(k.reviewDays)) : ''}
           </div>
           <progress class="erp-emp-rate" max="100" value="${esc(String(k.rate))}"
                     aria-label="نسبة الانتظام ${esc(String(k.rate))} بالمئة"></progress>
+          ${graceNote}
           ${pr ? `<h4 class="erp-emp-sec">الراتب التقديري</h4>
           <div class="erp-emp-stats">
             ${raw('الأساسي', salaryText(pr.basic))}
@@ -1271,35 +1316,43 @@ export function mountEmployeesScreen(host, ctx = {}) {
             // السقوط إلى «يحتاج مراجعة» لا إلى «لم يحضر»: حالةٌ لا يعرفها
             // القاموس تستدعي عينًا بشرية، لا تهمة غياب.
             const st = ATT_STATE[r.state] || ATT_STATE.review;
-            const late = r.state === 'late' ? ` ${minutesToHM(r.lateMinutes)}` : '';
             return `<tr>
               <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.date)}</span></td>
               <td class="erp-td erp-text-muted">${esc(weekdayAr(r.date))}</td>
               <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.checkIn || '—')}</span></td>
               <td class="erp-td"><span class="erp-num" dir="ltr">${esc(r.checkOut || '—')}</span></td>
               <td class="erp-td"><span class="erp-num" dir="ltr">${esc(minutesToHM(r.minutes))}</span></td>
-              <td class="erp-td"><span class="erp-badge" data-tone="${esc(st.tone)}">${esc(st.label)}${esc(late)}</span></td>
+              <td class="erp-td">${delayCell(r)}</td>
+              <td class="erp-td"><span class="erp-badge" data-tone="${esc(st.tone)}">${esc(st.label)}</span></td>
             </tr>`;
-        }).join('') || `<tr><td class="erp-td" colspan="6">لا أيام في هذه الفترة</td></tr>`;
+        }).join('') || `<tr><td class="erp-td" colspan="7">لا أيام في هذه الفترة</td></tr>`;
         const offDays = model.rows.filter((r) => r.state === 'day-off').length;
+        // «عليها تأخير» ≠ «أيام تأخير»: الأولى كل يوم فيه دقيقة متأخرة ولو داخل
+        // الحدّ، والثانية ما تجاوز الحدّ فحُسب كاملًا للخصم.
+        const withinGraceDays = model.rows.filter((r) => r.state === 'within-grace').length;
         const notes = [
             model.truncated ? `عرض أول ${formatInt(MAX_RANGE_DAYS)} يومًا من الفترة — ضيّق النطاق لرؤية الباقي.` : '',
             s.reviewDays > 0 ? `قيد المراجعة: ${formatInt(s.reviewDays)} يومًا (${minutesToHM(s.reviewMinutes)}) لا تدخل الإجمالي.` : '',
             offDays > 0 ? `راحة أسبوعية مجدولة: ${formatInt(offDays)} يومًا في هذه الفترة — بترميز اليوم المخزّن، لا تُعدّ غيابًا.` : '',
+            s.graceMinutes > 0
+                ? `حدّ ${formatInt(s.graceMinutes)} دقيقة عتبة: عمود «التأخير» يعرض الدقائق الفعلية، ومن تجاوز الحدّ حُسب تأخيره كاملًا في «أيام تأخير» و«إجمالي المحتسب»، ومن كان داخله فلا خصم عليه.`
+                : 'عمود «التأخير» يعرض الدقائق الفعلية كما سجلتها البصمة.',
             'الحالة من حقل التأخير الذي يحسبه الخادم نفسه — نفس رقم شاشة الحضور.',
         ].filter(Boolean);
         return `<h4 class="erp-emp-sec">كشف <span class="erp-num" dir="ltr">${esc(s.from)}</span> — <span class="erp-num" dir="ltr">${esc(s.to)}</span>${who ? ` · ${esc(who)}` : ''}</h4>
           <div class="erp-emp-stats">
             ${stat('أيام حضور', formatInt(s.daysPresent))}
             ${stat('أيام مكتملة', formatInt(s.completeDays))}
-            ${stat('أيام في الموعد', formatInt(s.onTimeDays))}
-            ${stat('أيام تأخير', formatInt(s.lateDays))}
-            ${stat('إجمالي التأخير', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
+            ${stat('عليها تأخير', formatInt(s.rawLateDays))}
+            ${stat('أيام تأخير محتسَبة', formatInt(s.lateDays))}
+            ${stat('تأخير فعلي', s.totalRawLateMinutes > 0 ? minutesToHM(s.totalRawLateMinutes) : '—')}
+            ${stat('تأخير محتسَب', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
             ${stat('إجمالي الساعات', String(s.totalKarim))}
           </div>
+          ${withinGraceDays > 0 ? `<p class="erp-text-sm erp-text-muted erp-no-print">${formatInt(withinGraceDays)} يومًا بتأخير داخل السماحية — ظاهرٌ هنا وغير داخل الخصم.</p>` : ''}
           <div class="erp-table__scroll erp-emp-att__scroll" tabindex="0">
             <table class="erp-table__grid">
-              <thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead>
+              <thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>التأخير</th><th>الحالة</th></tr></thead>
               <tbody>${body}</tbody>
             </table>
           </div>

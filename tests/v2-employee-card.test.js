@@ -347,8 +347,41 @@ describe('V2 employees screen — the card the كشف now paints', () => {
         const panel = s.slice(at, s.indexOf('async function fillAttendance', at));
         expect(panel).toMatch(/<span data-v2-file-badge><\/span>/);
         expect(panel).toMatch(/<div class="erp-person__meta" data-v2-file-sched><\/div>/);
-        expect(panel).toMatch(/<div data-v2-file-kpis><\/div>/);
+        // 2026-10-29: Slots remain direct children of the panel body (the print
+        // selectors address them as `> [data-v2-file-*]`), now inside one shared
+        // section wrapper class so every block reads with the same rhythm.
+        expect(panel).toMatch(/<div class="erp-emp-sec-block" data-v2-file-kpis><\/div>/);
+        expect(panel).toMatch(/<div class="erp-emp-sec-block" data-v2-file-leaves><\/div>/);
+        expect(panel).toMatch(/<div class="erp-emp-sec-block" data-v2-file-qr><\/div>/);
         expect(panel).toMatch(/data-v2-print="card"/);
+    });
+
+    test('شريط أرقامٍ واحد للشهر: لا كتلة حضورٍ ثانية تكرّر مؤشرات الأداء', () => {
+        const s = screen();
+        // لا مضيف «حضور الشهر» المستقل: الأرقام كلها في كتلة الأداء نفسها.
+        expect(s).not.toMatch(/data-v2-file-att/);
+        const at = s.indexOf('async function fillAttendance');
+        const body = s.slice(at, s.indexOf('function paintCardSummary', at));
+        expect(body).toMatch(/panelEl\.querySelector\('\[data-v2-file-kpis\]'\)/);
+        expect(body).toMatch(/paintCardSummary\(row, \(res && res\.summary\) \|\| \{\}\)/);
+        expect(body).not.toMatch(/حضور الشهر \(/);
+        // والمؤشرات التي كانت في الكتلة المحذوفة انتقلت، لا ضاعت
+        const kpi = s.slice(s.indexOf('function paintCardSummary', at), s.indexOf('function attRangeHtml', at));
+        expect(kpi).toMatch(/stat\('أيام مكتملة', formatInt\(k\.completeDays\)\)/);
+        expect(kpi).toMatch(/stat\('ساعات عمل', k\.hours\)/);
+        expect(kpi).toMatch(/class="erp-eyebrow" dir="ltr" lang="en">\$\{esc\(period\)\}/);
+    });
+
+    test('الكشف قسمٌ قسم بأسماء: بيانات، عقود، وردية وأجر — لا لفّات متناثرة', () => {
+        const s = screen();
+        const at = s.indexOf('function openFilePanel(row)');
+        const panel = s.slice(at, s.indexOf('async function fillAttendance', at));
+        for (const title of ['بيانات الموظف', 'العقود والشهادات', 'الوردية والأجر']) {
+            expect(panel).toContain(title);
+        }
+        // كل عنوان داخل غلافٍ واحد، فلا كتلة تخرج عن الإيقاع
+        expect(panel.match(/<section class="erp-emp-sec-block">/g)).toHaveLength(3);
+        expect(panel.match(/class="erp-emp-sec"/g)).toHaveLength(3);
     });
 
     test('the badge tone comes from the fixed vocabulary, and the rate is a native progress bar', () => {
@@ -504,11 +537,15 @@ describe('V2 employees screen — the card the كشف now paints', () => {
         const s = screen();
         expect(s).toMatch(/const ATT_STATE = \{/);
         const table = s.match(/const ATT_STATE = \{[\s\S]*?\n\};/)[0].replace(/'/g, '');
-        for (const key of ['absent', 'review', 'no-in', 'no-out', 'late', 'in-time']) {
+        // «within-grace»: تأخيرٌ فعلي داخل السماحية — كان يختفي، صار يُسمّى.
+        for (const key of ['absent', 'review', 'no-in', 'no-out', 'late', 'within-grace', 'in-time']) {
             expect(table).toContain(`${key}: { label: `);
         }
         expect(s).toMatch(/host\.innerHTML = attRangeHtml\(rangeReportRows\(res\)\)/);
-        expect(s).toMatch(/minutesToHM\(r\.lateMinutes\)/);
+        // الحالة والدقائق كلها من حقول الخادم: لا اشتقاق وردية في المتصفح
+        expect(s).toMatch(/minutesCell\(r\.lateMinutes\)/);
+        expect(s).toMatch(/r\.arrivalLateRaw > 0/);
+        expect(s).toMatch(/r\.earlyLeaveRaw > 0/);
         expect(s).toMatch(/weekdayAr\(r\.date\)/);
     });
 
