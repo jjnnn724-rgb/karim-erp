@@ -15,7 +15,7 @@
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const {
-    shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, graceMinutes, lockGraceMinutes,
+    shiftDateFor, shiftDateForEmployee, prevDay, isLate, isEarlyLeave, graceMinutes, overGrace, lockGraceMinutes,
     normalizeShiftStart, normalizeShiftKarim, delayEngineEnabled,
 } = require('./shift-day');
 
@@ -310,8 +310,9 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
 
     const checkInMin = toMin(checkIn);
     const shiftMin = toMin(shiftStart) ?? 9 * 60;
-    // سماحية 15 دقيقة (قرار المالك 2026-10-10)
-    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin - graceMinutes());
+    // عتبة 15 دقيقة (قرار المالك 2026-10-10، ومعناها 2026-10-30): ضمنها في الميعاد،
+    // وفوقها يُحسب التأخير كاملًا من أول دقيقة.
+    const arrival = overGrace(checkInMin == null ? 0 : checkInMin - shiftMin);
     const lateFlag = arrival > 0;
 
     let early = 0;
@@ -337,13 +338,13 @@ function calculateDelayDetail({ checkIn, checkOut, shiftStart, shiftKarim }) {
             if (endRaw > 24 * 60 && out < 12 * 60) { out += 24 * 60; }
             // بلا دخول مسجل لا يُحتسب تبكير: الخروج وحده لا يثبت شيئًا
             if (checkInMin != null && out >= shiftMin) {
-                early = Math.max(0, endRaw - out - graceMinutes());
+                early = overGrace(endRaw - out);
                 earlyFlag = early > 0;
             }
             if (checkInMin != null) {
                 const requiredMin = Math.round(karim * 60);
                 const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
-                totalLate = Math.max(0, requiredMin - workedMin - graceMinutes());
+                totalLate = overGrace(requiredMin - workedMin);
             }
         }
     }

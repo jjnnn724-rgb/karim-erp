@@ -60,9 +60,10 @@ async function runStrictAudit(month) {
     for (const r of rows) {
       if (!r.checkIn) {continue;}
       const inMin = toMin(r.checkIn);
-      // FIX 2026-10-11 (M9): apply grace — arrival beyond grace counts as late
+      // FIX 2026-10-11 (M9): تجاوز الحدّ = متأخر؛ ومعنى الحدّ (2026-10-30) عتبة
+      // لا اقتطاع — فوق الربع ساعة تُحسب كل الدقائق.
       const rawArrival = inMin == null ? 0 : Math.max(0, inMin - sMin);
-      const arrival = rawArrival > grace ? rawArrival - grace : 0;
+      const arrival = rawArrival > grace ? rawArrival : 0;
       let early = 0;
       const outMin = toMin(r.checkOut);
       if (outMin != null && inMin != null) {
@@ -70,7 +71,10 @@ async function runStrictAudit(month) {
         let out = outMin;
         if (out < inMin) {out += 24 * 60;}
         if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
-        if (out >= inMin) {early = Math.max(0, endRaw - out);}
+        if (out >= inMin) {
+          const rawEarly = Math.max(0, endRaw - out);
+          early = rawEarly > grace ? rawEarly : 0;
+        }
       }
       const wm = Number(r.workMinutes);
       const review = Boolean(r.checkIn && r.checkOut && Number.isFinite(wm) && wm === 0);

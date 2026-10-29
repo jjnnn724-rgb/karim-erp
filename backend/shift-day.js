@@ -164,9 +164,18 @@ function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = 
     return (wallHour * 60 + wallMinute) > (sH * 60 + sM + graceMin);
 }
 
-/** فترة السماح بالدقائق — قرار المالك 2026-10-10: ربع ساعة سماح للدخول والانصراف */
+/** فترة السماح بالدقائق — قرار المالك 2026-10-10: ربع ساعة.
+ *  قرار المالك 2026-10-30 عدّل معناها: حدٌّ لا اقتطاع. «فوق الربع ساعة يخصم
+ *  الفترة كاملة» — بصمة 12:35 لوردية 12:00 تُحسب 35 دقيقة لا 20، وبصمة خروج
+ *  11:30 لوردية تنتهي 12:00 تُحسب 30 لا 15. ضمن الحدّ فالسماح كامل ولا شيء. */
 function graceMinutes() {
     return 15;
+}
+
+/** قاعدة العتبة: أقل من الحدّ أو مساويه = صفر؛ فوقه = القدر كاملًا بلا نقص */
+function overGrace(rawMinutes, grace = graceMinutes()) {
+    const raw = Math.max(0, Number(rawMinutes) || 0);
+    return raw > grace ? raw : 0;
 }
 
 /** نافذة القفل بالدقائق بعد نهاية الوردية — LOCK_GRACE_MINUTES، افتراضي 10 */
@@ -191,15 +200,24 @@ function getShiftStartMinutes(employee) {
 }
 
 function calculateDelayParts(row, employee) {
-    const zero = { arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 };
+    // الحقول الخام (…RawMinutes) = ما حدث فعلًا على الساعة، بلا سماحية.
+    // طلب المالك 2026-10-29: «أقدر أعرف كل تأخير ولو دقيقة في بطاقة كل موظف».
+    // المحتسب (lateMinutes/arrivalLateMinutes/earlyLeaveMinutes) بقاعدة العتبة
+    // (قرار المالك 2026-10-30): ضمن 15 دقيقة = صفر، وفوقها = التأخير كاملًا.
+    const zero = {
+        arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0,
+        arrivalLateRawMinutes: 0, earlyLeaveRawMinutes: 0,
+    };
     if (!delayEngineEnabled()) {return zero;}
     if (!row) {return zero;}
     const checkInMin = parseTimeMinutes(row.checkIn);
     const shiftMin = getShiftStartMinutes(employee);
-    // سماحية 15 دقيقة (قرار المالك 2026-10-10): تأخير الدخول ضمنها = في الميعاد
-    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin - graceMinutes());
+    // دخول ضمن الربع ساعة = في الميعاد؛ فوقها = كل الدقائق من أول دقيقة
+    const arrivalRaw = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin);
+    const arrival = overGrace(arrivalRaw);
 
     let early = 0;
+    let earlyRaw = 0;
     // قرار المالك (2026-09): المعتمد = صافي العجز عن ساعات الوردية —
     // «أهم شي يكمل 10 أو 12 ساعته»: الدخول المبكر يغطي الانصراف المبكر،
     // والتأخير يُمتص بالبقاء أطول. أي نقص (قبل أو بعد) يُحسب تأخيرًا.
@@ -219,13 +237,13 @@ function calculateDelayParts(row, employee) {
         // بلا دخول مسجل لا يُحتسب تبكير: الخروج وحده لا يثبت شيئًا
         // (مقارنة رقم مع null في جافاسكربت تعطي true زائفة وتنتج دقائق وهمية)
         if (checkInMin != null && out >= shiftMin) {
-            // سماحية 15 دقيقة للانصراف المبكر أيضًا
-            early = Math.max(0, endRaw - out - graceMinutes());
+            earlyRaw = Math.max(0, endRaw - out);
+            early = overGrace(earlyRaw);
         }
         if (checkInMin != null) {
             const requiredMin = Math.round(karim * 60);
             const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
-            late = Math.max(0, requiredMin - workedMin - graceMinutes());
+            late = overGrace(requiredMin - workedMin);
         }
     }
 
@@ -233,6 +251,8 @@ function calculateDelayParts(row, employee) {
         arrivalLateMinutes: arrival,
         earlyLeaveMinutes: early,
         lateMinutes: late,
+        arrivalLateRawMinutes: arrivalRaw,
+        earlyLeaveRawMinutes: earlyRaw,
     };
 }
 
@@ -256,6 +276,7 @@ module.exports = {
     nightCutoffHour,
     delayEngineEnabled,
     graceMinutes,
+    overGrace,
     lockGraceMinutes,
     prevDay,
     shiftDateFor,

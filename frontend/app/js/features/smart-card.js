@@ -148,7 +148,9 @@ const shiftStartStr = String(emp.shift_start || '09:00');
 const shiftMatch = shiftStartStr.match(/^(\d{1,2}):(\d{2})$/);
 const shiftStartMin = shiftMatch ? parseInt(shiftMatch[1]) * 60 + parseInt(shiftMatch[2]) : 540;
 const shiftKarim = Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10;
-const GRACE_MIN = 15; // سماحية 15 دقيقة (قرار المالك 2026-10-10 — نفس shift-day.js)
+const GRACE_MIN = 15; // حدّ 15 دقيقة (قرار المالك 2026-10-10 — نفس shift-day.js)
+// قرار المالك 2026-10-30: الحدّ عتبةٌ لا اقتطاع — فوق الربع ساعة يُحسب التأخير كاملًا.
+const overGrace = (raw) => { const v = Math.max(0, Number(raw) || 0); return v > GRACE_MIN ? v : 0; };
 // FIX 2026-10-11: recompute lateness from raw checkIn times instead of trusting
 // stale `late` booleans (old shift rules left 8 false positives on id=84).
 const isActuallyLate = (a) => {
@@ -162,17 +164,17 @@ const totalLateMinutes = myAttendance.reduce((sum, a) => {
     if (!a.checkIn) {return sum;}
     const [h, m] = String(a.checkIn).split(':').map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) {return sum;}
-    const arrival = Math.max(0, h * 60 + m - shiftStartMin - GRACE_MIN);
+    const inMin = h * 60 + m;
+    const arrival = overGrace(inMin - shiftStartMin);
     let early = 0;
     if (a.checkOut) {
         const [oh, om] = String(a.checkOut).split(':').map(Number);
         if (Number.isFinite(oh) && Number.isFinite(om)) {
             const endRaw = shiftStartMin + Math.round(shiftKarim * 60);
             let out = oh * 60 + om;
-            const inMin = h * 60 + m;
             if (out < inMin) {out += 24 * 60;}
             if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
-            if (out >= inMin) {early = Math.max(0, endRaw - out - GRACE_MIN);}
+            if (out >= inMin) {early = overGrace(endRaw - out);}
         }
     }
     return sum + arrival + early;
@@ -435,7 +437,7 @@ const s = report.summary || {};
 const scWeekday = (iso) => { const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; };
 // ساعات الوردية المتوقعة للموظف (10/12/8...) — أساس حكم الميعاد (shift_karim أولًا)
 const shiftMin = (Number(employee.shift_karim) > 0 ? Number(employee.shift_karim) : Number(employee.shift_hours) > 0 ? Number(employee.shift_hours) : 10) * 60;
-const GRACE = 15; // سماحية قرار المالك 2026-10-10
+const GRACE = 15; // حدّ قرار المالك 2026-10-10 — عتبةٌ لا اقتطاع (2026-10-30)
 const todayIsoP = today();
 const empNumId = employee.id;
 const isLeaveDay = (iso) => (STATE.leaveRequests||[]).some(l => l.status==='approved' && String(l.employeeId)===String(empNumId) && String(l.startDate)<=iso && iso<=String(l.endDate));
@@ -478,7 +480,8 @@ if (!hasIn) {cell = 'بلا حضور'; style = 'color:#f59e0b;font-weight:700';}
 else if (!hasOut) {cell = 'بلا انصراف'; style = 'color:#f59e0b;font-weight:700';}
 else if (minutes === 0) {cell = 'يحتاج مراجعة'; style = 'color:#f59e0b;font-weight:700';}
 else {
-const short = Math.max(0, shiftMin - minutes - GRACE);
+const gap = shiftMin - minutes;
+const short = gap > GRACE ? gap : 0; // فوق الربع ساعة = النقص كامل، وإلا في الميعاد
 if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDays++;}
 else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
 }

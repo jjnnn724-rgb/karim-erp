@@ -226,6 +226,13 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
     const totalLateMinutes = countable.reduce((s, r) => s + (r.lateMinutes || 0), 0);
     const empWorkDayMinutes = (Number(empRow?.shift_karim) > 0 ? Number(empRow.shift_karim) : 10) * 60;
     const lateRemainingMinutes = totalLateMinutes % empWorkDayMinutes;
+    // الدقائق الخام (بلا سماحية) — طلب المالك 2026-10-29: كل تأخير ولو دقيقة
+    // لازم يبان في البطاقة. للعرض والمعرفة فقط: الخصم المالي يفضل على
+    // lateMinutes وحده (hr-routes.js:936)، فلا رقم هنا يتحوّل مالًا.
+    const totalArrivalRawMinutes = countable.reduce((s, r) => s + (r.arrivalLateRawMinutes || 0), 0);
+    const totalEarlyRawMinutes = countable.reduce((s, r) => s + (r.earlyLeaveRawMinutes || 0), 0);
+    const rawLateDays = countable
+        .filter(r => (r.arrivalLateRawMinutes || 0) > 0 || (r.earlyLeaveRawMinutes || 0) > 0).length;
     const summary = {
         from, to, employeeId, daysPresent: records.filter(r => r.checkIn).length,
         completeDays: records.filter(r => r.checkIn && r.checkOut).length,
@@ -237,6 +244,11 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
         totalLateHours: Number((totalLateMinutes / 60).toFixed(2)),
         lateRemainingHours: Number((lateRemainingMinutes / 60).toFixed(2)),
         workDayMinutes: empWorkDayMinutes,
+        graceMinutes: graceMinutes(),
+        rawLateDays,
+        totalArrivalRawMinutes,
+        totalEarlyRawMinutes,
+        totalRawLateMinutes: totalArrivalRawMinutes + totalEarlyRawMinutes,
     };
     summary.totalKarim = Number((summary.totalMinutes / 60).toFixed(2));
     res.json({ employee: result.rows[0] ? { id: employeeId, name: result.rows[0].name, employeeId: result.rows[0].employeeId, position: result.rows[0].position, shift_start: empRow?.shift_start, shift_karim: empRow?.shift_karim, day_off: empRow?.day_off } : null, records, summary });
@@ -347,9 +359,10 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
         if (ci == null || co == null) { a.reviewDays += 1; continue; } // يوم مفتوح/بيانات ناقصة
         let worked = co - ci; if (co < ci) { worked += 1440; } // التفاف الوردية الليلية
         if (worked === 0) { a.reviewDays += 1; continue; } // بصمة مكررة → قيد المراجعة
-        // سماحية 15 دقيقة (قرار المالك 2026-10-10): إتمام الوردية ناقص السماحية = في الميعاد
+        // عتبة 15 دقيقة (قرار المالك 2026-10-10، وبمعناها المحدّث 2026-10-30):
+        // النقص ضمن الحدّ = يوم مكتمل؛ فوقه = العجز كاملًا من أول دقيقة.
         if (worked + graceMinutes() >= required) { a.completeWorkDays += 1; }
-        else { a.shortDays += 1; a.deficitMinutes += (required - worked - graceMinutes()); }
+        else { a.shortDays += 1; a.deficitMinutes += (required - worked); }
     }
     const out = { month: m, employees: rows.map(r => {
         const a = agg.get(r.id) || { completeWorkDays: 0, shortDays: 0, deficitMinutes: 0, lateInDays: 0, reviewDays: 0 };
