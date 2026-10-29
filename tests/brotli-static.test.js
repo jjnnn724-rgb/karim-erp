@@ -199,3 +199,47 @@ describe('brotli-static — الحالات التي يجب ألا يلمسها �
         expect(fs.readdirSync(fx.cache).length).toBe(0);
     });
 });
+
+describe('brotli-static — الرابط الأصلي يبقى متاحًا لحظة حساب ترويسات الكاش', () => {
+    /* الحادث: الوسيط يبدّل req.url إلى اسم نسخة الكاش قبل استدعاء
+       setCacheHeaders، فقرأه السيرفر بلا `?v=` وأسقط كل الأصول إلى no-cache.
+       هذا الاختبار يقفل أن originalUrl يبقى كما جاء من المتصفح دائمًا. */
+    test('originalUrl كما جاء، وreq.url مؤقتًا مسار الكاش، ثم يُستعاد', async () => {
+        const fx = makeFixture();
+        const seen = [];
+        const middleware = createBrotliStatic({
+            rootDir: fx.root,
+            cacheDir: fx.cache,
+            setCacheHeaders: (res) => {
+                seen.push({ originalUrl: res.req.originalUrl, url: res.req.url });
+            },
+        });
+        const app = express();
+        app.use('/app', middleware);
+        app.use('/app', (req, res) => res.status(599).send('FALLTHROUGH'));
+        const srv = app.listen(0);
+        try {
+            const result = await new Promise((resolve, reject) => {
+                const rq = http.request({
+                    hostname: '127.0.0.1',
+                    port: srv.address().port,
+                    path: '/app/mod.js?v=4.9.188',
+                    headers: { 'Accept-Encoding': 'br' },
+                }, (res) => {
+                    const chunks = [];
+                    res.on('data', (c) => chunks.push(c));
+                    res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+                });
+                rq.on('error', reject);
+                rq.end();
+            });
+            expect(result.status).toBe(200);
+            expect(seen.length).toBeGreaterThan(0);
+            expect(seen[0].originalUrl).toBe('/app/mod.js?v=4.9.188');
+            expect(seen[0].url).toMatch(/^\/[0-9a-f]{40}\.js$/);
+        } finally {
+            await closeHttpServer(srv);
+            cleanup(fx);
+        }
+    });
+});

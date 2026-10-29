@@ -381,7 +381,10 @@ function setStaticCacheHeaders(res, filePath) {
 
     // Normalize separators for cross-OS detection (handles Windows \ and Unix /)
     const normPath = filePath.replace(/\\/g, '/');
-    const reqUrl = res.req?.url || '';
+    /* originalUrl لا url: وسيط brotli-static يبدّل req.url إلى اسم نسخة الكاش
+       المضغوطة قبل استدعاء هذه الدالة، فتضيع `?v=` وتُسقط السياسة إلى no-cache.
+       originalUrl يبقى كما جاء من المتصفح منذ أول الطلب. */
+    const reqUrl = res.req?.originalUrl || res.req?.url || '';
     const nocacheTest = /[?&]nocache/.test(reqUrl || '');
     // Immutable versioned assets: vendor folder (by path or by URL mount) OR ?v= query
     const isImmutable = /[/\\]app[/\\]js[/\\]vendor[/\\]/i.test(filePath)
@@ -420,7 +423,8 @@ function setStaticCacheHeaders(res, filePath) {
         // UPDATE (2026-10-29): ?v= صار آليًا ومُثبتًا بالبوابات، فصار مساويًا
         // للإصدار الحالي دليلًا على ثبات المحتوى (backend/asset-version.js).
         const isVendorLib = normPath.toLowerCase().indexOf('/vendor/') !== -1 || String(reqUrl).toLowerCase().indexOf('/vendor/') !== -1;
-        res.setHeader('Cache-Control', isVendorLib
+        // `?nocache` مفتاح الطوارئ اليدوي: يتقدّم على كل شيء — كما في فرع CSS
+        res.setHeader('Cache-Control', noCache ? NO_CACHE : isVendorLib
             ? 'public, max-age=31536000, immutable'
             : (versionedCurrent ? 'public, max-age=31536000, immutable' : NO_CACHE));
         res.setHeader('Vary', 'Accept-Encoding');

@@ -71,6 +71,10 @@ describe('backend/server.js — السياسة موصولة بالفرعين ف�
         expect(src()).toMatch(/const \{ isCurrentAssetVersion \} = require\('\.\/asset-version'\);/);
     });
 
+    test('الرابط يُقرأ من originalUrl — وسيط brotli يبدّل req.url قبل الترويسات', () => {
+        expect(src()).toMatch(/const reqUrl = res\.req\?\.originalUrl \|\| res\.req\?\.url \|\| '';/);
+    });
+
     test('CSS: الإصدار الحالي immutable، وما عداه no-cache', () => {
         const b = body();
         const css = b.slice(b.indexOf("} else if (['.css'].includes(ext)) {"), b.indexOf("} else if (['.js', '.mjs'].includes(ext)) {"));
@@ -86,6 +90,8 @@ describe('backend/server.js — السياسة موصولة بالفرعين ف�
         expect(js).toContain('isVendorLib');
         expect(js).toContain('versionedCurrent');
         expect(js).toContain('NO_CACHE');
+        // مفتاح الطوارئ `?nocache` يتقدّم على immutable كما في فرع CSS
+        expect(js).toMatch(/noCache \? NO_CACHE :/);
     });
 
     test('HTML يبقى بلا تخزين أبدًا — النسخة الجديدة لا تُحجب', () => {
