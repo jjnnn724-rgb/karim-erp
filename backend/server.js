@@ -25,6 +25,7 @@ const { securityHeaders, hppGuard, buildV2Csp, buildStrictCsp, createCspReportCo
 const { createCspViolationLog } = require('./csp-violation-log');
 const { posChannelMeter, getMeter: getPosChannelMeter } = require('./middleware/pos-channel-meter');
 const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
+const { isCurrentAssetVersion } = require('./asset-version');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
 const { registerWithHealthChecks: circuitRegisterHealth } = require('./middleware/circuit');
 const startup = require('./startup');
@@ -38,6 +39,7 @@ const {
 // ─── Shared Database Pool (avoids circular dependency) ──────
 const { pool } = require('./shared-pool');
 const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
+const { listColumnsExcluding } = require('./heavy-columns');
 
 // ─── JWT Authentication Middleware ────────────────────
 const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
@@ -386,6 +388,11 @@ function setStaticCacheHeaders(res, filePath) {
         || /\/app\/js\/vendor\//i.test(normPath)
         || /^\/app\/js\/vendor\//i.test(reqUrl)
         || /[?&]v=\d/.test(reqUrl);
+    /* `?v=` وحده لم يعد كافيًا: يُخزَّن بلا تحقق فقط إذا كان الرقم هو إصدار
+       الواجهة الحالي المثبت في scripts/frontend-version.json (بوابتا
+       frontend-version وv2-revision تمنعان تغيّر ملف بلا رفع الرقم). أي رقم
+       آخر يبقى no-cache، فحادث «كود قديم محجوب» لا يعود. */
+    const versionedCurrent = isCurrentAssetVersion(reqUrl);
     const noCache = nocacheTest;
 
     if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
@@ -402,16 +409,20 @@ function setStaticCacheHeaders(res, filePath) {
         res.setHeader('Cache-Control', `public, max-age=2592000`);
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.css'].includes(ext)) {
-        res.setHeader('Cache-Control', NO_CACHE);
+        res.setHeader('Cache-Control', noCache ? NO_CACHE : (versionedCurrent
+            ? `public, max-age=31536000, immutable`
+            : NO_CACHE));
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.js', '.mjs'].includes(ext)) {
         // ROOT FIX (نهاية عهد ?v= اليدوي): كود التطبيق لا يُخزَّن طويلًا أبدًا حتى مع
         // ?v= — السياسة القديمة كانت تعطي ?v= كاش سنة immutable، فبقي الكود الجديد
         // محجوبًا في المتصفحات أسبوعين. مكتبات vendor وحدها immutable (ثابتة فعلًا).
+        // UPDATE (2026-10-29): ?v= صار آليًا ومُثبتًا بالبوابات، فصار مساويًا
+        // للإصدار الحالي دليلًا على ثبات المحتوى (backend/asset-version.js).
         const isVendorLib = normPath.toLowerCase().indexOf('/vendor/') !== -1 || String(reqUrl).toLowerCase().indexOf('/vendor/') !== -1;
         res.setHeader('Cache-Control', isVendorLib
             ? 'public, max-age=31536000, immutable'
-            : NO_CACHE);
+            : (versionedCurrent ? 'public, max-age=31536000, immutable' : NO_CACHE));
         res.setHeader('Vary', 'Accept-Encoding');
     } else if (['.json'].includes(ext)) {
         if (/manifest\.json$/i.test(filePath)) {
@@ -1348,6 +1359,16 @@ function viewerSafeRow(entity, row, req) {
     if (entity === 'employees') {return maskEmployeeRowForRole(safe, req.user?.role);}
     return safe;
 }
+
+// PERF 2026-10-29: قائمة الصرف لا تحتاج صور التواقيع (base64 ~40KB لكل صف).
+// كانت تُقرأ من القرص وتُحلَّل ثم تُحذف بعد الجلب؛ الآن تُستثنى في SELECT نفسها.
+// الأعمدة تُقرأ من information_schema مرة واحدة وتُخزَّن؛ وأي فشل يعيدنا إلى
+// SELECT * مع الحذف الاحتياطي أدناه — لا تتغير استجابة الـ API.
+const DISPATCH_SIGNATURE_COLUMNS = [
+    'requestSignatureData', 'chefApprovalSignatureData', 'chefRejectionSignatureData',
+    'warehouseApprovalSignatureData', 'warehouseRejectionSignatureData', 'kitchenReceiptSignatureData',
+];
+const dispatchListColumns = () => listColumnsExcluding('dispatches', DISPATCH_SIGNATURE_COLUMNS);
 const entities = [
     'users', 'hrDepartments', 'employees', 'attendance', 'leaveTypes',
     'leaveRequests', 'payroll', 'departments', 'revenues', 'expenses',
@@ -1691,6 +1712,10 @@ entities.forEach(entity => {
                 from,
                 toExclusive: toExclusive.toISOString().slice(0, 10),
             };
+        }
+        if (entity === 'dispatches') {
+            const listColumns = await dispatchListColumns();
+            if (listColumns) {queryOptions.selectColumns = listColumns;}
         }
 
         // Build safe paginated query

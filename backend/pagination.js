@@ -122,7 +122,16 @@ function buildPaginatedQuery(tableName, params, options = {}) {
     const where = predicates.length ? ` WHERE ${predicates.join(' AND ')}` : '';
     const limitPh = filterParams.length + 1;
     const offsetPh = filterParams.length + 2;
-    const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
+    /* PERF 2026-10-29: كياناتٌ تحمل أعمدةً ثقيلة لا تعني شاشة القائمة (صور
+       تواقيع base64 في dispatches). كان الحل حذفها بعد الجلب، فظلّت تُقرأ من
+       القرص وتُحوَّل وتُحلَّل ثم تُرمى. هنا تُستثنى في SELECT نفسها. */
+    const columns = Array.isArray(options.selectColumns) && options.selectColumns.length
+        ? options.selectColumns.filter((c) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(c)))
+        : [];
+    const projection = columns.length
+        ? columns.map((c) => `"${c}"`).join(', ')
+        : '*';
+    const dataQuery = `SELECT ${projection} FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
     const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"${where}`;
 
     return {

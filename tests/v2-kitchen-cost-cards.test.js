@@ -149,3 +149,24 @@ describe('الخادم — الحراسة وأسماء الحقول', () => {
         }
     });
 });
+
+// PERF 2026-10-29: قائمة الجرد كانت تعيد صور التواقيع (base64) لكل جلسة —
+// حتى 50 جلسة عند فتح الشاشة — ولا يقرأها أي عميل. تُستثنى في SELECT نفسها.
+describe('الخادم — قائمة الجرد لا تحمل صور التواقيع', () => {
+    const srv = read(SERVER);
+    const audits = srv.slice(srv.indexOf("router.get('/audits'"), srv.indexOf("router.post('/audits'"));
+
+    test('الأعمدة الثقيلة الثلاثة معرّفة ومستثناة عبر المُحلِّل المشترك', () => {
+        expect(srv).toMatch(/const AUDIT_SIGNATURE_COLUMNS = \['count_signature_data', 'submit_signature_data', 'approved_signature_data'\];/);
+        expect(srv).toMatch(/const auditListColumns = \(\) => listColumnsExcluding\('kitchen_audits', AUDIT_SIGNATURE_COLUMNS\);/);
+        expect(srv).toMatch(/const \{ listColumnsExcluding \} = require\('\.\/heavy-columns'\);/);
+    });
+
+    test('المسار يستخدم الإسقاط ويُبقي a.* احتياطًا، والاستجابة بلا أعمدة الصور', () => {
+        expect(audits).toContain('await auditListColumns()');
+        expect(audits).toMatch(/cols\?cols\.map\(c=>`a\."\$\{c\}"`\)\.join\(', '\):'a\.\*'/);
+        expect(audits).not.toMatch(/SELECT a\.\*,/);
+        expect(audits).toContain("'[]') items");
+        expect(audits).toMatch(/GROUP BY a\.id,u\.id ORDER BY a\.created_at DESC LIMIT 50/);
+    });
+});

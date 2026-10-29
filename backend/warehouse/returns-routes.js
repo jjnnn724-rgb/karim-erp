@@ -493,21 +493,26 @@ router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'wareho
 
         // 2026-10-05 (طلب المالك): «إذن صرف 4 يعني الباقي 4» — العمود الأساسي يعرض
         // رصيد المخزن الرئيسي، وما ذهب لمخازن الأقسام في عمود مستقل، والإجمالي كما هو
-        const rows = (await pool.query(
-            `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
-                    i.weight, i.barcode, i."shelfId",
-                    COALESCE(mb.on_hand, 0) AS "mainQty"
-             FROM inventory i
-             LEFT JOIN inventory_location_balances mb
-                    ON mb.inventory_id = i.id
-                   AND mb.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)
-             ${where}
-             ORDER BY i.category NULLS LAST, i.name ASC
-             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-            [...params, limit, offset])).rows;
-        const categories = (await pool.query(
-            `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`)).rows
-            .map(r => r.category);
+        // PERF 2026-10-29: قائمة الأصناف وقائمة الفئات مستقلتان تمامًا — تُنفَّذان
+        // معًا بدل انتظار جولة كاملة بينهما (بحث المخزن يعمل مع كل إدخال).
+        const [inventoryResult, categoriesResult] = await Promise.all([
+            pool.query(
+                `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
+                        i.weight, i.barcode, i."shelfId",
+                        COALESCE(mb.on_hand, 0) AS "mainQty"
+                 FROM inventory i
+                 LEFT JOIN inventory_location_balances mb
+                        ON mb.inventory_id = i.id
+                       AND mb.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)
+                 ${where}
+                 ORDER BY i.category NULLS LAST, i.name ASC
+                 LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+                [...params, limit, offset]),
+            pool.query(
+                `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`),
+        ]);
+        const rows = inventoryResult.rows;
+        const categories = categoriesResult.rows.map(r => r.category);
         const pages = total === 0 ? 0 : Math.ceil(total / limit);
         res.json({ data: rows, pagination: { page, limit, total, pages }, categories, fuzzy: fuzzyUsed });
     } catch (error) {

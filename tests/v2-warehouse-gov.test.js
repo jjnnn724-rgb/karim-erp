@@ -362,3 +362,22 @@ describe('P2-4 — CSS بلا hex أو px خام وكل قواعده مُختص�
         expect(css).toMatch(/\.erp-v2-wgov \.erp-wgov__form-grid \{[^}]*grid-template-columns: repeat\(auto-fit/);
     });
 });
+
+// PERF 2026-10-29: قائمة الجرد في المخزن كانت تحمل صور التواقيع الثلاث (base64)
+// لكل جلسة — حتى 100 جلسة في طلب واحد — ولا يقرأها أي عميل.
+describe('الخادم — قائمة الجرد لا تحمل صور التواقيع', () => {
+    const srv = read(SERVER_FISCAL);
+    const route = srv.slice(srv.indexOf("router.get('/inventory/audits'"), srv.indexOf("router.post('/inventory/audits'"));
+
+    test('الأعمدة الثلاثة تُستثنى عبر المُحلِّل المشترك', () => {
+        expect(srv).toMatch(/const AUDIT_SIGNATURE_COLUMNS = \['count_signature_data', 'submit_signature_data', 'approval_signature_data'\];/);
+        expect(srv).toMatch(/listColumnsExcluding\('inventory_audits', AUDIT_SIGNATURE_COLUMNS\)/);
+    });
+
+    test('الإسقاط داخل الاستعلام مع a.* احتياطًا وitem_count كما هو', () => {
+        expect(route).toContain("await listColumnsExcluding('inventory_audits'");
+        expect(route).toMatch(/cols\s*\?\s*cols\.map\(\(c\) => `a\."\$\{c\}"`\)\.join\(', '\)\s*:\s*'a\.\*'/);
+        expect(route).not.toMatch(/SELECT a\.\*,/);
+        expect(route).toContain('AS item_count');
+    });
+});

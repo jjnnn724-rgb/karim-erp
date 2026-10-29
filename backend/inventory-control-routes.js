@@ -4,6 +4,7 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
+const { listColumnsExcluding } = require('./heavy-columns');
 const { normalizeScopeFilter, filterSnapshotRows, ensureAuditLocationSchema } = require('./stocktaking-routes');
 
 const router = express.Router();
@@ -101,10 +102,17 @@ function ensureLocationDeptSchema() {
     return locationDeptSchemaReady;
 }
 
+// PERF 2026-10-29: قائمة الجرد كانت تحمل صور التواقيع الثلاث (base64) لكل
+// جلسة — حتى 100 جلسة في طلب واحد — ولا يقرأها أي عميل. تُستثنى في SELECT
+// نفسها مع إبقاء البصمات؛ وفشل قراءة الأعمدة يعيد a.* كما كان.
+const AUDIT_SIGNATURE_COLUMNS = ['count_signature_data', 'submit_signature_data', 'approval_signature_data'];
+
 router.get('/inventory/audits', jwtAuth, requireRole(...AUDIT_READ_ROLES), async (req, res) => {
     try {
+        const cols = await listColumnsExcluding('inventory_audits', AUDIT_SIGNATURE_COLUMNS);
+        const projection = cols ? cols.map((c) => `a."${c}"`).join(', ') : 'a.*';
         const result = await pool.query(`
-            SELECT a.*, COALESCE(COUNT(i.id), 0)::int AS item_count
+            SELECT ${projection}, COALESCE(COUNT(i.id), 0)::int AS item_count
             FROM inventory_audits a
             LEFT JOIN inventory_audit_items i ON i.audit_id = a.id
             GROUP BY a.id
