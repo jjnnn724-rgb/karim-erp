@@ -22,7 +22,7 @@
  *   sentence before the request; the database enforces it.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.188';
+import { apiFetch } from '../../core/api.js?v=4.9.192';
 
 /** Mirror of OPEN_ENTITY_WRITE_ROLES.shelves (schema-registry.js:782). */
 export const SHELF_WRITE_ROLES = ['admin', 'manager', 'warehouse'];
