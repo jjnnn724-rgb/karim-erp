@@ -43,7 +43,7 @@ const { listColumnsExcluding } = require('./heavy-columns');
 
 // ─── JWT Authentication Middleware ────────────────────
 const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
-const { requireRoleOrPerm, permForEntity } = require('./permissions');
+const { requireRoleOrPerm, permForEntity, userHasPerm } = require('./permissions');
 const userAuthority = require('./user-authority');
 const { forcesPasswordRotation } = require('./user-password-policy');
 const { writeAuditLog } = require('./cashier-module/audit-middleware');
@@ -87,7 +87,7 @@ const { startDailyReportScheduler } = require('./daily-report-service');
 
 // ─── API Response Cache (10s TTL for heavy GET endpoints) ──
 // Extracted to backend/api-cache.js (session-scoped key + invalidation).
-const { apiCacheMiddleware } = require('./api-cache');
+const { apiCacheMiddleware, apiCacheInvalidator } = require('./api-cache');
 // ─── حماية من طوفان النسخ الاحتياطية (backup throttling) ─────────
 let lastBackupAt = 0;
 let pendingBackupTimer = null;
@@ -593,6 +593,10 @@ getPosChannelMeter().start();
 // shutdown rejection, and rate limiting. Now cached responses are only served
 // after the request has passed the security perimeter.
 app.use(apiCacheMiddleware);
+// إبطال موجّه بالموارد: كل كتابة 2xx تحت /api تُسقط قراءات المورد الذي مسّته.
+// بلا هذا كان اعتمادُ إذن صرفٍ ينجح ثم تُعيد القائمة من كاش عمره 30 ثانية
+// الحالة القديمة، فتمسح «معتمد» من الشاشة ويظن المستخدم أن الضغط لم يعمل.
+app.use(apiCacheInvalidator);
 
 // Real employee portal: signed QR cards, attendance actions, and printable reports.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, hrRouter);
@@ -1854,7 +1858,10 @@ entities.forEach(entity => {
                     if (!deptRow) {return res.status(422).json({ error: 'DEPT_NOT_FOUND', message: `القسم المرتبط بالحساب غير موجود: ${resolved.deptCode}` });}
                     requestFields.deptCode = deptRow.code;
                     requestFields.deptName = deptRow.name;
-                    filtered = { ...requestFields, status: 'pending', createdBy: req.user.name || req.user.username || String(req.user.id), requestedAt: new Date().toISOString(), creatorRole: 'dept_head', needsChefApproval: true, creatorUserId: req.user.id };
+                    // صرف مباشر للمخزن (طلب المالك 2026-10-29): منح dispatch.direct يُسقط
+                    // انتظار الشيف العمومي — الإذن يصل المخازن مباشرة بحالة pending كأي طلب عادي
+                    const chefBypass = await userHasPerm(req.user, 'dispatch.direct', [], null);
+                    filtered = { ...requestFields, status: 'pending', createdBy: req.user.name || req.user.username || String(req.user.id), requestedAt: new Date().toISOString(), creatorRole: 'dept_head', needsChefApproval: !chefBypass, creatorUserId: req.user.id };
                 } else {
                     if (requestFields.deptCode) {
                         const canonCode = canonicalDeptCode(requestFields.deptCode);

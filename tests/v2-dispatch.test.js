@@ -534,6 +534,53 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
         }
     });
 
+    test('تعارض القرار (409) يُصحّح الشاشة من حالة الخادم — لا ريفرش يدوي', () => {
+        const s = src();
+        /* 2026-10-29 طلب المالك: «لما بعمل موافقة لإذن الصرف لازم أعمل تحديث للصفحة
+           وساعات لم تتم الموافقة ولما دوس مرة تانية يقولي الطلب تم الموافقة عليه».
+           الشفاء: شارة الحالة في ردّ الخادم تُدمج وتُرسم، فلا يبقى زر اعتماد أمام
+           المستخدم على إذن حُسِم فعلًا. */
+        expect(s).toMatch(/const DECIDED_CODES = new Set\(\[/);
+        for (const code of ['DISPATCH_ALREADY_APPROVED', 'DISPATCH_ALREADY_RECEIVED', 'DISPATCH_REJECTED',
+            'DISPATCH_INVALID_STATUS', 'DISPATCH_NOT_PENDING', 'CHEF_APPROVAL_NOT_REQUIRED',
+            'CHEF_APPROVAL_REQUIRED', 'DISPATCH_NOT_RECEIVABLE', 'DISPATCH_RECEIPT_ALREADY_RECORDED']) {
+            expect(s).toContain(`'${code}'`);
+        }
+        expect(s).toMatch(/function handleDecisionConflict\(e\)/);
+        // الرموز غير المعروفة فشلٌ حقيقي: لا تبتلعه الشاشة
+        expect(s).toMatch(/if \(!code \|\| !DECIDED_CODES\.has\(code\)\) \{return false;\}/);
+        // الحالة من الردّ أولًا، ومعرّف اللوحة احتياطًا — ثم دمجٌ ورسمٌ فوري
+        expect(s).toMatch(/const details = \(e && e\.details\) \|\| \{\};/);
+        expect(s).toMatch(/details\.dispatchId != null \? details\.dispatchId : \(panelRaw && panelRaw\.id\);/);
+        expect(s).toMatch(/applyDecisionResult\(\{ dispatch: \{ id, status: currentStatus \} \}\);/);
+        // اللوحة تُغلق: لا يبقى قرارٌ منتهٍ معروضًا
+        expect(s).toMatch(/function handleDecisionConflict\(e\)[\s\S]*?closePanel\(\);/);
+        // والاعلان يُسمّي الحالة التي رآها الخادم، بلفظ السجل المشترك لا بحرف مخترع
+        expect(s).toMatch(/const st = resolveStatus\('dispatch', currentStatus\);/);
+        expect(s).toMatch(/\$\{\(st && st\.label\) \|\| currentStatus\}/);
+        // والستار: إعادة قراءة تعيد السجل كله من الخادم
+        expect(s).toMatch(/function handleDecisionConflict\(e\)[\s\S]*?reload\(\);\s*\n\s*return true;/);
+        // كل قرار من الخمسة يجرّب التصحيح أولًا — قبل فرع «قيد التنفيذ» والرسائل
+        for (const fn of ['submitChefApprove', 'submitChefReject', 'submitApprove', 'submitReject', 'submitReceive']) {
+            const start = s.indexOf(`async function ${fn}(`);
+            expect(start).toBeGreaterThan(-1);
+            const rest = s.slice(start + 1);
+            const end = rest.search(/\n {4}(async )?function /);
+            const scope = end === -1 ? rest : rest.slice(0, end);
+            expect(scope).toContain('if (handleDecisionConflict(e)) {return;}');
+        }
+        expect(s.match(/if \(handleDecisionConflict\(e\)\) \{return;\}/g)).toHaveLength(5);
+    });
+
+    test('عميل الشبكة يوصل حالة الردّ وتفاصيله — الشاشة تقرر من حقيقة الخادم لا من نص الرسالة', () => {
+        const api = source(path.join(APP, 'js', 'core', 'api.js'));
+        // قبل هذا كان الخطأ يحمل رسالة فقط، فتضطر الشاشة لمطابقة العربية الحساسة
+        expect(api).toMatch(/err\.status = res\.status;/);
+        expect(api).toMatch(/if \(data && typeof data === 'object'\) \{err\.details = data;\}/);
+        // والرمز لا يزال من serverErrorInfo (data.error.code) — الترتيب: code ثم status/details
+        expect(api.indexOf('err.code = info.code;')).toBeLessThan(api.indexOf('err.status = res.status;'));
+    });
+
     test('زر القرار يعلن الانشغال من أول نقرة — لا ضغطة ثانية', () => {
         const s = src();
         expect(s).toMatch(/function setPanelBusy\(label\)/);

@@ -48,6 +48,10 @@ const PERMISSIONS = [
       menus: ['dispatch'], entitiesRead: ['dispatches', 'kitchenReturns'], entitiesWrite: [] },
     { key: 'dispatch.edit', ar: 'إدارة الصرف', group: 'التشغيل',
       menus: ['dispatch'], entitiesRead: ['dispatches', 'kitchenReturns'], entitiesWrite: ['dispatches', 'kitchenReturns'] },
+    // صرف مباشر للمخزن: تجاوز اعتماد الشيف العمومي — منح لكل مستخدم على حدة
+    // (طلب المالك 2026-10-29: إذن سامح السيد عيد يذهب مباشرة إلى المخازن)
+    { key: 'dispatch.direct', ar: 'صرف مباشر للمخزن (بلا اعتماد الشيف)', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
     // المطبخ
     { key: 'kitchen.view', ar: 'عرض المطبخ والوصفات', group: 'التشغيل',
       menus: ['kitchen', 'recipes'], entitiesRead: ['recipes'], entitiesWrite: [] },

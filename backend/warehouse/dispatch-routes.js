@@ -108,7 +108,8 @@ router.post('/dispatches/:id/approve', jwtAuth, requireRole(...APPROVAL_ROLES), 
                 DISPATCH_ALREADY_RECEIVED: 'تم استلام هذا الإذن — لا يمكن اعتماده مرة أخرى',
                 DISPATCH_INVALID_STATUS: 'حالة طلب الصرف لا تسمح بالاعتماد',
             };
-            return fail(res, 409, guard.code, messages[guard.code] || 'حالة طلب الصرف لا تسمح بالاعتماد');
+            return fail(res, 409, guard.code, messages[guard.code] || 'حالة طلب الصرف لا تسمح بالاعتماد',
+                { status: dispatch.status, dispatchId: dispatch.id });
         }
 
         const requested = normalizeRequestedItems(req.body?.approvedItems?.length ? req.body.approvedItems : dispatch.items);
@@ -308,9 +309,10 @@ router.post('/dispatches/:id/chef-approve', jwtAuth, requireRole(...CHEF_APPROVA
             await client.query('ROLLBACK');
             const messages = {
                 CHEF_APPROVAL_NOT_REQUIRED: 'هذا الطلب لا يحتاج اعتماد الشيف العمومي (ليس مقدمًا من رئيس قسم)',
-                DISPATCH_NOT_PENDING: 'لا يمكن اعتماد طلب خرج من حالة الانتظار',
+                DISPATCH_NOT_PENDING: 'الإذن ليس في حالة الانتظار — اعتمد أو رفض سابقًا، فلا حاجة لإعادة الضغط',
             };
-            return fail(res, 409, guard.code, messages[guard.code] || 'لا يمكن اعتماد الطلب حاليًا');
+            return fail(res, 409, guard.code, messages[guard.code] || 'لا يمكن اعتماد الطلب حاليًا',
+                { status: dispatch.status, dispatchId: dispatch.id });
         }
         // طلب المالك 2026-10-05: المنع قاطع — لا يُعتمد إذن صرف صنفه بلا رصيد كافٍ
         // (كان مجرد تنبيه في الرد ثم رفض متأخر عند المخازن، فيعلق الإذن في السلسلة)
@@ -363,9 +365,10 @@ router.post('/dispatches/:id/chef-reject', jwtAuth, requireRole(...CHEF_APPROVAL
             await client.query('ROLLBACK');
             const messages = {
                 CHEF_APPROVAL_NOT_REQUIRED: 'هذا الطلب لا يحتاج اعتماد الشيف العمومي (ليس مقدمًا من رئيس قسم)',
-                DISPATCH_NOT_PENDING: 'لا يمكن رفض طلب خرج من حالة الانتظار',
+                DISPATCH_NOT_PENDING: 'الإذن ليس في حالة الانتظار — حُسِم قراره سابقًا، فلا حاجة لإعادة الضغط',
             };
-            return fail(res, 409, guard.code, messages[guard.code] || 'لا يمكن رفض الطلب حاليًا');
+            return fail(res, 409, guard.code, messages[guard.code] || 'لا يمكن رفض الطلب حاليًا',
+                { status: dispatch.status, dispatchId: dispatch.id });
         }
         const chefRejectedAt = new Date().toISOString();
         const chefName = req.user.name || req.user.username || String(req.user.id);
@@ -515,7 +518,11 @@ router.post('/dispatches/:id/reject', jwtAuth, requireRole(...APPROVAL_ROLES), a
             await client.query('ROLLBACK');
             return fail(res, 409, 'CHEF_APPROVAL_REQUIRED', 'طلب رئيس القسم في مرحلة اعتماد الشيف العمومي — استخدم مسار رفض الشيف');
         }
-        if (dispatch.status !== 'pending') { await client.query('ROLLBACK'); return fail(res, 409, 'DISPATCH_NOT_PENDING', 'لا يمكن رفض طلب خرج من حالة الانتظار'); }
+        if (dispatch.status !== 'pending') {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'DISPATCH_NOT_PENDING', 'الإذن ليس في حالة الانتظار — حُسِم قراره سابقًا',
+                { status: dispatch.status, dispatchId: dispatch.id });
+        }
         const rejectedAt = new Date().toISOString();
         const actorName = req.user.name || req.user.username || String(req.user.id);
         const updated = (await client.query(`UPDATE dispatches SET status='rejected', "rejectionReason"=$1,
@@ -548,11 +555,13 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRole(...RECEIVE_ROLES), a
         if (!dispatch) { await client.query('ROLLBACK'); return fail(res, 404, 'DISPATCH_NOT_FOUND', 'طلب الصرف غير موجود'); }
         if (!['approved', 'partially_received'].includes(dispatch.status)) {
             await client.query('ROLLBACK');
-            return fail(res, 409, 'DISPATCH_NOT_RECEIVABLE', 'لا يمكن استلام إذن غير معتمد أو مستلم مسبقًا');
+            return fail(res, 409, 'DISPATCH_NOT_RECEIVABLE', 'الإذن غير قابل للاستلام في حالته الحالية — القرار مسجَّل فعلًا',
+                { status: dispatch.status, dispatchId: dispatch.id });
         }
         if (dispatch.kitchenReceivedAt && dispatch.status !== 'partially_received') {
             await client.query('ROLLBACK');
-            return fail(res, 409, 'DISPATCH_RECEIPT_ALREADY_RECORDED', 'تم تسجيل الاستلام لهذا الإذن مسبقًا');
+            return fail(res, 409, 'DISPATCH_RECEIPT_ALREADY_RECORDED', 'تم تسجيل الاستلام لهذا الإذن مسبقًا',
+                { status: dispatch.status, dispatchId: dispatch.id });
         }
         // رئيس القسم يستلم إذن قسمه هو فقط — عزل الأقسام على مستوى الاستلام
         const receiveGate = canReceiveDispatch(req.user, dispatch);

@@ -53,6 +53,10 @@ async function apiFetch(path, options = {}) {
         const info = serverErrorInfo(data);
         const err = new Error(info.message || (info.code && SERVER_CODE_AR[info.code]) || `فشل الطلب (${res.status})`);
         if (info.code) {err.code = info.code;}
+        // الشاشات تحتاج حالة الردّ وحمولته لتصحّح نفسها: اعتمادٌ يرجع 409
+        // بحالة الإذن الحالية يجب أن يرسمها فورًا لا أن يخبر المستخدم بالفشل فقط.
+        err.status = res.status;
+        if (data && typeof data === 'object') {err.details = data;}
         throw err;
     }
     return data;

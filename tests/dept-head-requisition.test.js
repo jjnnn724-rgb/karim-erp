@@ -11,6 +11,9 @@ const {
     resolveDeptHeadDispatch,
     canReceiveDispatch,
 } = require('../backend/warehouse-routes');
+const fs = require('fs');
+const path = require('path');
+const { PERMISSIONS, PERM_MAP, userHasPerm } = require('../backend/permissions');
 
 describe('resolveDispatchTargetStore — مخازن الأقسام الخمسة المخصصة', () => {
     test('كل قسم من الأقسام الخمسة له مخزن خاص بكود فريد', () => {
@@ -155,5 +158,62 @@ describe('canReceiveDispatch — رئيس القسم يستلم إذن قسمه 
     test('مدخلات ناقصة لا تُنهار', () => {
         expect(canReceiveDispatch(null, { deptCode: 'salads' }).ok).toBe(false);
         expect(canReceiveDispatch({ role: 'dept_head', dept_code: 'salads' }, null).ok).toBe(false);
+    });
+});
+
+// ─── صرف مباشر للمخزن (طلب المالك 2026-10-29: إذن سامح السيد عيد) ───────────
+// منح dispatch.direct يُسقط انتظار الشيف العمومي لرئيس قسم معيّن: إذنه يُنشأ
+// needsChefApproval=false فيصل المخازن مباشرة. بوابات السلسلة نفسها لم تتغير —
+// إن كانت الحقل المخزَّن هو من يقرر، فتغييره عند الإنشاء يُحوّل المسار كله.
+describe('dispatch.direct — إذن رئيس القسم يذهب مباشرة للمخزن', () => {
+    // قاعدة مزيفة: كل حالة بمعرّف مستخدم فريد تتجنّب كاش user_permissions داخل عملية الاختبار
+    const fakeDb = (rows) => ({ query: async () => ({ rows }) });
+    let uid = 77_331_101;
+
+    test('المفتاح في الكتالوج بلا صلاحيات كيانات إضافية', () => {
+        const p = PERM_MAP.get('dispatch.direct');
+        expect(p).toBeDefined();
+        expect(p.group).toBe('التشغيل');
+        expect(p.entitiesRead).toEqual([]);
+        expect(p.entitiesWrite).toEqual([]);
+        expect(PERMISSIONS.filter((x) => x.key === 'dispatch.direct')).toHaveLength(1);
+    });
+
+    test('منح فعّال → يتجاوز الشيف (true)', async () => {
+        const user = { id: uid++, role: 'dept_head' };
+        const r = await userHasPerm(user, 'dispatch.direct', [],
+            fakeDb([{ perm_key: 'dispatch.direct', effect: 'grant' }]));
+        expect(r).toBe(true);
+    });
+
+    test('بلا صف منح → لا تجاوز (false) — الإذن يبقى خلف الشيف', async () => {
+        const user = { id: uid++, role: 'dept_head' };
+        expect(await userHasPerm(user, 'dispatch.direct', [], fakeDb([]))).toBe(false);
+    });
+
+    test('سحب (deny) يغلب المنح — إلغاء الصلاحية يوقف التجاوز فورًا', async () => {
+        const user = { id: uid++, role: 'dept_head' };
+        const rows = [
+            { perm_key: 'dispatch.direct', effect: 'grant' },
+            { perm_key: 'dispatch.direct', effect: 'deny' },
+        ];
+        expect(await userHasPerm(user, 'dispatch.direct', [], fakeDb(rows))).toBe(false);
+    });
+
+    test('admin يملك كل الصلاحيات بلا صفوف', async () => {
+        expect(await userHasPerm({ id: uid++, role: 'admin' }, 'dispatch.direct', [], fakeDb([]))).toBe(true);
+    });
+
+    test('عقد نصي: خادم الإنشاء يحسب needsChefApproval من المنح', () => {
+        const src = fs.readFileSync(path.join(__dirname, '..', 'backend', 'server.js'), 'utf8');
+        expect(src).toMatch(/userHasPerm\(req\.user, 'dispatch\.direct', \[\], null\)/);
+        expect(src).toMatch(/needsChefApproval: !chefBypass/);
+        // بقية الأدوار (غير dept_head) تبقى بلا شيف كما كانت
+        expect(src).toMatch(/creatorRole: req\.user\?\.role \|\| null, needsChefApproval: false/);
+    });
+
+    test('إذن بلا شيف يُعتمد من المخازن مباشرة (المسار المستهدف)', () => {
+        expect(canWarehouseApprove({ needsChefApproval: false, status: 'pending' }).ok).toBe(true);
+        expect(canChefDecide({ needsChefApproval: false, status: 'pending' }).code).toBe('CHEF_APPROVAL_NOT_REQUIRED');
     });
 });

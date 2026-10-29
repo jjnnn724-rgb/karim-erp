@@ -122,3 +122,41 @@ describe('واجهة القسم: الرفض يظهر للموظف فورًا —
         expect(block).toContain('return;');
     });
 });
+
+// ─── تعارض القرار يحمل الحقيقة (طلب المالك 2026-10-29) ──────────────────────
+// الشكوى: «لما بعمل موافقة لإذن الصرف لازم أعمل تحديث للصفحة… ولما أدوس مرة
+// تانية يقولي الطلب تم الموافقة عليه». قرارُ سبق حفظه ليس فشلًا يُترك للقارئ
+// يتخبط فيه: كل حارس حالة يردّ 409 بالرمز وبالشارة الحالية نفسها، فتلتقطها
+// الشاشة وتُرسم. أي حارس يُجرَّد من حِملته يعود المصاب.
+describe('حراس الحالة في سلسلة الصرف: 409 يحمل الرمز والحالة الحالية', () => {
+    test('كل رفض «الحالة لا تسمح» يوصل status وdispatchId في جسم الردّ', () => {
+        const payload = /fail\(res, 409, [^;]*\{ status: dispatch\.status, dispatchId: dispatch\.id \}\)/g;
+        const hits = ROUTES.match(payload);
+        // ستة حراس: اعتماد المخازن، اعتماد الشيف، رفض الشيف، رفض المخازن،
+        // واستلام (غير قابل للاستلام + استلام مسجَّل سلفًا)
+        expect(hits).not.toBeNull();
+        expect(hits).toHaveLength(6);
+    });
+
+    test('عقد الرمز بين الخادم والشاشة: كل رموز التعارض تُصدر فعلًا من المسارات', () => {
+        // الشاشة تعرف هذه الرموز حرفيًا (DECIDED_CODES في v2/screens/dispatch.js)؛
+        // لو اختفى رمز من الخادم فلا معنى لفرعه في الشاشة، ولو ظهر رمز تعارض جديد
+        // بلا إضافة هنا تبقى الشاشة عمياء عنه.
+        const DECIDED_CODES = ['DISPATCH_ALREADY_APPROVED', 'DISPATCH_ALREADY_RECEIVED', 'DISPATCH_REJECTED',
+            'DISPATCH_INVALID_STATUS', 'DISPATCH_NOT_PENDING', 'CHEF_APPROVAL_NOT_REQUIRED',
+            'CHEF_APPROVAL_REQUIRED', 'DISPATCH_NOT_RECEIVABLE', 'DISPATCH_RECEIPT_ALREADY_RECORDED'];
+        const screen = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'app', 'js', 'v2', 'screens', 'dispatch.js'), 'utf8');
+        const setBlock = between(screen, 'const DECIDED_CODES = new Set([', ']);');
+        for (const code of DECIDED_CODES) {
+            expect([code, ROUTES.includes(code)]).toEqual([code, true]);
+            expect(setBlock).toContain(`'${code}'`);
+        }
+    });
+
+    test('رسائل التعارض تقول «لا حاجة لإعادة الضغط» — لا تصف حالة غامضة', () => {
+        expect(ROUTES).toContain('فلا حاجة لإعادة الضغط');
+        expect(ROUTES).toContain('القرار مسجَّل فعلًا');
+        // الصيغة القديمة الغامضة التي قرأها المالك، لا تعود
+        expect(ROUTES).not.toContain('لا يمكن اعتماد طلب خرج من حالة الانتظار');
+    });
+});

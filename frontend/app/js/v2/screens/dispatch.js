@@ -24,11 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.188';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.188';
-import { formatInt } from '../data/employees-repo.js?v=4.9.188';
-import { openInAppReport } from '../report-viewer.js?v=4.9.188';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.188';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.192';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.192';
+import { formatInt } from '../data/employees-repo.js?v=4.9.192';
+import { openInAppReport } from '../report-viewer.js?v=4.9.192';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.192';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     matchDispatchProduct, summarizeProductWithdrawal,
@@ -39,11 +39,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.188';
+} from '../data/dispatch-repo.js?v=4.9.192';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.188';
+} from '../signature.js?v=4.9.192';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -386,6 +386,35 @@ export function mountDispatchScreen(host, ctx = {}) {
         else {rawRows.unshift(row);}
         rawById.set(key, rawRows[idx >= 0 ? idx : 0]);
         paint();
+    }
+
+    /* تعارض الحالة (409) ليس فشلًا: معناه أن القرار مسجَّل فعلًا — غالبًا من
+       ضغطتنا السابقة التي نجحت في الخادم. الردّ يحمل الحالة الحالية، فتُدمج
+       وتُرسم فورًا ويُغلق اللوحة؛ وإلا بقي زر «اعتماد» أمام المستخدم فيضغط
+       مرة ثانية على إذن معتمد. */
+    const DECIDED_CODES = new Set([
+        'DISPATCH_ALREADY_APPROVED', 'DISPATCH_ALREADY_RECEIVED', 'DISPATCH_REJECTED',
+        'DISPATCH_INVALID_STATUS', 'DISPATCH_NOT_PENDING',
+        'CHEF_APPROVAL_NOT_REQUIRED', 'CHEF_APPROVAL_REQUIRED',
+        'DISPATCH_NOT_RECEIVABLE', 'DISPATCH_RECEIPT_ALREADY_RECORDED',
+    ]);
+
+    function handleDecisionConflict(e) {
+        const code = e && e.code;
+        if (!code || !DECIDED_CODES.has(code)) {return false;}
+        const details = (e && e.details) || {};
+        const id = details.dispatchId != null ? details.dispatchId : (panelRaw && panelRaw.id);
+        const currentStatus = details.status || null;
+        closePanel();
+        if (id != null && currentStatus) {
+            applyDecisionResult({ dispatch: { id, status: currentStatus } });
+            const st = resolveStatus('dispatch', currentStatus);
+            notify(`القرار مسجَّل فعلًا — الحالة الحالية: ${(st && st.label) || currentStatus}`);
+        } else {
+            notify('القرار مسجَّل فعلًا — حُدِّثت الحالة من الخادم');
+        }
+        reload();
+        return true;
     }
 
     /* ── البيانات المرجعية للنماذج (كتالوج + أرصدة الرئيسي + أقسام) ────── */
@@ -1065,6 +1094,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر اعتماد الطلب');
         } finally {
             busy = false;
@@ -1087,6 +1117,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر رفض الطلب');
         } finally {
             busy = false;
@@ -1152,6 +1183,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             if (e && e.code === 'DISPATCH_APPROVE_IN_PROGRESS') {
                 notify('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا');
             } else {
@@ -1178,6 +1210,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر رفض طلب الصرف');
         } finally {
             busy = false;
@@ -1229,6 +1262,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر تسجيل استلام المطبخ');
         } finally {
             busy = false;
