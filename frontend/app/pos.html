@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="css/pos.css?v=4.9.34">
     <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
     <link rel="stylesheet" href="css/pro-theme.css?v=4.9.33">
+    <!-- شاشة واحدة بلا تمرير: تخطيط ثابت الارتفاع + ترقيم صفحات الأصناف والسلة -->
+    <link rel="stylesheet" href="css/pos-fit.css?v=4.9.193">
 </head>
 <body>
 
@@ -118,6 +120,14 @@
                 </div>
                 <div class="category-tabs" id="category-tabs"></div>
                 <div id="products-grid" class="products-grid"></div>
+                <div class="pos-pager" id="pos-pager" role="group" aria-label="صفحات الأصناف">
+                    <span class="pos-pager-range" id="pos-pager-range"></span>
+                    <div class="pos-pager-nav">
+                        <button type="button" class="pos-pager-btn" id="pos-page-prev" aria-label="الصفحة السابقة" title="الصفحة السابقة">›</button>
+                        <span class="pos-pager-page" id="pos-pager-page" aria-live="polite">1 / 1</span>
+                        <button type="button" class="pos-pager-btn" id="pos-page-next" aria-label="الصفحة التالية" title="الصفحة التالية">‹</button>
+                    </div>
+                </div>
             </section>
 
             <!-- Cart Section -->
@@ -137,6 +147,12 @@
                 </div>
 
                 <div id="cart-items" class="cart-items"></div>
+
+                <div class="cart-pager hidden" id="cart-pager" role="group" aria-label="صفحات السلة">
+                    <button type="button" class="pos-pager-btn" id="cart-page-prev" aria-label="الصناف السابقة" title="السابق">›</button>
+                    <span class="pos-pager-page" id="cart-pager-page" aria-live="polite">1 / 1</span>
+                    <button type="button" class="pos-pager-btn" id="cart-page-next" aria-label="الصناف التالية" title="التالي">‹</button>
+                </div>
 
                 <div class="cart-summary">
                     <div class="summary-row">
@@ -162,21 +178,21 @@
                     <div class="payment-channels">
                         <div class="pay-channel cash" data-method="cash">
                             <div class="pay-channel-label"><i class=ji data-i=banknote></i> نقدي <button type="button" class="pay-remaining-btn" data-target="pay-cash" title="ادفع المتبقي نقدًا">الباقي</button></div>
-                            <input type="number" id="pay-cash" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-cash" value="0" placeholder="0.00">
                         </div>
                         <div class="pay-channel card" data-method="card">
                             <div class="pay-channel-label"><i class=ji data-i=credit-card></i> بطاقة <button type="button" class="pay-remaining-btn" data-target="pay-card" title="ادفع المتبقي بالبطاقة">الباقي</button></div>
-                            <input type="number" id="pay-card" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-card" value="0" placeholder="0.00">
                             <input type="text" id="pay-card-ref" placeholder="مرجع العملية" class="ref-input">
                         </div>
                         <div class="pay-channel wallet" data-method="wallet">
                             <div class="pay-channel-label"><i class=ji data-i=smartphone></i> محفظة <button type="button" class="pay-remaining-btn" data-target="pay-wallet" title="ادفع المتبقي بالمحفظة">الباقي</button></div>
-                            <input type="number" id="pay-wallet" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-wallet" value="0" placeholder="0.00">
                             <input type="text" id="pay-wallet-ref" placeholder="مرجع المحفظة" class="ref-input">
                         </div>
                         <div class="pay-channel" data-method="bank_transfer">
                             <div class="pay-channel-label"><i class=ji data-i=landmark></i> تحويل <button type="button" class="pay-remaining-btn" data-target="pay-bank" title="ادفع المتبقي تحويلًا">الباقي</button></div>
-                            <input type="number" id="pay-bank" min="0" step="0.01" value="0" placeholder="0.00">
+                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-bank" value="0" placeholder="0.00">
                             <input type="text" id="pay-bank-ref" placeholder="رقم العملية" class="ref-input">
                         </div>
                     </div>
@@ -535,18 +551,20 @@
         <div class="loading-text" id="loading-text">جارٍ المعالجة...</div>
     </div>
 
-    <script src="js/icons.js?v=4.9.192"></script>
+    <script src="js/icons.js?v=4.9.193"></script>
     <script src="js/vendor/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/pos-search.js?v=4.9.192"></script>
+    <script src="js/pos-search.js?v=4.9.193"></script>
     <script src="js/pos.js?v=4.9.34"></script>
     <script src="js/pos-orders.js"></script>
+    <!-- ترقيم صفحات الأصناف/السلة: يُبقي الشاشة كاملة داخل الارتفاع بلا تمرير -->
+    <script src="js/pos-fit.js?v=4.9.193"></script>
     <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
          الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
-    <script src="js/pos-path-guard.js?v=4.9.192"></script>
+    <script src="js/pos-path-guard.js?v=4.9.193"></script>
     <!-- Phase 4.2: تهيئة الـPOS في ملف خارجي — سكربتات inline محجوبة بسياسة CSP
          (وجود nonce يجعل المتصفح يتجاهل 'unsafe-inline')، فلم تكن تعمل داخل الصفحة. -->
-    <script src="js/pos-bootstrap.js?v=4.9.192"></script>
-  <script src="js/core/action-dispatch.js?v=4.9.192" defer></script>
+    <script src="js/pos-bootstrap.js?v=4.9.193"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.193" defer></script>
 </body>
 </html>

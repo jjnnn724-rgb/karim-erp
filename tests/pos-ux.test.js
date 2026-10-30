@@ -22,10 +22,10 @@ describe('POS fast-search and checkout UX', () => {
         const html = read('pos.html');
         expect(html).toContain('css/menu-fonts.css');
         expect(html).not.toContain('fonts.googleapis.com');
-        expect(html).toContain('css/pos.css?v=4.9.34');
         // رقم الكاش يتقدّم مع كل دفعة — نثبّت الوجود لا الرقم (كما في sw.js أدناه)
+        expect(html).toMatch(/css\/pos\.css\?v=\d+\.\d+\.\d+/);
         expect(html).toMatch(/js\/pos-search\.js\?v=\d+\.\d+\.\d+/);
-        expect(html).toContain('js/pos.js?v=4.9.34');
+        expect(html).toMatch(/js\/pos\.js\?v=\d+\.\d+\.\d+/);
         expect(html.indexOf('js/pos-search.js')).toBeLessThan(html.indexOf('js/pos.js'));
         expect(html).toContain('<kbd>F2</kbd> إتمام البيع');
         expect(html).toContain('<kbd>F9</kbd> إغلاق الوردية');
