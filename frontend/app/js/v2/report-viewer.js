@@ -21,8 +21,8 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { applyPrintSystem } from '../core/print-system.js?v=4.9.192';
-import { trapFocus } from './focus-trap.js?v=4.9.192';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.194';
+import { trapFocus } from './focus-trap.js?v=4.9.194';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';

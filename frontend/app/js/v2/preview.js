@@ -29,31 +29,31 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.192';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.192';
-import { initTheme, currentTheme } from './theme.js?v=4.9.192';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.192';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.192';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.192';
-import { mountChartInteraction } from './charts-live.js?v=4.9.192';
-import { mountAiAssistant } from './ai-assistant.js?v=4.9.192';
-import { mountChat } from './chat.js?v=4.9.192';
-import { mountMobileShell } from './mobile-shell.js?v=4.9.192';
-import { createDataTable } from './data-display/data-table.js?v=4.9.192';
-import { ensureSession, setLogoutObserver, stopKeepAlive } from './session.js?v=4.9.192';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.192';
-import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.192';
-import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.192';
-import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.192';
-import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.192';
-import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.192';
-import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.192';
-import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.192';
-import { confirmEnabled, createConfirm } from './confirm.js?v=4.9.192';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.192';
-import { loadScreen } from './screens/registry.js?v=4.9.192';
-import { mountLoginScreen } from './screens/login.js?v=4.9.192';
-import { dashboardKind } from './role-dashboard.js?v=4.9.192';
+import { ROLES } from '../core/config.js?v=4.9.194';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.194';
+import { initTheme, currentTheme } from './theme.js?v=4.9.194';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.194';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.194';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.194';
+import { mountChartInteraction } from './charts-live.js?v=4.9.194';
+import { mountAiAssistant } from './ai-assistant.js?v=4.9.194';
+import { mountChat } from './chat.js?v=4.9.194';
+import { mountMobileShell } from './mobile-shell.js?v=4.9.194';
+import { createDataTable } from './data-display/data-table.js?v=4.9.194';
+import { ensureSession, setLogoutObserver, stopKeepAlive } from './session.js?v=4.9.194';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.194';
+import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.194';
+import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.194';
+import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.194';
+import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.194';
+import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.194';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.194';
+import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.194';
+import { confirmEnabled, createConfirm } from './confirm.js?v=4.9.194';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.194';
+import { loadScreen } from './screens/registry.js?v=4.9.194';
+import { mountLoginScreen } from './screens/login.js?v=4.9.194';
+import { dashboardKind } from './role-dashboard.js?v=4.9.194';
 
 // Enable the embedded cashier while retaining the standalone POS fallback.
 const V2_FEATURE_FLAGS = Object.freeze({ embeddedPos: true, salesEnabled: true });
@@ -430,7 +430,7 @@ async function renderCashRegisterScreen() {
     const host = shell.main.querySelector('[data-v2-cashreg-host]');
     try {
         if (!cashRegisterMount) {
-            const mod = await import('./screens/cash-register.js?v=4.9.192');
+            const mod = await import('./screens/cash-register.js?v=4.9.194');
             cashRegisterMount = mod.mountCashRegister;
         }
         cashRegisterHandle = cashRegisterMount(host, { navigate: (k) => shell.navigate(k) });
@@ -453,7 +453,7 @@ async function renderCashierSalesScreen() {
     const host = shell.main.querySelector('[data-v2-csales-host]');
     try {
         if (!cashierSalesMount) {
-            const mod = await import('./screens/cashier-sales.js?v=4.9.192');
+            const mod = await import('./screens/cashier-sales.js?v=4.9.194');
             cashierSalesMount = mod.mountCashierSales;
         }
         cashierSalesHandle = cashierSalesMount(host);
@@ -476,7 +476,7 @@ async function renderExecutiveScreen() {
     const host = shell.main.querySelector('[data-v2-executive-host]');
     try {
         if (!executiveMount) {
-            const mod = await import('./screens/executive.js?v=4.9.192');
+            const mod = await import('./screens/executive.js?v=4.9.194');
             executiveMount = mod.mountExecutive;
         }
         executiveHandle = executiveMount(host, { navigate: (k) => shell.navigate(k) });

@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.192';
-import { formatInt } from '../data/reports-repo.js?v=4.9.192';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.192';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.192';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.192';
-import { captureFace } from '../portal-face.js?v=4.9.192';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.192';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.192';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.192';
+import { canWrite } from '../session.js?v=4.9.194';
+import { formatInt } from '../data/reports-repo.js?v=4.9.194';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.194';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.194';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.194';
+import { captureFace } from '../portal-face.js?v=4.9.194';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.194';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.194';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,10 +32,10 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.192';
+} from '../data/settings-repo.js?v=4.9.194';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.192';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.194';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
