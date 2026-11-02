@@ -51,16 +51,22 @@ async function oraConnect() {
 }
 
 /** عدّادات Oracle لكل يوم في [fromDay, toDay) — فواتير CC + BILLS4 */
+// عدّ بمستند واحد وبمرشّح المبلغ الموجب: المستهلِك يرفض NET_VAL<=0 ولا يسجّله أبدًا،
+// فعدّها كان يُبقي كل نافذة «ناقصة» للأبد ويعيد سحبها كاملة كل دورة (مخلفات staging).
 async function oracleDailyCounts(fromDay, toDay) {
     const { conn } = await oraConnect();
     try {
         const oracledb = require('oracledb');
         const r = await oraExecute(conn, `
-            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'CC' AS SRC, COUNT(*) AS CNT, SUM(NET_VAL) AS TOTAL
+            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'CC' AS SRC
+                 , COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS CNT
+                 , SUM(CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN NET_VAL END) AS TOTAL
               FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:fromDay, 'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:toDay, 'YYYY-MM-DD') AND PSTD = 'Y' AND TRIM(CSHR_NO) <> '2'
              GROUP BY TO_CHAR(DOC_DATE, 'YYYY-MM-DD')
             UNION ALL
-            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'BILLS4' AS SRC, COUNT(*) AS CNT, SUM(NET_VAL) AS TOTAL
+            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'BILLS4' AS SRC
+                 , COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS CNT
+                 , SUM(CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN NET_VAL END) AS TOTAL
               FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:fromDay, 'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:toDay, 'YYYY-MM-DD') AND PSTD = 'Y'
              GROUP BY TO_CHAR(DOC_DATE, 'YYYY-MM-DD')`,
             { fromDay, toDay }, { outFormat: oracledb.OBJECT });
@@ -150,8 +156,8 @@ async function catchUp(days, io) {
             let oraCnt = 0;
             try {
                 const oracledb = require('oracledb');
-                const c1 = await oraExecute(conn, `SELECT COUNT(*) AS C FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y' AND TRIM(CSHR_NO) <> '2'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
-                const c2 = await oraExecute(conn, `SELECT COUNT(*) AS C FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
+                const c1 = await oraExecute(conn, `SELECT COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS C FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y' AND TRIM(CSHR_NO) <> '2'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
+                const c2 = await oraExecute(conn, `SELECT COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS C FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
                 oraCnt = Number(c1.rows?.[0]?.C || 0) + Number(c2.rows?.[0]?.C || 0);
             } finally { try { await conn.close(); } catch (_) {} }
             const loc = (await pool.query(

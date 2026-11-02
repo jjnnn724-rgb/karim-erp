@@ -60,6 +60,18 @@ async function main() {
     } catch (e) {
         console.error('[oracle-poll-worker] recovery error:', e.message);
     }
+
+    // 4) تنظيف مخلفات الاستهلاك: ملفات .json.done لا يقرأها أحد بعد الاستهلاك،
+    //    وبلا هذه الخطوة كانت تتراكم 6 جيجا/يوم حتى سدّت قرص C.
+    try {
+        const { pruneConsumed } = require('../backend/yarasoft/oracle-consume');
+        const pr = pruneConsumed();
+        if (pr.removed) {
+            console.log(`[oracle-poll-worker] staging prune: ${pr.removed} files older than ${pr.hours}h`);
+        }
+    } catch (e) {
+        console.error('[oracle-poll-worker] staging prune error:', e.message);
+    }
 }
 
 main().then(async () => {

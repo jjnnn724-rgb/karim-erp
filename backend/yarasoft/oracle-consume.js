@@ -22,6 +22,16 @@ function liveConsume() {
     return ['1', 'true', 'yes', 'on'].includes(String(process.env.YARASOFT_ORACLE_LIVE || 'false').trim().toLowerCase());
 }
 
+/**
+ * قاعدة «فاتورة قابلة للتسجيل» — مصدر وحيد للحقيقة يشاركه عدّاد التغطية في
+ * sync-doctor (`COALESCE(NET_VAL, TOTAL_VAL, 0) > 0`). اختلاف الصيغتين هو ما جعل
+ * كل نافذة تبدو «ناقصة» للأبد، فيعيد اللحاق سحبها كاملة كل دورة (130 جيجا مخلفات).
+ */
+function isPostableTotal(total) {
+    const v = Number(total);
+    return Number.isFinite(v) && v > 0;
+}
+
 function isoDay(v) {
     // يوم الرياض المحلي — toISOString (UTC) كان يزيح فواتير منتصف الليل يومًا كاملًا للخلف
     try {
@@ -84,7 +94,7 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
     for (const inv of invoices) {
         // مبلغ غير صالح (صفر/سالب) لا يدخل الدفاتر — يُسجَّل سببًا ويُتخطى
         const invTotal = Number(inv.totals?.total);
-        if (!Number.isFinite(invTotal) || invTotal <= 0) {
+        if (!isPostableTotal(invTotal)) {
             out.skipped++;
             out.errors.push(`${inv.key}: مبلغ غير صالح (${inv.totals?.total}) — تُخطي`);
             continue;
@@ -151,4 +161,21 @@ async function consumeAllPending(opts = {}) {
     return { ok: true, files: files.length, results };
 }
 
-module.exports = { consumeStagingFile, consumeAllPending, liveConsume };
+/** حذف نسخ staging المستهلكة (.done) الأقدم من N ساعة — لا يقرأها أحد بعد الاستهلاك */
+function pruneConsumed(maxAgeHours) {
+    const { loadOracleConfig } = require('./oracle-link');
+    const dir = loadOracleConfig().stagingDir;
+    const hours = Math.max(1, Number(maxAgeHours) || Number(process.env.YARASOFT_STAGING_DONE_HOURS) || 48);
+    if (!dir || !fs.existsSync(dir)) {return { removed: 0, hours };}
+    const cutoff = Date.now() - hours * 3600 * 1000;
+    let removed = 0;
+    for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.json.done')) {continue;}
+        const p = path.join(dir, f);
+        try { if (fs.statSync(p).mtimeMs < cutoff) { fs.unlinkSync(p); removed++; } } catch (_) {}
+    }
+    if (removed) {logger.info(`[yarasoft_oracle_consume] pruned ${removed} consumed staging files (>${hours}h)`);}
+    return { removed, hours };
+}
+
+module.exports = { consumeStagingFile, consumeAllPending, liveConsume, pruneConsumed, isPostableTotal };
