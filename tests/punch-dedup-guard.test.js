@@ -2,58 +2,79 @@
 // punch-dedup-guard.test.js — بلاغ المالك كريم عبد الحميد 2026-10-06
 // «بصمت اليوم من كاميرا الهاتف ولم تظهر» — بصمة وجه موثقة (ثقة 100) قُبلت ثم
 // جُحتها بقرار «مكررة خلال 5 دقائق» من كاش راسب لا تعرفه القاعدة.
-// يقفل الإصلاح الجذري في attendance-engine.js:
-//  1) حرس التكرار يتحقق من القاعدة قبل التجاهل (fail-safe نحو التسجيل)
-//  2) مرساة الكاش تُثبت بعد COMMIT الناجح فقط وللقرارات الفعلية
-//  3) فشل الكتابة يمسح الكاش فلا يلتهم بصمة تالية
+//
+// 2026-11-05: محرك الحضور كُتب من جديد (مصدران معتمدان فقط، بلا استكمال).
+// الكاش أُُلغي بالكامل، فالدرس الأصلي يُقفل الآن بوجهه الإيجابي:
+//   لا قرار «تجاهل» بلا دليل صفّ في القاعدة، ولا حالة في الذاكرة بين بصمتين.
+// النافذة التي كان يحرسها الكاش صارت استعلام تبريد على أطراف attendance —
+// مقفولة وحدها في punch-cooldown-guard.test.js.
 // ────────────────────────────────────────────────────────────────────────────
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 
 const ENGINE = fs.readFileSync(path.join(__dirname, '..', 'backend', 'attendance-engine.js'), 'utf8');
 
-describe('حرس التكرار في محرك الحضور — لا يلتهم بصمة موثقة بسبب ذاكرة راسبة', () => {
-    test('التجاهل بسبب «مكررة» يتحقق من القاعدة أولًا (دفتر الجهاز + صفوف الحضور داخل النافذة)', () => {
-        expect(ENGINE).toContain('حرس التكرار لا يثق بالذاكرة وحدها');
-        expect(ENGINE).toContain("String(verdict.reason || '').includes('مكررة')");
-        expect(ENGINE).toContain('FROM attendance_logs WHERE "employeeId"=$1 AND "attendanceTime" BETWEEN $2 AND $3');
-        expect(ENGINE).toContain('OR "checkOutAt" BETWEEN $2 AND $3');
-        expect(ENGINE).toContain('this.lastPunches.delete(employeeId);');
-        expect(ENGINE).toContain('أُعيد التصنيف وتُسجل البصمة');
+describe('حرس التكرار في محرك الحضور — تجاهل البصمة يحتاج دليلًا من القاعدة لا من الذاكرة', () => {
+    test('لا حالة بصمات في الذاكرة بين الطلبات: الكاش الراسب مُحذوف أصلًا', () => {
+        expect(ENGINE).not.toMatch(/lastPunches/);
+        expect(ENGINE).not.toMatch(/punchCache|recentPunch|dedupCache/);
+        const ctor = ENGINE.slice(ENGINE.indexOf('constructor() {'), ENGINE.indexOf('setIO(io)'));
+        expect(ctor).toContain('this.io = null;');
+        expect(ctor).not.toMatch(/Map\(\)|new Set\(\)|this\.[a-zA-Z]+ = \{/);
     });
 
-    test('نافذة التحقق تستثني البصمة نفسها (وإلّا كان العدّاد ≥1 دائمًا)', () => {
-        // درس 2026-10-14: البصمة تُدرج في attendance_logs قبل الكتابة، فاستعلام
-        // BETWEEN winStart AND instant كان يعدّ البصمة الحالية «دليلًا» على تكرارها
-        // ولا يمسح الكاش الراسب أبدًا — فابتُلع دخول المساء لليوم كامل.
-        expect(ENGINE).toContain('const winEnd = new Date(instant - 1000);');
-        expect(ENGINE).toContain('[employeeId, winStart, winEnd]');
+    test('قراءة أطراف الحضور كلها FOR UPDATE — لا قارئ يرى صفًّا وقد سبقه كاتب', () => {
+        expect(ENGINE).toContain('ORDER BY date DESC LIMIT 1 FOR UPDATE');
+        expect(ENGINE).toContain('SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2 FOR UPDATE');
+        // لا قراءة ثالثة بلا قفل تُبتنى عليها كتابة (كانت ثلاثًا بمسارات التكرار القديمة)
+        expect((ENGINE.match(/FROM attendance WHERE "employeeId" = \$1 AND date = \$2 FOR UPDATE/g) || []).length)
+            .toBe(1);
     });
 
-    test('مرساة الكاش تُثبت بعد COMMIT الناجح وللقرارات الفعلية فقط', () => {
-        const execMark = ENGINE.indexOf('// ── تنفيذ القرار ──');
-        const commitMark = ENGINE.indexOf("await client.query('COMMIT');", execMark);
-        const setMark = ENGINE.indexOf('this.lastPunches.set(employeeId, { min: wallMin, out: thisOut, at: instant.getTime() });');
-        expect(execMark).toBeGreaterThan(-1);
-        expect(commitMark).toBeGreaterThan(execMark);
-        expect(setMark).toBeGreaterThan(commitMark); // بعد الـ COMMIT — لا تثبيت قبل الكتابة
-        const guard = ENGINE.slice(setMark - 200, setMark);
-        expect(guard).toContain("action === 'check_in' || action === 'check_out'");
+    test('كل «تجاهل» مُسبَّب بدليل من القاعدة، مُعلَّم للمراجعة، ثم COMMIT — لا تُترك معاملة معلّقة', () => {
+        const ignores = [...ENGINE.matchAll(/action: 'ignore'/g)].map(m => m.index);
+        expect(ignores.length).toBeGreaterThanOrEqual(3); // التبريد، تصادف 23505، بصمة مؤرخة قبل انصراف محجوز
+        for (const at of ignores) {
+            const before = ENGINE.slice(Math.max(0, at - 900), at);
+            expect(before).toContain("await client.query('COMMIT');");
+            expect(before).toContain('this.logDecision({'); // بلا سطر مراجعة لا يُقبَل تجاهل
+        }
+        // ولا تجاهل بسبب «ملصق لا نفهمه»: البصمة تُحجز والتسلسل يحكم
+        expect(ENGINE).not.toMatch(/حالة بصمة غير معروفة/);
+        expect(ENGINE).toContain("decision: 'state_conflict'");
     });
 
-    test('البصمة المُتجاهلة لا تحرك المرساة، وفشل الكتابة يمسح الكاش', () => {
-        // سطر المرساة بصيغته الكاملة يظهر مرة واحدة: بعد COMMIT وللقرارات الفعلية فقط
-        const anchorWrites = (ENGINE.match(/this\.lastPunches\.set\(employeeId, \{ min: wallMin, out: thisOut, at: instant\.getTime\(\) \}\)/g) || []).length;
-        expect(anchorWrites).toBe(1);
-        // مسار الفشل في processPunch: مسح الكاش قبل إعادة رفع الخطأ
-        const failMark = ENGINE.indexOf("logger.error('[AttendanceEngine] processPunch failed:'");
+    test('التجاهل ضيقٌ إلى أقصى حد: تصادف لحظي (23505) وبصمة أقدم من انصراف محجوز', () => {
+        expect(ENGINE).toContain("insertErr && insertErr.code === '23505'");
+        expect(ENGINE).toContain('أقدم من انصراف محجوز');
+        expect((ENGINE.match(/duplicate: true/g) || []).length).toBe(1);
+        expect((ENGINE.match(/outOfOrder: true/g) || []).length).toBe(1);
+        // وأيّ «دخول على صف مُدخل» أو «انصراف على صف مُنصرف» صار انصرافًا مُمتدًّا لا إهمالًا
+        expect(ENGINE).not.toMatch(/مُدخل منذ/);
+        expect(ENGINE).not.toMatch(/مُنصرف منذ/);
+    });
+
+    test('النافذة تشمل يوم الوردية ويومَها السابق — انصراف الفجر على صف الأمس', () => {
+        expect((ENGINE.match(/date IN \(\$2, \$3\)/g) || []).length).toBeGreaterThanOrEqual(2);
+        expect((ENGINE.match(/prevDay\(shiftDate\)/g) || []).length).toBeGreaterThanOrEqual(2);
+    });
+
+    test('فشل الكتابة يلفّ المعاملة ويرفع الخطأ — بلا أثرٍ داخلي يبتلع بصمة تالية', () => {
+        const failMark = ENGINE.indexOf('logger.error(`[AttendanceEngine] processPunch failed:');
         expect(failMark).toBeGreaterThan(-1);
-        const beforeFail = ENGINE.slice(Math.max(0, failMark - 500), failMark);
-        expect(beforeFail).toContain('ROLLBACK');
-        expect(beforeFail).toContain('this.lastPunches.delete(employeeId);');
+        const beforeFail = ENGINE.slice(Math.max(0, failMark - 300), failMark);
+        expect(beforeFail).toContain("await client.query('ROLLBACK').catch(() => {});");
+        expect(ENGINE.slice(failMark, failMark + 480)).toContain('throw error;');
+        expect(ENGINE.slice(failMark, failMark + 480)).toContain('client.release();');
     });
 
-    test('القرار المُعاد بعد كشف الكاش الراسب يُسجل بالتحذير للمراجعة', () => {
-        expect(ENGINE).toContain('[AttendanceEngine] حرس التكرار اعتمد على ذاكرة راسبة');
+    test('القفل الاستشاري يسبق أي قراءة أو كتابة في المعاملة', () => {
+        const lockAt = ENGINE.indexOf('pg_advisory_xact_lock(hashtext($1::text), hashtext($2::text))');
+        const firstRead = ENGINE.indexOf('FROM attendance', lockAt);
+        expect(lockAt).toBeGreaterThan(-1);
+        expect(firstRead).toBeGreaterThan(lockAt);
+        expect(ENGINE.slice(lockAt, firstRead)).not.toMatch(/INSERT INTO attendance|UPDATE attendance/);
     });
 });
