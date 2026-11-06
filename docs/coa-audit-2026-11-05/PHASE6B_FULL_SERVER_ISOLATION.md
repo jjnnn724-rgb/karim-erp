@@ -74,3 +74,57 @@ PHASE6B_DUMP="$TEMP/karim_erp_phase6b.dump" PHASE6B_KEEP_DB=1 \
 KARIM_TEST_DB_ISOLATED=1 KARIM_TEST_DB_NAME=karim_erp_test DB_NAME=karim_erp_test \
 node node_modules/jest/bin/jest.js tests/phase6b-server-boot.test.js --runInBand --forceExit
 ```
+
+## تشغيل على قاعدة الإنتاج `karim_erp` (2026-11-07 00:41 محلي)
+
+بأمر المالك: «نفّذ Phase 6b على الإنتاج». شُغّل نفس الهارنس بقاعدة الإنتاج
+فعليًا (`PHASE6B_DB=karim_erp`, منفذ loopback 18977)، مع بقاء خدمة الإنتاج
+الأصلية تعمل في نفس الوقت.
+
+```bash
+DB_NAME=karim_erp_test KARIM_TEST_DB_NAME=karim_erp_test KARIM_TEST_DB_ISOLATED=1 \
+PHASE6B_DB=karim_erp PHASE6B_PORT=18977 \
+node node_modules/jest/bin/jest.js tests/phase6b-server-boot.test.js --runInBand --forceExit
+```
+
+**النتيجة: 6/6 ✅ في 28.9 ثانية.** سطر الإثبات المنشور:
+
+```
+PHASE6B_EVIDENCE {"db":"karim_erp","port":18977,"restoredByTest":false,"accountMappingTable":null,"user":{"id":"1","role":"admin","username":"admin"},"health":{"live":200,"startup":200,"ready":200,"readyState":"ok"},"journal":{"status":201,"entryNo":"JE-20261107-0018","debit":250,"credit":250,"lines":2},"tb":{"totalDebit":250,"totalCredit":250,"balanced":true},"cashFlow":{"status":200,"inflow":250,"outflow":0},"cfo":{"status":200,"revenue":0,"net":0},"bankRec":{"status":200,"before":0,"book":250,"statement":0,"diff":-250},"period":{"close":200,"blocked":423,"reopen":200},"egress":{"guardLoadedPids":[9632,9632],"serverPid":9632,"blocked":[],"oracleAttempts":0,"listenForced":[{"kind":"listen-forced","port":18977,"from":"0.0.0.0","to":"127.0.0.1"}],"recordedLines":3,"lanProbe":{"host":"100.67.162.108","connected":false}},"serverExit":null}
+```
+
+**بصمة الإثبات (SHA-256 لكائن JSON أعلاه — نفس تعريف Phase 6):**
+
+```
+887f590b2cc669534255eb1ac9318ac1e64210cc74037ed44c2a821241a092a5
+```
+
+### التنظيف والتحقق (لأنها قاعدة إنتاج)
+
+كتب الاختبار قيدًا واحدًا `JE-20261107-0018` (zz-phase6b) وفترة `2019-07`،
+فأُزيلا بعد التشغيل داخل معاملة واحدة. المقارنة مع لقطة ما قبل التشغيل:
+
+| البند | قبل | بعد التنظيف |
+|---|---:|---:|
+| `journal_entries` | 37,829 | 37,829 |
+| `journal_lines` | 75,873 | 75,873 |
+| `accounting_periods` | 12 | 12 |
+| `notifications` | 7,077 | 7,077 |
+| `chart_of_accounts` | 108 | 108 |
+| `pos_audit_logs` | 243 | 243 |
+| ميزان posted | 7,521,462.29 = 7,521,462.29 | نفسه |
+| 1150 / 1200 / 3100 / 4000 / 5000 | 100,667.93 / -915.77 / -2,252,293.42 / -3,666,358.74 / 722,533.01 | نفسه |
+| قيود `zz-phase6b-*` | 0 | 0 |
+| فترة `2019-07` | غير موجودة | غير موجودة |
+
+**ملاحظات شفافية:**
+
+- قيد الاختبار استهلك معرّفًا في sequence ثم حُذف؛ التسلسل تقدّم ولا يمكن
+  إرجاعه — لا أثر محاسبي (العدّادات والميزان والأرصدة مطابقة).
+- الاختبار يعمل على نسخة سيرفر ثانية على loopback فقط؛ خدمة الإنتاج الأصلية
+  ظلت تعمل. عامل Oracle في النسخة الثانية كان معطّلًا بالمتغيرات والحارس.
+- `blocked=[]` و`oracleAttempts=0`: لم يُسجَّل أي محاولة خروج محجوبة في هذه
+  الجولة، والاستماع أُجبر على `127.0.0.1`، وفحص LAN الحي رفض الاتصال.
+- `cfo.revenue = 0` طبيعي: لم توجد قيود إيراد في 2019-07 لحظة القياس (قيد
+  الاختبار وحده). `bankRec.diff = -250` لأن كشف الحساب غير موجود لتلك الفترة —
+  سلوك fallback المتوقع وليس خطأ ترحيل.
