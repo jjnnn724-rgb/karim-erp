@@ -202,6 +202,9 @@ afterAll(async () => {
         residue: state.residue,
     };
     console.log('PHASE6_EVIDENCE ' + JSON.stringify(evidence));
+    const digest = require('crypto').createHash('sha256')
+        .update(JSON.stringify(evidence), 'utf8').digest('hex');
+    console.log('PHASE6_EVIDENCE_SHA256 ' + digest);
 
     net.Socket.prototype.connect = ORIGINAL_CONNECT;
     await new Promise((resolve) => server.close(resolve));
@@ -276,19 +279,27 @@ describe('Phase 6 — استقلالية كاملة عن Oracle/YaraSoft', () =>
             lines,
         });
         expect(out.replay).toBe(false);
-        state.entry = {
-            entryNo: out.entry.entry_no,
-            total: out.entry.total_debit,
-            balanced: out.entry.total_debit === out.entry.total_credit,
-            source: out.entry.source_type,
-        };
-        expect(state.entry.balanced).toBe(true);
 
+        // journal_entries لا تحمل أعمدة إجماليات — نثبت التوازن من الصفوف المخزَّنة نفسها.
         const stored = await sql(
-            `SELECT COUNT(*)::int AS n FROM journal_lines l
+            `SELECT COUNT(*)::int AS n,
+                    COALESCE(SUM(l.debit), 0)::float8 AS dr,
+                    COALESCE(SUM(l.credit), 0)::float8 AS cr
+               FROM journal_lines l
                JOIN journal_entries e ON e.id = l.entry_id
               WHERE e.source_type = 'pos_sale' AND e.source_id = $1`, [`${TAG}-sale`]);
         expect(stored[0].n).toBe(3);
+        expect(stored[0].dr).toBe(115);
+        expect(stored[0].cr).toBe(115);
+
+        state.entry = {
+            entryNo: out.entry.entry_no,
+            debit: stored[0].dr,
+            credit: stored[0].cr,
+            balanced: stored[0].dr === stored[0].cr,
+            source: out.entry.source_type,
+        };
+        expect(state.entry.balanced).toBe(true);
     });
 
     test('5) ميزان المراجعة متوازن ويحتوي أطراف القيد', async () => {
