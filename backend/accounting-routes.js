@@ -535,9 +535,69 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
     return out;
 }
 
-// ─── الإقرار الضريبي (قراءة فقط): ضريبة المخرجات − ضريبة المدخلات ───────────
+// ─── الإقرار الضريبي + تصفية 1150 ───────────────────────────────────────────
 // مصادر من الأستاذ العام المرحّل فعليًا (2100 دائن − 1150 مدين) مع مطابقة
 // متقاطعة من فواتير الشراء — ما يُقدَّم للهيئة يُبنى على المرحّل لا التقديري.
+//
+// سياسة تصفية 1150 (2026-11-06): قبلها كان الوسيط يتراكم بلا إقفال. عند كل
+// إقرار تُطفأ ضريبة المدخلات مقابل المخرجات بالحد الأدنى للرصيدين المرحّلين
+// حتى نهاية الشهر: Dr 2100 / Cr 1150. الناتج يبقى كما هو: صافي مستحق على
+// 2100 (يُسدَّد بقيد Dr 2100 / Cr بنك عند الدفع) أو رصيد ترحيل على 1150.
+// الترحيل على أساس الأرصدة لا حركة الشهر، فأول تصفية تُنظّف التراكم التاريخي
+// ثم تُبقي كل شهر لاحق الأرصدة متطابقة — idempotent بمفتاح (vat_settlement, month).
+
+/** حركة الضريبة داخل فترة (للإقرار فقط): 2100 دائن − 1150 مدين. */
+async function vatMovement(db, from, to, accounts) {
+    const posted = await db.query(
+        `SELECT l.account_code,
+                ROUND(COALESCE(SUM(l.debit),0),2)::float AS debit,
+                ROUND(COALESCE(SUM(l.credit),0),2)::float AS credit
+         FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+         WHERE e.date >= $1::date AND e.date <= $2::date AND l.account_code IN ($3,$4)
+         GROUP BY 1`, [from, to, accounts.payable_account, accounts.recoverable_account]);
+    const byCode = {};
+    for (const r of posted.rows) {byCode[r.account_code] = r;}
+    const outputVat = round2(byCode[accounts.payable_account]?.credit || 0);
+    const inputVat = round2(byCode[accounts.recoverable_account]?.debit || 0);
+    return { output_vat: outputVat, input_vat: inputVat, net_payable: round2(outputVat - inputVat) };
+}
+
+/** أرصدة الضريبة المرحّلة حتى تاريخ: موجب = مستحق (2100) / قابل للاسترداد (1150). */
+async function vatBalances(db, asOf, accounts) {
+    const r = await db.query(
+        `SELECT COALESCE(ROUND(SUM(CASE WHEN l.account_code = $2 THEN l.credit - l.debit ELSE 0 END),2),0)::float AS payable,
+                COALESCE(ROUND(SUM(CASE WHEN l.account_code = $3 THEN l.debit - l.credit ELSE 0 END),2),0)::float AS recoverable
+           FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+          WHERE e.date <= $1::date AND l.account_code IN ($2,$3)`,
+        [asOf, accounts.payable_account, accounts.recoverable_account]);
+    return {
+        payable: Number(r.rows[0]?.payable || 0),
+        recoverable: Number(r.rows[0]?.recoverable || 0),
+    };
+}
+
+/**
+ * خطة التصفية — دالة نقية: الإطفاء = min(المستحق، القابل للاسترداد).
+ * لا تُنشئ أي سطر لصافي المستحق (يبقى رصيد 2100) ولا لترحيل الرصيد (يبقى 1150).
+ */
+function buildVatSettlementPlan({ payableBalance, recoverableBalance, accounts = {} }) {
+    const payableAcct = accounts.payable_account || '2100';
+    const recoverableAcct = accounts.recoverable_account || '1150';
+    const payable = round2(payableBalance);
+    const recoverable = round2(recoverableBalance);
+    const clearing = round2(Math.min(Math.max(payable, 0), Math.max(recoverable, 0)));
+    const lines = clearing > 0 ? [
+        { account_code: payableAcct, debit: clearing, credit: 0, memo: 'تصفية ضريبة مخرجات مقابل مدخلات' },
+        { account_code: recoverableAcct, debit: 0, credit: clearing, memo: 'تصفية ضريبة مدخلات' },
+    ] : [];
+    return {
+        clearing,
+        net_payable_after: round2(Math.max(payable, 0) - clearing),
+        carry_forward_after: round2(Math.max(recoverable, 0) - clearing),
+        lines,
+    };
+}
+
 router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const dayRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -547,33 +607,115 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
         const from = dayRe.test(String(req.query.from || '')) ? String(req.query.from) : monthStart;
         const to = dayRe.test(String(req.query.to || '')) ? String(req.query.to) : riyadhToday();
         if (from > to) {return res.status(422).json({ error: 'LEDGER_PERIOD_INVALID', message: 'بداية الفترة بعد نهايتها' });}
-        const posted = await pool.query(
-            `SELECT l.account_code,
-                    ROUND(COALESCE(SUM(l.debit),0),2)::float AS debit,
-                    ROUND(COALESCE(SUM(l.credit),0),2)::float AS credit
-             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
-             WHERE e.date >= $1::date AND e.date <= $2::date AND l.account_code IN ('1150','2100')
-             GROUP BY 1`, [from, to]);
-        const byCode = {};
-        for (const r of posted.rows) {byCode[r.account_code] = r;}
-        const outputVat = round2(byCode['2100']?.credit || 0); // ضريبة محصلة (مبيعات)
-        const inputVat = round2(byCode['1150']?.debit || 0);   // ضريبة مستردة (مشتريات)
-        const net = round2(outputVat - inputVat);
+        const accounts = await resolveAccounts(pool, 'tax', 'vat_return', {
+            payable_account: '2100',
+            recoverable_account: '1150',
+        });
+        const movement = await vatMovement(pool, from, to, accounts);
+        const balances = await vatBalances(pool, to, accounts);
         const purchases = (await pool.query(
             `SELECT COUNT(*)::int AS n, COALESCE(ROUND(SUM(subtotal_net),2),0)::float AS net,
                     COALESCE(ROUND(SUM(vat_total),2),0)::float AS vat
              FROM "purchaseInvoices" WHERE date >= $1 AND date <= $2`, [from, to])).rows[0];
         res.json({
             from, to,
-            output_vat: outputVat,
-            input_vat: inputVat,
-            net_payable: net >= 0 ? net : 0,
-            carry_forward_credit: net < 0 ? round2(-net) : 0,
+            output_vat: movement.output_vat,
+            input_vat: movement.input_vat,
+            net_payable: movement.net_payable >= 0 ? movement.net_payable : 0,
+            carry_forward_credit: movement.net_payable < 0 ? round2(-movement.net_payable) : 0,
+            payable_balance: balances.payable,
+            recoverable_balance: balances.recoverable,
             purchases_crosscheck: { count: Number(purchases.n), net: Number(purchases.net), vat: Number(purchases.vat) },
         });
     } catch (error) {
         logger.error('[ledger/vat-return]', error);
         res.status(500).json({ error: 'LEDGER_VAT_RETURN_FAILED', message: 'تعذر حساب الإقرار الضريبي' });
+    }
+});
+
+/**
+ * ترحيل تصفية الضريبة لشهر منتهٍ. preview افتراضيًا؛ الترحيل الفعلي بـapply:true.
+ * يُرفض الشهر الجاري/المستقبلي (لا تصفية لفترة لم تنتهِ) والفترة المقفولة (423)،
+ * والإعادة لنفس الشهر تُرجع replay ولا تُضاعف أبدًا.
+ */
+router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+    try {
+        const month = String(req.body?.month || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(month)) {
+            return res.status(422).json({ error: 'LEDGER_MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });
+        }
+        const [_y, _m] = month.split('-').map(Number);
+        const from = `${month}-01`;
+        const to = new Date(Date.UTC(_y, _m, 0)).toISOString().slice(0, 10);
+        if (to > riyadhToday()) {
+            return res.status(422).json({ error: 'LEDGER_VAT_PERIOD_OPEN', message: 'لا تُصفّى فترة لم تنتهِ بعد' });
+        }
+        const apply = req.body?.apply === true;
+        const accounts = await resolveAccounts(pool, 'tax', 'vat_return', {
+            payable_account: '2100',
+            recoverable_account: '1150',
+        });
+        const movement = await vatMovement(pool, from, to, accounts);
+        const balances = await vatBalances(pool, to, accounts);
+        const plan = buildVatSettlementPlan({
+            payableBalance: balances.payable,
+            recoverableBalance: balances.recoverable,
+            accounts,
+        });
+        // قيد التصفية الموجود لهذا الشهر يُعلَن قبل أي اختصار: بعد الترحيل تصير
+        // الأرصدة 0/متبقٍ، فكانت الإعادة تُرجع nothing_to_clear بدل حقيقة «مُصفّى».
+        const existing = (await pool.query(
+            `SELECT id, entry_no, date::text AS date, status FROM journal_entries
+              WHERE source_type = 'vat_settlement' AND source_id = $1
+              ORDER BY id DESC LIMIT 1`, [month])).rows[0] || null;
+        const base = {
+            month, from, to,
+            output_vat: movement.output_vat,
+            input_vat: movement.input_vat,
+            net_payable: movement.net_payable,
+            payable_balance: balances.payable,
+            recoverable_balance: balances.recoverable,
+            clearing: plan.clearing,
+            net_payable_after: plan.net_payable_after,
+            carry_forward_after: plan.carry_forward_after,
+            lines: plan.lines,
+            settled: existing ? { entry_no: existing.entry_no, date: existing.date, status: existing.status } : null,
+        };
+        if (!apply) {return res.json({ ...base, applied: false, preview: true });}
+        if (existing) {
+            return res.status(409).json({
+                ...base, applied: false, error: 'LEDGER_DUPLICATE',
+                message: `تصفية ${month} مُرحّلة مسبقًا`, entry: existing,
+            });
+        }
+        if (!(plan.clearing > 0)) {return res.json({ ...base, applied: false, skipped: 'nothing_to_clear' });}
+        const out = await postJournal(pool, {
+            date: to,
+            memo: `تصفية ضريبة القيمة المضافة — ${month}`,
+            source_type: 'vat_settlement',
+            source_id: month,
+            lines: plan.lines,
+            created_by: req.user?.id || null,
+        });
+        if (out.replay) {
+            return res.status(409).json({
+                ...base, applied: false, error: 'LEDGER_DUPLICATE',
+                message: `تصفية ${month} مُرحّلة مسبقًا`, entry: out.entry,
+            });
+        }
+        logger.info(`[LEDGER] تصفية ضريبة ${month}: ${plan.clearing} → قيد ${out.entry.entry_no}`);
+        res.status(201).json({
+            ...base,
+            settled: { entry_no: out.entry.entry_no, date: to, status: out.entry.status || 'posted' },
+            applied: true,
+            entry: out.entry,
+        });
+    } catch (error) {
+        if (error.statusCode === 423) {
+            return res.status(423).json({ error: 'PERIOD_CLOSED', message: error.message });
+        }
+        logger.error('[ledger/vat-settlement]', error);
+        res.status(500).json({ error: 'LEDGER_VAT_SETTLEMENT_FAILED', message: 'تعذر ترحيل تصفية الضريبة' });
     }
 });
 
@@ -887,4 +1029,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, buildSalePostingLines, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
+module.exports = { router, postJournal, postSaleToLedger, buildSalePostingLines, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, buildVatSettlementPlan, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
