@@ -59,6 +59,13 @@ const LEGACY_MAPPING = Object.freeze({
     'dept_transfer.factory_variance_close.expense_account': '5000',
     'tax.vat_return.payable_account': '2100',
     'tax.vat_return.recoverable_account': '1150',
+    // مسارات القراءة (143) — نفس الثوابت القديمة، تُقرأ من الخريطة عند بذرها.
+    'reports.cash_flow.cash_account': '1000',
+    'reports.cash_flow.bank_account': '1010',
+    'reports.cfo_summary.cash_account': '1000',
+    'reports.cfo_summary.bank_account': '1010',
+    'reports.cfo_summary.revenue_account': '4000',
+    'reports.bank_reconciliation.bank_account': '1010',
 });
 
 /** مفتاح موحد: module.operation.role */

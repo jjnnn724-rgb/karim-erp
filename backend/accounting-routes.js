@@ -33,7 +33,7 @@ const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const { riyadhToday, riyadhMonth, riyadhDateOf } = require('./riyadh-date');
 // Phase 3 (2026-11-06): قراءة الحسابات من account_mapping بدل ثوابت متناثرة —
 // الافتراضي الممرَّر هو الثابت القديم نفسه، فالسلوك لا يتغير قبل ضبط الجدول.
-const { resolveAccounts } = require('./coa-mapping');
+const { resolveAccounts, getMappedAccount } = require('./coa-mapping');
 
 // مفاتيح جسر يارسوفت — مصدر واحد حتى لا تنفصل تسوية اللوحة عن مفاتيح الترحيل
 const {
@@ -929,11 +929,17 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
         const q = async (sql, p) => (await pool.query(sql, p)).rows[0];
         const { loadPnlInputs, buildPnlStatement } = require('./finance-routes');
         const pnl = buildPnlStatement({ ...(await loadPnlInputs(from, to)), fromDay: from, toDay: to });
+        // حسابات اللوحة من الخريطة (reports.cfo_summary)؛ الافتراضي هو الثوابت نفسها.
+        const cfo = await resolveAccounts(pool, 'reports', 'cfo_summary', {
+            cash_account: '1000', bank_account: '1010', revenue_account: '4000',
+        });
+        const openingEquity = await getMappedAccount(pool, 'yarasoft', 'prebooks', 'equity_account');
 
         const cash = await q(`SELECT
-                COALESCE(SUM(CASE WHEN l.account_code = '1000' THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS petty,
-                COALESCE(SUM(CASE WHEN l.account_code = '1010' THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS bank
-            FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'`, []);
+                COALESCE(SUM(CASE WHEN l.account_code = $1 THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS petty,
+                COALESCE(SUM(CASE WHEN l.account_code = $2 THEN l.debit - l.credit ELSE 0 END),0)::numeric(14,2) AS bank
+            FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'`,
+        [cfo.cash_account, cfo.bank_account]);
         const journalPeriod = await q(`SELECT COUNT(*)::int AS n FROM journal_entries WHERE status = 'posted' AND date >= $1::date AND date <= $2::date`, [from, to]);
         const journalAll = await q(`SELECT COUNT(*)::int AS n FROM journal_entries WHERE status = 'posted'`, []);
 
@@ -947,8 +953,8 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
         [from, to, cutover]);
         const booked = await q(`SELECT COALESCE(SUM(l.credit),0)::numeric(14,2) AS total, COUNT(*)::int AS n
                 FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
-               WHERE e.source_type = $3 AND l.account_code = '4000' AND e.date >= $1::date AND e.date <= $2::date`,
-        [from, to, YARA_REVENUE_SOURCE]);
+               WHERE e.source_type = $3 AND l.account_code = $4 AND e.date >= $1::date AND e.date <= $2::date`,
+        [from, to, YARA_REVENUE_SOURCE, cfo.revenue_account]);
         const unposted = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(r.amount),0)::numeric(14,2) AS total
                 FROM revenues r
                WHERE r.amount > 0 AND LEFT(r.date, 10) >= $1 AND LEFT(r.date, 10) <= $2 AND LEFT(r.date, 10) >= $3
@@ -960,11 +966,11 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
         [from, to, cutover, YARA_REVENUE_SOURCE]);
         const voided = await q(`SELECT COUNT(*)::int AS n, COALESCE(SUM(l.credit),0)::numeric(14,2) AS total
                 FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'void'
-               WHERE e.source_type = $3 AND l.account_code = '4000' AND e.date >= $1::date AND e.date <= $2::date`,
-        [from, to, YARA_REVENUE_SOURCE]);
+               WHERE e.source_type = $3 AND l.account_code = $4 AND e.date >= $1::date AND e.date <= $2::date`,
+        [from, to, YARA_REVENUE_SOURCE, cfo.revenue_account]);
         const opening = await q(`SELECT COALESCE(SUM(l.credit),0)::numeric(14,2) AS total, COUNT(*)::int AS n, MAX(e.date) AS as_of
                 FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
-               WHERE e.source_type = $1 AND l.account_code = '3100'`, [YARA_PREBOOK_SOURCE]);
+               WHERE e.source_type = $1 AND l.account_code = $2`, [YARA_PREBOOK_SOURCE, openingEquity]);
         const difference = round2(Number(mirror.total) - Number(booked.total));
         const reconciled = Math.abs(difference) <= 0.01 && Number(unposted.n) === 0;
 

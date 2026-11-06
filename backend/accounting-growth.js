@@ -18,6 +18,9 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { riyadhToday, riyadhMonth } = require('./riyadh-date');
+// Phase 3 (2026-11-06): الحساب البنكي الافتراضي من account_mapping؛
+// الافتراضي الممرَّر هو الثابت القديم (1010) قبل ضبط الجدول.
+const { resolveAccounts } = require('./coa-mapping');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
@@ -123,9 +126,15 @@ router.get('/ap-aging', jwtAuth, requireRole(...READ_ROLES), async (req, res, ne
 });
 
 // ─── كشوف البنك والمطابقة ───────────────────────────────────────────────────
+// الحساب الصريح في الطلب يغلب الخريطة؛ الخريطة تغذي الافتراضي فقط.
+async function defaultBankAccount() {
+    const a = await resolveAccounts(pool, 'reports', 'bank_reconciliation', { bank_account: '1010' });
+    return String(a.bank_account || '1010').slice(0, 20);
+}
+
 router.get('/bank-statements', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
-        const account = String(req.query.account || '1010').slice(0, 20);
+        const account = String(req.query.account || await defaultBankAccount()).slice(0, 20);
         const { rows } = await pool.query(
             `SELECT * FROM bank_statements WHERE account_code = $1 ORDER BY stmt_date DESC LIMIT 200`, [account]);
         res.json({ ok: true, statements: rows });
@@ -135,6 +144,7 @@ router.get('/bank-statements', jwtAuth, requireRole(...READ_ROLES), async (req, 
 router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
     try {
         const rows = Array.isArray(req.body?.rows) ? req.body.rows : [req.body];
+        const fallbackAccount = await defaultBankAccount();
         let inserted = 0;
         for (const r of rows.slice(0, 500)) {
             const d = okD(r.stmt_date);
@@ -145,7 +155,7 @@ router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req
             await pool.query(
                 `INSERT INTO bank_statements (account_code, stmt_date, description, amount, created_by)
                  VALUES ($1,$2,COALESCE(NULLIF($3,'') , ''),$4,$5) ON CONFLICT DO NOTHING`,
-                [String(r.account_code || '1010').slice(0, 20), d,
+                [String(r.account_code || fallbackAccount).slice(0, 20), d,
                  String(r.description || '').slice(0, 255).trim(), r2(amt), req.user?.id || null]
             );
             inserted++;
@@ -156,7 +166,7 @@ router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req
 
 router.get('/bank-rec', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
-        const account = String(req.query.account || '1010').slice(0, 20);
+        const account = String(req.query.account || await defaultBankAccount()).slice(0, 20);
         const to = okD(req.query.to) || riyadhToday();
         const from = okD(req.query.from) || `${to.slice(0, 7)}-01`;
         const book = await pool.query(
@@ -188,7 +198,7 @@ router.get('/bank-rec', jwtAuth, requireRole(...READ_ROLES), async (req, res, ne
 router.post('/bank-rec/auto-match', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
     const client = await pool.connect();
     try {
-        const account = String(req.body?.account || '1010').slice(0, 20);
+        const account = String(req.body?.account || await defaultBankAccount()).slice(0, 20);
         // قفل استشاري يمنع سباق تشغيلين متوازيين من ربط نفس القيد بكشفيين.
         await client.query('BEGIN');
         await client.query(`SELECT pg_advisory_xact_lock(hashtext('bank-rec-auto-match'))`);

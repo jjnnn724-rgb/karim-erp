@@ -21,6 +21,9 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { riyadhToday } = require('./riyadh-date');
+// Phase 3 (2026-11-06): قراءة حسابات النقدية/البنك من account_mapping؛
+// الافتراضي الممرَّر هو الثابت القديم نفسه (1000/1010) قبل ضبط الجدول.
+const { resolveAccounts } = require('./coa-mapping');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
@@ -248,12 +251,16 @@ router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, re
     } catch (e) { next(e); }
 });
 
-// ─── التدفق النقدي (الطريقة المباشرة على 1000/1010) ─────────────────────────
+// ─── التدفق النقدي (الطريقة المباشرة على حسابَي النقدية/البنك من الخريطة) ────
 router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
         const okD = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
         const to = okD(req.query.to) || riyadhToday();
         const from = okD(req.query.from) || `${to.slice(0, 7)}-01`;
+        const accts = await resolveAccounts(pool, 'reports', 'cash_flow', {
+            cash_account: '1000', bank_account: '1010',
+        });
+        const cashAccounts = [accts.cash_account, accts.bank_account];
         const { rows } = await pool.query(
             `SELECT l.debit::numeric(14,2) AS dr, l.credit::numeric(14,2) AS cr,
                     oc.type AS counter_type, oc.name_ar AS counter_name, oc.code AS counter_code
@@ -266,16 +273,16 @@ router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, n
                  WHERE l2.entry_id = l.entry_id AND l2.id <> l.id
                  ORDER BY (l2.debit + l2.credit) DESC LIMIT 1
                ) oc ON TRUE
-              WHERE l.account_code IN ('1000', '1010')`,
-            [from, to]
+              WHERE l.account_code = ANY($3::text[])`,
+            [from, to, cashAccounts]
         );
         let openBal = 0;
         try {
             const ob = await pool.query(
                 `SELECT (COALESCE(SUM(debit),0) - COALESCE(SUM(credit),0))::numeric(14,2) AS b
                    FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
-                  WHERE l.account_code IN ('1000','1010') AND e.status = 'posted' AND e.date < $1::date`,
-                [from]
+                  WHERE l.account_code = ANY($2::text[]) AND e.status = 'posted' AND e.date < $1::date`,
+                [from, cashAccounts]
             );
             openBal = Number(ob.rows[0]?.b || 0);
         } catch (e) {

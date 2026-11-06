@@ -17,6 +17,9 @@ const mockPoolResults = [];
 const mockPool = {
     async query(sql, params) {
         mockQueries.push({ sql: String(sql).replace(/\s+/g, ' ').trim(), params });
+        // Phase 3: قراءات account_mapping تُخدم من الافتراضي (صفوف فارغة) ولا
+        // تستهلك طابور النتائج المرتّب الخاص باستعلامات اللوحة.
+        if (/account_mapping/.test(String(sql))) {return { rows: [] };}
         const next = mockPoolResults.shift();
         if (next instanceof Error) {throw next;}
         return { rows: next === undefined ? [] : next };
@@ -151,10 +154,12 @@ describe('/cfo-summary — الأساس موحّد مع قائمة الدخل', 
         const { body } = await callHandler();
         expect(body.cash_ledger).toEqual({ petty_cash: 1000, bank: -8.22 });
         expect(body.cash_position).toBe(991.78);
-        const cashSql = mockQueries[0].sql;
-        expect(cashSql).toContain("e.status = 'posted'");
-        expect(cashSql).toContain("'1000'");
-        expect(cashSql).toContain("'1010'");
+        // Phase 3: الحسابان من reports.cfo_summary، والقيم المبذورة هي الثوابت القديمة.
+        const map = mockQueries.find((q) => /account_mapping/.test(q.sql) && q.params?.[0] === 'reports');
+        expect(map.params).toEqual(['reports', 'cfo_summary', ['cash_account', 'bank_account', 'revenue_account']]);
+        const cashSql = mockQueries.find((q) => /l\.account_code = \$1 THEN/.test(q.sql));
+        expect(cashSql.sql).toContain("e.status = 'posted'");
+        expect(cashSql.params).toEqual(['1000', '1010']);
         expect(numbersAreFinite(body.cash_position, body.cash_ledger.bank)).toBe(true);
     });
 
@@ -209,14 +214,17 @@ describe('/cfo-summary — الأساس موحّد مع قائمة الدخل', 
     test('المدخل في الدفتر دائن 4000 لقيود إيراد يارسوفت المرحّلة فقط', async () => {
         captureQueryOrder();
         await callHandler();
-        const booked = mockQueries.find((q) => /source_type = \$3/.test(q.sql) && /'4000'/.test(q.sql));
+        const booked = mockQueries.find((q) => /source_type = \$3/.test(q.sql) && /l\.account_code = \$4/.test(q.sql));
         expect(booked.sql).toContain("e.status = 'posted'");
         expect(booked.params[2]).toBe('yarasoft_revenue');
+        expect(booked.params[3]).toBe('4000');
         const voided = mockQueries.find((q) => /'void'/.test(q.sql));
-        expect(voided.sql).toContain("l.account_code = '4000'");
+        expect(voided.sql).toContain('l.account_code = $4');
+        expect(voided.params[3]).toBe('4000');
         const opening = mockQueries[mockQueries.length - 1];
-        expect(opening.sql).toContain("l.account_code = '3100'");
+        expect(opening.sql).toContain('l.account_code = $2');
         expect(opening.params[0]).toBe('yarasoft_prebooks');
+        expect(opening.params[1]).toBe('3100');
     });
 
     test('أساس كل رقم معلن في الاستجابة حتى لا يُقرأ الرقم بلا سياقه', async () => {
