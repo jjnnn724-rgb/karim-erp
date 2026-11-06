@@ -104,7 +104,8 @@ describe('حساب القسم — عقد المعادلة والأبواب', () 
 describe('عقد Backend — مراكز التكلفة والتوليد', () => {
     test('قيود الصرف والمرتجع تحمل مركز تكلفة القسم على سطري القيد', () => {
         const src = read(ACCOUNTING);
-        expect(src).toMatch(/buildStockMoveLines\(totalValue, direction, costCenter = null\)/);
+        // Phase 3: معامل accounts اختياري — التوقيع الثلاثي القديم يبقى صالحًا.
+        expect(src).toMatch(/buildStockMoveLines\(totalValue, direction, costCenter = null(?:, accounts = \{\})?\)/);
         expect(src.match(/cost_center_code: costCenter/g)?.length).toBeGreaterThanOrEqual(4);
         expect(src).toMatch(/postDispatchToLedger[\s\S]{0,700}ensureCostCenters\(\[deptCode\]\)/);
         expect(src).toMatch(/postReturnToLedger[\s\S]{0,700}ensureCostCenters\(\[deptCode\]\)/);

@@ -439,18 +439,20 @@ async function postOpeningToLedger(invoiceId) {
  *   صرف OUT: Dr 5000 تكلفة بضاعة ← Cr 1200 مخزون (بمتوسط التكلفة المرجح)
  *   إرجاع IN: Dr 1200 مخزون ← Cr 5000 تكلفة بضاعة (عكس متماثل)
  */
-function buildStockMoveLines(totalValue, direction, costCenter = null) {
+function buildStockMoveLines(totalValue, direction, costCenter = null, accounts = {}) {
     const v = round2(totalValue);
     if (!(v > 0)) {return [];}
+    const cogsAcct = (accounts && accounts.cogs_account) || '5000';
+    const inventoryAcct = (accounts && accounts.inventory_account) || '1200';
     if (direction === 'in') {
         return [
-            { account_code: '1200', debit: v, credit: 0, memo: 'إرجاع مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
-            { account_code: '5000', debit: 0, credit: v, memo: 'عكس تكلفة', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+            { account_code: inventoryAcct, debit: v, credit: 0, memo: 'إرجاع مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+            { account_code: cogsAcct, debit: 0, credit: v, memo: 'عكس تكلفة', ...(costCenter ? { cost_center_code: costCenter } : {}) },
         ];
     }
     return [
-        { account_code: '5000', debit: v, credit: 0, memo: 'تكلفة صرف', ...(costCenter ? { cost_center_code: costCenter } : {}) },
-        { account_code: '1200', debit: 0, credit: v, memo: 'صرف مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+        { account_code: cogsAcct, debit: v, credit: 0, memo: 'تكلفة صرف', ...(costCenter ? { cost_center_code: costCenter } : {}) },
+        { account_code: inventoryAcct, debit: 0, credit: v, memo: 'صرف مخزون', ...(costCenter ? { cost_center_code: costCenter } : {}) },
     ];
 }
 
@@ -496,12 +498,16 @@ async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } =
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
         ? String(date).slice(0, 10) : riyadhToday();
     if (deptCode) {await ensureCostCenters([deptCode]);}
+    const accounts = await resolveAccounts(pool, 'inventory', 'stock_dispatch', {
+        cogs_account: '5000',
+        inventory_account: '1200',
+    });
     const out = await postJournal(pool, {
         date: day,
         memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
         source_type: 'dispatch',
         source_id: String(dispatchId),
-        lines: buildStockMoveLines(v, 'out', deptCode || null),
+        lines: buildStockMoveLines(v, 'out', deptCode || null, accounts),
     });
     logger.info(`[LEDGER] صرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;
@@ -514,12 +520,16 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
         ? String(date).slice(0, 10) : riyadhToday();
     if (deptCode) {await ensureCostCenters([deptCode]);}
+    const accounts = await resolveAccounts(pool, 'inventory', 'stock_return', {
+        cogs_account: '5000',
+        inventory_account: '1200',
+    });
     const out = await postJournal(pool, {
         date: day,
         memo: `إرجاع مخزون — مرتجع #${returnId}${deptCode ? ` (${deptCode})` : ''}`,
         source_type: 'kitchen_return',
         source_id: String(returnId),
-        lines: buildStockMoveLines(v, 'in', deptCode || null),
+        lines: buildStockMoveLines(v, 'in', deptCode || null, accounts),
     });
     logger.info(`[LEDGER] مرتجع #${returnId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;

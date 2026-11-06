@@ -23,6 +23,7 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { postJournal, ensureCostCenters, normalizeCostCenterCode } = require('./accounting-routes');
+const { resolveAccounts } = require('./coa-mapping');
 const { resolveSourceStore, resolveDestinationStore } = require('./dept-stores');
 const { notifyTransferEvent } = require('./transfer-notifier');
 const { logger } = require('./logger');
@@ -594,6 +595,31 @@ async function writeFactorySettlement(client, transfer, settlement, sourceDept, 
   return written;
 }
 
+/** سطور قيد تسوية المصنع — نقية للاختبار (عقد Phase 3: الافتراضي 4000/5000). */
+function buildFactorySettlementLines({ total, sourceDept, destDept, accounts = {} }) {
+  const v = Number(total);
+  const src = normalizeCostCenterCode(sourceDept);
+  const dst = normalizeCostCenterCode(destDept);
+  const revenueAcct = accounts.revenue_account || '4000';
+  const expenseAcct = accounts.expense_account || '5000';
+  return [
+    { account_code: revenueAcct, debit: 0, credit: v, memo: 'إيراد مصنع — ' + sourceDept, cost_center_code: src },
+    { account_code: expenseAcct, debit: v, credit: 0, memo: 'تحميل منفذ — ' + destDept, cost_center_code: dst },
+  ];
+}
+
+/** سطور نقل التكلفة بين مركزي القسمين — نقية للاختبار (الافتراضي 5000). */
+function buildTransferCostLines({ total, sourceDept, destDept, accounts = {} }) {
+  const v = Number(total);
+  const src = normalizeCostCenterCode(sourceDept);
+  const dst = normalizeCostCenterCode(destDept);
+  const costAcct = accounts.cost_account || '5000';
+  return [
+    { account_code: costAcct, debit: v, credit: 0, memo: 'تكلفة تحويل — القسم المستلم', cost_center_code: dst },
+    { account_code: costAcct, debit: 0, credit: v, memo: 'خصم تكلفة — القسم المرسل', cost_center_code: src },
+  ];
+}
+
 /** قيد تسوية المصنع: 4000 دائن بمركز المصنع (إيراده) / 5000 مدين بمركز
  *  المنفذ (تحميله) بقيمة القائمة — idempotent بمفتاح (factory_settlement, id)
  *  منفصل عن مفتاح تحويل التكلفة فلا يمس القيود القديمة. */
@@ -604,16 +630,17 @@ async function postFactoryJournal(transfer, total, sourceDept, destDept, day) {
   if (!(v > 0) || !src || !dst) {return;}
   try {
     await ensureCostCenters([src, dst]);
+    const accounts = await resolveAccounts(pool, 'dept_transfer', 'factory_settlement', {
+      revenue_account: '4000',
+      expense_account: '5000',
+    });
     const memo = 'تسوية مصنع — ' + transfer.transfer_number + ' (' + sourceDept + ' → ' + destDept + ') بسعر القائمة';
     const out = await postJournal(pool, {
       date: riyadhDayOf(day),
       memo: memo,
       source_type: 'factory_settlement',
       source_id: String(transfer.id),
-      lines: [
-        { account_code: '4000', debit: 0, credit: v, memo: 'إيراد مصنع — ' + sourceDept, cost_center_code: src },
-        { account_code: '5000', debit: v, credit: 0, memo: 'تحميل منفذ — ' + destDept, cost_center_code: dst },
-      ],
+      lines: buildFactorySettlementLines({ total: v, sourceDept, destDept, accounts }),
     });
     logger.info('[LEDGER] factory settlement ' + transfer.transfer_number + ': ' + (out.replay ? 'replayed' : 'entry ' + out.entry.entry_no));
   } catch (e) {
@@ -736,16 +763,16 @@ async function postTransferJournal(transfer, totalValue, sourceDept, destDept, d
   if (!(v > 0) || !src || !dst) {return;}
   try {
     await ensureCostCenters([src, dst]);
+    const accounts = await resolveAccounts(pool, 'dept_transfer', 'inventory_transfer', {
+      cost_account: '5000',
+    });
     const memo = 'تحويل مخزون — ' + transfer.transfer_number + ' (' + sourceDept + ' → ' + destDept + ')';
     const out = await postJournal(pool, {
       date: riyadhDayOf(day),
       memo: memo,
       source_type: 'inventory_transfer',
       source_id: String(transfer.id),
-      lines: [
-        { account_code: '5000', debit: v, credit: 0, memo: 'تكلفة تحويل — القسم المستلم', cost_center_code: dst },
-        { account_code: '5000', debit: 0, credit: v, memo: 'خصم تكلفة — القسم المرسل', cost_center_code: src },
-      ],
+      lines: buildTransferCostLines({ total: v, sourceDept, destDept, accounts }),
     });
     logger.info('[LEDGER] transfer ' + transfer.transfer_number + ': ' + (out.replay ? 'replayed' : 'entry ' + out.entry.entry_no));
   } catch (e) {
@@ -1285,6 +1312,10 @@ router.post('/dept-transfers/factory-variance/:month/close', jwtAuth, requireRol
       }
       await client.query('COMMIT');
       const posted = results;
+      const varianceAccounts = await resolveAccounts(pool, 'dept_transfer', 'factory_variance_close', {
+        revenue_account: '4000',
+        expense_account: '5000',
+      });
       for (const r of posted) {
         const src = normalizeCostCenterCode(deptCode);
         const dstCc = normalizeCostCenterCode(r.dest);
@@ -1294,12 +1325,12 @@ router.post('/dept-transfers/factory-variance/:month/close', jwtAuth, requireRol
             await ensureCostCenters([src, dstCc]);
             const lines = r.delta > 0
               ? [
-                { account_code: '4000', debit: 0, credit: Math.abs(r.delta), memo: 'فرق مصنع ' + deptCode, cost_center_code: src },
-                { account_code: '5000', debit: Math.abs(r.delta), credit: 0, memo: 'فرق منفذ ' + r.dest, cost_center_code: dstCc },
+                { account_code: varianceAccounts.revenue_account, debit: 0, credit: Math.abs(r.delta), memo: 'فرق مصنع ' + deptCode, cost_center_code: src },
+                { account_code: varianceAccounts.expense_account, debit: Math.abs(r.delta), credit: 0, memo: 'فرق منفذ ' + r.dest, cost_center_code: dstCc },
               ]
               : [
-                { account_code: '4000', debit: Math.abs(r.delta), credit: 0, memo: 'عكس فرق مصنع ' + deptCode, cost_center_code: src },
-                { account_code: '5000', debit: 0, credit: Math.abs(r.delta), memo: 'عكس فرق منفذ ' + r.dest, cost_center_code: dstCc },
+                { account_code: varianceAccounts.revenue_account, debit: Math.abs(r.delta), credit: 0, memo: 'عكس فرق مصنع ' + deptCode, cost_center_code: src },
+                { account_code: varianceAccounts.expense_account, debit: 0, credit: Math.abs(r.delta), memo: 'عكس فرق منفذ ' + r.dest, cost_center_code: dstCc },
               ];
             await postJournal(pool, {
               date: month + '-01', memo: 'قفل فرق المصنع ' + month + ' — ' + deptCode + ' → ' + r.dest,
@@ -1600,4 +1631,4 @@ router.post('/dept-transfers/:id/cancel', jwtAuth, requireRole(...WRITE_ROLES), 
   } finally { client.release(); }
 });
 
-module.exports = { router };
+module.exports = { router, buildFactorySettlementLines, buildTransferCostLines };
