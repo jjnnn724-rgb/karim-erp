@@ -236,8 +236,8 @@ class AttendanceSyncEngine {
                 });
                 const res = await pool.query(
                     `INSERT INTO attendance_logs
-                        ("deviceId", "deviceUserId", "employeeId", "attendanceTime", "verifyType", "punchState")
-                     SELECT $1, u, e, t, v, p
+                        ("deviceId", "deviceUserId", "employeeId", "attendanceTime", "verifyType", "punchState", source)
+                     SELECT $1, u, e, t, v, p, 'device'
                      FROM unnest($2::text[], $3::bigint[], $4::timestamptz[], $5::int[], $6::int[])
                           AS x(u, e, t, v, p)
                      ON CONFLICT ("deviceId", "deviceUserId", "attendanceTime") DO NOTHING

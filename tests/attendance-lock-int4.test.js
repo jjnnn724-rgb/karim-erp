@@ -83,7 +83,8 @@ describe('قفل البصمة لا يسقط أمام معرّف bigint', () => {
              ON CONFLICT (id) DO NOTHING`, [BIG_ID]);
         const instant = new Date('2026-11-05T14:00:00.000Z'); // 17:00 بتوقيت مكة
         const res = await engine.processPunch({
-            employeeId: BIG_ID, punchState: null, instant, wall: instantToWall(instant), source: 'portal',
+            employeeId: BIG_ID, punchState: null, instant, wall: instantToWall(instant),
+            device: { id: 1 }, source: 'portal',
         });
         expect(res.error).toBeUndefined();
         expect(res.action).toBe('check_in');

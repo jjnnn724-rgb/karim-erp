@@ -29,11 +29,20 @@ describe('البصمة حاكمة — لا ملصق جهاز ولا تفريق �
     });
 
     it('الاتجاه من أطراف بصمات اليوم وحدها — لا فرع للبوابة ولا الأولوية لملصق الجهاز', () => {
-        expect(engine).toContain('const entryAt = points[0];');
-        expect(engine).toContain('const exitAt = points.length > 1 ? points[points.length - 1] : null;');
+        // 2026-11-07: البناء انتقل إلى دالة نقية (shift-day-builder) تحمي
+        // القاعدة الثلاثية: أول/آخر/تكرار، والمحرك يقرأ أطرافها فقط.
+        expect(engine).toContain('const entryAt = dayBuild.entryAt;');
+        expect(engine).toContain('const exitAt = dayBuild.exitAt;');
+        expect(engine).toContain('buildShiftDay(');
         expect(engine).not.toMatch(/const dir = /);
         expect(engine).not.toMatch(/source === 'portal'/);
         expect(engine).not.toMatch(/deviceIn\) \{dir|deviceOut\) \{dir/);
+    });
+
+    it('المحرك لا يفترض مصدرًا: source بلا قيمة يُرفض قبل القراءة/الكتابة', () => {
+        expect(engine).not.toMatch(/source = 'device'/);
+        expect(engine).toContain('validatePunch({ source, deviceId, device })');
+        expect(engine).toContain("error: identity.code");
     });
 
     it('بصمة بملصقٍ مجهول أو معاكس تُحجز كما هي — الملصق لا يُقرأ أصلًا في الحكم', () => {

@@ -26,9 +26,12 @@
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const {
-    shiftDateForEmployee, prevDay, isLate, isEarlyLeave,
+    shiftDateForEmployee, prevDay, isLate, isEarlyLeave, shiftDateModeEnabled,
     normalizeShiftStart, normalizeShiftKarim,
 } = require('./shift-day');
+const {
+    validatePunch, shiftDayForPunch, buildShiftDay,
+} = require('./shift-day-builder');
 
 const BUSINESS_TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // Asia/Riyadh (UTC+3، بلا تغيير موسمي)
 
@@ -134,7 +137,16 @@ class AttendanceEngine {
      *     بترتيب الورود)، ولا نافذة زمنية ولا كاش ولا ملصق جهاز — بلا استثناء.
      */
     // ملاحظة: punchState ليست في قائمة الوسائط — ملصق حالة الجهاز لا يُقرأ إطلاقًا.
-    async processPunch({ employeeId, instant, wall, device, source = 'device', forDate = null }) {
+    // بلا مصدرٍ معتمد أو هوية جهاز لا بصمة: الرفض قبل أي قراءة/كتابة (قرار 2026-11-07).
+    async processPunch({ employeeId, instant, wall, device, source, forDate = null }) {
+        const deviceId = device && (device.id ?? device.deviceId);
+        const identity = validatePunch({ source, deviceId, device });
+        if (!identity.ok) {
+            logger.warn(`[AttendanceEngine] بصمة مرفوضة: employee=${employeeId} `
+                + `code=${identity.code} source=${source || '-'} device=${deviceId ?? '-'}`);
+            return { action: null, error: identity.code, message: identity.message, changed: false };
+        }
+
         const shift = await this.getEmployeeShift(employeeId, forDate || undefined);
         if (!shift) {return { action: null, error: 'Employee not found' };}
 
@@ -151,6 +163,15 @@ class AttendanceEngine {
 
             let day = shiftDateForEmployee(wall.date, wall.hour,
                 { shift_start: shiftStart, shift_karim: shiftKarim });
+
+            // الوردية من بدايتها لا من تاريخ التقويم (قرار 2026-11-07): نافذة
+            // الوردية نفسها تحسم اليوم حين تكون البصمة داخلها بيقين — 23:45
+            // و00:15 لبطاقة 14:00+10h أو 20:00+12h وردية واحدة. خارج النافذة
+            // يبقى الحكم القديم (يومٌ مفتوح يُغلق ببصمة الفجر) بلا اختلاق.
+            if (shiftDateModeEnabled()) {
+                const mapped = shiftDayForPunch(wall, shiftStart, shiftKarim);
+                if (mapped.confident) {day = mapped.date;}
+            }
 
             // انصراف الليل: بطاقةٌ لا تمتد ساعاتُها عبر منتصف الليل (١٣:٠٠+٩ مثلًا) تقطع
             // الوردية إلى نصفين — بصمة الفجر تصير «دخول يوم جديد». إن كان أمس مفتوحًا
@@ -191,19 +212,40 @@ class AttendanceEngine {
             // الإجازة المعتمدة تُعلَّم على يومها — وصف، لا بصمة ولا استكمال
             const onLeave = await this.isOnLeave(employeeId, day);
 
-            // ── أطراف اليوم من بصمات الموظف وحدها — لا ترتيب ورود ولا ملصق يحكم ──
-            // أطراف الصف المحجوزة + هذه البصمة: أقدمُها الدخول وأحدثُها الانصراف.
-            // المعادلة لا تعتمد على أيهما وصل أولًا، فتأخر مزامنة بصمة لا يبتلعها.
-            const points = [row && row.checkInAt, row && row.checkOutAt, instant]
-                .filter(Boolean).map(d => new Date(d)).sort((a, b) => a - b);
-            const entryAt = points[0];
-            const exitAt = points.length > 1 ? points[points.length - 1] : null;
+            // ── بناء اليوم من بصماته — دالة نقية تحمي القواعد الثلاث ──
+            // أطراف الصف المحجوزة + هذه البصمة: أقدمها الدخول وأحدثها الانصراف،
+            // والتكرار خلال نافذة الضغطة المكررة يُهمل (يبقى خامًا في attendance_logs
+            // للعرض والتدقيق)، وبصمة واحدة لا تصير دخولًا وانصرافًا في لحظةٍ واحدة.
+            const dayBuild = buildShiftDay({
+                shiftDate: day,
+                shiftStart,
+                shiftKarim,
+                punches: [
+                    row && row.checkInAt
+                        ? { at: row.checkInAt, wall: instantToWall(new Date(row.checkInAt)) }
+                        : null,
+                    row && row.checkOutAt
+                        ? { at: row.checkOutAt, wall: instantToWall(new Date(row.checkOutAt)) }
+                        : null,
+                    { at: instant, wall },
+                ].filter(Boolean).map((p) => ({ ...p, source, deviceId })),
+            });
+            const entryAt = dayBuild.entryAt;
+            const exitAt = dayBuild.exitAt;
 
             const inWall = instantToWall(entryAt);
             const outWall = exitAt ? instantToWall(exitAt) : null;
             const lateFlag = isLate(inWall.hour, inWall.minute, shiftStart, 9);
             const early = outWall ? isEarlyLeave(outWall.hour, outWall.minute, shiftStart, shiftKarim) : false;
             const minutes = exitAt ? Math.max(0, Math.round((exitAt - entryAt) / 60000)) : null;
+
+            // الباني لا يمحو طرفًا محفوظًا: لو صار انصراف الصف «تكرارًا» لبصمة
+            // جديدة فالحفظ كما هو وطلب المراجعة، لا تحويل اليوم إلى بصمة واحدة.
+            if (row && row.checkOutAt && !exitAt) {
+                await client.query('COMMIT');
+                return { action: 'check_out', record: row, changed: false, day,
+                    status: 'needs_review', needsReview: true, reviewReason: 'duplicate_punch' };
+            }
 
             // أطراف لا تتغير ⇒ لا كتابة: بصمة وسط اليوم لا تعيد رسمه
             if (row && sameSecond(row.checkInAt, entryAt) && sameSecond(row.checkOutAt, exitAt)) {
@@ -252,7 +294,9 @@ class AttendanceEngine {
             if (this.io) {
                 this.emit('attendance:updated', { action, source, employee: { id: employeeId }, record });
             }
-            return { action, record, day, changed: true };
+            return { action, record, day, changed: true,
+                status: dayBuild.status, needsReview: dayBuild.needsReview,
+                reviewReason: dayBuild.reviewReason };
         } catch (error) {
             await client.query('ROLLBACK').catch(() => {});
             // pino يترك الوسيط النصي الثاني — والرسالة داخل النص هي الدليل الوحيد عند الفشل

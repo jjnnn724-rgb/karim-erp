@@ -206,11 +206,11 @@ function getShiftStartMinutes(employee) {
 }
 
 function calculateDelayParts(row, employee) {
-    // التأخير من بداية دوام البطاقة بلا تعقيدات (قرار المالك 2026-11-05):
-    //   arrivalLateMinutes = max(0, الدخول − بداية الدوام بالبطاقة)
-    //   earlyLeaveMinutes  = max(0, نهاية الدوام − الخروج) مع تصحيح عبور منتصف الليل
-    //   lateMinutes        = العجز عن ساعات البطاقة (الدخول لو بلا خروج)
-    // الحقول Raw… = نفس القيمة (لا فرق مع غياب السماحية).
+    // التأخير = العجز عن ساعات البطاقة، لا مجرد عبور الساعة (قرار المالك 2026-11-07):
+    //   وصول مبكر يغطي انصرافًا مبكرًا، وبقاء أطول يغطي وصولًا متأخرًا.
+    //   من أكمل ساعات ورديته لا يُعرض عليه «تأخير»، وتُوزَّع دقائق العجز على
+    //   طرفي اليوم (دخول أولًا ثم انصراف) بسقف العجز الكلي.
+    //   lateMinutes = العجز الكلي (والدخول وحده لو بلا خروج).
     const zero = {
         arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0,
         arrivalLateRawMinutes: 0, earlyLeaveRawMinutes: 0,
@@ -248,9 +248,18 @@ function calculateDelayParts(row, employee) {
         }
     }
 
+    // توزيع العجز على الطرفين: لا دقائق تأخير إن لم يكن هناك عجز أصلًا.
+    // بلا بصمة خروج يبقى الحكم على الدخول وحده (اليوم مفتوح).
+    let arrivalNet = arrivalRaw;
+    let earlyNet = earlyRaw;
+    if (checkOutMin != null) {
+        arrivalNet = Math.min(arrivalRaw, shortfallRaw);
+        earlyNet = Math.min(earlyRaw, Math.max(0, shortfallRaw - arrivalNet));
+    }
+
     // بلا سماحية افتراضيًا (grace = 0): فوق الصفر تُحسب الدقائق كاملة.
-    const arrival = arrivalRaw > grace ? arrivalRaw : 0;
-    const early = earlyRaw > grace ? earlyRaw : 0;
+    const arrival = arrivalNet > grace ? arrivalNet : 0;
+    const early = earlyNet > grace ? earlyNet : 0;
     // بلا بصمة خروج: اليوم مفتوح → يُحكم على العجز عند إغلاقه (الدخول وحده).
     const late = checkOutMin == null ? arrival : overGrace(shortfallRaw, grace);
 
@@ -258,8 +267,8 @@ function calculateDelayParts(row, employee) {
         arrivalLateMinutes: arrival,
         earlyLeaveMinutes: early,
         lateMinutes: late,
-        arrivalLateRawMinutes: arrivalRaw,
-        earlyLeaveRawMinutes: earlyRaw,
+        arrivalLateRawMinutes: arrivalNet,
+        earlyLeaveRawMinutes: earlyNet,
     };
 }
 
@@ -280,6 +289,7 @@ function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = gra
 }
 
 module.exports = {
+    shiftDateModeEnabled,
     nightCutoffHour,
     delayEngineEnabled,
     graceMinutes,

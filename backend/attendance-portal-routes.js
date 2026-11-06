@@ -624,12 +624,21 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // الوحيد — البوابة بلا زر ولا نيّة، والحالة الناقصة لا تُشتق: لا قرار
         // ولا كتابة صفوف، البصمة تُسجَّل خامًا (بحالة مجهولة) وتُعلَّم للمراجعة.
         const { engine } = require('./attendance-engine');
+        // هوية الجهاز الافتراضي إلزامية: بصمة بلا deviceId تُرفض في المحرك (2026-11-07).
+        const portalDevice = await portalDeviceId();
+        if (!portalDevice) {
+            await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: 'PORTAL_DEVICE_MISSING' });
+            return res.status(503).json({
+                ok: false, error: 'PORTAL_DEVICE_MISSING',
+                message: 'جهاز البوابة الافتراضي غير مهيأ — راجع الإدارة',
+            });
+        }
         const result = await engine.processPunch({
             employeeId: employee.id,
             punchState: null,
             instant: now,
             wall,
-            device: { name: 'بوابة الجوال' },
+            device: { id: portalDevice, name: 'بوابة الجوال' },
             source: 'portal',
         });
 

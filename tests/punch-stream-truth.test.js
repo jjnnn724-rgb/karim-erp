@@ -80,8 +80,9 @@ afterAll(async () => {
 
 describe('عقد المصدر: البصمة حاكمة — لا ملصق ولا مصدر ولا حارس', () => {
     test('أطراف اليوم = أقدم بصمة وأحدثها — المعادلة لا تعرف ترتيب الوصول', () => {
-        expect(ENGINE).toContain('const entryAt = points[0];');
-        expect(ENGINE).toContain('const exitAt = points.length > 1 ? points[points.length - 1] : null;');
+        expect(ENGINE).toContain('const entryAt = dayBuild.entryAt;');
+        expect(ENGINE).toContain('const exitAt = dayBuild.exitAt;');
+        expect(ENGINE).toContain('buildShiftDay(');
         expect(ENGINE).not.toMatch(/const dir = /);
         expect(ENGINE).not.toMatch(/source === 'portal'/);
     });

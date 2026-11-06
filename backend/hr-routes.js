@@ -7,6 +7,7 @@ const { logger } = require('./logger');
 const { generalLimiter } = require('./rate-limiter');
 const { buildMonthlyAttendanceSummaryQuery } = require('./monthly-attendance-query');
 const { graceMinutes, calculateDelayParts } = require('./shift-day');
+const { classifyStoredDay } = require('./shift-day-builder');
 const { makeEmitScoped } = require('./realtime/guard');
 const { arFuzzyPattern } = require('./ar-search');
 
@@ -110,16 +111,6 @@ function canAccessEmployee(req, employee) {
     return ADMIN_ROLES.includes(req.user?.role) || Number(employee?.userId) === Number(req.user?.id);
 }
 
-function riyadhNowParts(date = new Date()) {
-    // Business timezone: Asia/Riyadh (UTC+3, no DST). Using one consistent clock
-    // for the attendance date, time and late-flag avoids wrong-day records around
-    // midnight (a UTC date with local hours produced off-by-one-day rows).
-    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-    const parts = Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
-    const hour = Number(parts.hour === '24' ? '0' : parts.hour);
-    return { date: `${parts.year}-${parts.month}-${parts.day}`, hour, minute: Number(parts.minute) };
-}
-
 function calculateMinutes(row) {
     // المصدر الأول: النصان المعروضان (HH:MM) — ما تراه العين هو ما يُحسب.
     // يمنع قيمًا شاذة (25:43) من أزمنة instant متقطعة الأيام. التفاف ليلي فقط عند out<in.
@@ -200,22 +191,31 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
          ORDER BY a.date ASC`, [employeeId, from, to]
     );
     const records = result.rows.map(row => {
-        const workMinutes = calculateMinutes(row);
-        const needsReview = Boolean(row.checkIn && row.checkOut && workMinutes === 0);
-        return { ...row, workMinutes, needsReview, ...calculateDelayParts(row, empRow) };
+        // بصمة واحدة (أو انصراف بلا دخول) «تحتاج مراجعة» لا تخمينًا — القرار
+        // نفسه الذي يحمي بناء اليوم (shift-day-builder) مطبَّقًا على الصف المحفوظ.
+        const dayState = classifyStoredDay(row, { shiftKarim: empRow?.shift_karim });
+        const workMinutes = dayState.workMinutes != null ? dayState.workMinutes : calculateMinutes(row);
+        return {
+            ...row, workMinutes,
+            status: dayState.status,
+            needsReview: dayState.needsReview,
+            reviewReason: dayState.reviewReason,
+            ...calculateDelayParts(row, empRow),
+        };
     });
 
-    // الصفوف الغامضة (بصمة واحدة مكررة دخولًا وخروجًا = صفر ساعات) تُستبعد من الإجمالي
-    // وتُعرض منفصلة كـ "قيد المراجعة" بدل تلويث الأرقام المعتمدة.
+    // الصفوف الغامضة (بصمة واحدة بلا انصراف، أو مدّة مشكوك فيها) تُستبعد من
+    // الإجمالي وتُعرض منفصلة كـ "قيد المراجعة" بدل تلويث الأرقام المعتمدة:
+    // «لو النظام مش متأكد → يسأل، مش يخمن» (قرار المالك 2026-11-07).
     const countable = records.filter(r => !r.needsReview);
     const reviewRows = records.filter(r => r.needsReview);
     const reviewMinutes = reviewRows.reduce((s, r) => s + (r.lateMinutes || 0), 0);
     const totalLateMinutes = countable.reduce((s, r) => s + (r.lateMinutes || 0), 0);
     const empWorkDayMinutes = (Number(empRow?.shift_karim) > 0 ? Number(empRow.shift_karim) : 10) * 60;
     const lateRemainingMinutes = totalLateMinutes % empWorkDayMinutes;
-    // الدقائق الخام (بلا سماحية) — طلب المالك 2026-10-29: كل تأخير ولو دقيقة
-    // لازم يبان في البطاقة. للعرض والمعرفة فقط: الخصم المالي يفضل على
-    // lateMinutes وحده (hr-routes.js:936)، فلا رقم هنا يتحوّل مالًا.
+    // دقائق العجز قبل السماحية (وهي صفر افتراضيًا) — قرار المالك 2026-11-07:
+    // من أكمل ساعات ورديته لا يظهر عليه تأخير. للعرض فقط: الخصم المالي يفضل
+    // على lateMinutes وحده (hr-routes.js:936)، فلا رقم هنا يتحوّل مالًا.
     const totalArrivalRawMinutes = countable.reduce((s, r) => s + (r.arrivalLateRawMinutes || 0), 0);
     const totalEarlyRawMinutes = countable.reduce((s, r) => s + (r.earlyLeaveRawMinutes || 0), 0);
     const rawLateDays = countable
@@ -1128,7 +1128,7 @@ router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, r
         await client.query('COMMIT');
         logger.info({ userId: req.user?.id, depts: scope.depts, n: updates.length, effective_from: effRaw, applyNow }, '[dept-roster] saved');
         try {
-            req.io?.emit('entity_changed', {
+            makeEmitScoped(req.io)('entity_changed', {
                 entity: 'employees', entityName: 'الموظفون', action: 'update',
                 data: updates, changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString(),
             });
@@ -1475,7 +1475,7 @@ router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (r
             await pool.query(`DELETE FROM roster_approvals WHERE dept_key=$1 AND week_start=$2::date`, [rosterApprovalKey(scope), wsRaw]);
         } catch (e) { logger.warn('[dept-roster-week] تعذر تصفير الاعتمادات:', e.message); }
         try {
-            req.io?.emit('entity_changed', { entity: 'employees', entityName: 'الموظفون', action: 'update', changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString() });
+            makeEmitScoped(req.io)('entity_changed', { entity: 'employees', entityName: 'الموظفون', action: 'update', changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString() });
         } catch (e) { logger.debug('[dept-roster-week] تعذر بث entity_changed:', e.message); }
         res.json({ ok: true, updated: clean.length, week_start: wsRaw });
     } catch (e) {
