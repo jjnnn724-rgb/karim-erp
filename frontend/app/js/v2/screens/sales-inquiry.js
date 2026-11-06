@@ -6,9 +6,13 @@
  *
  *   1) جدول أصناف الفترة (من أول الشهر افتراضيًا): كود، كمية، فواتير،
  *      صافي، ضريبة، متوسط سعر الوحدة.
- *   2) نقر الصنف → جدول فواتيره: كل فاتورة بكمية الصنف وسعره وإجماليه
- *      وإجمالي الفاتورة وكاشيرها ووقتها، مع ترقيم من الخادم (LIMIT/OFFSET).
- *   3) نقر الفاتورة → تفاصيلها كاملة (سطور، خصم، ضريبة، مدفوع، دفع مقسّم).
+ *   2) نقر الصنف → جدول فواتيره: كل فاتورة بكمية الصنف وسعره وقبل ضريبته
+ *      وضريبته وشامله، وإجمالي الفاتورة وكاشيرها ووقتها، مع ترقيم من
+ *      الخادم (LIMIT/OFFSET).
+ *   3) نقر الفاتورة → تفاصيلها كاملة (سطور، خصم، ضريبة، مدفوع، دفع مقسّم)،
+ *      وأولها بطاقة «الصنف المطلوب في هذه الفاتورة»: كميته وسعر وحدته
+ *      وقبل ضريبته وضريبته وشامله وحصته من إجمالي الفاتورة — لأن سؤال
+ *      المالك: «أعرف اتباع كام» لا يُجاب بإجمالي فاتورةٍ فيها أصناف أخرى.
  *   4) «طباعة الإيصال» → HTML الإيصال من /pos/orders/ys/:docNo/receipt-html
  *      يُجلب بـ fetch خام برؤوس المصادقة ثم يُكتب في عارض التطبيق
  *      (report-viewer) — لأن فتحه في تبويب جديد يسقط 401 بلا هيدر.
@@ -24,13 +28,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.296';
-import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.301';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.301';
+import { openInAppReport } from '../report-viewer.js?v=4.9.301';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
     fetchItemSalesSheetHtml, rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.296';
+} from '../data/yara-reports-repo.js?v=4.9.301';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -130,13 +134,13 @@ function template() {
             </button>
           </div>
           <div class="erp-card__body salesinq__stack">
-            <p class="erp-text-sm erp-text-muted" data-v2-inv-scope>المؤشرات أرقامُ هذا الصنف وحده — مطابقةٌ بالكود لا باسم العائلة، فلا تدخل أصنافُ «شاورما» الأخرى في العدّ. وعمود «المحصَّل للفاتورة» هو إجمالي الفاتورة كاملة للمعلومة فقط.</p>
+            <p class="erp-text-sm erp-text-muted" data-v2-inv-scope>المؤشرات وأعمدة «كمية الصنف / سعر الوحدة / قبل الضريبة للصنف / ضريبة الصنف / شامل الضريبة للصنف» أرقامُ هذا الصنف وحده — مطابقةٌ بالكود والاسم لا بعائلة «شاورما»، فلا تدخل أصنافٌ أخرى في العدّ. وعمود «المحصَّل للفاتورة» هو إجمالي الفاتورة كاملة للمعلومة فقط.</p>
             <div data-v2-inv-kpis></div>
             <div data-v2-invoices></div>
             <div class="salesinq__more erp-no-print" data-v2-more hidden>
               <button type="button" class="erp-btn erp-btn--subtle erp-btn--sm" data-v2-more-btn>تحميل المزيد</button>
             </div>
-            <div data-v2-detail></div>
+            <div data-v2-detail-host></div>
           </div>
         </section>
       </div>`;
@@ -194,6 +198,10 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                 render: (r) => `<span class="erp-num" dir="ltr">${formatQty(r.item_qty)}</span>` },
             { key: 'item_price', header: 'سعر الوحدة', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.item_price || 0), render: (r) => money(r.item_price) },
             { key: 'item_net', header: 'قبل الضريبة للصنف', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.item_net || 0), render: (r) => money(r.item_net) },
+            { key: 'item_vat', header: 'ضريبة الصنف', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.item_vat || 0), render: (r) => money(r.item_vat) },
+            { key: 'item_gross', header: 'شامل الضريبة للصنف', type: 'number', width: '160px', align: 'end',
+                value: (r) => Number(r.item_net || 0) + Number(r.item_vat || 0),
+                render: (r) => money(Number(r.item_net || 0) + Number(r.item_vat || 0)) },
             { key: 'net', header: 'المحصَّل للفاتورة', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
             { key: 'actions', header: 'إجراءات', width: '130px', align: 'center', className: 'erp-no-print',
                 render: (r) => `<span class="erp-row-wrap">`
@@ -333,7 +341,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             q('[data-v2-more]').hidden = batch.length < PAGE;
             q('[data-v2-panel]').hidden = false;
             if (!append) {
-                q('[data-v2-detail]').innerHTML = '';
+                q('[data-v2-detail-host]').innerHTML = '';
                 state.detailDoc = '';
             }
             paintCashierOptions();
@@ -364,8 +372,23 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     }
 
     /* ── تفاصيل فاتورة ──────────────────────────────────────────────── */
+    /** سطور الفاتورة التابعة للصنف المفتوح — بالزوج (كود + اسم) نفسه الذي
+     *  فلتر به الخادم، فلا يُنسب سطرُ صنفٍ آخر إلى المطلوب. */
+    function hitLines(lines) {
+        const code = String(state.selectedCode || '').trim();
+        const name = String(state.selected || '').trim();
+        if (!code && !name) { return []; }
+        return (Array.isArray(lines) ? lines : []).filter((l) => {
+            const lc = String((l && l.code) || '').trim();
+            const ln = String((l && l.name) || '').trim();
+            if (code && name) { return lc === code && ln === name; }
+            if (code) { return lc === code; }
+            return ln === name;
+        });
+    }
+
     async function openDetail(docNo) {
-        const detailHost = q('[data-v2-detail]');
+        const detailHost = q('[data-v2-detail-host]');
         state.detailDoc = docNo;
         detailHost.innerHTML = '<div class="erp-card erp-card--subtle"><div class="erp-card__body erp-text-center">'
             + '<span class="erp-spinner" aria-hidden="true"></span> جارٍ جلب تفاصيل الفاتورة…</div></div>';
@@ -386,13 +409,52 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                         ? 'خصمٌ أو تسويةُ كسورٍ لم يسجّلها المصدر في عمود مستقل — وبه تنطبق المعادلة: المحصَّل + التسوية = قبل الضريبة + الضريبة.'
                         : 'زيادةٌ في المحصَّل عن المسعَّر — تُراجع مع سجل الكاشير.'}</p>`
                 : '';
-            const rowsHtml = lines.map((l, i) => `<tr>
+            const hits = hitLines(lines);
+            const sumBy = (arr, k) => Math.round(arr.reduce((s, l) => s + (Number(l && l[k]) || 0), 0) * 100) / 100;
+            const hitQty = Math.round(hits.reduce((s, l) => s + (Number(l && l.qty) || 0), 0) * 1000) / 1000;
+            const hitNet = sumBy(hits, 'total');
+            const hitVat = sumBy(hits, 'vat');
+            const hitGross = Math.round((hitNet + hitVat) * 100) / 100;
+            const hitUnit = hitQty > 0 ? Math.round((hitNet / hitQty) * 100) / 100 : 0;
+            const hitShare = gross > 0 ? Math.round((hitGross / gross) * 1000) / 10 : 0;
+            /* بطاقة الصنف تسبق بطاقة الفاتورة: جواب «أتباع كام» يُقرأ أولًا،
+               وإجمالي الفاتورة يبقى للمقارنة لا للخلط. */
+            const itemScope = state.selected
+                ? `<div class="erp-card erp-card--subtle salesinq__itemscope" data-v2-itemscope>
+                    <div class="erp-card__head">
+                      <h5 class="erp-card__title">
+                        <i class="ji" data-i="package" aria-hidden="true"></i>
+                        الصنف المطلوب في هذه الفاتورة: ${esc(state.selected)}
+                        ${state.selectedCode ? `<span class="erp-mini__sub erp-mono" dir="ltr">${esc(state.selectedCode)}</span>` : ''}
+                      </h5>
+                    </div>
+                    <div class="erp-card__body salesinq__stack">
+                      ${hits.length ? `<div class="erp-emp-stats">
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">الكمية</span><span class="erp-emp-stat__v"><span class="erp-num" dir="ltr">${formatQty(hitQty)}</span></span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">سعر الوحدة</span><span class="erp-emp-stat__v">${money(hitUnit)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">قبل الضريبة</span><span class="erp-emp-stat__v">${money(hitNet)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">الضريبة</span><span class="erp-emp-stat__v">${money(hitVat)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">شامل الضريبة</span><span class="erp-emp-stat__v">${money(hitGross)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">حصة الصنف من إجمالي الفاتورة</span><span class="erp-emp-stat__v"><span class="erp-num" dir="ltr">${formatQty(hitShare)}%</span></span></div>
+                      </div>
+                      <p class="erp-text-sm erp-text-muted">سطورٌ مطابقة بالكود والاسم: <span class="erp-num" dir="ltr">${formatInt(hits.length)}</span> من <span class="erp-num" dir="ltr">${formatInt(lines.length)}</span> سطرًا في الفاتورة؛ وباقي أصناف الفاتورة ${money(Math.round((gross - hitGross) * 100) / 100)}.</p>`
+                      : `<p class="erp-text-sm erp-text-danger">لا سطر في هذه الفاتورة يطابق (${esc(state.selected)}${state.selectedCode ? ` · ${esc(state.selectedCode)}` : ''}) بالكود والاسم — راجع هوية الصنف قبل الاعتماد على الرقم.</p>`}
+                    </div>
+                  </div>`
+                : '';
+            const rowsHtml = lines.map((l, i) => {
+                const hit = hits.includes(l);
+                const lineGross = Math.round(((Number(l && l.total) || 0) + (Number(l && l.vat) || 0)) * 100) / 100;
+                return `<tr${hit ? ' class="salesinq__line--hit"' : ''}>
                 <td>${i + 1}</td>
-                <td class="salesinq__start">${esc(l.name || '—')}${l.code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(l.code)}</span>` : ''}</td>
+                <td class="salesinq__start">${esc(l.name || '—')}${l.code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(l.code)}</span>` : ''}${hit ? ' <span class="erp-badge" data-tone="brand">الصنف المطلوب</span>' : ''}</td>
                 <td><span class="erp-num" dir="ltr">${formatQty(l.qty)}</span></td>
                 <td>${money(l.price)}</td>
                 <td>${money(l.total)}</td>
-              </tr>`).join('');
+                <td>${money(l.vat)}</td>
+                <td>${money(lineGross)}</td>
+              </tr>`;
+            }).join('');
             detailHost.innerHTML = `
               <div class="erp-card erp-card--subtle salesinq__detail">
                 <div class="erp-card__head">
@@ -411,6 +473,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                   </button>
                 </div>
                 <div class="erp-card__body salesinq__stack">
+                  ${itemScope}
+                  <h5 class="salesinq__group-title">الفاتورة كاملة</h5>
                   <div class="erp-emp-stats">
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الوردية</span><span class="erp-emp-stat__v">${esc(o.shift_no || '—')}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">المنطقة / الطاولة</span><span class="erp-emp-stat__v">${esc(o.zone_name || o.table_name || '—')}</span></div>
@@ -427,8 +491,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                   ${recon}
                   <div class="erp-tbl-wrap salesinq__scroll">
                     <table class="erp-tbl">
-                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th></tr></thead>
-                      <tbody>${rowsHtml || '<tr><td colspan="5" class="erp-text-muted erp-text-center">لا سطور مفصلة لهذه الفاتورة</td></tr>'}</tbody>
+                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th><th>الضريبة</th><th>شامل الضريبة</th></tr></thead>
+                      <tbody>${rowsHtml || '<tr><td colspan="7" class="erp-text-muted erp-text-center">لا سطور مفصلة لهذه الفاتورة</td></tr>'}</tbody>
                     </table>
                   </div>
                 </div>
@@ -635,7 +699,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             q('[data-v2-suggest]').hidden = true;
             state.item = ''; state.selected = ''; state.selectedCode = '';
             q('[data-v2-panel]').hidden = true;
-            q('[data-v2-detail]').innerHTML = '';
+            q('[data-v2-detail-host]').innerHTML = '';
             loadItems();
             return;
         }
@@ -653,14 +717,14 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         if (printBtn) { printReceipt(printBtn.dataset.v2Print); return; }
 
         if (event.target.closest('[data-v2-detail-close]')) {
-            q('[data-v2-detail]').innerHTML = '';
+            q('[data-v2-detail-host]').innerHTML = '';
             state.detailDoc = '';
             return;
         }
 
         if (event.target.closest('[data-v2-panel-close]')) {
             q('[data-v2-panel]').hidden = true;
-            q('[data-v2-detail]').innerHTML = '';
+            q('[data-v2-detail-host]').innerHTML = '';
             state.selected = ''; state.selectedCode = ''; state.detailDoc = '';
             paintItemsScope();
             scopeLine();
