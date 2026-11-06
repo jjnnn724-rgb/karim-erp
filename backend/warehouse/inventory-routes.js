@@ -304,13 +304,27 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         // ترحيل محاسبي best-effort (لا يُسقط الشراء عند غياب شجرة الحسابات).
         // الرصيد الافتتاحي (OPEN-) ليس مشتريات: Dr 1200 مخزون ← Cr 3000 رأس المال
         // — لا مورد دائن ولا ضريبة مدخلات وهمية في ميزان المراجعة.
+        const _isOpen = String(invoice.invoiceNumber || '').startsWith('OPEN-');
         try {
             const _acct = require('../accounting-routes');
-            const _isOpen = String(invoice.invoiceNumber || '').startsWith('OPEN-');
             await (_isOpen ? _acct.postOpeningToLedger : _acct.postPurchaseToLedger)(invoiceId);
         }
         catch (ledgerErr) {
             logger.error(`[purchase_ledger] FAILED invoice=${invoiceId} number=${invoice.invoiceNumber || '?'} total=${round(invoiceTotal, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
+            const { recordPostingFailure } = require('../posting-failures');
+            await recordPostingFailure(pool, {
+                module: 'purchases',
+                source_type: 'purchase_invoice',
+                source_id: invoiceId,
+                payload: {
+                    invoice_number: invoice.invoiceNumber || null,
+                    total: round(invoiceTotal, 2),
+                    vat: round(invoiceVat, 2),
+                    supplier_id: supplierId,
+                    opening: _isOpen,
+                },
+                error: ledgerErr,
+            });
         }
 
         emit(req, 'purchaseInvoices', 'create', invoice);

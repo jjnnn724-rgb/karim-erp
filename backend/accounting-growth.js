@@ -334,7 +334,8 @@ router.post('/fixed-assets/:id/dispose', jwtAuth, requireRole(...WRITE_ROLES), a
     } catch (e) { next(e); }
 });
 
-// تشغيل الإهلاك الشهري: قيد واحد مجمع (6600 / 1520) + تحديث كل أصل. Idempotent بالشهر.
+// تشغيل الإهلاك الشهري: قيد واحد مجمع (6600 / 1520 افتراضيًا — يُقرأ من
+// account_mapping عبر coa-mapping مع رجوع آمن) + تحديث كل أصل. Idempotent بالشهر.
 // CORRECTNESS: كل شيء داخل معاملة واحدة — تحديث الأصول وقيد GL يُرفعان معًا أو
 // لا يُرفعان (كان القيد بعد COMMIT فيتباعد دفتر الأصول عن دفتر الأستاذ عند فشله).
 // FOR UPDATE يمنع سباق تشغيلين متوازيين من مضاعفة الإهلاك المتراكم.
@@ -378,13 +379,16 @@ router.post('/depreciation/run', jwtAuth, requireRole(...WRITE_ROLES), async (re
             }
             if (total > 0) {
                 const { postJournal } = require('./accounting-routes');
+                const { getMappedAccount } = require('./coa-mapping');
+                const expenseAcct = (await getMappedAccount(client, 'assets', 'depreciation_run', 'expense_account')) || '6600';
+                const accumAcct = (await getMappedAccount(client, 'assets', 'depreciation_run', 'accumulated_account')) || '1520';
                 const out = await postJournal(client, {
                     date: `${month}-28`,
                     memo: `إهلاك شهري ${month} (${lines.length} أصل)`,
                     source_type: 'depreciation', source_id: month,
                     lines: [
-                        { account_code: '6600', debit: total, credit: 0 },
-                        { account_code: '1520', debit: 0, credit: total },
+                        { account_code: expenseAcct, debit: total, credit: 0 },
+                        { account_code: accumAcct, debit: 0, credit: total },
                     ],
                     created_by: req.user?.id || null,
                 });

@@ -785,7 +785,22 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
                     { account_code: _cashAcct, debit: 0, credit: Number(v.clean.amount), memo: "خروج نقدية — دفعة مورد" },
                 ],
             });
-        } catch (jeErr) { logger.warn("[payment_ledger] best-effort skipped:", jeErr.message); }
+        } catch (jeErr) {
+            logger.warn("[payment_ledger] best-effort skipped:", jeErr.message);
+            const { recordPostingFailure } = require('../posting-failures');
+            await recordPostingFailure(pool, {
+                module: 'procurement',
+                source_type: 'supplier_payment',
+                source_id: paymentId,
+                payload: {
+                    amount: Number(v.clean.amount),
+                    method: v.clean.method,
+                    supplier_id: v.clean.supplierId,
+                    invoice_id: invoice ? invoice.id : null,
+                },
+                error: jeErr,
+            });
+        }
 res.status(201).json({ payment, invoice, supplierDueTotal: roundMoney(totals.due) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});

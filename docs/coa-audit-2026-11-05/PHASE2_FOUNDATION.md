@@ -62,3 +62,33 @@
 - ربط الوحدة الأولى بـ `getMappedAccount` (مقترح: `assets.depreciation_run` — أصغر مسار وأقل حركة).
 - تزويد AP variance (R-01) بتقرير تحليل مفصّل — يتطلب وصول قراءة معتمد للقاعدة (لم يُقدَّم بعد على هذا الجهاز).
 - تفعيل 136 بعد تحويل الـ purges الثلاثة.
+
+## إغلاق البندين الأخيرين — 2026-11-06 23:40 (الاختبارات فقط؛ الإنتاج لم يُمسّ)
+
+**R-05 — الترحيل الفاشل لا يمرّ صامتًا:**
+- `backend/posting-failures.js` (جديد): `recordPostingFailure(db, {module, source_type, source_id, payload, error})`
+  — `INSERT` بوسائط مربوطة `$1..$5`، ولا ترمي أبدًا: غياب الجدول (42P01) أو أي خطأ اتصال يُرجع `null`
+  مع تحذير واحد. المستند التجاري لا يتأثر.
+- التوصيل: `backend/warehouse/inventory-routes.js` (catch الخاص بترحيل فاتورة الشراء، مع رفع
+  `_isOpen` خارج `try` كي يدخل الحمولة) و`backend/procurement-routes.js` (catch الخاص بدفعة المورد).
+  الـcatch لم يعد يكتفي بسطر سجل.
+
+**أول وحدة على `account_mapping` — الإهلاك:**
+- `backend/accounting-growth.js`: طرفا الإهلاك يُقرآن من `assets.depreciation_run`
+  (`expense_account` / `accumulated_account`) عبر `getMappedAccount(client, …)` مع رجوع `6600`/`1520`.
+  لم يبقَ ثابت حساب مكتوب في مسار الإهلاك.
+
+**الأدلة المقيسة:**
+- `tests/coa-phase2-r05.test.js`: 8/8 (سلوك الوحدة + لا catch صامت + عقد الهجرة + الإهلاك غير مثبَّت على ثابت).
+- `tests/unit/coa-foundation.test.js`: 10/10 بلا تغيير.
+- على `karim_erp_staging` (قراءة): `getMappedAccount` يعيد `6600` و`1520` من الجدول فعلًا.
+- على `karim_erp_test`: إدخال فشل داخل معاملة ثم `ROLLBACK` ⇒ قبل = 0، داخل = 1، بعد = 0 (المصفوفة تُختبر ولا تبقى).
+- `eslint` على الملفات الخمسة: 0 أخطاء و0 تحذيرات. `node --check`: سليم.
+
+**ملاحظة انحراف يجب قراءتها قبل أي تطبيق إنتاجي:** على `karim_erp_staging` الأثر الفيزيائي لـ134/135
+موجود (23 عمودًا، الجداول الثلاثة، مشغّلان، 124 حسابًا، 25 صف mapping) لكن **الملفَّين غير مسجّلين
+في `schema_migrations`**. إعادة تطبيقهما آمنة (كل العبارات `IF NOT EXISTS` و`DROP TRIGGER IF EXISTS`)،
+وأي تشغيل لـ`run-migration` سيعيدهما ويسجّلهما — لكن لا يُبنى «136+137+138 مطبَّقة» على سجل ناقص.
+
+**المتبقي فعلًا:** تطبيق 134+135 على `karim_erp` **بأمر حرفي + نسخة احتياطية مؤكدة**، ثم Phase 3
+(وحدة وحدة على `getMappedAccount` مع عقد «نفس السطور قبل وبعد»).
