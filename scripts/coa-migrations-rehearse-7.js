@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 
-const ALLOWED = new Set(['karim_erp_test', 'karim_erp_staging', 'karim_erp_window_restore']);
+const ALLOWED = new Set(['karim_erp_test', 'karim_erp_staging', 'karim_erp_window_restore', 'karim_erp_apply_verify']);
 const MIG = path.join(__dirname, '..', 'database', 'migrations');
 const BAL_ACCOUNTS = ['2100', '1150', '5000', '1200', '4000', '3100'];
 

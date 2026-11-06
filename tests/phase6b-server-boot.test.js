@@ -17,6 +17,10 @@
  *   PHASE6B_PORT    منفذ loopback (افتراضي 18973)
  *   PHASE6B_DUMP    مسار dump لإنشاء القاعدة إن لم تكن موجودة
  *   PHASE6B_KEEP_DB =1 لإبقاء القاعدة بعد الاختبار (افتراضي: تُحذف)
+ *
+ * قفل الإنتاج (إلزامي): تشغيل الهارنس على قاعدة الإنتاج karim_erp مرفوض إلا إذا
+ * كان PHASE6B_PRODUCTION_WINDOW=1 AND الخدمة الإنتاجية متوقفة AND لا يوجد أي
+ * backend آخر على القاعدة. القواعد الأخرى (staging) تعمل بلا القفل.
  */
 
 'use strict';
@@ -50,6 +54,57 @@ function loadEnv() {
 }
 
 const ENV = loadEnv();
+const PRODUCTION_DB = 'karim_erp';
+const PRODUCTION_PORT = Number(ENV.PORT || 5000);
+
+async function assertProductionWindow() {
+    if (DB !== PRODUCTION_DB) {return { mode: 'staging', db: DB };}
+
+    if (process.env.PHASE6B_PRODUCTION_WINDOW !== '1') {
+        throw new Error(
+            `رفض: قاعدة ${PRODUCTION_DB} إنتاجية. اضبط PHASE6B_PRODUCTION_WINDOW=1 داخل نافذة مغلقة فقط، `
+            + 'أو شغّل الهارنس على قاعدة staging.'
+        );
+    }
+    if (PORT === PRODUCTION_PORT) {
+        throw new Error(`رفض: PHASE6B_PORT=${PORT} يطابق منفذ الخدمة الإنتاجية — اختر منفذًا آخر.`);
+    }
+
+    const c = adminClient('postgres');
+    await c.connect();
+    try {
+        let others = [];
+        for (let i = 0; i < 2; i++) {
+            const r = await c.query(
+                `SELECT pid, datname, usename, COALESCE(client_addr::text, 'local') AS addr, state,
+                        EXTRACT(EPOCH FROM (now() - state_change))::int AS state_seconds
+                   FROM pg_stat_activity
+                  WHERE backend_type = 'client backend' AND datname = $1
+                    AND pid <> pg_backend_pid()`, [PRODUCTION_DB]);
+            others = r.rows;
+            if (!others.length) {break;}
+            await new Promise((res) => setTimeout(res, 500));
+        }
+        if (others.length) {
+            const lines = others.map((r) => `pid=${r.pid} user=${r.usename} from=${r.addr} state=${r.state} منذ ${r.state_seconds}s`);
+            throw new Error(`رفض: ${others.length} اتصال آخر على ${PRODUCTION_DB} — النافذة ليست مغلقة:\n${lines.join('\n')}`);
+        }
+    } finally { await c.end(); }
+
+    const listening = await new Promise((resolve) => {
+        const s = require('net').connect({ host: '127.0.0.1', port: PRODUCTION_PORT });
+        const done = (v) => { s.destroy(); resolve(v); };
+        s.setTimeout(1200, () => done(false));
+        s.once('connect', () => done(true));
+        s.once('error', () => done(false));
+    });
+    if (listening) {
+        throw new Error(`رفض: الخدمة الإنتاجية ما زالت تستمع على 127.0.0.1:${PRODUCTION_PORT} — أوقفها قبل التشغيل.`);
+    }
+
+    return { mode: 'production', db: PRODUCTION_DB, productionPort: PRODUCTION_PORT, otherBackends: 0, serviceStopped: true };
+}
+
 
 function adminClient(database) {
     return new Client({
@@ -155,6 +210,7 @@ const state = {};
 jest.setTimeout(600000);
 
 beforeAll(async () => {
+    state.window = await assertProductionWindow();
     const restored = await ensureRestoredDb();
     createdDb = restored.created;
 
@@ -216,6 +272,7 @@ afterAll(async () => {
     // الطباعة قبل تنظيف مجلد التشغيل: الأدلة تبقى في مخرجات الاختبار.
     console.log('PHASE6B_EVIDENCE ' + JSON.stringify({
         db: DB, port: PORT, restoredByTest: createdDb,
+        window: state.window,
         accountMappingTable: state.accountMapping,
         user: state.user,
         health: state.health,
