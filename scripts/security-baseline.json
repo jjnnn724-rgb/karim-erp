@@ -11,6 +11,17 @@
     "backend/menu-board-routes.js:::GET /v2-state": "شاشة منيو عرض عامة — مُثبتة عمدًا في tests/menu-board-v2-state.test.js",
     "backend/realtime/recovery-routes.js:::GET /version": "ملاحة توافق عقد EXE بلا بيانات — عمد موثّق في تعليق المسار (TASK 10)"
   },
+  "_exceptions": [
+    {
+      "rule": "html-unescaped",
+      "file": "frontend/app/js/v2/screens/zkteco.js",
+      "count": 10,
+      "owner": "attendance UI session (zkteco screen)",
+      "reference": "SEC-ZKTECO-531",
+      "reason": "الإصابة العاشرة هي إسناد innerHTML لصفوف مبنية مسبقًا بـesc()/altEvidenceCell (السطر 531: ${rows}) — ليست حقنًا خامًا جديدًا؛ الحصّة 9 كانت لنفس النمط. تُغلَق بإعادة بناء الصفوف بعُقد DOM أو esc() على المتغير كاملًا.",
+      "expires": "2026-12-06"
+    }
+  ],
   "sql-interp": {
     "backend/ai-assistant/tools.js": 2,
     "backend/attendance-portal-routes.js": 1,

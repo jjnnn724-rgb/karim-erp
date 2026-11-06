@@ -364,6 +364,17 @@ function loadBaseline() {
     }
 }
 
+/**
+ * استثناءات موثقة بانتهاء صلاحية: `_exceptions` في ملف الأساس.
+ * كل استثناء: { rule, file, count, owner, reference, reason, expires }.
+ * القواعد الصفرية لا تُستثنى إطلاقًا، والاستثناء المنتهي يعود انتهاكًا.
+ */
+function findException(exceptions, rule, key, count, today) {
+    const list = Array.isArray(exceptions) ? exceptions : [];
+    return list.find((x) => x && x.rule === rule && x.file === key
+        && Number(x.count) >= count && typeof x.expires === 'string' && x.expires >= today) || null;
+}
+
 /** تسطيح الملاحظات إلى عدّادات JSON قابلة للتخزين في الأساس */
 function toCounts(findings) {
     const out = {};
@@ -384,7 +395,9 @@ function toCounts(findings) {
 function runGate(opts = {}) {
     const collected = opts.findings ? { findings: opts.findings, filesScanned: opts.filesScanned || 0 } : collect();
     const findings = collected.findings;
-    const baseline = loadBaseline();
+    const baseline = opts.baselineOverride || loadBaseline();
+    const exceptions = baseline._exceptions;
+    const today = new Date().toISOString().slice(0, 10);
     const violations = [];
     const notes = [];
     const baselineExists = fs.existsSync(BASELINE_FILE);
@@ -406,7 +419,15 @@ function runGate(opts = {}) {
                     violations.push(`[${rule}] ${key}:${val.line} — قاعدة صفرية (${val.count}): ${def.desc}`);
                 }
             } else if (val.count > allowed) {
-                violations.push(`[${rule}] ${key}:${val.line} — ${val.count} إصابة مقابل حصّة ${allowed}: ${def.desc}`);
+                const ex = def.zero ? null : findException(exceptions, rule, key, val.count, today);
+                if (ex) {
+                    notes.push(`ⓘ استثناء موثّق ساري حتى ${ex.expires}: [${rule}] ${key}:${val.line} (${val.count}) — ${ex.reference || ex.reason}`);
+                } else {
+                    const expired = !def.zero && Array.isArray(exceptions)
+                        && exceptions.some((x) => x && x.rule === rule && x.file === key && Number(x.count) >= val.count);
+                    violations.push(`[${rule}] ${key}:${val.line} — ${val.count} إصابة مقابل حصّة ${allowed}: ${def.desc}`
+                        + (expired ? ' (استثناء منتهي الصلاحية — جدّده أو أصلح الكود)' : ''));
+                }
             } else if (rule === 'unguarded-route' && !(baseline._reasons || {})[key]) {
                 // مسار عام يحتاج سببًا موثّقًا — الحصّة وحدها لا تُعلّل العمومية
                 violations.push(`[unguarded-route] ${key} — مسار عام بلا سبب موثّق في _reasons (أضف مصادقة أو وثّق لماذا هو عام)`);
@@ -431,6 +452,7 @@ function runGate(opts = {}) {
             const payload = {
                 _generated: new Date().toISOString(),
                 ...(previous._reasons ? { _reasons: previous._reasons } : {}),
+                ...(previous._exceptions ? { _exceptions: previous._exceptions } : {}),
                 ...toCounts(findings),
             };
             fs.writeFileSync(BASELINE_FILE, `${JSON.stringify(payload, null, 2)}\n`);

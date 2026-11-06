@@ -80,3 +80,41 @@ describe('بوابة الأمان — اختبارات العضّ (تثبت أن
         expect(res.violations.some((v) => v.includes('sql-interp'))).toBe(true);
     });
 });
+
+describe('بوابة الأمان — الاستثناءات الموثقة (_exceptions)', () => {
+    const KEY = 'frontend/app/js/v2/screens/_probe.js';
+    const findingsAt = (count) => ({ 'html-unescaped': { [KEY]: { count, line: 531 } } });
+    const base = (extra) => ({
+        'html-unescaped': { [KEY]: 9 },
+        _exceptions: [{
+            rule: 'html-unescaped', file: KEY, count: 10,
+            owner: 'owner', reference: 'SEC-TEST', reason: 'سبب', ...extra,
+        }],
+    });
+
+    test('استثناء ساري يخفي الانتهاك ويظهر ملاحظة بمرجعه', () => {
+        const res = runGate({ findings: findingsAt(10), filesScanned: 1, baselineOverride: base({ expires: '2999-12-31' }) });
+        expect(res.ok).toBe(true);
+        expect(res.notes.join('\n')).toContain('SEC-TEST');
+    });
+
+    test('استثناء منتهي لا يخفي ويعود انتهاكًا صريحًا', () => {
+        const res = runGate({ findings: findingsAt(10), filesScanned: 1, baselineOverride: base({ expires: '2000-01-01' }) });
+        expect(res.ok).toBe(false);
+        expect(res.violations.join('\n')).toContain('منتهي الصلاحية');
+    });
+
+    test('تجاوُز عدد الاستثناء يعود انتهاكًا (لا تمدد صامت)', () => {
+        const res = runGate({ findings: findingsAt(11), filesScanned: 1, baselineOverride: base({ expires: '2999-12-31' }) });
+        expect(res.ok).toBe(false);
+    });
+
+    test('القاعدة الصفرية لا تُستثنى إطلاقًا', () => {
+        const res = runGate({
+            findings: { 'no-eval': { 'backend/_probe.js': { count: 1, line: 1 } } },
+            filesScanned: 1,
+            baselineOverride: { _exceptions: [{ rule: 'no-eval', file: 'backend/_probe.js', count: 1, expires: '2999-12-31', reference: 'X', reason: 'Y' }] },
+        });
+        expect(res.ok).toBe(false);
+    });
+});
