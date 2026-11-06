@@ -22,13 +22,21 @@ const LEGACY_MAPPING = Object.freeze({
     'sales_pos.pos_sale.revenue_account': '4000',
     'sales_pos.pos_sale.vat_output_account': '2100',
     'sales_pos.pos_sale.cogs_account': '5000',
+    'sales_pos.pos_sale.inventory_account': '1200',
     'sales_pos.void.cash_account': '1000',
     'sales_pos.void.bank_account': '1010',
     'sales_pos.void.revenue_account': '4000',
     'sales_pos.void.vat_output_account': '2100',
     'sales_pos.void.cogs_account': '5000',
+    'sales_pos.void.inventory_account': '1200',
     'purchases.purchase_invoice.vat_input_account': '1150',
     'purchases.purchase_invoice.payable_account': '2000',
+    'purchases.purchase_invoice.inventory_account': '1200',
+    'purchases.purchase_opening.inventory_account': '1200',
+    'purchases.purchase_opening.equity_account': '3000',
+    'procurement.supplier_payment.payable_account': '2000',
+    'procurement.supplier_payment.cash_account': '1000',
+    'procurement.supplier_payment.bank_account': '1010',
     'payroll.payroll_run.expense_account': '6000',
     'payroll.payroll_run.payable_account': '2200',
     'assets.depreciation_run.expense_account': '6600',
@@ -84,7 +92,7 @@ async function getMappedAccount(db, module, operation, role) {
         }
     } catch (e) {
         // 42P01 = relation does not exist (134 لم تُطبق بعد) — فشل هادي إلى الثوابت.
-        // 42703 = عمود غير موجود — نفس السياسة. أي خطأ آخر: nكتب تحذيرًا ونكمل بالثابت.
+        // 42703 = عمود غير موجود — نفس السياسة. أي خطأ آخر: نكتب تحذيرًا ونكمل بالثابت.
         if (e && (e.code === '42P01' || e.code === '42703')) {return LEGACY_MAPPING[key] || null;}
         if (typeof console !== 'undefined' && console.warn) {
             console.warn(`[coa-mapping] تعذر قراءة account_mapping لـ ${key} — أُستخدم الثابت القديم (${e && e.message ? e.message : e})`);
@@ -93,4 +101,44 @@ async function getMappedAccount(db, module, operation, role) {
     return LEGACY_MAPPING[key] || null;
 }
 
-module.exports = { getMappedAccount, deriveNormalBalance, LEGACY_MAPPING, keyOf };
+/**
+ * يحل عدة أدوار في استعلام واحد (قيد واحد = قراءة واحدة) — كل دور غائب عن
+ * الجدول أو أي خطأ قراءة يُبقي قيمته الافتراضية الممرَّرة (الثوابت القديمة).
+ * الشكل: resolveAccounts(pool, 'sales_pos', 'pos_sale', { cash_account: '1000', … }).
+ * @param {{query:(sql:string,params?:any[])=>Promise<{rows:any[]}>}} db — pool أو client
+ * @param {string} module
+ * @param {string} operation
+ * @param {Record<string,string>} defaults
+ * @returns {Promise<Record<string,string>>}
+ */
+async function resolveAccounts(db, module, operation, defaults = {}) {
+    const out = Object.assign({}, defaults);
+    const roles = Object.keys(defaults);
+    if (!roles.length) {return out;}
+    try {
+        if (db && typeof db.query === 'function') {
+            const r = await db.query(
+                `SELECT role, account_code
+                   FROM account_mapping
+                  WHERE module = $1 AND operation = $2 AND active = TRUE
+                    AND role = ANY($3::text[])`,
+                [String(module), String(operation), roles]
+            );
+            for (const row of (r && r.rows) || []) {
+                if (row && row.role && row.account_code && Object.prototype.hasOwnProperty.call(out, row.role)) {
+                    out[row.role] = String(row.account_code);
+                }
+            }
+        }
+    } catch (e) {
+        // نفس سياسة getMappedAccount: 134 غير مطبقة ⇒ صمت كامل على الثوابت.
+        if (!(e && (e.code === '42P01' || e.code === '42703'))) {
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn(`[coa-mapping] تعذر قراءة account_mapping لـ ${module}.${operation} — أُستخدمت الثوابت (${e && e.message ? e.message : e})`);
+            }
+        }
+    }
+    return out;
+}
+
+module.exports = { getMappedAccount, resolveAccounts, deriveNormalBalance, LEGACY_MAPPING, keyOf };

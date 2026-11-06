@@ -58,9 +58,16 @@ function reverseJournalLines(lines, fallbackMemo = 'سطر قيد البيع') {
  * @param {number|string} [input.tax]
  * @param {number|string} [input.cogs]
  * @param {PaymentRow[]} [input.payments]
+ * @param {Record<string,string>} [input.accounts] — من account_mapping (sales_pos.void)
  * @returns {JournalLine[]}
  */
-function buildFallbackVoidLines({ invoiceCounter, total, tax, cogs, payments }) {
+function buildFallbackVoidLines({ invoiceCounter, total, tax, cogs, payments, accounts = {} }) {
+    const cashAcct = accounts.cash_account || '1000';
+    const bankAcct = accounts.bank_account || '1010';
+    const revenueAcct = accounts.revenue_account || '4000';
+    const vatAcct = accounts.vat_output_account || '2100';
+    const cogsAcct = accounts.cogs_account || '5000';
+    const inventoryAcct = accounts.inventory_account || '1200';
     const t = round2(total);
     const taxAmt = round2(tax);
     const revenue = round2(t - taxAmt);
@@ -72,14 +79,14 @@ function buildFallbackVoidLines({ invoiceCounter, total, tax, cogs, payments }) 
     const cardPart = round2(Math.min(nonCash, Math.max(0, t)));
     const cashPart = round2(Math.max(0, t - cardPart));
     const lines = [];
-    if (revenue > 0) { lines.push({ account_code: '4000', debit: revenue, credit: 0, memo: `عكس مبيعات فاتورة #${invoiceCounter}` }); }
-    if (taxAmt > 0) { lines.push({ account_code: '2100', debit: taxAmt, credit: 0, memo: 'عكس ضريبة الفاتورة' }); }
+    if (revenue > 0) { lines.push({ account_code: revenueAcct, debit: revenue, credit: 0, memo: `عكس مبيعات فاتورة #${invoiceCounter}` }); }
+    if (taxAmt > 0) { lines.push({ account_code: vatAcct, debit: taxAmt, credit: 0, memo: 'عكس ضريبة الفاتورة' }); }
     if (cogsAmt > 0) {
-        lines.push({ account_code: '1200', debit: cogsAmt, credit: 0, memo: `إعادة مخزون فاتورة #${invoiceCounter}` });
-        lines.push({ account_code: '5000', debit: 0, credit: cogsAmt, memo: `عكس تكلفة فاتورة #${invoiceCounter}` });
+        lines.push({ account_code: inventoryAcct, debit: cogsAmt, credit: 0, memo: `إعادة مخزون فاتورة #${invoiceCounter}` });
+        lines.push({ account_code: cogsAcct, debit: 0, credit: cogsAmt, memo: `عكس تكلفة فاتورة #${invoiceCounter}` });
     }
-    if (cardPart > 0) { lines.push({ account_code: '1010', debit: 0, credit: cardPart, memo: 'رد تحصيل غير نقدي — إلغاء فاتورة' }); }
-    if (cashPart > 0) { lines.push({ account_code: '1000', debit: 0, credit: cashPart, memo: 'رد تحصيل نقدي — إلغاء فاتورة' }); }
+    if (cardPart > 0) { lines.push({ account_code: bankAcct, debit: 0, credit: cardPart, memo: 'رد تحصيل غير نقدي — إلغاء فاتورة' }); }
+    if (cashPart > 0) { lines.push({ account_code: cashAcct, debit: 0, credit: cashPart, memo: 'رد تحصيل نقدي — إلغاء فاتورة' }); }
     return lines;
 }
 

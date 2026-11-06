@@ -31,6 +31,9 @@ const uid = () => Date.now() * 1000 + crypto.randomInt(0, 999999);
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // FIX 2026-10-11 (M20): use riyadhToday() instead of UTC toISOString()
 const { riyadhToday, riyadhMonth, riyadhDateOf } = require('./riyadh-date');
+// Phase 3 (2026-11-06): قراءة الحسابات من account_mapping بدل ثوابت متناثرة —
+// الافتراضي الممرَّر هو الثابت القديم نفسه، فالسلوك لا يتغير قبل ضبط الجدول.
+const { resolveAccounts } = require('./coa-mapping');
 
 // مفاتيح جسر يارسوفت — مصدر واحد حتى لا تنفصل تسوية اللوحة عن مفاتيح الترحيل
 const {
@@ -261,6 +264,48 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
     throw Object.assign(new Error('تعذر ترحيل القيد بعد عدة محاولات'), { statusCode: 500 });
 }
 
+/**
+ * سطور قيد البيع — دالة نقية تُختبر بلا قاعدة بيانات (عقد Phase 3: نفس السطور
+ * حرفيًا قبل وبعد ربط account_mapping، لأن الافتراضي هو الثابت القديم).
+ * Dr نقدي/بنك للتحصيل ← Cr إيراد + ضريبة، وللمكونات Dr COGS ← Cr مخزون.
+ * @param {{orderId:(number|string), total:number, tax:number, cogs:number,
+ *          pays:Array<{method?:string,amount?:number|string,direction?:string}>,
+ *          accounts?:Record<string,string>}} input
+ * @returns {Array<{account_code:string,debit:number,credit:number,memo:string}>}
+ */
+function buildSalePostingLines({ orderId, total, tax, cogs, pays, accounts = {} }) {
+    const cashAcct = accounts.cash_account || '1000';
+    const bankAcct = accounts.bank_account || '1010';
+    const revenueAcct = accounts.revenue_account || '4000';
+    const vatAcct = accounts.vat_output_account || '2100';
+    const cogsAcct = accounts.cogs_account || '5000';
+    const inventoryAcct = accounts.inventory_account || '1200';
+    const t = round2(total);
+    const vat = round2(tax);
+    const revenue = round2(t - vat);
+    const cost = round2(cogs);
+    const rows = Array.isArray(pays) ? pays : [];
+    const lines = [];
+    if (rows.length) {
+        const nonCash = round2(rows
+            .filter((p) => p.direction !== 'out' && String(p.method).toLowerCase() !== 'cash')
+            .reduce((s, p) => s + Number(p.amount), 0));
+        const cardPart = Math.min(nonCash, t);
+        const cashDebit = round2(t - cardPart);
+        if (cardPart > 0) {lines.push({ account_code: bankAcct, debit: cardPart, credit: 0, memo: 'تحصيل غير نقدي' });}
+        if (cashDebit > 0) {lines.push({ account_code: cashAcct, debit: cashDebit, credit: 0, memo: 'تحصيل نقدي' });}
+    } else {
+        lines.push({ account_code: cashAcct, debit: t, credit: 0, memo: 'تحصيل نقدي' });
+    }
+    if (cost > 0) {
+        lines.push({ account_code: cogsAcct, debit: cost, credit: 0, memo: `تكلفة مكونات فاتورة #${orderId}` });
+        lines.push({ account_code: inventoryAcct, debit: 0, credit: cost, memo: `تخفيض مخزون فاتورة #${orderId}` });
+    }
+    if (revenue > 0) {lines.push({ account_code: revenueAcct, debit: 0, credit: revenue, memo: `مبيعات فاتورة #${orderId}` });}
+    if (vat > 0) {lines.push({ account_code: vatAcct, debit: 0, credit: vat, memo: `ضريبة فاتورة #${orderId}` });}
+    return lines;
+}
+
 /** ترحيل فاتورة كاشير: نقدية/بنك ← إيراد + ضريبة + COGS للمكونات (idempotent برقم الفاتورة) */
 async function postSaleToLedger(orderId) {
     const o = (await pool.query(
@@ -284,26 +329,16 @@ async function postSaleToLedger(orderId) {
     const cogs = round2(Number(cogsRow.rows[0]?.cogs || 0));
     const total = round2(o.total_amount);
     const tax = round2(o.tax_total);
-    const revenue = round2(total - tax);
     if (total <= 0) {return { skipped: 'zero_total' };}
-    const lines = [];
-    if (pays.length) {
-        const nonCash = round2(pays
-            .filter((p) => p.direction !== 'out' && String(p.method).toLowerCase() !== 'cash')
-            .reduce((s, p) => s + Number(p.amount), 0));
-        const cardPart = Math.min(nonCash, total);
-        const cashDebit = round2(total - cardPart);
-        if (cardPart > 0) {lines.push({ account_code: '1010', debit: cardPart, credit: 0, memo: 'تحصيل غير نقدي' });}
-        if (cashDebit > 0) {lines.push({ account_code: '1000', debit: cashDebit, credit: 0, memo: 'تحصيل نقدي' });}
-    } else {
-        lines.push({ account_code: '1000', debit: total, credit: 0, memo: 'تحصيل نقدي' });
-    }
-    if (cogs > 0) {
-        lines.push({ account_code: '5000', debit: cogs, credit: 0, memo: `تكلفة مكونات فاتورة #${orderId}` });
-        lines.push({ account_code: '1200', debit: 0, credit: cogs, memo: `تخفيض مخزون فاتورة #${orderId}` });
-    }
-    if (revenue > 0) {lines.push({ account_code: '4000', debit: 0, credit: revenue, memo: `مبيعات فاتورة #${orderId}` });}
-    if (tax > 0) {lines.push({ account_code: '2100', debit: 0, credit: tax, memo: `ضريبة فاتورة #${orderId}` });}
+    const accounts = await resolveAccounts(pool, 'sales_pos', 'pos_sale', {
+        cash_account: '1000',
+        bank_account: '1010',
+        revenue_account: '4000',
+        vat_output_account: '2100',
+        cogs_account: '5000',
+        inventory_account: '1200',
+    });
+    const lines = buildSalePostingLines({ orderId, total, tax, cogs, pays, accounts });
     // FIX (Enterprise 2026-10-21): تاريخ القيد بتوقيت الرياض لا UTC.
     // toISOString() في 00:00–02:59 الرياض يُرجع اليوم السابق — فمبيعات
     // ما بعد منتصف الليل كانت تُرحَّل في يوم اليوم.
@@ -341,11 +376,16 @@ async function postPurchaseToLedger(invoiceId, { sourceId } = {}) {
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
         ? String(inv.date).slice(0, 10)
         : riyadhToday();
+    const accounts = await resolveAccounts(pool, 'purchases', 'purchase_invoice', {
+        inventory_account: '1200',
+        vat_input_account: '1150',
+        payable_account: '2000',
+    });
     const lines = [
-        { account_code: '1200', debit: net, credit: 0, memo: `مخزون فاتورة شراء ${inv.invoiceNumber || invoiceId}` },
+        { account_code: accounts.inventory_account, debit: net, credit: 0, memo: `مخزون فاتورة شراء ${inv.invoiceNumber || invoiceId}` },
     ];
-    if (vat > 0) {lines.push({ account_code: '1150', debit: vat, credit: 0, memo: `ضريبة مدخلات ${inv.invoiceNumber || invoiceId}` });}
-    lines.push({ account_code: '2000', debit: 0, credit: gross, memo: `مستحق مورد ${inv.invoiceNumber || invoiceId}` });
+    if (vat > 0) {lines.push({ account_code: accounts.vat_input_account, debit: vat, credit: 0, memo: `ضريبة مدخلات ${inv.invoiceNumber || invoiceId}` });}
+    lines.push({ account_code: accounts.payable_account, debit: 0, credit: gross, memo: `مستحق مورد ${inv.invoiceNumber || invoiceId}` });
     const out = await postJournal(pool, {
         date: day,
         memo: `فاتورة شراء — ${inv.invoiceNumber || invoiceId}`,
@@ -374,14 +414,18 @@ async function postOpeningToLedger(invoiceId) {
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(inv.date || '').slice(0, 10))
         ? String(inv.date).slice(0, 10)
         : riyadhToday();
+    const accounts = await resolveAccounts(pool, 'purchases', 'purchase_opening', {
+        inventory_account: '1200',
+        equity_account: '3000',
+    });
     const out = await postJournal(pool, {
         date: day,
         memo: `رصيد افتتاحي — ${inv.invoiceNumber || invoiceId}`,
         source_type: 'purchase_invoice',
         source_id: String(invoiceId),
         lines: [
-            { account_code: '1200', debit: gross, credit: 0, memo: 'مخزون افتتاحي' },
-            { account_code: '3000', debit: 0, credit: gross, memo: 'رأس المال — رصيد افتتاحي' },
+            { account_code: accounts.inventory_account, debit: gross, credit: 0, memo: 'مخزون افتتاحي' },
+            { account_code: accounts.equity_account, debit: 0, credit: gross, memo: 'رأس المال — رصيد افتتاحي' },
         ],
     });
     logger.info(`[LEDGER] رصيد افتتاحي ${invoiceId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
@@ -698,14 +742,18 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
         // فعلي لشهر الرواتب (يبقى داخل الفترة المالية للشهر نفسه).
         const [_py, _pm] = month.split('-').map(Number);
         const monthEndDate = new Date(Date.UTC(_py, _pm, 0)).toISOString().slice(0, 10);
+        const accounts = await resolveAccounts(pool, 'payroll', 'payroll_run', {
+            expense_account: '6000',
+            payable_account: '2200',
+        });
         const out = await postJournal(pool, {
             date: monthEndDate,
             memo: `ترحيل رواتب شهر ${month} (${total.n} موظف)`,
             source_type: 'payroll',
             source_id: month,
             lines: [
-                { account_code: '6000', debit: Number(total.t), credit: 0, memo: `رواتب ${month}` },
-                { account_code: '2200', debit: 0, credit: Number(total.t), memo: `رواتب مستحقة ${month}` },
+                { account_code: accounts.expense_account, debit: Number(total.t), credit: 0, memo: `رواتب ${month}` },
+                { account_code: accounts.payable_account, debit: 0, credit: Number(total.t), memo: `رواتب مستحقة ${month}` },
             ],
             created_by: req.user?.id || null,
         });
@@ -829,4 +877,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
+module.exports = { router, postJournal, postSaleToLedger, buildSalePostingLines, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };

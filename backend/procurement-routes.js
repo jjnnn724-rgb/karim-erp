@@ -775,13 +775,18 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
         // Cr 1000 صندوق (أو 1010 بنك حسب طريقة الدفع) — idempotent بمعرف الدفعة.
         try {
             const { postJournal } = require('../accounting-routes');
-            const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? '1000' : '1010';
+            const _accts = await require('../coa-mapping').resolveAccounts(pool, 'procurement', 'supplier_payment', {
+                payable_account: '2000',
+                cash_account: '1000',
+                bank_account: '1010',
+            });
+            const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? _accts.cash_account : _accts.bank_account;
             await postJournal(pool, {
                 date: v.clean.date || riyadhToday(),
                 memo: `دفعة مورد ${supplier.name} (${v.clean.method})`,
                 source_type: 'supplier_payment', source_id: String(paymentId),
                 lines: [
-                    { account_code: "2000", debit: Number(v.clean.amount), credit: 0, memo: `سداد ذمم ${supplier.name}` },
+                    { account_code: _accts.payable_account, debit: Number(v.clean.amount), credit: 0, memo: `سداد ذمم ${supplier.name}` },
                     { account_code: _cashAcct, debit: 0, credit: Number(v.clean.amount), memo: "خروج نقدية — دفعة مورد" },
                 ],
             });

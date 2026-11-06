@@ -846,10 +846,19 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
               ORDER BY id DESC LIMIT 1`, [String(id)])).rows[0];
         // لا قيد بيع أصلي (بيع سابق لتفعيل الأستاذ): يُعاد بناء العكس من
         // بيانات الفاتورة والتحصيل وتكلفة الاستهلاك الفعلية في دفتر المخزون.
+        const voidAccounts = await require('../coa-mapping').resolveAccounts(client, 'sales_pos', 'void', {
+            cash_account: '1000',
+            bank_account: '1010',
+            revenue_account: '4000',
+            vat_output_account: '2100',
+            cogs_account: '5000',
+            inventory_account: '1200',
+        });
         const buildFallbackLines = async () => buildFallbackVoidLines({
             invoiceCounter: order.invoice_counter,
             total: order.total_amount,
             tax: order.tax_total,
+            accounts: voidAccounts,
             cogs: (await client.query(
                 `SELECT COALESCE(SUM(total_cost), 0) AS cogs FROM inventory_ledger
                   WHERE reference_type = 'pos_order' AND reference_id = $1 AND quantity_delta < 0`,
