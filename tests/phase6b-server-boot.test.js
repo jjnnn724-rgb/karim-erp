@@ -17,6 +17,8 @@
  *   PHASE6B_PORT    منفذ loopback (افتراضي 18973)
  *   PHASE6B_DUMP    مسار dump لإنشاء القاعدة إن لم تكن موجودة
  *   PHASE6B_KEEP_DB =1 لإبقاء القاعدة بعد الاختبار (افتراضي: تُحذف)
+ *   PHASE6B_EXPECT_MAPPING =1 لقاعدة بعد التطبيق: account_mapping يجب أن
+ *   تكون موجودة وغير فارغة (بدل افتراض الغياب قبل الهجرات).
  *
  * قفل الإنتاج (إلزامي): تشغيل الهارنس على قاعدة الإنتاج karim_erp مرفوض إلا إذا
  * كان PHASE6B_PRODUCTION_WINDOW=1 AND الخدمة الإنتاجية متوقفة AND لا يوجد أي
@@ -223,6 +225,9 @@ beforeAll(async () => {
               WHERE role IN ('admin','owner') AND active = TRUE ORDER BY id LIMIT 1`);
         user = r.rows[0];
         state.accountMapping = (await c.query(`SELECT to_regclass('public.account_mapping')::text AS t`)).rows[0].t;
+        state.mappingCount = state.accountMapping
+            ? (await c.query('SELECT COUNT(*)::int AS n FROM account_mapping')).rows[0].n
+            : 0;
     } finally { await c.end(); }
     if (!user) { throw new Error('لا يوجد مستخدم admin نشط في القاعدة المستعادة'); }
     state.user = user;
@@ -300,8 +305,13 @@ describe('Phase 6b — server.js كامل، شبكة مقطوعة', () => {
         expect(ready.body.status).toBe('ok');
     });
 
-    test('2) القاعدة المستعادة بلا account_mapping (مسار fallback الحقيقي)', async () => {
-        expect(state.accountMapping).toBeNull();
+    test('2) حالة account_mapping مطابقة لمرحلة القاعدة (fallback أو مُهاجَرة)', async () => {
+        if (process.env.PHASE6B_EXPECT_MAPPING === '1') {
+            expect(state.accountMapping).toBe('account_mapping');
+            expect(state.mappingCount).toBeGreaterThan(0);
+        } else {
+            expect(state.accountMapping).toBeNull();
+        }
     });
 
     test('3) ترحيل قيد حقيقي عبر HTTP ثم ميزان مراجعة متوازن', async () => {
