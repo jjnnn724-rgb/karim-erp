@@ -10,6 +10,10 @@
  * صافية (NET_VAL من يارسوفت) فلا سطر ضريبة (ضريبة هذه الفواتير تعيش في
  * ora_e_invoices الإلكترونية).
  *
+ * الحسابات (Phase 3): تُقرأ من account_mapping — `yarasoft.gl_bridge`
+ * (cash_account/revenue_account) و`yarasoft.prebooks` (cash_account/equity_account)
+ * مع الرجوع إلى 1000/4000/3100 نفسها عند غياب الجدول أو الصف.
+ *
  * ═══ مفتاح الجسر (إصلاح 2026-10-24) ═══
  * المستورد يولِّد معرّف صف الإيراد عشوائيًا وقت الاستيراد
  * (importer.js: `Date.now()*1000 + rand`)، فأي إعادة استيراد لنفس الفاتورة
@@ -26,6 +30,9 @@
  * يُنتج قائمة دخل كاذبة. إيقاف الجسر كله: YARASOFT_GL_BRIDGE=false.
  */
 const { logger } = require('../logger');
+// Phase 3 (2026-11-06): الحسابات من account_mapping — الافتراضي هو الثوابت
+// الموثقة أعلاه، فلا يتغير سلوك الجسر قبل ضبط الجدول.
+const { resolveAccounts } = require('../coa-mapping');
 
 const SOURCE_TYPE = 'yarasoft_revenue';
 const PREBOOK_SOURCE_TYPE = 'yarasoft_prebooks';
@@ -90,14 +97,18 @@ async function bridgeRevenueToGl(pool, { revenueId, externalRef, source, amount,
     }
 
     const { postJournal } = require('../accounting-routes');
+    const accounts = await resolveAccounts(pool, 'yarasoft', 'gl_bridge', {
+        cash_account: '1000',
+        revenue_account: '4000',
+    });
     const out = await postJournal(pool, {
         date: day,
         memo: `مبيعات كاشير يارسوفت — ${source || 'كاشير'}`,
         source_type: SOURCE_TYPE,
         source_id: key,
         lines: [
-            { account_code: '1000', debit: amt, credit: 0, memo: 'تحصيل نقدي — كاشير يارسوفت' },
-            { account_code: '4000', debit: 0, credit: amt, memo: 'إيراد مبيعات (صافي)' },
+            { account_code: accounts.cash_account, debit: amt, credit: 0, memo: 'تحصيل نقدي — كاشير يارسوفت' },
+            { account_code: accounts.revenue_account, debit: 0, credit: amt, memo: 'إيراد مبيعات (صافي)' },
         ],
     });
     if (!out.replay) {logger.info(`[YARA-GL] إيراد ${key} (${day}, ${amt}) → قيد ${out.entry.entry_no}`);}
@@ -182,14 +193,18 @@ async function bridgePreBooksToGl(pool, { month } = {}) {
 
     const lastDay = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).toISOString().slice(0, 10);
     const { postJournal } = require('../accounting-routes');
+    const accounts = await resolveAccounts(pool, 'yarasoft', 'prebooks', {
+        cash_account: '1000',
+        equity_account: '3100',
+    });
     const out = await postJournal(pool, {
         date: lastDay,
         memo: `إيراد ${m} قبل افتتاح الدفتر — يارسوفت (${count} حركة)`,
         source_type: PREBOOK_SOURCE_TYPE,
         source_id: `revenue:${m}`,
         lines: [
-            { account_code: '1000', debit: total, credit: 0, memo: `نقدية محصَّلة قبل ${cutoverDate()}` },
-            { account_code: '3100', debit: 0, credit: total, memo: 'أرباح فترات قبل الدفتر' },
+            { account_code: accounts.cash_account, debit: total, credit: 0, memo: `نقدية محصَّلة قبل ${cutoverDate()}` },
+            { account_code: accounts.equity_account, debit: 0, credit: total, memo: 'أرباح فترات قبل الدفتر' },
         ],
     });
     if (!out.replay) {logger.info(`[YARA-GL] افتتاحي ${m}: ${total} (${count} حركة) → قيد ${out.entry.entry_no}`);}
