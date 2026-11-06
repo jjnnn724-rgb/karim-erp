@@ -249,3 +249,12 @@ describe('الصف المحفوظ — نفس الحكم للمراجعة', () =>
         });
     });
 });
+
+describe('المرحلة 1 — واجهة النطاق تُرسل الحكم المحسوب للشاشات', () => {
+    test('/api/attendance/range يرفق lateMinutes وstatus من نفس منطق البصمة', () => {
+        const server = read('backend', 'server.js');
+        expect(server).toMatch(/calculateDelayParts\(row, empShift\)/);
+        expect(server).toMatch(/classifyStoredDay\(row, \{ shiftKarim/);
+        expect(server).toMatch(/delayEngineEnabled\(\)/);
+    });
+});

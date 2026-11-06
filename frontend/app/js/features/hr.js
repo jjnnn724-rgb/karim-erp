@@ -257,6 +257,21 @@ const m=attRawMinutes(a);
 return m==null?'—':(m/60).toFixed(2);
 }
 // ─── صندوق الاستثناءات: غياب/تأخير/انصراف مبكر/بصمة ناقصة في مكان واحد ───
+// المرحلة 1 (2026-11-07): الخادم يرسل lateMinutes المحسوب من عجز ساعات
+// الوردية، وهو الحاكم عند وجوده؛ والعلم المخزَّن early_leave لا يقرر وحده.
+// غياب الحقول (حمولة قديمة أو محرك موقوف) يعيد السلوك المخزَّن كما كان.
+function attLateNow(a){
+  if(!a) {return false;}
+  if(a.lateMinutes!=null) {return Number(a.lateMinutes) > 0;}
+  return !!a.late;
+}
+function attEarlyNow(a){
+  if(!a) {return false;}
+  if(a.lateMinutes!=null) {
+    return Number(a.lateMinutes) > 0 && !(Number(a.arrivalLateMinutes) > 0) && Number(a.earlyLeaveMinutes) > 0;
+  }
+  return !!a.early_leave;
+}
 function attExceptionsBox(emps){
   const d = today();
   const leaves = (STATE.leaveRequests || []).filter(l => l.status === 'approved' && String(l.startDate) <= d && d <= String(l.endDate));
@@ -274,8 +289,11 @@ function attExceptionsBox(emps){
     if(!rec || (!rec.checkIn && !rec.checkOut)){ type = 'absent'; detail = 'لا بصمات اليوم'; }
     else if(rec.checkIn && !rec.checkOut && !rec.checkout_inferred){ type = 'missing'; detail = `حضور ${esc(rec.checkIn)} بلا انصراف`; }
     else if(!rec.checkIn && rec.checkOut){ type = 'missing'; detail = `انصراف ${esc(rec.checkOut)} بلا حضور`; }
-    else if(rec.late){ type = 'late'; detail = `حضور ${esc(rec.checkIn)}`; }
-    else if(rec.early_leave){ type = 'early'; detail = `انصراف ${esc(rec.checkOut)}`; }
+    else if(attLateNow(rec)){
+      const earlyOnly = attEarlyNow(rec);
+      type = earlyOnly ? 'early' : 'late';
+      detail = earlyOnly ? `انصراف ${esc(rec.checkOut)}` : `حضور ${esc(rec.checkIn)}`;
+    }
     if(!type) {return;}
     const isExc = excused.has(String(emp.id));
     rows.push({ emp, type, detail, rec, isExc });

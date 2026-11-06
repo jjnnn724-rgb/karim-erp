@@ -60,7 +60,7 @@
  *   own scope so a subset never reads as the whole period.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.296';
+import { apiFetch } from '../../core/api.js?v=4.9.307';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(\d{1,2}):(\d{2})$/;
@@ -86,6 +86,26 @@ export function attendanceMinutes(rec = {}) {
 }
 
 /**
+ * المرحلة 1 (2026-11-07): الخادم يرسل `lateMinutes` محسوبًا من عجز ساعات
+ * الوردية. عند وجوده فهو الحاكم، والعلم المخزَّن (late/early_leave) لا يقرر
+ * وحده؛ وغياب الحقول (حمولة قديمة أو محرك التأخير موقوف) يعيد السلوك المخزَّن.
+ * من أكمل ساعات ورديته يظهر «حاضر» ولو حُفظ عليه early_leave القديم.
+ */
+export function rowLateNow(rec = {}) {
+    if (rec.lateMinutes != null) {return Number(rec.lateMinutes) > 0;}
+    return !!rec.late;
+}
+
+export function rowEarlyNow(rec = {}) {
+    if (rec.lateMinutes != null) {
+        return Number(rec.lateMinutes) > 0
+            && !(Number(rec.arrivalLateMinutes) > 0)
+            && Number(rec.earlyLeaveMinutes) > 0;
+    }
+    return !!rec.early_leave;
+}
+
+/**
  * Database row → table row. Pure and exported so it is testable
  * without a browser (branches-repo.js pattern).
  *
@@ -103,8 +123,8 @@ export function attendanceToRow(rec = {}, empById = new Map(), deptByCode = new 
     let state = 'present';
     if (rec.on_leave) {state = 'leave';}
     else if (!hasIn && !hasOut) {state = 'none';}
-    else if (rec.late) {state = 'late';}
-    else if (rec.early_leave) {state = 'early';}
+    else if (rowLateNow(rec)) {state = rowEarlyNow(rec) ? 'early' : 'late';}
+    else if (rowEarlyNow(rec)) {state = 'early';}
     else if (hasIn !== hasOut) {state = 'missing';}
     return {
         id: rec.id,
@@ -938,8 +958,12 @@ export function buildTodayExceptions({
         if (!rec || (!rec.checkIn && !rec.checkOut)) {type = 'absent'; detail = 'لا بصمات اليوم';}
         else if (rec.checkIn && !rec.checkOut && !rec.checkout_inferred) {type = 'missing'; detail = `حضور ${rec.checkIn} بلا انصراف`;}
         else if (!rec.checkIn && rec.checkOut) {type = 'missing'; detail = `انصراف ${rec.checkOut} بلا حضور`;}
-        else if (rec.late) {type = 'late'; detail = `حضور ${rec.checkIn}`;}
-        else if (rec.early_leave) {type = 'early'; detail = `انصراف ${rec.checkOut}`;}
+        else if (rowLateNow(rec)) {
+            const earlyOnly = rowEarlyNow(rec);
+            type = earlyOnly ? 'early' : 'late';
+            detail = earlyOnly ? `انصراف ${rec.checkOut}` : `حضور ${rec.checkIn}`;
+        }
+        else if (rowEarlyNow(rec)) {type = 'early'; detail = `انصراف ${rec.checkOut}`;}
         if (!type) {return;}
         const excused = isExcusedByLeave(leaves, emp.id, today);
         rows.push({

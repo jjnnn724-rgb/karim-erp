@@ -38,7 +38,8 @@ const {
 
 // ─── Shared Database Pool (avoids circular dependency) ──────
 const { pool } = require('./shared-pool');
-const { normalizeShiftStart, normalizeShiftKarim } = require('./shift-day');
+const { normalizeShiftStart, normalizeShiftKarim, calculateDelayParts, delayEngineEnabled } = require('./shift-day');
+const { classifyStoredDay } = require('./shift-day-builder');
 const { listColumnsExcluding } = require('./heavy-columns');
 
 // ─── JWT Authentication Middleware ────────────────────
@@ -1443,6 +1444,26 @@ app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_R
         + ' ORDER BY date DESC, "employeeId" ASC LIMIT $3',
         params
     );
+    // المرحلة 1 (2026-11-07): الحكم على اليوم يُحسب هنا من البصمات، فلا تقرأ
+    // الشاشات العلم المخزَّن early_leave وحده. الحقول additive فقط.
+    if (rows.length) {
+        const { rows: shiftRows } = await pool.query(
+            'SELECT id, shift_start, shift_karim FROM employees WHERE id IN '
+            + '(SELECT DISTINCT "employeeId" FROM attendance WHERE date >= $1 AND date <= $2)',
+            [from, to]
+        );
+        const shiftById = new Map(shiftRows.map((e) => [String(e.id), e]));
+        for (const row of rows) {
+            const empShift = shiftById.get(String(row.employeeId));
+            const dayState = classifyStoredDay(row, { shiftKarim: empShift?.shift_karim });
+            row.status = dayState.status;
+            row.needsReview = dayState.needsReview;
+            row.reviewReason = dayState.reviewReason;
+            if (delayEngineEnabled()) {
+                Object.assign(row, calculateDelayParts(row, empShift));
+            }
+        }
+    }
     res.json({ data: rows, total: rows.length, from, to });
 }));
 
