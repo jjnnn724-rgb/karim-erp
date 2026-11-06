@@ -87,14 +87,26 @@
 - `tests/attendance-shift-day-builder.test.js`: 17 اختبارًا تغطي القواعد الخمس.
 - لا لمس لأي بيانات تاريخية ولا لعلم `early_leave` المخزَّن.
 
-### المرحلة 1 — قراءة موحّدة في الواجهات (بلا كتابة)
+### المرحلة 1 — قراءة موحّدة (منفَّذة 2026-11-07)
 
-- استبدال قراءة `rec.early_leave` في:
-  `attendance-repo.js:107,942` و`features/hr.js:278`
-  بـ `classifyStoredDay` + `calculateDelayParts` (أو الحقول الجاهزة من API).
-- الإبقاء على `leave-attendance-mark.js` كما هو (إجازة = لا تأخير).
+- `/api/attendance/range` (`backend/server.js`) يرفق بكل صف: `lateMinutes`،
+  `arrivalLateMinutes`، `earlyLeaveMinutes`، و`status/needsReview/reviewReason`
+  من `shift-day.js` و`shift-day-builder.js`. حقول additive فقط، وبلا تغيير في
+  أي عمود. عند إيقاف `ATTENDANCE_DELAY_ENGINE` لا تُرفق دقائق التأخير إطلاقًا
+  (يبقى السلوك المخزَّن، ولا يظهر الجميع «حاضرين» زورًا).
+- `frontend/app/js/v2/data/attendance-repo.js`: `rowLateNow` / `rowEarlyNow`
+  تعتمدان المحسوب عند وجوده، وتعودان للعلم المخزَّن فقط عند غيابه. من أكمل
+  ساعات ورديته يظهر «حاضر» ولو حُفظ عليه `early_leave` القديم.
+- `frontend/app/js/features/hr.js`: صندوق الاستثناءات بنفس الحكم.
+- `leave-attendance-mark.js` لم يُمس (إجازة = لا تأخير).
 - معيار القبول: شاشة اليوم تعرض «في الموعد» لكل من أكمل ساعاته، بصرف النظر عن
-  العلم المخزَّن.
+  العلم المخزَّن. مثبت في `tests/v2-attendance.test.js`.
+- الدليل الحي (`karim_erp_test`، معاملة واحدة): صف 602/600 وُسم `late+early_leave`
+  ⇒ `lateMinutes=0` و«حاضر»؛ صف 555/600 ⇒ عجز 45 يظهر «انصراف مبكر»؛
+  العدّ قبل 0/0، داخل المعاملة 1/2، بعد ROLLBACK 0/0.
+- ملاحظة تشغيل: بوابة `test:frontend-version` تحتاج `frontend:version:bump`
+  بعد اكتمال دفعة الواجهة الجارية في جلسة أخرى؛ لم تُشغَّل هنا كي لا تُعدَّل
+  ملفات جلسة شقيقة غير مُودَعة.
 - الرجوع: إعادة الملفات الثلاثة وحدها، لا قاعدة بيانات.
 
 ### المرحلة 2 — تجميد الكتابة القديمة (بعد موافقة المالك)
