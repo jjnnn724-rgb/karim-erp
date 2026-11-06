@@ -131,3 +131,40 @@ PHASE6B_EVIDENCE {"db":"karim_erp","port":18977,"restoredByTest":false,"accountM
 - `cfo.revenue = 0` طبيعي: لم توجد قيود إيراد في 2019-07 لحظة القياس (قيد
   الاختبار وحده). `bankRec.diff = -250` لأن كشف الحساب غير موجود لتلك الفترة —
   سلوك fallback المتوقع وليس خطأ ترحيل.
+
+## بعد تطبيق 134 → 143 — على نسخة منفصلة (2026-11-07 02:03 محلي)
+
+بعد نجاح النافذة (`WINDOW_2026-11-07_REPORT.md`)، لم يُشغَّل الهارنس على
+`karim_erp` نفسها. بدلًا من ذلك:
+
+1. `pg_dump -Fc karim_erp` بعد الترقيات (93,338,825 بايت).
+2. `createdb karim_erp_phase6b_post` + `pg_restore --jobs=4` في 8,853 ms؛
+   النسخة تحمل `account_mapping=49` و`schema_migrations=140`.
+3. تشغيل الهارنس مرتين بالمتغيرات:
+
+```
+PHASE6B_DB=karim_erp_phase6b_post PHASE6B_PORT=18973 \
+PHASE6B_KEEP_DB=1 PHASE6B_EXPECT_MAPPING=1 \
+npx jest tests/phase6b-server-boot.test.js --runInBand
+```
+
+| البند | النتيجة |
+|---|---|
+| الاختبارات | **6/6** ثم **6/6** (25.6s) |
+| `mode` | `staging` (قاعدة منفصلة، لا نافذة إنتاج) |
+| `accountMappingTable` | `account_mapping` (49 صفًا — الفحص يتوقع وجوده الآن) |
+| `health` | live/startup/ready = 200/200/200، `readyState=ok` |
+| `egress.blocked` | `[]` |
+| `egress.oracleAttempts` | `0` |
+| `listen-forced` | `18973 → 127.0.0.1` |
+| فحص LAN | مرفوض (`100.67.162.108 connected=false`) |
+| بصمة الأدلة | `4a714f32…6f2b436` (سطر الأدلة الكامل في تقرير النافذة §6) |
+
+**فرق مقصود عن جولة 00:41:** الاختبار (2) صار يقبل الحالتين عبر
+`PHASE6B_EXPECT_MAPPING`: بدون المتغيّر يتوقع غياب `account_mapping` (قاعدة
+ما قبل 134)، ومع `=1` يتوقع وجوده و`COUNT > 0` (قاعدة بعد 143). هذا يمنع
+إنذارًا كاذبًا على قاعدة مُرقّاة دون إضعاف الفحص على قاعدة قديمة.
+
+**التنظيف:** `DROP DATABASE karim_erp_phase6b_post` بعد صفر اتصالات، وحُذف
+ملف dump المؤقت. النسخة المشفّرة الرسمية باقية. لم تُكتب أي صفوف في
+`karim_erp` من هذا التشغيل.
