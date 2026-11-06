@@ -5,6 +5,9 @@
 
 BEGIN;
 
+SET LOCAL coa.allow_mapping_change = 'on';
+SET LOCAL coa.mapping_change_reason = 'rollback 139 (maintenance window)';
+
 DELETE FROM account_mapping
  WHERE (module, operation, role, account_code) IN (
    ('sales_pos','pos_sale','inventory_account','1200'),

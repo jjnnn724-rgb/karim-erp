@@ -4,6 +4,11 @@
 
 BEGIN;
 
+-- الرجوع قرار صيانة صريح: تجاوز قفل «الحساب عليه قيود مرحّلة» (142) داخل هذه
+-- المعاملة فقط. بدونه يفشل الحذف على قاعدة فيها حركة فعلية على 1010/1000/4000.
+SET LOCAL coa.allow_mapping_change = 'on';
+SET LOCAL coa.mapping_change_reason = 'rollback 143 (maintenance window)';
+
 DELETE FROM account_mapping
  WHERE (module, operation, role, account_code) IN (
    ('reports','cash_flow','cash_account','1000'),

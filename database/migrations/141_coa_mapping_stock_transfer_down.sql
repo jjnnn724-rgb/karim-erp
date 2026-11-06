@@ -2,6 +2,11 @@
 
 BEGIN;
 
+-- نفس مبرر 143_down: الحسابات 5000/1200/4000 عليها قيود مرحّلة، والقفل يمنع
+-- الحذف إلا باعتماد صريح. الرجوع نفسه هو الاعتماد، ومقصور على هذه المعاملة.
+SET LOCAL coa.allow_mapping_change = 'on';
+SET LOCAL coa.mapping_change_reason = 'rollback 141 (maintenance window)';
+
 DELETE FROM account_mapping
  WHERE (module, operation, role, account_code) IN (
    ('inventory','stock_dispatch','cogs_account','5000'),
