@@ -1,11 +1,12 @@
 # Phase 6 — Independence Validation (بدون Oracle / بدون YaraSoft)
 
-- **التاريخ:** 2026-11-06
+- **التاريخ:** 2026-11-06 (أُعيد التشغيل 2026-11-07 بعد تصحيح إثبات التوازن)
 - **البيئة:** `karim_erp_test` على `127.0.0.1` فقط (لا إنتاج، لا Oracle، لا YaraSoft، ولا SELECT على أي منهما).
 - **الملف:** `tests/phase6-independence.test.js` — **9/9 ✅**
-- **الحكم:** الدورة المحاسبية كاملة تعمل على PostgreSQL وحده. **9/10** — الخصم الوحيد
-  أن الإثبات لم يُجرَّب عبر `backend/server.js` كاملًا (انظر «حدود الإثبات»)، وليس
-  بسبب فشل أي فحص.
+- **الحكم:** الدورة المحاسبية كاملة تعمل على PostgreSQL وحده. **9.5/10** — بعد
+  إغلاق الثغرة الوحيدة السابقة: `backend/server.js` الكامل صار مغطًى في
+  **Phase 6b** (`PHASE6B_FULL_SERVER_ISOLATION.md`، 6/6 مع شبكة مقطوعة).
+  النصف المتبقي سببه أن هذا التقرير نفسه لا يشغّل السيرفر الكامل (تغطيته في 6b).
 
 ## ماذا أُثبت فعلًا (أرقام مقاسة من التشغيل النهائي)
 
@@ -14,7 +15,7 @@
 | 1 | إقلاع الهارنس + `GET /api/health/live` و`/startup` و`/ready` | 200 / 200 / 200 و`ready.status = ok` |
 | 2 | `loadOracleConfig().enabled` و`loadConfig().enabled` | `false` / `false` |
 | 3 | `oracledb` في `require.cache` | **غير محمّل إطلاقًا** (مصفوفة فارغة) |
-| 4 | بيع محلي عبر `resolveAccounts` + `buildSalePostingLines` + `postJournal` | قيد `JE-20261106-0020` — 3 سطور — متوازن |
+| 4 | بيع محلي عبر `resolveAccounts` + `buildSalePostingLines` + `postJournal` | قيد `JE-20261107-0001` — 3 سطور — **مدين 115.00 = دائن 115.00** مجمّعة من الصفوف المخزَّنة في `journal_lines` (لا من أعمدة إجماليات غير موجودة) |
 | 5 | ميزان المراجعة 2019-06 | مدين **115.00** = دائن **115.00** — `balanced: true` — الحسابات 1000/4000/2100 حاضرة |
 | 6 | قائمة الدخل 2019-06 | فرق الإيراد **+100.00** بالضبط |
 | 7 | المركز المالي (as_of 2019-06-30) | الفرق قبل/بعد **0.00 → 0.00** — `balanced: true` (القيد محايد للمعادلة: أصل +115، التزام +15، ملكية +100) |
@@ -26,32 +27,56 @@
 | 13 | حارس الخروج الشبكي | **0 محاولة محجوبة**؛ 3 اتصالات كلها `127.0.0.1`/محلية |
 | 14 | البقايا بعد التنظيف | قيود 0، سجل مساعد 0، وفترة 2019-06 أُعيدت لحالتها الأصلية (لم تكن موجودة ⇒ حُذفت) |
 
-**بصمة الإثبات (SHA-256 لسطر `PHASE6_EVIDENCE` المنشور في مخرجات التشغيل):**
+**بصمة الإثبات (SHA-256):**
 
 ```
-a6073502f480502e71525286d57fce2ab23d9e05fb54d0746f7492dd0d122c34
+6f4e582f521e190c49dc872a60c8ddcf32c4194058cff1df3705b3992ce236e7
 ```
 
-ملاحظة: هذه بصمة سلامة (integrity fingerprint) لأرقام الإثبات، وليست توقيعًا
-تشفيريًا بمفتاح خاص.
+### تعريف input الـSHA-256 حرفيًا
+
+1. في `afterAll` يُبنى كائن `evidence` بترتيب المفاتيح المكتوب في الملف
+   (`env`, `config`, `egress`, `sale`, `trialBalance`, ... , `residue`)
+   ويُطبع سطره: `PHASE6_EVIDENCE <JSON.stringify(evidence)>` بلا مسافات إضافية.
+2. الـinput هو **بايتات UTF-8 لـ`JSON.stringify(evidence)` وحدها**:
+   - بدون بادئة `PHASE6_EVIDENCE `،
+   - بدون سطر جديد في النهاية،
+   - بترتيب المفاتيح كما في الكائن (ترتيب الإدراج لا ترتيب أبجدي)،
+   - بعد نفس التقريب (round) والتحويلات الموجودة في كود بناء `evidence`.
+3. التنفيذ الحرفي في الاختبار:
+
+```js
+const digest = require('crypto').createHash('sha256')
+    .update(JSON.stringify(evidence), 'utf8').digest('hex');
+```
+
+4. **الغرض:** بصمة سلامة (integrity fingerprint) لأرقام الإثبات — أي تغيير
+   في رقم أو مفتاح يغيّرها، ولا يمكن تزوير تطابقها دون تعديل الكود المطبوع.
+   **ليست** توقيعًا تشفيريًا بمفتاح خاص.
+
+ملاحظة: البصمة السابقة `a6073502…` كانت مبنية على كائن يحمل
+`total`/`balanced` من أعمدة غير موجودة في `journal_entries` (undefined)؛
+صُحّح الإثبات ليجمع `journal_lines` فعليًا، فتغيّرت البصمة إلى `6f4e58…`.
 
 ## حدود الإثبات (شفافية مقصودة)
 
-1. **لم يُشغَّل `backend/server.js` كاملًا.** تحميله يبدأ عند `listen` بيكل LAN
-   وجدولة التقارير ومحرك ZKTeco وتنظيف الإشعارات وعامل التصعيد
-   (`backend/server.js:3272-3294` وما قبلها). الهارنس يركّب **نفس الـ routers
-   الحقيقية** (`accounting-routes`, `accounting-periods`, `accounting-growth`)
+1. **هذا التقرير لا يشغّل `backend/server.js` كاملًا** — تغطية السيرفر الكامل
+   انتقلت إلى **Phase 6b** (`PHASE6B_FULL_SERVER_ISOLATION.md`، 6/6 ✅): نقطة
+   الإقلاع الإنتاجية نفسها على قاعدة مستعادة، مع حارس يقطع TCP/UDP/DNS ويجبر
+   الاستماع على loopback. هنا يركّب الهارنس **نفس الـ routers الحقيقية**
+   (`accounting-routes`, `accounting-periods`, `accounting-growth`)
    و`createHealthRouter({pool})` الحقيقي على منفذ loopback عابر، ويستدعي
-   `markBootComplete()` — فالمسارات والاستعلامات والقيود حقيقية، لكن تسلسل بوت
-   السيرفر نفسه خارج النطاق.
+   `markBootComplete()` — فالمسارات والاستعلامات والقيود حقيقية، وتكامل البوت
+   نفسه مُغطّى في 6b.
 2. **`postSaleToLedger` لم يُستدعَ** لأن جدول `pos_shift_sessions` فارغ في قاعدة
    الاختبار و`pos_orders` يربط به بمفاتيح خارجية. استُخدمت نفس الدالتين اللتين
    يستدعيهما (`buildSalePostingLines` + `postJournal`) بنفس مدخلات الفاتورة.
-3. **حارس الخروج يغطي `net.Socket.prototype.connect`** (TCP/TLS في Node). سائق
-   `oracledb` الأصلي لا يمر به، لذا استقلال Oracle مُثبت بثلاث طبقات مجتمعة:
-   التعطيل الصريح للمتغيرين، وغياب `oracledb` من ذاكرة التحميل، وقفل تشغيل عامل
-   Oracle خلف `if (oraCfg.enabled)` في `backend/server.js:3284` (والهارنس لا
-   يشغّل server.js أصلًا فلا عامل كان موجودًا).
+3. **حارس الخروج هنا يغطي `net.Socket.prototype.connect`** (TCP/TLS في Node).
+   Phase 6b يضيف عليه UDP وDNS ومنع تحميل `oracledb` وإجبار `listen` على
+   loopback. سائق `oracledb` الأصلي لا يمر بأي منهما، لذا استقلال Oracle
+   مُثبت بأربع طبقات مجتمعة: التعطيل الصريح للمتغيرين، وغياب `oracledb` من
+   ذاكرة التحميل، وقفل عامل Oracle خلف `if (oraCfg.enabled)`
+   (`backend/server.js:3284`)، ومنع التحميل في حارس 6b (0 محاولة).
 4. **YaraSoft:** `loadConfig().enabled=false`، والمحرك نفسه يخرج مبكرًا عند
    `!this.config.enabled` (`backend/yarasoft/engine.js:70`)، ولم يُحمَّل أي مسار
    محاسبي أي وحدة من `backend/yarasoft/*` عدا ملفي الإعداد للتحقق.
