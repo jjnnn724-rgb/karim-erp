@@ -162,6 +162,31 @@ try {
   console.warn('[backup] encrypted mirrors skipped:', String(e.message).slice(0, 160));
 }
 
+// ── تدوير المرايا — مفعّلٌ بقرار صريح ───────────────────────────────────────
+// المرايا لم تكن تُدار قطّ: التدوير كان يقتصر على database/backups، فبقي كل
+// ما رُمِمَ في D:/KarimBackups و E:/KarimBackups إلى الأبد. المقيس اليوم:
+// 1,819 مجموعة في nightly-dump على كل جذر = 141.84 جيجا × 2.
+// السقف مبطَّن افتراضيًا (0 = لا حذف): التشغيل الأول لهذا الكود سيحذف ~280
+// جيجا دفعة واحدة، والحذف الشامل لا يبدأ إلا بإذنٍ صريح في البيئة.
+const MIRROR_KEEP = Number(process.env.KARIM_MIRROR_KEEP || 0);
+if (MIRROR_KEEP > 0) {
+  try {
+    const { MIRROR_ROOTS } = require('./backup-mirror');
+    const { collectBackupGroups, pruneBackupGroups, dumpBase, zipBase } = require('./backup-retention');
+    for (const root of MIRROR_ROOTS) {
+      for (const [label, baseOf] of [['nightly-dump', dumpBase], ['nightly-data', zipBase]]) {
+        const dir = path.join(root, label);
+        const groups = collectBackupGroups(dir, baseOf);
+        for (const old of pruneBackupGroups(dir, groups, MIRROR_KEEP)) {
+          console.log('[backup] mirror pruned:', path.join(dir, old));
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[backup] mirror rotation skipped:', String(e.message).slice(0, 120));
+  }
+}
+
 // ── لا نص صريح على القرص: يُحذف كل ملف صريح بعد نجاح تشفيره ──
 // latest مشفَّر أيضًا (karim_erp-latest.dump.kbak) — بوابة الجودة تقرأه.
 const latestPlain = path.join(BACKUPS, 'karim_erp-latest.dump');

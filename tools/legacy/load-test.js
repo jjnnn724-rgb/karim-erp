@@ -17,7 +17,7 @@ const CONFIG = {
     port: 5001,
     endpoints: [
         { path: '/api/health', method: 'GET' },
-        { path: '/api/auth/login', method: 'POST', body: { username: 'admin', password: 'Admin@2026' } },
+        { path: '/api/auth/login', method: 'POST', body: { username: 'admin', password: process.env.KARIM_ADMIN_TEST_PASSWORD || '' } },
     ],
     // عدد الطلبات الكلي
     totalRequests: 50,

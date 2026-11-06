@@ -314,7 +314,9 @@ const RT_API_CONTRACT = 1;
 async function rtCheckVersion() {
     // EXE compat handshake (TASK 10): warn-only, never blocking (no lockout risk).
     try {
-        const res = await fetch(`${window.location.origin}/api/rt/version?clientContract=${RT_API_CONTRACT}`);
+        // البوابة العامة على /api/* تطلب x-api-key قبل أي شيء — النداء العاري
+        // كان يرجع 401 في كل إقلاع (تحية صامتة لكنها حقيقة).
+        const res = await fetch(`${window.location.origin}/api/rt/version?clientContract=${RT_API_CONTRACT}`, { headers: rtHeaders(), cache: 'no-store' });
         if (!res.ok) {return;}
         const v = await res.json();
         if (v && v.compatible === false) {
@@ -461,33 +463,10 @@ function initSocket() {
         setBadgeState('connected', `متصل · ${connectedClientCount} جهاز`);
     });
 
-    // ── Device connected ──
-    socket.on('device_connected', (data) => {
-        connectedClientCount = data.totalClients || 0;
-        updateDevicesList(data.clients || []);
-        setBadgeState('connected', `${connectedClientCount} جهاز متصل`);
-
-        // Don't notify about our own connection (first join)
-        if (data.totalClients > 1) {
-            AudioEngine.playConnect();
-            if (rtNotifAdmin() && window.toast) {
-                toast(`انضم: ${data.deviceName}`, 'success');
-            }
-            showSyncToast(`انضم ${data.deviceName} إلى الشبكة`, '<i class=ji data-i=dot-green></i>', 3000);
-        }
-    });
-
-    // ── Device disconnected ──
-    socket.on('device_disconnected', (data) => {
-        connectedClientCount = data.totalClients || 0;
-        updateDevicesList(data.clients || []);
-        setBadgeState('connected', `${connectedClientCount} جهاز متصل`);
-        AudioEngine.playDisconnect();
-        if (rtNotifAdmin() && window.toast) {
-            toast(`غادر: ${data.deviceName}`, 'warning');
-        }
-        showSyncToast(`غادر ${data.deviceName} الشبكة`, '<i class=ji data-i=dot-red></i>', 3000);
-    });
+    // ── Device connected / disconnected ──
+    // (2026-10-31) إشعارات «انضم/غادر» لأجهزة أخرى أُلغيت بقرار المالك —
+    // والسيرفر أوقف بثّ device_connected/device_disconnected أصلًا.
+    // عدّاد الأجهزة يُحدَّث عبر clients_list عند كل اتصال أعلاه.
 
     // ── State updated by another device ──
     socket.on('state_updated', async (data) => {
@@ -832,9 +811,70 @@ function startRealtime() {
     };
     window._rtRegisterUser();
 
+    // ── المناداة الصوتية بالاسم (2026-11-02 · المحرك المشترك) ──
+    // كل إشعار موجَّه ينطق باسم المستخدم المسجَّل على جهازه هو:
+    // «يا سيف، طلب صرف جديد…».
+    // المحرك المشترك (v2/callout.js — نفس المحرك الذي تعمل به V2) يجلب:
+    // صوتًا عربيًا أصليًا على الهاتف (بلجن ArabicTts)، ونصًّا مُهيّأً للنطق،
+    // وحصّةَ الساعة وساعاتَ الهدوء وكتمًا لكل جهاز. لا يرمي استثناءً أبدًا.
+    const LEGACY_VOICE_KEY = 'karim_legacy_voice';
+    /** مكتوم؟ المفتاح القديم (legacy) أو مفتاح المحرك المشترك. */
+    function legacyMuted() {
+        try {
+            if (localStorage.getItem(LEGACY_VOICE_KEY) === 'off') {return true;}
+            const engine = window.KarimCallout;
+            if (engine && typeof engine.readVoicePref === 'function') {
+                return engine.readVoicePref(localStorage) === 'off';
+            }
+        } catch (_) { /* تخزينٌ عاطل ⇒ نترك النداء يعمل */ }
+        return false;
+    }
+    function speakNameCall(payload) {
+        try {
+            if (legacyMuted()) {return;}
+            const cleanTxt = (v) => String(v || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            const title = cleanTxt(payload && payload.title);
+            const message = cleanTxt(payload && payload.message);
+            const name = String((window.STATE && window.STATE.currentUser && window.STATE.currentUser.name) || '').trim();
+            const engine = window.KarimCallout;
+            if (engine && typeof engine.announce === 'function') {
+                engine.announce(
+                    {
+                        id: payload && payload.id,
+                        name,
+                        title: title || message,
+                        message,
+                        category: (payload && payload.category) || (payload && payload.type) || '',
+                    },
+                    { storage: window.localStorage, route: 'legacy', now: Date.now() },
+                );
+                return;
+            }
+            /* بلا المحرك المشترك (نُسخةٌ قديمة): النطق القديم كما كان. */
+            const synth = window.speechSynthesis;
+            const Utterance = window.SpeechSynthesisUtterance;
+            if (!synth || typeof synth.speak !== 'function' || typeof Utterance !== 'function') {return;}
+            const voices = (typeof synth.getVoices === 'function' ? synth.getVoices() : []) || [];
+            const arabic = voices.filter((v) => v && /^ar\b/i.test(String(v.lang || '')));
+            if (!arabic.length) {return;}
+            const voice = arabic.find((v) => /[-_]EG\b/i.test(String(v.lang || ''))) || arabic[0];
+            const first = name.split(/\s+/)[0];
+            const who = first && first.length >= 2 ? `يا ${first}، ` : '';
+            const raw = title || message;
+            if (!raw) {return;}
+            const u = new Utterance(`${who}${raw}`.slice(0, 140));
+            u.lang = voice.lang || 'ar-EG';
+            try {u.voice = voice;} catch (_) { /* اللغة تكفي */ }
+            u.rate = 1; u.pitch = 1; u.volume = 1;
+            synth.speak(u);
+        } catch (_) { /* المنادي خدمة، لا شرط */ }
+    }
+
     // ── Task 20: إشعار فوري موجّه — جرس + صوت + توست فوري دون تحديث الصفحة ──
     socket.on('notification', (data) => {
         AudioEngine.playNotification();
+        // النغمة تُسمَع أولًا ثم المناداة بالاسم (400ms)
+        setTimeout(() => {speakNameCall(data);}, 400);
         if (!rtNotifAdmin()) {return;}
         const payload = data && typeof data === 'object' ? data : {};
         const title = window.cleanNotificationText ? window.cleanNotificationText(payload.title || 'إشعار جديد', 120) : String(payload.title || 'إشعار جديد').replace(/<[^>]*>/g, ' ').trim().slice(0, 120);

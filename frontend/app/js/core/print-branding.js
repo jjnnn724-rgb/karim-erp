@@ -8,7 +8,7 @@ const BRAND_STYLE = `
     gap: 14px;
     margin: 0 auto 18px;
     padding: 0 0 14px;
-    border-bottom: 1px solid #d7c99f;
+    border-bottom: 1px solid #bcd8cb;
     color: #18352b;
     direction: rtl;
     font-family: Tahoma, Arial, sans-serif;

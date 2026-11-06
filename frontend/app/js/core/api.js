@@ -7,6 +7,27 @@
  */
 const API_BASE = window.location.origin + '/api';
 
+/** طلبٌ واحد بمهلة: يبطل عند تجاوزها ولا يترك الشاشة معلّقة إلى الأبد. */
+async function fetchWithTimeout(path, options, headers, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(API_BASE + path, Object.assign({}, options, { headers, signal: controller.signal }));
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/** عطلُ الشبكة ليس انتهاء جلسة: رسالةٌ تقول ذلك، ورمزٌ تعرفه الشاشات. */
+function networkError() {
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const err = new Error(offline
+        ? 'لا يوجد اتصال بالإنترنت — تحقق من شبكة الجهاز ثم أعد المحاولة'
+        : 'تعذّر الوصول إلى السيرفر — تحقّق من الاتصال وأعد المحاولة');
+    err.code = 'NETWORK_UNAVAILABLE';
+    return err;
+}
+
 async function apiFetch(path, options = {}) {
     const buildHeaders = () => {
         const h = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
@@ -14,7 +35,21 @@ async function apiFetch(path, options = {}) {
         if (window._appKey) {h['x-api-key'] = window._appKey;}
         return h;
     };
-    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 30000); let res = await fetch(API_BASE + path, Object.assign({}, options, { headers: buildHeaders(), signal: controller.signal })); clearTimeout(timeout);
+    /* إعادةٌ واحدة للطلبات الآمنة فقط (GET): شبكة الهاتف تقطع الطلب في منتصفه
+       — انقطاعُ موجةٍ أو خروجٌ من نطاق الواي فاي إلى البيانات. أما الطلب الذي
+       يكتب (POST/PATCH) فلا يُعاد أبدًا: إعادةُ حفظ فاتورةٍ مقطوعة تعني
+       فاتورتين، والسيرفر لا يعرف شيئًا عن نيّة المتصفح. */
+    const safeToRetry = !options.method || String(options.method).toUpperCase() === 'GET';
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    let res;
+    try {
+        res = await fetchWithTimeout(path, options, buildHeaders(), 30000);
+    } catch (_) {
+        if (!safeToRetry || offline) {throw networkError();}
+        await new Promise((r) => setTimeout(r, 600));
+        try { res = await fetchWithTimeout(path, options, buildHeaders(), 30000); }
+        catch (_) { throw networkError(); }
+    }
     // 429: ازدحام بدء التشغيل (عشرات الكيانات × صفحات) — إعادة بانتظار Retry-After
     if (res.status === 429 && (options._rateRetries || 0) < 5) {
         const waitMs = Math.min(15000, (Number(res.headers.get('Retry-After')) || 2) * 1000 + Math.random() * 500);
@@ -79,6 +114,7 @@ const SERVER_CODE_AR = {
     NOT_FOUND: 'العنصر غير موجود',
     VALIDATION_ERROR: 'بيانات غير صالحة — تحقق من الحقول',
     INTERNAL_ERROR: 'حدث خطأ داخلي في النظام — حاول مجددًا',
+    NETWORK_UNAVAILABLE: 'تعذّر الاتصال بالسيرفر — تحقّق من الشبكة وأعد المحاولة',
 };
 function serverErrorInfo(data){
     if(!data || typeof data !== 'object') {return {};}

@@ -83,9 +83,10 @@ function sanitizeBuffetPayload(payload) {
 function register(app, opts = {}) {
     const { io } = opts;
 
-    // Root redirect
+    // Root redirect — V2 is the primary shell (2026-10-23); the legacy UI stays
+    // directly reachable at /app/index.html as a fallback.
     app.get('/', (req, res) => {
-        res.redirect('/app/index.html');
+        res.redirect(302, '/app/v2.html?live=1');
     });
 
     // ─── مسارات شاشة المنيو والداشبورد السهلة ───

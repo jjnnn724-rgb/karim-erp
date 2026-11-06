@@ -18,20 +18,32 @@
  *   • Status badges use persisted values verified in the Gate B showcase.
  *   • Numbers/dates are tabular Latin digits per the Arabic-UX skill.
  *
- * WHAT IS SAMPLE (stated on the page itself and on every section head)
- *   KPI values, charts, invoices, alerts and the pipeline counts are
- *   fixtures for design review. Each period set is internally consistent
- *   (day invoices 12+34+168=214; day payments 6200+9800+2450=18450;
- *   week payments 41200+63900+16200=121300;
- *   month payments 168400+251300+67200=486900). No API is called;
- *   live wiring is Gate D — deliberately not faked here.
+ * WHAT IS LIVE (Gate D — since 2026-11-06)
+ *   With a session present the board reads ONE endpoint, GET
+ *   /executive/summary (data/executive-repo.js — 30s TTL, one flight), and
+ *   repaints with the server's own numbers: KPI strip, revenue/cost trend,
+ *   COGS ratio, revenue by department, cash on books, top POS items and the
+ *   decision alerts. Every live card names its source under the title.
+ *
+ * WHAT REMAINS SAMPLE
+ *   Without a session (design preview) the fixture sets below still paint,
+ *   and every section head says «بيانات نموذجية». If the live read fails the
+ *   board keeps the sample AND says so in a banner — it never paints zeros
+ *   in place of a record it could not read. Each fixture set stays internally
+ *   consistent (day invoices 12+34+168=214; day payments
+ *   6200+9800+2450=18450; week 41200+63900+16200=121300; month
+ *   168400+251300+67200=486900).
+ *
+ * Animation is CSS-only (erp-motion.css) and never touches data values —
+ * the owner's speed rule: no interval, no polling, no layout thrash.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.194';
-import { setPref } from '../theme.js?v=4.9.194';
-import { hydrateStatusNodes } from '../status.js?v=4.9.194';
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.296';
+import { setPref } from '../theme.js?v=4.9.296';
+import { hydrateStatusNodes } from '../status.js?v=4.9.296';
+import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
+import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -121,6 +133,39 @@ const SALES_7 = [
 /* سقفُ محور مبيعات الأسبوع: خطوةٌ لطيفة (٢٥ لا ٣٠)، فتأخذ الأعمدةُ
    المساحةَ كلَّها بدل أن تترك نصفَ اللوحةِ فراغًا. */
 const SALES_MAX = niceCeiling(Math.max(...SALES_7.map((d) => d.value)));
+
+/* ── طبقة الأداء (SAMPLE — نفس أرقام الـlab المثبتة) ───────────────────
+   الإقنعة كلها fixture للمعاينة: لا تُحسب من API ولا تُستنتج.
+   الإيراد 14 يومًا (ر.س) مع هدف يومي ثابت 15,000؛ الفئات لـ30 يومًا؛
+   القنوات لليوم (صالة+سفري+توصيل = 18,450 = مبيعات fixtures اليوم)؛
+   تكلفة الطعام 31.2% (مقعدٌ عائلي واقعي تحت الهدف 32%). */
+const REVENUE_14 = [
+    { label: '23 أكتوبر', v: 12140 }, { label: '24', v: 13480 },
+    { label: '25', v: 16920 },       { label: '26', v: 15230 },
+    { label: '27', v: 18710 },       { label: '28', v: 21040 },
+    { label: '29', v: 13490 },       { label: '30', v: 12870 },
+    { label: '31', v: 15600 },       { label: '1 نوفمبر', v: 17320 },
+    { label: '2', v: 19880 },        { label: '3', v: 18240 },
+    { label: '4', v: 17990 },        { label: '5', v: 18450 },
+];
+const REVENUE_TARGET = 15000;
+
+const CATEGORIES = [
+    { label: 'مشويات',   value: 51200, tone: 'chart-1' },
+    { label: 'مشروبات',  value: 33150, tone: 'chart-2' },
+    { label: 'أرز ومقدد', value: 27400, tone: 'chart-3' },
+    { label: 'مقبلات',   value: 21800, tone: 'chart-4' },
+    { label: 'حلويات',   value: 18900, tone: 'chart-5' },
+    { label: 'أخرى',     value: 12300, tone: 'chart-6' },
+];
+
+const CHANNELS = [
+    { name: 'صالة',   count: 7320 },
+    { name: 'توصيل',  count: 7150 },
+    { name: 'سفري',   count: 3980 },
+];
+
+const FOOD_COST = { value: 31.2, goal: 32, excellent: 30, ok: 34 };
 
 const INVOICES = [
     { id: '#90412', main: 'طاولة 7',             sub: 'صالة العائلات · 13:42', amount: '245', badge: ['pos_order', 'issued'] },
@@ -238,6 +283,68 @@ function payDonut(payments) {
     });
 }
 
+/* ── الإثراء التنفيذي: نفس محرك الرسوم، بلا أي عمل يدوي ────────────────
+   الإيراد مساحةٌ متدرجة مع خط هدف — lineChart بتعبيئة `fill`، وسلسلة
+   ثانية `chart-2` تحمل نفس قيمة الهدف طوال الأيام (مفتاحٌ صادق في التلميح
+   والمفتاح، لا خطٌ منقطٌ مُزوَّر). */
+function revenueChart() {
+    return lineChart({
+        ariaLabel: 'الإيراد — آخر 14 يوم مع الهدف اليومي (بيانات نموذجية)',
+        labels: REVENUE_14.map((d) => d.label),
+        series: [
+            { label: 'الإيراد الفعلي', tone: 'brand', values: REVENUE_14.map((d) => d.v), fill: true },
+            { label: 'الهدف اليومي', tone: 'chart-2', values: REVENUE_14.map(() => REVENUE_TARGET) },
+        ],
+        max: niceCeiling(Math.max(REVENUE_TARGET, ...REVENUE_14.map((d) => d.v))),
+        formatValue: (v) => `${v.toLocaleString('en-US')} ر.س`,
+        formatMark: (v) => `${(v / 1000).toFixed(1)}k`,
+        bare: true,
+    });
+}
+
+function categoryDonut() {
+    const total = CATEGORIES.reduce((a, c) => a + c.value, 0);
+    return donutChart({
+        ariaLabel: 'المبيعات حسب الفئة — آخر 30 يوم (بيانات نموذجية)',
+        slices: CATEGORIES,
+        centerLabel: 'إجمالي (ر.س)',
+        centerValue: total.toLocaleString('en-US'),
+        formatValue: (v) => `${v.toLocaleString('en-US')} ر.س`,
+        bare: true,
+        maxSlices: 6,
+    });
+}
+
+function channelBars() {
+    const max = Math.max(...CHANNELS.map((c) => c.count));
+    return `<ul class="erp-tops" aria-label="المبيعات حسب القناة — اليوم (بيانات نموذجية)">`
+        + CHANNELS.map((c) => `
+      <li class="erp-top__row">
+        <span class="erp-top__name">${esc(c.name)}</span>
+        <span class="erp-top__track"><span class="erp-top__fill" style="inline-size:${Math.round((c.count / max) * 100)}%"></span></span>
+        <span class="erp-top__val"><span class="erp-num" dir="ltr">${c.count.toLocaleString('en-US')}</span> ر.س</span>
+      </li>`).join('')
+        + `</ul>`;
+}
+
+/* تكلفة الطعام: رقمٌ كبير + شريط تقدم + عتبات صريحة — لا رسم جديد ولا
+   وحدة ملوّنة تُقرأ وحدها. يعيد استعمال `erp-chart__donut-total` (وجه
+   الرقم البطل) و`erp-top__track/fill` (نفس شريط الأعلى مبيعًا). */
+function foodCost() {
+    const width = Math.round((FOOD_COST.value / 45) * 100);
+    const state = FOOD_COST.value <= FOOD_COST.excellent ? 'ممتاز'
+        : FOOD_COST.value <= FOOD_COST.goal ? 'ضمن الهدف'
+        : FOOD_COST.value <= FOOD_COST.ok ? 'مقبول' : 'خطر';
+    return `<div class="erp-foodc">
+      <div class="erp-foodc__stage">
+        <span class="erp-chart__donut-total" dir="ltr">${FOOD_COST.value}%</span>
+        <span class="erp-foodc__state">${state}</span>
+      </div>
+      <div class="erp-top__track"><span class="erp-top__fill" style="inline-size:${width}%"></span></div>
+      <p class="erp-text-muted">الهدف ≤ ${FOOD_COST.goal}% · ممتاز ≤ ${FOOD_COST.excellent}% · مقبول ≤ ${FOOD_COST.ok}%</p>
+    </div>`;
+}
+
 function topItems(tops) {
     const max = Math.max(...tops.map((t) => t.count));
     return `<ul class="erp-tops" aria-label="الأعلى مبيعًا (بيانات نموذجية)">`
@@ -303,8 +410,102 @@ function greeting() {
     try {
         date = new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',
             { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    } catch { date = new Date().toLocaleDateString('ar'); }
+    } catch { date = new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn'); }
     return { hi, name, date };
+}
+
+/* ── Live board (Gate D) ────────────────────────────────────────────────
+   One request, one repaint. The sample board stays on screen until the
+   server answers, so the first paint is never blocked by the network. */
+
+const liveMoney = (v) => `${Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })} ر.س`;
+const liveClock = () => {
+    try { return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+    catch { return ''; }
+};
+
+function liveTrend(board) {
+    const labels = board.trend.map((t) => t.day);
+    const values = board.trend.map((t) => t.revenue);
+    const costs = board.trend.map((t) => t.cost);
+    const max = niceCeiling(Math.max(1, ...values, ...costs));
+    const fmtMark = (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
+    return lineChart({
+        ariaLabel: 'الإيراد والتكلفة — آخر 14 يومًا من دفتر القيود',
+        labels,
+        series: [
+            { label: 'الإيراد', tone: 'brand', values, fill: true },
+            { label: 'التكلفة', tone: 'chart-2', values: costs },
+        ],
+        max,
+        formatValue: liveMoney,
+        formatMark: fmtMark,
+        emptyText: 'لا قيود مُرحَّلة في الفترة',
+        bare: true,
+    });
+}
+
+function liveCostRatio(board) {
+    if (board.costRatio == null) {
+        return '<p class="erp-text-muted">لا إيراد مُسجَّل اليوم — النسبة بلا أساس لا تُعرض.</p>';
+    }
+    const v = board.costRatio;
+    const state = v <= 30 ? 'ممتاز' : v <= 32 ? 'ضمن الهدف' : v <= 34 ? 'مقبول' : 'خطر';
+    const cogs = Math.max(0, board.kpi.cogs);
+    const rest = Math.max(0, board.kpi.revenue - cogs);
+    /* قرصٌ حقيقي لا شريطٌ في بطاقةٍ فارغة: نفس محرك الرسوم، ومجموعه =
+       إيراد اليوم، فيُقرأ الباقي والمسحوب معًا بلا حسابٍ ذهني. */
+    return donutChart({
+        ariaLabel: `نسبة تكلفة البضاعة ${v.toFixed(1)}% — ${state}`,
+        slices: [
+            { label: 'تكلفة البضاعة', tone: 'brand', value: cogs },
+            { label: 'باقي الإيراد', tone: 'chart-2', value: rest },
+        ],
+        centerLabel: 'من إيراد اليوم',
+        centerValue: `${v.toFixed(1)}%`,
+        formatValue: liveMoney,
+        bare: true,
+    })
+        + `<p class="erp-text-muted erp-dash-note">${esc(state)} · ممتاز ≤ 30% · الهدف ≤ 32% · مقبول ≤ 34% · المصدر: قيود التكلفة المُرحَّلة</p>`;
+}
+
+function liveDonut(rows, ariaLabel, centerLabel, emptyText) {
+    if (!rows.length) {return `<p class="erp-text-muted">${esc(emptyText)}</p>`;}
+    const total = rows.reduce((a, r) => a + r.value, 0);
+    return donutChart({
+        ariaLabel,
+        slices: rows,
+        centerLabel,
+        centerValue: total.toLocaleString('en-US'),
+        formatValue: liveMoney,
+        bare: true,
+        maxSlices: 6,
+    });
+}
+
+function liveTopItems(board) {
+    if (!board.topItems.length) {return '<p class="erp-text-muted">لا مبيعات نقاط بيع اليوم.</p>';}
+    return topItems(board.topItems.map((i) => ({ name: i.name, count: i.count })));
+}
+
+function liveAlerts(board) {
+    if (!board.alerts.length) {
+        return '<p class="exec__ok">لا شيء يحتاج قرارًا الآن — الأرقام سليمة.</p>';
+    }
+    const tone = (s) => (s === 'high' ? 'danger' : s === 'medium' ? 'warning' : null);
+    return `<ul class="erp-minis" aria-label="ماذا يحتاج قرارًا اليوم — من الخادم">`
+        + board.alerts.map((a) => `
+      <li class="erp-mini">
+        ${tone(a.severity) ? `<span class="erp-dot erp-dot--${tone(a.severity)}" aria-hidden="true"></span>` : ''}
+        <span class="erp-mini__main">${esc(a.title)}<span class="erp-mini__sub">${esc(a.detail)}</span></span>
+        ${a.action ? `<button type="button" class="erp-btn erp-btn--sm" data-dash-go="${esc(a.action.screen)}">${esc(a.action.label)}</button>` : ''}
+      </li>`).join('')
+        + `</ul>`;
+}
+
+/** Does this document hold an authenticated session apiFetch can use? */
+function hasSession() {
+    try { return !!window._jwt; } catch { return false; }
 }
 
 /**
@@ -315,9 +516,13 @@ function greeting() {
  * @param {HTMLElement} host
  * @param {{ statusBadge: Function }} ctx
  */
-export function renderDashboard(host, ctx) {
-    const { statusBadge } = ctx;
+export function renderDashboard(host, ctx = {}) {
+    const { statusBadge, navigate } = ctx;
+    const go = typeof navigate === 'function' ? navigate : () => {};
     let period = 'day';
+    let board = null;          // live model from buildLiveBoard
+    let liveError = '';        // last failure message ('' = none)
+    let liveBusy = false;
 
     function segGroup(options, current) {
         return `<div class="erp-seg" role="group" aria-label="الفترة">`
@@ -331,7 +536,8 @@ export function renderDashboard(host, ctx) {
             + `</div>`;
     }
 
-    function paint() {
+    /* ── Sample board (no session, or a failed read) ─────────────────── */
+    function paintSample() {
         const P = PERIODS[period];
         const g = greeting();
         host.innerHTML = `
@@ -344,8 +550,20 @@ export function renderDashboard(host, ctx) {
           ${segGroup(PERIOD_KEYS, period)}
         </div>
       </div>
+      ${liveError ? `<div class="erp-state" role="status">
+        <span class="erp-state__title">تعذّر قراءة السجل الحي</span>
+        <span>هذه عينة تصميم — لم نعرض أصفارًا مكان سجلٍّ لم يُقرأ. (${esc(liveError)})</span>
+      </div>` : ''}
       ${card('نبض ' + P.seg, 'Pulse', 'بيانات نموذجية للمعاينة · ' + P.compare, kpiStrip(P.kpis, 'مؤشرات الفترة (بيانات نموذجية)'))}
       ${advisorCard(P.kpis)}
+      <div class="erp-dash-grid">
+        ${card('الإيراد — آخر 14 يوم', 'Revenue 14D', 'بيانات نموذجية · الهدف 15,000 ر.س', revenueChart())}
+        ${card('تكلفة الطعام اليوم', 'Food Cost %', 'بيانات نموذجية · الهدف ≤ 32%', foodCost())}
+      </div>
+      <div class="erp-dash-grid">
+        ${card('المبيعات حسب الفئة', 'Category Mix', 'بيانات نموذجية', categoryDonut())}
+        ${card('القنوات — اليوم', 'Channels', 'بيانات نموذجية', channelBars())}
+      </div>
       <div class="erp-dash-grid">
         ${card('مبيعات آخر 7 أيام (ألف ر.س)', 'Weekly Trend', 'بيانات نموذجية', salesBars())}
         ${card('طرق الدفع', 'Payment Mix', 'بيانات نموذجية · ' + P.compare, payDonut(P.payments))}
@@ -359,13 +577,75 @@ export function renderDashboard(host, ctx) {
         host.querySelectorAll('[data-seg-kind="period"]').forEach((b) => {
             b.addEventListener('click', () => {
                 const id = b.dataset.segId;
-                if (PERIODS[id]) {period = id; paint();}
+                if (PERIODS[id]) {period = id; paintSample();}
             });
         });
         try { hydrateStatusNodes(host); } catch { /* badges stay raw text — never fatal */ }
     }
 
+    /* ── Live board — every number from /executive/summary ───────────── */
+    function paintLive() {
+        const g = greeting();
+        const b = board;
+        const tag = liveError
+            ? '<span class="erp-badge" data-tone="warning"><span class="erp-badge-label">آخر قراءة ناجحة — تعذّر التحديث</span></span>'
+            : '<span class="erp-badge" data-tone="success"><span class="erp-badge-label">بيانات حية</span></span>';
+        host.innerHTML = `
+      <div class="erp-dash-head">
+        <div>
+          <h2 class="erp-dash-title">${esc(g.hi)}، ${esc(g.name)}</h2>
+          <div class="erp-dash-sub">موجز تنفيذي من دفتر القيود — ${esc(g.date)} · محدَّث ${esc(liveClock())}</div>
+        </div>
+        <div class="erp-dash-controls">
+          ${tag}
+          <button type="button" class="erp-btn erp-btn--sm" data-dash-refresh>
+            <i class="ji" data-i="refresh" aria-hidden="true"></i><span>تحديث</span>
+          </button>
+        </div>
+      </div>
+      ${card('نبض اليوم', 'Pulse', 'من دفتر القيود المُرحَّل · ' + b.day, kpiStrip(b.kpis, { ariaLabel: 'مؤشرات اليوم — من الخادم', cols: 4 }))}
+      <div class="erp-dash-grid">
+        ${card('الإيراد والتكلفة — آخر 14 يوم', 'Revenue vs Cost', 'دفتر القيود المُرحَّل — لا تقدير', liveTrend(b))}
+        ${card('نسبة تكلفة البضاعة', 'COGS Ratio', 'من إيراد اليوم — الهدف ≤ 32%', liveCostRatio(b))}
+      </div>
+      <div class="erp-dash-grid">
+        ${card('الإيراد حسب القسم — اليوم', 'Revenue by Dept', 'أقسام اليوم من الخادم', liveDonut(b.departments, 'الإيراد حسب القسم — اليوم', 'إجمالي (ر.س)', 'لا إيراد مقسَّم اليوم.'))}
+        ${card('النقد في الدفاتر', 'Cash on Books', 'أرصدة حسابات النقد', liveDonut(b.cash, 'توزيع النقد على الحسابات', 'إجمالي (ر.س)', 'لا حسابات نقد.'))}
+      </div>
+      ${card('ماذا يحتاج قرارًا اليوم', 'Action Alerts', 'مرتّب بالأولوية — إجراء مباشر', liveAlerts(b))}
+      ${card('أصناف نقاط البيع الأعلى اليوم', 'Top POS Items', 'كمية مباعة — من نقاط البيع', liveTopItems(b))}`;
+        host.querySelector('[data-dash-refresh]')?.addEventListener('click', () => hydrate(true));
+        host.querySelectorAll('[data-dash-go]').forEach((btn) => {
+            btn.addEventListener('click', () => go(btn.dataset.dashGo));
+        });
+        try { hydrateStatusNodes(host); } catch { /* badges stay raw text — never fatal */ }
+    }
+
+    function paint() {
+        if (board) {paintLive();} else {paintSample();}
+    }
+
+    async function hydrate(force) {
+        if (!hasSession() || liveBusy) {return;}
+        liveBusy = true;
+        const btn = host.querySelector('[data-dash-refresh]');
+        if (btn) {btn.disabled = true;}
+        try {
+            const payload = await fetchExecutiveSummary({ days: 14, force: !!force });
+            board = buildLiveBoard(payload);
+            liveError = '';
+        } catch (e) {
+            liveError = String((e && e.message) || 'خطأ في القراءة');
+        } finally {
+            liveBusy = false;
+            const again = host.querySelector('[data-dash-refresh]');
+            if (again) {again.disabled = false;}
+            if (host.isConnected) {paint();}
+        }
+    }
+
     paint();
+    hydrate(false);
 }
 
 /* ── Command palette (REAL — searches the live nav tree) ──────────────── */

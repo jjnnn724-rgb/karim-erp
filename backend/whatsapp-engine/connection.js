@@ -161,7 +161,7 @@ class WhatsappConnection extends EventEmitter {
             auth: state,
             logger: logger.child ? logger.child({ mod: 'wa-sock' }) : logger,
             browser: ['Karim ERP', 'Desktop', '1.0'],
-            connectTimeoutMs: 60000,      // زودنا من 30s لـ 60s — يمنع timeout مض错觉
+            connectTimeoutMs: 60000,      // زودنا من 30s لـ 60s — يمنع timeout مضلِّلًا
             defaultQueryTimeoutMs: 60000,  // زودنا من 30s لـ 60s
             keepAliveIntervalMs: 15000,    // زودنا من 25s لـ 15s — WebSocket أكثر حيوية
             retryRequestDelayMs: 2000,

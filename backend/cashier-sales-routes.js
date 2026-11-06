@@ -202,6 +202,81 @@ const pageOf = (query, dflt) => ({
 });
 const shareOf = (v, total) => (total > 0 ? round2((Number(v) || 0) / total * 100) : 0);
 
+/* ── المحرّك اللايف ─────────────────────────────────────────────────────────
+   الشاشة لا تنتظر دورة المؤقّت: العامل الخلفي يسحب المرآة كل دقيقة، ففاتورةٌ
+   كُتبت الآن قد تبقى غائبةً كلها تلك الدقيقة، وحين يسحبها العامل لا يصل أيّ
+   بثّ إلى المتصفّح — لأن السحب يجري في عمليةٍ مولودة بلا `io`. هنا يُصبح
+   الطلب نفسه هو الزناد: `?live=1` على قراءات اليوم تُشغّل سحب المرآة فورًا
+   وتبثّ نتيجته على المقابس، فالشاشة المفتوحة ترى الفاتورة في ثوانٍ لا في
+   دقيقة. الكلفة مقيسة على الإنتاج 2026-11-03: دفعةٌ كاملة (1,152 سندًا
+   بأسطرِها = 2,731 سطرًا، سحبٌ + upsert + بثّ) في 1,093 مِلّي ثانية.
+   حارسان لا ثالث لهما:
+     • سحبٌ واحد كل 15 ثانية على الأكثر للسيرفر كلّه، وسحبٌ واحد في المرة —
+       فالحمل ثابتٌ لا ينمو مع عدد الشاشات المفتوحة.
+     • الجلسة تُغلق بعد كل دفعة: خيوط oracledb في Thick mode هي ما جعل السحب
+       يُنقل أصلًا إلى عمليةٍ مولودة (دورانُ نواةٍ كاملة بعد ساعة تقريبًا)،
+       فإبقاءُ جلستها في عملية السيرفر يُعيد إنتاج العطب الذي هُرِبَ منه. */
+let _liveBusy = false;
+let _liveLast = 0;
+const LIVE_MIN_GAP_MS = 15_000;
+
+/** اليوم بالتوقيت المحلي — هو المعيار الذي يقاس عليه «هل المدى يشمل الآن». */
+function localDay() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** سحب المرآة إن لم يكن مثله جارٍ ومضى على السابق وقته. null حين لا سحب. */
+function startLiveRefresh(io) {
+    if (_liveBusy || Date.now() - _liveLast < LIVE_MIN_GAP_MS) {return null;}
+    _liveBusy = true;
+    _liveLast = Date.now();
+    const { refreshMirrorOrders } = require('./yarasoft/mirror');
+    const { closeKeptConn } = require('./yarasoft/oracle-link');
+    const release = async () => { try {await closeKeptConn();} catch (_) { /* لا جلسة تُورَّث للسيرفر */ } };
+    return refreshMirrorOrders({ days: 1, io: io || null })
+        .then(async (m) => {
+            await release();
+            _liveBusy = false;
+            if (m && m.ok) {
+                logger.info(`[cashier-sales] live mirror: ${m.upserted} orders, ${(m.newDocs || []).length} new`);
+                return true;
+            }
+            logger.warn(`[cashier-sales] live mirror skipped: ${(m && m.error) || 'unknown'}`);
+            return false;
+        })
+        .catch(async (e) => {
+            await release();
+            _liveBusy = false;
+            logger.warn('[cashier-sales] live mirror failed: ' + (e.message || e));
+            return false;
+        });
+}
+
+/** @param {any} req */
+function maybeLiveRefresh(req) {
+    if (String(req.query.live || '') !== '1') {return;}
+    const from = String(req.query.from || '') || localDay();
+    const to = String(req.query.to || '') || localDay();
+    if (!(from <= localDay() && localDay() <= to)) {return;} // المدى لا يشمل اليوم
+    startLiveRefresh(req.io);
+}
+
+/**
+ * السند الذي لم تصله المرآة بعد: الطلب ينتظر سحبًا واحدًا ثم يُعاد البحث،
+ * ففتحُ فاتورةٍ كُتبت قبل ثوانٍ ينجح في نحو ثلاثٍ بدل أن يردّ «غير موجود».
+ * @param {any} req @param {(docNo: string) => Promise<any>} find @param {string} docNo
+ */
+async function findAfterLive(req, find, docNo) {
+    const hit = await find(docNo);
+    if (hit) {return hit;}
+    const refreshed = await startLiveRefresh(req.io);
+    if (!refreshed) {return null;}
+    return find(docNo);
+}
+
+
 /* الفارق عن الفترة المماثلة السابقة: نفس الطول قبل `from` — لا تُقارن إلا
    إذا حُدد الطرفان، وإلا كان «الفرق» رقمًا من فراغ. والمرآة تبدأ من يومٍ
    معلوم، فما سبقها ليس مبيعات صفرًا بل بياناتٍ غير موجودة؛ فإن مسّت
@@ -232,6 +307,7 @@ async function prevCollected(f, firstDay) {
 /* ── ١) ملخص الفترة ─────────────────────────────────────────────────────── */
 router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
     try {
+        maybeLiveRefresh(req);
         const f = buildWhere(readQuery(req.query));
         const timeF = { ...f, clause: [`NULLIF(TRIM(o.doc_time),'') IS NOT NULL`,
             ...(f.clause ? [f.clause.replace(/^WHERE /, '')] : [])].map((x) => `(${x})`).join(' AND ') };
@@ -391,6 +467,7 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, asyn
 /* ── ٢) الفواتير ────────────────────────────────────────────────────────── */
 router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
     try {
+        maybeLiveRefresh(req);
         const f = buildWhere(readQuery(req.query));
         const { limit, offset } = pageOf(req.query, 50);
         const key = pickSort(ORDER_SORTS, req.query, 'date');
@@ -724,7 +801,7 @@ function sheetStyles() {
   /* ترويسةٌ فاتحة: الحبرُ الكثيف يبتلع طابعةَ المكتب ويُسوّدّ الأسطر،
      فالعلامة تُحمل بلونٍ داكنٍ على ورقٍ أبيض وحدٍّ ذهبيّ رفيع. */
   .brand { display:flex; align-items:center; gap:14px; padding:14px 22px 12px;
-           background:#fff; border-bottom:2px solid #c9a227; }
+           background:#fff; border-bottom:2px solid #8fbfa9; }
   .brand img { width:56px; height:56px; object-fit:contain; }
   .brand__t { flex:1; min-width:0; }
   .brand__t h1 { font-size:18px; color:#12352a; font-weight:700; letter-spacing:.2px; }
@@ -741,29 +818,29 @@ function sheetStyles() {
   .cell { padding:9px 12px; border-inline-start:1px solid #eef1f5; border-top:1px solid #eef1f5; }
   .cell:nth-child(4n+1) { border-inline-start:0; }
   .cell:nth-child(-n+4) { border-top:0; }
-  .cell b { display:block; font-size:10.5px; color:#8a6d1b; font-weight:700; }
+  .cell b { display:block; font-size:10.5px; color:#3e6b58; font-weight:700; }
   .cell span { display:block; margin-top:2px; font-size:12.5px; color:#12352a; font-weight:600;
                overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
   h3.sec { font-size:12.5px; color:#12352a; margin:18px 0 6px; padding-inline-start:9px;
-           border-inline-start:4px solid #c9a227; }
+           border-inline-start:4px solid #8fbfa9; }
   table.t { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
   table.t th, table.t td { padding:5.5px 7px; font-size:11px; border-bottom:1px solid #edf0f4; text-align:right; }
   table.t th { background:#f3f5f3; color:#12352a; font-weight:700; font-size:10.5px;
-               border-bottom:1.5px solid #c9a227; text-align:center; white-space:nowrap; }
+               border-bottom:1.5px solid #8fbfa9; text-align:center; white-space:nowrap; }
   table.t td.c, table.t th.c { text-align:center; }
   table.t td.n { text-align:left; direction:ltr; unicode-bidi:isolate; white-space:nowrap; }
   table.t tbody tr:nth-child(even) td { background:#f8fafc; }
   table.t tbody tr { break-inside:avoid; page-break-inside:avoid; }
-  table.t tfoot td { background:#eef2f7; font-weight:800; color:#12352a; border-top:2px solid #c9a227;
+  table.t tfoot td { background:#eef2f7; font-weight:800; color:#12352a; border-top:2px solid #8fbfa9;
                      border-bottom:0; font-size:11.5px; }
   .idx { color:#94a3b8; font-size:10.5px; }
   .pill { display:inline-block; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700;
           border:1px solid #dbe1ea; background:#f2f4f7; color:#475467; white-space:nowrap; }
   .pill--pay { border-color:#0b9e6c; background:rgba(11,158,108,.10); color:#055f3a; }
-  .pill--due { border-color:#d97706; background:rgba(217,119,6,.10); color:#b54708; }
+  .pill--due { border-color:#0e5c45; background:rgba(217,119,6,.10); color:#b54708; }
   .bars { width:100%; height:7px; border-radius:999px; background:#eef2f7; overflow:hidden; }
-  .bars i { display:block; height:100%; background:linear-gradient(90deg,#c9a227,#12352a); }
-  .note { margin-top:12px; border:1px solid #e5e7eb; border-inline-start:4px solid #c9a227;
+  .bars i { display:block; height:100%; background:linear-gradient(90deg,#8fbfa9,#12352a); }
+  .note { margin-top:12px; border:1px solid #e5e7eb; border-inline-start:4px solid #8fbfa9;
           border-radius:10px; padding:9px 13px; background:#fffdf5; font-size:11px; color:#3f3a26; }
   .foot { margin-top:18px; border-top:1px solid #e5e7eb; padding-top:8px; display:flex;
           justify-content:space-between; gap:10px; font-size:10px; color:#94a3b8; }
@@ -786,7 +863,7 @@ function sheetStyles() {
    رماديًّا فاتحًا، فالطبقةُ أسودُ على أبيض بخطٍّ نظاميٍّ واضح (Tahoma)
    وأرقامٌ معزولةٌ ثنائيًّا لا تلتصق بكلمة العملة. */
 const receiptStyles = () => `
-  @page { size: 80mm auto; margin: 3mm 4mm 4mm; }
+  @page { size: 80mm 200mm; margin: 3mm 4mm 4mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: Tahoma, "Segoe UI", Arial, sans-serif; font-size:11.5px;
          color:#000; background:#f2f4f7; direction:rtl; padding:12px 6px; line-height:1.45; }
@@ -955,7 +1032,7 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
             return res.status(422).json({ error: 'INVALID_DOC_NO', message: 'رقم السند غير صالح' });
         }
         const brand = await loadBrand();
-        const slip = await loadSlip(docNo);
+        const slip = await findAfterLive(req, loadSlip, docNo);
         if (!slip) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السند غير موجود في مرآة الكاشير' });}
         const zatca = await loadZatca(docNo);
         const raw = Array.isArray(slip.lines) ? slip.lines : [];
@@ -1016,7 +1093,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
         const docNo = String(req.params.docNo || '').trim().slice(0, 24);
         if (!docNoRe.test(docNo)) {return res.status(422).send('رقم السند غير صالح');}
         const brand = await loadBrand();
-        const slip = await loadSlip(docNo);
+        const slip = await findAfterLive(req, loadSlip, docNo);
         if (!slip) {return res.status(404).send('السند غير موجود في مرآة الكاشير');}
         let zatca = null;
         try {

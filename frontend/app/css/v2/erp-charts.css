@@ -141,7 +141,7 @@
 }
 
 /* The plot is one focus stop; its ring is brass so it never reads as the
-   emerald of an action. */
+   amethyst of an action. */
 .erp-v2 .erp-chart__plot:focus-visible,
 .erp-v2 .erp-chart__donut-wrap:focus-visible {
   outline: 2px solid var(--erp-focus-ring);
@@ -323,7 +323,7 @@
   text-align: end;
 }
 
-/* Cost analysis — an executive emerald band, a metric rail, two analytical
+/* Cost analysis — an executive amethyst band, a metric rail, two analytical
    panels and a readable register. Depth comes from the band and hairlines,
    not from stacked shadows; every colour resolves from tokens so the dark
    theme follows without a second palette. */
@@ -712,9 +712,278 @@
 .erp-v2 .erp-v2-cost .erp-table__grid th { white-space: normal; line-height: 1.4; }
 .erp-v2 .erp-v2-cost .erp-table__grid td { white-space: nowrap; }
 
+/* «مع فروعه» عمودٌ مساعد لا أساس: رقمُ الفرع مع أبيه في سطرَين مصفوفَين
+   بأصغرِ خطٍّ، فلا يمتدّ نصُّه العريضُ خارجَ حدود العمود عند الازدحام. */
+.erp-v2 .erp-v2-cost__fam {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--erp-text-xs);
+  line-height: 1.4;
+}
+.erp-v2 .erp-v2-cost__fam-line {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--erp-space-1);
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+}
+.erp-v2 .erp-v2-cost__fam-line em {
+  font-style: normal;
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-v2-cost__fam-line .erp-num {
+  color: var(--erp-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Department cards ───────────────────────────────────────────────────
+   بطاقة لكل قسم: رقم واحد كبير لكل مؤشر، بنود التكلفة بأشرطة، والكاشيريات
+   tiles مستقلّة داخل بطاقة قسمها. الفرع يُدفع قليلًا عن أبيه ويُشار بشريط
+   نحاسي، فتُقرأ الشبكة كعائلات: أمّ ثم أبناؤها بالأعلى تكلفة. */
+.erp-v2 .erp-v2-cost__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+}
+.erp-v2 .erp-v2-cost__cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: var(--erp-space-3);
+  align-items: start;
+}
+/* ذيل الأقسام الصفرية: رقائق مدمجة لا بطاقات كاملة، فلا تزاحم بطاقة لها حركة. */
+.erp-v2 .erp-v2-cost__cards-quiet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: 1px dashed var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2 .erp-v2-cost__cards-quiet[hidden] { display: none; }
+.erp-v2 .erp-v2-cost__cards-quiet-title {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-v2-cost__cards-quiet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-v2-cost__cards-quiet-grid .erp-v2-cost-card {
+  gap: var(--erp-space-1);
+  padding: var(--erp-space-2) var(--erp-space-3);
+  background: var(--erp-surface);
+  box-shadow: none;
+}
+.erp-v2 .erp-v2-cost__cards-quiet-grid .erp-v2-cost-card__head { padding-block-end: 0; border: none; }
+.erp-v2 .erp-v2-cost__cards-quiet-grid .erp-v2-cost-card__name { font-size: var(--erp-text-sm); }
+.erp-v2 .erp-v2-cost-card {
+  --card-accent: var(--erp-neutral);
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-4);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface-raised);
+  box-shadow: var(--erp-shadow-sm), inset 0 1px 0 var(--erp-highlight);
+}
+.erp-v2 .erp-v2-cost-card[data-tone="success"] { --card-accent: var(--erp-success); }
+.erp-v2 .erp-v2-cost-card[data-tone="danger"] { --card-accent: var(--erp-danger); }
+.erp-v2 .erp-v2-cost-card[data-tone="warning"] { --card-accent: var(--erp-warning); }
+.erp-v2 .erp-v2-cost-card[data-tone="brand"] { --card-accent: var(--erp-brand); }
+.erp-v2 .erp-v2-cost-card--child {
+  margin-inline-start: var(--erp-space-4);
+  border-inline-start: 3px solid color-mix(in srgb, var(--card-accent) 55%, var(--erp-border));
+  background: var(--erp-surface);
+}
+.erp-v2 .erp-v2-cost-card--empty {
+  grid-column: 1 / -1;
+  color: var(--erp-text-muted);
+  text-align: center;
+  border-style: dashed;
+}
+.erp-v2 .erp-v2-cost-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  padding-block-end: var(--erp-space-2);
+  border-block-end: 1px solid var(--erp-border-subtle);
+}
+.erp-v2 .erp-v2-cost-card__id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.erp-v2 .erp-v2-cost-card__name {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-bold);
+  letter-spacing: -.01em;
+  overflow-wrap: anywhere;
+}
+.erp-v2 .erp-v2-cost-card__meta {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-v2-cost-card__figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 1px;
+  border: 1px solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-border-subtle);
+  overflow: hidden;
+}
+.erp-v2 .erp-v2-cost-card__fig {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2 .erp-v2-cost-card__fig[data-fig="net"] { background: var(--erp-surface-raised); }
+.erp-v2 .erp-v2-cost-card__fig-label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+}
+.erp-v2 .erp-v2-cost-card__fig-value {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-base);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.erp-v2 .erp-v2-cost-card__own {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  line-height: 1.6;
+  padding: var(--erp-space-1) var(--erp-space-2);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-sunken);
+}
+/* بطاقة بلا حركة: مدمجة وبلا ظِل، فالشبكة تُقرأ بالعين قبل الأرقام. */
+.erp-v2 .erp-v2-cost-card--quiet { opacity: .78; }
+.erp-v2 .erp-v2-cost-card--quiet .erp-v2-cost-card__name { font-weight: var(--erp-fw-semibold); }
+.erp-v2 .erp-v2-cost-card__quiet {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  padding: var(--erp-space-1) 0;
+}
+.erp-v2 .erp-v2-cost-card__mix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-v2 .erp-v2-cost-card__mix-row {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr) minmax(72px, auto);
+  align-items: center;
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-v2-cost-card__mix-label {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-xs);
+  white-space: nowrap;
+}
+.erp-v2 .erp-v2-cost-card__mix-bar {
+  block-size: 6px;
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--erp-border-subtle);
+  overflow: hidden;
+}
+.erp-v2 .erp-v2-cost-card__mix-bar > span {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--card-mix, 0%);
+  border-radius: inherit;
+  background: var(--card-accent);
+  transition: inline-size var(--erp-motion-base, 220ms) ease;
+}
+.erp-v2 .erp-v2-cost-card__mix-value {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-medium);
+  text-align: end;
+}
+.erp-v2 .erp-v2-cost-card__cash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-2);
+  border-block-start: 1px dashed var(--erp-border);
+}
+.erp-v2 .erp-v2-cost-card__cash-title {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+  letter-spacing: .06em;
+}
+.erp-v2 .erp-v2-cost-card__cash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--erp-space-2);
+}
+.erp-v2 .erp-v2-cost-cash {
+  --cash-accent: var(--erp-info);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: 1px solid color-mix(in srgb, var(--cash-accent) 32%, var(--erp-border));
+  border-inline-start: 3px solid var(--cash-accent);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+.erp-v2 .erp-v2-cost-cash[data-primary="1"] { --cash-accent: var(--erp-brand); }
+.erp-v2 .erp-v2-cost-cash__no {
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+}
+.erp-v2 .erp-v2-cost-cash__value {
+  color: var(--erp-text-primary);
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.erp-v2 .erp-v2-cost-cash__tag {
+  color: var(--erp-text-muted);
+  font-size: var(--erp-text-xs);
+  letter-spacing: .04em;
+}
+.erp-v2 .erp-v2-cost-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--erp-space-2);
+  padding-block-start: var(--erp-space-2);
+  border-block-start: 1px solid var(--erp-border-subtle);
+  font-size: var(--erp-text-xs);
+}
+.erp-v2 .erp-v2-cost-card__shares { color: var(--erp-text-muted); font-variant-numeric: tabular-nums; }
+.erp-v2 .erp-v2-cost-card__delta { color: var(--erp-text-secondary); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .erp-v2 .erp-v2-cost__cards-grid { grid-template-columns: minmax(0, 1fr); }
+  .erp-v2 .erp-v2-cost-card--child { margin-inline-start: var(--erp-space-2); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .erp-v2 .erp-v2-cost__mix-bar > span,
-  .erp-v2 .erp-v2-cost__rank-bar > span { transition: none; }
+  .erp-v2 .erp-v2-cost__rank-bar > span,
+  .erp-v2 .erp-v2-cost-card__mix-bar > span { transition: none; }
 }
 
 @media (max-width: 900px) {
@@ -767,6 +1036,12 @@
   .erp-v2 .erp-v2-cost__rank-bar,
   .erp-v2 .erp-v2-cost__panel::before { display: none; }
   .erp-v2 .erp-v2-cost__register { padding: 0; border: 0; box-shadow: none; }
+  .erp-v2 .erp-v2-cost__cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .erp-v2 .erp-v2-cost-card { box-shadow: none; break-inside: avoid; padding: 8px; }
+  .erp-v2 .erp-v2-cost-card--child { margin-inline-start: 0; }
+  .erp-v2 .erp-v2-cost-card__foot .erp-btn { display: none; }
+  .erp-v2 .erp-v2-cost__cards-quiet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+  .erp-v2 .erp-v2-cost-card--quiet { padding: 5px 7px; }
   .erp-v2 .erp-v2-cost .erp-table__grid { min-width: 0; font-size: 9pt; }
   .erp-v2 .erp-v2-cost .erp-table__grid th:not(:first-child),
   .erp-v2 .erp-v2-cost .erp-table__grid td:not(:first-child) { min-width: 0; }

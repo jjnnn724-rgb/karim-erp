@@ -165,5 +165,3 @@ async function refreshMirrorOrders({ days = MIRROR_DAYS, cashiers = MIRROR_CASHI
 }
 
 module.exports = { refreshMirrorOrders, MIRROR_CASHIERS, MIRROR_DAYS };
-
-module.exports = { refreshMirrorOrders, MIRROR_CASHIERS, MIRROR_DAYS };

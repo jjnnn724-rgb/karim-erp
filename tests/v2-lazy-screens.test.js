@@ -51,9 +51,9 @@ const exportsOf = (file) => {
 describe('registry — سجل الشاشات الكسولة', () => {
     const reg = loadRegistry();
 
-    test('٥٧ وحدة مسجّلة، ولكلٍّ راوية واسم تصدير', () => {
+    test('٥٩ وحدة مسجّلة، ولكلٍّ راوية واسم تصدير', () => {
         const keys = reg.screenModules();
-        expect(keys).toHaveLength(57);
+        expect(keys).toHaveLength(59);
         for (const key of keys) {
             expect(typeof reg.LOADERS[key]).toBe('function');
             expect(reg.MOUNTS[key]).toMatch(/^mount[A-Za-z]+Screen$/);
@@ -121,8 +121,8 @@ describe('preview — البوابة الوحيدة للتركيب', () => {
     test('كل mountLazy في المضيف له مفتاح مسجّل', () => {
         const reg = loadRegistry();
         const calls = [...preview.matchAll(/mountLazy\('([a-z0-9-]+)'/g)].map((m) => m[1]);
-        // ٢٤ موقعًا بمفتاحٍ حرفيّ + مسار السجلات المشترك (module || key).
-        expect(calls.length).toBe(24);
+        // ٢٥ موقعًا بمفتاحٍ حرفيّ + مسار السجلات المشترك (module || key).
+        expect(calls.length).toBe(25);
         const unknown = calls.filter((k) => !reg.LOADERS[k]);
         expect(unknown).toEqual([]);
         expect(calls).toEqual(expect.arrayContaining([

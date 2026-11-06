@@ -864,10 +864,18 @@ router.delete('/payments/:id', jwtAuth, requireRole(...PAYMENT_DELETE_ROLES), as
             }
         }
         await client.query('COMMIT');
+        // A2 (2026-11-06): قيد الدفعة المنشور لا يُمسح — يُبطل. الميزان والقوائم
+        // تقرأ status='posted' فقط، فالإبطال يُخرجه من الأرصدة كاملة، والصف يبقى
+        // شاهدًا على الحركة (لا فقدان صامت للأثر).
         try {
-            await pool.query(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1)`, [String(paymentId)]);
-            await pool.query(`DELETE FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1`, [String(paymentId)]);
-        } catch (jeErr) { logger.warn("[payment_ledger_purge]", jeErr.message); }
+            const { voidSourceJournals } = require('./journal-void');
+            const v = await voidSourceJournals(pool, {
+                sourceType: 'supplier_payment', sourceIds: paymentId,
+                reason: `عكس دفعة المورد ${paymentId} — إبطال القيد`,
+                actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+            });
+            if (v.voided) {logger.info(`[payment_ledger_void] ${paymentId} → ${v.entries.map((e) => e.entry_no).join(', ')}`);}
+        } catch (jeErr) { logger.warn("[payment_ledger_void]", jeErr.message); }
         emit(req, 'procurement', 'delete', payment);
         if (invoice) {emit(req, 'purchaseInvoices', 'update', invoice, 'فواتير الشراء');}
         res.json({ ok: true, deleted: paymentId, invoice });

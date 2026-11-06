@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════
    KARIM ERP — V2 Auth layer (Gate C) · v1.1.0
    ─────────────────────────────────────────────────────────────────────
-   The sign-in card opens with the same emerald spine and brass rule as the
+   The sign-in card opens with the same midnight spine and champagne rule as the
    sidebar, then hands the form to parchment. Same frozen language:
    erp-card, erp-field, erp-btn, bilingual eyebrows. All colours resolve
    from tokens, so the dark theme follows without a second palette.
@@ -115,6 +115,18 @@ body.erp-auth-focus.erp-mobile-shell-on .erp-mobile-nav { display: none; }
 }
 .erp-v2 .erp-login-card .erp-label .erp-eyebrow { font-size: var(--erp-text-xs); }
 .erp-v2 .erp-login-center { text-align: center; }
+/* وصلةُ الخروج من بوابة الدخول ليست نصًا داخل جملة بل مَخرجٌ يقصده
+   الموظف بإبهامه على الهاتف — كان عرضُها 133px وارتفاعُها 18px فقط،
+   فهي دون هدف اللمس الأدنى. الرقعةُ تُوسَّع بالحشو لا بحجم الخط. */
+.erp-v2 .erp-login-center a[href] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  padding-inline: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  -webkit-tap-highlight-color: transparent;
+}
 .erp-v2 .erp-login-passrow { display: flex; gap: var(--erp-space-2); }
 .erp-v2 .erp-login-passrow .erp-input { flex: 1 1 auto; min-width: 0; }
 /* اللوحة كانت div عاديًا، فالحقول والزرّ كومٌ بلا فواصل: قيس الفرق بين

@@ -3,6 +3,7 @@ const { pool } = require('./cashier-module/db-pool');
 const { jwtAuth } = require('./cashier-module/jwt-middleware');
 // M20: riyadhToday for business dates
 const { riyadhToday } = require('./riyadh-date');
+const { syncLeaveMarks } = require('./leave-attendance-mark');
 
 const router = express.Router();
 // سلسلة الاعتماد (2026-10-01 بطلب المالك): الموظف ← مديره المباشر (رئيس قسمه)
@@ -168,6 +169,7 @@ router.post('/leave-requests', jwtAuth, async (req, res) => {
 
 router.post('/leave-workflow/:id/action', jwtAuth, async (req, res) => {
   let client;
+  let leaveSync = null;
   try {
     client = await pool.connect();
     await ensureLeaveWorkflowSchema();
@@ -215,11 +217,16 @@ router.post('/leave-workflow/:id/action', jwtAuth, async (req, res) => {
       const leaveUpdate = action === 'reject' ? `UPDATE "leaveRequests" SET status='rejected',"rejectionReason"=$2,"rejectedBy"=$3,"rejectedDate"=$4 WHERE id=$1` : action === 'return' ? `UPDATE "leaveRequests" SET status='returned',"rejectionReason"=$2 WHERE id=$1` : nextStatus === 'completed' ? `UPDATE "leaveRequests" SET status='approved',"approvedBy"=$2,"approvedDate"=$3 WHERE id=$1` : `UPDATE "leaveRequests" SET status='pending' WHERE id=$1`;
       const leaveParams = action === 'reject' ? [leave.id,note || 'تم رفض الطلب',req.user.id,riyadhToday()] : action === 'return' ? [leave.id,note || 'يرجى استكمال البيانات'] : nextStatus === 'completed' ? [leave.id,req.user.id,riyadhToday()] : [leave.id];
       await client.query(leaveUpdate, leaveParams);
+      // قرار المالك 2026-11-02: الاعتماد يعدّل صفوف الحضور نفسها — لا يُترك يوم
+      // معتمَد مختومًا «مداوم» لأن البصمة سبقت الاعتماد. داخل نفس المعاملة.
+      if (leave.startDate && leave.endDate) {
+        leaveSync = await syncLeaveMarks({ employeeId: leave.employeeId, startDate: leave.startDate, endDate: leave.endDate, client });
+      }
       await client.query(`INSERT INTO leave_approval_events(workflow_id,stage,action,note,actor_user_id,actor_role) VALUES($1,$2,$3,$4,$5,$6)`, [workflow.id, workflow.current_stage, action, note || null, req.user.id, req.user.role]);
     }
     await client.query('COMMIT');
     const updated = (await pool.query(`SELECT w.*,lr.status AS leave_status FROM leave_approval_workflows w JOIN "leaveRequests" lr ON lr.id=w.leave_request_id WHERE w.id=$1`, [workflow.id])).rows[0];
-    res.json({ workflow: updated, stage_label: STAGE_LABELS[updated.current_stage] || updated.current_stage, event_label: eventLabel(action) });
+    res.json({ workflow: updated, stage_label: STAGE_LABELS[updated.current_stage] || updated.current_stage, event_label: eventLabel(action), leave_sync: leaveSync });
   } catch (e) { if (client) {await client.query('ROLLBACK').catch(() => {});} res.status(422).json({ error: e.code || 'LEAVE_ACTION_FAILED', message: 'تعذر تنفيذ الإجراء على طلب الإجازة' }); }
   finally { if (client) {client.release();} }
 });

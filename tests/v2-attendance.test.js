@@ -48,6 +48,7 @@ function loadEsm(file, injections = {}, collect = []) {
     const context = {
         console, JSON, String, Number, Boolean, Array, Object, RegExp, Error, Date, Math, Promise,
         Set, Map, encodeURIComponent, decodeURIComponent, TextDecoder, Uint8Array, Intl,
+        URLSearchParams,
         ...injections,
     };
     vm.createContext(context);
@@ -232,6 +233,44 @@ describe('V2 attendance repository — honesty of the derived numbers', () => {
         expect(repo.formatInt(1234)).toBe('1,234');
         expect(repo.formatInt(null)).toBe('0');
         expect(repo.formatInt(7.6)).toBe('8');
+    });
+
+    test('باب سجل التدقيق: قراءةٌ بمرشّحات مُتحقَّق منها، لا كتابة', async () => {
+        const calls = [];
+        const apiFetch = jest.fn(async (p) => {
+            calls.push(p);
+            return { rows: [], total: 0 };
+        });
+        const repo = loadEsm(REPO, { apiFetch }, []);
+        await repo.fetchAttendanceAudit({ from: '2026-10-01', to: '2026-10-31', action: 'update', limit: 300 });
+        expect(calls[0]).toBe('/attendance/audit?from=2026-10-01&to=2026-10-31&action=update&limit=300&offset=0');
+        // تاريخٌ غير صالح يُسقط المرشّح ولا يُرسل
+        await repo.fetchAttendanceAudit({ from: 'yesterday', to: '' });
+        expect(calls[1]).toBe('/attendance/audit?limit=200&offset=0');
+    });
+
+    test('صفّ التدقيق يعرض ما تغيّر قبل/بعد — بلا تجميل ولا اختراع', () => {
+        const { repo } = repoHarness();
+        const rows = repo.auditEditRows({
+            rows: [{
+                id: 5, action: 'update', reason: 'خطأ في الإدخال', actorName: 'سيف', actorRole: 'manager',
+                employee_name: 'مازن', employee_no: 'EMP-12', source: 'api', createdAt: '2026-11-02T08:00:00.000Z',
+                changedFields: { checkIn: { before: '09:00', after: '10:00' }, checkOut: { before: '17:00', after: null } },
+            }],
+            total: 1,
+        });
+        expect(rows).toHaveLength(1);
+        expect(rows[0].actionAr).toBe('تصحيح');
+        expect(rows[0].tone).toBe('warning');
+        expect(rows[0].employeeName).toBe('مازن');
+        expect(rows[0].actorName).toBe('سيف');
+        expect(rows[0].reason).toBe('خطأ في الإدخال');
+        expect(rows[0].fields).toEqual([
+            { field: 'checkIn', before: '09:00', after: '10:00' },
+            { field: 'checkOut', before: '17:00', after: null },
+        ]);
+        // سطرٌ بلا حقول = لا قيم مختلفة، لا كسرٌ للشاشة
+        expect(repo.auditEditRows({ rows: [{ id: 6, action: 'delete' }] })[0].fields).toEqual([]);
     });
 });
 

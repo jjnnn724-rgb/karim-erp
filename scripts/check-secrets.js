@@ -23,8 +23,17 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const ALLOW_FILE = path.join(ROOT, 'scripts', 'check-secrets.allow.json');
 
-// أنماط قيمة يبدو أنها سر: إسناد اسم + سلسلة نصية
-const ASSIGN_RE = /\b([A-Za-z_$][\w$]*(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|private[_-]?key|credential)[A-Za-z_$]*)\s*[:=]\s*['"`]([^'"`\n]{4,})['"`]/gi;
+// أنماط قيمة يبدو أنها سر: إسناد اسم + سلسلة نصية.
+// الإصلاح 2026-11-04 (N3): النمط القديم كان يشترط (أ) محرفًا واحدًا على الأقل
+// قبل كلمة السر — فيفوّت `password:` المجرّد، و(ب) علامة اقتباس حول القيمة —
+// فيفوّت `DB_PASSWORD=xxx` غير المقتبس. كلاهما الآن مدعوم، مع فخّ القيم
+// التعبيرية (نقطة/قوس) في isSafe لمنع الإيجابيات الكاذبة.
+const KW = '(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|private[_-]?key|credential)';
+const ASSIGN_RE = new RegExp(
+    '\\b([A-Za-z_$][\\w$]*' + KW + '[A-Za-z_$]*|' + KW + ')\\s*[:=]\\s*' +
+    '(?:[`\'"]([^`\'"\\n]{4,})[`\'"]|([^\\s`\'"{};,)]{8,}))',
+    'gi'
+);
 // أنماط أسرار معروفة الشكل
 const PATTERNS = [
     { name: 'private-key', re: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/g },
@@ -45,6 +54,11 @@ const SAFE_PATTERNS = [
     /^\*+$/, /^x+$/i, /^changeme/i, /^\.\.\.$/, /^TODO/i, /^FIXME/i,
     /example/i, /placeholder/i, /^dummy/i, /^test[-_]?only$/i, /^fake/i, /^sample/i,
     /^KARIM_/, /^REDACTED$/i, /^\$\{.*\}$/,
+    /^_{2,}/,              // علامات مؤقتة: __SETUP_PENDING__
+    /test[-_]?password/i,  // صياغات اختبارية: not-a-real-test-password, Invalid-Test-Password-000
+    /wrong[-_]?pass/i,     // WRONG-pass
+    /^test/i,              // testpass123 · Test-Dispatch-… · test-api-key-32-chars-…
+    /^karim_preview/,      // قاعدة معاينة محلية
 ];
 
 /**
@@ -60,7 +74,9 @@ function looksLikeCredential(value) {
     if (/^\$/.test(v)) {return false;}                       // توسيف شِل
     if (/^<.+>$/.test(v)) {return false;}
     if (!/[A-Za-z]/.test(v)) {return false;}                  // لا بد من حرف
-    if (!/[0-9]/.test(v) && !/[_\-!@#$%^&*]/.test(v)) {return false;}
+    // رمز إلزامي (underscore لا يُعدّ رمزًا: أسماء متغيّرات psql مثل
+    // new_password تمرّ هنا بلا إيجابية كاذبة)
+    if (!/[0-9]/.test(v) && !/[\-!@#$%^&*]/.test(v)) {return false;}
     return true;
 }
 
@@ -69,8 +85,15 @@ function isSafe(value) {
     if (!v) {return true;}
     if (SAFE_VALUES.has(v.toLowerCase())) {return true;}
     if (SAFE_PATTERNS.some((re) => re.test(v))) {return true;}
-    // قالب ديناميكي: القيمة تُولَّد وقت التشغيل (crypto.randomBytes等)
+    // قالب ديناميكي: القيمة تُولَّد وقت التشغيل (crypto.randomBytes ونحوها
     if (v.includes('${')) {return true;}
+    // تعبير كود: استدعاء دالة، وصول مصفوفة، أو regex — كلها ليست سرًا
+    // (crypto.randomBytes(32) · match[1] · /^\$2[aby]\$/ · Math.min(...))
+    if (v.includes('(') || v.includes('[')) {return true;}
+    if (/^[A-Za-z_$][\w$]*(?:\.[\w$]+)+$/.test(v)) {return true;} // req.headers.x
+    if (v.startsWith('/')) {return true;}                          // تعبير نمطي
+    if (v.startsWith('%')) {return true;}                          // متغيّر batch: %TOKEN%
+    if (v.startsWith('<')) {return true;}                          // توجيه ملف: <C:\path\token.txt
     return !looksLikeCredential(v);
 }
 
@@ -119,7 +142,9 @@ function scan() {
             let m;
             while ((m = ASSIGN_RE.exec(line))) {
                 const name = m[1];
-                const value = m[2];
+                // القيمة المقتبسة في m[2] والغير مقتبسة (KEY=value) في m[3]
+                const value = m[2] ?? m[3];
+                if (value == null) {continue;}
                 if (isSafe(value)) {continue;}
                 if (isAllowed(rel, 'assignment', name)) {continue;}
                 findings.push({ file: rel, line: idx + 1, rule: 'assignment', name, preview: redact(value) });

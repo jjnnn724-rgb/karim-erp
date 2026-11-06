@@ -114,7 +114,7 @@ async function main() {
     // PROFESSIONAL RULE: never invent a DB password silently.
     if (!dbPassword) {
         log.error('DB_PASSWORD فارغ في .env — ضع كلمة مرور postgres الحقيقية (التي أدخلتها أثناء تثبيت PostgreSQL)');
-        log.error('مثال: DB_PASSWORD=Kimo20177 ثم أعد: node scripts/setup.js');
+        log.error('مثال: DB_PASSWORD=<كلمة-المرور> ثم أعد: node scripts/setup.js');
         log.error('أو شغّل المعالج الذكي: node scripts/smart-install.js');
         process.exit(1);
     }

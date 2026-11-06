@@ -411,20 +411,27 @@ body::before { display: none; }
 .modal-btn:active { transform: none; }
 .modal-btn svg.ji { width: 14px; height: 14px; }
 
-#receipt-info { background: var(--pos-surface-2); border: 1px solid var(--pos-border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
-#receipt-info .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--pos-text-2); font-variant-numeric: tabular-nums; }
-#receipt-info .row strong { color: var(--pos-text); }
-/* Buffet receipt — persons summary instead of items */
-.r-buffet-banner { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--pos-gold-lighter); color: var(--pos-gold-dark); border: 1.5px solid var(--pos-gold); border-radius: var(--radius); padding: 7px 10px; margin-bottom: 8px; font-size: 13px; font-weight: 800; }
-.r-persons { background: var(--pos-surface); border: 1px solid var(--pos-border); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px; }
-.r-person-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--pos-border); font-size: 13px; font-variant-numeric: tabular-nums; }
-.r-person-row:last-of-type { border-bottom: none; }
-.r-person-row .tname { color: var(--pos-text); font-weight: 600; }
-.r-person-row .tcount { color: var(--pos-gold-dark); font-weight: 700; background: var(--pos-gold-lighter); border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
-.r-person-row .tamount { color: var(--pos-text-2); white-space: nowrap; }
-.r-person-total { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 7px 10px; background: var(--pos-gold-lighter); border: 1px solid var(--pos-gold); border-radius: var(--radius); color: var(--pos-gold-dark); font-size: 13px; font-weight: 700; }
-.r-person-total strong { font-size: 15px; }
-.qr-img { display: block; margin: 10px auto; width: 150px; height: 150px; border: 1px solid var(--pos-border); border-radius: var(--radius); padding: 6px; background: #fff; }
+/* ═══ نافذة الفاتورة: نفس ورقة 80mm التي تُطبع، معروضة على الشاشة ═══ */
+#receipt-modal .receipt-modal-content { width: 440px; max-width: 96vw; padding: 0; overflow: hidden; }
+.receipt-modal-head { position: relative; padding: 14px 16px 10px; background: linear-gradient(180deg, var(--pos-gold-lighter), transparent); border-bottom: 1px solid var(--pos-border); }
+.receipt-modal-head h3 { margin: 0 0 8px; padding: 0; border: none; }
+.receipt-close { position: absolute; inset-inline-start: 10px; top: 8px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--pos-border); border-radius: 50%; background: var(--pos-surface); color: var(--pos-text-2); cursor: pointer; }
+.receipt-close:hover { background: var(--pos-surface-2); color: var(--pos-text); }
+.receipt-close svg.ji { width: 15px; height: 15px; }
+.receipt-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.r-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--pos-text-2); background: var(--pos-surface-2); border: 1px solid var(--pos-border); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.r-chip.gold { color: var(--pos-gold-dark); background: var(--pos-gold-lighter); border-color: var(--pos-gold); }
+.r-chip.green { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.r-chip.muted { opacity: .62; }
+.r-chip.link { cursor: pointer; color: var(--pos-gold-dark); border-color: var(--pos-gold); background: #fff; font-family: inherit; }
+.r-chip svg.ji { width: 12px; height: 12px; }
+.receipt-paper-wrap { position: relative; padding: 14px 14px 6px; background: var(--pos-surface-2); }
+.receipt-paper-wrap::after { content: ''; position: absolute; inset-inline: 14px; bottom: 6px; height: 26px; border-radius: 0 0 10px 10px; background: linear-gradient(to top, var(--pos-surface-2), transparent); pointer-events: none; }
+.receipt-frame { display: block; width: 100%; height: min(62vh, 600px); border: 0; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 14px 30px -16px rgba(0, 0, 0, .35); }
+#receipt-fallback { background: var(--pos-surface); border: 1px solid var(--pos-border); border-radius: var(--radius); padding: 12px 14px; }
+#receipt-fallback .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--pos-text-2); font-variant-numeric: tabular-nums; }
+#receipt-fallback .row strong { color: var(--pos-text); }
+.receipt-modal-content .modal-buttons { padding: 10px 14px 16px; }
 
 #close-shift-summary { background: var(--pos-surface-2); border: 1px solid var(--pos-border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
 #close-shift-summary .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--pos-text-2); font-variant-numeric: tabular-nums; }
@@ -900,7 +907,7 @@ body::before { display: none; }
   .icon-btn, .btn, input, select { touch-action: manipulation; }
 }
 
-/* ????????????? UI/UX PHASE 3 � POS ENTERPRISE POLISH ????????????? */
+/* UI/UX PHASE 3 — POS ENTERPRISE POLISH */
 .br-card {
   transition: transform .14s cubic-bezier(0.16,1,0.3,1),
               box-shadow .14s ease, border-color .14s ease;

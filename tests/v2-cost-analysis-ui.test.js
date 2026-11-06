@@ -25,7 +25,7 @@ describe('V2 cost-analysis layout', () => {
         expect(SCREEN).not.toContain('قراءة وتجميع مباشر');
     });
 
-    test('four hero figures lead, followed by four secondary KPIs', () => {
+    test('four hero figures lead, followed by five secondary KPIs', () => {
         expect(SCREEN).toContain('class="erp-v2-cost__hero" data-v2-hero');
         expect(SCREEN).toContain("statCard({ label: 'إجمالي الإيرادات'");
         expect(SCREEN).toContain("statCard({ label: 'إجمالي التكاليف'");
@@ -38,6 +38,10 @@ describe('V2 cost-analysis layout', () => {
         expect(SCREEN).toContain('data-v2-mix');
         expect(SCREEN).toContain('data-v2-rank');
         expect(SCREEN).toContain("'صرف المخزون', value: num(t.mat)");
+        /* التحويلات بند موقَّع في الشاشة والطباعة معًا — لا تُعرض في
+           الطباعة وحدها فتختلف ورقة A4 عن الشاشة. */
+        expect(SCREEN).toContain("kpiCard('تحويلات بين الأقسام (موقَّعة)', moneyCell(t.trn, currency, true)");
+        expect(SCREEN).toContain("'تحويلات بين الأقسام', value: num(t.trn)");
         expect(SCREEN).toContain("'فروق الجرد', value: num(t.cnt)");
         expect(SCREEN).toContain("'مصروفات تشغيلية', value: num(t.ops)");
         expect(SCREEN).toContain('.slice(0, 5)');
@@ -55,6 +59,13 @@ describe('V2 cost-analysis layout', () => {
         expect(SCREEN).toContain('table.setRows(visible)');
         expect(SCREEN).toContain('function departmentRows()');
         expect(SCREEN).toContain('labels: chartRows.map((r) => r.name)');
+    });
+
+    test('department detail is refreshed for the selected date range', () => {
+        expect(SCREEN).toContain('let detailSelection = null');
+        expect(SCREEN).toContain('fetchCostAnalysisDept(code, from, to)');
+        expect(SCREEN).toContain('void openDeptDetail(detailSelection.code, detailSelection.name, false)');
+        expect(SCREEN).toContain('requestId !== detailRequestId');
     });
 
     test('printing fetches the server A4 sheet with credentials, never window.print', () => {
@@ -88,5 +99,17 @@ describe('V2 cost-analysis layout', () => {
         expect(STYLES).toContain('.erp-v2 .erp-v2-cost__hero-grid {');
         expect(STYLES).toContain('var(--erp-sidebar-bg)');
         expect(STYLES).toContain('.erp-v2 .erp-v2-cost__rank-bar > span');
+    });
+
+    test('department cards own their grid, child indent, cashier tiles and print sheet', () => {
+        expect(SCREEN).toContain('data-v2-cards-grid');
+        expect(SCREEN).toContain('aria-labelledby="v2cost-cards-title"');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost__cards-grid');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost-card--child');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost-cash[data-primary="1"]');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost-card__mix-bar > span');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost-card { box-shadow: none; break-inside: avoid; padding: 8px; }');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost__cards-quiet-grid');
+        expect(STYLES).toContain('.erp-v2 .erp-v2-cost-card--quiet');
     });
 });

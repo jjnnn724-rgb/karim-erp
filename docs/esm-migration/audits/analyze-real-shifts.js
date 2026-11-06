@@ -7,7 +7,7 @@ const { Client } = require('pg');
 const MONTH = process.argv[2] || '2026-09';
 
 (async () => {
-  const c = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp' });
+  const c = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp' });
   await c.connect();
   const rows = (await c.query(
     `SELECT e.id, e.name, e."shift_start" AS cur_shift, e."deviceUserId" AS fp,

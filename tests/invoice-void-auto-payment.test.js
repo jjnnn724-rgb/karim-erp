@@ -80,11 +80,12 @@ describe('عقد مسار الإلغاء في الخلفية', () => {
         expect(block).toContain('classifyInvoicePaymentsForVoid(payRows)');
     });
 
-    test('يعكس الدفعات التوليدية ويطهّر قيدها من الدفتر داخل نفس المعاملة', () => {
+    test('يعكس الدفعات التوليدية ويُبطل قيدها داخل نفس المعاملة (A2: لا حذف صلب للقيود)', () => {
         expect(block).toContain('payClass.autoOnly');
         expect(block).toMatch(/DELETE FROM supplier_payments WHERE id = ANY/);
-        expect(block).toMatch(/DELETE FROM journal_lines WHERE entry_id IN/);
-        expect(block).toMatch(/source_type='supplier_payment' AND source_id = ANY/);
+        expect(block).toMatch(/voidSourceJournals\(client/);
+        expect(block).toMatch(/sourceType: 'supplier_payment'/);
+        expect(block).not.toMatch(/DELETE FROM journal_(lines|entries)/);
         expect(block).toMatch(/deletedPayments = payClass.auto.length/);
     });
 

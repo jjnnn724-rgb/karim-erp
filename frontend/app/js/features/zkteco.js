@@ -15,6 +15,8 @@ if(status==='syncing') {return '<span class="badge bdg-blue"><i class=ji data-i=
 return '<span class="badge bdg-orange">لم يُفحص</span>';
 }
 function zkPunchName(state){
+// الحالة المجهولة (-1/NULL) بلا اتجاه (قرار المالك 2026-11-05) — لا عرض كدخول أو انصراف
+if(state===null||state===undefined||Number(state)===-1){return 'غير محددة';}
 return {0:'حضور',1:'انصراف',2:'خروج استراحة',3:'عودة استراحة',4:'دخول أوفر تايم',5:'خروج أوفر تايم'}[state]||`حالة ${state}`;
 }
 function zkVerifyName(v){
@@ -43,6 +45,7 @@ ${canWrite?`<button class="btn btn-teal" data-karim-action="zkScanNetwork"><i cl
 <button class="btn btn-sm ${ZKSTATE.tab==='mappings'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;mappings&quot;]"><i class=ji data-i=users></i> ربط الموظفين</button>
 <button class="btn btn-sm ${ZKSTATE.tab==='logs'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;logs&quot;]"><i class=ji data-i=clipboard-list></i> سجل البصمات</button>
 <button class="btn btn-sm ${ZKSTATE.tab==='coverage'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;coverage&quot;]"><i class=ji data-i=shield-check></i> تغطية البصمات</button>
+<button class="btn btn-sm ${ZKSTATE.tab==='statement'?'btn-gold':''}" data-karim-action="zkSetTab" data-karim-args="[&quot;statement&quot;]"><i class=ji data-i=clock></i> دخل/خرج/ساعات</button>
 </div>
 <div id="zkBody"><div class="mcard u-empty"><div class="spinner"></div></div></div>
 `;
@@ -121,6 +124,7 @@ if(!body) {return;}
 if(ZKSTATE.tab==='devices') {zkRenderDevices(body);}
 else if(ZKSTATE.tab==='mappings') {zkLoadMappings(body);}
 else if(ZKSTATE.tab==='coverage') {zkLoadCoverage(body);}
+else if(ZKSTATE.tab==='statement') {window.psRenderInto(body);}
 else {zkLoadLogs(body);}
 }
 // ─── تغطية البصمات (Enterprise 2026-10-03): من بلا بصمة ولماذا — فورًا ───
@@ -147,7 +151,7 @@ el.innerHTML = `
 <span class="badge bdg-gold">بصمات خام بلا موظف: ${s.unmapped_device_users||0}</span>
 <button class="btn btn-blue btn-sm" data-karim-action="zkRefresh"><i class=ji data-i=refresh></i> تحديث</button>
 </div>
-${(r.unmapped_device_users||[]).length?`<div class="mcard" style="margin-bottom:14px;border:1px solid var(--gold,#c9a227)"><b><i class=ji data-i=alert-triangle></i> بصمات خام على الجهاز بلا موظف مربوط — اربطها من تبويب «ربط الموظفين»:</b><div class="u-row-wrap" style="margin-top:8px">${r.unmapped_device_users.map(u=>`<span class="badge bdg-gold">جهاز #${esc(String(u.deviceUserId))} — ${u.raw} بصمة خام</span>`).join(' ')}</div></div>`:''}
+${(r.unmapped_device_users||[]).length?`<div class="mcard" style="margin-bottom:14px;border:1px solid var(--gold,#8fbfa9)"><b><i class=ji data-i=alert-triangle></i> بصمات خام على الجهاز بلا موظف مربوط — اربطها من تبويب «ربط الموظفين»:</b><div class="u-row-wrap" style="margin-top:8px">${r.unmapped_device_users.map(u=>`<span class="badge bdg-gold">جهاز #${esc(String(u.deviceUserId))} — ${u.raw} بصمة خام</span>`).join(' ')}</div></div>`:''}
 <div class="tbl-wrap"><div class="tbl-hd"><h3>الموظفون الذين يحتاجون معالجة (${(r.problems||[]).length})</h3><small class="text-muted">آخر 7 أيام — بصمة الإصبع تُسجل بلمس الجهاز؛ وبصمة الوجه من التطبيق تصلح للجميع</small></div>
 <div class="tbl-scroll"><table><thead><tr><th>الموظف</th><th>القسم</th><th>رقم الجهاز</th><th>وجه (تطبيق)</th><th>آخر بصمة</th><th class="c">أيام حضور</th><th>التشخيص</th><th>الإجراء</th></tr></thead><tbody>
 ${(r.problems||[]).map(rowHtml).join('') || '<tr><td colspan=8 class="u-empty">كل الموظفين سليمون — لا شيء يحتاج معالجة</td></tr>'}

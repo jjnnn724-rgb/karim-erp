@@ -20,7 +20,7 @@ const MAX_OFFSET = 50000;     // Allow loading large attendance datasets
 /**
  * Parse and validate pagination parameters from request query.
  * 
- * @param {Object} req.query - Express request query object
+ * @param {Object} query - Express request query object
  * @param {string[]} allowedSortColumns - Whitelist of sortable column names
  * @returns {{ page: number, limit: number, offset: number, sort: string, order: 'ASC'|'DESC', valid: boolean, errors: string[] }}
  */
@@ -92,8 +92,8 @@ function parsePaginationParams(query, allowedSortColumns = ['id']) {
  * Returns both the data query and count query for total records.
  *
  * @param {string} tableName - The table to query (must be validated beforehand)
- * @param {Object} params - Parsed pagination params from parsePaginationParams()
- * @param {Object} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
+ * @param {any} params - Parsed pagination params from parsePaginationParams()
+ * @param {any} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
  * @returns {{ dataQuery: string, countQuery: string, params: any[], countParams: any[] }}
  */
 function buildPaginatedQuery(tableName, params, options = {}) {
@@ -188,10 +188,10 @@ function paginationMiddleware(allowedSortColumns = ['id']) {
 /**
  * Send a paginated response with standard headers and structure.
  * 
- * @param {Object} res - Express response object
- * @param {Array} data - Array of results for current page
+ * @param {any} res - Express response object
+ * @param {any[]} data - Array of results for current page
  * @param {number} total - Total number of records (unpaginated)
- * @param {Object} pagination - Parsed pagination params
+ * @param {any} pagination - Parsed pagination params
  */
 function sendPaginatedResponse(res, data, total, pagination) {
     const { page, limit, sort, order } = pagination;

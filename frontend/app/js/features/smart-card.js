@@ -38,7 +38,7 @@ if(!box) {return;}
 const next = Array.isArray(r.scheduled) ? r.scheduled[0] : null;
 if(!next) {return;}
 const extra = (r.scheduled||[]).length > 1 ? ` (+${(r.scheduled||[]).length - 1})` : '';
-box.innerHTML = `<br><small style="color:#b45309;background:#fef3c7;border-radius:6px;padding:1px 8px;font-size:11px">⏳ مجدول من ${esc(String(next.effective_from||'').slice(0,10))}: ${esc(String(next.shift_start||'').slice(0,5))} (${esc(String(next.shift_karim ?? ''))}س)${extra}</small>`;
+box.innerHTML = `<br><small style="color:#0f5b46;background:#fef3c7;border-radius:6px;padding:1px 8px;font-size:11px">⏳ مجدول من ${esc(String(next.effective_from||'').slice(0,10))}: ${esc(String(next.shift_start||'').slice(0,5))} (${esc(String(next.shift_karim ?? ''))}س)${extra}</small>`;
 }).catch(()=>{});
 }catch(_){}
 }
@@ -148,8 +148,9 @@ const shiftStartStr = String(emp.shift_start || '09:00');
 const shiftMatch = shiftStartStr.match(/^(\d{1,2}):(\d{2})$/);
 const shiftStartMin = shiftMatch ? parseInt(shiftMatch[1]) * 60 + parseInt(shiftMatch[2]) : 540;
 const shiftKarim = Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10;
-const GRACE_MIN = 15; // حدّ 15 دقيقة (قرار المالك 2026-10-10 — نفس shift-day.js)
-// قرار المالك 2026-10-30: الحدّ عتبةٌ لا اقتطاع — فوق الربع ساعة يُحسب التأخير كاملًا.
+// التأخير من أول دقيقة بعد بداية دوام البطاقة (قرار المالك 2026-11-05) — السماحية 0.
+const GRACE_MIN = (() => { const v = Number(window.ATT_GRACE_MIN); return Number.isFinite(v) && v >= 0 ? v : 0; })();
+// أي دقيقة فوق البداية تُحسب تأخيرًا كاملًا من أول دقيقة.
 const overGrace = (raw) => { const v = Math.max(0, Number(raw) || 0); return v > GRACE_MIN ? v : 0; };
 // FIX 2026-10-11: recompute lateness from raw checkIn times instead of trusting
 // stale `late` booleans (old shift rules left 8 false positives on id=84).
@@ -157,16 +158,8 @@ const isActuallyLate = (a) => {
     if (!a.checkIn) {return false;}
     const [h, m] = String(a.checkIn).split(':').map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) {return false;}
-    return (h * 60 + m) > (shiftStartMin + GRACE_MIN);
-};
-const lateRecords = myAttendance.filter(isActuallyLate);
-const totalLateMinutes = myAttendance.reduce((sum, a) => {
-    if (!a.checkIn) {return sum;}
-    const [h, m] = String(a.checkIn).split(':').map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) {return sum;}
     const inMin = h * 60 + m;
-    const arrival = overGrace(inMin - shiftStartMin);
-    let early = 0;
+    let spent = Math.max(0, inMin - shiftStartMin);
     if (a.checkOut) {
         const [oh, om] = String(a.checkOut).split(':').map(Number);
         if (Number.isFinite(oh) && Number.isFinite(om)) {
@@ -174,10 +167,33 @@ const totalLateMinutes = myAttendance.reduce((sum, a) => {
             let out = oh * 60 + om;
             if (out < inMin) {out += 24 * 60;}
             if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
-            if (out >= inMin) {early = overGrace(endRaw - out);}
+            if (out >= inMin) {spent += Math.max(0, endRaw - out);}
         }
     }
-    return sum + arrival + early;
+    // قرار المالك 2026-11-05: التأخير من أول دقيقة بعد بداية دوام البطاقة.
+    return spent > GRACE_MIN;
+};
+const lateRecords = myAttendance.filter(isActuallyLate);
+const totalLateMinutes = myAttendance.reduce((sum, a) => {
+    if (!a.checkIn) {return sum;}
+    const [h, m] = String(a.checkIn).split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) {return sum;}
+    const inMin = h * 60 + m;
+    const arrivalRaw = Math.max(0, inMin - shiftStartMin);
+    let earlyRaw = 0;
+    if (a.checkOut) {
+        const [oh, om] = String(a.checkOut).split(':').map(Number);
+        if (Number.isFinite(oh) && Number.isFinite(om)) {
+            const endRaw = shiftStartMin + Math.round(shiftKarim * 60);
+            let out = oh * 60 + om;
+            if (out < inMin) {out += 24 * 60;}
+            if (endRaw > 24 * 60 && out < 12 * 60) {out += 24 * 60;}
+            if (out >= inMin) {earlyRaw = Math.max(0, endRaw - out);}
+        }
+    }
+    // قرار المالك 2026-11-05: التأخير من أول دقيقة — بلا سماحية ولا ميزانية مشتركة.
+    // العجز = الدخول متأخّر (كاملًا) + الانصراف مبكرًا (كاملًا).
+    return sum + overGrace(arrivalRaw + earlyRaw);
 }, 0);
 const lateDays = lateRecords.length;
 const attendanceRate = totalDaysWorked > 0 ? ((totalDaysWorked - lateDays) / totalDaysWorked * 100).toFixed(1) : 100;
@@ -437,7 +453,7 @@ const s = report.summary || {};
 const scWeekday = (iso) => { const names=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']; const d=new Date(String(iso||'')+'T12:00:00'); return Number.isNaN(d.getTime())?'—':names[d.getDay()]; };
 // ساعات الوردية المتوقعة للموظف (10/12/8...) — أساس حكم الميعاد (shift_karim أولًا)
 const shiftMin = (Number(employee.shift_karim) > 0 ? Number(employee.shift_karim) : Number(employee.shift_hours) > 0 ? Number(employee.shift_hours) : 10) * 60;
-const GRACE = 15; // حدّ قرار المالك 2026-10-10 — عتبةٌ لا اقتطاع (2026-10-30)
+const GRACE = 0; // بلا سماحية (قرار المالك 2026-11-02 «حتي فتره السماح شيلها»)
 const todayIsoP = today();
 const empNumId = employee.id;
 const isLeaveDay = (iso) => (STATE.leaveRequests||[]).some(l => l.status==='approved' && String(l.employeeId)===String(empNumId) && String(l.startDate)<=iso && iso<=String(l.endDate));
@@ -466,7 +482,7 @@ if (!r) {
         return `<tr><td>${esc(iso)}</td><td style="color:#64748b">${scWeekday(iso)}</td><td colspan="4" style="color:#16a34a">راحة أسبوعية</td><td>—</td></tr>`;
     }
     missDays++;
-    return `<tr><td>${esc(iso)}</td><td style="color:#64748b">${scWeekday(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#b45309">— لا يبصم</td><td>—</td></tr>`;
+    return `<tr><td>${esc(iso)}</td><td style="color:#64748b">${scWeekday(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#0f5b46">— لا يبصم</td><td>—</td></tr>`;
 }
 if (r.on_leave || r.onLeave) {
     return `<tr><td>${esc(iso)}</td><td style="color:#64748b">${scWeekday(iso)}</td><td colspan="4" style="color:#3498db">إجازة معتمدة</td><td>—</td></tr>`;
@@ -481,11 +497,11 @@ else if (!hasOut) {cell = 'بلا انصراف'; style = 'color:#f59e0b;font-wei
 else if (minutes === 0) {cell = 'يحتاج مراجعة'; style = 'color:#f59e0b;font-weight:700';}
 else {
 const gap = shiftMin - minutes;
-const short = gap > GRACE ? gap : 0; // فوق الربع ساعة = النقص كامل، وإلا في الميعاد
+const short = gap > GRACE ? gap : 0; // أي دقيقة نقص تُحسب كاملة (بلا سماحية)
 if (short <= 0) {cell = 'في الميعاد'; style = 'color:#27ae60'; onTimeDays++;}
 else {cell = `تأخير ${fmtHM(short)}`; style = 'color:#c0392b;font-weight:700'; shortTotal += short;}
 }
-const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='portal' ? 'كاميرا التطبيق' : r.source==='backfill' ? 'أرشيف' : 'يدوي';
+const src = r.source==='device' ? 'بصمة' : r.source==='qr' ? 'QR' : r.source==='portal' ? 'كاميرا التطبيق' : r.source==='backfill' ? 'أرشيف' : r.source==='builder' ? 'آلي — من البصمات' : r.source==='repair' ? 'إصلاح آلي' : r.source==='api' ? 'API' : 'يدوي';
 return `<tr><td>${esc(r.date||'')}</td><td style="color:#64748b">${scWeekday(r.date)}</td><td dir="ltr">${esc(r.checkIn||'—')}</td><td dir="ltr">${esc(r.checkOut||'—')}</td><td>${krm}</td><td style="${style}">${cell}</td><td>${esc(src)}</td></tr>`;
 }).join('') || '<tr><td colspan="7">لا توجد سجلات في الفترة المحددة</td></tr>';
 const win = existingWin || (window.openInAppReport ? window.openInAppReport('كشف الحضور') : window.open('', '_blank'));
@@ -496,17 +512,17 @@ win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><
 body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e;background:#f8f7f5}
 .header{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);color:#fff;padding:22px 28px;display:flex;align-items:center;gap:16px}
 .header img{width:58px;height:58px;object-fit:contain;background:#fff;border-radius:12px;padding:5px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-.header h1{margin:0;font-size:22px;color:#f5d76e}.header p{margin:4px 0 0;color:#cbd5e1;font-size:13px}
+.header h1{margin:0;font-size:22px;color:#dcede4}.header p{margin:4px 0 0;color:#cbd5e1;font-size:13px}
 .container{padding:22px 28px}
-.employee-card{background:#fff;border-radius:14px;padding:16px 20px;display:flex;gap:24px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.06);border-right:4px solid #c9a227;margin-bottom:18px}
-.employee-card .avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#c9a227,#f5d76e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:800}
+.employee-card{background:#fff;border-radius:14px;padding:16px 20px;display:flex;gap:24px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.06);border-right:4px solid #8fbfa9;margin-bottom:18px}
+.employee-card .avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8fbfa9,#dcede4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:800}
 .employee-card .info{flex:1}.employee-card .info strong{font-size:16px;color:#0f172a}.employee-card .info small{color:#64748b}
 .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
 .summary .card{background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05);border-top:3px solid #e2e8f0}
 .summary .card.late{border-top-color:#e74c3c}.summary .card b{display:block;font-size:20px;color:#0f172a;margin-top:4px}.summary .card small{color:#64748b;font-size:11px}
 .summary .card b.gold{color:#9a7417}.summary .card b.red{color:#c0392b}
 table{width:100%;border-collapse:collapse;margin-top:14px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.05)}
-th{background:#0f172a;color:#f5d76e;padding:10px;font-size:12px}td{padding:9px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:13px}tr:last-child td{border:none}
+th{background:#0f172a;color:#dcede4;padding:10px;font-size:12px}td{padding:9px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:13px}tr:last-child td{border:none}
 .footer{margin-top:18px;text-align:center;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;padding-top:10px}
 @media print{body{background:#fff}.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}button{display:none}}
 </style></head><body>
@@ -555,7 +571,7 @@ const data=await apiFetch(`/hr/attendance/monthly?month=${encodeURIComponent(mon
 console.log('[printMonthlyAttendance] data received:', data ? 'OK' : 'NULL', data?.employees?.length || 0, 'employees');
 const emps=Array.isArray(data.employees)?data.employees:[];
 const WORK_DAY = Number(data.workDayMinutes || 600);
-// ═══ قرار المالك: المعيار هو إتمام ساعات الوردية — «إجمالي التأخير» = العجز عن إتمامها ═══
+// ═══ قرار المالك: المعيار هو إتمام ساعات البطاقة (shift_karim) — والعجز يُحتسب كاملًا بلا سماح ═══
 const totDeficitMin = emps.reduce((s,e)=>s+Number(e.deficitMinutes||0),0);
 const totShortDays = emps.reduce((s,e)=>s+Number(e.shortDays||0),0);
 const totCompleteDays = emps.reduce((s,e)=>s+Number(e.completeWorkDays||0),0);
@@ -615,7 +631,7 @@ const dayDetail = (e, counter) => {
                 h += `<tr style="color:#94a3b8"><td>${iso}</td><td>${wdOfM(iso)}</td><td>—</td><td>—</td><td>—</td><td>قبل التعيين</td></tr>`;
             } else {
                 if (counter) {counter.n++;}
-                h += `<tr><td>${iso}</td><td>${wdOfM(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#b45309">— لا يبصم</td></tr>`;
+                h += `<tr><td>${iso}</td><td>${wdOfM(iso)}</td><td>—</td><td>—</td><td>—</td><td style="color:#0f5b46">— لا يبصم</td></tr>`;
             }
             continue;
         }
@@ -628,8 +644,8 @@ const dayDetail = (e, counter) => {
         if (ci != null && co != null) {
             let w = co - ci; if (w < 0) {w += 1440;}
             hrs = `${Math.floor(w/60)}:${String(w%60).padStart(2,'0')}`;
-            // سماحية 15 دقيقة (قرار المالك 2026-10-10)
-            const net = (shiftMin - w) - 15;
+            // بلا سماحية (قرار المالك 2026-11-02): أي دقيقة نقص تأخير كامل
+            const net = shiftMin - w;
             if (net <= 0) {st = 'في الميعاد'; sc = 'color:#27ae60';}
             else {st = `تأخير ${Math.floor(net/60)}:${String(net%60).padStart(2,'0')}`; sc = 'color:#c0392b;font-weight:700';}
         } else if (ci != null) {st = 'بلا انصراف';}
@@ -646,11 +662,11 @@ const rv = Number(e.reviewDays||0);
 const deficitCell = sd>0?`<span style="color:#c0392b;font-weight:700">${sd} يوم • ${formatLateRow({ lateMinutes: lm })}${rv > 0 ? ` <small>+${rv} قيد المراجعة</small>` : ''}</span>`:(rv > 0 ? `<span style="color:#f59e0b;font-weight:700">${rv} قيد المراجعة</span>`:'<span style="color:#27ae60">✓ كامل</span>');
 const ctr = { n: 0 };
 const detHtml = dayDetail(e, ctr);
-const missCell = ctr.n > 0 ? `<span style="color:#b45309;font-weight:700">${fN(ctr.n)} يوم</span>` : '—';
+const missCell = ctr.n > 0 ? `<span style="color:#0f5b46;font-weight:700">${fN(ctr.n)} يوم</span>` : '—';
 return `<tr><td style="text-align:right"><strong>${esc(e.name||'—')}</strong><br><small style="color:#64748b">${esc(e.employeeId||'')}${e.position?` • ${esc(e.position)}`:''}${e.shift_start?` • الوردية ${esc(e.shift_start)} • ${Number(e.workDayMinutes||600)/60}س`:''}</small></td><td>${fN(e.days||0)}</td><td><span style="color:#16a34a;font-weight:700">${fN(e.completeWorkDays||0)}</span></td><td>${deficitCell}</td><td>${sd > 0 ? `<span style="color:#c0392b;font-weight:700">${fN(sd)} يوم</span>` : '<span style="color:#27ae60">—</span>'}</td><td>${lv > 0 ? `<span style="color:#3498db;font-weight:700">${lv} يوم</span>` : '—'}</td><td>${missCell}</td><td class="c-gold" style="font-weight:700">${Number(e.karimHours||0).toFixed(1)}</td></tr><tr class="det"><td colspan="8" style="padding:0 0 10px;background:#f8fafc"><div style="font-weight:700;font-size:11px;color:#0f172a;padding:8px 10px 0">التفصيل اليومي — ${esc(e.name||'')}</div><table class="days"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>الحالة</th></tr></thead><tbody>${detHtml}</tbody></table></td></tr>`;
 }).join('')||'<tr><td colspan="8" class="u-empty-sm">لا توجد سجلات في هذا الشهر</td></tr>';
 const lateAuditStatus = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? 'متوازن داخليًا' : 'يتطلب مراجعة يدوية';
-const lateAuditColor = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? '#16a34a' : '#d97706';
+const lateAuditColor = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? '#16a34a' : '#0e5c45';
 const lateAuditText = totLateDays >= 0 && totLateMin >= 0 && emps.every(e => Number(e.lateMinutes || 0) >= 0) ? 'التقرير متوازن داخليًا - لا توجد تناقضات في الحسابات الأساسية' : 'التقرير يحتاج مراجعة يدوية - يوجد عدد كبير من القيم الشاذة أو غير المتوقعة';
 const anomalous = emps.filter(e => Number(e.deficitMinutes || 0) >= 600 || Number(e.shortDays || 0) >= 5).slice(0, 12);
 const anomalousCount = anomalous.length;
@@ -661,7 +677,7 @@ printWin.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf
 body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e;background:#f8f7f5}
 .header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:20px 28px;display:flex;align-items:center;gap:14px}
 .header img{width:52px;height:52px;object-fit:contain;background:#fff;border-radius:12px;padding:4px}
-.header h1{margin:0;font-size:20px;color:#f5d76e}.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+.header h1{margin:0;font-size:20px;color:#dcede4}.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
 .container{padding:20px 28px}
 .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
 .summary .card{background:#fff;border-radius:12px;padding:12px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05);border-top:3px solid #e2e8f0}
@@ -675,7 +691,7 @@ body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#
 .validation .title{font-weight:700;color:#7c4a00;font-size:12px;margin-bottom:8px}
 .validation ul{margin:0;padding-right:18px;color:#475569;font-size:11px;line-height:1.8}
 .validation li{margin:0}
-.anomalies,.top-anomalies{margin:0 0 14px;background:#fff3cd;border:1px solid #f5d76e;border-right:4px solid #d97706;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,.04)}
+.anomalies,.top-anomalies{margin:0 0 14px;background:#fff3cd;border:1px solid #dcede4;border-right:4px solid #0e5c45;border-radius:12px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,.04)}
 .anomalies.ok,.top-anomalies.ok{background:#ecfdf5;border-color:#86efac;border-right-color:#16a34a}
 .anomalies .title,.top-anomalies .title{font-weight:700;color:#7c2d12;font-size:12px;margin-bottom:8px}
 .anomalies.ok .title,.top-anomalies.ok .title{color:#166534}
@@ -685,16 +701,16 @@ body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#
 .anomalies strong{color:#0f172a}
 .summary-inline{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 14px}
 .summary-inline .mini{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 5px rgba(0,0,0,.04);text-align:center;border-top:3px solid #e2e8f0}
-.summary-inline .mini.warn{border-top-color:#d97706}
+.summary-inline .mini.warn{border-top-color:#0e5c45}
 .summary-inline .mini b{display:block;font-size:18px;color:#0f172a;margin-top:4px}
 .summary-inline .mini small{color:#64748b;font-size:10px}
 table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.05)}
-th{background:#0f172a;color:#f5d76e;padding:10px;font-size:11px}td{padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
+th{background:#0f172a;color:#dcede4;padding:10px;font-size:11px}td{padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
 table.days{margin-top:6px}table.days th{background:#334155;color:#e2e8f0;padding:6px;font-size:10px}table.days td{padding:5px;font-size:11px}
 tr.det td{border:none}
 .footer{margin-top:16px;text-align:center;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;padding-top:8px}
 @media print{body{background:#fff}.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
-</style></head><body><div class="header"><img src="${esc(getAbsoluteLogoSrc())}" alt="logo"><div><h1>كشف الحضور والانصراف الشهري المجمع</h1><p>شهر ${esc(month)} — ${emps.length} موظف • يوم العمل حسب وردية الموظف</p></div></div><div class="container"><div class="summary"><div class="card"><small>إجمالي أيام الحضور</small><b>${fN(emps.reduce((s,e)=>s+(e.days||0),0))}</b></div><div class="card"><small>أيام مكتملة الدوام ✓</small><b>${fN(totCompleteDays)}</b></div><div class="card late"><small>عجز الساعات (لم يكمل دوامه)</small><b class="red">${lateSummary}</b></div><div class="card"><small>إجمالي الساعات</small><b>${Number(tot.karimHours).toFixed(1)}</b></div><div class="card"><small>الموظفون</small><b>${emps.length}</b></div></div><div class="summary-inline"><div class="mini"><small>الحالات الشاذة</small><b>${anomalousCount}</b></div><div class="mini warn"><small>عتبة المراجعة</small><b>600 د</b></div><div class="mini"><small>حالة التقرير</small><b>${lateAuditStatus === 'متوازن داخليًا' ? 'موافق' : 'مراجعة'}</b></div></div><div class="audit"><div class="status"><span><span class="dot"></span> ${lateAuditStatus}</span></div><div class="msg">${lateAuditText}</div></div><div class="validation"><div class="title">معيار التحقق الاحترافي</div><ul><li>المعتمد = إتمام ساعات الوردية: الدخول المبكر يغطي الانصراف المبكر والتأخير يُمتص بالبقاء</li><li>عدد أيام التأخير مستقل عن مجموع الدقائق</li><li>لا يوجد خلط بين عدد الأيام والساعات</li><li>الورديات الليلية تُحسب حسب وقت الوردية</li><li>القيم الشاذة تُراجع يدويًا قبل الاعتماد</li></ul></div>${topAnomaliesHtml}${anomaliesHtml}<table><thead><tr><th style="text-align:right">الموظف</th><th>أيام الحضور</th><th>مكتملة الدوام</th><th>نقص الدوام (يوم/د)</th><th>أيام بعجز</th><th>إجازات</th><th>بلا بصمة</th><th>الساعات</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">المعتمد = إتمام ساعات الوردية (10/12 ساعة) • نقص الدوام: ${totShortDays} يوم • ${totDeficitMin} دقيقة${totReviewDays > 0 ? ` • قيد المراجعة: ${totReviewDays} يوم (${totReviewMin} د)` : ''} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div></div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
+</style></head><body><div class="header"><img src="${esc(getAbsoluteLogoSrc())}" alt="logo"><div><h1>كشف الحضور والانصراف الشهري المجمع</h1><p>شهر ${esc(month)} — ${emps.length} موظف • يوم العمل حسب وردية الموظف</p></div></div><div class="container"><div class="summary"><div class="card"><small>إجمالي أيام الحضور</small><b>${fN(emps.reduce((s,e)=>s+(e.days||0),0))}</b></div><div class="card"><small>أيام مكتملة الدوام ✓</small><b>${fN(totCompleteDays)}</b></div><div class="card late"><small>عجز الساعات (لم يكمل دوامه)</small><b class="red">${lateSummary}</b></div><div class="card"><small>إجمالي الساعات</small><b>${Number(tot.karimHours).toFixed(1)}</b></div><div class="card"><small>الموظفون</small><b>${emps.length}</b></div></div><div class="summary-inline"><div class="mini"><small>الحالات الشاذة</small><b>${anomalousCount}</b></div><div class="mini warn"><small>عتبة المراجعة</small><b>600 د</b></div><div class="mini"><small>حالة التقرير</small><b>${lateAuditStatus === 'متوازن داخليًا' ? 'موافق' : 'مراجعة'}</b></div></div><div class="audit"><div class="status"><span><span class="dot"></span> ${lateAuditStatus}</span></div><div class="msg">${lateAuditText}</div></div><div class="validation"><div class="title">معيار التحقق الاحترافي</div><ul><li>التأخير يُحسب من أول دقيقة بعد بداية دوام البطاقة — بلا سماحية</li><li>الساعات = الانصراف − الدخول، والعجز عن ساعات البطاقة يُحتسب كاملًا</li><li>عدد أيام التأخير مستقل عن مجموع الدقائق</li><li>لا يوجد خلط بين عدد الأيام والساعات</li><li>الورديات الليلية تُحسب حسب وقت الوردية</li><li>القيم الشاذة تُراجع يدويًا قبل الاعتماد</li></ul></div>${topAnomaliesHtml}${anomaliesHtml}<table><thead><tr><th style="text-align:right">الموظف</th><th>أيام الحضور</th><th>مكتملة الدوام</th><th>نقص الدوام (يوم/د)</th><th>أيام بعجز</th><th>إجازات</th><th>بلا بصمة</th><th>الساعات</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">المعتمد = إتمام ساعات البطاقة (shift_karim) • نقص الدوام: ${totShortDays} يوم • ${totDeficitMin} دقيقة${totReviewDays > 0 ? ` • قيد المراجعة: ${totReviewDays} يوم (${totReviewMin} د)` : ''} &nbsp;|&nbsp; تم التوليد: ${new Date().toLocaleString('ar-EG')}</div></div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 printWin.document.close();
 } catch(e){ 
     console.error('[printMonthlyAttendance] error:', e);
@@ -787,7 +803,7 @@ return `<div class="u-mt12" style="display:grid;grid-template-columns:repeat(5,1
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #2563eb"><small style="color:#64748b">أيام مكتملة</small><b style="display:block;font-size:18px">${s.completeDays||0}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #16a34a"><small style="color:#64748b">أيام في الميعاد</small><b style="display:block;font-size:18px;color:#27ae60">${onTimeDays}</b></div>
 <div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #e74c3c"><small style="color:#64748b">إجمالي التأخير</small><b style="display:block;font-size:15px;color:#c0392b">${shortTotal>0?fmtHM(shortTotal):'—'}</b></div>
-<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #c9a227"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalHours||0}</b></div>
+<div style="background:#fff;border-radius:8px;padding:8px;border-top:3px solid #8fbfa9"><small style="color:#64748b">إجمالي الساعات</small><b style="display:block;font-size:18px;color:#9a7417">${s.totalHours||0}</b></div>
 </div>
 <div class="tbl-scroll u-mt8">
 <table>
@@ -839,9 +855,9 @@ printWin.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF
 @page{size:85.6mm 54mm;margin:0}
 body{font-family:'Cairo',sans-serif;background:#f0f0f0;padding:20px;direction:rtl}
 .card{width:85.6mm;height:54mm;background:linear-gradient(135deg,#1a1d24 0%,#0f1115 100%);color:#fff;border-radius:3mm;padding:5mm;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.3);margin:0 auto}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.2mm;background:linear-gradient(90deg,#d4a843,#f0c96b,#d4a843)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.2mm;background:linear-gradient(90deg,#14735b,#f0c96b,#14735b)}
 .card-inner{display:grid;grid-template-columns:25mm 1fr 22mm;gap:3mm;height:35mm;align-items:center}
-.photo{width:24mm;height:24mm;border-radius:50%;border:1px solid #d4a843;overflow:hidden;background:linear-gradient(135deg,#d4a843,#f0c96b);display:flex;align-items:center;justify-content:center;font-size:12pt;font-weight:900;color:#0a0b0d}
+.photo{width:24mm;height:24mm;border-radius:50%;border:1px solid #14735b;overflow:hidden;background:linear-gradient(135deg,#14735b,#f0c96b);display:flex;align-items:center;justify-content:center;font-size:12pt;font-weight:900;color:#0a0b0d}
 .photo img{width:100%;height:100%;object-fit:cover}
 .info{min-width:0}
 .name{font-size:9pt;font-weight:900;color:#f0c96b;margin-bottom:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -901,7 +917,7 @@ const grad = ctx.createLinearGradient(0,0,800,450);
 grad.addColorStop(0,'#1a1d24'); grad.addColorStop(0.5,'#0f1115'); grad.addColorStop(1,'#1a1d24');
 ctx.fillStyle = grad; ctx.fillRect(0,0,800,450);
 const goldGrad = ctx.createLinearGradient(0,0,800,0);
-goldGrad.addColorStop(0,'#d4a843'); goldGrad.addColorStop(0.5,'#f0c96b'); goldGrad.addColorStop(1,'#d4a843');
+goldGrad.addColorStop(0,'#14735b'); goldGrad.addColorStop(0.5,'#f0c96b'); goldGrad.addColorStop(1,'#14735b');
 ctx.fillStyle = goldGrad; ctx.fillRect(0,0,800,4);
 ctx.save();
 ctx.beginPath();
@@ -913,7 +929,7 @@ const img = new Image();
 img.onload = ()=>{ ctx.drawImage(img,50,100,160,160); drawRestOfCard(); };
 img.src = emp.photo;
 }else{
-ctx.fillStyle = '#d4a843';
+ctx.fillStyle = '#14735b';
 ctx.fillRect(50,100,160,160);
 ctx.fillStyle = '#0a0b0d';
 ctx.font = '900 60px Cairo';
@@ -924,7 +940,7 @@ drawRestOfCard();
 }
 ctx.restore();
 function drawRestOfCard(){
-ctx.strokeStyle = '#d4a843'; ctx.lineWidth = 3;
+ctx.strokeStyle = '#14735b'; ctx.lineWidth = 3;
 ctx.beginPath(); ctx.arc(130,180,80,0,Math.PI*2); ctx.stroke();
 ctx.fillStyle = '#f0c96b';
 ctx.font = '900 32px Cairo';

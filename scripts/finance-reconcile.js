@@ -57,13 +57,20 @@ async function paymentJournal(row, supplierName) {
     const report = {};
     let failures = 0;
     // 1) مبيعات الكاشير الصادرة بلا قيد
+    // «لا قيد مرحّل» ≠ «يُعاد ترحيله»: القيد المُبطَل قرارٌ بشري، والمنسّق لا
+    // يقضي عليه تلقائيًا — يُعدّ في خانة voided ويُترك للمراجعة اليدوية.
     const missingSales = (await pool.query(`
-        SELECT o.id FROM pos_orders o
+        SELECT o.id,
+               EXISTS (SELECT 1 FROM journal_entries v
+                        WHERE v.source_type='pos_sale' AND v.source_id=o.id::text AND v.status='void') AS was_voided
+          FROM pos_orders o
          WHERE o.status IN ('issued','reported') AND o.total_amount > 0
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
                             WHERE je.source_type='pos_sale' AND je.source_id=o.id::text AND je.status='posted')`)).rows;
     let fixed = 0;
+    let salesVoided = 0;
     for (const r of missingSales) {
+        if (r.was_voided) { salesVoided++; continue; }
         try {
             await acct.postSaleToLedger(r.id);
             fixed++;
@@ -72,16 +79,21 @@ async function paymentJournal(row, supplierName) {
             console.error('sale', r.id, e.message);
         }
     }
-    report.pos_sale = { missing: missingSales.length, repaired: fixed };
+    report.pos_sale = { missing: missingSales.length, repaired: fixed, voided: salesVoided };
 
     // 2) فواتير شراء بلا قيد مُرحَّل (استثناء الملغاة/المحذوفة — أي قيد voided يبقى للمراجعة)
     const missingInv = (await pool.query(`
-        SELECT p.id, p."invoiceNumber" FROM "purchaseInvoices" p
+        SELECT p.id, p."invoiceNumber",
+               EXISTS (SELECT 1 FROM journal_entries v
+                        WHERE v.source_type='purchase_invoice' AND v.source_id=p.id::text AND v.status='void') AS was_voided
+          FROM "purchaseInvoices" p
          WHERE p."totalAmount" > 0
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                            WHERE je.source_type='purchase_invoice' AND je.source_id=p.id::text)`)).rows;
+                            WHERE je.source_type='purchase_invoice' AND je.source_id=p.id::text AND je.status <> 'void')`)).rows;
     let invFixed = 0;
+    let invVoided = 0;
     for (const r of missingInv) {
+        if (r.was_voided) { invVoided++; continue; }
         try {
             const poster = String(r.invoiceNumber || '').startsWith('OPEN-') ? acct.postOpeningToLedger : acct.postPurchaseToLedger;
             await poster(r.id); invFixed++;
@@ -90,19 +102,24 @@ async function paymentJournal(row, supplierName) {
             console.error('invoice', r.id, e.message);
         }
     }
-    report.purchase_invoice = { missing: missingInv.length, repaired: invFixed };
+    report.purchase_invoice = { missing: missingInv.length, repaired: invFixed, voided: invVoided };
 
     // 3) مصاريف بلا قيد — صفوف التسويات المخزنية (dispatch/return/correction…)
     // ليست مصروفات نقدية: ترحيلها هنا يُكرّر تكلفة الطلب ويُفرّغ الصندوق
     // (مرجعية التصفية: expense-register-routes/daily-report-service بنفس القائمة).
     const missingExp = (await pool.query(`
-        SELECT x.id, x.amount, x.category, x.notes, x.date FROM expenses x
+        SELECT x.id, x.amount, x.category, x.notes, x.date,
+               EXISTS (SELECT 1 FROM journal_entries v
+                        WHERE v.source_type='expense' AND v.source_id=x.id::text AND v.status='void') AS was_voided
+          FROM expenses x
          WHERE x.amount > 0
            AND COALESCE(x."adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                            WHERE je.source_type='expense' AND je.source_id=x.id::text)`)).rows;
+                            WHERE je.source_type='expense' AND je.source_id=x.id::text AND je.status <> 'void')`)).rows;
     let expFixed = 0;
+    let expVoided = 0;
     for (const r of missingExp) {
+        if (r.was_voided) { expVoided++; continue; }
         try {
             await expenseJournal(r);
             expFixed++;
@@ -111,17 +128,22 @@ async function paymentJournal(row, supplierName) {
             console.error('expense', r.id, e.message);
         }
     }
-    report.expense = { missing: missingExp.length, repaired: expFixed };
+    report.expense = { missing: missingExp.length, repaired: expFixed, voided: expVoided };
 
     // 4) دفعات موردين بلا قيد
     const missingPay = (await pool.query(`
-        SELECT sp.id, sp.amount, sp.method, s.name AS supplier_name FROM supplier_payments sp
+        SELECT sp.id, sp.amount, sp.method, s.name AS supplier_name,
+               EXISTS (SELECT 1 FROM journal_entries v
+                        WHERE v.source_type='supplier_payment' AND v.source_id=sp.id::text AND v.status='void') AS was_voided
+          FROM supplier_payments sp
          LEFT JOIN suppliers s ON s.id = sp."supplierId"
          WHERE sp.amount > 0
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                            WHERE je.source_type='supplier_payment' AND je.source_id=sp.id::text)`)).rows;
+                            WHERE je.source_type='supplier_payment' AND je.source_id=sp.id::text AND je.status <> 'void')`)).rows;
     let payFixed = 0;
+    let payVoided = 0;
     for (const r of missingPay) {
+        if (r.was_voided) { payVoided++; continue; }
         try {
             await paymentJournal(r, r.supplier_name);
             payFixed++;
@@ -130,21 +152,25 @@ async function paymentJournal(row, supplierName) {
             console.error('payment', r.id, e.message);
         }
     }
-    report.supplier_payment = { missing: missingPay.length, repaired: payFixed };
+    report.supplier_payment = { missing: missingPay.length, repaired: payFixed, voided: payVoided };
 
     // 5) أذون صرف معتمدة بلا قيد — ترحيلها best-effort بعد COMMIT، فإذن بلا
     // قيد يعني مخزونًا خرج بلا تكلفة في الأستاذ (2026-10-26). idempotent.
     const missingDispatch = (await pool.query(`
         SELECT d.id, d.date, d."deptCode" AS dept,
                COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
-                           FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value
+                           FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value,
+               EXISTS (SELECT 1 FROM journal_entries v
+                        WHERE v.source_type='dispatch' AND v.source_id=d.id::text AND v.status='void') AS was_voided
           FROM dispatches d
          WHERE d.status = ANY($1::text[])
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                            WHERE je.source_type='dispatch' AND je.source_id=d.id::text)`,
+                            WHERE je.source_type='dispatch' AND je.source_id=d.id::text AND je.status <> 'void')`,
         [['approved', 'received', 'partially_received', 'closed']])).rows;
     let dispFixed = 0;
+    let dispVoided = 0;
     for (const r of missingDispatch) {
+        if (r.was_voided) { dispVoided++; continue; }
         try {
             const out = await acct.postDispatchToLedger(r.id, { totalValue: r.value, date: r.date, deptCode: r.dept });
             if (!out.skipped) {dispFixed++;}
@@ -153,13 +179,14 @@ async function paymentJournal(row, supplierName) {
             console.error('dispatch', r.id, e.message);
         }
     }
-    report.dispatch = { missing: missingDispatch.length, repaired: dispFixed };
+    report.dispatch = { missing: missingDispatch.length, repaired: dispFixed, voided: dispVoided };
 
     const totalMissing = Object.values(report).reduce((s, r) => s + r.missing, 0);
     const totalFixed = Object.values(report).reduce((s, r) => s + r.repaired, 0);
+    const totalVoided = Object.values(report).reduce((s, r) => s + r.voided, 0);
     console.log('\n════════ منسّق المالية ════════');
-    for (const [k, v] of Object.entries(report)) {console.log(`${k}: ناقص=${v.missing} ← أُصلح=${v.repaired}`);}
-    console.log(`الإجمالي: ناقص=${totalMissing} | أُصلح=${totalFixed}`);
+    for (const [k, v] of Object.entries(report)) {console.log(`${k}: ناقص=${v.missing} ← أُصلح=${v.repaired} | مُبطَل بقرار=${v.voided}`);}
+    console.log(`الإجمالي: ناقص=${totalMissing} | أُصلح=${totalFixed} | مُبطَل بقرار=${totalVoided}`);
     if (failures > 0) {
         process.exitCode = 1;
         console.error(`فشلت معالجة ${failures} عملية؛ راجع السجلات وطابق القيود قبل إعادة التشغيل.`);

@@ -342,27 +342,39 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
             await client.query('ROLLBACK');
             return fail(res, 404, 'INVOICE_NOT_FOUND', 'الفاتورة غير موجودة');
         }
-        const payments = (await client.query(
+        // وضع «الأصناف فقط» (قرار المالك 2026-10-31): فاتورة عليها دفعات مسجلة
+        // تُقبل للتعديل لكن الأصناف وحدها — الدفعات وترويسة الفاتورة تثبت كما هي،
+        // والمخزون والضريبة والقيد المحاسبي يعاد احتسابهم بالمنطق القائم أدناه.
+        const paymentCount = Number((await client.query(
             'SELECT COUNT(*)::int AS count FROM supplier_payments WHERE "invoiceId"=$1', [invoiceId]
-        )).rows[0];
-        if (Number(oldInvoice.paidAmount || 0) > 0 || Number(payments?.count || 0) > 0) {
-            await client.query('ROLLBACK');
-            return fail(res, 409, 'INVOICE_HAS_PAYMENTS', 'لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
-        }
+        )).rows[0]?.count || 0);
+        const itemsOnly = Number(oldInvoice.paidAmount || 0) > 0 || paymentCount > 0;
+        const frozen = itemsOnly ? {
+            date: dateOnly(oldInvoice.date),
+            invoiceNumber: oldInvoice.invoiceNumber,
+            supplierId: oldInvoice.supplierId === null || oldInvoice.supplierId === undefined ? null : Number(oldInvoice.supplierId),
+            supplierName: oldInvoice.supplierName || null,
+            supplierPhone: oldInvoice.supplierPhone || null,
+            paymentMethod: oldInvoice.paymentMethod,
+            discountType: oldInvoice.discount_type || 'none',
+            discountValue: oldInvoice.discount_value ?? 0,
+            paidAmount: oldInvoice.paidAmount,
+            notes: oldInvoice.notes || null,
+        } : null;
 
-        const requestedDate = req.body?.date || oldInvoice.date;
+        const requestedDate = frozen ? frozen.date : (req.body?.date || oldInvoice.date);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(requestedDate || '')) ||
             Number.isNaN(new Date(`${requestedDate}T00:00:00Z`).getTime())) {
             await client.query('ROLLBACK');
             return fail(res, 422, 'INVALID_INVOICE_DATE', 'تاريخ الفاتورة غير صحيح');
         }
-        const paymentMethod = cleanName(req.body?.paymentMethod || oldInvoice.paymentMethod || 'cash').toLowerCase();
+        const paymentMethod = cleanName((frozen ? frozen.paymentMethod : req.body?.paymentMethod) || oldInvoice.paymentMethod || 'cash').toLowerCase();
         const allowedPaymentMethods = new Set(['cash', 'bank', 'card', 'cheque', 'credit']);
         if (!allowedPaymentMethods.has(paymentMethod)) {
             await client.query('ROLLBACK');
             return fail(res, 422, 'INVALID_PAYMENT_METHOD', 'طريقة الدفع غير معتمدة');
         }
-        const requestedInvoiceNumber = cleanName(req.body?.invoiceNumber || oldInvoice.invoiceNumber);
+        const requestedInvoiceNumber = cleanName((frozen ? frozen.invoiceNumber : req.body?.invoiceNumber) || oldInvoice.invoiceNumber);
         if (requestedInvoiceNumber) {
             const duplicate = await client.query(
                 'SELECT id FROM "purchaseInvoices" WHERE "invoiceNumber"=$1 AND id<>$2 LIMIT 1',
@@ -404,8 +416,8 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
             await client.query('ROLLBACK');
             return fail(res, 422, 'INVALID_INVOICE_ITEM', 'تحقق من وجود صنف واحد على الأقل وصحة الكمية والسعر والفئة الضريبية');
         }
-        const discountType = String(req.body?.discountType || 'none').toLowerCase();
-        const discountValue = Number(req.body?.discountValue ?? 0);
+        const discountType = String((frozen ? frozen.discountType : req.body?.discountType) || 'none').toLowerCase();
+        const discountValue = Number(frozen ? frozen.discountValue : (req.body?.discountValue ?? 0));
         let discount;
         try {
             discount = allocatePurchaseDiscount(items, discountType, discountValue);
@@ -416,11 +428,13 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         const discountAmount = discount.discountAmount;
         items.splice(0, items.length, ...discount.items);
 
-        let supplierId = req.body?.supplierId !== undefined && req.body?.supplierId !== null && req.body?.supplierId !== ''
-            ? Number(req.body.supplierId) : null;
+        let supplierId = frozen
+            ? frozen.supplierId
+            : (req.body?.supplierId !== undefined && req.body?.supplierId !== null && req.body?.supplierId !== ''
+                ? Number(req.body.supplierId) : null);
         let supplierRow = null;
-        const supplierName = cleanName(req.body?.supplierName);
-        if (supplierId === null && supplierName) {
+        const supplierName = frozen ? frozen.supplierName : cleanName(req.body?.supplierName);
+        if (!frozen && supplierId === null && supplierName) {
             const matched = (await client.query(
                 'SELECT id FROM suppliers WHERE LOWER(name)=LOWER($1) LIMIT 1', [supplierName])).rows[0];
             if (matched) {supplierId = Number(matched.id);}
@@ -459,7 +473,10 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         const invoiceVat = vatCalc.vatTotal;
         const invoiceTotal = vatCalc.grandTotal;
         let paidAmount = 0;
-        if (req.body?.paidAmount !== undefined && req.body?.paidAmount !== null && req.body?.paidAmount !== '') {
+        if (frozen) {
+            // وضع الأصناف فقط: المسدد نقود مدفوعة فعلاً — لا يُمس ولا يُعاد تسجيله
+            paidAmount = Number(frozen.paidAmount || 0);
+        } else if (req.body?.paidAmount !== undefined && req.body?.paidAmount !== null && req.body?.paidAmount !== '') {
             const rawPaid = Number(req.body.paidAmount);
             if (!Number.isFinite(rawPaid) || rawPaid < 0 || rawPaid > invoiceTotal) {
                 await client.query('ROLLBACK');
@@ -597,13 +614,13 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
              supplier_tax_status_snapshot=$20,zatca_uuid=$21,zatca_qr=NULL,discount_type=$22,discount_value=$23,discount_amount=$24
              WHERE id=$1 RETURNING *`,
             [invoiceId, requestedInvoiceNumber, dateOnly(requestedDate), supplierRow?.name || supplierName || null,
-                req.body?.supplierPhone || null, json(updatedItems), invoiceTotal, paymentMethod, req.body?.notes || null,
+                frozen ? frozen.supplierPhone : (req.body?.supplierPhone || null), json(updatedItems), invoiceTotal, paymentMethod, frozen ? frozen.notes : (req.body?.notes || null),
                 supplierId, paidAmount, paymentStatus, invoiceNet, invoiceVat, headerRate, vatCalc.ruleCode,
                 supplierRow?.name || supplierName || null, supplierRow?.vat_number || null,
                 supplierRow?.commercial_register || null, supplierRow?.tax_registration_status || 'NOT_REGISTERED',
                 crypto.randomUUID(), discountType, discountValue, discountAmount]
         )).rows[0];
-        if (supplierId !== null && paidAmount > 0) {
+        if (supplierId !== null && paidAmount > 0 && !itemsOnly) {
             await client.query(
                 `INSERT INTO supplier_payments (id,"supplierId",amount,method,date,"invoiceId",notes,"createdBy")
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -611,10 +628,16 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
                     dateOnly(requestedDate), invoiceId, 'دفعة تلقائية مع تعديل فاتورة الشراء',
                     req.user.username || String(req.user.id)]);
         }
-        await client.query(
-            `UPDATE journal_entries SET status='void',source_type='purchase_invoice_edit_void',source_id=$2
-              WHERE source_type='purchase_invoice' AND source_id=$1 AND status='posted'`,
-            [String(invoiceId), `${invoiceId}:revision:${revision}`]);
+        // A4 (2026-11-06): كان يعدّل هوية القيد المرحّل (source_type/source_id)
+        // وهو ما ترفضه حصانة 095 (POSTED_JOURNAL_IMMUTABLE) — التعديل يُجهض
+        // المعاملة كلها. الآن: إبطال فقط (حقل حالة) + ترحّل النسخة المنقحة
+        // بمفتاح مراجعتها الخاص بعد COMMIT، فيبقى القيدان معًا للتتبع.
+        await require('../journal-void').voidSourceJournals(client, {
+            sourceType: 'purchase_invoice', sourceIds: invoiceId, matchPrefix: true,
+            reason: `تعديل فاتورة الشراء ${requestedInvoiceNumber || invoiceId} — أُبطلت النسخ السابقة`,
+            actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+        });
+        const revisedSourceId = `${invoiceId}:revision:${revision}`;
         await emitDomainEvent(pool, client, 'PURCHASE', {
             eventType: 'PURCHASE_UPDATED', aggregateType: 'purchase_invoice', aggregateId: invoiceId,
             payload: { invoice_id: invoiceId, number: updated.invoiceNumber, total: invoiceTotal, revision },
@@ -622,7 +645,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         await client.query('COMMIT');
 
         try {
-            await require('../accounting-routes').postPurchaseToLedger(invoiceId);
+            await require('../accounting-routes').postPurchaseToLedger(invoiceId, { sourceId: revisedSourceId });
         } catch (ledgerError) {
             logger.warn('[purchase_edit_ledger] best-effort posting skipped:', ledgerError.message);
         }
@@ -632,7 +655,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         emit(req, 'purchaseInvoices', 'update', updated);
         for (const row of freshInventory) {emit(req, 'inventory', 'update', row);}
         for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
-        res.json({ invoice: updated, inventory: freshInventory, transactions });
+        res.json({ invoice: updated, inventory: freshInventory, transactions, mode: itemsOnly ? 'items_only' : 'full', message: itemsOnly ? 'تم تعديل الأصناف فقط — الفاتورة مدفوعة' : undefined });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error('[warehouse_purchase_invoice_edit]', error);

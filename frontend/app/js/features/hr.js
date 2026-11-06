@@ -53,7 +53,7 @@ if(ctx1 && typeof Chart!=='undefined'){
 if(STATE.charts.hrDept){STATE.charts.hrDept.destroy();}
 const deptCounts={};
 STATE.hrDepartments.forEach(d=>{deptCounts[d.name]=STATE.employees.filter(e=>e.department===d.code).length;});
-STATE.charts.hrDept = new Chart(ctx1,{type:'doughnut',data:{labels:Object.keys(deptCounts),datasets:[{data:Object.values(deptCounts),backgroundColor:['#d4a843','#e74c3c','#2ecc71','#3498db','#9b59b6']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
+STATE.charts.hrDept = new Chart(ctx1,{type:'doughnut',data:{labels:Object.keys(deptCounts),datasets:[{data:Object.values(deptCounts),backgroundColor:['#14735b','#e74c3c','#2ecc71','#3498db','#9b59b6']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
 }
 const ctx2=document.getElementById('attendanceChart');
 if(ctx2 && typeof Chart!=='undefined'){
@@ -61,7 +61,7 @@ if(STATE.charts.attendance){STATE.charts.attendance.destroy();}
 const last7Days=[];
 for(let i=6;i>=0;i--){const date=new Date();date.setDate(date.getDate()-i);last7Days.push(date.toISOString().split('T')[0]);}
 const attendanceData=last7Days.map(date=>STATE.attendance.filter(a=>a.date===date&&a.checkIn).length);
-STATE.charts.attendance = new Chart(ctx2,{type:'line',data:{labels:last7Days.map(d=>fD(d)),datasets:[{label:'الحاضرون',data:attendanceData,backgroundColor:'rgba(212,168,67,0.2)',borderColor:'#d4a843',borderWidth:2,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
+STATE.charts.attendance = new Chart(ctx2,{type:'line',data:{labels:last7Days.map(d=>fD(d)),datasets:[{label:'الحاضرون',data:attendanceData,backgroundColor:'rgba(212,168,67,0.2)',borderColor:'#14735b',borderWidth:2,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
 }
 }
 // ============================================
@@ -76,23 +76,18 @@ if(!isAdmin && !isDeptHead){
 const emp=STATE.employees.find(e=>e.userId===STATE.currentUser.id);
 if(!emp) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لم يتم ربط حسابك بملف موظف</div>';}
 const todayRecord=STATE.attendance.find(a=>a.employeeId===emp.id&&a.date===today());
+// زرٌ واحد بلا اختيار (2026-11-02): المحرك يقرر بالتسلسل — أول بصمة حضور، الثانية انصراف.
+const ps=punchBtnState(todayRecord);
 return `
 <div id="smartCardContainer"></div>
 <div class="hero-panel">
-<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> تسجيل الحضور والانصراف</h3>
+<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> البصمة الذاتية</h3>
 <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
-<button class="attendance-btn check-in" data-karim-action="kdCheckIn" ${todayRecord?.checkIn?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=inbox></i></span>
+<button class="attendance-btn ${ps.done?'check-out':'check-in'}" data-karim-action="kdPunch" ${ps.done?'disabled':''}>
+<span class="u-f28"><i class=ji data-i=clock></i></span>
 <div>
-<div class="u-t16-bold">تسجيل حضور</div>
-<div class="u-faint-80">${todayRecord?.checkIn?`تم: ${todayRecord.checkIn}`:'اضغط للتسجيل'}</div>
-</div>
-</button>
-<button class="attendance-btn check-out" data-karim-action="kdCheckOut" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=upload></i></span>
-<div>
-<div class="u-t16-bold">تسجيل انصراف</div>
-<div class="u-faint-80">${todayRecord?.checkOut?`تم: ${todayRecord.checkOut}`:'اضغط للتسجيل'}</div>
+<div class="u-t16-bold">${ps.label}</div>
+<div class="u-faint-80">${ps.hint}</div>
 </div>
 </button>
 </div>
@@ -161,14 +156,11 @@ return `
 </div>
 <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center">
 <input type="search" id="attSearch" placeholder="بحث بالاسم أو الكود أو القسم..." value="${esc(STATE.attSearch||'')}" data-karim-action="attSearchFilter" data-karim-event="input" data-karim-pass="value" style="min-width:180px">
-${!isDeptHead?`<button class="btn btn-gold btn-sm" data-karim-action="scanAttendanceKiosk"><i class=ji data-i=camera></i> مسح بطاقة موظف</button>
-<button class="btn btn-blue btn-sm" data-karim-action="openShiftsPanel"><i class=ji data-i=clock></i> الورديات — تطبيق وإعادة حساب</button>`:''}
 <button class="btn btn-blue btn-sm" data-karim-action="exportAttendanceExcel"><i class=ji data-i=inbox></i> تصدير Excel</button>
 ${!isDeptHead?`<button class="btn btn-green btn-sm" data-karim-action="printMonthlyAttendance"><i class=ji data-i=printer></i> كشف شهري مجمع (طباعة)</button>
 <button class="btn btn-blue btn-sm" data-karim-action="runStrictAuditUI"><i class=ji data-i=shield-check></i> تدقيق صارم</button>
 <button class="btn btn-gold btn-sm" data-karim-action="attGapsToggle"><i class=ji data-i=alert-triangle></i> مراجعة نواقص الشهر</button>
 `:''}
-${STATE.currentUser?.role==='admin' ? `<button class="btn btn-red btn-sm" data-karim-action="revertAllInferred" title="إلغاء كل الاستكمال التلقائي"><i class=ji data-i=undo></i> إلغاء الاستكمال للكل</button>` : ''}
 <span class="text-muted" style="margin-inline-start:auto">صفحة ${fN(STATE.attPage)} من ${fN(attPages)} — ${fN(allRecs.length)} سجل (شامل الغياب)</span>
 <button class="btn btn-sm" ${STATE.attPage<=1?'disabled':''} data-karim-action="attPageGo" data-karim-args="[-1]">السابق</button>
 <button class="btn btn-sm" ${STATE.attPage>=attPages?'disabled':''} data-karim-action="attPageGo" data-karim-args="[1]">التالي</button>
@@ -192,7 +184,7 @@ return `<tr data-date="${record.date}" style="background:rgba(231,76,60,.06)">
 }
 const inferredBadge='<span class="badge bdg-orange" title="قيمة مستكملة تلقائيًا">~ تلقائي</span>';
 const krm=attRawHours(record);
-const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='portal'?'<span class="badge bdg-teal">كاميرا التطبيق</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
+const recSource=record?(record.source==='device'?'<span class="badge bdg-blue">بصمة</span>':record.source==='qr'?'<span class="badge bdg-green">QR</span>':record.source==='portal'?'<span class="badge bdg-teal">كاميرا التطبيق</span>':record.source==='backfill'?'<span class="badge bdg-purple">أرشيف</span>':record.source==='builder'?'<span class="badge bdg-teal">آلي — من البصمات</span>':record.source==='repair'?'<span class="badge bdg-blue">إصلاح آلي</span>':record.source==='api'?'<span class="badge bdg-gray">API</span>':'<span class="badge bdg-gray">يدوي</span>'):'—';
 return `<tr data-date="${record.date}">
 <td class="fw-bold">${esc(emp.name)}</td>
 <td class="text-muted">${fD(record.date)}</td>
@@ -403,8 +395,10 @@ function attCalcTimes(ci, co, shiftStart){
 const toMin=t=>{ const m=String(t).match(/^(\d{2}):(\d{2})/); return Number(m[1])*60+Number(m[2]); };
 let workMinutes=null;
 if(ci&&co){ let d=toMin(co)-toMin(ci); if(d<0) {d+=1440;} workMinutes=d; }
-// FIX 2026-10-11: add 15-min grace (same as shift-day.js + smart-card.js + backend)
-const GRACE_MIN = 15;
+// بلا سماحية (قرار المالك 2026-11-02 «حتي فتره السماح شيلها» — نفس shift-day.js)
+// التأخير من أول دقيقة بعد بداية دوام البطاقة (قرار المالك 2026-11-05) — السماحية 0.
+// القيمة تأتي من الخادم (window.ATT_GRACE_MIN) وقت الاستدعاء.
+const GRACE_MIN = (() => { const v = Number(window.ATT_GRACE_MIN); return Number.isFinite(v) && v >= 0 ? v : 0; })();
 const late=ci?toMin(ci)>toMin(shiftStart)+GRACE_MIN:false;
 return {workMinutes, late};
 }
@@ -503,7 +497,7 @@ let workMinutes=rec.workMinutes;
 if(ci&&co){ let d=toMin(co)-toMin(ci); if(d<0) {d+=1440;} workMinutes=d; }
 const emp=(STATE.employees||[]).find(e=>String(e.id)===String(rec.employeeId));
 const shiftStart=String(emp?.shift_start||'').match(/^\d{2}:\d{2}/)?emp.shift_start:String(STATE.settings?.workStartHour??9).padStart(2,'0')+':00';
-const late=ci?toMin(ci)>toMin(shiftStart)+15:!!rec.late; // سماحية 15 دقيقة (قرار المالك 2026-10-10)
+const late=ci?toMin(ci)>toMin(shiftStart):!!rec.late; // بلا سماحية (قرار المالك 2026-11-02)
 const audit=`[تصحيح يدوي ${today()} بواسطة ${STATE.currentUser?.name||''}: ${reason}]`;
 const notes=[rec.notes, audit].filter(Boolean).join(' | ');
 showLoad();
@@ -513,39 +507,13 @@ Object.assign(rec, { checkIn: ci||null, checkOut: co||null, workMinutes, late, n
 closeModal(); renderPage(); toast('تم اعتماد التصحيح','success');
 }catch(e){ toast(e.message||'تعذر الحفظ','error'); }finally{ hideLoad(); }
 }
-async function checkInOutByScan(qrText){
-let data;
-try{ data = typeof qrText === 'string' ? JSON.parse(qrText) : qrText; }catch(_){ toast('الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي','error'); return; }
-if(!data || (data.system!==CONFIG.APP_NAME && data.system!=='Karim ERP') || data.type!=='employee_card' || !data.token || !data.signature){ toast('الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي','error'); return; }
-try{
-const result = await apiFetch('/hr/attendance/scan', {method:'POST', body: JSON.stringify({qr_payload:data})});
-const saved = result.record;
-const idx = STATE.attendance.findIndex(a=>Number(a.id)===Number(saved.id));
-if(idx>=0) {STATE.attendance[idx] = {...STATE.attendance[idx], ...saved};} else {STATE.attendance.push(saved);}
-renderPage();
-const actionLabel = result.action==='check_in' ? 'تسجيل حضور' : 'تسجيل انصراف';
-toast(`${actionLabel}: ${result.employee.name} — ${result.record.checkIn||result.record.checkOut}`,'success');
-addNotification(actionLabel, `${result.employee.name} سجّل ${result.action==='check_in'?'الحضور':'الانصراف'} عبر QR`, 'success');
-}catch(e){ toast(e.message||'تعذر تسجيل حركة الحضور','error'); }
-}
-function scanAttendanceKiosk(){
-openScanner({
-title:'<i class=ji data-i=camera></i> مسح بطاقة موظف — تسجيل حضور/انصراف',
-instruction:'اطلب من الموظف توجيه بطاقته (QR) نحو الكاميرا',
-onDecode: checkInOutByScan
-});
-}
-async function checkIn(){
+async function checkPunch(){
 // SPEC-employee-pwa-attendance-geofence-v1 (S5): البصمة الذاتية تمر حصريًا عبر
 // مسار البوابة الآمن — Geofence + ساعة السيرفر + تدقيق كامل. الكتابة المباشرة
 // عبر CRUD العام أُغلقت على السيرفر لأدوار الموظفين.
-if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch('in'); }
-toast('البصمة الذاتية غير متاحة في هذه الجلسة — استخدم تطبيق الجوال','error');
-}
-async function checkOut(){
-// SPEC-employee-pwa-attendance-geofence-v1 (S5): نفس المسار الآمن — المحرك
-// الذكي يقرر الدخول/الانصراف وفق التسلسل، والسيرفر يفرض قيد المكان والزمن.
-if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch('out'); }
+// زرٌ واحد بلا نيّة (2026-11-02): المحرك يقرر دخولًا أو انصرافًا من تسلسل
+// السطر المفتوح — أول بصمة حضور، الثانية انصراف. لا يُرسل الجهاز أي choice.
+if (typeof window.mobileDoPunch === 'function') { return window.mobileDoPunch(); }
 toast('البصمة الذاتية غير متاحة في هذه الجلسة — استخدم تطبيق الجوال','error');
 }
 async function exportAttendanceExcel(){
@@ -556,7 +524,7 @@ const data=[['التاريخ','الموظف','الحضور','الانصراف','
 filtered.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:a.employeeId-b.employeeId).forEach(a=>{
 const emp=findEmployeeById(a.employeeId);
 const krm=attRawHours(a);
-const src=a.source==='device'?'بصمة':a.source==='qr'?'QR':a.source==='portal'?'كاميرا التطبيق':a.source==='backfill'?'أرشيف':'يدوي';
+const src=a.source==='device'?'بصمة':a.source==='qr'?'QR':a.source==='portal'?'كاميرا التطبيق':a.source==='backfill'?'أرشيف':a.source==='builder'?'آلي — من البصمات':a.source==='repair'?'إصلاح آلي':a.source==='api'?'API':'يدوي';
 data.push([a.date,emp?.name||'',a.checkIn||'',a.checkOut||'',krm,src]);
 });
 const ws=XLSX.utils.aoa_to_sheet(data);
@@ -987,13 +955,10 @@ const wb=XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb,ws,'الرواتب');
 XLSX.writeFile(wb,`payroll_${today()}.xlsx`);
 toast('تم التصدير','success');
-}/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
-function kdCheckIn() {
-    checkIn();
 }
-
-function kdCheckOut() {
-    checkOut();
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+function kdPunch() {
+    checkPunch();
 }
 
 function kdAttGapsToggle() {
@@ -1009,62 +974,5 @@ function kdAct(p0, p1) {
 
 
 
-export {renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkInOutByScan, scanAttendanceKiosk, checkIn, checkOut, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrDeductionsModal, hrDeductionsPreview, hrDeductionsApply, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel, kdCheckIn, kdCheckOut, kdAttGapsToggle, kdAct };;
+export {renderHRDashboard, renderHRCharts, renderAttendance, attRangeChange, attRangePreset, attSearchFilter, attPageGo, attExceptionsBox, hrGoGaps, attGapsToggle, attGapsData, attNextDay, attGapsSearch, attGapsRender, attResolveModal, attCalcTimes, attResolveSave, attExcuseModal, attExcuseSave, attCorrectModal, attCorrectSave, checkPunch, exportAttendanceExcel, leaveWorkflowData, leaveWorkflowLoaded, leaveWorkflowLoading, LEAVE_STAGE_LABELS, leaveWorkflowStatusLabel, leaveWorkflowStatusClass, renderLeaveWorkflowTimeline, refreshLeaveWorkflow, workflowForLeave, leaveCanAct, renderLeavesPage, showAddLeaveModal, addLeaveRequest, advanceLeaveWorkflow, approveLeave, rejectLeave, returnLeaveToEmployee, viewLeaveDetails, renderHRDepartmentsPage, showAddHRDeptModal, addHRDept, editHRDept, updateHRDept, deleteHRDept, renderPayroll, hrSuiteSection, hrEmpOptions, runPayrollGen, hrDelete, hrDeductionsModal, hrDeductionsPreview, hrDeductionsApply, hrAdvanceModal, hrAdvanceSave, hrAdjustModal, hrAdjustSave, hrContractModal, hrContractSave, hrEvalModal, hrEvalSave, exportPayrollExcel, kdPunch, kdAttGapsToggle, kdAct };;
 
-// ─── محرك الورديات: إدخال جماعي من المالك + تطبيق وإعادة حساب تلقائية ───
-function openShiftsPanel(){
-  const html = `
-  <div style="min-width:min(680px,92vw)">
-    <h3 style="margin:0 0 8px"><i class=ji data-i=clock></i> الورديات — تطبيق من واقع بصماتك</h3>
-    <p class="text-muted" style="margin:0 0 10px;font-size:13px">سطر لكل موظف: <b>EMP-رقم أو اسم الموظف أو بصمة رقم</b> ثم وقت الدخول ثم عدد ساعات الوردية (أو وقت الخروج).<br>
-    أمثلة: <code>EMP-019: 16:00 12</code> · <code>بصمة 45: 04:00 - 16:00</code> · <code>احمد السيد العدوي 16:00 12س</code></p>
-    <textarea id="shiftsInput" rows="10" style="width:100%;direction:ltr;text-align:left;font-family:monospace" placeholder="EMP-019: 16:00 12
-بصمة 45: 04:00 - 16:00
-احمد السيد العدوي 16:00 12س"></textarea>
-    <label style="display:flex;gap:6px;align-items:center;margin:8px 0;font-size:13px"><input type="checkbox" id="shiftsAutoSuggest" checked> أضف تلقائيًا ورديات مقترحة من واقع البصمة للموظفين غير المذكورين (فجوة ≥30 دقيقة)</label>
-    <div style="display:flex;gap:8px;justify-content:flex-start">
-      <button class="btn btn-gold" data-karim-action="applyShiftsFromPanel">تطبيق وإعادة حساب الحضور</button>
-      <button class="btn" data-karim-action="closeModal">إلغاء</button>
-    </div>
-    <div id="shiftsResult" style="margin-top:10px;font-size:13px"></div>
-  </div>`;
-  showModal(html);
-}
-async function applyShiftsFromPanel(){
-  const box = document.getElementById('shiftsInput');
-  const useAuto = document.getElementById('shiftsAutoSuggest') && document.getElementById('shiftsAutoSuggest').checked;
-  const text = (box && box.value ? box.value : '').trim();
-  if (!text) { toast('اكتب الورديات أولاً', 'warning'); return; }
-  showLoad();
-  try {
-    let text2 = text;
-    if (useAuto) {
-      try {
-        const analysis = await apiFetch('/hr/shifts/analysis?month=' + new Date().toISOString().slice(0, 7));
-        const wrong = (analysis.items || []).filter(x => Math.abs(x.driftMinutes) >= 30);
-        const extra = wrong.filter(x => {
-          const n = (x.name || '').toLowerCase();
-          return !text2.includes(n) && !text2.includes('emp-' + String(x.id)) && !(new RegExp('emp-\s*' + String(x.id) + '\b', 'i')).test(text2) && !(x.name || '').split(' ').some(w => w.length >= 3 && text2.includes(w));
-        }).slice(0, 200);
-        if (extra.length) {
-          text2 += '\n' + extra.map(x => `${x.name} ${x.realityP25}`).join('\n');
-        }
-      } catch (_) { /* التحليل اختياري — الاستمرار بالنص المُدخل */ }
-    }
-    const res = await apiFetch('/hr/shifts/apply', { method: 'POST', body: JSON.stringify({ text: text2 }) });
-    const rc = res && res.recompute ? res.recompute : {};
-    const msg = [
-      `تطبيق: ${res.applied}/${res.parsed} موظف`,
-      `أيام التأخير: ${rc.lateDaysBefore} → ${rc.lateDaysAfter}`,
-      `دقائق التأخير: ${rc.lateMinutesBefore} → ${rc.lateMinutesAfter}`,
-      ...(res.failed && res.failed.length ? ['غير مطبق: ' + res.failed.slice(0, 5).join(' · ')] : []),
-    ].join('\n');
-    const box2 = document.getElementById('shiftsResult');
-    if (box2) { box2.style.whiteSpace = 'pre-line'; box2.textContent = msg; }
-    toast(`تم تطبيق ${res.applied} وردية وإعادة حساب الحضور`, 'success');
-    renderPage();
-  } catch (e) { toast('تعذر التطبيق: ' + (e.message || e), 'error'); }
-  finally { hideLoad(); }
-}
-window.openShiftsPanel = openShiftsPanel;
-window.applyShiftsFromPanel = applyShiftsFromPanel;

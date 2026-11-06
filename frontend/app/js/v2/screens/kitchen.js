@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.194';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.296';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.194';
+} from '../data/kitchen-repo.js?v=4.9.296';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.194';
+} from '../signature.js?v=4.9.296';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {
@@ -960,9 +960,9 @@ export function mountKitchenScreen(host, ctx = {}) {
         w.document.open();
         w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <title>بطاقة تكلفة — ${esc(c.name || c.code)}</title><style>
-body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;margin:0;color:#1a1a2e}
+body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;margin:0;color:#1a1a2e}
 .header{background:#0f172a;color:#fff;padding:18px 26px}
-.header h1{margin:0;font-size:19px;color:#f5d76e}
+.header h1{margin:0;font-size:19px;color:#dcede4}
 .header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
 .container{padding:18px 26px}
 .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
@@ -970,7 +970,7 @@ body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;margin:0;color:#1a1a2e}
 .summary small{display:block;color:#64748b;font-size:11px}
 .summary b{display:block;font-size:16px;margin-top:4px}
 table{width:100%;border-collapse:collapse;margin-top:10px}
-th{background:#0f172a;color:#f5d76e;padding:7px;font-size:11px}
+th{background:#0f172a;color:#dcede4;padding:7px;font-size:11px}
 td{padding:6px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
 h3{margin:14px 0 0;font-size:13px}
 p.foot{margin-top:14px;text-align:center;color:#94a3b8;font-size:11px}

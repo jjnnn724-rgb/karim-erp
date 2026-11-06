@@ -47,7 +47,10 @@ async function main() {
 
     const { rows } = await pool.query(`
         SELECT d.id, d.date, d.status, d."deptCode" AS dept,
-               COALESCE(v.total, 0)::numeric(14,2) AS value
+               COALESCE(v.total, 0)::numeric(14,2) AS value,
+               EXISTS (SELECT 1 FROM journal_entries jv
+                        WHERE jv.source_type = 'dispatch' AND jv.source_id = d.id::text
+                          AND jv.status = 'void') AS was_voided
           FROM dispatches d
           LEFT JOIN LATERAL (
                 SELECT SUM((x->>'approvedValue')::numeric) AS total
@@ -56,15 +59,20 @@ async function main() {
          WHERE ${where.join(' AND ')}
            AND NOT EXISTS (
                 SELECT 1 FROM journal_entries e
-                 WHERE e.source_type = 'dispatch' AND e.source_id = d.id::text)
+                 WHERE e.source_type = 'dispatch' AND e.source_id = d.id::text
+                   AND e.status <> 'void')
          ORDER BY d.date, d.id`, params);
 
-    const zero = rows.filter((r) => !(Number(r.value) > 0));
-    const todo = rows.filter((r) => Number(r.value) > 0);
+    const voided = rows.filter((r) => r.was_voided);
+    const zero = rows.filter((r) => !r.was_voided && !(Number(r.value) > 0));
+    const todo = rows.filter((r) => !r.was_voided && Number(r.value) > 0);
     const total = todo.reduce((s, r) => s + Number(r.value), 0);
 
     console.log(`أذون معتمدة بلا قيد: ${rows.length}  (بقيمة: ${todo.length} / ${total.toFixed(2)})`);
     if (zero.length) { console.log(`  منها ${zero.length} بقيمة صفر — تُتخطّى (لا قيد بلا مبلغ).`); }
+    // الإبطال قرار بشري: القيد المُبطَل يبقى خارج الأستاذ حتى يُعاد ترحيلُه صراحةً،
+    // وإلا قلب كل --apply تلقائيًّا قرارَ المالك إلى قيد جديد برقم مراجعة.
+    if (voided.length) { console.log(`  منها ${voided.length} قيدها مُبطَل عمدًا — لا تُعاد تلقائيًا (${voided.map((r) => '#' + r.id).join(' ')})`); }
     todo.forEach((r) => console.log(`  #${r.id}  ${r.date}  ${r.status.padEnd(16)} ${String(r.dept || '?').padEnd(15)} ${Number(r.value).toFixed(2)}`));
 
     if (!APPLY) {

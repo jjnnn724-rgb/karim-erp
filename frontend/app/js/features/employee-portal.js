@@ -65,7 +65,7 @@ ${STATE.employees.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}
 <tbody>
 ${myAttendance.slice().reverse().map(a=>{
 const krm = a.checkIn&&a.checkOut?(portalWorkHours(a) ?? 0).toFixed(2):'—';
-const src = a.source==='device'?'<span class="badge bdg-blue"><i class=ji data-i=user-check></i> بصمة</span>':a.source==='qr'?'<span class="badge bdg-green">QR</span>':a.source==='portal'?'<span class="badge bdg-teal"><i class=ji data-i=camera></i> كاميرا التطبيق</span>':a.source==='backfill'?'<span class="badge bdg-gray">أرشيف</span>':'<span class="badge bdg-gray">يدوي</span>';
+const src = a.source==='device'?'<span class="badge bdg-blue"><i class=ji data-i=user-check></i> بصمة</span>':a.source==='qr'?'<span class="badge bdg-green">QR</span>':a.source==='portal'?'<span class="badge bdg-teal"><i class=ji data-i=camera></i> كاميرا التطبيق</span>':a.source==='backfill'?'<span class="badge bdg-gray">أرشيف</span>':a.source==='builder'?'<span class="badge bdg-teal"><i class=ji data-i=camera></i> آلي — من البصمات</span>':a.source==='repair'?'<span class="badge bdg-blue">إصلاح آلي</span>':'<span class="badge bdg-gray">يدوي</span>';
 const statusText = formatAttendanceStatus({
     checkIn: a.checkIn,
     checkOut: a.checkOut,
@@ -121,8 +121,11 @@ const devBadges=data.devices&&data.devices.enabled>0&&data.devices.online===0
 ?` <span class="badge bdg-red"><i class=ji data-i=circle-x></i> الجهاز غير متصل حاليًا</span>`:'';
 const linkBadge=`<span class="badge bdg-green"><i class=ji data-i=circle-check></i> بصمتك مربوطة — رقم البصمة: ${esc(String(data.deviceUserId))}</span>${devBadges}`;
 const punchRows=(data.punches||[]).map(p=>{
-const isIn=p.punchState===0;
-return `<span class="badge ${isIn?'bdg-green':'bdg-red'}" style="margin:2px">${isIn?'حضور':'انصراف'} · ${zkFmtTime(p.attendanceTime)} · ${esc(p.deviceName||'')}</span>`;
+// 0=حضور، 1=انصراف، وأي حالة مجهولة (-1/NULL) «غير محددة» — لا افتراض انصراف
+const st=p.punchState;
+const label=st===0?'حضور':st===1?'انصراف':'غير محددة';
+const tone=st===0?'bdg-green':st===1?'bdg-red':'bdg-gray';
+return `<span class="badge ${tone}" style="margin:2px">${label} · ${zkFmtTime(p.attendanceTime)} · ${esc(p.deviceName||'')}</span>`;
 }).join(' ');
 const rec=data.todayRecord;
 panel.innerHTML=`

@@ -227,8 +227,16 @@ function xLabels(labels, positions) {
     const widest = labels.reduce((m, l) => Math.max(m, l.length), 0) * LABEL_EM;
     const fit = Math.max(1, Math.floor(PLOT_W / Math.max(widest, 1)));
     const step = Math.max(1, Math.ceil(n / Math.min(7, fit)));
+    /* التدريج يُثبَّت على آخر نقطة (الأحدث في محور الزمن) ويُمدّ للخلف:
+       كان يُثبَّت على 0 ثم يُضاف الأحدثُ قسرًا، فإذا لم يقع الأحدث على
+       شبكة التدريج لاصقتْ تسميتان («11-06» فوق «11-05»). الآن التباعد
+       منتظمٌ دائمًا، والأحدثُ مُعلَّمٌ دائمًا، والأولُ يُضاف فقط إن بقي له
+       تدريجٌ كامل. */
+    const ticks = new Set();
+    for (let i = n - 1; i >= 0; i -= step) {ticks.add(i);}
+    if (Math.min(...ticks) >= step) {ticks.add(0);}
     return labels.map((label, i) => {
-        if (i % step !== 0 && i !== n - 1) {return '';}
+        if (!ticks.has(i)) {return '';}
         const x = positions[i] ?? (PAD.start + PLOT_W / 2);
         return `<text x="${x.toFixed(2)}" y="${H - 12}" text-anchor="middle" class="erp-chart__xlabel">${esc(label)}</text>`;
     }).join('');

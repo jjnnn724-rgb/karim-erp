@@ -118,6 +118,12 @@
   inset-block-start: calc(-1 * var(--erp-space-10));
   z-index: var(--erp-z-tooltip);
   padding: var(--erp-space-2) var(--erp-space-4);
+  /* عند الظهور تُلمس الوصلة بإصبع لا بمؤشّر، فهدف اللمس الأدنى 44px
+     يسري عليها مثل بقية الأزرار؛ والمحاذاة العمودية تُبقي النصّ في
+     مركزه بدل أن يلتصق بأعلى الرقعة المُوسَّعة. */
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
   background: var(--erp-brand);
   color: var(--erp-text-inverse);
   border-radius: var(--erp-radius-md);

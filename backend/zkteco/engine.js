@@ -17,6 +17,7 @@
 
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
+const { makeEmitScoped } = require('../realtime/guard');
 const { ZKClient, ZKError } = require('./client');
 const { engine, matchUserToEmployee: matchUtil, BUSINESS_TZ_OFFSET_MS } = require('../attendance-engine');
 const proto = require('./protocol');
@@ -44,6 +45,8 @@ class AttendanceSyncEngine {
         this._tickStartedAt = 0;
         this._watchdog = null;
         this.io = null;
+        /** بثّ مُوجَّه (غرفة erp:authed عند RT_REQUIRE_AUTH) — لا io.emit خام */
+        this.emit = null;
         this.lastReconcileAt = 0;
         /** id → { syncing, lastAttemptAt, lastResultAt, lastError, consecutiveFailures } */
         this.states = new Map();
@@ -76,6 +79,7 @@ class AttendanceSyncEngine {
     start(io) {
         if (this.running) {return;}
         this.io = io || null;
+        this.emit = makeEmitScoped(io);
         this.running = true;
         // أول دورة بعد 3 ثوان من الإقلاع (يتيح للخادم إتمام التهيئة)
         this.timer = setTimeout(() => {
@@ -161,13 +165,7 @@ class AttendanceSyncEngine {
                 `UPDATE attendance_devices SET status = 'disabled'
                  WHERE enabled = false AND status <> 'disabled'`
             ).catch(() => {});
-            // مصالحة الحضور (نسيان دخول/خروج + ربط متأخر) — مرة كل ساعة
-            if (!this.lastReconcileAt || now - this.lastReconcileAt > 3600 * 1000) {
-                this.lastReconcileAt = now;
-                try { await this.reconcileAttendance(); } catch (e) {
-                    logger.warn('[ZKTECO_ENGINE] مصالحة الحضور فشلت:', e.message);
-                }
-            }
+            // لا مصالحة ولا استكمال: البصمة تُسجَّل وتُحفظ — لا تصحيح صامت بعد وقوعه.
         } catch (error) {
             logger.error('[ZKTECO_ENGINE] دورة المزامنة فشلت:', error.message);
         } finally {
@@ -262,7 +260,7 @@ class AttendanceSyncEngine {
             const brainCtx = { patterns: new Map(), last: new Map() };
             for (const row of insertedRows) {
                 if (!row.employeeId) {
-                    if (this.io) {this.io.emit('biometric:unmapped', {
+                    if (this.io) {this.emit('biometric:unmapped', {
                         deviceId: device.id, deviceUserId: row.deviceUserId,
                         time: row.attendanceTime, punchState: row.punchState,
                     });}
@@ -313,10 +311,10 @@ class AttendanceSyncEngine {
                 }
                 if (liveEvents.length <= 50) {
                     for (const ev of liveEvents) {
-                        this.io.emit('biometric:punch', ev);
+                        this.emit('biometric:punch', ev);
                     }
                 } else {
-                    this.io.emit('biometric:synced', {
+                    this.emit('biometric:synced', {
                         deviceId: device.id, deviceName: device.name,
                         inserted, writeBacks, at: new Date().toISOString(),
                     });
@@ -552,7 +550,7 @@ class AttendanceSyncEngine {
             employeeId, punchState, instant, wall, device, source: 'device'
         });
         if (result.action && this.io) {
-            this.io.emit('attendance:updated', {
+            this.emit('attendance:updated', {
                 action: result.action,
                 source: 'device',
                 employee: { id: employeeId },
@@ -560,13 +558,6 @@ class AttendanceSyncEngine {
             });
         }
         return result.action;
-    }
-
-    /**
-     * مصالحة الحضور (مرة كل ساعة + عند الحاجة) — تفويض للمحرك الموحد
-     */
-    async reconcileAttendance() {
-        return engine.reconcileAttendance();
     }
 
     async _updateCheckpoint(deviceId, maxTs, totalRead, totalNew) {

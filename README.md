@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![karim ERP Logo](build/icon.png)
-
 **نظام إدارة المطاعم المتكامل - Powered by Ancient Egyptian Excellence**
 
 [🌐 Website](https://karim-erp.com) • [📖 Documentation](docs/) • [🐛 Issues](https://github.com/karim-erp/karim-desktop/issues) • [💬 Support](mailto:support@karim-erp.com)
@@ -65,7 +63,7 @@
 | التقنية | الاستخدام |
 |---------|----------|
 | **Electron 44** | تطبيق سطح مكتب |
-| **Express 5** | خادم API |
+| **Express 4** | خادم API |
 | **PostgreSQL 16** | قاعدة البيانات |
 | **Socket.io** | اتصالات فورية (Real-time) |
 | **Zod** | تحقق من المدخلات |

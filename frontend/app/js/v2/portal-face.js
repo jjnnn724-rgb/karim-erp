@@ -19,7 +19,7 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
-import { trapFocus } from './focus-trap.js?v=4.9.194';
+import { trapFocus } from './focus-trap.js?v=4.9.296';
 
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';
@@ -194,13 +194,16 @@ async function detectFace(fapi, options, source) {
 
 /**
  * يفتح كاميرا الوجه ويجمع لقطة (بصمة) أو حتى 5 عينات (تسجيل).
- * @param {{title?: string, target?: number, wantDescriptors?: boolean, requireDescriptor?: boolean}} [opts]
- * @returns {Promise<{images: string[], descriptors: number[][]}>}
+ * `allowUpload:false` يخفي «رفع صورة» — وضع البصمة الصارم لا يقبل صورة من المعرض.
+ * @param {{title?: string, target?: number, wantDescriptors?: boolean, requireDescriptor?: boolean,
+ *          allowUpload?: boolean}} [opts]
+ * @returns {Promise<{images: string[], descriptors: number[][], sources: Array<'live'|'upload'>}>}
  */
 export function captureFace(opts = {}) {
     const max = Math.min(MAX_SAMPLES, Math.max(1, Number(opts.target) || 1));
     const wantDescriptors = opts.wantDescriptors !== false;
     const requireDescriptor = opts.requireDescriptor === true;
+    const allowUpload = opts.allowUpload !== false;
     const title = String(opts.title || 'التقاط الوجه');
 
     return new Promise((resolve, reject) => {
@@ -225,9 +228,9 @@ export function captureFace(opts = {}) {
             <progress class="erp-face-cam__progress" data-face-progress max="${max}" value="0" hidden></progress>
             <div class="erp-face-cam__actions">
               <button type="button" class="erp-btn erp-btn--primary" data-face-shoot>التقاط</button>
-              <label class="erp-btn erp-btn--sm erp-face-cam__upload">رفع صورة
+              ${allowUpload ? `<label class="erp-btn erp-btn--sm erp-face-cam__upload">رفع صورة
                 <input type="file" accept="image/*" capture="user" data-face-upload hidden>
-              </label>
+              </label>` : ''}
             </div>
             <p class="erp-text-xs erp-text-muted erp-face-cam__hint">الصور لا تُخزَّن على الخادم — تُستخدم لحظيًا لاستخراج البصمة ثم تُهمل.</p>
           </div>`;
@@ -245,6 +248,8 @@ export function captureFace(opts = {}) {
         const upload = q('[data-face-upload]');
         const images = [];
         const descriptors = [];
+        /** أصل كل لقطة: 'live' من الكاميرا أو 'upload' من الملف — السيرفر يرفض المرفوعة في الوضع الصارم */
+        const sources = [];
 
         let stream = null;
         let disposed = false;
@@ -276,7 +281,7 @@ export function captureFace(opts = {}) {
         };
         const finish = () => {
             cleanup();
-            resolve({ images: images.slice(), descriptors: descriptors.slice() });
+            resolve({ images: images.slice(), descriptors: descriptors.slice(), sources: sources.slice() });
         };
         const fail = (error) => {
             cleanup();
@@ -290,13 +295,14 @@ export function captureFace(opts = {}) {
             btn.addEventListener('click', cancel);
         });
 
-        function addSample(image, descriptor) {
+        function addSample(image, descriptor, source) {
             if (!image) { return false; }
             if (requireDescriptor && !descriptor) {
                 say('لم يُرصد وجه واضح — اقترب من الكاميرا وحسّن الإضاءة ثم أعد المحاولة');
                 return false;
             }
             images.push(image);
+            sources.push(source === 'upload' ? 'upload' : 'live');
             if (descriptor) { descriptors.push(descriptor); }
             paintProgress();
             return true;
@@ -324,7 +330,7 @@ export function captureFace(opts = {}) {
                     ? cropFaceToJpeg(video, det.detection.box)
                     : cropCenterToJpeg(video);
                 const descriptor = det && det.descriptor ? Array.from(det.descriptor) : null;
-                if (!addSample(image, descriptor)) { return; }
+                if (!addSample(image, descriptor, 'live')) { return; }
                 if (images.length >= max) { finish(); return; }
                 say(`تمت اللقطة ${images.length} من ${max} — حرّك رأسك قليلًا ثم التقط التالية`);
             } finally {
@@ -350,9 +356,9 @@ export function captureFace(opts = {}) {
                     descriptor = det && det.descriptor ? Array.from(det.descriptor) : null;
                 }
                 if (disposed) { return; }
-                if (!addSample(jpeg, descriptor)) { return; }
+                if (!addSample(jpeg, descriptor, 'upload')) { return; }
                 cleanup();
-                resolve({ images: images.slice(), descriptors: descriptors.slice() });
+                resolve({ images: images.slice(), descriptors: descriptors.slice(), sources: sources.slice() });
             } catch (e) {
                 say((e && e.message) || 'تعذر قراءة الصورة');
             } finally {

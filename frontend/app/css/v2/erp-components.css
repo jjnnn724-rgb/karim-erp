@@ -414,12 +414,33 @@
 .erp-v2 .erp-lamp[data-ok="1"] { background: var(--erp-success-text); }
 .erp-v2 .erp-lamp[data-ok="0"] { background: var(--erp-danger-text); }
 .erp-v2 .erp-shell__bell { position: relative; display: inline-flex; }
-.erp-v2 .erp-shell__bell .erp-badge { position: absolute; top: -6px; inset-inline-end: -6px; }
+/* FIX 2026-10-31: أبواب «>» فقط — لوحة الجرس بنتٌ داخل .erp-shell__bell،
+   والقاعدة القديمة بمستوى الأحفاد كانت تُطلق شارات «جديد» داخل اللوحة من
+   عناوين العناصر لتُرسَم عند ركن اللوحة (قِياس حي: absolute top:-6px). */
+.erp-v2 .erp-shell__bell > .erp-badge { position: absolute; top: -6px; inset-inline-end: -6px; }
 .erp-v2 .erp-shell__bell [data-v2-notif-panel] { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(380px, 90vw); max-height: 60vh; overflow: auto; background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-lg); padding: 12px; z-index: var(--erp-z-dropdown); }
-.erp-v2 .erp-notif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.erp-v2 .erp-notif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+/* ── الجرس المصنّف (2026-10-31): تبويبات القنوات + عناصر بأيقونة قناة
+   وشريط لوني حسب النوع ووقتٍ نسبي. التوكنات فقط — عقد v2-colors يمنع
+   الألوان الحرفية خارج الاستثناءات. ── */
+.erp-v2 .erp-notif-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.erp-v2 .erp-notif-tab { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--erp-border); background: var(--erp-surface); color: var(--erp-text-secondary); border-radius: var(--erp-radius-full); padding: 4px 10px; font: inherit; font-size: var(--erp-text-sm); cursor: pointer; }
+.erp-v2 .erp-notif-tab:hover { background: var(--erp-surface-hover); }
+.erp-v2 .erp-notif-tab--on { border-color: var(--erp-brand); background: var(--erp-brand-soft); color: var(--erp-brand-text); font-weight: 600; }
+.erp-v2 .erp-notif-tab__n { min-width: 18px; padding: 0 5px; border-radius: var(--erp-radius-full); background: var(--erp-danger); color: var(--erp-text-inverse); font-size: var(--erp-text-xs); line-height: 18px; text-align: center; }
 .erp-v2 .erp-notif-list { display: flex; flex-direction: column; gap: 8px; }
-.erp-v2 .erp-notif { border: 1px solid var(--erp-border); border-radius: var(--erp-radius-md); padding: 8px 10px; cursor: pointer; }
+.erp-v2 .erp-notif { display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--erp-border); border-radius: var(--erp-radius-md); padding: 8px 10px; cursor: pointer; }
+.erp-v2 .erp-notif:hover { background: var(--erp-surface-hover); }
 .erp-v2 .erp-notif--unread { border-color: var(--erp-brand-text); }
+.erp-v2 .erp-notif[data-tone="info"] { border-inline-start: 3px solid var(--erp-info); }
+.erp-v2 .erp-notif[data-tone="success"] { border-inline-start: 3px solid var(--erp-success); }
+.erp-v2 .erp-notif[data-tone="warning"] { border-inline-start: 3px solid var(--erp-warning); }
+.erp-v2 .erp-notif[data-tone="error"] { border-inline-start: 3px solid var(--erp-danger); }
+.erp-v2 .erp-notif__ico { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border-radius: var(--erp-radius-full); background: var(--erp-surface-sunken); color: var(--erp-text-muted); }
+.erp-v2 .erp-notif__ico[data-channel="dispatch"] { background: var(--erp-brand-soft); color: var(--erp-brand-text); }
+.erp-v2 .erp-notif__ico[data-channel="procurement"] { background: color-mix(in srgb, var(--erp-info) 12%, transparent); color: var(--erp-info); }
+.erp-v2 .erp-notif__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.erp-v2 .erp-notif__meta { flex: none; align-self: flex-start; white-space: nowrap; }
 /* Bare on purpose: js/v2/layout/shell-extras.js mounts this host on
    document.body, so a `.erp-v2 ` ancestor prefix never matches. Measured before
    this change: the host was `position: static` and sat at the bottom of the
@@ -523,6 +544,25 @@
 }
 .erp-v2 .erp-kpi:nth-child(3n) { border-inline-start: 0; }
 .erp-v2 .erp-kpi:nth-last-child(-n+3) { border-block-end: 0; }
+
+/* شبكةٌ من ٤ أعمدة لمن يملك ٨ مؤشرات (لوحة اليوم الحية).
+   ٣×٨ تترك خليّتين فارغتين تُقرآن كثغرةٍ في البطاقة؛ والقواعد هنا تُبطل
+   كل قواعد ٣n صراحةً (لا اعتمادًا على الترتيب) كي لا تتنازع الطبقات.
+   المُحدِّد سمةُ data-cols لا صنف: kpiStrip هو المكوّن الوحيد للشريط،
+   والسمة تُبقي الوسم `<ul class="erp-kpis"` كما يشترطه عقد الشاشات. */
+.erp-v2 .erp-kpis[data-cols="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+.erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-last-child(-n+3) { border-block-end: 1px solid var(--erp-border); }
+.erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-child(4n) { border-inline-start: 0; }
+.erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-last-child(-n+4) { border-block-end: 0; }
+@media (max-width: 900px) {
+  .erp-v2 .erp-kpis[data-cols="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-child(3n) { border-inline-start: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-child(2n) { border-inline-start: 0; }
+  .erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-last-child(-n+3) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-last-child(-n+4) { border-block-end: 1px solid var(--erp-border); }
+  .erp-v2 .erp-kpis[data-cols="4"] .erp-kpi:nth-last-child(-n+2) { border-block-end: 0; }
+}
 .erp-v2 .erp-kpi::after {
   content: "0" counter(karim-kpi);
   position: absolute;

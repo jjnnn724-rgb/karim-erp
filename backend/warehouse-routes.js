@@ -9,6 +9,7 @@ const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
+const { DEDICATED_STORE_CODES } = require('./dept-stores');
 // سياسة تاريخ الصلاحية: اختياري، ويُرفض فقط إن جاء بصيغة فاسدة (2026-10-20)
 const { normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor } = require('./expiry-policy');
 
@@ -91,13 +92,19 @@ function canReceiveDispatch(user, dispatch) {
 // ═══ Task 19: سلسلة اعتماد طلبات الصرف ═══
 // رئيس القسم (dept_head) ينشئ الطلب (needsChefApproval=true) → الشيف العمومي يعتمده
 // (status=chef_approved) → المخازن تعتمد وتخصم (status=approved) → القسم يستلم.
-const DEPT_STORES = Object.freeze({
-    salads:         { code: 'STORE-SALADS',      name: 'مخزن قسم السلطات' },
-    sweets:         { code: 'STORE-SWEETS',      name: 'مخزن الحلواني' },
-    bakery:         { code: 'STORE-BAKERY',      name: 'مخزن الخباز' },
-    hot_kitchen:    { code: 'STORE-HOT-KITCHEN', name: 'مخزن المطبخ الساخن' },
-    external_sales: { code: 'STORE-EXTERNAL',    name: 'مخزن البيع الخارجي' },
+// رموز المخازن من dept-stores.js (مصدر واحد للحقيقة) حتى لا تختلف جهة
+// أذونات الصرف عن جهة التحويل.
+const DEPT_STORE_NAMES = Object.freeze({
+    salads:         'مخزن قسم السلطات',
+    sweets:         'مخزن الحلواني',
+    bakery:         'مخزن الخباز',
+    hot_kitchen:    'مخزن المطبخ الساخن',
+    external_sales: 'مخزن البيع الخارجي',
 });
+const DEPT_STORES = Object.freeze(Object.keys(DEDICATED_STORE_CODES).reduce(function (acc, key) {
+    acc[key] = { code: DEDICATED_STORE_CODES[key], name: DEPT_STORE_NAMES[key] || DEDICATED_STORE_CODES[key] };
+    return acc;
+}, {}));
 
 /**
  * نقية: متجر القسم الخاص بحسب كود القسم (null إن لم يوجد مخزن مخصص).

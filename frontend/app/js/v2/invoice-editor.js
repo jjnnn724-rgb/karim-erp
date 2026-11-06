@@ -21,16 +21,16 @@
  * والخادم يرفض 422 INVALID_EXPIRY_DATE على أي حال.
  */
 
-import { formatMoney } from './data/reports-repo.js?v=4.9.194';
+import { formatMoney } from './data/reports-repo.js?v=4.9.296';
 import {
     createPurchaseInvoice, updatePurchaseInvoice,
-    invoiceFormFromRow,
+    invoiceFormFromRow, PAID_ITEMS_ONLY_NOTICE,
     isDuplicateInvoiceError, TAX_CATEGORIES,
-} from './data/purchase-invoices-write-repo.js?v=4.9.194';
-import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.194';
+} from './data/purchase-invoices-write-repo.js?v=4.9.296';
+import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.296';
 import {
     rankItemMatches, normalizeItemText, smartSearchEnabled, setSmartSearchEnabled,
-} from './item-search.js?v=4.9.194';
+} from './item-search.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -111,6 +111,8 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
     };
 
     const rows = (Array.isArray(initial.items) ? initial.items : []).map(normalizeItem);
+    // قرار المالك 2026-10-31: فاتورة مدفوعة → الأصناف فقط؛ الترويسة والدفعات ثابتة
+    const paidLock = editing && num(initial.paidAmount) > 0;
     let paidTouched = editing;
     let smartOn = smartSearchEnabled();
     let saving = false;
@@ -140,31 +142,32 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
           </button>
         </div>
         <div class="erp-card__body erp-stack">
+          ${paidLock ? `<div role="status" style="background:var(--gold-d,#e8f2ec);color:var(--gold,#3e6b58);border:1px solid var(--gold,#0f5b46);border-radius:10px;padding:10px 14px;font-weight:600;font-size:13px">⚠ ${esc(PAID_ITEMS_ONLY_NOTICE)}</div>` : ''}
           <div class="erp-vi-grid">
             <label class="erp-field">
               <span class="erp-label">رقم الفاتورة</span>
-              <input class="erp-input" data-vi-field="invoiceNumber" placeholder="INV-001" value="${esc(initial.invoiceNumber)}">
+              <input class="erp-input" data-vi-field="invoiceNumber" placeholder="INV-001" value="${esc(initial.invoiceNumber)}"${paidLock ? ' disabled' : ''}>
             </label>
             <label class="erp-field">
               <span class="erp-label">تاريخ الفاتورة</span>
-              <input class="erp-input erp-input--ltr" data-vi-field="date" type="date" value="${esc(initial.date || isoToday())}">
+              <input class="erp-input erp-input--ltr" data-vi-field="date" type="date" value="${esc(initial.date || isoToday())}"${paidLock ? ' disabled' : ''}>
             </label>
           </div>
           <div class="erp-vi-grid">
             <label class="erp-field">
               <span class="erp-label">المورد <small class="erp-text-muted">(اختياري — يربط الفاتورة بالحساب)</small></span>
-              <select class="erp-select" data-vi-field="supplierId">
+              <select class="erp-select" data-vi-field="supplierId"${paidLock ? ' disabled' : ''}>
                 <option value="">بدون ربط (اسم حر)</option>
                 ${supplierOptions.map((s) => `<option value="${esc(s.id)}"${String(s.id) === currentSupplierId ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}
               </select>
             </label>
             <label class="erp-field erp-vi-free" data-vi-free-name>
               <span class="erp-label">اسم المورد</span>
-              <input class="erp-input" data-vi-field="supplierName" value="${esc(initial.supplierName)}">
+              <input class="erp-input" data-vi-field="supplierName" value="${esc(initial.supplierName)}"${paidLock ? ' disabled' : ''}>
             </label>
             <label class="erp-field erp-vi-free" data-vi-free-phone>
               <span class="erp-label">رقم الهاتف</span>
-              <input class="erp-input erp-input--ltr" data-vi-field="supplierPhone" value="${esc(initial.supplierPhone)}">
+              <input class="erp-input erp-input--ltr" data-vi-field="supplierPhone" value="${esc(initial.supplierPhone)}"${paidLock ? ' disabled' : ''}>
             </label>
           </div>
           <div class="erp-vi-supplier-hint" data-vi-supplier-hint aria-live="polite"></div>
@@ -196,12 +199,12 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
             <div class="erp-field">
               <span class="erp-label">خصم الفاتورة</span>
               <div class="erp-vi-discount">
-                <select class="erp-select" data-vi-field="discountType">
+                <select class="erp-select" data-vi-field="discountType"${paidLock ? ' disabled' : ''}>
                   <option value="none"${initial.discountType === 'none' ? ' selected' : ''}>بدون خصم</option>
                   <option value="percent"${initial.discountType === 'percent' ? ' selected' : ''}>نسبة مئوية %</option>
                   <option value="amount"${initial.discountType === 'amount' ? ' selected' : ''}>مبلغ ثابت</option>
                 </select>
-                <input class="erp-input erp-input--ltr" data-vi-field="discountValue" type="number" min="0" step="0.01" value="${esc(initial.discountValue)}" placeholder="قيمة الخصم">
+                <input class="erp-input erp-input--ltr" data-vi-field="discountValue" type="number" min="0" step="0.01" value="${esc(initial.discountValue)}" placeholder="قيمة الخصم"${paidLock ? ' disabled' : ''}>
               </div>
               <small class="erp-text-muted" data-vi-discount-hint aria-live="polite"></small>
             </div>
@@ -212,7 +215,7 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
             </label>
             <label class="erp-field">
               <span class="erp-label">طريقة الدفع</span>
-              <select class="erp-select" data-vi-field="paymentMethod">
+              <select class="erp-select" data-vi-field="paymentMethod"${paidLock ? ' disabled' : ''}>
                 <option value="cash"${initial.paymentMethod === 'cash' ? ' selected' : ''}>نقدي (مسدد)</option>
                 <option value="bank"${initial.paymentMethod === 'bank' ? ' selected' : ''}>تحويل بنكي (مسدد)</option>
                 <option value="credit"${initial.paymentMethod === 'credit' ? ' selected' : ''}>آجل (غير مسدد)</option>
@@ -224,7 +227,7 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
           <div class="erp-vi-grid">
             <label class="erp-field">
               <span class="erp-label">المسدد الآن</span>
-              <input class="erp-input erp-input--ltr" data-vi-field="paidAmount" type="number" step="0.01" min="0" value="${editing ? num(initial.paidAmount).toFixed(2) : '0.00'}">
+              <input class="erp-input erp-input--ltr" data-vi-field="paidAmount" type="number" step="0.01" min="0" value="${editing ? num(initial.paidAmount).toFixed(2) : '0.00'}"${paidLock ? ' disabled' : ''}>
               <small class="erp-text-muted">تلقائي = الشامل (نقدي) أو 0 (آجل) — يقبل الكسور حتى هللتين</small>
             </label>
             <div class="erp-field">
@@ -234,7 +237,7 @@ export function mountPurchaseInvoiceEditor(host, options = {}) {
           </div>
           <label class="erp-field">
             <span class="erp-label">ملاحظات</span>
-            <textarea class="erp-input" data-vi-field="notes" rows="2">${esc(initial.notes)}</textarea>
+            <textarea class="erp-input" data-vi-field="notes" rows="2"${paidLock ? ' disabled' : ''}>${esc(initial.notes)}</textarea>
           </label>
           <div class="erp-vi-actions">
             <button type="button" class="erp-btn erp-btn--sm" data-vi-cancel-secondary>إلغاء</button>

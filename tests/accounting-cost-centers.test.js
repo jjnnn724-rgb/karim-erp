@@ -25,6 +25,28 @@ const ACCOUNTING = path.join(ROOT, 'backend', 'accounting-routes.js');
 const WAREHOUSE = warehouseSource();
 const read = (p) => fs.readFileSync(p, 'utf8');
 
+/**
+ * تنظيف fixture لقيود dispatch: بعد 136 لا يُمحى قيد مرحّل حذفًا صلبًا إلا داخل
+ * البوابة المرخّصة coa.allow_hard_delete='on' — وهي مخصّصة لهذا بالضبط (مهمة
+ * مرخّصة على بيانات اختبار، لا تصحيح دفتر عام). على قاعدة غير مهاجرة الأمر
+ * placeholder صامت، فالنظافة تعمل قبل الترحيل وبعده بلا فرع في الكود.
+ */
+async function purgeDispatchJournals(p, sourceId) {
+    const client = await p.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL coa.allow_hard_delete = 'on'`);
+        await client.query(`DELETE FROM journal_lines WHERE entry_id IN
+            (SELECT id FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1)`, [sourceId]);
+        await client.query(`DELETE FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1`, [sourceId]);
+        await client.query('COMMIT');
+    } catch (_) {
+        await client.query('ROLLBACK').catch(() => {});
+    } finally {
+        client.release();
+    }
+}
+
 describe('مراكز التكلفة — تطبيع الرمز وترحيل قيد الصرف', () => {
     const accounting = read(ACCOUNTING);
     const warehouse = WAREHOUSE;
@@ -96,9 +118,7 @@ describe('مراكز التكلفة — قاعدة الاختبار المعزو
     test('postDispatchToLedger يرحّل إذن قسم صغير الأحرف بمركز تكلفة صحيح', async () => {
         const { postDispatchToLedger } = require(ACCOUNTING);
         const sourceId = `__test_cc_${process.pid}_${Date.now()}`;
-        await pool.query(`DELETE FROM journal_lines WHERE entry_id IN
-            (SELECT id FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1)`, [sourceId]).catch(() => {});
-        await pool.query(`DELETE FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1`, [sourceId]).catch(() => {});
+        await purgeDispatchJournals(pool, sourceId);
 
         try {
             const out = await postDispatchToLedger(sourceId, {
@@ -114,9 +134,7 @@ describe('مراكز التكلفة — قاعدة الاختبار المعزو
             expect(byAcc['5000'].cost_center_code).toBe('KITCHEN');
             expect(byAcc['1200'].cost_center_code).toBe('KITCHEN');
         } finally {
-            await pool.query(`DELETE FROM journal_lines WHERE entry_id IN
-                (SELECT id FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1)`, [sourceId]).catch(() => {});
-            await pool.query(`DELETE FROM journal_entries WHERE source_type = 'dispatch' AND source_id = $1`, [sourceId]).catch(() => {});
+            await purgeDispatchJournals(pool, sourceId);
             await pool.query(`DELETE FROM cost_centers WHERE code = 'KITCHEN'`).catch(() => {});
         }
     });

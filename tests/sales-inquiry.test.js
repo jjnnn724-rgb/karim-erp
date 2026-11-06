@@ -61,7 +61,7 @@ describe('الخادم — باب item-invoices', () => {
 
     test('الإجماليات تُحسب قبل LIMIT — الترقيم لا يغيّر الأرقام', () => {
         const d = door();
-        const totalsSql = d.slice(d.indexOf('const totals = (await pool.query('), d.indexOf('params.push(limit'));
+        const totalsSql = d.slice(d.indexOf('const totals = (await pool.query('), d.indexOf('const pageParams'));
         expect(totalsSql).toMatch(/COUNT\(DISTINCT o\.doc_no\)/);
         expect(totalsSql).not.toMatch(/LIMIT/);
     });
@@ -80,7 +80,7 @@ describe('الخادم — باب item-invoices', () => {
         for (const col of ['item_qty', 'item_net', 'item_price', 'item_discount', 'item_vat', 'cashier_no']) {
             expect(d).toContain(col);
         }
-        expect(d).toMatch(/LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/);
+        expect(d).toMatch(/LIMIT \$\$\{pageParams\.length - 1\} OFFSET \$\$\{pageParams\.length\}/);
     });
 
     test('باب item-sales صرّح بكود واسم الصنف (وإلا فقد node-pg الاسمين)', () => {
@@ -148,10 +148,80 @@ describe('المستودع والشاشة — قراءة فقط عبر المس�
         expect(screen).toMatch(/document\.write/);
     });
 
-    test('الفواتير تُجلب بكود الصنف عند توفره — صنفان باسم واحد لا يختلطان', () => {
-        expect(screen).toMatch(/state\.selectedKey = state\.selectedCode \|\| state\.selected/);
-        expect(screen).toMatch(/item: state\.selectedKey \|\| state\.selected/);
+    test('الفواتير تُجلب بهوية الصنف (كودٌ + مطابقةٌ حرفيّة) — صنفان باسم واحد لا يختلطان', () => {
+        expect(screen).toMatch(/code: state\.selectedCode/);
+        expect(screen).toMatch(/exact: 1/);
+        expect(screen).toMatch(/item: state\.selected,/);
         expect(screen).toMatch(/data-v2-item-code=/);
+    });
+});
+
+/* ── دقّة الصنف (2026-11-02) ───────────────────────────────────────────────
+   بلاغ المالك: «لما ابحث عن مبيعات منتج يظهر المنتج فقط عشان تطلع نتايج
+   دقيقه» — والفراغ كان: «شاورما» تجمع «شاورما عربي» و«شاورما دبل» و«صحن
+   شاورما»، فيظهر 108 فواتير لمنتجٍ واحد وهي فواتير عائلةٍ كاملة.
+   العقد الجديد: هويةُ الصنف (كودٌ أو اسمٌ حرفيّ) تُطابَق حرفًا بحرف،
+   والبحثُ العائليّ يبقى لترشيح القائمة لا لإحصاء المنتج. */
+describe('دقّة فلترة الصنف — منتجٌ واحد بلا خلط', () => {
+    test('الخادم: هويةُ الصنف = (الكود + الاسم) معًا — لا كودٌ وحده ولا اسمٌ وحده', () => {
+        expect(server).toMatch(/function exactItemSql\(code, name, params\)/);
+        expect(server).toMatch(/COALESCE\(NULLIF\(e->>'code',''\),''\) = \$\$\{codePos\} AND \(e->>'name'\) = \$\$\{namePos\}/);
+        /* فكّ تهريب الاسم وحده (الاسم «صحن شاورما عربي» يغطّي كودين). */
+        expect(server).not.toMatch(/OR \(COALESCE\(NULLIF\(e->>'code',''\),''\) = '' AND/);
+    });
+
+    test('الخادم: الباب يقرأ ?code و?exact ويجيب بمطابقةٍ دقيقة', () => {
+        const d = door();
+        expect(d).toMatch(/req\.query\.code/);
+        expect(d).toMatch(/req\.query\.exact/);
+        expect(d).toMatch(/exactItemSql\(itemCode, item, p\)/);
+        expect(d).toMatch(/const wantExact = exactFlag \|\| Boolean\(itemCode\)/);
+    });
+
+    test('الخادم: البحثُ العائليّ (ILIKE) لا يسري على هويةٍ محسومة', () => {
+        const d = door();
+        /* المطابقة الدقيقة تسبق العائلية، والعائلية لا تُلجأ إليها إلا
+           حين لا تُحسم الهوية. */
+        expect(d).toMatch(/const precise = buildMatch\(wantExact\)/);
+        expect(d).toMatch(/let itemSql = precise \? exactItemSql\(itemCode, item, p\) : null;/);
+        expect(d).toMatch(/ILIKE/);
+    });
+
+    test('الخادم: قائمة الأصناف نفسها بالزوج لا بالكود (010102 يسمّي صنفين)', () => {
+        const d = server.slice(server.indexOf("router.get('/item-sales'"), server.indexOf("router.get('/item-sales/print'"));
+        expect(d).toMatch(/const pairSql = \(itemCode && item\) \? exactItemSql\(itemCode, item, params\) : null;/);
+        expect(d).toMatch(/extra \+= ` AND \$\{pairSql\}`;/);
+    });
+
+    test('الخادم: الردّ يعلنّ المطابقة (pair|code|name|search) والشاشة تقرأها', () => {
+        expect(door()).toMatch(/res\.json\(\{ ok: true, from, to, item, code: itemCode, match,/);
+        expect(door()).toMatch(/const match = wantExact \? \(itemCode && item \? 'pair' : \(itemCode \? 'code' : 'name'\)\) : 'search';/);
+        expect(repo).toMatch(/export async function fetchItemInvoices\(\{ from, to, item, code = '', cashier = '', limit = 300, offset = 0 \} = \{\}\)/);
+    });
+
+    test('الواجهة: الترتيب بدقّة (تام ← بادئة ← احتواء) قبل فتح اللوحة', () => {
+        expect(screen).toMatch(/function rankCandidates\(rows, term\)/);
+        expect(screen).toMatch(/function arKey\(s\)/);
+        expect(screen).toMatch(/const exact = ranked\.filter/);
+        expect(screen).toMatch(/renderSuggest\(rankCandidates\(data\.rows, term\)/);
+    });
+
+    test('الواجهة: نطاق القائمة والمؤشرات بالزوج (لا بالكود وحده)', () => {
+        expect(screen).toMatch(/if \(code && name\) \{ return rc === code && rn === name; \}/);
+        expect(screen).toMatch(/rowKey: \(r, i\) => `\$\{r\.item_code \|\| ''\}\|\$\{r\.item_name \|\| ''\}\|\$\{i\}`/);
+    });
+
+    test('الواجهة: الطباعة تطابق الشاشة — الصنف المختار وحده', () => {
+        expect(screen).toMatch(/item: state\.selected \|\| state\.item/);
+        expect(screen).toMatch(/code: state\.selectedCode,/);
+        expect(screen).toMatch(/exact: state\.selected \? 1 : 0/);
+        expect(repo).toMatch(/export async function fetchItemSalesSheetHtml\(\{ from, to, cashier = '', item = '', code = '', exact = 0 \} = \{\}\)/);
+    });
+
+    test('الورقة A4 تحترم المطابقة الدقيقة أيضًا', () => {
+        const d = sheetDoor();
+        expect(d).toMatch(/req\.query\.exact/);
+        expect(d).toMatch(/exactItemSql\(itemCode, item, params\)/);
     });
 });
 

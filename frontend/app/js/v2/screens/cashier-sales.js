@@ -22,14 +22,15 @@
  * يُعلَن: سندٌ بلا سطور، أو إجماليٌ لا يساوي صافيًا + ضريبة، أو دفعٌ لم
  * يغطِّ الإجمالي — كلها تُعرض كما هي لأن إخفاءها يجعل الرقم أجمل وأكذب.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { trapFocus } from '../focus-trap.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { trapFocus } from '../focus-trap.js?v=4.9.296';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.296';
 import {
     fetchSummary, fetchOrders, fetchItems, fetchItem, fetchInvoice,
     fetchInvoiceHtml, fetchSheetHtml, money, count, qty, periodPresets, isoDay,
-} from '../data/cashier-sales-repo.js?v=4.9.194';
+} from '../data/cashier-sales-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -145,40 +146,55 @@ function template(presetKey, viewKey) {
     const preset = PRESETS.find((p) => p.key === presetKey) || {};
     return `
     <section class="erp-v2 csales erp-stack">
-      <header class="csales__head erp-screen-in">
+      <div class="erp-dash-head erp-screen-in" style="--erp-dash-eyebrow:'CASHIER SALES'">
         <div>
-          <h2 class="csales__title">مبيعات الكاشير
-            <span class="erp-eyebrow" dir="ltr" lang="en">Cashier Sales</span></h2>
-          <p class="csales__sub">كل سندٍ صدر من الكاشيريات، وكل صنفٍ بِرمزه — والفاتورة تُطبع من داخلها</p>
+          <h2 class="erp-dash-title">مبيعات الكاشير</h2>
+          <p class="erp-dash-sub">كل سندٍ صدر من الكاشيريات، وكل صنفٍ بِرمزه — والفاتورة تُطبع من داخلها</p>
         </div>
-        <div class="csales__tools erp-no-print">
-          ${seg('aria-label="العرض"', VIEWS.map((v) => ({ key: v.key, label: v.label, attr: 'data-sa-view' })), viewKey)}
-          <input class="erp-input" type="text" data-sa-multi placeholder="تقرير مفصل: أصناف بفاصلة (مشويات، عصير)" aria-label="أصناف التقرير المفصل مفصولة بفاصلة" style="min-inline-size:30ch">
+      </div>
+
+      <div class="csales__tools erp-no-print">
+        ${seg('aria-label="العرض"', VIEWS.map((v) => ({ key: v.key, label: v.label, attr: 'data-sa-view' })), viewKey)}
+        <span class="erp-grow"></span>
+        <button type="button" class="erp-btn erp-btn--sm csales__print" data-sa-print-sheet
+                aria-label="طباعة الكشف" title="طباعة الكشف الحالي">
+          <i class="ji" data-i="printer" aria-hidden="true"></i><span data-sa-print-label>طباعة الكشف</span></button>
+      </div>
+
+      <details class="csales__filtersBox erp-no-print" data-sa-filters open>
+        <summary class="csales__filtersSummary">
+          <i class="ji" data-i="calendar" aria-hidden="true"></i>
+          <span>الفترة والمرشّحات</span>
+          <span class="csales__filtersNow" data-sa-filters-now></span>
+          <i class="ji csales__filtersChev" data-i="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="csales__bar">
+          ${seg('aria-label="الفترة"', PRESETS.map((p) => ({ key: p.key, label: p.label, attr: 'data-sa-preset' })), presetKey)}
+          <label class="erp-field csales__field"><span class="erp-label">من</span>
+            <input class="erp-input erp-input--ltr" type="date" data-sa="from" value="${esc(preset.from ?? isoDay(-6))}"></label>
+          <label class="erp-field csales__field"><span class="erp-label">إلى</span>
+            <input class="erp-input erp-input--ltr" type="date" data-sa="to" value="${esc(preset.to ?? isoDay(0))}" max="${esc(isoDay(0))}"></label>
+          <label class="erp-field csales__field csales__field--wide"><span class="erp-label">الكاشيرية</span>
+            <select class="erp-select" data-sa="cashier"><option value="">كل الكاشيريات</option></select></label>
+          <label class="csales__search">
+            <i class="ji" data-i="search" aria-hidden="true"></i>
+            <span class="erp-sr-only">بحث في السندات والأصناف</span>
+            <input class="erp-input erp-grow" type="search" data-sa="q"
+                   placeholder="رقم سند أو اسم صنف…" autocomplete="off">
+          </label>
+          <button type="button" class="erp-btn erp-btn--sm" data-sa-clear hidden>إلغاء المرشّحات</button>
+        </div>
+        <div class="csales__adv">
+          <label class="erp-field csales__advField"><span class="erp-label">تقرير مفصل بأصناف مختارة</span>
+            <input class="erp-input" type="text" data-sa-multi
+                   placeholder="أصناف بفاصلة (مشويات، عصير)"
+                   aria-label="أصناف التقرير المفصل مفصولة بفاصلة"></label>
           <button type="button" class="erp-btn erp-btn--sm" data-sa-print-multi aria-label="طباعة تقرير مفصل بالأصناف المختارة">
-            <i class="ji" data-i="file-text" aria-hidden="true"></i><span>تقرير مفصل</span></button>
-          <button type="button" class="erp-btn erp-btn--sm" data-sa-print-sheet>
-            <i class="ji" data-i="printer" aria-hidden="true"></i><span data-sa-print-label>طباعة الكشف</span></button>
+            <i class="ji" data-i="file-text" aria-hidden="true"></i><span>اطبع التقرير</span></button>
         </div>
-      </header>
+      </details>
 
       <div class="csales__pulseWrap erp-no-print" data-sa-pulse role="status" aria-live="polite"></div>
-
-      <div class="csales__bar erp-no-print">
-        ${seg('aria-label="الفترة"', PRESETS.map((p) => ({ key: p.key, label: p.label, attr: 'data-sa-preset' })), presetKey)}
-        <label class="erp-field"><span class="erp-label">من</span>
-          <input class="erp-input erp-input--ltr" type="date" data-sa="from" value="${esc(preset.from ?? isoDay(-6))}"></label>
-        <label class="erp-field"><span class="erp-label">إلى</span>
-          <input class="erp-input erp-input--ltr" type="date" data-sa="to" value="${esc(preset.to ?? isoDay(0))}" max="${esc(isoDay(0))}"></label>
-        <label class="erp-field"><span class="erp-label">الكاشيرية</span>
-          <select class="erp-select" data-sa="cashier"><option value="">كل الكاشيريات</option></select></label>
-        <label class="csales__search">
-          <i class="ji" data-i="search" aria-hidden="true"></i>
-          <span class="erp-sr-only">بحث في السندات والأصناف</span>
-          <input class="erp-input erp-grow" type="search" data-sa="q"
-                 placeholder="رقم سند أو اسم صنف…" autocomplete="off">
-        </label>
-        <button type="button" class="erp-btn erp-btn--sm" data-sa-clear hidden>إلغاء المرشّحات</button>
-      </div>
 
       <div class="csales__view" data-sa-board role="tabpanel" aria-label="لوحة المبيعات"></div>
 
@@ -512,6 +528,7 @@ export function mountCashierSales(host) {
         const sort = s.sort || null;
         return {
             from: filters.from, to: filters.to, cashier: filters.cashier, q: filters.q,
+            live: liveWanted() ? '1' : '',
             limit: s.pageSize || PAGE_SIZE,
             offset: ((s.page || 1) - 1) * (s.pageSize || PAGE_SIZE),
             sort: sort ? sort.key : '', dir: sort ? sort.dir : '',
@@ -521,7 +538,10 @@ export function mountCashierSales(host) {
     async function loadSummary() {
         const seq = ++busySeq;
         try {
-            const s = await fetchSummary({ from: filters.from, to: filters.to, cashier: filters.cashier, q: filters.q });
+            const s = await fetchSummary({
+                from: filters.from, to: filters.to, cashier: filters.cashier, q: filters.q,
+                live: liveWanted() ? '1' : '',
+            });
             if (seq !== busySeq) {return;}
             currency = s.currency;
             paintBoard(s);
@@ -587,6 +607,49 @@ export function mountCashierSales(host) {
         loadSummary();
         loadActiveTable();
     }
+
+    /* ── اللايف ────────────────────────────────────────────────────────────
+       فاتورةٌ كُتبت للتوّ لا تصل إلى المرآة حتى يسحبها أحد. كان السحب وحده
+       على دورة المؤقّت (دقيقة) وفي عمليةٍ مولودة لا مقابس لها — فلا بثّ ولا
+       طلب، والشاشة تُجيب من كاشٍ عمره 30 ثانية. الآن الشاشة نفسها تطلب
+       «live=1» طالما المدى يشمل اليوم والتبويب مرئيّ: الخادم يسحب المرآة
+       عند الطلب (بمعدل سحبٍ واحد كل 15 ثانية مهما كثر المشاهدون) ويجيب بلا
+       كاش، ويُبثّ «مزامنة/أوردر جديد» فتُعاد القراءة فورًا. النبض كل 20 ثانية
+       هو حبل النجاة حين تسقط المقابس — لا حدثٌ يُفقد فلا تُعرف الفاتورة. */
+    const LIVE_TICK_MS = 20_000;
+    let liveSocket = null;
+    let liveTimer = 0;
+    let livePush = 0;
+
+    /** هل المدى المختار يشمل اليوم؟ مدىً فارغٌ طرفًا = كل المرآة، فيشمل. */
+    function liveWanted() {
+        if (document.hidden) {return false;}
+        const today = isoDay(0);
+        return (!filters.from || filters.from <= today) && (!filters.to || today <= filters.to);
+    }
+
+    /** دفعةٌ واحدة لكل ما يصل في النافذة: بثّان متتاليان لا يعنيان قراءتين. */
+    function onLivePush() {
+        clearTimeout(livePush);
+        livePush = setTimeout(() => { if (el.isConnected) {loadAll();} }, 500);
+    }
+
+    async function bindLive() {
+        try {
+            const socket = await ensureRealtimeSocket();
+            if (!socket || !el.isConnected) {return;}
+            liveSocket = socket;
+            socket.on('yarasoft:mirror', onLivePush);
+            socket.on('yarasoft:new-orders', onLivePush);
+            socket.on('sale:completed', onLivePush);
+        } catch (_) { /* المقابس ترفٌ في العرض، لا شرطٌ له */ }
+    }
+
+    function startLiveHeartbeat() {
+        liveTimer = setInterval(() => { if (liveWanted()) {loadAll();} }, LIVE_TICK_MS);
+    }
+
+    const onVisibility = () => { if (!document.hidden && liveWanted()) {loadAll();} };
 
     /* ── اللوحات المنسدلة ────────────────────────────────────────────────── */
     const panel = q('[data-sa-panel]');
@@ -945,14 +1008,14 @@ export function mountCashierSales(host) {
             }
             const w = openInAppReport('تقرير مفصل بأصناف مختارة');
             w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مفصل بأصناف مختارة</title>`
-                + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-                + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
-                + 'h3.sec{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:18px 0 8px}'
+                + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+                + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+                + 'h3.sec{font-size:14px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:5px;margin:18px 0 8px}'
                 + '.pill{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:1px 9px;font-size:11px;color:#555}'
                 + 'table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}'
-                + 'th{background:#f7ead8;color:#7c3500}td.c,th.c{text-align:center}'
-                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+                + 'th{background:#eaf3ee;color:#0a3d2f}td.c,th.c{text-align:center}'
+                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
                 + '.controls button.secondary{background:#555}'
                 + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
                 + '<div class="controls"><button type="button" data-mi-print>🖨 طباعة</button><button type="button" class="secondary" data-mi-close>إغلاق</button></div>'
@@ -1008,9 +1071,29 @@ export function mountCashierSales(host) {
     /** تغيّرت المرشّحات: الصفحة تُصفَّر في الجدول النشط وتُعاد اللوحة معه. */
     function touch() {
         q('[data-sa-clear]').hidden = !(filters.cashier || filters.q);
+        paintFilterSummary();
         if (view === 'orders') {ordersTable.setPage(1);}
         if (view === 'items') {itemsTable.setPage(1);}
         loadAll();
+    }
+
+    /**
+     * ملخّصُ المرشّحات: على الهاتف يُطوى الصندوقُ لكن لا يُعمى المستخدم —
+     * السطرُ يقول الفترة والكاشيرية والبحث المطبَّق بلا فتحِ شيء.
+     */
+    function paintFilterSummary() {
+        const now = q('[data-sa-filters-now]');
+        if (!now) {return;}
+        const preset = PRESETS.find((p) => p.key === filters.preset);
+        const range = preset && preset.to
+            ? preset.label
+            : `${filters.from || 'البداية'} ← ${filters.to || 'اليوم'}`;
+        const sel = q('[data-sa="cashier"]');
+        const picked = filters.cashier && sel && sel.selectedOptions && sel.selectedOptions[0]
+            ? sel.selectedOptions[0].textContent
+            : '';
+        const cashier = filters.cashier ? (picked || filters.cashier) : 'كل الكاشيريات';
+        now.textContent = `${range} · ${cashier}${filters.q ? ` · بحث: ${filters.q}` : ''}`;
     }
 
     el.querySelectorAll('[data-sa-preset]').forEach((b) => {
@@ -1064,12 +1147,33 @@ export function mountCashierSales(host) {
 
     /* الإغلاق من X أعلى اللوحة وحده — لا Escape ولا نقرة على الغطاء. */
 
+    /* على الهاتف يُطوى صندوقُ المرشّحات ابتداءً: الرقمُ أولًا، والملخّصُ
+       يعلن الفترةَ والكاشيرية بلا فتح. الشاشةُ العريضة تبقى مفتوحة كما هي. */
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 720px)').matches) {
+        const box = q('[data-sa-filters]');
+        if (box) {box.open = false;}
+    }
+    paintFilterSummary();
+
     /* إرجاءٌ أوليّ: اللوحة تُرسم أوّلًا، ثم الجدول إن كان هو النشط — فلا
        طلبٌ ثقيلٌ يسبق ما يراه المستخدم. */
     switchView(view);
     loadAll();
+    bindLive();
+    startLiveHeartbeat();
+    document.addEventListener('visibilitychange', onVisibility);
     return {
         destroy() {
+            clearInterval(liveTimer);
+            clearTimeout(livePush);
+            document.removeEventListener('visibilitychange', onVisibility);
+            if (liveSocket) {
+                liveSocket.off('yarasoft:mirror', onLivePush);
+                liveSocket.off('yarasoft:new-orders', onLivePush);
+                liveSocket.off('sale:completed', onLivePush);
+                liveSocket = null;
+            }
             clearTimeout(searchTimer);
             releaseTrap?.();
             releaseTrap = null;

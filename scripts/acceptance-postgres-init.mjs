@@ -46,7 +46,7 @@ try {
   const pgEnv = { ...process.env, PGPASSWORD: dbPassword };
   run(pg('createdb'), ['-h', '127.0.0.1', '-p', port, '-U', 'postgres', dbName], pgEnv);
   const migrationsDir = path.join(root, 'database', 'migrations');
-  const migrations = fs.readdirSync(migrationsDir).filter((file) => file.endsWith('.sql') && file !== '006_demo_seed.sql').sort();
+  const migrations = fs.readdirSync(migrationsDir).filter((file) => file.endsWith('.sql') && file !== '006_demo_seed.sql' && !/_down\.sql$/i.test(file)).sort();
   for (const file of migrations) {
     run(pg('psql'), ['-h', '127.0.0.1', '-p', port, '-U', 'postgres', '-d', dbName, '-v', 'ON_ERROR_STOP=1', '-f', path.join(migrationsDir, file)], pgEnv);
   }

@@ -46,6 +46,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- إشعارات الهاتف (FCM Push) — أندرويد 13+ يطلب الإذن وقت التشغيل عبر المكوّن -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- FCM يتعامل مع اتصال الخلفية بنفسه -->
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+
     <!-- QR / Barcode scanning (HR cards, inventory, receiving) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -54,4 +59,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+    <!-- النطق العربي على الهاتف (ArabicTts): أندرويد 11+ يخفي محرّك
+         النطق عن التطبيق إلا بإعلانه هنا — بلاه فلا يجد التطبيق صوتًا عربيًا. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 </manifest>

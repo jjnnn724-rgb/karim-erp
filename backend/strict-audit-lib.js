@@ -4,15 +4,10 @@
  * runStrictAudit(month) -> { ok, month, checks: [{name, status, count, warn}], failures }
  */
 const { pool } = require('./shared-pool');
+const { graceMinutes } = require('./shift-day');
 
-// FIX 2026-10-11 (M9): grace minutes — was counting 1+ min late as FAIL,
-// but engine uses 15-min grace via graceMinutes() in shift-day.js.
-// Import the same logic to keep audit consistent with engine.
-function graceMinutes() {
-  const v = parseInt(process.env.ATTENDANCE_GRACE_MINUTES || '15', 10);
-  return Number.isFinite(v) && v >= 0 && v <= 120 ? v : 15;
-}
-
+// السماحية مصدرها الواحد shift-day.js — قرار المالك 2026-11-02 «حتي فتره
+// السماح شيلها»: صفر، فأي دقيقة فوق البداية تُحسب في تدقيق التأخير أيضًا.
 function toMin(t) {
   const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
@@ -60,8 +55,7 @@ async function runStrictAudit(month) {
     for (const r of rows) {
       if (!r.checkIn) {continue;}
       const inMin = toMin(r.checkIn);
-      // FIX 2026-10-11 (M9): تجاوز الحدّ = متأخر؛ ومعنى الحدّ (2026-10-30) عتبة
-      // لا اقتطاع — فوق الربع ساعة تُحسب كل الدقائق.
+      // بلا سماحية (قرار المالك 2026-11-02): أي دقيقة فوق البداية تُحسب كاملة
       const rawArrival = inMin == null ? 0 : Math.max(0, inMin - sMin);
       const arrival = rawArrival > grace ? rawArrival : 0;
       let early = 0;

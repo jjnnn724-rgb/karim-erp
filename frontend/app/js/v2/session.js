@@ -115,16 +115,28 @@ export function stopKeepAlive() {
     if (keepAliveTimer) {clearTimeout(keepAliveTimer); keepAliveTimer = null;}
 }
 
+function armOrRefresh() {
+    if (typeof document !== 'undefined' && document.hidden) {return;}
+    /* لا جلسة أصلًا: لا رمز في الذاكرة ولا رمز تحديث في الجهاز — لا شيء
+       يُجدَّد، والصفحة على بوابة الدخول فعلًا. */
+    if (!window._jwt && !readRefreshToken()) {return;}
+    const exp = accessExpiresAtMs();
+    if (exp && exp - Date.now() <= KEEPALIVE_LEAD_MS) {void silentRefresh();}
+    else {scheduleKeepAlive();}
+}
+
 function wireKeepAlive() {
     if (keepAliveWired) {return;}
-    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') {return;}
     keepAliveWired = true;
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {return;}
-        const exp = accessExpiresAtMs();
-        if (exp && exp - Date.now() <= KEEPALIVE_LEAD_MS) {void silentRefresh();}
-        else {scheduleKeepAlive();}
-    });
+    const listen = (target, ev) => {
+        if (target && typeof target.addEventListener === 'function') {target.addEventListener(ev, armOrRefresh);}
+    };
+    /* الهاتف لا التبويب: أندرويد يجمّد الصفحة في الخلفية ويحييها من
+       bfcache، وشبكةُ السيارة تنقطع ثم تعود — والأحداث الثلاثة هي اللحظة
+       التي يجب أن يجدّد فيها الرمزُ لا أن ينتظر مؤقّتًا أُطبِق أثناء التجميد.
+       بلا هذا يفتح الموظف التطبيق بعد ساعة فيجد كل طلبٍ 401. */
+    if (typeof document !== 'undefined') {listen(document, 'visibilitychange');}
+    if (typeof window !== 'undefined') {listen(window, 'pageshow'); listen(window, 'online');}
 }
 
 function memorySession() {
@@ -215,6 +227,17 @@ export function installApiFetchBridge() {
  */
 let refreshInflight = null;
 
+/* ── لماذا فشل آخرُ تجديد؟ ─────────────────────────────────────────────
+   المضيف يفرّق بين «لا جلسة على هذا الجهاز» و«السيرفر بعيد اللحظة»:
+   الموظف الذي مشى من واي- فاي المطعم إلى بيانات الهاتف يفقد الجلسة إلى
+   شاشة الدخول لو قُرئ الفشلان قراءةً واحدة. القيم: 'none' بلا رمز تحديث،
+   'network' عطلُ شبكةٍ أو ردٌّ غير مفسَّر، 'rejected' رمزٌ ميت يقينًا،
+   'cancelled' خرج المستخدم أثناء الطلب، 'ok' نجح. */
+let lastRefreshResult = 'none';
+
+/** @returns {'none'|'network'|'rejected'|'cancelled'|'ok'} */
+export function lastRefreshOutcome() {return lastRefreshResult;}
+
 export function silentRefresh() {
     if (refreshInflight) {return refreshInflight;}
     refreshInflight = performRefresh().finally(() => {refreshInflight = null;});
@@ -223,7 +246,7 @@ export function silentRefresh() {
 
 async function performRefresh() {
     const rt = readRefreshToken();
-    if (!rt) {return null;}
+    if (!rt) {lastRefreshResult = 'none'; return null;}
     const epoch = keepAliveEpoch;
     let res;
     try {
@@ -232,7 +255,7 @@ async function performRefresh() {
             headers: {'Content-Type': 'application/json', Accept: 'application/json'},
             body: JSON.stringify({refresh_token: rt}),
         });
-    } catch (_) {return null;}
+    } catch (_) {lastRefreshResult = 'network'; return null;}
     if (!res.ok) {
         /* 401 من التجديد يعني رمزًا ميتًا لا مؤقتًا: غير صالح، أو منتهٍ
            (الخادم يحذفه)، أو أُبطل، أو الحساب موقوف. إبقاؤه في التخزين
@@ -241,17 +264,21 @@ async function performRefresh() {
            الثانية. */
         if (res.status === 401) {
             try {localStorage.removeItem(RT_KEY);} catch (_) { /* متجاهَل عمدًا */ }
+            lastRefreshResult = 'rejected';
+        } else {
+            lastRefreshResult = 'network';
         }
         return null;
     }
     let data;
-    try {data = await res.json();} catch (_) {return null;}
-    if (!data || !data.access_token) {return null;}
+    try {data = await res.json();} catch (_) {lastRefreshResult = 'network'; return null;}
+    if (!data || !data.access_token) {lastRefreshResult = 'rejected'; return null;}
     // خرج المستخدم أثناء الطلب: لا رمز جديد في الذاكرة ولا مُدوَّر في التخزين.
-    if (epoch !== keepAliveEpoch) {return null;}
+    if (epoch !== keepAliveEpoch) {lastRefreshResult = 'cancelled'; return null;}
     if (data.refresh_token) {
         try {localStorage.setItem(RT_KEY, data.refresh_token);} catch (_) { /* متجاهَل عمدًا */ }
     }
+    lastRefreshResult = 'ok';
     publish(data.access_token, data.app_key);
     return {
         accessToken: data.access_token,

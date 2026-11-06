@@ -6,9 +6,9 @@
  * + مزامنة. نفس المسارات والحمولات — والخادم يحسم الصلاحية.
  */
 
-import { formatInt } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { fetchOraTables, refreshOraTables, fetchOraTable } from '../data/oracle-repo.js?v=4.9.194';
+import { formatInt } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { fetchOraTables, refreshOraTables, fetchOraTable } from '../data/oracle-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -129,7 +129,7 @@ export function mountOracleDataScreen(host, ctx = {}) {
         const rows = d.rows.map((row) => `<tr>${cols.map((c) => `<td>${esc(String(row[c] ?? ''))}</td>`).join('')}</tr>`).join('');
         const w = openInAppReport(`جدول ${d.table || ''}`);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>جدول ${esc(d.table || '')}</title>`
-            + `<style>body{font-family:'Cairo',Tahoma,sans-serif;padding:28px;direction:rtl}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px;text-align:right}th{background:#f4ead2}`
+            + `<style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:28px;direction:rtl}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px;text-align:right}th{background:#e8f2ec}`
             + `.controls{text-align:center;margin-bottom:14px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}`
             + `@media print{.controls{display:none}body{padding:0}}</style></head><body>`
             + `<div class="controls"><button type="button" class="btn-print" data-pl-print>طباعة</button><button type="button" class="btn-close" data-pl-close>إغلاق</button></div>`

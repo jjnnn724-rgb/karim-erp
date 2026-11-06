@@ -175,6 +175,18 @@ describe('V2 رأس الشل — مركز تحكم بدل شريطٍ يُسحق'
         expect(read(path.join(APP, 'js', 'v2', 'screens', 'dashboard.js')))
             .toMatch(/trigger\.setAttribute\('aria-label', 'بحث سريع في الشاشات \(Ctrl\+K\)'\)/);
 
+        // بند «رأس AppLayout يتجاوز العرض عند الموبايل» — أُغلق 2026-11-03:
+        // شريحة الملف الشخصي (الجلسات + خروج) أيقونةٌ فقط عند ≤٦٤٠، وإلا
+        // فضاء 25px على المستند عند ٣٢٠ (قيس 345 مقابل 320).
+        expect(M640).toMatch(/\.erp-shell__actions \.erp-row-wrap > \.erp-btn span\s*\{\s*display:\s*none/);
+        const wrap = ruleBody(M640, '.erp-v2 .erp-shell__actions .erp-row-wrap > .erp-btn {');
+        expect(wrap).toMatch(/min-inline-size:\s*44px/);
+        expect(wrap).toMatch(/justify-content:\s*center/);
+        // والنص المخفي موجودٌ في aria-labels في المصدر — لا يتيتم زرّ.
+        const prev = read(path.join(APP, 'js', 'v2', 'preview.js'));
+        expect(prev).toMatch(/aria-label', 'الأجهزة والجلسات — إنهاء جلسة جهاز'/);
+        expect(prev).toMatch(/aria-label', 'تسجيل الخروج من المعاينة \(تبقى جلسة النظام الحالي\)'/);
+
         // نصّ خيارات الثيم والكثافة هو اسمها — لا يُخفى في أي عرض.
         for (const block of [M640, M340]) {
             expect(block).not.toMatch(/\.erp-theme-option[^}]*display:\s*none/);

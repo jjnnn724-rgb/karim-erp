@@ -17,8 +17,11 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction } = require('./punch-portal-logic');
+const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction, assessFaceSamples } = require('./punch-portal-logic');
 const { createRateLimiter } = require('./rate-limiter');
+const { shiftDateForEmployee } = require('./shift-day');
+// بصمة البوابة بلا اتجاه — تُحفظ خامًا بحالة مجهولة (-1)، لا تُخترع لها اتجاهات.
+const UNKNOWN_PUNCH_STATE = -1;
 
 const router = express.Router();
 
@@ -54,6 +57,54 @@ async function loadPunchSettings() {
     }
 }
 
+// ─── اللوج الخام لكاميرا التطبيق (الإصلاح الجذري 2026-11-03) ────────────────
+// بصمات البوابة كانت تُعالج في المحرك مباشرة بلا أثرٍ في attendance_logs
+// (اللوج الخام) — فتكتب في صفوف الحضور وتختفي من أي شاشة/تدقيق/مراجعة تقرأ
+// البصمة الخام، وتُقرأ على أنها «الكاميرا خالي». من اليوم: كل بصمة ناجحة
+// تُخزَّن خامًا أيضًا بجهاز البوابة الافتراضي (migration 128) — البصمة الخام
+// تصبح دليلًا موحّدًا للأجهزة والكاميرا بلا استثناء.
+let _portalDeviceId = null;
+async function portalDeviceId() {
+    if (_portalDeviceId) {return _portalDeviceId;}
+    try {
+        const { rows } = await pool.query(
+            'SELECT id FROM attendance_devices WHERE "ipAddress" = $1 AND port = 1 LIMIT 1',
+            ['virtual-portal']
+        );
+        _portalDeviceId = rows[0]?.id ?? null;
+        return _portalDeviceId;
+    } catch (e) {
+        logger.error('[punch-portal] تعذر إيجاد جهاز البوابة الافتراضي (migration 128 مطبّق؟):', e.message);
+        return null;
+    }
+}
+const PORTAL_ACTION_STATE = { check_in: 0, fix_in: 0, check_out: 1, fix_out: 1 };
+
+/** يُخزّن بصمة الموظف في اللوج الخام. البصمة الفيزيائية لا تُضيع أبدًا
+ *  (قرار المالك 2026-11-05): بلا اتجاه صريح (action='ignore' — البوابة بلا زر
+ *  والاشتقاق توقّف) تُخزَّن الحالة المجهولة -1 — لا يُختلَق اتجاه ولا تُحذف
+ *  البصمة من الدليل الخام. فشلُه لا يمنع استجابة الموظف (بصمة المراجعة
+ *  مسجَّلة في attendance_decisions). */
+async function writePortalRawLog(employeeId, instant, action, engineResult) {
+    try {
+        const deviceId = await portalDeviceId();
+        if (!deviceId) {return;}
+        const punchState = Number.isInteger(PORTAL_ACTION_STATE[action])
+            ? PORTAL_ACTION_STATE[action] : UNKNOWN_PUNCH_STATE;
+        await pool.query(
+            `INSERT INTO attendance_logs
+                ("deviceId", "deviceUserId", "employeeId", "attendanceTime", "verifyType", "punchState", source)
+             VALUES ($1, $2::text, $3, $4, 15, $5, 'portal')
+             ON CONFLICT ("deviceId", "deviceUserId", "attendanceTime") DO NOTHING`,
+            [deviceId, String(employeeId), employeeId, instant, punchState]
+        );
+    } catch (e) {
+        // بصمة الحضور نفسها سبقت — الفشل هنا للأرشفة الخام فقط: صوت + تفاصيل
+        logger.error('[punch-portal] تعذر أرشفة البصمة الخام (attendance_logs):',
+            e.message, JSON.stringify({ action: engineResult?.action ?? null, decision: engineResult?.decision ?? null }));
+    }
+}
+
 /** ربط الحساب بملف الموظف — بلا ملف موظف لا توجد بصمة ذاتية */
 async function getEmployeeForUser(userId) {
     const { rows } = await pool.query(
@@ -61,6 +112,24 @@ async function getEmployeeForUser(userId) {
         [userId]
     );
     return rows[0] || null;
+}
+
+/** ساعة الحائط بتوقيت العمل (آسيا/الرياض) — مرجع الزمن الوحيد للبوابة. */
+function riyadhWall(now = new Date()) {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
+    const parts = {};
+    for (const p of fmt.formatToParts(now)) {parts[p.type] = p.value;}
+    const hour = Number(parts.hour) % 24;
+    return {
+        date: `${parts.year}-${parts.month}-${parts.day}`,
+        hour,
+        minute: Number(parts.minute),
+        // منتصف الليل بصيغة hour12:false يأتي "24" — يُطبَّع 00 وإلا انفجرت تقارير ::time
+        time: `${String(hour).padStart(2, '0')}:${parts.minute}`,
+    };
 }
 
 async function getBoundDevice(userId) {
@@ -108,6 +177,88 @@ async function auditAttempt(entry) {
     }
 }
 
+// ─── الوجه الصارم (L5-strict) — كل دليل تُحسبه على السيرفر من صورة، لا من ادعاء ──
+
+const FACE_STRICT_MESSAGES = {
+    PUNCH_FACE_SERVER_EMBED_REQUIRED: 'تحقق الوجه صارم الآن: يلزم إرسال صورة الوجه لا بصمته الرقمية المحسوبة على جهازك.',
+    PUNCH_FACE_UPLOAD_FORBIDDEN: 'تحقق الوجه صارم الآن: الصورة يجب أن تكون من الكاميرا لحظة البصمة، لا مرفوعة من المعرض.',
+    PUNCH_FACE_SAMPLES_REQUIRED: 'لم تصل عيّنة وجه واحدة من الكاميرا — أعد البصمة والتقط العيّنة بواجهة واضحة.',
+    PUNCH_FACE_REPLAY: 'لقطة الوجه مكرّرة من نفس الصورة — أعد البصمة أمام الكاميرا مباشرة.',
+    PUNCH_FACE_MISMATCH: 'الوجه غير مطابق لصاحب الحساب — البصمة مرفوضة.',
+    PUNCH_FACE_NO_FACE: 'لم يتم رصد وجه في الصورة — أعد المحاولة بإضاءة جيدة.',
+    PUNCH_FACE_ENGINE_UNAVAILABLE: 'محرك التحقق من الوجه غير جاهز على السيرفر — تواصل مع الإدارة.',
+    PUNCH_FACE_NOT_ENROLLED: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيل الوجه.',
+};
+
+/**
+ * حكم الوجه في الوضع الصارم: قالب ArcFace على السيرفر + صور حيّة من الكاميرا.
+ * الفشل مغلق (fail-closed): بلا محرك، بلا قالب v2، أو بلا صور كافية → رفض.
+ * @param {{req: any, userId: number|string, settings: any}} input
+ * @returns {Promise<{ok: boolean, rejectCode?: string, message?: string,
+ *                   faceDistance: number|null, signals: string[]}>}
+ */
+async function verifyFaceStrict(input) {
+    const { req, userId, settings } = input;
+    const body = req.body || {};
+    const rawImages = (Array.isArray(body.faceImages) ? body.faceImages : [])
+        .concat(body.faceImage ? [body.faceImage] : [])
+        .map((x) => String(x || ''))
+        .filter((x) => x.length > 100)
+        .slice(0, 8);
+    const source = String(body.faceCapture?.source || '').trim().toLowerCase();
+    const identicalImages = rawImages.length > 1 && new Set(rawImages).size < rawImages.length;
+
+    /** @type {any} */
+    let faceV2;
+    try { faceV2 = require('./face-engine-v2'); } catch (_) { faceV2 = null; }
+    if (!faceV2 || !faceV2.modelAvailable()) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_ENGINE_UNAVAILABLE', message: FACE_STRICT_MESSAGES.PUNCH_FACE_ENGINE_UNAVAILABLE, faceDistance: null, signals: [] };
+    }
+    const tpl2 = (await pool.query(
+        'SELECT embeddings FROM punch_face_templates_v2 WHERE user_id = $1 AND active = TRUE', [userId])).rows[0];
+    const distances = [];
+    let missingFace = 0;
+    if (tpl2 && tpl2.embeddings) {
+        for (const dataUrl of rawImages) {
+            /** @type {any} */
+            let emb;
+            try {
+                const buf = Buffer.from(String(dataUrl).replace(/^data:image\/\w+;base64,/, ''), 'base64');
+                emb = await faceV2.embedFaceImage(buf);
+            } catch (_) { emb = null; }
+            const sim = emb ? faceV2.matchEmbedding(emb, tpl2.embeddings) : null;
+            if (!Number.isFinite(Number(sim))) { missingFace++; continue; }
+            distances.push(Math.round((1 - Number(sim)) * 10000) / 10000);
+        }
+    }
+    const verdict = assessFaceSamples({
+        distances,
+        identicalImages,
+        fromUpload: source === 'upload' || source === 'file' || source === 'gallery',
+        hasServerImage: Boolean(tpl2 && rawImages.length),
+        minSamples: settings.faceMinSamples,
+        threshold: Number(settings.faceV2Threshold) || 0.42,
+        replayMinDistance: settings.faceReplayMinDistance,
+    });
+    const faceDistance = verdict.maxDistance;
+    const signals = [`FACE_STRICT:${verdict.samples}_SAMPLES`];
+    if (!tpl2 || !tpl2.embeddings) {
+        // الصرامة لا تعترف بقالب v1 المحسوب على الجهاز — التسجيل يكون بـ v2 على السيرفر
+        return { ok: false, rejectCode: 'PUNCH_FACE_NOT_ENROLLED', message: FACE_STRICT_MESSAGES.PUNCH_FACE_NOT_ENROLLED, faceDistance, signals };
+    }
+    if (!rawImages.length) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_SERVER_EMBED_REQUIRED', message: FACE_STRICT_MESSAGES.PUNCH_FACE_SERVER_EMBED_REQUIRED, faceDistance, signals };
+    }
+    if (verdict.rejectCode === 'PUNCH_FACE_SAMPLES_REQUIRED' && missingFace > 0) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_NO_FACE', message: FACE_STRICT_MESSAGES.PUNCH_FACE_NO_FACE, faceDistance, signals };
+    }
+    if (!verdict.ok) {
+        const code = verdict.rejectCode || 'PUNCH_FACE_MISMATCH';
+        return { ok: false, rejectCode: code, message: FACE_STRICT_MESSAGES[code] || 'الوجه غير مطابق', faceDistance, signals };
+    }
+    return { ok: true, faceDistance, signals };
+}
+
 // ─── حالة البوابة للموظف (تقرأها الواجهة قبل عرض الزر) ──────────────────────
 
 router.get('/status', jwtAuth, async (req, res, next) => {
@@ -120,12 +271,40 @@ router.get('/status', jwtAuth, async (req, res, next) => {
             ? (await pool.query('SELECT 1 FROM punch_face_templates WHERE user_id = $1 AND active = TRUE', [req.user.id])).rows[0]
             : null;
         const faceV2On = settings.faceV2Enabled === true;
-        const faceV2Template = faceV2On && employee
+        const faceV2Template = (faceV2On || settings.faceStrict === true) && employee
             ? (await pool.query('SELECT 1 FROM punch_face_templates_v2 WHERE user_id = $1 AND active = TRUE', [req.user.id])).rows[0]
             : null;
         // القبول الفعّال: v1 مسجل — أو v2 مسجل والمحرك مفعّل (إصلاح 2026-10-01:
-        // البوابة كانت تنظر لقالب v1 فقط فتحجب المسجل بـ v2 رغم جاهزيته)
-        const faceEnrolledEffective = Boolean(faceTemplate) || (faceV2On && Boolean(faceV2Template));
+        // البوابة كانت تنظر لقالب v1 فقط فتحجب المسجل بـ v2 رغم جاهزيته).
+        // في الوضع الصارم قالب v1 لا يكفي: التحقق يكون بصورة يحسب متجهها السيرفر.
+        const faceEnrolledEffective = settings.faceStrict === true
+            ? Boolean(faceV2Template)
+            : Boolean(faceTemplate) || (faceV2On && Boolean(faceV2Template));
+        // حالة اليوم (2026-11-02): الزر الواحد يعلن ما سيُسجَّل — أول بصمة =
+        // حضور والثانية = انصراف، بنفس «اليوم» الذي سيكتب فيه المحرك (وردية
+        // الليل تلفّ اليوم للسابق). القراءة معطوبة لا تكسر حالة البوابة.
+        let today = { checkIn: null, checkOut: null };
+        if (employee) {
+            try {
+                const { engine } = require('./attendance-engine');
+                const shift = await engine.getEmployeeShift(employee.id);
+                if (shift) {
+                    const wall = riyadhWall(new Date());
+                    const shiftDate = shiftDateForEmployee(wall.date, wall.hour,
+                        { shift_start: shift.shiftStart, shift_karim: shift.shiftKarim });
+                    const row = await pool.query(
+                        `SELECT "checkIn", "checkOut" FROM attendance
+                          WHERE "employeeId" = $1 AND date = $2 LIMIT 1`,
+                        [employee.id, shiftDate],
+                    );
+                    if (row.rows[0]) {
+                        today = { checkIn: row.rows[0].checkIn, checkOut: row.rows[0].checkOut };
+                    }
+                }
+            } catch (e) {
+                logger.error('[punch-portal] تعذر قراءة حالة اليوم:', e.message);
+            }
+        }
         res.json({
             ok: true,
             enabled: settings.portalEnabled,
@@ -138,6 +317,11 @@ router.get('/status', jwtAuth, async (req, res, next) => {
             mobileV2: process.env.MOBILE_UI_V2 !== 'false', // مفتاح واجهة الجوال (افتراضي: مفعّل)
             faceEnabled: settings.faceEnabled === true,
             faceEnrolled: faceEnrolledEffective,
+            // الصرامة تُعلِم العميل: كم عيّنة حيّة يلزم، والمعرض لم يعد مقبولًا
+            faceStrict: settings.faceStrict === true,
+            faceMinSamples: Math.max(1, Number(settings.faceMinSamples) || 2),
+            geoStrictMultiFix: settings.geoStrictMultiFix === true,
+            today,
             faceV2: {
                 enabled: faceV2On,
                 enrolled: Boolean(faceV2Template),
@@ -182,6 +366,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                     mocked: loc.mocked === true,
                 } : null,
             boundDeviceId: null, // يُملأ بعد الربط أدناه
+            serverNowMs: Date.now(),
         };
 
         const settings2 = { ...settings };
@@ -216,8 +401,13 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
 
         // الإشارات الموثقة: ناتج المحرك (تجميد/واقعية…) + إشارات الجهاز المفصولة
         const baseSignals = Array.isArray(verdict.details.trustSignals) ? verdict.details.trustSignals : [];
-        const mergedTrustSignals = (baseSignals.length || spoofSignals.length || reboundSignal)
-            ? [...spoofSignals, ...(reboundSignal ? [reboundSignal] : []), ...baseSignals]
+        // عمر القراءة المحسوب سيرفريًا يُوثَّق دائمًا: هو الدليل الوحيد الصالح للمراجعة
+        // (رقم العميل fixAgeS لا يُثبت شيئًا — يبعث صفرًا في كل البصمات تقريبًا).
+        const freshnessSignal = Number.isFinite(Number(verdict.details.serverAgeS))
+            ? `SERVER_FIX_AGE_${Math.round(Number(verdict.details.serverAgeS))}S` : null;
+        const mergedTrustSignals = (baseSignals.length || spoofSignals.length || reboundSignal || freshnessSignal)
+            ? [...spoofSignals, ...(reboundSignal ? [reboundSignal] : []),
+                ...(freshnessSignal ? [freshnessSignal] : []), ...baseSignals]
             : null;
 
         const auditBase = {
@@ -268,11 +458,13 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                 PUNCH_OUT_OF_RANGE: 'أنت خارج نطاق المطعم — البصمة متاحة من داخل المطعم فقط',
                 PUNCH_DEVICE_REQUIRED: 'معرّف الجهاز مفقود — سجل الدخول من التطبيق من جديد',
                 PUNCH_DEVICE_MISMATCH: 'هذا الجهاز غير مربوط بحسابك — فعّل «الربط التلقائي للجهاز» من إعدادات البصمة أو اطلب فك الربط من الإدارة',
+                PUNCH_LOCATION_CLOCK_SKEW: 'ساعة جهازك غير مضبوطة — اضبط التاريخ والوقت تلقائيًا ثم أعد المحاولة',
             };
             const statusMap = {
                 PUNCH_OUT_OF_NETWORK: 403, PUNCH_OUT_OF_RANGE: 403,
                 PUNCH_LOCATION_MOCKED: 403, PUNCH_DEVICE_MISMATCH: 403,
                 PUNCH_LOCATION_REQUIRED: 422, PUNCH_LOCATION_WEAK: 422,
+                PUNCH_LOCATION_CLOCK_SKEW: 422,
                 PUNCH_DEVICE_REQUIRED: 422,
             };
             return res.status(statusMap[verdict.rejectCode] || 403).json({
@@ -317,7 +509,21 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // شبكة ضعيفة) نسقط إلى v1 بدل الرفض الفوري — أي دليل هوية أفضل من لا شيء.
         let faceDistance = null;
         let faceV2Handled = false;
-        if (settings.faceV2Enabled) {
+        // الوضع الصارم (punch_face_strict): لا صور من المعرض، لا متجه من الجهاز،
+        // ولا عيّنة واحدة — الحكم في verifyFaceStrict أعلاه (fail-closed).
+        if (settings.faceStrict === true) {
+            const strict = await verifyFaceStrict({ req, userId: req.user.id, settings });
+            faceDistance = strict.faceDistance;
+            if (!strict.ok) {
+                await auditAttempt({
+                    ...auditBase, decision: 'rejected', rejectCode: strict.rejectCode, faceDistance,
+                    trustSignals: [...(auditBase.trustSignals || []), ...strict.signals],
+                });
+                return res.status(403).json({ ok: false, error: strict.rejectCode, message: strict.message });
+            }
+            faceV2Handled = true;
+        }
+        if (!faceV2Handled && settings.faceV2Enabled) {
             try {
                 const faceV2 = require('./face-engine-v2');
                 if (faceV2.modelAvailable()) {
@@ -411,29 +617,16 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
 
         // الزمن المرجعي = ساعة السيرفر بتوقيت العمل (آسيا/الرياض) — نفس منطق الأجهزة
         const now = new Date();
-        const riyadh = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-        });
-        const parts = {};
-        for (const p of riyadh.formatToParts(now)) {parts[p.type] = p.value;}
-        const wall = {
-            date: `${parts.year}-${parts.month}-${parts.day}`,
-            hour: Number(parts.hour) % 24,
-            minute: Number(parts.minute),
-            // منتصف الليل بصيغة hour12:false يأتي "24" — يُطبَّع 00 وإلا انفجرت تقارير ::time
-            time: `${String(Number(parts.hour) % 24).padStart(2, '0')}:${parts.minute}`,
-        };
+        const wall = riyadhWall(now);
 
-        // القلب: نفس محرك الحضور الذكي القائم — لا منطق موازٍ إطلاقًا
-        // intent: نيّة الموظف من زر الواجهة (0=حضور/1=انصراف كأعلام أجهزة
-        // البصمة) — المحرك الذكي يعالجها كتلميح وقد يتجاوزها وفق التسلسل
-        const intent = String(req.body?.intent || '').toLowerCase();
-        const punchState = intent === 'in' ? 0 : intent === 'out' ? 1 : null;
+        // القلب: نفس محرك الحضور — لا منطق موازٍ. بصمة واحدة (قرار المالك
+        // 2026-11-05، يُلغي اشتقاق 2026-11-02): البصمة الفيزيائية مصدر الحقيقة
+        // الوحيد — البوابة بلا زر ولا نيّة، والحالة الناقصة لا تُشتق: لا قرار
+        // ولا كتابة صفوف، البصمة تُسجَّل خامًا (بحالة مجهولة) وتُعلَّم للمراجعة.
         const { engine } = require('./attendance-engine');
         const result = await engine.processPunch({
             employeeId: employee.id,
-            punchState,
+            punchState: null,
             instant: now,
             wall,
             device: { name: 'بوابة الجوال' },
@@ -452,10 +645,18 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             engine_result: { action: result.action, decision: result.decision },
         });
 
+        // أرشفة البصمة الخام (attendance_logs) — الإصلاح الجذري 2026-11-03:
+        // بصمات الكاميرا كانت بلا أثر في اللوج فتُقرأ «الكاميرا خالي». ومن
+        // 2026-11-05: بلا اتجاه صريح (ignore) تُخزَّن مجهولة (-1) — الدليل
+        // الخام يبقى كاملًا بلا اختلاق اتجاه.
+        await writePortalRawLog(employee.id, now, result.action, result);
+
         return res.json({
             ok: true,
-            action: result.action, // 'check_in' | 'check_out' (من محرك الحضور الذكي)
+            action: result.action, // 'check_in' | 'check_out' | 'ignore' (بلا اشتقاق — للمراجعة)
             decision: result.decision,
+            // السطر بعد الكتابة: الواجهة تُحدّث بطاقتها فورًا (زرٌ واحد بلا اختيار)
+            record: result.record || null,
             at: now.toISOString(),
         });
     } catch (e) {
@@ -518,6 +719,15 @@ const PUNCH_SETTING_KEYS = {
     punch_face_v2_threshold:{ type: 'float', min: 0.2, max: 0.8 },
     punch_restaurant_lat:   { type: 'float', min: -90, max: 90, nullable: true },
     punch_restaurant_lng:   { type: 'float', min: -180, max: 180, nullable: true },
+    // الصرامة (2026-11-02): مفاتيح جديدة مغلقة افتراضيًا — تُفتح بعد قراءة أثرها
+    // في scripts/backtest-strict-gates-2026-11-02.js
+    punch_multi_fix_required: { type: 'bool' },
+    punch_geo_strict_multi_fix: { type: 'bool' },
+    punch_strict_geofence:  { type: 'bool' },
+    punch_max_clock_skew_s: { type: 'int', min: 10, max: 600 },
+    punch_face_strict:      { type: 'bool' },
+    punch_face_min_samples: { type: 'int', min: 1, max: 5 },
+    punch_face_replay_min_distance: { type: 'float', min: 0, max: 0.2 },
 };
 
 function validatePunchSettingValue(key, value) {

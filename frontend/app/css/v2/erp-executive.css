@@ -109,3 +109,16 @@
     animation: none;
   }
 }
+
+/* Orchestrated arrival (SAP Fiori rule): each card steps in once per
+   navigation, 30ms apart, on transform+opacity only — GPU-composited, no
+   layout, no repaint of content. Values and charts never animate, and the
+   containers are built once per screen, so a refresh click cannot re-fire
+   this on a keystroke. */
+@media (prefers-reduced-motion: no-preference) {
+  .exec .erp-card.erp-screen-in {
+    animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-standard) both;
+  }
+  .exec .erp-card.erp-screen-in:nth-child(2) { animation-delay: 30ms; }
+  .exec .erp-card.erp-screen-in:nth-child(3) { animation-delay: 60ms; }
+}

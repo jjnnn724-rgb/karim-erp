@@ -147,7 +147,10 @@ function stopRecoveryPolling() {
 }
 
 function checkServerContract() {
+    /* بوابة x-api-key العامة تسبق الموزّع — النداء العاري كان يُطلق 401 في
+       كل إقلاع رغم أن الفحص نفسه بلا بيانات حساسة. */
     return fetch(`${window.location.origin}/api/rt/version?clientContract=${RT_API_CONTRACT}`, {
+        headers: rtHeaders(),
         cache: 'no-store',
     }).then(async (response) => {
         if (!response.ok) {throw new Error(`RT_VERSION_FAILED_${response.status}`);}
@@ -173,6 +176,18 @@ function onSocketUnavailable() {
     startRecoveryPolling();
 }
 
+/**
+ * The server emits one `notification` per targeted user
+ * (backend/notification-service.js:160-174, room `user:<id>`), so the row is
+ * already personal. The bell polls every 60s for durability; this event is
+ * what makes the call immediate — and it is the only place a callout can be
+ * announced the second it happens rather than on the next tick.
+ */
+function acceptNotification(payload) {
+    if (!payload || typeof payload !== 'object') {return;}
+    window.dispatchEvent(new CustomEvent('v2:notification', { detail: payload }));
+}
+
 function attachSocket(nextSocket) {
     if (attachedSocket === nextSocket) {return;}
     if (attachedSocket) {
@@ -180,12 +195,14 @@ function attachSocket(nextSocket) {
         attachedSocket.off('disconnect', onSocketUnavailable);
         attachedSocket.off('connect_error', onSocketUnavailable);
         attachedSocket.off('domain_event', acceptDomainEvent);
+        attachedSocket.off('notification', acceptNotification);
     }
     attachedSocket = nextSocket;
     nextSocket.on('connect', onSocketConnect);
     nextSocket.on('disconnect', onSocketUnavailable);
     nextSocket.on('connect_error', onSocketUnavailable);
     nextSocket.on('domain_event', acceptDomainEvent);
+    nextSocket.on('notification', acceptNotification);
     if (nextSocket.connected) {onSocketConnect();}
     else {onSocketUnavailable();}
 }

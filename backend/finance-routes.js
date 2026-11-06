@@ -36,6 +36,9 @@ const READ_ROLES = ['admin', 'manager', 'accountant'];
 const COST_ANALYSIS_READ_ROLES = [...READ_ROLES, 'auditor'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 366;
+/* قسم البيع الخارجي بطاقته وصفّه المستقلان عند المالك: كاشيراه ٤ و٥ وإيرادهم
+   وحدهم، فلا يُدرج فرعًا تحت مطبخه في البطاقات ولا في عمود «مع فروعه». */
+const COST_CARD_STANDALONE = new Set(['external_sales']);
 
 // ─── Pure helpers (مصدَّرة للاختبارات) ────────────────────────────────────────
 
@@ -1518,10 +1521,15 @@ function resolveCostAnalysisPeriod(query) {
         err.code = 'INVALID_PERIOD';
         throw err;
     }
-    if (from < monthStart || to > today) {
-        const err = new Error('تحليل V2 متاح من بداية الشهر الحالي وحتى اليوم فقط');
+    /* FIX 2026-11-01 (قرار المالك: «عايز كل الصرف بكل دقه»): قيد
+       V2_CURRENT_MONTH_ONLY الذي كان يحبس التحليل في الشهر الحالي أُلغي —
+       الحسبة كلها تجميعات نطاق على revenues/dispatches/expenses بلا أي
+       حالة «شهر حالي». يبقى سقف سخي 366 يومًا حفاظًا على الأداء فقط. */
+    const spanDays = Math.round((new Date(`${to}T00:00:00.000Z`) - new Date(`${from}T00:00:00.000Z`)) / 86400000) + 1;
+    if (spanDays > 366) {
+        const err = new Error('أقصى نطاق للتحليل 366 يومًا — قسّم الفترة على مرات');
         err.statusCode = 400;
-        err.code = 'V2_CURRENT_MONTH_ONLY';
+        err.code = 'PERIOD_TOO_LONG';
         throw err;
     }
     return { from, to };
@@ -1591,8 +1599,15 @@ function costAnalysisSql(from, to) {
                        GREATEST(0, COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
                                ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                                'inventory_transfer', 'kitchen_return')
+                                'kitchen_return')
                        ), 0)) AS materials,
+                       /* التحويلات بين الأقسام: بند موقَّع مستقل (سالب على المرسل،
+                          موجب على المستلم) — لا يُدمج في materials حتى لا يُلغى
+                          أثر النقل ولا يُقصّ بـ GREATEST. غياب الصفوف = صفر،
+                          فتبقى الأرقام القديمة حرفًا بحرف. */
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'
+                       ), 0) AS transfers,
                        COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'
                        ), 0) AS count_adj,
@@ -1606,6 +1621,33 @@ function costAnalysisSql(from, to) {
                   LEFT JOIN expenses e ON e."deptId" = tree.code${expenseRange}
                  GROUP BY tree.root_code
             ),
+            /* أرقام القسم وحده — بلا تجميع الشجرة. البطاقات تحتاج تفصل
+               «البيع الخارجي» (وكاشيريه 4 و5) عن المطبخ الذي يسكنه كفرع،
+               والشجرة تدمج الفروع في أبيها. لا تغيّر أي رقم قائم: الحقول
+               الجديدة تُقرأ للبطاقات وحدها، والسقف والجداول تبقى على root_code. */
+            own_expense_totals AS (
+                SELECT e."deptId" AS dept_code,
+                       GREATEST(0, COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
+                               ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                                'kitchen_return')
+                       ), 0)) AS materials,
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'
+                       ), 0) AS transfers,
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'
+                       ), 0) AS count_adj,
+                       COALESCE(SUM(e.amount) FILTER (
+                           WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
+                               ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                                'inventory_transfer', 'kitchen_return', 'count_correction')
+                       ), 0) AS operating,
+                       COUNT(e.id)::int AS row_count
+                  FROM expenses e
+                 WHERE TRUE${expenseRange}
+                 GROUP BY 1
+            ),
             -- الإجماليات على مستوى الشركة تقرأ كل صفوف الفترة بلا فلتر قسم:
             -- صفوف بلا deptId (مثل فروق جرد موقع غير مسند) جزء من الكلفة ولا
             -- يجوز إسقاطها من الإجمالي. صفوف الأقسام وحدها تبقى في الجدول.
@@ -1618,7 +1660,10 @@ function costAnalysisSql(from, to) {
                        FROM expenses e
                       WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
                           ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                           'inventory_transfer', 'kitchen_return')${expenseRange}) AS materials,
+                           'kitchen_return')${expenseRange}) AS materials,
+                    (SELECT COALESCE(SUM(e.amount), 0)
+                       FROM expenses e
+                      WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'${expenseRange}) AS transfers,
                     (SELECT COALESCE(SUM(e.amount), 0)
                        FROM expenses e
                       WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'${expenseRange}) AS count_adj,
@@ -1642,20 +1687,30 @@ function costAnalysisSql(from, to) {
                 ) AS items
                   FROM category_totals
             )
-            SELECT d.code, d.name,
+            SELECT d.code, d.name, d.parent_code,
                    COALESCE(r.revenue, 0) AS revenue,
                    COALESCE(e.materials, 0) AS materials,
+                   COALESCE(e.transfers, 0) AS transfers,
                    COALESCE(e.count_adj, 0) AS count_adj,
                    COALESCE(e.operating, 0) AS operating,
                    COALESCE(e.row_count, 0) AS row_count,
+                   COALESCE(own_rev.amount, 0) AS own_revenue,
+                   COALESCE(own_expense_totals.materials, 0) AS own_materials,
+                   COALESCE(own_expense_totals.transfers, 0) AS own_transfers,
+                   COALESCE(own_expense_totals.count_adj, 0) AS own_count_adj,
+                   COALESCE(own_expense_totals.operating, 0) AS own_operating,
+                   COALESCE(own_expense_totals.row_count, 0) AS own_row_count,
                    categories.items AS categories,
                    overall_totals.revenue AS total_revenue,
                    overall_totals.materials AS total_materials,
+                   overall_totals.transfers AS total_transfers,
                    overall_totals.count_adj AS total_count_adj,
                    overall_totals.operating AS total_operating
               FROM departments d
               LEFT JOIN revenue_totals r ON r.root_code = d.code
               LEFT JOIN expense_totals e ON e.root_code = d.code
+              LEFT JOIN revenue_alloc own_rev ON own_rev.dept_code = d.code
+              LEFT JOIN own_expense_totals ON own_expense_totals.dept_code = d.code
               CROSS JOIN categories
               CROSS JOIN overall_totals
              ORDER BY d.name, d.code`,
@@ -1674,12 +1729,22 @@ function buildCostAnalysisResult(rows) {
     const departments = (Array.isArray(rows) ? rows : []).map((row) => {
         const rev = num(row.revenue);
         const materials = num(row.materials);
+        const transfers = num(row.transfers);
         const countAdj = num(row.count_adj);
         const operating = num(row.operating);
-        const exp = materials + countAdj + operating;
+        const exp = materials + transfers + countAdj + operating;
+        /* أرقام القسم وحده (بلا فروع) — للبطاقات التي تفصل البيع الخارجي عن
+           مطبخه. الأرقام المجمّعة فوق تبقى كما هي لكل قراءة قديمة. */
+        const ownMat = num(row.own_materials);
+        const ownTrn = num(row.own_transfers);
+        const ownCnt = num(row.own_count_adj);
+        const ownOps = num(row.own_operating);
+        const ownRev = num(row.own_revenue);
+        const ownExp = ownMat + ownTrn + ownCnt + ownOps;
         return {
             code: row.code,
             name: row.name,
+            parent: row.parent_code == null ? null : String(row.parent_code),
             channel: isRevenueChannel(row.code),
             /* مرآة البيع الخارجي (ys_b4_ext) ليست قسمًا أيضًا: إيرادها يُعرض
                للمراجعة لكن سياسة المالك تستبعدها من الإجماليات التشغيلية. */
@@ -1689,20 +1754,33 @@ function buildCostAnalysisResult(rows) {
             profit: rev - exp,
             costRatio: rev > 0 ? (exp / rev) * 100 : 0,
             materials,
+            transfers,
             countAdj,
             operating,
             total: exp,
             rowCount: num(row.row_count),
+            own: {
+                rev: ownRev,
+                exp: ownExp,
+                profit: ownRev - ownExp,
+                costRatio: ownRev > 0 ? (ownExp / ownRev) * 100 : 0,
+                materials: ownMat,
+                transfers: ownTrn,
+                countAdj: ownCnt,
+                operating: ownOps,
+                rowCount: num(row.own_row_count),
+            },
         };
     });
     const overall = Array.isArray(rows) && rows.length ? rows[0] : {};
     const totals = {
         rev: num(overall.total_revenue),
         mat: num(overall.total_materials),
+        trn: num(overall.total_transfers),
         cnt: num(overall.total_count_adj),
         ops: num(overall.total_operating),
     };
-    totals.exp = totals.mat + totals.cnt + totals.ops;
+    totals.exp = totals.mat + totals.trn + totals.cnt + totals.ops;
     totals.avgCost = totals.rev > 0 ? (totals.exp / totals.rev) * 100 : 0;
     return {
         rows: departments,
@@ -1711,6 +1789,140 @@ function buildCostAnalysisResult(rows) {
             ? rows[0].categories
             : [],
     };
+}
+
+/** الفترة السابقة مباشرة — نفس عدد أيام الفترة الحالية (مقارنة التكلفة).
+ *  تُحسب بتوقيت UTC على تواريخ YYYY-MM-DD بلا مناطق زمنية غامضة. */
+function previousCostPeriod(from, to) {
+    const start = new Date(`${from}T00:00:00.000Z`);
+    const end = new Date(`${to}T00:00:00.000Z`);
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+    const prevEnd = new Date(start.getTime() - 86400000);
+    const prevStart = new Date(prevEnd.getTime() - (days - 1) * 86400000);
+    return {
+        from: prevStart.toISOString().slice(0, 10),
+        to: prevEnd.toISOString().slice(0, 10),
+        days,
+    };
+}
+
+/** تكلفة الفترة السابقة لكل قسم — نفس منطق تجميع costAnalysisSql (شجري):
+ *  مواد + تحويلات + تسوية جرد + تشغيلية. تُستخدم لمقارنة التكلفة.
+ *  byDept[code].exp شجري (القسم وفروعه)، وbyDept[code].ownExp رقم القسم وحده
+ *  — لأن الشجرة تُسقط تكلفة الفرع على أبيه، فجمع الأسطر يُضاعفها. */
+async function loadPreviousCostTotals(from, to) {
+    const prev = previousCostPeriod(from, to);
+    const { rows } = await pool.query(
+        `WITH RECURSIVE dept_tree(root_code, code, path) AS (
+            SELECT d.code, d.code, ARRAY[d.code]::varchar[] FROM departments d WHERE d.code IS NOT NULL
+           UNION ALL
+            SELECT tree.root_code, child.code, tree.path || child.code
+              FROM dept_tree tree JOIN departments child ON child.parent_code = tree.code
+             WHERE NOT child.code = ANY(tree.path)
+         )
+         SELECT tree.root_code,
+                COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
+                    ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return')), 0) AS materials,
+                COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'), 0) AS transfers,
+                COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'), 0) AS count_adj,
+                COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
+                    ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
+                     'inventory_transfer', 'kitchen_return', 'count_correction')), 0) AS operating
+           FROM dept_tree tree
+           LEFT JOIN expenses e ON e."deptId" = tree.code
+                  AND LEFT(e.date, 10) >= $1 AND LEFT(e.date, 10) <= $2
+          GROUP BY tree.root_code`,
+        [prev.from, prev.to]);
+    const { rows: treeEdges } = await pool.query(
+        'SELECT code, parent_code FROM departments WHERE code IS NOT NULL');
+    const kidCodesOf = new Map();
+    for (const edge of treeEdges) {
+        const parent = edge.parent_code == null ? '' : String(edge.parent_code);
+        const code = String(edge.code);
+        if (!parent || parent === code) {continue;}
+        const bucket = kidCodesOf.get(parent) || [];
+        bucket.push(code);
+        kidCodesOf.set(parent, bucket);
+    }
+    const byDept = {};
+    for (const r of rows) {
+        const materials = num(r.materials);
+        const transfers = num(r.transfers);
+        const countAdj = num(r.count_adj);
+        const operating = num(r.operating);
+        const exp = materials + transfers + countAdj + operating;
+        byDept[String(r.root_code)] = { materials, transfers, countAdj, operating, exp };
+    }
+    /* رقم القسم وحده = مجمّع شجرته ناقص مجمّعات أبنائه المباشرين (كلٌّ يحمل
+       فروعه)، فيبقى لكل قسم سطره بلا تضاعف. وإجمالي الشركة يُجمع من هذه
+       الأرقام وحدها: جمع الأسطر الشجرية كان يعدّ تكلفة الفرع مرة عن كل أب. */
+    let totalExp = 0;
+    for (const code of Object.keys(byDept)) {
+        const rolled = byDept[code];
+        const own = {
+            materials: rolled.materials,
+            transfers: rolled.transfers,
+            countAdj: rolled.countAdj,
+            operating: rolled.operating,
+            exp: rolled.exp,
+        };
+        for (const kidCode of (kidCodesOf.get(code) || [])) {
+            const kid = byDept[kidCode];
+            if (!kid) {continue;}
+            own.materials -= kid.materials;
+            own.transfers -= kid.transfers;
+            own.countAdj -= kid.countAdj;
+            own.operating -= kid.operating;
+            own.exp -= kid.exp;
+        }
+        byDept[code] = { ...rolled, own, ownExp: own.exp };
+        totalExp += own.exp;
+    }
+    return { ...prev, byDept, totalExp };
+}
+
+/** تفاصيل تكلفة قسم — البنود خلف الرقم (مراجعة احترافية: من أين جاءت
+ *  التكلفة). تشمل أقسام القسم الفرعية (نفس الشجرة). */
+async function loadDeptCostDetail(code, from, to) {
+    const { rows } = await pool.query(
+        `WITH RECURSIVE dept_tree(root_code, code, path) AS (
+            SELECT d.code, d.code, ARRAY[d.code]::varchar[] FROM departments d WHERE d.code IS NOT NULL
+           UNION ALL
+            SELECT tree.root_code, child.code, tree.path || child.code
+              FROM dept_tree tree JOIN departments child ON child.parent_code = tree.code
+             WHERE NOT child.code = ANY(tree.path)
+         )
+         SELECT e.id, e."deptId" AS dept_code, e."desc" AS description, e.amount, e.date,
+                e.category, e."adjustmentType" AS adjustment_type, e."autoGenerated" AS auto_generated,
+                e.notes, tree.code AS child_code
+           FROM dept_tree tree
+           JOIN expenses e ON e."deptId" = tree.code
+          WHERE tree.root_code = $1 AND LEFT(e.date, 10) >= $2 AND LEFT(e.date, 10) <= $3
+          ORDER BY ABS(COALESCE(e.amount, 0)) DESC, e.date DESC
+          LIMIT 800`,
+        [code, from, to]);
+    const buckets = { materials: 0, transfers: 0, countAdj: 0, operating: 0 };
+    const items = rows.map((r) => {
+        const type = String(r.adjustment_type || '').toLowerCase();
+        let bucket = 'operating';
+        if (['dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return'].includes(type)) {bucket = 'materials';}
+        else if (type === 'inventory_transfer') {bucket = 'transfers';}
+        else if (type === 'count_correction') {bucket = 'countAdj';}
+        buckets[bucket] += num(r.amount);
+        return {
+            id: r.id,
+            deptCode: r.dept_code,
+            deptName: r.child_code,
+            description: r.description || '',
+            amount: num(r.amount),
+            date: String(r.date || '').slice(0, 10),
+            category: r.category || '',
+            adjustmentType: type,
+            autoGenerated: Boolean(r.auto_generated),
+            notes: r.notes || '',
+        };
+    });
+    return { code, from, to, buckets, total: items.reduce((s, r) => s + r.amount, 0), items };
 }
 
 /* ── تحليل التكاليف — مستند A4 مستقل بهوية المطعم ────────────────────────
@@ -1729,15 +1941,15 @@ body {
          border-radius: 14px; box-shadow: 0 14px 40px rgba(15, 23, 42, .10); overflow: hidden; }
 .brand { display: flex; align-items: center; gap: 16px; padding: 16px 20px;
          background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-         border-bottom: 3px solid #c9a227; }
+         border-bottom: 3px solid #8fbfa9; }
 .brand img { width: 62px; height: 62px; object-fit: contain; background: #fff;
-             border: 2px solid #c9a227; border-radius: 12px; padding: 4px; }
+             border: 2px solid #8fbfa9; border-radius: 12px; padding: 4px; }
 .brand__t { flex: 1; min-width: 0; }
-.brand__t h1 { margin: 0; font-size: 17px; color: #f5d76e; font-weight: 700; }
+.brand__t h1 { margin: 0; font-size: 17px; color: #dcede4; font-weight: 700; }
 .brand__t p { margin: 2px 0 0; font-size: 10.5px; color: #cbd5e1; letter-spacing: .3px; }
 .brand__id .no { display: inline-block; background: rgba(245, 215, 110, .14);
-                 border: 1px solid #c9a227; border-radius: 999px; padding: 3px 14px;
-                 font-size: 12px; font-weight: 700; color: #f5d76e;
+                 border: 1px solid #8fbfa9; border-radius: 999px; padding: 3px 14px;
+                 font-size: 12px; font-weight: 700; color: #dcede4;
                  font-variant-numeric: tabular-nums; direction: ltr; white-space: nowrap; }
 .doc { text-align: center; padding: 14px 20px 2px; }
 .doc h2 { margin: 0; font-size: 20px; color: #0f172a; letter-spacing: .4px; }
@@ -1748,34 +1960,56 @@ body {
 .cell { padding: 8px 11px; border-inline-start: 1px solid #eef1f5; border-top: 1px solid #eef1f5; }
 .cell:nth-child(4n+1) { border-inline-start: 0; }
 .cell:nth-child(-n+4) { border-top: 0; }
-.cell b { display: block; font-size: 10px; color: #8a6d1b; font-weight: 700; }
+.cell b { display: block; font-size: 10px; color: #3e6b58; font-weight: 700; }
 .cell span { display: block; margin-top: 2px; font-size: 13px; color: #0f172a;
              font-weight: 700; font-variant-numeric: tabular-nums; }
 .cell small { display: block; margin-top: 1px; font-size: 9.5px; color: #64748b; }
-h3.sec { margin: 16px 0 6px; padding-inline-start: 9px; border-inline-start: 4px solid #c9a227;
+h3.sec { margin: 16px 0 6px; padding-inline-start: 9px; border-inline-start: 4px solid #8fbfa9;
          font-size: 12.5px; color: #0f172a; }
 table.t { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 table.t th, table.t td { padding: 5px 7px; border-bottom: 1px solid #edf0f4; text-align: right; }
-table.t th { background: #0f172a; color: #f5d76e; font-size: 10.5px; font-weight: 700;
+table.t th { background: #0f172a; color: #dcede4; font-size: 10.5px; font-weight: 700;
              text-align: center; white-space: nowrap; }
 table.t td.c { text-align: center; }
 table.t td.n { text-align: left; direction: ltr; unicode-bidi: embed; white-space: nowrap; }
 table.t tbody tr:nth-child(even) td { background: #f8fafc; }
 table.t tbody tr { break-inside: avoid; page-break-inside: avoid; }
-table.t tfoot td { background: #eef2f7; border-top: 2px solid #c9a227; border-bottom: 0;
+table.t tfoot td { background: #eef2f7; border-top: 2px solid #8fbfa9; border-bottom: 0;
                    font-weight: 800; color: #0f172a; font-size: 11.5px; }
 .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9.5px;
         font-weight: 700; white-space: nowrap; border: 1px solid #dbe1ea;
         background: #f2f4f7; color: #475467; }
 .pill--success { border-color: #0b9e6c; background: rgba(11, 158, 108, .10); color: #055f3a; }
 .pill--danger { border-color: #e5484d; background: rgba(229, 72, 77, .10); color: #b42318; }
-.pill--warning { border-color: #d97706; background: rgba(217, 119, 6, .10); color: #92400e; }
-.pill--brand { border-color: #c9a227; background: rgba(201, 162, 39, .12); color: #7a5b0a; }
+.pill--warning { border-color: #0e5c45; background: rgba(217, 119, 6, .10); color: #0a3d2f; }
+.pill--brand { border-color: #8fbfa9; background: rgba(201, 162, 39, .12); color: #7a5b0a; }
 .pos { color: #055f3a; font-weight: 700; }
 .neg { color: #b42318; font-weight: 700; }
 .foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px;
         border-top: 1px solid #e5e7eb; padding-top: 7px; font-size: 9.5px; color: #94a3b8; }
 .empty { text-align: center; color: #94a3b8; padding: 10px; }
+.dcards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-top: 8px; }
+.dcard { border: 1px solid #dfe3ea; border-inline-start: 3px solid #8fbfa9; border-radius: 9px;
+         padding: 7px 9px; break-inside: avoid; page-break-inside: avoid; background: #fff; }
+.dcard--child { margin-inline-start: 8px; border-inline-start-color: #cbd5e1; background: #fbfdfe; }
+.dcard__head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+               padding-bottom: 3px; border-bottom: 1px dashed #e5e7eb; }
+.dcard__name { font-size: 11.5px; font-weight: 800; color: #0f172a; }
+.dcard__code { font-size: 9px; color: #64748b; font-variant-numeric: tabular-nums; }
+.dcard__figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 5px; }
+.dcard__fig b { display: block; font-size: 8.8px; color: #3e6b58; font-weight: 700; }
+.dcard__fig span { display: block; font-size: 10.5px; font-weight: 700; color: #0f172a;
+                   font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed; }
+.dcard__own { margin-top: 4px; font-size: 9px; color: #64748b; }
+.dcard__cash { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.dcard__cash-title { flex: 0 0 100%; font-size: 8.8px; color: #3e6b58; font-weight: 700; }
+.dcard__cash .pill { font-size: 9px; }
+.dcard--quiet { opacity: .8; padding: 4px 6px; }
+.dcard--quiet .dcard__head { padding-block-end: 0; border: none; }
+.dcard--quiet .dcard__name { font-size: 9.8px; font-weight: 600; color: #475569; }
+.dcard__quiet-title { margin-top: 7px; font-size: 9px; color: #64748b; font-weight: 700; }
+.dcards--quiet { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.dcard--empty { grid-column: 1 / -1; text-align: center; color: #64748b; border-style: dashed; }
 @media print {
   body { background: #fff; padding: 0; }
   .sheet { border: 0; border-radius: 0; box-shadow: none; max-width: none; }
@@ -1805,13 +2039,89 @@ async function financePrintBrand() {
     }
 }
 
+/** حركة التحويلات بين الأقسام للفترة — تُعرض كبند موقَّع في تحليل التكاليف
+ *  ومعه توزيع المصادر والوجهات وأعلى الأصناف. قراءة واحدة مستقلة عن جداول
+ *  المصروفات (المصدر: inventory_transfers المنفَّذة) — لا تُخترع أرقام. */
+async function loadTransferFlow(from, to) {
+    const RANGE = `t.status = 'received'
+      AND (t.created_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date`;
+    const QTY = 'COALESCE(NULLIF(it.received_qty, 0), it.requested_qty)';
+    const VAL = QTY + ' * COALESCE(it.unit_cost, 0)';
+    // نصوص SQL متغيرة البناء تُجهَّز قبل الاستدعاء: البنية ثابتة والتوطين
+    // يبقى مُعامَلًا ($1/$2) — لا سلسلة يدخلها مدخلات المستخدم.
+    const SQL_BY_SOURCE = `SELECT COALESCE(NULLIF(t.metadata->>'sourceDeptCode', ''), '') AS code,
+        COUNT(DISTINCT t.id)::int AS transfers,
+        COALESCE(SUM(${VAL}), 0) AS value
+   FROM inventory_transfers t
+   JOIN inventory_transfer_items it ON it.transfer_id = t.id
+  WHERE ${RANGE} GROUP BY 1 ORDER BY 3 DESC`;
+    const SQL_BY_DEST = `SELECT COALESCE(NULLIF(t.metadata->>'destDeptCode', ''), '') AS code,
+        COUNT(DISTINCT t.id)::int AS transfers,
+        COALESCE(SUM(${VAL}), 0) AS value
+   FROM inventory_transfers t
+   JOIN inventory_transfer_items it ON it.transfer_id = t.id
+  WHERE ${RANGE} GROUP BY 1 ORDER BY 3 DESC`;
+    const SQL_TOP_ITEMS = `SELECT it.inventory_id, COALESCE(i.name, 'صنف #' || it.inventory_id) AS name,
+        COALESCE(i.unit, it.unit, '') AS unit,
+        COALESCE(SUM(${QTY}), 0) AS qty,
+        COALESCE(SUM(${VAL}), 0) AS value
+   FROM inventory_transfers t
+   JOIN inventory_transfer_items it ON it.transfer_id = t.id
+   LEFT JOIN inventory i ON i.id = it.inventory_id
+  WHERE ${RANGE}
+  GROUP BY it.inventory_id, i.name, i.unit, it.unit
+  ORDER BY 5 DESC LIMIT 8`;
+    const SQL_RECENT = `SELECT t.transfer_number, t.created_at,
+        COALESCE(t.metadata->>'sourceDeptCode', '') AS source_dept,
+        COALESCE(t.metadata->>'destDeptCode', '') AS dest_dept,
+        COUNT(it.id)::int AS lines,
+        COALESCE(SUM(${VAL}), 0) AS value
+   FROM inventory_transfers t
+   JOIN inventory_transfer_items it ON it.transfer_id = t.id
+  WHERE ${RANGE}
+  GROUP BY t.id ORDER BY t.created_at DESC LIMIT 8`;
+    try {
+        const [bySource, byDest, topItems, recent] = await Promise.all([
+            pool.query(SQL_BY_SOURCE, [from, to]),
+            pool.query(SQL_BY_DEST, [from, to]),
+            pool.query(SQL_TOP_ITEMS, [from, to]),
+            pool.query(SQL_RECENT, [from, to]),
+        ]);
+        const codes = bySource.rows.concat(byDest.rows).map((r) => r.code).filter(Boolean);
+        const nameRows = codes.length
+            ? await pool.query('SELECT code, name FROM departments WHERE LOWER(code) = ANY($1)', [codes.map((c) => String(c).toLowerCase())])
+            : { rows: [] };
+        const nameByCode = new Map(nameRows.rows.map((r) => [String(r.code).toLowerCase(), r.name]));
+        const label = (code) => (code ? (nameByCode.get(String(code).toLowerCase()) || code) : 'غير محدد');
+        const total = bySource.rows.reduce((sum, r) => sum + num(r.value), 0);
+        return {
+            total: roundMoney(total),
+            transfers: bySource.rows.reduce((sum, r) => sum + Number(r.transfers || 0), 0),
+            bySource: bySource.rows.map((r) => ({ code: r.code, name: label(r.code), transfers: Number(r.transfers), value: roundMoney(r.value) })),
+            byDest: byDest.rows.map((r) => ({ code: r.code, name: label(r.code), transfers: Number(r.transfers), value: roundMoney(r.value) })),
+            topItems: topItems.rows.map((r) => ({
+                name: r.name, unit: r.unit, qty: roundMoney(r.qty), value: roundMoney(r.value),
+            })),
+            recent: recent.rows.map((r) => ({
+                number: r.transfer_number,
+                day: String(r.created_at instanceof Date ? r.created_at.toISOString().slice(0, 10) : r.created_at).slice(0, 10),
+                from: label(r.source_dept), to: label(r.dest_dept),
+                lines: Number(r.lines), value: roundMoney(r.value),
+            })),
+        };
+    } catch (error) {
+        logger.error(`[finance] transfer-flow analysis failed: ${error.message}`);
+        throw error;
+    }
+}
+
 /** مستند تحليل التكاليف: الأرقام نفسها التي تعرضها الشاشة، بلا أي حساب جديد. */
 function renderCostAnalysisPrintHtml(payload, opts = {}) {
     /* قنوات البيع (ys_cc_N) ليست أقسامًا: إيرادها أُسند لأقسامه، وصفوفها
        صفرية — لا تُطبع كأقسام. مرآة البيع الخارجي تبقى للمراجعة موسومة. */
     const rows = (Array.isArray(payload && payload.rows) ? payload.rows.slice() : [])
         .filter((/** @type {any} */ row) => !row.channel);
-    const totals = (payload && payload.totals) || { rev: 0, mat: 0, cnt: 0, ops: 0, exp: 0, avgCost: 0 };
+    const totals = (payload && payload.totals) || { rev: 0, mat: 0, trn: 0, cnt: 0, ops: 0, exp: 0, avgCost: 0 };
     const categories = Array.isArray(payload && payload.categories) ? payload.categories.slice() : [];
     const period = (payload && payload.period) || {};
     const brand = {
@@ -1836,37 +2146,244 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
         return ['', 'بدون حركة'];
     };
 
+    /* مقارنة التكلفة بالفترة السابقة — نفس عدد الأيام مباشرةً قبل الفترة
+       الحالية (loadPreviousCostTotals). لا حساب جديد: أرقام الفترة السابقة
+       تُقرأ بنفس تجميع costAnalysisSql. */
+    const previous = (payload && payload.previous) || null;
+    const prevByDept = (previous && previous.byDept) || {};
+    /* سابقة القسم وحده، لا شجرته: الخادم يعطي ownExp، وإن غاب (بناء أقدم)
+       تُخصم سابقات الأبناء المباشرين من سابقة الأب الشجرية. */
+    const prevOwnOf = (row) => {
+        const p = prevByDept[String(row.code)] || {};
+        if (p.ownExp != null) {return num(p.ownExp);}
+        const kidsRolled = rows.reduce((s, k) => (String(k.parent) === String(row.code)
+            ? s + num((prevByDept[String(k.code)] || {}).exp) : s), 0);
+        return Math.max(0, num(p.exp) - kidsRolled);
+    };
+    const prevTotalExp = previous ? num(previous.totalExp) : 0;
+    const deltaExp = num(totals.exp) - prevTotalExp;
+    const deltaPct = prevTotalExp > 0 ? (deltaExp / prevTotalExp) * 100 : 0;
+    const comparisonRows = rows
+        .map((row) => {
+            const prevExp = prevOwnOf(row);
+            const exp = num((row.own || {}).exp);
+            const diff = exp - prevExp;
+            return {
+                name: row.name,
+                code: row.code,
+                exp,
+                prevExp,
+                diff,
+                pct: prevExp > 0 ? (diff / prevExp) * 100 : null,
+            };
+        })
+        .filter((r) => r.exp !== 0 || r.prevExp !== 0)
+        .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    const comparisonSection = previous ? `
+    <h3 class="sec">مقارنة التكلفة بالفترة السابقة (${escHtml(previous.from)} → ${escHtml(previous.to)})</h3>
+    <table class="t">
+      <thead><tr><th style="width:34%">القسم</th><th style="width:22%">تكلفة قسمه وحده سابقًا</th>
+        <th style="width:22%">تكلفة قسمه وحده الآن</th><th style="width:22%">التغير</th></tr></thead>
+      <tbody>
+        <tr><td><strong>إجمالي التكلفة</strong></td>
+          <td class="n">${money(prevTotalExp)}</td>
+          <td class="n">${money(totals.exp)}</td>
+          <td class="n ${signedClass(deltaExp)}">${money(deltaExp)} (${deltaPct > 0 ? '+' : ''}${roundMoney(deltaPct)}%)</td></tr>
+        ${comparisonRows.map((r) => `<tr>
+          <td>${escHtml(r.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(r.code)}</span></td>
+          <td class="n">${money(r.prevExp)}</td>
+          <td class="n">${money(r.exp)}</td>
+          <td class="n ${signedClass(r.diff)}">${money(r.diff)}${r.pct !== null ? ` (${r.pct > 0 ? '+' : ''}${roundMoney(r.pct)}%)` : ' (جديد)'}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="sub" style="margin-top:5px;font-size:9.5px;color:#64748b">
+      الفترة السابقة محسوبة بنفس عدد أيام الفترة الحالية مباشرةً قبلها · كل سطر بأرقام قسمه وحده (بلا فروعه) · البيع الخارجي يقارن بنفسه لا تحت المطبخ · الزيادة السالبة تعني انخفاض التكلفة.
+    </div>` : '';
+
     const composition = [
         ['صرف المخزون (صافي المرتجعات)', totals.mat],
+        ['التحويلات بين الأقسام (صافي موقَّع)', totals.trn],
         ['فروق الجرد', totals.cnt],
         ['مصروفات تشغيلية', totals.ops],
     ].map(([label, value]) => `
         <tr>
             <td>${escHtml(label)}</td>
-            <td class="n">${money(value)}</td>
+            <td class="n ${signedClass(value)}">${money(value)}</td>
             <td class="c">${share(value, totals.exp)}</td>
             <td class="c">${share(value, totals.rev)}</td>
         </tr>`).join('');
 
+    const attrLinks = payload && payload.attribution && Array.isArray(payload.attribution.links)
+        ? payload.attribution.links : [];
+    const nameByCode = new Map(rows.map((/** @type {any} */ row) => [String(row.code), row.name]));
+    const attrNote = attrLinks.length
+        ? `إسناد الكاشيرات: ${attrLinks.map((/** @type {any} */ l) => `${nameByCode.get(String(l.dept)) || l.dept} ← كاشير ${l.cashierNo}`).join(' · ')}`
+        : '';
+    /* «مع فروعه» للجدول من نفس شجرة البطاقات وبنفس استثناء البيع الخارجي،
+       فلا يُحسب فرع مرتين بين صف أبيه وصفّه. */
+    const cardPool = rows.filter((/** @type {any} */ row) => !row.external);
+    const poolCodes = new Set(cardPool.map((/** @type {any} */ row) => String(row.code)));
+    const familyKids = new Map();
+    for (const row of cardPool) {
+        const parent = row.parent == null ? '' : String(row.parent);
+        if (!COST_CARD_STANDALONE.has(String(row.code)) && parent && parent !== String(row.code) && poolCodes.has(parent)) {
+            const bucket = familyKids.get(parent) || [];
+            bucket.push(row);
+            familyKids.set(parent, bucket);
+        }
+    }
+    const collectKids = (/** @type {string} */ code, /** @type {Set<string>} */ guard) => {
+        const out = [];
+        for (const kid of (familyKids.get(code) || [])) {
+            const kidCode = String(kid.code);
+            if (guard.has(kidCode)) {continue;}
+            guard.add(kidCode);
+            out.push(kid, ...collectKids(kidCode, guard));
+        }
+        return out;
+    };
+    const familyBy = new Map(cardPool.map((/** @type {any} */ row) => {
+        const kids = collectKids(String(row.code), new Set([String(row.code)]));
+        const ownOf = (/** @type {any} */ r) => r.own || {};
+        return [String(row.code), {
+            rev: num(ownOf(row).rev) + kids.reduce((/** @type {number} */ s, /** @type {any} */ k) => s + num(ownOf(k).rev), 0),
+            exp: num(ownOf(row).exp) + kids.reduce((/** @type {number} */ s, /** @type {any} */ k) => s + num(ownOf(k).exp), 0),
+            kids: kids.length,
+        }];
+    }));
+    /* صفوف الجدول بأرقام القسم وحده — نفس وجه البطاقة. */
     const deptRows = rows
         .slice()
-        .sort((a, b) => (num(b.exp) - num(a.exp)) || (num(b.rev) - num(a.rev)))
+        .sort((a, b) => (num((b.own || {}).exp) - num((a.own || {}).exp)) || (num((b.own || {}).rev) - num((a.own || {}).rev)))
         .map((row, index) => {
-            const [tone, label] = deptVerdict(row);
+            const own = row.own || {};
+            const rev = num(own.rev);
+            const exp = num(own.exp);
+            const family = familyBy.get(String(row.code)) || { rev, exp, kids: 0 };
+            const [tone, label] = deptVerdict({ rev, exp, profit: rev - exp });
             return `
         <tr>
             <td class="c">${index + 1}</td>
             <td>${escHtml(row.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(row.code)}</span>${row.external ? '<span class="pill" style="margin-inline-start:6px">بيع خارجي — خارج الإجمالي</span>' : ''}</td>
-            <td class="n">${money(row.rev)}</td>
-            <td class="n">${money(row.materials)}</td>
-            <td class="n">${money(row.countAdj)}</td>
-            <td class="n">${money(row.operating)}</td>
-            <td class="n"><strong>${money(row.exp)}</strong></td>
-            <td class="c">${share(row.exp, row.rev)}</td>
-            <td class="n ${signedClass(row.profit)}">${money(row.profit)}</td>
+            <td class="n">${money(rev)}</td>
+            <td class="n">${money(own.materials)}</td>
+            <td class="n ${signedClass(own.transfers)}">${money(own.transfers)}</td>
+            <td class="n">${money(own.countAdj)}</td>
+            <td class="n">${money(own.operating)}</td>
+            <td class="n"><strong>${money(exp)}</strong></td>
+            <td class="n">${family.kids ? `إيراد ${money(family.rev)} · تكلفة ${money(family.exp)}` : '—'}</td>
+            <td class="c">${share(exp, rev)}</td>
+            <td class="n ${signedClass(rev - exp)}">${money(rev - exp)}</td>
             <td class="c"><span class="pill${tone ? ` pill--${tone}` : ''}">${label}</span></td>
         </tr>`;
         }).join('');
+
+    /* بطاقات الأقسام للطباعة — نفس صفوف الجدول مرتّبة عائليًا: كل أمّ ثم
+       فروعها بالأعلى تكلفة، ومع كل بطاقة كاشيرياتها وإيراد كل كاشير على حدة
+       (البيع الخارجي وكاشيراه ٤ و٥ في بطاقة مستقلة). لا رقم يُخترع هنا:
+       المجموع من الشجرة و«وحده» من أعمدة own في نفس الاستعلام. */
+    const cashierRevenueOf = new Map(
+        (payload && payload.attribution && Array.isArray(payload.attribution.channelRevenue)
+            ? payload.attribution.channelRevenue : [])
+            .map((/** @type {any} */ c) => [String(c.code), num(c.revenue)]),
+    );
+    const cashiersOf = new Map();
+    for (const link of attrLinks) {
+        const code = String(link.dept);
+        const no = String(link.cashierNo);
+        const bucket = cashiersOf.get(code) || [];
+        bucket.push({
+            no,
+            primary: Boolean(link.primary),
+            revenue: num(cashierRevenueOf.has(`ys_cc_${no}`) ? cashierRevenueOf.get(`ys_cc_${no}`) : cashierRevenueOf.get(no)),
+        });
+        cashiersOf.set(code, bucket);
+    }
+    /* البطاقات تُطبع للأقسام وحدها: مرآة البيع الخارجي (ys_b4_ext) وقنوات
+       الكاشير لها صفوف في الجدول للمراجعة، وبطاقة لكل منهما توهم بقسمٍ
+       إضافي — والشاشة تستثنيهما كذلك، فتتطابق الطباعة معها. الشجرة المستخدمة
+       هنا هي نفس شجرة عمود «مع فروعه» في الجدول، فلا يختلف الرقم بين وجهين. */
+    const ownOf = (/** @type {any} */ r) => r.own || {};
+    const byCost = (/** @type {any} */ a, /** @type {any} */ b) => (num(ownOf(b).exp) - num(ownOf(a).exp))
+        || (num(ownOf(b).rev) - num(ownOf(a).rev))
+        || String(a.name).localeCompare(String(b.name), 'ar');
+    const cardRoots = cardPool.filter((/** @type {any} */ row) => {
+        const parent = row.parent == null ? '' : String(row.parent);
+        return COST_CARD_STANDALONE.has(String(row.code))
+            || !parent || parent === String(row.code) || !poolCodes.has(parent);
+    });
+    cardRoots.sort(byCost);
+    const cardSeq = [];
+    const cardSeen = new Set();
+    const walkCards = (/** @type {any} */ row, /** @type {number} */ depth) => {
+        const code = String(row.code);
+        const kids = [];
+        if (cardSeen.has(code)) {return kids;}
+        cardSeen.add(code);
+        cardSeq.push({ row, depth, kids });
+        for (const kid of (familyKids.get(code) || []).slice().sort(byCost)) {
+            kids.push(kid, ...walkCards(kid, depth + 1));
+        }
+        return kids;
+    };
+    for (const row of cardRoots) {walkCards(row, 0);}
+    for (const row of cardPool) {
+        if (!cardSeen.has(String(row.code))) {cardSeq.push({ row, depth: 0, kids: [] });}
+    }
+    const cardHtml = cardSeq.map(({ row, depth, kids }) => {
+        const own = row.own || {};
+        const rev = num(own.rev);
+        const exp = num(own.exp);
+        const profit = rev - exp;
+        const [tone, label] = deptVerdict({ rev, exp, profit, costRatio: rev > 0 ? (exp / rev) * 100 : 0 });
+        /* «مع فروعه» من الأبناء المطبوعين تحت البطاقة، لا من الشجرة. */
+        const familyRev = kids.reduce((/** @type {number} */ s, /** @type {any} */ k) => s + num(ownOf(k).rev), rev);
+        const familyExp = kids.reduce((/** @type {number} */ s, /** @type {any} */ k) => s + num(ownOf(k).exp), exp);
+        const hasFamilyLine = kids.length > 0
+            && (Math.abs(familyExp - exp) > 0.005 || Math.abs(familyRev - rev) > 0.005);
+        const parentName = row.parent && !COST_CARD_STANDALONE.has(String(row.code))
+            ? String(nameByCode.get(String(row.parent)) || row.parent)
+            : '';
+        const cashers = (cashiersOf.get(String(row.code)) || [])
+            .slice()
+            .sort((/** @type {any} */ a, /** @type {any} */ b) => (Number(b.primary) - Number(a.primary)) || (b.revenue - a.revenue));
+        const kidActive = (/** @type {any} */ k) => num(ownOf(k).rev) > 0.005
+            || num(ownOf(k).exp) > 0.005
+            || (cashiersOf.get(String(k.code)) || []).length > 0;
+        const quiet = rev <= 0.005 && exp <= 0.005 && !cashers.length && !kids.some(kidActive);
+        return {
+            quiet,
+            html: `<article class="dcard${depth > 0 ? ' dcard--child' : ''}${quiet ? ' dcard--quiet' : ''}">
+          <div class="dcard__head">
+            <span class="dcard__name">${escHtml(row.name)}<span class="pill${tone ? ` pill--${tone}` : ''}" style="margin-inline-start:6px">${label}</span></span>
+            <span class="dcard__code">${escHtml(String(row.code))}${parentName ? ` · فرع من ${escHtml(parentName)}` : ''}${kids.length ? ` · ${kids.length} فرع` : ''}</span>
+          </div>
+          ${quiet
+            ? ''
+            : `<div class="dcard__figs">
+            <div class="dcard__fig"><b>إيراد القسم</b><span>${money(rev)}</span></div>
+            <div class="dcard__fig"><b>تكلفة القسم</b><span>${money(exp)}</span></div>
+            <div class="dcard__fig"><b>الصافي</b><span class="${signedClass(profit)}">${money(profit)}</span></div>
+            <div class="dcard__fig"><b>نسبة التكلفة</b><span>${rev > 0 ? share(exp, rev) : '—'}</span></div>
+          </div>`}
+          ${hasFamilyLine ? `<div class="dcard__own">مع فروعه (${kids.length}): إيراد ${money(familyRev)} · تكلفة ${money(familyExp)}.</div>` : ''}
+          ${cashers.length
+            ? `<div class="dcard__cash"><span class="dcard__cash-title">كاشيريات القسم وإيراداتها</span>${cashers.map((/** @type {any} */ c) => `<span class="pill${c.primary ? ' pill--brand' : ''}">كاشير ${escHtml(c.no)} · ${money(c.revenue)}</span>`).join('')}</div>`
+            : ''}
+        </article>`,
+        };
+    });
+    /* ذيل مدمج للأقسام الصفرية — نفس الشاشة: بطاقة الحركة أولًا، ثم رقائق
+       من لا إيراد ولا مصروف لهم، فلا يُدفن البيع الخارجي تحت أصفار. */
+    const activeCards = cardHtml.filter((/** @type {any} */ c) => !c.quiet).map((/** @type {any} */ c) => c.html).join('');
+    const quietCards = cardHtml.filter((/** @type {any} */ c) => c.quiet).map((/** @type {any} */ c) => c.html).join('');
+    const cardsSection = (activeCards || quietCards) ? `
+    <h3 class="sec">بطاقات الأقسام</h3>
+    <div class="dcards">${activeCards || '<div class="dcard dcard--empty">لا حركة لأقسامك في هذه الفترة</div>'}</div>
+    ${quietCards ? `<div class="dcard__quiet-title">أقسام بلا حركة في الفترة</div><div class="dcards dcards--quiet">${quietCards}</div>` : ''}
+    <div class="sub" style="margin-top:5px;font-size:9.5px;color:#64748b">
+      كل بطاقة بأرقام قسمها وحده: إيراده من كاشيرياته المسندة إليه، وتكلفته من بنوده. «مع فروعه» سطر مستقل لمن له فرع مطبوع تحت بطاقته، والبيع الخارجي بطاقته وكاشيراه ٤ و٥ وحده.
+    </div>` : '';
 
     const categoryRows = categories
         .slice()
@@ -1880,12 +2397,43 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
         </tr>`).join('');
 
     const net = num(totals.rev) - num(totals.exp);
-    const attrLinks = payload && payload.attribution && Array.isArray(payload.attribution.links)
-        ? payload.attribution.links : [];
-    const nameByCode = new Map(rows.map((/** @type {any} */ row) => [String(row.code), row.name]));
-    const attrNote = attrLinks.length
-        ? `إسناد الكاشيرات: ${attrLinks.map((/** @type {any} */ l) => `${nameByCode.get(String(l.dept)) || l.dept} ← كاشير ${l.cashierNo}`).join(' · ')}`
-        : '';
+    /* حركة التحويلات — قسم مستقل في المستند، يُبنى من inventory_transfers
+       المنفَّذة في الفترة (لا من جدول المصروفات) فلا يظهر صفّ بلا حركة. */
+    const flow = (payload && payload.flow) || { total: 0, transfers: 0, bySource: [], byDest: [], topItems: [], recent: [] };
+    const flowRow = (label, value, sub) => `
+        <tr><td>${escHtml(label)}</td><td class="c">${escHtml(sub || '')}</td>
+            <td class="n ${signedClass(value)}">${money(value)}</td></tr>`;
+    const flowSection = (Array.isArray(flow.bySource) && flow.bySource.length) ? `
+    <h3 class="sec">حركة التحويلات بين الأقسام (${money(flow.total)} ${escHtml(brand.currency)} · ${Number(flow.transfers) || 0} تحويل)</h3>
+    <table class="t">
+      <thead><tr><th style="width:56%">القسم</th><th style="width:16%">عدد التحويلات</th>
+        <th style="width:28%">القيمة</th></tr></thead>
+      <tbody>
+        ${flow.bySource.map((r) => flowRow(r.name + ' — مُرسِل', r.value, String(r.transfers))).join('')}
+        ${flow.byDest.map((r) => flowRow(r.name + ' — مُستلِم', r.value, String(r.transfers))).join('')}
+      </tbody>
+    </table>
+    ${Array.isArray(flow.topItems) && flow.topItems.length ? `
+    <table class="t" style="margin-top:8px">
+      <thead><tr><th style="width:52%">أعلى الأصناف المحوَّلة</th><th style="width:16%">الكمية</th>
+        <th style="width:14%">الوحدة</th><th style="width:18%">القيمة</th></tr></thead>
+      <tbody>${flow.topItems.map((r) => `
+        <tr><td>${escHtml(r.name)}</td><td class="n">${money(r.qty)}</td>
+            <td class="c">${escHtml(r.unit || '—')}</td><td class="n">${money(r.value)}</td></tr>`).join('')}</tbody>
+    </table>` : ''}
+    ${Array.isArray(flow.recent) && flow.recent.length ? `
+    <table class="t" style="margin-top:8px">
+      <thead><tr><th style="width:22%">رقم التحويل</th><th style="width:13%">اليوم</th><th style="width:23%">من</th>
+        <th style="width:23%">إلى</th><th style="width:9%">بنود</th><th style="width:10%">القيمة</th></tr></thead>
+      <tbody>${flow.recent.map((r) => `
+        <tr><td class="c" style="direction:ltr">${escHtml(r.number || '—')}</td>
+            <td class="c" style="direction:ltr">${escHtml(r.day)}</td><td>${escHtml(r.from)}</td>
+            <td>${escHtml(r.to)}</td><td class="c">${r.lines}</td>
+            <td class="n">${money(r.value)}</td></tr>`).join('')}</tbody>
+    </table>` : ''}
+    <div class="sub" style="margin-top:6px;font-size:9.5px;color:#64748b">
+      التحويلات بند موقَّع: تُخصم من تكلفة القسم المرسل وتُضاف إلى تكلفة القسم المستلم بنفس القيمة — لا تُنشئ تكلفة جديدة.
+    </div>` : '';
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1912,9 +2460,12 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
       <div class="cell"><b>صافي الربح</b><span class="${signedClass(net)}">${money(net)}</span><small>${escHtml(brand.currency)}</small></div>
       <div class="cell"><b>نسبة التكلفة</b><span>${roundMoney(totals.avgCost)}%</span><small>التكلفة ÷ الإيراد</small></div>
       <div class="cell"><b>صرف المخزون</b><span>${money(totals.mat)}</span><small>${escHtml(brand.currency)}</small></div>
+      <div class="cell"><b>حركة التحويلات (إجمالي)</b><span>${money(flow.total)}</span><small>${Number(flow.transfers) || 0} تحويل بين الأقسام</small></div>
       <div class="cell"><b>فروق الجرد</b><span>${money(totals.cnt)}</span><small>${escHtml(brand.currency)}</small></div>
       <div class="cell"><b>مصروفات تشغيلية</b><span>${money(totals.ops)}</span><small>${escHtml(brand.currency)}</small></div>
-      <div class="cell"><b>النطاق</b><span>${rows.length} قسم</span><small>${categories.length} تصنيف مصروف</small></div>
+      <div class="cell"><b>النطاق</b><span>${cardPool.length} قسم</span><small>${categories.length} تصنيف مصروف</small></div>
+      ${previous ? `<div class="cell"><b>تكلفة الفترة السابقة</b><span>${money(prevTotalExp)}</span>
+        <small>${deltaExp >= 0 ? 'زيادة' : 'انخفاض'} ${roundMoney(Math.abs(deltaPct))}% · ${escHtml(previous.from)} → ${escHtml(previous.to)}</small></div>` : ''}
     </section>
 
     <h3 class="sec">توزيع التكلفة</h3>
@@ -1925,19 +2476,27 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
       <tfoot><tr><td>إجمالي التكلفة</td><td class="n">${money(totals.exp)}</td>
         <td class="c">100%</td><td class="c">${share(totals.exp, totals.rev)}</td></tr></tfoot>
     </table>
+    ${Number(flow.total) > 0 ? `<div class="sub" style="margin-top:5px;font-size:9.5px;color:#64748b">
+      بند التحويلات موقَّع بين الأقسام (سالب على المرسل · موجب على المستلم)؛ صافيه على مستوى الشركة صفر بطبيعته.
+      إجمالي قيمة البضاعة المنقولة في الفترة: ${money(flow.total)} ${escHtml(brand.currency)} عبر ${Number(flow.transfers) || 0} تحويل.</div>` : ''}
 
     <h3 class="sec">تفصيل الأقسام</h3>
     <table class="t">
-      <thead><tr><th style="width:4%">#</th><th>القسم</th><th>الإيرادات</th><th>صرف المخزون</th>
-        <th>فروق الجرد</th><th>تشغيلية</th><th>التكلفة</th><th>النسبة</th>
+      <thead><tr><th style="width:4%">#</th><th>القسم</th><th>إيراد القسم</th><th>صرف المخزون</th>
+        <th>تحويلات</th><th>فروق الجرد</th><th>تشغيلية</th><th>تكلفة القسم</th><th>مع فروعه</th><th>النسبة</th>
         <th>الصافي</th><th>التقييم</th></tr></thead>
-      <tbody>${deptRows || `<tr><td colspan="10" class="empty">لا أقسام في هذه الفترة</td></tr>`}</tbody>
+      <tbody>${deptRows || `<tr><td colspan="12" class="empty">لا أقسام في هذه الفترة</td></tr>`}</tbody>
       <tfoot><tr><td colspan="2">الإجمالي</td><td class="n">${money(totals.rev)}</td>
-        <td class="n">${money(totals.mat)}</td><td class="n">${money(totals.cnt)}</td>
-        <td class="n">${money(totals.ops)}</td><td class="n">${money(totals.exp)}</td>
+        <td class="n">${money(totals.mat)}</td><td class="n ${signedClass(totals.trn)}">${money(totals.trn)}</td>
+        <td class="n">${money(totals.cnt)}</td>
+        <td class="n">${money(totals.ops)}</td><td class="n">${money(totals.exp)}</td><td></td>
         <td class="c">${share(totals.exp, totals.rev)}</td>
         <td class="n ${signedClass(net)}">${money(net)}</td><td></td></tr></tfoot>
     </table>
+
+    ${cardsSection}
+
+    ${comparisonSection}
 
     <h3 class="sec">تصنيفات المصروفات</h3>
     <table class="t">
@@ -1945,6 +2504,8 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
         <th style="width:22%">المبلغ</th><th style="width:18%">% من التكلفة</th></tr></thead>
       <tbody>${categoryRows || `<tr><td colspan="4" class="empty">لا تصنيفات في هذه الفترة</td></tr>`}</tbody>
     </table>
+
+    ${flowSection}
 
     <div class="foot">
       <span>${escHtml(brand.name)} — تحليل التكاليف · ${escHtml(period.from || '')} → ${escHtml(period.to || '')}</span>
@@ -1989,23 +2550,38 @@ async function loadCostAttribution(from, to) {
 router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
-    const [result, attribution] = await Promise.all([
+    const [result, attribution, flow, previous] = await Promise.all([
         pool.query(query.text, query.params),
         loadCostAttribution(from, to),
+        loadTransferFlow(from, to),
+        loadPreviousCostTotals(from, to),
     ]);
-    res.json({ ...buildCostAnalysisResult(result.rows), attribution, period: { from, to } });
+    res.json({ ...buildCostAnalysisResult(result.rows), attribution, flow, previous, period: { from, to } });
+}));
+
+/** تفاصيل تكلفة قسم واحد — البنود خلف الرقم (مراجعة احترافية). */
+router.get('/cost-analysis/dept', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+    const { from, to } = resolveCostAnalysisPeriod(req.query);
+    const code = String(req.query.code ? req.query.code : '').trim();
+    if (!code) {
+        return res.status(422).json({ error: 'DEPT_REQUIRED', message: 'حدد القسم' });
+    }
+    const detail = await loadDeptCostDetail(code, from, to);
+    return res.json({ ...detail, period: { from, to } });
 }));
 
 router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
-    const [result, attribution] = await Promise.all([
+    const [result, attribution, flow, previous] = await Promise.all([
         pool.query(query.text, query.params),
         loadCostAttribution(from, to),
+        loadTransferFlow(from, to),
+        loadPreviousCostTotals(from, to),
     ]);
     const brand = await financePrintBrand();
     res.type('html').send(renderCostAnalysisPrintHtml(
-        { ...buildCostAnalysisResult(result.rows), attribution, period: { from, to } },
+        { ...buildCostAnalysisResult(result.rows), attribution, flow, previous, period: { from, to } },
         {
             restaurantName: brand.name,
             logo: brand.logo,
@@ -2352,7 +2928,9 @@ module.exports = {
     resolveCostAnalysisPeriod,
     costAnalysisSql,
     isRevenueChannel,
+    loadPreviousCostTotals,
     loadCostAttribution,
+    loadTransferFlow,
     buildCostAnalysisResult,
     renderCostAnalysisPrintHtml,
     // المقارنة الشهرية (مصدَّرة للاختبارات)

@@ -7,6 +7,11 @@ const checks = [
         FROM "purchaseInvoices" i
         WHERE COALESCE(i."paidAmount", 0) > 0
           AND NOT EXISTS (SELECT 1 FROM supplier_payments p WHERE p."invoiceId" = i.id)
+          -- شراء نقدي بلا مورد: لا يمكن إنشاء صفّ سداد (supplierId إلزامي)،
+          -- فالسداد يُثبت بقيد Dr 2000 / Cr 1000 بمفتاح (purchase_payment, id).
+          AND NOT EXISTS (SELECT 1 FROM journal_entries je
+                           WHERE je.source_type = 'purchase_payment'
+                             AND je.source_id = i.id::text AND je.status = 'posted')
     `],
     ['negative_supplier_due', `
         SELECT COUNT(*)::int AS count

@@ -15,16 +15,24 @@ let installed = false;
 
 const PRINT_STYLE = `
 @page { margin: 14mm 12mm; }
-body { color: #17231f; font-family: Tahoma, Arial, sans-serif; }
+/* الهوية: IBM Plex Sans Arabic ذاتي الاستضافة حتى لو الطباعة في نافذة
+   مستقلة (نفس الأصل /app). إن تعذّر التحميل فالاحتياطي Tajawal ثم Tahoma. */
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 400; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-400-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 400; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 600; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-600-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 600; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-600-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 700; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-700-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-weight: 700; font-display: swap; src: url("/app/fonts/v2/ibmplexsansarabic-normal-700-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+body { color: #17231f; font-family: "IBM Plex Sans Arabic", "Tajawal", Tahoma, Arial, sans-serif; }
 /* الرموز تصل من الشاشة كوسوم svg بلا عرضٍ ولا ارتفاع (icons.js)؛ بلا هذه
    القاعدة يتمدّد كلٌّ منها إلى عرض الصفحة (~1200px) فيصير رمزًا عملاقًا. */
 svg { max-width: 100%; }
 svg.ji { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .erp-v2-print-brand {
     display: none; align-items: center; justify-content: center; gap: 14px;
-    margin: 0 auto 18px; padding: 0 0 12px; border-bottom: 2px solid #d7c99f;
+    margin: 0 auto 18px; padding: 0 0 12px; border-bottom: 2px solid #bcd8cb;
     color: #18352b; direction: rtl; text-align: center;
-    font-family: Tahoma, Arial, sans-serif;
+    font-family: "IBM Plex Sans Arabic", "Tajawal", Tahoma, Arial, sans-serif;
 }
 .erp-v2-print-brand img { width: 68px; height: 68px; object-fit: contain; }
 .erp-v2-print-brand__text { display: flex; flex-direction: column; gap: 4px; }

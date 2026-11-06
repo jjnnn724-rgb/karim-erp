@@ -7,15 +7,15 @@
  * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchItemSales, fetchYaraOrders, fetchOrderDetail, arSearchIncludes,
     rangeError, analysisLabel, safeTotals, SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
+} from '../data/yara-reports-repo.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -377,7 +377,7 @@ export function mountSalesAnalyzerScreen(host, ctx = {}) {
             const w = openInAppReport(`فاتورة ${esc(o.doc_no || docNo)}`);
             if (!w) { notify('تعذر فتح عارض الطباعة'); return; }
             w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>فاتورة ${esc(o.doc_no || docNo)}</title>
-            <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:20px;max-width:400px;margin:0 auto;color:#111}
+            <style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:20px;max-width:400px;margin:0 auto;color:#111}
             h2{text-align:center;font-size:18px;margin:4px 0}h3{text-align:center;font-size:13px;color:#555;margin:2px 0 10px}
             table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th,td{border:1px solid #333;padding:4px 6px;text-align:center}
             th{background:#f0f0f0}.meta{font-size:12px;line-height:1.8}.meta b{display:inline-block;min-width:70px}

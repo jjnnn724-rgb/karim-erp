@@ -65,6 +65,21 @@ module.exports = [
     },
   },
   {
+    /* الامتداد .mjs يعني وحدة ES بحكم اللغة. بلا هذا النطاق يقرأها المحلّل
+       commonjs فيرمي «'import' and 'export' may appear only with
+       sourceType: module» في أي ملفٍ خارج scripts/ (الذي يُستثنى أصلاً)،
+       فتُحمَر البوابة بسبب سكربت قراءة مؤقّت لا عيبٍ فيه. */
+    files: ['**/*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+  },
+  {
     /* Screens are pure modules: every dependency must be imported. An
        undeclared assignment (`panelKind = 'x'`) throws ReferenceError in a
        module and kills the handler before it renders — ESLint is the only
@@ -113,6 +128,14 @@ module.exports = [
       'debug-*.js',
       'check-*.js',
       'add-*.js',
+      /* مساند الجذر المؤقّتة: سكربتات قراءة-فقط يكتبها/session ثم يحذفها في
+         دقائق. ليست كود منتج، فلا تُحاسب البوابة عليها — وإلّا ظلّ lint-gate
+         أحمر طوال أي تشخيص جارٍ (النمط نفسه المعتمد فوق: test-/debug-/check-).
+         المقصود الجذر فقط؛ scripts/ وbackend/ وtests/ تظلّ مفحوصة بالكامل. */
+      '_tmp_*.js',
+      '_tmp_*.mjs',
+      'tmp-*.js',
+      'tmp_*.js',
     ],
   },
 ];

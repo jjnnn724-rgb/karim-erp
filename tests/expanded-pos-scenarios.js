@@ -81,6 +81,25 @@ function salePayload({ departmentId, productId, sessionId, payments, discount = 
   };
 }
 
+/**
+ * محو قيود الاختبار حذفًا صلبًا: بعد 136 لا يُمحى قيد مرحّل إلا داخل البوابة
+ * المرخّصة coa.allow_hard_delete='on' (بيانات اختبار، لا تصحيح دفتر عام).
+ * `db` هنا Client واحد (لا مسبح) والبقية autocommit، فمعاملة صريحة عليه آمنة؛
+ * وعلى قاعدة غير مهاجرة الأمر placeholder صامت ⇒ يعمل قبل الترحيل وبعده.
+ */
+async function purgeJournalsHard(db, entryIds) {
+  await db.query('BEGIN');
+  try {
+    await db.query(`SET LOCAL coa.allow_hard_delete = 'on'`);
+    await db.query('DELETE FROM journal_lines WHERE entry_id = ANY($1::bigint[])', [entryIds]);
+    await db.query('DELETE FROM journal_entries WHERE id = ANY($1::bigint[])', [entryIds]);
+    await db.query('COMMIT');
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    throw e;
+  }
+}
+
 async function cleanup(db) {
   if (created.heldId) {await db.query('DELETE FROM pos_held_orders WHERE id = $1', [created.heldId]);}
   if (created.sessionId) {
@@ -96,10 +115,7 @@ async function cleanup(db) {
         [orderIds]
       );
       const journalEntryIds = journalEntries.rows.map((row) => row.id);
-      if (journalEntryIds.length) {
-        await db.query('DELETE FROM journal_lines WHERE entry_id = ANY($1::bigint[])', [journalEntryIds]);
-        await db.query('DELETE FROM journal_entries WHERE id = ANY($1::bigint[])', [journalEntryIds]);
-      }
+      if (journalEntryIds.length) {await purgeJournalsHard(db, journalEntryIds);}
       await db.query(
         'DELETE FROM event_outbox WHERE aggregate_id = ANY($1::text[]) OR payload::text LIKE ANY($2::text[])',
         [orderIds, orderPatterns]

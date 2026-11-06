@@ -58,6 +58,51 @@ describe('backend/asset-version — تعريف «الإصدار الحالي»',
     });
 });
 
+describe('backend/asset-version — الإصدار يتجدّد ذاتيًا (بلا إعادة تشغيل)', () => {
+    /** قارئ بساعةٍ وعدّاد قراءاتٍ تحت السيطرة: الزمن يبدأ صفرًا وينقر بالأمر. */
+    function harness(read) {
+        let clock = 0;
+        let reads = 0;
+        const reader = MODULE.createVersionReader({
+            file: 'virtual.json',
+            now: () => clock,
+            read: (file) => {reads++; return read(clock, file);},
+        });
+        return {tick: (ms) => {clock += ms;}, calls: () => reads, reader};
+    }
+
+    test('داخل نافذة التجديد: قراءةٌ واحدة لكل الطلبات', () => {
+        const h = harness(() => '4.9.265');
+        for (let i = 0; i < 50; i++) {
+            h.tick(10);
+            expect(h.reader()).toBe('4.9.265');
+        }
+        expect(h.calls()).toBe(1);
+    });
+
+    test('بعد النافذة: يلتقط الرقم الجديد — فالكاش الدائم لا يموت عند كل bump', () => {
+        const h = harness((clock) => (clock >= MODULE.REFRESH_MS ? '4.9.266' : '4.9.265'));
+        expect(h.reader()).toBe('4.9.265');
+        h.tick(MODULE.REFRESH_MS);
+        expect(h.reader()).toBe('4.9.266');
+        expect(h.calls()).toBe(2);
+    });
+
+    test('الفشل لا يُخزَّن: أول قراءةٍ سليمة تُلتقط فورًا بلا انتظار النافذة', () => {
+        const h = harness((clock) => (clock === 0 ? '' : '4.9.267'));
+        expect(h.reader()).toBe('');                       // ملف تالف ⇒ لا إصدار ⇒ no-cache الآمن
+        h.tick(1);                                         // لم تمضِ النافذة…
+        expect(h.reader()).toBe('4.9.267');                // …لكننا أعدنا المحاولة
+        expect(h.calls()).toBe(2);
+    });
+
+    test('الحقيقي: CURRENT لقطةٌ حيّة لا قيمة مُجمَّدة عند الإقلاع', () => {
+        const state = JSON.parse(fs.readFileSync(MODULE.STATE_FILE, 'utf8'));
+        expect(MODULE.CURRENT).toBe(String(state.version));
+        expect(Object.getOwnPropertyDescriptor(MODULE, 'CURRENT').get).toBeInstanceOf(Function);
+    });
+});
+
 describe('backend/server.js — السياسة موصولة بالفرعين فعليًا', () => {
     const src = () => fs.readFileSync(path.join(ROOT, 'backend', 'server.js'), 'utf8');
     const body = () => {

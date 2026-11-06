@@ -35,7 +35,7 @@
  * :777-778) are wave-2 work on separate screens.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.296';
 
 /** Maximum pages walked for month-scoped revenue and expense registers. */
 export const WALK_PAGES = 8;
@@ -73,6 +73,15 @@ export async function fetchCostAnalysis(from, to) {
     if (to) {params.set('to', to);}
     const query = params.toString();
     return apiFetch(`/finance/cost-analysis${query ? `?${query}` : ''}`);
+}
+
+/** تفاصيل تكلفة قسم واحد — البنود خلف الرقم (مراجعة احترافية). */
+export async function fetchCostAnalysisDept(code, from, to) {
+    const params = new URLSearchParams();
+    params.set('code', code);
+    if (from) {params.set('from', from);}
+    if (to) {params.set('to', to);}
+    return apiFetch(`/finance/cost-analysis/dept?${params.toString()}`);
 }
 
 function printQuery(from, to) {

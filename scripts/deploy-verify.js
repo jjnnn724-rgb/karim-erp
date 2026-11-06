@@ -94,7 +94,7 @@ async function main() {
     // ── إعادة التشغيل ──
     console.log('\n=== 2) إعادة تشغيل الخدمة ===');
     const before = await get(HEALTH_URL);
-    // sc.exe لا ينتظر اكتمال الإقلاع (بع��ض PowerShell ينتظر) ⇒ نتحكّم
+    // sc.exe لا ينتظر اكتمال الإقلاع (بعض PowerShell ينتظر) ⇒ نتحكّم
     // في التوقيت بأنفسنا عبر استطلاع /api/health.
     const stop = run('sc.exe', ['stop', SERVICE], { timeout: 60000 });
     await sleep(1500);

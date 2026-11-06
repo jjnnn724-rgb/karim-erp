@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { Client } = require('pg');
-const TEMP = { host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp_restore_tmp' };
-const LIVE = { host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp' };
+const TEMP = { host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp_restore_tmp' };
+const LIVE = { host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp' };
 const cols = `table_name, column_name, data_type, character_maximum_length, numeric_precision, numeric_scale, is_nullable, column_default, udt_name`;
 
 (async () => {

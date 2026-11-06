@@ -5,6 +5,9 @@
 const { __scope } = require('../warehouse-routes');
 const { crypto, router, pool, riyadhToday, jwtAuth, requireRole, logger, postInventoryLedgerEntry, id, n, round, dateOnly, cleanName, json, emit, fail, signatureHash, requireSignature, getWarehouseLocation, ensureLocationBalance } = __scope;
 const { PR_CREATE_ROLES, PR_CANCEL_ROLES, PR_CHEF_ROLES, PR_GM_ROLES, PR_WH_ROLES, PR_READ_ROLES, PR_CHEF_CREATE_ROLES, normalizePRItems, prShortageSuggestion, canPRChefDecide, canPRGMDecide } = require('./purchase-void-routes');
+// (2026-10-31) إشعارات الجرس المصنّف لسلسلة طلبات الشراء — best-effort
+// بعد نجاح العملية، لا يُفشلها أبدًا.
+const { notifyRequestEvent } = require('../procurement-notifier');
 
 function prRequestNumber() {
     const day = riyadhToday().replace(/-/g, '');
@@ -213,6 +216,8 @@ router.post('/purchase-requests', jwtAuth, requireRole(...PR_CREATE_ROLES), asyn
         await appendPREvent(client, inserted.id, isChefCreator ? 'chef_approved' : 'created', null, inserted.status, req, isChefCreator ? chefSignature : null, { items, notes: req.body?.notes || null, chefCreated: isChefCreator, chefFinal: isChefCreator });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'create', inserted);
+        // الشيف الموقِّع = طلب معتمد يذهب للمخازن مباشرة؛ غيره = بانتظار توقيع الشيف
+        notifyRequestEvent(req, inserted, inserted.status === 'approved' ? 'created_approved' : 'created_pending_chef');
         res.status(201).json(inserted);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -245,6 +250,7 @@ router.post('/purchase-requests/:id/chef-approve', jwtAuth, requireRole(...PR_CH
         await appendPREvent(client, pr.id, 'chef_approved', pr.status, 'chef_approved', req, signature, { notes: req.body?.notes || null });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'update', updated);
+        notifyRequestEvent(req, updated, 'chef_approved');
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -279,6 +285,7 @@ router.post('/purchase-requests/:id/chef-reject', jwtAuth, requireRole(...PR_CHE
         await appendPREvent(client, pr.id, 'chef_rejected', pr.status, 'rejected', req, signature, { reason });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'update', updated);
+        notifyRequestEvent(req, updated, 'chef_rejected', { reason });
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -312,6 +319,7 @@ router.post('/purchase-requests/:id/gm-approve', jwtAuth, requireRole(...PR_GM_R
         await appendPREvent(client, pr.id, 'gm_approved', pr.status, 'approved', req, signature, { notes: req.body?.notes || null });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'update', updated);
+        notifyRequestEvent(req, updated, 'gm_approved');
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -346,6 +354,7 @@ router.post('/purchase-requests/:id/gm-reject', jwtAuth, requireRole(...PR_GM_RO
         await appendPREvent(client, pr.id, 'gm_rejected', pr.status, 'rejected', req, signature, { reason });
         await client.query('COMMIT');
         emit(req, 'purchaseRequests', 'update', updated);
+        notifyRequestEvent(req, updated, 'gm_rejected', { reason });
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});

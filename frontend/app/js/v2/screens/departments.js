@@ -14,34 +14,34 @@
  * يحذف إيرادات/مصاريف القسم تتابعيًا — لا رجعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.194';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.194';
-import { canWrite } from '../session.js?v=4.9.194';
-import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { fetchDepartments, fetchRevenues, fetchExpenses, calcDeptStats } from '../data/finance-repo.js?v=4.9.296';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.296';
+import { canWrite } from '../session.js?v=4.9.296';
+import { departmentWriteEnabled, deptCashierWriteEnabled } from '../write-flags.js?v=4.9.296';
 import {
     DEPARTMENT_WRITE_ROLES, DEPARTMENT_ICON_OPTIONS,
     validateDepartmentForm, createDepartment, updateDepartment, deleteDepartment,
     normalizeDepartmentIcon,
-} from '../data/departments-write-repo.js?v=4.9.194';
+} from '../data/departments-write-repo.js?v=4.9.296';
 import {
     DEPT_CASHIER_WRITE_ROLES, fetchDeptCashierLinks, deptLinkRows, deptCashierNos,
     deptNameOf, validateLinkForm, createDeptCashierLink, deleteDeptCashierLink,
     updateDeptCashierLink, fetchYaraCashiers, cashierNameOf, cashierLabel,
-} from '../data/dept-cashier-repo.js?v=4.9.194';
+} from '../data/dept-cashier-repo.js?v=4.9.296';
 import {
     CASHIER_DEPT_MAP, cashierRevenueIn, deptIdentityColor,
     computeDeptDetail, fetchDeptDetailBundle, createRevenue, createExpense,
-} from '../data/dept-detail.js?v=4.9.194';
+} from '../data/dept-detail.js?v=4.9.296';
 /* معلومات الأعمال داخل البطاقة (طلب المالك 2026-10-19: «معلومات مفيدة في كل بطاقة»):
  * عدد الأصناف من recipes.deptId، وعدد الموظفين من employees.department، وآخر/معلّق
  * أذون الصرف من dispatches.deptCode — كلّها أكواد القسم نفسها (finance-repo:20).
  * أبواب قراءة قائمة، تُفشّل بصمت فلا تُسقط السجل إن غاب جدول أو صلاحية. */
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.194';
-import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.194';
-import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.194';
-import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.194';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.296';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.296';
+import { fetchDispatches } from '../data/dispatch-repo.js?v=4.9.296';
+import { deptSignalsOf, deptSignalTotals } from '../data/dept-signals.js?v=4.9.296';
+import { fetchYaraCashierItems } from '../data/reports-extra.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -101,7 +101,7 @@ function kpiMoneyHtml(label, value, cur) {
 /** شريحة أيقونة القسم: دائرة ملوّنة بلون الهوية + الأيقونة (SVG أو تعبية). */
 function deptIconHtml(r) {
     const key = normalizeDepartmentIcon(r.icon, KNOWN_ICON_KEYS);
-    const color = String(r.color || '#64748b');
+    const color = String(r.color || '#5A6570');
     const isEmoji = !/^[a-z0-9-]+$/.test(key);
     const inner = isEmoji
         ? `<span class="erp-dept-ico__emoji">${esc(key)}</span>`
@@ -964,6 +964,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
             + `</select></label>`
             + (row ? '' : `<label class="erp-text-sm erp-text-muted">اللون<input class="erp-input erp-input--ltr" type="color" data-v2-d-color value="#009688"></label>`)
             + `<label class="erp-text-sm erp-text-muted">القسم الأب<select class="erp-select" data-v2-d-parent><option value="">— قسم رئيسي (بلا أب) —</option>${parents}</select></label>`
+            + `<label class="erp-check erp-text-sm" style="margin-block:var(--erp-space-2)"><input type="checkbox" data-v2-d-factory${row && row.is_factory ? ' checked' : ''}><span>قسم مُصنِّع — تحويله للبيع الخارجي يُقيَّم بسعر القائمة (إيراد للمصنع يُحمَّل على المنفذ)</span></label>`
             + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-d-go>حفظ</button>`
             + `<button type="button" class="erp-btn erp-btn--sm" data-v2-d-x>إلغاء</button>`
             + `</div><div class="erp-text-sm" style="color:var(--erp-danger-text)" data-v2-d-err role="alert"></div></div></section>`;
@@ -982,6 +983,7 @@ export function mountDepartmentsScreen(host, ctx = {}) {
         const v = validateDepartmentForm({
             name: val('name'), code: val('code'), icon: val('icon'),
             color: val('color'), parent_code: val('parent'),
+            is_factory: Boolean(q('[data-v2-d-factory]')?.checked),
         }, editingDept);
         const errBox = q('[data-v2-d-err]');
         const fail = (t) => { if (errBox) {errBox.textContent = t;} notify(t); };

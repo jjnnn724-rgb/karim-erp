@@ -21,7 +21,7 @@
  *   • التواقيع: لا لوحة موقّعة بلا اسم حساب (البوابة قبل فتح اللوحة)، وكل
  *     لوحة ترسم توقيعها بمعرّفها الثابت، ورفضٌ بلا سببٍ مكتوب لا يقرأ توقيعًا
  *   • الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة A4 منسوخة من
- *     printPR (kitchen.js:638-645) ببنتها الذهبية #c9a227 وأربع خانات توقيع
+ *     printPR (kitchen.js:638-645) ببنتها الخضراء #8fbfa9 وأربع خانات توقيع
  *   • الشاشة: لا fetch/apiFetch، ولا معالجات HTML سطرية، حارس
  *     أحدث قراءة + isConnected + busy قرار واحد + destroy() يُتلف الجدول
  *   • status.js: حالات purchase_request:* السبع كلها مسجلة، وكل أيقونة في
@@ -649,7 +649,7 @@ describe('شاشة 21 — العقد المصدَّر من المصدر', () => 
         expect(note.indexOf('openInAppReport(')).toBeLessThan(note.indexOf('await ensureSettings()'));
         expect(note).toContain('جارٍ تجهيز طلب الشراء…');
         expect(note).toContain('طلب شراء نواقص — ');
-        expect(note).toContain('#c9a227');
+        expect(note).toContain('#8fbfa9');
         expect(note).toContain('A4');
         expect(note).toContain('print-color-adjust');
         expect(note).toContain('........');

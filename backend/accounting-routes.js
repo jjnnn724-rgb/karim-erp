@@ -70,6 +70,30 @@ async function nextEntryNo(client) {
  * يُرجع { entry, replay:true } عند وجود نفس المصدر مسبقًا (لا ازدواج).
  */
 /**
+ * عبارات البحث عن الموجود ثابتةٌ جميعًا: بوابة الأمان (sql-interp) حصّتها صفر ولا
+ * تُعفي ملفًا، فالاختيار بين «المُبطل موجود» و«المُبطل ليس موجودًا» يُمثَّل بثوابت
+ * لا بسلسلة WHERE مُستخرَبة. الوسائط دائمًا $1 نوع المصدر و$2 المرجع.
+ */
+const SQL_FIND_ANY = `SELECT * FROM journal_entries WHERE source_type = $1 AND source_id = $2 LIMIT 1`;
+const SQL_FIND_LIVE = `SELECT * FROM journal_entries WHERE source_type = $1 AND source_id = $2 AND status <> 'void' LIMIT 1`;
+const SQL_FIND_VOID = `SELECT 1 FROM journal_entries WHERE source_type = $1 AND source_id = $2 AND status = 'void' LIMIT 1`;
+// LIKE '$2#r%' يجلب العائلة كلها؛ المطابقة الدقيقة للمرجع الأساسي تُفلتر في JS
+// لأن _ و% داخل المرجع عاملا تبديل في LIKE (مرجع مثل PO_12 يجرّ POX12#r3).
+const SQL_FIND_REV_LIVE = `SELECT * FROM journal_entries WHERE source_type = $1 AND source_id LIKE $2 || '#r%' AND status <> 'void'`;
+// بصمة المحتوى للقيود اليدوية بلا مرجع: نفس التفريع بالعلمين، ثابتان لا قوالب.
+const SQL_FP_CAND_ANY = `SELECT id, memo FROM journal_entries
+                          WHERE source_type = 'manual' AND source_id LIKE 'manual:%'
+                            AND created_by = $1 AND date = $2
+                            AND created_at >= NOW() - INTERVAL '10 minutes'
+                          ORDER BY created_at DESC LIMIT 5`;
+const SQL_FP_CAND_LIVE = `SELECT id, memo FROM journal_entries
+                          WHERE source_type = 'manual' AND source_id LIKE 'manual:%'
+                            AND status <> 'void'
+                            AND created_by = $1 AND date = $2
+                            AND created_at >= NOW() - INTERVAL '10 minutes'
+                          ORDER BY created_at DESC LIMIT 5`;
+
+/**
  * @param {any} db اتصال العميل (معاملة) أو المسبح
  * @param {object} entry
  * @param {string} entry.date
@@ -79,9 +103,10 @@ async function nextEntryNo(client) {
  * @param {Array<{account_code:string,debit?:number,credit?:number,memo?:string|null,cost_center_code?:string|null}>} entry.lines
  * @param {string|number|null} [entry.created_by]
  * @param {'posted'|'draft'} [entry.status]
+ * @param {boolean} [entry.repostVoided] مسار بشري صريح: أعد الترحيل بمرجع `#rN` بدل اعتبار المُبطل موجودًا
  * @returns {Promise<any>}
  */
-async function postJournal(db, { date, memo, source_type = 'manual', source_id = null, lines, created_by = null, status = 'posted' }) {
+async function postJournal(db, { date, memo, source_type = 'manual', source_id = null, lines, created_by = null, status = 'posted', repostVoided = false }) {
     const day = String(date || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {throw Object.assign(new Error('تاريخ القيد غير صالح (YYYY-MM-DD)'), { statusCode: 422 });}
     // قفل الفترات: أي ترحيل (يدوي أو تلقائي) على شهر مقفل يُرفض — التوافق محفوظ
@@ -124,28 +149,42 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
     // معرّف المصدر الفعّال: اليدوي بلا مرجع يأخذ مرجعًا فريدًا دائمًا (لا يمنع القيود اليدوية)
     let effSourceId = source_id != null && String(source_id).trim() !== '' ? String(source_id) : null;
     if (effSourceId == null) {effSourceId = `manual:${Date.now()}:${Math.floor(Math.random() * 1000000)}`;}
+    const hasExplicitRef = source_id != null && String(source_id).trim() !== '';
 
-    const findExisting = async () => (await db.query(
-        `SELECT * FROM journal_entries WHERE source_type = $1 AND source_id = $2 LIMIT 1`,
-        [source_type, effSourceId])).rows[0] || null;
+    // الافتراضي (كل المُرحِّلات الآلية): سطر status='void' يُعدّ «المرجع محجوز» —
+    // لا يُعاد ترحيلُه، فلا ينقلب قرار إبطال بشري ضمنيًا في أي sweep أو جسر.
+    // repostVoided=true للمسار البشري الصريح: المُبطل خارج الأستاذ العام فلا يكون
+    // «ترحيلًا موجودًا»، وإعادة الحفظ تُرحّل نسخة منقّحة بمرجع مراجعة `#rN`.
+    const findExisting = async (ref) => (await db.query(
+        repostVoided ? SQL_FIND_LIVE : SQL_FIND_ANY, [source_type, ref])).rows[0] || null;
 
     // فحص مسبق خارج المعاملة (التحقق داخل معاملة مُجهضة مستحيل في PostgreSQL)
-    const pre = await findExisting();
-    if (pre && source_id != null && String(source_id).trim() !== '') {return { entry: pre, replay: true };}
+    if (hasExplicitRef) {
+        const pre = await findExisting(effSourceId);
+        if (pre) {return { entry: pre, replay: true };}
+        if (repostVoided) {
+            const heldVoid = await db.query(SQL_FIND_VOID, [source_type, effSourceId]);
+            if (heldVoid.rows[0]) {
+                // uq_journal_source لا يسمح بصف ثانٍ بنفس المرجع والمُبطل يحتفظ به
+                // للأبد ⇒ مرجع المراجعة. ولا تُعاد الترحيلات إن كان في العائلة سطر
+                // حيّ أصلًا (رحّل المصدر من قبل) وإلا تكرّر الإيراد/المصروف في الأستاذ.
+                const fam = await db.query(SQL_FIND_REV_LIVE, [source_type, effSourceId]);
+                const live = fam.rows.filter((r) => String(r.source_id).split('#r')[0] === String(effSourceId))[0];
+                if (live) {return { entry: live, replay: true };}
+                effSourceId = await require('./journal-void').nextRevisionSourceId(db, source_type, effSourceId);
+            }
+        }
+    }
 
     // HARDENED 2026-10-07: القيود اليدوية بلا مرجع كانت تأخذ مرجعًا عشوائيًا دائمًا —
     // ضغطة مكررة على حفظ كانت ترحّل القيد مرتين. بصمة المحتوى (نفس المستخدم +
     // نفس السطور + نفس البيان خلال 10 دقائق) تُعيد الموجود بدل التكرار.
-    if (source_id == null || String(source_id).trim() === '') {
+    if (!hasExplicitRef) {
         if (created_by != null) {
             const fpSig = clean.map(l => `${l.account_code}:${Number(l.debit).toFixed(2)}:${Number(l.credit).toFixed(2)}`).sort().join('|')
                 + '#' + String(memo || '').trim().slice(0, 200);
             const cand = await db.query(
-                `SELECT id, memo FROM journal_entries
-                  WHERE source_type = 'manual' AND source_id LIKE 'manual:%'
-                    AND created_by = $1 AND date = $2
-                    AND created_at >= NOW() - INTERVAL '10 minutes'
-                  ORDER BY created_at DESC LIMIT 5`,
+                repostVoided ? SQL_FP_CAND_LIVE : SQL_FP_CAND_ANY,
                 [created_by, day]);
             for (const c of cand.rows) {
                 const ll = await db.query(
@@ -162,6 +201,9 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
 
     for (let attempt = 0; attempt < 3; attempt++) {
         const doRun = async (client) => {
+            // قفل الفترة داخل نفس المعاملة (R-07): assertPeriodOpen خارج المعاملة كان
+            // يترك نافذة سباق بين الفحص والإدراج — الآن الصف يُقفل FOR UPDATE هنا.
+            await require('./accounting-periods').assertPeriodOpenInTx(client, day);
             const entryNo = await nextEntryNo(client);
             const e = (await client.query(
                 `INSERT INTO journal_entries (id, entry_no, date, memo, source_type, source_id, created_by, status)
@@ -197,7 +239,7 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
                 } catch (err) {
                     await client.query('ROLLBACK').catch(() => {});
                     if (err.code === '23505') {
-                        const dup = await findExisting();
+                        const dup = await findExisting(effSourceId);
                         if (dup) {return { entry: dup, replay: true };}
                     }
                     if (err.code === '23505' && attempt < 2) {continue;}
@@ -209,7 +251,7 @@ async function postJournal(db, { date, memo, source_type = 'manual', source_id =
             return await doRun(db);
         } catch (err) {
             if (err.code === '23505') {
-                const dup = await findExisting().catch(() => null);
+                const dup = await findExisting(effSourceId).catch(() => null);
                 if (dup) {return { entry: dup, replay: true };}
             }
             if (err.code === '23505' && attempt < 2) {continue;}
@@ -281,9 +323,12 @@ async function postSaleToLedger(orderId) {
  * ترحيل فاتورة شراء: مخزون (صافي) + ضريبة مدخلات مستردة ← ذمم موردين (إجمالي).
  * Dr 1200 Inventory (net) · Dr 1150 Input VAT (vat) · Cr 2000 AP (gross).
  * idempotent بمفتاح (purchase_invoice, invoiceId) — إعادة التشغيل لا تكرر أبدًا.
+ * تعديل فاتورة مرحّلة: تُبطل النسخة القديمة وتُرحَّل نسخة بمفتاح مراجعة
+ * ({invoiceId}:revision:{rev} عبر sourceId) — المرجع المُبطل يبقى محجوزًا في
+ * uq_journal_source، فالإعادة بنفس invoiceId ستعيد القيد المُبطل لا قيدًا جديدًا.
  * يُستدعى best-effort بعد COMMIT الفاتورة — فشله لا يُسقط الشراء أبدًا.
  */
-async function postPurchaseToLedger(invoiceId) {
+async function postPurchaseToLedger(invoiceId, { sourceId } = {}) {
     const inv = (await pool.query(
         `SELECT id, "invoiceNumber", date, subtotal_net, vat_total, "totalAmount"
           FROM "purchaseInvoices" WHERE id = $1 LIMIT 1`,
@@ -305,7 +350,7 @@ async function postPurchaseToLedger(invoiceId) {
         date: day,
         memo: `فاتورة شراء — ${inv.invoiceNumber || invoiceId}`,
         source_type: 'purchase_invoice',
-        source_id: String(invoiceId),
+        source_id: sourceId || String(invoiceId),
         lines,
     });
     logger.info(`[LEDGER] فاتورة شراء ${invoiceId}: ${out.replay ? 'مُرحّلة مسبقًا' : `قيد ${out.entry.entry_no}`}`);
@@ -544,6 +589,32 @@ router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (req, re
     }
 });
 
+// ─── القوائم المالية الرسمية المستخرجة من الأستاذ العام (Single Source of Truth) ───
+router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const { generateBalanceSheet } = require('./financial-statements-engine');
+        const asOf = req.query.as_of ? String(req.query.as_of).slice(0, 10) : null;
+        const bs = await generateBalanceSheet(pool, asOf);
+        res.json(bs);
+    } catch (error) {
+        logger.error('[ledger/balance-sheet]', error);
+        res.status(500).json({ error: 'LEDGER_BS_FAILED', message: 'تعذر استخراج قائمة المركز المالي' });
+    }
+});
+
+router.get('/income-statement', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const { generateIncomeStatement } = require('./financial-statements-engine');
+        const from = req.query.from ? String(req.query.from).slice(0, 10) : null;
+        const to = req.query.to ? String(req.query.to).slice(0, 10) : null;
+        const is = await generateIncomeStatement(pool, from, to);
+        res.json(is);
+    } catch (error) {
+        logger.error('[ledger/income-statement]', error);
+        res.status(500).json({ error: 'LEDGER_IS_FAILED', message: 'تعذر استخراج قائمة الدخل' });
+    }
+});
+
 // ─── دفتر القيود ─────────────────────────────────────────────────────────────
 router.get('/journal', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
@@ -573,6 +644,9 @@ router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             lines: req.body?.lines,
             created_by: req.user?.id || null,
             status: req.body?.status === 'draft' ? 'draft' : 'posted',
+            // مسار بشري صريح: إن كان المرجع محجوزًا بقيد مُبطَل (خارج الأستاذ)
+            // تُرحَّل نسخة منقّحة بمرجع `#rN` بدل 409 أبدي لا يشفع له أحد.
+            repostVoided: true,
         });
         if (out.replay) {return res.status(409).json({ error: 'LEDGER_DUPLICATE', message: 'قيد بنفس المرجع موجود مسبقًا', entry: out.entry });}
         res.status(201).json({ entry: out.entry, lines: out.lines });
@@ -594,8 +668,12 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (re
         } catch (pe) {
             return res.status(423).json({ error: 'PERIOD_LOCKED', message: pe.message });
         }
-        const { rows } = await pool.query(
-            `UPDATE journal_entries SET status = 'void' WHERE id = $1 AND status = 'posted' RETURNING *`, [id]);
+        const { voidJournalById } = require('./journal-void');
+        const out = await voidJournalById(pool, {
+            entryId: id, reason: req.body?.reason,
+            actor: req.user?.username, actorUserId: req.user?.id,
+        });
+        const rows = out.voided ? [out.entry] : [];
         if (!rows[0]) {return res.status(404).json({ error: 'LEDGER_ENTRY_NOT_FOUND', message: 'القيد غير موجود أو ملغي مسبقًا' });}
         logger.info(`[LEDGER] أُلغي القيد ${rows[0].entry_no} بواسطة ${req.user.username}`);
         if (req.io) {req.io.emit('entity_changed', { entity: 'journal', action: 'update', data: rows[0], changedBy: req.user.username });}

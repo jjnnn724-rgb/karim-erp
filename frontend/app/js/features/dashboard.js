@@ -328,23 +328,18 @@ function renderEmployeeDashboard(){
 const emp = STATE.employees.find(e=>e.userId===STATE.currentUser.id);
 if(!emp) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لم يتم ربط حسابك بملف موظف. تواصل مع HR.</div>';}
 const todayRecord = STATE.attendance.find(a=>a.employeeId===emp.id && a.date===today());
+// زرٌ واحد بلا اختيار (2026-11-02): المحرك يقرر بالتسلسل — أول بصمة حضور، الثانية انصراف.
+const ps = punchBtnState(todayRecord);
 return `
 <div id="smartCardContainer"></div>
 <div class="hero-panel">
-<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> تسجيل الحضور والانصراف</h3>
+<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> البصمة الذاتية</h3>
 <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
-<button class="attendance-btn check-in" data-karim-action="kdCheckIn" ${todayRecord?.checkIn?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=inbox></i></span>
+<button class="attendance-btn ${ps.done?'check-out':'check-in'}" data-karim-action="kdPunch" ${ps.done?'disabled':''}>
+<span class="u-f28"><i class=ji data-i=clock></i></span>
 <div>
-<div class="u-t16-bold">تسجيل حضور</div>
-<div class="u-faint-80">${todayRecord?.checkIn?`تم: ${todayRecord.checkIn}`:'اضغط للتسجيل'}</div>
-</div>
-</button>
-<button class="attendance-btn check-out" data-karim-action="kdCheckOut" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=upload></i></span>
-<div>
-<div class="u-t16-bold">تسجيل انصراف</div>
-<div class="u-faint-80">${todayRecord?.checkOut?`تم: ${todayRecord.checkOut}`:'اضغط للتسجيل'}</div>
+<div class="u-t16-bold">${ps.label}</div>
+<div class="u-faint-80">${ps.hint}</div>
 </div>
 </button>
 </div>
@@ -394,14 +389,10 @@ function kdRenderPage7(p0) {
     renderPage();
 }
 
-function kdCheckIn() {
-    checkIn();
-}
-
-function kdCheckOut() {
-    checkOut();
+function kdPunch() {
+    checkPunch();
 }
 
 
 
-export {dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner, kdRenderPage, kdRenderPage7, kdCheckIn, kdCheckOut };;
+export {dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner, kdRenderPage, kdRenderPage7, kdPunch };;

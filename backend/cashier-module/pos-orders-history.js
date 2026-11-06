@@ -19,6 +19,7 @@ const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { generalLimiter, crudLimiter } = require('../rate-limiter');
 const { buildEscPosReceipt } = require('./escpos-printer');
+const { buildReceiptHtml } = require('./receipt-html');
 const { postInventoryLedgerEntry } = require('../inventory-ledger');
 const { convertQuantity } = require('../unit-conversion');
 const QRCode = require('qrcode');
@@ -364,7 +365,7 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
   .footer{margin-top:10px;text-align:center;font-size:11px;color:#888;border-top:1px dashed #999;padding-top:6px}
   .qr-section{text-align:center;margin:8px 0} .qr-section img{width:110px;height:110px}
   .tag{display:inline-block;border:1px solid #b58a2b;color:#7a5c14;border-radius:6px;padding:1px 8px;font-size:11px}
-  @media print { body { margin:0; padding:4px; } .noprint{display:none} }
+  @media print { @page { size: 80mm 200mm; margin: 2mm; } body { margin:0; padding:4px; } .noprint{display:none} }
 </style></head><body>
   <div class="header center">
     <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
@@ -612,19 +613,6 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
         // Open-buffet department → persons-oriented receipt (guest tiers),
         // not the menu-item layout
         const isBuffet = order.department_code === 'erp_open_buffet';
-        const personsTotal = items.reduce((s, it) => s + (Number(it.quantity) || 0), 0);
-        // ar-SA defaults to the Islamic (Umm al-Qura) calendar — force the
-        // Gregorian calendar so receipts show the expected civil date
-        const date = new Date(order.created_at).toLocaleString('ar-SA-u-ca-gregory', { timeZone: 'Asia/Riyadh' });
-        const logoUrl = '/app/assets/karim-logo.png';
-
-        // Change/refund rows (direction='out') are money LEAVING the drawer —
-        // they must render as "الباقي", never as an incoming payment.
-        const inPayments = payments.filter(p => p.direction === 'in');
-        const changeGiven = payments.filter(p => p.direction === 'out' && p.payer_info?.reason === 'change')
-            .reduce((s, p) => s + Number(p.amount), 0);
-        const distinctVatRates = [...new Set(items.map(it => Number(it.vat_rate)).filter(v => Number.isFinite(v) && v > 0))];
-        const vatLabel = distinctVatRates.length === 1 ? `الضريبة (${distinctVatRates[0]}%)` : 'الضريبة';
         
         // qr_payload is base64 of the raw TLV byte string, NOT of a PNG image.
         // Rendering it into <img src="data:image/png;base64,..."> produced a
@@ -636,113 +624,13 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
             catch (qrErr) { logger.error({ err: qrErr.message }, '[pos-orders] QR render failed'); }
         }
         
-        const html = `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>فاتورة #${order.invoice_counter}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; color: #1a1a1a; max-width: 80mm; margin: 0 auto; padding: 8px; }
-  .center { text-align: center; }
-  .left { text-align: left; }
-  .bold { font-weight: 800; }
-  .header { margin-bottom: 8px; border-bottom: 1px dashed #999; padding-bottom: 6px; }
-  .brand-logo { width: 58px; height: 58px; object-fit: contain; background: #fff; border: 1px solid #d4a843; border-radius: 9px; padding: 4px; margin-bottom: 4px; }
-  .header h2 { font-size: 16px; margin-bottom: 2px; }
-  .header .sub { font-size: 11px; color: #666; }
-  .divider { border-top: 1px dashed #999; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 2px 0; }
-  .row .label { color: #555; }
-  .item-row { margin: 4px 0; }
-  .item-row .name { font-weight: 600; }
-  .item-row .detail { display: flex; justify-content: space-between; font-size: 12px; color: #555; }
-  .total-row { font-size: 16px; font-weight: 900; margin-top: 4px; }
-  .payment-row { font-size: 11px; color: #444; }
-  .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #888; border-top: 1px dashed #999; padding-top: 6px; }
-  .void-stamp { color: #e74c3c; font-size: 24px; font-weight: 900; border: 3px solid #e74c3c; padding: 4px 12px; display: inline-block; transform: rotate(-15deg); opacity: 0.6; margin: 10px 0; }
-  .qr-section { text-align: center; margin: 8px 0; }
-  .qr-section img { width: 100px; height: 100px; }
-  .buffet-banner { background: #f5f0e6; border: 1.5px solid #d4a843; border-radius: 8px; padding: 6px; margin: 8px 0; font-size: 15px; font-weight: 900; color: #7a5c14; }
-  .buffet-persons { width: 100%; border-collapse: collapse; margin: 6px 0; }
-  .buffet-persons th, .buffet-persons td { border-bottom: 1px dashed #bbb; padding: 4px 2px; font-size: 12px; text-align: right; }
-  .buffet-persons th { background: #f5f0e6; color: #7a5c14; font-size: 11px; }
-  .buffet-persons td.c, .buffet-persons th.c { text-align: center; }
-  .persons-total { font-size: 16px; font-weight: 900; color: #7a5c14; background: #f5f0e6; border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
-  @media print { body { margin: 0; padding: 4px; } }
-</style>
-</head>
-<body>
-<div class="header center">
-  <img class="brand-logo" src="${logoUrl}" alt="مطاعم الشرفه العالمي">
-  <h2>${escHtml(order.department_name || 'مطاعم الشرفه العالمي')}</h2>
-  <div class="sub">${escHtml(order.department_name_en || '')}</div>
-  ${order.vat_number ? `<div class="sub">الرقم الضريبي: ${escHtml(order.vat_number)}</div>` : ''}
-  <div class="sub">${date}</div>
-</div>
-
-<div class="row"><span class="label">فاتورة #</span><span class="bold">${order.invoice_counter}</span></div>
-<div class="row"><span class="label">الكاشير:</span><span>${escHtml(order.cashier_name || '—')}</span></div>
-<div class="divider"></div>
-
-${isBuffet ? `
-<div class="buffet-banner center">🍽 البوفيه المفتوح — Open Buffet</div>
-${order.notes ? `<div class="row"><span class="label">العائلة / المناسبة:</span><span class="bold">${escHtml(order.notes)}</span></div>` : ''}
-<table class="buffet-persons">
-  <thead><tr><th>الفئة</th><th class="c">عدد الأشخاص</th><th class="c">سعر الفرد</th><th>المجموع</th></tr></thead>
-  <tbody>
-  ${items.map(it => `
-    <tr>
-      <td>${escHtml(it.product_name)}</td>
-      <td class="c bold">${Number(it.quantity)} فرد</td>
-      <td class="c">${Number(it.unit_price) > 0 ? Number(it.unit_price).toFixed(2) : 'مجاناً (ضيافة)'}</td>
-      <td>${Number(it.line_total).toFixed(2)} ر.س</td>
-    </tr>`).join('')}
-  </tbody>
-</table>
-<div class="row persons-total"><span>إجمالي عدد الأشخاص</span><span>${personsTotal} فرد</span></div>
-` : `
-${items.map(it => `
-<div class="item-row">
-  <div class="name">${escHtml(it.product_name)}</div>
-  <div class="detail">
-    <span>${Number(it.quantity)} × ${Number(it.unit_price).toFixed(2)}</span>
-    <span>${Number(it.line_total).toFixed(2)} ر.س</span>
-  </div>
-  ${Number(it.discount) > 0 ? `<div class="detail"><span>خصم</span><span>-${Number(it.discount).toFixed(2)}</span></div>` : ''}
-</div>
-`).join('')}
-`}
-
-<div class="divider"></div>
-<div class="row"><span>المجموع</span><span>${Number(order.subtotal).toFixed(2)}</span></div>
-${Number(order.discount_total) > 0 ? `<div class="row"><span>الخصم</span><span>-${Number(order.discount_total).toFixed(2)}</span></div>` : ''}
-<div class="row"><span>${vatLabel}</span><span>${Number(order.tax_total).toFixed(2)}</span></div>
-<div class="divider"></div>
-<div class="row total-row"><span>الإجمالي</span><span>${Number(order.total_amount).toFixed(2)} ر.س</span></div>
-
-${inPayments.length > 0 ? `
-<div class="divider"></div>
-<div class="bold" style="margin-bottom:4px">الدفع:</div>
-${inPayments.map(p => `
-<div class="payment-row row">
-  <span>${p.method === 'cash' ? '💵 نقدي' : p.method === 'card' ? '💳 بطاقة' : p.method === 'wallet' ? '📱 محفظة' : escHtml(p.method)}</span>
-  <span>${Number(p.amount).toFixed(2)}</span>
-</div>
-`).join('')}
-${changeGiven > 0 ? `<div class="payment-row row bold"><span>الباقي للعميل</span><span>-${changeGiven.toFixed(2)}</span></div>` : ''}
-` : ''}
-
-${order.qr_payload && qrImageDataUrl ? `
-<div class="qr-section">
-  <img src="${qrImageDataUrl}" alt="ZATCA QR" style="width:80px;height:80px">
-  <div style="font-size:9px;color:#888">ZATCA QR</div>
-</div>
-` : ''}
-
-${order.status === 'cancelled' ? `<div class="center"><div class="void-stamp">ملغاة</div></div>` : ''}
-</body></html>`;
+        const html = buildReceiptHtml({
+            order,
+            items,
+            payments,
+            qrImageDataUrl,
+            isBuffet,
+        });
 
         // Return JSON { html } — the shared frontend api() helper always parses
         // JSON, so sending raw text/html made the print window render
@@ -1014,10 +902,5 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
         res.status(code).json({ error: errorCode, message: err.message });
     } finally { client.release(); }
 });
-
-function escHtml(s) {
-    if (!s) {return '';}
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 module.exports = router;

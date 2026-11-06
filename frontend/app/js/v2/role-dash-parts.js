@@ -6,7 +6,7 @@
  * screens own fetching and behaviour, exactly like every other V2 screen.
  */
 
-import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.194';
+import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.296';
 
 export const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -54,7 +54,11 @@ export function deltaPill(d = {}) {
  */
 export function kpiStrip(kpis, opts = {}) {
     const aria = typeof opts === 'string' ? opts : ((opts && opts.ariaLabel) || '');
-    return `<ul class="erp-kpis"${aria ? ` aria-label="${esc(aria)}"` : ''}>`
+    // `cols` اختياري: شاشةٌ بعددٍ لا يقبل القسمة على ٣ (لوحة اليوم: ٨) تطلب
+    // ٤ أعمدة فتمتلئ الصفوف بلا خلايا فارغة تُقرأ كثغرة في البطاقة.
+    const cols = typeof opts === 'string' ? 0 : Number(opts && opts.cols);
+    const colsAttr = cols === 4 || cols === 6 ? ` data-cols="${cols}"` : '';
+    return `<ul class="erp-kpis"${colsAttr}${aria ? ` aria-label="${esc(aria)}"` : ''}>`
         + kpis.map((k, i) => `
       <li class="erp-kpi" style="--erp-rise-i:${i}">
         <div class="erp-kpi__top">

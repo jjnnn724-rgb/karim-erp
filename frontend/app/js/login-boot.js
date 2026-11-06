@@ -1,8 +1,12 @@
 /**
  * login-boot.js — بديل خارجي للسكربتات الداخلية في index.html.
- * السبب: CSP الخادم (nonce لكل طلب) يحظر أي <script> داخلي في ملف ثابت —
+ * السبب: CSP الخادم يحظر أي <script> داخلي. index.html (قياسًا من السيرفر
+ * الحيّ) يُخدَم بـ script-src 'self' 'nonce-<لكل طلب>' … 'unsafe-hashes' —
+ * بلا 'unsafe-inline'، فأي كتلة داخلية لا تحمل nonce ذلك الطلب محظورة.
+ * (شاشات V2 لها buildV2Csp: script-src 'self' بلا nonce وبلا unsafe-inline
+ * إطلاقًا — نفس النتيجة: لا inline.)
  * كانت 3 كتل محظورة: جامِع الأخطاء، زر العين، تحذير CapsLock، تسجيل الـ SW.
- * ملف خارجي = يعمل تحت 'self' بدون nonce.
+ * ملف خارجي = يعمل تحت 'self' ولا يحتاج nonce.
  */
 'use strict';
 
@@ -176,7 +180,7 @@ window.toggleLoginPassword = toggleLoginPassword;
 // 2026-10-11: ?v= + update() عند كل تحميل — يجبر تحديث الكاش فورًا بعد أي رفع.
 if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/app/sw.js?v=4.9.75', { scope: '/app/' })
+        navigator.serviceWorker.register('/app/sw.js?v=4.9.296', { scope: '/app/' })
             .then(function (reg) { try { reg.update(); } catch (_) {} })
             .catch(function () {});
     });

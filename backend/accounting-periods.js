@@ -54,6 +54,29 @@ async function assertPeriodOpen(dateStr) {
     if (/^\d{4}-\d{2}$/.test(p) && await isPeriodClosed(p)) {throw closedError(p);}
 }
 
+/**
+ * نسخة ذرّية داخل معاملة ترحيل: تقفل صف الفترة (SELECT ... FOR UPDATE) داخل نفس
+ * الـ client/BEGIN التي تُدرج فيها القيد — تمنع سباق "الفترة تُقفل بين الفحص والإدراج"
+ * (TOCTOU). نفس دلالة assertPeriodOpen: الفترة مقفولة ⇒ 423. الجدول مفقود (079 غير مطبق)
+ * ⇒ لا يُكسر البيع (نفس سياسة ccReady)، يُكتفى بتحذير.
+ * @param {{query:(sql:string,params?:any[])=>Promise<{rows:any[]}>}} client
+ * @param {string} dateStr - YYYY-MM-DD
+ * @returns {Promise<void>}
+ */
+async function assertPeriodOpenInTx(client, dateStr) {
+    const p = periodOf(dateStr);
+    if (!/^\d{4}-\d{2}$/.test(p)) {return;}
+    try {
+        const r = await client.query(
+            'SELECT closed FROM accounting_periods WHERE period = $1 FOR UPDATE', [p]);
+        if (r.rows[0] && r.rows[0].closed === true) {throw closedError(p);}
+    } catch (e) {
+        if (e && e.statusCode === 423) {throw e;}
+        if (e && e.code === '42P01') {return;} // الجدول غير موجود — لا نكسر المسار (021/079 غير مطبق)
+        throw e;
+    }
+}
+
 // ─── الفترات ────────────────────────────────────────────────────────────────
 router.get('/periods', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
@@ -290,4 +313,4 @@ function ensureAccountingPeriodsSchema() {
     })().catch((e) => { logger.error('[ACCOUNTING_PERIODS] init skipped:', e.message); });
 }
 
-module.exports = { router, isPeriodClosed, assertPeriodOpen, closedError, ensureAccountingPeriodsSchema };
+module.exports = { router, isPeriodClosed, assertPeriodOpen, assertPeriodOpenInTx, closedError, ensureAccountingPeriodsSchema };

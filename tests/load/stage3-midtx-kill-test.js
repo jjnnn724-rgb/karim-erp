@@ -21,7 +21,7 @@ function req(method, path, { token, body, headers = {} } = {}) {
     });
 }
 function dbClient() {
-    return new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp_stage3' });
+    return new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp_stage3' });
 }
 async function q(sql, params = []) {
     const c = dbClient(); await c.connect();

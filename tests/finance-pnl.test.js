@@ -55,7 +55,7 @@ describe('roundMoney و normalizeDay — التطهير الأساسي', () => {
 });
 
 describe('تحليل التكاليف — تجميع خادمي محدود بقراءة واحدة', () => {
-    test('النطاق الافتراضي هو الشهر الحالي ويرفض أي فترة أقدم', () => {
+    test('الفترة حرّة عبر الأشهر (قرار المالك 2026-11-01) بسقف 366 يومًا', () => {
         const today = riyadhToday();
         const monthStart = `${today.slice(0, 7)}-01`;
         expect(resolveCostAnalysisPeriod({ from: monthStart, to: today }))
@@ -63,9 +63,17 @@ describe('تحليل التكاليف — تجميع خادمي محدود بق�
         expect(resolveCostAnalysisPeriod({})).toEqual({ from: monthStart, to: today });
         expect(() => resolveCostAnalysisPeriod({ from: '2026-02-30', to: '2026-03-01' }))
             .toThrow('صيغة التاريخ غير صالحة');
-        expect(() => resolveCostAnalysisPeriod({ from: '2026-01-01', to: today }))
-            .toThrow('من بداية الشهر الحالي');
-        expect(() => resolveCostAnalysisPeriod({ from: today, to: monthStart }))
+        /* FIX 2026-11-01: حاجب V2_CURRENT_MONTH_ONLY أُلغي — الفترات القديمة
+           تُقبل (شكوى المالك «التاريخ مش بيتغير» و«عايز كل الصرف بكل دقه»)،
+           ويبقى سقف الأداء 366 يومًا فقط. */
+        expect(resolveCostAnalysisPeriod({ from: '2026-01-01', to: today }))
+            .toEqual({ from: '2026-01-01', to: today });
+        const yearAgo = new Date(`${today}T00:00:00.000Z`);
+        yearAgo.setUTCDate(yearAgo.getUTCDate() - 400);
+        expect(() => resolveCostAnalysisPeriod({ from: yearAgo.toISOString().slice(0, 10), to: today }))
+            .toThrow('أقصى نطاق للتحليل 366 يومًا');
+        /* قيم صريحة معكوسة — لا تعتمد على اليوم (أول الشهر from==to مشروع) */
+        expect(() => resolveCostAnalysisPeriod({ from: '2026-05-10', to: '2026-05-01' }))
             .toThrow('تاريخ البداية يجب أن يكون');
     });
 
@@ -107,7 +115,7 @@ describe('تحليل التكاليف — تجميع خادمي محدود بق�
             code: 'KITCHEN', rev: 1000, exp: 500, profit: 500,
             costRatio: 50, materials: 400, countAdj: -10, operating: 110,
         });
-        expect(result.totals).toEqual({ rev: 1000, exp: 500, mat: 400, cnt: -10, ops: 110, avgCost: 50 });
+        expect(result.totals).toEqual({ rev: 1000, exp: 500, mat: 400, trn: 0, cnt: -10, ops: 110, avgCost: 50 });
         expect(result.categories).toEqual([{ label: 'إيجار', value: 110 }]);
     });
 
@@ -129,7 +137,7 @@ describe('تحليل التكاليف — تجميع خادمي محدود بق�
 
         expect(result.rows.map((row) => row.rev)).toEqual([1500, 500]);
         expect(result.totals).toEqual({
-            rev: 1500, exp: 730, mat: 600, cnt: -10, ops: 140,
+            rev: 1500, exp: 730, mat: 600, trn: 0, cnt: -10, ops: 140,
             avgCost: (730 / 1500) * 100,
         });
     });

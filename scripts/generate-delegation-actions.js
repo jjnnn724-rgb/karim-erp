@@ -101,7 +101,7 @@ function splitStatements(body) {
     });
 }
 
-/** يقسّم وسائط الاستدعاء على الفواصل顶层. */
+/** يقسّم وسائط الاستدعاء على الفواصل العلوية */
 function splitCallArgs(text) {
     const parts = [];
     let depth = 0; let quote = null; let current = '';

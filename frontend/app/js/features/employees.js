@@ -134,19 +134,8 @@ function normalizeAr(s){
     .replace(/[أإآٱ]/g, 'ا').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
     .replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 }
-// إلغاء جماعي للاستكمال التلقائي (مدير فقط) — يعيد كل الصفوف المفتوحة
-async function revertAllInferred(){
-  if(STATE.currentUser?.role!=='admin'){ toast('غير مصرح — المدير فقط', 'error'); return; }
-  if(!confirm('إلغاء كل الاستكمال التلقائي؟ ستُمسح القيم المستنتَجة ويُعاد فتح الصفوف. القيم الحقيقية لن تُمس.')) {return;}
-  showLoad();
-  try{
-    const r = await apiFetch('/hr/attendance/revert-inferred', { method: 'POST', body: JSON.stringify({}) });
-    await window.loadData().catch(() => {});
-    renderPage();
-    toast(`تم: مسح خروج ${r.clearedCheckouts} — مسح دخول ${r.clearedCheckins} — حذف فارغ ${r.deletedEmpty}`, 'warning');
-  }catch(e){ toast(e.message || 'تعذر الإلغاء الجماعي', 'error'); }
-  finally{ hideLoad(); }
-}
+// إلغاء الاستكمال التلقائي — لصف واحد (مسار PUT عام مع تدقيق).
+// (أُزيل «إلغاء الاستكمال للكل» — كان يعتمد على مسار حُذف.)
 // إلغاء الاستكمال التلقائي: يعيد القيمة المستنتَجة فارغة ويفتح الصف للبصمات
 async function revertInference(id){  if(STATE.currentUser?.role!=='admin'){ toast('غير مصرح — المدير فقط', 'error'); return; }
   const rec = STATE.attendance.find(a => String(a.id) === String(id));
@@ -558,4 +547,4 @@ if(errs.length) {console.warn('EmpSheet errors:', errs);}
 }catch(e){ toast(e.message||'فشل الاستيراد','error'); }finally{ hideLoad(); }
 }
 
-export { renderEmployeesPage, empShiftChip, shiftEndText, renderEmployeesCards, searchEmployeeById, normalizeAr, revertAllInferred, revertInference, filterEmployees, showAddEmployeeModal, addEmployee, editEmployee, updateEmployee, deleteEmployee, viewEmployeeDetails, showSmartCardModal, exportEmployeesExcel, EMP_SHEET_COLS, empNormAr, empSheetNormDate, downloadEmpSheetTemplate, showEmpSheetImportModal, previewEmpSheetFile, importEmpSheet };
+export { renderEmployeesPage, empShiftChip, shiftEndText, renderEmployeesCards, searchEmployeeById, normalizeAr, revertInference, filterEmployees, showAddEmployeeModal, addEmployee, editEmployee, updateEmployee, deleteEmployee, viewEmployeeDetails, showSmartCardModal, exportEmployeesExcel, EMP_SHEET_COLS, empNormAr, empSheetNormDate, downloadEmpSheetTemplate, showEmpSheetImportModal, previewEmpSheetFile, importEmpSheet };

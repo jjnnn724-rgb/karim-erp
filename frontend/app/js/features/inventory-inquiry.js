@@ -58,7 +58,7 @@ function iqExpiryBadge(nearest, today) {
     const t = String(today || iqToday(0)).slice(0, 10);
     if (d < t) { return '<span class="badge bdg-red">منتهية</span>'; }
     const days = Math.round((new Date(`${d}T12:00:00Z`) - new Date(`${t}T12:00:00Z`)) / 86400000);
-    if (days <= 7) { return `<span class="badge" style="background:#fef3c7;color:#92400e">خلال ${iqNum(days)} يومًا</span>`; }
+    if (days <= 7) { return `<span class="badge" style="background:#fef3c7;color:#0a3d2f">خلال ${iqNum(days)} يومًا</span>`; }
     return '<span class="badge bdg-green">سليمة</span>';
 }
 
@@ -229,7 +229,7 @@ function iqRenderCards() {
         ['أصناف مُجمَّعة', iqNum(t.items), 'layers'],
     ];
     box.innerHTML = cells.map(([label, value, icon], i) => `
-      <div class="mcard" style="flex:1;min-width:150px;padding:12px;text-align:center${i === 0 ? ';background:linear-gradient(135deg,#f5d76e22,#f5d76e11)' : ''}">
+      <div class="mcard" style="flex:1;min-width:150px;padding:12px;text-align:center${i === 0 ? ';background:linear-gradient(135deg,#dcede422,#dcede411)' : ''}">
         <div class="u-dim" style="font-size:12px"><i class=ji data-i=${icon}></i> ${iqEsc(label)}</div>
         <b style="font-size:20px">${value}</b>
       </div>`).join('');
@@ -392,7 +392,7 @@ function icCardHtml(d) {
       ${[['الرصيد', iqNum(item.qty) + ' ' + iqEsc(item.unit || '')], ['قيمة المخزون', iqMoney(item.stockValue)],
     ['داخل من الفواتير', iqSigned(p.qty)], ['كوست المشتريات', iqMoney(p.cost)],
     ['مبيع بالكاشيرية', iqNum(s.pos)], ['إيراد الكاشيرية', iqMoney(s.net)]]
-        .map(([k, v], i) => `<div class="mcard" style="flex:1;min-width:140px;padding:10px;text-align:center${i === 0 ? ';background:linear-gradient(135deg,#f5d76e22,#f5d76e11)' : ''}"><div class="u-dim" style="font-size:12px">${iqEsc(k)}</div><b style="font-size:18px">${v}</b></div>`).join('')}
+        .map(([k, v], i) => `<div class="mcard" style="flex:1;min-width:140px;padding:10px;text-align:center${i === 0 ? ';background:linear-gradient(135deg,#dcede422,#dcede411)' : ''}"><div class="u-dim" style="font-size:12px">${iqEsc(k)}</div><b style="font-size:18px">${v}</b></div>`).join('')}
     </div>
     ${icTable('كراسي الحركة — الرصيد الجاري', ['اليوم', 'الحركة', 'الكمية', 'الرصيد بعده', 'سعر التكلفة', 'الموقع', 'المرجع', 'الصلاحية'],
         cardex.slice(-40).reverse().map((r) => [iqEsc(r.date), iqTypeBadge(r),
@@ -545,7 +545,7 @@ function iqPrintReport() {
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}
     h2{text-align:center;color:#666;font-size:14px;margin-bottom:12px}.summary{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
     .summary div{border:1px solid #999;padding:8px 16px;border-radius:6px;font-size:13px}table{width:100%;border-collapse:collapse;font-size:11px}
-    th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#dcede4}
     .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>

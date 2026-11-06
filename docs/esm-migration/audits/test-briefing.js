@@ -1,7 +1,7 @@
 const path = require('path');
 const { Client } = require('pg');
 (async () => {
-  const client = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp' });
+  const client = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp' });
   await client.connect();
   const poolLike = { query: (s, p) => client.query(s, p) };
   const { collectBriefing, formatWhatsapp } = require(path.join(__dirname, '../../../backend/manager-briefing.js'));

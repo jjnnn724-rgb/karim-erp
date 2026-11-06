@@ -30,21 +30,21 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS, composeSalesFromRegister,
-} from '../data/reports-repo.js?v=4.9.194';
+} from '../data/reports-repo.js?v=4.9.296';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail, fetchRevenuesRange, fetchRegisterDepartments,
     composeDeptRevenueFromRegister,
-} from '../data/reports-extra.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+} from '../data/reports-extra.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1041,29 +1041,29 @@ export function mountReportsScreen(host, ctx = {}) {
     const PRINT_CSS = `
       @page { size: A4; margin: 15mm 13mm 18mm;
         @bottom-center { content: "صفحة " counter(page) " من " counter(pages);
-          font-family: Tahoma, Arial, sans-serif; font-size: 8.5pt; color: #756d5a; } }
+          font-family: "IBM Plex Sans Arabic","Tajawal",Tahoma, Arial, sans-serif; font-size: 8.5pt; color: #756d5a; } }
       * { box-sizing: border-box; }
-      body { font-family: 'Cairo','Tajawal',Tahoma,Arial,sans-serif; direction: rtl; color: #1a1a1a; font-size: 10pt; margin: 0;
+      body { font-family: 'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif; direction: rtl; color: #1a1a1a; font-size: 10pt; margin: 0;
         background: #fff; }
       /* ورقة التقرير: إطار علوّي مزدوج (ذهب × أخضر داكن) بهوية الشرفة —
          موحّدة لكل التقارير من هذا المسار. */
       .rp-sheet { max-width: 1000px; margin: 0 auto; padding-top: 6px;
         border-top: 4px solid #18352b; }
-      .rp-sheet::before { content: ""; display: block; height: 2px; background: #d7c99f; margin-bottom: 10px; }
+      .rp-sheet::before { content: ""; display: block; height: 2px; background: #bcd8cb; margin-bottom: 10px; }
       .rp-title { text-align: center; font-size: 16pt; color: #18352b; margin: 2px 0 3px; letter-spacing: .3px; }
       .rp-sub { text-align: center; color: #756d5a; font-size: 9.5pt; margin: 0 0 12px; line-height: 1.65; }
-      h3 { font-size: 11.5pt; color: #18352b; margin: 15px 0 6px; border-bottom: 2px solid #d7c99f; padding-bottom: 3px; break-after: avoid; page-break-after: avoid; }
+      h3 { font-size: 11.5pt; color: #18352b; margin: 15px 0 6px; border-bottom: 2px solid #bcd8cb; padding-bottom: 3px; break-after: avoid; page-break-after: avoid; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
       th, td { border: 1px solid #c9bfa6; padding: 6px 8px; text-align: right; }
-      th { background: #f4ead2; color: #18352b; font-weight: 700; }
+      th { background: #e8f2ec; color: #18352b; font-weight: 700; }
       tbody tr:nth-child(even) { background: #faf7ef; }
-      tfoot td { background: #f4ead2; color: #18352b; font-weight: 700; }
+      tfoot td { background: #e8f2ec; color: #18352b; font-weight: 700; }
       .rp-num { text-align: center; font-variant-numeric: tabular-nums; }
       .rp-kpis { width: 100%; }
       .rp-kpis td { border: 1px solid #c9bfa6; padding: 8px; text-align: center; width: 33.3%; background: #fbf8f0; }
       .rp-kpis td span { display: block; color: #756d5a; font-size: 8.5pt; }
       .rp-kpis td b { display: block; font-size: 13pt; color: #18352b; margin-top: 2px; }
-      .rp-sig { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 12px; border-top: 1px solid #d7c99f; font-size: 10pt; color: #18352b; }
+      .rp-sig { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 12px; border-top: 1px solid #bcd8cb; font-size: 10pt; color: #18352b; }
       .rp-foot { text-align: center; color: #756d5a; font-size: 8.5pt; margin-top: 10px; }
       /* التقارير الإضافية تُنسخ من الشاشة (box.innerHTML) فتحمل وسومًا بلا
          تنسيقها: الرموز تصل svg بلا عرضٍ فتمدّدت لعرض الصفحة كله، وشرائح

@@ -19,26 +19,22 @@
  *   • Punches per day as bars, grouped by the STORED date — the same string
  *     the rows below show.
  *   • The full register in EnterpriseDataTable (search, sort, paging).
- *   • The seven-tool bar of the live screen, same doors and sentences
- *     (features/hr.js:163-170 + :319-565): period gaps with the resolve
- *     panel (fill/excuse/swap), admin excuse, row correct, QR kiosk, Excel
- *     export, shift apply from punches, printable monthly sheet, strict
- *     audit, and the all-rows revert. attToolsFor decides visibility; the
- *     server decides execution.
+ *   • The tool bar of the live screen, minus the removed kiosk/revert/shift
+ *     tools (owner decision 2026-11-05): period gaps with the resolve
+ *     panel (fill/excuse/swap), admin excuse, row correct, Excel
+ *     export, printable monthly sheet, strict audit, and the audit trail.
+ *     attToolsFor decides visibility; the server decides execution.
  *
  * RULES THIS FILE FOLLOWS (per-screen contract, see js/v2/MIGRATION.md)
  *   • No network of its own — every call goes through
- *     v2/data/attendance-repo.js (endpoint contract cited there). The kiosk
- *     camera is Html5Qrcode fetched on first use (vendor.js); legacy
- *     scanner.js is never referenced — V2 does not load it.
+ *     v2/data/attendance-repo.js (endpoint contract cited there).
  *   • No inline handlers: all listeners are addEventListener, delegated on
  *     this screen's own root, created per mount so re-mounting cannot
  *     double-bind.
  *   • Every write button hides by role here and is re-checked by the server;
  *     every write carries a mandatory reason stored with the actor's name
  *     and date (auditNote/joinNotes), and one click cannot start two writes
- *     (saving guard). The camera belongs to the panel: any panel open/close
- *     stops a running lens, and destroy() stops it too.
+ *     (saving guard).
  *   • Exactly one print call site: the monthly sheet rides a body class set
  *     before that call and removed after it (afterprint + safety timer).
  *   • Names come from /api/employees joined client-side — exactly like
@@ -56,31 +52,30 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge } from '../status.js?v=4.9.194';
-import { ensureHtml5Qrcode, ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge } from '../status.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
     buildPunchBars, applyAttendanceFilters, distinctValues, formatInt,
     periodRange, todayIso, spanDays,
     attToolsFor, seesFullPeriod, buildAttendanceGaps, filterGaps, GAPS_CAP,
-    buildExportMatrix, exportFileName, parseScanPayload, scanAttendance,
-    scanResultText, revertInferred, revertResultText, REVERT_INFERRED_CONFIRM,
+    buildExportMatrix, exportFileName,
     updateAttendance, createAttendance, createApprovedLeave,
     buildExcusePayload, buildAttendanceCreate,
     calcPunchTimes, shiftStartFor, fetchWorkStartHour,
     auditNote, joinNotes, validateReason,
     attWriteVisible, validatePunchForm, buildTodayExceptions,
-    validateShiftsText, suggestShiftLines, withSuggestedLines, formatShiftsResult,
-    monthOf, fetchShiftsAnalysis, applyShifts,
+    monthOf,
     fetchStrictAudit, summarizeAudit,
+    fetchAttendanceAudit, auditEditRows,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.194';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.194';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+} from '../data/attendance-repo.js?v=4.9.296';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.296';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -489,8 +484,13 @@ export function mountAttendanceScreen(host, ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            await ensureRefs();
-            const res = await fetchAttendanceRange({ from, to });
+            /* الأسماء والسجلّات قراءتان مستقلّتان: بالتتابع كان الموظف على
+               الهاتف يدفع ثمن رحلةٍ كاملة قبل أن تبدأ رحلة السجلّ، وهذا على
+               النفق العامّ ثانيةٌ أو ستٌّ ضائعة قبل أن يظهر جدولٌ واحد. */
+            const [, res] = await Promise.all([
+                ensureRefs(),
+                fetchAttendanceRange({ from, to }),
+            ]);
             if (!el.isConnected) {return;}          // destroyed while in flight
             rawRows = Array.isArray(res.rows) ? res.rows : [];
             allRows = rawRows.map((r) => attendanceToRow(r, empById, deptByCode));
@@ -655,25 +655,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
         }).catch(() => { /* ensureLeaves لا ترفض أصلًا — حزام أمان */ });
     }
 
-    /* الكاميرا ملك اللوحة: أي فتح أو إغلاق يُطفئ الجلسة السابقة، فلا تبقى
-       عدسة تعمل تحت لوحة الورديات ولا بعد مغادرة الشاشة. */
-    let scanner = null;
-    let scanRunning = false;
-
-    function stopScan() {
-        const inst = scanner;
-        const wasRunning = scanRunning;
-        scanner = null;
-        scanRunning = false;
-        if (!inst) {return;}
-        try {
-            const p = wasRunning ? inst.stop() : Promise.resolve();
-            p.then(() => inst.clear()).catch(() => {});
-        } catch { /* إغلاق الكاميرا لا يوقف الشاشة */ }
-    }
-
     function closePanel() {
-        stopScan();
         q('[data-v2-toolpanel]').innerHTML = '';
         resolveTarget = null;
     }
@@ -683,7 +665,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
     }
 
     function openResolve(empId, date) {
-        stopScan();
         const emp = empById.get(String(empId));
         const rec = rawRows.find((a) => String(a.employeeId) === String(empId) && String(a.date) === String(date));
         resolveTarget = { empId: String(empId), date, rec: rec || null };
@@ -785,7 +766,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
     }
 
     function openExcuse(empId, presetDate) {
-        stopScan();
         const emp = empId ? empById.get(String(empId)) : null;
         resolveTarget = { empId: empId ? String(empId) : '', date: presetDate || todayIso(), rec: null, excuseOnly: true };
         const opts = employeesList().filter((e) => e.status === 'active')
@@ -833,7 +813,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
     }
 
     function openCorrect(recordId) {
-        stopScan();
         const rec = rawRows.find((a) => String(a.id) === String(recordId));
         if (!rec) {return;}
         const emp = empById.get(String(rec.employeeId));
@@ -890,178 +869,14 @@ export function mountAttendanceScreen(host, ctx = {}) {
         }
     }
 
-    /* ── كشك البصمة: ماسح V2-native ──────────────────────────────────────
-     *  scanner.js القديم غير محمّل في V2 أصلًا، فالماسح هنا يبنى من
-     *  Html5Qrcode الذي يُجلب عند أول استخدام (vendor.js) داخل لوحة هذه
-     *  الشاشة — لقطة واحدة لكل فتح، ثم زر «مسح بطاقة أخرى». */
-
-    function scanMsg(t) {
-        const n = el.querySelector('[data-v2-scan-msg]');
-        if (n) {n.textContent = t;}
-    }
-
-    async function startCamera() {
-        scanMsg('جارٍ تجهيز الكاميرا…');
-        const ok = await ensureHtml5Qrcode();
-        if (!el.isConnected) {return;}
-        if (!ok) {
-            scanMsg('تعذّر تحميل قارئ الكاميرا — تحقق من الاتصال ثم أعد المحاولة.');
-            return;
-        }
-        if (!el.querySelector('[data-v2-scan-box]')) {return;}
-        try {
-            const inst = new window.Html5Qrcode('v2att-scan', { verbose: false });
-            scanner = inst;
-            await inst.start({ facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 220, height: 220 } },
-                (text) => { onScanDecoded(text); },
-                () => { /* إخفاقات فكٍّ بين الإطارات ضجيجٌ متوقع — لا رسالة لها */ });
-            scanRunning = true;
-            if (el.isConnected) {scanMsg('وجّه بطاقة الموظف (QR) نحو الكاميرا.');}
-        } catch (e) {
-            scanMsg(`تعذّر تشغيل الكاميرا: ${(e && e.message) || 'خطأ'} — امنح الإذن ثم أعد المحاولة.`);
-        }
-    }
-
-    async function onScanDecoded(text) {
-        if (saving) {return;}
-        saving = true;
-        stopScan();
-        const parsed = parseScanPayload(text);
-        if (!parsed.ok) {
-            saving = false;
-            scanMsg(parsed.message);
-            return;
-        }
-        try {
-            const res = await scanAttendance(parsed.data);
-            if (!el.isConnected) {return;}
-            const line = scanResultText(res);
-            scanMsg(line);
-            say(line);
-            await reload();
-        } catch (e) {
-            if (!el.isConnected) {return;}
-            scanMsg((e && e.message) || 'تعذّر تسجيل حركة الحضور');
-        } finally {
-            saving = false;
-        }
-    }
-
-    function doScan() {
-        resolveTarget = null;
-        stopScan();
-        q('[data-v2-toolpanel]').innerHTML = `<section class="erp-card"><div class="erp-card__head">`
-            + `<h3 class="erp-card__title">مسح بطاقة موظف — تسجيل حضور/انصراف <span class="erp-eyebrow" dir="ltr" lang="en">Kiosk</span></h3>`
-            + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
-            + `<div class="erp-card__body erp-stack">`
-            + `<div class="erp-scan" id="v2att-scan" data-v2-scan-box></div>`
-            + `<p class="erp-text-sm" data-v2-scan-msg role="status" aria-live="polite"></p>`
-            + `<div><button type="button" class="erp-btn erp-btn--sm" data-v2-scan-again><i class="ji" data-i="camera" aria-hidden="true"></i><span>مسح بطاقة أخرى</span></button></div>`
-            + `</div></section>`;
-        q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
-        startCamera();
-    }
-
-    async function doExport() {
-        // xlsx ليس محمَّلًا في v2.html (قرار السرعة في vendor.js) — يُجلب عند أول تصدير.
-        const ready = await ensureXlsx();
-        if (!ready || typeof window.XLSX === 'undefined') {say('مكتبة Excel غير محمّلة — حدّث الصفحة'); return;}
-        const from = q('#v2att-from').value;
-        const to = q('#v2att-to').value;
-        const matrix = buildExportMatrix(rows);
-        const ws = window.XLSX.utils.aoa_to_sheet(matrix);
-        const wb = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
-        prepareReportWorkbook(window.XLSX, wb, `تقرير الحضور ${from} إلى ${to}`);
-        window.XLSX.writeFile(wb, exportFileName(from, to));
-        say(`تم تصدير ${formatInt(rows.length)} سجل`);
-    }
-
-    async function doRevert() {
-        const ok = typeof ctx.confirmFn === 'function'
-            ? await ctx.confirmFn(REVERT_INFERRED_CONFIRM)
-            : (typeof window !== 'undefined' && window.confirm ? window.confirm(REVERT_INFERRED_CONFIRM) : false);
-        if (!ok) {return;}
-        try {
-            const res = await revertInferred();
-            say(revertResultText(res));
-            await reload();
-        } catch (e) {
-            say((e && e.message) || 'تعذر الإلغاء');
-        }
-    }
-
-    /* ── الورديات: نصٌّ يُطبَّق ويعيد حساب الحضور (hr.js:995-1047) ───────── */
-
-    function shiftMsg(t) {
-        const n = el.querySelector('[data-v2-sh-result]');
-        if (n) {n.textContent = t;}
-    }
-
-    function openShifts() {
-        resolveTarget = null;
-        stopScan();
-        const defMonth = monthOf(q('#v2att-to').value) || monthOf(todayIso()) || '';
-        q('[data-v2-toolpanel]').innerHTML = `<section class="erp-card"><div class="erp-card__head">`
-            + `<h3 class="erp-card__title">الورديات — تطبيق من واقع بصماتك <span class="erp-eyebrow" dir="ltr" lang="en">Shifts</span></h3>`
-            + `<span class="erp-grow"></span><button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
-            + `<div class="erp-card__body erp-stack">`
-            + `<p class="erp-text-sm erp-text-muted">سطر لكل موظف: <b>EMP-رقم أو اسم الموظف أو بصمة رقم</b> ثم وقت الدخول ثم عدد ساعات الوردية (أو وقت الخروج).<br>`
-            + `أمثلة: <code>EMP-019: 16:00 12</code> · <code>بصمة 45: 04:00 - 16:00</code> · <code>احمد السيد العدوي 16:00 12س</code></p>`
-            + `<div class="erp-dash-controls"><label class="erp-text-sm erp-text-muted" for="v2att-sh-month">شهر التحليل المقترح</label>`
-            + `<input class="erp-input erp-input--ltr" id="v2att-sh-month" type="month" data-v2-sh-month value="${esc(defMonth)}"></div>`
-            + `<textarea class="erp-input erp-mono" rows="8" data-v2-sh-text dir="ltr" aria-label="نص الورديات" placeholder="EMP-019: 16:00 12"></textarea>`
-            + `<label class="erp-row-wrap erp-text-sm"><input type="checkbox" data-v2-sh-suggest checked> أضف تلقائيًا ورديات مقترحة من واقع البصمة للموظفين غير المذكورين (فجوة ≥30 دقيقة)</label>`
-            + `<div><button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-sh-go><i class="ji" data-i="save" aria-hidden="true"></i><span>تطبيق وإعادة حساب الحضور</span></button></div>`
-            + `<div class="erp-shifts-result" data-v2-sh-result role="status" aria-live="polite"></div>`
-            + `</div></section>`;
-        q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
-    }
-
-    async function submitShifts() {
-        if (saving) {return;}
-        const first = validateShiftsText(el.querySelector('[data-v2-sh-text]')?.value || '');
-        if (!first.ok) {shiftMsg(first.message); return;}
-        const useAuto = !!el.querySelector('[data-v2-sh-suggest]')?.checked;
-        const month = el.querySelector('[data-v2-sh-month]')?.value || monthOf(todayIso());
-        saving = true;
-        try {
-            let text = first.text;
-            let note = '';
-            if (useAuto) {
-                // التحليل اقتراحٌ لا شرط: إن تعذّر يُطبَّق النص المُدخل وحده
-                try {
-                    const analysis = await fetchShiftsAnalysis(month);
-                    const lines = suggestShiftLines(text, (analysis && analysis.items) || []);
-                    text = withSuggestedLines(text, lines);
-                    note = lines.length
-                        ? `أُضيف ${formatInt(lines.length)} سطرًا مقترحًا من تحليل الشهر.`
-                        : 'التحليل لم يجد صفوفًا غير مذكورة تستحق الإضافة.';
-                } catch {
-                    note = 'تعذّر قراءة تحليل الشهر — يُطبَّق النص المُدخل وحده.';
-                }
-            }
-            const second = validateShiftsText(text);
-            if (!second.ok) {shiftMsg(second.message); saving = false; return;}
-            const res = await applyShifts(second.text);
-            if (!el.isConnected) {return;}
-            shiftMsg([...formatShiftsResult(res), note].filter(Boolean).join('\n'));
-            say(`تم تطبيق ${formatInt(res && res.applied)} وردية وإعادة حساب الحضور`);
-            await reload();
-        } catch (e) {
-            if (!el.isConnected) {return;}
-            shiftMsg(`تعذّر التطبيق: ${(e && e.message) || 'خطأ'}`);
-        } finally {
-            saving = false;
-        }
-    }
+    // أُزيلت أدوات «مسح بطاقة (QR)» و«إلغاء الاستكمال للكل» و«الورديات من البصمة»
+    // (قرار المالك 2026-11-05): مصدران فقط — جهاز البصمة وكاميرا التطبيق،
+    // والدوام من بطاقة الموظف مباشرة.
 
     /* ── الكشف الشهري المجمع (smart-card.js:701 عبر hr-routes.js:331) ──── */
 
     function openMonthly() {
         resolveTarget = null;
-        stopScan();
         const defMonth = monthOf(q('#v2att-to').value) || monthOf(todayIso()) || '';
         q('[data-v2-toolpanel]').innerHTML = `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title">كشف الحضور والانصراف الشهري المجمع <span class="erp-eyebrow" dir="ltr" lang="en">Monthly Sheet</span></h3>`
@@ -1114,7 +929,8 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<td class="erp-td erp-tnum">${esc(String(r.karimHours))}</td></tr>`).join('')
             || `<tr><td class="erp-td" colspan="8">لا توجد سجلات في هذا الشهر</td></tr>`;
         const verify = [
-            'المعتمد = إتمام ساعات الوردية: الدخول المبكر يغطي الانصراف المبكر والتأخير يُمتص بالبقاء',
+            'التأخير يُحسب من أول دقيقة بعد بداية دوام البطاقة — بلا سماحية',
+            'الساعات = الانصراف − الدخول، والعجز عن ساعات البطاقة يُحتسب كاملًا',
             'عدد أيام التأخير مستقل عن مجموع الدقائق',
             'لا يوجد خلط بين عدد الأيام والساعات',
             'الورديات الليلية تُحسب حسب وقت الوردية',
@@ -1131,7 +947,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `</tr></thead><tbody>${rows}</tbody></table></div>`
             + `<div class="erp-mo-verify"><p class="erp-card__title">معيار التحقق الاحترافي</p>`
             + `<ul class="erp-text-sm erp-text-muted">${verify.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>`
-            + `<p class="erp-print-note">المعتمد = إتمام ساعات الوردية • نقص الدوام: `
+            + `<p class="erp-print-note">المعتمد = إتمام ساعات البطاقة (shift_karim) • نقص الدوام: `
             + `${formatInt(sheet.totals.shortDays)} يوم • ${formatInt(sheet.totals.deficitMinutes)} دقيقة — شهر `
             + `${esc(sheet.month || '')} (${formatInt(sheet.employees)} موظفًا)</p>`;
     }
@@ -1140,7 +956,6 @@ export function mountAttendanceScreen(host, ctx = {}) {
 
     function openAudit() {
         resolveTarget = null;
-        stopScan();
         const defMonth = monthOf(q('#v2att-to').value) || monthOf(todayIso()) || '';
         q('[data-v2-toolpanel]').innerHTML = `<section class="erp-card"><div class="erp-card__head">`
             + `<h3 class="erp-card__title">تدقيق صارم <span class="erp-eyebrow" dir="ltr" lang="en">Strict Audit</span></h3>`
@@ -1187,6 +1002,85 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `</div>`;
     }
 
+    /* ── سجلّ تعديلات الحضور (attendance-governance.js) ───────────────────
+       كل تصحيحٍ على الحضور يترك سطرًا: القيمُ قبل/بعد، ومَن غيّرها، ومتى،
+       والسبب. هذا هو «التدقيق» بمعناه الحقيقي — لا الفحصُ الموجَّه للبيانات
+       بل أثرُ التغييرات على البيانات. */
+
+    function openTrail() {
+        resolveTarget = null;
+        const from = q('#v2att-from').value || isoDay(-30);
+        const to = q('#v2att-to').value || isoDay(0);
+        q('[data-v2-toolpanel]').innerHTML = `<section class="erp-card"><div class="erp-card__head">`
+            + `<h3 class="erp-card__title">سجل تعديلات الحضور <span class="erp-eyebrow" dir="ltr" lang="en">Attendance Trail</span></h3>`
+            + `<span class="erp-grow"></span>`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-tr-from">من</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2att-tr-from" type="date" data-v2-tr-from value="${esc(from)}">`
+            + `<label class="erp-text-sm erp-text-muted" for="v2att-tr-to">إلى</label>`
+            + `<input class="erp-input erp-input--ltr" id="v2att-tr-to" type="date" data-v2-tr-to value="${esc(to)}">`
+            + `<select class="erp-select" data-v2-tr-action aria-label="نوع التعديل">`
+            + `<option value="">كل الأنواع</option>`
+            + `<option value="create">إضافة</option><option value="update">تصحيح</option><option value="delete">حذف</option></select>`
+            + `<button type="button" class="erp-btn erp-btn--sm" data-v2-tr-load><i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span></button>`
+            + `<button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-x>إغلاق</button></div>`
+            + `<div class="erp-card__body"><div data-v2-tr-body class="erp-stack">`
+            + `<p class="erp-text-sm erp-text-muted">جارٍ قراءة السجل…</p>`
+            + `</div></div></section>`;
+        q('[data-v2-toolpanel]').scrollIntoView({ block: 'nearest' });
+        loadTrail();
+    }
+
+    async function loadTrail() {
+        const body = q('[data-v2-tr-body]');
+        if (!body) {return;}
+        body.innerHTML = `<p class="erp-text-sm erp-text-muted">جارٍ قراءة السجل…</p>`;
+        try {
+            const res = await fetchAttendanceAudit({
+                from: el.querySelector('[data-v2-tr-from]')?.value || '',
+                to: el.querySelector('[data-v2-tr-to]')?.value || '',
+                action: el.querySelector('[data-v2-tr-action]')?.value || '',
+                limit: 300,
+            });
+            if (!el.isConnected || !q('[data-v2-tr-body]')) {return;}
+            body.innerHTML = trailHtml(auditEditRows(res), res);
+        } catch (e) {
+            if (!el.isConnected || !q('[data-v2-tr-body]')) {return;}
+            body.innerHTML = `<p class="erp-text-sm erp-text-muted">تعذّر قراءة السجل: ${esc((e && e.message) || 'خطأ')}</p>`;
+        }
+    }
+
+    /** قيمةٌ واحدة قبل/بعد — تقرأ كما خُزّنت، بلا تجميل. */
+    function trailValue(v) {
+        if (v === null || v === undefined || v === '') {return '—';}
+        if (v instanceof Date) {return v.toISOString();}
+        if (typeof v === 'object') {return JSON.stringify(v);}
+        return String(v);
+    }
+
+    function trailHtml(rows, res = {}) {
+        const body = rows.map((r) => {
+            const changes = r.fields.length
+                ? r.fields.map((f) => `<span class="erp-text-sm"><b dir="ltr">${esc(f.field)}</b>: `
+                    + `<span class="erp-text-muted" dir="ltr">${esc(trailValue(f.before))}</span> ← `
+                    + `<b dir="ltr">${esc(trailValue(f.after))}</b></span>`).join('<br>')
+                : '<span class="erp-text-muted">لا قيم مختلفة</span>';
+            return `<tr>
+              <td class="erp-td"><span class="erp-badge" data-tone="${esc(r.tone)}">${esc(r.actionAr)}</span></td>
+              <td class="erp-td">${esc(r.employeeName)}<br><span class="erp-text-muted erp-text-sm" dir="ltr">${esc(r.employeeNo)}</span></td>
+              <td class="erp-td">${esc(r.actorName)}${r.actorRole ? ` <span class="erp-text-muted erp-text-sm">(${esc(r.actorRole)})</span>` : ''}</td>
+              <td class="erp-td">${changes}</td>
+              <td class="erp-td erp-text-sm">${esc(r.reason || '—')}</td>
+              <td class="erp-td erp-text-sm" dir="ltr">${esc(String(r.at).slice(0, 16).replace('T', ' '))}</td>
+            </tr>`;
+        }).join('') || `<tr><td class="erp-td erp-text-muted" colspan="6">لا تعديلات في هذه الفترة</td></tr>`;
+        const total = Number(res && res.total) || rows.length;
+        return `<p class="erp-text-sm erp-text-muted">${formatInt(total)} تعديلًا مسجَّلًا — السجل دائم ولا يُحذف، `
+            + `وكل سطرٍ يحمل القيم قبل/بعد ومَن غيّرها ولماذا.</p>`
+            + `<div class="erp-table__scroll" tabindex="0" style="max-height:520px;overflow:auto"><table class="erp-table__grid">`
+            + `<thead><tr><th>النوع</th><th>الموظف</th><th>مَن غيّر</th><th>ما تغيّر</th><th>السبب</th><th>الوقت</th></tr></thead>`
+            + `<tbody>${body}</tbody></table></div>`;
+    }
+
     /* نداء طباعة واحد في الشاشة كلها؛ الكشف الشهري يركب شارة body قبله
        وتُنزع بعده (afterprint + مهلة أمان) — نفس حركة بطاقة QR في W2-2. */
     function printNow(monthly) {
@@ -1223,12 +1117,10 @@ export function mountAttendanceScreen(host, ctx = {}) {
                 else {await openGaps();}
                 return;
             }
-            if (id === 'scan') {doScan(); return;}
             if (id === 'export') {doExport(); return;}
-            if (id === 'revert') {doRevert(); return;}
-            if (id === 'shifts') {openShifts(); return;}
             if (id === 'monthly') {openMonthly(); return;}
             if (id === 'audit') {openAudit(); return;}
+            if (id === 'trail') {openTrail(); return;}
             return;
         }
         if (event.target.closest('[data-v2-gaps-x]')) {
@@ -1249,11 +1141,10 @@ export function mountAttendanceScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-exc-go]')) {submitExcuse(); return;}
         if (event.target.closest('[data-v2-cor-go]')) {submitCorrect(); return;}
         if (event.target.closest('[data-v2-excuse-new]')) {openExcuse(''); return;}
-        if (event.target.closest('[data-v2-scan-again]')) {startCamera(); return;}
-        if (event.target.closest('[data-v2-sh-go]')) {submitShifts(); return;}
         if (event.target.closest('[data-v2-mo-load]')) {loadMonthly(); return;}
         if (event.target.closest('[data-v2-mo-print]')) {printNow(true); return;}
         if (event.target.closest('[data-v2-au-load]')) {loadAudit(); return;}
+        if (event.target.closest('[data-v2-tr-load]')) {loadTrail(); return;}
         // The table's own retry button clears the error but cannot refetch in
         // client mode — the host owns the data, so the refetch lives here.
         if (event.target.closest('[data-erp-retry]')) {reload();}
@@ -1262,6 +1153,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
         if (event.target.matches('[data-v2-dept], [data-v2-state]')) {paint(); return;}
         if (event.target.matches('[data-v2-mo-month]')) {loadMonthly(); return;}
         if (event.target.matches('[data-v2-au-month]')) {loadAudit(); return;}
+        if (event.target.matches('[data-v2-tr-action]')) {loadTrail(); return;}
         if (event.target.matches('[data-v2-res-type]')) {
             const v = event.target.value;
             const f = el.querySelector('[data-v2-res-fill]');
@@ -1287,8 +1179,7 @@ export function mountAttendanceScreen(host, ctx = {}) {
         reload,
         getRows: () => rows,
         destroy() {
-            stopScan();
-            table.destroy();
+                table.destroy();
             el.remove();
         },
     };

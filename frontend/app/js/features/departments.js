@@ -37,7 +37,7 @@ function deptCashierRevenue(deptCode, fromDate, toDate){
 }
 /* لون هوية القسم المسجل في القاعدة — يُستخدم في الشريط العلوي وميدالية الأيقونة وشارات البطاقة */
 function deptIdentityColor(d){
-    return /^#[0-9a-fA-F]{6}$/.test(String(d && d.color || '').trim()) ? String(d.color).trim() : '#D4A843';
+    return /^#[0-9a-fA-F]{6}$/.test(String(d && d.color || '').trim()) ? String(d.color).trim() : '#14735b';
 }
 /* بطاقة المطبخ العام — تجميعية: إيراد ومصروف المطبخ + كل أقسامه الفرعية
    (حلواني، سلطات، خباز، مطبخ ساخن، استيورد، صالة ساخنة...) في مكان واحد.

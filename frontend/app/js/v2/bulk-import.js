@@ -260,14 +260,14 @@ export function bulkPrintTableHtml({ rows = [], roleNames = {}, orgName = '', lo
 </tr>`).join('');
     return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بيانات المستخدمين</title>
 <style>
-body{font-family:'Cairo',Tahoma,Arial,sans-serif;padding:20px;direction:rtl;color:#1a1a1a}
+body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:20px;direction:rtl;color:#1a1a1a}
 .brand{text-align:center;margin-bottom:10px}
-.brand img{width:64px;height:64px;object-fit:contain;background:#fff;border:2px solid #d4a843;border-radius:12px;padding:5px}
-h1{text-align:center;color:#b45309;margin:10px 0}
+.brand img{width:64px;height:64px;object-fit:contain;background:#fff;border:2px solid #14735b;border-radius:12px;padding:5px}
+h1{text-align:center;color:#0f5b46;margin:10px 0}
 .meta{text-align:center;color:#666;margin-bottom:18px;font-size:12px}
 table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
 th,td{border:1px solid #333;padding:8px;text-align:center}
-th{background:#b45309;color:#fff;font-weight:900}
+th{background:#0f5b46;color:#fff;font-weight:900}
 .pass{font-family:monospace;font-size:16px;font-weight:900;letter-spacing:3px;color:#055f3a}
 @media print{body{padding:0}@page{size:A4;margin:12mm}}
 </style></head><body>
@@ -293,7 +293,7 @@ export function bulkPrintSlipsHtml({ rows = [], roleNames = {}, orgName = '', lo
 </div>`).join('');
     return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>قصاصات دخول الموظفين</title>
 <style>
-body{font-family:'Cairo',Tahoma,Arial,sans-serif;padding:16px;direction:rtl;color:#222;margin:0}
+body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:16px;direction:rtl;color:#222;margin:0}
 .meta{text-align:center;color:#777;font-size:11px;margin-bottom:10px}
 .slips{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .slip{border:2px dashed #999;border-radius:10px;padding:12px 14px;page-break-inside:avoid}

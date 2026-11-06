@@ -10,12 +10,12 @@
  * digits) + delegation-safe print buttons.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
-import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
+import { fetchYaraCashierItems, fetchYaraInvoiceDetail } from '../data/reports-extra.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -309,8 +309,8 @@ export function mountCashierMonitorScreen(host, ctx = {}) {
         const totR = rows.reduce((s, r) => s + r.revenue, 0);
         const w = openInAppReport('تقرير إيرادات الكاشيرية');
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير إيرادات الكاشيرية — ${esc(date)}</title>`
-            + `<style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#1a1a1a;direction:rtl}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:15px;margin-bottom:18px}`
-            + `table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e}tfoot td{font-weight:800;background:#f3ecd9}`
+            + `<style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:36px;color:#1a1a1a;direction:rtl}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:15px;margin-bottom:18px}`
+            + `table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#dcede4}tfoot td{font-weight:800;background:#f3ecd9}`
             + `.controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}`
             + `@media print{.controls{display:none}body{padding:0}}</style></head><body>`
             + `<div class="controls"><button type="button" class="btn-print" data-pl-print>طباعة</button><button type="button" class="btn-close" data-pl-close>إغلاق</button></div>`

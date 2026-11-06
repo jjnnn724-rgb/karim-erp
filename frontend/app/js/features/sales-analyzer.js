@@ -130,7 +130,7 @@ function saRenderCards(t) {
       <div class="mcard" style="flex:1;min-width:120px;padding:10px;text-align:center"><div class="u-dim" style="font-size:12px">الكمية</div><b style="font-size:20px">${saNum(t.qty)}</b></div>
       <div class="mcard" style="flex:1;min-width:130px;padding:10px;text-align:center"><div class="u-dim" style="font-size:12px">الصافي</div><b style="font-size:18px">${saMoney(t.net)}</b></div>
       <div class="mcard" style="flex:1;min-width:120px;padding:10px;text-align:center"><div class="u-dim" style="font-size:12px">ضريبة</div><b style="font-size:18px">${saMoney(t.vat)}</b></div>
-      <div class="mcard" style="flex:1;min-width:140px;padding:10px;text-align:center;background:linear-gradient(135deg,#f5d76e22,#f5d76e11)"><div class="u-dim" style="font-size:12px">الإجمالي</div><b style="font-size:20px" class="c-gold">${saMoney(Number(t.net) + Number(t.vat))}</b></div>`;
+      <div class="mcard" style="flex:1;min-width:140px;padding:10px;text-align:center;background:linear-gradient(135deg,#dcede422,#dcede411)"><div class="u-dim" style="font-size:12px">الإجمالي</div><b style="font-size:20px" class="c-gold">${saMoney(Number(t.net) + Number(t.vat))}</b></div>`;
 }
 
 // ─── عرض التحليل المجمّع ───
@@ -322,7 +322,7 @@ function saPrintReport() {
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تحليل مبيعات الكاشيرية</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#dcede4}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
@@ -347,7 +347,7 @@ function saPrintOrdersReport() {
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير أوردرات الكاشيرية</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#dcede4}
     tfoot td{font-weight:800;background:#f3ecd9}.controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>

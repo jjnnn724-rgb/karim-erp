@@ -43,8 +43,8 @@
  *   screens/employees.js: they are presentation, and this file stays pure.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
-import { isWeeklyOff } from './attendance-repo.js?v=4.9.194';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.296';
+import { isWeeklyOff } from './attendance-repo.js?v=4.9.296';
 
 const int = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : 0; };
 // A missing salary is not zero: Number(null) is 0, and a card that prints
@@ -117,6 +117,10 @@ export function cardKpis(summary = {}) {
     const rawLateMinutes = Math.max(0, int(summary.totalRawLateMinutes));
     const rawLateDays = Math.max(0, int(summary.rawLateDays));
     const graceMinutes = Math.max(0, int(summary.graceMinutes));
+    // نشر السماحية الفعلية للواجهة كلها: مصدر واحد بدل الرقم المثبّت في ثلاث شاشات.
+    if (typeof window !== 'undefined' && Number.isFinite(Number(summary.graceMinutes))) {
+        window.ATT_GRACE_MIN = Number(summary.graceMinutes);
+    }
     // ساعات العمل المعروضة كما يحسبها الخادم (totalKarim) — لا إعادة حساب هنا.
     const hours = num(summary.totalKarim) ?? 0;
     const rate = workDays > 0

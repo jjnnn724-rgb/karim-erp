@@ -12,8 +12,8 @@
  *
  * SAME FILES, SAME URLS AS THE LEGACY PAGE — ON PURPOSE
  *   index.html loads them as:
- *     /app/vendor/xlsx.full.min.js?v=4.9.77      (index.html:46)
- *     js/vendor/qrcode.min.js?v=4.9.77           (index.html:257)
+ *     /app/vendor/xlsx.full.min.js?v=4.9.296      (index.html:46)
+ *     js/vendor/qrcode.min.js?v=4.9.296           (index.html:257)
  *   These specifiers point at the same physical files with the SAME ?v the
  *   legacy page already uses, so the browser and the Cloudflare tunnel's
  *   four-hour cache serve them as hits — no new cache URL is minted. The
@@ -24,19 +24,27 @@
  *   revision) still holds, because these are script src tags, not imports.
  *
  * CSP
- *   The origin sends script-src 'self' 'nonce-…'. A tag with a same-origin
- *   src is allowed by 'self' regardless of nonce, which is why dynamic
- *   injection works here. An onerror is always wired: a vendor that fails
+ *   The origin sends script-src 'self' with no 'unsafe-inline' and no
+ *   nonce. A tag with a same-origin src is allowed by 'self', which is
+ *   why dynamic injection works here.
+ *   An onerror is always wired: a vendor that fails
  *   to load resolves false ONCE and the calling feature states its failure
  *   in Arabic instead of throwing.
  */
 
 const VENDOR_ASSETS = {
-    XLSX: { global: 'XLSX', src: 'vendor/xlsx.full.min.js?v=4.9.77' },
-    QRCode: { global: 'QRCode', src: 'js/vendor/qrcode.min.js?v=4.9.77' },
+    XLSX: { global: 'XLSX', src: 'vendor/xlsx.full.min.js?v=4.9.296' },
+    QRCode: { global: 'QRCode', src: 'js/vendor/qrcode.min.js?v=4.9.296' },
     // قارئ الكاميرا (371 KB) — index.html:47 يحمّله لكل الجلسة؛ هنا يُحمَّل
     // عند أول مسح بطاقة فقط، بنفس الملف ونفس ?v فلا عنوان كاش جديد.
-    Html5Qrcode: { global: 'Html5Qrcode', src: 'vendor/html5-qrcode.min.js?v=4.9.77' },
+    Html5Qrcode: { global: 'Html5Qrcode', src: 'vendor/html5-qrcode.min.js?v=4.9.296' },
+    // ── محرك تصدير PDF ومشاركته (2026-10-31 بطلب المالك: «استعلام المبيعات
+    // عايز احملها pdf واي مكان في طباعة اقدر اعمله شير») ──
+    // jsPDF (366 KB) للتركيب متعدد الصفحات، وhtml2canvas-pro (211 KB) للرسم —
+    // نسخة pro عمدًا: الأصلية ترمي على color-mix/oklch المستخدمة في هوية V2.
+    // ملفان جديدان ليسا في القديمة، فلهما وسم ثابت خاص بهما لا يتحرك مع rev.
+    JsPDF: { global: 'jspdf', src: 'js/vendor/jspdf.umd.min.js?v=4.9.296' },
+    Html2CanvasPro: { global: 'html2canvas', src: 'js/vendor/html2canvas-pro.min.js?v=4.9.296' },
 };
 
 /** @type {Map<string, Promise<boolean>>} one in-flight promise per asset */

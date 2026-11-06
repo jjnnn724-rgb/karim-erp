@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   webDir: 'frontend/app',
   // التطبيق واجهة للسيرفر مباشرة (لا نسخ ملفات) — التحديثات فورية بلا إعادة نشر APK
   server: {
-    url: `${PUBLIC_SERVER}/app/index.html`,
+    url: `${PUBLIC_SERVER}/app/v2.html?live=1`,
     cleartext: false,
     androidScheme: 'https',
   },

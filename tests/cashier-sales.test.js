@@ -261,7 +261,7 @@ describe('مبيعات الكاشير — الورقة المطبوعة', () => 
     });
 
     test('الإيصالُ الحراريّ: ورقةٌ بمقاسها وأسطوانِ أرقامٍ مصفوفة', () => {
-        expect(backend).toMatch('@page { size: 80mm auto; margin: 3mm 4mm 4mm; }');
+        expect(backend).toMatch('@page { size: 80mm 200mm; margin: 3mm 4mm 4mm; }');
         expect(backend).toMatch('.rcpt { width:100%; max-width:72mm;');
         expect(backend).toMatch('<th class="q">كمية × سعر</th><th class="v">الإجمالي</th>');
         // الإجماليُّ والعملتُها سطرٌ واحد: انفصالُهما كان يُسقط «ر.س» وحدها
@@ -281,7 +281,7 @@ describe('مبيعات الكاشير — الورقة المطبوعة', () => 
     test('ترويسةُ الكشفِ فاتحةٌ للطابعة: حبرٌ داكنٌ على ورقٍ أبيض', () => {
         expect(backend).not.toMatch('linear-gradient(135deg,#0f172a');
         expect(backend).toMatch('.brand img { width:56px; height:56px; object-fit:contain; }');
-        expect(backend).toMatch('border-bottom:2px solid #c9a227; }');
+        expect(backend).toMatch('border-bottom:2px solid #8fbfa9; }');
         expect(backend).toMatch('table.t th { background:#f3f5f3;');
     });
 

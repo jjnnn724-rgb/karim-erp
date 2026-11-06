@@ -370,15 +370,15 @@ function sheetStyles() {
   .sheet { max-width:200mm; margin:0 auto; background:#fff; border:1px solid #dfe3ea;
            border-radius:14px; box-shadow:0 14px 40px rgba(15,23,42,.10); overflow:hidden; }
   .brand { display:flex; align-items:center; gap:16px; padding:18px 22px;
-           background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%); border-bottom:3px solid #c9a227; }
+           background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%); border-bottom:3px solid #8fbfa9; }
   .brand img { width:64px; height:64px; object-fit:contain; background:#fff;
-               border:2px solid #c9a227; border-radius:12px; padding:4px; }
+               border:2px solid #8fbfa9; border-radius:12px; padding:4px; }
   .brand__t { flex:1; min-width:0; }
-  .brand__t h1 { font-size:17px; color:#f5d76e; font-weight:700; letter-spacing:.2px; }
+  .brand__t h1 { font-size:17px; color:#dcede4; font-weight:700; letter-spacing:.2px; }
   .brand__t p { font-size:11px; color:#cbd5e1; margin-top:2px; }
   .brand__id { text-align:center; }
-  .brand__id .no { display:inline-block; background:rgba(245,215,110,.14); border:1px solid #c9a227;
-                   border-radius:999px; padding:3px 14px; font-size:13px; font-weight:700; color:#f5d76e;
+  .brand__id .no { display:inline-block; background:rgba(245,215,110,.14); border:1px solid #8fbfa9;
+                   border-radius:999px; padding:3px 14px; font-size:13px; font-weight:700; color:#dcede4;
                    font-variant-numeric:tabular-nums; direction:ltr; }
   .doc { text-align:center; padding:16px 22px 6px; }
   .doc h2 { font-size:20px; color:#0f172a; letter-spacing:.4px; }
@@ -386,7 +386,7 @@ function sheetStyles() {
   .stamp { display:inline-block; margin-top:9px; padding:4px 20px; border-radius:999px;
            font-size:11.5px; font-weight:800; letter-spacing:.3px; border:1.5px solid; }
   .stamp--success { color:#055f3a; border-color:#0b9e6c; background:rgba(11,158,108,.10); }
-  .stamp--warning { color:#b54708; border-color:#d97706; background:rgba(217,119,6,.10); }
+  .stamp--warning { color:#b54708; border-color:#0e5c45; background:rgba(217,119,6,.10); }
   .stamp--danger  { color:#b42318; border-color:#e5484d; background:rgba(229,72,77,.10); }
   .stamp--info    { color:#175cd3; border-color:#2563eb; background:rgba(37,99,235,.10); }
   .stamp--neutral { color:#475467; border-color:#98a2b3; background:#f2f4f7; }
@@ -396,43 +396,43 @@ function sheetStyles() {
   .cell { padding:9px 12px; border-inline-start:1px solid #eef1f5; border-top:1px solid #eef1f5; }
   .cell:nth-child(4n+1) { border-inline-start:0; }
   .cell:nth-child(-n+4) { border-top:0; }
-  .cell b { display:block; font-size:10.5px; color:#8a6d1b; font-weight:700; letter-spacing:.2px; }
+  .cell b { display:block; font-size:10.5px; color:#3e6b58; font-weight:700; letter-spacing:.2px; }
   .cell span { display:block; margin-top:2px; font-size:12.5px; color:#0f172a; font-weight:600;
                overflow-wrap:anywhere; }
   h3.sec { font-size:12.5px; color:#0f172a; margin:18px 0 6px; padding-inline-start:9px;
-           border-inline-start:4px solid #c9a227; }
+           border-inline-start:4px solid #8fbfa9; }
   table.t { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
   table.t th, table.t td { padding:6px 8px; font-size:11.5px; border-bottom:1px solid #edf0f4; text-align:right; }
-  table.t th { background:#0f172a; color:#f5d76e; font-weight:700; font-size:11px; letter-spacing:.2px;
+  table.t th { background:#0f172a; color:#dcede4; font-weight:700; font-size:11px; letter-spacing:.2px;
                text-align:center; white-space:nowrap; }
   table.t td.c, table.t th.c { text-align:center; }
   table.t td.n { text-align:left; direction:ltr; unicode-bidi:embed; }
   table.t tbody tr:nth-child(even) td { background:#f8fafc; }
   table.t tbody tr { break-inside:avoid; page-break-inside:avoid; }
-  table.t tfoot td { background:#eef2f7; font-weight:800; color:#0f172a; border-top:2px solid #c9a227;
+  table.t tfoot td { background:#eef2f7; font-weight:800; color:#0f172a; border-top:2px solid #8fbfa9;
                      border-bottom:0; font-size:12px; }
   .idx { color:#94a3b8; font-size:10.5px; }
   .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:10.5px; font-weight:700;
           border:1px solid #dbe1ea; background:#f2f4f7; color:#475467; white-space:nowrap; }
   .pill--success { border-color:#0b9e6c; background:rgba(11,158,108,.10); color:#055f3a; }
-  .pill--warning { border-color:#d97706; background:rgba(217,119,6,.10); color:#b54708; }
+  .pill--warning { border-color:#0e5c45; background:rgba(217,119,6,.10); color:#b54708; }
   .pill--danger  { border-color:#e5484d; background:rgba(229,72,77,.10); color:#b42318; }
   .pill--info    { border-color:#2563eb; background:rgba(37,99,235,.10); color:#175cd3; }
   .amount { padding:12px 16px; margin-top:14px; border-radius:12px; background:#0f172a; color:#fff;
             display:flex; align-items:center; justify-content:space-between; gap:14px; break-inside:avoid; }
   .amount__l { font-size:11.5px; color:#cbd5e1; }
-  .amount__v { font-size:19px; font-weight:800; color:#f5d76e; font-variant-numeric:tabular-nums;
+  .amount__v { font-size:19px; font-weight:800; color:#dcede4; font-variant-numeric:tabular-nums;
                direction:ltr; unicode-bidi:embed; }
   .words { margin-top:8px; padding:10px 16px; border:1px dashed #c9b98a; border-radius:12px;
            background:#fdf9ee; font-size:12.5px; color:#3f3a26; break-inside:avoid; }
-  .words b { color:#8a6d1b; }
+  .words b { color:#3e6b58; }
   .flow { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
-  .flow__i { flex:1 1 22%; min-width:130px; border:1px solid #e5e7eb; border-top:3px solid #c9a227;
+  .flow__i { flex:1 1 22%; min-width:130px; border:1px solid #e5e7eb; border-top:3px solid #8fbfa9;
              border-radius:10px; padding:8px 10px; background:#fff; break-inside:avoid; }
-  .flow__i .st { width:18px; height:18px; border-radius:50%; background:#0f172a; color:#f5d76e;
+  .flow__i .st { width:18px; height:18px; border-radius:50%; background:#0f172a; color:#dcede4;
                  font-size:10px; font-weight:800; display:inline-flex; align-items:center;
                  justify-content:center; margin-inline-end:6px; }
-  .flow__i b { display:block; font-size:11px; color:#8a6d1b; margin-bottom:3px; }
+  .flow__i b { display:block; font-size:11px; color:#3e6b58; margin-bottom:3px; }
   .flow__i .who { font-size:11.5px; color:#0f172a; font-weight:700; }
   .flow__i .at { font-size:10px; color:#64748b; margin-top:2px; font-variant-numeric:tabular-nums; }
   .signs { display:flex; gap:12px; margin-top:24px; break-inside:avoid; }
@@ -442,7 +442,7 @@ function sheetStyles() {
   .sign__ink em { color:#cbd5e1; font-size:10.5px; font-style:normal; }
   .sign__cap { border-top:2px solid #0f172a; padding:6px 8px; font-size:10.5px; color:#475467; }
   .sign__cap b { display:block; color:#0f172a; font-size:11px; margin-top:1px; }
-  .note { margin-top:12px; border:1px solid #e5e7eb; border-inline-start:4px solid #c9a227;
+  .note { margin-top:12px; border:1px solid #e5e7eb; border-inline-start:4px solid #8fbfa9;
           border-radius:10px; padding:9px 13px; background:#fffdf5; font-size:11.5px; color:#3f3a26; }
   .foot { margin-top:18px; border-top:1px solid #e5e7eb; padding-top:8px; display:flex;
           justify-content:space-between; gap:10px; font-size:10px; color:#94a3b8; }
@@ -529,10 +529,13 @@ router.get('/voucher/:id/html', jwtAuth, requireRole(...READ_ROLES), generalLimi
             <td class="c">${esc(x.category || '—')}</td><td class="c n">${esc(Number(x.amount || 0).toFixed(2))}</td></tr>`).join('')}</tbody>
           <tfoot><tr><td colspan="3">إجمالي المسجَّل في الدفتر</td><td class="n">${esc(v.ledgerTotal.toFixed(2))}</td></tr></tfoot></table>` : '';
 
+        /* قيمة الاعتماد تُقيَّم بتكلفة يوم الاعتماد، والدفتر بتكلفة يوم الصرف
+           (المتوسط المتحرك لحظة الخروج). الفرق بينهما فرق تقييم مشروع، لا خطأ
+           بيانات — وكان يُعرض كرقم عارٍ يُقرأ كخلل. */
         const recon = v.ledgerTotal && Math.abs(v.ledgerTotal - v.approvedValue) > 0.005
-            ? `<div class="note"><b>مطابقة:</b> قيمة الاعتماد ${money(v.approvedValue, brand.currency)}
-               والمسجَّل في الدفتر ${money(v.ledgerTotal, brand.currency)}
-               — الفرق ${money(v.ledgerTotal - v.approvedValue, brand.currency)}.</div>` : '';
+            ? `<div class="note"><b>مطابقة:</b> قيمة الاعتماد (بتكلفة يوم الاعتماد) ${money(v.approvedValue, brand.currency)}
+               والمسجَّل في الدفتر (بتكلفة يوم الصرف) ${money(v.ledgerTotal, brand.currency)}
+               — فرق تقييم ${money(v.ledgerTotal - v.approvedValue, brand.currency)}.</div>` : '';
 
         const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar"><head><meta charset="UTF-8">

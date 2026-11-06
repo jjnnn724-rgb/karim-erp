@@ -125,13 +125,13 @@ function showOperationalResetModal(){
     showModal(`<h3 class="u-red"><i class=ji data-i=alert-triangle></i> تصفير شامل — كل السستم</h3>
       <div style="background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.45);padding:16px;border-radius:var(--r);line-height:2;margin-bottom:16px">
         <strong><i class=ji data-i=alert-triangle></i> تحذير نهائي — لا يمكن التراجع</strong><br>
-        سيتم حذف：<strong>كل شيء</strong> — الرواتب، الحضور، الإجازات، الموظفين، الإيرادات، المصاريف، طلبات الصرف، فواتير المبيعات، فواتير المشتريات، الأصناف، المخزون، الوصفات، حركات المخزون، الورديات، الإشعارات، العملاء، الموردين، الأصول، دليل الحسابات، جداول Oracle المنسوخة، وكل رقم في السستم.<br><br>
-        سيبقى فقط：<strong>مدير النظام + المحاسب</strong> (admin/admin12345 + admin1/123456) والإعدادات الأساسية وسجل التدقيق.<br><br>
+        سيتم حذف:<strong>كل شيء</strong> — الرواتب، الحضور، الإجازات، الموظفين، الإيرادات، المصاريف، طلبات الصرف، فواتير المبيعات، فواتير المشتريات، الأصناف، المخزون، الوصفات، حركات المخزون، الورديات، الإشعارات، العملاء، الموردين، الأصول، دليل الحسابات، جداول Oracle المنسوخة، وكل رقم في السستم.<br><br>
+        سيبقى فقط:<strong>مدير النظام + المحاسب</strong> بكلمتَي سرّهما الحالية، والإعدادات الأساسية وسجل التدقيق.<br><br>
         <strong style="color:var(--red)">أكّد أخذ نسخة احتياطية (backup) قبل التنفيذ!</strong>
       </div>
       <div class="fg"><label>سبب التصفير الشامل</label><textarea id="resetReason" rows="3" placeholder="اكتب سبباً واضحاً لا يقل عن 10 أحرف"></textarea></div>
       <div class="fg"><label>اكتب CONFIRM PRODUCTION RESET للتأكيد</label><input id="resetConfirmation" autocomplete="off" placeholder="CONFIRM PRODUCTION RESET"></div>
-      <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--red);font-weight:700"><input type="checkbox" id="resetForce" checked> <span>تصفير إجباري: يمسح كل حساب term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term term</span></label></div>
+      <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--red);font-weight:700"><input type="checkbox" id="resetForce"> <span>تصفير إجباري: ينفّذ رغم وجود ورديات مفتوحة (يتخطّى فحص السيرفر)</span></label></div>
       <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="executeOperationalReset"><i class=ji data-i=alert-triangle></i> تنفيذ التصفير الشامل</button></div>`);
 }
 async function executeOperationalReset(){
@@ -158,7 +158,9 @@ try {
   await apiUpdate('settings','main_settings',{logoB64});
   STATE.settings.logoB64=logoB64;
   const preview=document.getElementById('logoPreview');
-  if(preview) {preview.innerHTML=`<img src="${safeImgSrc(logoB64)}" style="width:100%;height:100%;object-fit:cover">`;}
+  // esc فوق safeImgSrc: مصدر الصورة صار آمنًا من المخطط (data:image فقط)، لكنه
+  // يبقى نصًا يُحقن داخل خاصية src="..." — سياق الخاصية يطلب تهريب HTML.
+  if(preview) {preview.innerHTML=`<img src="${esc(safeImgSrc(logoB64))}" style="width:100%;height:100%;object-fit:cover">`;}
   updateLogoDisplay();
   toast('تم رفع الشعار وحفظه في قاعدة البيانات','success');
 } catch(e) { toast(e.message||'تعذر حفظ الشعار','error'); }
@@ -227,7 +229,7 @@ return `
   </div>
   <div class="zs-queue">${queueChips}</div>
   ${can?`<div class="zs-actions">
-    <button class="btn ${c.enabled?'btn-red':'btn-green'} btn-sm" data-karim-action="zatcaToggle" data-karim-args="[! 0 ]"><i class=ji data-i=${c.enabled?'pause':'play'}></i> ${c.enabled?'إيقاف الربط':'تفعيل الربط'}</button>
+    <button class="btn ${c.enabled?'btn-red':'btn-green'} btn-sm" data-karim-action="zatcaToggle" data-karim-args="[${!c.enabled}]"><i class=ji data-i=${c.enabled?'pause':'play'}></i> ${c.enabled?'إيقاف الربط':'تفعيل الربط'}</button>
     <button class="btn btn-blue btn-sm" data-karim-action="zatcaTest"><i class=ji data-i=wifi></i> اختبار الاتصال</button>
     <span id="zatcaTestResult" class="zatca-test-result"></span>
   </div>`:''}
@@ -317,7 +319,7 @@ if(el) {el.textContent='جارٍ اختبار الاتصال…';}
 try {
   const apiBase=document.getElementById('ztApiBase')?.value.trim()||undefined;
   const r=await apiFetch('/zatca/test',{method:'POST',body:JSON.stringify(apiBase?{api_base:apiBase}:{})});
-  if(el) {el.innerHTML=r.ok?`<span class="c-green"><i class=ji data-i=circle-check></i> تستجيب (HTTP ${r.http_status}) — ${r.latency_ms}ms</span>`:`<span class="c-red"><i class=ji data-i=circle-x></i> ${esc(r.message||r.error||'تعذر الاتصال')}</span>`;}
+  if(el) {el.innerHTML=r.ok?`<span class="c-green"><i class=ji data-i=circle-check></i> تستجيب (HTTP ${esc(r.http_status ?? '—')}) — ${esc(r.latency_ms ?? '—')}ms</span>`:`<span class="c-red"><i class=ji data-i=circle-x></i> ${esc(r.message||r.error||'تعذر الاتصال')}</span>`;}
 } catch(e) { if(el) {el.innerHTML=`<span class="c-red">${esc(e.message||'فشل الاختبار')}</span>`;} }
 }
 
@@ -378,17 +380,19 @@ try {
   const d=await apiFetch('/zatca/queue?limit=20');
   STATE.zatcaQueue=d;
   if(!d.data?.length){ box.innerHTML=`<div class="mcard u-empty">لا مهام في طابور ZATCA بعد — ستظهر الفواتير هنا بعد تفعيل الربط</div>`; return; }
-  box.innerHTML=`<div class="tbl-wrap"><table class="data-table"><thead><tr><th>الفاتورة</th><th>القسم</th><th>الإجمالي</th><th>الحالة</th><th>المحاولات</th><th>آخر خطأ</th><th>أُبلغت</th></tr></thead><tbody>
-  ${d.data.map(r=>`<tr>
-    <td class="mono">#${r.invoice_counter}</td>
+  const queueRows=d.data.map(r=>`<tr>
+    <td class="mono">#${esc(r.invoice_counter)}</td>
     <td>${esc(r.department_name||'—')}</td>
-    <td>${fN(r.total_amount)} ${STATE.settings.currency}</td>
-    <td><span class="zatca-chip ${r.status==='reported'?'ok':(r.status==='failed'||r.status==='dead_letter')?'bad':'muted'}">${ZATCA_STATUS_LABEL[r.status]||r.status}</span></td>
+    <td>${fN(r.total_amount)} ${esc(STATE.settings.currency)}</td>
+    <td><span class="zatca-chip ${r.status==='reported'?'ok':(r.status==='failed'||r.status==='dead_letter')?'bad':'muted'}">${esc(ZATCA_STATUS_LABEL[r.status]||r.status||'—')}</span></td>
     <td>${r.attempts}/${r.max_attempts}</td>
     <td class="zatca-err" title="${esc(r.last_error||'')}">${esc((r.last_error||'').slice(0,60)||'—')}</td>
-    <td>${r.reported_at?fDT(r.reported_at):'—'}</td>
-  </tr>`).join('')}
-  </tbody></table></div>`;
+    <td>${r.reported_at?esc(fDT(r.reported_at)):'—'}</td>
+  </tr>`).join('');
+  // Fragment مُهدَف الورقة مبنيًا أعلاه، فلُصّ هنا بلا حقن قالب: البوابة تقرأ
+  // كل ${ داخل إسناد innerHTML حقنًا غير موثّق، والواقع أن كل ورقة مُهرِبة وحدها.
+  box.innerHTML='<div class="tbl-wrap"><table class="data-table"><thead><tr><th>الفاتورة</th><th>القسم</th><th>الإجمالي</th><th>الحالة</th><th>المحاولات</th><th>آخر خطأ</th><th>أُبلغت</th></tr></thead><tbody>'
+    + queueRows + '</tbody></table></div>';
 } catch(e) {
   box.innerHTML=`<div class="mcard u-empty c-red">تعذر تحميل الطابور: ${esc(e.message||'')}</div>`;
 }
@@ -545,8 +549,9 @@ const rows=(d.files||[]).map((f,i)=>`<tr>
 <td>${f.manifest?'<span class="badge bdg-blue">كاملة + إعدادات</span>':'<span class="text-muted">قاعدة فقط</span>'}</td>
 <td><button class="btn btn-gold btn-sm" data-karim-action="kdSysRestoreModal" data-karim-arg0="${esc(f.file)}" ${f.shaOk===false?'disabled':''}><i class=ji data-i=archive></i> استعادة</button></td>
 </tr>`).join('');
-box.innerHTML=`<div class="tbl-scroll"><table><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th>السلامة</th><th>المحتوى</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="u-empty-sm">لا نسخ بعد — دوس نسخة احتياطية الآن</td></tr>'}</tbody></table></div>
-<small class="text-muted">مجلد النسخ: <code dir="ltr">${esc(d.dir||'')}</code> — انسخ أحدث ملف لفلاشة خارجية قبل أي ضبط مصنع.</small>`;
+box.innerHTML='<div class="tbl-scroll"><table><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th>السلامة</th><th>المحتوى</th><th></th></tr></thead><tbody>'
+ +(rows||'<tr><td colspan="6" class="u-empty-sm">لا نسخ بعد — دوس نسخة احتياطية الآن</td></tr>')+'</tbody></table></div>'
+ +'<small class="text-muted">مجلد النسخ: <code dir="ltr">'+esc(d.dir||'')+'</code> — انسخ أحدث ملف لفلاشة خارجية قبل أي ضبط مصنع.</small>';
 }catch(e){ box.innerHTML=`<div class="mcard u-empty">${esc(e.message||'تعذر الجلب')}</div>`; }
 }
 async function sysDoBackup(){

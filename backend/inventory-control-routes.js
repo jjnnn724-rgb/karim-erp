@@ -497,7 +497,7 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         }
 
         // حذف كل بيانات karim — ترتيب من الأبناء إلى الأباء (FK-safe)
-        // الاستراتيجية: SAVEPOINT لكل حذف حتى لا ي溯回 الكائن بأكمله
+        // الاستراتيجية: SAVEPOINT لكل حذف حتى لا ينسحب التراجع على الكائن بأكمله
         const allTables = [
             // ─── أولاً: أحفاد البعيد ──────────────────────────────────────
             'advance_applications', 'employee_evaluations', 'employee_contracts',

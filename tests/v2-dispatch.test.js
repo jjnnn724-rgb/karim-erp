@@ -25,7 +25,7 @@
  *     لوحة ترسم لوحتها بمعرّفها الثابت، والصور المخزنة (warehouse/
  *     kitchenReceipt SignatureData) لا تُرسم إلا على ورقة الطباعة
  *   • الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والورقة A4 منسوخة
- *     من printDispatchNote (kitchen.js:1233-1253) ببنتها الذهبية #c9a227
+ *     من printDispatchNote (kitchen.js:1233-1253) ببنتها الخضراء #8fbfa9
  *   • التكرار (409 DUPLICATE_DISPATCH) يُكشف بالرسالة لا بالكود لأن
  *     core/api.js:serverErrorInfo يقرأ data.error لا data.code
  *   • الشاشة: لا fetch/apiFetch، لا معالج سطري إلا زرا ورقة الطباعة، حارس
@@ -610,7 +610,7 @@ describe('شاشة 13 — العقد المصدَّر من المصدر', () => 
         expect(note.indexOf('openInAppReport(')).toBeLessThan(note.indexOf('fetchDispatchFull'));
         expect(note).toContain('جارٍ تجهيز إذن الصرف…');
         expect(note).toContain('إذن صرف مخزن');
-        expect(note).toContain('#c9a227');
+        expect(note).toContain('#8fbfa9');
         expect(note).toContain('توقيع المستلم');
         expect(note).toContain('print-color-adjust');
         expect(note).toMatch(/chef_approved: 'معتمد من الشيف — بانتظار المخازن'/);

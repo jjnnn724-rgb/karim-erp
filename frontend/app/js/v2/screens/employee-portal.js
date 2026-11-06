@@ -23,19 +23,19 @@
  * V2's own (same content, not pixel-parity).
  */
 
-import { canWrite } from '../session.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.194';
-import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { portalWriteEnabled, faceWriteEnabled } from '../write-flags.js?v=4.9.296';
+import { formatInt, formatMoney, formatQty, fetchCurrency } from '../data/reports-repo.js?v=4.9.296';
 import {
     fetchPortalStatus, fetchMyPunches, PUNCH_ROLES, FACE_ENROLL_ROLES,
     faceV1Required, portalDeviceId, punchPortal, punchActionLabel,
     reportClientReject, enrollFaceV1, enrollFaceV2, removeFaceEnrollment,
-} from '../data/portal-repo.js?v=4.9.194';
-import { captureFace } from '../portal-face.js?v=4.9.194';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
-import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.194';
-import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.194';
+} from '../data/portal-repo.js?v=4.9.296';
+import { captureFace } from '../portal-face.js?v=4.9.296';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.296';
+import { fetchAttendanceReport } from '../data/attendance-repo.js?v=4.9.296';
+import { fetchLeaveWorkflow, fetchLeaveTypes } from '../data/leaves-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -243,7 +243,10 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
         : 'سيُقرأ موقعك لحظة البصمة فقط — الوقت من ساعة الخادم.'}</span>
             </div>`;
         }
-        return `<section class="erp-card erp-portal-punch">
+        // data-punch-target: خطاف التمرير الذي يبحث عنه شريط الجوال
+        // (mobile-shell.js:183-186 «بصمتي») — بدونه يفتح الموظف البوابة ولا ينزل
+        // لبطاقة البصمة حين تكون تحت الطيّ.
+        return `<section class="erp-card erp-portal-punch" data-punch-target>
           <div class="erp-card__head">
             <h3 class="erp-card__title">البصمة الذاتية</h3>
             <span class="erp-grow"></span>
@@ -344,7 +347,13 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
                 ? `<span class="erp-badge" data-tone="success">مربوطة — رقم البصمة: <span class="erp-mono" dir="ltr">${esc(String(punches.deviceUserId))}</span></span>`
                 : '<span class="erp-badge" data-tone="warning">غير مربوطة بجهاز الحضور</span>'}</div>`
             + `<div class="erp-card__body"><p class="erp-text-sm">`
-            + ((punches.punches || []).map((p) => `<span class="erp-badge" data-tone="${p.punchState === 0 ? 'success' : 'danger'}">${p.punchState === 0 ? 'حضور' : 'انصراف'} · <span dir="ltr">${esc(String(p.attendanceTime || ''))}</span> · ${esc(p.deviceName || '')}</span>`).join(' ')
+            + ((punches.punches || []).map((p) => {
+                // 0=حضور، 1=انصراف، وأي حالة مجهولة (-1/NULL) «غير محددة» — لا افتراض انصراف (قرار 2026-11-05)
+                const st = p.punchState;
+                const tone = st === 0 ? 'success' : st === 1 ? 'danger' : 'neutral';
+                const label = st === 0 ? 'حضور' : st === 1 ? 'انصراف' : 'غير محددة';
+                return `<span class="erp-badge" data-tone="${tone}">${label} · <span dir="ltr">${esc(String(p.attendanceTime || ''))}</span> · ${esc(p.deviceName || '')}</span>`;
+            }).join(' ')
                 || '<span class="erp-text-muted">لا توجد بصمات مسجلة لك اليوم</span>')
             + `</p></div></section>` : '')
             + `<section class="erp-card"><div class="erp-card__head erp-portal-report__head"><h3 class="erp-card__title">سجل الحضور والانصراف</h3><span class="erp-grow"></span>`
@@ -376,7 +385,7 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
     function printDoc(title, rowsHtml, summaryHtml) {
         const w = openInAppReport(title);
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(title)}</title>`
-            + `<style>body{font-family:'Cairo',Tahoma,sans-serif;padding:28px;color:#1a1a1a;direction:rtl}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#f4ead2}`
+            + `<style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:28px;color:#1a1a1a;direction:rtl}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#e8f2ec}`
             + `.controls{text-align:center;margin-bottom:14px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}`
             + `@media print{.controls{display:none}body{padding:0}}</style></head><body>`
             + `<div class="controls"><button type="button" class="btn-print" data-pl-print>طباعة</button><button type="button" class="btn-close" data-pl-close>إغلاق</button></div>`
@@ -448,9 +457,11 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
             if (s.faceEnabled) {
                 face = await captureFace({
                     title: 'تأكيد البصمة بالوجه',
-                    target: 1,
+                    // الصرامة: عينات حيّة متعددة من الكاميرا فقط — والمتجه يُحسب على السيرفر
+                    target: s.faceStrict ? Math.max(2, Number(s.faceMinSamples) || 2) : 1,
                     wantDescriptors: true,
-                    requireDescriptor: faceV1Required(s),
+                    requireDescriptor: faceV1Required(s) && s.faceStrict !== true,
+                    allowUpload: s.faceStrict !== true,
                 });
                 if (!el.isConnected) { return; }
             }
@@ -493,7 +504,16 @@ export function mountEmployeePortalScreen(host, ctx = {}) {
                     : null,
             };
             if (face && face.descriptors.length) { payload.faceDescriptor = face.descriptors[0]; }
-            if (face && face.images.length) { payload.faceImage = face.images[0]; }
+            if (face && face.images.length) {
+                payload.faceImage = face.images[0];
+                // الصرامة (punch_face_strict): كل العينات + أصل الالتقاط — السيرفر
+                // يحسب متجه كل صورة ويرفض المرفوعة من المعرض أو العيّنة المكرّرة.
+                payload.faceImages = face.images;
+                payload.faceCapture = {
+                    source: (face.sources || []).includes('upload') ? 'upload' : 'live',
+                    sampleCount: face.images.length,
+                };
+            }
             const res = await punchPortal(payload);
             if (!el.isConnected) { return; }
             lastPunch = {kind: 'ok', text: punchActionLabel(res && res.action)};

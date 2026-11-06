@@ -25,7 +25,7 @@ afterAll(async () => {
 
 describe('قفل البصمة لا يسقط أمام معرّف bigint', () => {
     test('المحرك يقفل بمفتاح مُهاشًا (int-آمن) لا بمعرّف خام', () => {
-        expect(ENGINE).toContain('pg_advisory_xact_lock(hashtext($1::text), hashtext($2::text))');
+        expect(ENGINE).toContain('pg_advisory_xact_lock(hashtext($1::text))');
         expect(ENGINE).not.toMatch(/pg_advisory_xact_lock\(\$1, \$2\)/);
         expect(ENGINE).not.toMatch(/pg_advisory_xact_lock\(\s*employeeId/);
     });

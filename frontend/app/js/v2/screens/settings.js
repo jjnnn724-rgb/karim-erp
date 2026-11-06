@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.194';
-import { formatInt } from '../data/reports-repo.js?v=4.9.194';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.194';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.194';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.194';
-import { captureFace } from '../portal-face.js?v=4.9.194';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.194';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.194';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
+import { canWrite } from '../session.js?v=4.9.296';
+import { formatInt } from '../data/reports-repo.js?v=4.9.296';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.296';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.296';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.296';
+import { captureFace } from '../portal-face.js?v=4.9.296';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.296';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.296';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.296';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,10 +32,10 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.194';
+} from '../data/settings-repo.js?v=4.9.296';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.194';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -415,6 +415,14 @@ export function mountSettingsScreen(host, ctx = {}) {
             + `</div><div class="erp-dash-controls">`
             + `<label class="erp-text-sm"><input type="checkbox" data-v2-pu-check="punch_teleport_check"${chk('punch_teleport_check', true)}> <b>فحص التنقل المستحيل</b></label>`
             + `<label class="erp-text-sm erp-text-muted">أقصى سرعة (كم/س)</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_max_teleport_kmh" type="number" min="50" max="1000" value="${esc(punchVal('punch_max_teleport_kmh', '250'))}">`
+            + `</div><div class="erp-dash-controls">`
+            + `<label class="erp-text-sm"><input type="checkbox" data-v2-pu-check="punch_geo_strict_multi_fix"${chk('punch_geo_strict_multi_fix', false)}> <b>صرامة GPS: قراءة واحدة لا تكفي أبدًا</b></label>`
+            + `<label class="erp-text-sm"><input type="checkbox" data-v2-pu-check="punch_strict_geofence"${chk('punch_strict_geofence', false)}> <b>منطقة الغموض مرفوضة</b></label>`
+            + `<label class="erp-text-sm erp-text-muted">أقصى انحراف ساعة (ث)</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_max_clock_skew_s" type="number" min="10" max="600" value="${esc(punchVal('punch_max_clock_skew_s', '120'))}">`
+            + `</div><div class="erp-dash-controls">`
+            + `<label class="erp-text-sm"><input type="checkbox" data-v2-pu-check="punch_face_strict"${chk('punch_face_strict', false)}> <b>صرامة الوجه: كاميرا فقط، صور متعددة، التحقق على السيرفر</b></label>`
+            + `<label class="erp-text-sm erp-text-muted">أقل عينات الوجه</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_face_min_samples" type="number" min="1" max="5" value="${esc(punchVal('punch_face_min_samples', '2'))}">`
+            + `<label class="erp-text-sm erp-text-muted">أدق مسافة مقبولة (إعادة تشغيل)</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_face_replay_min_distance" type="number" step="0.001" min="0" max="0.2" value="${esc(punchVal('punch_face_replay_min_distance', '0.004'))}">`
             + `</div><div class="erp-dash-controls">`
             + `<label class="erp-text-sm erp-text-muted">خط العرض</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_restaurant_lat" value="${esc(punchVal('punch_restaurant_lat', ''))}" dir="ltr">`
             + `<label class="erp-text-sm erp-text-muted">خط الطول</label><input class="erp-input erp-input--ltr" data-v2-pu="punch_restaurant_lng" value="${esc(punchVal('punch_restaurant_lng', ''))}" dir="ltr">`
@@ -1185,6 +1193,14 @@ export function mountSettingsScreen(host, ctx = {}) {
                     punch_max_fix_age_s: v('punch_max_fix_age_s') || '30',
                     punch_teleport_check: c('punch_teleport_check'),
                     punch_max_teleport_kmh: v('punch_max_teleport_kmh') || '250',
+                    // الصرامة (2026-11-02) — مغلقة افتراضيًا: كل مفتاح وأثره المقاس
+                    // في scripts/backtest-strict-gates-2026-11-02.js قبل تشغيله
+                    punch_geo_strict_multi_fix: el.querySelector('[data-v2-pu-check="punch_geo_strict_multi_fix"]')?.checked || false,
+                    punch_strict_geofence: el.querySelector('[data-v2-pu-check="punch_strict_geofence"]')?.checked || false,
+                    punch_max_clock_skew_s: v('punch_max_clock_skew_s') || '120',
+                    punch_face_strict: el.querySelector('[data-v2-pu-check="punch_face_strict"]')?.checked || false,
+                    punch_face_min_samples: v('punch_face_min_samples') || '2',
+                    punch_face_replay_min_distance: v('punch_face_replay_min_distance') || '0.004',
                     punch_restaurant_lat: v('punch_restaurant_lat') ?? '',
                     punch_restaurant_lng: v('punch_restaurant_lng') ?? '',
                 });

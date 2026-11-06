@@ -8,10 +8,12 @@
  */
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
 const V2 = path.join(APP, 'js', 'v2');
 const VIEWER = path.join(V2, 'report-viewer.js');
+const PDF_SHARE = path.join(V2, 'pdf-share.js');
 const CSS = path.join(APP, 'css', 'v2', 'erp-report-viewer.css');
 const PAGE = path.join(APP, 'v2.html');
 const LEGACY = path.join(APP, 'js', 'features', 'report-viewer.js');
@@ -231,5 +233,87 @@ describe('عارض المستندات — الأصول', () => {
     test('الطبقة تحمل .erp-v2 لتصلها التوكنات خارج الشجرة', () => {
         expect(read(VIEWER)).toContain('`erp-v2 ${OVERLAY_CLASS}`');
         expect(read(CSS)).toContain('.erp-v2');
+    });
+});
+
+/* ── تصدير PDF ومشاركته (2026-10-31 بطلب المالك) ─────────────────────── */
+
+/** تحميل وحدة pdf-share في سياق vm — الدوال النقية (بنمط v2-callout). */
+function loadPdfShare() {
+    const names = ['buildFilename', 'slicePages', 'canShareFiles'];
+    const src = read(PDF_SHARE)
+        .split('\n')
+        .filter((line) => !/^\s*import\b/.test(line))
+        .join('\n')
+        .replace(/^export\s+/gm, '')
+        + `\n;Object.assign(globalThis, {${names.join(', ')}});`;
+    const context = {
+        console, URL, Date, String, Number, Math, RegExp, Error, Object,
+        Array, Boolean, JSON, Promise, navigator: undefined, window: undefined,
+    };
+    vm.createContext(context);
+    vm.runInContext(src, context, { filename: 'pdf-share.js' });
+    return {
+        buildFilename: (t, d) => context.buildFilename(t, d),
+        slicePages: (w, h, pw, ph) => context.slicePages(w, h, pw, ph),
+        canShareFiles: () => context.canShareFiles(),
+    };
+}
+
+describe('تصدير PDF — عقد العارض', () => {
+    test('العارض يستورد محرك PDF بمراجعة الصفحة ويملك زرّين لا نصيحة', () => {
+        const rev = pageRev();
+        const v = read(VIEWER);
+        expect(v).toContain(`buildPdfFromFrame, canShareFiles, downloadBlob, shareBlob, whatsappUrl,`);
+        expect(v).toContain(`from './pdf-share.js?v=${rev}'`);
+        expect(v).toContain("pdfBtn.setAttribute('data-v2-report-action', 'pdf')");
+        expect(v).toContain("shareBtn.setAttribute('data-v2-report-action', 'share')");
+        expect(v).toContain("pdfBtn.textContent = 'تحميل PDF'");
+        expect(v).toContain("shareBtn.textContent = 'مشاركة'");
+        /* النصيحة القديمة («اختر حفظ كملف PDF») زال أثرها — المحرك الحقيقي مكانها */
+        expect(v).not.toContain('حفظ كملف PDF');
+        expect(v).toContain('runPdfExport');
+        expect(v).toContain('pdfBusy');
+        /* لا شبكة في مسار التصدير داخل العارض */
+        const stripped = v.replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(stripped).not.toMatch(/[^a-zA-Z]fetch\(/);
+    });
+
+    test('محرك PDF بلا شبكة ولا CDN — المصادر من /app/js/vendor فقط', () => {
+        const src = read(PDF_SHARE).replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(src).not.toMatch(/[^a-zA-Z]fetch\(/);
+        /* المصدر الوحيد الخارجي المسموح: رابط واتساب العميق (wa.me) —
+           لا CDN ولا مكتبات خارجية إطلاقًا. */
+        const httpHits = src.match(/https?:\/\/[^'" ]+/g) || [];
+        expect(httpHits.length).toBeGreaterThan(0);
+        expect(httpHits.every((u) => u.startsWith('https://wa.me/'))).toBe(true);
+        expect(src).toContain("ensureVendor('Html2CanvasPro')");
+        expect(src).toContain("ensureVendor('JsPDF')");
+        const vendor = read(path.join(V2, 'vendor.js'));
+        expect(vendor).toContain('js/vendor/jspdf.umd.min.js');
+        expect(vendor).toContain('js/vendor/html2canvas-pro.min.js');
+        // الملفان موجودان فعلًا على القرص
+        expect(fs.existsSync(path.join(APP, 'js', 'vendor', 'jspdf.umd.min.js'))).toBe(true);
+        expect(fs.existsSync(path.join(APP, 'js', 'vendor', 'html2canvas-pro.min.js'))).toBe(true);
+    });
+
+    test('صفوف A4 تُقصّ لا تُمطّ: الصفحة الأخيرة الجزئية بطولها الحقيقي', () => {
+        // A4 pt: 595.28 × 841.89 — لوحة 1190px عرضًا ⇒ ارتفاع الصفحة = 1682px
+        const pages = loadPdfShare().slicePages(1190, 4200, 595.28, 841.89);
+        expect(pages.length).toBe(3);
+        expect(pages[0]).toEqual({ y: 0, h: 1682 });
+        expect(pages[1]).toEqual({ y: 1682, h: 1682 });
+        // الباقي 836px — صفحة جزئية كاملة الحاوي لا ممطوطة ولا مقصوصة
+        expect(pages[2]).toEqual({ y: 3364, h: 836 });
+        expect(loadPdfShare().slicePages(0, 0, 595, 842)).toEqual([]);
+    });
+
+    test('اسم الملف: عربي مقروء بتاريخ ووقت، ومحارف ممنوعة تُنظف', () => {
+        const m = loadPdfShare();
+        const name = m.buildFilename('استعلام المبيعات', new Date(2026, 9, 31, 14, 5));
+        expect(name).toBe('استعلام المبيعات 2026-10-31 14-05.pdf');
+        expect(m.buildFilename('تقرير: حل/الجرد؟ "نهائي"', new Date(2026, 0, 2, 3, 4)))
+            .toBe('تقرير حل الجرد نهائي 2026-01-02 03-04.pdf');
+        expect(m.buildFilename('', new Date(2026, 0, 2, 3, 4))).toBe('تقرير 2026-01-02 03-04.pdf');
     });
 });

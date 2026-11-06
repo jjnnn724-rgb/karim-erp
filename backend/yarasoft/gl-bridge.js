@@ -107,6 +107,9 @@ async function bridgeRevenueToGl(pool, { revenueId, externalRef, source, amount,
 /**
  * كاسح إصلاح: يرحّل أي صفوف إيراد غير مرحّلة (فشل لحظي/سقوط/فجوة بعد الإصلاح).
  * يدور حتى التجفيف —دورة قراءة واحدة بحدّ كانت تترك المئات معلّقة إلى الأبد.
+ * NOT EXISTS بلا فلتر حالة عن قصد: القيد المُبطَل قرارٌ بشري، فصفٌّ بقي له سطر
+ * مُبطل يُحسب «معالَجًا» ولا يُعاد جسرُه تلقائيًا في كل دورة (المسار البشري وحده
+ * يمرّر repostVoided).
  */
 async function bridgeUnbridged(pool, { limit = 200, maxPasses = 40 } = {}) {
     if (!bridgeEnabled()) {return { bridged: 0, skipped: 'bridge_disabled' };}

@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.194';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.194';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.296';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.296';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.296';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,18 +81,18 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.194';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.194';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.194';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.194';
+} from '../data/employees-repo.js?v=4.9.296';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.296';
+import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.296';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.296';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.194';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+} from '../data/employee-card-repo.js?v=4.9.296';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1364,7 +1364,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
     async function printLux() {
         if (!panelRow || panelKind !== 'file') {return;}
         const win = openInAppReport('بطاقة الموظف');
-        win.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقة الموظف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز البطاقة…</body></html>');
+        win.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقة الموظف</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز البطاقة…</body></html>');
         win.document.close();
         try {
             const html = await fetchLuxCardHtml(panelRow.id);

@@ -68,7 +68,7 @@
         const bar = document.createElement('div');
         bar.id = 'posLegacyBanner';
         bar.setAttribute('role', 'status');
-        bar.style.cssText = 'position:fixed;top:0;right:0;left:0;z-index:10000;background:#b45309;color:#fff;'
+        bar.style.cssText = 'position:fixed;top:0;right:0;left:0;z-index:10000;background:#0f5b46;color:#fff;'
             + 'display:flex;gap:12px;align-items:center;justify-content:center;padding:8px 12px;font-size:13px;';
         const text = document.createElement('span');
         const label = normalizePolicy(policy).label

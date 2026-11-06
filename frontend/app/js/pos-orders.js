@@ -256,7 +256,7 @@ const POS_ORDERS = {
     printHtml(content) {
         const w = (window.openInAppReport ? window.openInAppReport('فاتورة POS') : window.open('', '_blank'));
         if (!w) {return;}
-        w.document.write(`<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>مطاعم الشرفه العالمي</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#222}h1{text-align:center;color:#9b762c}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #bbb;padding:8px;text-align:right}th{background:#f4ead2}.item-barcode,.item-compare-meta{display:block;font-size:11px;color:#777;margin-top:3px}@media print{button{display:none}}</style></head><body>${content}<script>window.onload=()=>window.print()<\\/script></body></html>`);
+        w.document.write(`<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>مطاعم الشرفه العالمي</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#222}h1{text-align:center;color:#9b762c}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #bbb;padding:8px;text-align:right}th{background:#e8f2ec}.item-barcode,.item-compare-meta{display:block;font-size:11px;color:#777;margin-top:3px}@media print{button{display:none}}</style></head><body>${content}<script>window.onload=()=>window.print()<\\/script></body></html>`);
         w.document.close();
     },
 

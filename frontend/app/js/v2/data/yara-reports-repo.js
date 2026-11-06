@@ -20,7 +20,7 @@
  * Role gate mirror (كل الأبواب): requireRole('sous_chef','admin','owner').
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.296';
 
 /** بوابة القراءة مرآة حرفية لسطور الخادم الستة (:518/:594/:688/:754/:837/:956/:986). */
 export const YARA_READ_ROLES = ['sous_chef', 'admin', 'owner'];
@@ -66,9 +66,12 @@ function qs(params) {
     return s ? `?${s}` : '';
 }
 
-/** GET /item-sales — تحليل مبيعات الأصناف مجمّعاً. */
-export async function fetchItemSales({ from, to, group = 'item', cashier = '', item = '' } = {}) {
-    return apiFetch(`/yara-reports/item-sales${qs({ from, to, group, cashier, item })}`);
+/**
+ * GET /item-sales — تحليل مبيعات الأصناف مجمّعاً.
+ * `code` اختياري: كودٌ صريح ⇒ صنفٌ واحد (دقّة) بلا خلط «شاورما» بعائلتها.
+ */
+export async function fetchItemSales({ from, to, group = 'item', cashier = '', item = '', code = '' } = {}) {
+    return apiFetch(`/yara-reports/item-sales${qs({ from, to, group, cashier, item, code })}`);
 }
 
 /** GET /orders — أوردرات مفصّلة بترقيم صفحات. */
@@ -122,13 +125,16 @@ export async function fetchOrderDetail(docNo) {
 
 /**
  * GET /item-invoices — فواتير صنفٍ واحد داخل مدى، بكميته وسعره في كل فاتورة.
- * @param {{from?:string,to?:string,item:string,cashier?:string,limit?:number,offset?:number}} f
- * @returns {Promise<{ok:boolean,from:string,to:string,item:string,
+ * `code` هو مفتاح الدقّة: كودٌ ⇒ مطابقةٌ حرفية بالكود، وبلا كودٍ تُطابَق
+ * الأسماء حرفًا بحرف (الاسم يأتي من المرآة نفسها) — فلا تختلط «شاورما»
+ * بـ«شاورما عربي» في الأرقام.
+ * @param {{from?:string,to?:string,item:string,code?:string,cashier?:string,limit?:number,offset?:number}} f
+ * @returns {Promise<{ok:boolean,from:string,to:string,item:string,code?:string,match?:string,
  *   invoices:Array<object>,totals:{invoices:number,qty:number,net:number,vat:number},
  *   limit:number,offset:number}>}
  */
-export async function fetchItemInvoices({ from, to, item, cashier = '', limit = 300, offset = 0 } = {}) {
-    return apiFetch(`/yara-reports/item-invoices${qs({ from, to, item, cashier, limit, offset })}`);
+export async function fetchItemInvoices({ from, to, item, code = '', cashier = '', limit = 300, offset = 0 } = {}) {
+    return apiFetch(`/yara-reports/item-invoices${qs({ from, to, item, code, cashier, limit, offset })}`);
 }
 
 /**
@@ -159,14 +165,14 @@ export async function fetchReceiptHtml(docNo) {
  * HTML ورقة A4 لاستعلام المبيعات — GET /yara-reports/item-sales/print.
  * نفس شروط الشاشة (فترة/كاشير/صنف) ونفس قاعدة fetch الإيصال: رؤوس
  * المصادقة تُمرَّر يدويًا ثم تُكتب الورقة في عارض التطبيق.
- * @param {{from?:string,to?:string,cashier?:string,item?:string}} f
+ * @param {{from?:string,to?:string,cashier?:string,item?:string,code?:string}} f
  * @returns {Promise<string>} HTML كامل جاهز للطباعة
  */
-export async function fetchItemSalesSheetHtml({ from, to, cashier = '', item = '' } = {}) {
+export async function fetchItemSalesSheetHtml({ from, to, cashier = '', item = '', code = '', exact = 0 } = {}) {
     const headers = {};
     if (typeof window !== 'undefined' && window._jwt) {headers.Authorization = `Bearer ${window._jwt}`;}
     if (typeof window !== 'undefined' && window._appKey) {headers['x-api-key'] = window._appKey;}
-    const res = await fetch(`${API_BASE}/yara-reports/item-sales/print${qs({ from, to, cashier, item })}`, { headers });
+    const res = await fetch(`${API_BASE}/yara-reports/item-sales/print${qs({ from, to, cashier, item, code, exact })}`, { headers });
     if (!res.ok) {
         let msg = `تعذّر جلب ورقة الطباعة (${res.status})`;
         try {

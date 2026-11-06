@@ -21,8 +21,11 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { applyPrintSystem } from '../core/print-system.js?v=4.9.194';
-import { trapFocus } from './focus-trap.js?v=4.9.194';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.296';
+import { trapFocus } from './focus-trap.js?v=4.9.296';
+import {
+    buildFilename, buildPdfFromFrame, canShareFiles, downloadBlob, shareBlob, whatsappUrl,
+} from './pdf-share.js?v=4.9.296';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';
@@ -62,6 +65,102 @@ function requestPrint() {
     printFrame();
 }
 
+/* ── تصدير PDF ومشاركته (2026-10-31 / 11-01) ───────────────────────────
+   غلاف واحد بحالة انتظار + **كاش توليد مسبق**: الـPDF يُبنى بعد حمول
+   المستند على الخمول، فنقرة «مشاركة» تنادي ورقة النظام داخل مهلة
+   التفاعل (المشاركة تموت لو تأخر التوليد ثوانٍ — عيب الموبايل الحقيقي)،
+   و«واتساب» لسطح المكتب حيث لا توجد ورقة مشاركة ملفات أصلًا. */
+let pdfBusy = false;
+let pdfCache = null;          /* { seq, title, promise } — يُبطل عند كل رسم */
+let pdfPrebuildTimer = 0;
+
+function toastOk(message) {
+    if (typeof window !== 'undefined' && typeof window.toast === 'function') {
+        window.toast(message, 'success');
+    }
+}
+
+function pdfCacheFor(title) {
+    if (pdfCache && pdfCache.seq === loadedSeq && loadedSeq === renderSeq) {return pdfCache.promise;}
+    const promise = buildPdfFromFrame(frame);
+    pdfCache = { seq: loadedSeq, title, promise };
+    return promise;
+}
+
+function schedulePdfPrebuild() {
+    if (pdfPrebuildTimer) {clearTimeout(pdfPrebuildTimer);}
+    pdfPrebuildTimer = setTimeout(() => {
+        pdfPrebuildTimer = 0;
+        if (!frame || loadedSeq !== renderSeq) {return;}
+        try { void pdfCacheFor(titleEl ? titleEl.textContent : 'تقرير'); } catch { /* */ }
+    }, 1500);
+}
+
+async function runPdfExport(mode, btn, label) {
+    if (pdfBusy || !frame) {return;}
+    pdfBusy = true;
+    btn.disabled = true;
+    btn.textContent = 'جارٍ التجهيز…';
+    try {
+        const title = titleEl ? titleEl.textContent : 'تقرير';
+        const built = await pdfCacheFor(title);
+        if (!built || !built.ok) {
+            warn((built && built.error) || 'تعذر توليد PDF');
+            return;
+        }
+        const filename = buildFilename(title);
+        if (mode === 'share') {
+            const result = await shareBlob(built.blob, filename, title);
+            if (result === 'shared') {toastOk('تمت مشاركة المستند');}
+            else if (result === 'cancelled') { /* أغلق الورقة بنفسه */ }
+            else if (result === 'retry') {toastOk('المستند جاهز — اضغط «مشاركة» مرة أخرى');}
+            else if (result === 'downloaded') {toastOk('لا ورقة مشاركة على هذا الجهاز — نُزّل الملف، وزر «واتساب» يفتحه لك');}
+            else {warn('تعذر تنزيل الملف');}
+        } else if (downloadBlob(built.blob, filename)) {
+            toastOk('تم تنزيل ملف PDF');
+        } else {
+            warn('تعذر تنزيل الملف');
+        }
+    } catch (_) {
+        warn('تعذر توليد PDF');
+    } finally {
+        pdfBusy = false;
+        btn.disabled = false;
+        btn.textContent = label;
+    }
+}
+
+/* واتساب لسطح المكتب (حيث لا ورقة مشاركة): نزّل الملف وافتح واتساب —
+   المرفق جاهز في مجلد التنزيلات بضغطة إرفاق واحدة. */
+async function runWhatsapp(btn) {
+    if (pdfBusy || !frame) {return;}
+    /* افتح واتساب داخل إيماءة النقرة نفسها: الفتح بعد توليدٍ يستغرق
+       ثوانيًا يفقد الصلاحية فيحجب المتصفح الصفحة (شكوى المالك). الملف
+       يُبنى ويُنزَّل بعدها والتبويب يتحمّل بالتوازي. */
+    const waTitle = titleEl ? titleEl.textContent : 'تقرير';
+    try { window.open(whatsappUrl(waTitle), '_blank', 'noopener'); } catch { /* مانع النوافذ — الملف سيُنزَّل */ }
+    pdfBusy = true;
+    btn.disabled = true;
+    btn.textContent = 'جارٍ التجهيز…';
+    try {
+        const title = waTitle;
+        const built = await pdfCacheFor(title);
+        if (!built || !built.ok) {
+            warn((built && built.error) || 'تعذر توليد PDF');
+            return;
+        }
+        const filename = buildFilename(title);
+        if (!downloadBlob(built.blob, filename)) {warn('تعذر تنزيل الملف'); return;}
+        toastOk('نُزّل الملف — أرفقه في محادثة واتساب المفتوحة');
+    } catch (_) {
+        warn('تعذر تجهيز الملف');
+    } finally {
+        pdfBusy = false;
+        btn.disabled = false;
+        btn.textContent = 'واتساب';
+    }
+}
+
 /* Close is the X in the top bar and nothing else: no Escape, no backdrop.
    A document under review (or mid-print) must not vanish on a stray key. */
 
@@ -69,6 +168,7 @@ function render(html) {
     if (!frame) {return;}
     renderSeq += 1;
     loadedSeq = renderSeq - 1;
+    pdfCache = null; /* مستند جديد — الكاش القديم بلا معنى */
     frame.srcdoc = html;
 }
 
@@ -78,6 +178,8 @@ export function closeReportViewer() {
     frame = null;
     titleEl = null;
     printPending = false;
+    pdfCache = null;
+    if (pdfPrebuildTimer) {clearTimeout(pdfPrebuildTimer); pdfPrebuildTimer = 0;}
     releaseTrap?.();
     releaseTrap = null;
     if (typeof document !== 'undefined') {
@@ -113,6 +215,36 @@ function ensureHost(title) {
     printBtn.setAttribute('data-v2-report-action', 'print');
     printBtn.textContent = 'طباعة';
 
+    /* تصدير PDF حقيقي (2026-10-31 بطلب المالك: «استعلام المبيعات عايز احملها
+       pdf واي مكان في طباعة اقدر اعمله شير pdf»): زران — تحميل مباشر،
+       ومشاركة عبر ورقة النظام (واتساب/بريد…) مع تنزيل احتياطي حيث لا
+       توجد مشاركة ملفات. كلاهما يلتقط المستند المعروض كما هو. */
+    const pdfBtn = doc.createElement('button');
+    pdfBtn.type = 'button';
+    pdfBtn.className = 'erp-btn erp-btn--sm';
+    pdfBtn.setAttribute('data-v2-report-action', 'pdf');
+    pdfBtn.setAttribute('title', 'تنزيل المستند ملف PDF بمقاس A4');
+    pdfBtn.textContent = 'تحميل PDF';
+
+    const shareBtn = doc.createElement('button');
+    shareBtn.className = 'erp-btn erp-btn--sm';
+    shareBtn.setAttribute('data-v2-report-action', 'share');
+    shareBtn.setAttribute('title', 'مشاركة المستند PDF عبر تطبيقات الجهاز (واتساب…)');
+    shareBtn.textContent = 'مشاركة';
+
+    /* واتساب لسطح المكتب فقط: حيث لا ورقة مشاركة ملفات، الزر ينزّل
+       المستند ويفتح واتساب مباشرة. على الهاتف ورقة النظام فيها واتساب
+       فلا حاجة للزر (يتخفى تلقائيًا حسب قدرة الجهاز). */
+    let waBtn = null;
+    if (!canShareFiles()) {
+        waBtn = doc.createElement('button');
+        waBtn.type = 'button';
+        waBtn.className = 'erp-btn erp-btn--sm';
+        waBtn.setAttribute('data-v2-report-action', 'whatsapp');
+        waBtn.setAttribute('title', 'تنزيل الملف وفتح واتساب لإرفاقه في المحادثة');
+        waBtn.textContent = 'واتساب';
+    }
+
     const closeBtn = doc.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'erp-icon-btn erp-modal-x';
@@ -135,16 +267,22 @@ function ensureHost(title) {
         } catch (_) { /* PDF أو مستند خارجي بلا وصول — الطباعة كما هي */ }
         if (seq !== renderSeq) {return;}
         loadedSeq = renderSeq;
+        schedulePdfPrebuild();
         if (printPending) {
             printPending = false;
             printFrame();
         }
     });
     printBtn.addEventListener('click', requestPrint);
+    pdfBtn.addEventListener('click', () => { void runPdfExport('download', pdfBtn, 'تحميل PDF'); });
+    shareBtn.addEventListener('click', () => { void runPdfExport('share', shareBtn, 'مشاركة'); });
+    if (waBtn) {waBtn.addEventListener('click', () => { void runWhatsapp(waBtn); });}
     closeBtn.addEventListener('click', closeReportViewer);
 
     bar.appendChild(titleEl);
     bar.appendChild(printBtn);
+    bar.appendChild(pdfBtn);
+    if (waBtn) {bar.appendChild(waBtn);} else {bar.appendChild(shareBtn);}
     bar.appendChild(closeBtn);
     host.appendChild(bar);
     host.appendChild(frame);

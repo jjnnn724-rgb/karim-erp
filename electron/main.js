@@ -736,7 +736,9 @@ async function runAutomaticMigrations(pgCtlPath) {
         await runPsql(psqlPath, [...common, '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', 'CREATE DATABASE karim_erp'], dbEnv, binDir);
     }
 
-    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
+    // ملفات الرجوع ليست ترحيلًا أماميًّا: الترتيب أبجدي فيقع 134_coa_foundation_down.sql
+    // مباشرةً بعد 134_coa_foundation.sql — أي بناءٌ ثم هدمٌ في نفس التهيئة.
+    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql') && !/_down\.sql$/i.test(f)).sort()
         .filter(f => f !== '006_demo_seed.sql');
     for (const file of files) {
         if (applied.includes(file)) {continue;}
@@ -1094,8 +1096,8 @@ function createMainWindow() {
         backgroundColor: '#1a1a2e'
     });
     
-    // Load the frontend
-    const indexPath = `http://127.0.0.1:${CONFIG.PORT}/app/index.html`;
+    // Load the frontend — V2 is the primary shell; legacy index.html stays reachable at /app/index.html
+    const indexPath = `http://127.0.0.1:${CONFIG.PORT}/app/v2.html?live=1`;
     
     mainWindow.loadURL(indexPath);
     
@@ -1247,7 +1249,7 @@ function createTray() {
         {
             label: 'فتح في المتصفح',
             click: () => {
-                const url = `http://127.0.0.1:${CONFIG.PORT}/app/index.html`;
+                const url = `http://127.0.0.1:${CONFIG.PORT}/app/v2.html?live=1`;
                 require('electron').shell.openExternal(url).catch(() => {});
             }
         },
@@ -1330,7 +1332,7 @@ function updateTrayMenu() {
         {
             label: 'فتح في المتصفح',
             click: () => {
-                require('electron').shell.openExternal(`http://127.0.0.1:${CONFIG.PORT}/app/index.html`).catch(() => {});
+                require('electron').shell.openExternal(`http://127.0.0.1:${CONFIG.PORT}/app/v2.html?live=1`).catch(() => {});
             }
         },
         {
@@ -1713,7 +1715,7 @@ function downloadedFilePath(info) {
 
 /**
  * يفحص توقيع Authenticode للملف المُنزَّل (ويندوز فقط).
- * نمرّر المسار عبر متغير بيئة بدل插入ه في نص الأمر ⇒ لا حقن أوامر.
+ * نمرّر المسار عبر متغير بيئة بدل تضمينه في نص الأمر ⇒ لا حقن أوامر.
  * @returns {{status:string, signerSubject:string}}
  */
 function readAuthenticodeSignature(filePath) {
@@ -2212,10 +2214,18 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-// Unhandled exceptions
-process.on('uncaughtException', (error) => {
-    console.error('[System] Uncaught Exception:', error);
-    // Continue running but log the error
+// Unhandled exceptions — استثناء غير معالج في العملية الرئيسية يترك حالة داخلية
+// غير مضمونة (مراجعة خارجية 2026-11). بدل «الاستمرار بعد تسجيل الخطأ»: إيقاف
+// منضبط بنفس مسار SIGINT (إيقاف الخادم وقاعدة البيانات) ثم إنهاء برمز فشل،
+// ويعيد النظام/الخدمة تشغيله في حالة نظيفة.
+process.on('uncaughtException', async (error) => {
+    console.error('[System] Uncaught Exception — initiating controlled shutdown:', error);
+    try {
+        await shutdownAllServices(); // يتخطى نفسه إن كان الإيقاف جارًٍا أصلًا
+    } catch (shutdownError) {
+        console.error('[System] Controlled shutdown failed:', shutdownError && shutdownError.message);
+    }
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {

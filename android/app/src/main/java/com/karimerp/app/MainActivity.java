@@ -1,6 +1,10 @@
 package com.karimerp.app;
 
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.media.AudioAttributes;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -21,11 +25,38 @@ public class MainActivity extends BridgeActivity {
         // L1-native anti-spoof: كشف التزييف الأصلي لبصمة الحضور (MockLocationDetector)
         try { registerPlugin(MockLocationDetectorPlugin.class); } catch (Exception ignored) {}
 
+        // النطق العربي الأصلي على الهاتف (ArabicTts) — صوت الجهاز بلا خدمة سحابية.
+        try { registerPlugin(ArabicTtsPlugin.class); } catch (Exception ignored) {}
+
         super.onCreate(savedInstanceState);
+
+        // ── قناة إشعارات الهاتف (FCM Push) — 2026-10-31 ──
+        // نفس الاسم الذي يرسله الخادم في android.notification.channel_id
+        // (backend/push-service.js: karim_requests). أهمية عالية + صوت افتراضي + اهتزاز.
+        createPushChannel();
 
         // Setup WebView optimizations and Back button handling
         setupWebView();
         setupBackButtonHandler();
+    }
+
+    private void createPushChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null || nm.getNotificationChannel("karim_requests") != null) return;
+        NotificationChannel channel = new NotificationChannel(
+                "karim_requests",
+                "إشعارات الطلبات",
+                NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription("طلبات الصرف والشراء والاعتمادات — صوت واهتزاز");
+        channel.enableVibration(true);
+        channel.setShowBadge(true);
+        AudioAttributes attributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        channel.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, attributes);
+        nm.createNotificationChannel(channel);
     }
 
     @SuppressLint("SetJavaScriptEnabled")

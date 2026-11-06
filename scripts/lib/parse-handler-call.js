@@ -81,7 +81,7 @@ function statementEnd(text, from) {
     return text.length;
 }
 
-/** يقسّم نص الوسائط على الفواصل顶层 (خارج الأقواس والنصوص). */
+/** يقسّم نص الوسائط على الفواصل العلوية (خارج الأقواس والنصوص). */
 function splitArgs(text) {
     const parts = [];
     let depth = 0;

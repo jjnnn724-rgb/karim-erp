@@ -109,6 +109,56 @@
 
 .csales__bar .erp-field { min-inline-size: 11ch; }
 
+/* ── شريطُ الأدوات: تبويباتُ العرض وزرُّ الطباعة في صفٍّ واحدٍ تحت الترويسة
+   كان الحقلُ مفتوحًا بلا انغلاق (وسمُ إغلاقٍ خاطئ) فتسقط المرشّحاتُ كلُّها
+   داخل غلاف الرأس الأخضر — لوحةُ تحكّمٍ على مسرحٍ أخضر قبل أول رقم. الآن
+   الترويسةُ للعنوان، والمرشّحاتُ في صندوقها، والأرقامُ تبدأ بعد سطرين. ── */
+.csales__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+}
+
+.csales__tools .erp-seg { flex: 0 1 auto; }
+
+/* ── صندوقُ المرشّحات: واحدٌ لا شريطان ─────────────────────────────────── */
+.csales__filtersBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-surface);
+  box-shadow: var(--erp-shadow-sm);
+}
+
+/* الملخّصُ أداةُ الهاتف وحدها: على الشاشة العريضة تبقى المرشّحات ظاهرة. */
+.csales__filtersBox > summary { display: none; }
+
+.csales__filtersNow {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-inline-size: 0;
+}
+
+/* تقريرُ الأصناف عملٌ ثانويّ: سطرٌ مفصولٌ بحدٍّ رفيع، لا صفٌّ يعاشر المرشّحات. */
+.csales__adv {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--erp-space-3);
+  flex-wrap: wrap;
+  padding-block-start: var(--erp-space-3);
+  border-block-start: thin solid var(--erp-border-subtle);
+}
+
+.csales__advField { flex: 1 1 30ch; min-inline-size: 0; }
+.csales__advField .erp-input { inline-size: 100%; }
+
 .csales__search {
   display: flex;
   align-items: center;
@@ -713,13 +763,85 @@ body.csales-open { overflow: hidden; }
    الشبكةُ المشتركة تملأ الصفَّ ستًّا ثم تُنزل السابعةَ وحيدة؛ وهنا العددُ
    سبعة، فالشبكةُ اثنتا عشرةَ وحدة: الأربعُ الأولى ثُلاثياتٌ (٤ في الصف)
    والثلاثُ الأخيرة رباعياتٌ (٣ في الصف) — صفّان ممتلئان لا خانةَ يتيمة. */
-/* ── الهاتف: اللوحة تأخذ العرضَ كلَّه والشريطُ يتراصّ ───────────────────── */
+/* ── الهاتف: ترويسةٌ مضبوطة، مرشّحاتٌ مطويّة، وأهدافُ لمس 44px ─────────── */
 @media (max-width: 720px) {
-  .csales__head { align-items: flex-start; }
-  .csales__tools,
-  .csales__bar { inline-size: 100%; }
-  .csales__bar .erp-field { flex: 1 1 10ch; }
-  .csales__search { flex-basis: 100%; }
+  /* الغلاف التحريري الأخضر كان يأكل 184px+ قبل أول رقم؛ هنا يبقى عنوانًا
+     أنيقًا بنفس الهوية وبارتفاع محتواه. */
+  .erp-v2.csales .erp-dash-head {
+    min-block-size: 0;
+    padding: var(--erp-space-6) var(--erp-space-4) var(--erp-space-4);
+    border-radius: 4px 18px 4px 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .erp-v2.csales .erp-dash-head::before {
+    inset-block-start: var(--erp-space-3);
+    inset-inline-start: var(--erp-space-4);
+    font-size: var(--erp-text-xs);
+    letter-spacing: .16em;
+  }
+  .erp-v2.csales .erp-dash-head::after {
+    inline-size: 150px;
+    block-size: 150px;
+    inset-inline-end: -46px;
+    inset-block-end: -92px;
+  }
+  .erp-v2.csales .erp-dash-title { font-size: var(--erp-text-2xl); line-height: 1.15; }
+  .erp-v2.csales .erp-dash-sub { font-size: var(--erp-text-sm); margin-block-start: var(--erp-space-1); }
+
+  .csales__tools { inline-size: 100%; }
+  .csales__tools .erp-seg { flex: 1 1 auto; }
+  .csales__tools .erp-seg button { flex: 1 1 0; min-block-size: 40px; padding-inline: var(--erp-space-2); }
+
+  /* المرشّحاتُ تُطوى في سطرٍ واحد يقول ما المختار؛ اللمس يفتحها. */
+  .csales__filtersBox { padding: 0; gap: 0; overflow: hidden; }
+  .csales__filtersBox > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--erp-space-2);
+    min-block-size: 48px;
+    padding: var(--erp-space-2) var(--erp-space-3);
+    font-size: var(--erp-text-sm);
+    color: var(--erp-text-primary);
+    cursor: pointer;
+    list-style: none;
+  }
+  .csales__filtersBox > summary::-webkit-details-marker { display: none; }
+  .csales__filtersBox > summary > .ji:first-child { color: var(--erp-text-faint); flex: none; }
+  .csales__filtersChev {
+    margin-inline-start: auto;
+    flex: none;
+    color: var(--erp-text-faint);
+    transition: transform var(--erp-duration-fast) var(--erp-ease-out);
+  }
+  .csales__filtersBox[open] .csales__filtersChev { transform: rotate(180deg); }
+  .csales__filtersBox[open] > summary { border-block-end: thin solid var(--erp-border-subtle); }
+
+  /* شبكةُ المرشّحات: التاريخان في صفّ، والباقي بعرض الشاشة — فلا حقولٌ
+     بأعراضٍ متباينة تجعل التسميات تبدو سائبة. */
+  .csales__bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: var(--erp-space-2);
+    inline-size: 100%;
+    padding: var(--erp-space-3);
+  }
+  .csales__bar > .erp-seg { grid-column: 1 / -1; display: flex; }
+  .csales__bar > .erp-seg button { flex: 1 1 0; min-block-size: 40px; padding-inline: var(--erp-space-1); }
+  .csales__bar .erp-field { min-inline-size: 0; }
+  .csales__bar .erp-field .erp-input,
+  .csales__bar .erp-field .erp-select { inline-size: 100%; min-block-size: 44px; }
+  .csales__field--wide,
+  .csales__search,
+  .csales__bar > [data-sa-clear] { grid-column: 1 / -1; }
+  .csales__search { inline-size: 100%; block-size: 44px; }
+  .csales__bar > [data-sa-clear] { min-block-size: 44px; }
+
+  .csales__adv { flex-wrap: wrap; padding: var(--erp-space-3); gap: var(--erp-space-2); }
+  .csales__advField { flex-basis: 100%; }
+  .csales__adv .erp-btn { flex: 1 1 100%; min-block-size: 44px; }
+
   .csales__howto { display: none; }
   .csales__panel { inline-size: 100%; border-inline-start: 0; }
   .csales__hero,
@@ -728,9 +850,16 @@ body.csales-open { overflow: hidden; }
   .csales__ccBar { display: none; }
 }
 
+/* على الهاتف الضيّق يبقى زرُّ الطباعة أيقونةً — الاسمُ محفوظٌ في aria-label. */
+@media (max-width: 430px) {
+  .csales__print span { display: none; }
+  .csales__print { min-inline-size: 44px; justify-content: center; }
+}
+
 /* ── الطباعة: اللوحةُ وحدها، وشريطُ الأدوات يختفي ───────────────────────── */
 @media print {
   .csales__tools,
+  .csales__filtersBox,
   .csales__bar,
   .csales__pulseWrap,
   .csales__pager { display: none; }

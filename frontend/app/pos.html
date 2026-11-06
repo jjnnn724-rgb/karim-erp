@@ -16,11 +16,13 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-700-arabic.woff2">
     <link rel="stylesheet" href="css/menu-fonts.css">
     <link rel="stylesheet" href="css/design-tokens.css">
-    <link rel="stylesheet" href="css/pos.css?v=4.9.34">
+    <link rel="stylesheet" href="css/pos.css?v=4.9.296">
     <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
-    <link rel="stylesheet" href="css/pro-theme.css?v=4.9.33">
+    <link rel="stylesheet" href="css/pro-theme.css?v=4.9.296">
     <!-- شاشة واحدة بلا تمرير: تخطيط ثابت الارتفاع + ترقيم صفحات الأصناف والسلة -->
-    <link rel="stylesheet" href="css/pos-fit.css?v=4.9.194">
+    <link rel="stylesheet" href="css/pos-fit.css?v=4.9.296">
+    <!-- أهداف لمس مريحة وردّ فعل ضغط على شاشات اللمس -->
+    <link rel="stylesheet" href="css/pos-touch.css?v=4.9.296">
 </head>
 <body>
 
@@ -80,6 +82,7 @@
                 <button class="icon-btn hidden" id="buffet-report-btn" title="تقرير البوفيه اليومي"><i class=ji data-i=chart-bar></i></button>
                 <button class="icon-btn" id="held-orders-btn" title="الطلبات المعلقة"><i class=ji data-i=clipboard-list></i></button>
                 <button class="icon-btn" id="orders-history-btn" title="سجل الفواتير"><i class=ji data-i=receipt></i></button>
+                <button class="icon-btn" id="drawer-btn" title="فتح درج النقدية"><i class=ji data-i=archive></i></button>
                 <button class="icon-btn" id="discount-btn" title="خصم على السلة" disabled><i class=ji data-i=tag></i></button>
                 <button class="icon-btn" id="close-shift-btn" title="إغلاق الوردية"><i class=ji data-i=stop></i></button>
                 <button class="icon-btn hidden" id="day-close-btn" title="الإقفال اليومي Z (مدير)"><i class=ji data-i=lock></i></button>
@@ -224,12 +227,18 @@
 
     <!-- ═══ Receipt Modal ═══ -->
     <div id="receipt-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3><i class=ji data-i=circle-check></i> تم إتمام البيع</h3>
-            <div id="receipt-info"></div>
-            <img id="receipt-qr" alt="ZATCA QR" class="qr-img">
+        <div class="modal-content receipt-modal-content">
+            <div class="receipt-modal-head">
+                <h3><i class=ji data-i=circle-check></i> تم إتمام البيع</h3>
+                <button type="button" class="receipt-close" id="close-receipt-btn" aria-label="إغلاق الفاتورة"><i class=ji data-i=x></i></button>
+                <div id="receipt-status" class="receipt-status"></div>
+            </div>
+            <div class="receipt-paper-wrap">
+                <iframe id="receipt-frame" class="receipt-frame" title="الفاتورة" scrolling="yes"></iframe>
+                <div id="receipt-fallback" class="hidden"></div>
+            </div>
             <div class="modal-buttons">
-                <button id="print-receipt-btn" class="modal-btn primary"><i class=ji data-i=printer></i> طباعة</button>
+                <button id="print-receipt-btn" class="modal-btn primary"><i class=ji data-i=printer></i> طباعة الفاتورة</button>
                 <button id="new-sale-btn" class="modal-btn success"><i class=ji data-i=shopping-cart></i> بيع جديد</button>
             </div>
         </div>
@@ -551,20 +560,22 @@
         <div class="loading-text" id="loading-text">جارٍ المعالجة...</div>
     </div>
 
-    <script src="js/icons.js?v=4.9.194"></script>
+    <script src="js/icons.js?v=4.9.296"></script>
     <script src="js/vendor/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/pos-search.js?v=4.9.194"></script>
-    <script src="js/pos.js?v=4.9.34"></script>
+    <script src="js/pos-search.js?v=4.9.296"></script>
+    <script src="js/pos.js?v=4.9.296"></script>
     <script src="js/pos-orders.js"></script>
     <!-- ترقيم صفحات الأصناف/السلة: يُبقي الشاشة كاملة داخل الارتفاع بلا تمرير -->
-    <script src="js/pos-fit.js?v=4.9.194"></script>
+    <script src="js/pos-fit.js?v=4.9.296"></script>
+    <!-- طبقة اللمس: لوحة أرقام للدفع على شاشات اللمس (تُفعَّل عند pointer: coarse) -->
+    <script src="js/pos-touch.js?v=4.9.296"></script>
     <!-- Phase 4.2: سياسة توحيد مسار POS (off | banner | redirect) تُقرأ من الخادم.
          الافتراضي off = لا تغيير إطلاقًا. الفشل يُتجاهل بصمت. -->
-    <script src="js/pos-path-guard.js?v=4.9.194"></script>
+    <script src="js/pos-path-guard.js?v=4.9.296"></script>
     <!-- Phase 4.2: تهيئة الـPOS في ملف خارجي — سكربتات inline محجوبة بسياسة CSP
-         (وجود nonce يجعل المتصفح يتجاهل 'unsafe-inline')، فلم تكن تعمل داخل الصفحة. -->
-    <script src="js/pos-bootstrap.js?v=4.9.194"></script>
-  <script src="js/core/action-dispatch.js?v=4.9.194" defer></script>
+         (script-src 'self' + nonce لكل طلب، بلا 'unsafe-inline' فعّال)، فلم تكن تعمل داخل الصفحة. -->
+    <script src="js/pos-bootstrap.js?v=4.9.296"></script>
+  <script src="js/core/action-dispatch.js?v=4.9.296" defer></script>
 </body>
 </html>

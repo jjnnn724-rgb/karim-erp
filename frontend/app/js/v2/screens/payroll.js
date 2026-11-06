@@ -7,21 +7,21 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.194';
-import { fetchDepartments as fetchHrDepartments, arSearchKey } from '../data/employees-repo.js?v=4.9.194';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.296';
+import { fetchDepartments as fetchHrDepartments, arSearchKey } from '../data/employees-repo.js?v=4.9.296';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.194';
-import { canWrite } from '../session.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
+} from '../data/payroll-suite.js?v=4.9.296';
+import { canWrite } from '../session.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -466,7 +466,7 @@ export function mountPayrollScreen(host, ctx = {}) {
             : sheetEmps;
         const sheetTotal = shown.reduce((s, e) => s + (Number(e.salary) || 0), 0);
         const w = openInAppReport('كشف الرواتب');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف الرواتب</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف الرواتب</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
         const runsBody = rows.slice().sort((a, b) => String(b.month).localeCompare(String(a.month))).slice(0, 12)
             .map((r) => `<tr><td dir="ltr">${esc(r.month)}</td><td>${formatInt(r.count)}</td><td>${esc(formatMoney(r.basic, currency).amount)}</td><td>${esc(formatMoney(r.net, currency).amount)}</td><td>${esc(r.status || '—')}</td></tr>`).join('');
         const empBody = shown.map((e, i) => {
@@ -482,14 +482,14 @@ export function mountPayrollScreen(host, ctx = {}) {
             .concat(sheetQuery ? [`البحث: «${sheetQuery}» (${formatInt(shown.length)} من ${formatInt(sheetEmps.length)})`] : []).join(' — ');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف الرواتب ${esc(month)}</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:1000px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
-            + 'h2{font-size:15px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:6px;margin:18px 0 10px}'
-            + '.total{margin:10px 0;font-size:14px}.total b{color:#7c3500;font-size:16px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:1000px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + 'h2{font-size:15px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:6px;margin:18px 0 10px}'
+            + '.total{margin:10px 0;font-size:14px}.total b{color:#0a3d2f;font-size:16px}'
             + 'table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-pl-print>طباعة</button><button type="button" class="secondary" data-pl-close>إغلاق</button></div>'

@@ -50,16 +50,22 @@ function loadRepo() {
 describe('خريطة الدور → اللوحة', () => {
     const R = loadRoleMap();
 
-    test('الدورات الخمسة لها لوحات، والبقية للوحة التنفيذية', () => {
+    test('لوحة كل دور — قرار المالك 2026-11-03: لا دور يهبط على موجز بلا صلاحية', () => {
         expect(R.dashboardKind('hr')).toBe('hr');
         expect(R.dashboardKind('employee')).toBe('employee');
         expect(R.dashboardKind('accountant')).toBe('accountant');
         expect(R.dashboardKind('warehouse')).toBe('warehouse');
         expect(R.dashboardKind('dept_head')).toBe('dept-head');
+        // أدوار الورديات تفتح على بوابة الموظف (بطاقتها وبصمتها) — لا 403
+        expect(R.dashboardKind('cashier')).toBe('employee');
+        expect(R.dashboardKind('kitchen')).toBe('employee');
+        expect(R.dashboardKind('sous_chef')).toBe('employee');
+        // المالك: موجز المدير التنفيذي (حارس /api/executive/summary مفتوح له بموافقته)
+        expect(R.dashboardKind('owner')).toBe('executive');
+        // admin/manager فقط لهما الموجز التنفيذي — وهما مسموح لهما به فعلًا
         expect(R.dashboardKind('admin')).toBe('briefing');
         expect(R.dashboardKind('manager')).toBe('briefing');
         expect(R.dashboardKind(null)).toBe('briefing');
-        expect(R.dashboardKind('cashier')).toBe('briefing');
     });
 });
 

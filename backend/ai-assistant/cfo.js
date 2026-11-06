@@ -103,7 +103,7 @@ async function collectCfoReview(pool, day = riyadhToday()) {
     const sinceClose = daysSince(lastCloseDay);
     // نقاط البيع: هل تحرّكت أصلًا خلال الأسبوع؟ (إلا فـ«انفصال المصادر» إيجابية كاذبة)
     const posEverActive = (series.rows || []).some((r) => num(r.pos_total) > 0);
-    // هل اكتمل اليوم؟ بعد العشاء (15:00) تكتمل一天的 مبيعات؛ وقبلها فاليوم
+    // هل اكتمل اليوم؟ بعد العشاء (15:00) تكتمل غالبية مبيعات؛ وقبلها فاليوم
     // ناقصٌ وقياس «انخفاض المبيعات» ظلمٌ (يقارن جزءًا بكامل).
     const hourNow = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', hour12: false }).format(new Date()));
     const dayComplete = hourNow >= 15;

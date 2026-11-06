@@ -17,6 +17,13 @@ const { logger } = require('./logger');
 
 let schemaReady = null;
 
+// ── تصنيفات الإشعارات (2026-10-31) ─────────────────────────────────────
+// القنوات المعتمدة في جرس V2 المصنّف. أي قيمة أخرى تُخزَّن NULL (تبويب «عام»).
+// التصنيفات ذات الأولوية تُرسل في الـ payload بـ priority:true — المنادي
+// الصوتي في الواجهات ينطقها فورًا متجاوزًا حصة النداء العادية.
+const NOTIFICATION_CATEGORIES = ['dispatch', 'procurement', 'transfers'];
+const PRIORITY_CATEGORIES = ['dispatch', 'procurement', 'transfers'];
+
 /** مخطط ذاتي الترقية (idempotent): يستخدم جدول notifications القديم ويضيف الاستهداف والمرجع. */
 function ensureNotificationsSchema() {
     if (schemaReady) {return schemaReady;}
@@ -26,6 +33,9 @@ function ensureNotificationsSchema() {
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity VARCHAR(60);
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id VARCHAR(60);
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link VARCHAR(255);
+            -- (2026-10-31) تصنيف القناة للجرس المصنّف: dispatch/procurement —
+            -- NULL يعني «عام». nullable فلا هجرة ولا كسر للصفوف القديمة.
+            ALTER TABLE notifications ADD COLUMN IF NOT EXISTS category VARCHAR(40);
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
             ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
             CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, read) WHERE read = false;
@@ -94,7 +104,7 @@ function cleanNotificationText(value, max) {
 }
 
 /** نقية: صف إشعار جاهز للإدخال — يعيد null إذا غاب العنوان والرسالة معًا. */
-function buildNotificationRow({ id, type, title, message, entity, entityId, link, userId }) {
+function buildNotificationRow({ id, type, title, message, entity, entityId, link, category, userId }) {
     const cleanTitle = cleanNotificationText(title, 255);
     const cleanMessage = cleanNotificationText(message, 500);
     if (!cleanTitle && !cleanMessage) {return null;}
@@ -109,6 +119,7 @@ function buildNotificationRow({ id, type, title, message, entity, entityId, link
         entity: entity ? String(entity).slice(0, 60) : null,
         entity_id: entityId === null || entityId === undefined || entityId === '' ? null : String(entityId).slice(0, 60),
         link: link ? String(link).slice(0, 255) : null,
+        category: category && NOTIFICATION_CATEGORIES.includes(String(category)) ? String(category).slice(0, 40) : null,
         read: false,
         created_at: createdAt,
     };
@@ -119,7 +130,7 @@ function buildNotificationRow({ id, type, title, message, entity, entityId, link
  * يعيد { rows, targets }. لا يرمي أخطاء المستخدمين الغائبين — يعيد قائمة فارغة.
  */
 async function createNotifications(client, opts) {
-    const { type, title, message, entity = null, entityId = null, link = null, targetRoles = [], targetDeptCodes = [], targetUserIds = [], targetUsernames = [], actorUserId = null } = opts || {};
+    const { type, title, message, entity = null, entityId = null, link = null, category = null, targetRoles = [], targetDeptCodes = [], targetUserIds = [], targetUsernames = [], actorUserId = null } = opts || {};
     const usersResult = await client.query('SELECT id, username, name, role, dept_code, active FROM users WHERE active = true');
     const targets = resolveNotificationTargets(usersResult.rows, { targetRoles, targetDeptCodes, targetUserIds, targetUsernames, actorUserId });
     if (!targets.length) {return { rows: [], targets };}
@@ -129,8 +140,12 @@ async function createNotifications(client, opts) {
         const row = buildNotificationRow({
             // FIX 2026-10-11 (C17): wider random range — Date.now() + small rand
             // collided under burst notifications. Use crypto for uniqueness.
-            id: require('crypto').randomInt(1, Number.MAX_SAFE_INTEGER),
-            type, title, message, entity, entityId, link,
+            // FIX 2026-11-01: randomInt يرفض max-min فوق 2^48 (ERR_OUT_OF_RANGE
+            // كانت ترمي دائمًا وتُبتلع في notifyBestEffort — كل إشعارات
+            // التدفق كانت تفشل إدراجًا صامتًا). الحد الأقصى المسموح 2^48-1
+            // يوفر فضاء معرّفات هائلًا بلا اصطدام عملي.
+            id: require('crypto').randomInt(1, 281474976710655),
+            type, title, message, entity, entityId, link, category,
             userId: target.id,
         });
         if (!row) {return { rows: [], targets };}
@@ -141,9 +156,9 @@ async function createNotifications(client, opts) {
         await db.query('SAVEPOINT notify_row').catch(() => {});
         try {
             await db.query(
-                `INSERT INTO notifications (id, title, message, type, date, read, user_id, entity, entity_id, link, created_at)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-                [row.id, row.title, row.message, row.type, row.date, row.read, row.user_id, row.entity, row.entity_id, row.link, row.created_at]
+                `INSERT INTO notifications (id, title, message, type, date, read, user_id, entity, entity_id, link, category, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                [row.id, row.title, row.message, row.type, row.date, row.read, row.user_id, row.entity, row.entity_id, row.link, row.category, row.created_at]
             );
             rows.push(row);
         } catch (insertErr) {
@@ -156,7 +171,10 @@ async function createNotifications(client, opts) {
     return { rows, targets };
 }
 
-/** يبث الإشعارات لحظيًا لغرف المستخدمين عبر Socket.IO (بعد نجاح العملية). */
+/** يبث الإشعارات لحظيًا لغرف المستخدمين عبر Socket.IO (بعد نجاح العملية).
+    نقية عمدًا: لا DB ولا Push هنا — الاختبارات تناديها بـ io وهمي،
+    وأي عمل خلفي عالق كان يفجّر بيئة Jest بعد التفكيك (كراش pg Socket
+    العشوائي 2026-10-31). إشعارات الهاتف تعيش في notifyBestEffort. */
 function emitNotificationRows(io, rows) {
     if (!io || !Array.isArray(rows)) {return 0;}
     let sent = 0;
@@ -165,6 +183,8 @@ function emitNotificationRows(io, rows) {
             io.to(`user:${row.user_id}`).emit('notification', {
                 id: row.id, title: row.title, message: row.message, type: row.type,
                 entity: row.entity, entity_id: row.entity_id, link: row.link,
+                category: row.category || null,
+                priority: PRIORITY_CATEGORIES.includes(row.category),
                 date: row.created_at, read: false,
             });
             sent += 1;
@@ -173,16 +193,128 @@ function emitNotificationRows(io, rows) {
     return sent;
 }
 
-/** أداة مركبة: تنشئ الصفوف وتبثها — best-effort، لا تُفشل العملية الرئيسية أبدًا. */
+/* ── سجلّ توكنات الأجهزة لإشعارات الهاتف (FCM) — 2026-10-31 ──────────
+   كل الدوال هنا بمعاملات عادية (لا كائنات req) — المسارات تستدعيها من
+   push-routes.js بعد jwtAuth. التوكن صلاحيته يديره FCM؛ نحذف الميت فقط. */
+let pushSchemaReady = null;
+
+function ensurePushSchema() {
+    if (pushSchemaReady) {return pushSchemaReady;}
+    pushSchemaReady = (async () => {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS push_tokens (
+                token TEXT PRIMARY KEY,
+                user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                platform VARCHAR(20) NOT NULL DEFAULT 'android',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens (user_id);
+        `);
+    })().catch(error => { pushSchemaReady = null; throw error; });
+    return pushSchemaReady;
+}
+
+/** حفظ/تحديث توكن جهاز لمستخدم. يعيد true عند النجاح فقط. */
+async function savePushToken(userId, token, platform) {
+    const uid = Number(userId);
+    const t = String(token || '').trim().slice(0, 4096);
+    if (!Number.isInteger(uid) || uid <= 0 || !t) {return false;}
+    const plat = ['android', 'ios', 'web'].includes(String(platform)) ? String(platform) : 'android';
+    try {
+        await ensurePushSchema();
+        await pool.query(
+            `INSERT INTO push_tokens (token, user_id, platform) VALUES ($1,$2,$3)
+             ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform, last_seen_at = CURRENT_TIMESTAMP`,
+            [t, uid, plat]
+        );
+        return true;
+    } catch (error) {
+        logger.warn('[push] savePushToken failed:', error.message);
+        return false;
+    }
+}
+
+/** حذف توكن (خروج الجهاز أو إبطال يدوي). */
+async function deletePushToken(token) {
+    const t = String(token || '').trim().slice(0, 4096);
+    if (!t) {return false;}
+    try {
+        await ensurePushSchema();
+        const r = await pool.query('DELETE FROM push_tokens WHERE token = $1', [t]);
+        return (r.rowCount || 0) > 0;
+    } catch (error) {
+        logger.warn('[push] deletePushToken failed:', error.message);
+        return false;
+    }
+}
+
+/** توكنات مجموعة مستخدمين — لخط الإرسال. */
+async function pushTokensForUsers(userIds) {
+    const ids = (Array.isArray(userIds) ? userIds : [userIds])
+        .map(Number).filter((v) => Number.isInteger(v) && v > 0);
+    if (!ids.length) {return [];}
+    try {
+        await ensurePushSchema();
+        const r = await pool.query('SELECT token FROM push_tokens WHERE user_id = ANY($1::bigint[]) LIMIT 500', [ids]);
+        return r.rows.map((x) => x.token);
+    } catch (error) {
+        logger.warn('[push] pushTokensForUsers failed:', error.message);
+        return [];
+    }
+}
+
+/** تنظيف التوكنات الميتة التي رفضها FCM. */
+async function removePushTokens(tokens) {
+    const list = (Array.isArray(tokens) ? tokens : []).filter(Boolean).slice(0, 500);
+    if (!list.length) {return 0;}
+    try {
+        await ensurePushSchema();
+        const r = await pool.query('DELETE FROM push_tokens WHERE token = ANY($1::text[])', [list]);
+        return r.rowCount || 0;
+    } catch (error) {
+        logger.warn('[push] removePushTokens failed:', error.message);
+        return 0;
+    }
+}
+
+/** أداة مركبة: تنشئ الصفوف وتبثها — best-effort، لا تُفشل العملية الرئيسية أبدًا.
+    إشعارات الهاتف (FCM Push) تُطلق من هنا لا من emitNotificationRows:
+    هذه نقطة التدفقات الحقيقية فقط، وemitNotificationRows تبقى نقية
+    للاختبارات (لا DB خلفي يعيش بعد تفكيك بيئة Jest). */
 async function notifyBestEffort(client, opts) {
     try {
         const { rows } = await createNotifications(client, opts);
         emitNotificationRows(opts?.io, rows);
+        if (rows.length) {void sendRowsAsPush(rows);}
         return rows.length;
     } catch (error) {
         logger.warn('[notifications] best-effort notify failed:', error.message);
         return 0;
     }
+}
+
+/** (2026-10-31) إشعارات الهاتف: الصفوف الموجَّهة تُرسَل FCM لشريط إشعارات
+    أندرويد **والتطبيق مقفول** — best-effort غير متزامن، فشله لا يمس الجرس
+    ولا السوكت أبدًا. التوكنات من push_tokens والميتة تُنظَّف تلقائيًا. */
+async function sendRowsAsPush(rows) {
+    try {
+        const push = require('./push-service');
+        const userIds = [...new Set(rows.map((r) => Number(r.user_id)).filter(Number.isInteger))];
+        const tokens = await pushTokensForUsers(userIds);
+        if (!tokens.length) {return;}
+        const first = rows[0];
+        const notice = {
+            title: first.title,
+            message: first.message || first.title,
+            category: first.category,
+            link: first.link,
+            notificationId: first.id,
+        };
+        const { sent: ok, stale } = await push.sendToTokens(tokens, notice);
+        if (stale.length) {await removePushTokens(stale);}
+        if (ok) {logger.info(`[push] delivered ${ok}/${tokens.length} device(s) for user(s) ${userIds.join(',')}.`);}
+    } catch { /* الـ Push خدمة إضافية — لا يكسر شيء أبدًا */ }
 }
 
 module.exports = {
@@ -192,4 +324,12 @@ module.exports = {
     createNotifications,
     emitNotificationRows,
     notifyBestEffort,
+    NOTIFICATION_CATEGORIES,
+    PRIORITY_CATEGORIES,
+    ensurePushSchema,
+    savePushToken,
+    deletePushToken,
+    pushTokensForUsers,
+    removePushTokens,
+    sendRowsAsPush,
 };

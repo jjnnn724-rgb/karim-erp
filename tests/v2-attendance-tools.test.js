@@ -46,8 +46,18 @@ describe('الحضور — أدوات الكتابة في الشاشة', () => {
         expect(s).not.toMatch(/\bprompt\(/);
     });
 
-    test('W2-3: الورديات والكشف الشهري والتدقيق الصارم حاضرة بأبوابها', () => {
+    test('سجل تعديلات الحضور: بابٌ واحد يقرأ الأثر الكامل قبل/بعد', () => {
         const s = src();
+        for (const k of ['data-v2-tr-from', 'data-v2-tr-to', 'data-v2-tr-action',
+            'data-v2-tr-load', 'data-v2-tr-body', 'fetchAttendanceAudit',
+            'auditEditRows', 'openTrail', 'loadTrail']) {
+            expect(s).toContain(k);
+        }
+        // لوحة القراءة لا تكتب: لا بوابة تعديل من داخلها
+        expect(s).not.toMatch(/data-v2-tr-(save|delete|write)/);
+    });
+
+    test('W2-3: الورديات والكشف الشهري والتدقيق الصارم حاضرة بأبوابها', () => {        const s = src();
         for (const k of ['data-v2-sh-month', 'data-v2-sh-text', 'data-v2-sh-suggest',
             'data-v2-sh-go', 'data-v2-sh-result', 'data-v2-mo-month', 'data-v2-mo-load',
             'data-v2-mo-print', 'data-v2-mo-body', 'data-v2-au-month', 'data-v2-au-load',

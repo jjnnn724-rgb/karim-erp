@@ -6,8 +6,8 @@ const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { generalLimiter } = require('./rate-limiter');
 const { buildMonthlyAttendanceSummaryQuery } = require('./monthly-attendance-query');
-const { shiftDateForEmployee, prevDay, isLate, isEarlyLeave, lockGraceMinutes, graceMinutes, calculateDelayParts } = require('./shift-day');
-const { calculateTotalLateMinutes, loadShiftHistoryMap, resolveShiftAt } = require('./attendance-engine');
+const { graceMinutes, calculateDelayParts } = require('./shift-day');
+const { makeEmitScoped } = require('./realtime/guard');
 const { arFuzzyPattern } = require('./ar-search');
 
 const router = express.Router();
@@ -135,19 +135,6 @@ function calculateMinutes(row) {
         return Math.max(0, Math.round((new Date(row.checkOutAt) - new Date(row.checkInAt)) / 60000));
     }
     return 0;
-}
-
-/**
- * حساب دقائق التأخير الكلي (الحضور + الانصراف المبكر)
- * يستخدم المحرك الموحد في attendance-engine.js
- */
-function calculateLateMinutes(row, employee) {
-    return calculateTotalLateMinutes({
-        checkIn: row.checkIn,
-        checkOut: row.checkOut,
-        shiftStart: employee?.shift_start,
-        shiftKarim: employee?.shift_karim,
-    });
 }
 
 async function getEmployee(client, id) {
@@ -344,24 +331,20 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
           WHERE e.status='active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)`, [m]);
     const toMin = (t) => { const mm = String(t || '').match(/^(\d{1,2}):(\d{2})$/); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : null; };
     const agg = new Map();
-    // المطلوب = الدوام الساري في تاريخ اليوم نفسه (تاريخ السريان 087) —
-    // تغيير البطاقة اليوم لا يعيد حساب الأيام السابقة أبدًا.
-    const mIds = [...new Set(detailed.rows.map((r) => Number(r.employeeId)).filter(Number.isInteger))];
-    const mHist = await loadShiftHistoryMap(mIds, `${m}-01`, `${m}-31`);
+    // المطلوب = دوام البطاقة (shift_karim) — بلا سجلّ سريان: الحساب من البطاقة مباشرة.
     for (const r of detailed.rows) {
         let a = agg.get(r.employeeId);
         if (!a) { a = { completeWorkDays: 0, shortDays: 0, deficitMinutes: 0, lateInDays: 0, reviewDays: 0 }; agg.set(r.employeeId, a); }
         if (r.late) { a.lateInDays += 1; } // إحصائي: دخول بعد بداية الوردية (لا يعني عجزًا إذا أكمل)
-        const at = resolveShiftAt(mHist.get(String(r.employeeId)), r.date, null);
-        const reqHours = at ? Number(at.shift_karim) : Number(r.shift_karim);
+        const reqHours = Number(r.shift_karim);
         const required = (reqHours > 0 ? reqHours : 10) * 60;
         const ci = toMin(r.checkIn), co = toMin(r.checkOut);
         if (ci == null || co == null) { a.reviewDays += 1; continue; } // يوم مفتوح/بيانات ناقصة
         let worked = co - ci; if (co < ci) { worked += 1440; } // التفاف الوردية الليلية
         if (worked === 0) { a.reviewDays += 1; continue; } // بصمة مكررة → قيد المراجعة
-        // عتبة 15 دقيقة (قرار المالك 2026-10-10، وبمعناها المحدّث 2026-10-30):
-        // النقص ضمن الحدّ = يوم مكتمل؛ فوقه = العجز كاملًا من أول دقيقة.
-        if (worked + graceMinutes() >= required) { a.completeWorkDays += 1; }
+        // بلا سماحية (قرار المالك 2026-11-02 «حتي فتره السماح شيلها»):
+        // أي دقيقة نقص عن الوردية = يوم ناقص والعجز كامل من أول دقيقة.
+        if (worked >= required) { a.completeWorkDays += 1; }
         else { a.shortDays += 1; a.deficitMinutes += (required - worked); }
     }
     const out = { month: m, employees: rows.map(r => {
@@ -416,143 +399,9 @@ router.get('/strict-audit', jwtAuth, requireRole(...ADMIN_ROLES), async (req, re
     }
 });
 
-router.post('/attendance/scan', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
-    if (!requireQrSecret(res)) {return;}
-    const data = req.body?.qr_payload || req.body?.qrPayload || req.body;
-    if (!data || data.system !== 'Karim ERP' || data.type !== 'employee_card' || !data.employeeId || !data.cardId || !data.token || !data.signature) {
-        return res.status(422).json({ error: 'INVALID_EMPLOYEE_QR', message: 'رمز QR الخاص بالموظف غير صالح' });
-    }
-    const expected = signQrPayload({ employeeId: data.employeeId, cardId: data.cardId, version: data.qrVersion, token: data.token });
-    // timingSafeEqual throws RangeError on length mismatch — validate the
-    // signature format first so a malformed payload cannot hang the request
-    const providedSignature = String(data.signature || '');
-    const expectedSignature = String(expected || '');
-    if (!/^[a-f0-9]{64}$/i.test(providedSignature) || providedSignature.length !== expectedSignature.length
-        || !crypto.timingSafeEqual(Buffer.from(providedSignature), Buffer.from(expectedSignature))) {
-        return res.status(422).json({ error: 'INVALID_QR_SIGNATURE', message: 'توقيع بطاقة الموظف غير صالح' });
-    }
-    const employeeResult = await pool.query(`SELECT * FROM employees WHERE "employeeId" = $1 AND "cardId" = $2`, [data.employeeId, data.cardId]);
-    const employee = employeeResult.rows[0];
-    if (!employee || employee.status !== 'active' || employee.cardStatus !== 'active' || employee.qrTokenHash !== hashToken(data.token) || Number(employee.qrVersion) !== Number(data.qrVersion)) {
-        return res.status(422).json({ error: 'STALE_EMPLOYEE_QR', message: 'البطاقة غير صالحة أو تم تجديدها' });
-    }
-
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const now = new Date();        // One consistent business clock for date, time and the late flag
-        const parts = riyadhNowParts(now);
-        const today = parts.date;
-        const time = `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
-        // يوم الوردية + بداية وردية الموظف (الترحيل لليوم السابق للورديات الليلية فقط)
-        const shiftStart = /^\d{1,2}:\d{2}$/.test(String(employee.shift_start || '')) ? String(employee.shift_start) : null;
-        const shiftDate = shiftDateForEmployee(today, parts.hour, employee);
-        const yesterday = prevDay(shiftDate);
-        const lateFor = () => isLate(parts.hour, parts.minute, shiftStart, Number(process.env.WORK_START_HOUR || 9));
-        // FIX 2026-10-11 (C24): advisory lock serializes concurrent punches for the
-        // same employee+shiftDate — FOR UPDATE only locks existing rows, so the
-        // first punch of the day takes no lock and two simultaneous punches both
-        // see "no row" → duplicate check-in. Advisory lock fixes without schema change.
-        await client.query('SELECT pg_advisory_xact_lock($1, $2)', [employee.id, Number(shiftDate.replace(/-/g, ''))]);
-        let existing = (await client.query(`SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2 FOR UPDATE`, [employee.id, shiftDate])).rows[0] || null;
-        // لا صف مفتوح اليوم لكن أمس مفتوح → هذا انصراف وردية ليلية
-        if (!existing || existing.checkOut) {
-            const prev = (await client.query(
-                `SELECT * FROM attendance WHERE "employeeId" = $1 AND date = $2 AND "checkOut" IS NULL FOR UPDATE`,
-                [employee.id, yesterday])).rows[0] || null;
-            if (prev) {existing = prev;}
-        }
-        let record;
-        let action;
-        // قفل اليوم: مغلق باستنتاج + موظف مقفل + خارج نافذة 10 دقائق → بصمات لاحقة مرفوضة
-        if (existing && existing.checkout_inferred && employee.auto_lock === true) {
-            const m = String(shiftStart || '09:00').match(/^(\d{1,2}):(\d{2})$/);
-            const hrs = Number(employee.shift_karim) > 0 ? Number(employee.shift_karim) : 10;
-            const [y, mo, d] = (existing.date || shiftDate).split('-').map(Number);
-            const endMs = Date.UTC(y, mo - 1, d, 0, 0) + ((m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60) + Math.round(hrs * 60)) * 60000 - 3 * 3600000;
-            if (now.getTime() > endMs + lockGraceMinutes() * 60000) {
-                await client.query('ROLLBACK');
-                return res.status(409).json({ error: 'SHIFT_LOCKED', message: 'انتهت ورديتك وسُجّل انصرافك تلقائيًا — راجع الإدارة' });
-            }
-        }
-        if (!existing) {
-            // FIX 2026-10-11 (C17): retry on PK collision — Date.now()+rand can
-            // collide under concurrent punches. Retry up to 3 times with new ID.
-            let record = null;
-            for (let attempt = 0; attempt < 3 && !record; attempt++) {
-                const id = Date.now() * 1000 + Math.floor(Math.random() * 999999);
-                try {
-                    record = (await client.query(
-                        `INSERT INTO attendance (id, "employeeId", date, "checkIn", late, notes, "checkInAt", source, "operatorId")
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,'qr',$8) RETURNING *`,
-                        [id, employee.id, shiftDate, time, lateFor(), 'تسجيل حضور عبر QR', now, req.user.id]
-                    )).rows[0];
-                } catch (pkErr) {
-                    if (pkErr && pkErr.code === '23505') {continue;}
-                    throw pkErr;
-                }
-            }
-            if (!record) {
-                await client.query('ROLLBACK');
-                return res.status(500).json({ error: 'ATTENDANCE_ID_COLLISION', message: 'تعذر تسجيل الحضور — أعد المحاولة' });
-            }
-            action = 'check_in';
-        } else if (!existing.checkOut) {
-            const current = existing;
-            const empShiftH = Number(employee.shift_karim) > 0 ? Number(employee.shift_karim) : 10;
-            const early = isEarlyLeave(parts.hour, parts.minute, shiftStart, empShiftH);
-            const minutes = Math.max(0, Math.round((now - new Date(current.checkInAt || `${current.date}T${current.checkIn}:00`)) / 60000));
-            record = (await client.query(
-                `UPDATE attendance SET "checkOut"=$1, "checkOutAt"=$2, "workMinutes"=$3, early_leave=$6, source='qr', "operatorId"=$4, notes=COALESCE(notes,'') || ' | تسجيل انصراف عبر QR' WHERE id=$5 RETURNING *`,
-                [time, now, minutes, req.user.id, current.id, early]
-            )).rows[0];
-            action = 'check_out';
-        } else {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'ATTENDANCE_COMPLETE', message: 'تم تسجيل حضور وانصراف الموظف لهذا اليوم', employee, record: existing });
-        }
-        await client.query('COMMIT');
-        const payload = { action, employee: { id: employee.id, name: employee.name, employeeId: employee.employeeId, department: employee.department }, record };
-        if (req.io) {req.io.emit('attendance:updated', payload);}
-        res.json(payload);
-    } catch (e) {
-        await client.query('ROLLBACK');
-        logger.error('[hr_attendance_scan]', e);
-        res.status(500).json({ error: 'ATTENDANCE_SCAN_FAILED', message: 'تعذر تسجيل الحركة' });
-    } finally { client.release(); }
-});
-
-// ─── إلغاء جماعي للاستكمال التلقائي (مدير فقط) ────────────────────────────
-// يمسح القيم المستنتَجة ويعيد الصفوف مفتوحة، ويحذف الصفوف التي فرغت تمامًا.
-// لا يمس أي قيمة حقيقية (بصمة/QR/يدوي) أبدًا.
-router.post('/attendance/revert-inferred', jwtAuth, requireRole('admin'), async (req, res) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const out = await client.query(
-            `UPDATE attendance SET "checkOut" = NULL, "checkOutAt" = NULL,
-                 "workMinutes" = NULL, checkout_inferred = false, early_leave = false,
-                 notes = COALESCE(notes, '') || ' | أُلغي الاستكمال جماعيًا'
-             WHERE checkout_inferred = true`
-        );
-        const inc = await client.query(
-            `UPDATE attendance SET "checkIn" = NULL, "checkInAt" = NULL, late = false,
-                 "workMinutes" = NULL, checkin_inferred = false,
-                 notes = COALESCE(notes, '') || ' | أُلغي الاستكمال جماعيًا'
-             WHERE checkin_inferred = true`
-        );
-        const del = await client.query(
-            `DELETE FROM attendance WHERE "checkIn" IS NULL AND "checkOut" IS NULL RETURNING id`
-        );
-        await client.query('COMMIT');
-        logger.info(`[hr_attendance_revert] جماعي بواسطة ${req.user.username}: خروج ${out.rowCount} — دخول ${inc.rowCount} — حذف فارغ ${del.rowCount}`);
-        res.json({ ok: true, clearedCheckouts: out.rowCount, clearedCheckins: inc.rowCount, deletedEmpty: del.rowCount });
-    } catch (e) {
-        await client.query('ROLLBACK').catch(() => {});
-        logger.error('[hr_attendance_revert]', e);
-        res.status(500).json({ error: 'REVERT_FAILED', message: 'تعذر الإلغاء الجماعي' });
-    } finally { client.release(); }
-});
+// ─── حُذف مسارا «مسح QR» و«إلغاء الاستكمال» (قرار المالك 2026-11-05): ─────────────
+// مصدران فقط للحضور: جهاز البصمة وكاميرا التطبيق — لا مسح بطاقة، ولا استكمال
+// تلقائي، ولا تصحيح بالحذف. التصحيحات تتم بإعادة الحساب من البصمات الخام.
 
 // ─── توليد مسير رواتب شهر (admin/hr/manager) ───────────────────────────────
 // أساسي + أوفرتايم من البصمات (فوق ساعات الوردية) + علاوات − جزاءات/خصومات − أقساط السلف.
@@ -571,16 +420,18 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
     try {
         await client.query('BEGIN');
         // Period-closed check (inside txn, fail-closed)
+        // FIX 2026-11-06 (A3): كان `WHERE month=$1 AND status='closed'` على أعمدة
+        // لا وجود لها — accounting_periods أعمدتها period/closed — فيفشل الاستعلام
+        // بـ 42703 داخل المعاملة ثم يُجهض توليد المسير كاملًا (fail-closed صحيح
+        // النتيجة لكن بلا أي فترة مقفلة). المسار الآن نفس أداة القفل الذرّية.
         try {
-            const pc = await client.query(
-                "SELECT status FROM accounting_periods WHERE month = $1 LIMIT 1", [month]);
-            if (pc.rows[0]?.status === 'closed') {
-                await client.query('ROLLBACK');
-                return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن إعادة توليد الرواتب (أعد فتح الفترة أولًا)` });
-            }
+            await require('./accounting-periods').assertPeriodOpenInTx(client, `${month}-01`);
         } catch (periodErr) {
             await client.query('ROLLBACK');
-            throw periodErr; // fail-closed: if we can't verify period status, refuse
+            if (periodErr && periodErr.statusCode === 423) {
+                return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن إعادة توليد الرواتب (أعد فتح الفترة أولًا)` });
+            }
+            throw periodErr; // fail-closed: تعذّر التحقق من حالة الفترة ⇒ رفض
         }
         // Already-posted check (inside txn, fail-closed)
         try {
@@ -596,8 +447,6 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
         }
         const emps = (await client.query(
             `SELECT id, name, salary, shift_start, shift_karim FROM employees WHERE status = 'active' ORDER BY id`)).rows;
-        // تاريخ السريان لمرة واحدة: أوفرتايم كل يوم بساعاته السارية فيه
-        const payHist = await loadShiftHistoryMap(emps.map((e) => e.id), `${month}-01`, `${month}-31`);
         const detail = [];
         let tBasic = 0, tOt = 0, tBonus = 0, tPen = 0, tAdv = 0, tNet = 0;
         for (const emp of emps) {
@@ -609,19 +458,16 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
                   WHERE "employeeId" = $1 AND date LIKE $2 AND "checkIn" IS NOT NULL AND "checkOut" IS NOT NULL`,
                 [emp.id, `${month}-%`])).rows;
             const daysPresent = att.length;
-            const empHist = payHist.get(String(emp.id));
             let otMinutes = 0;
             let overtimePay = 0;
             if (includeOvertime) {
                 for (const a of att) {
                     const w = Number(a.workMinutes);
                     if (!Number.isFinite(w)) {continue;}
-                    const at = resolveShiftAt(empHist, a.date, null);
-                    const hd = at ? Number(at.shift_karim) : sHours;
-                    const exp = Math.round((hd > 0 ? hd : 10) * 60);
+                    const exp = Math.round(sHours * 60);
                     if (w > exp) {
                         otMinutes += w - exp;
-                        overtimePay += ((w - exp) / 60) * (sHours > 0 ? basic / 30 / (hd > 0 ? hd : 10) : 0);
+                        overtimePay += ((w - exp) / 60) * (sHours > 0 ? basic / 30 / sHours : 0);
                     }
                 }
                 overtimePay = Math.round(overtimePay * 100) / 100;
@@ -892,7 +738,7 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
     const { start, end } = monthBounds(month);
     const todayStr = new Date().toISOString().slice(0, 10);
     const emps = (await pool.query(
-        `SELECT id, name, "employeeId", salary, shift_karim, "joinDate" FROM employees WHERE status = 'active' ORDER BY id`)).rows;
+        `SELECT id, name, "employeeId", salary, shift_karim, day_off, "joinDate" FROM employees WHERE status = 'active' ORDER BY id`)).rows;
 
     const att = (await pool.query(
         `SELECT "employeeId", date, "checkIn", "checkOut" FROM attendance
@@ -924,28 +770,22 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
         [month, `${AUTO_DEDUCTION_MARK}%`])).rows : [];
 
     const detail = [];
-    // تاريخ السريان: دوام كل يوم يُحل بتاريخه (الماضي محمي من تغييرات البطاقة)
-    const dedHist = await loadShiftHistoryMap(emps.map((e) => e.id), start.toISOString().slice(0, 10), end.toISOString().slice(0, 10));
+    // البطاقة هي المصدر: بداية الدوام وعدد الساعات وday_off كلها من بطاقة الموظف مباشرة.
     for (const emp of emps) {
         const salary = Number(emp.salary || 0);
         if (salary <= 0) {continue;}
         const workDayMinutes = (Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10) * 60;
         const dayRate = salary / 30;
-        const empHist = dedHist.get(String(emp.id));
 
         const records = attByEmp.get(emp.id) || [];
         let lateMinutes = 0;
         let lateMoney = 0;
         for (const row of records) {
-            const at = resolveShiftAt(empHist, row.date, null);
-            const empAt = at
-                ? { ...emp, shift_start: at.shift_start || emp.shift_start, shift_karim: Number(at.shift_karim) > 0 ? Number(at.shift_karim) : emp.shift_karim }
-                : emp;
-            const parts = calculateDelayParts(row, empAt);
+            const parts = calculateDelayParts(row, emp);
             const w = calculateMinutes(row);
             const needsReview = Boolean(row.checkIn && row.checkOut && w === 0);
             if (!needsReview) {
-                const dayMin = (Number(empAt.shift_karim) > 0 ? Number(empAt.shift_karim) : 10) * 60;
+                const dayMin = workDayMinutes;
                 lateMinutes += Number(parts.lateMinutes || 0);
                 lateMoney += Number(parts.lateMinutes || 0) * (dayRate / dayMin);
             }
@@ -960,7 +800,10 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
         for (const d of eachDate(start, end)) {
             if (d > todayStr) {break;}
             if (joinDate && d < joinDate) {continue;}
-            if (skipFridays && new Date(`${d}T00:00:00Z`).getUTCDay() === 5) {continue;}
+            const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
+            if (skipFridays && weekday === 5) {continue;}
+            // الراحة الأسبوعية من عمود البطاقة (day_off 0-6) — يوم راحته لا يُحسب غيابًا.
+            if (emp.day_off != null && weekday === Number(emp.day_off)) {continue;}
             if (presentDays.has(d) || coveredLeave.has(d)) {continue;}
             absentDays += 1;
             absentDates.push(d);
@@ -999,16 +842,30 @@ router.get('/deductions/preview', jwtAuth, requireRole(...ADMIN_ROLES), async (r
 router.post('/deductions/apply', jwtAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
     const month = /^\d{4}-\d{2}$/.test(String(req.body?.month || '')) ? String(req.body.month) : '';
     if (!month) {return res.status(422).json({ error: 'MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });}
-    // V6 Phase 3 (decision #7): تطبيق الخصومات على شهر مقفل ممنوع.
-    try {
-        const { isPeriodClosed } = require('./accounting-periods');
-        if (await isPeriodClosed(month)) {return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن تطبيق الخصومات (أعد فتح الفترة أولًا)` });}
-    } catch (_) { /* controls down → fail-open */ }
     const skipFridays = req.body?.skipFridays === true;
     const client = await pool.connect();
     try {
-        const { detail } = await computeMonthDeductions(month, { skipFridays });
         await client.query('BEGIN');
+        // V6 Phase 3 (decision #7) + FIX 2026-11-05 (مراجعة خارجية P1): حارس الفترة
+        // داخل المعاملة موحّدًا مع /payroll-runs/generate (C25). كان هذا المسار
+        // يبتلع خطأ التحقق ويستمر (fail-open: «controls down → تطبيق») — الآن:
+        // شهر مقفل = 423، وتعذّر التحقق = 503 رفض، ولا يُكتب أي بند في الحالتين.
+        let periodState;
+        try {
+            const { isPeriodClosed } = require('./accounting-periods');
+            periodState = (await isPeriodClosed(month)) ? 'closed' : 'open';
+        } catch (periodErr) {
+            logger.error('[hr_deductions_apply] period check failed (fail-closed):', periodErr.message || periodErr);
+            periodState = 'unavailable';
+        }
+        if (periodState !== 'open') {
+            await client.query('ROLLBACK').catch(() => {});
+            if (periodState === 'closed') {
+                return res.status(423).json({ error: 'PERIOD_LOCKED', message: `الفترة ${month} مقفلة محاسبيًا — لا يمكن تطبيق الخصومات (أعد فتح الفترة أولًا)` });
+            }
+            return res.status(503).json({ error: 'PERIOD_CHECK_UNAVAILABLE', message: 'تعذر التحقق من حالة الفترة المحاسبية — لم تُطبَّق الخصومات' });
+        }
+        const { detail } = await computeMonthDeductions(month, { skipFridays });
         // إعادة التطبيق تستبدل البنود الآلية السابقة لهذا الشهر — البنود اليدوية لا تُمس
         await client.query(`DELETE FROM payroll_adjustments WHERE month = $1 AND reason LIKE $2`, [month, `${AUTO_DEDUCTION_MARK}%`]);
         let inserted = 0, totalAmount = 0;
@@ -1042,38 +899,6 @@ router.post('/deductions/apply', jwtAuth, requireRole(...ADMIN_ROLES), async (re
     } finally { client.release(); }
 });
 
-
-// ─── محرك الورديات: تحليل واقع البصمة + تطبيق الورديات + إعادة حساب تلقائية ───
-const shiftsEngine = require('./shifts-engine');
-
-router.get('/shifts/analysis', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
-    try {
-        const month = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
-        res.json(await shiftsEngine.realityAnalysis(month));
-    } catch (e) { res.status(500).json({ error: 'SHIFT_ANALYSIS_FAILED', message: e.message }); }
-});
-
-/** تدقيق ساعات الدوام الفعلية: الموظف دا كم ساعة مقابل دوامه المطلوب (10/12 ساعة) — لا يقل عن دوامه */
-router.get('/shifts/worked-hours', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
-    try {
-        const month = /^\d{4}-\d{2}$/.test(String(req.query.month || '')) ? req.query.month : String(new Date().toISOString().slice(0, 7));
-        res.json(await shiftsEngine.workedHoursAudit(month));
-    } catch (e) { res.status(500).json({ error: 'WORKED_HOURS_FAILED', message: e.message }); }
-});
-
-router.post('/shifts/apply', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
-    try {
-        const text = String(req.body && req.body.text || '').slice(0, 8000);
-        if (!text.trim()) {return res.status(422).json({ error: 'EMPTY', message: 'اكتب الورديات أولاً' });}
-        const summary = await shiftsEngine.applyShiftText(text, undefined, req.user?.id ?? null);
-        res.json({ ok: true, ...summary });
-    } catch (e) { res.status(500).json({ error: 'SHIFTS_APPLY_FAILED', message: e.message }); }
-});
-
-router.post('/shifts/recompute', jwtAuth, requireRole('admin', 'hr', 'manager'), async (req, res) => {
-    try { res.json({ ok: true, recompute: await shiftsEngine.recomputeDerived() }); }
-    catch (e) { res.status(500).json({ error: 'RECOMPUTE_FAILED', message: e.message }); }
-});
 
 // ─── جدول دوامات القسم: رئيس القسم يكتب دوامات رجاله — تسمع فورًا ───
 // يكتب أعمدة الدوام الثابت مباشرة (مصدر الحقيقة للمحرك) — بلا مسودات ولا اعتماد.
@@ -1554,16 +1379,29 @@ router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (r
                 await client.query('ROLLBACK');
                 return res.status(422).json({ error: 'ROSTER_PAST_DATE', message: `لا يمكن تعديل ماضٍ (${date}) — القديم محمي` });
             }
-            const start = String(c.shift_start ?? '09:00').trim();
-            const sm = start.match(/^(\d{1,2}):(\d{2})$/);
-            if (!sm || Number(sm[1]) > 23 || Number(sm[2]) > 59) {
-                await client.query('ROLLBACK');
-                return res.status(422).json({ error: 'ROSTER_BAD_TIME', message: `وقت غير صالح (${date}) — الصيغة HH:MM` });
+            // خليةٌ بلا وقت = لا وردية لهذا اليوم — ولا تُخترع «09:00». كانت
+            // الخليةُ الفارغة تُحفظ كوردية ٠٩:٠٠ بتاريخ سريانٍ، فتصير ورديةً
+            // وهمية على أيامٍ لا يعمل فيها الموظف: يُقلب دخوله الليلي «تأخيرًا»
+            // ويُقترن بيوم الوردية الخطأ (واقعة EMP-084: 16:45/09:00/04:30
+            // تتناوب وكلها بثانيةٍ واحدة من نفس الحفظ). بدلًا منها تبقى وردية
+            // الموظف الحالية سارية، ويُحفظ يومُ الراحة وحده إن أُرسل.
+            const startRaw = String(c.shift_start ?? '').trim();
+            let startNorm = null;
+            if (startRaw) {
+                const sm = startRaw.match(/^(\d{1,2}):(\d{2})$/);
+                if (!sm || Number(sm[1]) > 23 || Number(sm[2]) > 59) {
+                    await client.query('ROLLBACK');
+                    return res.status(422).json({ error: 'ROSTER_BAD_TIME', message: `وقت غير صالح (${date}) — الصيغة HH:MM` });
+                }
+                startNorm = `${String(sm[1]).padStart(2, '0')}:${sm[2]}`;
             }
-            const hours = Number(c.shift_hours ?? 10);
-            if (!Number.isFinite(hours) || hours < 1 || hours > 24) {
-                await client.query('ROLLBACK');
-                return res.status(422).json({ error: 'ROSTER_BAD_Karim', message: `مدة الدوام 1-24 (${date})` });
+            let hours = null;
+            if (startNorm) {
+                hours = Number(c.shift_hours ?? 10);
+                if (!Number.isFinite(hours) || hours < 1 || hours > 24) {
+                    await client.query('ROLLBACK');
+                    return res.status(422).json({ error: 'ROSTER_BAD_Karim', message: `مدة الدوام 1-24 (${date})` });
+                }
             }
             let dayOff = c.day_off ?? null;
             if (dayOff === '' || dayOff === undefined) {dayOff = null;}
@@ -1573,7 +1411,7 @@ router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (r
             }
             clean.push({
                 id, date,
-                shift_start: `${String(sm[1]).padStart(2, '0')}:${sm[2]}`,
+                shift_start: startNorm,
                 shift_karim: hours,
                 day_off: dayOff === null ? null : Number(dayOff),
             });
@@ -1609,19 +1447,23 @@ router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (r
                 const claimTo = [...valid].find((x) => sameDept(x, scope.depts[0])) || scope.depts[0];
                 dept = claimTo;
             }
+            // خليةٌ بلا وقتٍ ترث وردية الموظف السارية (لا ٠٩:٠٠ المخترعة)
+            const effStart = c.shift_start || emp.shift_start || '09:00';
+            const effKarim = c.shift_karim != null ? c.shift_karim
+                : (Number(emp.shift_karim) > 0 ? Number(emp.shift_karim) : 10);
             await client.query(
                 `INSERT INTO employee_shift_history (employee_id, shift_start, shift_karim, day_off, effective_from, created_by)
                  VALUES ($1,$2,$3,$4,$5::date,$6)
                  ON CONFLICT (employee_id, effective_from)
                  DO UPDATE SET shift_start=EXCLUDED.shift_start, shift_karim=EXCLUDED.shift_karim,
                                day_off=EXCLUDED.day_off, created_by=EXCLUDED.created_by, created_at=NOW()`,
-                [c.id, c.shift_start, c.shift_karim, c.day_off, c.date, req.user.id]
+                [c.id, effStart, effKarim, c.day_off, c.date, req.user.id]
             );
             if (c.date === todayStr) {
                 if (dept && dept !== emp.department) {
-                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4, department=$5 WHERE id=$1`, [c.id, c.shift_start, c.shift_karim, c.day_off, dept]);
+                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4, department=$5 WHERE id=$1`, [c.id, effStart, effKarim, c.day_off, dept]);
                 } else {
-                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4 WHERE id=$1`, [c.id, c.shift_start, c.shift_karim, c.day_off]);
+                    await client.query(`UPDATE employees SET shift_start=$2, shift_karim=$3, day_off=$4 WHERE id=$1`, [c.id, effStart, effKarim, c.day_off]);
                 }
             }
         }
@@ -1714,7 +1556,7 @@ function startShiftRollover() {
     logger.info('[dept-roster] rollover on (boot + every 5m)');
 }
 
-module.exports = { router, provisionCard, signQrPayload, calculateMinutes, calculateLateMinutes, startShiftRollover, rosterRolloverOnce };
+module.exports = { router, provisionCard, signQrPayload, calculateMinutes, startShiftRollover, rosterRolloverOnce, computeMonthDeductions };
 
 // ═══ إدارة موظفي القسم لرئيس القسم (UPGRADE 2026-10-01) ═══
 // رئيس القسم يضيف/يعدل/يعطّل موظفي قسمه حصرًا — بحقول آمنة فقط

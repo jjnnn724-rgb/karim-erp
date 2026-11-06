@@ -7,12 +7,12 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.194';
-import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.296';
+import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {
@@ -48,7 +48,11 @@ function weekStartIso() {
 }
 
 function formatMoney(v) {
-    return (Number(v) || 0).toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // سياسة الأرقام في V2: المالُ لاتينيٌّ (en-US) في كل النظام. كان هذا
+    // السطرُ 'ar-EG' فيطبع المبالغ بأرقامٍ عربية-هندية (٠-٩) بينما كلُّ
+    // العُروض الأخرى (37 ملفًّا) تطبعها en-US — فكان العمودُ يختلف بين
+    // شاشتين لبياناتٍ واحدة، ويُخالَط في_print.
+    return (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const signed = (v) => `${Number(v) > 0 ? '+' : ''}${formatQty(v)}`;
@@ -399,9 +403,9 @@ export function mountWhVsPosScreen(host, ctx = {}) {
             <td>${formatMoney(r.pos_gross)}</td><td>${esc(STATUS_AR[r.status] || r.status)}</td>
           </tr>`).join('');
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مقارنة الصرف والمبيعات</title>
-          <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:12px}
+          <style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:12px}
           .summary{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}.summary div{border:1px solid #999;padding:8px 16px;border-radius:6px;font-size:13px}
-          table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#f5d76e}
+          table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#dcede4}
           p.note{text-align:center;margin-top:14px;font-size:12px;color:#777}</style></head><body>
           <h1>تقرير مقارنة الصرف والمبيعات</h1>
           <h2>مطاعم الشرفه العالمي · من ${esc(f.from)} إلى ${esc(f.to)}${filterText ? ' · بحث: ' + esc(filterText) : ''}</h2>
@@ -409,7 +413,7 @@ export function mountWhVsPosScreen(host, ctx = {}) {
             <div>الأصناف: <b>${formatInt(s.total_items)}</b></div>
             <div>متطابقة: <b style="color:#16a34a">${formatInt(s.matched)}</b></div>
             <div>مباع أكثر: <b style="color:#dc2626">${formatInt(s.sold_more)}</b></div>
-            <div>مصروف أكثر: <b style="color:#d97706">${formatInt(s.issued_more)}</b></div>
+            <div>مصروف أكثر: <b style="color:#0e5c45">${formatInt(s.issued_more)}</b></div>
             <div>مباع فقط: <b>${formatInt(s.pos_only)}</b></div>
             <div>مصروف فقط: <b>${formatInt(s.wh_only)}</b></div>
           </div>

@@ -17,6 +17,10 @@ const { pool } = require('./shared-pool');
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const cache = new Map();
 
+/**
+ * @param {*} table اسم الجدول (مُتحقَّق منه مسبقًا بالناطق)
+ * @param {*} [heavyColumns] الأعمدة الثقيلة المستثناة
+ */
 async function listColumnsExcluding(table, heavyColumns) {
     const name = String(table);
     if (cache.has(name)) {return cache.get(name);}

@@ -20,7 +20,8 @@ const { riyadhToday } = require('./riyadh-date');
 const router = express.Router();
 const round2 = (n) => Math.round(Number(n || 0) * 100) / 100;
 
-router.get('/summary', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+// حارس موجز المدير: admin + owner (موافقة المالك 2026-11-03 — اللوحة الأولى للمالك في V2)
+router.get('/summary', jwtAuth, requireRole('admin', 'owner'), asyncHandler(async (req, res) => {
     const day = riyadhToday();
     const days = Math.min(Math.max(Number(req.query.days) || 14, 7), 31);
     const from = new Date(new Date(`${day}T00:00:00Z`).getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);

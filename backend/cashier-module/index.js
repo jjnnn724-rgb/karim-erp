@@ -17,7 +17,7 @@ const buffetRoutes = require('./buffet-routes');
 const ordersRoutes = require('./orders-routes');
 const excelImportRoutes = require('./excel-import-routes');
 const { logger } = require('../logger');
-const { authLimiter, generalLimiter } = require('../rate-limiter');
+const { authLimiter, refreshLimiter, generalLimiter } = require('../rate-limiter');
 
 function register(app, opts = {}) {
     // Inject io into req so handlers can emit real-time events
@@ -33,8 +33,11 @@ function register(app, opts = {}) {
     app.post('/api/auth/change-password', authLimiter, jwtAuth, changePasswordHandler);
     // Security audit 2026-09-03: دورة حياة الجلسة الكاملة — تدوير رمز التحديث
     // (القديم يُستهلك ويُصدر بديل) وتسجيل خروج بإبطال رموز التجديد.
+    // FIX 2026-10-31: التجديد على سقفه الخاص السخي (refreshLimiter) لا سقف
+    // الدخول — نداءات التجديد المشروعة من كل أجهزة النفق كانت تستنزف سقف
+    // الدخول فتُخرج الحسابات 429 (راجع rate-limiter.js refreshLimiter).
     const { refreshHandler, logoutHandler } = require('./jwt-middleware');
-    app.post('/api/auth/refresh', authLimiter, refreshHandler);
+    app.post('/api/auth/refresh', refreshLimiter, refreshHandler);
     app.post('/api/auth/logout', generalLimiter, jwtAuth, logoutHandler);
 
     // استعادة كلمة المرور الذاتية: رمز لمرة واحدة يصدره المدير ويستخدمه الموظف
@@ -95,6 +98,10 @@ function register(app, opts = {}) {
     // Task 36 (التسليم): إدارة الطابعات + الاكتشاف + نظافة التوكنات الأوتوماتيكية
     const printerRoutes = require('./printer-routes');
     app.use('/api/pos/printers', printerRoutes.router);
+
+    // درج النقدية: فتح بنبضة ESC/POS مع أثر تدقيق (لا يفتح بلا طابعة متصلة)
+    const drawerRoutes = require('./drawer-routes');
+    app.use('/api/pos', drawerRoutes.router);
     if (!app.locals.tokenCleanupStarted) {
         const { startTokenCleanup } = require('./token-cleanup');
         const { pool } = require('./db-pool');
@@ -145,6 +152,7 @@ function register(app, opts = {}) {
     logger.info('    GET/PUT /api/pos/kot/settings   (kitchen tickets on/off, copies, notes)');
     logger.info('    GET  /api/pos/kot/orders/:id/html (printable kitchen ticket page)');
     logger.info('    CRUD /api/pos/printers         (thermal printers + probe/scan discovery)');
+    logger.info('    POST /api/pos/drawer/open      (open cash drawer + audit log)');
     logger.info('    [bg] token-cleanup             (expired/revoked refresh tokens purge, 6h)');
 }
 

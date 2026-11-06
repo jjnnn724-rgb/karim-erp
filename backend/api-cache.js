@@ -47,6 +47,7 @@ const NON_RESOURCE_SEGMENTS = new Set([
 ]);
 
 /** مجموعة مقاطع المورد من رابط الطلب (بلا استعلام، بلا معرّفات، بلا أفعال). */
+/** @param {*} rawUrl */
 function resourceSegments(rawUrl) {
     const pathname = String(rawUrl || '').split('?')[0].split('#')[0];
     const out = new Set();
@@ -62,11 +63,16 @@ function resourceSegments(rawUrl) {
     return out;
 }
 
+/** @param {string} segment */
 function decodeSafe(segment) {
     try {return decodeURIComponent(segment);} catch (_) {return segment;}
 }
 
 /** هل الكتابة على غصن قراءةٍ ما؟ (إحدى المجموعتين جزء من الأخرى أو متساويتان) */
+/**
+ * @param {Set<string>} writeSet
+ * @param {Set<string>} readSet
+ */
 function onSameBranch(writeSet, readSet) {
     if (!writeSet.size || !readSet.size) {return false;}
     const smaller = writeSet.size <= readSet.size ? writeSet : readSet;
@@ -94,10 +100,11 @@ const WRITE_EFFECTS = {
 };
 
 /** مجموعة مقاطع الكتابة موسّعة بمواردها المتأثرة. */
+/** @param {Set<string>} writeSet */
 function affectedSegments(writeSet) {
     const out = new Set(writeSet);
     for (const seg of writeSet) {
-        for (const eff of (WRITE_EFFECTS[seg] || [])) {out.add(eff);}
+        for (const eff of (WRITE_EFFECTS[/** @type {any} */ (seg)] || [])) {out.add(eff);}
     }
     return out;
 }
@@ -121,9 +128,14 @@ function invalidateForResource(writeUrl) {
     return removed;
 }
 
+/** @param {any} req @param {any} res @param {any} next */
 function apiCacheMiddleware(req, res, next) {
     if (req.method !== 'GET') { return next(); }
     if (req.path === '/api/state' || req.path === '/state') { return next(); }
+    /* «أعطني الآن» حرفيًا: الطلب الصريح بلايف (؟live=1) لا يُخدَم من كاشٍ عمره
+       30 ثانية ولا يُخزَّن فيه — وإلا كان الزناد اللايف في شاشة المتابعة يجلب
+       سحبًا من أوراكل ثم يُجيب القارئ بالنسخة القديمة نفسها. */
+    if (String(req.query?.live || '') === '1') { return next(); }
     const key = `${req.headers.authorization || ''}|${req.originalUrl}`;
     const cached = _apiCache.get(key);
     if (cached && Date.now() - cached.ts < API_CACHE_TTL) {
@@ -134,7 +146,7 @@ function apiCacheMiddleware(req, res, next) {
         return res.json(cached.data);
     }
     const origJson = res.json.bind(res);
-    res.json = (data) => {
+    res.json = (/** @type {any} */ data) => {
         const ok = res.statusCode >= 200 && res.statusCode < 300;
         if (ok && data && !data.error) {
             // LRU eviction: delete oldest entry instead of full clear
@@ -157,6 +169,7 @@ function apiCacheMiddleware(req, res, next) {
  * المورد. يفهم من `res.on('finish')` لأن الكود النهائي قد يتغير في المسار.
  * لا شيء يُبطَل عند الفشل (4xx/5xx): الكتابة لم تغيّر شيئًا.
  */
+/** @param {any} req @param {any} res @param {any} next */
 function apiCacheInvalidator(req, res, next) {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') { return next(); }
     const url = req.originalUrl || req.url || '';

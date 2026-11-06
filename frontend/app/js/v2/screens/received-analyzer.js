@@ -7,15 +7,15 @@
  * والصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { formatInt } from '../data/reports-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { formatInt } from '../data/reports-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchReceivedItems, fetchReceivedDispatches, fetchItemOutflow,
     fetchReceivedDispatchDetail, rangeError, analysisLabel, RECEIVED_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.194';
-import { ensureXlsx } from '../vendor.js?v=4.9.194';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.194';
+} from '../data/yara-reports-repo.js?v=4.9.296';
+import { ensureXlsx } from '../vendor.js?v=4.9.296';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
 
 /** أسماء حالات الاستهلاك كما في تصدير القديم (features/received-analyzer.js:550). */
 const OUTFLOW_ALERT_AR = { negative: 'سالب', depleted: 'صفر', low: 'منخفض', ok: 'سليم' };
@@ -278,7 +278,7 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
             const [d, it, ofl] = await Promise.allSettled([
                 fetchReceivedDispatches(f), fetchReceivedItems({ ...f, group }),
                 fetchItemOutflow({ from: f.from, to: f.to, item: f.item }),
-                import('../data/reports-repo.js?v=4.9.194').then((m) => m.fetchCurrency()).catch(() => ''),
+                import('../data/reports-repo.js?v=4.9.296').then((m) => m.fetchCurrency()).catch(() => ''),
             ]);
             if (!el.isConnected) {return;}
             if (d.status === 'fulfilled') {dispatches = d.value.dispatches || d.value.rows || [];}
@@ -400,8 +400,8 @@ export function mountReceivedAnalyzerScreen(host, ctx = {}) {
             const w = openInAppReport(`إذن صرف ${esc(disp.dept_name || dispId)}`);
             if (!w) { notify('تعذر فتح عارض الطباعة'); return; }
             w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف ${esc(disp.dept_name || '')}</title>
-            <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-            table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
+            <style>body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
+            table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#dcede4}
             .meta{font-size:13px;line-height:1.9;margin:10px 0}.meta b{display:inline-block;min-width:90px}
             @media print{body{padding:0}}</style></head><body>
             <h1>مطاعم الشرفة العالمي</h1><h2>إذن صرف — ${esc(disp.dept_name || '')}</h2>

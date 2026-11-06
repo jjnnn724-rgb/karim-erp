@@ -15,6 +15,9 @@
  *   3) قاعدة الاختبار المعزولة: كاشير مرتبط بقسم ينقل إيراده إليه، وإيراد
  *      القسم المباشر يبقى، وصف القناة يبقى صفريًا.
  *   4) الشاشة والطباعة والهجرة 122 تلتزم بالوسم نفسه.
+ *   5) الطلب على البطاقات والجدول والرسوم واحد (طلب المالك 2026-11-01): أرقام
+ *      القسم وحده، والبيع الخارجي صف وبطاقة مستقلان عن مطبخه — وسابقة كل قسم
+ *      رقمه وحده (ownExp) لا مجمّعه الشجري، فإجمالي السابقة بلا تضاعف.
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,13 +27,14 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const { pool } = require('../backend/shared-pool');
 const {
-    costAnalysisSql, buildCostAnalysisResult, isRevenueChannel,
+    costAnalysisSql, buildCostAnalysisResult, isRevenueChannel, num, loadPreviousCostTotals,
 } = require('../backend/finance-routes');
 
 const SCREEN = read('frontend/app/js/v2/screens/cost-analysis.js');
 const CENTER_SCREEN = read('frontend/app/js/v2/screens/cost-center.js');
 const MIGRATION = read('database/migrations/122_cost_centers_from_departments.sql');
 const BACKFILL = read('scripts/backfill-dispatch-cost-centers.js');
+const CHARTS_CSS = read('frontend/app/css/v2/erp-charts.css');
 
 describe('isRevenueChannel — القناة ليست قسمًا', () => {
     test('قنوات الكاشير تُوسم، والأقسام ومرآة البيع الخارجي لا', () => {
@@ -85,6 +89,31 @@ describe('buildCostAnalysisResult — وسم الصفوف', () => {
         expect(by['CAF'].external).toBe(false);
         expect(by['CAF'].profit).toBe(60);
     });
+
+    test('البطاقات تقرأ «القسم وحده» مع رمز الأب، والمجموع الشجري لا يتغير', () => {
+        const out = buildCostAnalysisResult([
+            {
+                code: 'kitchen', name: 'المطبخ', parent_code: null,
+                revenue: 900, materials: 300, transfers: 0, count_adj: 0, operating: 0, row_count: 9,
+                own_revenue: 0, own_materials: 120, own_transfers: 0, own_count_adj: 0, own_operating: 0, own_row_count: 4,
+            },
+            {
+                code: 'external_sales', name: 'قسم البيع الخارجي', parent_code: 'kitchen',
+                revenue: 900, materials: 300, transfers: 0, count_adj: 0, operating: 0, row_count: 9,
+                own_revenue: 900, own_materials: 300, own_transfers: 0, own_count_adj: 0, own_operating: 0, own_row_count: 9,
+            },
+        ]);
+        const by = Object.fromEntries(out.rows.map((r) => [r.code, r]));
+        /* الأرقام القديمة حرفًا بحرف: rev/exp/profit تبقى مجمّعة بالشجرة. */
+        expect(by['kitchen'].rev).toBe(900);
+        expect(by['kitchen'].exp).toBe(300);
+        expect(by['kitchen'].parent).toBe(null);
+        expect(by['external_sales'].parent).toBe('kitchen');
+        /* البطاقة تحتاج ما يفرّق «وحده» عن «مع فروعه». */
+        expect(by['kitchen'].own).toMatchObject({ rev: 0, exp: 120, materials: 120, rowCount: 4 });
+        expect(by['kitchen'].own.profit).toBe(-120);
+        expect(by['external_sales'].own).toMatchObject({ rev: 900, exp: 300, rowCount: 9 });
+    });
 });
 
 describe('الشاشة والطباعة والهجرة — تلتزم بالوسم نفسه', () => {
@@ -95,6 +124,63 @@ describe('الشاشة والطباعة والهجرة — تلتزم بالوس
         expect(SCREEN).toContain('result.attribution');
         expect(SCREEN).toContain('table.setRows(visible)');
         expect(SCREEN).toContain('بيع خارجي — خارج الإجمالي');
+    });
+
+    test('البطاقات: لكل قسم بطاقة بأرقامه وحده، والبيع الخارجي جذر مستقل بكاشيريه', () => {
+        expect(SCREEN).toContain('data-v2-cards-grid');
+        expect(SCREEN).toContain('function cardOrder(list)');
+        expect(SCREEN).toContain('function deptCardHtml(opts)');
+        expect(SCREEN).toContain('function cashiersByDept()');
+        /* المرآة والقنوات لهما صفوف في الجدول للمراجعة — بطاقة لكل منهما
+           توهم بالازدواج، فتُستثنى البطاقات منهما. */
+        expect(SCREEN).toContain('rows.filter((row) => !row.channel && !row.external)');
+        /* وجه البطاقة = own لا المجموع الشجري: إيراد القسم وتكلفته وحده. */
+        expect(SCREEN).toContain('const rev = num(own.rev);');
+        expect(SCREEN).toContain("label: 'إيراد القسم'");
+        expect(SCREEN).toContain("label: 'تكلفة القسم'");
+        expect(SCREEN).toContain('const value = num(own[b.key]);');
+        /* والبيع الخارجي لا يُدرج فرعًا تحت مطبخه، فلا يدخل «مع فروعه». */
+        expect(SCREEN).toContain("const CARD_STANDALONE = new Set(['external_sales']);");
+        expect(SCREEN).toContain('!standalone && parent && parent !== String(row.code)');
+        /* البطاقة المستقلة لا تُنسب لأبيها في السطر التعريفي. */
+        expect(SCREEN).toContain("const shownParent = standalone ? '' : parentName;");
+        expect(SCREEN).toContain('family: { kids: entry.kids },');
+        expect(SCREEN).toContain('مع فروعه (${formatInt(kids.length)}):');
+        /* الصفر إلى ذيل مدمج: بطاقة البيع الخارجي تلي بطاقات الحركة لا تليها. */
+        expect(SCREEN).toContain('data-v2-cards-quiet-grid');
+        expect(SCREEN).toContain('const active = entries.filter((entry) => !quietOf(entry));');
+        expect(SCREEN).toContain('أقسام بلا حركة في الفترة');
+        expect(SCREEN).toContain('erp-v2-cost-card--child');
+        expect(SCREEN).toContain('فرع من');
+        expect(SCREEN).toContain('`ys_cc_${no}`');
+        expect(SCREEN).toMatch(/كاشير \$\{esc\(c\.no\)\}/);
+        expect(SCREEN).toContain('paintKpis(t);\n        paintCards(t);');
+    });
+
+    test('جدول الأقسام والرسوم على أرقام القسم وحده، وسابقة القسم لا شجرته', () => {
+        /* الجدول كان يقرأ المجموع الشجري ثم يعيد صف البيع الخارجي وحده،
+           فيظهر الرقم مرّتين أمام المالك. */
+        expect(SCREEN).toContain("key: 'rev', header: 'إيراد القسم'");
+        expect(SCREEN).toContain("key: 'exp', header: 'تكلفة القسم'");
+        expect(SCREEN).toContain("key: 'family', header: 'مع فروعه'");
+        /* «مع فروعه» سطران مصفوفان: سلسلةٌ واحدة عريضة كانت تفيض من عمودها
+           على الشاشة فتُقطع أرقامها (الطباعة كانت تلتفّ وحدها). */
+        expect(SCREEN).toContain('render: (row) => familyCell(row, currency),');
+        expect(SCREEN).toContain('function familyCell(row, currency)');
+        expect(CHARTS_CSS).toMatch(/\.erp-v2 \.erp-v2-cost__fam \{[^}]*flex-direction: column;/);
+        expect(CHARTS_CSS).toMatch(/\.erp-v2 \.erp-v2-cost__fam-line \{[^}]*white-space: nowrap;/);
+        expect(SCREEN).toContain('const prevOwn = prevOwnByDept(previous, list);');
+        expect(SCREEN).toContain('delta: ownExp - prevExp,');
+        /* السابقة تُفصل لكل قسم: ownExp من الخادم، وخصم الأبناء المباشرين
+           عند بناءٍ أقدم لا يعطيه. */
+        expect(SCREEN).toContain('function prevOwnByDept(previous, list)');
+        expect(SCREEN).toContain('entry.ownExp != null');
+        expect(SCREEN).toContain('const prevTotal = Array.from(prevOwnByDept(previous, rows).values())');
+        expect(SCREEN).toContain('value: moneyCell(prevTotal, currency)');
+        expect(SCREEN).toContain('prevOwn,');
+        /* والهيرو يعدّ الأقسام كما تعدّها البطاقات: المرآة سطر مراجعة لا قسم. */
+        expect(SCREEN).toContain('const deptCount = departmentRows().filter((row) => !row.external).length;');
+        expect(SCREEN).toContain('note: `${formatInt(deptCount)} قسمًا مسجلًا`');
     });
 
     test('شاشة حساب القسم تنسب الإيراد إلى كاشيرات القسم من جدول 103', () => {
@@ -121,6 +207,7 @@ describe('الشاشة والطباعة والهجرة — تلتزم بالوس
 describe('قاعدة الاختبار المعزولة — الإسناد الحقيقي', () => {
     const A = 'ZZA_ATTR';
     const B = 'ZZB_ATTR';
+    const C = 'ZZC_ATTR';
     const CHANNEL = 'ys_cc_991';
     const FROM = '2001-02-01';
     const TO = '2001-02-28';
@@ -133,6 +220,10 @@ describe('قاعدة الاختبار المعزولة — الإسناد الح
                (990014, $3, 'مبيعات كاشير اختبار', NULL)
              ON CONFLICT (code) DO NOTHING`, [A, B, CHANNEL]);
         await pool.query(
+            `INSERT INTO departments (id, code, name, parent_code)
+             VALUES (990015, $1, 'قسم اختبار ج (فرع أ)', $2)
+             ON CONFLICT (code) DO NOTHING`, [C, A]);
+        await pool.query(
             `INSERT INTO dept_cashier_links (id, dept_code, cashier_no, is_primary)
              VALUES (990013, $1, '991', TRUE) ON CONFLICT (dept_code, cashier_no) DO NOTHING`, [B]);
         await pool.query(
@@ -144,13 +235,18 @@ describe('قاعدة الاختبار المعزولة — الإسناد الح
             `INSERT INTO expenses (id, "deptId", "desc", amount, date, category, "adjustmentType")
              VALUES (990023, $1, 'صرف اختبار', 40, '2001-02-12', 'مواد خام', 'dispatch')
              ON CONFLICT (id) DO NOTHING`, [B]);
+        await pool.query(
+            `INSERT INTO expenses (id, "deptId", "desc", amount, date, category, "adjustmentType")
+             VALUES (990024, $1, 'صرف على الأب', 60, '2001-02-13', 'مواد خام', 'dispatch'),
+                    (990025, $2, 'صرف على الفرع', 25, '2001-02-14', 'مواد خام', 'dispatch')
+             ON CONFLICT (id) DO NOTHING`, [A, C]);
     });
 
     afterAll(async () => {
         await pool.query('DELETE FROM revenues WHERE id = ANY($1::bigint[])', [['990021', '990022']]);
-        await pool.query('DELETE FROM expenses WHERE id = ANY($1::bigint[])', [['990023']]);
+        await pool.query('DELETE FROM expenses WHERE id = ANY($1::bigint[])', [['990023', '990024', '990025']]);
         await pool.query('DELETE FROM dept_cashier_links WHERE id = 990013');
-        await pool.query('DELETE FROM departments WHERE code = ANY($1::text[])', [[A, B, CHANNEL]]);
+        await pool.query('DELETE FROM departments WHERE code = ANY($1::text[])', [[A, B, C, CHANNEL]]);
         await pool.end().catch(() => {});
     });
 
@@ -163,5 +259,38 @@ describe('قاعدة الاختبار المعزولة — الإسناد الح
         expect(Number(by[A].revenue)).toBe(25);
         expect(Number(by[CHANNEL].revenue)).toBe(0);
         expect(Number(by[CHANNEL].materials)).toBe(0);
+    });
+
+    test('البطاقات: المجموع الشجري يدمج الفرع في أبيه و«وحده» يبقيهما منفصلين', async () => {
+        const q = costAnalysisSql(FROM, TO);
+        const { rows } = await pool.query(q.text, q.params);
+        const built = buildCostAnalysisResult(rows);
+        const by = Object.fromEntries(built.rows.map((r) => [r.code, r]));
+        expect(by[C].parent).toBe(A);
+        /* الأب: 60 صرفه + 25 صرف فرعِه = 85 مجمَّعًا، و60 وحده — البطاقة
+           تعرض الرقمين فلا يُلغى البيع الخارجي داخل مطبخه. */
+        expect(by[A].materials).toBe(85);
+        expect(by[A].own.materials).toBe(60);
+        expect(by[A].own.rowCount).toBe(1);
+        expect(by[C].materials).toBe(25);
+        expect(by[C].own.materials).toBe(25);
+    });
+
+    test('سابقة الفترة:EXP شجري للأب، وownExp رقمه وحده — والمجموع لا يتضاعف', async () => {
+        /* من 2001-02-16 إلى 2001-02-18 = 3 أيام، فالسابقة 2001-02-13 → 15:
+           فيها صرف الأب (60) وصرف الفرع (25) وحدهما. */
+        const prev = await loadPreviousCostTotals('2001-02-16', '2001-02-18');
+        expect(prev).toMatchObject({ from: '2001-02-13', to: '2001-02-15', days: 3 });
+        expect(prev.byDept[A].exp).toBe(85);
+        expect(prev.byDept[A].ownExp).toBe(60);
+        expect(prev.byDept[A].own.materials).toBe(60);
+        expect(prev.byDept[C].exp).toBe(25);
+        expect(prev.byDept[C].ownExp).toBe(25);
+        /* الأسرّة الجذرية وحدها تُجمع: جمع الأسطر الشجرية كان يعدّ تكلفة
+           الفرع مع أبيه ثم مع نفسه، فتُقرأ السابقة أضخم مما هي. */
+        expect(prev.byDept[A].exp - prev.byDept[A].ownExp).toBe(prev.byDept[C].exp);
+        expect(prev.totalExp).toBeGreaterThanOrEqual(85);
+        expect(prev.totalExp).toBeLessThan(Object.values(prev.byDept)
+            .reduce((s, d) => s + num(d.exp), 0));
     });
 });

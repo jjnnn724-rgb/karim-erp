@@ -135,17 +135,35 @@ async function refreshPunchStatus() {
     return _punchStatus;
 }
 
+/**
+ * حالة الزر الواحد للبصمة (2026-11-02): تسلسل السيرفر هو الحَكَم الوحيد —
+ * أول بصمة اليوم = دخول، الثانية = انصراف. لا يبعث الجهاز أي نيّة، والزر
+ * فقط يُعلن ما سيُسجَّل حتى لا يتلخبط الموظف بين «حضور/انصراف».
+ * today = { checkIn, checkOut } من /attendance/portal/status أو من آخر سجل مُحدَّث.
+ */
+function punchBtnState(today) {
+    const t = today || {};
+    if (t.checkIn && t.checkOut) {
+        return { done: true, label: 'اكتمل تسجيل اليوم', hint: `حضور ${t.checkIn} · انصراف ${t.checkOut}` };
+    }
+    if (t.checkIn) {
+        return { done: false, label: 'بصمة الانصراف', hint: 'البصمة الثانية تُسجَّل انصرافًا' };
+    }
+    return { done: false, label: 'بصمة الدخول', hint: 'أول بصمة اليوم تُسجَّل حضورًا' };
+}
+
 function punchCardInnerHTML() {
     const s = _punchStatus || {};
     const enabled = Boolean(s.enabled) && Boolean(s.hasEmployeeProfile);
     const chip = enabled
         ? '<span class="punch-status-chip enabled">● البصمة الذاتية مفعّلة</span>'
         : '<span class="punch-status-chip disabled">● البصمة الذاتية غير متاحة حاليًا</span>';
+    const ps = punchBtnState(s.today);
     const btn = enabled
-        ? `<button type="button" id="punchBtn" class="punch-btn">
-             <i class="ji" data-i="clock"></i> تسجيل البصمة الآن
+        ? `<button type="button" id="punchBtn" class="punch-btn" ${ps.done ? 'disabled' : ''}>
+             <i class="ji" data-i="clock"></i> ${ps.label}
            </button>
-           <div class="punch-meta">سيُثبّت وقت بصمتك من ساعة السيرفر — يلزم السماح بالموقع</div>
+           <div class="punch-meta">${ps.hint} — يُثبَّت الوقت من ساعة السيرفر ويلزم السماح بالموقع</div>
            <div id="punchResult" class="punch-result ${_lastPunchResult ? _lastPunchResult.cls : ''}">${_lastPunchResult ? _lastPunchResult.text : ''}</div>`
         : `<button type="button" id="punchBtn" class="punch-btn punch-btn-off" disabled>
              البصمة الذاتية غير مفعّلة بعد
@@ -714,7 +732,9 @@ function collectLocationFixes(onFix) {
     })();
 }
 
-async function mobileDoPunch(intent) {
+async function mobileDoPunch() {
+    // لا نيّة من الجهاز إطلاقًا (2026-11-02): المحرك يقرر دخولًا أم انصرافًا
+    // من تسلسل السطر المفتوح — أول بصمة = حضور، الثانية = انصراف.
     if (_punchBusy) {return;}
     _lastPunchResult = null; // بصمة جديدة تمسح نتيجة المحاولة السابقة
     const btn = document.getElementById('punchBtn');
@@ -747,8 +767,10 @@ async function mobileDoPunch(intent) {
     const finish = () => {
         _punchBusy = false;
         if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="ji" data-i="clock"></i> تسجيل البصمة الآن';
+            // الزر يعود بحالته من تسلسل اليوم — بعد اكتمال حضور+انصراف يبقى معطّلًا
+            const ps = punchBtnState(_punchStatus?.today);
+            btn.disabled = ps.done;
+            btn.innerHTML = '<i class="ji" data-i="clock"></i> ' + ps.label;
         }
     };
 
@@ -756,7 +778,6 @@ async function mobileDoPunch(intent) {
         try {
             const payload = {
                 deviceId: mobileDeviceId(),
-                intent: intent || null, // نيّة الزر (in/out) — المحرك الذكي يقرر
                 location: locPayload,
             };
             if (faceDescriptor) {payload.faceDescriptor = faceDescriptor;}
@@ -767,11 +788,17 @@ async function mobileDoPunch(intent) {
             });
             const action = res?.action === 'check_in' ? '✅ تم تسجيل الحضور'
                 : res?.action === 'check_out' ? '✅ تم تسجيل الانصراف'
-                    : '✅ تم تسجيل البصمة';
+                    : res?.decision?.review ? '✅ سُجّلت بصمتك — تحت المراجعة'
+                        : '✅ تم تسجيل البصمة';
             try {
                 // مزامنة STATE المحلي من سجل السيرفر (نفس ما كان يفعله المسار القديم)
                 if (res?.record && typeof window.upsertStateEntity === 'function') {
                     window.upsertStateEntity('attendance', res.record);
+                }
+                // حالة اليوم الحية من رد السيرفر — الزر يقلب عنوانه فورًا
+                // (بصمة تالية = انصراف) دون انتظار جلب الحالة من جديد.
+                if (res?.record && _punchStatus) {
+                    _punchStatus = { ..._punchStatus, today: { checkIn: res.record.checkIn, checkOut: res.record.checkOut } };
                 }
                 if (typeof window.renderPage === 'function' && window.STATE?.page) {
                     window.renderPage();
@@ -1027,6 +1054,7 @@ export {
     mobileShellRefresh,
     resetMobileShellSession,
     mobileDoPunch,
+    punchBtnState,
     mobileDeviceId,
     renderMobileNav,
     refreshPunchStatus,

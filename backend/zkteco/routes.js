@@ -357,15 +357,46 @@ router.post('/devices/:id/import-users', jwtAuth, requireRole(...WRITE_ROLES), a
 });
 
 // ─── ربط الموظفين بأرقام البصمة ──────────────────────────────────────────────
+/**
+ * تفاصيل الربط عند الاستعلام (2026-11-02): المعرّف الأساسي وحده لا يكفي للتحقيق،
+ * لأن الجهاز يخزّن لكل حساب رقمين (uid داخلي + userId يُرسَل مع البصمة) ويُعيد
+ * ترقيمَهما فيُصبح uid موظفٍ ما = userId جاره. السطر يُظهر الحسابَ كما يراه
+ * الجهاز، والبديلَ المخزَّن، ومن يملك البديلَ أصلًا — فتُرى المخاطرة لا تُستنتج.
+ */
 router.get('/mappings', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const { rows } = await pool.query(
-            `SELECT e.id, e.name, e."employeeId", e.department, e.status, e."deviceUserId",
-                    (SELECT COUNT(*)::int FROM attendance_logs l
-                      WHERE l."employeeId" = e.id
-                        AND l."attendanceTime" >=
-                            date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') AS "todayPunches"
-             FROM employees e
+            `WITH agg AS (
+                SELECT l."employeeId" AS emp,
+                       (COUNT(*) FILTER (WHERE l."attendanceTime" >=
+                           date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int AS today,
+                       (COUNT(*) FILTER (WHERE l."attendanceTime" >= NOW() - INTERVAL '30 days'))::int AS last30
+                  FROM attendance_logs l GROUP BY 1
+             )
+             SELECT e.id, e.name, e."employeeId", e.department, e.status,
+                    e."deviceUserId", e."deviceUserIdAlt",
+                    COALESCE(agg.today, 0)::int AS "todayPunches",
+                    COALESCE(agg.last30, 0)::int AS "punches30d",
+                    acct.uid::text  AS "deviceUidOfAccount",
+                    acct.name       AS "deviceAccountName",
+                    owner.name      AS "altOwnedBy",
+                    owner."employeeId" AS "altOwnedByNumber"
+               FROM employees e
+               LEFT JOIN agg ON agg.emp = e.id
+               LEFT JOIN LATERAL (
+                    SELECT d.uid, d.name
+                      FROM zk_device_users d
+                      JOIN attendance_devices ad ON ad.id = d."deviceId" AND ad.enabled = TRUE
+                     WHERE btrim(d."userId") = btrim(e."deviceUserId")
+                     ORDER BY d."deviceId", d.uid LIMIT 1
+               ) acct ON e."deviceUserId" IS NOT NULL AND btrim(e."deviceUserId") <> ''
+               LEFT JOIN LATERAL (
+                    SELECT o.name, o."employeeId"
+                      FROM employees o
+                     WHERE o.id <> e.id
+                       AND btrim(o."deviceUserId") = btrim(e."deviceUserIdAlt")
+                     LIMIT 1
+               ) owner ON e."deviceUserIdAlt" IS NOT NULL AND btrim(e."deviceUserIdAlt") <> ''
              ORDER BY e.name`
         );
         const unmapped = (await pool.query(
@@ -396,11 +427,24 @@ router.put('/mappings/:employeeId', jwtAuth, requireRole(...WRITE_ROLES), async 
             }
         }
         const { rows } = await pool.query(
-            `UPDATE employees SET "deviceUserId" = $1 WHERE id = $2
-             RETURNING id, name, "employeeId", "deviceUserId"`,
+            // تغييرُ المعرّف الأساسي يُبطل البديل: البديلُ المشتقُّ من الرقم القديم
+            // قد يكون رقم زميلٍ حيّ، وتركُه يفتح بابَ نسبة بصمةٍ يتيمةٍ لغير صاحبها.
+            `UPDATE employees SET "deviceUserId" = $1, "deviceUserIdAlt" = NULL
+              WHERE id = $2
+              RETURNING id, name, "employeeId", "deviceUserId"`,
             [deviceUserId, employeeId]
         );
         if (!rows[0]) {return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });}
+        if (deviceUserId) {
+            // من كان يتوهّم أن هذا الرقم بديلُه يفقده الآن: صار معرّفًا أساسيًا لموظفٍ آخر
+            await pool.query(
+                `UPDATE employees SET "deviceUserIdAlt" = NULL
+                  WHERE id <> $1
+                    AND "deviceUserIdAlt" IS NOT NULL AND btrim("deviceUserIdAlt") <> ''
+                    AND btrim("deviceUserIdAlt") = $2`,
+                [employeeId, deviceUserId]
+            );
+        }
         res.json(rows[0]);
     } catch (error) {
         logger.error('[zkteco/mappings:update]', error);
@@ -437,7 +481,17 @@ router.post('/mappings/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, 
                 'SELECT id FROM employees WHERE "deviceUserId" = $1 LIMIT 1', [String(emp.employeeId)]
             );
             if (clash.rows[0]) {continue;}
-            await pool.query('UPDATE employees SET "deviceUserId" = $1 WHERE id = $2', [String(emp.employeeId), emp.id]);
+            await pool.query(
+                `UPDATE employees SET "deviceUserId" = $1, "deviceUserIdAlt" = NULL WHERE id = $2`,
+                [String(emp.employeeId), emp.id]
+            );
+            await pool.query(
+                `UPDATE employees SET "deviceUserIdAlt" = NULL
+                  WHERE id <> $1
+                    AND "deviceUserIdAlt" IS NOT NULL AND btrim("deviceUserIdAlt") <> ''
+                    AND btrim("deviceUserIdAlt") = $2`,
+                [emp.id, String(emp.employeeId)]
+            );
             linked += 1;
             linkedNames.push(emp.name);
         }
@@ -672,6 +726,27 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
     } catch (error) {
         logger.error('[ZKTECO] coverage failed:', error.message);
         res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: error.message });
+    }
+});
+
+// ─── مطابقة بصمات الجهاز بسجلّ النظام (2026-11-02) ─────────────────────
+// دفترُ الجهاز (attendance_logs) مقابل دفترِ النظام (attendance): أيّ بصمة
+// وصلت ولم تُسجَّل، وأيّ صفِّ حضورٍ بلا بصمة. قراءةٌ فقط — لا تعديل.
+router.get('/reconciliation', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const { deviceSystemReconciliation } = require('../attendance-reconciliation');
+        const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+        const report = await deviceSystemReconciliation({
+            from: iso(req.query.from),
+            to: iso(req.query.to),
+            employeeId: req.query.employeeId ?? null,
+            deviceId: req.query.deviceId ?? null,
+            limit: req.query.limit,
+        });
+        res.json(report);
+    } catch (error) {
+        logger.error('[ZKTECO] reconciliation failed:', error.message);
+        res.status(500).json({ error: 'ZK_RECONCILIATION_FAILED', message: error.message });
     }
 });
 

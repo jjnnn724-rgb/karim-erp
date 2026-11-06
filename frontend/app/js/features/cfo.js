@@ -423,10 +423,10 @@ function cfoPrintShell(title, body){
   if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
   w.document.write(`<!DOCTYPE html><html dir="${STATE.lang === 'en' ? 'ltr' : 'rtl'}"><head><meta charset="UTF-8"><title>${esc(title)}</title>
   <style>body{font-family:'Cairo',Arial,sans-serif;padding:28px;color:#1a1a1a}
-  .hd{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:18px}
-  .hd h1{margin:0 0 4px;color:#b45309;font-size:24px}.hd p{margin:3px 0;color:#555;font-size:13px}
+  .hd{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:18px}
+  .hd h1{margin:0 0 4px;color:#0f5b46;font-size:24px}.hd p{margin:3px 0;color:#555;font-size:13px}
   table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #bbb;padding:8px;text-align:center;font-size:13px}
-  th{background:#f4ead2}.tot td{font-weight:900;background:#fafafa}
+  th{background:#e8f2ec}.tot td{font-weight:900;background:#fafafa}
   .sig{display:flex;justify-content:space-between;margin-top:48px}.sig div{border-top:1px solid #555;padding-top:6px;width:28%;text-align:center;font-size:12px}
   .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.btn-print{background:#2e9e5b;color:#fff}.btn-close{background:#c0392b;color:#fff}
   @media print{.controls{display:none}body{padding:0}}</style></head><body>

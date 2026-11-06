@@ -188,7 +188,7 @@ function raRenderAlerts() {
     const box = document.getElementById('raAlerts');
     if (!box) { return; }
     if (RA.tab !== 'outflow' || !RA.outflowAlerts.length) { box.innerHTML = ''; return; }
-    const colors = { danger: '#dc2626', warning: '#d97706', info: '#2563eb' };
+    const colors = { danger: '#dc2626', warning: '#0e5c45', info: '#2563eb' };
     const icons = { danger: 'alert-triangle', warning: 'alert-triangle', info: 'info' };
     box.innerHTML = RA.outflowAlerts.slice(0, 6).map((a) => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;margin-bottom:6px;background:${colors[a.type]}11;border:1px solid ${colors[a.type]}33;font-size:13px">
@@ -214,7 +214,7 @@ function raRenderCards(t) {
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center"><div class="u-dim" style="font-size:12px">إجمالي المصروف</div><b style="font-size:22px" class="c-red">${raNum(t.qty_out)}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center"><div class="u-dim" style="font-size:12px">الصافي</div><b style="font-size:22px" class="c-gold">${raNum(Number(t.qty_in) - Number(t.qty_out))}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;${negCount ? 'border:2px solid #dc2626;' : ''}"><div class="u-dim" style="font-size:12px">رصيد سالب</div><b style="font-size:22px;${negCount ? 'color:#dc2626' : ''}">${raNum(negCount)}</b></div>
-          <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;${lowCount ? 'border:2px solid #d97706;' : ''}"><div class="u-dim" style="font-size:12px">رصيد منخفض</div><b style="font-size:22px;${lowCount ? 'color:#d97706' : ''}">${raNum(lowCount)}</b></div>`;
+          <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;${lowCount ? 'border:2px solid #0e5c45;' : ''}"><div class="u-dim" style="font-size:12px">رصيد منخفض</div><b style="font-size:22px;${lowCount ? 'color:#0e5c45' : ''}">${raNum(lowCount)}</b></div>`;
         return;
     }
     box.innerHTML = `
@@ -263,8 +263,8 @@ function raRenderOutflow() {
     raRenderCards(RA.outflowTotals);
     const alertBadge = (a) => {
         if (a === 'negative') { return '<span class="badge bdg-red">سالب</span>'; }
-        if (a === 'depleted') { return '<span class="badge" style="background:#fef3c7;color:#92400e">صفر</span>'; }
-        if (a === 'low') { return '<span class="badge" style="background:#fef3c7;color:#92400e">منخفض</span>'; }
+        if (a === 'depleted') { return '<span class="badge" style="background:#fef3c7;color:#0a3d2f">صفر</span>'; }
+        if (a === 'low') { return '<span class="badge" style="background:#fef3c7;color:#0a3d2f">منخفض</span>'; }
         return '<span class="badge bdg-green">سليم</span>';
     };
     const rowsHtml = RA.outflowRows.map((r, i) => {
@@ -384,7 +384,7 @@ async function raOpenDispatch(id) {
             <span>وقت الاستلام: <b dir="ltr">${raEscape(String(disp.received_at || '').slice(0, 16).replace('T', ' '))}</b></span>
             <span>أنشأها: <b>${raEscape(disp.created_by || '—')}</b></span>
           </div>
-          ${disp.receipt_notes ? `<div style="padding:8px 14px;background:#fffbeb;border-radius:8px;margin:8px 0;font-size:13px"><b>ملاحظات:</b> ${raEscape(disp.receipt_notes)}</div>` : ''}
+          ${disp.receipt_notes ? `<div style="padding:8px 14px;background:#f2f8f4;border-radius:8px;margin:8px 0;font-size:13px"><b>ملاحظات:</b> ${raEscape(disp.receipt_notes)}</div>` : ''}
           <div class="tbl-scroll"><table class="tbl">
             <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>معتمد</th><th>مستلم</th><th>الفرق</th></tr></thead>
             <tbody>${rowsHtml || `<tr><td colspan="6" class="u-empty">لا أصناف</td></tr>`}</tbody>
@@ -478,7 +478,7 @@ function raPrintItemsReport() {
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الاستلام</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#0f172a;color:#dcede4}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
@@ -504,7 +504,7 @@ function raPrintOutflowReport() {
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير المصروفات والاستهلاك</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#dcede4}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
@@ -527,7 +527,7 @@ function raPrintDispatchesReport() {
     if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'warning'); return; }
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير أذونات الصرف</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #999;padding:6px;text-align:center}th{background:#0f172a;color:#dcede4}
     .controls{text-align:center;margin-bottom:16px}.controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
     .bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>

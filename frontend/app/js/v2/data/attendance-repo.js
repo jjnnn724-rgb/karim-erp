@@ -41,12 +41,8 @@
  *       NOTE: PUT /api/leaveRequests/:id refuses the decision keys
  *       (server.js: 405 LEAVE_WORKFLOW_REQUIRED) — decisions stay on the
  *       chain, so this file never edits a leave status.
- *     • POST /api/hr/attendance/scan           hr-routes.js:421
- *     • POST /api/hr/attendance/revert-inferred hr-routes.js:530 (admin only)
- *     • POST /api/hr/shifts/apply              hr-routes.js:1067
- *     • GET  /api/hr/shifts/analysis           hr-routes.js:1052
  *     • GET  /api/hr/strict-audit              hr-routes.js:409
- *     • GET  /api/hr/attendance/monthly        hr-routes.js:331
+ *     • GET  /api/hr/attendance/monthly        hr-routes.js:315
  *     • GET  /api/settings/main_settings       (workStartHour, the same
  *       fallback the current screen reads from STATE.settings)
  *   Every validation message and every audit-note format below is copied
@@ -64,7 +60,7 @@
  *   own scope so a subset never reads as the whole period.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.194';
+import { apiFetch } from '../../core/api.js?v=4.9.296';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(\d{1,2}):(\d{2})$/;
@@ -372,24 +368,15 @@ export function attWriteVisible(role) {
     return ATT_WRITE_ROLES.includes(String(role || ''));
 }
 
-/** أدوات الشريط السبع، بتوزيع الشاشة الحالية نفسه (features/hr.js:163-170):
- *  رئيس القسم لا يرى إلا التصدير، و«إلغاء الاستكمال للكل» للمدير العام وحده
- *  (hr-routes.js:530 requireRole('admin')).
- *
- *  انحرافان معلانان عن التوزيع القديم:
- *   1. «مراجعة النواقص» و«التدقيق الصارم» و«الكشف الشهري» مقصورة على
- *      admin|hr|manager بدل !dept_head — فالثلاثة أبوابُ خادمها يرفض غير
- *      هذه الأدوار (403)، وقائمة النواقص تُشتق من سجلات الفترة كاملة،
- *      ومن لا يقرأها كلها يرى غيابًا مختلَقًا لمن لا يراهم.
- *   2. «مسح بطاقة» و«الورديات» كذلك (كتابةٌ محكومة بالدور نفسه). */
+/** أدوات الشريط المتبقية بعد قرار المالك 2026-11-05
+ *  (أُزيل «مسح بطاقة» و«الورديات من البصمة» و«إلغاء الاستكمال للكل»):
+ *  رئيس القسم لا يرى إلا التصدير؛ الباقي admin|hr|manager. */
 export const ATT_TOOL_DEFS = [
-    { id: 'scan', label: 'مسح بطاقة موظف', icon: 'camera', gate: 'write', deptHead: false },
-    { id: 'shifts', label: 'الورديات — تطبيق وإعادة حساب', icon: 'clock', gate: 'write', deptHead: false },
     { id: 'export', label: 'تصدير Excel', icon: 'download', gate: 'read', deptHead: true },
     { id: 'monthly', label: 'كشف شهري مجمع', icon: 'printer', gate: 'admin', deptHead: false },
     { id: 'audit', label: 'تدقيق صارم', icon: 'shield-check', gate: 'admin', deptHead: false },
+    { id: 'trail', label: 'سجل تعديلات الحضور', icon: 'history', gate: 'admin', deptHead: false },
     { id: 'gaps', label: 'مراجعة نواقص الشهر', icon: 'alert-triangle', gate: 'admin', deptHead: false },
-    { id: 'revert', label: 'إلغاء الاستكمال للكل', icon: 'undo', gate: 'owner', deptHead: false },
 ];
 
 /** @returns {typeof ATT_TOOL_DEFS} الأدوات التي يراها هذا الدور */
@@ -414,8 +401,16 @@ export function seesFullPeriod(role) {
 
 /* ── حساب الوقت والتأخير (hr.js:401-408 و :500-505) ───────────────────── */
 
-/** سماحية التأخير — قرار المالك 2026-10-10، والمحرك والخادم يعملان بها. */
-export const GRACE_MIN = 15;
+/** سماحية التأخير — قرار المالك 2026-11-05: **صفر** (التأخير من أول دقيقة
+ *  بعد بداية دوام البطاقة). تُقرأ القيمة الفعلية من window.ATT_GRACE_MIN. */
+export const GRACE_MIN = 0; // والقيمة الفعلية من graceMin()
+
+/** السماحية الفعلية كما يرسلها الخادم (0 افتراضيًا). تُقرأ **وقت الاستدعاء**
+ *  لا وقت التحميل. */
+export function graceMin() {
+    const raw = typeof window === 'undefined' ? NaN : Number(window.ATT_GRACE_MIN);
+    return Number.isFinite(raw) && raw >= 0 ? raw : GRACE_MIN;
+}
 
 /** صيغة خانة الوقت كما تتحقق منها الشاشة الحالية (hr.js:422/:496). */
 export const TIME_INPUT_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -452,7 +447,7 @@ export function calcPunchTimes({ checkIn = '', checkOut = '', shiftStart = '09:0
         workMinutes = d;
     }
     const start = toMinutes(shiftStart);
-    const late = (ci !== null && start !== null) ? ci > start + GRACE_MIN : !!keepLate;
+    const late = (ci !== null && start !== null) ? ci > start + graceMin() : !!keepLate;
     return { workMinutes, late };
 }
 
@@ -570,51 +565,6 @@ export function buildExcusePayload({ employeeId, date, reason, kind = 'approved'
     return payload;
 }
 
-/* ── بطاقة QR: فحصٌ قبل الشبكة ─────────────────────────────────────────── */
-
-/** رسالة الرفض التي يعرفها المشغّل (hr.js:517-518) — تسمّي البطاقة
- *  الصالحة بدل أن تتركه يخمّن. */
-export const QR_INVALID_MESSAGE = 'الكود الممسوح غير صالح — استخدم بطاقة موظف صادرة من مطاعم الشرفه العالمي';
-
-/**
- * قواعد الخادم (hr-routes.js:424) حرفيًا: system/type/employeeId/cardId/
- * token/signature.
- * انحراف معلن: الشاشة الحالية تقبل system باسم التطبيق أيضًا
- * (CONFIG.APP_NAME = 'مطاعم الشرفه العالمي') والخادم لا يقبل إلا
- * 'Karim ERP'، فتصل البطاقة إلى 422 بعد المسح؛ هنا يُرفض محليًا ما
- * سيرفضه الخادم حتمًا.
- * @returns {{ok:true, data:object}|{ok:false, message:string}}
- */
-export function parseScanPayload(text) {
-    let data = text;
-    if (typeof text === 'string') {
-        try { data = JSON.parse(text); } catch { return { ok: false, message: QR_INVALID_MESSAGE }; }
-    }
-    if (!data || typeof data !== 'object') {return { ok: false, message: QR_INVALID_MESSAGE };}
-    if (data.system !== 'Karim ERP' || data.type !== 'employee_card'
-        || !data.employeeId || !data.cardId || !data.token || !data.signature) {
-        return { ok: false, message: QR_INVALID_MESSAGE };
-    }
-    return { ok: true, data };
-}
-
-/* ── الورديات: النص والاقتراح والنتيجة ─────────────────────────────────── */
-
-export const SHIFTS_TEXT_MAX = 8000;         // hr-routes.js:1069
-export const SHIFTS_DRIFT_MIN = 30;          // hr.js:1022
-export const SHIFTS_SUGGEST_CAP = 200;       // hr.js:1027
-
-/** الخادم يقصّ النص عند 8000 حرف بلا رسالة (slice) — فالأسطر الزائدة
- *  تُطبَّق صامتةً ناقصة. الرفض هنا يعلن ما كان سيضيع. */
-export function validateShiftsText(text) {
-    const t = String(text || '').trim();
-    if (!t) {return { ok: false, message: 'اكتب الورديات أولاً' };}
-    if (t.length > SHIFTS_TEXT_MAX) {
-        return { ok: false, message: `النص ${formatInt(t.length)} حرفًا والحد ${formatInt(SHIFTS_TEXT_MAX)} — قسّمه على دفعتين` };
-    }
-    return { ok: true, text: t };
-}
-
 /** الشهر YYYY-MM من أي تاريخ، وإلا '' (لا شهر مُخترَع). */
 export function monthOf(isoDate) {
     const s = String(isoDate || '').slice(0, 7);
@@ -628,64 +578,6 @@ export function validateMonth(month) {
     const n = Number(m.slice(5, 7));
     if (n < 1 || n > 12) {throw new Error('شهر غير صالح');}
     return m;
-}
-
-/**
- * أسطر الورديات المقترحة من واقع البصمة لمن لم يُذكر في النص — نية
- * hr.js:1019-1031: فجوة ≥ 30 دقيقة، استبعاد المذكور، 200 سطرًا كحدٍّ أقصى.
- * انحراف معلن: المقارنة هنا بلا حساسية حالة الأحرف، و`emp- 19` (بمسافات)
- * تُعد ذكرًا للموظف — أما هناك فـ `\s` داخل نصٍّ عادي ليست escape صالحًا
- * فتصبح /emp-s*19/ ولا تطابق شيئًا أبدًا، والاسم اللاتيني يُقارن
- * بحالتيه فيُكرَّر.
- * @returns {string[]} أسطر «الاسم realityP25» جاهزة للإلحاق
- */
-export function suggestShiftLines(text, analysisItems = []) {
-    const base = String(text || '');
-    const lower = base.toLowerCase();
-    const items = Array.isArray(analysisItems) ? analysisItems : [];
-    const mentionedById = (id) => new RegExp(`emp-\\s*${String(id).replace(/[^\w-]/g, '')}\\b`, 'i').test(base);
-    const extra = items
-        .filter((x) => Math.abs(Number(x && x.driftMinutes) || 0) >= SHIFTS_DRIFT_MIN)
-        .filter((x) => {
-            const name = String((x && x.name) || '');
-            if (name && lower.includes(name.toLowerCase())) {return false;}
-            if (mentionedById(x && x.id)) {return false;}
-            return !name.toLowerCase().split(/\s+/).some((w) => w.length >= 3 && lower.includes(w));
-        })
-        .slice(0, SHIFTS_SUGGEST_CAP);
-    return extra.map((x) => `${x.name} ${x.realityP25}`);
-}
-
-/** يلحق الأسطر المقترحة بالنص — سطرٌ لكل اقتراح، وبلا إلحاق إن لم يوجد. */
-export function withSuggestedLines(text, lines = []) {
-    const base = String(text || '');
-    return lines.length ? `${base}\n${lines.join('\n')}` : base;
-}
-
-/**
- * نتيجة التطبيق مقروءةً من الحقول الحقيقية.
- * انحراف معلن عن hr.js:1039: هناك `res.failed.slice(0,5)` والخادم يرسل
- * failed عددًا و failures مصفوفة نصوص (shifts-engine.js:144-145)، فالسطر
- * يخرج «غير مطبق: undefined» أو لا يخرج؛ هنا العدد من failed والأسامي من
- * failures، وإن خلا المصفوفة يُقال العدد وحده.
- * @returns {string[]} سطور النتيجة (تُعرض pre-line كما في الشاشة الحالية)
- */
-export function formatShiftsResult(res = {}) {
-    const rc = (res && res.recompute) || {};
-    const failures = Array.isArray(res && res.failures) ? res.failures : [];
-    const failedCount = Number(res && res.failed) || failures.length;
-    const lines = [
-        `تطبيق: ${formatInt(res && res.applied)}/${formatInt(res && res.parsed)} موظف`,
-        `أيام التأخير: ${formatInt(rc.lateDaysBefore)} → ${formatInt(rc.lateDaysAfter)}`,
-        `دقائق التأخير: ${formatInt(rc.lateMinutesBefore)} → ${formatInt(rc.lateMinutesAfter)}`,
-    ];
-    if (failedCount > 0) {
-        const names = failures.slice(0, 5).map((f) => String(f || '').trim()).filter(Boolean);
-        lines.push(names.length
-            ? `غير مطبق (${formatInt(failedCount)}): ${names.join(' · ')}`
-            : `غير مطبق: ${formatInt(failedCount)} سطر`);
-    }
-    return lines;
 }
 
 /* ── التدقيق الصارم (hr-routes.js:409) ─────────────────────────────────── */
@@ -727,6 +619,62 @@ export function summarizeAudit(res = {}) {
             FAIL: rows.filter((r) => r.status === 'FAIL').length,
         },
     };
+}
+
+/* ── سجلّ تدقيق الحضور (backend/attendance-governance.js) ───────────────── */
+
+/** تسميات الأفعال — نفس أفعال الخادم (AUDIT_ACTIONS) لا ترجمةً مختلَقة. */
+export const ATT_AUDIT_ACTIONS_AR = { create: 'إضافة', update: 'تصحيح', delete: 'حذف' };
+
+/**
+ * GET /api/attendance/audit — بوابة الخادم admin|hr|manager.
+ * كل تعديلٍ على الحضور يترك سطرًا دائمًا: من غيّر، ماذا، متى، ولماذا.
+ * @returns {Promise<{rows:any[], total:number, limit:number, offset:number}>}
+ */
+export async function fetchAttendanceAudit({ from = '', to = '', employeeId = '', actorId = '', action = '', limit = 200, offset = 0 } = {}) {
+    const q = new URLSearchParams();
+    if (DATE_RE.test(String(from))) {q.set('from', String(from));}
+    if (DATE_RE.test(String(to))) {q.set('to', String(to));}
+    if (employeeId !== '' && employeeId !== null && employeeId !== undefined) {q.set('employeeId', String(employeeId));}
+    if (actorId !== '' && actorId !== null && actorId !== undefined) {q.set('actorId', String(actorId));}
+    if (action) {q.set('action', String(action));}
+    q.set('limit', String(Math.min(500, Math.max(1, Number(limit) || 200))));
+    q.set('offset', String(Math.max(0, Number(offset) || 0)));
+    const res = await apiFetch(`/attendance/audit?${q.toString()}`);
+    return {
+        rows: Array.isArray(res && res.rows) ? res.rows : [],
+        total: Number(res && res.total) || 0,
+        limit: Number(res && res.limit) || 200,
+        offset: Number(res && res.offset) || 0,
+    };
+}
+
+/** سطر التدقيق → صفّ عرض: ما تغيّر (قبل ← بعد)، والسبب، ومَن غيّره. */
+export function auditEditRows(res = {}) {
+    const rows = Array.isArray(res && res.rows) ? res.rows : [];
+    return rows.map((r) => {
+        const changes = (r && r.changedFields && typeof r.changedFields === 'object') ? r.changedFields : {};
+        const fields = Object.keys(changes).map((k) => ({
+            field: k,
+            before: changes[k] && changes[k].before !== undefined ? changes[k].before : null,
+            after: changes[k] && changes[k].after !== undefined ? changes[k].after : null,
+        }));
+        const action = String((r && r.action) || '');
+        return {
+            id: r && r.id,
+            action,
+            actionAr: ATT_AUDIT_ACTIONS_AR[action] || action || '—',
+            tone: action === 'delete' ? 'danger' : action === 'create' ? 'success' : 'warning',
+            employeeName: String((r && r.employee_name) || '—'),
+            employeeNo: String((r && r.employee_no) || '—'),
+            actorName: String((r && r.actorName) || '—'),
+            actorRole: String((r && r.actorRole) || ''),
+            reason: String((r && r.reason) || ''),
+            source: String((r && r.source) || ''),
+            at: r && r.createdAt ? String(r.createdAt) : '',
+            fields,
+        };
+    });
 }
 
 /* ── الكشف الشهري المجمع (hr-routes.js:331) ────────────────────────────── */
@@ -1030,7 +978,11 @@ export const ATT_SHEET_COLS = ['التاريخ', 'الموظف', 'الحضور',
 
 /** تسميات المصدر من الشاشة الحالية (hr.js:557) — وأي مصدر جديد يُقرأ
  *  كما ورد بدل أن يُترجم إلى «يدوي» كذبًا. */
-export const ATT_SOURCE_AR = { device: 'بصمة', qr: 'QR', portal: 'كاميرا التطبيق', backfill: 'أرشيف' };
+export const ATT_SOURCE_AR = {
+    device: 'بصمة', qr: 'QR', portal: 'كاميرا التطبيق', backfill: 'أرشيف',
+    // المصادر الآلية كانت تُعرض خامًا («builder») فتُقرأ كأنها إدخال بشري.
+    builder: 'محرّك الجلسات (آلي)', repair: 'إصلاح آلي', manual: 'إدخال يدوي', api: 'واجهة API',
+};
 
 export function sourceLabelAr(source) {
     const s = String(source || '');
@@ -1083,51 +1035,6 @@ export function createAttendance(payload) {
  *  ينشئ سلسلة اعتماد مكتملة لأي طلب حالته approved. */
 export function createApprovedLeave(payload) {
     return apiFetch('/leaveRequests', { method: 'POST', body: JSON.stringify(payload) });
-}
-
-/**
- * POST /api/hr/attendance/scan — hr-routes.js:421 (admin|hr|manager +
- * QR_SECRET). الجسم {qr_payload} كما يتوقعه الخادم (:423)، والفحص المحلي
- * قبل الإرسال (parseScanPayload). أخطاء الخادم المقروءة: 422
- * INVALID_EMPLOYEE_QR / INVALID_QR_SIGNATURE / STALE_EMPLOYEE_QR، و409
- * SHIFT_LOCKED / ATTENDANCE_COMPLETE.
- * @returns {Promise<{action:'check_in'|'check_out', employee:object, record:object}>}
- */
-export function scanAttendance(qrPayload) {
-    return apiFetch('/hr/attendance/scan', { method: 'POST', body: JSON.stringify({ qr_payload: qrPayload }) });
-}
-
-/** رسالة نتيجة المسح — نفس جملة الشاشة الحالية (hr.js:525-526). */
-export function scanResultText(res = {}) {
-    const action = res && res.action === 'check_in' ? 'تسجيل حضور' : 'تسجيل انصراف';
-    const who = (res && res.employee && res.employee.name) || '—';
-    const rec = (res && res.record) || {};
-    const time = res && res.action === 'check_in' ? (rec.checkIn || '—') : (rec.checkOut || '—');
-    return `${action}: ${who} — ${time}`;
-}
-
-/** POST /api/hr/attendance/revert-inferred — hr-routes.js:530 (admin فقط).
- *  الجملة التي تُعرض قبل التنفيذ هي نفسها في الشاشة الحالية
- *  (features/employees.js:140) حتى لا يختلف وزن القرار بين الشاشتين. */
-export const REVERT_INFERRED_CONFIRM = 'إلغاء كل الاستكمال التلقائي؟ ستُمسح القيم المستنتَجة ويُعاد فتح الصفوف. القيم الحقيقية لن تُمس.';
-
-export function revertInferred() {
-    return apiFetch('/hr/attendance/revert-inferred', { method: 'POST', body: JSON.stringify({}) });
-}
-
-/** رسالة نتيجة الإلغاء الجماعي — features/employees.js:146 حرفيًا. */
-export function revertResultText(res = {}) {
-    return `تم: مسح خروج ${formatInt(res && res.clearedCheckouts)} — مسح دخول ${formatInt(res && res.clearedCheckins)} — حذف فارغ ${formatInt(res && res.deletedEmpty)}`;
-}
-
-/** GET /api/hr/shifts/analysis?month= — hr-routes.js:1052. */
-export function fetchShiftsAnalysis(month) {
-    return apiFetch(`/hr/shifts/analysis?month=${encodeURIComponent(validateMonth(month))}`);
-}
-
-/** POST /api/hr/shifts/apply — hr-routes.js:1067 (نص ≤ 8000 حرف). */
-export function applyShifts(text) {
-    return apiFetch('/hr/shifts/apply', { method: 'POST', body: JSON.stringify({ text: String(text || '') }) });
 }
 
 /** GET /api/hr/strict-audit?month= — hr-routes.js:409 (ADMIN_ROLES). */

@@ -582,6 +582,17 @@
   }
   .erp-v2 .erp-shell__integrations > .erp-btn span { display: none; }
 
+  /* بند «رأس AppLayout يتجاوز العرض عند الموبايل» — مغلق 2026-11-03:
+     شريحة الملف الشخصي (الجلسات + خروج) كانت تنطق نصًّا كاملًا داخل صفٍ
+     لا ينثني، فقاست 25px تجاوزًا على المستند عند ٣٢٠ (345 مقابل 320).
+     تصبح أيقونةً فقط كما بقية أدوات الرأس، والاسم يبقى في aria-label. */
+  .erp-v2 .erp-shell__actions .erp-row-wrap > .erp-btn span { display: none; }
+  .erp-v2 .erp-shell__actions .erp-row-wrap > .erp-btn {
+    min-inline-size: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
   /* Full-width sheet instead of a narrow popover on a phone. */
   .erp-shell__more {
     inset-inline: var(--erp-space-2);

@@ -15,15 +15,15 @@
  * · كل رقمٍ ومنةٍ ونسبةٍ من الخادم · RTL عربي · الترقيم صادق (العدد القادم
  * من الخادم هو عدد المطابق كلّه، لا المعروض).
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge } from '../status.js?v=4.9.194';
-import { barChart, donutChart } from '../charts.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { trapFocus } from '../focus-trap.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge } from '../status.js?v=4.9.296';
+import { barChart, donutChart } from '../charts.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { trapFocus } from '../focus-trap.js?v=4.9.296';
 import {
     fetchExpenseRegister, fetchVoucher, fetchVoucherHtml, fetchRegisterHtml,
     typeLabel, money, count, splitDesc, voucherRef, periodPresets, isoDay,
-} from '../data/expense-register-repo.js?v=4.9.194';
+} from '../data/expense-register-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -84,13 +84,12 @@ function template(presetKey) {
     </div>`;
     return `
     <section class="erp-v2 cashreg erp-stack">
-      <header class="cashreg__head erp-screen-in">
+      <div class="erp-dash-head erp-screen-in" style="--erp-dash-eyebrow:'EXPENSE REGISTER'">
         <div>
-          <h2 class="cashreg__title">سجلّ الصرف
-            <span class="erp-eyebrow" dir="ltr" lang="en">Expense Register</span></h2>
-          <p class="cashreg__sub">كل ما خرج من الصندوق: حركةٌ بكلّ إذنها واعتماداتها وتواقيعها</p>
+          <h2 class="erp-dash-title">سجلّ الصرف</h2>
+          <p class="erp-dash-sub">كل ما خرج من الصندوق: حركةٌ بكلّ إذنها واعتماداتها وتواقيعها</p>
         </div>
-        <div class="cashreg__tools erp-no-print">
+        <div class="erp-dash-controls erp-no-print">
           ${seg}
           <label class="erp-field"><span class="erp-label">من</span>
             <input class="erp-input erp-input--ltr" type="date" data-cr="from" value="${esc(PRESETS.find((p) => p.key === presetKey)?.from ?? isoDay(0))}"></label>
@@ -102,7 +101,7 @@ function template(presetKey) {
           <button type="button" class="erp-btn erp-btn--sm" data-cr-print-multi aria-label="طباعة تقرير مفصل بالأصناف المختارة">
             <i class="ji" data-i="file-text" aria-hidden="true"></i><span>تقرير مفصل</span></button>
         </div>
-      </header>
+      </div>
 
       <div data-cr-kpis aria-live="polite"></div>
 
@@ -634,13 +633,13 @@ export function mountCashRegister(host, ctx = {}) {
             }
             const w = openInAppReport('تقرير مفصل بأصناف مختارة — سجل الصرف');
             w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مفصل — سجل الصرف</title>`
-                + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-                + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
-                + 'h3.sec{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:18px 0 8px}'
+                + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+                + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+                + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+                + 'h3.sec{font-size:14px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:5px;margin:18px 0 8px}'
                 + 'table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}'
-                + 'th{background:#f7ead8;color:#7c3500}td.c,th.c{text-align:center}'
-                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+                + 'th{background:#eaf3ee;color:#0a3d2f}td.c,th.c{text-align:center}'
+                + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
                 + '.controls button.secondary{background:#555}'
                 + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
                 + '<div class="controls"><button type="button" data-cm-print>طباعة</button><button type="button" class="secondary" data-cm-close>إغلاق</button></div>'

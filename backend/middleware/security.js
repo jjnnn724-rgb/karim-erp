@@ -162,6 +162,11 @@ function buildV2Csp() {
         "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
+        /* Arrival sounds (js/v2/sounds.js) fall back to an in-memory data: WAV
+           when Web Audio is blocked or fails — the <audio> element must be able
+           to load it. Scoped to 'self' + data: (like img/font); no external
+           origins, matching the rest of this policy. */
+        "media-src 'self' data:",
         "connect-src 'self' ws: wss:",
         "frame-src 'self'",
         "frame-ancestors 'none'",

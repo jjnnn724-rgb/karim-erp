@@ -67,4 +67,27 @@ const SOCKET_EVENT_BUDGETS = {
     request_sync: 10,
 };
 
-module.exports = { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS };
+/**
+ * بثّ أحداث حسّاسة (حضور/بصمات/موظفين) عبر غرفة `erp:authed` عند
+ * RT_REQUIRE_AUTH=true، وإلا السلوك الإرثي (بثّ عام) — byte-identical.
+ * النسخة المشتركة التي يستخدمها server.js والمحركات بدل `io.emit` الخام
+ * (مراجعة 2026-11: بيانات حضور وموظفين كانت تصل لكل socket متصل).
+ * مُعاد توجيهها هنا (Anti-echo: exceptSocketId يبقى في الوضعين).
+ * @param {import('socket.io').Server|null|undefined} io
+ * @returns {(event: string, data: any, exceptSocketId?: string) => void}
+ */
+function makeEmitScoped(io) {
+    if (!io) {return () => {};}
+    return function emitScoped(event, data, exceptSocketId) {
+        if (isRtAuthRequired()) {
+            const target = io.to('erp:authed');
+            if (exceptSocketId) {target.except(exceptSocketId).emit(event, data); return;}
+            target.emit(event, data);
+            return;
+        }
+        if (exceptSocketId) {io.except(exceptSocketId).emit(event, data); return;}
+        io.emit(event, data);
+    };
+}
+
+module.exports = { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS, makeEmitScoped };

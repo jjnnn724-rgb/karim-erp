@@ -13,16 +13,16 @@
  * Quick links navigate to migrated HR screens only (employees/attendance/leaves).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge } from '../status.js?v=4.9.194';
-import { donutChart, lineChart } from '../charts.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge } from '../status.js?v=4.9.296';
+import { donutChart, lineChart } from '../charts.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchHrSnapshot, buildHrKpis, pendingLeaveRows,
     departmentDistribution, weeklyAttendance,
-} from '../data/hr-dashboard-repo.js?v=4.9.194';
-import { employeeMap } from '../data/employees-repo.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+} from '../data/hr-dashboard-repo.js?v=4.9.296';
+import { employeeMap } from '../data/employees-repo.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -190,23 +190,23 @@ export function mountHrDashboardScreen(host, ctx = {}) {
         const dist = departmentDistribution(lastSnap.employees, lastSnap.departments)
             .filter((d) => (d.value || 0) > 0);
         const w = openInAppReport('لوحة الموارد البشرية');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>لوحة الموارد البشرية</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز التقرير…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>لوحة الموارد البشرية</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز التقرير…</body></html>');
         const kpiCells = kpis.map((k) => `<div><span>${esc(k.label)}</span><b>${esc(String(k.value))}${k.unit ? ' ' + esc(k.unit) : ''}</b></div>`).join('');
         const distRows = dist.map((d, i) => `<tr><td>${i + 1}</td><td style="text-align:right">${esc(d.label || '—')}</td><td>${esc(String(d.value || 0))}</td></tr>`).join('');
         const pendingRows = pending.map((r, i) => `<tr><td>${i + 1}</td><td style="text-align:right">${esc(r.employee || '—')}</td><td dir="ltr">${esc(r.start || '—')} ← ${esc(r.end || '—')}</td></tr>`).join('');
         const dateStr = new Date().toLocaleString('ar-EG');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>لوحة الموارد البشرية</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
             + '.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px}'
-            + '.kpis div{border:1px solid #ddd;border-radius:8px;padding:9px;text-align:center}.kpis b{display:block;font-size:16px;color:#7c3500}'
+            + '.kpis div{border:1px solid #ddd;border-radius:8px;padding:9px;text-align:center}.kpis b{display:block;font-size:16px;color:#0a3d2f}'
             + '.kpis span{font-size:11px;color:#555}'
-            + 'h2{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:16px 0 8px}'
+            + 'h2{font-size:14px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:5px;margin:16px 0 8px}'
             + 'table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-hr-print>طباعة</button><button type="button" class="secondary" data-hr-close>إغلاق</button></div>'

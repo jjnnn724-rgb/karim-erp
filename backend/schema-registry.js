@@ -257,7 +257,7 @@ const entitySchemas = {
 
     // ─── Departments (Operational — migration 001) ─────
     departments: {
-        writeable: ['code', 'name', 'icon', 'color', 'parent_code'],
+        writeable: ['code', 'name', 'icon', 'color', 'parent_code', 'is_factory'],
         required: ['code', 'name'],
         types: {
             code: TYPES.STRING,
@@ -265,6 +265,7 @@ const entitySchemas = {
             icon: TYPES.STRING,
             color: TYPES.STRING,
             parent_code: TYPES.STRING,
+            is_factory: TYPES.BOOLEAN,
         },
         maxLength: { code: 50, name: 255, icon: 50, color: 50, parent_code: 50 },
         protected: ['id'],

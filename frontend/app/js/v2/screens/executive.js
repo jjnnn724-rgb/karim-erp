@@ -11,9 +11,9 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.194';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.194';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.194';
+import { apiFetch } from '../../core/api.js?v=4.9.296';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.296';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -40,7 +40,7 @@ const SEV = { high: 'danger', medium: 'warning', low: 'info' };
  * @param {HTMLElement} host
  * @param {{navigate?:(key:string)=>void}} [ctx]
  */
-export function mountExecutive(host, ctx = {}) {
+export function mountExecutiveScreen(host, ctx = {}) {
     const navigate = typeof ctx.navigate === 'function' ? ctx.navigate : () => {};
     let data = null;
     let busy = false;
@@ -108,8 +108,8 @@ export function mountExecutive(host, ctx = {}) {
             ariaLabel: 'أعمدة مقارنة بين الإيراد والتكلفة يوميًا',
             labels,
             series: [
-                { label: 'الإيراد', tone: 'success', values: s.map((r) => r.revenue) },
-                { label: 'التكلفة', tone: 'warning', values: s.map((r) => r.cost) },
+                { label: 'الإيراد', tone: 'brand', values: s.map((r) => r.revenue) },
+                { label: 'التكلفة', tone: 'chart-2', values: s.map((r) => r.cost) },
             ],
             formatValue: (v) => money(v),
             formatMark: (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v * 10) / 10)),
@@ -128,8 +128,11 @@ export function mountExecutive(host, ctx = {}) {
         q('[data-exec-chart-cash]').innerHTML = donutChart({
             title: 'النقد في الدفاتر',
             ariaLabel: 'توزيع النقد على الحسابات',
-            labels: cash.map((c) => c.name || c.code),
-            values: cash.map((c) => Math.abs(c.balance)),
+            slices: cash.map((c, i) => ({
+                label: String(c.name || c.code || '—'),
+                value: Math.abs(Number(c.balance) || 0),
+                tone: `chart-${(i % 6) + 1}`,
+            })),
             formatValue: (v) => money(v),
             emptyText: 'لا حسابات نقد',
         });

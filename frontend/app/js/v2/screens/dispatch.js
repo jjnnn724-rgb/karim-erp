@@ -24,11 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.194';
-import { formatInt } from '../data/employees-repo.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.296';
+import { formatInt } from '../data/employees-repo.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.296';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     matchDispatchProduct, summarizeProductWithdrawal,
@@ -39,11 +39,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.194';
+} from '../data/dispatch-repo.js?v=4.9.296';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.194';
+} from '../signature.js?v=4.9.296';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {
@@ -92,12 +92,16 @@ function signatureErrorText(err) {
 
 function template(from, to, canCreate) {
     return `
+      <div class="erp-v2-dispatch-page">
+      <div class="erp-dash-head" style="--erp-dash-eyebrow:'DISPATCH ORDERS'">
+        <div>
+          <h2 class="erp-dash-title">أذون الصرف</h2>
+          <div class="erp-dash-sub">كل ما خرج من المخازن — حركةٌ بإذنها واعتماداتها وتواقيعها.</div>
+        </div>
+      </div>
       <section class="erp-card erp-v2-dispatch">
         <div class="erp-card__head">
-          <h3 class="erp-card__title">أذون الصرف
-            <span class="erp-eyebrow" dir="ltr" lang="en">Dispatch Orders</span>
-            <span class="erp-text-muted erp-text-sm" data-v2-count></span>
-          </h3>
+          <span class="erp-text-muted erp-text-sm" data-v2-count></span>
           <span class="erp-grow"></span>
           <span class="erp-v2-dispatch__tools erp-no-print">
             ${canCreate ? `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-new>
@@ -121,6 +125,9 @@ function template(from, to, canCreate) {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة الكشف المفلتر">
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>اطبع المعروض</span>
             </button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-cons aria-label="تقرير استهلاك الأصناف">
+              <i class="ji" data-i="trending-up" aria-hidden="true"></i><span>تقرير الاستهلاك</span>
+            </button>
             <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span>
             </button>
@@ -138,7 +145,8 @@ function template(from, to, canCreate) {
           <div data-v2-panel hidden></div>
           <div data-v2-table></div>
         </div>
-      </section>`;
+      </section>
+      </div>`;
 }
 
 /**
@@ -175,6 +183,9 @@ export function mountDispatchScreen(host, ctx = {}) {
     let suggestState = [];
     let settingsState = null;               // {name, currency, logoB64} — مرة واحدة
     let dataScope = 'month';                // month = فلتر الخادم | all = السجل كله
+    let loadedSpan = null;                  /* (2026-11-01) نافذة ما حُمِّل فعلًا
+        {min,max} — «التواريخ هي السيد»: لو الفترة المطلوبة خارجهما يجلب
+        كل السجل تلقائيًا بدل صفٍّ فارغٍ يوحي بغياب البيانات. */
     let productQuery = '';                  // بحث الصنف الخام — يُطبَّع في المستودع
     let productTimer = 0;                   // كتمُ إدخال البحث 250ms
 
@@ -1292,7 +1303,7 @@ export function mountDispatchScreen(host, ctx = {}) {
     async function printNote(raw) {
         // العارض داخلي فلا نافذة منبثقة تُحجب، ويُعرض «جارٍ التجهيز» فورًا.
         const w = openInAppReport(`إذن صرف #${raw.id}`);
-        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(raw.id)}</title></head><body style="font-family:'Cairo',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز إذن الصرف…</body></html>`);
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(raw.id)}</title></head><body style="font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز إذن الصرف…</body></html>`);
         let d = raw;
         try {
             const full = await fetchDispatchFull(raw.id);
@@ -1320,7 +1331,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             d.warehouseApprovedBy ? ['اعتماد المخزن', d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate] : null,
             d.kitchenReceivedBy ? ['الاستلام', d.kitchenReceivedBy, d.kitchenReceivedAt] : null,
         ].filter(Boolean);
-        const doc = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(d.id)}</title><style>*{box-sizing:border-box}body{font-family:'Cairo',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #c9a227;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #c9a227;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#f5d76e;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#f5d76e;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#8a6d1b;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#f5d76e;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #c9a227;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#fffbeb}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #c9a227;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button type="button" data-v2-print>🖨 طباعة</button><button type="button" class="secondary" data-v2-close>إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(absoluteLogo(settings))}" alt="الشعار"><div><h1>${esc(settings.name || 'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(d.deptName || '—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt || d.approvedDate ? fD(d.warehouseApprovedAt || d.approvedDate) : '—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('') || '<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${formatInt(pItems.length)} صنف)</td><td>${pMoney(pTotal)}</td></tr></tfoot></table>${pChain.length ? `<section class="chain">${pChain.map((c) => `<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2] ? fDT(c[2]) : '')}</small></div>`).join('')}</section>` : ''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes || '—')}${d.approveNotes ? `<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}` : ''}${d.receiptNotes ? `<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}` : ''}</div><div class="sigs">${sigBlock('توقيع الطالب', null, d.createdBy, d.date)}${sigBlock('توقيع أمين المخزن', d.warehouseApprovalSignatureData, d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate)}${sigBlock('توقيع المستلم', d.kitchenReceiptSignatureData, d.kitchenReceivedBy, d.kitchenReceivedAt)}</div><div class="foot">مستند مخزني معتمد إلكترونيًا — ${esc(settings.name || '')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`;
+        const doc = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(d.id)}</title><style>*{box-sizing:border-box}body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #8fbfa9;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #8fbfa9;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#dcede4;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#dcede4;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#3e6b58;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#dcede4;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#dcede4;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #8fbfa9;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#f2f8f4}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #8fbfa9;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button type="button" data-v2-print>🖨 طباعة</button><button type="button" class="secondary" data-v2-close>إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(absoluteLogo(settings))}" alt="الشعار"><div><h1>${esc(settings.name || 'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(d.deptName || '—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt || d.approvedDate ? fD(d.warehouseApprovedAt || d.approvedDate) : '—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('') || '<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${formatInt(pItems.length)} صنف)</td><td>${pMoney(pTotal)}</td></tr></tfoot></table>${pChain.length ? `<section class="chain">${pChain.map((c) => `<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2] ? fDT(c[2]) : '')}</small></div>`).join('')}</section>` : ''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes || '—')}${d.approveNotes ? `<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}` : ''}${d.receiptNotes ? `<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}` : ''}</div><div class="sigs">${sigBlock('توقيع الطالب', null, d.createdBy, d.date)}${sigBlock('توقيع أمين المخزن', d.warehouseApprovalSignatureData, d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate)}${sigBlock('توقيع المستلم', d.kitchenReceiptSignatureData, d.kitchenReceivedBy, d.kitchenReceivedAt)}</div><div class="foot">مستند مخزني معتمد إلكترونيًا — ${esc(settings.name || '')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`;
         w.document.open();
         w.document.write(doc);
         w.document.close();
@@ -1336,9 +1347,101 @@ export function mountDispatchScreen(host, ctx = {}) {
      *  — الآن يبني نفس الكشف من الصفوف المعروضة فعلًا (inRange) في نافذة
      *  تُفتح داخل إيماءة النقر حتى لا يحجبها المتصفح. */
 
+    /* ── تقرير استهلاك الأصناف (2026-11-01 بطلب المالك): كل صنفٍ استهلك
+       كم في الفترة — تجميع الأصناف المصروفة فعليًا (approvedItems) من
+       الأذون المعتمدة/المستلمة داخل نطاق التاريخ، مرتبةً بالقيمة تنازليًا،
+       بورقةٍ فاخرة عبر عارض التقارير (طباعة/PDF/مشاركة/واتساب). */
+    function consReport() {
+        const w = openInAppReport('تقرير استهلاك الأصناف');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير استهلاك الأصناف</title></head><body style="font-family:Cairo,Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز التقرير…</body></html>');
+        const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
+        const { rows: dated } = inRange(view);
+        /* الاستهلاك = ما صُرف فعليًا من المخازن (معتمد من المخازن أو مستلم) */
+        const rows = dated.filter((r) => r.status === 'received' || r.status === 'warehouse_approved');
+        const from = q('#v2dsp-from').value;
+        const to = q('#v2dsp-to').value;
+        const period = (from || to) ? `من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترة';
+        const map = new Map();
+        let issuedCount = 0;
+        for (const row of rows) {
+            const raw = row._raw || {};
+            const items = (Array.isArray(raw.approvedItems) && raw.approvedItems.length) ? raw.approvedItems : [];
+            if (!items.length) {continue;}
+            issuedCount += 1;
+            for (const it of items) {
+                const name = String(it.itemName || it.name || '').trim();
+                if (!name) {continue;}
+                const qty = Number(it.approvedQty ?? it.requestedQty ?? it.qty) || 0;
+                const value = Number(it.approvedValue) || (qty * (Number(it.avgCost) || 0));
+                const unit = String(it.unit || '');
+                const cur = map.get(name) || { name, qty: 0, value: 0, count: 0, unit };
+                cur.qty += qty;
+                cur.value += value;
+                cur.count += 1;
+                if (!cur.unit && unit) {cur.unit = unit;}
+                map.set(name, cur);
+            }
+        }
+        const list = [...map.values()].sort((a, b) => b.value - a.value);
+        const totalValue = list.reduce((a, x) => a + x.value, 0);
+        const fmtQty = (v) => (Math.round(v * 1000) / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 });
+        const fmtMoney = (v) => (Math.round(v * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const body = list.map((x, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td style="text-align:right"><b>${esc(x.name)}</b></td>
+              <td>${esc(x.unit || '—')}</td>
+              <td class="n" dir="ltr">${fmtQty(x.qty)}</td>
+              <td>${x.count}</td>
+              <td class="n" dir="ltr">${fmtMoney(x.qty ? x.value / x.qty : 0)}</td>
+              <td class="n" dir="ltr"><b>${fmtMoney(x.value)}</b></td>
+            </tr>`).join('') || '<tr><td colspan="7">لا استهلاك في هذه الفترة</td></tr>';
+        const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+          <title>تقرير استهلاك الأصناف</title><style>
+          *{box-sizing:border-box}body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;color:#1c2420;background:#fff;margin:0;padding:28px 32px}
+          .head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #18352b;padding-bottom:12px;margin-bottom:6px}
+          .head h1{margin:0;font-size:22px;color:#18352b}
+          .head .brand-note{font-size:12px;color:#5d6f66}
+          .sub{text-align:center;margin:10px 0 2px;font-size:16px;font-weight:700;color:#18352b}
+          .range{text-align:center;font-size:12.5px;color:#5d6f66;margin-bottom:14px}
+          .kpis{display:flex;gap:10px;margin:0 0 14px}
+          .kpi{flex:1;background:#eef5f1;border:1px solid #bcd8cb;border-radius:10px;padding:10px 12px;text-align:center}
+          .kpi b{display:block;font-size:16px;color:#0a3d2f}
+          .kpi span{font-size:11px;color:#5d6f66}
+          table{width:100%;border-collapse:collapse;font-size:12.5px}
+          th{background:#18352b;color:#fff;padding:8px 6px;border:1px solid #234a3b}
+          td{border:1px solid #cfe0d8;padding:7px 6px;text-align:center}
+          tbody tr:nth-child(even) td{background:#f3f8f5}
+          tfoot td{font-weight:800;background:#e8f2ec;color:#0a3d2f;border:1px solid #bcd8cb}
+          .n{direction:ltr}
+          .sig{display:flex;gap:18px;margin-top:34px}
+          .sig div{flex:1;border-top:2px solid #18352b;padding-top:6px;text-align:center;font-size:11.5px;color:#5d6f66}
+          .foot{margin-top:14px;text-align:center;font-size:11px;color:#7a8a80}
+          @page{size:A4;margin:11mm}
+          </style></head><body>
+          <div class="head"><h1>تقرير استهلاك الأصناف</h1><div class="brand-note">نظام مطاعم الشرفة — مستند إلكتروني معتمد</div></div>
+          <div class="sub">استهلاك كل صنفٍ من المخازن بحسب الفترة</div>
+          <div class="range">الفترة: ${period} · ${issuedCount} إذن صرف مصروف</div>
+          <div class="kpis">
+            <div class="kpi"><span>أذون مصروفة</span><b>${issuedCount}</b></div>
+            <div class="kpi"><span>أصناف مستهلكة</span><b>${list.length}</b></div>
+            <div class="kpi"><span>إجمالي القيمة المستهلكة</span><b>${fmtMoney(totalValue)} ريال</b></div>
+          </div>
+          <table><thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية المستهلكة</th><th>مرات الصرف</th><th>متوسط سعر الوحدة</th><th>إجمالي القيمة</th></tr></thead>
+          <tbody>${body}</tbody>
+          <tfoot><tr><td colspan="6">إجمالي القيمة المستهلكة (${list.length} صنف)</td><td>${fmtMoney(totalValue)}</td></tr></tfoot></table>
+          <div class="sig"><div>توقيع أمين المخزن</div><div>توقيع المحاسبة</div><div>اعتماد المدير</div></div>
+          <div class="foot">الاستهلاك محسوب من الأصناف المصروفة فعليًا (معتمدة من المخازن أو مستلمة) — طُبع ${esc(fDT(new Date().toISOString()))}</div>
+          </body></html>`;
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+    }
+
     async function printList() {
         const w = openInAppReport('كشف أذونات الصرف');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
         const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
         /* الكشف يطبع المعروض بالضبط: التاريخ + بحث الصنف (نفس طبقتَي paint). */
         const { rows: dated } = inRange(view);
@@ -1395,22 +1498,22 @@ export function mountDispatchScreen(host, ctx = {}) {
                         + `<td class="n" dir="ltr">${esc(((Number(it.qty) || 0) * unit).toFixed(2))}</td></tr>`);
                 }
             }
-            detailBlock = `<h2 style="font-size:15px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:6px;margin:16px 0 8px">سطور الصنف المطابق — الكمية المعتمدة × متوسط تكلفته</h2>`
+            detailBlock = `<h2 style="font-size:15px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:6px;margin:16px 0 8px">سطور الصنف المطابق — الكمية المعتمدة × متوسط تكلفته</h2>`
                 + `<table><thead><tr><th>#</th><th>التاريخ</th><th>الإذن</th><th>الصنف</th><th>الكمية</th><th>القيمة</th></tr></thead>`
                 + `<tbody>${itemRows.join('') || '<tr><td colspan="6">لا سطور مطابقة</td></tr>'}</tbody></table>`;
         }
         const dateStr = new Date().toLocaleString('ar-EG');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:16px;margin-bottom:18px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:24px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:16px;margin-bottom:18px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:24px}.head p{margin:3px 0;color:#555;font-size:13px}'
             + '.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}'
             + '.summary div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}'
-            + '.summary b{display:block;font-size:17px;color:#7c3500;margin-top:4px}.summary span{font-size:12px;color:#555}'
+            + '.summary b{display:block;font-size:17px;color:#0a3d2f;margin-top:4px}.summary span{font-size:12px;color:#555}'
             + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-pl-print>طباعة</button><button type="button" class="secondary" data-pl-close>إغلاق</button></div>'
@@ -1491,6 +1594,13 @@ export function mountDispatchScreen(host, ctx = {}) {
             if (!el.isConnected || seq !== readSeq) {return;}   // destroyed / newer read wins
             rawRows = list;
             rawById = new Map(list.map((r) => [String(r.id), r]));
+            loadedSpan = list.reduce((acc, r) => {
+                const d = String(r.date || '').slice(0, 10);
+                if (!d) {return acc;}
+                if (!acc.min || d < acc.min) {acc.min = d;}
+                if (!acc.max || d > acc.max) {acc.max = d;}
+                return acc;
+            }, { min: '', max: '' });
             paint();
         } catch (e) {
             if (!el.isConnected || seq !== readSeq) {return;}
@@ -1543,6 +1653,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-print]')) {printList(); return;}
+        if (event.target.closest('[data-v2-cons]')) {consReport(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
@@ -1575,6 +1686,22 @@ export function mountDispatchScreen(host, ctx = {}) {
         }
     });
 
+    async function onRangeChanged() {
+        const from = q('#v2dsp-from').value;
+        const to = q('#v2dsp-to').value;
+        const ALL = 'all';
+        if (dataScope !== ALL && loadedSpan && (
+            (from && loadedSpan.min && from < loadedSpan.min)
+            || (to && loadedSpan.max && to > loadedSpan.max))) {
+            dataScope = ALL;
+            const scopeSel = q('#v2dsp-scope');
+            if (scopeSel) {scopeSel.value = ALL;}
+            await reload();
+            return;
+        }
+        paint();
+    }
+
     el.addEventListener('change', (event) => {
         if (event.target.matches('#v2dsp-scope')) {
             /* ثوابت لا حرفيات داخل ternary — جامع الأيقونات في عقد
@@ -1585,11 +1712,11 @@ export function mountDispatchScreen(host, ctx = {}) {
             reload();
             return;
         }
-        if (event.target.matches('#v2dsp-from, #v2dsp-to')) {paint();}
+        if (event.target.matches('#v2dsp-from, #v2dsp-to')) {void onRangeChanged();}
     });
 
     el.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to, [data-v2-product-search]')) {paint();}
+        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to, [data-v2-product-search]')) {void onRangeChanged();}
     });
 
     reload();

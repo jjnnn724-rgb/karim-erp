@@ -54,6 +54,8 @@
     "test:docker:gate": "node scripts/check-docker.js",
     "csp:report": "node scripts/summarize-csp-violations.js",
     "test:secrets:gate": "node scripts/check-secrets.js",
+    "test:security:gate": "node scripts/security-gate.js",
+    "test:security:gate:baseline": "node scripts/security-gate.js --write-baseline",
     "test:v2-revision": "node scripts/v2-revision.js --check",
     "test:format": "npx prettier --check .",
     "test:type": "npm run typecheck && npm run typecheck:strict",
@@ -245,6 +247,9 @@
     "payroll"
   ],
   "dependencies": {
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/push-notifications": "^8.1.3",
+    "@capacitor/share": "^8.0.3",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.81.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
@@ -260,6 +265,7 @@
     "electron-log": "^5.1.2",
     "electron-updater": "^6.1.7",
     "express": "^4.21.0",
+    "firebase-admin": "^14.5.0",
     "geolib": "^3.3.14",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",

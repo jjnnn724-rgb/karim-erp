@@ -1,0 +1,529 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — MOODS («الأمزجة»)
+   ═══════════════════════════════════════════════════════════════════════
+   LAYER: primitives only. Loads LAST in v2.html — after erp-identity.css.
+
+   WHY
+   ───
+   The identity layer answers "who are we" — one palette, always.
+   A mood answers "what room are we in" — the same system, re-lit.
+   A mood NEVER changes a component rule: it re-declares the --erp-c-*
+   primitives and the --erp-* aliases that already exist. Zero selectors
+   below this layer are touched, so a mood can never break a layout.
+
+   CONTRACT
+   ────────
+   · No [data-mood] on the page  → this file declares NOTHING for you:
+     the identity palette applies unchanged. That is the zero-diff proof.
+   · [data-mood="workshop"]      → cool porcelain + royal violet (ops, POS, tables)
+   · [data-mood="museum"]        → ivory + champagne, hairlines (reports, print)
+   · [data-mood="copper"]        → dark + lit-amethyst glow   (totem, menu board)
+
+   · workshop/museum are light-only: gated behind :root:not([data-theme="dark"])
+     so a dark session never gets a light palette forced on it.
+   · copper is dark by design and applies in both themes.
+
+   · Every text/surface pair below is measured by tests/v2-moods.test.js
+     (WCAG AA 4.5:1, non-text 3:1). A palette that fails never ships.
+
+   WHERE THE ATTRIBUTE GOES
+   ────────────────────────
+   On <html> — the same element theme-boot.js writes for ?mood=, so a URL
+   mood and a screen mood can never be two mechanisms. The selector list
+   mirrors erp-identity.css:90-95 host-for-host (.erp-v2, .erp-fab-host,
+   .erp-offline-bar, .erp-pal-backdrop, .erp-preview-banner, body): every
+   element the identity declares primitives on must be re-declared here,
+   or it stays amethyst inside a champagne room.
+
+   · Screen only — `@media screen` below. A mood is a room you look at, not
+     paper: the print tokens (white paper, black ink) are owned by
+     erp-identity.css, and copper's near-white ink on a forced-white card
+     printed invisible. Measured in Chromium: print+copper card text was
+     rgb(241,245,249) on white before this gate.
+
+   ROLLBACK: delete this file and its <link> in v2.html. Nothing else moves.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media screen {
+
+/* ── كل مزاج كتلةٌ مستقلّة: بدائيات + مرادفات + شكل. لا كتلة مشتركة،
+   فلا يتسرّب مزاجٌ إلى آخر إن غاب أحدهم. المرادفات مكرّرةٌ عن قصد:
+   الخاصيّة المخصّصة تُستبدل عند العنصر الذي يحمل التصريح، فبدائيٌّ على
+   الأب لا يسري في مرادفٍ مصرَّحٍ على .erp-v2. لهذا يغطّي المُحدِّد
+   موضعَي التركيب: الحاوية و .erp-v2 نفسها. */
+
+/* design-color-audit:allow-begin
+   بدائيات مزاج «الورشة الدقيقة» (Precision Workshop): طبقةُ تعريفاتٍ لا استخدامات.
+   كل لونٍ هنا يُقرأ عبر --erp-* من مكوّناتٍ لم تُلمَس، وكل زوج نص/سطح
+   يقيسه tests/v2-moods.test.js على AA — فالإعفاء مُقاسٌ لا مُدَّعى. */
+/* ═══ الورشة الدقيقة — Precision Workshop ═══════════════════════════════════════════════ */
+html:not([data-theme="dark"]) [data-mood="workshop"],
+html:not([data-theme="dark"]) [data-mood="workshop"] .erp-v2,
+html:not([data-theme="dark"]) [data-mood="workshop"] .erp-fab-host,
+html:not([data-theme="dark"]) [data-mood="workshop"] .erp-offline-bar,
+html:not([data-theme="dark"]) [data-mood="workshop"] .erp-pal-backdrop,
+html:not([data-theme="dark"]) [data-mood="workshop"] .erp-preview-banner,
+html:not([data-theme="dark"]) [data-mood="workshop"] body,
+html[data-mood="workshop"]:not([data-theme="dark"]),
+html[data-mood="workshop"]:not([data-theme="dark"]) .erp-v2,
+html[data-mood="workshop"]:not([data-theme="dark"]) .erp-fab-host,
+html[data-mood="workshop"]:not([data-theme="dark"]) .erp-offline-bar,
+html[data-mood="workshop"]:not([data-theme="dark"]) .erp-pal-backdrop,
+html[data-mood="workshop"]:not([data-theme="dark"]) .erp-preview-banner,
+html[data-mood="workshop"]:not([data-theme="dark"]) body {
+  /* primitives */
+  --erp-c-canvas: #F5F7FA;
+  --erp-c-surface: #FFFFFF;
+  --erp-c-raised: #FFFFFF;
+  --erp-c-sunken: #EBEEF3;
+  --erp-c-hover: #F1F4F8;
+  --erp-c-active: #E7ECF2;
+  --erp-c-line: #E1E6ED;
+  --erp-c-line-strong: #C6CFDA;
+  --erp-c-ink: #0E1520;
+  --erp-c-ink-2: #33404F;
+  --erp-c-ink-muted: #55636F;
+  --erp-c-ink-faint: #636E7A;
+  --erp-c-emerald: #3B1670;
+  --erp-c-emerald-hover: #2E1054;
+  --erp-c-emerald-active: #210B41;
+  --erp-c-emerald-text: #4C1D95;
+  --erp-c-emerald-ink: #FFF9EE;
+  --erp-c-brass: #3B1670;
+  --erp-c-brass-text: #2E1054;
+  --erp-c-brass-bright: #C4B5FD;
+  --erp-c-brass-soft: rgba(59, 22, 112, .10);
+  --erp-c-brass-line: rgba(59, 22, 112, .30);
+  --erp-c-plaque-line: rgba(138, 102, 255, .35);
+  --erp-c-copper: #2748C7;
+  --erp-c-copper-text: #1E3A9E;
+  --erp-c-success: #B45309;
+  --erp-c-success-text: #92400E;
+  --erp-c-warning: #B54708;
+  --erp-c-warning-text: #8A3A06;
+  --erp-c-danger: #B42318;
+  --erp-c-danger-text: #8E1C13;
+  --erp-c-info: #175CD3;
+  --erp-c-info-text: #12439B;
+  --erp-c-neutral: #55636F;
+  --erp-c-neutral-text: #3F4B57;
+  --erp-c-inverse: #FFFFFF;
+  --erp-c-highlight: rgba(255, 255, 255, .75);
+  --erp-c-brand-shadow: rgba(14, 21, 32, .20);
+  --erp-c-sidebar: #0F1720;
+  --erp-c-sidebar-line: rgba(241, 245, 249, .10);
+  --erp-c-sidebar-line-2: rgba(241, 245, 249, .18);
+  --erp-c-sidebar-ink: #F1F5F9;
+  --erp-c-sidebar-ink-2: #C8D2DC;
+  --erp-c-sidebar-muted: #94A3B1;
+  --erp-c-sidebar-faint: #7C8B99;
+  --erp-c-sidebar-hover: rgba(241, 245, 249, .06);
+  --erp-c-sidebar-active: rgba(183, 159, 255, .16);
+  --erp-c-sidebar-accent: #C4B5FD;
+  --erp-c-sidebar-paper: #DCD2F5;
+  --erp-c-sidebar-wash: rgba(183, 159, 255, .16);
+  --erp-c-sidebar-success: #E3B341;
+  --erp-c-sidebar-info: #93C5FD;
+  --erp-c-sidebar-plaque: #F3EFFA;
+  --erp-c-sidebar-plaque-ink: #241640;
+  --erp-c-forest: #0E1520;
+  --erp-c-forest-raised: #17212C;
+  --erp-c-forest-ink: #F1F5F9;
+  --erp-c-forest-muted: #9AA8B6;
+  /* aliases — نفس عقد erp-identity.css، بلا اسمٍ جديد */
+  --erp-background: var(--erp-c-canvas);
+  --erp-surface: var(--erp-c-surface);
+  --erp-surface-raised: var(--erp-c-raised);
+  --erp-surface-sunken: var(--erp-c-sunken);
+  --erp-surface-hover: var(--erp-c-hover);
+  --erp-surface-active: var(--erp-c-active);
+  --erp-surface-2: var(--erp-c-raised);
+  --erp-text-primary: var(--erp-c-ink);
+  --erp-text-secondary: var(--erp-c-ink-2);
+  --erp-text-muted: var(--erp-c-ink-muted);
+  --erp-text-faint: var(--erp-c-ink-faint);
+  --erp-text-inverse: var(--erp-c-inverse);
+  --erp-border: var(--erp-c-line);
+  --erp-border-subtle: var(--erp-c-line);
+  --erp-border-strong: var(--erp-c-line-strong);
+  --erp-focus-ring: var(--erp-c-brass);
+  --erp-brand: var(--erp-c-emerald);
+  --erp-brand-hover: var(--erp-c-emerald-hover);
+  --erp-brand-active: var(--erp-c-emerald-active);
+  --erp-brand-text: var(--erp-c-emerald-text);
+  --erp-cta-ink: var(--erp-c-emerald-ink);
+  --erp-brand-shadow: var(--erp-c-brand-shadow);
+  --erp-brass: var(--erp-c-brass);
+  --erp-brass-text: var(--erp-c-brass-text);
+  --erp-brass-bright: var(--erp-c-brass-bright);
+  --erp-brass-soft: var(--erp-c-brass-soft);
+  --erp-brass-line: var(--erp-c-brass-line);
+  --erp-plaque-line: var(--erp-c-plaque-line);
+  --erp-copper: var(--erp-c-copper);
+  --erp-copper-text: var(--erp-c-copper-text);
+  --erp-chart-2: var(--erp-c-copper);
+  --erp-chart-track: var(--erp-c-sunken);
+  --erp-chart-grid: var(--erp-c-line);
+  --erp-chart-label: var(--erp-c-ink-faint);
+  --erp-success: var(--erp-c-success);
+  --erp-warning: var(--erp-c-warning);
+  --erp-danger: var(--erp-c-danger);
+  --erp-info: var(--erp-c-info);
+  --erp-neutral: var(--erp-c-neutral);
+  --erp-success-text: var(--erp-c-success-text);
+  --erp-warning-text: var(--erp-c-warning-text);
+  --erp-danger-text: var(--erp-c-danger-text);
+  --erp-info-text: var(--erp-c-info-text);
+  --erp-neutral-text: var(--erp-c-neutral-text);
+  --erp-highlight: var(--erp-c-highlight);
+  --erp-sidebar-bg: var(--erp-c-sidebar);
+  --erp-sidebar-line: var(--erp-c-sidebar-line);
+  --erp-sidebar-line-2: var(--erp-c-sidebar-line-2);
+  --erp-sidebar-ink: var(--erp-c-sidebar-ink);
+  --erp-sidebar-ink-2: var(--erp-c-sidebar-ink-2);
+  --erp-sidebar-muted: var(--erp-c-sidebar-muted);
+  --erp-sidebar-faint: var(--erp-c-sidebar-faint);
+  --erp-sidebar-hover: var(--erp-c-sidebar-hover);
+  --erp-sidebar-active: var(--erp-c-sidebar-active);
+  --erp-sidebar-accent: var(--erp-c-sidebar-accent);
+  --erp-sidebar-accent-text: var(--erp-c-sidebar-paper);
+  --erp-sidebar-accent-soft: var(--erp-c-sidebar-wash);
+  --erp-sidebar-success: var(--erp-c-sidebar-success);
+  --erp-sidebar-info: var(--erp-c-sidebar-info);
+  --erp-sidebar-plaque: var(--erp-c-sidebar-plaque);
+  --erp-sidebar-plaque-ink: var(--erp-c-sidebar-plaque-ink);
+  --erp-hero: var(--erp-c-forest);
+  --erp-hero-raised: var(--erp-c-forest-raised);
+  --erp-hero-ink: var(--erp-c-forest-ink);
+  --erp-hero-muted: var(--erp-c-forest-muted);
+  /* shape + depth: توكنز أيضًا، ولا مُحدِّد مكوّن واحد */
+  --erp-radius-sm: 4px;
+  --erp-radius-md: 6px;
+  --erp-radius-lg: 8px;
+  --erp-radius-xl: 10px;
+  --erp-radius-2xl: 12px;
+  --erp-shadow-sm: 0 1px 2px rgba(14, 21, 32, .06);
+  --erp-shadow-md: 0 2px 6px rgba(14, 21, 32, .08);
+  --erp-shadow-lg: 0 8px 20px rgba(14, 21, 32, .10);
+  --erp-shadow-xl: 0 20px 40px rgba(14, 21, 32, .14);
+}
+/* design-color-audit:allow-end */
+
+/* design-color-audit:allow-begin
+   بدائيات مزاج «المتحف» (Editorial Museum): طبقةُ تعريفاتٍ لا استخدامات.
+   كل لونٍ هنا يُقرأ عبر --erp-* من مكوّناتٍ لم تُلمَس، وكل زوج نص/سطح
+   يقيسه tests/v2-moods.test.js على AA — فالإعفاء مُقاسٌ لا مُدَّعى. */
+/* ═══ المتحف — Editorial Museum ═══════════════════════════════════════════════ */
+html:not([data-theme="dark"]) [data-mood="museum"],
+html:not([data-theme="dark"]) [data-mood="museum"] .erp-v2,
+html:not([data-theme="dark"]) [data-mood="museum"] .erp-fab-host,
+html:not([data-theme="dark"]) [data-mood="museum"] .erp-offline-bar,
+html:not([data-theme="dark"]) [data-mood="museum"] .erp-pal-backdrop,
+html:not([data-theme="dark"]) [data-mood="museum"] .erp-preview-banner,
+html:not([data-theme="dark"]) [data-mood="museum"] body,
+html[data-mood="museum"]:not([data-theme="dark"]),
+html[data-mood="museum"]:not([data-theme="dark"]) .erp-v2,
+html[data-mood="museum"]:not([data-theme="dark"]) .erp-fab-host,
+html[data-mood="museum"]:not([data-theme="dark"]) .erp-offline-bar,
+html[data-mood="museum"]:not([data-theme="dark"]) .erp-pal-backdrop,
+html[data-mood="museum"]:not([data-theme="dark"]) .erp-preview-banner,
+html[data-mood="museum"]:not([data-theme="dark"]) body {
+  /* primitives */
+  --erp-c-canvas: #FAF7F0;
+  --erp-c-surface: #FFFDF8;
+  --erp-c-raised: #FFFFFF;
+  --erp-c-sunken: #F1ECE1;
+  --erp-c-hover: #F6F2E9;
+  --erp-c-active: #EDE7DA;
+  --erp-c-line: #E5DCCB;
+  --erp-c-line-strong: #CFC3AC;
+  --erp-c-ink: #1B1813;
+  --erp-c-ink-2: #4A443A;
+  --erp-c-ink-muted: #6B6459;
+  --erp-c-ink-faint: #736B5D;
+  --erp-c-emerald: #461B80;
+  --erp-c-emerald-hover: #381363;
+  --erp-c-emerald-active: #2E1054;
+  --erp-c-emerald-text: #341658;
+  --erp-c-emerald-ink: #FFFDF8;
+  --erp-c-brass: #461B80;
+  --erp-c-brass-text: #341658;
+  --erp-c-brass-bright: #C4B5FD;
+  --erp-c-brass-soft: rgba(70, 27, 128, .10);
+  --erp-c-brass-line: rgba(70, 27, 128, .28);
+  --erp-c-plaque-line: rgba(138, 102, 255, .35);
+  --erp-c-copper: #2748C7;
+  --erp-c-copper-text: #1E3A9E;
+  --erp-c-success: #B45309;
+  --erp-c-success-text: #92400E;
+  --erp-c-warning: #A8621B;
+  --erp-c-warning-text: #8A4F14;
+  --erp-c-danger: #9B2C2C;
+  --erp-c-danger-text: #7E2222;
+  --erp-c-info: #2F5A8A;
+  --erp-c-info-text: #24486E;
+  --erp-c-neutral: #6B6459;
+  --erp-c-neutral-text: #554F46;
+  --erp-c-inverse: #FFFFFF;
+  --erp-c-highlight: rgba(255, 255, 255, .80);
+  --erp-c-brand-shadow: rgba(27, 24, 19, .18);
+  --erp-c-sidebar: #221E18;
+  --erp-c-sidebar-line: rgba(247, 242, 230, .10);
+  --erp-c-sidebar-line-2: rgba(247, 242, 230, .18);
+  --erp-c-sidebar-ink: #F7F2E6;
+  --erp-c-sidebar-ink-2: #D8D0BE;
+  --erp-c-sidebar-muted: #B5AB96;
+  --erp-c-sidebar-faint: #A39880;
+  --erp-c-sidebar-hover: rgba(247, 242, 230, .06);
+  --erp-c-sidebar-active: rgba(167, 139, 250, .16);
+  --erp-c-sidebar-accent: #C4B5FD;
+  --erp-c-sidebar-paper: #DCD2F5;
+  --erp-c-sidebar-wash: rgba(167, 139, 250, .16);
+  --erp-c-sidebar-success: #E3B341;
+  --erp-c-sidebar-info: #9CC3F0;
+  --erp-c-sidebar-plaque: #FBF6E9;
+  --erp-c-sidebar-plaque-ink: #201A12;
+  --erp-c-forest: #1B1813;
+  --erp-c-forest-raised: #2A251D;
+  --erp-c-forest-ink: #F7F2E6;
+  --erp-c-forest-muted: #B5AB96;
+  /* aliases — نفس عقد erp-identity.css، بلا اسمٍ جديد */
+  --erp-background: var(--erp-c-canvas);
+  --erp-surface: var(--erp-c-surface);
+  --erp-surface-raised: var(--erp-c-raised);
+  --erp-surface-sunken: var(--erp-c-sunken);
+  --erp-surface-hover: var(--erp-c-hover);
+  --erp-surface-active: var(--erp-c-active);
+  --erp-surface-2: var(--erp-c-raised);
+  --erp-text-primary: var(--erp-c-ink);
+  --erp-text-secondary: var(--erp-c-ink-2);
+  --erp-text-muted: var(--erp-c-ink-muted);
+  --erp-text-faint: var(--erp-c-ink-faint);
+  --erp-text-inverse: var(--erp-c-inverse);
+  --erp-border: var(--erp-c-line);
+  --erp-border-subtle: var(--erp-c-line);
+  --erp-border-strong: var(--erp-c-line-strong);
+  --erp-focus-ring: var(--erp-c-brass);
+  --erp-brand: var(--erp-c-emerald);
+  --erp-brand-hover: var(--erp-c-emerald-hover);
+  --erp-brand-active: var(--erp-c-emerald-active);
+  --erp-brand-text: var(--erp-c-emerald-text);
+  --erp-cta-ink: var(--erp-c-emerald-ink);
+  --erp-brand-shadow: var(--erp-c-brand-shadow);
+  --erp-brass: var(--erp-c-brass);
+  --erp-brass-text: var(--erp-c-brass-text);
+  --erp-brass-bright: var(--erp-c-brass-bright);
+  --erp-brass-soft: var(--erp-c-brass-soft);
+  --erp-brass-line: var(--erp-c-brass-line);
+  --erp-plaque-line: var(--erp-c-plaque-line);
+  --erp-copper: var(--erp-c-copper);
+  --erp-copper-text: var(--erp-c-copper-text);
+  --erp-chart-2: var(--erp-c-copper);
+  --erp-chart-track: var(--erp-c-sunken);
+  --erp-chart-grid: var(--erp-c-line);
+  --erp-chart-label: var(--erp-c-ink-faint);
+  --erp-success: var(--erp-c-success);
+  --erp-warning: var(--erp-c-warning);
+  --erp-danger: var(--erp-c-danger);
+  --erp-info: var(--erp-c-info);
+  --erp-neutral: var(--erp-c-neutral);
+  --erp-success-text: var(--erp-c-success-text);
+  --erp-warning-text: var(--erp-c-warning-text);
+  --erp-danger-text: var(--erp-c-danger-text);
+  --erp-info-text: var(--erp-c-info-text);
+  --erp-neutral-text: var(--erp-c-neutral-text);
+  --erp-highlight: var(--erp-c-highlight);
+  --erp-sidebar-bg: var(--erp-c-sidebar);
+  --erp-sidebar-line: var(--erp-c-sidebar-line);
+  --erp-sidebar-line-2: var(--erp-c-sidebar-line-2);
+  --erp-sidebar-ink: var(--erp-c-sidebar-ink);
+  --erp-sidebar-ink-2: var(--erp-c-sidebar-ink-2);
+  --erp-sidebar-muted: var(--erp-c-sidebar-muted);
+  --erp-sidebar-faint: var(--erp-c-sidebar-faint);
+  --erp-sidebar-hover: var(--erp-c-sidebar-hover);
+  --erp-sidebar-active: var(--erp-c-sidebar-active);
+  --erp-sidebar-accent: var(--erp-c-sidebar-accent);
+  --erp-sidebar-accent-text: var(--erp-c-sidebar-paper);
+  --erp-sidebar-accent-soft: var(--erp-c-sidebar-wash);
+  --erp-sidebar-success: var(--erp-c-sidebar-success);
+  --erp-sidebar-info: var(--erp-c-sidebar-info);
+  --erp-sidebar-plaque: var(--erp-c-sidebar-plaque);
+  --erp-sidebar-plaque-ink: var(--erp-c-sidebar-plaque-ink);
+  --erp-hero: var(--erp-c-forest);
+  --erp-hero-raised: var(--erp-c-forest-raised);
+  --erp-hero-ink: var(--erp-c-forest-ink);
+  --erp-hero-muted: var(--erp-c-forest-muted);
+  /* shape + depth: توكنز أيضًا، ولا مُحدِّد مكوّن واحد */
+  --erp-radius-sm: 2px;
+  --erp-radius-md: 2px;
+  --erp-radius-lg: 3px;
+  --erp-radius-xl: 4px;
+  --erp-radius-2xl: 6px;
+  --erp-shadow-sm: 0 0 0 1px rgba(27, 24, 19, .03);
+  --erp-shadow-md: 0 1px 0 rgba(27, 24, 19, .05);
+  --erp-shadow-lg: 0 2px 0 rgba(27, 24, 19, .06);
+  --erp-shadow-xl: 0 6px 16px rgba(27, 24, 19, .08);
+}
+/* design-color-audit:allow-end */
+
+/* design-color-audit:allow-begin
+   بدائيات مزاج «ليل نحاسي» (Nocturnal Copper): طبقةُ تعريفاتٍ لا استخدامات.
+   كل لونٍ هنا يُقرأ عبر --erp-* من مكوّناتٍ لم تُلمَس، وكل زوج نص/سطح
+   يقيسه tests/v2-moods.test.js على AA — فالإعفاء مُقاسٌ لا مُدَّعى. */
+/* ═══ ليل نحاسي — Nocturnal Copper ═══════════════════════════════════════════════ */
+[data-mood="copper"],
+[data-mood="copper"] .erp-v2,
+[data-mood="copper"] .erp-fab-host,
+[data-mood="copper"] .erp-offline-bar,
+[data-mood="copper"] .erp-pal-backdrop,
+[data-mood="copper"] .erp-preview-banner,
+[data-mood="copper"] body,
+html[data-mood="copper"],
+html[data-mood="copper"] .erp-v2,
+html[data-mood="copper"] .erp-fab-host,
+html[data-mood="copper"] .erp-offline-bar,
+html[data-mood="copper"] .erp-pal-backdrop,
+html[data-mood="copper"] .erp-preview-banner,
+html[data-mood="copper"] body {
+  /* primitives */
+  --erp-c-canvas: #0B0F14;
+  --erp-c-surface: #12171E;
+  --erp-c-raised: #171E27;
+  --erp-c-sunken: #070A0E;
+  --erp-c-hover: #1A222C;
+  --erp-c-active: #202A36;
+  --erp-c-line: #222B36;
+  --erp-c-line-strong: #35414F;
+  --erp-c-ink: #F1F5F9;
+  --erp-c-ink-2: #C3CCD6;
+  --erp-c-ink-muted: #94A0AC;
+  --erp-c-ink-faint: #8B97A4;
+  --erp-c-emerald: #A78BFA;
+  --erp-c-emerald-hover: #C4B5FD;
+  --erp-c-emerald-active: #8B5CF6;
+  --erp-c-emerald-text: #C9B8FF;
+  --erp-c-emerald-ink: #150F33;
+  --erp-c-brass: #A78BFA;
+  --erp-c-brass-text: #C9B8FF;
+  --erp-c-brass-bright: #C4B5FD;
+  --erp-c-brass-soft: rgba(167, 139, 250, .15);
+  --erp-c-brass-line: rgba(167, 139, 250, .36);
+  --erp-c-plaque-line: rgba(196, 181, 253, .42);
+  --erp-c-copper: #7DA2FF;
+  --erp-c-copper-text: #A8BFFF;
+  --erp-c-success: #E3B341;
+  --erp-c-success-text: #F5C26B;
+  --erp-c-warning: #FBBF24;
+  --erp-c-warning-text: #FCD34D;
+  --erp-c-danger: #F87171;
+  --erp-c-danger-text: #FCA5A5;
+  --erp-c-info: #93C5FD;
+  --erp-c-info-text: #BFDBFE;
+  --erp-c-neutral: #94A0AC;
+  --erp-c-neutral-text: #C3CCD6;
+  --erp-c-inverse: #0B0F14;
+  --erp-c-highlight: rgba(255, 255, 255, .10);
+  --erp-c-brand-shadow: rgba(0, 0, 0, .55);
+  --erp-c-sidebar: #070A0E;
+  --erp-c-sidebar-line: rgba(241, 245, 249, .08);
+  --erp-c-sidebar-line-2: rgba(241, 245, 249, .16);
+  --erp-c-sidebar-ink: #F1F5F9;
+  --erp-c-sidebar-ink-2: #C3CCD6;
+  --erp-c-sidebar-muted: #94A0AC;
+  --erp-c-sidebar-faint: #8B97A4;
+  --erp-c-sidebar-hover: rgba(241, 245, 249, .05);
+  --erp-c-sidebar-active: rgba(167, 139, 250, .15);
+  --erp-c-sidebar-accent: #C4B5FD;
+  --erp-c-sidebar-paper: #C4B5FD;
+  --erp-c-sidebar-wash: rgba(167, 139, 250, .15);
+  --erp-c-sidebar-success: #E3B341;
+  --erp-c-sidebar-info: #93C5FD;
+  --erp-c-sidebar-plaque: #221540;
+  --erp-c-sidebar-plaque-ink: #C4B5FD;
+  --erp-c-forest: #070A0E;
+  --erp-c-forest-raised: #12171E;
+  --erp-c-forest-ink: #F1F5F9;
+  --erp-c-forest-muted: #94A0AC;
+  /* aliases — نفس عقد erp-identity.css، بلا اسمٍ جديد */
+  --erp-background: var(--erp-c-canvas);
+  --erp-surface: var(--erp-c-surface);
+  --erp-surface-raised: var(--erp-c-raised);
+  --erp-surface-sunken: var(--erp-c-sunken);
+  --erp-surface-hover: var(--erp-c-hover);
+  --erp-surface-active: var(--erp-c-active);
+  --erp-surface-2: var(--erp-c-raised);
+  --erp-text-primary: var(--erp-c-ink);
+  --erp-text-secondary: var(--erp-c-ink-2);
+  --erp-text-muted: var(--erp-c-ink-muted);
+  --erp-text-faint: var(--erp-c-ink-faint);
+  --erp-text-inverse: var(--erp-c-inverse);
+  --erp-border: var(--erp-c-line);
+  --erp-border-subtle: var(--erp-c-line);
+  --erp-border-strong: var(--erp-c-line-strong);
+  --erp-focus-ring: var(--erp-c-brass);
+  --erp-brand: var(--erp-c-emerald);
+  --erp-brand-hover: var(--erp-c-emerald-hover);
+  --erp-brand-active: var(--erp-c-emerald-active);
+  --erp-brand-text: var(--erp-c-emerald-text);
+  --erp-cta-ink: var(--erp-c-emerald-ink);
+  --erp-brand-shadow: var(--erp-c-brand-shadow);
+  --erp-brass: var(--erp-c-brass);
+  --erp-brass-text: var(--erp-c-brass-text);
+  --erp-brass-bright: var(--erp-c-brass-bright);
+  --erp-brass-soft: var(--erp-c-brass-soft);
+  --erp-brass-line: var(--erp-c-brass-line);
+  --erp-plaque-line: var(--erp-c-plaque-line);
+  --erp-copper: var(--erp-c-copper);
+  --erp-copper-text: var(--erp-c-copper-text);
+  --erp-chart-2: var(--erp-c-copper);
+  --erp-chart-track: var(--erp-c-sunken);
+  --erp-chart-grid: var(--erp-c-line);
+  --erp-chart-label: var(--erp-c-ink-faint);
+  --erp-success: var(--erp-c-success);
+  --erp-warning: var(--erp-c-warning);
+  --erp-danger: var(--erp-c-danger);
+  --erp-info: var(--erp-c-info);
+  --erp-neutral: var(--erp-c-neutral);
+  --erp-success-text: var(--erp-c-success-text);
+  --erp-warning-text: var(--erp-c-warning-text);
+  --erp-danger-text: var(--erp-c-danger-text);
+  --erp-info-text: var(--erp-c-info-text);
+  --erp-neutral-text: var(--erp-c-neutral-text);
+  --erp-highlight: var(--erp-c-highlight);
+  --erp-sidebar-bg: var(--erp-c-sidebar);
+  --erp-sidebar-line: var(--erp-c-sidebar-line);
+  --erp-sidebar-line-2: var(--erp-c-sidebar-line-2);
+  --erp-sidebar-ink: var(--erp-c-sidebar-ink);
+  --erp-sidebar-ink-2: var(--erp-c-sidebar-ink-2);
+  --erp-sidebar-muted: var(--erp-c-sidebar-muted);
+  --erp-sidebar-faint: var(--erp-c-sidebar-faint);
+  --erp-sidebar-hover: var(--erp-c-sidebar-hover);
+  --erp-sidebar-active: var(--erp-c-sidebar-active);
+  --erp-sidebar-accent: var(--erp-c-sidebar-accent);
+  --erp-sidebar-accent-text: var(--erp-c-sidebar-paper);
+  --erp-sidebar-accent-soft: var(--erp-c-sidebar-wash);
+  --erp-sidebar-success: var(--erp-c-sidebar-success);
+  --erp-sidebar-info: var(--erp-c-sidebar-info);
+  --erp-sidebar-plaque: var(--erp-c-sidebar-plaque);
+  --erp-sidebar-plaque-ink: var(--erp-c-sidebar-plaque-ink);
+  --erp-hero: var(--erp-c-forest);
+  --erp-hero-raised: var(--erp-c-forest-raised);
+  --erp-hero-ink: var(--erp-c-forest-ink);
+  --erp-hero-muted: var(--erp-c-forest-muted);
+  /* shape + depth: توكنز أيضًا، ولا مُحدِّد مكوّن واحد */
+  --erp-radius-sm: 8px;
+  --erp-radius-md: 10px;
+  --erp-radius-lg: 12px;
+  --erp-radius-xl: 14px;
+  --erp-radius-2xl: 18px;
+  --erp-shadow-sm: 0 1px 0 rgba(255, 255, 255, .03);
+  --erp-shadow-md: 0 2px 8px rgba(0, 0, 0, .35);
+  --erp-shadow-lg: 0 10px 28px rgba(0, 0, 0, .45);
+  --erp-shadow-xl: 0 20px 48px rgba(0, 0, 0, .55);
+}
+/* design-color-audit:allow-end */
+
+} /* @media screen — print keeps the identity paper tokens */
+
+/* ═══ Moods are colour + shape + depth only. Anything structural belongs in
+   the component layer, where it is reviewed once for all moods. ═══ */

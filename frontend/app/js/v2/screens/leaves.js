@@ -37,17 +37,17 @@
  *   handlers) and refuses to send an empty reason.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.194';
-import { openInAppReport } from '../report-viewer.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.296';
+import { openInAppReport } from '../report-viewer.js?v=4.9.296';
 import {
     fetchLeaveWorkflow, fetchLeaveTypes, leaveToRow, leaveStateOf, leaveTypeMap,
     summarizeLeaves, buildLeavesKpis, topRequesters, flattenEvents, typeToRow,
     doorScopeNote, canActOnStage, decideLeave, approveOutcome, STAGE_LABELS_AR,
     LEAVES_TYPE_PAGE, LEAVES_TYPE_PAGES, createLeaveRequest, isPrivilegedLeaveRole,
-} from '../data/leaves-repo.js?v=4.9.194';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.194';
-import { ROLES } from '../../core/config.js?v=4.9.194';
+} from '../data/leaves-repo.js?v=4.9.296';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.296';
+import { ROLES } from '../../core/config.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -866,7 +866,7 @@ export function mountLeavesScreen(host, ctx = {}) {
         const hits = query ? shown.filter((r) => [r.employee, r.type, r.note]
             .some((v) => String(v || '').toLowerCase().includes(query))) : shown;
         const w = openInAppReport('سجل الإجازات');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل الإجازات</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز السجل…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل الإجازات</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز السجل…</body></html>');
         const body = hits.map((r, i) => {
             let statusLabel = r.wfStatus || '—';
             try {statusLabel = stateWord(leaveStateOf(r).key) || statusLabel;} catch { /* raw key */ }
@@ -881,15 +881,15 @@ export function mountLeavesScreen(host, ctx = {}) {
             .concat(query ? [`البحث: «${query}»`] : []).join(' — ');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل الإجازات</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
             + '.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}'
-            + '.kpis div{border:1px solid #ddd;border-radius:8px;padding:8px;text-align:center}.kpis b{display:block;font-size:16px;color:#7c3500}'
+            + '.kpis div{border:1px solid #ddd;border-radius:8px;padding:8px;text-align:center}.kpis b{display:block;font-size:16px;color:#0a3d2f}'
             + '.kpis span{font-size:11px;color:#555}'
             + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-lv-print>طباعة</button><button type="button" class="secondary" data-lv-close>إغلاق</button></div>'

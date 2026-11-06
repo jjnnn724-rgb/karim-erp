@@ -169,10 +169,10 @@ function wvRender() {
           <div class="mcard" style="flex:1;min-width:120px;padding:12px;text-align:center"><div class="u-dim" style="font-size:12px">إجمالي الأصناف</div><b style="font-size:22px">${wvNum(s.total_items)}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;border:2px solid #16a34a33"><div class="u-dim" style="font-size:12px">✓ متطابقة</div><b style="font-size:22px;color:#16a34a">${wvNum(s.matched)}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;border:2px solid #dc262633"><div class="u-dim" style="font-size:12px">المبيعات أكثر</div><b style="font-size:22px;color:#dc2626">${wvNum(s.sold_more)}</b></div>
-          <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;border:2px solid #d9770633"><div class="u-dim" style="font-size:12px">المصروف أكثر</div><b style="font-size:22px;color:#d97706">${wvNum(s.issued_more)}</b></div>
+          <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center;border:2px solid #0e5c4533"><div class="u-dim" style="font-size:12px">المصروف أكثر</div><b style="font-size:22px;color:#0e5c45">${wvNum(s.issued_more)}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center"><div class="u-dim" style="font-size:12px">مباع فقط</div><b style="font-size:22px" class="c-blue">${wvNum(s.pos_only)}</b></div>
           <div class="mcard" style="flex:1;min-width:130px;padding:12px;text-align:center"><div class="u-dim" style="font-size:12px">مصروف فقط</div><b style="font-size:22px" class="c-gold">${wvNum(s.wh_only)}</b></div>
-          <div class="mcard" style="flex:1;min-width:150px;padding:12px;text-align:center;background:linear-gradient(135deg,#f5d76e22,#f5d76e11)"><div class="u-dim" style="font-size:12px">إجمالي المبيعات</div><b style="font-size:20px" class="c-gold">${wvMoney(s.total_pos_gross)}</b></div>`;
+          <div class="mcard" style="flex:1;min-width:150px;padding:12px;text-align:center;background:linear-gradient(135deg,#dcede422,#dcede411)"><div class="u-dim" style="font-size:12px">إجمالي المبيعات</div><b style="font-size:20px" class="c-gold">${wvMoney(s.total_pos_gross)}</b></div>`;
     }
     // تنبيهات
     const alertsBox = document.getElementById('wvAlerts');
@@ -188,9 +188,9 @@ function wvRender() {
             </div>`;
         }
         for (const m of issuedMore) {
-            html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;margin-bottom:6px;background:#d9770611;border:1px solid #d9770633;font-size:13px">
-              <i class=ji data-i=alert-triangle style="color:#d97706"></i>
-              <b style="color:#d97706">${wvEscape(m.name)}</b>
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;margin-bottom:6px;background:#0e5c4511;border:1px solid #0e5c4533;font-size:13px">
+              <i class=ji data-i=alert-triangle style="color:#0e5c45"></i>
+              <b style="color:#0e5c45">${wvEscape(m.name)}</b>
               <span>صُرف ${wvNum(m.wh_qty)} بس باعوا ${wvNum(m.pos_qty)} — فرق <b>${wvNum(Math.abs(m.diff))}</b></span>
             </div>`;
         }
@@ -212,7 +212,7 @@ function wvRender() {
                     <div style="height:10px;background:#16a34a;border-radius:4px;width:${Math.min((r.wh_qty / maxVal) * 100, 100)}%"></div>
                     <div style="height:10px;background:#dc2626;border-radius:4px;width:${Math.min((r.pos_qty / maxVal) * 100, 100)}%"></div>
                   </div>
-                  <div style="min-width:80px;font-size:11px;text-align:end;color:${r.diff > 0 ? '#dc2626' : '#d97706'}">${r.diff > 0 ? '+' : ''}${wvNum(r.diff)}</div>
+                  <div style="min-width:80px;font-size:11px;text-align:end;color:${r.diff > 0 ? '#dc2626' : '#0e5c45'}">${r.diff > 0 ? '+' : ''}${wvNum(r.diff)}</div>
                 </div>`).join('')}
             </div>`;
         } else { chartBox.innerHTML = ''; }
@@ -223,18 +223,18 @@ function wvRender() {
     const statusBadge = (st) => {
         if (st === 'match') { return '<span class="badge bdg-green">✓ متطابق</span>'; }
         if (st === 'sold_more') { return '<span class="badge bdg-red">المبيع أكثر</span>'; }
-        if (st === 'issued_more') { return '<span class="badge" style="background:#fef3c7;color:#92400e">المصروف أكثر</span>'; }
+        if (st === 'issued_more') { return '<span class="badge" style="background:#fef3c7;color:#0a3d2f">المصروف أكثر</span>'; }
         if (st === 'pos_only') { return '<span class="badge bdg-blue">مباع فقط</span>'; }
-        return '<span class="badge" style="background:#fef3c7;color:#92400e">مصروف فقط</span>';
+        return '<span class="badge" style="background:#fef3c7;color:#0a3d2f">مصروف فقط</span>';
     };
     const rowsHtml = WV.rows.map((r, i) => `
-      <tr style="${r.status === 'sold_more' ? 'background:#dc262608' : r.status === 'issued_more' ? 'background:#d9770608' : ''}">
+      <tr style="${r.status === 'sold_more' ? 'background:#dc262608' : r.status === 'issued_more' ? 'background:#0e5c4508' : ''}">
         <td>${i + 1}</td>
         <td style="text-align:start"><b>${wvEscape(r.name)}</b>${r.dept ? `<div class="u-dim" style="font-size:11px">${wvEscape(r.dept)}</div>` : ''}</td>
         <td class="c-green"><b>${wvNum(r.wh_qty)}</b>${r.wh_docs ? `<div class="u-dim" style="font-size:11px">${wvNum(r.wh_docs)} إذن</div>` : ''}</td>
         <td class="c-red"><b>${wvNum(r.pos_qty)}</b>${r.pos_invoices ? `<div class="u-dim" style="font-size:11px">${wvNum(r.pos_invoices)} فاتورة</div>` : ''}</td>
         <td class="${r.diff > 0 ? 'c-red' : r.diff < 0 ? 'c-gold' : ''}"><b>${r.diff > 0 ? '+' : ''}${wvNum(r.diff)}</b></td>
-        <td style="font-size:12px;color:${r.pct > 50 ? '#dc2626' : r.pct > 10 ? '#d97706' : '#666'}">${r.pct > 0 ? '+' : ''}${wvNum(r.pct)}%</td>
+        <td style="font-size:12px;color:${r.pct > 50 ? '#dc2626' : r.pct > 10 ? '#0e5c45' : '#666'}">${r.pct > 0 ? '+' : ''}${wvNum(r.pct)}%</td>
         <td>${wvMoney(r.pos_gross)}</td>
         <td>${statusBadge(r.status)}</td>
       </tr>`).join('');
@@ -271,7 +271,7 @@ function wvPrintReport() {
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير مقارنة الصرف والمبيعات</title>
     <style>body{font-family:'Cairo',Tahoma,sans-serif;padding:36px;color:#111}h1{text-align:center;font-size:22px}h2{text-align:center;color:#666;font-size:14px;margin-bottom:12px}
     .summary{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}.summary div{border:1px solid #999;padding:8px 16px;border-radius:6px;font-size:13px}
-    table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#f5d76e}
+    table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:5px;text-align:center}th{background:#0f172a;color:#dcede4}
     tfoot td{font-weight:800;background:#f3ecd9}.filters{text-align:center;font-size:13px;color:#444;margin-bottom:10px}.controls{text-align:center;margin-bottom:16px}
     .controls button{padding:9px 22px;margin:0 6px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}.bp{background:#2e9e5b;color:#fff}.bc{background:#c0392b;color:#fff}@media print{.controls{display:none}body{padding:0}}</style></head><body>
     <div class="controls"><button class="bp" data-karim-action="print">طباعة</button><button class="bc" data-karim-action="closeWindow">إغلاق</button></div>
@@ -281,7 +281,7 @@ function wvPrintReport() {
       <div>الأصناف: <b>${wvNum(s.total_items)}</b></div>
       <div>متطابقة: <b style="color:#16a34a">${wvNum(s.matched)}</b></div>
       <div>مباع أكثر: <b style="color:#dc2626">${wvNum(s.sold_more)}</b></div>
-      <div>مصروف أكثر: <b style="color:#d97706">${wvNum(s.issued_more)}</b></div>
+      <div>مصروف أكثر: <b style="color:#0e5c45">${wvNum(s.issued_more)}</b></div>
       <div>مباع فقط: <b>${wvNum(s.pos_only)}</b></div>
       <div>مصروف فقط: <b>${wvNum(s.wh_only)}</b></div>
     </div>

@@ -232,19 +232,27 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
             // قيد محاسبي (سقط best-effort وقت إتمامه) يُعاد ترحيله الآن قبل
             // إقفال اليوم. postSaleToLedger idempotent — لا تكرار أبدًا.
             let journalsRepaired = 0;
+            let journalsVoided = 0;
             try {
                 const { postSaleToLedger } = require('../accounting-routes');
                 const missing = (await client.query(
-                    `SELECT o.id FROM pos_orders o
+                    `SELECT o.id,
+                            EXISTS (SELECT 1 FROM journal_entries v
+                                     WHERE v.source_type = 'pos_sale' AND v.source_id = o.id::text
+                                       AND v.status = 'void') AS was_voided
+                       FROM pos_orders o
                       WHERE o.status IN ('issued','reported') AND o.created_at::date = $1::date
                         AND NOT EXISTS (SELECT 1 FROM journal_entries je
                                          WHERE je.source_type = 'pos_sale' AND je.source_id = o.id::text AND je.status = 'posted')`,
                     [date])).rows;
                 for (const row of missing) {
+                    // لا يُعاد ترحيل قيد مُبطل عمدًا في sweep آلي (انظر قيد الصرف أدناه).
+                    if (row.was_voided) { journalsVoided += 1; continue; }
                     try { await postSaleToLedger(row.id); journalsRepaired += 1; }
                     catch (e2) { logger.error('[day-close] journal repair failed for order', row.id, e2.message); }
                 }
                 if (journalsRepaired) { logger.warn(`[day-close] أُعيد ترحيل ${journalsRepaired} قيد بيع مفقود ليوم ${date}`); }
+                if (journalsVoided) { logger.warn(`[day-close] ${journalsVoided} قيد بيع مُبطَل عمدًا — لم يُعد ترحيله ليوم ${date}`); }
             } catch (sweepErr) { logger.error('[day-close] journal sweep failed (non-fatal):', sweepErr.message); }
 
             // ROOT FIX 2026-10-27: نفس الحلقة لأذون الصرف المعتمدة — ترحيل
@@ -252,18 +260,26 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
             // في الأستاذ (سُجّل فعليًا 2026-10-26). الترحيل idempotent بمفتاح
             // (dispatch, id) — إعادة التشغيل لا تُكرّر.
             let dispatchJournalsRepaired = 0;
+            let dispatchJournalsVoided = 0;
             try {
                 const { postDispatchToLedger } = require('../accounting-routes');
                 const missingDispatches = (await client.query(
                     `SELECT d.id, d.date, d."deptCode" AS dept,
                             COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
-                                        FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value
+                                        FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value,
+                            EXISTS (SELECT 1 FROM journal_entries v
+                                     WHERE v.source_type = 'dispatch' AND v.source_id = d.id::text
+                                       AND v.status = 'void') AS was_voided
                        FROM dispatches d
                       WHERE d.status = ANY($2::text[]) AND LEFT(d.date, 10) = $1
                         AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                                         WHERE je.source_type = 'dispatch' AND je.source_id = d.id::text)`,
+                                         WHERE je.source_type = 'dispatch' AND je.source_id = d.id::text
+                                           AND je.status = 'posted')`,
                     [date, ['approved', 'received', 'partially_received', 'closed']])).rows;
                 for (const row of missingDispatches) {
+                    // الإبطال قرارٌ بشري: القيد المُبطَل لا يُعاد ترحيلُه في sweep
+                    // آلي وإلا نُقض القرار في كل إقفال يوم (الإعادة اليدوية لها مسار).
+                    if (row.was_voided) { dispatchJournalsVoided += 1; continue; }
                     try {
                         const out = /** @type {any} */ (await postDispatchToLedger(row.id, {
                             totalValue: row.value, date: row.date, deptCode: row.dept,
@@ -272,6 +288,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                     } catch (e2) { logger.error('[day-close] dispatch journal repair failed', row.id, e2 instanceof Error ? e2.message : e2); }
                 }
                 if (dispatchJournalsRepaired) { logger.warn(`[day-close] أُعيد ترحيل ${dispatchJournalsRepaired} قيد صرف مفقود ليوم ${date}`); }
+                if (dispatchJournalsVoided) { logger.warn(`[day-close] ${dispatchJournalsVoided} إذن صرف قيده مُبطَل عمدًا — لم يُعد ترحيله (راجع السجل قبل الاعتماد)`); }
             } catch (sweepErr) { logger.error('[day-close] dispatch sweep failed (non-fatal):', sweepErr instanceof Error ? sweepErr.message : sweepErr); }
 
             // Auto-post net variance to the ledger (idempotent on Z number).
@@ -295,7 +312,11 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                     [zNumber, ins.rows[0].id]
                 );
             }
-            return { z: ins.rows[0], journal, perSession, methods: mt.methods, invoices: mt.invoices, repaired: { sales: journalsRepaired, dispatches: dispatchJournalsRepaired } };
+            return {
+                z: ins.rows[0], journal, perSession, methods: mt.methods, invoices: mt.invoices,
+                repaired: { sales: journalsRepaired, dispatches: dispatchJournalsRepaired },
+                voidedSkipped: { sales: journalsVoided, dispatches: dispatchJournalsVoided },
+            };
         }, { userId: req.user.id, userRole: req.user.role, clientIp: req.ip });
 
         try {

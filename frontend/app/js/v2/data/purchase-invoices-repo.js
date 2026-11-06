@@ -26,7 +26,7 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.194';
+import { apiFetch } from '../../core/api.js?v=4.9.296';
 
 const num = (v) => {
     const n = Number(v);
@@ -39,13 +39,15 @@ export function invoiceRemaining(inv = {}) {
     return Math.max(0, num(inv.totalAmount) - num(inv.paidAmount));
 }
 
-/** Bounded walk for current-month invoices (5 × 1000). */
+/** Bounded walk for the register (5 × 1000) — FIX 2026-11-01: v2_period
+ *  'month' كان يحبس الشاشة في الشهر الحالي (نوفمبر فاتح = صفر فواتير
+ *  وشكوى المالك «لا تظهر»). يُجلب السجل كله والفلترة الدقيقة عند العميل
+ *  بحقلَي from/to (inRange). */
 export async function fetchPurchaseInvoices() {
     const rows = [];
     for (let page = 1; page <= 5; page += 1) {
         const params = new URLSearchParams({
-            page: String(page), limit: '1000', sort: 'id', order: 'asc',
-            v2_period: 'month',
+            page: String(page), limit: '1000', sort: 'id', order: 'desc',
         });
         const res = await apiFetch(`/purchaseInvoices?${params}`);
         const batch = res && Array.isArray(res.data) ? res.data

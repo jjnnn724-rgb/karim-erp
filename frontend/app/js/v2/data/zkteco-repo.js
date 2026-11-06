@@ -39,7 +39,7 @@
  *   network — and returns a Blob; the screen only saves it.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.194';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.296';
 
 /** @returns {Promise<{running:boolean,devices:any[],totals:object}>} */
 export async function fetchZkStatus() {
@@ -223,6 +223,40 @@ export async function importDeviceUsers(deviceId, userIds, department = '') {
     });
 }
 
+/* ── مطابقة بصمات الجهاز بسجلات النظام (2026-11-02) ────────────────────
+   بابٌ للقراءة فقط: يقارن دفترَ الجهاز (attendance_logs) بدفترِ النظام
+   (attendance) لحظةً بلحظة. «فقيدة» = بصمةٌ في الجهاز لم تصل النظام،
+   «بلا بصمة» = صفُّ حضورٍ في النظام لم يرد من الجهاز (بوابة التطبيق، أو
+   تصحيحٌ يدوي، أو جهازٌ لم يُربَط). الخادم هو الذي يقرأ الجدولين. */
+
+export async function fetchZkReconciliation({ from = '', to = '', employeeId = '', deviceId = '', limit = 500 } = {}) {
+    const q = new URLSearchParams();
+    if (from) {q.set('from', String(from));}
+    if (to) {q.set('to', String(to));}
+    if (employeeId !== '' && employeeId !== null && employeeId !== undefined) {q.set('employeeId', String(employeeId));}
+    if (deviceId !== '' && deviceId !== null && deviceId !== undefined) {q.set('deviceId', String(deviceId));}
+    q.set('limit', String(Math.min(2000, Math.max(1, Number(limit) || 500))));
+    const res = await apiFetch(`/zkteco/reconciliation?${q.toString()}`);
+    const o = res && typeof res === 'object' ? res : {};
+    const s = o.summary && typeof o.summary === 'object' ? o.summary : {};
+    const n = (v) => Number(v) || 0;
+    return {
+        summary: {
+            device_punches: n(s.device_punches),
+            matched: n(s.matched),
+            orphan_punches: n(s.orphan_punches),
+            unmapped_punches: n(s.unmapped_punches),
+            system_rows: n(s.system_rows),
+            rows_with_device_punch: n(s.rows_with_device_punch),
+            rows_without_device_punch: n(s.rows_without_device_punch),
+        },
+        orphans: Array.isArray(o.orphans) ? o.orphans : [],
+        unmapped: Array.isArray(o.unmapped) ? o.unmapped : [],
+        rows_without_device_punch: Array.isArray(o.rows_without_device_punch) ? o.rows_without_device_punch : [],
+        generated_at: o.generated_at ? String(o.generated_at) : '',
+    };
+}
+
 /* ── Pure view helpers (testable without a browser) ───────────────────── */
 
 /** Mapping summary derived from one /mappings payload — zero requests. */
@@ -252,7 +286,11 @@ export function coverageStats(cov = {}) {
 export const ZK_PUNCH_STATES = ['حضور', 'انصراف', 'خروج استراحة', 'عودة استراحة', 'دخول أوفر تايم', 'خروج أوفر تايم'];
 
 export function punchStateName(state) {
+    // البصمة الفيزيائية مصدر الحقيقة الوحيد (قرار المالك 2026-11-05): الحالة
+    // المجهولة (-1/NULL) ليست دخولًا ولا انصرافًا — تُعرض «غير محددة» للمراجعة.
+    if (state === null || state === undefined || state === '') {return 'غير محددة';}
     const n = Number(state);
+    if (n === -1) {return 'غير محددة';}
     return Number.isInteger(n) && ZK_PUNCH_STATES[n] ? ZK_PUNCH_STATES[n] : `حالة ${state}`;
 }
 

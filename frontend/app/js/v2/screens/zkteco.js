@@ -22,27 +22,28 @@
  *   repo is the only door). It never touches inline handlers (CSP).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.194';
-import { statusBadge } from '../status.js?v=4.9.194';
-import { canWrite } from '../session.js?v=4.9.194';
-import { zkWriteEnabled } from '../write-flags.js?v=4.9.194';
-import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.194';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { statusBadge } from '../status.js?v=4.9.296';
+import { canWrite } from '../session.js?v=4.9.296';
+import { zkWriteEnabled } from '../write-flags.js?v=4.9.296';
+import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.296';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     fetchZkMappings, mappingStats, fetchZkLogs, fetchZkCoverage, coverageStats,
     fetchStoredDeviceUsers, fetchLiveDeviceUsers,
+    fetchZkReconciliation,
     validateDeviceForm, punchStateName, verifyTypeName,
     ZK_WRITE_ROLES,
     testDevice, syncDevice, createDevice, updateDevice, deleteDevice,
     scanNetwork, saveMapping, autoLinkMappings, importDeviceUsers,
     downloadZkLogsCsv,
-} from '../data/zkteco-repo.js?v=4.9.194';
+} from '../data/zkteco-repo.js?v=4.9.296';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-const TABS = ['devices', 'mappings', 'logs', 'coverage'];
+const TABS = ['devices', 'mappings', 'logs', 'coverage', 'recon'];
 
 /** Device-local date+time, the legacy basis (features/zkteco.js:23-26). */
 function fmtDateTime(iso) {
@@ -116,6 +117,7 @@ function template(writable) {
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="mappings">ربط الموظفين</button>
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="logs">سجل البصمات</button>
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="coverage">تغطية البصمات</button>
+            <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="recon">مطابقة الجهاز بالنظام</button>
           </div>
           <div data-v2-panel hidden></div>
           <div data-v2-pane="devices">
@@ -125,6 +127,7 @@ function template(writable) {
           <div data-v2-pane="mappings" hidden></div>
           <div data-v2-pane="logs" hidden></div>
           <div data-v2-pane="coverage" hidden></div>
+          <div data-v2-pane="recon" hidden></div>
         </div>
       </section>`;
 }
@@ -170,6 +173,51 @@ function mappingsShellHtml(writable) {
       <div data-v2-unmapped></div>`;
 }
 
+/* لوحةُ حكم التدقيق: نسبةُ المطابقة تُحسب على البصمات التي يعرفها النظام
+   أصلًا — ما قبل بدء التسجيل وما لم يُربط بموظف ليسا فشلَ مطابقة، وإدخالُهما
+   في المقام يُظهر السجلَّ أسوأ مما هو. */
+export function reconVerdictHtml({ s, coverage, recon }) {
+    const total = Number(s.device_punches || 0);
+    const inScope = Math.max(0, total - Number(s.unmatched_before_coverage || 0) - Number(s.unmapped_punches || 0));
+    const matched = Number(s.matched || 0);
+    const rate = inScope > 0 ? Math.min(100, (matched / inScope) * 100) : 100;
+    const issues = Number(s.real_gaps || 0) + Number(s.unmapped_punches || 0) + Number(s.rows_without_device_punch || 0);
+    const verdict = issues === 0
+        ? { tone: 'success', icon: 'shield-check', title: 'السجلُّ سليم', text: 'كلُّ بصمةٍ في الجهاز وصلت صفَّ حضورها، ولا صفَّ بلا مُبرّر.' }
+        : { tone: 'danger', icon: 'alert-triangle', title: `${esc(intFmt(issues))} بندًا يستحقّ المراجعة`, text: 'الفجواتُ وأرقامُ الجهاز غير المربوطة أولًا — فهي ما يغيّر كشفَ الرواتب.' };
+    const kpi = (label, value, sub, tone, icon) => `<div class="erp-zk__kpi" data-tone="${tone}">
+        <span class="erp-zk__kpi-icon"><i class="ji" data-i="${icon}" aria-hidden="true"></i></span>
+        <span class="erp-zk__kpi-body">
+          <span class="erp-zk__kpi-value" dir="ltr">${esc(value)}</span>
+          <span class="erp-zk__kpi-label">${esc(label)}</span>
+          ${sub ? `<span class="erp-zk__kpi-sub">${esc(sub)}</span>` : ''}
+        </span>
+      </div>`;
+    return `<div class="erp-zk__verdict" data-tone="${verdict.tone}">
+        <span class="erp-zk__verdict-icon"><i class="ji" data-i="${verdict.icon}" aria-hidden="true"></i></span>
+        <div class="erp-zk__verdict-body">
+          <strong>${esc(verdict.title)}</strong>
+          <span>${esc(verdict.text)}</span>
+          <span class="erp-zk__verdict-meta">${esc(coverage.note || '')}${recon && recon.generated_at ? ` · آخر فحص ${esc(fmtDateTime(recon.generated_at))}` : ''}</span>
+        </div>
+        <div class="erp-zk__gauge" role="img" aria-label="نسبة المطابقة ${rate.toFixed(1)}%">
+          <span class="erp-zk__gauge-value" dir="ltr">${rate.toFixed(1)}%</span>
+          <span class="erp-zk__gauge-label">نسبة المطابقة</span>
+          <span class="erp-zk__gauge-track"><span class="erp-zk__gauge-fill" style="inline-size:${rate.toFixed(1)}%"></span></span>
+        </div>
+      </div>
+      <div class="erp-zk__kpis">
+        ${kpi('بصمات الجهاز', intFmt(total), `${esc(intFmt(inScope))} ضمن المقارنة`, 'info', 'fingerprint')}
+        ${kpi('بصمات مطابقة', intFmt(matched), 'لها صفُّ حضور بنفس اللحظة', 'success', 'shield-check')}
+        ${kpi('فجوات حقيقية', intFmt(s.real_gaps), 'أيامُ موظفين ناقصة', s.real_gaps ? 'danger' : 'success', 'alert-triangle')}
+        ${kpi('تكرارٌ متجاهَل', intFmt(s.benign_duplicates), 'قاعدةُ المحرك — لا مشكلة', 'neutral', 'refresh')}
+        ${kpi('قبل بدء النظام', intFmt(s.unmatched_before_coverage), 'خارج نطاق المحاسبة', 'neutral', 'activity')}
+        ${kpi('غير مربوطة بموظف', intFmt(s.unmapped_punches), 'أرقامُ جهازٍ بلا موظف', s.unmapped_punches ? 'warning' : 'success', 'user-check')}
+        ${kpi('صفوف النظام', intFmt(s.system_rows), 'أيامُ حضورٍ مسجّلة', 'info', 'activity')}
+        ${kpi('صفوف بلا بصمة', intFmt(s.rows_without_device_punch), 'يدوي أو بوابة الوجه', s.rows_without_device_punch ? 'warning' : 'success', 'search')}
+      </div>`;
+}
+
 export function mountZktecoScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 zkteco]', m);
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
@@ -183,6 +231,9 @@ export function mountZktecoScreen(host, ctx = {}) {
     let departments = [];
     let logs = [];
     let coverage = null;
+    let recon = null;
+    let reconFrom = '';
+    let reconTo = '';
     let logFrom = '';
     let logTo = '';
     let mapFilter = '';
@@ -190,8 +241,8 @@ export function mountZktecoScreen(host, ctx = {}) {
     let panelRow = null;
     let saving = false;
 
-    const loaded = { devices: false, mappings: false, logs: false, coverage: false };
-    const loading = { devices: false, mappings: false, logs: false, coverage: false };
+    const loaded = { devices: false, mappings: false, logs: false, coverage: false, recon: false };
+    const loading = { devices: false, mappings: false, logs: false, coverage: false, recon: false };
 
     host.insertAdjacentHTML('beforeend', template(writable));
     const el = host.lastElementChild;
@@ -300,10 +351,10 @@ export function mountZktecoScreen(host, ctx = {}) {
 
     function paintSummary() {
         const c = summarizeDevices(devices);
-        const parts = [`الأجهزة ${intFmt(c.total)}`, `متصلة ${intFmt(c.online)}`, `مفعّلة ${intFmt(c.enabled)}`];
+        const parts = [`الأجهزة ${esc(intFmt(c.total))}`, `متصلة ${esc(intFmt(c.online))}`, `مفعّلة ${esc(intFmt(c.enabled))}`];
         if (totals && (totals.today !== undefined || totals.unmapped !== undefined)) {
-            parts.push(`بصمات اليوم ${intFmt(totals.today)}`);
-            parts.push(`غير مربوطة ${intFmt(totals.unmapped)}`);
+            parts.push(`بصمات اليوم ${esc(intFmt(totals.today))}`);
+            parts.push(`غير مربوطة ${esc(intFmt(totals.unmapped))}`);
         } else {
             parts.push('ملخص اليوم تعذّر تحميله');
         }
@@ -387,15 +438,39 @@ export function mountZktecoScreen(host, ctx = {}) {
         ].some((v) => String(v || '').toLowerCase().includes(needle)));
     }
 
+    /* دليلُ المعرف البديل: الجهازُ يرسل userId دائمًا، وuid لا يصل منه شيء.
+       فإن كان البديلُ رقمَ زميلٍ أساسيًّا فليس بديلًا بل خطرُ نسبةٍ — يُعرض احمر.
+       الخادمُ القديم لا يُرسل أعمدةَ الدليل؛ عندها يُعرض البديلُ وحده بلا ادّعاء. */
+    function altEvidenceCell(e) {
+        const alt = String(e.deviceUserIdAlt ?? '').trim();
+        const acctName = String(e.deviceAccountName ?? '').trim();
+        const acctUid = String(e.deviceUidOfAccount ?? '').trim();
+        const owner = String(e.altOwnedBy ?? '').trim();
+        const hasEvidence = e.deviceUidOfAccount !== undefined || e.altOwnedBy !== undefined;
+        if (!hasEvidence) {
+            return alt
+                ? `<span class="erp-badge" data-tone="info" dir="ltr">${esc(alt)}</span> <span class="erp-text-sm erp-text-muted">بلا دليلِ جهاز — الخادمُ لا يُرسله بعد</span>`
+                : '<span class="erp-text-sm erp-text-muted">— بلا دليلِ جهاز، الخادمُ لا يُرسله بعد</span>';
+        }
+        if (!alt) {
+            return `<span class="erp-text-sm erp-text-muted">بلا بديل${acctUid ? ` · uid حسابه <span class="erp-mono" dir="ltr">${esc(acctUid)}</span>` : ' · لا حساب على الجهاز'}</span>`;
+        }
+        const tone = owner ? 'danger' : 'success';
+        const label = owner
+            ? `رقم ${esc(alt)} هو معرف ${esc(owner)} الأساسي — لا يُوثق بالبديل`
+            : acctUid === alt ? `uid حسابهِ على الجهاز (${esc(acctName || '—')})` : `بديل غير مطابق لuid الحساب (${esc(acctUid || '—')})`;
+        return `<span class="erp-badge" data-tone="${tone}" dir="ltr">${esc(alt)}</span> <span class="erp-text-sm">${label}</span>`;
+    }
+
     function paintMapRows() {
         const stats = mappingStats(mappings);
         const summary = q('[data-v2-map-summary]');
         if (summary) {
             summary.innerHTML = `
-              <span class="erp-badge" data-tone="info">موظفون ${intFmt(stats.employees)}</span>
-              <span class="erp-badge" data-tone="success">مربوطون ${intFmt(stats.linked)}</span>
-              <span class="erp-badge" data-tone="${stats.unlinked ? 'warning' : 'success'}">غير مربوطين ${intFmt(stats.unlinked)}</span>
-              <span class="erp-badge" data-tone="${stats.unmapped ? 'danger' : 'success'}">أرقام بلا موظف ${intFmt(stats.unmapped)}</span>`;
+              <span class="erp-badge" data-tone="info">موظفون ${esc(intFmt(stats.employees))}</span>
+              <span class="erp-badge" data-tone="success">مربوطون ${esc(intFmt(stats.linked))}</span>
+              <span class="erp-badge" data-tone="${esc(stats.unlinked ? 'warning' : 'success')}">غير مربوطين ${esc(intFmt(stats.unlinked))}</span>
+              <span class="erp-badge" data-tone="${esc(stats.unmapped ? 'danger' : 'success')}">أرقام بلا موظف ${esc(intFmt(stats.unmapped))}</span>`;
         }
         const rowsHost = q('[data-v2-map-rows]');
         const list = filteredEmployees();
@@ -416,7 +491,8 @@ export function mountZktecoScreen(host, ctx = {}) {
                   <td><input class="erp-input erp-input--ltr" dir="ltr" data-v2-map-input data-id="${id}"
                         value="${esc(e.deviceUserId ?? '')}" placeholder="رقم البصمة على الجهاز"
                         aria-label="رقم البصمة للموظف ${esc(e.name)}" ${writable ? '' : 'disabled'} style="max-width:170px"></td>
-                  <td><span class="erp-num" dir="ltr">${intFmt(e.todayPunches || 0)}</span></td>
+                  <td>${altEvidenceCell(e)}</td>
+                  <td><span class="erp-num" dir="ltr">${esc(intFmt(e.todayPunches || 0))}</span>${Number(e.punches30d) ? ` <span class="erp-text-sm erp-text-muted" dir="ltr">· 30ي ${esc(intFmt(e.punches30d))}</span>` : ''}</td>
                   ${writable ? `<td><button type="button" class="erp-btn erp-btn--sm" data-v2-map-save data-id="${id}">
                     <i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ</span>
                   </button></td>` : ''}
@@ -425,8 +501,8 @@ export function mountZktecoScreen(host, ctx = {}) {
             rowsHost.innerHTML = `<div class="erp-table__scroll" tabindex="0" style="max-height:520px">
               <table class="erp-table__grid">
                 <caption class="erp-sr-only">ربط الموظفين بأرقام البصمة</caption>
-                <thead><tr><th>الموظف</th><th>الرقم الوظيفي</th><th>القسم</th><th>علامة الربط</th><th>رقم البصمة على الجهاز</th><th>بصمات اليوم</th>${writable ? '<th></th>' : ''}</tr></thead>
-                <tbody>${rows || `<tr><td colspan="${writable ? 7 : 6}" class="erp-text-muted">${mappings.employees.length ? 'لا موظف يطابق البحث' : 'لا يوجد موظفون'}</td></tr>`}</tbody>
+                <thead><tr><th>الموظف</th><th>الرقم الوظيفي</th><th>القسم</th><th>علامة الربط</th><th>رقم البصمة على الجهاز</th><th>البديل ودليله من الجهاز</th><th>بصمات اليوم</th>${writable ? '<th></th>' : ''}</tr></thead>
+                <tbody>${rows || `<tr><td colspan="${writable ? 8 : 7}" class="erp-text-muted">${mappings.employees.length ? 'لا موظف يطابق البحث' : 'لا يوجد موظفون'}</td></tr>`}</tbody>
               </table>
             </div>`;
         }
@@ -434,7 +510,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         if (unmappedHost) {
             const rows = mappings.unmapped.map((u) => `<tr>
               <td><span class="erp-badge" data-tone="info">${esc(u.deviceUserId)}</span></td>
-              <td><span class="erp-num" dir="ltr">${intFmt(u.punches)}</span></td>
+              <td><span class="erp-num" dir="ltr">${esc(intFmt(u.punches))}</span></td>
               <td>${u.lastPunch ? esc(fmtDate(u.lastPunch) + ' · ' + fmtTime(u.lastPunch)) : '—'}</td>
               <td>${writable ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-map-user="${esc(u.deviceUserId)}">اختر موظفًا…</button>` : '—'}</td>
             </tr>`).join('');
@@ -493,7 +569,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             const row = await saveMapping(employeeId, raw);
             if (!el.isConnected) {return;}
             notify(raw ? `تم ربط الموظف برقم البصمة ${raw}` : 'تم إلغاء ربط الموظف');
-            invalidate('devices', 'logs', 'coverage');
+            invalidate('devices', 'logs', 'coverage', 'recon');
             await loadMappings(true);
             if (row && row.name) {notify(raw ? `تم ربط «${row.name}» برقم البصمة ${raw}` : `أُلغي ربط «${row.name}»`);}
         } catch (e) {
@@ -512,7 +588,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             const res = await autoLinkMappings();
             if (!el.isConnected) {return;}
             notify((res && res.message) || 'تم الربط التلقائي');
-            invalidate('devices', 'logs', 'coverage');
+            invalidate('devices', 'logs', 'coverage', 'recon');
             await loadMappings(true);
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -560,7 +636,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}
             notify(`تم الربط — بصمات الرقم ${panelRow} ستظهر ضمن سجل الموظف`);
             closePanel();
-            invalidate('devices', 'logs', 'coverage');
+            invalidate('devices', 'logs', 'coverage', 'recon');
             await loadMappings(true);
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -601,7 +677,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         const rows = users.map((u) => {
             const uid = String(u.userId ?? '').trim();
             const name = String(u.name ?? '').trim() || (u.archived
-                ? `أرشيف — بصمات سابقة (${intFmt(u.totalPunches || 0)})`
+                ? `أرشيف — بصمات سابقة (${esc(intFmt(u.totalPunches || 0))})`
                 : `موظف ${uid}`);
             const exists = !uid || taken.has(uid)
                 || (/^\d+$/.test(uid) && taken.has(String(Number(uid))))
@@ -612,7 +688,7 @@ export function mountZktecoScreen(host, ctx = {}) {
                 if (/^\d+$/.test(uid)) {taken.add(String(Number(uid)));}
             }
             const punchInfo = u.totalPunches != null
-                ? ` <span class="erp-text-sm erp-text-muted">${intFmt(u.totalPunches)} بصمة</span>` : '';
+                ? ` <span class="erp-text-sm erp-text-muted">${esc(intFmt(u.totalPunches))} بصمة</span>` : '';
             const linked = u.employeeName
                 ? ` <span class="erp-text-sm erp-text-muted">← ${esc(u.employeeName)}</span>` : '';
             const archived = u.archived
@@ -629,7 +705,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         panelRow = String(deviceId);
         panelEl.innerHTML = `<div class="erp-zk__panel">
           <div class="erp-zk__panel-head">
-            <h4>مستخدمو جهاز البصمة (${intFmt(users.length)}) — جديد: ${intFmt(fresh)}</h4>
+            <h4>مستخدمو جهاز البصمة (${esc(intFmt(users.length))}) — جديد: ${esc(intFmt(fresh))}</h4>
             <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-panel-close><i class="ji" data-i="x" aria-hidden="true"></i><span>إغلاق</span></button>
           </div>
           <div class="erp-table__scroll" tabindex="0" style="max-height:340px">
@@ -669,15 +745,15 @@ export function mountZktecoScreen(host, ctx = {}) {
             panelEl.innerHTML = `<div class="erp-zk__panel">
               <div class="erp-zk__panel-head"><h4>نتيجة الاستيراد</h4></div>
               <div class="erp-zk__facts" style="margin-bottom:12px">
-                <span class="erp-badge" data-tone="success">تم إنشاؤهم ${intFmt(res && res.created)}</span>
-                <span class="erp-badge" data-tone="warning">تُخطي (موجود) ${intFmt(res && res.skipped)}</span>
+                <span class="erp-badge" data-tone="success">تم إنشاؤهم ${esc(intFmt(res && res.created))}</span>
+                <span class="erp-badge" data-tone="warning">تُخطي (موجود) ${esc(intFmt(res && res.skipped))}</span>
               </div>
               <p class="erp-text-sm erp-text-muted">${esc((res && res.message) || '')}</p>
               <div class="erp-zk__panel-actions">
                 <button type="button" class="erp-btn erp-btn--primary" data-v2-panel-close>تم</button>
               </div>
             </div>`;
-            invalidate('devices', 'logs', 'coverage');
+            invalidate('devices', 'logs', 'coverage', 'recon');
             await loadMappings(true);
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -711,7 +787,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-export>
               <i class="ji" data-i="download" aria-hidden="true"></i><span>تصدير CSV</span>
             </button>
-            <span class="erp-text-sm erp-text-muted">أحدث ${intFmt(logs.length)} بصمة خام — التصدير يحترم التاريخين</span>
+            <span class="erp-text-sm erp-text-muted">أحدث ${esc(intFmt(logs.length))} بصمة خام — التصدير يحترم التاريخين</span>
           </div>
           <div class="erp-table__scroll" tabindex="0" style="max-height:560px">
             <table class="erp-table__grid">
@@ -787,7 +863,7 @@ export function mountZktecoScreen(host, ctx = {}) {
           <td><span class="erp-mono" dir="ltr">${esc(e.deviceUserId || '—')}</span></td>
           <td>${e.face_enrolled ? '<span class="erp-badge" data-tone="info">وجه ✓</span>' : '<span class="erp-text-muted">—</span>'}</td>
           <td>${e.last_punch ? `<span class="erp-mono" dir="ltr">${esc(String(e.last_punch).slice(0, 16))}</span>` : '<span class="erp-badge" data-tone="danger">أبدًا</span>'}</td>
-          <td><span class="erp-num" dir="ltr">${intFmt(e.attendance_days || 0)}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(intFmt(e.attendance_days || 0))}</span></td>
           <td><span class="erp-badge" data-tone="${diagnosisTone(e.diagnosis)}">${esc(e.diagnosis || '—')}</span></td>
           <td class="erp-text-sm">${esc(e.action || '—')}</td>
         </tr>`).join('');
@@ -796,24 +872,24 @@ export function mountZktecoScreen(host, ctx = {}) {
           <td><span class="erp-mono" dir="ltr">${esc(e.deviceUserId || '—')}</span></td>
           <td>${e.face_enrolled ? 'وجه ✓' : '—'}</td>
           <td><span class="erp-mono" dir="ltr">${esc(String(e.last_punch || '—').slice(0, 16))}</span></td>
-          <td><span class="erp-num" dir="ltr">${intFmt(e.attendance_days || 0)}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(intFmt(e.attendance_days || 0))}</span></td>
         </tr>`).join('');
         const unmappedBox = unmapped.length ? `<div class="erp-zk__alert">
           <p><i class="ji" data-i="alert-triangle" aria-hidden="true"></i>
             <strong>بصمات خام على الجهاز بلا موظف مربوط — اربطها من تبويب «ربط الموظفين»:</strong></p>
-          <div class="erp-row-wrap">${unmapped.map((u) => `<span class="erp-badge" data-tone="warning">جهاز #${esc(u.deviceUserId)} — ${intFmt(u.raw)} بصمة خام</span>`).join(' ')}</div>
+          <div class="erp-row-wrap">${unmapped.map((u) => `<span class="erp-badge" data-tone="warning">جهاز #${esc(u.deviceUserId)} — ${esc(intFmt(u.raw))} بصمة خام</span>`).join(' ')}</div>
           ${writable ? '<button type="button" class="erp-btn erp-btn--sm" data-v2-goto-mappings>فتح ربط الموظفين</button>' : ''}
         </div>` : '';
         target.innerHTML = `<div class="erp-zk__facts">
-            <span class="erp-badge" data-tone="info">إجمالي الموظفين ${intFmt(s.total)}</span>
-            <span class="erp-badge" data-tone="success">سليم ${intFmt(s.ok)}</span>
-            <span class="erp-badge" data-tone="${s.problems ? 'danger' : 'success'}">مشاكل ${intFmt(s.problems)}</span>
-            <span class="erp-badge" data-tone="info">بصمة وجه (تطبيق) ${intFmt(s.face)}</span>
-            <span class="erp-badge" data-tone="${s.unmapped ? 'warning' : 'success'}">بصمات خام بلا موظف ${intFmt(s.unmapped)}</span>
+            <span class="erp-badge" data-tone="info">إجمالي الموظفين ${esc(intFmt(s.total))}</span>
+            <span class="erp-badge" data-tone="success">سليم ${esc(intFmt(s.ok))}</span>
+            <span class="erp-badge" data-tone="${s.problems ? 'danger' : 'success'}">مشاكل ${esc(intFmt(s.problems))}</span>
+            <span class="erp-badge" data-tone="info">بصمة وجه (تطبيق) ${esc(intFmt(s.face))}</span>
+            <span class="erp-badge" data-tone="${s.unmapped ? 'warning' : 'success'}">بصمات خام بلا موظف ${esc(intFmt(s.unmapped))}</span>
             <span class="erp-text-sm erp-text-muted">آخر ${intFmt((coverage && coverage.days) || 7)} أيام${coverage && coverage.generated_at ? ` · ${esc(fmtDateTime(coverage.generated_at))}` : ''}</span>
           </div>
           ${unmappedBox}
-          <h4 class="erp-zk__section-title">الموظفون الذين يحتاجون معالجة (${intFmt(problems.length)})</h4>
+          <h4 class="erp-zk__section-title">الموظفون الذين يحتاجون معالجة (${esc(intFmt(problems.length))})</h4>
           <div class="erp-table__scroll" tabindex="0" style="max-height:480px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">تغطية البصمات — مشاكل</caption>
@@ -821,7 +897,7 @@ export function mountZktecoScreen(host, ctx = {}) {
               <tbody>${problemRows || '<tr><td colspan="8" class="erp-text-muted">كل الموظفين سليمون — لا شيء يحتاج معالجة</td></tr>'}</tbody>
             </table>
           </div>
-          ${ok.length ? `<details class="erp-zk__details"><summary>الموظفون السليمون (${intFmt(ok.length)})</summary>
+          ${ok.length ? `<details class="erp-zk__details"><summary>الموظفون السليمون (${esc(intFmt(ok.length))})</summary>
             <div class="erp-table__scroll" tabindex="0" style="max-height:360px">
               <table class="erp-table__grid">
                 <caption class="erp-sr-only">تغطية البصمات — سليم</caption>
@@ -854,6 +930,165 @@ export function mountZktecoScreen(host, ctx = {}) {
         }
     }
 
+    /* ── Reconciliation tab (device ↔ system, 2026-11-02) ───────────────
+       الحقيقُ الثلاثُ تُقارَن لحظةً بلحظة: بصمةٌ لها صفُّ حضور (مطابقة)،
+       بصمةٌ بلا صفٍّ (في الجهاز ولم تصل النظام)، وصفُّ حضورٍ بلا بصمة
+       (في النظام ولم يرد من الجهاز). و«بلا صفٍّ» ليست واحدةً: منها تكرارٌ
+       مُتجاهَل (قاعدةُ المحرك: موضعُ البصمة مشغولٌ فلم يُكرَّر) ومنها فجوةٌ
+       حقيقيةٌ تستحقّ التدقيق. فالرقمُ بلا تمييزٍ يخدع المديرَ فلا يُحسم
+       به أمر. القراءةُ فقط — لا تُصلح شيئًا، فالإصلاحُ قرارُ مديرٍ لا
+       فحصُ شاشة. */
+    function renderRecon() {
+        const target = pane('recon');
+        const s = (recon && recon.summary) || {};
+        const cls = (recon && recon.classification) || {};
+        const buckets = cls.buckets || [];
+        const orphans = (recon && recon.orphans) || [];
+        const unmapped = (recon && recon.unmapped) || [];
+        const unmappedUsers = (recon && recon.unmapped_users) || [];
+        const noPunch = (recon && recon.rows_without_device_punch) || [];
+        const gapDays = (recon && recon.gap_days) || [];
+        const coverage = (recon && recon.coverage) || {};
+        const limits = (recon && recon.sample_limits) || {};
+
+        const orphanRows = orphans.map((o) => `<tr>
+          <td>${esc(fmtDate(o.attendance_time))}</td>
+          <td><span class="erp-num" dir="ltr">${esc(fmtTime(o.attendance_time))}</span></td>
+          <td>${esc(o.employee_name || '—')}</td>
+          <td><span class="erp-mono" dir="ltr">${esc(o.device_user_id || '—')}</span></td>
+          <td>${esc(o.device_name || `جهاز #${o.device_id ?? '؟'}`)}</td>
+          <td><span class="erp-badge" data-tone="${o.gap ? 'danger' : 'neutral'}">${esc(o.kind_label || '—')}</span></td>
+        </tr>`).join('');
+
+        /* أيامُ الفجوة: كلُّ يومِ موظفٍ ناقص بصمتهُ — هو ما يُراجَع ويُصلَح. */
+        const gapDayRows = gapDays.map((g) => {
+            const punches = (g.punches || [])
+                .map((p) => `${esc(fmtTime(p.attendance_time))} <span class="erp-text-muted">(${esc(punchStateName(p.punch_state))})</span>`)
+                .join(' · ');
+            const labels = (g.kind_labels || [])
+                .map((l) => `<span class="erp-badge" data-tone="danger">${esc(l)}</span>`).join(' ');
+            return `<tr>
+              <td>${esc(g.employee_name || `موظف #${g.employee_id}`)}</td>
+              <td><span class="erp-num" dir="ltr">${esc(g.date || '—')}</span></td>
+              <td>${labels || '—'}</td>
+              <td><span class="erp-num" dir="ltr">${punches || '—'}</span></td>
+              <td><span class="erp-badge" data-tone="${g.has_row ? 'warning' : 'danger'}">${g.has_row ? 'صفٌّ ناقص' : 'لا صفَّ حضور'}</span></td>
+            </tr>`;
+        }).join('');
+
+        const bucketRows = buckets.map((b) => `<tr>
+          <td>${esc(b.label || b.kind)}</td>
+          <td><span class="erp-num" dir="ltr">${esc(intFmt(b.count))}</span></td>
+          <td><span class="erp-badge" data-tone="${b.gap ? 'danger' : 'success'}">${b.gap ? 'فجوةٌ تستحقّ التدقيق' : 'سلوكٌ معتاد'}</span></td>
+        </tr>`).join('');
+
+        const unmappedUserRows = unmappedUsers.map((u) => `<tr>
+          <td>${esc(u.device_name || `جهاز #${u.device_id ?? '؟'}`)}</td>
+          <td><span class="erp-mono" dir="ltr">${esc(u.device_user_id || '—')}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(intFmt(u.punches))}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(fmtDate(u.first_seen))}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(fmtDate(u.last_seen))}</span></td>
+        </tr>`).join('');
+
+        const unmappedRows = unmapped.map((o) => `<tr>
+          <td>${esc(fmtDate(o.attendance_time))}</td>
+          <td><span class="erp-num" dir="ltr">${esc(fmtTime(o.attendance_time))}</span></td>
+          <td><span class="erp-mono" dir="ltr">${esc(o.device_user_id || '—')}</span></td>
+          <td>${esc(o.device_name || `جهاز #${o.device_id ?? '؟'}`)}</td>
+        </tr>`).join('');
+
+        const noPunchRows = noPunch.map((r) => `<tr>
+          <td>${esc(r.date || '—')}</td>
+          <td>${esc(r.employee_name || '—')}</td>
+          <td><span class="erp-mono" dir="ltr">${esc(r.employee_no || '—')}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(r.check_in || '—')}</span></td>
+          <td><span class="erp-num" dir="ltr">${esc(r.check_out || '—')}</span></td>
+          <td><span class="erp-badge" data-tone="info">${esc(r.reason || '—')}</span></td>
+        </tr>`).join('');
+
+        target.innerHTML = `<div class="erp-zk__toolbar">
+            <label class="erp-field"><span>من تاريخ</span><input class="erp-input erp-input--ltr" type="date" data-v2-recon-from value="${esc(reconFrom)}"></label>
+            <label class="erp-field"><span>إلى تاريخ</span><input class="erp-input erp-input--ltr" type="date" data-v2-recon-to value="${esc(reconTo)}"></label>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-recon-load>
+              <i class="ji" data-i="refresh" aria-hidden="true"></i><span>قارن</span>
+            </button>
+            <span class="erp-text-sm erp-text-muted">المطابقة وقتيةٌ لا تقريبية — لحظةُ البصمة كما سجّلها الجهاز</span>
+          </div>
+          ${reconVerdictHtml({ s, coverage, recon })}
+          <h4 class="erp-zk__section-title">أيامُ موظفين بلا صفٍّ كامل (${esc(intFmt(gapDays.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:420px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">أيام الحضور الناقصة</caption>
+              <thead><tr><th>الموظف</th><th>التاريخ</th><th>نوع الفجوة</th><th>بصمات اليوم</th><th>الحالة</th></tr></thead>
+              <tbody>${gapDayRows || '<tr><td colspan="5" class="erp-text-muted">لا فجوات — كل بصمات الجهاز وصلت صفوفَ حضورها</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h4 class="erp-zk__section-title">تصنيفُ البصمات غير المطابقة</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:320px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">تصنيف البصمات غير المطابقة</caption>
+              <thead><tr><th>الصنف</th><th>العدد</th><th>الحكم</th></tr></thead>
+              <tbody>${bucketRows || '<tr><td colspan="3" class="erp-text-muted">لا بصمات غير مطابقة في هذا المدى</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h4 class="erp-zk__section-title">بصمات في الجهاز لم تصل النظام (${esc(intFmt(orphans.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:360px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">بصمات بلا صف حضور</caption>
+              <thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>رقم البصمة</th><th>الجهاز</th><th>الصنف</th></tr></thead>
+              <tbody>${orphanRows || '<tr><td colspan="6" class="erp-text-muted">لا بصمات بلا صف — كل بصمات الجهاز وصلت النظام</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h4 class="erp-zk__section-title">أرقامُ جهاز غير مربوطةٍ بموظف (${esc(intFmt(unmappedUsers.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:280px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">أرقام جهاز غير مربوطة</caption>
+              <thead><tr><th>الجهاز</th><th>رقم البصمة</th><th>عدد البصمات</th><th>أول ظهور</th><th>آخر ظهور</th></tr></thead>
+              <tbody>${unmappedUserRows || '<tr><td colspan="5" class="erp-text-muted">كل البصمات مرتبطة بموظفين</td></tr>'}</tbody>
+            </table>
+          </div>
+          ${unmapped.length ? `<details class="erp-zk__details"><summary>بصمات غير مربوطة بالتفصيل (${esc(intFmt(unmapped.length))})</summary>
+            <div class="erp-table__scroll" tabindex="0" style="max-height:240px">
+              <table class="erp-table__grid">
+                <caption class="erp-sr-only">بصمات غير مربوطة</caption>
+                <thead><tr><th>التاريخ</th><th>الوقت</th><th>رقم البصمة</th><th>الجهاز</th></tr></thead>
+                <tbody>${unmappedRows}</tbody>
+              </table>
+            </div>
+          </details>` : ''}
+          <h4 class="erp-zk__section-title">صفوف حضور بلا بصمة من الجهاز (${esc(intFmt(noPunch.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:420px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">صفوف بلا بصمة جهاز</caption>
+              <thead><tr><th>التاريخ</th><th>الموظف</th><th>الرقم الوظيفي</th><th>حضور</th><th>انصراف</th><th>المصدر</th></tr></thead>
+              <tbody>${noPunchRows || '<tr><td colspan="6" class="erp-text-muted">كل صفوف الحضور لها بصمة من الجهاز</td></tr>'}</tbody>
+            </table>
+          </div>
+          ${limits.lists_are_samples ? `<p class="erp-text-sm erp-text-muted">القوائمُ عيّناتٌ مقتطعة (${esc(intFmt(limits.punches_listed))} بصمة معروضة من ${esc(intFmt(s.device_punches))}، و${esc(intFmt(limits.rows_listed))} صفًّا من ${esc(intFmt(s.system_rows))}) — والأرقامُ في الملخّصِ أعلى كاملٌ من القاعدة</p>` : ''}`;
+    }
+
+    async function loadRecon(force = false) {
+        if (loading.recon) {return;}
+        if (loaded.recon && !force) {return;}
+        loading.recon = true;
+        const target = pane('recon');
+        paneState(target, 'جارٍ مطابقة بصمات الجهاز بسجلات النظام…');
+        try {
+            recon = await fetchZkReconciliation({ from: reconFrom, to: reconTo, limit: 500 });
+            if (!el.isConnected) {return;}
+            loaded.recon = true;
+            renderRecon();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            loaded.recon = false;
+            paneError(target, e && e.code === 'FORBIDDEN'
+                ? 'لا صلاحية لعرض المطابقة بهذا الحساب — القرار للخادم وحده.'
+                : `تعذّر تحميل المطابقة: ${(e && e.message) || 'خطأ'}`);
+        } finally {
+            loading.recon = false;
+        }
+    }
+
     /* ── Tab switching / refresh ──────────────────────────────────────── */
     function setTab(next) {
         if (!TABS.includes(next)) {return;}
@@ -871,6 +1106,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         if (next === 'devices') {reloadDevices();}
         else if (next === 'mappings') {loadMappings();}
         else if (next === 'logs') {loadLogs();}
+        else if (next === 'recon') {loadRecon();}
         else {loadCoverage();}
     }
 
@@ -878,6 +1114,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         if (tab === 'devices') {reloadDevices();}
         else if (tab === 'mappings') {loadMappings(true);}
         else if (tab === 'logs') {loadLogs(true);}
+        else if (tab === 'recon') {loadRecon(true);}
         else {loadCoverage(true);}
     }
 
@@ -972,7 +1209,7 @@ export function mountZktecoScreen(host, ctx = {}) {
                 notify('أُضيف الجهاز — اضغط «فحص» للتأكد من الاتصال');
             }
             closePanel();
-            invalidate('mappings', 'logs', 'coverage');
+            invalidate('mappings', 'logs', 'coverage', 'recon');
             await reloadDevices();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -996,7 +1233,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             const res = op === 'test' ? await testDevice(id) : await syncDevice(id);
             if (!el.isConnected) {return;}
             notify((res && res.message) || 'تمت العملية');
-            if (op === 'sync') {invalidate('mappings', 'logs', 'coverage');}
+            if (op === 'sync') {invalidate('mappings', 'logs', 'coverage', 'recon');}
             await reloadDevices();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -1034,7 +1271,7 @@ export function mountZktecoScreen(host, ctx = {}) {
             await deleteDevice(id);
             if (!el.isConnected) {return;}
             notify(`حُذف الجهاز «${row.name}»`);
-            invalidate('mappings', 'logs', 'coverage');
+            invalidate('mappings', 'logs', 'coverage', 'recon');
             await reloadDevices();
         } catch (e) {
             if (!el.isConnected) {return;}
@@ -1145,6 +1382,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-import-confirm]')) {confirmImport(); return;}
         if (event.target.closest('[data-v2-map-link]')) {confirmMapUser(); return;}
         if (event.target.closest('[data-v2-export]')) {exportLogs(); return;}
+        if (event.target.closest('[data-v2-recon-load]')) {loadRecon(true); return;}
         if (event.target.closest('[data-v2-goto-mappings]')) {setTab('mappings'); return;}
 
         const mapSave = event.target.closest('[data-v2-map-save]');
@@ -1181,6 +1419,10 @@ export function mountZktecoScreen(host, ctx = {}) {
             logFrom = String(event.target.value || '');
         } else if (event.target.matches('[data-v2-log-to]')) {
             logTo = String(event.target.value || '');
+        } else if (event.target.matches('[data-v2-recon-from]')) {
+            reconFrom = String(event.target.value || '');
+        } else if (event.target.matches('[data-v2-recon-to]')) {
+            reconTo = String(event.target.value || '');
         }
     });
 

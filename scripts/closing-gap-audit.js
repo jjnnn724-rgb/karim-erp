@@ -48,7 +48,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
           FROM pos_day_closes WHERE close_date::date BETWEEN $1::date AND $2::date
          ORDER BY close_date DESC
     `, [from, today]);
-    console.log(`\n【١】 الإقفالات (Z) المسجَّلة في الفترة: ${closes.rows.length}`);
+    console.log(`\n[١] الإقفالات (Z) المسجَّلة في الفترة: ${closes.rows.length}`);
     for (const c of closes.rows) {
         console.log(`   ${c.z_number} · ${String(c.day).slice(0, 10)} · متوقع ${fmt(c.total_expected)} · فعلي ${fmt(c.total_actual)} · فرق ${fmt(c.total_variance)}`);
     }
@@ -69,7 +69,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
          WHERE o.doc_date::date BETWEEN $1::date AND $2::date
          GROUP BY 1 ORDER BY 1
     `, [from, today]);
-    console.log('\n【٢】 التسوية النقدية (من مرآة YaraSoft — المتوقَّع من البيع)');
+    console.log('\n[٢] التسوية النقدية (من مرآة YaraSoft — المتوقَّع من البيع)');
     console.log('   اليوم        فواتير     إجمالي      ضريبة       صافي        نقد        شبكة        أخرى');
     const tot = { n: 0, gross: 0, cash: 0, card: 0 };
     for (const d of recon.rows) {
@@ -88,7 +88,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
                ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')
          GROUP BY 1 ORDER BY 1
     `, [from, today]);
-    console.log('\n【٣】 المصروفات التشغيلية (بلا تحويل/صرف/جرد — تلك مخزون لا مصروف)');
+    console.log('\n[٣] المصروفات التشغيلية (بلا تحويل/صرف/جرد — تلك مخزون لا مصروف)');
     let expTot = 0;
     for (const d of exp.rows) { console.log(`   ${String(d.day).slice(0, 10)}  ${String(d.n).padStart(4)} عملية  ${fmt(d.total).padStart(12)}`); expTot += d.total; }
     console.log(`   الإجمالي: ${fmt(expTot)}`);
@@ -105,7 +105,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
          GROUP BY 1 ORDER BY 1
     `, [from, today]);
     const glMap = new Map(gl.rows.map((r) => [String(r.day).slice(0, 10), r]));
-    console.log('\n【٤】 الدليل (ما رحَّله فعلًا) × التشغيل (YaraSoft) — الفرق = يوم غير مُرحَّل أو فرق ضريبة');
+    console.log('\n[٤] الدليل (ما رحَّله فعلًا) × التشغيل (YaraSoft) — الفرق = يوم غير مُرحَّل أو فرق ضريبة');
     console.log('   اليوم        إيراد الدليل   إيراد YS      فرق      قيد الدليل');
     let unposted = 0;
     for (const d of recon.rows) {
@@ -118,7 +118,7 @@ const fmt = (v) => money(v).toLocaleString('en-US', { minimumFractionDigits: 2, 
     console.log(`   أيام بلا قيد في الدليل: ${unposted}`);
 
     // ٥) الخلاصة (قرار لا فعل)
-    console.log('\n【٥】 الخلاصة (لقرار المالك — لم يُكتب شيء)');
+    console.log('\n[٥] الخلاصة (لقرار المالك — لم يُكتب شيء)');
     const cashDays = recon.rows.length;
     const closedDays = new Set(closes.rows.map((c) => String(c.day).slice(0, 10))).size;
     console.log(`   · أيام البيع في الفترة: ${cashDays}`);

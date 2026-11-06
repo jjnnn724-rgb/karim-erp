@@ -32,15 +32,16 @@
  * authority on roles, balances and the confirmation phrase.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.194';
-import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.194';
+import { apiFetch } from '../../core/api.js?v=4.9.296';
+import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.296';
 
 /** Mirrors requireRole('admin','manager','warehouse') on POST/PUT. */
 export const INVOICE_CREATE_ROLES = ['admin', 'manager', 'warehouse'];
 /** Server tax enum — the same four the legacy select offers. */
 export const TAX_CATEGORIES = ['STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE'];
-/** Server sentence (warehouse-routes.js:2171) — shown before opening. */
-export const EDIT_LOCKED_MESSAGE = 'لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا';
+/** قرار المالك 2026-10-31: فاتورة مدفوعة تُفتح للتعديل في الأصناف فقط —
+ *  الترويسة والدفعات تثبت، والخادم يجمّدها في وضع items_only. */
+export const PAID_ITEMS_ONLY_NOTICE = 'فاتورة مدفوعة — يمكن تعديل الأصناف فقط؛ الترويسة والدفعات ثابتة';
 
 const num = (v) => {
     const n = Number(v);
@@ -86,10 +87,10 @@ export function invoiceFormFromRow(inv = {}) {
     };
 }
 
-/** Legacy's edit gate (features/warehouse.js:1535): paidAmount > 0.
- *  The server also looks at supplier_payments rows and stays authoritative. */
-export function invoiceEditable(inv = {}) {
-    return !(num(inv.paidAmount) > 0);
+/** قرار المالك 2026-10-31: بوابة التعديل مفتوحة حتى للفواتير المدفوعة —
+ *  المحرر يثبّت الترويسة والخادم يبقى الحاكم (items_only عند وجود دفعات). */
+export function invoiceEditable() {
+    return true;
 }
 
 /** Form model → POST/PUT body. Same fields and defaults the legacy form sent,

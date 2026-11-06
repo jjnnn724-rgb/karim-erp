@@ -55,6 +55,7 @@ const { normalizeExpiryDate, readExpiryField } = require('./expiry-policy');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
 const { router: stocktakingRouter, ensureStocktakingSchema } = require('./stocktaking-routes');
 const { router: inventoryTransferRouter } = require('./inventory-transfer-routes');
+const { router: deptTransferRouter } = require('./dept-transfer-routes');
 const { router: kitchenProductionRouter, ensureKitchenSchema } = require('./kitchen-production-routes');
 const { router: procurementRouter, ensureProcurementSchema } = require('./procurement-routes');
 const { router: financeRouter, resolveCostAnalysisPeriod } = require('./finance-routes');
@@ -215,7 +216,7 @@ const io = new Server(httpServer, {
 // Coexistence: anonymous sockets still connect (legacy/pre-login). Verified
 // sockets join `erp:authed`; with RT_REQUIRE_AUTH=true sensitive broadcasts
 // go only there, otherwise legacy global behavior is unchanged.
-const { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS } = require('./realtime/guard');
+const { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS, makeEmitScoped } = require('./realtime/guard');
 const socketLimiter = createSocketLimiter();
 io.use((socket, next) => {
     const user = resolveHandshakeUser(verifyAccessToken, socket.handshake);
@@ -233,15 +234,8 @@ function rtGuard(socket, event) {
 }
 // Sensitive broadcast: authed-room only when flag on, legacy global otherwise.
 // Anti-echo preserved via exceptSocketId in both modes.
-function emitScoped(event, data, exceptSocketId) {
-    if (isRtAuthRequired()) {
-        const target = io.to('erp:authed');
-        if (exceptSocketId) {target.except(exceptSocketId).emit(event, data); return;}
-        target.emit(event, data); return;
-    }
-    if (exceptSocketId) {io.except(exceptSocketId).emit(event, data); return;}
-    io.emit(event, data);
-}
+// (النسخة المشتركة في realtime/guard.js — نفس السلوك حرفيًا، وتُستورَم في المحركات)
+const emitScoped = makeEmitScoped(io);
 
 // Track connected clients
 const connectedClients = new Map(); // socketId → { ip, deviceName, joinedAt }
@@ -637,6 +631,9 @@ app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRo
 const punchPortalRouter = require('./attendance-portal-routes'); // module.exports = router
 app.use('/api/attendance/portal', punchPortalRouter);
 
+// كشف البصمات الخام: دخول/خروج/ساعات من البصمة نفسها بلا وردية ولا سماحية.
+app.use('/api/attendance', require('./punch-statement-routes'));
+
 // وحدة جدول الدومات حُذفت من جذورها (2026-09-30) — الدوام الثابت هو المصدر.
 
 ensureLeaveWorkflowSchema().catch((error) => logger.error('[LEAVE_WORKFLOW_SCHEMA] initialization failed:', error.message));
@@ -646,6 +643,8 @@ app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, warehous
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, inventoryControlRouter);
 // World-class inventory transfer, receiving, variance and reconciliation workflow.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, inventoryTransferRouter);
+// التحويلات الداخلية بين الأقسام — طلب قسمي + اعتماد الشيف الفوري + بيع خارجي مباشر.
+app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, deptTransferRouter);
 // Professional stocktaking studio: live counting, bulk counts, cancel, printable sheets.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, stocktakingRouter);
 ensureStocktakingSchema().catch((error) => logger.error('[STOCKTAKING_SCHEMA] initialization failed:', error.message));
@@ -697,6 +696,7 @@ try {
 } catch (e) {
     logger.error('[BUDGET_ALERTS] module failed to load — alerts disabled, ledger still running:', e.message);
 }
+// لا سلسلة «حوكمة/استكمال» مجدولة: الحضور يُسجَّل من المصدرين المعتمدَين فقط.
 // User permission grants (admin assigns; additive over roles).
 const { router: permissionRouter } = require('./permission-routes');
 app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permissionRouter);
@@ -708,6 +708,11 @@ ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_S
 // إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
 app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
 
+// ─── إشعارات الهاتف (FCM Push): تسجيل توكنات الأجهزة — 2026-10-31 ─────────
+// jwtAuth داخل الراوتر نفسه؛ الخدمة نفسها مطفأة بهدوء حتى توفر مفتاح
+// خدمة Firebase (backend/push-service.js — تهيئة كسولّة).
+app.use('/api/push', require('./push-routes'));
+
 // ─── سجل الصرف + إذن الصرف (قراءة فقط: لا كتابة ولا تعديل) ───────────────
 try {
     const { router: expenseRegisterRouter } = require('./expense-register-routes');
@@ -717,9 +722,11 @@ try {
 }
 
 // ─── مبيعات الكاشير: كل الفواتير وتفاصيل الأصناف (قراءة فقط من المرآة) ───
+// req.io: الزناد اللايف (؟live=1) يبثّ نتيجة سحب المرآة على المقابس — بلا
+// الحقن يكون البثّ صامتًا وتبقى الشاشة تنتظر دورة المؤقّت.
 try {
     const { router: cashierSalesRouter } = require('./cashier-sales-routes');
-    app.use('/api/cashier-sales', cashierSalesRouter);
+    app.use('/api/cashier-sales', (req, res, next) => { req.io = io; next(); }, cashierSalesRouter);
 } catch (e) {
     logger.error('[CASHIER_SALES] module failed to load — sales register disabled:', e.message);
 }
@@ -747,19 +754,9 @@ try {
 // أجهزة البصمة + ربط الموظفين + بصمات بوابة الموظف
 app.use('/api/zkteco', (req, res, next) => { req.io = io; req.app.locals.attendanceEngine = attendanceEngine; next(); }, zktecoRouter);
 
-// ─── Attendance PUSH channel (Face/Hikvision → queue → unified engine) ───
-// معزول ومحمي: أي فشل هنا لا يسقط السيرفر (نفس discipline مثل whatsapp-engine).
-// POST /api/v1/attendance/push (Bearer per-device, 202 fast) — يعمل حتى بدون Redis عبر SQL mirror.
-let attendancePush = null;
-try {
-    attendancePush = require('./attendance-push');
-    app.use('/api/v1/attendance', (req, res, next) => { req.io = io; next(); }, attendancePush.router);
-    attendancePush.ensureAttendancePushSchema()
-        .then(() => attendancePush.startEmbeddedPoller(io))
-        .catch((error) => logger.error('[ATTENDANCE_PUSH_SCHEMA] init skipped (non-fatal):', error.message));
-} catch (e) {
-    logger.error('[ATTENDANCE_PUSH] module failed to load — push channel disabled, core still running:', e.message);
-}
+// ─── لا قناة Push خارجية للحضور (قرار المالك 2026-11-05): ───────────────────
+// مصدران فقط: جهاز البصمة (/api/zkteco) وكاميرا التطبيق (/api/attendance/portal).
+// أي جهاز خارجي (Hikvision/Face) — أُزيلت واجهته بالكامل.
 
 // ─── Yarasoft POS invoice import (inside the ERP process) ───
 // استيراد فواتير نقاط البيع من مشاركة الشبكة — قراءة فقط من Yarasoft
@@ -826,17 +823,10 @@ io.on('connection', (socket) => {
     const clientCount = connectedClients.size;
     logger.info(`🟢 [Socket] اتصل: ${deviceName} (${clientIp}) — إجمالي: ${clientCount} جهاز`);
 
-    // Notify all clients about new connection
-    emitScoped('device_connected', {
-        deviceName,
-        ip: clientIp,
-        totalClients: clientCount,
-        clients: Array.from(connectedClients.values()).map(c => ({
-            deviceName: c.deviceName,
-            ip: c.ip,
-            joinedAt: c.joinedAt,
-        })),
-    });
+    // (2026-10-31) إشعارات «جهاز دخل/جهاز خرج» أُلغيت بقرار المالك — كانت تُبث
+    // لكل الأجهزة فتُزعج الغرف بجرسٍ وصوتٍ لكل اتصال عابر. قائمة الأجهزة
+    // الحيّة ما زالت تصل عبر clients_list أدناه، والشات الداخلي ما زال
+    // يعتمد على connectedClients كما هو.
 
     // Send current client list to the newly connected device
     socket.emit('clients_list', Array.from(connectedClients.values()).map(c => ({
@@ -886,16 +876,7 @@ io.on('connection', (socket) => {
             const remaining = connectedClients.size;
             logger.info(`🔴 [Socket] انقطع: ${client.deviceName} (${client.ip}) — سبب: ${reason} — متبقي: ${remaining}`);
 
-            emitScoped('device_disconnected', {
-                deviceName: client.deviceName,
-                ip: client.ip,
-                totalClients: remaining,
-                clients: Array.from(connectedClients.values()).map(c => ({
-                    deviceName: c.deviceName,
-                    ip: c.ip,
-                    joinedAt: c.joinedAt,
-                })),
-            });
+            // (2026-10-31) بثّ device_disconnected أُلغي مع إشعارات الدخول/الخروج.
         }
     });
 
@@ -1156,26 +1137,38 @@ app.post('/api/state', jwtAuth, requireRole('admin', 'manager'), stateLimiter, a
 // ROOT FIX 2026-10-02: مرآة قيود المصاريف — كل مصروف يدوي يقابله قيد
 // Dr 6900 مصروف / Cr 1000 صندوق، ويُحدَّث/يُمسح مع تعديل أو حذف المصروف
 // حتى يعكس الأستاذ دائمًا الواقع التشغيلي (idempotent بمعرف المصروف).
-async function purgeExpenseJournal(expenseId) {
+// A2 (2026-11-06): «يُمسح» صار «يُبطل». الحذف الصلب كان يمحو الأثر من الأستاذ
+// العام (الميزان والقوائم تقرأ status='posted' فقط)، فالتعديل يفقد التاريخ.
+// الإبطال وحده يُخرج القيد من الأرصدة — قيد عكسي فوقه يطرح المبلغ مرتين.
+async function voidExpenseJournal(expenseId, actor = null) {
     try {
-        await pool.query(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type='expense' AND source_id=$1)`, [String(expenseId)]);
-        await pool.query(`DELETE FROM journal_entries WHERE source_type='expense' AND source_id=$1`, [String(expenseId)]);
-    } catch (e) { logger.warn("[expense-journal-purge]", e.message); }
+        const { voidSourceJournals } = require('./journal-void');
+        return await voidSourceJournals(pool, {
+            sourceType: 'expense', sourceIds: expenseId,
+            reason: 'تعديل/حذف المصروف — إبطال القيد المرآتي (سياسة void-only)',
+            actor: actor?.username || actor?.name || null, actorUserId: actor?.id || null,
+        });
+    } catch (e) { logger.warn('[expense-journal-void]', e.message); return { voided: 0, entries: [] }; }
 }
-async function postExpenseJournal(expenseRow) {
+async function postExpenseJournal(expenseRow, actor = null) {
     try {
         const amt = Number(expenseRow?.amount) || 0;
         if (!(amt > 0)) {return;}
         const { postJournal } = require('./accounting-routes');
+        const { nextRevisionSourceId } = require('./journal-void');
         const day = /^\d{4}-\d{2}-\d{2}$/.test(String(expenseRow.date || '').slice(0, 10)) ? String(expenseRow.date).slice(0, 10) : riyadhToday();
+        // المرجع المُبطَل يبقى محجوزًا في uq_journal_source إلى الأبد، فالنسخة
+        // المنقحة تُرحَّل بلاحقة مراجعة (#rN) — الصف الأول يأخذ المرجع المجرد.
+        const sourceId = await nextRevisionSourceId(pool, 'expense', String(expenseRow.id));
         await postJournal(pool, {
             date: day,
             memo: `مصروف ${expenseRow.category || ''} — ${String(expenseRow.notes || '').slice(0, 60)}`.trim(),
-            source_type: 'expense', source_id: String(expenseRow.id),
+            source_type: 'expense', source_id: sourceId,
             lines: [
                 { account_code: '6900', debit: amt, credit: 0, memo: 'مصروف تشغيلي' },
                 { account_code: '1000', debit: 0, credit: amt, memo: 'دفع نقدي من الصندوق' },
             ],
+            created_by: actor?.id || null,
         });
     } catch (e) { logger.warn("[expense-ledger]", e.message); }
 }
@@ -1443,10 +1436,11 @@ app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_R
             return res.status(403).json({ error: 'DEPT_HEAD_WITHOUT_DEPARTMENT', message: 'حساب رئيس القسم غير مرتبط بأي قسم — راجع مسؤول النظام' });
         }
         params.push(depts);
-        deptFilter = ` AND "employeeId" IN (SELECT id FROM employees WHERE LOWER(TRIM("department")) = ANY($${params.length}))`;
+        deptFilter = ' AND "employeeId" IN (SELECT id FROM employees WHERE LOWER(TRIM("department")) = ANY($' + params.length + '))';
     }
     const { rows } = await pool.query(
-        `SELECT * FROM attendance WHERE date >= $1 AND date <= $2${deptFilter} ORDER BY date DESC, "employeeId" ASC LIMIT $3`,
+        'SELECT * FROM attendance WHERE date >= $1 AND date <= $2' + deptFilter
+        + ' ORDER BY date DESC, "employeeId" ASC LIMIT $3',
         params
     );
     res.json({ data: rows, total: rows.length, from, to });
@@ -1669,11 +1663,62 @@ async function payrollPeriodViolation(entity, obj) {
 }
 async function payrollRowViolation(entity, id, extra) {
     try {
-        const row = (await pool.query(`SELECT * FROM "${entity}" WHERE id = $1`, [id])).rows[0];
+        // اسم الجدول من PAYROLL_GUARDED_ENTITIES حصرًا، والربط بالوصل لا بقالب نصي.
+        const row = (await pool.query('SELECT * FROM "' + entity + '" WHERE id = $1', [id])).rows[0];
         if (!row) {return null;}
         return payrollPeriodViolation(entity, { ...row, ...(extra || {}) });
     } catch (_) {return null;}
 }
+
+/* ── تعديل صفّ الحضور مع تدقيقه (2026-11-02) ────────────────────────────
+   المعاملةُ واحدة: تعديلُ الحضور وسطرُ تدقيقه يُحفظان معًا أو لا يُحفظ
+   شيء. «تعديلٌ بلا أثر» هو ما كان يجعل الحضور غير قابلٍ للمحاسبة. */
+async function updateAttendanceWithAudit({ id, setClause, keys, values, actor, before }) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await client.query(
+            'UPDATE "attendance" SET ' + setClause + ' WHERE id = $' + (keys.length + 1) + ' RETURNING *',
+            [...values, id]
+        );
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return { row: null };
+        }
+        await require('./attendance-governance').recordAttendanceEdit({
+            db: client, action: 'update', before, after: result.rows[0], actor, source: 'api',
+        });
+        await client.query('COMMIT');
+        return { row: result.rows[0] };
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+/* ── حوكمة الحضور: سجلّ التدقيق (2026-11-02) ────────────────────────────
+   مسارٌ مستقلٌّ عن CRUD العام، لأنّ /api/attendance/:id كان يبتلع
+   /api/attendance/audit. المسجَّل: من غيّر ماذا ومتى ولماذا. */
+app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'hr', 'manager'), asyncHandler(async (req, res) => {
+    try {
+        const { listAttendanceEdits } = require('./attendance-governance');
+        const result = await listAttendanceEdits({
+            from: String(req.query.from || ''),
+            to: String(req.query.to || ''),
+            employeeId: req.query.employeeId ?? null,
+            actorId: req.query.actorId ?? null,
+            action: String(req.query.action || ''),
+            limit: req.query.limit,
+            offset: req.query.offset,
+        });
+        res.json(result);
+    } catch (error) {
+        logger.error('[attendance-audit] list failed:', error.message);
+        res.status(500).json({ error: 'ATTENDANCE_AUDIT_FAILED', message: error.message });
+    }
+}));
 
 entities.forEach(entity => {
     // Determine if this entity requires elevated role for write operations
@@ -2026,7 +2071,7 @@ entities.forEach(entity => {
                     await c2.query('COMMIT');
                 } catch (e) { logger.warn('[inventory-balance-seed]', e.message); } finally { if (c2) {c2.release();} }
             }
-            if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
+            if (entity === 'expenses') { await postExpenseJournal(result.rows[0], req.user); }
             emitEntityChange(entity, 'create', publicRow, req);
             // Task 20: إشعار فوري لسلسلة الاعتماد عند إنشاء طلب صرف
             if (entity === 'dispatches') {
@@ -2080,6 +2125,14 @@ entities.forEach(entity => {
             if (periodBlockCreateOpen) {return res.status(423).json(periodBlockCreateOpen);}
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered); }
             catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
+            if (entity === 'attendance') {
+                // حوكمة الحضور (2026-11-02): سببٌ إجباري + تجميد الفترة المغلقة.
+                const gov = require('./attendance-governance');
+                const violation = gov.attendanceCorrectionViolation({ action: 'create', after: filtered, filtered });
+                if (violation) {return res.status(violation.status).json(violation);}
+                const periodBlock = await gov.attendancePeriodViolation(filtered);
+                if (periodBlock) {return res.status(periodBlock.status).json(periodBlock);}
+            }
             if (entity === 'employees') {
                 const department = filtered.department == null ? null : String(filtered.department).trim();
                 filtered = { ...filtered, department: department || null };
@@ -2143,10 +2196,33 @@ entities.forEach(entity => {
             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
             const columns = keys.map(k => `"${k}"`).join(', ');
 
-            const result = await pool.query(
-                `INSERT INTO "${entity}" (${columns}) VALUES (${placeholders}) RETURNING *`,
-                values
-            );
+            /* الحضور: الإدراج وسطرُ التدقيق في معاملةٍ واحدة — لا صفّ بلا أثر. */
+            let result;
+            if (entity === 'attendance') {
+                const attClient = await pool.connect();
+                try {
+                    await attClient.query('BEGIN');
+                    result = await attClient.query(
+                        `INSERT INTO "${entity}" (${columns}) VALUES (${placeholders}) RETURNING *`,
+                        values
+                    );
+                    await require('./attendance-governance').recordAttendanceEdit({
+                        db: attClient, action: 'create', before: null, after: result.rows[0],
+                        actor: req.user, source: 'api',
+                    });
+                    await attClient.query('COMMIT');
+                } catch (attErr) {
+                    await attClient.query('ROLLBACK').catch(() => {});
+                    throw attErr;
+                } finally {
+                    attClient.release();
+                }
+            } else {
+                result = await pool.query(
+                    `INSERT INTO "${entity}" (${columns}) VALUES (${placeholders}) RETURNING *`,
+                    values
+                );
+            }
 
             const publicRow = publicEntityRow(entity, result.rows[0]);
             // نفس حرس الرصيد — المعالج الثاني للكيانات ذات الأدوار المفتوحة
@@ -2181,7 +2257,7 @@ entities.forEach(entity => {
                     await c3.query('COMMIT');
                 } catch (e) { logger.warn('[inventory-balance-seed]', e.message); await c3?.query('ROLLBACK').catch(() => {}); } finally { if (c3) {c3.release();} }
             }
-            if (entity === 'expenses') { await postExpenseJournal(result.rows[0]); }
+            if (entity === 'expenses') { await postExpenseJournal(result.rows[0], req.user); }
             emitEntityChange(entity, 'create', publicRow, req);
             // ─── تدقيق أمني (2026-10-01): إنشاء إجازة معتمدة/مرفوضة مباشرة (أعذار
             // إدارية) كان يتركها خارج سلسلة الاعتماد — تُلحق بسجل مكتمل/مرفوض
@@ -2335,33 +2411,43 @@ entities.forEach(entity => {
 
             const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
             let result;
-            try {
-                result = await pool.query(
-                    `UPDATE "${entity}" SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
-                    [...values, id]
-                );
-            } catch (updErr) {
-                // 42703 = column does not exist. Happens when the code ships
-                // before the migration that adds the column (staged rollout).
-                // Retrying without the unknown column keeps the other fields
-                // saved instead of failing the whole update.
-                if (updErr && updErr.code === '42703') {
-                    // message: column "x" of relation "settings" does not exist
-                    const missing = /column "([^"]+)"[^;]*does not exist/i.exec(updErr.message || '');
-                    const bad = missing ? missing[1] : null;
-                    const kept = bad ? keys.filter((k) => k !== bad) : [];
-                    if (kept.length && kept.length !== keys.length) {
-                        logger.warn(`[crud] missing column in ${entity} (${bad}) - retried without it`);
-                        const keptValues = kept.map((key) => prepareDbValue(entity, key, filtered[key]));
-                        result = await pool.query(
-                            `UPDATE "${entity}" SET ${kept.map((k, i) => `"${k}" = $${i + 1}`).join(', ')} WHERE id = $${kept.length + 1} RETURNING *`,
-                            [...keptValues, id]
-                        );
+            if (entity === 'attendance') {
+                /* التعديل وسطرُ التدقيق في معاملةٍ واحدة: إما أن يُحفظ
+                   التعديل ويُسجَّل، أو لا يُحفظ شيء. */
+                const updated = await updateAttendanceWithAudit({
+                    id, setClause, keys, values, actor: req.user, before: attBefore,
+                });
+                if (!updated.row) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+                result = { rows: [updated.row] };
+            } else {
+                try {
+                    result = await pool.query(
+                        `UPDATE "${entity}" SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+                        [...values, id]
+                    );
+                } catch (updErr) {
+                    // 42703 = column does not exist. Happens when the code ships
+                    // before the migration that adds the column (staged rollout).
+                    // Retrying without the unknown column keeps the other fields
+                    // saved instead of failing the whole update.
+                    if (updErr && updErr.code === '42703') {
+                        // message: column "x" of relation "settings" does not exist
+                        const missing = /column "([^"]+)"[^;]*does not exist/i.exec(updErr.message || '');
+                        const bad = missing ? missing[1] : null;
+                        const kept = bad ? keys.filter((k) => k !== bad) : [];
+                        if (kept.length && kept.length !== keys.length) {
+                            logger.warn(`[crud] missing column in ${entity} (${bad}) - retried without it`);
+                            const keptValues = kept.map((key) => prepareDbValue(entity, key, filtered[key]));
+                            result = await pool.query(
+                                `UPDATE "${entity}" SET ${kept.map((k, i) => `"${k}" = $${i + 1}`).join(', ')} WHERE id = $${kept.length + 1} RETURNING *`,
+                                [...keptValues, id]
+                            );
+                        } else {
+                            throw updErr;
+                        }
                     } else {
                         throw updErr;
                     }
-                } else {
-                    throw updErr;
                 }
             }
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
@@ -2386,8 +2472,8 @@ entities.forEach(entity => {
                 }).catch((e) => logger.warn('[user-audit] update:', e.message));
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
-                await purgeExpenseJournal(id);
-                await postExpenseJournal(result.rows[0]);
+                await voidExpenseJournal(id, req.user);
+                await postExpenseJournal(result.rows[0], req.user);
             }
             res.json(publicRow);
         }));
@@ -2416,6 +2502,17 @@ entities.forEach(entity => {
             }
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered, id); }
             catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
+            /* حوكمة الحضور (2026-11-02): الصفُّ القديم + سببٌ إجباري + تجميد الفترة. */
+            let attBefore;
+            if (entity === 'attendance') {
+                const gov = require('./attendance-governance');
+                attBefore = (await pool.query('SELECT * FROM attendance WHERE id = $1', [id])).rows[0] || null;
+                if (!attBefore) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+                const violation = gov.attendanceCorrectionViolation({ action: 'update', before: attBefore, after: filtered, filtered });
+                if (violation) {return res.status(violation.status).json(violation);}
+                const periodBlock = await gov.attendancePeriodViolation({ ...attBefore, ...filtered });
+                if (periodBlock) {return res.status(periodBlock.status).json(periodBlock);}
+            }
             // ─── تدقيق أمني (2026-10-01): قرارات الإجازات (حالة/معتمِد/رافض) عبر
             // مسار السلسلة فقط — التعديل العام المباشر كان يتجاوز المراحل والمنع الذاتي
             if (entity === 'leaveRequests') {
@@ -2528,8 +2625,8 @@ entities.forEach(entity => {
                 catch (e) { logger.warn('[refresh-revoke]', e.message); }
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
-                await purgeExpenseJournal(id);
-                await postExpenseJournal(result.rows[0]);
+                await voidExpenseJournal(id, req.user);
+                await postExpenseJournal(result.rows[0], req.user);
             }
             res.json(publicRow);
         }));
@@ -2563,19 +2660,32 @@ entities.forEach(entity => {
     // حذف تتابعي لمتعلقات إذن صرف (للأدمن فقط) — دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات.
     // الأرصدة المخزنية والمتوسطات لا تُمس عمدًا (واقع فيزيائي — تُسوّى بجرد تأكيدي).
     // يعمل حتى لو صف الإذن نفسه محذوف مسبقًا (تنظيف البقايا).
-    async function purgeDispatchRelated(dispatchId) {
+    async function purgeDispatchRelated(dispatchId, actor = null) {
         const out = { journal: 0, ledger: 0, tx: 0, expenses: 0, events: 0, notifications: 0 };
         const ref = `DIS-${dispatchId}`;
         const hash = `%طلب صرف #${dispatchId}%`;
+        const { voidSourceJournals } = require('./journal-void');
+        const who = { actor: actor?.username || actor?.name || 'admin', actorUserId: actor?.id };
         try {
-            out.journal = (await pool.query(
-                `DELETE FROM journal_entries WHERE source_type='dispatch' AND source_id=$1 RETURNING id`,
-                [String(dispatchId)])).rows.length;
+            // A2 (2026-11-06): قيد الصرف المنشور لا يُمسح — يُبطل ويبقى أثره.
+            out.journal = (await voidSourceJournals(pool, {
+                sourceType: 'dispatch', sourceIds: String(dispatchId),
+                reason: `حذف إداري قسري لطلب الصرف #${dispatchId} (force-delete) — إبطال القيد`, ...who,
+            })).voided;
             out.ledger = (await pool.query(
                 `DELETE FROM inventory_ledger WHERE reference_type='dispatch' AND (reference_id=$1 OR reference_id=$2) RETURNING id`,
                 [ref, String(dispatchId)])).rows.length;
             out.tx = (await pool.query(
                 `DELETE FROM "inventoryTx" WHERE "dispatchId"=$1 RETURNING id`, [ref])).rows.length;
+            // مصاريف التسوية المرتبطة: تُبطل قيودها المرآتية قبل محو صفوفها،
+            // وإلا بقيت قيود مرحّلة بلا مستند (أيتام في الأستاذ العام).
+            const expenseRows = (await pool.query(
+                `SELECT id FROM expenses WHERE COALESCE("adjustmentType",'') IN ('dispatch','dispatch_return')
+                  AND (notes LIKE $1 OR "desc" LIKE $2)`, [hash, hash])).rows;
+            out.journal += (await voidSourceJournals(pool, {
+                sourceType: 'expense', sourceIds: expenseRows.map((r) => r.id),
+                reason: `إبطال مصاريف تسوية الصرف #${dispatchId} قبل حذفها`, ...who,
+            })).voided;
             out.expenses = (await pool.query(
                 `DELETE FROM expenses WHERE COALESCE("adjustmentType",'') IN ('dispatch','dispatch_return')
                   AND (notes LIKE $1 OR "desc" LIKE $2) RETURNING id`, [hash, hash])).rows.length;
@@ -2684,14 +2794,14 @@ entities.forEach(entity => {
                     // حذف تتابعي بأمر المالك (2026-10-01): إذن الأدمن يحذف معه كل
                     // المتعلقات المالية (دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات) —
                     // الأرصدة المخزنية لا تُمس (واقع فيزيائي — يُسوّى بجرد)
-                    const rel = await purgeDispatchRelated(id);
+                    const rel = await purgeDispatchRelated(id, req.user);
                     await logAdminForceDelete(req, entity, id,
                         `dispatch status=${dispatchRow.status} force-delete by admin + cascade ` +
-                        `(journal=${rel.journal} ledger=${rel.ledger} tx=${rel.tx} expenses=${rel.expenses} events=${rel.events} notifications=${rel.notifications})`);
+                        `(journalVoided=${rel.journal} ledger=${rel.ledger} tx=${rel.tx} expenses=${rel.expenses} events=${rel.events} notifications=${rel.notifications})`);
                     logger.warn('[admin] force-delete dispatch + cascade', { id, status: dispatchRow.status, by: req.user?.username || req.user?.id, ...rel });
                 }
             }
-            if (entity === 'expenses') { await purgeExpenseJournal(id); }
+            if (entity === 'expenses') { await voidExpenseJournal(id, req.user); }
             if (entity === 'inventory' && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true)) {
                 // ROOT FIX 2026-10-02: الحذف القسري كان يفشل 500 بقيد RESTRICT —
                 // ينضف الأرصدة والدفتر وحركات POS أولًا (قرار أدمن صريح موثق).
@@ -2730,6 +2840,22 @@ entities.forEach(entity => {
             }
             const periodBlockDelOpen = await payrollRowViolation(entity, id);
             if (periodBlockDelOpen) {return res.status(423).json(periodBlockDelOpen);}
+            /* حذفُ صفّ حضورٍ ممسوحٌ بلا سبب — مَمْلوكٌ ومسجَّل (2026-11-02). */
+            let attBefore = null;
+            if (entity === 'attendance') {
+                const reason = String(req.body?.reason || req.query?.reason || '').trim();
+                if (!reason) {
+                    return res.status(422).json({
+                        error: 'ATTENDANCE_REASON_REQUIRED',
+                        message: 'حذف صفّ الحضور يستلزم سببًا مكتوبًا',
+                    });
+                }
+                const gov = require('./attendance-governance');
+                attBefore = (await pool.query('SELECT * FROM attendance WHERE id = $1', [id])).rows[0] || null;
+                if (!attBefore) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
+                const periodBlock = await gov.attendancePeriodViolation(attBefore);
+                if (periodBlock) {return res.status(periodBlock.status).json(periodBlock);}
+            }
             // تدقيق أمني جولة 2: صنف مخزون له حركات/أرصدة لا يُحذف —
             // الحذف كان إما يفشل بخطأ FK خام (500) أو يمحو التاريخ المالي
             // للصنف عبر CASCADE. يجب تعطيل/تصفية الصنف عبر مساره المخصص.
@@ -2751,7 +2877,7 @@ entities.forEach(entity => {
                     await logAdminForceDelete(req, entity, id, `inventory with ${movementCount} movements force-delete by admin`);
                 }
             }
-            if (entity === 'expenses') { await purgeExpenseJournal(id); }
+            if (entity === 'expenses') { await voidExpenseJournal(id, req.user); }
                         if (entity === 'inventory' && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true)) {
                 // ROOT FIX 2026-10-02: الحذف القسري كان يفشل 500 بقيد RESTRICT —
                 // ينضف الأرصدة والدفتر وحركات POS أولًا (قرار أدمن صريح موثق).
@@ -2761,7 +2887,32 @@ entities.forEach(entity => {
                     await pool.query(`DELETE FROM "inventoryTx" WHERE "itemId" = $1`, [id]);
                 } catch (e2) { logger.warn("[inventory-force-cleanup]", e2.message); }
             }
-const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
+            /* الحضور: الحذف وسطرُ التدقيق في معاملةٍ واحدة. */
+            let result;
+            if (entity === 'attendance') {
+                const attClient = await pool.connect();
+                try {
+                    await attClient.query('BEGIN');
+                    result = await attClient.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
+                    if (result.rows.length === 0) {
+                        await attClient.query('ROLLBACK');
+                        return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });
+                    }
+                    await require('./attendance-governance').recordAttendanceEdit({
+                        db: attClient, action: 'delete', before: attBefore, after: null,
+                        actor: req.user, source: 'api',
+                        reason: String(req.body?.reason || req.query?.reason || '').trim(),
+                    });
+                    await attClient.query('COMMIT');
+                } catch (attErr) {
+                    await attClient.query('ROLLBACK').catch(() => {});
+                    throw attErr;
+                } finally {
+                    attClient.release();
+                }
+            } else {
+                result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
+            }
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
 
             emitEntityChange(entity, 'delete', { id }, req);
@@ -2900,8 +3051,9 @@ app.use('/app/menu.html', (req, res) => {
 });
 
 /* Aliases typed by hand or kept in old bookmarks. The login page is `/`
-   (which itself forwards to /app/index.html); these paths used to fall
-   through to the 404 handler, which reads to a user as "the system is down".
+   (which itself forwards to /app/v2.html?live=1 — V2 is the primary shell
+   since 2026-10-23); these paths used to fall through to the 404 handler,
+   which reads to a user as "the system is down".
    302 rather than 301: the canonical destination can move. */
 app.get(['/login', '/login.html', '/index.html'], (req, res) => {
     res.redirect(302, '/');
@@ -3110,6 +3262,13 @@ async function onServerListening() {
     purgeReadNotifications();
     const _notifPurgeTimer = setInterval(purgeReadNotifications, 24 * 60 * 60 * 1000);
     if (_notifPurgeTimer.unref) {_notifPurgeTimer.unref();}
+    // ─── «المنادي» التصعيد (المرحلة التانية 2026-11-02): إشعار أولوية لم
+    // يُفتح 15 دقيقة → نائب الشيف، 45 دقيقة → المدير. عامل مستقل (unref'd)
+    // ويفشل وحده دون أن يمسّ تشغيل الخادم — راجع backend/callout-escalation.js. ───
+    try {
+        const { startEscalationWorker } = require('./callout-escalation');
+        startEscalationWorker({ io });
+    } catch (error) { logger.warn('[callout-escalation] تعذر بدء عامل التصعيد (سيستمر الخادم بدونه):', error.message); }
     // ─── استيراد فواتير Yarasoft داخل النظام: المخطط ثم المحرك (معطّل حتى YARASOFT_ENABLED=true) ───
     ensureYarasoftSchema()
         .then(() => yarasoftEngine.start(io))

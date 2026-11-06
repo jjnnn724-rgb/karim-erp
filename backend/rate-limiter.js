@@ -324,14 +324,32 @@ const stateLimiter = createRateLimiter(DEFAULT_CONFIGS.state);
  */
 const crudLimiter = createRateLimiter(DEFAULT_CONFIGS.crud);
 
+/**
+ * Session-refresh rate limiter (120/min per IP) — FIX 2026-10-31.
+ * /auth/refresh كانت على سقف الدخول الصارم، ومفتاحه بلا username في
+ * الطلب فانهار إلى IP واحد — وكل أجهزة المطعم خلف نفق Cloudflare تظهر
+ * بـ remoteAddress واحد، فتجديدات الجلسة المشروعة استنزفت السقف وأعطت
+ * 429 → فشل التجديد الصامت → خروج دوري للحسابات (شكوى المالك الأصلية).
+ * التجديد نداء نظامي متكرر لا محاولة تخمين: سقف سخي بنافذة قصيرة يمنع
+ * الطوفان دون طرد موظف، وفشل التجديد لا يحتسب (الرمز الميت يُحذف أصلًا).
+ */
+const refreshLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: envMax('RATE_LIMIT_REFRESH_MAX', 120),
+    message: 'Too many session refreshes, please try again shortly',
+    keyGenerator: ipKeyGenerator,
+    skipFailedRequests: true,
+});
+
 // ─── Export Everything ──────────────────────────────────
 module.exports = {
     // Main factory function
     createRateLimiter,
-    
+
     // Pre-configured limiters
     generalLimiter,
     authLimiter,
+    refreshLimiter,
     stateLimiter,
     crudLimiter,
     
