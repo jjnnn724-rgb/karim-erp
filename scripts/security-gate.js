@@ -421,7 +421,7 @@ function runGate(opts = {}) {
             } else if (val.count > allowed) {
                 const ex = def.zero ? null : findException(exceptions, rule, key, val.count, today);
                 if (ex) {
-                    notes.push(`ⓘ استثناء موثّق ساري حتى ${ex.expires}: [${rule}] ${key}:${val.line} (${val.count}) — ${ex.reference || ex.reason}`);
+                    notes.push(`استثناء موثّق ساري حتى ${ex.expires}: [${rule}] ${key}:${val.line} (${val.count}) — ${ex.reference || ex.reason}`);
                 } else {
                     const expired = !def.zero && Array.isArray(exceptions)
                         && exceptions.some((x) => x && x.rule === rule && x.file === key && Number(x.count) >= val.count);
@@ -444,6 +444,10 @@ function runGate(opts = {}) {
     const inv = invariantViolations();
     violations.push(...inv);
 
+    const activeExceptions = Array.isArray(exceptions)
+        ? exceptions.filter((x) => x && typeof x.expires === 'string' && x.expires >= today)
+        : [];
+
     let wrote = false;
     if (opts.writeBaseline) {
         if (violations.length === 0) {
@@ -460,7 +464,15 @@ function runGate(opts = {}) {
         }
     }
 
-    return { ok: violations.length === 0, violations, notes, wrote, findings, filesScanned: collected.filesScanned };
+    return {
+        ok: violations.length === 0,
+        violations,
+        notes,
+        wrote,
+        findings,
+        filesScanned: collected.filesScanned,
+        activeExceptions,
+    };
 }
 
 /* ── CLI ─────────────────────────────────────────────────────────────── */
@@ -475,6 +487,10 @@ if (require.main === module) {
     } else {
         console.log('SECURITY-GATE — بوابة الأمان');
         console.log(`  الملفات المفحوصة: ${res.filesScanned || 0}`);
+        console.log(`  EXCEPTIONS: ${res.activeExceptions.length} active — استثناءات موثّقة سارية`);
+        for (const ex of res.activeExceptions) {
+            console.log(`    • [${ex.rule}] ${ex.file} (${ex.count}) حتى ${ex.expires} — ${ex.reference || ex.reason || ''}`);
+        }
         for (const [rule, def] of Object.entries(RULES)) {
             const bucket = (res.findings && res.findings[rule]) || {};
             const n = Object.keys(bucket).length;
