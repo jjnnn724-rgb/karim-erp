@@ -53,6 +53,22 @@ describe('resolveHandshakeUser — never trusts client claims', () => {
     test('no verify fn → anonymous', () => {
         expect(resolveHandshakeUser(null, { auth: { token: 'good' } })).toBeNull();
     });
+    test('تذكرة ما-قبل-MFA لا تُعدّ هوية', () => {
+        const v = () => ({ sub: '7', role: 'admin', purpose: 'mfa' });
+        expect(resolveHandshakeUser(v, { auth: { token: 'ticket' } })).toBeNull();
+    });
+    test('تذكرة تسجيل MFA لا تُعدّ هوية', () => {
+        const v = () => ({ sub: '7', role: 'admin', purpose: 'mfa_enroll' });
+        expect(resolveHandshakeUser(v, { auth: { token: 'ticket' } })).toBeNull();
+    });
+    test('توكن access صريح يمرّ', () => {
+        const v = () => ({ sub: '7', role: 'cashier', purpose: 'access' });
+        expect(resolveHandshakeUser(v, { auth: { token: 't' } }).id).toBe(7);
+    });
+    test('توكن قديم بلا purpose يبقى صالحًا', () => {
+        const v = () => ({ sub: '7', role: 'cashier' });
+        expect(resolveHandshakeUser(v, { auth: { token: 't' } }).id).toBe(7);
+    });
 });
 
 describe('createSocketLimiter — per-socket budgets', () => {
