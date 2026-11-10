@@ -1,0 +1,20 @@
+﻿/* Local presentation layer: inherits semantic ERP tokens and keeps screen contracts intact. */
+.screen-premium { min-width: 0; }
+.screen-premium > * { min-width: 0; }
+.screen-premium table { min-width: 38rem; }
+.screen-premium th { white-space: nowrap; letter-spacing: .01em; }
+.screen-premium tbody tr { transition: background-color 140ms ease; }
+.screen-premium tbody tr:nth-child(even) { background-color: color-mix(in srgb, var(--erp-surface-sunken) 26%, transparent); }
+.screen-premium td { vertical-align: middle; }
+.screen-premium input, .screen-premium button { transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }
+.screen-premium input:focus-visible, .screen-premium button:focus-visible { outline: var(--erp-focus-ring); outline-offset: 2px; }
+.screen-premium input { min-height: 2.5rem; }
+.screen-premium button:not(:disabled):hover { border-color: var(--erp-accent); }
+@media (max-width: 640px) {
+  .screen-premium { gap: 1rem; }
+  .screen-premium table { min-width: 36rem; }
+  .screen-premium label input { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-premium tbody tr, .screen-premium input, .screen-premium button { transition: none; }
+}

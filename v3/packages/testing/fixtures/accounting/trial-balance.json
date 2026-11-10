@@ -1,0 +1,1009 @@
+{
+  "meta": {
+    "status": 200,
+    "url": "/api/accounting/trial-balance?from=2026-10-01&to=2026-10-31",
+    "captured_at": "2026-11-09T20:01:46.169Z",
+    "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
+  },
+  "body": {
+    "from": "2026-10-01",
+    "to": "2026-10-31",
+    "accounts": [
+      {
+        "code": "1",
+        "name_ar": "الأصول",
+        "name_en": "Assets",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1000",
+        "name_ar": "النقدية بالصندوق",
+        "name_en": "Cash on Hand",
+        "type": "asset",
+        "debit": "3016668.37",
+        "credit": "24648.85"
+      },
+      {
+        "code": "1001",
+        "name_ar": "صندوق كاشير الصالة / الفرع",
+        "name_en": "POS Cashier Cash",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1005",
+        "name_ar": "عهد نقدية ومصاريف نثرية",
+        "name_en": "Petty Cash Custody",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1010",
+        "name_ar": "البنك — الحساب الجاري",
+        "name_en": "Bank Current Account",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "8.22"
+      },
+      {
+        "code": "1011",
+        "name_ar": "البنك — مصرف الراجحي",
+        "name_en": "Al Rajhi Bank",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1012",
+        "name_ar": "البنك — البنك الأهلي السعودي",
+        "name_en": "SNB Bank",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1020",
+        "name_ar": "وسيط تسوية نقاط البيع والمدفوعات الإلكترونية",
+        "name_en": "POS / Mada Clearing",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "11",
+        "name_ar": "الأصول المتداولة",
+        "name_en": "Current Assets",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "111",
+        "name_ar": "النقدية وما في حكمها",
+        "name_en": "Cash & Cash Equivalents",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "112",
+        "name_ar": "البنوك والوساطة المالية والشبكة",
+        "name_en": "Banks & POS Clearing",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "113",
+        "name_ar": "الذمم المدينة والعملاء",
+        "name_en": "Accounts Receivable & Debtors",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "114",
+        "name_ar": "المخزون",
+        "name_en": "Inventory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "115",
+        "name_ar": "الأرصدة المدينة الأخرى والمدفوعات مقدماً",
+        "name_en": "Prepayments & Other Receivables",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1150",
+        "name_ar": "ضريبة القيمة المضافة مستردة (مدخلات)",
+        "name_en": "Input VAT Receivable",
+        "type": "asset",
+        "debit": "81517.48",
+        "credit": "0.00"
+      },
+      {
+        "code": "12",
+        "name_ar": "الأصول غير المتداولة",
+        "name_en": "Non-Current Assets",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1200",
+        "name_ar": "مخزون المواد",
+        "name_en": "Inventory",
+        "type": "asset",
+        "debit": "583533.61",
+        "credit": "583949.84"
+      },
+      {
+        "code": "1210",
+        "name_ar": "مخزون اللحوم والدواجن والأسماك",
+        "name_en": "Meat & Poultry Inventory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1220",
+        "name_ar": "مخزون الخضار والفاكهة الطازجة",
+        "name_en": "Produce Inventory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1230",
+        "name_ar": "مخزون البقالة والمواد الجافة",
+        "name_en": "Dry Goods & Grocery Inventory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1240",
+        "name_ar": "مخزون مواد التعبئة والتغليف والمستهلكات",
+        "name_en": "Packaging & Disposables Inventory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1250",
+        "name_ar": "مخزون الإنتاج التام — قسم التصنيع",
+        "name_en": "Finished Goods Inventory - Factory",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1300",
+        "name_ar": "ذمم مدينة (عملاء)",
+        "name_en": "Accounts Receivable",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1310",
+        "name_ar": "مستحقات شركات تطبيقات التوصيل",
+        "name_en": "Delivery Apps Receivables",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1320",
+        "name_ar": "عملاء بوفيهات وحفلات وضيافة",
+        "name_en": "Catering & Corporate Clients",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1400",
+        "name_ar": "مصاريف مدفوعة مقدمًا",
+        "name_en": "Prepaid Expenses",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1410",
+        "name_ar": "سلف موظفين مستردة",
+        "name_en": "Employee Advances",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1420",
+        "name_ar": "تأمينات مستردة لدى الغير",
+        "name_en": "Security Deposits",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1500",
+        "name_ar": "الأصول الثابتة",
+        "name_en": "Fixed Assets",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1510",
+        "name_ar": "معدات المطعم",
+        "name_en": "Restaurant Equipment",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1511",
+        "name_ar": "أجهزة حاسب آلي ونقاط بيع وشبكات",
+        "name_en": "IT & POS Systems",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1512",
+        "name_ar": "سيارات ودراجات التوصيل والنقل",
+        "name_en": "Vehicles & Delivery Fleet",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1513",
+        "name_ar": "ديكورات وتحسينات المباني المستأجرة",
+        "name_en": "Leasehold Improvements",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1514",
+        "name_ar": "أثاث ومفروشات الصالة والمكاتب",
+        "name_en": "Furniture & Fixtures",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "1520",
+        "name_ar": "مجمع إهلاك المعدات",
+        "name_en": "Accumulated Depreciation",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2",
+        "name_ar": "الالتزامات",
+        "name_en": "Liabilities",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2000",
+        "name_ar": "ذمم دائنة (موردون)",
+        "name_en": "Accounts Payable",
+        "type": "liability",
+        "debit": "11357.07",
+        "credit": "664393.09"
+      },
+      {
+        "code": "2010",
+        "name_ar": "موردو اللحوم والدواجن",
+        "name_en": "Meat & Poultry Suppliers",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2020",
+        "name_ar": "موردو الخضار والفواكه",
+        "name_en": "Produce Suppliers",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2030",
+        "name_ar": "موردو التعبئة والتغليف والمستهلكات",
+        "name_en": "Packaging Suppliers",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2040",
+        "name_ar": "موردو الصيانة والخدمات",
+        "name_en": "Maintenance & Service Suppliers",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "21",
+        "name_ar": "الالتزامات المتداولة",
+        "name_en": "Current Liabilities",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2100",
+        "name_ar": "ضريبة القيمة المضافة مستحقة",
+        "name_en": "VAT Payable",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "211",
+        "name_ar": "الموردون والذمم الدائنة",
+        "name_en": "Suppliers & Accounts Payable",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "212",
+        "name_ar": "المستحقات الحكومية والضريبية",
+        "name_en": "Tax & Government Payables",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2120",
+        "name_ar": "مخصص الزكاة الشرعية وضريبة الدخل",
+        "name_en": "Zakat & Income Tax Provision",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "213",
+        "name_ar": "مستحقات الموظفين والمصروفات المستحقة",
+        "name_en": "Accrued Payroll & Expenses",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2130",
+        "name_ar": "التأمينات الاجتماعية المستحقة (GOSI)",
+        "name_en": "GOSI Payable",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "214",
+        "name_ar": "أمانات ودفعات مقدمة من العملاء",
+        "name_en": "Deposits & Customer Advances",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "22",
+        "name_ar": "الالتزامات غير المتداولة",
+        "name_en": "Non-Current Liabilities",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2200",
+        "name_ar": "رواتب مستحقة",
+        "name_en": "Salaries Payable",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2210",
+        "name_ar": "مستحقات إجازات وتذاكر وبدلات مستحقة",
+        "name_en": "Accrued Leave & Benefits",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2250",
+        "name_ar": "مخصص مكافأة نهاية الخدمة للموظفين",
+        "name_en": "End of Service Indemnity Provision",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2300",
+        "name_ar": "مصاريف مستحقة أخرى",
+        "name_en": "Other Accrued Expenses",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2400",
+        "name_ar": "دفعات مقدمة من العملاء",
+        "name_en": "Customer Advances",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "2410",
+        "name_ar": "أمانات وتأمينات للغير",
+        "name_en": "Third-Party Deposits",
+        "type": "liability",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "3",
+        "name_ar": "حقوق الملكية",
+        "name_en": "Equity",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "3000",
+        "name_ar": "رأس المال",
+        "name_en": "Capital",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "570.00"
+      },
+      {
+        "code": "31",
+        "name_ar": "رأس المال والاحتياطيات",
+        "name_en": "Capital & Reserves",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "3100",
+        "name_ar": "الأرباح المحتجزة",
+        "name_en": "Retained Earnings",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "32",
+        "name_ar": "الحسابات الجارية للشركاء",
+        "name_en": "Partners Current Accounts",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "3200",
+        "name_ar": "الاحتياطي النظامي",
+        "name_en": "Statutory Reserve",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "3300",
+        "name_ar": "جاري الشركاء والمسحوبات الشخصية",
+        "name_en": "Partners Current Accounts",
+        "type": "equity",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4",
+        "name_ar": "الإيرادات",
+        "name_en": "Revenues",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4000",
+        "name_ar": "إيرادات المبيعات",
+        "name_en": "Sales Revenue",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "3016668.37"
+      },
+      {
+        "code": "4010",
+        "name_ar": "مبيعات الصالة (محلي)",
+        "name_en": "Dine-In Sales",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4020",
+        "name_ar": "مبيعات السفري والتيك أواي",
+        "name_en": "Takeaway Sales",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4030",
+        "name_ar": "مبيعات تطبيقات التوصيل",
+        "name_en": "Delivery Apps Sales",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4040",
+        "name_ar": "مبيعات المنافذ الخارجية والمعارض",
+        "name_en": "External Sales Outlets",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4050",
+        "name_ar": "إيرادات وتحويلات قسم التصنيع والمصنع",
+        "name_en": "Factory Production Deliveries",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "41",
+        "name_ar": "إيرادات النشاط التشغيلي",
+        "name_en": "Operating Sales Revenues",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4100",
+        "name_ar": "إيرادات التوصيل والخدمات",
+        "name_en": "Delivery & Service Revenue",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "42",
+        "name_ar": "إيرادات تشغيلية أخرى ومتنوعة",
+        "name_en": "Other Operating Revenues",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "4200",
+        "name_ar": "إيرادات بيع مخلفات وكرتون وإيرادات متنوعة",
+        "name_en": "Miscellaneous Income",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5",
+        "name_ar": "تكلفة النشاط والمبيعات",
+        "name_en": "Cost of Goods Sold",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5000",
+        "name_ar": "تكلفة البضاعة المباعة — أغذية",
+        "name_en": "Food COGS",
+        "type": "cogs",
+        "debit": "583949.84",
+        "credit": "88.00"
+      },
+      {
+        "code": "51",
+        "name_ar": "تكلفة المواد المباشرة والخامات",
+        "name_en": "Direct Materials Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5100",
+        "name_ar": "تكلفة البضاعة المباعة — مشروبات",
+        "name_en": "Beverage COGS",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5120",
+        "name_ar": "تكلفة اللحوم والدواجن والأسماك",
+        "name_en": "Meat & Poultry Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5130",
+        "name_ar": "تكلفة الخضار والفاكهة الطازجة",
+        "name_en": "Produce Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5140",
+        "name_ar": "تكلفة البقالة والخامات الجافة",
+        "name_en": "Dry Goods & Groceries Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "52",
+        "name_ar": "تكاليف تشغيلية مباشرة ومواد تعبئة",
+        "name_en": "Direct Operating & Packaging Costs",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5200",
+        "name_ar": "تكلفة مواد التعبئة والتغليف والمستهلكات",
+        "name_en": "Packaging & Disposables Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5300",
+        "name_ar": "هدر وتالف تشغيلي طبيعي وغير طبيعي",
+        "name_en": "Waste & Spoilage Cost",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "5400",
+        "name_ar": "تكاليف تصنيع وتحويلات المصنع المباشرة",
+        "name_en": "Factory Direct Production Costs",
+        "type": "cogs",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6",
+        "name_ar": "المصروفات التشغيلية والإدارية",
+        "name_en": "Operating & Administrative Expenses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6000",
+        "name_ar": "الرواتب والأجور",
+        "name_en": "Salaries & Wages",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6010",
+        "name_ar": "بدل سكن وبدل انتقال ومنافع نقدية",
+        "name_en": "Housing & Transport Allowances",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6020",
+        "name_ar": "حوافز ومكافآت وإضافي",
+        "name_en": "Incentives & Overtime",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6030",
+        "name_ar": "رسوم إقامات ورخص عمل وشهادات صحية وتأشيرات",
+        "name_en": "Work Permits & Health Certificates",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6040",
+        "name_ar": "تأمين طبي ومنافع صحية للموظفين",
+        "name_en": "Medical Insurance",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "61",
+        "name_ar": "تكاليف ومنافع الموظفين",
+        "name_en": "Salaries & Employee Benefits",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6100",
+        "name_ar": "الإيجارات",
+        "name_en": "Rent",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "62",
+        "name_ar": "مصروفات تشغيل الفروع والمطابخ",
+        "name_en": "Branch & Kitchen Operating Expenses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6200",
+        "name_ar": "الكهرباء والمياه والغاز",
+        "name_en": "Utilities",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "63",
+        "name_ar": "مصروفات التسويق والمبيعات",
+        "name_en": "Marketing & Selling Expenses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6300",
+        "name_ar": "الصيانة والإصلاح",
+        "name_en": "Maintenance & Repairs",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "64",
+        "name_ar": "مصروفات عمومية وإدارية وتمويلية",
+        "name_en": "General, Administrative & Financial",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6400",
+        "name_ar": "التسويق والإعلان",
+        "name_en": "Marketing",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6420",
+        "name_ar": "عمولات تطبيقات التوصيل (جاهز، هنقرستيشن...)",
+        "name_en": "Delivery Aggregators Commissions",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6430",
+        "name_ar": "مطبوعات وبروشورات وهوية بصرية وتصوير",
+        "name_en": "Promotional & Branding Expenses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6500",
+        "name_ar": "المستلزمات والمنظفات",
+        "name_en": "Supplies",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6600",
+        "name_ar": "الإهلاك",
+        "name_en": "Depreciation",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6700",
+        "name_ar": "رسوم وتراخيص",
+        "name_en": "Fees & Licenses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6800",
+        "name_ar": "رسوم بنكية وعمولات مدى وفيزا وأجهزة نقاط البيع",
+        "name_en": "Bank Charges & POS Card Fees",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6810",
+        "name_ar": "اتصالات وإنترنت واشتراكات برمجيات وسيرفرات",
+        "name_en": "Telecom, Internet & Cloud ERP",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6820",
+        "name_ar": "أتعاب مهنية ومحاسبية وقانونية واستشارية",
+        "name_en": "Professional & Legal Fees",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "6900",
+        "name_ar": "مصاريف تشغيلية أخرى",
+        "name_en": "Other Operating Expenses",
+        "type": "expense",
+        "debit": "13300.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "71",
+        "name_ar": "إيرادات أخرى",
+        "name_en": "Other Income",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7101",
+        "name_ar": "إيرادات استثمارية وفوائد مقبوضة",
+        "name_en": "Investment Income & Interest",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7102",
+        "name_ar": "أرباح فروق العملة",
+        "name_en": "FX Gains",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7103",
+        "name_ar": "أرباح بيع أصول",
+        "name_en": "Gain on Disposal of Assets",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7104",
+        "name_ar": "أرباح غير تشغيلية أخرى ومتنوعة",
+        "name_en": "Miscellaneous Non-Operating Income",
+        "type": "revenue",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "72",
+        "name_ar": "مصروفات وأعباء أخرى",
+        "name_en": "Other Expenses & Charges",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7201",
+        "name_ar": "خسائر فروق العملة",
+        "name_en": "FX Losses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7202",
+        "name_ar": "خسائر بيع أصول",
+        "name_en": "Loss on Disposal of Assets",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7203",
+        "name_ar": "تكاليف التمويل والفوائد المدفوعة",
+        "name_en": "Finance Costs & Interest Paid",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7204",
+        "name_ar": "خسائر ائتمانية متوقعة (ECL)",
+        "name_en": "Expected Credit Losses",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "7205",
+        "name_ar": "بنود غير متكررة — تحت بند مراجعة",
+        "name_en": "Non-Recurring Items (Review)",
+        "type": "expense",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "8",
+        "name_ar": "حسابات رقابية وسيطة محكومة",
+        "name_en": "Controlled Suspense & Clearing",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "81",
+        "name_ar": "حسابات وسيطة ومطلوب تصفيتها",
+        "name_en": "Suspense & Clearing Accounts",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "8101",
+        "name_ar": "وسيط تسوية نقاط البيع والشبكة — معلق",
+        "name_en": "POS / Mada Clearing — Pending",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "8102",
+        "name_ar": "وسيط تحويلات وفرق بين الأقسام",
+        "name_en": "Inter-Department Suspense",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      },
+      {
+        "code": "8103",
+        "name_ar": "وسيط فروق الجرد والتسويات",
+        "name_en": "Inventory Count Variance Suspense",
+        "type": "asset",
+        "debit": "0.00",
+        "credit": "0.00"
+      }
+    ],
+    "total_debit": 4290326.37,
+    "total_credit": 4290326.37,
+    "balanced": true
+  }
+}

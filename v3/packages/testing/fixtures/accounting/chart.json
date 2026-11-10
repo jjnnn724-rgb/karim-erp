@@ -1,0 +1,1126 @@
+{
+  "meta": {
+    "status": 200,
+    "url": "/api/accounting/chart",
+    "captured_at": "2026-11-09T20:01:46.169Z",
+    "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
+  },
+  "body": [
+    {
+      "code": "1",
+      "name_ar": "الأصول",
+      "name_en": "Assets",
+      "type": "asset",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "1000",
+      "name_ar": "النقدية بالصندوق",
+      "name_en": "Cash on Hand",
+      "type": "asset",
+      "parent_code": "111",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1001",
+      "name_ar": "صندوق كاشير الصالة / الفرع",
+      "name_en": "POS Cashier Cash",
+      "type": "asset",
+      "parent_code": "111",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1005",
+      "name_ar": "عهد نقدية ومصاريف نثرية",
+      "name_en": "Petty Cash Custody",
+      "type": "asset",
+      "parent_code": "111",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1010",
+      "name_ar": "البنك — الحساب الجاري",
+      "name_en": "Bank Current Account",
+      "type": "asset",
+      "parent_code": "112",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1011",
+      "name_ar": "البنك — مصرف الراجحي",
+      "name_en": "Al Rajhi Bank",
+      "type": "asset",
+      "parent_code": "112",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1012",
+      "name_ar": "البنك — البنك الأهلي السعودي",
+      "name_en": "SNB Bank",
+      "type": "asset",
+      "parent_code": "112",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1020",
+      "name_ar": "وسيط تسوية نقاط البيع والمدفوعات الإلكترونية",
+      "name_en": "POS / Mada Clearing",
+      "type": "asset",
+      "parent_code": "112",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "11",
+      "name_ar": "الأصول المتداولة",
+      "name_en": "Current Assets",
+      "type": "asset",
+      "parent_code": "1",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "111",
+      "name_ar": "النقدية وما في حكمها",
+      "name_en": "Cash & Cash Equivalents",
+      "type": "asset",
+      "parent_code": "11",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "112",
+      "name_ar": "البنوك والوساطة المالية والشبكة",
+      "name_en": "Banks & POS Clearing",
+      "type": "asset",
+      "parent_code": "11",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "113",
+      "name_ar": "الذمم المدينة والعملاء",
+      "name_en": "Accounts Receivable & Debtors",
+      "type": "asset",
+      "parent_code": "11",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "114",
+      "name_ar": "المخزون",
+      "name_en": "Inventory",
+      "type": "asset",
+      "parent_code": "11",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "115",
+      "name_ar": "الأرصدة المدينة الأخرى والمدفوعات مقدماً",
+      "name_en": "Prepayments & Other Receivables",
+      "type": "asset",
+      "parent_code": "11",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "1150",
+      "name_ar": "ضريبة القيمة المضافة مستردة (مدخلات)",
+      "name_en": "Input VAT Receivable",
+      "type": "asset",
+      "parent_code": "115",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "12",
+      "name_ar": "الأصول غير المتداولة",
+      "name_en": "Non-Current Assets",
+      "type": "asset",
+      "parent_code": "1",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "1200",
+      "name_ar": "مخزون المواد",
+      "name_en": "Inventory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1210",
+      "name_ar": "مخزون اللحوم والدواجن والأسماك",
+      "name_en": "Meat & Poultry Inventory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1220",
+      "name_ar": "مخزون الخضار والفاكهة الطازجة",
+      "name_en": "Produce Inventory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1230",
+      "name_ar": "مخزون البقالة والمواد الجافة",
+      "name_en": "Dry Goods & Grocery Inventory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1240",
+      "name_ar": "مخزون مواد التعبئة والتغليف والمستهلكات",
+      "name_en": "Packaging & Disposables Inventory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1250",
+      "name_ar": "مخزون الإنتاج التام — قسم التصنيع",
+      "name_en": "Finished Goods Inventory - Factory",
+      "type": "asset",
+      "parent_code": "114",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1300",
+      "name_ar": "ذمم مدينة (عملاء)",
+      "name_en": "Accounts Receivable",
+      "type": "asset",
+      "parent_code": "113",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1310",
+      "name_ar": "مستحقات شركات تطبيقات التوصيل",
+      "name_en": "Delivery Apps Receivables",
+      "type": "asset",
+      "parent_code": "113",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1320",
+      "name_ar": "عملاء بوفيهات وحفلات وضيافة",
+      "name_en": "Catering & Corporate Clients",
+      "type": "asset",
+      "parent_code": "113",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1400",
+      "name_ar": "مصاريف مدفوعة مقدمًا",
+      "name_en": "Prepaid Expenses",
+      "type": "asset",
+      "parent_code": "115",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1410",
+      "name_ar": "سلف موظفين مستردة",
+      "name_en": "Employee Advances",
+      "type": "asset",
+      "parent_code": "115",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1420",
+      "name_ar": "تأمينات مستردة لدى الغير",
+      "name_en": "Security Deposits",
+      "type": "asset",
+      "parent_code": "115",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1500",
+      "name_ar": "الأصول الثابتة",
+      "name_en": "Fixed Assets",
+      "type": "asset",
+      "parent_code": "12",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "1510",
+      "name_ar": "معدات المطعم",
+      "name_en": "Restaurant Equipment",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1511",
+      "name_ar": "أجهزة حاسب آلي ونقاط بيع وشبكات",
+      "name_en": "IT & POS Systems",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1512",
+      "name_ar": "سيارات ودراجات التوصيل والنقل",
+      "name_en": "Vehicles & Delivery Fleet",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1513",
+      "name_ar": "ديكورات وتحسينات المباني المستأجرة",
+      "name_en": "Leasehold Improvements",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1514",
+      "name_ar": "أثاث ومفروشات الصالة والمكاتب",
+      "name_en": "Furniture & Fixtures",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "1520",
+      "name_ar": "مجمع إهلاك المعدات",
+      "name_en": "Accumulated Depreciation",
+      "type": "asset",
+      "parent_code": "1500",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2",
+      "name_ar": "الالتزامات",
+      "name_en": "Liabilities",
+      "type": "liability",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "2000",
+      "name_ar": "ذمم دائنة (موردون)",
+      "name_en": "Accounts Payable",
+      "type": "liability",
+      "parent_code": "211",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2010",
+      "name_ar": "موردو اللحوم والدواجن",
+      "name_en": "Meat & Poultry Suppliers",
+      "type": "liability",
+      "parent_code": "211",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2020",
+      "name_ar": "موردو الخضار والفواكه",
+      "name_en": "Produce Suppliers",
+      "type": "liability",
+      "parent_code": "211",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2030",
+      "name_ar": "موردو التعبئة والتغليف والمستهلكات",
+      "name_en": "Packaging Suppliers",
+      "type": "liability",
+      "parent_code": "211",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2040",
+      "name_ar": "موردو الصيانة والخدمات",
+      "name_en": "Maintenance & Service Suppliers",
+      "type": "liability",
+      "parent_code": "211",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "21",
+      "name_ar": "الالتزامات المتداولة",
+      "name_en": "Current Liabilities",
+      "type": "liability",
+      "parent_code": "2",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "2100",
+      "name_ar": "ضريبة القيمة المضافة مستحقة",
+      "name_en": "VAT Payable",
+      "type": "liability",
+      "parent_code": "212",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "211",
+      "name_ar": "الموردون والذمم الدائنة",
+      "name_en": "Suppliers & Accounts Payable",
+      "type": "liability",
+      "parent_code": "21",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "212",
+      "name_ar": "المستحقات الحكومية والضريبية",
+      "name_en": "Tax & Government Payables",
+      "type": "liability",
+      "parent_code": "21",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "2120",
+      "name_ar": "مخصص الزكاة الشرعية وضريبة الدخل",
+      "name_en": "Zakat & Income Tax Provision",
+      "type": "liability",
+      "parent_code": "212",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "213",
+      "name_ar": "مستحقات الموظفين والمصروفات المستحقة",
+      "name_en": "Accrued Payroll & Expenses",
+      "type": "liability",
+      "parent_code": "21",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "2130",
+      "name_ar": "التأمينات الاجتماعية المستحقة (GOSI)",
+      "name_en": "GOSI Payable",
+      "type": "liability",
+      "parent_code": "212",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "214",
+      "name_ar": "أمانات ودفعات مقدمة من العملاء",
+      "name_en": "Deposits & Customer Advances",
+      "type": "liability",
+      "parent_code": "21",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "22",
+      "name_ar": "الالتزامات غير المتداولة",
+      "name_en": "Non-Current Liabilities",
+      "type": "liability",
+      "parent_code": "2",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "2200",
+      "name_ar": "رواتب مستحقة",
+      "name_en": "Salaries Payable",
+      "type": "liability",
+      "parent_code": "213",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2210",
+      "name_ar": "مستحقات إجازات وتذاكر وبدلات مستحقة",
+      "name_en": "Accrued Leave & Benefits",
+      "type": "liability",
+      "parent_code": "213",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2250",
+      "name_ar": "مخصص مكافأة نهاية الخدمة للموظفين",
+      "name_en": "End of Service Indemnity Provision",
+      "type": "liability",
+      "parent_code": "22",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2300",
+      "name_ar": "مصاريف مستحقة أخرى",
+      "name_en": "Other Accrued Expenses",
+      "type": "liability",
+      "parent_code": "213",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2400",
+      "name_ar": "دفعات مقدمة من العملاء",
+      "name_en": "Customer Advances",
+      "type": "liability",
+      "parent_code": "214",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "2410",
+      "name_ar": "أمانات وتأمينات للغير",
+      "name_en": "Third-Party Deposits",
+      "type": "liability",
+      "parent_code": "214",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "3",
+      "name_ar": "حقوق الملكية",
+      "name_en": "Equity",
+      "type": "equity",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "3000",
+      "name_ar": "رأس المال",
+      "name_en": "Capital",
+      "type": "equity",
+      "parent_code": "31",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "31",
+      "name_ar": "رأس المال والاحتياطيات",
+      "name_en": "Capital & Reserves",
+      "type": "equity",
+      "parent_code": "3",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "3100",
+      "name_ar": "الأرباح المحتجزة",
+      "name_en": "Retained Earnings",
+      "type": "equity",
+      "parent_code": "31",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "32",
+      "name_ar": "الحسابات الجارية للشركاء",
+      "name_en": "Partners Current Accounts",
+      "type": "equity",
+      "parent_code": "3",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "3200",
+      "name_ar": "الاحتياطي النظامي",
+      "name_en": "Statutory Reserve",
+      "type": "equity",
+      "parent_code": "31",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "3300",
+      "name_ar": "جاري الشركاء والمسحوبات الشخصية",
+      "name_en": "Partners Current Accounts",
+      "type": "equity",
+      "parent_code": "32",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4",
+      "name_ar": "الإيرادات",
+      "name_en": "Revenues",
+      "type": "revenue",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "4000",
+      "name_ar": "إيرادات المبيعات",
+      "name_en": "Sales Revenue",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4010",
+      "name_ar": "مبيعات الصالة (محلي)",
+      "name_en": "Dine-In Sales",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4020",
+      "name_ar": "مبيعات السفري والتيك أواي",
+      "name_en": "Takeaway Sales",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4030",
+      "name_ar": "مبيعات تطبيقات التوصيل",
+      "name_en": "Delivery Apps Sales",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4040",
+      "name_ar": "مبيعات المنافذ الخارجية والمعارض",
+      "name_en": "External Sales Outlets",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "4050",
+      "name_ar": "إيرادات وتحويلات قسم التصنيع والمصنع",
+      "name_en": "Factory Production Deliveries",
+      "type": "revenue",
+      "parent_code": "41",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "41",
+      "name_ar": "إيرادات النشاط التشغيلي",
+      "name_en": "Operating Sales Revenues",
+      "type": "revenue",
+      "parent_code": "4",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "4100",
+      "name_ar": "إيرادات التوصيل والخدمات",
+      "name_en": "Delivery & Service Revenue",
+      "type": "revenue",
+      "parent_code": "42",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "42",
+      "name_ar": "إيرادات تشغيلية أخرى ومتنوعة",
+      "name_en": "Other Operating Revenues",
+      "type": "revenue",
+      "parent_code": "4",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "4200",
+      "name_ar": "إيرادات بيع مخلفات وكرتون وإيرادات متنوعة",
+      "name_en": "Miscellaneous Income",
+      "type": "revenue",
+      "parent_code": "42",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5",
+      "name_ar": "تكلفة النشاط والمبيعات",
+      "name_en": "Cost of Goods Sold",
+      "type": "cogs",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "5000",
+      "name_ar": "تكلفة البضاعة المباعة — أغذية",
+      "name_en": "Food COGS",
+      "type": "cogs",
+      "parent_code": "51",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "51",
+      "name_ar": "تكلفة المواد المباشرة والخامات",
+      "name_en": "Direct Materials Cost",
+      "type": "cogs",
+      "parent_code": "5",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "5100",
+      "name_ar": "تكلفة البضاعة المباعة — مشروبات",
+      "name_en": "Beverage COGS",
+      "type": "cogs",
+      "parent_code": "51",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5120",
+      "name_ar": "تكلفة اللحوم والدواجن والأسماك",
+      "name_en": "Meat & Poultry Cost",
+      "type": "cogs",
+      "parent_code": "51",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5130",
+      "name_ar": "تكلفة الخضار والفاكهة الطازجة",
+      "name_en": "Produce Cost",
+      "type": "cogs",
+      "parent_code": "51",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5140",
+      "name_ar": "تكلفة البقالة والخامات الجافة",
+      "name_en": "Dry Goods & Groceries Cost",
+      "type": "cogs",
+      "parent_code": "51",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "52",
+      "name_ar": "تكاليف تشغيلية مباشرة ومواد تعبئة",
+      "name_en": "Direct Operating & Packaging Costs",
+      "type": "cogs",
+      "parent_code": "5",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "5200",
+      "name_ar": "تكلفة مواد التعبئة والتغليف والمستهلكات",
+      "name_en": "Packaging & Disposables Cost",
+      "type": "cogs",
+      "parent_code": "52",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5300",
+      "name_ar": "هدر وتالف تشغيلي طبيعي وغير طبيعي",
+      "name_en": "Waste & Spoilage Cost",
+      "type": "cogs",
+      "parent_code": "52",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "5400",
+      "name_ar": "تكاليف تصنيع وتحويلات المصنع المباشرة",
+      "name_en": "Factory Direct Production Costs",
+      "type": "cogs",
+      "parent_code": "52",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6",
+      "name_ar": "المصروفات التشغيلية والإدارية",
+      "name_en": "Operating & Administrative Expenses",
+      "type": "expense",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "6000",
+      "name_ar": "الرواتب والأجور",
+      "name_en": "Salaries & Wages",
+      "type": "expense",
+      "parent_code": "61",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6010",
+      "name_ar": "بدل سكن وبدل انتقال ومنافع نقدية",
+      "name_en": "Housing & Transport Allowances",
+      "type": "expense",
+      "parent_code": "61",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6020",
+      "name_ar": "حوافز ومكافآت وإضافي",
+      "name_en": "Incentives & Overtime",
+      "type": "expense",
+      "parent_code": "61",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6030",
+      "name_ar": "رسوم إقامات ورخص عمل وشهادات صحية وتأشيرات",
+      "name_en": "Work Permits & Health Certificates",
+      "type": "expense",
+      "parent_code": "61",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6040",
+      "name_ar": "تأمين طبي ومنافع صحية للموظفين",
+      "name_en": "Medical Insurance",
+      "type": "expense",
+      "parent_code": "61",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "61",
+      "name_ar": "تكاليف ومنافع الموظفين",
+      "name_en": "Salaries & Employee Benefits",
+      "type": "expense",
+      "parent_code": "6",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "6100",
+      "name_ar": "الإيجارات",
+      "name_en": "Rent",
+      "type": "expense",
+      "parent_code": "62",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "62",
+      "name_ar": "مصروفات تشغيل الفروع والمطابخ",
+      "name_en": "Branch & Kitchen Operating Expenses",
+      "type": "expense",
+      "parent_code": "6",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "6200",
+      "name_ar": "الكهرباء والمياه والغاز",
+      "name_en": "Utilities",
+      "type": "expense",
+      "parent_code": "62",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "63",
+      "name_ar": "مصروفات التسويق والمبيعات",
+      "name_en": "Marketing & Selling Expenses",
+      "type": "expense",
+      "parent_code": "6",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "6300",
+      "name_ar": "الصيانة والإصلاح",
+      "name_en": "Maintenance & Repairs",
+      "type": "expense",
+      "parent_code": "62",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "64",
+      "name_ar": "مصروفات عمومية وإدارية وتمويلية",
+      "name_en": "General, Administrative & Financial",
+      "type": "expense",
+      "parent_code": "6",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "6400",
+      "name_ar": "التسويق والإعلان",
+      "name_en": "Marketing",
+      "type": "expense",
+      "parent_code": "63",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6420",
+      "name_ar": "عمولات تطبيقات التوصيل (جاهز، هنقرستيشن...)",
+      "name_en": "Delivery Aggregators Commissions",
+      "type": "expense",
+      "parent_code": "63",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6430",
+      "name_ar": "مطبوعات وبروشورات وهوية بصرية وتصوير",
+      "name_en": "Promotional & Branding Expenses",
+      "type": "expense",
+      "parent_code": "63",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6500",
+      "name_ar": "المستلزمات والمنظفات",
+      "name_en": "Supplies",
+      "type": "expense",
+      "parent_code": "62",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6600",
+      "name_ar": "الإهلاك",
+      "name_en": "Depreciation",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6700",
+      "name_ar": "رسوم وتراخيص",
+      "name_en": "Fees & Licenses",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6800",
+      "name_ar": "رسوم بنكية وعمولات مدى وفيزا وأجهزة نقاط البيع",
+      "name_en": "Bank Charges & POS Card Fees",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6810",
+      "name_ar": "اتصالات وإنترنت واشتراكات برمجيات وسيرفرات",
+      "name_en": "Telecom, Internet & Cloud ERP",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6820",
+      "name_ar": "أتعاب مهنية ومحاسبية وقانونية واستشارية",
+      "name_en": "Professional & Legal Fees",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "6900",
+      "name_ar": "مصاريف تشغيلية أخرى",
+      "name_en": "Other Operating Expenses",
+      "type": "expense",
+      "parent_code": "64",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "71",
+      "name_ar": "إيرادات أخرى",
+      "name_en": "Other Income",
+      "type": "revenue",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "7101",
+      "name_ar": "إيرادات استثمارية وفوائد مقبوضة",
+      "name_en": "Investment Income & Interest",
+      "type": "revenue",
+      "parent_code": "71",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7102",
+      "name_ar": "أرباح فروق العملة",
+      "name_en": "FX Gains",
+      "type": "revenue",
+      "parent_code": "71",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7103",
+      "name_ar": "أرباح بيع أصول",
+      "name_en": "Gain on Disposal of Assets",
+      "type": "revenue",
+      "parent_code": "71",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7104",
+      "name_ar": "أرباح غير تشغيلية أخرى ومتنوعة",
+      "name_en": "Miscellaneous Non-Operating Income",
+      "type": "revenue",
+      "parent_code": "71",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "72",
+      "name_ar": "مصروفات وأعباء أخرى",
+      "name_en": "Other Expenses & Charges",
+      "type": "expense",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "7201",
+      "name_ar": "خسائر فروق العملة",
+      "name_en": "FX Losses",
+      "type": "expense",
+      "parent_code": "72",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7202",
+      "name_ar": "خسائر بيع أصول",
+      "name_en": "Loss on Disposal of Assets",
+      "type": "expense",
+      "parent_code": "72",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7203",
+      "name_ar": "تكاليف التمويل والفوائد المدفوعة",
+      "name_en": "Finance Costs & Interest Paid",
+      "type": "expense",
+      "parent_code": "72",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7204",
+      "name_ar": "خسائر ائتمانية متوقعة (ECL)",
+      "name_en": "Expected Credit Losses",
+      "type": "expense",
+      "parent_code": "72",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "7205",
+      "name_ar": "بنود غير متكررة — تحت بند مراجعة",
+      "name_en": "Non-Recurring Items (Review)",
+      "type": "expense",
+      "parent_code": "72",
+      "is_postable": true,
+      "is_active": true
+    },
+    {
+      "code": "8",
+      "name_ar": "حسابات رقابية وسيطة محكومة",
+      "name_en": "Controlled Suspense & Clearing",
+      "type": "asset",
+      "parent_code": null,
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "81",
+      "name_ar": "حسابات وسيطة ومطلوب تصفيتها",
+      "name_en": "Suspense & Clearing Accounts",
+      "type": "asset",
+      "parent_code": "8",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "8101",
+      "name_ar": "وسيط تسوية نقاط البيع والشبكة — معلق",
+      "name_en": "POS / Mada Clearing — Pending",
+      "type": "asset",
+      "parent_code": "81",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "8102",
+      "name_ar": "وسيط تحويلات وفرق بين الأقسام",
+      "name_en": "Inter-Department Suspense",
+      "type": "asset",
+      "parent_code": "81",
+      "is_postable": false,
+      "is_active": true
+    },
+    {
+      "code": "8103",
+      "name_ar": "وسيط فروق الجرد والتسويات",
+      "name_en": "Inventory Count Variance Suspense",
+      "type": "asset",
+      "parent_code": "81",
+      "is_postable": false,
+      "is_active": true
+    }
+  ]
+}

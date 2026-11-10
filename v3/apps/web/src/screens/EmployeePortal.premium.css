@@ -1,0 +1,64 @@
+.employeeportal-premium {
+  --screen-accent: var(--erp-primary, var(--accent));
+  gap: clamp(1rem, 2vw, 1.5rem);
+  min-width: 0;
+}
+
+.employeeportal-premium > header {
+  align-items: center;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--erp-hairline, var(--hairline));
+}
+
+.employeeportal-premium > header h1 {
+  max-width: 100%;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.employeeportal-premium > header h1 > span {
+  display: inline-block;
+  margin-inline-start: 0.35rem;
+  letter-spacing: 0;
+}
+
+.employeeportal-premium > header p {
+  max-width: 72ch;
+  margin-block-start: 0.35rem;
+  line-height: 1.8;
+}
+
+.employeeportal-premium :is(input, select, button, a):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--screen-accent) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.employeeportal-premium :is(input, select) {
+  max-width: 100%;
+  min-width: 0;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.employeeportal-premium :is(input, select):focus {
+  border-color: var(--screen-accent);
+}
+
+.employeeportal-premium :is(table th, table td) { vertical-align: middle; }
+.employeeportal-premium table thead th {
+  position: sticky; top: 0; z-index: 1;
+  box-shadow: inset 0 -1px 0 var(--erp-hairline, var(--hairline));
+}
+.employeeportal-premium table tbody tr { transition: background-color 140ms ease; }
+
+@media (max-width: 640px) {
+  .employeeportal-premium { gap: 1rem; }
+  .employeeportal-premium > header { align-items: stretch; gap: 0.75rem; padding-block-end: 0.75rem; }
+  .employeeportal-premium > header h1 { font-size: clamp(1.45rem, 7vw, 1.8rem); }
+  .employeeportal-premium :is(input, select) { width: 100%; }
+  .employeeportal-premium table th, .employeeportal-premium table td { padding-inline: 0.65rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .employeeportal-premium *, .employeeportal-premium *::before, .employeeportal-premium *::after { transition-duration: 0.01ms !important; }
+}

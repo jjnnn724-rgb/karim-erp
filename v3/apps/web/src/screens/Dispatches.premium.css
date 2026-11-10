@@ -1,0 +1,22 @@
+.erp-premium-screen{--screen-accent:var(--accent,#8b3152);min-width:0;gap:1.25rem!important}
+.erp-premium-screen>header{padding-block:.35rem .8rem;border-bottom:1px solid var(--hairline,#e7e1dc);align-items:center!important}
+.erp-premium-screen>header h1{font-size:clamp(1.45rem,2vw,1.9rem);line-height:1.35;letter-spacing:-.025em}
+.erp-premium-screen>header p{max-width:72ch;line-height:1.8;margin-top:.35rem}
+.erp-premium-screen>header button,.erp-premium-screen button{transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease}
+.erp-premium-screen button:focus-visible,.erp-premium-screen input:focus-visible,.erp-premium-screen select:focus-visible{outline:2px solid var(--screen-accent);outline-offset:2px}
+.erp-premium-screen>div.grid>div{position:relative;overflow:hidden;min-width:0;transition:border-color .16s ease,transform .16s ease}
+.erp-premium-screen>div.grid>div:before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:3px;background:var(--screen-accent);opacity:.72}
+.erp-premium-screen>div.grid>div:hover{border-color:var(--screen-accent);transform:translateY(-1px)}
+.erp-premium-screen>div.grid>div p:nth-child(2){line-height:1.35;overflow-wrap:anywhere}
+.erp-premium-screen>section{min-width:0;overflow:hidden}
+.erp-premium-screen>section input,.erp-premium-screen>section select{min-height:2.5rem;max-width:100%}
+.erp-premium-screen table{min-width:760px}
+.erp-premium-screen thead th{position:sticky;top:0;z-index:1;white-space:nowrap}
+.erp-premium-screen thead th button{font:inherit;color:inherit}
+.erp-premium-screen tbody tr{transition:background-color .14s ease}
+.erp-premium-screen tbody td{line-height:1.65;vertical-align:middle}
+.erp-premium-screen [role=status]{line-height:1.8}
+@media(max-width:640px){.erp-premium-screen{gap:1rem!important}.erp-premium-screen>header{align-items:stretch!important}.erp-premium-screen>header button{align-self:flex-start}.erp-premium-screen>div.grid{grid-template-columns:1fr 1fr}.erp-premium-screen>div.grid>div{padding:.85rem}.erp-premium-screen>section{border-radius:.65rem}.erp-premium-screen fieldset{flex-wrap:wrap}.erp-premium-screen fieldset button{flex:1 1 auto}.erp-premium-screen table{min-width:700px}}
+@media(max-width:380px){.erp-premium-screen>div.grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.erp-premium-screen *{transition:none!important;scroll-behavior:auto!important}}
+.dark .erp-premium-screen>header{border-color:var(--hairline,#38333a)}

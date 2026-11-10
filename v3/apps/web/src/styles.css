@@ -1,0 +1,1239 @@
+/*
+ * رموز التصميم — من `DESIGN.md` (عقد الهوية) لا من سمة شادصن.
+ *
+ * البنية: `DESIGN.md` يصف «بدائيات ودلالات» — طبقتان. البدائيات (لون خام)
+ * تُصرَّح هنا في `:root` و`.dark`، والدلالات (`--erp-*`) تشير إليها. طبقة
+ * `@theme inline` تربط دلالات تيلويند بالبدائيات، فيتبدّل الوضع الداكن
+ * بتبديلPrimitive واحدة (قاعدة DESIGN.md: «الوضع الداكن يبدّل البدائيات فقط»).
+ *
+ * ممنوع: قيمة لونية خام داخل `@theme` (تكسر تبديل الوضع)، و`left/right`
+ * (الواجهة RTL — الخصائص المنطقية فقط).
+ */
+
+@layer theme, base, components, utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@heroui/styles/base" layer(base);
+@import "@heroui/styles/themes/shared/theme.css" layer(theme);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/components/button.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
+@import "@heroui/styles/components/card.css" layer(components);
+@import "@heroui/styles/components/chip.css" layer(components);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── البدائيات: الوضع الفاتح ─── */
+:root {
+    --erp-c-canvas: #f6f1e6;
+    --erp-c-surface: #fffcf5;
+    --erp-c-surface-raised: #ffffff;
+    --erp-c-surface-sunken: #ede6d7;
+    --erp-c-surface-hover: #f3ede1;
+    --erp-c-ink: #1f2633;
+    --erp-c-ink-secondary: #333d50;
+    --erp-c-muted: #535e70;
+    --erp-c-faint: #5f6a7e;
+    --erp-c-hairline: #e2d9c7;
+    --erp-c-hairline-strong: #cbbfa8;
+    --erp-c-primary: #5b21b6;
+    --erp-c-primary-hover: #6d28d9;
+    --erp-c-primary-active: #4c1d95;
+    --erp-c-on-primary: #fff9ee;
+    --erp-c-brand-text: #5b21b6;
+    --erp-c-brass: #97742a;
+    --erp-c-brass-text: #6e5310;
+    --erp-c-brass-bright: #e4c078;
+    --erp-c-copper: #2563eb;
+    /* سلّم الرسوم: ياقوت ← شامبانيا ← أزرق ملكي ← بنفسجي ← نيلي ← حجر (DESIGN.md). */
+    --erp-c-chart-1: #5b21b6;
+    --erp-c-chart-2: #a87b2c;
+    --erp-c-chart-3: #2563eb;
+    --erp-c-chart-4: #6d28d9;
+    --erp-c-chart-5: #4338ca;
+    --erp-c-chart-6: #475569;
+    --erp-c-overlay: rgb(20 16 8 / 55%);
+    --erp-c-success: #13775e;
+    --erp-c-success-text: #0c624b;
+    --erp-c-warning: #c2410c;
+    --erp-c-warning-text: #9a3412;
+    --erp-c-danger: #b03428;
+    --erp-c-danger-text: #8e241a;
+    --erp-c-info: #2e5cc8;
+    --erp-c-info-text: #2348a3;
+    --erp-c-neutral: #5b6472;
+    --erp-c-neutral-text: #3f4754;
+    --erp-c-sidebar: #0e1128;
+    --erp-c-sidebar-ink: #f3efe4;
+    --erp-c-sidebar-accent: #e6c478;
+    --erp-c-sidebar-plaque: #fbf6e9;
+    --erp-c-sidebar-plaque-ink: #241c10;
+
+    --erp-shadow-card: 0 2px 3px rgb(46 38 24 / 3%), 0 8px 26px rgb(46 38 24 / 4%);
+    --erp-shadow-pop: 0 8px 24px rgb(46 38 24 / 9%);
+    --erp-shadow-drawer: 0 18px 44px rgb(46 38 24 / 14%);
+    --erp-focus-ring: 2px solid var(--erp-c-brass);
+
+    /*
+     * شݟ رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
+     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
+     */
+    --background: var(--erp-canvas);
+    --foreground: var(--erp-ink);
+    --card: var(--erp-surface);
+    --card-foreground: var(--erp-ink);
+    --popover: var(--erp-surface-raised);
+    --popover-foreground: var(--erp-ink);
+    --primary: var(--erp-primary);
+    --primary-foreground: var(--erp-on-primary);
+    --secondary: var(--erp-surface-sunken);
+    --secondary-foreground: var(--erp-ink);
+    --muted: var(--erp-surface-sunken);
+    --muted-foreground: var(--erp-muted);
+    --accent: var(--erp-surface-hover);
+    --accent-foreground: var(--erp-ink);
+    --destructive: var(--erp-danger);
+    --destructive-foreground: var(--erp-on-primary);
+    --border: var(--erp-hairline);
+    --input: var(--erp-hairline-strong);
+    --ring: var(--erp-primary);
+    --radius: 0.625rem;
+    --chart-1: var(--erp-chart-1);
+    --chart-2: var(--erp-chart-2);
+    --chart-3: var(--erp-chart-3);
+    --chart-4: var(--erp-chart-4);
+    --chart-5: var(--erp-chart-5);
+    --sidebar: var(--erp-sidebar);
+    --sidebar-foreground: var(--erp-sidebar-ink);
+    --sidebar-primary: var(--erp-sidebar-accent);
+    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
+    --sidebar-accent: var(--erp-accent-soft);
+    --sidebar-accent-foreground: var(--erp-sidebar-ink);
+    --sidebar-border: var(--erp-hairline);
+    --sidebar-ring: var(--erp-sidebar-accent);
+
+    /*
+     * الحركة والتراصف — رموز لا تعتمد على الوضع (لا تكرار في `.dark`).
+     * المدد من DESIGN.md (Motion): فوري 80 / سريع 120 / أساسي 180 / بطيء 260.
+     */
+    --erp-motion-instant: 80ms;
+    --erp-motion-fast: 120ms;
+    --erp-motion-base: 180ms;
+    --erp-motion-slow: 260ms;
+    --erp-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --erp-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    /* سلّم z-index: كل طبقة معروفة بالاسم، فلا رقم غامض في المكوّنات. */
+    --erp-z-base: 0;
+    --erp-z-sticky: 20;
+    --erp-z-dropdown: 40;
+    --erp-z-overlay: 60;
+    --erp-z-modal: 70;
+    --erp-z-toast: 90;
+    --erp-z-tooltip: 100;
+}
+
+/* ─── البدائيات: الوضع الداكن ─── */
+.dark {
+    --erp-c-canvas: #0b0d1f;
+    --erp-c-surface: #151a32;
+    --erp-c-surface-raised: #1d243f;
+    --erp-c-surface-sunken: #10142a;
+    --erp-c-surface-hover: #232b4a;
+    --erp-c-ink: #f5f0e6;
+    --erp-c-ink-secondary: #e6e1d6;
+    --erp-c-muted: #b0b9d2;
+    --erp-c-faint: #98a2bd;
+    --erp-c-hairline: #2a3252;
+    --erp-c-hairline-strong: #3b4468;
+    --erp-c-primary: #a78bfa;
+    --erp-c-primary-hover: #b9a3fb;
+    --erp-c-primary-active: #8b6ef0;
+    --erp-c-on-primary: #150f33;
+    --erp-c-brand-text: #c9b8ff;
+    --erp-c-brass: #e3b341;
+    --erp-c-brass-text: #f2cd72;
+    --erp-c-brass-bright: #f5d98a;
+    --erp-c-copper: #7aa2ff;
+    --erp-c-chart-1: #a78bfa;
+    --erp-c-chart-2: #e3b341;
+    --erp-c-chart-3: #7aa2ff;
+    --erp-c-chart-4: #b9a3fb;
+    --erp-c-chart-5: #9ea8ff;
+    --erp-c-chart-6: #94a3b8;
+    --erp-c-overlay: rgb(0 0 0 / 62%);
+    --erp-c-success: #63d6b0;
+    --erp-c-success-text: #7ce4c2;
+    --erp-c-warning: #f2703a;
+    --erp-c-warning-text: #f79b74;
+    --erp-c-danger: #e26a5c;
+    --erp-c-danger-text: #f09284;
+    --erp-c-info: #6f9bf0;
+    --erp-c-info-text: #9bb9f7;
+    --erp-c-neutral: #7b8496;
+    --erp-c-neutral-text: #aeb6c6;
+    --erp-c-sidebar: #07091a;
+    --erp-c-sidebar-ink: #f3efe4;
+    --erp-c-sidebar-accent: #e3b341;
+    --erp-c-sidebar-plaque: #fbf6e9;
+    --erp-c-sidebar-plaque-ink: #241c10;
+}
+
+/* ─── الدلالات ─── */
+:root,
+.dark {
+    --erp-canvas: var(--erp-c-canvas);
+    --erp-surface: var(--erp-c-surface);
+    --erp-surface-raised: var(--erp-c-surface-raised);
+    --erp-surface-sunken: var(--erp-c-surface-sunken);
+    --erp-surface-hover: var(--erp-c-surface-hover);
+    --erp-ink: var(--erp-c-ink);
+    --erp-ink-secondary: var(--erp-c-ink-secondary);
+    --erp-muted: var(--erp-c-muted);
+    --erp-faint: var(--erp-c-faint);
+    --erp-hairline: var(--erp-c-hairline);
+    --erp-hairline-strong: var(--erp-c-hairline-strong);
+    --erp-primary: var(--erp-c-primary);
+    --erp-primary-hover: var(--erp-c-primary-hover);
+    --erp-primary-active: var(--erp-c-primary-active);
+    --erp-on-primary: var(--erp-c-on-primary);
+    --erp-brand-text: var(--erp-c-brand-text);
+    --erp-brass: var(--erp-c-brass);
+    --erp-brass-text: var(--erp-c-brass-text);
+    --erp-copper: var(--erp-c-copper);
+    --erp-success: var(--erp-c-success);
+    --erp-success-text: var(--erp-c-success-text);
+    --erp-warning: var(--erp-c-warning);
+    --erp-warning-text: var(--erp-c-warning-text);
+    --erp-danger: var(--erp-c-danger);
+    --erp-danger-text: var(--erp-c-danger-text);
+    --erp-info: var(--erp-c-info);
+    --erp-info-text: var(--erp-c-info-text);
+    --erp-neutral: var(--erp-c-neutral);
+    --erp-neutral-text: var(--erp-c-neutral-text);
+    --erp-sidebar: var(--erp-c-sidebar);
+    --erp-sidebar-ink: var(--erp-c-sidebar-ink);
+    --erp-sidebar-accent: var(--erp-c-sidebar-accent);
+    --erp-sidebar-plaque: var(--erp-c-sidebar-plaque);
+    --erp-sidebar-plaque-ink: var(--erp-c-sidebar-plaque-ink);
+
+    /* سلّم الرسوم — يُستهلك في Recharts عبر `var(--erp-chart-N)` فقط. */
+    --erp-chart-1: var(--erp-c-chart-1);
+    --erp-chart-2: var(--erp-c-chart-2);
+    --erp-chart-3: var(--erp-c-chart-3);
+    --erp-chart-4: var(--erp-c-chart-4);
+    --erp-chart-5: var(--erp-c-chart-5);
+    --erp-chart-6: var(--erp-c-chart-6);
+    --erp-overlay: var(--erp-c-overlay);
+
+    /*
+     * الألوان اللينة — تلوين 15% فوق السطح الحالي (DESIGN.md: «-soft تلوين
+     * 14–16%»). تُشتق من اللون الدلالي نفسه بـ`color-mix` فترث تبديل الوضع
+     * الداكن تلقائيًا، ولا تحتاج تصريحًا مكرّرًا في `.dark`.
+     */
+    --erp-success-soft: color-mix(in srgb, var(--erp-success) 15%, transparent);
+    --erp-warning-soft: color-mix(in srgb, var(--erp-warning) 15%, transparent);
+    --erp-danger-soft: color-mix(in srgb, var(--erp-danger) 15%, transparent);
+    --erp-info-soft: color-mix(in srgb, var(--erp-info) 15%, transparent);
+    --erp-neutral-soft: color-mix(in srgb, var(--erp-neutral) 15%, transparent);
+}
+
+/*
+ * `@theme inline` — القيمة تُكتب كمرجع متغيّر لا كقيمة منسوخة، فيتبع
+ * تبديل الوضع الداكن. الأسماء نفسها تولّد أدوات تيلويند:
+ *   --color-surface → bg-surface / text-surface / border-surface
+ *   --text-*        → text-display-lg / text-body-md …
+ *   --radius-*      → rounded-md / rounded-lg …
+ *   --font-*        → font-sans / font-mono
+ */
+@theme inline {
+    --color-canvas: var(--erp-canvas);
+    --color-surface: var(--erp-surface);
+    --color-surface-raised: var(--erp-surface-raised);
+    --color-surface-sunken: var(--erp-surface-sunken);
+    --color-surface-hover: var(--erp-surface-hover);
+    --color-ink: var(--erp-ink);
+    --color-ink-secondary: var(--erp-ink-secondary);
+    --color-muted: var(--erp-muted);
+    --color-faint: var(--erp-faint);
+    --color-hairline: var(--erp-hairline);
+    --color-hairline-strong: var(--erp-hairline-strong);
+    --color-primary: var(--erp-primary);
+    --color-primary-hover: var(--erp-primary-hover);
+    --color-primary-active: var(--erp-primary-active);
+    --color-on-primary: var(--erp-on-primary);
+    --color-brand-text: var(--erp-brand-text);
+    --color-brass: var(--erp-brass);
+    --color-brass-text: var(--erp-brass-text);
+    --color-copper: var(--erp-copper);
+    --color-chart-1: var(--erp-chart-1);
+    --color-chart-2: var(--erp-chart-2);
+    --color-chart-3: var(--erp-chart-3);
+    --color-chart-4: var(--erp-chart-4);
+    --color-chart-5: var(--erp-chart-5);
+    --color-chart-6: var(--erp-chart-6);
+    --color-overlay: var(--erp-overlay);
+    --color-success: var(--erp-success);
+    --color-success-text: var(--erp-success-text);
+    --color-success-soft: var(--erp-success-soft);
+    --color-warning: var(--erp-warning);
+    --color-warning-text: var(--erp-warning-text);
+    --color-warning-soft: var(--erp-warning-soft);
+    --color-danger: var(--erp-danger);
+    --color-danger-text: var(--erp-danger-text);
+    --color-danger-soft: var(--erp-danger-soft);
+    --color-info: var(--erp-info);
+    --color-info-text: var(--erp-info-text);
+    --color-info-soft: var(--erp-info-soft);
+    --color-neutral: var(--erp-neutral);
+    --color-neutral-text: var(--erp-neutral-text);
+    --color-neutral-soft: var(--erp-neutral-soft);
+    --color-sidebar: var(--erp-sidebar);
+    --color-sidebar-ink: var(--erp-sidebar-ink);
+    --color-sidebar-accent: var(--erp-sidebar-accent);
+    --color-sidebar-plaque: var(--erp-sidebar-plaque);
+    --color-sidebar-plaque-ink: var(--erp-sidebar-plaque-ink);
+
+    /* رموز shadcn/ui (جسر تفسيحي فوق رموز ERP — لا قيم خام). */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
+    --font-sans: "IBM Plex Sans Arabic", Tajawal, Cairo, "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+    --text-display-lg: 30px;
+    --text-display-lg--line-height: 1.25;
+    --text-heading-lg: 22px;
+    --text-heading-lg--line-height: 1.25;
+    --text-heading-md: 16px;
+    --text-heading-md--line-height: 1.25;
+    --text-heading-sm: 14px;
+    --text-heading-sm--line-height: 1.25;
+    --text-body-md: 14px;
+    --text-body-md--line-height: 1.55;
+    --text-body-sm: 13px;
+    --text-body-sm--line-height: 1.55;
+    --text-caption: 12px;
+    --text-caption--line-height: 1.55;
+    --text-label-md: 13px;
+    --text-label-md--line-height: 1.55;
+    --text-button-md: 14px;
+    --text-button-md--line-height: 1.25;
+    --text-numeric: 13px;
+    --text-numeric--line-height: 1.25;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-xxl: 24px;
+    --radius-full: 999px;
+
+    --spacing-xxs: 4px;
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-xxl: 32px;
+    --spacing-section: 40px;
+    --spacing-page: 64px;
+
+    --radius: 0.625rem;
+
+    /*
+     * شݟ رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
+     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
+     */
+    --background: var(--erp-canvas);
+    --foreground: var(--erp-ink);
+    --card: var(--erp-surface);
+    --card-foreground: var(--erp-ink);
+    --popover: var(--erp-surface-raised);
+    --popover-foreground: var(--erp-ink);
+    --primary: var(--erp-primary);
+    --primary-foreground: var(--erp-on-primary);
+    --secondary: var(--erp-surface-sunken);
+    --secondary-foreground: var(--erp-ink);
+    --muted: var(--erp-surface-sunken);
+    --muted-foreground: var(--erp-muted);
+    --accent: var(--erp-surface-hover);
+    --accent-foreground: var(--erp-ink);
+    --destructive: var(--erp-danger);
+    --destructive-foreground: var(--erp-on-primary);
+    --border: var(--erp-hairline);
+    --input: var(--erp-hairline-strong);
+    --ring: var(--erp-primary);
+    --chart-1: var(--erp-chart-1);
+    --chart-2: var(--erp-chart-2);
+    --chart-3: var(--erp-chart-3);
+    --chart-4: var(--erp-chart-4);
+    --chart-5: var(--erp-chart-5);
+    --sidebar: var(--erp-sidebar);
+    --sidebar-foreground: var(--erp-sidebar-ink);
+    --sidebar-primary: var(--erp-sidebar-accent);
+    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
+    --sidebar-accent: var(--erp-accent-soft);
+    --sidebar-accent-foreground: var(--erp-sidebar-ink);
+    --sidebar-border: var(--erp-hairline);
+    --sidebar-ring: var(--erp-sidebar-accent);
+
+    /*
+     * منحنيات الحركة — تولّد أدوات `ease-standard` / `ease-enter`.
+     * (المدد تُستهلك كقيم اعتباطية `duration-[var(--erp-motion-base)]` لأن
+     * Tailwind v4 لا يملك فضاء أسماء للمدد.)
+     */
+    --ease-standard: var(--erp-ease-standard);
+    --ease-enter: var(--erp-ease-out);
+}
+
+/*
+ * إصلاح تعارض فضاء الأحجام: تيلويند v4 يحلّ `max-w-lg` ... من `--container-*`،
+ * لكن `--spacing-lg: 20px` المخصّص هنا يخطف الاسم فتخرج الأداة
+ * `max-width: 20px` — وهو ما كان يقصّ النوافذ الحوارية إلى شريط رفيع.
+ * هذه القواعد خارج أي `@layer` فتغلب الأدوات المولّدة مهما كان ترتيبها.
+ */
+.max-w-xs { max-inline-size: 20rem; }
+.max-w-sm { max-inline-size: 24rem; }
+.max-w-md { max-inline-size: 28rem; }
+.max-w-lg { max-inline-size: 32rem; }
+.max-w-xl { max-inline-size: 36rem; }
+@media (min-width: 40rem) {
+    .sm\:max-w-sm { max-inline-size: min(24rem, calc(100% - 2rem)); }
+    .sm\:max-w-lg { max-inline-size: min(32rem, calc(100% - 2rem)); }
+}
+
+/* ─── الخطوط: مستضافة ذاتيًا من `frontend/app/fonts/v2` ─── */
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-400-arabic.woff2") format("woff2");
+    unicode-range:
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
+        U+fb50-fdff, U+fe70-feff;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-400-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-500-arabic.woff2") format("woff2");
+    unicode-range:
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
+        U+fb50-fdff, U+fe70-feff;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-500-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-600-arabic.woff2") format("woff2");
+    unicode-range:
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
+        U+fb50-fdff, U+fe70-feff;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-600-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-700-arabic.woff2") format("woff2");
+    unicode-range:
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
+        U+fb50-fdff, U+fe70-feff;
+}
+@font-face {
+    font-family: "IBM Plex Sans Arabic";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexsansarabic-normal-700-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexmono-normal-400-latin.woff2") format("woff2");
+}
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("./assets/fonts/ibmplexmono-normal-600-latin.woff2") format("woff2");
+}
+
+/* ─── الأساس ─── */
+@layer base {
+    /* سكرول عالمي: ناعم داخل الصفحات (روابط داخلية/طبقات)، ومُعطَّل صراحة
+     * عند تبديل الصفحات في Shell.tsx (scrollTo instant). */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    html {
+        color-scheme: light;
+    }
+
+    html.dark {
+        color-scheme: dark;
+    }
+
+    html,
+    body,
+    #root {
+        min-block-size: 100%;
+    }
+
+    body {
+        margin: 0;
+        background-color: var(--erp-canvas);
+        color: var(--erp-ink);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.55;
+        font-synthesis-weight: none;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* ─── أساس shadcn/ui (Tailwind v4) ─── */
+    * {
+        border-color: var(--border);
+        outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+    }
+
+    :focus-visible {
+        outline: var(--erp-focus-ring);
+        outline-offset: 2px;
+    }
+
+    /*
+     * الأرقام لاتينية دائمًا وبجدولة (DESIGN.md): المال والكميات وأرقام
+     * التعريف تُطبع en-US، والخلية تعزل اتجاهها لأن الرقم لاتيني داخل
+     * سطر عربي. `unicode-bidi: isolate` يمنع انقلاب الحدّ إلى الطرف الآخر.
+     */
+    .erp-numeric {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        direction: ltr;
+        unicode-bidi: isolate;
+    }
+}
+
+/*
+ * منطقة تمرير الجدول (DESIGN.md): الجدول وحده يمرر أفقيًا داخل بطاقته،
+ * والصفحة لا تمرر على 360px. `max-inline-size: 100%` يمنع الجدول من دفع
+ * عرض البطاقة. المحور الأفقي محصور داخل البطاقة، أما الرأسي فيُسلَّم للصفحة
+ * عند بلوغ حدّه — وإلا تجمّدت عجلة الفأرة فوق أي جدول ولم يبقَ للتمرير
+ * إلا الفراغ حوله.
+ */
+.erp-table__scroll {
+    overflow: auto;
+    max-inline-size: 100%;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+}
+
+/* ─── نافذة الحوار: رأس وذيل ثابتان، والجسم وحده يمرّر ───
+ * القاعدة الأساسية في shadcn تترك النافذة كتلة واحدة قابلة للتمرير فيغيب
+ * زر الاعتماد أسفل محتوى طويل. هنا تُقيَّد بارتفاع الشاشة وتُثبَّت أطرافها.
+ */
+.erp-dialog {
+    /* التموضع والتمركز من قواعد shadcn الأساسية (`top/left: 50%` وإزاحة
+       −50%); نكتفي بتقييد الارتفاع وترتيب الأجزاء. */
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    max-block-size: min(90dvh, 46rem);
+}
+.erp-dialog--sm { inline-size: min(92vw, 24rem); max-inline-size: min(92vw, 24rem); }
+.erp-dialog--md { inline-size: min(92vw, 32rem); max-inline-size: min(92vw, 32rem); }
+.erp-dialog--lg { inline-size: min(92vw, 44rem); max-inline-size: min(92vw, 44rem); }
+.erp-dialog__head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 20px 12px;
+    border-block-end: 1px solid var(--erp-hairline);
+}
+.erp-dialog__titles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-inline-size: 0;
+}
+.erp-dialog__close {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border-radius: 8px;
+    color: var(--erp-muted);
+    cursor: pointer;
+}
+.erp-dialog__close:hover { background: var(--erp-surface-hover); color: var(--erp-ink); }
+.erp-dialog__close:focus-visible { outline: 2px solid var(--erp-primary); outline-offset: 2px; }
+.erp-dialog__body {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px 20px;
+    /* شريط تمرير مرئي وواسع بما يكفي للإمساك — لا رفيع ولا مخفي. */
+    scrollbar-width: auto;
+    scrollbar-gutter: stable;
+    scrollbar-color: color-mix(in srgb, var(--erp-ink) 30%, transparent) transparent;
+}
+.erp-dialog__foot {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px 20px;
+    border-block-start: 1px solid var(--erp-hairline);
+    background: var(--erp-surface-raised);
+}
+@media (max-width: 639px) {
+    .erp-dialog__head { padding: 16px 16px 10px; }
+    .erp-dialog__body { padding: 10px 16px; }
+    .erp-dialog__foot { padding: 10px 16px 16px; }
+    .erp-dialog__foot button,
+    .erp-dialog__foot a { flex: 1 1 auto; }
+}
+@media (max-width: 1023px) {
+    .erp-dialog__close { inline-size: 2.75rem; block-size: 2.75rem; }
+    .erp-dialog__foot button,
+    .erp-dialog__foot a { min-block-size: 2.75rem; }
+}
+
+/*
+ * عنصر التنقّل — ألوانه في CSS لا في أدوات تيلويند.
+ *
+ * السبب: لونٌ أساسي ولونٌ نشط كلاهما من نطاق `text-*` في تيلويند، وتساوي
+ * الأولوية بينهما — فالفوز يصير بهامش توليد CSS لا بالنيّة. هنا الصراحة:
+ * `data-active` هي المرجع الوحيد.
+ */
+.erp-nav-item {
+    color: var(--erp-sidebar-ink);
+}
+
+.erp-nav-item:hover:not([data-status="active"]) {
+    background-color: color-mix(in srgb, var(--erp-c-sidebar-accent) 15%, transparent);
+}
+
+/*
+ * النشط: لوحةٌ شامبانيا عاجية بحبر إسبريسو، وشريطٌ شامبانيا رفيع على
+ * الحافة **المنطقية** الملاصقة للمحتوى (في RTL هي الحافة اليسرى).
+ * والنشط لا يعتمد على اللون وحده: اللوحة الفاتحة والشريط معًا.
+ * `data-status="active"` يضعه `Link` نفسه، فمصدرٌ واحد للحقيقة.
+ */
+.erp-nav-item[data-status="active"] {
+    background-color: var(--erp-sidebar-plaque);
+    color: var(--erp-sidebar-plaque-ink);
+    position: relative;
+}
+
+.erp-nav-item[data-status="active"]::before {
+    content: "";
+    position: absolute;
+    inset-block: 6px;
+    inset-inline-end: 0;
+    inline-size: 3px;
+    background-color: var(--erp-c-sidebar-accent);
+    border-start-end-radius: 3px;
+    border-end-end-radius: 3px;
+}
+
+/* الشريط السفلي: النص النشط ياقوتي، والخامل muted. */
+.erp-nav-bottom {
+    color: var(--erp-muted);
+}
+
+.erp-nav-bottom[data-status="active"] {
+    color: var(--erp-brand-text);
+    font-weight: 600;
+}
+
+/*
+ * ─── أساس مكوّنات src/ui ───
+ *
+ * ما يلي سلوك CSS لا تستطيع أدوات Tailwind التعبير عنه (حركة، تشفير، حالات
+ * عنصر أب): يبقى هنا بلا قيم لونية خام — كل لون من الرموز.
+ */
+
+/*
+ * الهيكل العظمي: لمعة أفقية 1.4s (DESIGN.md: Motion) فوق سطح غائر.
+ * الجلب البصري بـ`background-position` لا `transform`: لا يحرّك التخطيط.
+ */
+@keyframes erp-shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.erp-skeleton {
+    background-color: var(--erp-surface-sunken);
+    background-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--erp-surface-raised) 55%, transparent) 50%,
+        transparent 100%
+    );
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+    animation: erp-shimmer 1.4s var(--erp-ease-standard) infinite;
+}
+
+/*
+ * الدرج: انزلاق من الحافة المنطقية. الإزاحة تُحسب بـ`translate` الفيزيائي
+ * لأن `translate-inline` غير موجود في CSS، والاتجاه يُختار من `dir` لا من
+ * `data-side`: في RTL الحافة المنطقية `end` تقع فيزيائيًا في المقابل.
+ */
+.erp-drawer {
+    transition:
+        transform var(--erp-motion-base) var(--erp-ease-standard),
+        opacity var(--erp-motion-base) var(--erp-ease-standard);
+}
+
+.erp-drawer[data-state="closed"] {
+    opacity: 0;
+}
+
+/* الحافة المنطقية `end`: مخفية خلف الحافة المقابلة للبداية. */
+.erp-drawer[data-side="end"][data-state="closed"] {
+    transform: translateX(100%);
+}
+
+[dir="rtl"] .erp-drawer[data-side="end"][data-state="closed"] {
+    transform: translateX(-100%);
+}
+
+/* الحافة المنطقية `start`: المرآة. */
+.erp-drawer[data-side="start"][data-state="closed"] {
+    transform: translateX(-100%);
+}
+
+[dir="rtl"] .erp-drawer[data-side="start"][data-state="closed"] {
+    transform: translateX(100%);
+}
+
+/*
+ * ─── الرسوم (Recharts) ───
+ *
+ * Recharts يرسم SVG بسمات ألوان افتراضية؛ هنا تُستبدل برموز الهوية من طبقة
+ * CSS (لا قيم في JS). الأصناف `fill-chart-N`/`stroke-chart-N` من `@theme`.
+ */
+.erp-chart .recharts-cartesian-axis-tick-value {
+    fill: var(--erp-muted);
+    font-size: 11px;
+    font-family: var(--font-sans);
+}
+
+.erp-chart .recharts-cartesian-grid line {
+    stroke: var(--erp-hairline);
+}
+
+.erp-chart .recharts-default-tooltip {
+    background-color: var(--erp-surface-raised);
+    border: 1px solid var(--erp-hairline);
+    border-radius: 10px;
+    color: var(--erp-ink);
+}
+
+.erp-chart .recharts-tooltip-label,
+.erp-chart .recharts-legend-item-text {
+    color: var(--erp-ink-secondary);
+}
+
+/* ─── انتقال الصفحات العالمي (Shell.tsx: مفتاح المسار) ───────────────────
+ * تلاشي + صعود خفيف 220ms — محتوى الشاشة الجديدة يدخل بدل الظهور القاسي. */
+@keyframes erp-route-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.erp-route-transition {
+    animation: erp-route-enter 220ms ease-out;
+}
+
+/*
+ * احترام `prefers-reduced-motion`: كل الحركة تُخمد (لا تُلغى الحالات، فقط
+ * المدة) — سكيلتون ساكن، ودرج يظهر فورًا. DESIGN.md يشترط هذا صراحة.
+ */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .erp-route-transition {
+        animation: none;
+    }
+
+    .erp-skeleton {
+        animation: none;
+    }
+
+    .erp-drawer {
+        transition: none;
+    }
+
+    .erp-drawer[data-state="closed"] {
+        transform: none;
+    }
+}
+
+/* HeroUI v3: bridge the library to ERP tokens, including nested dark previews.
+ * Selective imports above avoid shipping styles for components not yet adopted.
+ */
+:root,
+.dark {
+    --background: var(--erp-canvas);
+    --foreground: var(--erp-ink);
+    --card: var(--erp-surface);
+    --card-foreground: var(--erp-ink);
+    --popover: var(--erp-surface-raised);
+    --popover-foreground: var(--erp-ink);
+    --primary: var(--erp-primary);
+    --primary-foreground: var(--erp-on-primary);
+    --secondary: var(--erp-surface-sunken);
+    --secondary-foreground: var(--erp-ink);
+    --muted: var(--erp-surface-sunken);
+    --muted-foreground: var(--erp-muted);
+    --accent: var(--erp-surface-hover);
+    --accent-foreground: var(--erp-ink);
+    --destructive: var(--erp-danger);
+    --destructive-foreground: var(--erp-on-primary);
+    --border: var(--erp-hairline);
+    --input: var(--erp-hairline-strong);
+    --ring: var(--erp-primary);
+    --radius: 0.625rem;
+    --chart-1: var(--erp-chart-1);
+    --chart-2: var(--erp-chart-2);
+    --chart-3: var(--erp-chart-3);
+    --chart-4: var(--erp-chart-4);
+    --chart-5: var(--erp-chart-5);
+    --sidebar: var(--erp-sidebar);
+    --sidebar-foreground: var(--erp-sidebar-ink);
+    --sidebar-primary: var(--erp-sidebar-accent);
+    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
+    --sidebar-accent: var(--erp-accent-soft, var(--erp-surface-hover));
+    --sidebar-accent-foreground: var(--erp-sidebar-ink);
+    --sidebar-border: var(--erp-hairline);
+    --sidebar-ring: var(--erp-sidebar-accent);
+    --surface: var(--erp-surface);
+    --surface-foreground: var(--erp-ink);
+    --surface-secondary: var(--erp-surface-raised);
+    --surface-secondary-foreground: var(--erp-ink);
+    --surface-tertiary: var(--erp-surface-sunken);
+    --surface-tertiary-foreground: var(--erp-ink);
+    --surface-quaternary: var(--erp-surface-hover);
+    --default: var(--erp-surface-sunken);
+    --default-foreground: var(--erp-ink-secondary);
+    --muted: var(--erp-muted);
+    --accent: var(--erp-primary);
+    --accent-foreground: var(--erp-on-primary);
+    --accent-hover: var(--erp-primary-hover);
+    --accent-soft: color-mix(in srgb, var(--erp-primary) 12%, transparent);
+    --accent-soft-foreground: var(--erp-brand-text);
+    --success: var(--erp-success);
+    --success-foreground: var(--erp-c-surface-raised);
+    --success-soft: var(--erp-success-soft);
+    --success-soft-foreground: var(--erp-success-text);
+    --warning: var(--erp-warning);
+    --warning-foreground: var(--erp-c-surface-raised);
+    --warning-soft: var(--erp-warning-soft);
+    --warning-soft-foreground: var(--erp-warning-text);
+    --danger: var(--erp-danger);
+    --danger-foreground: var(--erp-c-surface-raised);
+    --danger-soft: var(--erp-danger-soft);
+    --danger-soft-foreground: var(--erp-danger-text);
+    --border: var(--erp-hairline);
+    --separator: var(--erp-hairline);
+    --focus: var(--erp-brass);
+    --field-background: var(--erp-surface);
+    --field-foreground: var(--erp-ink);
+    --field-border: var(--erp-hairline-strong);
+    --field-placeholder: var(--erp-faint);
+    --field-hover: var(--erp-surface-hover);
+    --field-focus: var(--erp-surface-raised);
+    --field-border-hover: var(--erp-brass);
+    --radius: 0.625rem;
+    --field-radius: 0.625rem;
+    --radius-field: 0.625rem;
+    --shadow-surface: var(--erp-shadow-card);
+    --shadow-field: 0 1px 2px color-mix(in srgb, var(--erp-ink) 3%, transparent);
+    --scrollbar-thumb: color-mix(in srgb, var(--erp-muted) 28%, transparent);
+}
+
+@layer components {
+    .erp-card {
+        display: flex;
+        flex-direction: column;
+        min-inline-size: 0;
+        overflow: hidden;
+        border: 1px solid var(--erp-hairline);
+        border-radius: 16px;
+        background: var(--erp-surface);
+        color: var(--erp-ink);
+        box-shadow: var(--erp-shadow-card);
+        transition: border-color var(--erp-motion-base) var(--erp-ease-standard);
+    }
+
+    .erp-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .erp-card__title {
+        color: var(--erp-ink);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .erp-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-inline-size: 0;
+        padding: 20px;
+    }
+
+    .erp-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-inline-size: 0;
+    }
+
+    .erp-grow { flex: 1; min-inline-size: 0; }
+
+    .erp-button {
+        min-inline-size: 0;
+        font-family: var(--font-sans);
+        letter-spacing: normal;
+        transition: transform var(--erp-motion-fast) var(--erp-ease-standard),
+            box-shadow var(--erp-motion-fast) var(--erp-ease-standard),
+            background-color var(--erp-motion-fast) var(--erp-ease-standard);
+    }
+
+    .erp-button:not(:disabled):hover {
+        box-shadow: var(--erp-shadow-pop);
+    }
+
+    .erp-control {
+        min-inline-size: 0;
+        font-family: var(--font-sans);
+        padding-block: 0;
+    }
+
+    .erp-control:focus-visible {
+        outline: var(--erp-focus-ring);
+        outline-offset: 2px;
+    }
+
+    .erp-badge {
+        block-size: auto;
+        min-block-size: 24px;
+        font-family: var(--font-sans);
+    }
+
+    .erp-badge .chip__label {
+        color: inherit;
+        font-size: inherit;
+    }
+
+    .erp-page-header {
+        margin-block-end: 8px;
+        padding-block: 8px 16px;
+    }
+
+    .erp-page-header__eyebrow {
+        inline-size: fit-content;
+        margin-block-end: 8px;
+        color: var(--erp-brass-text);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .erp-kpi {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        block-size: 100%;
+        min-block-size: 132px;
+        padding: 18px;
+        overflow: hidden;
+        border: 1px solid var(--erp-hairline);
+        border-radius: 16px;
+        background: var(--erp-surface);
+        box-shadow: var(--erp-shadow-card);
+    }
+
+    .erp-kpi::before {
+        content: "";
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 18px;
+        block-size: 2px;
+        background: color-mix(in srgb, var(--erp-brass) 60%, transparent);
+    }
+
+    .erp-kpi[data-tone="info"]::before { background: var(--erp-primary); }
+    .erp-kpi[data-tone="success"]::before { background: var(--erp-success); }
+    .erp-kpi[data-tone="warning"]::before { background: var(--erp-warning); }
+    .erp-kpi[data-tone="danger"]::before { background: var(--erp-danger); }
+
+    .erp-kpi__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .erp-kpi__label {
+        color: var(--erp-ink-secondary);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.6;
+        min-inline-size: 0;
+    }
+
+    .erp-kpi__english {
+        color: var(--erp-faint);
+        font-size: 11px;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    .erp-kpi__badge {
+        flex-shrink: 0;
+        padding: 2px 8px;
+        border: 1px solid var(--erp-hairline);
+        border-radius: var(--radius-full, 999px);
+        background: var(--erp-surface-sunken);
+        color: var(--erp-muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
+    .erp-kpi__icon {
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        inline-size: 28px;
+        block-size: 28px;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--erp-brass) 12%, transparent);
+        color: var(--erp-brass-text);
+    }
+
+    .erp-kpi__value {
+        inline-size: fit-content;
+        max-inline-size: 100%;
+        margin-block-start: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: clamp(19px, 1.45vw, 27px);
+        font-weight: 600;
+        line-height: 1.35;
+        letter-spacing: -0.04em;
+    }
+
+    .erp-kpi__value--empty {
+        color: var(--erp-muted);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        letter-spacing: normal;
+    }
+
+    .erp-kpi__unit {
+        margin-inline-start: 6px;
+        color: var(--erp-muted);
+        font-size: 0.55em;
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+
+    .erp-kpi__trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        inline-size: fit-content;
+        margin-block-start: 8px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: var(--erp-surface-sunken);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .erp-kpi__hint {
+        margin-block-start: auto;
+        padding-block-start: 6px;
+        color: var(--erp-faint);
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .erp-kpi__error {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+.erp-table__scroll {
+    border-radius: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.erp-table__scroll thead th {
+    padding-block: 12px;
+    line-height: 1.5;
+}
+
+.erp-table__scroll tbody td {
+    padding-block: 12px;
+}
+
+.erp-table__scroll tbody tr {
+    transition: background-color var(--erp-motion-fast) var(--erp-ease-standard);
+}
+
+.erp-table__scroll tbody tr:hover {
+    background-color: color-mix(in srgb, var(--erp-primary) 4%, var(--erp-surface));
+}
+
+::selection {
+    background: color-mix(in srgb, var(--erp-primary) 20%, var(--erp-surface));
+    color: var(--erp-ink);
+}
+
+@media (max-width: 639px) {
+    .erp-page-header h1 { font-size: 25px; }
+    .erp-kpi { padding: 16px; }
+}
+
+/* اللمس حتى عرض الجهاز اللوحي: أهداف الفعل لا تقل عن 44px ارتفاعًا.
+   الأزرار المضغوطة (h-7.5 = 30px) كانت أصغر من إبهام الكاشير على الهاتف والتابلت.
+   داخل الجداول الكثيفة يبقى زر اسم الصنف 28px (فوق حد WCAG 2.5.8 = 24px) حتى لا تتضخم القوائم. */
+@media (max-width: 1023px) {
+    .erp-button,
+    .erp-touch,
+    .erp-print-action,
+    .erp-shell__main button,
+    .erp-shell__main [role="button"],
+    .erp-shell__main [role="combobox"],
+    .erp-shell__main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .erp-shell__main select,
+    .erp-shell__main textarea {
+        min-block-size: 2.75rem;
+    }
+
+    .erp-shell__main .erp-inline-btn {
+        min-block-size: 1.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

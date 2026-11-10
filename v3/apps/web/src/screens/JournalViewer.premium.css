@@ -1,0 +1,18 @@
+.journal-premium { gap: 1.5rem; min-width: 0; }
+.journal-premium > header { padding-block: .25rem .5rem; }
+.journal-premium > header h1 { font-size: clamp(1.5rem, 2.5vw, 1.875rem); line-height: 1.35; letter-spacing: -.025em; }
+.journal-premium > header p { margin-top: .4rem; }
+.journal-premium > header label { min-width: 9rem; }
+.journal-premium > header select { min-height: 2.5rem; transition: border-color .16s, box-shadow .16s; }
+.journal-premium table thead { position: sticky; inset-block-start: 0; z-index: 1; }
+.journal-premium table th { padding-block: .75rem; }
+.journal-premium table td { padding-block: .7rem; }
+.journal-premium table tbody tr { transition: background-color .14s ease; }
+.journal-premium button:focus-visible, .journal-premium select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .journal-premium { gap: 1rem; }
+  .journal-premium > header { align-items: stretch; }
+  .journal-premium > header label, .journal-premium > header select { width: 100%; }
+  .journal-premium table { min-width: 660px; }
+}
+@media (prefers-reduced-motion: reduce) { .journal-premium *, .journal-premium *::before, .journal-premium *::after { transition-duration: .01ms !important; } }

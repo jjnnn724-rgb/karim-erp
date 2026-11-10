@@ -1,0 +1,21 @@
+.erp-premium-screen--inventory-inquiry-pro { min-width: 0; }
+.erp-premium-screen--inventory-inquiry-pro > header { align-items: flex-start; gap: 1rem; padding-block: .35rem .15rem; }
+.erp-premium-screen--inventory-inquiry-pro > header > div { max-width: 76ch; }
+.erp-premium-screen--inventory-inquiry-pro > header h1 { line-height: 1.35; letter-spacing: -.025em; }
+.erp-premium-screen--inventory-inquiry-pro > header p { margin-top: .45rem; line-height: 1.8; }
+.erp-premium-screen--inventory-inquiry-pro button:focus-visible,
+.erp-premium-screen--inventory-inquiry-pro input:focus-visible,
+.erp-premium-screen--inventory-inquiry-pro select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.erp-premium-screen--inventory-inquiry-pro input,
+.erp-premium-screen--inventory-inquiry-pro select { min-width: 0; }
+.erp-premium-screen--inventory-inquiry-pro section { min-width: 0; }
+.erp-premium-screen--inventory-inquiry-pro [role="status"], .erp-premium-screen--inventory-inquiry-pro [role="alert"] { line-height: 1.7; }
+@media (max-width: 640px) {
+ .erp-premium-screen--inventory-inquiry-pro { gap: 1rem; }
+ .erp-premium-screen--inventory-inquiry-pro > header { align-items: stretch; }
+ .erp-premium-screen--inventory-inquiry-pro > header button { align-self: flex-start; }
+ .erp-premium-screen--inventory-inquiry-pro input[type="search"],
+ .erp-premium-screen--inventory-inquiry-pro select { width: 100%; }
+ .erp-premium-screen--inventory-inquiry-pro > div > div[class*="flex-wrap"] { align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) { .erp-premium-screen--inventory-inquiry-pro * { transition-duration: 0.01ms !important; } }

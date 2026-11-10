@@ -1,0 +1,7 @@
+{
+	"entryJs": 230,
+	"totalJs": 780,
+	"totalCss": 55,
+	"maxChunk": 230,
+	"_note": "كل القيم KiB بعد gzip. القياس الحالي عند إعداد البوابة (2026-11-10): entryJs 210.4، totalJs 720.9، totalCss 47.8، maxChunk 210.4 — الهامش ~9%."
+}

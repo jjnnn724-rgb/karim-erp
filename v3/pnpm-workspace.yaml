@@ -1,0 +1,15 @@
+packages:
+    - "apps/*"
+    - "packages/*"
+
+# esbuild يحتاج سكربت تنزيل ثنائي المنصّة؛ غيره لا يُسمح له بالتنفيذ.
+allowBuilds:
+    esbuild: true
+
+# حلقة واحدة مقصودة، وفي devDependencies فقط:
+#   @karim/shared (اختباراته تقرأ fixtures من المحمّل) → @karim/testing
+#   @karim/testing (أداة التكافؤ تستخدم بدائيات التاريخ) → @karim/shared
+# لا تصل إلى dist: بناء كل حزمة يستبعد ملفات الاختبار، و`@karim/testing` يعتمد
+# على `@karim/shared` اعتمادًا حقيقيًا (وقت التشغيل) لا العكس.
+# البديل (نسخ منطق الرياض داخل الأداة) يُنشئ مصدر حقيقة ثانيًا — وهو أسوأ.
+ignoreWorkspaceCycles: true
