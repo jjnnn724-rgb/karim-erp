@@ -44,7 +44,7 @@
 التداخل). استخدم `ON_ERROR_STOP=1` حتى يتوقف psql عند أول خطأ داخل الملف.
 
 ```bash
-export PGPASSWORD="<DB_PASSWORD من .env>"
+export PGPASSWORD="$(grep -m1 '^DB_PASSWORD=' .env | cut -d= -f2-)"
 PSQL="C:/Program Files/PostgreSQL/18/bin/psql.exe"
 MIG="database/migrations"
 DB="-h 127.0.0.1 -p 5432 -U karim_app -d karim_erp"

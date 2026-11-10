@@ -530,7 +530,7 @@ function jwtAuth(req, res, next) {
         const expired = err.name === 'TokenExpiredError';
         return res.status(401).json({
             error: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-            message: err.message,
+            message: expired ? 'انتهت صلاحية الجلسة — سجّل الدخول من جديد.' : 'رمز الدخول غير صالح.',
         });
     }
     // تذاكر MFA غرضها مختلف ولا تصلح لجلسة: حتى لو سُرّبت، لا تفتح شيئًا
@@ -571,12 +571,13 @@ function jwtAuth(req, res, next) {
             return next();
         })
         .catch((err) => {
-            // Fail-open under DB pressure: if we can't check the active status,
-            // allow the request through (the JWT is still valid). Returning 503
-            // here caused cascading failures under load — every authenticated
-            // request failed when the pool was saturated.
-            logger.warn('[auth] active-check failed (fail-open):', err.message);
-            return next();
+            // Fail-closed: تعذّر إثبات أن الحساب نشط ⇒ لا يمرّ الطلب.
+            // 503 لا 401 حتى لا يمسح العميل جلسة سليمة بسبب ضغط مؤقت.
+            logger.warn('[auth] active-check failed (fail-closed):', err.message);
+            return res.status(503).json({
+                error: 'ACCOUNT_CHECK_UNAVAILABLE',
+                message: 'تعذّر التحقق من حالة الحساب مؤقتًا — أعد المحاولة.',
+            });
         });
 }
 

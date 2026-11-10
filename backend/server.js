@@ -890,6 +890,11 @@ io.on('connection', (socket) => {
     // Handle manual data request
     socket.on('request_sync', async () => {
         if (!rtGuard(socket, 'request_sync')) {return;}
+        // app_state يحوي مرآة آخر 300 إيراد — لا تُسلَّم لمقبس مجهول.
+        if (!socket.data.authed) {
+            socket.emit('sync_rejected', { reason: 'AUTH_REQUIRED' });
+            return;
+        }
         try {
             const result = await pool.query('SELECT state_data FROM app_state WHERE id = 1');
             if (result.rows.length > 0 && result.rows[0].state_data) {
@@ -2101,7 +2106,9 @@ entities.forEach(entity => {
             // بطاقة فاخرة تلقائية لأي موظف جديد برقم بصمة (خلفي — لا يعطل الرد)
             if (entity === 'employees') {
                 const fp = String(result.rows[0].deviceUserId || result.rows[0].employeeId || '').trim();
-                if (fp) {
+                // يُستخدم في اسم ملف البطاقة (card-<fp>.html) — أي محرف خارج
+                // هذا النمط يفتح اجتياز مسار أو حقن وسوم في البطاقة.
+                if (/^[A-Za-z0-9_-]{1,64}$/.test(fp)) {
                     try {
                         const { spawn } = require('child_process');
                         const path = require('path');

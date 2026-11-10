@@ -40,6 +40,18 @@ async function listTables() {
     return r.rows.map((x) => x.table_name);
 }
 
+/** أعمدة لا تخرج للنموذج إطلاقًا — `SELECT *` كان يرسل حشوات كلمات المرور. */
+const DENIED_COLUMNS = new Set(['password', 'password_vault']);
+
+function scrubDeniedColumns(rows) {
+    return rows.map((row) => {
+        if (!row || typeof row !== 'object') {return row;}
+        const safe = { ...row };
+        for (const col of DENIED_COLUMNS) {delete safe[col];}
+        return safe;
+    });
+}
+
 /** قراءة صفوف من جدول (قراءة فقط + سقف صفوف + أعمدة صريحة). */
 async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
@@ -51,7 +63,11 @@ async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
         `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position`, [name]);
     const orderCol = cols.rows.some((c) => c.column_name === order.split(' ')[0]) ? order : '1';
     const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderCol} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
-    return { table: name, columns: cols.rows.map((c) => c.column_name), rows: r.rows };
+    return {
+        table: name,
+        columns: cols.rows.map((c) => c.column_name).filter((c) => !DENIED_COLUMNS.has(c)),
+        rows: scrubDeniedColumns(r.rows),
+    };
 }
 
 /** بحث نصّي في أعمدة نصية لجدول (قراءة فقط). */
@@ -62,11 +78,12 @@ async function searchTable(table, term, { limit = 20 } = {}) {
         `SELECT column_name, data_type FROM information_schema.columns
           WHERE table_schema='public' AND table_name = $1
             AND data_type IN ('text','character varying','character')`, [name]);
+    cols.rows = cols.rows.filter((c) => !DENIED_COLUMNS.has(c.column_name));
     if (!cols.rows.length) {return { table: name, rows: [] };}
     const where = cols.rows.map((c, i) => `CAST("${c.column_name}" AS TEXT) ILIKE $${i + 1}`).join(' OR ');
     const params = cols.rows.map(() => `%${String(term || '').trim()}%`);
     const r = await pool.query(`SELECT * FROM public."${name}" WHERE ${where} LIMIT ${Math.min(Number(limit) || 20, 100)}`, params);
-    return { table: name, rows: r.rows };
+    return { table: name, rows: scrubDeniedColumns(r.rows) };
 }
 
 /** بحث في كود المشروع (قراءة ملفات فقط). */

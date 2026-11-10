@@ -70,7 +70,7 @@ SELECT to_regclass('public.account_mapping') AS mapping;  -- يجب null
 ## 2) التطبيق — 134 → 143
 
 ```bash
-export PGPASSWORD="<DB_PASSWORD من .env>"
+export PGPASSWORD="$(grep -m1 '^DB_PASSWORD=' .env | cut -d= -f2-)"
 PSQL="C:/Program Files/PostgreSQL/18/bin/psql.exe"
 MIG="database/migrations"
 DB="-h 127.0.0.1 -p 5432 -U karim_app -d karim_erp"

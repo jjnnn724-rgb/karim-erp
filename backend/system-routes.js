@@ -73,14 +73,16 @@ function runNode(script, args, timeoutMs) {
         p.on('close', (code) => resolve({ ok: code === 0, code, out, err }));
     });
 }
-function shaOk(file) {
-    try {
-        const side = `${file}.sha256`;
-        if (!fs.existsSync(side)) {return null;}
-        const [expected] = fs.readFileSync(side, 'utf8').trim().split(/\s+/);
-        const actual = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-        return expected === actual;
-    } catch (_) { return false; }
+// تجزئة متدفّقة: ملف النسخة قد يبلغ 1GB — قراءته كاملة في الذاكرة
+// تحبس حلقة الأحداث وتُجمّد كل الطلبات.
+function sha256File(file) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('sha256');
+        const stream = fs.createReadStream(file, { highWaterMark: 4 * 1024 * 1024 });
+        stream.on('data', (d) => hash.update(d));
+        stream.on('end', () => resolve(hash.digest('hex')));
+        stream.on('error', reject);
+    });
 }
 
 // PERF: مع نسخ بمئات الميجابايت كان التحقق من أحدث 3 نسخ يقرأ ~2GB متزامنًا في
@@ -215,7 +217,7 @@ const backupUpload = multer({
 }).single('file');
 
 router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
-    backupUpload(req, res, (err) => {
+    backupUpload(req, res, async (err) => {
         try {
             if (err) {
                 const msg = err.code === 'LIMIT_FILE_SIZE' ? 'الملف أكبر من 1GB' : (err.message || 'فشل الرفع');
@@ -234,7 +236,7 @@ router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
             fs.renameSync(req.file.path, full);
             // بصمة وبيان حتى تمر الاستعادة اللاحقة من نفس فحوص السلامة
             try {
-                const hash = crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex');
+                const hash = await sha256File(full);
                 fs.writeFileSync(`${full}.sha256`, `${hash}  ${base}\n`);
                 fs.writeFileSync(`${full}.json`, JSON.stringify({
                     createdAt: new Date().toISOString(), by: req.user?.name || 'admin',
@@ -263,7 +265,7 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         if (!file.endsWith('.sql') || !fs.existsSync(full)) {
             return res.status(404).json({ error: 'BACKUP_NOT_FOUND', message: 'ملف النسخة غير موجود' });
         }
-        const ok = shaOk(full);
+        const ok = await shaOkAsync(full);
         if (ok === false) {return res.status(422).json({ error: 'SHA_MISMATCH', message: 'بصمة النسخة غير سليمة — لن نستعيد ملفًا تالفًا' });}
         // نسخة أمان تلقائية للوضع الحالي قبل المسح
         const pre = await runNode(path.join(rootDir(), 'database', 'scripts', 'backup.js'),

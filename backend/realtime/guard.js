@@ -23,6 +23,9 @@ function resolveHandshakeUser(verifyFn, handshake = {}) {
         const token = handshake.auth?.token || handshake.query?.token || null;
         if (!token || typeof verifyFn !== 'function') {return null;}
         const p = verifyFn(token);
+        // تذكرة ما-قبل-MFA تحمل نفس التوقيع لكن غرضها ليس جلسة: REST يرفضها
+        // (jwtAuth) وهذا المسار كان يقبلها. التوكنات القديمة بلا purpose تبقى.
+        if (p?.purpose && p.purpose !== 'access') {return null;}
         const id = parseInt(p?.sub, 10);
         if (!Number.isInteger(id) || id <= 0 || !p?.role) {return null;}
         return { id, role: p.role, name: p.name || null, dept_code: p.dept_code || null };
