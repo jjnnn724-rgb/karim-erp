@@ -76,8 +76,11 @@ export type V3JournalEntry = z.infer<typeof v3JournalEntrySchema>;
 
 export const v3JournalResponseSchema = z.array(v3JournalEntrySchema);
 
-/** أخطاء الـAPI — `{error, message}` كما في القديم. */
-export const v3ErrorSchema = z.strictObject({
+/**
+ * أخطاء الـAPI — `{error, message}` كما في القديم، مع احتمال حقول إضافية
+ * مثل `code` في ردود 503: تُقبل وتُهمَل بدل إسقاط رسالة الخادم كاملة.
+ */
+export const v3ErrorSchema = z.looseObject({
     error: z.string(),
     message: z.string(),
 });

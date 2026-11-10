@@ -107,4 +107,22 @@ describe('fetchJson', () => {
         expect((failure as ApiError).message).toBe('Missing Bearer token.');
         expect((failure as ApiError).isAuthProblem).toBe(true);
     });
+
+    it('يحفظ رسالة الخادم حين يضيف حقولًا مثل code إلى جسم الخطأ', async () => {
+        const message = 'ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.';
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () =>
+                jsonResponse({ error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message }, 503),
+            ),
+        );
+
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/finance/monthly-comparison', null).catch(
+            (error: unknown) => error,
+        );
+
+        expect(failure).toBeInstanceOf(ApiError);
+        expect((failure as ApiError).code).toBe('YARASOFT_REVENUE_UNAVAILABLE');
+        expect((failure as ApiError).message).toBe(message);
+    });
 });
