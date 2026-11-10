@@ -98,7 +98,16 @@
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
     "import:employee-documents": "node scripts/import-employee-documents.js",
     "finance:reconcile": "node scripts/finance-reconcile.js",
-    "security:routes": "node scripts/security-route-audit.js"
+    "security:routes": "node scripts/security-route-audit.js",
+    "v3:install": "pnpm --dir v3 install --frozen-lockfile",
+    "v3:typecheck": "pnpm --dir v3 typecheck",
+    "v3:test": "pnpm --dir v3 test",
+    "v3:build": "pnpm --dir v3 build",
+    "v3:e2e:public": "pnpm --dir v3 --filter @karim/web run e2e:public",
+    "v3:e2e:budget": "pnpm --dir v3 --filter @karim/web run e2e:budget",
+    "v3:sync": "node v3/scripts/sync-build.mjs",
+    "v3:sync:dry": "node v3/scripts/sync-build.mjs --dry-run",
+    "v3:gate": "npm run v3:typecheck && npm run v3:test && npm run v3:build && npm run v3:e2e:public"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",

@@ -111,6 +111,9 @@ module.exports = [
       'frontend/app/vendor/',
       'frontend/app/js/vendor/',
       'frontend/app/js/app.js',
+      // مساحة عمل V3 كاملة: تُفحص بأدواتها (biome + tsc + vitest) لا بـeslint الجذر،
+      // ومخرجات حزمها (packages/*/dist) ليست كودًا مصدريًا.
+      'v3/',
       // electron/ كان مستثنىً من الفحص كود التطبيق strawsib ≠ آمن:
       // كود main process privileged بلا مراجعة lint. أُدخل النطاق بعد
       // تصفير التحذيرات (policy: no new warnings).
