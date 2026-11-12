@@ -14,7 +14,7 @@
  *   node v3/scripts/sync-build.mjs [--dry-run] [--from <dist>] [--to <frontend/v3>]
  */
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -113,13 +113,22 @@ function main() {
     const targetAssets = path.join(options.to, 'assets');
     const previous = existsSync(targetAssets) ? readdirSync(targetAssets) : [];
     const stale = previous.filter((name) => !assetFiles.includes(name));
+    // المبصومة القديمة فقط تُحذف: لا نمسّ أي ملف يدوي غير بصمة بناء (مثل أيقونات ثابتة).
+    const staleHashed = stale.filter(
+        (name) => HASHED_ASSET.test(`assets/${name}`) && statSync(path.join(targetAssets, name)).isFile(),
+    );
 
     const summary = {
         dryRun: options.dryRun,
         from: options.from,
         to: options.to,
         index: { sha256: sha256(sourceIndex), references: referenced },
-        assets: { copied: assetFiles.length, staleInTarget: stale.length, staleSample: stale.slice(0, 8) },
+        assets: {
+            copied: assetFiles.length,
+            staleInTarget: stale.length,
+            staleSample: stale.slice(0, 8),
+            prunable: staleHashed.length,
+        },
     };
 
     if (options.dryRun) {
@@ -132,6 +141,9 @@ function main() {
     copyFileSync(sourceIndex, path.join(options.to, 'index.html'));
     for (const name of assetFiles) {
         copyFileSync(path.join(sourceAssets, name), path.join(targetAssets, name));
+    }
+    for (const name of staleHashed) {
+        unlinkSync(path.join(targetAssets, name));
     }
 
     if (sha256(path.join(options.to, 'index.html')) !== summary.index.sha256) {
