@@ -17,3 +17,9 @@
 - **Security review limits:** Route-pattern audit output is heuristic and does not fully resolve router-level or handler-level middleware. Its matches are not confirmed vulnerabilities. The static gate still reports route-pattern matches covered by its existing baseline; this verification does not substitute for a complete manual authorization review.
 - **Not verified:** Live/staging end-to-end flows and production-database behavior were not run. No production deployment or database writes were performed. The inherited 277-file commit and numerous unrelated worktree changes were not audited as a complete release candidate.
 - **Readiness:** The tested V3 checks are green, but the ERP is NOT certified ready for production migration. Keep the existing worktree changes isolated and require isolated staging/live-flow verification plus review of inherited and unrelated changes before promoting V3.
+
+## 2026-11-12 — Cloudflare analytics injection disabled
+
+- **Change:** Disabled Cloudflare Web Analytics / RUM automatic script injection for `karimeg.online` in the Cloudflare dashboard. The existing strict V3 CSP remains unchanged; no analytics origin or inline-script exception was added.
+- **Verification:** Cloudflare lists the site as Disabled. The live `/v3/pos-entry` response returns HTTP 200, serves the V3 application bundle, and no longer contains `beacon.min.js` or `data-cf-beacon`. The POS page renders. Cloudflare may still inject a separate challenge bootstrap on challenged requests; it remains blocked by CSP.
+- **Scope:** This setting is external to the Git repository. This commit records the dashboard change; it does not claim a code-level CSP modification or a complete production release.
