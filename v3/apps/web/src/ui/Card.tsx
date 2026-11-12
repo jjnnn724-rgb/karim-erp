@@ -21,8 +21,7 @@ export function Card({ children, className, as: Component = 'section' }: CardPro
     return (
         <Component
             className={cn(
-                'erp-card flex flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm',
-                'rounded-lg border-hairline bg-surface shadow-card',
+                'erp-card flex flex-col gap-0 overflow-hidden rounded-xl border border-hairline bg-surface text-ink shadow-card',
                 className,
             )}
         >
@@ -70,10 +69,7 @@ export interface CardDescriptionProps {
 
 export function CardDescription({ children, className }: CardDescriptionProps) {
     return (
-        <div
-            data-slot="card-description"
-            className={cn('text-body-sm text-muted', className)}
-        >
+        <div data-slot="card-description" className={cn('text-body-sm text-muted', className)}>
             {children}
         </div>
     );

@@ -65,11 +65,12 @@
     --erp-c-info-text: #2348a3;
     --erp-c-neutral: #5b6472;
     --erp-c-neutral-text: #3f4754;
-    --erp-c-sidebar: #0e1128;
-    --erp-c-sidebar-ink: #f3efe4;
-    --erp-c-sidebar-accent: #e6c478;
-    --erp-c-sidebar-plaque: #fbf6e9;
-    --erp-c-sidebar-plaque-ink: #241c10;
+    /* الشريط الجانبي الفاتح: سطح محايد #F8FAFC مع حبر داكن ولمسة ياقوتية. */
+    --erp-c-sidebar: #f8fafc;
+    --erp-c-sidebar-ink: #334155;
+    --erp-c-sidebar-accent: #5b21b6;
+    --erp-c-sidebar-plaque: #ffffff;
+    --erp-c-sidebar-plaque-ink: #1f2633;
 
     --erp-shadow-card: 0 2px 3px rgb(46 38 24 / 3%), 0 8px 26px rgb(46 38 24 / 4%);
     --erp-shadow-pop: 0 8px 24px rgb(46 38 24 / 9%);
@@ -418,14 +419,28 @@
  * `max-width: 20px` — وهو ما كان يقصّ النوافذ الحوارية إلى شريط رفيع.
  * هذه القواعد خارج أي `@layer` فتغلب الأدوات المولّدة مهما كان ترتيبها.
  */
-.max-w-xs { max-inline-size: 20rem; }
-.max-w-sm { max-inline-size: 24rem; }
-.max-w-md { max-inline-size: 28rem; }
-.max-w-lg { max-inline-size: 32rem; }
-.max-w-xl { max-inline-size: 36rem; }
+.max-w-xs {
+    max-inline-size: 20rem;
+}
+.max-w-sm {
+    max-inline-size: 24rem;
+}
+.max-w-md {
+    max-inline-size: 28rem;
+}
+.max-w-lg {
+    max-inline-size: 32rem;
+}
+.max-w-xl {
+    max-inline-size: 36rem;
+}
 @media (min-width: 40rem) {
-    .sm\:max-w-sm { max-inline-size: min(24rem, calc(100% - 2rem)); }
-    .sm\:max-w-lg { max-inline-size: min(32rem, calc(100% - 2rem)); }
+    .sm\:max-w-sm {
+        max-inline-size: min(24rem, calc(100% - 2rem));
+    }
+    .sm\:max-w-lg {
+        max-inline-size: min(32rem, calc(100% - 2rem));
+    }
 }
 
 /* ─── الخطوط: مستضافة ذاتيًا من `frontend/app/fonts/v2` ─── */
@@ -611,9 +626,18 @@
     overflow: hidden;
     max-block-size: min(90dvh, 46rem);
 }
-.erp-dialog--sm { inline-size: min(92vw, 24rem); max-inline-size: min(92vw, 24rem); }
-.erp-dialog--md { inline-size: min(92vw, 32rem); max-inline-size: min(92vw, 32rem); }
-.erp-dialog--lg { inline-size: min(92vw, 44rem); max-inline-size: min(92vw, 44rem); }
+.erp-dialog--sm {
+    inline-size: min(92vw, 24rem);
+    max-inline-size: min(92vw, 24rem);
+}
+.erp-dialog--md {
+    inline-size: min(92vw, 32rem);
+    max-inline-size: min(92vw, 32rem);
+}
+.erp-dialog--lg {
+    inline-size: min(92vw, 44rem);
+    max-inline-size: min(92vw, 44rem);
+}
 .erp-dialog__head {
     flex-shrink: 0;
     display: flex;
@@ -640,8 +664,14 @@
     color: var(--erp-muted);
     cursor: pointer;
 }
-.erp-dialog__close:hover { background: var(--erp-surface-hover); color: var(--erp-ink); }
-.erp-dialog__close:focus-visible { outline: 2px solid var(--erp-primary); outline-offset: 2px; }
+.erp-dialog__close:hover {
+    background: var(--erp-surface-hover);
+    color: var(--erp-ink);
+}
+.erp-dialog__close:focus-visible {
+    outline: 2px solid var(--erp-primary);
+    outline-offset: 2px;
+}
 .erp-dialog__body {
     flex: 1 1 auto;
     min-block-size: 0;
@@ -665,16 +695,29 @@
     background: var(--erp-surface-raised);
 }
 @media (max-width: 639px) {
-    .erp-dialog__head { padding: 16px 16px 10px; }
-    .erp-dialog__body { padding: 10px 16px; }
-    .erp-dialog__foot { padding: 10px 16px 16px; }
+    .erp-dialog__head {
+        padding: 16px 16px 10px;
+    }
+    .erp-dialog__body {
+        padding: 10px 16px;
+    }
+    .erp-dialog__foot {
+        padding: 10px 16px 16px;
+    }
     .erp-dialog__foot button,
-    .erp-dialog__foot a { flex: 1 1 auto; }
+    .erp-dialog__foot a {
+        flex: 1 1 auto;
+    }
 }
 @media (max-width: 1023px) {
-    .erp-dialog__close { inline-size: 2.75rem; block-size: 2.75rem; }
+    .erp-dialog__close {
+        inline-size: 2.75rem;
+        block-size: 2.75rem;
+    }
     .erp-dialog__foot button,
-    .erp-dialog__foot a { min-block-size: 2.75rem; }
+    .erp-dialog__foot a {
+        min-block-size: 2.75rem;
+    }
 }
 
 /*
@@ -689,18 +732,20 @@
 }
 
 .erp-nav-item:hover:not([data-status="active"]) {
-    background-color: color-mix(in srgb, var(--erp-c-sidebar-accent) 15%, transparent);
+    background-color: color-mix(in srgb, var(--erp-c-sidebar-accent) 9%, transparent);
+    color: var(--erp-c-sidebar-accent);
 }
 
 /*
- * النشط: لوحةٌ شامبانيا عاجية بحبر إسبريسو، وشريطٌ شامبانيا رفيع على
- * الحافة **المنطقية** الملاصقة للمحتوى (في RTL هي الحافة اليسرى).
- * والنشط لا يعتمد على اللون وحده: اللوحة الفاتحة والشريط معًا.
+ * النشط: خلفية ياقوتية خفيفة وحبر ياقوتي عريض وشريطٌ رفيع على الحافة
+ * **المنطقية** الملاصقة للمحتوى (في RTL هي الحافة اليسرى).
+ * دلالة مزدوجة: الخلفية + الوزن + الشريط، لا اللون وحده.
  * `data-status="active"` يضعه `Link` نفسه، فمصدرٌ واحد للحقيقة.
  */
 .erp-nav-item[data-status="active"] {
-    background-color: var(--erp-sidebar-plaque);
-    color: var(--erp-sidebar-plaque-ink);
+    background-color: color-mix(in srgb, var(--erp-c-sidebar-accent) 12%, var(--erp-sidebar));
+    color: var(--erp-c-sidebar-accent);
+    font-weight: 700;
     position: relative;
 }
 
@@ -909,6 +954,8 @@
     --surface-quaternary: var(--erp-surface-hover);
     --default: var(--erp-surface-sunken);
     --default-foreground: var(--erp-ink-secondary);
+    /* تعارض متعمّد: shadcn يقرأ `--muted` كسطح، وheroui يقرأه كنصّ — آخر تعريف يفوز. */
+    /* biome-ignore lint/suspicious/noDuplicateCustomProperties: جسر heroui/shadcn مقصود */
     --muted: var(--erp-muted);
     --accent: var(--erp-primary);
     --accent-foreground: var(--erp-on-primary);
@@ -989,13 +1036,17 @@
         min-inline-size: 0;
     }
 
-    .erp-grow { flex: 1; min-inline-size: 0; }
+    .erp-grow {
+        flex: 1;
+        min-inline-size: 0;
+    }
 
     .erp-button {
         min-inline-size: 0;
         font-family: var(--font-sans);
         letter-spacing: normal;
-        transition: transform var(--erp-motion-fast) var(--erp-ease-standard),
+        transition:
+            transform var(--erp-motion-fast) var(--erp-ease-standard),
             box-shadow var(--erp-motion-fast) var(--erp-ease-standard),
             background-color var(--erp-motion-fast) var(--erp-ease-standard);
     }
@@ -1027,18 +1078,79 @@
     }
 
     .erp-page-header {
-        margin-block-end: 8px;
-        padding-block: 8px 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-block-end: 4px;
+        padding-block: 0 4px;
+    }
+
+    .erp-page-header__main {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-inline-size: 0;
+    }
+
+    .erp-page-header__titleRow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .erp-page-header__title {
+        margin: 0;
+        color: var(--erp-ink);
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
+    }
+
+    .erp-page-header__english {
+        color: var(--erp-faint);
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+    }
+
+    .erp-page-header__description {
+        margin: 0;
+        max-inline-size: 72ch;
+        color: var(--erp-muted);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+    }
+
+    .erp-page-header__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    /* سقفٌ لعناوين h1 المكتوبة بأحجام العرض: الرأس يُقرأ كسطرٍ لا كلافتة. */
+    .erp-shell__main h1.text-display-lg,
+    .erp-shell__main .text-display-lg > h1 {
+        font-size: 1.375rem;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
     }
 
     .erp-page-header__eyebrow {
         inline-size: fit-content;
-        margin-block-end: 8px;
-        color: var(--erp-brass-text);
+        margin-block-end: 2px;
+        color: var(--erp-faint);
         font-family: var(--font-mono);
         font-size: 10px;
         font-weight: 600;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
     }
 
@@ -1066,10 +1178,18 @@
         background: color-mix(in srgb, var(--erp-brass) 60%, transparent);
     }
 
-    .erp-kpi[data-tone="info"]::before { background: var(--erp-primary); }
-    .erp-kpi[data-tone="success"]::before { background: var(--erp-success); }
-    .erp-kpi[data-tone="warning"]::before { background: var(--erp-warning); }
-    .erp-kpi[data-tone="danger"]::before { background: var(--erp-danger); }
+    .erp-kpi[data-tone="info"]::before {
+        background: var(--erp-primary);
+    }
+    .erp-kpi[data-tone="success"]::before {
+        background: var(--erp-success);
+    }
+    .erp-kpi[data-tone="warning"]::before {
+        background: var(--erp-warning);
+    }
+    .erp-kpi[data-tone="danger"]::before {
+        background: var(--erp-danger);
+    }
 
     .erp-kpi__head {
         display: flex;
@@ -1176,22 +1296,38 @@
 }
 
 .erp-table__scroll {
-    border-radius: 10px;
+    border-radius: 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
+/* رأسٌ هادئ: خلفية رمادية فاتحة، حبرٌ داكن صغير عريض، وفاصل واحد سفلي. */
 .erp-table__scroll thead th {
-    padding-block: 12px;
+    padding-block: 8px;
+    padding-inline: 12px;
+    border-block-end: 1px solid var(--erp-hairline);
+    background: color-mix(in srgb, var(--erp-surface-sunken) 70%, var(--erp-surface));
+    color: var(--erp-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     line-height: 1.5;
+    white-space: nowrap;
 }
 
+/* صفوف كثيفة: فواصل أفقية فقط، ولا حدود عمودية. */
 .erp-table__scroll tbody td {
-    padding-block: 12px;
+    padding-block: 8px;
+    padding-inline: 12px;
 }
 
 .erp-table__scroll tbody tr {
+    border-block-end: 1px solid color-mix(in srgb, var(--erp-hairline) 60%, transparent);
     transition: background-color var(--erp-motion-fast) var(--erp-ease-standard);
+}
+
+.erp-table__scroll tbody tr:last-child {
+    border-block-end: 0;
 }
 
 .erp-table__scroll tbody tr:hover {
@@ -1204,8 +1340,12 @@
 }
 
 @media (max-width: 639px) {
-    .erp-page-header h1 { font-size: 25px; }
-    .erp-kpi { padding: 16px; }
+    .erp-page-header h1 {
+        font-size: 25px;
+    }
+    .erp-kpi {
+        padding: 16px;
+    }
 }
 
 /* اللمس حتى عرض الجهاز اللوحي: أهداف الفعل لا تقل عن 44px ارتفاعًا.
@@ -1230,7 +1370,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;

@@ -1,8 +1,10 @@
 import './FinanceRegister.premium.css';
 import { toCents } from '@karim/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
+import { PageHeader } from '../components/PageHeader';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -55,6 +57,7 @@ import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { RowActions } from '../ui/RowActions';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -725,41 +728,41 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
     }
 
     return (
-        <div className="finance-register-premium flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        {config.title}{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            {config.english}
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">{config.subtitle}</p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {writable ? (
-                        <Button
+        <div className="finance-register-premium flex flex-col gap-sm">
+            <PageHeader
+                title={config.title}
+                english={config.english}
+                actions={
+                    <>
+                        {writable ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                iconStart={
+                                    <span aria-hidden="true" className="text-base leading-none">
+                                        +
+                                    </span>
+                                }
+                                onClick={() => {
+                                    setPageError('');
+                                    setCreateOpen(true);
+                                }}
+                            >
+                                {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
+                            </Button>
+                        ) : null}
+                        <PrintActions title={config.title} />
+                        <button
                             type="button"
-                            size="sm"
-                            onClick={() => {
-                                setPageError('');
-                                setCreateOpen(true);
-                            }}
+                            onClick={resetFilters}
+                            disabled={!filtered}
+                            className="rounded-md border border-hairline-strong bg-surface px-sm py-1.5 text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
-                            {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
-                        </Button>
-                    ) : null}
-                    <PrintActions title={config.title} />
-                    <button
-                        type="button"
-                        onClick={resetFilters}
-                        disabled={!filtered}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                    >
-                        عرض الكل
-                    </button>
-                </div>
-            </header>
+                            عرض الكل
+                        </button>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
@@ -767,10 +770,10 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                 </p>
             ) : null}
 
-            <Card className="p-sm">
-                <div className="flex flex-wrap items-end gap-sm">
+            <Card className="p-0">
+                <div className="flex flex-wrap items-end gap-sm border-b border-hairline px-sm py-xs">
                     <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        className="flex flex-col gap-0.5 text-caption text-muted"
                         htmlFor={`erp-${config.entity}-from`}
                     >
                         من
@@ -783,12 +786,12 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                 setFrom(event.target.value);
                                 setPage(1);
                             }}
-                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                            className="h-8 rounded-md border border-hairline-strong bg-surface px-2 text-body-sm text-ink"
                             dir="ltr"
                         />
                     </label>
                     <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        className="flex flex-col gap-0.5 text-caption text-muted"
                         htmlFor={`erp-${config.entity}-to`}
                     >
                         إلى
@@ -802,12 +805,12 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                 setTo(event.target.value);
                                 setPage(1);
                             }}
-                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                            className="h-8 rounded-md border border-hairline-strong bg-surface px-2 text-body-sm text-ink"
                             dir="ltr"
                         />
                     </label>
                     <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        className="flex flex-col gap-0.5 text-caption text-muted"
                         htmlFor={`erp-${config.entity}-dept`}
                     >
                         القسم
@@ -818,7 +821,7 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                 setDept(event.target.value);
                                 setPage(1);
                             }}
-                            className="h-9 min-w-40 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                            className="h-8 min-w-36 rounded-md border border-hairline-strong bg-surface px-2 text-body-sm text-ink"
                         >
                             <option value="all">كل الأقسام</option>
                             {departments.map((item) => (
@@ -829,7 +832,7 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                         </select>
                     </label>
                     <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
+                        className="flex min-w-52 flex-1 flex-col gap-0.5 text-caption text-muted"
                         htmlFor={`erp-${config.entity}-search`}
                     >
                         بحث
@@ -844,22 +847,22 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                 setSearch(event.target.value);
                                 setPage(1);
                             }}
-                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                            className="h-8 rounded-md border border-hairline-strong bg-surface px-2 text-body-sm text-ink"
                         />
                     </label>
+                    <div className="ms-auto flex items-baseline gap-xs pb-1">
+                        <span className="text-caption text-muted">إجمالي المعروض</span>
+                        <span className="erp-numeric tabular-nums text-heading-md font-bold text-ink">
+                            {formatMoney(total)}
+                        </span>
+                        {currency ? <span className="text-caption text-muted">{currency}</span> : null}
+                        <span className="text-caption text-muted" aria-hidden="true">
+                            ·
+                        </span>
+                        <span className="text-caption text-muted">{formatInt(rows.length)} سجلًا</span>
+                    </div>
                 </div>
-            </Card>
 
-            <Card className="flex flex-wrap items-baseline justify-between gap-sm p-md">
-                <span className="text-body-sm text-muted">إجمالي المعروض</span>
-                <span className="erp-numeric text-heading-lg text-ink">
-                    {formatMoney(total)}
-                    {currency ? <span className="ms-xs text-body-sm text-muted">{currency}</span> : null}
-                </span>
-                <span className="text-body-sm text-muted">{formatInt(rows.length)} سجلًا</span>
-            </Card>
-
-            <Card>
                 {registerQuery.isPending ? (
                     <div aria-busy="true">
                         <StateLoading label={`جارٍ تحميل ${config.title}`} />
@@ -886,13 +889,13 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                 {registerQuery.isSuccess && rows.length > 0 ? (
                     <>
                         <TableScroll label={`جدول ${config.title}`}>
-                            <table className="w-full border-collapse text-body-md">
+                            <table className="w-full border-collapse text-body-sm">
                                 <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                    <tr className="bg-surface-sunken/70 text-[11px] font-bold text-muted">
                                         <th
                                             scope="col"
                                             aria-sort={ariaSort('source')}
-                                            className="px-sm py-xs text-start font-medium"
+                                            className="border-b border-hairline px-sm py-2 text-start font-bold whitespace-nowrap"
                                         >
                                             <button
                                                 type="button"
@@ -903,13 +906,16 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                                 {config.sourceLabel}
                                             </button>
                                         </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        <th
+                                            scope="col"
+                                            className="border-b border-hairline px-sm py-2 text-start font-bold whitespace-nowrap"
+                                        >
                                             القسم
                                         </th>
                                         <th
                                             scope="col"
                                             aria-sort={ariaSort('amount')}
-                                            className="px-sm py-xs text-end font-medium"
+                                            className="border-b border-hairline px-sm py-2 text-end font-bold whitespace-nowrap"
                                         >
                                             <button
                                                 type="button"
@@ -923,7 +929,7 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                         <th
                                             scope="col"
                                             aria-sort={ariaSort('date')}
-                                            className="px-sm py-xs text-center font-medium"
+                                            className="border-b border-hairline px-sm py-2 text-center font-bold whitespace-nowrap"
                                         >
                                             <button
                                                 type="button"
@@ -935,16 +941,25 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                             </button>
                                         </th>
                                         {config.showKind ? (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            <th
+                                                scope="col"
+                                                className="border-b border-hairline px-sm py-2 text-start font-bold whitespace-nowrap"
+                                            >
                                                 النوع
                                             </th>
                                         ) : null}
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        <th
+                                            scope="col"
+                                            className="border-b border-hairline px-sm py-2 text-start font-bold whitespace-nowrap"
+                                        >
                                             ملاحظات
                                         </th>
                                         {writable ? (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                إجراءات
+                                            <th
+                                                scope="col"
+                                                className="w-10 border-b border-hairline px-sm py-2 text-end font-bold"
+                                            >
+                                                <span className="sr-only">إجراءات</span>
                                             </th>
                                         ) : null}
                                     </tr>
@@ -953,56 +968,56 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                     {pageRows.map((item) => (
                                         <tr
                                             key={item.row.id}
-                                            className="border-b border-hairline hover:bg-surface-hover"
+                                            className="border-b border-hairline/60 text-body-sm hover:bg-surface-hover/70"
                                         >
-                                            <td className="px-sm py-xxs text-ink">{item.source || '—'}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-ink-secondary">
-                                                {item.deptName}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
+                                            <td className="px-sm py-2 text-ink">{item.source || '—'}</td>
+                                            <td className="px-sm py-2 text-ink-secondary">{item.deptName}</td>
+                                            <td className="erp-numeric tabular-nums px-sm py-2 text-end font-semibold text-ink">
                                                 {formatMoney(normalizeAmount(item.row.amount))}
                                                 {currency ? (
-                                                    <span className="ms-xs text-caption text-muted">{currency}</span>
+                                                    <span className="ms-1 text-caption font-normal text-muted">
+                                                        {currency}
+                                                    </span>
                                                 ) : null}
                                             </td>
-                                            <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted">
+                                            <td className="erp-numeric tabular-nums px-sm py-2 text-center text-muted">
                                                 {item.row.date}
                                             </td>
                                             {config.showKind ? (
-                                                <td className="px-sm py-xxs text-body-sm text-muted">{item.kind}</td>
+                                                <td className="px-sm py-2 text-muted">{item.kind}</td>
                                             ) : null}
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                            <td className="max-w-64 truncate px-sm py-2 text-muted">
                                                 {item.notes || '—'}
                                             </td>
                                             {writable ? (
-                                                <td className="px-sm py-xxs text-body-sm" data-erp-print-hide>
-                                                    {editLocked(item.row) ? null : (
-                                                        <div className="flex flex-wrap items-center gap-xs">
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                aria-label={`تعديل ${item.source || `#${String(item.row.id)}`}`}
-                                                                onClick={() => {
+                                                <td className="px-sm py-2 text-end" data-erp-print-hide>
+                                                    <RowActions
+                                                        label={`إجراءات ${item.source || `#${String(item.row.id)}`}`}
+                                                        heading={item.source || `#${String(item.row.id)}`}
+                                                        actions={[
+                                                            {
+                                                                key: 'edit',
+                                                                label: 'تعديل',
+                                                                icon: <Pencil className="size-4" />,
+                                                                hidden: editLocked(item.row),
+                                                                onSelect: () => {
                                                                     openEdit(item.row);
-                                                                }}
-                                                            >
-                                                                تعديل
-                                                            </Button>
-                                                            <Button
-                                                                type="button"
-                                                                variant="danger"
-                                                                size="sm"
-                                                                disabled={deleteMutation.isPending}
-                                                                aria-label={`حذف ${item.source || `#${String(item.row.id)}`}`}
-                                                                onClick={() => {
+                                                                },
+                                                            },
+                                                            {
+                                                                key: 'delete',
+                                                                label: 'حذف',
+                                                                icon: <Trash2 className="size-4" />,
+                                                                tone: 'danger',
+                                                                separatorBefore: true,
+                                                                hidden: editLocked(item.row),
+                                                                disabled: deleteMutation.isPending,
+                                                                onSelect: () => {
                                                                     void handleDelete(item.row);
-                                                                }}
-                                                            >
-                                                                حذف
-                                                            </Button>
-                                                        </div>
-                                                    )}
+                                                                },
+                                                            },
+                                                        ]}
+                                                    />
                                                 </td>
                                             ) : null}
                                         </tr>
