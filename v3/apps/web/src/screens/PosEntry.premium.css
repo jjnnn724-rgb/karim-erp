@@ -73,7 +73,7 @@
    بلا حدٍّ أدنى للارتفاع: القصير يضغط العمودين ويتيح التمرير الداخلي بدل أن
    يدفع زرَّ الإتمام أسفل الشاشة. */
 .pos-entry--workspace {
-    block-size: calc(100dvh - 11.25rem);
+    block-size: 100%;
     min-block-size: 0;
 }
 
@@ -153,6 +153,8 @@
 
 .pos-catalog,
 .pos-cart {
+    display: flex;
+    flex-direction: column;
     min-block-size: 0;
 }
 
@@ -324,8 +326,8 @@
 /* شبكة الأصناف والأفراد */
 .pos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    gap: 0.65rem;
 }
 
 .pos-grid--people {
@@ -388,34 +390,28 @@
     display: grid;
     width: 100%;
     height: 100%;
-    min-height: 4rem;
-    place-content: center;
-    justify-items: center;
-    gap: 0.35rem;
-    background:
-        radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--erp-primary) 16%, transparent), transparent 68%),
-        linear-gradient(145deg, var(--pos-surface), var(--pos-sunken));
-    color: var(--erp-primary);
-}
-
-.pos-product-image-fallback__mark {
-    display: grid;
-    width: 2rem;
-    height: 2rem;
+    min-height: 4.5rem;
     place-items: center;
-    border: 1px solid color-mix(in srgb, var(--erp-primary) 30%, var(--pos-line));
-    border-radius: 0.65rem;
-    background: color-mix(in srgb, var(--pos-surface) 88%, transparent);
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 800;
+    background:
+        radial-gradient(circle at 30% 18%, color-mix(in srgb, var(--erp-primary) 24%, transparent), transparent 62%),
+        radial-gradient(circle at 78% 88%, color-mix(in srgb, var(--erp-brass) 22%, transparent), transparent 58%),
+        linear-gradient(145deg, color-mix(in srgb, var(--erp-primary) 10%, var(--pos-surface)), var(--pos-sunken));
+    color: color-mix(in srgb, var(--erp-primary) 78%, var(--pos-ink));
 }
 
-.pos-product-image-fallback__label {
-    color: var(--pos-muted);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+.pos-product-image-fallback__initial {
+    display: grid;
+    inline-size: 2.6rem;
+    block-size: 2.6rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--erp-primary) 26%, transparent);
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, var(--pos-surface) 78%, transparent);
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    backdrop-filter: blur(4px);
 }
 
 .pos-product__info {
@@ -446,19 +442,6 @@
     color: var(--erp-primary);
 }
 
-.pos-product__price-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.35rem;
-}
-
-.pos-product__price {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--erp-primary);
-}
-
 .pos-product__unit {
     color: var(--pos-muted);
     font-size: 0.72rem;
@@ -469,19 +452,20 @@
     display: grid;
     flex-shrink: 0;
     place-items: center;
-    inline-size: 1.55rem;
-    block-size: 1.55rem;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
     border-radius: 999px;
     background: var(--erp-primary);
     color: var(--erp-on-primary);
-    font-size: 1rem;
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1;
-    transition: background-color 140ms ease;
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--erp-primary) 32%, transparent);
+    transition: transform 140ms ease;
 }
 
-.pos-product__add:hover {
-    background: color-mix(in srgb, var(--erp-primary) 82%, transparent);
+.pos-product:hover .pos-product__add {
+    transform: scale(1.06);
 }
 
 .pos-product__category-badge {
@@ -1573,7 +1557,11 @@
     padding: 0.6rem 0.85rem;
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--pos-line) 85%, var(--erp-brass) 15%);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--erp-surface-raised) 92%, transparent), var(--erp-surface-raised));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--erp-surface-raised) 92%, transparent),
+        var(--erp-surface-raised)
+    );
     box-shadow: 0 10px 30px rgb(0 0 0 / 0.16);
 }
 
@@ -1955,7 +1943,11 @@
     padding: 0.55rem 0.9rem;
     border-radius: 18px;
     border: 1px solid color-mix(in srgb, var(--pos-line) 88%, var(--erp-brass) 12%);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--erp-surface-raised) 94%, transparent), var(--erp-surface-raised));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--erp-surface-raised) 94%, transparent),
+        var(--erp-surface-raised)
+    );
     box-shadow: 0 12px 34px rgb(0 0 0 / 0.18);
 }
 
@@ -2041,7 +2033,11 @@
     gap: 0.55rem;
     padding: 0.7rem 0.85rem 0.65rem;
     border-block-end: 1px solid var(--pos-line);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--erp-surface-raised) 96%, transparent), var(--pos-surface));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--erp-surface-raised) 96%, transparent),
+        var(--pos-surface)
+    );
 }
 
 .pos-catalog__head {
@@ -2165,7 +2161,11 @@
 
 .pos-cart__foot {
     border-block-start: 1px solid var(--pos-line);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--erp-surface-raised) 60%, var(--pos-surface)), var(--pos-surface));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--erp-surface-raised) 60%, var(--pos-surface)),
+        var(--pos-surface)
+    );
     padding: 0.7rem 0.85rem;
 }
 

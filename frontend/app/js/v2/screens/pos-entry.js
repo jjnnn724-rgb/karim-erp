@@ -38,9 +38,16 @@ const PAYMENT_FIELDS = [
     { key: 'bank_transfer', label: 'تحويل بنكي' },
 ];
 
-function safeProductImageUrl(value) {
+function safeProductImageUrl(value, productId) {
     const url = String(value || '').trim();
-    return url.startsWith('/uploads/menu/') || /^https:\/\//i.test(url) ? url : '';
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId == null ? '' : productId).trim();
+        if (!/^[0-9]+$/.test(id)) {return '';}
+        const name = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] || '';
+        // اسم الرفع يخص هذا الصنف فقط — لا تعرض صورة صنف آخر أبدًا.
+        return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
 }
 
 function template(allowed, embedded, historyAllowed, salesEnabled) {
@@ -834,7 +841,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
     }
 
     function productCard(p) {
-        const image = safeProductImageUrl(p.image_url);
+        const image = safeProductImageUrl(p.image_url, p.id);
         const imageContent = image
             ? `<img src="${esc(image)}" alt="${esc(p.name_ar || p.name_en || 'صنف')}" loading="lazy" decoding="async">`
             : '<span class="erp-pos-v2-product-placeholder" aria-hidden="true"><i class="ji" data-i="image"></i></span>';

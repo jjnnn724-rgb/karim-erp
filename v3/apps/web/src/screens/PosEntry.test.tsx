@@ -620,7 +620,7 @@ describe('نقطة البيع', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى المفضلة' }));
 
-        const strip = screen.getByRole('group', { name: 'الأصناف المفضلة' });
+        const strip = screen.getByRole('region', { name: 'الأصناف المفضلة' });
         expect(within(strip).getByRole('button', { name: 'إضافة شاي إلى السلة من المفضلة' })).toBeTruthy();
         expect(window.localStorage.getItem('v3-pos-favorites:7')).toBe(JSON.stringify([String(TEA.id)]));
 

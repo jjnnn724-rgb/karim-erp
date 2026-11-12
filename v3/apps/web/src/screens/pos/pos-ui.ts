@@ -46,23 +46,57 @@ export function qtyText(value: number): string {
     return (Math.round(value * 1000) / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-export function safeProductImageUrl(value: string | null | undefined): string {
+const MENU_UPLOAD_PREFIX = '/uploads/menu/';
+
+/**
+ * هل اسم ملف الرفع يخص هذا المنتج فعلًا؟
+ * أسماء الرفع الرسمية `product-<id>-<ts>-<hash>.<ext>`؛ وتُقبل الصيغ القديمة
+ * `<id>.<ext>` أو التي تحمل المعرّف ككلمة مستقلة. أي ملف يخص صنفًا آخر يُرفض
+ * حتى لا تظهر صورة صنف مكان صنف آخر.
+ */
+function menuFileBelongsToProduct(fileName: string, productId: string): boolean {
+    const id = productId.trim();
+    if (!/^[0-9]+$/.test(id)) {
+        return false;
+    }
+    const token = new RegExp(`(^|[^0-9])${id}([^0-9]|$)`);
+    return token.test(fileName);
+}
+
+/**
+ * رابط الصورة المقبول لعرضه في الكاشير.
+ * - صور الرفع الداخلية تُقبل فقط إذا كان اسمها مرتبطًا بمعرّف الصنف نفسه.
+ * - الروابط الخارجية (https) تُقبل كما هي لأنها مخزّنة في حقل الصنف نفسه.
+ * - أي شيء آخر يُعاد فارغًا ⇒ واجهة بديلة آمنة، لا صورة صنف آخر.
+ */
+export function safeProductImageUrl(value: string | null | undefined, productId?: string | null): string {
     const url = String(value ?? '').trim();
-    return url.startsWith('/uploads/menu/') || /^https:\/\//i.test(url) ? url : '';
+    if (url.startsWith(MENU_UPLOAD_PREFIX)) {
+        if (productId == null || String(productId).trim() === '') {
+            return url;
+        }
+        const fileName = url.slice(MENU_UPLOAD_PREFIX.length).split(/[?#]/)[0] ?? '';
+        return menuFileBelongsToProduct(fileName, String(productId)) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
 }
 
 /** حالة الفاتورة → تسمية عربية (نفس خريطة القديم). */
 export function orderStatusLabel(status: string | null | undefined): string {
-    return ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[
-        String(status ?? '')
-    ] ?? (String(status ?? '') || 'غير محددة');
+    return (
+        ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[
+            String(status ?? '')
+        ] ??
+        (String(status ?? '') || 'غير محددة')
+    );
 }
 
 export function paymentMethodLabel(method: string | null | undefined): string {
     return (
         ({ cash: 'نقدي', card: 'بطاقة', wallet: 'محفظة', bank_transfer: 'تحويل بنكي' } as Record<string, string>)[
             String(method ?? '')
-        ] ?? (String(method ?? '') || '—')
+        ] ??
+        (String(method ?? '') || '—')
     );
 }
 
@@ -99,7 +133,9 @@ export interface CatalogItem {
 
 export function catalogFromProducts(products: readonly PosProduct[]): CatalogItem[] {
     return products
-        .filter((product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false)
+        .filter(
+            (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
+        )
         .map((product) => {
             const rawCode = product.metadata?.yara_code;
             return {
@@ -110,7 +146,7 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
                 unit: String(product.unit ?? ''),
                 barcode: String(product.barcode ?? ''),
                 stock: product.stock_quantity,
-                imageUrl: safeProductImageUrl(product.image_url),
+                imageUrl: safeProductImageUrl(product.image_url, String(product.id)),
                 category: String(product.category ?? '').trim(),
                 tier: '',
                 isBuffet: false,
@@ -164,7 +200,7 @@ export function searchScore(item: CatalogItem, needle: string): number {
     const name = item.name.toLocaleLowerCase();
     const barcode = item.barcode.toLocaleLowerCase();
     if (barcode && barcode === q) return 0;
-    if (barcode && barcode.startsWith(q)) return 1;
+    if (barcode.startsWith(q)) return 1;
     if (name.startsWith(q)) return 2;
     if (name.split(/\s+/).some((word) => word.startsWith(q))) return 3;
     return 4;

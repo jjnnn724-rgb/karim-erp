@@ -1,13 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useRouterState } from '@tanstack/react-router';
+import { type ReactNode, useEffect, useState } from 'react';
+import { PrintBrand, PrintRunner } from '../components/PrintBrand';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { logout, useAuthState } from '../lib/auth';
 import { titleForPath } from '../lib/navigation';
 import { useDocumentMeta } from '../lib/page-meta';
-import { useRouterState } from '@tanstack/react-router';
-import { PrintBrand, PrintRunner } from '../components/PrintBrand';
-import { ThemeToggle } from '../components/ThemeToggle';
 import './CashierKiosk.css';
 
-/** Full-screen POS shell rendered only for the cashier role. */
+/** Full-screen POS shell — used for every visit to the POS surface (admin or cashier). */
 export function CashierKiosk({ children }: { children: ReactNode }) {
     const auth = useAuthState();
     const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -43,7 +43,9 @@ export function CashierKiosk({ children }: { children: ReactNode }) {
         <div className="pos-kiosk" dir="rtl">
             <header className="pos-kiosk__bar" data-erp-print-hide>
                 <div className="pos-kiosk__brand">
-                    <span className="pos-kiosk__mark" aria-hidden="true">K</span>
+                    <span className="pos-kiosk__mark" aria-hidden="true">
+                        K
+                    </span>
                     <div>
                         <strong>Karim POS</strong>
                         <small>نقطة البيع</small>

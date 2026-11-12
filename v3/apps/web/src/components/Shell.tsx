@@ -132,21 +132,31 @@ export function Shell() {
 	);
 }
 
-/** Cashiers are pinned to the full-screen POS surface regardless of the incoming URL. */
+/** Cashiers are pinned to the full-screen POS surface; the POS route is always a kiosk. */
 function ShellRoute() {
 	const auth = useAuthState();
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
+	const normalisedPath = pathname.replace(/\/+$/, "");
+	const isPosSurface = normalisedPath === "/pos-entry";
 	const isCashier =
 		String(auth.user?.role ?? "")
 			.trim()
 			.toLowerCase() === "cashier";
 
 	if (isCashier) {
-		if (pathname.replace(/\/+$/, "") !== "/pos-entry") {
+		if (!isPosSurface) {
 			return <Navigate to="/pos-entry" replace />;
 		}
+		return (
+			<CashierKiosk>
+				<Outlet />
+			</CashierKiosk>
+		);
+	}
+	// نقطة البيع سطح تشغيل مستقل: بلا شريط تنقّل إداري ولا رأس متصفّح.
+	if (isPosSurface) {
 		return (
 			<CashierKiosk>
 				<Outlet />

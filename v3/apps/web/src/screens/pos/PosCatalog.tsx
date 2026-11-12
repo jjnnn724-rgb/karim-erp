@@ -1,18 +1,18 @@
-import { useMemo, useRef, useState, type RefObject } from 'react';
-import { Badge, Button, SearchInput } from '../../ui';
+import { type RefObject, useMemo, useRef, useState } from 'react';
 import type { BuffetLive, HeldOrder } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
+import { Badge, Button, SearchInput } from '../../ui';
+import { PosProductImage } from './PosProductImage';
 import {
     bestSellers,
+    type CatalogItem,
     groupCatalog,
     moneyText,
     orderCatalog,
     qtyText,
-    soldQty,
-    type CatalogItem,
     type SalesIndex,
+    soldQty,
 } from './pos-ui';
-import { PosProductImage } from './PosProductImage';
 
 export interface PosCatalogProps {
     buffet: boolean;
@@ -71,9 +71,7 @@ function BuffetLiveStrip({ live }: { live: BuffetLive | null }) {
                 </span>
             ) : null}
             {Number(daily.voided?.count ?? 0) > 0 ? (
-                <span className="pos-live__pill pos-live__pill--warning">
-                    {intOf(daily.voided?.count ?? 0)} ملغاة
-                </span>
+                <span className="pos-live__pill pos-live__pill--warning">{intOf(daily.voided?.count ?? 0)} ملغاة</span>
             ) : null}
         </div>
     );
@@ -173,9 +171,7 @@ export function PosCatalog({
                 <span className="pos-person__mark">{tierMark(item.tier)}</span>
                 <strong>{item.name}</strong>
                 <small>{item.price === 0 ? 'ضيافة مجانية' : `${item.unit} واحد`}</small>
-                <span className="pos-person__price">
-                    {item.price === 0 ? 'مجاناً' : moneyText(item.price)}
-                </span>
+                <span className="pos-person__price">{item.price === 0 ? 'مجاناً' : moneyText(item.price)}</span>
                 <span className="pos-person__add">+ إضافة فرد</span>
             </button>
         ) : (
@@ -194,7 +190,14 @@ export function PosCatalog({
                     </span>
                     <span className="pos-product__info">
                         <strong>{item.name}</strong>
-                        <span className="pos-product__price">{moneyText(item.price)}</span>
+                        <span className="pos-product__price-row">
+                            <span className="pos-product__price">{moneyText(item.price)}</span>
+                            {canSell ? (
+                                <span className="pos-product__add" aria-hidden="true">
+                                    +
+                                </span>
+                            ) : null}
+                        </span>
                         <span className="pos-product__meta">
                             <small>{`المتاح: ${item.stock === null ? '—' : qtyText(item.stock)} ${item.unit}`}</small>
                             {item.barcode ? <small dir="ltr">{item.barcode}</small> : null}
@@ -260,7 +263,7 @@ export function PosCatalog({
                 {buffet ? <BuffetLiveStrip live={buffetLive} /> : null}
 
                 {!buffet && favoriteItems.length ? (
-                    <div className="pos-favorites" role="group" aria-label="الأصناف المفضلة">
+                    <section className="pos-favorites" aria-label="الأصناف المفضلة">
                         <span className="pos-favorites__label">المفضلة</span>
                         <div className="pos-favorites__list">
                             {favoriteItems.map((item) => (
@@ -279,11 +282,11 @@ export function PosCatalog({
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </section>
                 ) : null}
 
                 {topSellers.length ? (
-                    <div className="pos-favorites pos-favorites--best" role="group" aria-label="الأكثر مبيعًا">
+                    <section className="pos-favorites pos-favorites--best" aria-label="الأكثر مبيعًا">
                         <span className="pos-favorites__label">الأكثر مبيعًا</span>
                         <div className="pos-favorites__list">
                             {topSellers.map((item) => (
@@ -304,7 +307,7 @@ export function PosCatalog({
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </section>
                 ) : null}
 
                 <SearchInput
@@ -323,7 +326,7 @@ export function PosCatalog({
                 />
 
                 {!buffet && categories.length ? (
-                    <div className="pos-categories" role="group" aria-label="تصنيف الأصناف">
+                    <section className="pos-categories" aria-label="تصنيف الأصناف">
                         <button
                             type="button"
                             className={`pos-category${selectedCategory ? '' : ' is-active'}`}
@@ -347,14 +350,12 @@ export function PosCatalog({
                                 {category}
                             </button>
                         ))}
-                    </div>
+                    </section>
                 ) : null}
 
                 {filtered.length === 0 ? (
                     <p className="text-body-sm text-muted" role="status">
-                        {buffet
-                            ? 'لا توجد فئات بوفيه مطابقة أو مفعّلة — راجع أسعار البوفيه.'
-                            : 'لا توجد أصناف مطابقة.'}
+                        {buffet ? 'لا توجد فئات بوفيه مطابقة أو مفعّلة — راجع أسعار البوفيه.' : 'لا توجد أصناف مطابقة.'}
                     </p>
                 ) : (
                     <div className="pos-groups">
