@@ -96,3 +96,17 @@ tmp/
 # Generated employee card artifacts (tools/employee-card/generate-card.js writes here).
 # Regenerable on demand; purged from Git history on 2026-10-27 — 138MB of build output.
 tools/employee-card/out/
+
+# مسوّدات تشخيصٍ لمرة واحدة (استقصاءات SQL وجسور مقارنة).
+# كانت تُرفع بالخطأ فتلوّث السجل وتُشغّل تحذيرات lint على كودٍ لا يُستورد:
+# لا يقرأها أي ملف، ولا تُثبَّت، ولا تُشحن. المصدر الحقيقي للسكربتات في
+# scripts/ (أسماء بلا شرطة سفلية) وحدها.
+/tmp-*
+/_tmp*
+/_entry.tmp.md
+/scripts/_tmp-*
+/scripts/_tb_*
+/scripts/_test_*
+# نسخُ عزلٍ مؤقتة عند حذف وحدة: السجل نفسه (git) هو مرجعُ الاسترداد.
+_quarantine_*/
+/quarantine_*/
