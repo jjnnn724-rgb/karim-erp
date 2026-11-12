@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { posProductSchema } from '../../lib/pos';
 import { bestSellers, groupCatalog, orderCatalog, searchScore, soldQty, type CatalogItem } from './pos-ui';
+import { catalogFromProducts } from './pos-ui';
 
 function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>): CatalogItem {
     return {
@@ -29,6 +31,49 @@ describe('ترتيب كتالوج الكاشير الذكي', () => {
         ];
         const ordered = orderCatalog(items, { favorites: ['4'], sales: SALES });
         expect(ordered.map((row) => row.id)).toEqual(['4', '2', '3', '1']);
+    });
+
+    describe('ربط صورة منتج POS', () => {
+        it('يربط صورة كل صف بمعرّف المنتج نفسه ولا يطابق بالاسم', () => {
+            const products = [
+                posProductSchema.parse({
+                    id: '42',
+                    name_ar: 'صنف متشابه',
+                    price: 12,
+                    vat_rate: 15,
+                    image_url: '/uploads/menu/42.webp',
+                    is_active: true,
+                }),
+                posProductSchema.parse({
+                    id: '43',
+                    name_ar: 'صنف متشابه',
+                    price: 12,
+                    vat_rate: 15,
+                    image_url: '/uploads/menu/43.webp',
+                    is_active: true,
+                }),
+            ];
+
+            expect(catalogFromProducts(products).map(({ id, imageUrl }) => [id, imageUrl])).toEqual([
+                ['42', '/uploads/menu/42.webp'],
+                ['43', '/uploads/menu/43.webp'],
+            ]);
+        });
+
+        it('يعيد صورة فارغة بدل استخدام مسار غير معروف', () => {
+            const products = [
+                posProductSchema.parse({
+                    id: '44',
+                    name_ar: 'صنف متشابه',
+                    price: 12,
+                    vat_rate: 15,
+                    image_url: '/img/random-menu.webp',
+                    is_active: true,
+                }),
+            ];
+
+            expect(catalogFromProducts(products)[0]?.imageUrl).toBe('');
+        });
     });
 
     it('غياب المبيعات يعيد الترتيب الأبجدي بلا كسر', () => {

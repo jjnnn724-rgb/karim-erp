@@ -53,6 +53,10 @@ describe('print.css — تنسيق الطباعة المشترك', () => {
         expect(CSS).toMatch(/font-family:\s*"IBM Plex Sans Arabic"/);
     });
 
+    it('يظهر ترقيم الصفحات في هوامش الطباعة', () => {
+        expect(CSS).toMatch(/@bottom-right\s*\{[^}]*counter\(page\)[^}]*counter\(pages\)/s);
+    });
+
     it('يخفي القشرة وأدوات الشاشة المعلنة', () => {
         for (const selector of [
             '.erp-shell__sidebar',

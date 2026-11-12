@@ -4,6 +4,7 @@ import {
     PRINT_COMPANY_FALLBACK,
     PRINT_LOGO_FALLBACK,
     printBrandName,
+    printDate,
     printLogoSrc,
     printRunnerTitle,
     printStamp,
@@ -42,6 +43,10 @@ describe('هوية الطباعة — الختم والتذييل', () => {
     it('الختم بصيغة dd/mm/yyyy hh:mm مع بادئة «طُبع»', () => {
         expect(printStamp(new Date(2026, 10, 9, 2, 5))).toBe('طُبع 09/11/2026 02:05');
         expect(printStamp(new Date(2026, 0, 1, 23, 59))).toBe('طُبع 01/01/2026 23:59');
+    });
+
+    it('تاريخ المستند بصيغة dd/mm/yyyy', () => {
+        expect(printDate(new Date(2026, 10, 9, 2, 5))).toBe('09/11/2026');
     });
 
     it('عنوان التذييل يضغط المسافات ويُقصّ الفارغ', () => {

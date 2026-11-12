@@ -12,6 +12,7 @@ import {
     type CatalogItem,
     type SalesIndex,
 } from './pos-ui';
+import { PosProductImage } from './PosProductImage';
 
 export interface PosCatalogProps {
     buffet: boolean;
@@ -189,11 +190,7 @@ export function PosCatalog({
                     }}
                 >
                     <span className="pos-product__image">
-                        {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" loading="lazy" decoding="async" />
-                        ) : (
-                            <span aria-hidden="true">صورة</span>
-                        )}
+                        <PosProductImage src={item.imageUrl} name={item.name} />
                     </span>
                     <span className="pos-product__info">
                         <strong>{item.name}</strong>

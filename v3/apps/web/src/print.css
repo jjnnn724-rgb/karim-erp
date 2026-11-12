@@ -28,6 +28,16 @@
     margin: 14mm 12mm;
 }
 
+@page {
+    @bottom-right {
+        content: "صفحة " counter(page) " من " counter(pages);
+        color: #8a8577;
+        font-family: "IBM Plex Sans Arabic", sans-serif;
+        font-size: 8pt;
+        direction: rtl;
+    }
+}
+
 @media print {
     /*
      * الوضع الداكن يطبع نصًّا فاتحًا على ورق أبيض — V2 لا يعرف الوضع الداكن
@@ -208,13 +218,22 @@
         text-align: start;
     }
 
+    .erp-print-brand__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2mm 6mm;
+        margin-top: 2mm;
+        color: #605b4e;
+        font-size: 8pt;
+    }
+
     /* تذييل واحد في آخر المستند — نفس `injectRunner` (لا تكرار لكل صفحة). */
     .erp-print-runner {
         display: flex;
         position: static;
         align-items: center;
         justify-content: space-between;
-        gap: 6mm;
+        gap: 3mm;
         margin-top: 14px;
         padding-top: 4px;
         border-top: 1px solid #e4dfd1;
@@ -226,7 +245,7 @@
     }
 
     .erp-print-runner span:nth-child(2) {
-        max-inline-size: 60%;
+        max-inline-size: 38%;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;

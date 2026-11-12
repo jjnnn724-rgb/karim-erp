@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { errorMessage, intOf, moneyOf, num, presetRange, qtyOf, rangeProblem } from '../lib/reporting';
 import {
     fetchSalesReport,
@@ -14,12 +16,43 @@ import {
     reportRowLabel,
     reportRowQty,
 } from '../lib/reports';
+import { roleIn } from './pos/pos-ui';
+
+const REPORT_GROUPS = [
+    {
+        title: 'المبيعات والتشغيل',
+        links: [
+            { to: '/cashier-sales', label: 'مبيعات الكاشير', roles: ['admin', 'manager', 'accountant'] },
+            { to: '/sales-analyzer', label: 'تحليل المبيعات', roles: ['admin', 'manager', 'accountant'] },
+            { to: '/sales-inquiry', label: 'استعلام المبيعات', roles: ['admin', 'manager', 'accountant'] },
+            { to: '/wh-vs-pos', label: 'المخزن مقابل نقطة البيع', roles: ['admin', 'manager', 'accountant'] },
+        ],
+    },
+    {
+        title: 'المالية والمحاسبة',
+        links: [
+            { to: '/pnl', label: 'الأرباح والخسائر', roles: ['admin', 'manager', 'accountant'] },
+            { to: '/cfo', label: 'لوحة المدير المالي', roles: ['admin', 'manager', 'accountant'] },
+            { to: '/accountant-dashboard', label: 'لوحة المحاسب', roles: ['admin', 'accountant'] },
+        ],
+    },
+    {
+        title: 'المخزون والموارد البشرية',
+        links: [
+            { to: '/inventory-inquiry', label: 'استعلامات المخزون', roles: ['admin', 'manager', 'accountant', 'warehouse'] },
+            { to: '/received-analyzer', label: 'تحليل المستلَم', roles: ['admin', 'manager', 'accountant', 'warehouse'] },
+            { to: '/hr-dashboard', label: 'تقارير الموارد البشرية', roles: ['admin', 'manager', 'hr'] },
+            { to: '/zkteco', label: 'تقارير الحضور والبصمة', roles: ['admin', 'manager', 'hr'] },
+        ],
+    },
+] as const;
 
 /**
  * تقرير مبيعات نقطة البيع — تجميع الخادم حسب قسم أو كاشير أو صنف.
  * بيان الفترة من `summary`، والصفوف كما رتّبها الخادم (الأعلى صافيًا أولًا).
  */
 export function Reports() {
+    const auth = useAuthState();
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [groupBy, setGroupBy] = useState<GroupBy>('department');
@@ -55,6 +88,32 @@ export function Reports() {
                 }}
             />
             <PrintActions title="التقارير — مبيعات نقطة البيع" />
+
+            <SectionCard title="مركز التقارير" english="Reporting hub">
+                <div className="grid gap-md p-sm sm:grid-cols-2 xl:grid-cols-3">
+                    {REPORT_GROUPS.map((group) => {
+                        const links = group.links.filter((item) => roleIn(auth.user?.role, item.roles));
+                        if (!links.length) return null;
+                        return (
+                            <section key={group.title} className="rounded-lg border border-hairline bg-surface p-sm">
+                                <h2 className="mb-sm text-heading-sm text-ink">{group.title}</h2>
+                                <ul className="m-0 grid list-none gap-xs p-0">
+                                    {links.map((item) => (
+                                        <li key={item.to}>
+                                            <Link
+                                                to={item.to}
+                                                className="block min-h-11 rounded-md border border-hairline bg-surface-sunken px-sm py-xs text-body-sm font-semibold text-ink hover:border-primary hover:text-primary"
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        );
+                    })}
+                </div>
+            </SectionCard>
 
             <SectionCard title="النطاق" english="Scope">
                 <div className="flex flex-col gap-sm p-sm">

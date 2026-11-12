@@ -276,6 +276,11 @@ export function Cfo() {
                             <span className={trialBalance.balanced ? 'text-success-text' : 'text-danger-text'}>
                                 {trialBalance.balanced ? 'متوازن' : 'غير متوازن'}
                             </span>
+                            <span className="me-xs">
+                                {` · قيود مرحّلة غير متوازنة ${intOf(
+                                    trialBalance.integrity?.unbalanced_posted_entries,
+                                )}`}
+                            </span>
                             <span className="me-xs text-caption text-faint" dir="ltr">
                                 {balanceLine(trialBalance)}
                             </span>

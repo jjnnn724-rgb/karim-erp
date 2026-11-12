@@ -2,7 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
-import { buildPnlLines, fetchPnl } from '../lib/pnl';
+import { useAuthState } from '../lib/auth';
+import {
+    buildPnlLines,
+    fetchLedgerIncomeStatement,
+    fetchPnl,
+    type LedgerIncomeStatement,
+} from '../lib/pnl';
+import { roleIn } from './pos/pos-ui';
 import {
     errorMessage,
     intOf,
@@ -19,6 +26,7 @@ import { PrintActions } from '../components/PrintActions';
  * لا جمع ولا هامش في الواجهة: كل رقم يصل محسوبًا من ستة جداول وفترتين.
  */
 export function Pnl() {
+    const auth = useAuthState();
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [problem, setProblem] = useState('');
@@ -27,6 +35,12 @@ export function Pnl() {
         queryKey: ['finance', 'pnl', range.from, range.to],
         queryFn: ({ signal }) => fetchPnl(range.from, range.to, signal),
     });
+    const canReadLedger = roleIn(auth.user?.role, ['admin', 'accountant', 'manager', 'auditor']);
+    const ledgerQuery = useQuery({
+        queryKey: ['accounting', 'income-statement', range.from, range.to],
+        queryFn: ({ signal }) => fetchLedgerIncomeStatement(range.from, range.to, signal),
+        enabled: canReadLedger,
+    });
 
     const payload = pnlQuery.data;
     const statement = payload?.statement ?? {};
@@ -34,6 +48,14 @@ export function Pnl() {
     // الخادم يعلّم الصفوف التي رُحّلت إلى أبيها بـ`rolledUp`؛ عرضها بجانبه يضاعف الرقم.
     const departments = (statement.by_department ?? []).filter((dept) => dept.rolledUp !== true);
     const daily = (statement.daily_series ?? []).slice(-10);
+    const ledgerGroups: { title: string; accounts: LedgerIncomeStatement['revenues']['items'] }[] =
+        ledgerQuery.data
+            ? [
+                  { title: 'الإيرادات', accounts: ledgerQuery.data.revenues.items },
+                  { title: 'تكلفة البضاعة', accounts: ledgerQuery.data.cost_of_goods_sold.items },
+                  { title: 'المصروفات التشغيلية', accounts: ledgerQuery.data.operating_expenses.items },
+              ]
+            : [];
 
     function apply() {
         const message = rangeProblem(draft.from, draft.to, 366);
@@ -49,9 +71,10 @@ export function Pnl() {
                 title="الأرباح والخسائر"
                 english="Profit & Loss"
                 description="قائمة الدخل من دفتر الحركات المسجَّلة: الإيراد والتكلفة والتشغيل والرواتب وصافي الربح."
-                pending={pnlQuery.isFetching}
+                pending={pnlQuery.isFetching || ledgerQuery.isFetching}
                 onRefresh={() => {
                     void pnlQuery.refetch();
+                    if (canReadLedger) void ledgerQuery.refetch();
                 }}
             />
             <PrintActions title="الأرباح والخسائر" />
@@ -264,7 +287,98 @@ export function Pnl() {
                     <TableSkeleton rows={6} columns={3} />
                 </SectionCard>
             ) : null}
+
+            {canReadLedger ? (
+                <SectionCard title="قائمة الدخل من الأستاذ العام" english="Posted-ledger P&L">
+                    {ledgerQuery.isPending ? (
+                        <StateLoading label="جارٍ تحميل قائمة الأستاذ العام…" />
+                    ) : ledgerQuery.isError ? (
+                        <StateError
+                            message={errorMessage(ledgerQuery.error)}
+                            onRetry={() => {
+                                void ledgerQuery.refetch();
+                            }}
+                        />
+                    ) : ledgerQuery.data ? (
+                        <>
+                            <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
+                                {`قيود مرحّلة ${intOf(ledgerQuery.data.integrity?.posted_entries)} · قيود غير متوازنة ${intOf(
+                                    ledgerQuery.data.integrity?.unbalanced_posted_entries,
+                                )} · `}
+                                <span
+                                    className={
+                                        !ledgerQuery.data.integrity
+                                            ? 'text-warning-text'
+                                            : ledgerQuery.data.integrity.balanced
+                                              ? 'text-success-text'
+                                              : 'text-danger-text'
+                                    }
+                                >
+                                    {!ledgerQuery.data.integrity
+                                        ? 'تعذر التحقق من توازن القيود'
+                                        : ledgerQuery.data.integrity.balanced
+                                          ? 'القيود المرحّلة متوازنة'
+                                          : 'تحذير: توجد قيود مرحّلة غير متوازنة'}
+                                </span>
+                            </p>
+                            <ul className="grid list-none gap-sm p-sm sm:grid-cols-2 xl:grid-cols-4">
+                                <KpiCard
+                                    label="الإيرادات"
+                                    english="Revenue"
+                                    value={moneyOf(ledgerQuery.data.revenues.total)}
+                                    hint="من القيود المرحلة"
+                                />
+                                <KpiCard
+                                    label="تكلفة البضاعة"
+                                    english="Cost of goods sold"
+                                    value={moneyOf(ledgerQuery.data.cost_of_goods_sold.total)}
+                                    hint="من القيود المرحلة"
+                                    tone="warning"
+                                />
+                                <KpiCard
+                                    label="إجمالي الربح"
+                                    english="Gross profit"
+                                    value={moneyOf(ledgerQuery.data.gross_profit.amount)}
+                                    hint={`${Number(ledgerQuery.data.gross_profit.margin_pct).toFixed(1)}% هامش إجمالي`}
+                                />
+                                <KpiCard
+                                    label="صافي الربح"
+                                    english="Net profit"
+                                    value={moneyOf(ledgerQuery.data.net_profit.amount)}
+                                    hint={`${Number(ledgerQuery.data.net_profit.margin_pct).toFixed(1)}% هامش صافي`}
+                                    tone={Number(ledgerQuery.data.net_profit.amount) < 0 ? 'danger' : 'success'}
+                                />
+                            </ul>
+                            <div className="grid gap-md p-sm lg:grid-cols-3">
+                                {ledgerGroups.map((group) => (
+                                    <section key={group.title} className="rounded-lg border border-hairline">
+                                        <h3 className="border-b border-hairline px-sm py-xs text-label-md text-ink">
+                                            {group.title}
+                                        </h3>
+                                        <ul className="m-0 list-none p-sm">
+                                            {group.accounts.map((account) => (
+                                                <li
+                                                    key={account.code}
+                                                    className="flex justify-between gap-sm border-b border-hairline py-xxs text-body-sm"
+                                                >
+                                                    <span className="text-ink">
+                                                        {account.name_ar || account.name_en || account.code}
+                                                    </span>
+                                                    <span className="erp-numeric text-ink" dir="ltr">
+                                                        {moneyOf(account.balance)}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <StateEmpty title="لا توجد بيانات دفتر أستاذ" hint="تحقق من الفترة ثم أعد المحاولة." />
+                    )}
+                </SectionCard>
+            ) : null}
         </div>
     );
 }
-

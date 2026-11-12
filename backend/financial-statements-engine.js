@@ -16,6 +16,35 @@ function round2(v) {
     return Math.round((Number(v) || 0) * 100) / 100;
 }
 
+async function postedEntryIntegrity(pool, fromDate, toDate) {
+    const { rows } = await pool.query(`
+        SELECT COUNT(*)::int AS posted_entries,
+               COUNT(*) FILTER (
+                   WHERE entry_totals.line_count < 2
+                      OR ABS(entry_totals.debit - entry_totals.credit) > 0.01
+               )::int AS unbalanced_posted_entries
+        FROM (
+            SELECT e.id,
+                   COALESCE(SUM(l.debit), 0) AS debit,
+                   COALESCE(SUM(l.credit), 0) AS credit,
+                   COUNT(l.entry_id)::int AS line_count
+            FROM journal_entries e
+            LEFT JOIN journal_lines l ON l.entry_id = e.id
+            WHERE e.status = 'posted'
+              AND ($1::date IS NULL OR e.date >= $1::date)
+              AND e.date <= $2::date
+            GROUP BY e.id
+        ) entry_totals
+    `, [fromDate || null, toDate]);
+    const postedEntries = Number(rows[0]?.posted_entries ?? 0);
+    const unbalancedEntries = Number(rows[0]?.unbalanced_posted_entries ?? 0);
+    return {
+        posted_entries: postedEntries,
+        unbalanced_posted_entries: unbalancedEntries,
+        balanced: unbalancedEntries === 0,
+    };
+}
+
 /**
  * 1. Statutory Balance Sheet (قائمة المركز المالي)
  * Formula: Assets = Liabilities + Equity + Period Net Profit
@@ -28,8 +57,8 @@ async function generateBalanceSheet(pool, asOfDate) {
                COALESCE(SUM(l.debit), 0)::numeric(14,2) AS debit,
                COALESCE(SUM(l.credit), 0)::numeric(14,2) AS credit
         FROM chart_of_accounts c
-        LEFT JOIN journal_lines l ON l.account_code = c.code
-        LEFT JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted' AND e.date <= $1::date
+        LEFT JOIN journal_entries e ON e.status = 'posted' AND e.date <= $1::date
+        LEFT JOIN journal_lines l ON l.entry_id = e.id AND l.account_code = c.code
         WHERE c.is_active = TRUE
         GROUP BY c.code, c.name_ar, c.name_en, c.type, c.parent_code
         ORDER BY c.code
@@ -65,10 +94,13 @@ async function generateBalanceSheet(pool, asOfDate) {
     const totalEquity = round2(totalEquityContributed + currentPeriodNetIncome);
     const balanceDiff = round2(totalAssets - (totalLiabilities + totalEquity));
 
+    const integrity = await postedEntryIntegrity(pool, null, asOf);
+
     return {
         statement: 'BALANCE_SHEET',
         as_of_date: asOf,
         currency: 'SAR',
+        integrity,
         assets: {
             current_assets: accounts.filter(a => a.type === 'asset' && a.code.startsWith('11')),
             non_current_assets: accounts.filter(a => a.type === 'asset' && a.code.startsWith('12')),
@@ -139,10 +171,13 @@ async function generateIncomeStatement(pool, fromDate, toDate) {
     const netProfit = round2(grossProfit - totalExpenses);
     const netMarginPct = totalRevenue > 0 ? round2((netProfit / totalRevenue) * 100) : 0;
 
+    const integrity = await postedEntryIntegrity(pool, from, to);
+
     return {
         statement: 'INCOME_STATEMENT',
         period: { from, to },
         currency: 'SAR',
+        integrity,
         revenues: { items: revenues, total: totalRevenue },
         cost_of_goods_sold: { items: cogs, total: totalCogs },
         gross_profit: { amount: grossProfit, margin_pct: grossMarginPct },

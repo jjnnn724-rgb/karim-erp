@@ -66,6 +66,11 @@ export function printStamp(now: Date = new Date()): string {
     return `طُبع ${date} ${time}`;
 }
 
+export function printDate(now: Date = new Date()): string {
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${String(now.getFullYear())}`;
+}
+
 /** عنوان التذييل: عنوان الشاشة من خريطة التنقّل، مطبَّعًا كما في V2. */
 export function printRunnerTitle(title: string | null | undefined): string {
     return String(title ?? '')
@@ -81,7 +86,7 @@ export async function fetchPrintSettings(signal?: AbortSignal): Promise<PrintSet
  * هوية الطباعة كاستعلام واحد مشترك (Shield: مفتاح واحد فتُقرأ مرة لكل جلسة).
  * لا يُعطّل الطباعة عند فشل الشبكة — البدائل الثابتة تعمل دائمًا.
  */
-export function usePrintBrand(): { name: string; logoSrc: string } {
+export function usePrintBrand(): { name: string; logoSrc: string; branchName: string } {
     const query = useQuery({
         queryKey: ['print', 'brand'],
         queryFn: ({ signal }) => fetchPrintSettings(signal),
@@ -91,5 +96,9 @@ export function usePrintBrand(): { name: string; logoSrc: string } {
     return {
         name: printBrandName(query.data),
         logoSrc: printLogoSrc(query.data),
+        branchName:
+            typeof query.data?.branch_name === 'string' && query.data.branch_name.trim()
+                ? query.data.branch_name.trim()
+                : '—',
     };
 }

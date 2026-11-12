@@ -89,6 +89,11 @@ export const trialBalanceSchema = z
         total_debit: numLike,
         total_credit: numLike,
         balanced: flag,
+        integrity: z
+            .object({
+                unbalanced_posted_entries: numLike,
+            })
+            .optional(),
     })
     .passthrough();
 

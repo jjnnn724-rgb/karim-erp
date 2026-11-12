@@ -776,9 +776,25 @@ router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (req, re
                                AND e.date >= $1 AND e.date <= $2)
              GROUP BY c.code, c.name_ar, c.name_en, c.type
              ORDER BY c.code`, [from, to]);
+        const integrityResult = await pool.query(
+            `SELECT COUNT(*)::int AS unbalanced_posted_entries
+             FROM (
+                 SELECT e.id
+                 FROM journal_entries e
+                 LEFT JOIN journal_lines l ON l.entry_id = e.id
+                 WHERE e.status = 'posted' AND e.date >= $1 AND e.date <= $2
+                 GROUP BY e.id
+                 HAVING COUNT(l.entry_id) < 2
+                     OR ABS(COALESCE(SUM(l.debit), 0) - COALESCE(SUM(l.credit), 0)) > 0.01
+             ) unbalanced`, [from, to]);
         const tDr = round2(rows.reduce((s, r) => s + Number(r.debit), 0));
         const tCr = round2(rows.reduce((s, r) => s + Number(r.credit), 0));
-        res.json({ from, to, accounts: rows, total_debit: tDr, total_credit: tCr, balanced: Math.abs(tDr - tCr) < 0.01 });
+        const unbalancedEntries = Number(integrityResult.rows[0]?.unbalanced_posted_entries ?? 0);
+        res.json({
+            from, to, accounts: rows, total_debit: tDr, total_credit: tCr,
+            balanced: Math.abs(tDr - tCr) <= 0.01 && unbalancedEntries === 0,
+            integrity: { unbalanced_posted_entries: unbalancedEntries },
+        });
     } catch (error) {
         logger.error('[ledger/trial-balance]', error);
         res.status(500).json({ error: 'LEDGER_TB_FAILED', message: 'تعذر حساب ميزان المراجعة' });

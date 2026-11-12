@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { Link, Navigate, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logout, useAuthState } from '../lib/auth';
 import {
@@ -25,6 +25,7 @@ import { ChevronIcon } from './icons';
 import { PrintBrand, PrintRunner } from './PrintBrand';
 import { SHELL_GROUP_ICONS, ShellBrandMark, ShellIcon, shellIconForPath } from './ShellIcons';
 import { ThemeToggle } from './ThemeToggle';
+import { CashierKiosk } from '../screens/CashierKiosk';
 import './shell-premium.css';
 
 /**
@@ -105,9 +106,28 @@ type NavItem = (typeof NAV_ITEMS)[number];
 export function Shell() {
     return (
         <ThemeProvider>
-            <ShellLayout />
+            <ShellRoute />
         </ThemeProvider>
     );
+}
+
+/** Cashiers are pinned to the full-screen POS surface regardless of the incoming URL. */
+function ShellRoute() {
+    const auth = useAuthState();
+    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const isCashier = String(auth.user?.role ?? '').trim().toLowerCase() === 'cashier';
+
+    if (isCashier) {
+        if (pathname.replace(/\/+$/, '') !== '/pos-entry') {
+            return <Navigate to="/pos-entry" replace />;
+        }
+        return (
+            <CashierKiosk>
+                <Outlet />
+            </CashierKiosk>
+        );
+    }
+    return <ShellLayout />;
 }
 
 function ShellLayout() {
@@ -613,7 +633,7 @@ function ShellLayout() {
                     <main id="erp-v3-main" ref={mainRef} tabIndex={-1} className="erp-shell__main">
                         <Breadcrumbs pathname={currentPath} />
                         {/* هوية الطباعة: شعار + اسم الشركة قبل محتوى الشاشة، وختم بعده. */}
-                        <PrintBrand />
+                        <PrintBrand title={currentTitle} />
                         {/* انتقال الصفحات العالمي: مفتاح المسار يعيد تشغيل حركة الدخول. */}
                         <div key={currentPath} className="erp-route-transition">
                             <Outlet />

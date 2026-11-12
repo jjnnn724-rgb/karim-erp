@@ -13,6 +13,45 @@ import { getAccessToken } from './auth';
  */
 
 const numLike = z.union([z.string(), z.number()]).nullable().optional();
+const ledgerNum = z.union([z.string(), z.number()]);
+
+const ledgerAccountSchema = z
+    .object({
+        code: z.string(),
+        name_ar: z.string().nullable().optional(),
+        name_en: z.string().nullable().optional(),
+        balance: ledgerNum,
+    })
+    .passthrough();
+
+const ledgerSectionSchema = z
+    .object({
+        items: z.array(ledgerAccountSchema),
+        total: ledgerNum,
+    })
+    .passthrough();
+
+export const ledgerIncomeStatementSchema = z
+    .object({
+        statement: z.literal('INCOME_STATEMENT'),
+        period: z.object({ from: z.string(), to: z.string() }),
+        currency: z.string(),
+        revenues: ledgerSectionSchema,
+        cost_of_goods_sold: ledgerSectionSchema,
+        gross_profit: z.object({ amount: ledgerNum, margin_pct: ledgerNum }),
+        operating_expenses: ledgerSectionSchema,
+        net_profit: z.object({ amount: ledgerNum, margin_pct: ledgerNum }),
+        integrity: z
+            .object({
+                posted_entries: z.number(),
+                unbalanced_posted_entries: z.number(),
+                balanced: z.boolean(),
+            })
+            .optional(),
+    })
+    .passthrough();
+
+export type LedgerIncomeStatement = z.infer<typeof ledgerIncomeStatementSchema>;
 
 const revenueSchema = z
     .object({
@@ -173,6 +212,21 @@ export async function fetchPnl(from = '', to = '', signal?: AbortSignal): Promis
     return fetchJson(
         pnlResponseSchema,
         `/api/finance/pnl${query ? `?${query}` : ''}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
+}
+
+/** القوائم الرسمية من دفتر الأستاذ العام؛ لا تقرأ معاملات غير مرحّلة. */
+export async function fetchLedgerIncomeStatement(
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+): Promise<LedgerIncomeStatement> {
+    const params = new URLSearchParams({ from, to });
+    return fetchJson(
+        ledgerIncomeStatementSchema,
+        `/api/accounting/income-statement?${params.toString()}`,
         getAccessToken(),
         signal ? { signal } : {},
     );

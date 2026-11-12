@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPnlLines, pnlResponseSchema } from './pnl';
+import { buildPnlLines, ledgerIncomeStatementSchema, pnlResponseSchema } from './pnl';
 
 /**
  * العقد الحقيقي: الشكل أدناه منسوخ من ردّ الإنتاج الفعلي
@@ -91,6 +91,28 @@ describe('عقد قائمة الأرباح والخسائر', () => {
             expect(parsed.data.statement?.payroll?.months).toEqual([]);
             expect(parsed.data.statement?.by_department?.[2]?.rolledUp).toBe(true);
         }
+    });
+
+    describe('قائمة الدخل الرسمية من دفتر الأستاذ', () => {
+        it('تعرض فقط إجماليات العقد الرسمي وتتحقق من توازن القيود المرحلة', () => {
+            const parsed = ledgerIncomeStatementSchema.safeParse({
+                statement: 'INCOME_STATEMENT',
+                period: { from: '2026-11-01', to: '2026-11-10' },
+                currency: 'SAR',
+                revenues: { items: [], total: 500 },
+                cost_of_goods_sold: { items: [], total: 100 },
+                gross_profit: { amount: 400, margin_pct: 80 },
+                operating_expenses: { items: [], total: 50 },
+                net_profit: { amount: 350, margin_pct: 70 },
+                integrity: { posted_entries: 8, unbalanced_posted_entries: 0, balanced: true },
+            });
+
+            expect(parsed.success).toBe(true);
+            if (parsed.success) {
+                expect(parsed.data.integrity?.balanced).toBe(true);
+                expect(parsed.data.net_profit.amount).toBe(350);
+            }
+        });
     });
 
     it('يرفض `payroll.months` كرقم — شكل الاستجابة القديم المكسور', () => {
