@@ -51,6 +51,7 @@
 
 ## Release status
 
-The local changes are prepared for a normal, non-force push to `release/v3-masterpiece`. The remote
-branch was checked before publication and was at `342c39b844c2f77f264f941b01b4f0d2af38462c`. Push
-completion and the resulting remote SHA will be recorded after verification.
+Commit `91f119c259738d6ee188fdd0fbbae99f9f99fea9` was pushed normally (no force) to
+`origin/release/v3-masterpiece`. `git ls-remote` verified that the remote branch points to that same
+SHA. The branch includes the Cloudflare dashboard change-record commit `15ebe7ac`. No production
+deployment was performed.
